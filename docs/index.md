@@ -114,7 +114,7 @@ table of what is and isn't implemented.
   so the two tools cross-check each other instead of duplicating or dropping
   findings. The procedure to follow before and after a review is the
   "Security Review Protocol" section of [`CLAUDE.md`](../CLAUDE.md#security-review-protocol).
-- [`security-review-2026-09-05.md`](./security-review-2026-09-05.md) — latest
+- [`security-review-2026-09-07-codex.md`](./security-review-2026-09-07-codex.md) — latest
   manual security-review baseline, confirmed findings, reviewed surfaces, and
   the areas that still require a future dedicated assessment.
 - [`qa-strategy.md`](./qa-strategy.md) — when to do a full vs. targeted
