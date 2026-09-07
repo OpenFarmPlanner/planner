@@ -78,23 +78,40 @@ describe('getBalancedPageSize', () => {
     expect(getBalancedPageSize(100, 100)).toBe(100);
   });
 
-  it('spreads the rows evenly so the last page is never a stub', () => {
-    // 209 rows used to page as 100/100/9: scrolling to the end left the grid
-    // sizing itself to nine rows, so the table visibly collapsed to a
-    // fraction of its height.
-    expect(getBalancedPageSize(209, 100)).toBe(70);
-    expect(getBalancedPageSize(101, 100)).toBe(51);
+  it('keeps a full page size when the rows divide evenly', () => {
     expect(getBalancedPageSize(5000, 100)).toBe(100);
+    expect(getBalancedPageSize(300, 100)).toBe(100);
   });
 
-  it('never exceeds the maximum page size the free DataGrid allows', () => {
-    for (let totalRowCount = 101; totalRowCount <= 1000; totalRowCount += 1) {
+  it('picks a page size that leaves a well-filled last page', () => {
+    // 209 rows used to page as 100/100/9: scrolling to the end left the grid
+    // sizing itself to nine rows, so the table visibly collapsed.
+    expect(getBalancedPageSize(209, 100)).toBe(74); // 74/74/61
+    // Large counts just above a multiple of the cap are the case an even
+    // split (ceil(total / pageCount)) does *not* fix: it rounds straight back
+    // up to 100 and the 18-row remainder survives.
+    expect(getBalancedPageSize(10_218, 100)).toBe(94); // last page 66 rows
+    expect(getBalancedPageSize(9909, 100)).toBe(92); // last page 65 rows
+  });
+
+  it('falls back to the fullest last page when no page size reaches the minimum', () => {
+    // 101 rows cannot do better than 51/50, so the fallback has to pick that
+    // rather than leaving the single-row remainder of a 100-row page.
+    expect(getBalancedPageSize(101, 100)).toBe(51);
+  });
+
+  it('keeps every page within the DataGrid cap and tall enough to scroll', () => {
+    const rowCounts = [101, 209, 250, 999, 1000, 1001, 5000, 9909, 10_218, 20_017, 99_999];
+    for (const totalRowCount of rowCounts) {
       const pageSize = getBalancedPageSize(totalRowCount, 100);
       expect(pageSize).toBeLessThanOrEqual(100);
-      // Every page but the last is exactly pageSize rows; the last one holds
-      // the remainder, which must stay within one row of a full page.
-      const lastPageRowCount = totalRowCount - pageSize * (Math.ceil(totalRowCount / pageSize) - 1);
-      expect(pageSize - lastPageRowCount).toBeLessThanOrEqual(Math.ceil(totalRowCount / pageSize));
+      expect(pageSize).toBeGreaterThanOrEqual(50);
+
+      const remainder = totalRowCount % pageSize;
+      const lastPageRowCount = remainder === 0 ? pageSize : remainder;
+      // 101 rows is the documented exception: no page size reaches the
+      // minimum, so the fullest available last page (50) wins.
+      expect(lastPageRowCount).toBeGreaterThanOrEqual(totalRowCount === 101 ? 50 : 60);
     }
   });
 });

@@ -379,6 +379,7 @@ export function EditableDataGrid<T extends EditableRow>({
     horizontalScrollRef,
     pageContentRef,
     currentWindowRowCount,
+    windowPageSize: scrollDrivenRowWindow.pageSize,
     totalRowCount: rowsForGrid.length,
     footerFallbackHeight: continuousScrollFooterFallbackHeight,
     scrollWindowPage: scrollDrivenRowWindow.page,

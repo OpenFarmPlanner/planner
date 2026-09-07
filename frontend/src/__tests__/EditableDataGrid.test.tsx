@@ -148,6 +148,9 @@ vi.mock('@mui/x-data-grid', async () => {
         <div data-testid="continuous-render-zone-collapsed">
           {String(Boolean((sx as Record<string, unknown> | undefined)?.['& .MuiDataGrid-virtualScrollerRenderZone']))}
         </div>
+        <div data-testid="continuous-root-height">
+          {String((sx as Record<string, unknown> | undefined)?.height ?? '')}
+        </div>
         <div data-testid="continuous-content-height">
           {String(((sx as Record<string, Record<string, unknown>> | undefined)?.['& .MuiDataGrid-virtualScrollerContent']?.height) ?? '')}
         </div>
@@ -387,8 +390,13 @@ describe('EditableDataGrid', () => {
     mockSetEditCellValue.mockResolvedValue(true);
   });
 
+  const afterEachCleanup: Array<() => void> = [];
+
   afterEach(() => {
     vi.useRealTimers();
+    while (afterEachCleanup.length > 0) {
+      afterEachCleanup.pop()?.();
+    }
   });
 
   it('renders with minimal props and loads rows', async () => {
@@ -433,17 +441,57 @@ describe('EditableDataGrid', () => {
     expect(screen.getByTestId('continuous-render-zone-collapsed')).toHaveTextContent('false');
     expect(screen.getByTestId('pagination-enabled')).toHaveTextContent('true');
     expect(screen.getByTestId('pagination-page')).toHaveTextContent('0');
-    // 125 rows need two internal pages, and they are split evenly (63/62)
-    // rather than 100/25: the grid sizes itself to the rows its current page
-    // holds, so a short final page would collapse the table's height when the
-    // user scrolls to the end (see getBalancedPageSize).
-    expect(screen.getByTestId('pagination-page-size')).toHaveTextContent('63');
+    // 125 rows page as 65/60 rather than 100/25: the last page is the one the
+    // user lands on at the end of the list, and a 25-row stub there would
+    // leave the table mostly empty (see getBalancedPageSize).
+    expect(screen.getByTestId('pagination-page-size')).toHaveTextContent('65');
     expect(screen.getByTestId('pagination-options')).toBeEmptyDOMElement();
     expect(screen.queryByTestId('grid-pagination')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Neu'));
 
     await waitFor(() => expect(screen.getByTestId('pagination-page')).toHaveTextContent('1'));
+  });
+
+  it('keeps the grid height when the internal window reaches the last page', async () => {
+    // The grid used to size itself to the rows its current page held, so the
+    // last page — which keeps only the remainder — collapsed the whole table
+    // to a fraction of its height the moment the user scrolled to the end.
+    // The viewport is raised so the available height exceeds a short last
+    // page's content: on a normal viewport the balanced page size alone
+    // already keeps every page taller than the screen, and the height would
+    // be capped either way.
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 3000, configurable: true });
+    afterEachCleanup.push(() => {
+      Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+    });
+
+    const rows = Array.from({ length: 209 }, (_, index) => (
+      createGridRow({ id: index + 1, name: `Plan ${index + 1}`, area_sqm: index + 1 })
+    ));
+
+    const commandApiRef: { current: EditableDataGridCommandApi | null } = { current: null };
+
+    render(
+      <EditableDataGrid
+        {...basePropsWithRows(rows)}
+        commandApiRef={commandApiRef}
+        showDeleteAction={false}
+        scrollMode="continuous"
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('row-count')).toHaveTextContent('209'));
+    const heightOnFirstPage = screen.getByTestId('continuous-root-height').textContent;
+    expect(heightOnFirstPage).toMatch(/^\d+px$/);
+
+    // Jump to the last row rather than adding one: the row count has to stay
+    // the same, or the page size (and with it the height) legitimately changes.
+    commandApiRef.current?.openRowById(209);
+
+    await waitFor(() => expect(screen.getByTestId('pagination-page')).not.toHaveTextContent('0'));
+    expect(screen.getByTestId('continuous-root-height')).toHaveTextContent(heightOnFirstPage as string);
   });
 
   it('collapses the continuous-scroll render zone when all rows fit on one page', async () => {

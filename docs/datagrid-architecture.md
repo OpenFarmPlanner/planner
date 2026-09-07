@@ -131,10 +131,13 @@ follows the same measurement. The hierarchy grid passes its own
 `HEADER_ROW_HEIGHT`, which is likewise the offset its track is drawn at.
 
 `useScrollDrivenRowWindow` exports `getBalancedPageSize`, which both grids use
-to size that internal window: it spreads the rows evenly over the pages
-(209 rows become 70/70/69, not 100/100/9) so the last page is never a stub.
-Both grids pin their height to the rows the current page holds, so an
-unbalanced final page made the table visibly collapse on the last scroll.
+to size that internal window: it searches down from the 100-row cap for a page
+size whose last page is full or holds at least 60 rows (209 rows become
+74/74/61, not 100/100/9), so the page the user lands on at the end of the list
+is never a stub. Both grids additionally size themselves for a *full* page
+while the dataset spans more than one, rather than for the rows the current
+page holds — see [large-dataset-rendering.md](./large-dataset-rendering.md)
+for why both halves are needed.
 
 `StableScrollbarTrack` must be rendered as a sibling of whatever wrapper Box
 scrolls the table horizontally, not nested inside it — its `right: 0` is

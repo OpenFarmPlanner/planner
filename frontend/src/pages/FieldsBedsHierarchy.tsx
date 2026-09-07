@@ -312,9 +312,9 @@ function FieldsBedsHierarchy({
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
-    // Balanced so the last internal page is never a stub — the table sizes
-    // itself to the rows its current page holds (see currentPageContentHeight
-    // below), so a short final page would visibly collapse its height.
+    // Balanced so the last internal page is never a stub: it is the page the
+    // user lands on at the end of the list, and a stub there leaves the table
+    // (sized via maxPageContentHeight below) mostly empty.
     getBalancedHierarchyPageSize(rows.length, HIERARCHY_GRID_PAGE_SIZE),
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
@@ -1516,23 +1516,26 @@ function FieldsBedsHierarchy({
     [rowHeights],
   );
 
-  // Height needed for just the rows on the internal page currently loaded
-  // (see useHierarchyRowWindow) rather than every row across every page.
-  // Pages other than the last are always full (pageSize rows), so this
-  // equals tableContentHeight-ish and gets capped by availableTableHeight
-  // the same as before; the last page is usually shorter than a full page,
-  // and without this the grid kept reserving availableTableHeight's worth of
-  // height regardless, leaving dead whitespace below its last row once
-  // scrolled all the way to the end.
-  const currentPageContentHeight = useMemo(() => {
-    const startIndex = hierarchyRowWindow.page * hierarchyRowWindow.pageSize;
-    const endIndex = Math.min(startIndex + hierarchyRowWindow.pageSize, rowHeights.length);
-    let sum = HEADER_ROW_HEIGHT;
-    for (let i = startIndex; i < endIndex; i += 1) {
-      sum += rowHeights[i];
+  // Height needed for the *tallest* internal page (see useHierarchyRowWindow),
+  // not for the page currently loaded. Capping it with availableTableHeight
+  // still lets a small hierarchy size snugly to its content, while a large one
+  // keeps one height for every page: sizing to the current page collapsed the
+  // whole table the moment the user scrolled onto a short last page. Row
+  // heights differ per type (Standort/Parzelle/Beet), so the pages are summed
+  // rather than derived from the page size.
+  const maxPageContentHeight = useMemo(() => {
+    const { pageSize } = hierarchyRowWindow;
+    let tallestPageRowHeight = 0;
+    for (let startIndex = 0; startIndex < rowHeights.length; startIndex += pageSize) {
+      const endIndex = Math.min(startIndex + pageSize, rowHeights.length);
+      let pageRowHeight = 0;
+      for (let i = startIndex; i < endIndex; i += 1) {
+        pageRowHeight += rowHeights[i];
+      }
+      tallestPageRowHeight = Math.max(tallestPageRowHeight, pageRowHeight);
     }
-    return sum;
-  }, [rowHeights, hierarchyRowWindow.page, hierarchyRowWindow.pageSize]);
+    return HEADER_ROW_HEIGHT + tallestPageRowHeight;
+  }, [rowHeights, hierarchyRowWindow]);
 
   const stableScrollbar = useHierarchyStableScrollbar(
     rowHeights,
@@ -1804,7 +1807,7 @@ function FieldsBedsHierarchy({
                   ? HIERARCHY_DATA_GRID_SX
                   : {
                     ...HIERARCHY_DATA_GRID_SX,
-                    height: `${Math.min(currentPageContentHeight, availableTableHeight ?? tableContentHeight)}px`,
+                    height: `${Math.min(maxPageContentHeight, availableTableHeight ?? tableContentHeight)}px`,
                   }
               }
               disableRowSelectionOnClick

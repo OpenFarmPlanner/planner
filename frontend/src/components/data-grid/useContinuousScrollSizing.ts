@@ -26,8 +26,10 @@ interface UseContinuousScrollSizingOptions {
   /** The horizontal scrollport the grid sits in, for the scrollbar offset. */
   horizontalScrollRef: RefObject<HTMLDivElement | null>;
   pageContentRef: RefObject<HTMLDivElement | null>;
-  /** Rows in the currently rendered window, which set the content height. */
+  /** Rows in the currently rendered window, which set the render-zone height. */
   currentWindowRowCount: number;
+  /** Rows a full internal page holds (see getBalancedPageSize). */
+  windowPageSize: number;
   /** Rows the grid holds in total, which decide whether the render zone collapses. */
   totalRowCount: number;
   /** Footer height to assume before the footer has been measured. */
@@ -73,6 +75,7 @@ export function useContinuousScrollSizing({
   horizontalScrollRef,
   pageContentRef,
   currentWindowRowCount,
+  windowPageSize,
   totalRowCount,
   footerFallbackHeight,
   scrollWindowPage,
@@ -87,13 +90,20 @@ export function useContinuousScrollSizing({
   const [availableGridHeight, setAvailableGridHeight] = useState<number | null>(null);
   const [scrollbarRightOffsetPx, setScrollbarRightOffsetPx] = useState<number>(0);
 
+  // Sized for a *full* page while the dataset spans more than one, never for
+  // the rows the current page happens to hold: the last page keeps only the
+  // remainder, and sizing to it collapsed the whole table the moment the user
+  // scrolled to the end. getBalancedPageSize keeps that last page well filled,
+  // and this keeps the height identical on every page even when it isn't.
+  const rowCountForHeight = totalRowCount > windowPageSize ? windowPageSize : currentWindowRowCount;
+
   const measuredContentHeight = useMemo(() => Math.ceil(
     layoutHeights.header
     + layoutHeights.footer
     + layoutHeights.border
-    + currentWindowRowCount * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX
+    + rowCountForHeight * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX
     + CONTINUOUS_SCROLL_FIT_EPSILON_PX,
-  ), [layoutHeights, currentWindowRowCount]);
+  ), [layoutHeights, rowCountForHeight]);
 
   const resolvedHeight = isContinuousScroll && !isMobile
     ? Math.min(measuredContentHeight, availableGridHeight ?? measuredContentHeight)
