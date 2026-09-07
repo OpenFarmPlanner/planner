@@ -40,6 +40,61 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Claude — Rendering pipeline and remaining unreviewed surfaces
+
+**Scope:** Reviewed at `22f25c9`, chosen because no prior entry covers it:
+
+- the notes/rich-text pipeline end to end — the tiptap editor's markdown
+  storage, `RichTextViewer`, `NotesCell`, `NotesDrawer`, and the shared
+  `markdownComponents` link override;
+- outbound email construction (activation, password reset, email change,
+  feedback, registration notification) and the Django email templates;
+- `notifications` REST views;
+- bed/field layout endpoints and `save_location_layouts`;
+- the supplier undo/restore service's bulk crop reassignment;
+- the local-fixture cleanup service and its management command.
+
+**Findings:** none exploitable.
+
+1. **`FIXED` — no defect; regression tests added for a property that was
+   unpinned.** Notes are written by one project member and rendered for the
+   others, so the viewer is a stored-XSS sink. It is safe today, but only
+   because of two `react-markdown` defaults: `defaultUrlTransform` (which
+   neutralizes `javascript:` hrefs) and raw HTML being ignored without
+   `rehype-raw`. Nothing in this repository asserted either, so adding
+   `urlTransform` or `rehype-raw` later would silently reintroduce XSS.
+   `frontend/src/__tests__/RichTextViewerSanitization.test.tsx` now pins both,
+   plus the casing/whitespace variants and the ordinary-external-link case.
+   Verified empirically, not by reading the library.
+2. **`WONTFIX` — email subject headers interpolate user-controlled text.** The
+   feedback subject carries the client-supplied project name and the
+   registration-notification subject carries a username. Reason: not
+   exploitable. Django's `forbid_multi_line_headers` rejects embedded CR/LF
+   before the message is sent, non-ASCII subjects go through RFC 2047
+   quoted-printable encoding which encodes any newline, and the feedback send is
+   wrapped so a rejected header fails the delivery rather than the request.
+   No template uses `|safe`, `mark_safe`, or `autoescape off`, so the one HTML
+   email body is autoescaped.
+
+**Reviewed with no findings:** the tiptap editor stores markdown with
+`html: false` and never renders stored content as HTML; `notifications` views
+are strictly self-scoped, including `mark_read`, which resolves against the
+unfiltered recipient queryset so an `is_read` query parameter cannot widen it;
+bed/field layouts reject any bed or field whose location is not the
+already-project-scoped one, so a foreign id cannot be linked into a layout and
+read back; the supplier restore path creates its supplier inside the active
+project and scopes every crop update to it, and a cross-project primary-key
+collision fails closed rather than overwriting; the local-fixture cleanup
+refuses to run unless `DEBUG=True` **and** `DJANGO_ENV=development`, and is
+reachable only as a management command.
+
+**Verification:** full backend suite (1196 passed), full frontend suite
+(2443 passed across 245 files), `npm run lint` (0 errors), and
+`manage.py check --deploy --fail-level WARNING` clean apart from the short
+throwaway `SECRET_KEY` used locally.
+
+---
+
 ## 2026-09-07 — Claude — Tenant boundary cross-review (first cross-review under the protocol)
 
 **Scope:** Cross-review of the 2026-09-05 Codex baseline's tenant-boundary
