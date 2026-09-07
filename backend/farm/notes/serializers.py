@@ -24,15 +24,15 @@ class NoteAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for note image attachments."""
 
     image_url = serializers.SerializerMethodField()
-    created_by_user = AuditUserSerializer(source='created_by', read_only=True)
-    updated_by_user = AuditUserSerializer(source='updated_by', read_only=True)
+    created_by_user = AuditUserSerializer(source="created_by", read_only=True)
+    updated_by_user = AuditUserSerializer(source="updated_by", read_only=True)
 
     def get_image_file(self, obj):
         if not obj.image_file_id:
             return None
         return {
-            'id': obj.image_file_id,
-            'storage_path': obj.image_file.storage_path,
+            "id": obj.image_file_id,
+            "storage_path": obj.image_file.storage_path,
         }
 
     class Meta:
