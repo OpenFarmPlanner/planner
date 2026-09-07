@@ -2,9 +2,9 @@ import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
 import { getLocalizedCropColumns } from './spreadsheetColumns';
 import { formatIsoDate } from '../utils/isoDate';
-import { buildSpreadsheetFile } from './spreadsheetFile';
+import { buildSpreadsheetFile, type SpreadsheetFileFormat } from './spreadsheetFile';
 
-export type SpreadsheetExportFormat = 'xlsx' | 'ods' | 'csv';
+export type SpreadsheetExportFormat = SpreadsheetFileFormat;
 
 const MIME_TYPES: Record<SpreadsheetExportFormat, string> = {
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
