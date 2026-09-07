@@ -70,10 +70,7 @@ import { useHierarchyData, type HierarchyDataState } from "../components/hierarc
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { type TreeRowNode } from "../components/hierarchy/utils/treeRows";
 import { useHierarchyLevelToggle } from "../components/hierarchy/hooks/useHierarchyLevelToggle";
-import {
-  getBalancedHierarchyPageSize,
-  useHierarchyRowWindow,
-} from "../components/hierarchy/hooks/useHierarchyRowWindow";
+import { useHierarchyRowWindow } from "../components/hierarchy/hooks/useHierarchyRowWindow";
 import { useHierarchyStableScrollbar } from "../components/hierarchy/hooks/useHierarchyStableScrollbar";
 import { hasPersistedEntityId } from "../components/hierarchy/utils/hierarchyUtils";
 import { useBedOperations } from "../components/hierarchy/hooks/useBedOperations";
@@ -312,10 +309,11 @@ function FieldsBedsHierarchy({
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
-    // Balanced so the last internal page is never a stub: it is the page the
-    // user lands on at the end of the list, and a stub there leaves the table
-    // (sized via maxPageContentHeight below) mostly empty.
-    getBalancedHierarchyPageSize(rows.length, HIERARCHY_GRID_PAGE_SIZE),
+    // The hook balances this cap down so the last internal page is never a
+    // stub: it is the page the user lands on at the end of the list, and a
+    // stub there leaves the table (sized via maxPageContentHeight below)
+    // mostly empty.
+    HIERARCHY_GRID_PAGE_SIZE,
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
   );
@@ -329,10 +327,20 @@ function FieldsBedsHierarchy({
     rowsArrayRef.current = rows;
   }, [rows]);
 
+  // Also read through a ref: the deep-link highlight flow below defers this
+  // call into a requestAnimationFrame *after* expanding ancestors, so the
+  // callback it captured predates the expansion. The page size is derived
+  // from the row count, so a captured window would resolve the target page
+  // against the collapsed list's size and page somewhere the row isn't.
+  const hierarchyRowWindowRef = useRef(hierarchyRowWindow);
+  useLayoutEffect(() => {
+    hierarchyRowWindowRef.current = hierarchyRowWindow;
+  }, [hierarchyRowWindow]);
+
   const ensureRowVisibleOnPage = useCallback((rowId: GridRowId): boolean => {
     const rowIndex = rowsArrayRef.current.findIndex((row) => String(row.id) === String(rowId));
-    return hierarchyRowWindow.ensureRowIndexVisible(rowIndex);
-  }, [hierarchyRowWindow]);
+    return hierarchyRowWindowRef.current.ensureRowIndexVisible(rowIndex);
+  }, []);
 
   const {
     expandedRowsRef,

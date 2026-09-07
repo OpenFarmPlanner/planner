@@ -10,12 +10,15 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { createRef } from 'react';
+import { act, createRef } from 'react';
 import {
   useHierarchyStableScrollbar,
   type HierarchyRowWindowForScrollbar,
 } from '../components/hierarchy/hooks/useHierarchyStableScrollbar';
-import { getBalancedPageSize } from '../components/data-grid/hooks/useScrollDrivenRowWindow';
+import {
+  getBalancedPageSize,
+  useScrollDrivenRowWindow,
+} from '../components/data-grid/hooks/useScrollDrivenRowWindow';
 
 const SELECTOR = '.mock-scroller';
 const ROW_HEIGHT = 30;
@@ -70,6 +73,76 @@ class MockResizeObserver {
   disconnect = vi.fn();
 }
 
+
+describe('useScrollDrivenRowWindow row-count transitions', () => {
+  // The balanced page size moves with the row count, so a page index resolved
+  // against the size still on screen can point at rows the next render no
+  // longer puts there. 4512 rows page at 96, 4513 at 89.
+  const ROWS_BEFORE_APPEND = 4512;
+  const MAX_PAGE_SIZE = 100;
+
+  // FieldsBedsHierarchy's deep-link highlight expands ancestors and then
+  // pages to the target inside a requestAnimationFrame, i.e. after the row
+  // count has already changed. The page size is derived from that count, so
+  // the window has to be read at call time; a window captured before the
+  // expansion resolves the target page against the collapsed list's size.
+  it('resolves the target page against the current row count, not a captured one', () => {
+    const COLLAPSED_ROWS = 1;
+    const EXPANDED_ROWS = 107;
+    const targetRowIndex = 65;
+    const wrapperRef = createRef<HTMLElement>();
+
+    const { result, rerender } = renderHook(
+      ({ totalRowCount }: { totalRowCount: number }) => useScrollDrivenRowWindow(
+        totalRowCount,
+        MAX_PAGE_SIZE,
+        SELECTOR,
+        wrapperRef,
+      ),
+      { initialProps: { totalRowCount: COLLAPSED_ROWS } },
+    );
+
+    const capturedWindow = result.current;
+    rerender({ totalRowCount: EXPANDED_ROWS });
+
+    // Reading the window at call time pages to the row.
+    act(() => {
+      result.current.ensureRowIndexVisible(targetRowIndex);
+    });
+    const { page, pageSize } = result.current;
+    expect(targetRowIndex).toBeGreaterThanOrEqual(page * pageSize);
+    expect(targetRowIndex).toBeLessThan((page + 1) * pageSize);
+
+    // The window captured before the expansion still holds the collapsed
+    // list's page size, so it would page somewhere the row is not.
+    expect(capturedWindow.pageSize).not.toBe(pageSize);
+    expect(Math.floor(targetRowIndex / capturedWindow.pageSize)).not.toBe(page);
+  });
+
+  it('pages to the row the caller is about to append, not to a stale page', () => {
+    const wrapperRef = createRef<HTMLElement>();
+    const { result, rerender } = renderHook(
+      ({ totalRowCount }: { totalRowCount: number }) => useScrollDrivenRowWindow(
+        totalRowCount,
+        MAX_PAGE_SIZE,
+        SELECTOR,
+        wrapperRef,
+        { preservePageOnRowCountChange: true },
+      ),
+      { initialProps: { totalRowCount: ROWS_BEFORE_APPEND } },
+    );
+
+    const newRowIndex = ROWS_BEFORE_APPEND;
+    act(() => {
+      result.current.ensureRowIndexVisible(newRowIndex, { forRowCount: ROWS_BEFORE_APPEND + 1 });
+    });
+    rerender({ totalRowCount: ROWS_BEFORE_APPEND + 1 });
+
+    const { page, pageSize } = result.current;
+    expect(newRowIndex).toBeGreaterThanOrEqual(page * pageSize);
+    expect(newRowIndex).toBeLessThan((page + 1) * pageSize);
+  });
+});
 
 describe('getBalancedPageSize', () => {
   it('leaves the page size alone while everything fits on one page', () => {
