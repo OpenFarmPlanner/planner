@@ -40,6 +40,149 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Codex — Full backend/frontend cross-review
+
+**Scope:** Full-repository manual review at `e882508`. This review independently
+cross-checked the two 2026-09-07 Claude entries, reviewed the release-only
+changes since `22f25c9`, and re-walked the complete application rather than
+sampling only changed files:
+
+- every routed DRF view/viewset, `ProjectScopedMixin`, direct object lookup,
+  project/season header resolver, relational serializer, service query, history
+  restore, WebSocket consumer, API-token surface, and invitation/member flow;
+- authentication/account/session/OAuth/data-export behavior, CORS/CSRF and
+  production settings;
+- public-library publish/import/direct-edit/translation/revision/proposal,
+  species moderation, moderator grant, removal, and discussion flows;
+- both image upload paths, feedback persistence/email, all outbound email
+  templates, logging call sites, and frontend markdown, URL, browser-storage,
+  cookie, and HTML-rendering sinks;
+- locked Python and npm dependency graphs, using `pip-audit` and `npm audit`.
+
+The most recent review of tenancy, authentication, the public library, uploads,
+OAuth and frontend sinks was Claude's 2026-09-07 tenant-boundary entry; the
+rendering/email/notification/layout/supplier/cleanup surfaces were last reviewed
+by Claude's immediately newer entry. Both were therefore genuine cross-review
+priority. The only code changed after those reviews is the version bump plus
+Claude's markdown regression test and review-log entry; those changes introduced
+no security-relevant behavior.
+
+**Findings:**
+
+1. **`OPEN` — Legacy change proposals bypass field-level serializer
+   validation (medium; malformed stored data / moderator-triggered 500).**
+   `PublicCropChangeProposalSerializer.validate_proposed_data()` only checks
+   that the payload is a non-empty object whose *keys* are in an allowlist; it
+   does not validate the values against `PublicCropUpdateSerializer`
+   (`backend/farm/crops/serializers/public.py:526-536`). Approval then passes
+   that stored JSON directly to `update_public_crop_directly()`
+   (`backend/farm/crops/views/public.py:516-522`), whose loop assigns values
+   directly to model attributes and saves them
+   (`backend/farm/services/public_crops.py:397-420`). A contributor can
+   therefore store invalid types/shapes (notably arbitrary `seed_packages`
+   JSON, invalid choice values, or strings/objects for numeric fields). A
+   moderator opening the queue is safe, but approving such a proposal can cause
+   a 500 or persist data that the normal typed update serializer would reject;
+   malformed `seed_packages` can also break later consumers/imports.
+   **Suggested fix:** validate `proposed_data` with the same typed,
+   partial-update serializer used by direct edits (then restrict to
+   `PUBLIC_CROP_PROPOSABLE_FIELDS`) before storing it, and defensively
+   revalidate under the row lock at approval time. Add regression cases for
+   wrong scalar types, invalid choices, and malformed nested JSON. The legacy
+   API is documented as reachable but has no UI, so deciding whether to harden
+   or remove it is a product/API compatibility decision; no fix was applied.
+2. **`OPEN` — The documented admin-only variety rename boundary is not
+   enforced (medium; public identity overwrite).** The architecture says only
+   an admin may correct a public entry's variety
+   (`docs/crop-library-architecture.md:81-90`), but `variety` is in the
+   general editable-field list
+   (`backend/farm/services/public_crops.py:72-95`) and the only service-level
+   authorization check is “authenticated”
+   (`backend/farm/services/public_crops.py:343-345,385-399`). Consequently any
+   authenticated non-moderator can `PATCH /api/public-crops/{id}/` and rename
+   any contributor's variety; optimistic locking and collision detection limit
+   races/duplicates but do not enforce the stated privilege boundary. This is
+   broader than the intentional wiki-style rule allowing logged-in users to
+   edit agronomic content. **Suggested fix:** decide whether the documentation
+   or policy is authoritative. If admin/moderator-only is intended, reject
+   `variety` in the service unless `is_public_library_moderator(user)` (or
+   the narrower admin predicate), enforce it again in the serializer/view, and
+   test a non-moderator editing another contributor's entry. If all users may
+   rename identities, update the architecture and UI language explicitly.
+   This requires a product decision, so no fix was applied.
+3. **`OPEN` — Raw email addresses and usernames are copied into application
+   logs (low; DSGVO/data-minimization and secondary disclosure).** Invitation
+   mismatch logging writes both full addresses
+   (`backend/farm/services/project_invitations.py:242-244`); account email
+   delivery failures write the account/new address
+   (`backend/accounts/views.py:139-142,353-359,559-562,584-589`); deletion
+   lifecycle logs write usernames
+   (`backend/accounts/views.py:453-463,504-511`). These values are unnecessary
+   because stable user/invitation/request ids are already present and log
+   retention/access may differ from the primary database. **Suggested fix:**
+   define a log data-minimization policy and retention/access controls, remove
+   raw addresses/usernames in favor of ids or a keyed non-reversible
+   correlation hash, and add a caplog regression similar to invitation-token
+   masking. Operational incident-response needs and the sibling ops repository's
+   logging controls are not defined here, so this is left OPEN rather than
+   silently changing observability.
+
+4. **`CROSS-CONFIRMED` — 2026-09-07 Claude rendering entry, finding 1
+   (markdown stored-XSS regression coverage).** Independently checked that
+   `RichTextViewer` uses `react-markdown` without `rehype-raw`, its link
+   override adds `noopener noreferrer`, and the new tests reject raw HTML and
+   script schemes. Confirmed still holding by Codex on 2026-09-07.
+5. **`CROSS-CONFIRMED` — 2026-09-07 Claude rendering entry, finding 2
+   (email-subject header injection is not exploitable).** Re-derived the
+   client-controlled subject inputs and Django mail path: CR/LF is rejected by
+   Django header validation, non-ASCII is RFC 2047 encoded, delivery failure is
+   contained, and no HTML template disables escaping. Confirmed by Codex on
+   2026-09-07.
+6. **`CROSS-CONFIRMED` — 2026-09-07 Claude tenant-boundary entry, findings 1
+   and 2 (crop-import reference scoping and fail-closed serializer context).**
+   Both import branches now pass the project context, media/supplier/seed-demand
+   references are compared with the active project, and unresolved scope is
+   rejected rather than skipped. Confirmed by Codex on 2026-09-07.
+7. **`CROSS-CONFIRMED` — 2026-09-07 Claude tenant-boundary entry, reviewed
+   public-library privilege and season claims.** Project import resolves a
+   verified membership before writes; species and moderator-request review
+   actions enforce moderator/admin roles; proposal approval/rejection is
+   moderator-only; comment mutation is author-or-moderator; season filtering is
+   applied after the project filter and foreign season relations are rejected.
+   The two distinct issues found in the deeper 4-case re-review are findings 1
+   and 2 above. Confirmed by Codex on 2026-09-07.
+
+**Reviewed with no additional findings:** every tenant-owned model exposed
+through the REST API is either filtered by `request.active_project` through
+`ProjectScopedMixin` or uses an explicit member-scoped lookup; every writable
+cross-model relation is checked against that project. `X-Season-Id` never
+authorizes access and cannot widen the project queryset. Default DRF permissions
+are authenticated and the deliberately anonymous endpoints are bootstrap,
+token-confirmation, invitation-display, version, OAuth-provider, or public
+discussion reads; state-changing session requests retain CSRF enforcement.
+Agent tokens remain bound to one project and deny-by-default by API surface.
+No raw SQL uses user-derived SQL structure, no unsafe deserializer/eval sink was
+found, and the frontend has no production `dangerouslySetInnerHTML` or
+`innerHTML` assignment. Uploaded files are byte-decoded, pixel/byte bounded,
+format allowlisted, canonically named (and note images re-encoded); captions,
+feedback, discussions, and markdown are rendered as React text/markdown rather
+than HTML. Session identifiers remain HttpOnly cookies; no auth token is placed
+in browser storage (the invitation token stored temporarily in localStorage is
+a single-purpose, expiring invitation capability). Production defaults disable
+DEBUG, require a non-default secret, restrict hosts/origins by explicit
+configuration, enable secure cookies/HTTPS/HSTS/nosniff/referrer/frame controls,
+and keep credentialed CORS on an allowlist. Personal export is self-scoped JSON
+and excludes password hashes. `npm audit --audit-level=high` and the exported
+locked Python graph via `pip-audit` reported no known vulnerabilities.
+
+**Still deferred:** the previously OPEN production-like penetration testing,
+sibling `ops` repository (including private-media authorization and logging
+retention/access), GitHub repository settings, live OAuth tenants, load/fuzz
+testing and storage/frame quotas, report-only CSP rollout, and future
+spreadsheet-export formula neutralization remain outside this code-only review.
+
+---
+
 ## 2026-09-07 — Claude — Rendering pipeline and remaining unreviewed surfaces
 
 **Scope:** Reviewed at `22f25c9`, chosen because no prior entry covers it:
