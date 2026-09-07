@@ -36,16 +36,35 @@ const RESET_OFFSET_PX = 56;
 // without perceptibly delaying an intentional scroll.
 const COMMIT_THRESHOLD_PX = 24;
 
+// A last page shorter than this looks like the table "lost" most of its rows
+// when the user reaches the end, so a page size that produces one is rejected
+// while a better one is available. 60 rows is roughly twice the rows a grid
+// fills on a common desktop viewport.
+const MIN_LAST_PAGE_ROWS = 60;
+
+const getLastPageRowCount = (totalRowCount: number, pageSize: number): number => {
+  const remainder = totalRowCount % pageSize;
+  return remainder === 0 ? pageSize : remainder;
+};
+
 /**
- * Spreads the rows evenly over the internal pages instead of filling every
- * page to `maxPageSize` and leaving a remainder on the last one.
+ * Picks the internal page size so the *last* page is well filled instead of
+ * holding whatever remainder is left over.
  *
- * The grid sizes itself to the rows the current page holds, so a last page of
- * 9 rows made the whole table visibly collapse to a fraction of its height
- * the moment the user scrolled to the end — the table was "suddenly only half
- * there". Dividing 209 rows into 3 pages of 70/70/69 instead of 100/100/9
- * keeps every page far taller than the viewport, so the table keeps its
- * height from the first row to the last.
+ * Both continuous-scroll grids pin their height to the rows a full page holds,
+ * and MUI slices pages at fixed offsets, so the last page keeps
+ * `totalRowCount % pageSize` rows. At 10,218 rows that is 18 — the table
+ * visibly collapsed to a fraction of its height the moment the user scrolled
+ * to the end. Dividing evenly (`ceil(total / pageCount)`) fixes the small
+ * cases (209 rows become 70/70/69) but not the large ones: with 103 pages the
+ * even split rounds straight back up to 100 and the remainder survives.
+ *
+ * So the page size is searched downwards from `maxPageSize` for the first one
+ * whose last page is full or holds at least MIN_LAST_PAGE_ROWS rows, never
+ * going below half of `maxPageSize` — every page has to stay taller than the
+ * viewport for the continuous-scroll illusion to hold. If no candidate
+ * qualifies (possible for row counts just above the cap, e.g. 101), the one
+ * with the fullest last page wins.
  *
  * Returns `maxPageSize` unchanged when everything fits on one page: there is
  * no page transition to smooth out, and a single short page *should* size the
@@ -55,8 +74,23 @@ export function getBalancedPageSize(totalRowCount: number, maxPageSize: number):
   if (totalRowCount <= maxPageSize || maxPageSize <= 0) {
     return maxPageSize;
   }
-  const pageCount = Math.ceil(totalRowCount / maxPageSize);
-  return Math.ceil(totalRowCount / pageCount);
+
+  const smallestPageSize = Math.max(1, Math.floor(maxPageSize / 2));
+  let bestPageSize = maxPageSize;
+  let bestLastPageRowCount = 0;
+
+  for (let pageSize = maxPageSize; pageSize >= smallestPageSize; pageSize -= 1) {
+    const lastPageRowCount = getLastPageRowCount(totalRowCount, pageSize);
+    if (lastPageRowCount >= Math.min(MIN_LAST_PAGE_ROWS, pageSize)) {
+      return pageSize;
+    }
+    if (lastPageRowCount > bestLastPageRowCount) {
+      bestPageSize = pageSize;
+      bestLastPageRowCount = lastPageRowCount;
+    }
+  }
+
+  return bestPageSize;
 }
 
 export interface ScrollDrivenRowWindow {

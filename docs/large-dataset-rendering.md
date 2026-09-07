@@ -110,12 +110,31 @@ below the header; the thumb has to travel the rows-only height. See
 [datagrid-architecture.md](./datagrid-architecture.md) for the rule both
 callers follow.
 
-The internal pages are also *balanced* (`getBalancedPageSize`) rather than
-filled to 100 rows with a remainder on the last one: 209 rows page as
-70/70/69, not 100/100/9. Both grids size themselves to the rows their current
-page holds, so a nine-row final page collapsed the whole table to a fraction
-of its height the moment the user scrolled to the end — it looked like the
-table had half disappeared. Balanced pages stay far taller than the viewport,
-so the table keeps its height from the first row to the last, and the end of
-the list still ends with rows filling the viewport rather than dead space. A
-dataset that fits on a single page keeps sizing to its content.
+## Table height at the end of the list
+
+Both grids pin their height to the rows an internal page holds, and MUI slices
+pages at fixed offsets, so the last page keeps `totalRowCount % pageSize` rows.
+Scrolling to the end of a large list therefore collapsed the whole table to a
+fraction of its height — at 10,218 planting plans the final page held 18 rows,
+at 10,209 hierarchy rows it held 9 and the table dropped from 645px to 364px.
+It looked like half the table had disappeared.
+
+Two independent changes, because either alone leaves a gap:
+
+- **`getBalancedPageSize`** picks the page size so the *last* page is well
+  filled. Searching down from 100 for the first size whose last page is full or
+  holds at least 60 rows turns 209 rows into 74/74/61 and 10,218 into pages of
+  94 with 66 left over. Note that simply dividing evenly
+  (`ceil(total / pageCount)`) is not enough: with 103 pages it rounds straight
+  back up to 100 and the 18-row remainder survives — that hole is what shipped
+  first and had to be fixed again.
+- **The height is measured for a full page**, never for the rows the current
+  page happens to hold, whenever the dataset spans more than one page
+  (`rowCountForHeight` in `useContinuousScrollSizing`, `maxPageContentHeight`
+  in `FieldsBedsHierarchy`). Balanced pages keep the last one taller than any
+  normal viewport, but on a very tall screen it could still fall short; pinning
+  the height removes the dependency on the current page altogether.
+
+A dataset that fits on a single page is untouched and still sizes to its
+content, and the balanced size never exceeds the free DataGrid's 100-row cap
+or drops below half of it, so every page stays taller than the viewport.
