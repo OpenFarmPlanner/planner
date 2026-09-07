@@ -21,11 +21,17 @@ import {
   Typography,
 } from '@mui/material';
 import CheckOutlinedIcon from '@mui/icons-material/CheckOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import { cropSpeciesAPI, publicCropAPI, publicLibraryModeratorRequestAPI } from '../../api/api';
-import type { CropSpecies, PublicCrop, PublicLibraryModeratorRequest } from '../../api/types';
+import type {
+  CropSpecies,
+  CropSpeciesTranslation,
+  PublicCrop,
+  PublicLibraryModeratorRequest,
+} from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import PageContainer from '../../components/layout/PageContainer';
 import PageHeader from '../../components/layout/PageHeader';
@@ -37,6 +43,27 @@ type RequiredSpeciesLanguage = 'de' | 'en';
 type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
 
 const REQUIRED_SPECIES_LANGUAGES: RequiredSpeciesLanguage[] = ['de', 'en'];
+const ALIAS_SEARCH_DEBOUNCE_MS = 250;
+const ALIAS_SPECIES_PAGE_SIZE = 20;
+
+const parseAliasInput = (value: string): string[] => {
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value.split(',')) {
+    const alias = entry.split(/\s+/).filter(Boolean).join(' ');
+    const key = alias.toLocaleLowerCase('de');
+    if (alias && !seen.has(key)) {
+      aliases.push(alias);
+      seen.add(key);
+    }
+  }
+  return aliases;
+};
+
+const getSpeciesAliases = (species: CropSpecies, languageCode: string): string[] => (
+  species.translations?.find((translation) => translation.language_code === languageCode)?.synonyms ?? []
+);
+
 
 export default function PublicLibraryModerationPage() {
   const { user } = useAuth();
@@ -49,6 +76,12 @@ export default function PublicLibraryModerationPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [approvalProposal, setApprovalProposal] = useState<CropSpecies | null>(null);
   const [approvalTranslations, setApprovalTranslations] = useState<SpeciesApprovalTranslations>({ de: '', en: '' });
+  const [aliasSearch, setAliasSearch] = useState('');
+  const [aliasSpecies, setAliasSpecies] = useState<CropSpecies[]>([]);
+  const [aliasLoading, setAliasLoading] = useState(false);
+  const [aliasError, setAliasError] = useState('');
+  const [aliasSpeciesEdit, setAliasSpeciesEdit] = useState<CropSpecies | null>(null);
+  const [aliasDraft, setAliasDraft] = useState<Record<string, string>>({});
 
   const canModerate = Boolean(user?.is_public_library_moderator || user?.is_staff || user?.is_superuser);
   const canManageRequests = Boolean(user?.is_staff || user?.is_superuser);
@@ -184,6 +217,80 @@ export default function PublicLibraryModerationPage() {
     }
   };
 
+  useEffect(() => {
+    if (!canModerate) return undefined;
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      setAliasLoading(true);
+      setAliasError('');
+      cropSpeciesAPI.list({ q: aliasSearch.trim(), page_size: ALIAS_SPECIES_PAGE_SIZE })
+        .then((response) => {
+          if (cancelled) return;
+          setAliasSpecies(response.data.results);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setAliasSpecies([]);
+          setAliasError(t('library.moderation.speciesAliases.loadError'));
+        })
+        .finally(() => {
+          if (!cancelled) setAliasLoading(false);
+        });
+    }, ALIAS_SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [aliasSearch, canModerate, t]);
+
+  const openAliasEditor = (species: CropSpecies): void => {
+    setAliasSpeciesEdit(species);
+    setAliasDraft(Object.fromEntries(
+      (species.translations ?? []).map((translation) => [
+        translation.language_code,
+        (translation.synonyms ?? []).join(', '),
+      ]),
+    ));
+  };
+
+  const closeAliasEditor = (): void => {
+    if (busyAction !== null) return;
+    setAliasSpeciesEdit(null);
+  };
+
+  const saveAliases = async (): Promise<void> => {
+    if (!aliasSpeciesEdit) return;
+    // Every stored language is sent back: the API upserts translations, so a
+    // language left out would keep its old aliases rather than be cleared.
+    const translations: CropSpeciesTranslation[] = (aliasSpeciesEdit.translations ?? []).map(
+      (translation) => ({
+        language_code: translation.language_code,
+        common_name: translation.common_name,
+        synonyms: parseAliasInput(aliasDraft[translation.language_code] ?? ''),
+        regional_names: translation.regional_names ?? {},
+      }),
+    );
+    setBusyAction(`alias-${aliasSpeciesEdit.id}-save`);
+    try {
+      const response = await cropSpeciesAPI.updateTranslations(aliasSpeciesEdit.id, translations);
+      setAliasSpecies((previous) => previous.map(
+        (item) => (item.id === response.data.id ? response.data : item),
+      ));
+      showGlobalSnackbar({
+        message: t('library.moderation.speciesAliases.saveSuccess'),
+        severity: 'success',
+      });
+      setAliasSpeciesEdit(null);
+    } catch {
+      showGlobalSnackbar({
+        message: t('library.moderation.speciesAliases.saveError'),
+        severity: 'error',
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   if (!canModerate) {
     return (
       <PageContainer>
@@ -257,6 +364,72 @@ export default function PublicLibraryModerationPage() {
                           </TableCell>
                         </TableRow>
                       ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 1 }}>
+              <Typography variant="h6" sx={{ mb: 0.5 }}>{t('library.moderation.speciesAliases.title')}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                {t('library.moderation.speciesAliases.intro')}
+              </Typography>
+              <TextField
+                label={t('library.moderation.speciesAliases.searchLabel')}
+                helperText={t('library.moderation.speciesAliases.searchHint')}
+                value={aliasSearch}
+                size="small"
+                fullWidth
+                sx={{ mb: 1.5, maxWidth: { sm: 360 } }}
+                onChange={(event) => setAliasSearch(event.target.value)}
+              />
+              {aliasError ? <Alert severity="error" sx={{ mb: 1.5 }}>{aliasError}</Alert> : null}
+              {aliasLoading && aliasSpecies.length === 0 ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : aliasSpecies.length === 0 ? (
+                <Typography color="text.secondary">{t('library.moderation.speciesAliases.empty')}</Typography>
+              ) : (
+                <TableContainer>
+                  <Table size="small" aria-label={t('library.moderation.speciesAliases.title')}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t('library.moderation.columns.name')}</TableCell>
+                        <TableCell>{t('library.moderation.speciesAliases.column')}</TableCell>
+                        <TableCell align="right">{t('library.moderation.columns.actions')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {aliasSpecies.map((species) => {
+                        const aliases = REQUIRED_SPECIES_LANGUAGES.flatMap(
+                          (languageCode) => getSpeciesAliases(species, languageCode),
+                        );
+                        return (
+                          <TableRow key={species.id}>
+                            <TableCell>{species.display_name || species.name}</TableCell>
+                            <TableCell>
+                              {aliases.length > 0
+                                ? aliases.map((alias) => (
+                                  <Chip key={alias} size="small" label={alias} sx={{ mr: 0.5, mb: 0.5 }} />
+                                ))
+                                : t('library.moderation.speciesAliases.none')}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditOutlinedIcon />}
+                                disabled={busyAction !== null}
+                                onClick={() => openAliasEditor(species)}
+                              >
+                                {t('library.moderation.speciesAliases.edit')}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -396,6 +569,49 @@ export default function PublicLibraryModerationPage() {
             {busyAction === `species-${approvalProposal?.id}-approve`
               ? t('library.moderation.saving')
               : t('library.moderation.approve')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(aliasSpeciesEdit)} onClose={closeAliasEditor} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('library.moderation.speciesAliases.dialogTitle')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('library.moderation.speciesAliases.dialogIntro', {
+                name: aliasSpeciesEdit?.display_name || aliasSpeciesEdit?.name || '',
+              })}
+            </Typography>
+            {(aliasSpeciesEdit?.translations ?? []).map((translation) => (
+              <TextField
+                key={translation.language_code}
+                label={t('library.moderation.speciesAliases.fieldLabel', {
+                  language: translation.language_code === 'de'
+                    ? t('library.moderation.speciesAliases.languageDe')
+                    : t('library.moderation.speciesAliases.languageEn'),
+                })}
+                value={aliasDraft[translation.language_code] ?? ''}
+                fullWidth
+                onChange={(event) => setAliasDraft((previous) => ({
+                  ...previous,
+                  [translation.language_code]: event.target.value,
+                }))}
+              />
+            ))}
+            <Typography variant="body2" color="text.secondary">
+              {t('library.moderation.speciesAliases.helperText')}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeAliasEditor} variant="outlined">{t('library.moderation.cancel')}</Button>
+          <Button
+            onClick={() => void saveAliases()}
+            variant="contained"
+            disabled={busyAction !== null}
+          >
+            {busyAction === `alias-${aliasSpeciesEdit?.id}-save`
+              ? t('library.moderation.saving')
+              : t('library.moderation.speciesAliases.save')}
           </Button>
         </DialogActions>
       </Dialog>

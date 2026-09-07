@@ -285,6 +285,36 @@ the active `Project.region` from the normal project context (`X-Project-Id` /
 planning, crop detail, public-library and import surfaces render the same
 name without frontend-specific region logic.
 
+Those synonyms are the crop library's answer to regional naming: searching
+`Erdapfel`, `Karfiol` or `Porree` resolves to the official `Kartoffel`,
+`Blumenkohl`/`Karfiol` and `Lauch` species instead of offering to create a
+second one. The initial German (AT/DE/CH) list lives in
+`crops.seed_data.CROP_SPECIES_SYNONYM_SEED_DATA` and is applied by migration
+`0014_crop_species_search_aliases`; moderators curate it further in the
+"Kulturart-Synonyme" section of `/app/public-library-moderation`, which PATCHes
+`translations[].synonyms` through the existing species endpoint.
+
+Whether a name becomes an alias or its own species is a *use* question, not a
+botanical one:
+
+- **Alias** when it is the same product under a regional or colloquial name —
+  same growing time, cultivation, plant part and harvest method
+  (Erdapfel/Kartoffel, Karfiol/Blumenkohl, Porree/Lauch, Paradeiser/Tomate).
+- **Own species** when the use form differs, even for the same botanical
+  species: `Pfefferoni` (own growing time and spacing, searched deliberately),
+  `Schnittkohl` (repeated cuts of young leaves instead of one whole-plant
+  harvest), `Zuckererbse` (eaten pod and all), `Puntarelle` and `Radicchio`.
+  `Kohlrübe` is therefore *not* an alias of `Kohlrabi` — it names the swede,
+  a species the library does not seed yet.
+
+Ambiguous terms are aliases of *every* candidate rather than being forced onto
+one: `Peperoni` maps to Paprika, Chili and Pfefferoni, `Fisole(n)` to Busch-,
+Stangen- and Grüne Bohne. The picker then offers all of them, and because an
+alias hit counts as a strong identity match, the "als neue Kulturart
+vorschlagen" entry disappears (`hasStrongCropSpeciesIdentityMatch`) and each
+option is labelled with the alias that made it appear — "Kartoffel (Erdapfel)"
+(`formatCropSpeciesMatchLabel`).
+
 Private project crops are intentionally independent from that public master
 data. `Crop.crop_species` stays nullable and the "Add crop" dialog never
 requires linking to a public entry — free text remains valid at all times and
@@ -1071,12 +1101,14 @@ Naming conventions for `CROP_SPECIES_SEED_DATA` entries:
 - Add the concrete, user-recognizable species instead, one entry per species,
   and do not introduce an umbrella entry alongside them.
 
-- Alias names (`Porree` for `Lauch`, `Karfiol` for `Blumenkohl`) are never
-  their own entry. They go on the entry's translation, either as a displayed
-  regional name (`regional_names`, for `austria` / `switzerland`) or as a
-  search-only `synonyms` value. When a term means different crops in different
-  regions — `Peperoni` is the standing example — it is researched and decided
-  manually, never mapped automatically.
+- Alias names (`Porree` for `Lauch`, `Blumenkohl` for `Karfiol`) are never
+  their own entry. They live beside the entry, in one of two seed lists:
+  `CROP_SPECIES_SYNONYM_SEED_DATA` for search-only aliases, and
+  `CROP_SPECIES_REGIONAL_NAME_SEED_DATA` for terms that *replace* the canonical
+  name for projects in that region (`austria` / `switzerland`). A term can be in
+  both. When a term means different crops in different regions — `Peperoni` and
+  `Fisolen` are the standing examples — it may be a search alias of several
+  species, but never a displayed regional name.
 
 [`crop-taxonomy-guidelines.md`](./crop-taxonomy-guidelines.md) is the full
 decision rule behind these conventions: crop species vs. alias vs. variety, and

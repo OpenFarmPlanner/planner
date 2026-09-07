@@ -20,19 +20,20 @@ Two labels mean **exactly the same product** and differ only regionally or
 colloquially: same growing time, same growing method, same plant part, same
 harvest method.
 
-Examples: `Porree` = `Lauch`, `Karfiol` = `Blumenkohl`, `Erdapfel` =
+Examples: `Porree` = `Lauch`, `Blumenkohl` = `Karfiol`, `Erdapfel` =
 `Kartoffel`.
 
 An alias is never its own `CropSpecies` row. It is stored on the species'
 translation for that language, in one of two fields:
 
-| Field | Meaning | Displayed? |
-| --- | --- | --- |
-| `CropSpeciesTranslation.regional_names` | region-specific term (`austria`, `switzerland`) | yes, to projects in that region |
-| `CropSpeciesTranslation.synonyms` | pure search alias | never |
+| Field | Meaning | Displayed? | Seeded from |
+| --- | --- | --- | --- |
+| `CropSpeciesTranslation.regional_names` | region-specific term (`austria`, `switzerland`) | yes, to projects in that region | `CROP_SPECIES_REGIONAL_NAME_SEED_DATA` |
+| `CropSpeciesTranslation.synonyms` | pure search alias | never | `CROP_SPECIES_SYNONYM_SEED_DATA` |
 
-Both are indexed for search, so either spelling finds the canonical species.
-See §4 for which of the two a regional term belongs in.
+Both are indexed for search, so either spelling finds the canonical species, and
+a term may legitimately be in both lists. See §4 for which of the two a regional
+term belongs in.
 
 ## 2. Own crop species — a functionally different use form
 
@@ -50,7 +51,7 @@ Examples:
 - `Schnittkohl` — repeated leaf harvest instead of a head harvest, despite
   being related to `Grünkohl`.
 - `Zuckererbse` — the pod is eaten, a different use than the shelling pea
-  (`Palerbse`, stored as `Erbse`).
+  (stored as `Erbse`).
 
 ## 3. Variety — not the crop-species level
 
@@ -77,41 +78,47 @@ Germany) decides which term a project sees; see
 
 Rules:
 
-1. **The canonical `de` translation is the standard German term.** Regional
-   terms are aliases of it, not separate species.
-2. **A term that is standard in one country goes into `regional_names`** under
-   `austria` or `switzerland`, so projects in that region see their own term.
+1. **One canonical `de` translation per species.** Regional terms are aliases
+   of it, not separate species. The canonical name is not re-picked per region;
+   the region decides only what is *displayed* on top of it.
+2. **A term that is professional standard in one country goes into
+   `CROP_SPECIES_REGIONAL_NAME_SEED_DATA`** under `austria` or `switzerland`, so
+   projects in that region see their own term instead of the canonical one.
    Swiss terms such as `Nüsslisalat`, `Rande`, `Kabis`, `Zucchetti`,
-   `Federkohl`, `Wirz`, `Rüebli`, `Krautstiel` and `Kefe` are professional
-   standard (Swiss seed catalogues, horticultural literature, retail), not
-   colloquialisms — they belong here, not in a comment.
-3. **Everything else regional goes into `synonyms`**: dialect spellings, plural
-   forms, and second names that should be findable but never displayed
-   (`Erdäpfel`, `Weisskabis`, `Nüssler`, `Möhre`).
-4. **Never register an ambiguous term as an alias automatically.** When a term
-   denotes *different* crops in different regions, research it and decide
-   manually; if the ambiguity cannot be resolved, leave it out entirely rather
-   than guessing.
+   `Federkohl`, `Wirz`, `Rüebli`, `Krautstiel` and `Kefe` are standard in Swiss
+   seed catalogues, horticultural literature and retail, not colloquialisms —
+   they belong here.
+3. **Everything else regional goes into `CROP_SPECIES_SYNONYM_SEED_DATA`**:
+   dialect spellings, plural forms, and second names that should be findable but
+   never displayed (`Erdäpfel`, `Weisskohl`, `Grundbirne`, `Möhre`).
+4. **Never resolve an ambiguous term silently.** When a term denotes *different*
+   crops in different regions, research it and decide deliberately. Such a term
+   may become a **search alias of every species it can mean**, so the UI offers
+   all of them and the user picks — but it must **never** become a displayed
+   regional name, because displaying it picks one reading for the user.
 
-   The standing example is **`Peperoni`**: in Switzerland it means `Paprika`,
-   while in parts of Germany and Austria the same-sounding `Pfefferoni` /
-   `Peperoni` is understood as a hot pepper. Mapping it automatically would
-   silently file sweet peppers under chillies for one group of users, so it is
-   deliberately **not** stored as an alias of any species.
-
+   The standing example is **`Peperoni`**: in Switzerland it means `Paprika`, in
+   Germany and Austria it is understood as a hot pepper, and in everyday use it
+   also names the `Pfefferoni`. It is therefore seeded as a synonym of `Chili`,
+   `Paprika` *and* `Pfefferoni`, and as the regional display name of none of
+   them. `Fisole(n)` (AT) is handled the same way across the bean species.
 5. A regional term for a crop species that does **not exist in the library
    yet** is a gap, not an alias. Add the species first (§2), then attach the
-   regional term to it.
+   regional term to it. `Kohlrübe` is the standing example: it names the swede,
+   which the library does not seed, so it is deliberately not aliased onto
+   `Kohlrabi`.
 
 ## Working on the suggestion list
 
-- The list lives in `backend/crops/seed_data.py`. Every entry has a stable
-  `key`, a `de` and an `en` translation, and optionally `synonyms` /
-  `regional_names` keyed by language code.
-- Changing the seed list alone changes nothing in an existing database. Add a
-  migration in `backend/crops/migrations/` that syncs the entries (see
-  `0014_sync_crop_species_aliases.py` for the current pattern, which merges
-  alias data instead of overwriting it).
+- The list lives in `backend/crops/seed_data.py`: `CROP_SPECIES_SEED_DATA` for
+  the species themselves (each with a stable `key`, a `de` and an `en`
+  translation), plus the two alias maps keyed by that same `key`.
+- Changing a seed list alone changes nothing in an existing database. Add a
+  migration in `backend/crops/migrations/` that syncs it —
+  `0014_crop_species_search_aliases.py` for synonyms and
+  `0015_crop_species_regional_display_names.py` for regional names are the
+  current patterns. Both merge into what is stored instead of overwriting it, so
+  an alias curated outside the seed list survives.
 - Renaming the canonical name of a species that is already published needs a
   migration that renames — or merges — the existing row, so published crops
   keep their species link.

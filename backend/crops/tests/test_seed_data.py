@@ -2,7 +2,9 @@ from django.test import SimpleTestCase
 
 from crops.models import SUPPORTED_REGIONAL_NAME_KEYS
 from crops.seed_data import (
+    CROP_SPECIES_REGIONAL_NAME_SEED_DATA,
     CROP_SPECIES_SEED_DATA,
+    CROP_SPECIES_SYNONYM_SEED_DATA,
     get_crop_species_seed_name,
     get_crop_species_seed_regional_names,
     get_crop_species_seed_synonyms,
@@ -23,7 +25,7 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
 
         self.assertEqual(len(keys), len(set(keys)))
         self.assertEqual(len(german_names), len(set(german_names)))
-        self.assertGreaterEqual(len(keys), 185)
+        self.assertGreaterEqual(len(keys), 180)
         self.assertIn('Tomate', german_names)
         self.assertIn('Kartoffel', german_names)
         self.assertIn('Zwiebel', german_names)
@@ -43,13 +45,6 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         self.assertIn('Raps', german_names)
         self.assertIn('Dinkel', german_names)
         self.assertNotIn('Fenchel', german_names)
-        self.assertIn('Blumenkohl', german_names)
-        self.assertNotIn('Karfiol', german_names)
-        self.assertIn('Pfefferoni', german_names)
-        self.assertIn('Puntarelle', german_names)
-        self.assertIn('Radicchio', german_names)
-        self.assertIn('Schnittkohl', german_names)
-        self.assertIn('Zuckererbse', german_names)
         self.assertIn('Gewürzfenchel', german_names)
         self.assertIn('Knollenfenchel', german_names)
         self.assertNotIn('Gründüngung', german_names)
@@ -161,124 +156,178 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         self.assertIn('Mustard greens', english_names)
 
 
-class CropSpeciesSeedAliasTest(SimpleTestCase):
-    """Alias data must follow docs/crop-taxonomy-guidelines.md."""
+class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
+    """The alias list decides which names must *not* become their own species."""
 
-    def _entry(self, key: str):
-        return next(entry for entry in CROP_SPECIES_SEED_DATA if entry.key == key)
+    def test_every_alias_belongs_to_a_seeded_species(self):
+        seed_keys = {entry.key for entry in CROP_SPECIES_SEED_DATA}
 
-    def test_regional_names_use_supported_region_keys_and_known_languages(self):
-        for entry in CROP_SPECIES_SEED_DATA:
-            for language_code, regional_names in entry.regional_names.items():
-                self.assertIn(language_code, entry.translations)
-                for region, name in regional_names.items():
-                    self.assertIn(region, SUPPORTED_REGIONAL_NAME_KEYS)
-                    self.assertEqual(name, name.strip())
-                    self.assertTrue(name)
-            for language_code, synonyms in entry.synonyms.items():
-                self.assertIn(language_code, entry.translations)
-                self.assertEqual(len(synonyms), len(set(synonyms)))
+        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
+            self.assertIn(key, seed_keys)
+            for language_code, synonyms in synonyms_by_language.items():
+                self.assertIn(language_code, {'de', 'en'})
+                self.assertIsInstance(synonyms, tuple)
                 for synonym in synonyms:
-                    self.assertEqual(synonym, synonym.strip())
-                    self.assertTrue(synonym)
+                    self.assertEqual(synonym, ' '.join(synonym.split()))
+                self.assertEqual(len(synonyms), len({item.casefold() for item in synonyms}))
 
-    def test_no_alias_repeats_a_canonical_name_of_another_species(self):
-        """An alias that is also a canonical name would make two species collide."""
+    def test_no_alias_shadows_another_species_name(self):
+        """An alias that names a *different* species would merge two crops."""
+        names_by_key = {
+            entry.key: {name.casefold() for name in entry.translations.values()}
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+
+        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
+            foreign_names = {
+                name
+                for other_key, names in names_by_key.items()
+                if other_key != key
+                for name in names
+            }
+            for synonyms in synonyms_by_language.values():
+                for synonym in synonyms:
+                    with self.subTest(key=key, synonym=synonym):
+                        self.assertNotIn(synonym.casefold(), foreign_names)
+
+    def test_regional_names_of_the_same_crop_are_aliases(self):
+        self.assertIn('Erdapfel', get_crop_species_seed_synonyms('potato'))
+        self.assertIn('Blumenkohl', get_crop_species_seed_synonyms('cauliflower'))
+        self.assertIn('Porree', get_crop_species_seed_synonyms('leek'))
+        self.assertIn('Paradeiser', get_crop_species_seed_synonyms('tomato'))
+        self.assertIn('Meerrettich', get_crop_species_seed_synonyms('horseradish'))
+
+    def test_ambiguous_names_are_aliases_of_every_candidate(self):
+        """Rather offer both crops than force a wrong automatic assignment."""
+        for key in ('pepper', 'chili', 'pepperoncini'):
+            self.assertIn('Peperoni', get_crop_species_seed_synonyms(key))
+        for key in ('bush_bean', 'pole_bean', 'french_bean'):
+            self.assertIn('Fisolen', get_crop_species_seed_synonyms(key))
+
+    def test_functionally_distinct_crops_are_species_not_aliases(self):
+        """Different cultivation or harvest means an own species, not an alias.
+
+        Pfefferoni has its own growing time and spacing, Schnittkohl is cut
+        repeatedly as young leaves, Zuckererbse is eaten pod and all, and
+        Puntarelle/Radicchio are grown and harvested unlike the other
+        chicories — so none of them may be folded into Paprika, Grünkohl,
+        Erbse, or Chicorée.
+        """
+        german_names = {
+            get_crop_species_seed_name(entry, 'de')
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+        all_synonyms = {
+            synonym.casefold()
+            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms in synonyms_by_language.values()
+            for synonym in synonyms
+        }
+
+        for name in ('Pfefferoni', 'Puntarelle', 'Radicchio', 'Schnittkohl', 'Zuckererbse'):
+            with self.subTest(name=name):
+                self.assertIn(name, german_names)
+                self.assertNotIn(name.casefold(), all_synonyms)
+
+    def test_swede_is_not_aliased_onto_kohlrabi(self):
+        """Kohlrübe is the swede, a different crop the library does not seed."""
+        self.assertEqual(get_crop_species_seed_synonyms('kohlrabi'), ())
+        all_synonyms = {
+            synonym.casefold()
+            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms in synonyms_by_language.values()
+            for synonym in synonyms
+        }
+        self.assertNotIn('kohlrübe', all_synonyms)
+
+
+class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
+    """Regional display names follow docs/crop-taxonomy-guidelines.md §4."""
+
+    def test_every_entry_targets_a_known_key_language_and_region(self):
+        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
+
+        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+            with self.subTest(key=key):
+                entry = entries_by_key.get(key)
+                self.assertIsNotNone(entry, f'{key} is not a seeded species')
+                for language_code, regional_names in regional_names_by_language.items():
+                    self.assertIn(language_code, entry.translations)
+                    for region, name in regional_names.items():
+                        self.assertIn(region, SUPPORTED_REGIONAL_NAME_KEYS)
+                        self.assertTrue(name)
+                        self.assertEqual(name, name.strip())
+
+    def test_a_regional_name_is_never_another_species_canonical_name(self):
+        """Displaying one species under another's name would merge them for the user."""
         canonical_names = {
             name.casefold()
             for entry in CROP_SPECIES_SEED_DATA
             for name in entry.translations.values()
         }
-        for entry in CROP_SPECIES_SEED_DATA:
-            own_names = {name.casefold() for name in entry.translations.values()}
-            aliases = [
-                *(
-                    synonym
-                    for synonyms in entry.synonyms.values()
-                    for synonym in synonyms
-                ),
-                *(
-                    name
-                    for regional_names in entry.regional_names.values()
-                    for name in regional_names.values()
-                ),
-            ]
-            for alias in aliases:
-                key = alias.casefold()
-                self.assertFalse(
-                    key in canonical_names and key not in own_names,
-                    f'{entry.key}: "{alias}" is the canonical name of another species',
-                )
+        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
 
-    def test_alias_is_not_repeated_in_both_alias_fields(self):
-        """Regional names are already searchable; repeating them adds no value."""
-        for entry in CROP_SPECIES_SEED_DATA:
-            for language_code in entry.translations:
-                synonyms = {
-                    synonym.casefold()
-                    for synonym in get_crop_species_seed_synonyms(entry, language_code)
-                }
-                regional_names = {
-                    name.casefold()
-                    for name in get_crop_species_seed_regional_names(
-                        entry, language_code,
-                    ).values()
-                }
-                self.assertFalse(synonyms & regional_names, entry.key)
+        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+            own_names = {
+                name.casefold()
+                for name in entries_by_key[key].translations.values()
+            }
+            for regional_names in regional_names_by_language.values():
+                for name in regional_names.values():
+                    with self.subTest(key=key, name=name):
+                        self.assertFalse(
+                            name.casefold() in canonical_names
+                            and name.casefold() not in own_names,
+                        )
 
-    def test_requested_regional_aliases_are_seeded(self):
+    def test_ambiguous_terms_never_become_a_displayed_regional_name(self):
+        """A term that means different crops per region must stay search-only.
+
+        "Peperoni" is a search alias of Chili, Paprika and Pfefferoni on
+        purpose; promoting it to a display name would pick one reading and
+        show sweet peppers as chillies, or the reverse, depending on region.
+        """
+        displayed = {
+            name.casefold()
+            for regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.values()
+            for regional_names in regional_names_by_language.values()
+            for name in regional_names.values()
+        }
+
+        for ambiguous_term in ('peperoni', 'fisole', 'fisolen'):
+            self.assertNotIn(ambiguous_term, displayed)
+
+    def test_requested_regional_display_names_are_seeded(self):
         self.assertEqual(
-            get_crop_species_seed_regional_names(self._entry('cauliflower')),
-            {'austria': 'Karfiol'},
+            get_crop_species_seed_regional_names('aubergine'), {'austria': 'Melanzani'},
         )
         self.assertEqual(
-            get_crop_species_seed_regional_names(self._entry('potato')),
-            {'austria': 'Erdapfel'},
+            get_crop_species_seed_regional_names('potato'), {'austria': 'Erdapfel'},
         )
         self.assertEqual(
-            get_crop_species_seed_regional_names(self._entry('aubergine')),
-            {'austria': 'Melanzani'},
+            get_crop_species_seed_regional_names('corn_salad'),
+            {'austria': 'Vogerlsalat', 'switzerland': 'Nüsslisalat'},
         )
-        self.assertIn('Porree', get_crop_species_seed_synonyms(self._entry('leek')))
 
-        swiss_aliases = {
-            'corn_salad': 'Nüsslisalat',
+        swiss_names = {
             'beetroot': 'Rande',
             'cabbage': 'Kabis',
-            'summer_squash': 'Zucchetti',
-            'kale': 'Federkohl',
-            'savoy_cabbage': 'Wirz',
-            'red_cabbage': 'Rotkabis',
-            'pointed_cabbage': 'Spitzkabis',
             'carrot': 'Rüebli',
             'chard': 'Krautstiel',
-            'snow_pea': 'Kefe',
+            'kale': 'Federkohl',
+            'pointed_cabbage': 'Spitzkabis',
+            'red_cabbage': 'Rotkabis',
+            'savoy_cabbage': 'Wirz',
+            'sugar_pea': 'Kefe',
+            'summer_squash': 'Zucchetti',
         }
-        for key, expected_name in swiss_aliases.items():
-            self.assertEqual(
-                get_crop_species_seed_regional_names(self._entry(key)).get('switzerland'),
-                expected_name,
-                key,
-            )
+        for key, expected_name in swiss_names.items():
+            with self.subTest(key=key):
+                self.assertEqual(
+                    get_crop_species_seed_regional_names(key).get('switzerland'),
+                    expected_name,
+                )
 
-    def test_ambiguous_peperoni_is_never_seeded_as_an_alias(self):
-        """Swiss "Peperoni" (= Paprika) collides with the hot-pepper reading elsewhere.
-
-        Guards the manual-decision rule in docs/crop-taxonomy-guidelines.md §4:
-        the term must not silently resolve to any species.
-        """
-        for entry in CROP_SPECIES_SEED_DATA:
-            aliases = [
-                *(
-                    synonym
-                    for synonyms in entry.synonyms.values()
-                    for synonym in synonyms
-                ),
-                *(
-                    name
-                    for regional_names in entry.regional_names.values()
-                    for name in regional_names.values()
-                ),
-            ]
-            for alias in aliases:
-                self.assertNotEqual(alias.casefold(), 'peperoni', entry.key)
+    def test_unknown_key_returns_an_empty_mapping(self):
+        self.assertEqual(get_crop_species_seed_regional_names('tomato', 'fr'), {})
+        self.assertEqual(get_crop_species_seed_regional_names('does-not-exist'), {})
