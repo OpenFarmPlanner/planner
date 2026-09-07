@@ -55,6 +55,9 @@ Django deployment check deliberately uses an obvious, non-production value.
 Routine checks are deterministic guardrails, not a replacement for review.
 Authorization boundaries, project scoping, OAuth account linking, token flows,
 and business-logic abuse cases require focused human or AI-assisted security
-review. Conversely, an ordinary UI-only change normally needs no additional
-backend-specific manual security procedure beyond the automated required
-checks.
+review. Those reviews are logged in
+[`security-review-log.md`](./security-review-log.md); read it, and the
+"Security Review Protocol" section of [`CLAUDE.md`](../CLAUDE.md#security-review-protocol),
+before starting one. Conversely, an ordinary UI-only change normally needs no
+additional backend-specific manual security procedure beyond the automated
+required checks.

@@ -312,3 +312,44 @@ When asked to search for bugs, run exploratory tests, or do a QA sweep:
 2. Read `docs/qa-coverage-*.md` (most recent date) — it lists which areas were last tested, at which git commit, and known UI patterns that look like bugs but are by design. Only the most recent coverage file stays in `docs/`; older reports, fix logs, and coverage snapshots are archived under `docs/qa-archive/` and are historical only.
 3. Read `docs/qa-excluded-issues.md` — do not re-report these won't-fix items.
 4. After the session, update `docs/qa-coverage-*.md` with the new git commit reference and any newly confirmed areas. If you write a new dated coverage file instead, move the previous one to `docs/qa-archive/` and update the reference in `docs/index.md`.
+
+## Security Review Protocol
+Claude and Codex alternate security reviews of this repository, so each tool
+has to be able to see what the other already covered. `docs/security-review-log.md`
+is the shared, append-only record of that. It is the process record; the deep
+narrative of the most recent full review stays in its own dated document
+(`docs/security-review-*.md`), and the always-on automated checks are described
+in `docs/security-automation.md`.
+
+When you are about to perform a security review — a full sweep, a targeted
+review of a boundary, or the security part of a larger change:
+
+1. Read `docs/security-review-log.md` in full first. Not just the top entry:
+   an OPEN finding several entries down is still open.
+2. Find the most recent entry that covers the scope you are about to review,
+   and let it decide what kind of review this is:
+   - **Last reviewed by the other tool and not yet CROSS-CONFIRMED** — do a
+     real cross-review of that scope. Independently re-derive the findings
+     from the code rather than accepting them; this is the whole point of two
+     tools alternating. Do not skip the scope because it "was just reviewed".
+   - **Last reviewed by the same tool with nothing changed since** — verify
+     that the prior findings still hold instead of re-flagging them as new
+     discoveries. Spend the effort on scope that is stale or never covered.
+   - **Never covered** — review it and say so in the entry, so the gap stops
+     being invisible.
+3. For every OPEN finding in your scope, check whether the code has since
+   fixed it. If it has, record it as FIXED in your new entry, naming the
+   commit or PR that fixed it; do not report it again as a new finding.
+   Deferred scope listed as OPEN (e.g. `ops`-repo infrastructure) stays OPEN
+   until it is actually reviewed.
+4. After finishing the review, append a new entry at the top of
+   `docs/security-review-log.md` — never edit or delete a prior entry — with
+   the date, the tool (Claude or Codex), the scope (commit range, PR, or named
+   area), and the findings. Each finding gets one of `FIXED`, `OPEN`,
+   `WONTFIX` (plus a short reason), or `CROSS-CONFIRMED`. Mark findings from
+   the other tool's prior entries as CROSS-CONFIRMED where you independently
+   verified that they still hold or have been addressed, naming which entry
+   and finding you confirmed.
+
+A review that produced no findings still gets an entry. "Nothing found here on
+this date, by this tool" is exactly the information the other tool needs.
