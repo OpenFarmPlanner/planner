@@ -240,7 +240,14 @@ def accept_invitation(*, invitation: ProjectInvitation, user: User) -> Invitatio
     :return: Accept result.
     """
     if normalize_email(user.email) != invitation.email_normalized:
-        logger.warning('Invitation accept rejected due to email mismatch', extra={'user_id': user.id, 'invitation_id': invitation.pk, 'token': _mask_token(invitation.token), 'invitation_email': invitation.email_normalized, 'user_email': normalize_email(user.email)})
+        logger.warning(
+            'Invitation accept rejected due to email mismatch',
+            extra={
+                'user_id': user.id,
+                'invitation_id': invitation.pk,
+                'token': _mask_token(invitation.token),
+            },
+        )
         raise InvitationFlowError('email_mismatch', 'Invitation belongs to another email address.')
 
     with transaction.atomic():

@@ -18,6 +18,7 @@ from farm.models import (
     PublicCropDiscussionComment,
     PublicCropDiscussionTopic,
     PublicCropRevision,
+    SeedPackage,
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional
@@ -45,6 +46,25 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'seeding_requirement_type',
     'seed_packages',
 }
+
+
+class PublicCropSeedPackageSerializer(serializers.Serializer):
+    """Validate one seed-package snapshot embedded in public library JSON."""
+
+    size_value = serializers.FloatField(min_value=1e-12)
+    size_unit = serializers.ChoiceField(choices=SeedPackage.UNIT_CHOICES)
+    evidence_text = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    last_seen_at = serializers.DateTimeField(required=False, allow_null=True)
+
+    def to_internal_value(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, dict):
+            return super().to_internal_value(data)
+        unknown_fields = sorted(set(data) - set(self.fields))
+        if unknown_fields:
+            raise serializers.ValidationError(
+                f"Unsupported seed package fields: {', '.join(unknown_fields)}",
+            )
+        return super().to_internal_value(data)
 
 
 def get_public_user_label(user: Any) -> str:
@@ -287,6 +307,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
 
 class PublicCropUpdateSerializer(serializers.ModelSerializer):
     base_version = serializers.IntegerField(required=False, min_value=1, write_only=True)
+    seed_packages = PublicCropSeedPackageSerializer(many=True, required=False)
 
     class Meta:
         model = PublicCrop
@@ -533,7 +554,15 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Unsupported proposal fields: {', '.join(unknown_fields)}")
         if not value:
             raise serializers.ValidationError('At least one changed field is required.')
-        return value
+        typed_serializer = PublicCropUpdateSerializer(data=value, partial=True)
+        typed_serializer.is_valid(raise_exception=True)
+        cleaned = dict(value)
+        if 'seed_packages' in typed_serializer.validated_data:
+            cleaned['seed_packages'] = PublicCropSeedPackageSerializer(
+                typed_serializer.validated_data['seed_packages'],
+                many=True,
+            ).data
+        return cleaned
 
     def get_proposed_by_label(self, obj: PublicCropChangeProposal) -> str:
         return get_public_user_label(obj.proposed_by)

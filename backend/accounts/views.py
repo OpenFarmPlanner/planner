@@ -139,7 +139,10 @@ class RegisterView(APIView):
         try:
             _send_activation_email(user)
         except Exception:  # noqa: BLE001
-            logger.exception('Failed to send activation email after registration', extra={'user_id': user.id, 'email': user.email})
+            logger.exception(
+                'Failed to send activation email after registration',
+                extra={'user_id': user.id},
+            )
             return Response(
                 {
                     'code': 'email_send_failed',
@@ -355,7 +358,7 @@ class AccountEmailChangeRequestView(APIView):
         except Exception:  # noqa: BLE001
             logger.exception(
                 'Failed to send email change confirmation',
-                extra={'user_id': request.user.id, 'new_email': email_change_request.new_email},
+                extra={'user_id': request.user.id, 'email_change_request_id': email_change_request.id},
             )
             email_change_request.delete()
             return Response(
@@ -456,7 +459,6 @@ class AccountDeleteRequestView(APIView):
                 'account_deletion_event': 'requested',
                 'account_deletion_request_id': deletion.pk,
                 'user_id': user.pk,
-                'username': user.username,
                 'deletion_requested_at': now.isoformat(),
                 'scheduled_deletion_at': scheduled.isoformat(),
                 'created_request': created_flag,
@@ -507,7 +509,6 @@ class AccountRestoreView(APIView):
                 'account_deletion_event': 'restored',
                 'account_deletion_request_id': deletion.pk,
                 'user_id': user.pk,
-                'username': user.username,
             },
         )
 
@@ -559,7 +560,10 @@ class ResendActivationView(APIView):
             try:
                 _send_activation_email(user)
             except Exception:  # noqa: BLE001
-                logger.exception('Failed to resend activation email', extra={'user_id': user.id, 'email': user.email})
+                logger.exception(
+                    'Failed to resend activation email',
+                    extra={'user_id': user.id},
+                )
                 return Response(
                     {
                         'code': 'email_send_failed',
@@ -586,7 +590,10 @@ class PasswordResetRequestView(APIView):
             try:
                 _send_password_reset_email(user)
             except Exception:  # noqa: BLE001
-                logger.exception('Failed to send password reset email', extra={'user_id': user.id, 'email': user.email})
+                logger.exception(
+                    'Failed to send password reset email',
+                    extra={'user_id': user.id},
+                )
                 return Response(
                     {
                         'code': 'email_send_failed',

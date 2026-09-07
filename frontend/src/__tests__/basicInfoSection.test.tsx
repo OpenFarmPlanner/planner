@@ -14,6 +14,21 @@ const linkedVarietyForm = {
 };
 
 describe('BasicInfoSection', () => {
+  it('disables variety identity editing when requested', () => {
+    render(
+      <BasicInfoSection
+        formData={{ variety: 'Nantaise' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        showIdentityFields={false}
+        varietyReadOnly
+      />
+    );
+
+    expect(screen.getByPlaceholderText('form.varietyPlaceholder')).toBeDisabled();
+  });
+
   it('updates basic text fields', () => {
     const onChange = vi.fn();
 

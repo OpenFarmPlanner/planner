@@ -2251,6 +2251,7 @@ export default function PublicCropLibraryPage() {
           variant="publicLibrary"
           hasExternalChanges={hasDescriptionDraftChanges}
           importedCopiesCount={selectedCrop.imported_crops_count}
+          publicIdentityReadOnly={!canManageModeratorRequests}
           extraSections={(
             <MultilingualTextFieldSection
               title={t('form.notes')}

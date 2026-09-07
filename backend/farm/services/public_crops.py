@@ -19,7 +19,7 @@ from django.utils import timezone
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
-from crops.permissions import is_public_library_moderator
+from crops.permissions import is_public_library_admin, is_public_library_moderator
 from crops.services import find_species_by_common_name
 from farm.models import (
     Crop,
@@ -399,6 +399,15 @@ def update_public_crop_directly(
         _validate_base_version(locked, base_version)
         ensure_public_crop_revision(locked)
         previous_snapshot = build_public_crop_snapshot(locked)
+        if (
+            'variety' in data
+            and previous_snapshot.get('variety') != _json_safe(data['variety'])
+            and not is_public_library_admin(user)
+        ):
+            raise PublicCropPermissionError(
+                'Administrator privileges are required to rename a public crop variety.',
+                code='public_crop_identity_admin_required',
+            )
         changed_field_names = []
         for field, value in data.items():
             if previous_snapshot.get(field) == _json_safe(value):
@@ -446,6 +455,14 @@ def restore_public_crop_version(
         if revision is None:
             raise PublicCropRevisionNotFoundError()
         previous_snapshot = build_public_crop_snapshot(locked)
+        if (
+            revision.snapshot.get('variety') != previous_snapshot.get('variety')
+            and not is_public_library_admin(user)
+        ):
+            raise PublicCropPermissionError(
+                'Administrator privileges are required to restore a public crop variety.',
+                code='public_crop_identity_admin_required',
+            )
         update_fields = []
         for field in PUBLIC_CROP_EDITABLE_FIELDS:
             value = revision.snapshot.get(field)

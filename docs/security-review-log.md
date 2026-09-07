@@ -40,6 +40,46 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Codex — Security remediation and continued cross-review
+
+**Scope:** Remediation follow-up to the Codex full backend/frontend cross-review
+immediately below, plus a continued audit of the affected public-library and
+logging boundaries.
+
+**Findings:**
+
+1. **`FIXED` — Legacy change proposals bypassed field-level validation.**
+   Proposal creation now runs the proposed values through the same typed
+   `PublicCropUpdateSerializer` used for direct edits, including a bounded
+   nested seed-package schema. Approval revalidates stored payloads before the
+   transaction, so malformed legacy rows remain pending and return a controlled
+   400 instead of reaching model assignment or downstream import code.
+2. **`FIXED` — Public variety identity renames lacked the documented admin
+   boundary.** The service compares the requested identity against the locked
+   row and requires the public-library admin predicate for an actual change;
+   unchanged `variety` values remain accepted in ordinary wiki edits. The
+   version-restore path enforces the same boundary, and the frontend disables
+   that identity control for non-admin users, while backend authorization
+   remains authoritative.
+3. **`FIXED` — Application logs included unnecessary email addresses and
+   usernames.** Account lifecycle/delivery and invitation mismatch logs now use
+   stable database ids and masked invitation tokens only. Regression tests
+   assert that usernames and mismatch email addresses are absent.
+4. **`CROSS-CONFIRMED` — No adjacent privilege bypass introduced.** Continued
+   review verified that moderator proposal approval still works for valid
+   agronomic fields without granting moderator accounts the narrower admin
+   identity privilege; direct community edits to non-identity fields still work;
+   optimistic locking and identity collision checks still run after the new
+   authorization gate; and the proposal serializer still rejects unknown keys.
+
+**Reviewed with no additional findings:** translation editing remains part of
+the intentionally authenticated wiki model; species identity remains
+moderator-controlled; only staff/superusers satisfy the existing
+`is_public_library_admin` predicate; and no removed log field was required for
+authorization, auditing, or user-visible behavior.
+
+---
+
 ## 2026-09-07 — Codex — Full backend/frontend cross-review
 
 **Scope:** Full-repository manual review at `e882508`. This review independently
@@ -69,7 +109,10 @@ no security-relevant behavior.
 
 **Findings:**
 
-1. **`OPEN` — Legacy change proposals bypass field-level serializer
+_Statuses 1–3 updated from OPEN to FIXED by Codex on 2026-09-07 in the
+remediation follow-up above._
+
+1. **`FIXED` — Legacy change proposals bypass field-level serializer
    validation (medium; malformed stored data / moderator-triggered 500).**
    `PublicCropChangeProposalSerializer.validate_proposed_data()` only checks
    that the payload is a non-empty object whose *keys* are in an allowlist; it
@@ -91,7 +134,7 @@ no security-relevant behavior.
    wrong scalar types, invalid choices, and malformed nested JSON. The legacy
    API is documented as reachable but has no UI, so deciding whether to harden
    or remove it is a product/API compatibility decision; no fix was applied.
-2. **`OPEN` — The documented admin-only variety rename boundary is not
+2. **`FIXED` — The documented admin-only variety rename boundary is not
    enforced (medium; public identity overwrite).** The architecture says only
    an admin may correct a public entry's variety
    (`docs/crop-library-architecture.md:81-90`), but `variety` is in the
@@ -110,7 +153,7 @@ no security-relevant behavior.
    test a non-moderator editing another contributor's entry. If all users may
    rename identities, update the architecture and UI language explicitly.
    This requires a product decision, so no fix was applied.
-3. **`OPEN` — Raw email addresses and usernames are copied into application
+3. **`FIXED` — Raw email addresses and usernames are copied into application
    logs (low; DSGVO/data-minimization and secondary disclosure).** Invitation
    mismatch logging writes both full addresses
    (`backend/farm/services/project_invitations.py:242-244`); account email

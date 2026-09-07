@@ -581,7 +581,7 @@ class AuthApiTest(APITestCase):
         self.assertEqual(record.account_deletion_event, 'requested')
         self.assertEqual(record.account_deletion_request_id, deletion.pk)
         self.assertEqual(record.user_id, self.user.pk)
-        self.assertEqual(record.username, self.user.username)
+        self.assertFalse(hasattr(record, 'username'))
         self.assertNotIn(self.user.email, record.getMessage())
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)
@@ -613,7 +613,7 @@ class AuthApiTest(APITestCase):
         self.assertEqual(record.account_deletion_event, 'restored')
         self.assertEqual(record.account_deletion_request_id, deletion.pk)
         self.assertEqual(record.user_id, self.user.pk)
-        self.assertEqual(record.username, self.user.username)
+        self.assertFalse(hasattr(record, 'username'))
         self.assertNotIn(self.user.email, record.getMessage())
 
     def test_account_restore_after_grace_period_fails(self) -> None:
@@ -833,7 +833,7 @@ class AuthApiTest(APITestCase):
         self.assertEqual(record.account_deletion_event, 'finalized')
         self.assertEqual(record.account_deletion_request_id, deletion.pk)
         self.assertEqual(record.user_id, self.user.pk)
-        self.assertEqual(record.username, 'demo')
+        self.assertFalse(hasattr(record, 'username'))
         self.assertNotIn('demo@example.com', record.getMessage())
 
         second = StringIO()

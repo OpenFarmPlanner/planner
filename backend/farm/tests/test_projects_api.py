@@ -595,9 +595,13 @@ class ProjectsApiTests(APITestCase):
             invited_by=self.user,
             expires_at=timezone.now() + timedelta(days=14),
         )
-        response = self.client.post(f'/openfarmplanner/api/project-invitations/{invitation.token}/accept/')
+        with self.assertLogs('farm.services.project_invitations', level='WARNING') as captured:
+            response = self.client.post(f'/openfarmplanner/api/project-invitations/{invitation.token}/accept/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data['code'], 'email_mismatch')
+        joined = '\n'.join(captured.output)
+        self.assertNotIn(invitation.email, joined)
+        self.assertNotIn(self.user.email, joined)
 
     def test_expired_invitation_cannot_be_accepted(self) -> None:
         invitation = ProjectInvitation.objects.create(
