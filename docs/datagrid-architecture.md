@@ -115,6 +115,27 @@ scrollbar behavior without parallel implementations; both also render the
 track/thumb overlay itself through the shared `StableScrollbarTrack.tsx`
 rather than each page hand-rolling the same absolutely-positioned Boxes.
 
+Two rules keep that thumb where it belongs. Its vertical position is written
+directly to the thumb element's inline style (via the `thumbRef` both callers
+pass in) instead of being returned as a rendered value — it changes on every
+scroll frame, and putting it through React state re-rendered the entire grid,
+rows and cells included, once per frame. And the `headerHeight` argument must
+match the track's own `top` offset: MUI renders the column headers *inside*
+`.MuiDataGrid-virtualScroller`, so that container's `clientHeight` covers them
+too, and a thumb travelling the full `clientHeight` inside a track that starts
+below the header overflows past the track's bottom edge on the last internal
+page. `EditableDataGrid` therefore passes the *measured* header height rather
+than `CONTINUOUS_SCROLL_HEADER_HEIGHT_PX`: it renders at compact density,
+which scales that requested height down (56px becomes ~39px), and the track
+follows the same measurement. The hierarchy grid passes its own
+`HEADER_ROW_HEIGHT`, which is likewise the offset its track is drawn at.
+
+`useScrollDrivenRowWindow` exports `getBalancedPageSize`, which both grids use
+to size that internal window: it spreads the rows evenly over the pages
+(209 rows become 70/70/69, not 100/100/9) so the last page is never a stub.
+Both grids pin their height to the rows the current page holds, so an
+unbalanced final page made the table visibly collapse on the last scroll.
+
 `StableScrollbarTrack` must be rendered as a sibling of whatever wrapper Box
 scrolls the table horizontally, not nested inside it — its `right: 0` is
 relative to the nearest positioned ancestor, so nesting it inside content

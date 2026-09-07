@@ -70,7 +70,10 @@ import { useHierarchyData, type HierarchyDataState } from "../components/hierarc
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { type TreeRowNode } from "../components/hierarchy/utils/treeRows";
 import { useHierarchyLevelToggle } from "../components/hierarchy/hooks/useHierarchyLevelToggle";
-import { useHierarchyRowWindow } from "../components/hierarchy/hooks/useHierarchyRowWindow";
+import {
+  getBalancedHierarchyPageSize,
+  useHierarchyRowWindow,
+} from "../components/hierarchy/hooks/useHierarchyRowWindow";
 import { useHierarchyStableScrollbar } from "../components/hierarchy/hooks/useHierarchyStableScrollbar";
 import { hasPersistedEntityId } from "../components/hierarchy/utils/hierarchyUtils";
 import { useBedOperations } from "../components/hierarchy/hooks/useBedOperations";
@@ -194,6 +197,7 @@ function FieldsBedsHierarchy({
   const pendingSameRowEditTargetRef = useRef<{ rowId: GridRowId; field: string } | null>(null);
   const tableWrapperRef = useRef<HTMLDivElement | null>(null);
   const stableScrollbarTrackRef = useRef<HTMLDivElement | null>(null);
+  const stableScrollbarThumbRef = useRef<HTMLDivElement | null>(null);
   const pageContentRef = useRef<HTMLDivElement | null>(null);
   const [highlightedRowId, setHighlightedRowId] = useState<GridRowId | null>(null);
   const highlightClearTimeoutRef = useRef<number | null>(null);
@@ -308,7 +312,10 @@ function FieldsBedsHierarchy({
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
-    HIERARCHY_GRID_PAGE_SIZE,
+    // Balanced so the last internal page is never a stub — the table sizes
+    // itself to the rows its current page holds (see currentPageContentHeight
+    // below), so a short final page would visibly collapse its height.
+    getBalancedHierarchyPageSize(rows.length, HIERARCHY_GRID_PAGE_SIZE),
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
   );
@@ -1533,6 +1540,7 @@ function FieldsBedsHierarchy({
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
     stableScrollbarTrackRef,
+    stableScrollbarThumbRef,
     HEADER_ROW_HEIGHT,
   );
 
@@ -1808,6 +1816,7 @@ function FieldsBedsHierarchy({
             {!isMobileViewport && (
               <StableScrollbarTrack
                 trackRef={stableScrollbarTrackRef}
+                thumbRef={stableScrollbarThumbRef}
                 scrollbar={stableScrollbar}
                 top={HEADER_ROW_HEIGHT}
                 bottom={0}

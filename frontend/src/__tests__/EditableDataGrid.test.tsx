@@ -415,7 +415,7 @@ describe('EditableDataGrid', () => {
     expect(screen.getByTestId('pagination-options')).toHaveTextContent('25,50,100');
   });
 
-  it('uses hidden 100-row internal pagination for continuous scroll without rendering pager controls', async () => {
+  it('uses hidden balanced internal pagination for continuous scroll without rendering pager controls', async () => {
     const rows = Array.from({ length: 125 }, (_, index) => (
       createGridRow({ id: index + 1, name: `Plan ${index + 1}`, area_sqm: index + 1 })
     ));
@@ -433,7 +433,11 @@ describe('EditableDataGrid', () => {
     expect(screen.getByTestId('continuous-render-zone-collapsed')).toHaveTextContent('false');
     expect(screen.getByTestId('pagination-enabled')).toHaveTextContent('true');
     expect(screen.getByTestId('pagination-page')).toHaveTextContent('0');
-    expect(screen.getByTestId('pagination-page-size')).toHaveTextContent('100');
+    // 125 rows need two internal pages, and they are split evenly (63/62)
+    // rather than 100/25: the grid sizes itself to the rows its current page
+    // holds, so a short final page would collapse the table's height when the
+    // user scrolls to the end (see getBalancedPageSize).
+    expect(screen.getByTestId('pagination-page-size')).toHaveTextContent('63');
     expect(screen.getByTestId('pagination-options')).toBeEmptyDOMElement();
     expect(screen.queryByTestId('grid-pagination')).not.toBeInTheDocument();
 

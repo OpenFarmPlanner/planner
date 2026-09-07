@@ -18,6 +18,27 @@ export function resolveLocaleFromLanguage(language: string | undefined): string 
   return language;
 }
 
+// Constructing an Intl.NumberFormat is one to two orders of magnitude more
+// expensive than formatting with an existing one, and grid cells format
+// numbers on every render — building one per call was a measurable share of
+// the time spent scrolling large tables. The set of (locale, options) pairs an
+// app run uses is small and fixed, so they are simply kept.
+const numberFormatCache = new Map<string, Intl.NumberFormat>();
+
+function getNumberFormat(
+  locale: string,
+  options?: Intl.NumberFormatOptions,
+): Intl.NumberFormat {
+  const cacheKey = options ? `${locale}|${JSON.stringify(options)}` : locale;
+  const cached = numberFormatCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const formatter = new Intl.NumberFormat(locale, options);
+  numberFormatCache.set(cacheKey, formatter);
+  return formatter;
+}
+
 export function formatLocalizedNumber(
   value: number,
   locale: string,
@@ -26,14 +47,14 @@ export function formatLocalizedNumber(
   if (!Number.isFinite(value)) {
     return "";
   }
-  return new Intl.NumberFormat(locale, options).format(value);
+  return getNumberFormat(locale, options).format(value);
 }
 
 function getNumberSeparators(locale: string): {
   group: string;
   decimal: string;
 } {
-  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
+  const parts = getNumberFormat(locale).formatToParts(12345.6);
   const group = parts.find((part) => part.type === "group")?.value ?? ",";
   const decimal = parts.find((part) => part.type === "decimal")?.value ?? ".";
   return { group, decimal };

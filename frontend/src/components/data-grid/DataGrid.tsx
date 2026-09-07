@@ -70,7 +70,7 @@ import { useDataGridCommandApi } from './hooks/useDataGridCommandApi';
 import { useDataGridDelete } from './hooks/useDataGridDelete';
 import { useDataGridRowActionMenu } from './hooks/useDataGridRowActionMenu';
 import { useDataGridRowCommands } from './hooks/useDataGridRowCommands';
-import { useScrollDrivenRowWindow } from './hooks/useScrollDrivenRowWindow';
+import { getBalancedPageSize, useScrollDrivenRowWindow } from './hooks/useScrollDrivenRowWindow';
 import { useStableDataGridScrollbar } from './hooks/useStableDataGridScrollbar';
 import { StableScrollbarTrack } from './StableScrollbarTrack';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
@@ -251,9 +251,10 @@ export function EditableDataGrid<T extends EditableRow>({
   const pageContentRef = useRef<HTMLDivElement | null>(null);
   const horizontalScrollRef = useRef<HTMLDivElement | null>(null);
   const stableScrollbarTrackRef = useRef<HTMLDivElement | null>(null);
+  const stableScrollbarThumbRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useMediaQuery('(max-width:900px)');
   
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const { sortModel, setSortModel, filterModel, setFilterModel } = usePersistentSortModel({
     tableKey: tableKey ?? 'editableDataGrid',
     defaultSortModel,
@@ -264,9 +265,12 @@ export function EditableDataGrid<T extends EditableRow>({
     () => orderRowsByStableIds(rows as T[], stableRowOrder),
     [rows, stableRowOrder],
   );
+  // Balanced rather than CONTINUOUS_SCROLL_PAGE_SIZE outright, so the last
+  // internal page is never a stub the grid would shrink itself down to.
+  const continuousScrollPageSize = getBalancedPageSize(rowsForGrid.length, CONTINUOUS_SCROLL_PAGE_SIZE);
   const scrollDrivenRowWindow = useScrollDrivenRowWindow(
     rowsForGrid.length,
-    CONTINUOUS_SCROLL_PAGE_SIZE,
+    continuousScrollPageSize,
     DATA_GRID_VIRTUAL_SCROLLER_SELECTOR,
     gridSurfaceRef,
     { preservePageOnRowCountChange: true },
@@ -291,14 +295,6 @@ export function EditableDataGrid<T extends EditableRow>({
   const stableScrollbarRowHeights = useMemo(
     () => (isContinuousScroll && !isMobile ? rowsForGrid.map(() => CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX) : []),
     [isContinuousScroll, isMobile, rowsForGrid],
-  );
-  const stableScrollbar = useStableDataGridScrollbar(
-    stableScrollbarRowHeights,
-    scrollDrivenRowWindow,
-    DATA_GRID_VIRTUAL_SCROLLER_SELECTOR,
-    gridSurfaceRef,
-    stableScrollbarTrackRef,
-    0,
   );
   const ensureRowVisible = useCallback((rowId: GridRowId): boolean => {
     if (!isContinuousScroll) {
@@ -390,6 +386,25 @@ export function EditableDataGrid<T extends EditableRow>({
     hasContextMenuHint: showContextMenuHint,
     hasTouchContextMenuHint: showTouchContextMenuHint,
   });
+
+  // Placed after useContinuousScrollSizing so both this hook and the track it
+  // drives use the same measured header height. MUI renders the column
+  // headers inside .MuiDataGrid-virtualScroller, so that container's
+  // clientHeight covers them too, and the track is drawn below them — without
+  // subtracting the header the thumb's travel range is taller than the track
+  // and overflows past its bottom edge on the last internal page. The
+  // measured height is what counts, not CONTINUOUS_SCROLL_HEADER_HEIGHT_PX:
+  // the grid renders at compact density, which scales that requested height
+  // down.
+  const stableScrollbar = useStableDataGridScrollbar(
+    stableScrollbarRowHeights,
+    scrollDrivenRowWindow,
+    DATA_GRID_VIRTUAL_SCROLLER_SELECTOR,
+    gridSurfaceRef,
+    stableScrollbarTrackRef,
+    stableScrollbarThumbRef,
+    continuousScrollLayoutHeights.header,
+  );
 
   const refreshStableRowOrder = useCallback((sourceRows: readonly T[], model: GridSortModel = sortModel): void => {
     setStableRowOrder(getSortedRowIds(sourceRows, model));
@@ -1990,9 +2005,13 @@ export function EditableDataGrid<T extends EditableRow>({
   }, [getInlineRowActions, openRowActionMenuAt, rowActionHelpers, showInlineRowActionMenu, t]);
 
   /**
-   * Custom footer component with add button
+   * Custom footer component with add button. Kept behind useCallback so its
+   * component identity is stable: a footer re-created on every render is a
+   * different component type to React, which remounts the whole footer
+   * subtree (and, through the `slots` object below, invalidates the grid's
+   * root props for every rendered row) on each pass.
    */
-  const CustomFooter = () => {
+  const CustomFooter = useCallback(() => {
     if (!shouldRenderGridFooter) {
       return null;
     }
@@ -2047,7 +2066,118 @@ export function EditableDataGrid<T extends EditableRow>({
         {showPaginationControls && <GridPagination />}
       </Box>
     );
-  };
+  }, [
+    addButtonLabel,
+    addButtonText,
+    handleAddClick,
+    handleDiscardRowChanges,
+    handleSaveAllDirtyRows,
+    hasInvalidRowInEditMode,
+    hasUnsavedChanges,
+    hasValidationError,
+    rowModesModel,
+    shouldRenderGridFooter,
+    showAddAction,
+    showFooterEditControls,
+    showPaginationControls,
+    t,
+  ]);
+
+  const gridSlots = useMemo(
+    () => (shouldRenderGridFooter ? { footer: CustomFooter } : undefined),
+    [CustomFooter, shouldRenderGridFooter],
+  );
+
+  // MUI keeps every grid prop in one root-props object handed to all its
+  // internal components, so a prop rebuilt on each render (a fresh locale
+  // object, a fresh selection Set) re-renders every mounted row and cell even
+  // when nothing about it changed.
+  // getDataGridLocaleText reads the active language at call time, so the
+  // resolved language is what invalidates this — not every render.
+  const localeLanguage = i18n?.resolvedLanguage ?? i18n?.language;
+  // The language is read inside getDataGridLocaleText, so the linter cannot
+  // see it as an input of this memo.
+  const gridLocaleText = useMemo(
+    () => getDataGridLocaleText(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [localeLanguage],
+  );
+  const gridSx = useMemo(() => ({
+    ...dataGridSx,
+    width: isContentSizedSurface ? 'max-content' : '100%',
+    minWidth: isContentSizedSurface ? 0 : '100%',
+    display: 'block',
+    ...(
+      isContinuousScroll && !isMobile
+        ? {
+            height: `${resolvedContinuousScrollHeight}px`,
+            '& .MuiDataGrid-main': {
+              height: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
+              maxHeight: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
+              overflow: 'hidden',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              height: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
+              maxHeight: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
+              overflowY: shouldHideContinuousVerticalOverflow ? 'clip !important' : undefined,
+            },
+            ...(shouldCollapseContinuousRenderZone ? {
+              '& .MuiDataGrid-virtualScrollerContent': {
+                height: `${currentWindowRowCount * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX}px !important`,
+              },
+              // MUI's render-zone transform now bakes the header height into
+              // its vertical offset (translate3d(0, topContainerHeight +
+              // scrollOffset, 0)) rather than just carrying scroll offset like
+              // pre-v9. Pinning it to `none` here (to drop any leftover
+              // scroll-position offset once every row already fits without
+              // scrolling) used to be harmless; in v9 it also zeroes the header
+              // offset, so rows render underneath the sticky column headers
+              // instead of below them. Pin to the header-height translate
+              // instead of `none` so the collapse still drops scroll offset but
+              // keeps rows positioned below the header.
+              '& .MuiDataGrid-virtualScrollerRenderZone': {
+                transform: 'translate3d(0, var(--DataGrid-topContainerHeight, 0px), 0) !important',
+              },
+            } : {}),
+            '& .MuiDataGrid-scrollbar--vertical': {
+              display: 'none',
+            },
+          }
+        : {}
+    ),
+    '& .MuiDataGrid-row.ofp-row-long-press .MuiDataGrid-cell': {
+      bgcolor: 'action.selected',
+    },
+    ...(shouldDisableTrailingFiller ? {
+      '& .MuiDataGrid-filler': { display: 'none' },
+      '& .MuiDataGrid-scrollbarFiller': { display: 'none' },
+      '& .MuiDataGrid-scrollbar--horizontal': { display: 'none' },
+      '& .MuiDataGrid-main': { width: 'fit-content' },
+      '& .MuiDataGrid-virtualScroller': { overflowX: 'hidden !important' },
+      '& .MuiDataGrid-virtualScrollerContent': {
+        width: 'fit-content !important',
+        ...(shouldCollapseContinuousRenderZone ? {
+          height: `${currentWindowRowCount * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX}px !important`,
+        } : {}),
+      },
+      '& .MuiDataGrid-columnHeaders': { width: 'fit-content !important' },
+    } : {}),
+  }), [
+    currentWindowRowCount,
+    isContentSizedSurface,
+    isContinuousScroll,
+    isMobile,
+    resolvedContinuousScrollBodyHeight,
+    resolvedContinuousScrollHeight,
+    shouldCollapseContinuousRenderZone,
+    shouldDisableTrailingFiller,
+    shouldHideContinuousVerticalOverflow,
+  ]);
+
+  const gridRowSelectionModel = useMemo(
+    () => ({ type: "include" as const, ids: new Set(selectedRowIds) }),
+    [selectedRowIds],
+  );
 
   /**
    * Process columns to replace notes fields with NotesCell renderer
@@ -2448,70 +2578,10 @@ export function EditableDataGrid<T extends EditableRow>({
           sortingMode="server"
           filterModel={filterModel}
           onFilterModelChange={handleFilterModelChange}
-          rowSelectionModel={{ type: "include", ids: new Set(selectedRowIds) }}
+          rowSelectionModel={gridRowSelectionModel}
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
-          slots={shouldRenderGridFooter ? { footer: CustomFooter } : undefined}
-          sx={{
-            ...dataGridSx,
-            width: isContentSizedSurface ? 'max-content' : '100%',
-            minWidth: isContentSizedSurface ? 0 : '100%',
-            display: 'block',
-            ...(
-              isContinuousScroll && !isMobile
-                ? {
-                    height: `${resolvedContinuousScrollHeight}px`,
-                    '& .MuiDataGrid-main': {
-                      height: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
-                      maxHeight: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
-                      overflow: 'hidden',
-                    },
-                    '& .MuiDataGrid-virtualScroller': {
-                      height: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
-                      maxHeight: `${resolvedContinuousScrollBodyHeight ?? 0}px !important`,
-                      overflowY: shouldHideContinuousVerticalOverflow ? 'clip !important' : undefined,
-                    },
-                    ...(shouldCollapseContinuousRenderZone ? {
-                      '& .MuiDataGrid-virtualScrollerContent': {
-                        height: `${currentWindowRowCount * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX}px !important`,
-                      },
-                      // MUI's render-zone transform now bakes the header height into
-                      // its vertical offset (translate3d(0, topContainerHeight +
-                      // scrollOffset, 0)) rather than just carrying scroll offset like
-                      // pre-v9. Pinning it to `none` here (to drop any leftover
-                      // scroll-position offset once every row already fits without
-                      // scrolling) used to be harmless; in v9 it also zeroes the header
-                      // offset, so rows render underneath the sticky column headers
-                      // instead of below them. Pin to the header-height translate
-                      // instead of `none` so the collapse still drops scroll offset but
-                      // keeps rows positioned below the header.
-                      '& .MuiDataGrid-virtualScrollerRenderZone': {
-                        transform: 'translate3d(0, var(--DataGrid-topContainerHeight, 0px), 0) !important',
-                      },
-                    } : {}),
-                    '& .MuiDataGrid-scrollbar--vertical': {
-                      display: 'none',
-                    },
-                  }
-                : {}
-            ),
-            '& .MuiDataGrid-row.ofp-row-long-press .MuiDataGrid-cell': {
-              bgcolor: 'action.selected',
-            },
-            ...(shouldDisableTrailingFiller ? {
-              '& .MuiDataGrid-filler': { display: 'none' },
-              '& .MuiDataGrid-scrollbarFiller': { display: 'none' },
-              '& .MuiDataGrid-scrollbar--horizontal': { display: 'none' },
-              '& .MuiDataGrid-main': { width: 'fit-content' },
-              '& .MuiDataGrid-virtualScroller': { overflowX: 'hidden !important' },
-              '& .MuiDataGrid-virtualScrollerContent': {
-                width: 'fit-content !important',
-                ...(shouldCollapseContinuousRenderZone ? {
-                  height: `${currentWindowRowCount * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX}px !important`,
-                } : {}),
-              },
-              '& .MuiDataGrid-columnHeaders': { width: 'fit-content !important' },
-            } : {}),
-          }}
+          slots={gridSlots}
+          sx={gridSx}
           getRowClassName={(params) => {
             const rowKey = String(params.id);
             const classNames: string[] = [];
@@ -2693,7 +2763,7 @@ export function EditableDataGrid<T extends EditableRow>({
               void handleSaveRow(params.id);
             }
           }}
-          localeText={getDataGridLocaleText()}
+          localeText={gridLocaleText}
           apiRef={gridApiRef}
               />
               </DialogEditCellContext.Provider>
@@ -2713,8 +2783,9 @@ export function EditableDataGrid<T extends EditableRow>({
           // width regardless of the inner horizontal scroll position.
           <StableScrollbarTrack
             trackRef={stableScrollbarTrackRef}
+            thumbRef={stableScrollbarThumbRef}
             scrollbar={stableScrollbar}
-            top={CONTINUOUS_SCROLL_HEADER_HEIGHT_PX}
+            top={continuousScrollLayoutHeights.header}
             bottom={continuousScrollLayoutHeights.footer + continuousScrollLayoutHeights.border}
             right={scrollbarRightOffsetPx}
             trackTestId="continuous-scrollbar-track"
