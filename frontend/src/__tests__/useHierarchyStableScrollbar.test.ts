@@ -9,9 +9,8 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act } from 'react';
 import { renderHook } from '@testing-library/react';
-import { createRef } from 'react';
+import { act, createRef } from 'react';
 import {
   useHierarchyStableScrollbar,
   type HierarchyRowWindowForScrollbar,
