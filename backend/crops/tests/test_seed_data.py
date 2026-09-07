@@ -1,6 +1,11 @@
 from django.test import SimpleTestCase
 
-from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+from crops.seed_data import (
+    CROP_SPECIES_SEED_DATA,
+    CROP_SPECIES_SYNONYM_SEED_DATA,
+    get_crop_species_seed_name,
+    get_crop_species_seed_synonyms,
+)
 
 
 class CropSpeciesSeedDataTest(SimpleTestCase):
@@ -146,3 +151,88 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         for name in concrete_asian_greens_names:
             self.assertIn(name, german_names)
         self.assertIn('Mustard greens', english_names)
+
+
+class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
+    """The alias list decides which names must *not* become their own species."""
+
+    def test_every_alias_belongs_to_a_seeded_species(self):
+        seed_keys = {entry.key for entry in CROP_SPECIES_SEED_DATA}
+
+        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
+            self.assertIn(key, seed_keys)
+            for language_code, synonyms in synonyms_by_language.items():
+                self.assertIn(language_code, {'de', 'en'})
+                self.assertIsInstance(synonyms, tuple)
+                for synonym in synonyms:
+                    self.assertEqual(synonym, ' '.join(synonym.split()))
+                self.assertEqual(len(synonyms), len({item.casefold() for item in synonyms}))
+
+    def test_no_alias_shadows_another_species_name(self):
+        """An alias that names a *different* species would merge two crops."""
+        names_by_key = {
+            entry.key: {name.casefold() for name in entry.translations.values()}
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+
+        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
+            foreign_names = {
+                name
+                for other_key, names in names_by_key.items()
+                if other_key != key
+                for name in names
+            }
+            for synonyms in synonyms_by_language.values():
+                for synonym in synonyms:
+                    with self.subTest(key=key, synonym=synonym):
+                        self.assertNotIn(synonym.casefold(), foreign_names)
+
+    def test_regional_names_of_the_same_crop_are_aliases(self):
+        self.assertIn('Erdapfel', get_crop_species_seed_synonyms('potato'))
+        self.assertIn('Blumenkohl', get_crop_species_seed_synonyms('cauliflower'))
+        self.assertIn('Porree', get_crop_species_seed_synonyms('leek'))
+        self.assertIn('Paradeiser', get_crop_species_seed_synonyms('tomato'))
+        self.assertIn('Meerrettich', get_crop_species_seed_synonyms('horseradish'))
+
+    def test_ambiguous_names_are_aliases_of_every_candidate(self):
+        """Rather offer both crops than force a wrong automatic assignment."""
+        for key in ('pepper', 'chili', 'pepperoncini'):
+            self.assertIn('Peperoni', get_crop_species_seed_synonyms(key))
+        for key in ('bush_bean', 'pole_bean', 'french_bean'):
+            self.assertIn('Fisolen', get_crop_species_seed_synonyms(key))
+
+    def test_functionally_distinct_crops_are_species_not_aliases(self):
+        """Different cultivation or harvest means an own species, not an alias.
+
+        Pfefferoni has its own growing time and spacing, Schnittkohl is cut
+        repeatedly as young leaves, Zuckererbse is eaten pod and all, and
+        Puntarelle/Radicchio are grown and harvested unlike the other
+        chicories — so none of them may be folded into Paprika, Grünkohl,
+        Erbse, or Chicorée.
+        """
+        german_names = {
+            get_crop_species_seed_name(entry, 'de')
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+        all_synonyms = {
+            synonym.casefold()
+            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms in synonyms_by_language.values()
+            for synonym in synonyms
+        }
+
+        for name in ('Pfefferoni', 'Puntarelle', 'Radicchio', 'Schnittkohl', 'Zuckererbse'):
+            with self.subTest(name=name):
+                self.assertIn(name, german_names)
+                self.assertNotIn(name.casefold(), all_synonyms)
+
+    def test_swede_is_not_aliased_onto_kohlrabi(self):
+        """Kohlrübe is the swede, a different crop the library does not seed."""
+        self.assertEqual(get_crop_species_seed_synonyms('kohlrabi'), ())
+        all_synonyms = {
+            synonym.casefold()
+            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms in synonyms_by_language.values()
+            for synonym in synonyms
+        }
+        self.assertNotIn('kohlrübe', all_synonyms)

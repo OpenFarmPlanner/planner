@@ -135,6 +135,66 @@ class CropViewSetTest(DRFAPITestCase):
         self.assertIn('Buschbohne', names)
         self.assertIn('Stangenbohne', names)
 
+    def test_species_search_finds_regional_alias(self):
+        """A regional name resolves to the canonical species instead of nothing."""
+        self.client.force_authenticate(user=self.user)
+
+        for query, expected_name in (
+            ('Erdapfel', 'Kartoffel'),
+            ('Karfiol', 'Karfiol'),
+            ('Blumenkohl', 'Karfiol'),
+            ('Porree', 'Lauch'),
+            ('Paradeiser', 'Tomate'),
+            ('Vogerlsalat', 'Feldsalat'),
+        ):
+            with self.subTest(query=query):
+                response = self.client.get('/openfarmplanner/api/crop-species/', {'q': query})
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                names = {item['name'] for item in response.data['results']}
+                self.assertIn(expected_name, names)
+                self.assertNotIn(query, names - {expected_name})
+
+    def test_ambiguous_alias_offers_every_candidate_species(self):
+        """Peperoni and Fisolen name several crops; the search must not pick one."""
+        self.client.force_authenticate(user=self.user)
+
+        pepper_response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Peperoni'})
+        bean_response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Fisolen'})
+
+        pepper_names = {item['name'] for item in pepper_response.data['results']}
+        bean_names = {item['name'] for item in bean_response.data['results']}
+        self.assertIn('Paprika', pepper_names)
+        self.assertIn('Chili', pepper_names)
+        self.assertIn('Pfefferoni', pepper_names)
+        self.assertIn('Buschbohne', bean_names)
+        self.assertIn('Stangenbohne', bean_names)
+        self.assertIn('Grüne Bohne', bean_names)
+
+    def test_functionally_distinct_crops_stay_separate_species(self):
+        """Own species, not aliases: they differ in cultivation and harvest."""
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'page_size': 1000})
+
+        names = {item['name'] for item in response.data['results']}
+        self.assertIn('Pfefferoni', names)
+        self.assertIn('Puntarelle', names)
+        self.assertIn('Radicchio', names)
+        self.assertIn('Schnittkohl', names)
+        self.assertIn('Zuckererbse', names)
+
+    def test_alias_search_exposes_the_matched_name_to_the_ui(self):
+        """`search_names` is what lets the picker label a hit "Kartoffel (Erdapfel)"."""
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Erdapfel'})
+
+        potato = next(
+            item for item in response.data['results'] if item['name'] == 'Kartoffel'
+        )
+        self.assertIn('Erdapfel', potato['search_names'])
+
     def test_species_search_uses_concrete_green_manure_species(self):
         self.client.force_authenticate(user=self.user)
 
