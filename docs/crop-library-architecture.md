@@ -1101,10 +1101,23 @@ Naming conventions for `CROP_SPECIES_SEED_DATA` entries:
 - Add the concrete, user-recognizable species instead, one entry per species,
   and do not introduce an umbrella entry alongside them.
 
-`crops/tests/test_seed_data.py` enforces the first two rules for the seed
-catalogue, and the `0011_replace_asian_greens_collective_species` migration
-rejects such collective species already stored in a database so they stop
-being public mapping targets.
+- Alias names (`Porree` for `Lauch`, `Blumenkohl` for `Karfiol`) are never
+  their own entry. They live beside the entry, in one of two seed lists:
+  `CROP_SPECIES_SYNONYM_SEED_DATA` for search-only aliases, and
+  `CROP_SPECIES_REGIONAL_NAME_SEED_DATA` for terms that *replace* the canonical
+  name for projects in that region (`austria` / `switzerland`). A term can be in
+  both. When a term means different crops in different regions — `Peperoni` and
+  `Fisolen` are the standing examples — it may be a search alias of several
+  species, but never a displayed regional name.
+
+[`crop-taxonomy-guidelines.md`](./crop-taxonomy-guidelines.md) is the full
+decision rule behind these conventions: crop species vs. alias vs. variety, and
+how AT/DE/CH terminology is stored. `crops/tests/test_seed_data.py` enforces the
+first two rules plus the alias rules for the seed catalogue, and the
+`0011_replace_asian_greens_collective_species` migration rejects such collective
+species already stored in a database so they stop being public mapping targets.
+`python manage.py audit_crop_species_coverage` reports crop names used in
+projects that the catalogue does not know yet.
 
 When a project crop already points to an owned public entry, the wizard is
 an update flow instead of a mapping flow. The owned public crop is shown as

@@ -345,3 +345,41 @@ CROP_SPECIES_SYNONYM_SEED_DATA: dict[str, dict[str, tuple[str, ...]]] = {
 def get_crop_species_seed_synonyms(key: str, language_code: str = 'de') -> tuple[str, ...]:
     """Search aliases seeded for one species in one language."""
     return CROP_SPECIES_SYNONYM_SEED_DATA.get(key, {}).get(language_code, ())
+
+
+# Regional *display* names per seed key, language, and region. Unlike the
+# search-only aliases above, these replace the canonical name for projects whose
+# `Project.region` matches, so a Swiss project reads "Nüsslisalat" where a German
+# one reads "Feldsalat". The two lists answer different questions and a term can
+# be in both: an alias only has to be findable, a regional name is what a region
+# actually calls the crop professionally (Swiss seed catalogues, horticultural
+# literature, retail). Region keys are limited to
+# `crops.models.SUPPORTED_REGIONAL_NAME_KEYS`.
+#
+# The same ambiguity rule as for aliases applies, and is stricter here because a
+# regional name is displayed rather than merely matched: a term that names
+# different crops in different regions ("Peperoni") never becomes a regional
+# name. See docs/crop-taxonomy-guidelines.md §4.
+CROP_SPECIES_REGIONAL_NAME_SEED_DATA: dict[str, dict[str, dict[str, str]]] = {
+    'aubergine': {'de': {'austria': 'Melanzani'}},
+    'beetroot': {'de': {'switzerland': 'Rande'}},
+    'cabbage': {'de': {'switzerland': 'Kabis'}},
+    'carrot': {'de': {'switzerland': 'Rüebli'}},
+    'chard': {'de': {'switzerland': 'Krautstiel'}},
+    'corn_salad': {'de': {'austria': 'Vogerlsalat', 'switzerland': 'Nüsslisalat'}},
+    'kale': {'de': {'switzerland': 'Federkohl'}},
+    'pointed_cabbage': {'de': {'switzerland': 'Spitzkabis'}},
+    'potato': {'de': {'austria': 'Erdapfel'}},
+    'red_cabbage': {'de': {'switzerland': 'Rotkabis'}},
+    'savoy_cabbage': {'de': {'switzerland': 'Wirz'}},
+    'sugar_pea': {'de': {'switzerland': 'Kefe'}},
+    'summer_squash': {'de': {'switzerland': 'Zucchetti'}},
+    'tomato': {'de': {'austria': 'Paradeiser'}},
+}
+
+
+def get_crop_species_seed_regional_names(
+    key: str, language_code: str = 'de',
+) -> dict[str, str]:
+    """Region -> display name seeded for one species in one language."""
+    return dict(CROP_SPECIES_REGIONAL_NAME_SEED_DATA.get(key, {}).get(language_code, {}))

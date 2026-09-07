@@ -1,9 +1,12 @@
 from django.test import SimpleTestCase
 
+from crops.models import SUPPORTED_REGIONAL_NAME_KEYS
 from crops.seed_data import (
+    CROP_SPECIES_REGIONAL_NAME_SEED_DATA,
     CROP_SPECIES_SEED_DATA,
     CROP_SPECIES_SYNONYM_SEED_DATA,
     get_crop_species_seed_name,
+    get_crop_species_seed_regional_names,
     get_crop_species_seed_synonyms,
 )
 
@@ -236,3 +239,95 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
             for synonym in synonyms
         }
         self.assertNotIn('kohlrübe', all_synonyms)
+
+
+class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
+    """Regional display names follow docs/crop-taxonomy-guidelines.md §4."""
+
+    def test_every_entry_targets_a_known_key_language_and_region(self):
+        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
+
+        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+            with self.subTest(key=key):
+                entry = entries_by_key.get(key)
+                self.assertIsNotNone(entry, f'{key} is not a seeded species')
+                for language_code, regional_names in regional_names_by_language.items():
+                    self.assertIn(language_code, entry.translations)
+                    for region, name in regional_names.items():
+                        self.assertIn(region, SUPPORTED_REGIONAL_NAME_KEYS)
+                        self.assertTrue(name)
+                        self.assertEqual(name, name.strip())
+
+    def test_a_regional_name_is_never_another_species_canonical_name(self):
+        """Displaying one species under another's name would merge them for the user."""
+        canonical_names = {
+            name.casefold()
+            for entry in CROP_SPECIES_SEED_DATA
+            for name in entry.translations.values()
+        }
+        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
+
+        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+            own_names = {
+                name.casefold()
+                for name in entries_by_key[key].translations.values()
+            }
+            for regional_names in regional_names_by_language.values():
+                for name in regional_names.values():
+                    with self.subTest(key=key, name=name):
+                        self.assertFalse(
+                            name.casefold() in canonical_names
+                            and name.casefold() not in own_names,
+                        )
+
+    def test_ambiguous_terms_never_become_a_displayed_regional_name(self):
+        """A term that means different crops per region must stay search-only.
+
+        "Peperoni" is a search alias of Chili, Paprika and Pfefferoni on
+        purpose; promoting it to a display name would pick one reading and
+        show sweet peppers as chillies, or the reverse, depending on region.
+        """
+        displayed = {
+            name.casefold()
+            for regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.values()
+            for regional_names in regional_names_by_language.values()
+            for name in regional_names.values()
+        }
+
+        for ambiguous_term in ('peperoni', 'fisole', 'fisolen'):
+            self.assertNotIn(ambiguous_term, displayed)
+
+    def test_requested_regional_display_names_are_seeded(self):
+        self.assertEqual(
+            get_crop_species_seed_regional_names('aubergine'), {'austria': 'Melanzani'},
+        )
+        self.assertEqual(
+            get_crop_species_seed_regional_names('potato'), {'austria': 'Erdapfel'},
+        )
+        self.assertEqual(
+            get_crop_species_seed_regional_names('corn_salad'),
+            {'austria': 'Vogerlsalat', 'switzerland': 'Nüsslisalat'},
+        )
+
+        swiss_names = {
+            'beetroot': 'Rande',
+            'cabbage': 'Kabis',
+            'carrot': 'Rüebli',
+            'chard': 'Krautstiel',
+            'kale': 'Federkohl',
+            'pointed_cabbage': 'Spitzkabis',
+            'red_cabbage': 'Rotkabis',
+            'savoy_cabbage': 'Wirz',
+            'sugar_pea': 'Kefe',
+            'summer_squash': 'Zucchetti',
+        }
+        for key, expected_name in swiss_names.items():
+            with self.subTest(key=key):
+                self.assertEqual(
+                    get_crop_species_seed_regional_names(key).get('switzerland'),
+                    expected_name,
+                )
+
+    def test_unknown_key_returns_an_empty_mapping(self):
+        self.assertEqual(get_crop_species_seed_regional_names('tomato', 'fr'), {})
+        self.assertEqual(get_crop_species_seed_regional_names('does-not-exist'), {})

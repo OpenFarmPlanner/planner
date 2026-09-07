@@ -45,6 +45,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.
+- **[Crop Taxonomy Guidelines](./crop-taxonomy-guidelines.md)** — when a name
+  is a crop species of its own, an alias, or a variety; how regional AT/DE/CH
+  terms are stored; and the audit command that finds gaps in the official
+  suggestion list.
 - **[In-App Notifications](./notifications.md)** — the generic
   `Notification` model and topbar bell: why the stored text is English while
   the UI is German, how a new notification kind is added, and the two
