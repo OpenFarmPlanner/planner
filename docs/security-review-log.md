@@ -40,6 +40,89 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Codex — Note attachment validation remediation
+
+**Scope:** Follow-up remediation for finding 1 in the Codex full application
+review immediately below.
+
+**Findings:**
+
+1. **`FIXED` — Note attachment captions bypassed serializer validation.** A
+   dedicated upload-metadata serializer now checks caption type and length
+   before image decoding/re-encoding. Overlong captions return 400 rather than
+   reaching the database, and the regression test verifies image processing
+   is skipped for invalid metadata
+   (`backend/farm/notes/serializers.py`, `backend/farm/notes/views.py`,
+   `backend/farm/tests/test_notes_api.py`).
+
+---
+
+## 2026-09-07 — Codex — Full application follow-up at `fec31e5`
+
+**Scope:** Independent full backend/frontend review at `fec31e5`, covering all
+REST and WebSocket routes, project/season scope resolution and every tenant
+queryset/direct lookup, relational serializers and import/restore/bulk paths,
+authentication/authorization and browser token handling, the complete public
+Kulturbibliothek 4-case moderation workflow, uploads/feedback/mail/rendering,
+DSGVO-relevant fields and logging, production settings, and both locked
+dependency graphs. Also reviewed every change in `3d1c9bc..fec31e5`. The prior
+full review was Codex's; all older Claude findings were already
+CROSS-CONFIRMED. The only newer Claude-authored application diff was the
+continuous-scroll sizing change, which received genuine independent review.
+The detailed narrative is in
+[`security-review-2026-09-07-codex.md`](./security-review-2026-09-07-codex.md).
+
+**Findings:**
+
+1. **`OPEN` — Note attachment captions bypass serializer validation (low;
+   controlled availability/resource amplification).** The multipart create
+   path takes `caption` directly from `request.data`, processes the image, and
+   saves `NoteAttachment` without serializer validation
+   (`backend/farm/notes/views.py:104-127`), although the model column is capped
+   at 255 characters (`backend/farm/models/notes.py:22`). An authenticated
+   project member can send an overlong caption and cause PostgreSQL to reject
+   the write with a 500 after image processing. React renders the caption as
+   text, so this is not stored XSS and cannot cross a project boundary.
+   **Suggested fix:** validate multipart metadata with a dedicated write
+   serializer before processing the image (or explicitly apply a 255-character
+   DRF field), return 400, and add an overlong-caption regression test. The
+   serializer/API shape is a design choice, so no fix was applied.
+2. **`CROSS-CONFIRMED` — Claude's application changes in
+   `3d1c9bc..fec31e5` are security-neutral.** Independently reviewed the
+   DataGrid and field/bed hierarchy continuous-scroll diff. It changes only
+   numeric page-size and height calculation plus tests/documentation; it adds
+   no data source, HTML/URL sink, request, browser credential storage, or
+   authorization decision. The earlier Claude 2026-09-07 tenancy and rendering
+   findings had already been cross-confirmed by Codex and remain effective.
+3. **`OPEN` — Previously deferred operational and dynamic scope remains
+   outside this repository review.** Production-like penetration testing, the
+   sibling `ops` repository, live OAuth tenants, GitHub repository settings,
+   malformed/animated-image fuzzing and aggregate-frame limits, storage
+   quotas, CSP rollout, and formula neutralization for any future server-side
+   spreadsheet export remain open. **Suggested fix:** assess these against the
+   deployed topology with repository/operations administrators and add the
+   resource/export controls when those features and limits are designed.
+
+**Reviewed with no additional findings:** `X-Project-Id` is always resolved
+against membership or a server-side token/session binding before tenant data
+access; `X-Season-Id` only narrows an already project-scoped queryset; every
+routed tenant-owned viewset/custom action/direct lookup and writable relation
+was verified fail-closed. DRF permissions and object checks cover every
+endpoint, with intentional anonymous capability/bootstrap reads kept narrow.
+No injectable SQL structure, unsafe deserialization, or dynamic evaluation was
+found. Public-library contributor/moderator/admin boundaries, proposal typing
+and revalidation, row locks, optimistic versions, identity protection, and
+source-project pinning hold across all four cases. Uploads remain byte/pixel
+bounded and format-validated; user content is text/escaped markdown; mail
+headers are Django-validated; logs avoid credentials and raw personal
+identifiers. Sessions use HttpOnly secure production cookies, credentialed
+CORS is allowlisted, browser storage holds no auth credential, self-export is
+self/member-scoped and excludes password hashes, and production settings fail
+closed. `npm audit` and `pip-audit` reported no known vulnerabilities; Django's
+deployment check passed with explicit review-only production values.
+
+---
+
 ## 2026-09-07 — Codex — Full application review after the crop-taxonomy changes
 
 **Scope:** Full backend/frontend review at `3d1c9bc`, including every change in

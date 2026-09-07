@@ -23,7 +23,7 @@ from farm.models import (
 )
 from farm.project_context import get_active_project_or_400
 
-from .serializers import NoteAttachmentSerializer
+from .serializers import NoteAttachmentSerializer, NoteAttachmentUploadSerializer
 
 MAX_MEDIA_UPLOAD_BYTES = 10 * 1024 * 1024
 ALLOWED_MEDIA_UPLOAD_CONTENT_TYPES = {
@@ -101,7 +101,11 @@ class NoteAttachmentListCreateView(APIView):
         if upload is None:
             return Response({'image': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        caption = request.data.get('caption', '')
+        upload_serializer = NoteAttachmentUploadSerializer(data={
+            'caption': request.data.get('caption', ''),
+        })
+        upload_serializer.is_valid(raise_exception=True)
+        caption = upload_serializer.validated_data['caption']
 
         try:
             content, metadata = process_note_image(upload)
