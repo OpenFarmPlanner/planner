@@ -12,6 +12,7 @@ from farm.models import (
     Crop,
     Field,
     Location,
+    NoteAttachment,
     PlantingPlan,
     Project,
     ProjectMembership,
@@ -135,17 +136,26 @@ class NoteAttachmentApiTest(DRFAPITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
     @patch('farm.notes.views.process_note_image')
-    def test_attachment_upload_rejects_overlong_caption_before_processing(self, mock_process):
-        upload = SimpleUploadedFile('raw.jpg', b'raw', content_type='image/jpeg')
+    def test_attachment_upload_rejects_invalid_caption_before_processing(self, mock_process):
+        caption_limit = NoteAttachment._meta.get_field('caption').max_length
+        invalid_captions = {
+            'overlong': 'x' * (caption_limit + 1),
+            'overlong after whitespace': f" {'x' * caption_limit}",
+            'null character': 'caption\x00suffix',
+        }
 
-        response = self.client.post(
-            f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
-            {'image': upload, 'caption': 'x' * 256},
-            format='multipart',
-        )
+        for case, caption in invalid_captions.items():
+            with self.subTest(case=case):
+                upload = SimpleUploadedFile('raw.jpg', b'raw', content_type='image/jpeg')
+                response = self.client.post(
+                    f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
+                    {'image': upload, 'caption': caption},
+                    format='multipart',
+                )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('caption', response.data)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('caption', response.data)
+
         mock_process.assert_not_called()
 
 
