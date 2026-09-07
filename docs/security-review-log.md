@@ -40,6 +40,98 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Codex — Full application review after the crop-taxonomy changes
+
+**Scope:** Full backend/frontend review at `3d1c9bc`, including every change in
+`c05a40b..3d1c9bc`. The last full review and remediation were by Codex, so
+unchanged surfaces were re-verified rather than presented as new discoveries.
+The intervening crop-taxonomy, alias-management, public-library UI and
+large-dataset work was authored by Claude and received a genuine independent
+cross-review. The review walked all routed REST and WebSocket endpoints and
+their permission/queryset paths; all `X-Project-Id` and `X-Season-Id`
+resolution and consumption; every tenant-owned relational serializer; account,
+session, OAuth, invitation, API-token and agent-mode flows; the complete public
+Kulturbibliothek 4-case publish/update/proposal/moderation model; both upload
+pipelines, feedback and outbound mail; frontend HTML/markdown/URL and browser
+storage sinks; production settings; and both locked dependency graphs.
+
+**Findings:** No new exploitable code finding was identified.
+
+1. **`CROSS-CONFIRMED` — Claude's 2026-09-07 tenant-boundary findings 1 and
+   2 (import scoping and fail-closed serializer context).** Independently
+   followed both spreadsheet-import create/update branches into
+   `CropSerializer`: each supplies the explicit project context, and media,
+   supplier, selected seed-demand supplier, and supplier-name resolution fail
+   closed if that context is absent or reject a relation owned by another
+   project. The direct CRUD path resolves the same boundary from
+   `request.active_project`. These protections remain present after the
+   taxonomy changes (`backend/farm/services/crop_import/spreadsheet.py:209-227`,
+   `backend/farm/crops/serializers/crops.py:1284-1355`).
+2. **`CROSS-CONFIRMED` — Claude's 2026-09-07 rendering finding 1 (stored
+   markdown XSS controls).** `RichTextViewer` still uses `react-markdown`
+   without raw-HTML support, the shared link renderer supplies
+   `noopener noreferrer`, no production frontend code assigns `innerHTML` or
+   uses `dangerouslySetInnerHTML`, and the regression suite still covers raw
+   tags and unsafe URL schemes
+   (`frontend/src/components/data-grid/RichTextViewer.tsx:62-67`,
+   `frontend/src/components/data-grid/markdownComponents.tsx:8-13`,
+   `frontend/src/__tests__/RichTextViewerSanitization.test.tsx:1-69`).
+3. **`CROSS-CONFIRMED` — Claude's 2026-09-07 tenant review findings 3–7 and
+   reviewed-with-no-findings claims.** Crop/project/history restores remain
+   scoped before lookup; media ownership validation remains enforced; consumed
+   agent-login tokens cannot be replayed; direct lookup and remaining-area
+   parameters are project constrained; snapshot restore only mutates rows in
+   the active project; project tokens and agent sessions remain hard-bound to
+   one project; and season filtering is applied only after project scoping.
+   The central enforcement remains in
+   `backend/farm/project_context.py:68-153` and
+   `backend/farm/common/mixins.py:112-137`.
+4. **`CROSS-CONFIRMED` — Claude-authored changes after `c05a40b` did not
+   reopen the public-library privilege findings fixed by Codex.** Crop-species
+   alias editing is authenticated and moderator-gated at the backend, not only
+   hidden in the UI. Proposal values are validated on submission and again on
+   approval. A moderator may approve ordinary agronomic edits but cannot use a
+   proposal, direct edit, or revision restore to cross the admin-only public
+   variety-identity boundary. The 4-case model continues to pin project-owned
+   source rows to the active project before publish/import work
+   (`backend/crops/views.py:47-104`,
+   `backend/farm/crops/views/public.py:503-539`,
+   `backend/farm/services/public_crops.py:385-478`).
+5. **`OPEN` — Previously deferred operational and dynamic scope remains
+   outside this repository review.** Production-like penetration testing, the
+   sibling `ops` repository (including private-media serving, proxy request
+   limits, TLS, secret storage, backups, and log access/retention), live OAuth
+   tenants, GitHub repository settings, malformed/animated-image fuzzing and
+   aggregate-frame limits, storage quotas, a report-only CSP rollout, and
+   formula neutralization if a server-generated spreadsheet export is added
+   remain open. **Suggested fix:** review these with the deployed topology and
+   repository administrators; add aggregate image-frame/resource limits and a
+   CSP only after compatibility/load testing; neutralize spreadsheet formula
+   prefixes at any future export boundary. No code location exists for the
+   deployment-only decisions or the not-yet-implemented export.
+
+**Reviewed with no additional findings:** all tenant querysets and direct
+lookups preserve project membership as the authorization boundary; writable
+foreign keys cannot move or link rows across projects; default DRF permissions
+remain authenticated and anonymous exceptions are intentional, narrow
+bootstrap/token-display/version/OAuth/public-discussion reads; session writes
+retain CSRF protection; no user-derived SQL structure, unsafe deserialization,
+or dynamic evaluation was found. Uploads remain byte- and pixel-bounded,
+decoded and format-allowlisted, with canonical extensions (and note images are
+re-encoded). User content in captions, discussions, feedback, notifications
+and emails is treated as text or safely rendered markdown; Django rejects
+multiline mail headers. Auth credentials are HttpOnly cookies rather than
+browser storage, and stored browser values are non-secret UI/project context
+or a single-purpose invitation capability. The self-service data export is
+self-scoped and excludes password hashes; recent logging changes remove raw
+email addresses/usernames. Production defaults disable `DEBUG`, reject the
+built-in secret outside debug mode, allowlist hosts/CORS/CSRF origins, and
+enable secure cookies, HTTPS redirect, HSTS, nosniff, referrer and frame
+controls. `npm audit --audit-level=high` and `pip-audit` over the exported PDM
+production lock both reported no known vulnerabilities.
+
+---
+
 ## 2026-09-07 — Codex — Security remediation and continued cross-review
 
 **Scope:** Remediation follow-up to the Codex full backend/frontend cross-review
