@@ -20,8 +20,8 @@ import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import EmptyStateCard from '../project/EmptyStateCard';
 import { CompactAreaCell } from './CompactAreaCell';
 import {
-  collectHierarchyAvailability,
-  filterFieldOptionsByLocation,
+  getAreaHierarchyIndex,
+  type BedWithHierarchy,
 } from './areaHierarchySelection';
 import { formatAreaM2, toNumericValue } from '../../pages/plantingPlansUtils';
 import { TypeaheadSelect as Select } from '../inputs/TypeaheadSelect';
@@ -52,8 +52,6 @@ interface AssignmentState {
   fieldId: number | null;
   bedId: number | null;
 }
-
-type BedWithHierarchy = Bed & { id: number; fieldId: number; locationId: number };
 
 const selectFieldSx = {
   ...fullWidthFieldSx,
@@ -156,59 +154,14 @@ function AreaAssignmentDialogComponent({
   const [triggerFocusRequest, setTriggerFocusRequest] = useState(0);
   const [draft, setDraft] = useState<AssignmentState>({ locationId: null, fieldId: null, bedId: bedId ?? null });
 
-  const fieldsById = useMemo(() => new Map(fields.filter((item) => item.id !== undefined).map((item) => [item.id as number, item])), [fields]);
-
-  const bedsWithLocation = useMemo(
-    () => beds
-      .filter((item): item is Bed & { id: number } => item.id !== undefined)
-      .map((item) => {
-        const relatedField = fieldsById.get(item.field);
-        if (!relatedField || relatedField.id === undefined) {
-          return null;
-        }
-
-        return {
-          ...item,
-          fieldId: relatedField.id,
-          locationId: relatedField.location,
-        };
-      })
-      .filter((item): item is Bed & { id: number; fieldId: number; locationId: number } => item !== null),
-    [beds, fieldsById],
-  );
-
-  const hierarchyAvailability = useMemo(
-    () => collectHierarchyAvailability(fields, bedsWithLocation),
-    [bedsWithLocation, fields],
-  );
-
-  const fieldsByLocationId = useMemo(() => {
-    const grouped = new Map<number, Field[]>();
-    locations
-      .filter((location): location is Location & { id: number } => location.id !== undefined)
-      .forEach((location) => {
-        grouped.set(
-          location.id,
-          filterFieldOptionsByLocation(location.id, fields, hierarchyAvailability.fieldIdsWithBeds),
-        );
-      });
-    return grouped;
-  }, [fields, hierarchyAvailability.fieldIdsWithBeds, locations]);
-
-  const bedsByFieldId = useMemo(() => {
-    const grouped = new Map<number, BedWithHierarchy[]>();
-    bedsWithLocation.forEach((item) => {
-      const list = grouped.get(item.fieldId) ?? [];
-      list.push(item);
-      grouped.set(item.fieldId, list);
-    });
-    return grouped;
-  }, [bedsWithLocation]);
-
-  const selectableLocations = useMemo(
-    () => locations.filter((item) => item.id !== undefined && hierarchyAvailability.locationIdsWithBeds.has(item.id)),
-    [hierarchyAvailability.locationIdsWithBeds, locations],
-  );
+  // Derived once per (locations, fields, beds) identity and shared by every
+  // growing-area cell in the grid — see getAreaHierarchyIndex.
+  const {
+    bedsWithLocation,
+    fieldsByLocationId,
+    bedsByFieldId,
+    selectableLocations,
+  } = useMemo(() => getAreaHierarchyIndex(locations, fields, beds), [beds, fields, locations]);
 
   const hasSingleLocation = selectableLocations.length <= 1;
 

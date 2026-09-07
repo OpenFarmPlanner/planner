@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import type { Bed, Field, Location } from '../api/types';
 import { AreaAssignmentDialog } from '../components/planting-plans/AreaAssignmentDialog';
+import { getAreaHierarchyIndex } from '../components/planting-plans/areaHierarchySelection';
 
 const locations: Location[] = [
   { id: 1, name: 'Regenbogenland' },
@@ -85,6 +86,32 @@ const expectFocusInsideDialog = (): void => {
   expect(active).not.toBeNull();
   expect(getDialog().contains(active)).toBe(true);
 };
+
+describe('getAreaHierarchyIndex', () => {
+  it('derives the growing-area hierarchy once per data set instead of per cell', () => {
+    // Every row of the planting-plan grid renders one AreaAssignmentDialog,
+    // and each of them needs this hierarchy. Rebuilding it per cell made
+    // scrolling a large project (thousands of beds) walk the whole bed list
+    // again for every row that came into view.
+    const first = getAreaHierarchyIndex(locations, fields, beds);
+    const second = getAreaHierarchyIndex(locations, fields, beds);
+
+    expect(second).toBe(first);
+    expect(getAreaHierarchyIndex(locations, fields, [...beds])).not.toBe(first);
+  });
+
+  it('groups beds under their field and hides locations without beds', () => {
+    const { bedsWithLocation, bedsByFieldId, fieldsByLocationId, selectableLocations } =
+      getAreaHierarchyIndex(locations, fields, beds);
+
+    expect(bedsWithLocation.map((bed) => bed.id)).toEqual([101, 102, 201]);
+    expect(bedsWithLocation[0]).toMatchObject({ fieldId: 11, locationId: 1 });
+    expect(bedsByFieldId.get(11)?.map((bed) => bed.id)).toEqual([101]);
+    expect(fieldsByLocationId.get(1)?.map((field) => field.id)).toEqual([11, 12]);
+    // 'Leerstandort' has a field but no beds, so it must not be selectable.
+    expect(selectableLocations.map((location) => location.id)).toEqual([1, 2]);
+  });
+});
 
 describe('AreaAssignmentDialog', () => {
   it('opens on a single click on the cell without a separate edit affordance', async () => {

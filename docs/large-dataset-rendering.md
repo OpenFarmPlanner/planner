@@ -63,3 +63,51 @@ result.
 Development-only diagnostics report total planting plans, total beds, total
 Gantt rows, visible Gantt rows, and rendered timeline items. Production builds
 do not emit these diagnostics.
+
+## Scroll cost in the loaded grid
+
+Loading every page fixed *what* the grid shows; it did not make moving through
+it cheap. Measured on the fixture above (5,000 planting plans, 2,400 beds,
+1440x900, production build), 200 wheel steps through the planting-plan grid
+took 86s of main-thread work — a median of 413ms per frame, i.e. a table that
+visibly lurches rather than scrolls. Three causes, each independent of how
+many rows are loaded:
+
+- **A React render per scroll frame.** `useStableDataGridScrollbar` pushed the
+  scroll container's `scrollTop` into component state on every animation
+  frame, so the whole `EditableDataGrid` — rows, cells, editors, and a `sx`
+  object emotion had to re-serialize — re-rendered dozens of times a second
+  to move a 24px thumb. The thumb's position is now written straight to its
+  DOM node; only values that change rarely (whether the scrollbar exists,
+  how tall the thumb is) still go through state.
+- **Per-cell derivation of shared data.** Every growing-area cell renders an
+  `AreaAssignmentDialog`, and each one rebuilt the location/field/bed
+  hierarchy from the same three arrays on mount — thousands of object
+  allocations for every row scrolled into view. `getAreaHierarchyIndex`
+  (`areaHierarchySelection.ts`) derives it once per array identity and hands
+  the same index to every cell.
+- **A fresh `Intl.NumberFormat` per formatted value.** Constructing one costs
+  far more than formatting with it, and grid cells format on every render;
+  this alone was ~18% of scroll time. `formatLocalizedNumber` now keeps one
+  formatter per (locale, options) pair.
+
+Grid props that were rebuilt on every render (`localeText`, `sx`, the
+selection `Set`, and the footer *component itself*, which React remounted as a
+new type each pass) are memoized for the same reason: MUI hands every grid
+prop to its internal components as one root-props object, so one unstable
+prop re-renders every mounted row.
+
+The same 200-step scroll now takes 8.4s with a median frame of 28ms, and no
+single function dominates the remaining profile.
+
+## Scrollbar geometry at the end of the list
+
+The custom thumb used to overflow past the bottom of its track once the last
+internal page was reached — on a short last page it visibly hung below the
+table. MUI renders the column headers inside `.MuiDataGrid-virtualScroller`,
+so the container's `clientHeight` includes them, while the track is drawn
+below the header; the thumb has to travel the rows-only height. See
+[datagrid-architecture.md](./datagrid-architecture.md) for the rule both
+callers follow. Note the last internal page can legitimately be shorter than
+the viewport (the grid sizes itself to the rows it holds), so the table height
+shrinks there — the thumb still ends flush with the bottom of its track.

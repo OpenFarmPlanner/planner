@@ -194,6 +194,7 @@ function FieldsBedsHierarchy({
   const pendingSameRowEditTargetRef = useRef<{ rowId: GridRowId; field: string } | null>(null);
   const tableWrapperRef = useRef<HTMLDivElement | null>(null);
   const stableScrollbarTrackRef = useRef<HTMLDivElement | null>(null);
+  const stableScrollbarThumbRef = useRef<HTMLDivElement | null>(null);
   const pageContentRef = useRef<HTMLDivElement | null>(null);
   const [highlightedRowId, setHighlightedRowId] = useState<GridRowId | null>(null);
   const highlightClearTimeoutRef = useRef<number | null>(null);
@@ -1533,6 +1534,7 @@ function FieldsBedsHierarchy({
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
     stableScrollbarTrackRef,
+    stableScrollbarThumbRef,
     HEADER_ROW_HEIGHT,
   );
 
@@ -1808,6 +1810,7 @@ function FieldsBedsHierarchy({
             {!isMobileViewport && (
               <StableScrollbarTrack
                 trackRef={stableScrollbarTrackRef}
+                thumbRef={stableScrollbarThumbRef}
                 scrollbar={stableScrollbar}
                 top={HEADER_ROW_HEIGHT}
                 bottom={0}

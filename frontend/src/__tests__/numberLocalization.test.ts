@@ -31,3 +31,28 @@ describe("numberLocalization utilities", () => {
     expect(resolveLocaleFromLanguage("en")).toBe("en-US");
   });
 });
+
+describe('formatLocalizedNumber caching', () => {
+  it('reuses one Intl.NumberFormat per locale and options', () => {
+    // Grid cells format numbers on every render, and constructing a formatter
+    // costs far more than using one — see numberLocalization.ts.
+    const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+    formatLocalizedNumber(0, 'de-DE', options);
+
+    const constructorSpy = vi.spyOn(Intl, 'NumberFormat');
+    try {
+      for (let i = 0; i < 25; i += 1) {
+        expect(formatLocalizedNumber(i, 'de-DE', options)).toContain(',');
+      }
+      expect(constructorSpy).not.toHaveBeenCalled();
+    } finally {
+      constructorSpy.mockRestore();
+    }
+  });
+
+  it('keeps formatters for different options apart', () => {
+    expect(formatLocalizedNumber(1.5, 'de-DE', { minimumFractionDigits: 3 })).toBe('1,500');
+    expect(formatLocalizedNumber(1.5, 'de-DE', { minimumFractionDigits: 1 })).toBe('1,5');
+    expect(formatLocalizedNumber(1.5, 'en-US', { minimumFractionDigits: 1 })).toBe('1.5');
+  });
+});

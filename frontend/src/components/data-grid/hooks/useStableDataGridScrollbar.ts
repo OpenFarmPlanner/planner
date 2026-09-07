@@ -22,11 +22,18 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
  * drives it via scrollTop/ensureRowIndexVisible (crossing page boundaries as
  * needed).
  *
- * `trackRef` is created and attached by the caller (not by this hook) so its
- * identity is a plain component-owned ref the linter can follow — bundling a
- * ref inside this hook's returned object made every other property on that
- * object look like a ref access to eslint-plugin-react-hooks' static
- * analysis.
+ * The thumb's *position* is written straight to `thumbRef`'s inline style
+ * instead of being returned as a rendered value: it changes on every scroll
+ * frame, and a state update per frame re-rendered the whole grid (with all
+ * its rows, cells and editors) just to move one 24px box. Only values that
+ * change rarely — whether the scrollbar exists at all, and how tall the
+ * thumb is — go through React state.
+ *
+ * `trackRef` and `thumbRef` are created and attached by the caller (not by
+ * this hook) so their identity is a plain component-owned ref the linter can
+ * follow — bundling a ref inside this hook's returned object made every other
+ * property on that object look like a ref access to eslint-plugin-react-hooks'
+ * static analysis.
  */
 
 const THUMB_MIN_HEIGHT_PX = 24;
@@ -49,9 +56,14 @@ export interface StableDataGridScrollbar {
   /** False when content fits without scrolling — nothing should render. */
   isActive: boolean;
   thumbHeight: number;
-  thumbTop: number;
   onThumbPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onTrackPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+}
+
+interface ThumbGeometry {
+  pageStartOffset: number;
+  maxGlobalScrollTop: number;
+  thumbTravel: number;
 }
 
 export function useStableDataGridScrollbar(
@@ -60,6 +72,7 @@ export function useStableDataGridScrollbar(
   scrollContainerSelector: string,
   wrapperRef: React.RefObject<HTMLElement | null>,
   trackRef: React.RefObject<HTMLDivElement | null>,
+  thumbRef: React.RefObject<HTMLDivElement | null>,
   headerHeight: number,
 ): StableDataGridScrollbar {
   const totalRowCount = rowHeights.length;
@@ -82,11 +95,53 @@ export function useStableDataGridScrollbar(
   const pageStartOffset = prefixOffsets[Math.min(page * pageSize, totalRowCount)] ?? 0;
 
   const [viewportHeight, setViewportHeight] = useState(0);
-  const [localScrollTop, setLocalScrollTop] = useState(0);
+  // The scroll container's own scrollTop within the currently loaded page.
+  // A ref rather than state: it changes on every scroll frame and only ever
+  // feeds the imperative thumb update below.
+  const localScrollTopRef = useRef(0);
+  const geometryRef = useRef<ThumbGeometry>({
+    pageStartOffset: 0,
+    maxGlobalScrollTop: 0,
+    thumbTravel: 0,
+  });
 
   const getContainer = useCallback((): HTMLElement | null => (
     wrapperRef.current?.querySelector<HTMLElement>(scrollContainerSelector) ?? null
   ), [scrollContainerSelector, wrapperRef]);
+
+  const getGlobalScrollTop = useCallback((): number => (
+    geometryRef.current.pageStartOffset + localScrollTopRef.current
+  ), []);
+
+  const applyThumbPosition = useCallback((): void => {
+    const thumb = thumbRef.current;
+    if (!thumb) {
+      return;
+    }
+    const { maxGlobalScrollTop, thumbTravel } = geometryRef.current;
+    const thumbTop = maxGlobalScrollTop > 0
+      ? (Math.min(getGlobalScrollTop(), maxGlobalScrollTop) / maxGlobalScrollTop) * thumbTravel
+      : 0;
+    thumb.style.transform = `translate3d(0, ${thumbTop}px, 0)`;
+  }, [getGlobalScrollTop, thumbRef]);
+
+  const maxGlobalScrollTop = Math.max(0, totalContentHeight - viewportHeight);
+  const isActive = totalContentHeight > viewportHeight + OVERFLOW_TOLERANCE_PX && viewportHeight > 0;
+
+  const thumbHeight = isActive
+    ? Math.max(THUMB_MIN_HEIGHT_PX, (viewportHeight / totalContentHeight) * viewportHeight)
+    : 0;
+  const thumbTravel = Math.max(0, viewportHeight - thumbHeight);
+
+  // Publish the geometry the imperative updates read, then reposition the
+  // thumb for it. Deliberately runs after every render (no dependency array):
+  // it is a handful of arithmetic operations and two ref writes, and it keeps
+  // the thumb correct after any change — a resize, a page swap, a row added —
+  // without each of those needing its own effect.
+  useLayoutEffect(() => {
+    geometryRef.current = { pageStartOffset, maxGlobalScrollTop, thumbTravel };
+    applyThumbPosition();
+  });
 
   // Re-measures on every page change (not just via the scroll/resize
   // listeners below) because a page transition can move scrollTop
@@ -106,8 +161,15 @@ export function useStableDataGridScrollbar(
       // made the thumb's travel range taller than the track it's drawn in,
       // letting it overflow past the track's bottom edge once scrolled to
       // the very end.
-      setViewportHeight(container ? Math.max(0, container.clientHeight - headerHeight) : 0);
-      setLocalScrollTop(container ? container.scrollTop : 0);
+      localScrollTopRef.current = container ? container.scrollTop : 0;
+      // Only the viewport height goes through state, and only when it really
+      // changed: a scroll event that leaves it untouched must not re-render
+      // the grid.
+      setViewportHeight((currentHeight) => {
+        const nextHeight = container ? Math.max(0, container.clientHeight - headerHeight) : 0;
+        return nextHeight === currentHeight ? currentHeight : nextHeight;
+      });
+      applyThumbPosition();
     };
     measure();
     if (!container) {
@@ -115,12 +177,10 @@ export function useStableDataGridScrollbar(
     }
 
     // A native 'scroll' event can fire far more often than the display can
-    // paint (every pixel of trackpad momentum, dozens of times a second),
-    // and each call here was two setState calls re-rendering the whole
-    // page underneath. Coalescing to one measurement per
-    // animation frame keeps the thumb visually in sync (still every frame)
-    // without redoing that work for events the user could never see
-    // between two paints anyway.
+    // paint (every pixel of trackpad momentum, dozens of times a second).
+    // Coalescing to one measurement per animation frame keeps the thumb
+    // visually in sync (still every frame) without redoing that work for
+    // events the user could never see between two paints anyway.
     let rafId: number | null = null;
     const scheduleMeasure = (): void => {
       if (rafId !== null) {
@@ -146,19 +206,7 @@ export function useStableDataGridScrollbar(
       resizeObserver?.disconnect();
       container.removeEventListener("scroll", scheduleMeasure);
     };
-  }, [getContainer, page, headerHeight]);
-
-  const globalScrollTop = pageStartOffset + localScrollTop;
-  const maxGlobalScrollTop = Math.max(0, totalContentHeight - viewportHeight);
-  const isActive = totalContentHeight > viewportHeight + OVERFLOW_TOLERANCE_PX && viewportHeight > 0;
-
-  const thumbHeight = isActive
-    ? Math.max(THUMB_MIN_HEIGHT_PX, (viewportHeight / totalContentHeight) * viewportHeight)
-    : 0;
-  const thumbTravel = Math.max(0, viewportHeight - thumbHeight);
-  const thumbTop = isActive && maxGlobalScrollTop > 0
-    ? (Math.min(globalScrollTop, maxGlobalScrollTop) / maxGlobalScrollTop) * thumbTravel
-    : 0;
+  }, [applyThumbPosition, getContainer, page, headerHeight]);
 
   // Largest row index whose top offset is <= targetOffset.
   const rowIndexAtOffset = useCallback((targetOffset: number): number => {
@@ -178,6 +226,16 @@ export function useStableDataGridScrollbar(
     return low;
   }, [prefixOffsets, totalRowCount]);
 
+  const setContainerScrollTop = useCallback((localScrollTop: number): void => {
+    const container = getContainer();
+    if (!container) {
+      return;
+    }
+    container.scrollTop = localScrollTop;
+    localScrollTopRef.current = container.scrollTop;
+    applyThumbPosition();
+  }, [applyThumbPosition, getContainer]);
+
   // Set by scrollToGlobalOffset right before it triggers a page change, and
   // consumed by the effect below once that page's container is on screen —
   // mirrors the pendingResetRef pattern in useScrollDrivenRowWindow, but for an
@@ -187,21 +245,13 @@ export function useStableDataGridScrollbar(
     if (pendingGlobalOffsetRef.current === null) {
       return;
     }
-    const container = getContainer();
     const target = pendingGlobalOffsetRef.current;
     pendingGlobalOffsetRef.current = null;
-    const applyPendingScroll = (): void => {
-      if (!container) {
-        return;
-      }
-      container.scrollTop = target - pageStartOffset;
-      setLocalScrollTop(container.scrollTop);
-    };
-    applyPendingScroll();
-  }, [page, getContainer, pageStartOffset]);
+    setContainerScrollTop(target - pageStartOffset);
+  }, [page, pageStartOffset, setContainerScrollTop]);
 
   const scrollToGlobalOffset = useCallback((targetOffset: number): void => {
-    const clamped = Math.min(Math.max(0, targetOffset), maxGlobalScrollTop);
+    const clamped = Math.min(Math.max(0, targetOffset), geometryRef.current.maxGlobalScrollTop);
     const targetRowIndex = rowIndexAtOffset(clamped);
     const targetPage = Math.floor(targetRowIndex / pageSize);
     if (targetPage !== page) {
@@ -209,32 +259,29 @@ export function useStableDataGridScrollbar(
       ensureRowIndexVisible(targetRowIndex);
       return;
     }
-    const container = getContainer();
-    if (container) {
-      container.scrollTop = clamped - pageStartOffset;
-      setLocalScrollTop(container.scrollTop);
-    }
-  }, [ensureRowIndexVisible, getContainer, maxGlobalScrollTop, page, pageSize, pageStartOffset, rowIndexAtOffset]);
+    setContainerScrollTop(clamped - geometryRef.current.pageStartOffset);
+  }, [ensureRowIndexVisible, page, pageSize, rowIndexAtOffset, setContainerScrollTop]);
 
   const onThumbPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (thumbTravel <= 0) {
+    const { thumbTravel: travel, maxGlobalScrollTop: maxOffset } = geometryRef.current;
+    if (travel <= 0) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     const startClientY = event.clientY;
-    const startGlobalScrollTop = globalScrollTop;
+    const startGlobalScrollTop = getGlobalScrollTop();
     event.currentTarget.setPointerCapture(event.pointerId);
 
     // Dragging can emit pointermove far faster than the display repaints -
     // coalesce to the latest position once per animation frame instead of
-    // calling scrollToGlobalOffset (a setState) for every single event.
+    // calling scrollToGlobalOffset for every single event.
     let rafId: number | null = null;
     let latestClientY = startClientY;
     const applyLatestMove = (): void => {
       rafId = null;
-      const deltaRatio = (latestClientY - startClientY) / thumbTravel;
-      scrollToGlobalOffset(startGlobalScrollTop + deltaRatio * maxGlobalScrollTop);
+      const deltaRatio = (latestClientY - startClientY) / travel;
+      scrollToGlobalOffset(startGlobalScrollTop + deltaRatio * maxOffset);
     };
     const handleMove = (moveEvent: PointerEvent): void => {
       latestClientY = moveEvent.clientY;
@@ -251,7 +298,7 @@ export function useStableDataGridScrollbar(
     };
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
-  }, [globalScrollTop, maxGlobalScrollTop, scrollToGlobalOffset, thumbTravel]);
+  }, [getGlobalScrollTop, scrollToGlobalOffset]);
 
   const onTrackPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const track = trackRef.current;
@@ -266,8 +313,7 @@ export function useStableDataGridScrollbar(
   return useMemo(() => ({
     isActive,
     thumbHeight,
-    thumbTop,
     onThumbPointerDown,
     onTrackPointerDown,
-  }), [isActive, thumbHeight, thumbTop, onThumbPointerDown, onTrackPointerDown]);
+  }), [isActive, thumbHeight, onThumbPointerDown, onTrackPointerDown]);
 }

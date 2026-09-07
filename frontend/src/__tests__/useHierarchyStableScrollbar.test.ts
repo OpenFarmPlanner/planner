@@ -33,8 +33,22 @@ function setUpDom() {
   // @ts-expect-error -- assigning to a readonly ref for test setup, same pattern used elsewhere in this suite.
   wrapperRef.current = wrapper;
   const trackRef = createRef<HTMLDivElement>();
+  // The hook moves the thumb by writing its inline transform (rather than
+  // re-rendering the grid on every scroll frame), so the tests need a real
+  // element to read that position back from.
+  const thumb = document.createElement('div');
+  wrapper.appendChild(thumb);
+  const thumbRef = createRef<HTMLDivElement>();
+  // @ts-expect-error -- assigning to a readonly ref for test setup, same pattern used elsewhere in this suite.
+  thumbRef.current = thumb;
 
-  return { wrapper, container, wrapperRef, trackRef };
+  return { wrapper, container, wrapperRef, trackRef, thumbRef, thumb };
+}
+
+/** Vertical offset the hook wrote onto the thumb, in px. */
+function readThumbTop(thumb: HTMLElement): number {
+  const match = /translate3d\([^,]+,\s*(-?[\d.]+)px/.exec(thumb.style.transform);
+  return match ? Number(match[1]) : 0;
 }
 
 function makeRowWindow(
@@ -61,12 +75,12 @@ describe('useHierarchyStableScrollbar', () => {
   });
 
   it('sizes the thumb from the total row count, not just the loaded page', () => {
-    const { container, wrapperRef, trackRef } = setUpDom();
+    const { container, wrapperRef, trackRef, thumbRef } = setUpDom();
     container.scrollTop = 0;
     const rowHeights = Array.from({ length: 300 }, () => ROW_HEIGHT); // 9000px total
 
     const { result } = renderHook(() => (
-      useHierarchyStableScrollbar(rowHeights, makeRowWindow(), SELECTOR, wrapperRef, trackRef, 0)
+      useHierarchyStableScrollbar(rowHeights, makeRowWindow(), SELECTOR, wrapperRef, trackRef, thumbRef, 0)
     ));
 
     // total content (9000) vs viewport (500) => thumb covers ~5.5% of the track.
@@ -76,11 +90,11 @@ describe('useHierarchyStableScrollbar', () => {
   });
 
   it('is inactive when all rows already fit within the viewport', () => {
-    const { wrapperRef, trackRef } = setUpDom();
+    const { wrapperRef, trackRef, thumbRef } = setUpDom();
     const rowHeights = Array.from({ length: 5 }, () => ROW_HEIGHT); // 150px total, fits in 500px viewport
 
     const { result } = renderHook(() => (
-      useHierarchyStableScrollbar(rowHeights, makeRowWindow({ pageCount: 1 }), SELECTOR, wrapperRef, trackRef, 0)
+      useHierarchyStableScrollbar(rowHeights, makeRowWindow({ pageCount: 1 }), SELECTOR, wrapperRef, trackRef, thumbRef, 0)
     ));
 
     expect(result.current.isActive).toBe(false);
@@ -88,16 +102,16 @@ describe('useHierarchyStableScrollbar', () => {
   });
 
   it('keeps the thumb position continuous across a page transition instead of resetting', () => {
-    const { container, wrapperRef, trackRef } = setUpDom();
+    const { container, wrapperRef, trackRef, thumbRef, thumb } = setUpDom();
     const rowHeights = Array.from({ length: 300 }, () => ROW_HEIGHT); // 9000px total, 3 pages of 100
 
     // Near the bottom edge of page 0 (rows 0..99, local height 3000px).
     container.scrollTop = 2900;
-    const { result, rerender } = renderHook(
-      ({ page }) => useHierarchyStableScrollbar(rowHeights, makeRowWindow({ page }), SELECTOR, wrapperRef, trackRef, 0),
+    const { rerender } = renderHook(
+      ({ page }) => useHierarchyStableScrollbar(rowHeights, makeRowWindow({ page }), SELECTOR, wrapperRef, trackRef, thumbRef, 0),
       { initialProps: { page: 0 } },
     );
-    const thumbTopBeforeTransition = result.current.thumbTop;
+    const thumbTopBeforeTransition = readThumbTop(thumb);
 
     // Simulate useHierarchyRowWindow's page transition: it advances the page
     // and resets the container's local scrollTop near the new page's top
@@ -105,7 +119,7 @@ describe('useHierarchyStableScrollbar', () => {
     // same order in which the real effect and this hook's effect would run.
     container.scrollTop = 56;
     rerender({ page: 1 });
-    const thumbTopAfterTransition = result.current.thumbTop;
+    const thumbTopAfterTransition = readThumbTop(thumb);
 
     // The global position barely moved (2900 -> 3056 out of 8500 possible),
     // so the thumb should have moved only slightly, not snapped back toward
@@ -114,13 +128,13 @@ describe('useHierarchyStableScrollbar', () => {
   });
 
   it('dragging the thumb across a page boundary calls ensureRowIndexVisible for the target row', async () => {
-    const { container, wrapperRef, trackRef } = setUpDom();
+    const { container, wrapperRef, trackRef, thumbRef } = setUpDom();
     const rowHeights = Array.from({ length: 300 }, () => ROW_HEIGHT); // 9000px total
     container.scrollTop = 0;
     const ensureRowIndexVisible = vi.fn(() => true);
 
     const { result } = renderHook(() => (
-      useHierarchyStableScrollbar(rowHeights, makeRowWindow({ ensureRowIndexVisible }), SELECTOR, wrapperRef, trackRef, 0)
+      useHierarchyStableScrollbar(rowHeights, makeRowWindow({ ensureRowIndexVisible }), SELECTOR, wrapperRef, trackRef, thumbRef, 0)
     ));
 
     const thumbTravel = CLIENT_HEIGHT - result.current.thumbHeight;
@@ -153,6 +167,33 @@ describe('useHierarchyStableScrollbar', () => {
     expect(targetRowIndex * ROW_HEIGHT).toBeCloseTo(maxGlobalScrollTop, -2);
   });
 
+  it('moves the thumb on scroll without re-rendering its consumer', async () => {
+    // Every scroll frame used to push the container's scrollTop into React
+    // state, re-rendering the whole grid (rows, cells, editors) just to move
+    // a 24px box — the main reason scrolling large tables felt sluggish. The
+    // position is written to the thumb's inline style instead, so a scroll
+    // must move the thumb without producing a single extra render.
+    const { container, wrapperRef, trackRef, thumbRef, thumb } = setUpDom();
+    const rowHeights = Array.from({ length: 300 }, () => ROW_HEIGHT); // 9000px total
+    container.scrollTop = 0;
+
+    let renderCount = 0;
+    renderHook(() => {
+      renderCount += 1;
+      return useHierarchyStableScrollbar(rowHeights, makeRowWindow(), SELECTOR, wrapperRef, trackRef, thumbRef, 0);
+    });
+
+    const rendersAfterMount = renderCount;
+    expect(readThumbTop(thumb)).toBe(0);
+
+    container.scrollTop = 1500;
+    container.dispatchEvent(new Event('scroll'));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    expect(readThumbTop(thumb)).toBeGreaterThan(0);
+    expect(renderCount).toBe(rendersAfterMount);
+  });
+
   it('keeps the thumb within the rows-only viewport when clientHeight includes a header', () => {
     // MUI renders the column header row *inside* .MuiDataGrid-virtualScroller
     // (as a sticky top element), so container.clientHeight covers the header
@@ -162,15 +203,15 @@ describe('useHierarchyStableScrollbar', () => {
     // taller than the track and overflows past its bottom edge once scrolled
     // to the very end.
     const HEADER_HEIGHT = 40;
-    const { container, wrapperRef, trackRef } = setUpDom();
+    const { container, wrapperRef, trackRef, thumbRef, thumb } = setUpDom();
     const rowHeights = Array.from({ length: 300 }, () => ROW_HEIGHT); // 9000px total
     container.scrollTop = 9000 - CLIENT_HEIGHT; // scrolled all the way to the end
 
     const { result } = renderHook(() => (
-      useHierarchyStableScrollbar(rowHeights, makeRowWindow(), SELECTOR, wrapperRef, trackRef, HEADER_HEIGHT)
+      useHierarchyStableScrollbar(rowHeights, makeRowWindow(), SELECTOR, wrapperRef, trackRef, thumbRef, HEADER_HEIGHT)
     ));
 
     const rowsOnlyViewport = CLIENT_HEIGHT - HEADER_HEIGHT;
-    expect(result.current.thumbTop + result.current.thumbHeight).toBeLessThanOrEqual(rowsOnlyViewport + 0.01);
+    expect(readThumbTop(thumb) + result.current.thumbHeight).toBeLessThanOrEqual(rowsOnlyViewport + 0.01);
   });
 });

@@ -16,6 +16,11 @@ import type { StableDataGridScrollbar } from './hooks/useStableDataGridScrollbar
 
 export interface StableScrollbarTrackProps {
   trackRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * Attached to the thumb so the hook can move it directly, without a React
+   * render per scroll frame — see useStableDataGridScrollbar.
+   */
+  thumbRef: React.RefObject<HTMLDivElement | null>;
   scrollbar: StableDataGridScrollbar;
   top: number | string;
   bottom: number | string;
@@ -33,6 +38,7 @@ export interface StableScrollbarTrackProps {
 
 export function StableScrollbarTrack({
   trackRef,
+  thumbRef,
   scrollbar,
   top,
   bottom,
@@ -59,11 +65,14 @@ export function StableScrollbarTrack({
       }}
     >
       <Box
+        ref={thumbRef}
         data-testid={thumbTestId}
         onPointerDown={scrollbar.onThumbPointerDown}
         sx={{
           position: 'absolute',
-          top: `${scrollbar.thumbTop}px`,
+          // `top` stays 0; the vertical position is a transform written by
+          // useStableDataGridScrollbar on every scroll frame.
+          top: 0,
           height: `${scrollbar.thumbHeight}px`,
           left: '2px',
           right: '2px',

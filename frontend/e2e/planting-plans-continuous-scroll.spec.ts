@@ -196,6 +196,34 @@ test.describe('planting plans continuous scroll', () => {
     }).toBeGreaterThan(beforeScroll.scrollTopAfterScrollAttempt);
   });
 
+  test('keeps the scrollbar thumb inside its track after scrolling to the last internal page', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    // More than the 100-row internal page size, so the end of the list is a
+    // short last page — where the thumb used to overflow past the bottom of
+    // its track by the height of the column header row.
+    await createPlantingPlanFixtures(page, request, 'planting-plans-end-of-list', 120);
+
+    await page.goto('/app/planting-plans');
+    await expect(page.getByText('Scrollkultur (Sorte A)').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('continuous-scrollbar-thumb')).toBeVisible();
+
+    await page.locator('.MuiDataGrid-virtualScroller').first().hover();
+    await expect.poll(async () => {
+      await page.mouse.wheel(0, 1200);
+      return page.evaluate(() => {
+        const rows = document.querySelectorAll('.MuiDataGrid-row');
+        return rows[rows.length - 1]?.getAttribute('data-rowindex') ?? null;
+      });
+    }, { timeout: 20_000 }).toBe('119');
+
+    const track = await page.getByTestId('continuous-scrollbar-track').boundingBox();
+    const thumb = await page.getByTestId('continuous-scrollbar-thumb').boundingBox();
+    expect(track).not.toBeNull();
+    expect(thumb).not.toBeNull();
+    expect(thumb!.y).toBeGreaterThanOrEqual(track!.y - 1);
+    expect(thumb!.y + thumb!.height).toBeLessThanOrEqual(track!.y + track!.height + 1);
+  });
+
   test('keeps the vertical scrollbar track on-screen after scrolling horizontally on a narrow viewport', async ({ page, request }) => {
     const viewportWidth = 1000;
     await page.setViewportSize({ width: viewportWidth, height: 900 });
