@@ -1,4 +1,18 @@
 import { type Task, ViewMode } from "../types";
+import { packIntoNonOverlappingRows } from "../utils/rowPacking";
+
+const MILLISECONDS_PER_MINUTE = 60_000;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+
+function hasValidTaskDates(task: Task): boolean {
+  return (
+    task.startDate instanceof Date &&
+    task.endDate instanceof Date &&
+    !Number.isNaN(task.startDate.getTime()) &&
+    !Number.isNaN(task.endDate.getTime())
+  );
+}
 
 /**
  * Service for detecting and resolving task collisions/overlaps
@@ -23,33 +37,12 @@ export class CollisionService {
       return a.startDate.getTime() - b.startDate.getTime();
     });
 
-    const rows: Task[][] = [];
-
-    sortedTasks.forEach((task) => {
-      let placed = false;
-
-      // Check each existing row for collisions
-      for (let i = 0; i < rows.length; i++) {
-        // A task can be placed in this row if it doesn't overlap with ANY task in the row
-        const hasCollision = rows[i].some((existingTask) => {
-          return this.tasksVisuallyOverlap(task, existingTask, viewMode);
-        });
-
-        // If no collision in this row, place the task here
-        if (!hasCollision) {
-          rows[i].push(task);
-          placed = true;
-          break;
-        }
-      }
-
-      // If task couldn't be placed in any existing row, create a new row
-      if (!placed) {
-        rows.push([task]);
-      }
-    });
-
-    return rows;
+    return packIntoNonOverlappingRows(
+      sortedTasks,
+      hasValidTaskDates,
+      (task, existingTask) =>
+        this.tasksVisuallyOverlap(task, existingTask, viewMode),
+    );
   }
 
   /**
@@ -96,15 +89,14 @@ export class CollisionService {
    */
   private static getCollisionBufferByViewMode(viewMode: ViewMode): number {
     // Define buffers in milliseconds
-    const minute = 60 * 1000;
-    const hour = 3600 * 1000;
-    const day = 24 * hour;
+    const hour = MINUTES_PER_HOUR * MILLISECONDS_PER_MINUTE;
+    const day = HOURS_PER_DAY * hour;
 
     switch (viewMode) {
       case ViewMode.MINUTE:
-        return minute / 2; // 30 seconds buffer for minute view
+        return MILLISECONDS_PER_MINUTE / 2; // 30 seconds buffer for minute view
       case ViewMode.HOUR:
-        return minute * 15; // 15 minutes buffer for hour view
+        return MILLISECONDS_PER_MINUTE * 15; // 15 minutes buffer for hour view
       case ViewMode.DAY:
         return hour; // 1 hour buffer for day view
       case ViewMode.WEEK:

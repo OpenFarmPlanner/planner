@@ -7,12 +7,12 @@ import type { ExportOptions, ExportFormat } from "../../types";
 export interface ExportButtonProps {
   /**
    * Export function to call when button is clicked.
-   * Signature: (filename?: string, options?: ExportOptions) => Promise<any>
+   * Resolves with the exporter-specific result after the export has finished.
    */
   onExport: (
     filename?: string,
     options?: Omit<ExportOptions, "format" | "filename">,
-  ) => Promise<any>;
+  ) => Promise<unknown>;
 
   /**
    * Export format
@@ -115,7 +115,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 }) => {
   const [isExporting, setIsExporting] = React.useState(false);
 
-  const handleExport = async () => {
+  const handleExport = async (): Promise<void> => {
     if (disabled || isExporting || loading) return;
 
     setIsExporting(true);
