@@ -46,7 +46,11 @@ class SerializerBranchCoverageTest(TestCase):
                 'harvest_duration_days': 2,
                 'harvest_method': 'per_sqm',
                 'supplier_name': '  ACME Seeds GmbH ',
-            }
+            },
+            # Outside a request cycle the project has to come from the context;
+            # the serializer refuses to guess one (see
+            # test_crop_serializer_refuses_supplier_name_without_project).
+            context={'project': self.project},
         )
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
@@ -56,6 +60,47 @@ class SerializerBranchCoverageTest(TestCase):
         self.assertIsNotNone(crop.supplier)
         self.assertEqual(crop.supplier.name_normalized, 'acme seeds')
         self.assertEqual(Supplier.objects.count(), 1)
+        self.assertEqual(crop.supplier.project_id, self.project.id)
+
+    def test_crop_serializer_refuses_supplier_name_without_project(self):
+        """An unresolvable project must fail, not invent a project to own the supplier."""
+        serializer = CropSerializer(
+            data={
+                'name': 'Salat',
+                'variety': 'Ohne Projekt',
+                'growth_duration_days': 6,
+                'harvest_duration_days': 2,
+                'harvest_method': 'per_sqm',
+                'supplier_name': 'ACME Seeds GmbH',
+            }
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('supplier_name', serializer.errors)
+        self.assertEqual(Supplier.objects.count(), 0)
+
+    def test_crop_serializer_refuses_relations_when_project_unresolved(self):
+        """Without a project the cross-project checks cannot run, so they must reject."""
+        other_project = Project.objects.create(name='Other', slug='other-scope-check')
+        other_supplier = Supplier.objects.create(
+            name='Other Supplier',
+            homepage_url='https://other-supplier.example',
+            project=other_project,
+        )
+
+        serializer = CropSerializer(
+            data={
+                'name': 'Salat',
+                'variety': 'Fremd',
+                'growth_duration_days': 6,
+                'harvest_duration_days': 2,
+                'harvest_method': 'per_sqm',
+                'supplier_id': other_supplier.id,
+            }
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('supplier', serializer.errors)
 
 
     def test_crop_serializer_allows_harvest_duration_without_harvest_method(self):

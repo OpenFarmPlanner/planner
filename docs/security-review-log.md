@@ -40,6 +40,127 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Claude — Tenant boundary cross-review (first cross-review under the protocol)
+
+**Scope:** Cross-review of the 2026-09-05 Codex baseline's tenant-boundary
+claims, plus areas that entry did not name. Reviewed at `c05a40b`:
+
+- project resolution and the `ProjectScopedMixin` queryset/`initial()` contract;
+- history: project restore, global/crop restore, batch revert, row recreation;
+- project membership, invitation, and role endpoints;
+- the crop import surfaces (crops-page spreadsheet import and the agent-API
+  draft flow), media/upload handling, note attachments;
+- project-bound API tokens (authenticator, surface middleware, scopes) and
+  agent-mode sessions;
+- WebSocket consumers and their group derivation;
+- `accounts`: social-login account linking, activation/password-reset/email
+  change, the personal data export, guest demo sessions;
+- the public crop library (publish/import, species proposals, moderator
+  requests, discussions) and seasons/`X-Season-Id`;
+- frontend raw-HTML sinks, `href` sinks, and client-side storage.
+
+Method: independent re-derivation from the code, not verification of the prior
+write-up. Two of the three scope areas were reviewed by parallel subagents and
+their findings re-verified here before any change. The one confirmed finding
+was reproduced with a failing test first, and the fix is in this same change.
+
+**Findings:**
+
+1. **`FIXED` — Cross-project media and supplier references via the crops-page
+   spreadsheet import (high).** The 2026-09-05 fix for cross-project media
+   (that entry, finding 2) lives in `CropSerializer._validate_supplier_consistency`,
+   and every check there was written as `if project is not None and …`. The
+   project is resolved from the request context or a bound instance;
+   `apply_crop_import` built `CropSerializer(data=crop_data)` with neither on
+   its create branch, so `project` resolved to `None` and all three
+   cross-project guards were skipped. `image_file_id`, `supplier_id`, and
+   `selected_seed_demand_supplier` accept ids from the whole deployment, so any
+   member of project A could `POST /api/crops/import/apply/` with project B's
+   ids, then read back B's supplier record and — via the persisted
+   `image_file.storage_path`, the only unguessable part of a `/media/` URL —
+   B's uploaded images. Ids are sequential integers, so enumeration is trivial.
+   `POST /api/crops/` rejected the identical payload; only the import route was
+   affected, and the update branch was safe because its bound instance supplied
+   the project.
+   Fixed in three layers: the import service now passes
+   `context={'project': project}` on both branches;
+   `_resolve_active_project_from_serializer` and the serializer's own
+   `_resolve_project` both honour that context key (they had diverged, which is
+   what let one of them silently return `None`); and the cross-project check now
+   **fails closed** — an unresolvable project rejects the relation with
+   `project_scope_unresolved` instead of skipping the comparison, so a future
+   caller that forgets the context fails loudly rather than unguarded.
+   Regression tests: `CropImportProjectBoundaryTest` in
+   `farm/tests/test_crop_imports_api.py` (foreign media, supplier, and
+   seed-demand supplier all rejected; own-project references still accepted).
+2. **`FIXED` — `supplier_name` import silently wrote into the legacy bootstrap
+   project (medium).** Surfaced by finding 1's fix. When the project could not
+   be resolved, `_resolve_supplier_from_name` called `get_or_create` on the
+   pre-multi-tenancy bootstrap project (slug `gelawi-zwiebelzopf`, from
+   migrations 0047/0051), created the supplier there, and attached it to the
+   crop — manufacturing exactly the cross-tenant supplier reference the
+   validators exist to prevent, and resurrecting that project if it had been
+   removed. It now raises `project_scope_unresolved` instead. Predates this
+   change; fixed here because it is the same unresolved-project root cause.
+   Regression test: `test_crop_serializer_refuses_supplier_name_without_project`.
+3. **`CROSS-CONFIRMED` — 2026-09-05 Codex, finding 1 (cross-project crop
+   restore).** Independently re-derived: `GlobalHistoryRestoreView` constrains
+   both the revision and the crop to `active_project`, `ProjectHistoryRestoreView`
+   and `BatchOperationRevertView` do the same and additionally require project
+   admin. Confirmed still holding by Claude on 2026-09-07.
+4. **`CROSS-CONFIRMED` — 2026-09-05 Codex, finding 2 (cross-project media
+   references).** The fix holds on the path it was written for
+   (`POST`/`PATCH /api/crops/`), verified by test. It did **not** cover the
+   import path — see finding 1 above, which is the same defect reached through a
+   different caller. Confirmed by Claude on 2026-09-07.
+5. **`CROSS-CONFIRMED` — 2026-09-05 Codex, finding 3 (raw-HTML Gantt sink).**
+   The frontend now contains no `dangerouslySetInnerHTML` or `innerHTML`
+   assignment at all. The two `href` sinks that do render stored user input
+   (`CropDetail.tsx` supplier product URL, `Suppliers.tsx` homepage URL) are
+   backed by server-side scheme validation, so no `javascript:` URL can be
+   stored. Confirmed by Claude on 2026-09-07.
+6. **`CROSS-CONFIRMED` — 2026-04-02 Codex, findings 1, 2 and 4 (agent login
+   token replay, unscoped direct lookups, `remaining-area` probing).** The
+   `used_at` replay check, the project filters on the named views, and the
+   `bed_id`/`exclude_plan_id` ownership checks in `remaining_area` are all
+   present. Confirmed by Claude on 2026-09-07.
+7. **`CROSS-CONFIRMED` — 2026-04-03 Codex, finding 1 (project snapshot/restore
+   scoping).** `_restore_project_state_at` filters deletes and updates by
+   `project`, reassigns `project_id` on recreated rows, and its bulk insert uses
+   plain `bulk_create` with conflicts skipped (no `update_conflicts`), so a
+   stale snapshot cannot overwrite a row that now belongs elsewhere. Confirmed
+   by Claude on 2026-09-07.
+8. **`OPEN` — Deferred scope from the 2026-09-05 baseline (finding 8) and the
+   2026-08-30 entry (finding 2).** Unchanged and still not covered: the `ops`
+   repository, dynamic penetration testing, GitHub repository settings, real
+   OAuth tenants, fuzzing/quotas, the report-only CSP rollout, and
+   formula-injection neutralization for any future server-generated CSV/XLSX
+   export. Re-checked that no server-generated spreadsheet export exists yet —
+   the personal data export is JSON, so the formula-injection item remains
+   forward-looking rather than a present defect.
+
+**Reviewed with no findings:** API-token authentication and its deny-by-default
+surface middleware (membership is re-checked per request; the middleware's
+credential detection is deliberately broader than the authenticator's, so it
+cannot be slipped past); WebSocket consumers (groups derived from the
+authenticated user, payloads carry only invalidation ids); social-login linking
+(auto-link requires provider-verified *and* locally verified email, so nOAuth-style
+takeover is blocked, and unverified providers cannot pre-empt an address);
+seasons and `X-Season-Id` (applied after the project filter, never as an
+authorization token); the public crop library's publish/import/moderation
+paths and discussions; the personal data export (hand-picked account fields, no
+password hash; invitations filtered to the requester's own involvement); guest
+demo sessions (unusable password, blocked from linking and from ~17 write
+surfaces); and the crops-page href sinks noted in finding 5.
+
+**Non-security observations, not tracked here:** several `get_image_file`
+methods reference a field their model does not have (dead code), and
+`restore_crop_from_revision` compares snapshot keys in `attname` form against
+`field.name`, so FKs are never restored — a correctness bug that happens to
+fail safe. Both are outside this change's scope and are reported separately.
+
+---
+
 ## 2026-09-07 — Claude — Log bootstrap (not a review)
 
 **Scope:** `docs/security-review-log.md`, `CLAUDE.md`, `docs/index.md`.

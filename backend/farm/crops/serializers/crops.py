@@ -21,7 +21,6 @@ from farm.models import (
     Crop,
     CropSupplierData,
     MediaFile,
-    Project,
     PublicCrop,
     SeedPackage,
     Supplier,
@@ -851,16 +850,27 @@ class CropSerializer(serializers.ModelSerializer):
             if project is None and self.instance is not None:
                 project = self.instance.project
             if project is None:
-                request = self.context.get('request')
-                project = getattr(request, 'active_project', None)
+                project = self._project_from_context()
             return project
         if project is None:
-            request = self.context.get('request')
-            if request is not None:
-                project = getattr(request, 'active_project', None)
+            project = self._project_from_context()
         if project is None and self.instance is not None:
             project = self.instance.project
         return project
+
+    def _project_from_context(self):
+        """Return the caller-supplied project: the request's, or an explicit one.
+
+        Services running outside a request cycle pass
+        `context={'project': project}` — the same contract
+        `_resolve_active_project_from_serializer` honours, so both resolvers in
+        this serializer agree on what the active project is.
+        """
+        request = self.context.get('request')
+        active_project = getattr(request, 'active_project', None)
+        if active_project is not None:
+            return active_project
+        return self.context.get('project')
 
     def _validate_name_and_duplicates(self, attrs, errors) -> bool:
         """Require a name and reject duplicate crop identities per project.
@@ -1272,10 +1282,16 @@ class CropSerializer(serializers.ModelSerializer):
             return
         from farm.utils import normalize_supplier_name
         project = self._resolve_project(attrs, instance_first=True)
+        # No project means no tenant to own the supplier. This used to fall
+        # back to re-creating the pre-multi-tenancy bootstrap project
+        # (`gelawi-zwiebelzopf`, see migrations 0047/0051) and put the supplier
+        # there, which silently gave the crop a supplier owned by a different
+        # project — the same cross-tenant reference the validators below exist
+        # to prevent. Callers outside a request cycle pass
+        # `context={'project': project}` instead.
         if project is None:
-            project, _ = Project.objects.get_or_create(
-                slug='gelawi-zwiebelzopf',
-                defaults={'name': 'Gelawi Zwiebelzopf', 'description': '', 'is_active': True},
+            raise serializers.ValidationError(
+                {'supplier_name': 'project_scope_unresolved'}
             )
         normalized = normalize_supplier_name(supplier_name) or ''
         try:
@@ -1310,16 +1326,32 @@ class CropSerializer(serializers.ModelSerializer):
             'image_file',
             getattr(self.instance, 'image_file', None) if self.instance else None,
         )
-        if project is not None and image_file is not None and image_file.project_id != project.id:
-            errors['image_file_id'] = 'image_file_project_mismatch'
-        if project is not None and supplier is not None and supplier.project_id != project.id:
-            errors['supplier'] = 'supplier_project_mismatch'
         selected_supplier = attrs.get(
             'selected_seed_demand_supplier',
             getattr(self.instance, 'selected_seed_demand_supplier', None) if self.instance else None,
         )
-        if project is not None and selected_supplier is not None and selected_supplier.project_id != project.id:
-            errors['selected_seed_demand_supplier'] = 'selected_supplier_project_mismatch'
+        # These three fields accept any id in the deployment, so the project
+        # comparison below is the only thing keeping a caller from pointing a
+        # crop at another tenant's supplier or upload. If the project cannot be
+        # resolved the comparison cannot run, and skipping it would silently
+        # hand out exactly that: refuse instead, so a caller that forgets the
+        # request/project context fails loudly rather than unguarded.
+        scoped_relations = (
+            ('image_file_id', image_file, 'image_file_project_mismatch'),
+            ('supplier', supplier, 'supplier_project_mismatch'),
+            (
+                'selected_seed_demand_supplier',
+                selected_supplier,
+                'selected_supplier_project_mismatch',
+            ),
+        )
+        for field_name, value, mismatch_code in scoped_relations:
+            if value is None:
+                continue
+            if project is None:
+                errors[field_name] = 'project_scope_unresolved'
+            elif value.project_id != project.id:
+                errors[field_name] = mismatch_code
         supplier_product_url = attrs.get(
             'supplier_product_url',
             getattr(self.instance, 'supplier_product_url', None) if self.instance else None,

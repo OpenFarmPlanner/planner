@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase as DRFAPITestCase
 
 from farm.models import (
     Crop,
+    MediaFile,
     Project,
     ProjectMembership,
     Supplier,
@@ -255,3 +256,106 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.data['created_count'], 1)
         self.assertEqual(response.data['updated_count'], 1)
         self.assertEqual(response.data['skipped_count'], 0)
+
+
+class CropImportProjectBoundaryTest(DRFAPITestCase):
+    """The import endpoints must not accept references from another project.
+
+    `/api/crops/` already rejects a foreign `image_file_id`/`supplier_id`; the
+    import route reaches the same serializer on a different path, so it needs
+    its own coverage or the two can drift apart.
+    """
+
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            username='importboundary', email='import-boundary@example.com',
+            password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Attacker Project', slug='attacker-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+
+        self.other_project = Project.objects.create(name='Victim Project', slug='victim-project')
+        self.other_supplier = Supplier.objects.create(
+            name='Victim Supplier',
+            homepage_url='https://victim-supplier.example',
+            project=self.other_project,
+        )
+        self.other_media = MediaFile.objects.create(
+            project=self.other_project,
+            storage_path='crop-media/victim/secret.jpg',
+        )
+
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+
+    def _apply(self, item: dict) -> object:
+        return self.client.post(
+            '/openfarmplanner/api/crops/import/apply/',
+            {'items': [item], 'confirm_updates': True},
+            format='json',
+        )
+
+    def _base_item(self) -> dict:
+        return {
+            'name': 'Boundary Probe',
+            'variety': 'Cross Project',
+            'growth_duration_days': 50,
+            'harvest_duration_days': 20,
+            'harvest_method': 'per_plant',
+        }
+
+    def test_import_apply_rejects_media_file_from_other_project(self) -> None:
+        response = self._apply({**self._base_item(), 'image_file_id': self.other_media.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertEqual(len(response.data['errors']), 1)
+        self.assertIn('image_file_id', response.data['errors'][0]['error'])
+        self.assertFalse(
+            Crop.all_objects.filter(image_file=self.other_media).exists(),
+            'a crop must never end up referencing another project\'s media file',
+        )
+
+    def test_import_apply_rejects_supplier_from_other_project(self) -> None:
+        response = self._apply({**self._base_item(), 'supplier_id': self.other_supplier.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertFalse(
+            Crop.all_objects.filter(supplier=self.other_supplier).exists(),
+            'a crop must never end up referencing another project\'s supplier',
+        )
+
+    def test_import_apply_rejects_seed_demand_supplier_from_other_project(self) -> None:
+        response = self._apply(
+            {**self._base_item(), 'selected_seed_demand_supplier': self.other_supplier.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertFalse(
+            Crop.all_objects.filter(selected_seed_demand_supplier=self.other_supplier).exists(),
+            'a crop must never end up referencing another project\'s supplier',
+        )
+
+    def test_import_apply_still_accepts_own_project_references(self) -> None:
+        own_supplier = Supplier.objects.create(
+            name='Own Supplier',
+            homepage_url='https://own-supplier.example',
+            project=self.project,
+        )
+        own_media = MediaFile.objects.create(
+            project=self.project, storage_path='crop-media/own/picture.jpg',
+        )
+
+        response = self._apply({
+            **self._base_item(),
+            'supplier_id': own_supplier.id,
+            'image_file_id': own_media.id,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 1, response.data['errors'])
+        crop = Crop.objects.get(project=self.project, name='Boundary Probe')
+        self.assertEqual(crop.supplier_id, own_supplier.id)
+        self.assertEqual(crop.image_file_id, own_media.id)

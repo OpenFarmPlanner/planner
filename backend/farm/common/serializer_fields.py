@@ -6,7 +6,18 @@ from farm.models import Project
 
 
 def _resolve_active_project_from_serializer(serializer) -> Project | None:
-    """Resolve active project from serializer context or bound instance."""
+    """Resolve active project from serializer context or bound instance.
+
+    Services that run a serializer outside a request cycle (imports, seeders)
+    have no `request` to pass, so `context={'project': project}` is the
+    supported way for them to supply the project the cross-project validators
+    check against. Without it those validators cannot resolve a project on a
+    create, and callers that need them must not be left silently unguarded —
+    see `CropSerializer._validate_supplier_consistency`.
+    """
+    context_project = serializer.context.get('project')
+    if context_project is not None:
+        return context_project
     request = serializer.context.get('request')
     if request is not None:
         active_project = getattr(request, 'active_project', None)
