@@ -70,7 +70,10 @@ import { useHierarchyData, type HierarchyDataState } from "../components/hierarc
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { type TreeRowNode } from "../components/hierarchy/utils/treeRows";
 import { useHierarchyLevelToggle } from "../components/hierarchy/hooks/useHierarchyLevelToggle";
-import { useHierarchyRowWindow } from "../components/hierarchy/hooks/useHierarchyRowWindow";
+import {
+  getBalancedHierarchyPageSize,
+  useHierarchyRowWindow,
+} from "../components/hierarchy/hooks/useHierarchyRowWindow";
 import { useHierarchyStableScrollbar } from "../components/hierarchy/hooks/useHierarchyStableScrollbar";
 import { hasPersistedEntityId } from "../components/hierarchy/utils/hierarchyUtils";
 import { useBedOperations } from "../components/hierarchy/hooks/useBedOperations";
@@ -309,7 +312,10 @@ function FieldsBedsHierarchy({
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
-    HIERARCHY_GRID_PAGE_SIZE,
+    // Balanced so the last internal page is never a stub — the table sizes
+    // itself to the rows its current page holds (see currentPageContentHeight
+    // below), so a short final page would visibly collapse its height.
+    getBalancedHierarchyPageSize(rows.length, HIERARCHY_GRID_PAGE_SIZE),
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
   );

@@ -70,7 +70,7 @@ import { useDataGridCommandApi } from './hooks/useDataGridCommandApi';
 import { useDataGridDelete } from './hooks/useDataGridDelete';
 import { useDataGridRowActionMenu } from './hooks/useDataGridRowActionMenu';
 import { useDataGridRowCommands } from './hooks/useDataGridRowCommands';
-import { useScrollDrivenRowWindow } from './hooks/useScrollDrivenRowWindow';
+import { getBalancedPageSize, useScrollDrivenRowWindow } from './hooks/useScrollDrivenRowWindow';
 import { useStableDataGridScrollbar } from './hooks/useStableDataGridScrollbar';
 import { StableScrollbarTrack } from './StableScrollbarTrack';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
@@ -265,9 +265,12 @@ export function EditableDataGrid<T extends EditableRow>({
     () => orderRowsByStableIds(rows as T[], stableRowOrder),
     [rows, stableRowOrder],
   );
+  // Balanced rather than CONTINUOUS_SCROLL_PAGE_SIZE outright, so the last
+  // internal page is never a stub the grid would shrink itself down to.
+  const continuousScrollPageSize = getBalancedPageSize(rowsForGrid.length, CONTINUOUS_SCROLL_PAGE_SIZE);
   const scrollDrivenRowWindow = useScrollDrivenRowWindow(
     rowsForGrid.length,
-    CONTINUOUS_SCROLL_PAGE_SIZE,
+    continuousScrollPageSize,
     DATA_GRID_VIRTUAL_SCROLLER_SELECTOR,
     gridSurfaceRef,
     { preservePageOnRowCountChange: true },

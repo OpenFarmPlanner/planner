@@ -108,6 +108,14 @@ table. MUI renders the column headers inside `.MuiDataGrid-virtualScroller`,
 so the container's `clientHeight` includes them, while the track is drawn
 below the header; the thumb has to travel the rows-only height. See
 [datagrid-architecture.md](./datagrid-architecture.md) for the rule both
-callers follow. Note the last internal page can legitimately be shorter than
-the viewport (the grid sizes itself to the rows it holds), so the table height
-shrinks there — the thumb still ends flush with the bottom of its track.
+callers follow.
+
+The internal pages are also *balanced* (`getBalancedPageSize`) rather than
+filled to 100 rows with a remainder on the last one: 209 rows page as
+70/70/69, not 100/100/9. Both grids size themselves to the rows their current
+page holds, so a nine-row final page collapsed the whole table to a fraction
+of its height the moment the user scrolled to the end — it looked like the
+table had half disappeared. Balanced pages stay far taller than the viewport,
+so the table keeps its height from the first row to the last, and the end of
+the list still ends with rows filling the viewport rather than dead space. A
+dataset that fits on a single page keeps sizing to its content.

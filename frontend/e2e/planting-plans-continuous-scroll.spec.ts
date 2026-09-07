@@ -207,6 +207,10 @@ test.describe('planting plans continuous scroll', () => {
     await expect(page.getByText('Scrollkultur (Sorte A)').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('continuous-scrollbar-thumb')).toBeVisible();
 
+    const gridHeightAtTop = await page.locator('.MuiDataGrid-root').first().evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+
     await page.locator('.MuiDataGrid-virtualScroller').first().hover();
     await expect.poll(async () => {
       await page.mouse.wheel(0, 1200);
@@ -215,6 +219,14 @@ test.describe('planting plans continuous scroll', () => {
         return rows[rows.length - 1]?.getAttribute('data-rowindex') ?? null;
       });
     }, { timeout: 20_000 }).toBe('119');
+
+    // The grid sizes itself to the rows its current internal page holds, so an
+    // unbalanced last page (100/100/... plus a remainder) collapsed the table
+    // to a fraction of its height as soon as the user reached the end.
+    const gridHeightAtEnd = await page.locator('.MuiDataGrid-root').first().evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+    expect(Math.abs(gridHeightAtEnd - gridHeightAtTop)).toBeLessThanOrEqual(32);
 
     const track = await page.getByTestId('continuous-scrollbar-track').boundingBox();
     const thumb = await page.getByTestId('continuous-scrollbar-thumb').boundingBox();

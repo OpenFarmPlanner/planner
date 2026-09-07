@@ -15,6 +15,7 @@ import {
   useHierarchyStableScrollbar,
   type HierarchyRowWindowForScrollbar,
 } from '../components/hierarchy/hooks/useHierarchyStableScrollbar';
+import { getBalancedPageSize } from '../components/data-grid/hooks/useScrollDrivenRowWindow';
 
 const SELECTOR = '.mock-scroller';
 const ROW_HEIGHT = 30;
@@ -68,6 +69,35 @@ class MockResizeObserver {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
+
+
+describe('getBalancedPageSize', () => {
+  it('leaves the page size alone while everything fits on one page', () => {
+    expect(getBalancedPageSize(0, 100)).toBe(100);
+    expect(getBalancedPageSize(9, 100)).toBe(100);
+    expect(getBalancedPageSize(100, 100)).toBe(100);
+  });
+
+  it('spreads the rows evenly so the last page is never a stub', () => {
+    // 209 rows used to page as 100/100/9: scrolling to the end left the grid
+    // sizing itself to nine rows, so the table visibly collapsed to a
+    // fraction of its height.
+    expect(getBalancedPageSize(209, 100)).toBe(70);
+    expect(getBalancedPageSize(101, 100)).toBe(51);
+    expect(getBalancedPageSize(5000, 100)).toBe(100);
+  });
+
+  it('never exceeds the maximum page size the free DataGrid allows', () => {
+    for (let totalRowCount = 101; totalRowCount <= 1000; totalRowCount += 1) {
+      const pageSize = getBalancedPageSize(totalRowCount, 100);
+      expect(pageSize).toBeLessThanOrEqual(100);
+      // Every page but the last is exactly pageSize rows; the last one holds
+      // the remainder, which must stay within one row of a full page.
+      const lastPageRowCount = totalRowCount - pageSize * (Math.ceil(totalRowCount / pageSize) - 1);
+      expect(pageSize - lastPageRowCount).toBeLessThanOrEqual(Math.ceil(totalRowCount / pageSize));
+    }
+  });
+});
 
 describe('useHierarchyStableScrollbar', () => {
   beforeEach(() => {

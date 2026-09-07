@@ -130,6 +130,12 @@ which scales that requested height down (56px becomes ~39px), and the track
 follows the same measurement. The hierarchy grid passes its own
 `HEADER_ROW_HEIGHT`, which is likewise the offset its track is drawn at.
 
+`useScrollDrivenRowWindow` exports `getBalancedPageSize`, which both grids use
+to size that internal window: it spreads the rows evenly over the pages
+(209 rows become 70/70/69, not 100/100/9) so the last page is never a stub.
+Both grids pin their height to the rows the current page holds, so an
+unbalanced final page made the table visibly collapse on the last scroll.
+
 `StableScrollbarTrack` must be rendered as a sibling of whatever wrapper Box
 scrolls the table horizontally, not nested inside it — its `right: 0` is
 relative to the nearest positioned ancestor, so nesting it inside content

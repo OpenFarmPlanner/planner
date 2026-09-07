@@ -36,6 +36,29 @@ const RESET_OFFSET_PX = 56;
 // without perceptibly delaying an intentional scroll.
 const COMMIT_THRESHOLD_PX = 24;
 
+/**
+ * Spreads the rows evenly over the internal pages instead of filling every
+ * page to `maxPageSize` and leaving a remainder on the last one.
+ *
+ * The grid sizes itself to the rows the current page holds, so a last page of
+ * 9 rows made the whole table visibly collapse to a fraction of its height
+ * the moment the user scrolled to the end — the table was "suddenly only half
+ * there". Dividing 209 rows into 3 pages of 70/70/69 instead of 100/100/9
+ * keeps every page far taller than the viewport, so the table keeps its
+ * height from the first row to the last.
+ *
+ * Returns `maxPageSize` unchanged when everything fits on one page: there is
+ * no page transition to smooth out, and a single short page *should* size the
+ * table to its content.
+ */
+export function getBalancedPageSize(totalRowCount: number, maxPageSize: number): number {
+  if (totalRowCount <= maxPageSize || maxPageSize <= 0) {
+    return maxPageSize;
+  }
+  const pageCount = Math.ceil(totalRowCount / maxPageSize);
+  return Math.ceil(totalRowCount / pageCount);
+}
+
 export interface ScrollDrivenRowWindow {
   page: number;
   pageCount: number;
