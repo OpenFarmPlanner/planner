@@ -951,6 +951,26 @@
         "approveSuccess": "Die Kulturart wurde angenommen.",
         "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt."
       },
+      "speciesAliases": {
+        "title": "Kulturart-Synonyme",
+        "intro": "Regionale und umgangssprachliche Bezeichnungen führen zur offiziellen Kulturart, statt eine zweite anzulegen.",
+        "searchLabel": "Kulturart suchen",
+        "searchHint": "Suche nach einer Kulturart, um ihre Synonyme zu pflegen.",
+        "empty": "Keine Kulturart gefunden. Passe den Suchbegriff an.",
+        "loadError": "Die Kulturarten konnten nicht geladen werden.",
+        "column": "Synonyme",
+        "none": "Keine Synonyme",
+        "edit": "Synonyme bearbeiten",
+        "dialogTitle": "Synonyme bearbeiten",
+        "dialogIntro": "Lege fest, unter welchen weiteren Bezeichnungen „{{name}}“ gefunden wird. Mehrere Synonyme mit Komma trennen.",
+        "fieldLabel": "Synonyme ({{language}})",
+        "languageDe": "Deutsch",
+        "languageEn": "Englisch",
+        "helperText": "Nur Bezeichnungen für dieselbe Kulturart. Eine abweichende Anbau- oder Erntecharakteristik gehört als eigene Kulturart angelegt.",
+        "save": "Speichern",
+        "saveSuccess": "Die Synonyme wurden gespeichert.",
+        "saveError": "Die Synonyme konnten nicht gespeichert werden."
+      },
       "requests": {
         "title": "Moderator-Anfragen",
         "empty": "Keine offenen Moderator-Anfragen.",

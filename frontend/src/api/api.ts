@@ -189,6 +189,10 @@ export const cropSpeciesAPI = {
     { review_note: reviewNote, ...(translations ? { translations } : {}) },
   ),
   reject: (id: number, reviewNote = '') => http.post<CropSpecies>(`/crop-species/${id}/reject/`, { review_note: reviewNote }),
+  // Moderator-only: search aliases are curated here, so a regional name never
+  // has to become a second crop species.
+  updateTranslations: (id: number, translations: CropSpeciesTranslation[]) =>
+    http.patch<CropSpecies>(`/crop-species/${id}/`, { translations }),
 };
 
 export const publicLibraryModeratorRequestAPI = {

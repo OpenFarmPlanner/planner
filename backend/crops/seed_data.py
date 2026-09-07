@@ -114,6 +114,13 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='komatsuna', translations={'de': 'Komatsuna', 'en': 'Komatsuna'}),
     CropSpeciesSeedEntry(key='lavender', translations={'de': 'Lavendel', 'en': 'Lavender'}),
     CropSpeciesSeedEntry(
+        key='leaf_cabbage',
+        translations={'de': 'Schnittkohl', 'en': 'Cutting cabbage'},
+        scientific_name='Brassica oleracea var. viridis',
+        family='Brassicaceae',
+        categories=('vegetable',),
+    ),
+    CropSpeciesSeedEntry(
         key='leaf_mustard',
         translations={'de': 'Blattsenf', 'en': 'Mustard greens'},
         scientific_name='Brassica juncea',
@@ -157,6 +164,13 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='pear', translations={'de': 'Birne', 'en': 'Pear'}),
     CropSpeciesSeedEntry(key='pepper', translations={'de': 'Paprika', 'en': 'Sweet pepper'}),
     CropSpeciesSeedEntry(key='perilla', translations={'de': 'Shiso', 'en': 'Perilla'}),
+    CropSpeciesSeedEntry(
+        key='pepperoncini',
+        translations={'de': 'Pfefferoni', 'en': 'Pepperoncini'},
+        scientific_name='Capsicum annuum',
+        family='Solanaceae',
+        categories=('vegetable',),
+    ),
     CropSpeciesSeedEntry(key='persian_clover', translations={'de': 'Perserklee', 'en': 'Persian clover'}),
     CropSpeciesSeedEntry(key='phacelia', translations={'de': 'Phacelia', 'en': 'Phacelia'}),
     CropSpeciesSeedEntry(key='physalis', translations={'de': 'Physalis', 'en': 'Physalis'}),
@@ -165,6 +179,13 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='poppy', translations={'de': 'Mohn', 'en': 'Poppy'}),
     CropSpeciesSeedEntry(key='potato', translations={'de': 'Kartoffel', 'en': 'Potato'}),
     CropSpeciesSeedEntry(key='pumpkin', translations={'de': 'Kürbis', 'en': 'Pumpkin'}),
+    CropSpeciesSeedEntry(
+        key='puntarelle',
+        translations={'de': 'Puntarelle', 'en': 'Puntarelle'},
+        scientific_name='Cichorium intybus var. foliosum',
+        family='Asteraceae',
+        categories=('vegetable',),
+    ),
     CropSpeciesSeedEntry(key='purslane', translations={'de': 'Portulak', 'en': 'Purslane'}),
     CropSpeciesSeedEntry(key='quince', translations={'de': 'Quitte', 'en': 'Quince'}),
     CropSpeciesSeedEntry(key='quinoa', translations={'de': 'Quinoa', 'en': 'Quinoa'}),
@@ -198,6 +219,13 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='strawberry', translations={'de': 'Erdbeere', 'en': 'Strawberry'}),
     CropSpeciesSeedEntry(key='strawflower', translations={'de': 'Strohblume', 'en': 'Strawflower'}),
     CropSpeciesSeedEntry(key='sugar_beet', translations={'de': 'Zuckerrübe', 'en': 'Sugar beet'}),
+    CropSpeciesSeedEntry(
+        key='sugar_pea',
+        translations={'de': 'Zuckererbse', 'en': 'Sugar pea'},
+        scientific_name='Pisum sativum var. saccharatum',
+        family='Fabaceae',
+        categories=('vegetable',),
+    ),
     CropSpeciesSeedEntry(key='sugarloaf_chicory', translations={'de': 'Zuckerhut', 'en': 'Sugarloaf chicory'}),
     CropSpeciesSeedEntry(key='sunflower', translations={'de': 'Sonnenblume', 'en': 'Sunflower'}),
     CropSpeciesSeedEntry(key='summer_squash', translations={'de': 'Zucchini', 'en': 'Zucchini'}),
@@ -225,3 +253,95 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
 def get_crop_species_seed_name(entry: CropSpeciesSeedEntry, language_code: str = 'de') -> str:
     """Return the best display name currently supported by the species model."""
     return entry.translations.get(language_code) or entry.translations['de']
+
+
+# Search-only aliases (regional and colloquial names) per seed key and
+# language. An alias never becomes its own species: it resolves to the
+# canonical species in autocomplete, search, and duplicate detection, which is
+# what keeps "Erdapfel" from being published as a second Kartoffel.
+#
+# What may become an alias is a naming question, not a botanical one: a term
+# is an alias only when it names the *same product* under a regional or
+# colloquial name — same growing time, same cultivation, same plant part, same
+# harvest method (Erdapfel/Kartoffel, Karfiol/Blumenkohl, Porree/Lauch). A
+# functionally different use form stays its own species even when it is
+# botanically the same species: Pfefferoni is not an alias of Paprika
+# (different growing time and spacing, and users search for it deliberately),
+# Radicchio and Puntarelle stay separate from the other chicories, Schnittkohl
+# stays separate from Grünkohl because it is cut repeatedly as young leaves
+# instead of harvested once as a whole plant, and Zuckererbse stays separate
+# from Erbse because it is harvested and eaten pod and all.
+#
+# Deliberately ambiguous terms are mapped onto *several* species so the UI can
+# offer all of them instead of silently picking one:
+#   - "Peperoni" is the sweet pepper in CH, the hot chili in DE/AT, and the
+#     Pfefferoni in everyday use.
+#   - "Fisole(n)" (AT) covers every green bean — bush, pole, and French bean,
+#     which stay separate species because their cultivation differs.
+# "Kohlrübe" is deliberately absent: it names the swede (Brassica napus), a
+# species of its own that the library does not seed yet — aliasing it onto
+# Kohlrabi would merge two different crops.
+CROP_SPECIES_SYNONYM_SEED_DATA: dict[str, dict[str, tuple[str, ...]]] = {
+    'apricot': {'de': ('Aprikose',)},
+    'beetroot': {'de': ('Rote Bete', 'Rande', 'Randen')},
+    'black_salsify': {'de': ('Winterspargel',)},
+    'blackcurrant': {'de': ('Schwarze Johannisbeere',)},
+    'blueberry': {'de': ('Blaubeere', 'Schwarzbeere')},
+    'broad_bean': {'de': ('Saubohne', 'Puffbohne', 'Dicke Bohne', 'Favabohne')},
+    'brussels_sprout': {'de': ('Kohlsprossen', 'Sprossenkohl')},
+    'bush_bean': {'de': ('Fisole', 'Fisolen')},
+    'cabbage': {'de': ('Weißkohl', 'Kabis')},
+    'caraway': {'de': ('Wiesenkümmel',)},
+    'carrot': {'de': ('Möhre', 'Mohrrübe', 'Gelbe Rübe', 'Rüebli')},
+    'cauliflower': {'de': ('Blumenkohl', 'Blumenkabis')},
+    'celeriac': {'de': ('Sellerieknolle', 'Zeller')},
+    'celery': {'de': ('Staudensellerie', 'Bleichsellerie')},
+    'chard': {'de': ('Krautstiel', 'Stielmangold')},
+    'chicory': {'de': ('Brüsseler Endivie', 'Chicoree')},
+    'chili': {'de': ('Chilischote', 'Chilli', 'Peperoni')},
+    'chinese_cabbage': {'de': ('Pekingkohl',)},
+    'chives': {'de': ('Schnittling',)},
+    'corn_salad': {'de': ('Vogerlsalat', 'Nüsslisalat', 'Ackersalat', 'Rapunzel')},
+    'currant': {'de': ('Johannisbeere',)},
+    'daikon': {'de': ('Winterrettich', 'Radi')},
+    'elderberry': {'de': ('Holler', 'Fliederbeere')},
+    'endive': {'de': ('Winterendivie', 'Escariol')},
+    'french_bean': {'de': ('Fisole', 'Fisolen')},
+    'garden_orach': {'de': ('Melde',)},
+    'gooseberry': {'de': ('Agrasel',)},
+    'horseradish': {'de': ('Meerrettich',)},
+    'iceberg_lettuce': {'de': ('Eissalat', 'Krachsalat')},
+    'jerusalem_artichoke': {'de': ('Erdbirne', 'Erdartischocke')},
+    'kale': {'de': ('Federkohl', 'Braunkohl')},
+    'leek': {'de': ('Porree', 'Breitlauch')},
+    'lettuce': {'de': ('Kopfsalat', 'Häuptlsalat')},
+    'lovage': {'de': ('Maggikraut',)},
+    'maize': {'de': ('Kukuruz',)},
+    'marjoram': {'de': ('Meiran',)},
+    'parsley': {'de': ('Petersil',)},
+    'parsley_root': {'de': ('Petersilienwurzel',)},
+    'pepper': {'de': ('Gemüsepaprika', 'Paprikaschote', 'Peperoni')},
+    'pepperoncini': {'de': ('Peperoni', 'Peperoncini', 'Spitzpaprika')},
+    'plum': {'de': ('Zwetschge', 'Pflaume')},
+    'pointed_cabbage': {'de': ('Spitzkohl',)},
+    'pole_bean': {'de': ('Fisole', 'Fisolen', 'Stangenfisolen')},
+    'potato': {'de': ('Erdapfel', 'Erdäpfel', 'Grundbirne')},
+    'purslane': {'de': ('Sommerportulak', 'Burzelkraut')},
+    'ramson': {'de': ('Waldknoblauch', 'Wilder Knoblauch')},
+    'red_cabbage': {'de': ('Rotkohl', 'Blaukraut')},
+    'romaine_lettuce': {'de': ('Romanasalat', 'Bindesalat', 'Kochsalat')},
+    'savoy_cabbage': {'de': ('Wirsingkohl', 'Wirz')},
+    'spring_onion': {'de': ('Lauchzwiebel', 'Jungzwiebel', 'Winterzwiebel')},
+    'sugar_pea': {'de': ('Zuckerschote', 'Kaiserschote', 'Kefe')},
+    'sugarloaf_chicory': {'de': ('Fleischkraut',)},
+    'summer_squash': {'de': ('Zucchetti', 'Zucchino')},
+    'sweetcorn': {'de': ('Süßmais', 'Zuckerkukuruz')},
+    'tomato': {'de': ('Paradeiser', 'Paradeis')},
+    'turnip': {'de': ('Mairübe', 'Herbstrübe', 'Navette')},
+    'winter_purslane': {'de': ('Postelein', 'Tellerkraut', 'Kubaspinat')},
+}
+
+
+def get_crop_species_seed_synonyms(key: str, language_code: str = 'de') -> tuple[str, ...]:
+    """Search aliases seeded for one species in one language."""
+    return CROP_SPECIES_SYNONYM_SEED_DATA.get(key, {}).get(language_code, ())

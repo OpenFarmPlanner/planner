@@ -352,6 +352,48 @@ describe('CropsPublishingWizardDialog', () => {
     expect(screen.queryByRole('option', { name: /Paradeiser.*als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
+  it('offers every species an ambiguous alias can mean', async () => {
+    const speciesWithAlias = (id: number, name: string, synonyms: string[]) => ({
+      id,
+      name,
+      display_name: name,
+      status: 'published',
+      search_names: [name, ...synonyms],
+      translations: [{
+        language_code: 'de',
+        common_name: name,
+        synonyms,
+        regional_names: {},
+      }],
+    });
+    cropSpeciesListMock.mockResolvedValue({
+      data: {
+        count: 3,
+        next: null,
+        previous: null,
+        results: [
+          speciesWithAlias(11, 'Paprika', ['Gemüsepaprika', 'Peperoni']),
+          speciesWithAlias(12, 'Chili', ['Chilischote', 'Peperoni']),
+          speciesWithAlias(13, 'Pfefferoni', ['Peperoni', 'Peperoncini']),
+        ],
+      },
+    });
+
+    renderWizard();
+
+    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const user = userEvent.setup();
+    await user.clear(speciesInput);
+    await user.type(speciesInput, 'Peperoni');
+
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Paprika (Peperoni)',
+      'Chili (Peperoni)',
+      'Pfefferoni (Peperoni)',
+    ]);
+  });
+
   it('keeps the proposal entry alongside partial regional alias matches', async () => {
     cropSpeciesListMock.mockResolvedValue({
       data: {

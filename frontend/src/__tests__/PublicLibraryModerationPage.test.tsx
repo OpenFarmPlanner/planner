@@ -13,6 +13,7 @@ const apiMocks = vi.hoisted(() => ({
   cropSpeciesList: vi.fn(),
   cropSpeciesApprove: vi.fn(),
   cropSpeciesReject: vi.fn(),
+  cropSpeciesUpdateTranslations: vi.fn(),
   moderatorRequestList: vi.fn(),
   moderatorRequestApprove: vi.fn(),
   moderatorRequestReject: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('../api/api', () => ({
     list: apiMocks.cropSpeciesList,
     approve: apiMocks.cropSpeciesApprove,
     reject: apiMocks.cropSpeciesReject,
+    updateTranslations: apiMocks.cropSpeciesUpdateTranslations,
   },
   publicLibraryModeratorRequestAPI: {
     list: apiMocks.moderatorRequestList,
@@ -47,20 +49,27 @@ describe('PublicLibraryModerationPage', () => {
     authUser.is_public_library_moderator = true;
     authUser.is_staff = true;
     authUser.is_superuser = false;
-    apiMocks.cropSpeciesList.mockResolvedValue({
-      data: {
-        results: [
-          {
-            id: 7,
-            name: 'Baumspinat',
-            status: 'proposed',
-            proposed_by_label: 'Mara',
-            translations: [{ language_code: 'de', common_name: 'Baumspinat' }],
-            similar_species: [{ id: 2, name: 'Spinat', match_type: 'similar' }],
+    // The proposal queue and the alias curation section read the same
+    // endpoint; only the queue asks for `status: 'proposed'`, so the alias
+    // table stays empty unless a test fills it.
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => (
+      params?.status === 'proposed'
+        ? Promise.resolve({
+          data: {
+            results: [
+              {
+                id: 7,
+                name: 'Baumspinat',
+                status: 'proposed',
+                proposed_by_label: 'Mara',
+                translations: [{ language_code: 'de', common_name: 'Baumspinat' }],
+                similar_species: [{ id: 2, name: 'Spinat', match_type: 'similar' }],
+              },
+            ],
           },
-        ],
-      },
-    });
+        })
+        : Promise.resolve({ data: { results: [] } })
+    ));
     apiMocks.cropSpeciesApprove.mockResolvedValue({ data: { id: 7, name: 'Baumspinat', status: 'published' } });
     apiMocks.cropSpeciesReject.mockResolvedValue({ data: { id: 7, name: 'Baumspinat', status: 'rejected' } });
     apiMocks.moderatorRequestList.mockResolvedValue({
@@ -178,6 +187,64 @@ describe('PublicLibraryModerationPage', () => {
 
     expect(await screen.findByText('Entfernte Kulturen')).toBeInTheDocument();
     expect(screen.getByText('Keine entfernten Kulturen.')).toBeInTheDocument();
+  });
+
+  it('edits the search aliases of a published crop species', async () => {
+    const potato = {
+      id: 12,
+      name: 'Kartoffel',
+      display_name: 'Kartoffel',
+      status: 'published',
+      translations: [
+        {
+          language_code: 'de',
+          common_name: 'Kartoffel',
+          synonyms: ['Erdapfel'],
+          regional_names: {},
+        },
+      ],
+    };
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => (
+      params?.status === 'proposed'
+        ? Promise.resolve({ data: { results: [] } })
+        : Promise.resolve({ data: { results: [potato] } })
+    ));
+    apiMocks.cropSpeciesUpdateTranslations.mockResolvedValue({
+      data: {
+        ...potato,
+        translations: [{
+          language_code: 'de',
+          common_name: 'Kartoffel',
+          synonyms: ['Erdapfel', 'Grundbirne'],
+          regional_names: {},
+        }],
+      },
+    });
+
+    render(<PublicLibraryModerationPage />);
+
+    const aliasSection = await screen.findByRole('table', { name: 'Kulturart-Synonyme' });
+    expect(within(aliasSection).getByText('Kartoffel')).toBeInTheDocument();
+    expect(within(aliasSection).getByText('Erdapfel')).toBeInTheDocument();
+
+    await userEvent.click(within(aliasSection).getByRole('button', { name: 'Synonyme bearbeiten' }));
+
+    const aliasField = await screen.findByLabelText('Synonyme (Deutsch)');
+    expect(aliasField).toHaveValue('Erdapfel');
+    await userEvent.type(aliasField, ', Grundbirne');
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(apiMocks.cropSpeciesUpdateTranslations).toHaveBeenCalledWith(12, [{
+        language_code: 'de',
+        common_name: 'Kartoffel',
+        synonyms: ['Erdapfel', 'Grundbirne'],
+        regional_names: {},
+      }]);
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Synonyme (Deutsch)')).not.toBeInTheDocument();
+    });
   });
 
   it('hides moderator request management from non-admin moderators', async () => {

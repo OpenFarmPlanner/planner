@@ -951,6 +951,26 @@
         "approveSuccess": "The crop species was approved.",
         "rejectSuccess": "The crop species proposal was rejected."
       },
+      "speciesAliases": {
+        "title": "Crop species aliases",
+        "intro": "Regional and colloquial names lead to the official crop species instead of creating a second one.",
+        "searchLabel": "Search crop species",
+        "searchHint": "Search for a crop species to curate its aliases.",
+        "empty": "No crop species found. Adjust the search term.",
+        "loadError": "The crop species could not be loaded.",
+        "column": "Aliases",
+        "none": "No aliases",
+        "edit": "Edit aliases",
+        "dialogTitle": "Edit aliases",
+        "dialogIntro": "Decide which other names find “{{name}}”. Separate multiple aliases with commas.",
+        "fieldLabel": "Aliases ({{language}})",
+        "languageDe": "German",
+        "languageEn": "English",
+        "helperText": "Only names for the very same crop. A different cultivation or harvest characteristic belongs in its own crop species.",
+        "save": "Save",
+        "saveSuccess": "The aliases were saved.",
+        "saveError": "The aliases could not be saved."
+      },
       "requests": {
         "title": "Moderator requests",
         "empty": "No open moderator requests.",
