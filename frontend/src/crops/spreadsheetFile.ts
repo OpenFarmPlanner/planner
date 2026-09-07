@@ -1,8 +1,8 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import type { SpreadsheetExportFormat } from './spreadsheetExport';
 
 export type SpreadsheetCell = string | number | boolean | null;
 export type SpreadsheetRows = SpreadsheetCell[][];
+export type SpreadsheetFileFormat = 'xlsx' | 'ods' | 'csv';
 
 const textDecoder = new TextDecoder();
 const textEncoder = new TextEncoder();
@@ -319,7 +319,7 @@ function buildOds(rows: SpreadsheetRows): Uint8Array {
   });
 }
 
-export function parseSpreadsheetRows(buffer: ArrayBuffer, format: SpreadsheetExportFormat): SpreadsheetRows {
+export function parseSpreadsheetRows(buffer: ArrayBuffer, format: SpreadsheetFileFormat): SpreadsheetRows {
   if (format === 'csv') {
     return parseCsv(decodeUtf8(new Uint8Array(buffer)));
   }
@@ -329,7 +329,7 @@ export function parseSpreadsheetRows(buffer: ArrayBuffer, format: SpreadsheetExp
   return parseXlsx(buffer);
 }
 
-export function buildSpreadsheetFile(rows: SpreadsheetRows, format: SpreadsheetExportFormat): Uint8Array | string {
+export function buildSpreadsheetFile(rows: SpreadsheetRows, format: SpreadsheetFileFormat): Uint8Array | string {
   if (format === 'csv') {
     return buildCsv(rows);
   }
