@@ -6,7 +6,6 @@ export interface Task {
   color?: string;
   percent?: number;
   dependencies?: string[];
-  [key: string]: any;
 }
 
 export interface TaskGroup {
@@ -47,7 +46,6 @@ export interface TaskGroup {
    * to the normal task-row-count-based height when unset.
    */
   rowHeightOverride?: number;
-  [key: string]: any;
 }
 
 export interface GanttStyles {
