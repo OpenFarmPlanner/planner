@@ -10,15 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from crops.models import CropSpecies
-from crops.services import find_species_by_common_name
+from crops.services import find_published_species_by_name
 from farm.models import Crop
 from farm.utils import normalize_text
 
 # A near-match is a hint that the name is probably a spelling variant, an alias,
 # or a use-form split of a species that already exists, so it must not be
-# auto-created. Two edits covers spelling variants ("Zucchetti"/"Zucchini",
+# auto-created. Two edits covers spelling variants (a dropped plural ending,
 # umlaut and ss spellings) without turning unrelated short names into false
-# neighbours.
+# neighbours. Wider variants such as "Zucchetti"/"Zucchini" are 3 edits apart
+# and are caught by the shared-prefix rule below instead.
 MAX_NEAR_MATCH_DISTANCE = 2
 # German crop names are compounds, and the shared part is what gives away a
 # related crop ("Schnittkohl"/"Grünkohl", "Zuckererbse"/"Erbse"). Four characters
@@ -91,7 +92,10 @@ def _bounded_levenshtein(left: str, right: str, max_distance: int) -> int:
 
 def collect_project_crop_names(project_ids: list[int] | None = None) -> list[CropNameUsage]:
     """Distinct crop names used in projects, most-used first."""
-    queryset = Crop.objects.all()
+    # Only live projects: crops in a deactivated or soft-deleted project are
+    # not names anyone still uses, and reporting them as library gaps sends a
+    # human to curate a species for a project that no longer exists.
+    queryset = Crop.objects.filter(project__is_active=True, project__deleted_at__isnull=True)
     if project_ids:
         queryset = queryset.filter(project_id__in=project_ids)
 
@@ -161,9 +165,9 @@ def _is_near_match(normalized: str, normalized_library_name: str) -> bool:
 def find_near_matches(name: str, library_names: list[str]) -> tuple[str, ...]:
     """Library names close enough to ``name`` that a human has to decide.
 
-    A small edit distance ("Zucchetti" vs "Zucchini") and a shared compound part
-    ("Schnittkohl" vs "Grünkohl") both count: either can hide an alias or a
-    use-form split behind a new-looking name.
+    A small edit distance and a shared compound part ("Schnittkohl" vs
+    "Grünkohl", "Zucchetti" vs "Zucchini") both count: either can hide an
+    alias or a use-form split behind a new-looking name.
     """
     normalized = normalize_text(name) or ''
     if not normalized:
@@ -187,7 +191,7 @@ def build_crop_species_coverage_report(
     report = CropSpeciesCoverageReport()
 
     for usage in collect_project_crop_names(project_ids):
-        if find_species_by_common_name(usage.name) is not None:
+        if find_published_species_by_name(usage.name) is not None:
             report.matched.append(usage)
             continue
         gap = CropNameGap(usage=usage, near_matches=find_near_matches(usage.name, library_names))

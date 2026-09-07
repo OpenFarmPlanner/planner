@@ -4,6 +4,7 @@ from io import StringIO
 
 from django.core.management import call_command
 from django.test import TestCase
+from django.utils import timezone
 
 from crops.models import CropSpecies, CropSpeciesTranslation
 from farm.models import Crop, Project
@@ -81,6 +82,34 @@ class AuditCropSpeciesCoverageTests(TestCase):
         self.assertEqual(
             gap.usage.project_ids, (self.project.id, other_project.id),
         )
+
+    def test_discouraged_umbrella_species_counts_as_covered(self) -> None:
+        """"Bohne" is excluded as a mapping target, not absent from the library.
+
+        Coverage asks whether the library knows a name, so reusing the
+        publishing-mapping lookup reported an existing species as a gap.
+        """
+        self._create_species('Bohne', 'Bean')
+        self._create_crop('Bohne')
+
+        report = build_crop_species_coverage_report()
+
+        self.assertIn('Bohne', [usage.name for usage in report.matched])
+        self.assertEqual([gap.usage.name for gap in report.missing], [])
+        self.assertEqual([gap.usage.name for gap in report.borderline], [])
+
+    def test_crops_in_inactive_or_deleted_projects_are_not_audited(self) -> None:
+        inactive = Project.objects.create(name='Inactive', slug='inactive', is_active=False)
+        deleted = Project.objects.create(
+            name='Deleted', slug='deleted', deleted_at=timezone.now(),
+        )
+        Crop.objects.create(project=inactive, name='Puntarelle')
+        Crop.objects.create(project=deleted, name='Pfefferoni')
+
+        report = build_crop_species_coverage_report()
+
+        self.assertEqual(report.missing, [])
+        self.assertEqual(report.borderline, [])
 
     def test_project_filter_limits_the_audit(self) -> None:
         other_project = Project.objects.create(name='Second', slug='second')

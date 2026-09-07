@@ -201,24 +201,51 @@ def get_published_crop(pk: int) -> PublicCrop:
     )
 
 
-def find_species_by_common_name(name: str | None) -> CropSpecies | None:
-    """The species whose canonical name or *any* translation matches ``name``.
+def _species_matching_name(normalized: str) -> QuerySet[CropSpecies]:
+    """Every species reachable by ``normalized``, before any policy filter."""
+    from .models import CropSpecies
 
-    This is what makes "Tomate" and "Tomato" resolve to one species, so
-    matching and duplicate detection can work on the language-independent
-    record instead of on whichever name the user happened to type.
+    return CropSpecies.objects.filter(
+        Q(name_normalized=normalized)
+        | Q(translations__common_name_normalized=normalized)
+        | Q(translations__search_text_normalized__icontains=f'\n{normalized}\n'),
+    ).prefetch_related('translations').distinct()
+
+
+def find_published_species_by_name(name: str | None) -> CropSpecies | None:
+    """Any published species this name resolves to, ignoring mapping policy.
+
+    Answers "does the library know this name at all?", which is a different
+    question from "may a user map onto it": the discouraged umbrella names
+    ("Bohne") are excluded as mapping targets but are part of the library, so
+    a coverage audit must not report them as gaps.
     """
     from .models import CropSpecies
 
     normalized = normalize_text(name)
     if not normalized:
         return None
-    queryset = CropSpecies.objects.filter(
-        Q(name_normalized=normalized)
-        | Q(translations__common_name_normalized=normalized)
-        | Q(translations__search_text_normalized__icontains=f'\n{normalized}\n'),
-    ).prefetch_related('translations').distinct()
-    for species in public_species_mapping_targets(queryset):
+    return (
+        _species_matching_name(normalized)
+        .filter(status=CropSpecies.STATUS_PUBLISHED)
+        .first()
+    )
+
+
+def find_species_by_common_name(name: str | None) -> CropSpecies | None:
+    """The species whose canonical name or *any* translation matches ``name``.
+
+    This is what makes "Tomate" and "Tomato" resolve to one species, so
+    matching and duplicate detection can work on the language-independent
+    record instead of on whichever name the user happened to type.
+
+    Restricted to species a user may actually map onto — see
+    `find_published_species_by_name` when the question is library coverage.
+    """
+    normalized = normalize_text(name)
+    if not normalized:
+        return None
+    for species in public_species_mapping_targets(_species_matching_name(normalized)):
         if not is_discouraged_public_species(species):
             return species
     return None

@@ -32,7 +32,7 @@ def _build_search_text(common_name, synonyms, regional_names):
 
 
 def _seeded_translations(apps):
-    """Yield ``(translation, seeded_regional_names)`` for every seeded entry."""
+    """Yield ``(key, translation, seeded_regional_names)`` for every entry."""
     from crops.seed_data import (
         CROP_SPECIES_REGIONAL_NAME_SEED_DATA,
         CROP_SPECIES_SEED_DATA,
@@ -57,7 +57,7 @@ def _seeded_translations(apps):
                 species=species, language_code=language_code,
             ).first()
             if translation is not None:
-                yield translation, regional_names
+                yield key, translation, regional_names
 
 
 def _save_regional_names(translation, regional_names):
@@ -70,7 +70,7 @@ def _save_regional_names(translation, regional_names):
 
 
 def seed_crop_species_regional_names(apps, schema_editor):
-    for translation, seeded in _seeded_translations(apps):
+    for _key, translation, seeded in _seeded_translations(apps):
         # Merged, not replaced: a regional name curated outside the seed list
         # (0008 added Melanzani before the seed list carried it) must survive.
         stored = (
@@ -83,18 +83,29 @@ def seed_crop_species_regional_names(apps, schema_editor):
             _save_regional_names(translation, merged)
 
 
+# Regional names an earlier migration already owns. 0008 wrote the Austrian
+# aubergine name before the seed list carried it, so the stored value is now
+# identical to the seeded one and matching on the value alone cannot tell the
+# two apart. Rolling back has to leave these in place: 0008 stays applied, and
+# dropping them would delete data this migration never added.
+REGIONAL_NAMES_OWNED_BY_EARLIER_MIGRATIONS = {
+    'aubergine': {'austria': 'Melanzani'},
+}
+
+
 def remove_crop_species_regional_names(apps, schema_editor):
     """Drop the seeded regional names again; hand-curated ones stay."""
-    for translation, seeded in _seeded_translations(apps):
+    for key, translation, seeded in _seeded_translations(apps):
         stored = (
             translation.regional_names
             if isinstance(translation.regional_names, dict)
             else {}
         )
+        owned_elsewhere = REGIONAL_NAMES_OWNED_BY_EARLIER_MIGRATIONS.get(key, {})
         kept = {
             region: name
             for region, name in stored.items()
-            if seeded.get(region) != name
+            if seeded.get(region) != name or owned_elsewhere.get(region) == name
         }
         if kept != stored:
             _save_regional_names(translation, kept)
