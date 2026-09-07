@@ -99,9 +99,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import { useActiveSeason } from '../seasons/useActiveSeason';
 import { SeasonCreateSuggestionDialog, SeasonSwitcher } from '../seasons/SeasonSwitcher';
 import { SeasonSetupDialog } from '../seasons/SeasonSetupDialog';
-import { dismissSeasonSetup, isSeasonSetupDismissed } from '../seasons/seasonSetupDismissal';
-import { seasonSetupAPI } from '../api/api';
-import type { SeasonSetupStatus } from '../api/types';
+import { useSeasonSetupPrompt } from '../seasons/useSeasonSetupPrompt';
 import { PanelLeft } from 'lucide-react';
 import AppIcon from '../components/layout/AppIcon';
 import { AppTooltip } from '../components/AppTooltip';
@@ -205,26 +203,7 @@ function RootLayout() {
     () => (activeSeason.activeSeason ? new Date(activeSeason.activeSeason.start_date).getFullYear() : null),
     [activeSeason.activeSeason],
   );
-  const [seasonSetupStatus, setSeasonSetupStatus] = useState<SeasonSetupStatus | null>(null);
-  const [seasonSetupDismissed, setSeasonSetupDismissed] = useState(
-    () => (activeProjectId ? isSeasonSetupDismissed(activeProjectId) : false),
-  );
-  useEffect(() => {
-    setSeasonSetupDismissed(activeProjectId ? isSeasonSetupDismissed(activeProjectId) : false);
-    if (!activeProjectId) {
-      setSeasonSetupStatus(null);
-      return;
-    }
-    let cancelled = false;
-    void seasonSetupAPI.status().then((response) => {
-      if (!cancelled) {
-        setSeasonSetupStatus(response.data);
-      }
-    }).catch((error: unknown) => {
-      console.error('Error loading season setup status:', error);
-    });
-    return () => { cancelled = true; };
-  }, [activeProjectId]);
+  const seasonSetupPrompt = useSeasonSetupPrompt(activeProjectId, location.pathname);
   const [globalMenuAnchor, setGlobalMenuAnchor] = useState<null | HTMLElement>(null);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackBadgeDismissed, setFeedbackBadgeDismissed] = useState(false);
@@ -2129,16 +2108,11 @@ function RootLayout() {
         tCrops={tCrops}
       />
 
-      {seasonSetupStatus?.needs_setup && !seasonSetupDismissed && !isProjectIndependentRoute(location.pathname) ? (
+      {seasonSetupPrompt.status ? (
         <SeasonSetupDialog
           open
-          status={seasonSetupStatus}
-          onCancel={() => {
-            if (activeProjectId) {
-              dismissSeasonSetup(activeProjectId);
-            }
-            setSeasonSetupDismissed(true);
-          }}
+          status={seasonSetupPrompt.status}
+          onCancel={seasonSetupPrompt.dismiss}
           onApplied={(seasonId) => {
             activeSeason.switchSeason(seasonId);
           }}
