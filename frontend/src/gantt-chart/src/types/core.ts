@@ -21,7 +21,6 @@ export interface TaskGroup {
   locationName?: string;
   fieldName?: string;
   bedName?: string;
-  icon?: string;
   tasks: Task[];
   /**
    * Tree-row rendering hints. All optional and purely presentational — the

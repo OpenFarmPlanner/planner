@@ -14,7 +14,7 @@ import os
 import socket
 from importlib.util import find_spec
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
@@ -388,6 +388,18 @@ def _normalize_url_prefix(raw_value: str) -> str:
     return trimmed.strip('/')
 
 
+def _validate_external_base_url(name: str, value: str) -> ParseResult:
+    """Validate an externally visible HTTP(S) base URL from configuration."""
+    parsed = urlparse(value)
+    if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+        raise ImproperlyConfigured(f'{name} must be an absolute HTTP(S) URL.')
+    if parsed.username is not None or parsed.password is not None:
+        raise ImproperlyConfigured(f'{name} must not contain credentials.')
+    if parsed.query or parsed.fragment:
+        raise ImproperlyConfigured(f'{name} must not contain a query string or fragment.')
+    return parsed
+
+
 URL_PREFIX = _normalize_url_prefix(_env_str('URL_PREFIX', ''))
 
 _frontend_url_from_env = _env_str('FRONTEND_URL', '')
@@ -395,14 +407,14 @@ FRONTEND_URL = _frontend_url_from_env or 'http://localhost:5173'
 _public_frontend_url_from_env = _env_str('PUBLIC_FRONTEND_URL', '')
 PUBLIC_FRONTEND_URL = _public_frontend_url_from_env or FRONTEND_URL
 
-parsed_public_frontend_url = urlparse(PUBLIC_FRONTEND_URL)
+parsed_public_frontend_url = _validate_external_base_url(
+    'PUBLIC_FRONTEND_URL',
+    PUBLIC_FRONTEND_URL,
+)
 
 if not DEBUG:
     if SECRET_KEY == 'django-insecure-ov1io#b(%s+zc#ue30exe(t(sa3d7xf*i4biy7zh*yx95pzitd':
         raise ImproperlyConfigured('SECRET_KEY must be set explicitly when DEBUG is False.')
-    if not parsed_public_frontend_url.scheme or not parsed_public_frontend_url.netloc:
-        raise ImproperlyConfigured('PUBLIC_FRONTEND_URL must be an absolute URL when DEBUG is False.')
-
 if (
     DJANGO_ENV not in {'development', 'test'}
     and (parsed_public_frontend_url.hostname or '').lower() in {'localhost', '127.0.0.1', '::1'}
@@ -536,6 +548,18 @@ MICROSOFT_OAUTH_TENANT = _env_str('MICROSOFT_OAUTH_TENANT', 'common')
 SOCIAL_AUTH_CALLBACK_BASE_URL = (
     _env_str('SOCIAL_AUTH_CALLBACK_BASE_URL') or PUBLIC_FRONTEND_URL
 ).rstrip('/')
+parsed_social_auth_callback_url = _validate_external_base_url(
+    'SOCIAL_AUTH_CALLBACK_BASE_URL',
+    SOCIAL_AUTH_CALLBACK_BASE_URL,
+)
+if (
+    DJANGO_ENV not in {'development', 'test'}
+    and (parsed_social_auth_callback_url.hostname or '').lower()
+    in {'localhost', '127.0.0.1', '::1'}
+):
+    raise ImproperlyConfigured(
+        'SOCIAL_AUTH_CALLBACK_BASE_URL must not point to localhost outside local development.'
+    )
 
 
 def _social_provider_app(

@@ -364,7 +364,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request, pk=None):
         lookup_value = self.kwargs.get(self.lookup_field, pk)
-        crop = get_object_or_404(Crop.all_objects.all(), pk=lookup_value)
+        crop = get_object_or_404(
+            Crop.all_objects.filter(project=request.active_project),
+            pk=lookup_value,
+        )
         serializer = CropRestoreSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         revision_id = serializer.validated_data['history_id']

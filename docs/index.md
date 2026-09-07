@@ -105,6 +105,9 @@ table of what is and isn't implemented.
   backend runs under xdist, and where the runtime actually goes.
 - [`security-automation.md`](./security-automation.md) — automated dependency,
   SAST, Django deployment, and GitHub-native security coverage and triggers.
+- [`security-review-2026-09-05.md`](./security-review-2026-09-05.md) — latest
+  manual security-review baseline, confirmed findings, reviewed surfaces, and
+  the areas that still require a future dedicated assessment.
 - [`qa-strategy.md`](./qa-strategy.md) — when to do a full vs. targeted
   exploratory QA sweep.
 - [`qa-coverage-2026-07-27.md`](./qa-coverage-2026-07-27.md) (or a later

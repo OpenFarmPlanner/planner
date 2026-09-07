@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Protocol
 
 from django.core.files.base import ContentFile
 
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_SIDE = 2560
+# Compressed image size is not a useful bound on decode cost. Reject images
+# above this pixel count before Pillow loads their raster data into memory.
+MAX_IMAGE_PIXELS = 25_000_000
 
 
 class ImageProcessingError(ValueError):
@@ -16,6 +20,10 @@ class ImageProcessingError(ValueError):
 
 class ImageProcessingBackendUnavailableError(ImageProcessingError):
     """Raised when the image processing backend is not installed."""
+
+
+class _ImageWithDimensions(Protocol):
+    size: tuple[int, int]
 
 
 # Map the raster formats we accept for direct (non re-encoded) media storage to
@@ -29,6 +37,15 @@ _ALLOWED_MEDIA_IMAGE_FORMATS: dict[str, tuple[str, str]] = {
     'WEBP': ('webp', 'image/webp'),
     'GIF': ('gif', 'image/gif'),
 }
+
+
+def _validate_image_dimensions(image: _ImageWithDimensions) -> None:
+    """Reject invalid or excessively large rasters before decoding pixel data."""
+    width, height = image.size
+    if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
+        raise ImageProcessingError(
+            f'Uploaded image exceeds the {MAX_IMAGE_PIXELS:,}-pixel limit.'
+        )
 
 
 def validate_image_upload(uploaded_file) -> tuple[str, str]:
@@ -52,7 +69,10 @@ def validate_image_upload(uploaded_file) -> tuple[str, str]:
     uploaded_file.seek(0)
     try:
         image = Image.open(uploaded_file)
+        _validate_image_dimensions(image)
         image.verify()
+    except ImageProcessingError:
+        raise
     except Exception as exc:
         raise ImageProcessingError('Uploaded file is not a valid image.') from exc
 
@@ -86,13 +106,17 @@ def process_note_image(uploaded_file) -> tuple[ContentFile, dict[str, int | str]
     uploaded_file.seek(0)
     try:
         image = Image.open(uploaded_file)
+        _validate_image_dimensions(image)
         image.verify()
+    except ImageProcessingError:
+        raise
     except Exception as exc:
         raise ImageProcessingError('Uploaded file is not a valid image.') from exc
 
     try:
         uploaded_file.seek(0)
         image = Image.open(uploaded_file)
+        _validate_image_dimensions(image)
         image = ImageOps.exif_transpose(image)
 
         if image.mode not in ('RGB', 'RGBA'):

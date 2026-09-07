@@ -133,6 +133,12 @@ migration tests migrate the schema backwards to a specific node and
 forwards again around each test, so two of them interleaving on one
 database would fight over the schema.
 
+The backend job compiles application translations before pytest. The shared
+`pdm run compilemessages` command includes `--ignore=.venv` because PDM creates
+its environment inside `backend/`; without that exclusion Django recursively
+walks and recompiles dependency locale catalogs as well as the repository's
+catalogs, creating very large CI logs and unnecessary work.
+
 Pass `-n0` to run serially again — that is what `--pdb` and any debugging
 that needs readable, non-interleaved output want.
 

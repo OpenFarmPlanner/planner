@@ -1306,6 +1306,12 @@ class CropSerializer(serializers.ModelSerializer):
         """Suppliers and the product URL must match the active project/domains."""
         supplier = attrs.get('supplier', getattr(self.instance, 'supplier', None) if self.instance else None)
         project = attrs.get('project') or _resolve_active_project_from_serializer(self)
+        image_file = attrs.get(
+            'image_file',
+            getattr(self.instance, 'image_file', None) if self.instance else None,
+        )
+        if project is not None and image_file is not None and image_file.project_id != project.id:
+            errors['image_file_id'] = 'image_file_project_mismatch'
         if project is not None and supplier is not None and supplier.project_id != project.id:
             errors['supplier'] = 'supplier_project_mismatch'
         selected_supplier = attrs.get(

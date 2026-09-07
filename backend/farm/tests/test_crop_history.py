@@ -52,6 +52,45 @@ class CropHistoryTests(TestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.name, 'Carrot')
 
+    def test_restore_cannot_access_another_projects_crop(self):
+        other_project = Project.objects.create(name='Other Project', slug='other-project')
+        other_crop = Crop.objects.create(
+            name='Private Crop',
+            variety='Secret',
+            growth_duration_days=60,
+            harvest_duration_days=20,
+            project=other_project,
+        )
+        revision = EntityRevision.objects.filter(
+            project=other_project,
+            entity_type='crop',
+            object_id=other_crop.pk,
+        ).first()
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{other_crop.id}/restore/',
+            data={'history_id': revision.id},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_crop_cannot_reference_another_projects_media(self):
+        other_project = Project.objects.create(name='Media Project', slug='media-project')
+        other_media = MediaFile.objects.create(
+            project=other_project,
+            storage_path='crop-media/private.png',
+        )
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.crop.id}/',
+            data={'image_file_id': other_media.id},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['image_file_id'], ['image_file_project_mismatch'])
+
 
 
     def test_restore_keeps_the_row_identity_and_creation_timestamp(self):

@@ -77,6 +77,7 @@ class MediaUploadApiTest(ProjectApiTestCase):
         self.assertTrue(storage_path.endswith('.png'), storage_path)
         self.assertFalse(storage_path.endswith('.html'), storage_path)
         media = MediaFile.objects.get(id=response.data['id'])
+        self.assertEqual(media.project, self.project)
         MediaFile.objects.filter(id=media.id).delete()
 
 
@@ -169,4 +170,3 @@ class NoteAttachmentApiTest(DRFAPITestCase):
 
         response = self.client.get(f'/openfarmplanner/api/notes/{self.plan.id}/attachments/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-

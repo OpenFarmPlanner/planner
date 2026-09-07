@@ -31,7 +31,6 @@ const TaskList: React.FC<TaskListProps> = ({
   tasks = [],
   headerLabel = "Resources",
   contextMenuLabel = "Actions",
-  showIcon = false,
   showTaskCount = false,
   showDescription = true,
   rowHeight = 40,
@@ -182,14 +181,6 @@ const TaskList: React.FC<TaskListProps> = ({
                   <span className="rmg-task-group-chevron-spacer" aria-hidden="true" />
                 )}
 
-                {showIcon && taskGroup.icon && (
-                  <span
-                    className="rmg-task-group-icon"
-                    dangerouslySetInnerHTML={{ __html: taskGroup.icon }}
-                    data-rmg-component="task-group-icon"
-                  />
-                )}
-
                 <OverflowTooltip
                   title={taskGroup.emptyRowLabel
                     ? `${displayName} — ${taskGroup.emptyRowLabel}`
@@ -245,15 +236,6 @@ const TaskList: React.FC<TaskListProps> = ({
             data-group-id={taskGroup.id}
           >
             <div className="rmg-task-group-content">
-              {/* Icon (if enabled) */}
-              {showIcon && taskGroup.icon && (
-                <span
-                  className="rmg-task-group-icon"
-                  dangerouslySetInnerHTML={{ __html: taskGroup.icon }}
-                  data-rmg-component="task-group-icon"
-                />
-              )}
-
               {hasHierarchy ? (
                 <div
                   className="rmg-task-group-hierarchy"

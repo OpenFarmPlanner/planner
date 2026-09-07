@@ -214,7 +214,6 @@ export interface TaskListProps {
   tasks: TaskGroup[];
   headerLabel?: React.ReactNode;
   contextMenuLabel?: string;
-  showIcon?: boolean;
   showTaskCount?: boolean;
   showDescription?: boolean;
   rowHeight?: number;

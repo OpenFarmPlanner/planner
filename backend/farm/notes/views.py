@@ -64,7 +64,7 @@ class MediaFileUploadView(APIView):
 
         rel_path = crop_media_upload_path(None, f'image.{extension}')
         saved_path = default_storage.save(rel_path, upload)
-        media = MediaFile.objects.create(storage_path=saved_path)
+        media = MediaFile.objects.create(project=active_project, storage_path=saved_path)
         record_entity_revision(
             project=active_project,
             entity_type='media_file',

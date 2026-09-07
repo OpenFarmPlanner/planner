@@ -15,6 +15,13 @@ from .base import TimestampedModel
 class MediaFile(models.Model):
     """Stored media metadata used as file references in domain models."""
 
+    project = models.ForeignKey(
+        'Project',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='media_files',
+    )
     storage_path = models.CharField(max_length=500, unique=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     orphaned_at = models.DateTimeField(null=True, blank=True)
