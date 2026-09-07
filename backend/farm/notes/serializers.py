@@ -6,10 +6,18 @@ from farm.common.serializer_fields import AuditUserSerializer
 from farm.models import NoteAttachment
 
 
-class NoteAttachmentUploadSerializer(serializers.Serializer):
+class NoteAttachmentUploadSerializer(serializers.ModelSerializer):
     """Validate the user-controlled metadata for a note image upload."""
 
-    caption = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
+    class Meta:
+        model = NoteAttachment
+        fields = ["caption"]
+        extra_kwargs = {
+            "caption": {
+                "default": "",
+                "trim_whitespace": False,
+            },
+        }
 
 
 class NoteAttachmentSerializer(serializers.ModelSerializer):

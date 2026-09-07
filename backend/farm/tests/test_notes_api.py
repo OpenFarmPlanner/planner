@@ -119,10 +119,11 @@ class NoteAttachmentApiTest(DRFAPITestCase):
 
         upload_response = self.client.post(
             f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
-            {'image': upload},
+            {'image': upload, 'caption': '  Field edge  '},
             format='multipart',
         )
         self.assertEqual(upload_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(upload_response.data['caption'], '  Field edge  ')
         self.assertLessEqual(upload_response.data['width'], 1280)
 
         list_response = self.client.get(f'/openfarmplanner/api/notes/{self.plan.id}/attachments/')
