@@ -94,7 +94,9 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             # class-level queryset filters to published-only) so a moderator
             # can find something to restore without exposing removed content
             # to everyone else.
-            base_queryset = PublicCrop.objects.filter(status=PublicCrop.STATUS_REMOVED)
+            base_queryset = PublicCrop.objects.filter(
+                status=PublicCrop.STATUS_REMOVED,
+            ).order_by('name', 'variety')
         else:
             base_queryset = super().get_queryset()
         queryset = (
