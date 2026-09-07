@@ -44,6 +44,7 @@ nav:
       - Social Login: social-login.md
       - Agent API (tokens & culture import): agent-api.md
       - Crop Library Architecture: crop-library-architecture.md
+      - Crop Taxonomy Guidelines: crop-taxonomy-guidelines.md
       - Seed Demand Calculation: seed-demand-calculation.md
       - Versioning and History: versioning-and-history.md
       - Large-Dataset Rendering: large-dataset-rendering.md

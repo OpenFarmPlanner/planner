@@ -2,18 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class CropSpeciesSeedEntry:
-    """Language-independent species entry prepared for later translations."""
+    """Language-independent species entry prepared for later translations.
+
+    ``synonyms`` and ``regional_names`` are alias data, never independent
+    species: they are keyed by language code and feed
+    ``CropSpeciesTranslation.synonyms`` / ``.regional_names``. Which of the two
+    an alias belongs in is decided by
+    docs/crop-taxonomy-guidelines.md — a regional name is displayed to projects
+    in that region, a synonym only ever makes the canonical species findable.
+    """
 
     key: str
     translations: dict[str, str]
     scientific_name: str = ''
     family: str = ''
     categories: tuple[str, ...] = ()
+    synonyms: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    regional_names: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
@@ -26,10 +36,19 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='apricot', translations={'de': 'Marille', 'en': 'Apricot'}),
     CropSpeciesSeedEntry(key='artichoke', translations={'de': 'Artischocke', 'en': 'Artichoke'}),
     CropSpeciesSeedEntry(key='asparagus', translations={'de': 'Spargel', 'en': 'Asparagus'}),
-    CropSpeciesSeedEntry(key='aubergine', translations={'de': 'Aubergine', 'en': 'Eggplant'}),
+    CropSpeciesSeedEntry(
+        key='aubergine',
+        translations={'de': 'Aubergine', 'en': 'Eggplant'},
+        regional_names={'de': {'austria': 'Melanzani'}},
+    ),
     CropSpeciesSeedEntry(key='barley', translations={'de': 'Gerste', 'en': 'Barley'}),
     CropSpeciesSeedEntry(key='basil', translations={'de': 'Basilikum', 'en': 'Basil'}),
-    CropSpeciesSeedEntry(key='beetroot', translations={'de': 'Rote Rübe', 'en': 'Beetroot'}),
+    CropSpeciesSeedEntry(
+        key='beetroot',
+        translations={'de': 'Rote Rübe', 'en': 'Beetroot'},
+        synonyms={'de': ('Rote Bete', 'Randen')},
+        regional_names={'de': {'switzerland': 'Rande'}},
+    ),
     CropSpeciesSeedEntry(key='black_salsify', translations={'de': 'Schwarzwurzel', 'en': 'Black salsify'}),
     CropSpeciesSeedEntry(key='blackcurrant', translations={'de': 'Schwarze Ribisel', 'en': 'Blackcurrant'}),
     CropSpeciesSeedEntry(key='blackberry', translations={'de': 'Brombeere', 'en': 'Blackberry'}),
@@ -40,18 +59,40 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='brussels_sprout', translations={'de': 'Rosenkohl', 'en': 'Brussels sprout'}),
     CropSpeciesSeedEntry(key='buckwheat', translations={'de': 'Buchweizen', 'en': 'Buckwheat'}),
     CropSpeciesSeedEntry(key='bush_bean', translations={'de': 'Buschbohne', 'en': 'Bush bean'}),
-    CropSpeciesSeedEntry(key='cabbage', translations={'de': 'Weißkraut', 'en': 'White cabbage'}),
+    CropSpeciesSeedEntry(
+        key='cabbage',
+        translations={'de': 'Weißkraut', 'en': 'White cabbage'},
+        synonyms={'de': ('Weißkohl', 'Weisskabis')},
+        regional_names={'de': {'switzerland': 'Kabis'}},
+    ),
     CropSpeciesSeedEntry(key='camelina', translations={'de': 'Leindotter', 'en': 'Camelina'}),
     CropSpeciesSeedEntry(key='canola', translations={'de': 'Raps', 'en': 'Canola'}),
     CropSpeciesSeedEntry(key='calendula', translations={'de': 'Ringelblume', 'en': 'Calendula'}),
     CropSpeciesSeedEntry(key='caraway', translations={'de': 'Kümmel', 'en': 'Caraway'}),
     CropSpeciesSeedEntry(key='cardoon', translations={'de': 'Kardy', 'en': 'Cardoon'}),
-    CropSpeciesSeedEntry(key='carrot', translations={'de': 'Karotte', 'en': 'Carrot'}),
-    CropSpeciesSeedEntry(key='cauliflower', translations={'de': 'Karfiol', 'en': 'Cauliflower'}),
+    CropSpeciesSeedEntry(
+        key='carrot',
+        translations={'de': 'Karotte', 'en': 'Carrot'},
+        synonyms={'de': ('Möhre', 'Mohrrübe', 'Gelbe Rübe')},
+        regional_names={'de': {'switzerland': 'Rüebli'}},
+    ),
+    CropSpeciesSeedEntry(
+        key='cauliflower',
+        translations={'de': 'Blumenkohl', 'en': 'Cauliflower'},
+        scientific_name='Brassica oleracea var. botrytis',
+        family='Brassicaceae',
+        categories=('vegetable',),
+        regional_names={'de': {'austria': 'Karfiol'}},
+    ),
     CropSpeciesSeedEntry(key='celeriac', translations={'de': 'Knollensellerie', 'en': 'Celeriac'}),
     CropSpeciesSeedEntry(key='celery', translations={'de': 'Stangensellerie', 'en': 'Celery'}),
     CropSpeciesSeedEntry(key='chamomile', translations={'de': 'Kamille', 'en': 'Chamomile'}),
-    CropSpeciesSeedEntry(key='chard', translations={'de': 'Mangold', 'en': 'Chard'}),
+    CropSpeciesSeedEntry(
+        key='chard',
+        translations={'de': 'Mangold', 'en': 'Chard'},
+        synonyms={'de': ('Stielmangold', 'Schnittmangold', 'Rippenmangold')},
+        regional_names={'de': {'switzerland': 'Krautstiel'}},
+    ),
     CropSpeciesSeedEntry(key='cherry', translations={'de': 'Kirsche', 'en': 'Cherry'}),
     CropSpeciesSeedEntry(key='chestnut', translations={'de': 'Edelkastanie', 'en': 'Chestnut'}),
     CropSpeciesSeedEntry(key='chervil', translations={'de': 'Kerbel', 'en': 'Chervil'}),
@@ -60,11 +101,23 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='chicory', translations={'de': 'Chicorée', 'en': 'Chicory'}),
     CropSpeciesSeedEntry(key='chili', translations={'de': 'Chili', 'en': 'Chili pepper'}),
     CropSpeciesSeedEntry(key='chives', translations={'de': 'Schnittlauch', 'en': 'Chives'}),
+    CropSpeciesSeedEntry(
+        key='cutting_kale',
+        translations={'de': 'Schnittkohl', 'en': 'Cutting kale'},
+        scientific_name='Brassica oleracea var. viridis',
+        family='Brassicaceae',
+        categories=('vegetable',),
+    ),
     CropSpeciesSeedEntry(key='cima_di_rapa', translations={'de': 'Stängelkohl', 'en': 'Broccoli raab'}),
     CropSpeciesSeedEntry(key='common_vetch', translations={'de': 'Saatwicke', 'en': 'Common vetch'}),
     CropSpeciesSeedEntry(key='cornflower', translations={'de': 'Kornblume', 'en': 'Cornflower'}),
     CropSpeciesSeedEntry(key='coriander', translations={'de': 'Koriander', 'en': 'Coriander'}),
-    CropSpeciesSeedEntry(key='corn_salad', translations={'de': 'Feldsalat', 'en': 'Corn salad'}),
+    CropSpeciesSeedEntry(
+        key='corn_salad',
+        translations={'de': 'Feldsalat', 'en': 'Corn salad'},
+        synonyms={'de': ('Nüssler', 'Ackersalat', 'Rapunzel')},
+        regional_names={'de': {'austria': 'Vogerlsalat', 'switzerland': 'Nüsslisalat'}},
+    ),
     CropSpeciesSeedEntry(key='cosmos', translations={'de': 'Schmuckkörbchen', 'en': 'Cosmos'}),
     CropSpeciesSeedEntry(key='cress', translations={'de': 'Kresse', 'en': 'Cress'}),
     CropSpeciesSeedEntry(key='crimson_clover', translations={'de': 'Inkarnatklee', 'en': 'Crimson clover'}),
@@ -107,7 +160,12 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='hyssop', translations={'de': 'Ysop', 'en': 'Hyssop'}),
     CropSpeciesSeedEntry(key='iceberg_lettuce', translations={'de': 'Eisbergsalat', 'en': 'Iceberg lettuce'}),
     CropSpeciesSeedEntry(key='jerusalem_artichoke', translations={'de': 'Topinambur', 'en': 'Jerusalem artichoke'}),
-    CropSpeciesSeedEntry(key='kale', translations={'de': 'Grünkohl', 'en': 'Kale'}),
+    CropSpeciesSeedEntry(
+        key='kale',
+        translations={'de': 'Grünkohl', 'en': 'Kale'},
+        synonyms={'de': ('Braunkohl', 'Krauskohl')},
+        regional_names={'de': {'switzerland': 'Federkohl'}},
+    ),
     CropSpeciesSeedEntry(key='kidney_bean', translations={'de': 'Kidneybohne', 'en': 'Kidney bean'}),
     CropSpeciesSeedEntry(key='kiwi', translations={'de': 'Kiwi', 'en': 'Kiwi'}),
     CropSpeciesSeedEntry(key='kohlrabi', translations={'de': 'Kohlrabi', 'en': 'Kohlrabi'}),
@@ -120,7 +178,11 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
         family='Brassicaceae',
         categories=('vegetable',),
     ),
-    CropSpeciesSeedEntry(key='leek', translations={'de': 'Lauch', 'en': 'Leek'}),
+    CropSpeciesSeedEntry(
+        key='leek',
+        translations={'de': 'Lauch', 'en': 'Leek'},
+        synonyms={'de': ('Porree', 'Breitlauch', 'Winterlauch')},
+    ),
     CropSpeciesSeedEntry(key='lemon_balm', translations={'de': 'Zitronenmelisse', 'en': 'Lemon balm'}),
     CropSpeciesSeedEntry(key='lentil', translations={'de': 'Linse', 'en': 'Lentil'}),
     CropSpeciesSeedEntry(key='lettuce', translations={'de': 'Salat', 'en': 'Lettuce'}),
@@ -153,26 +215,64 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='pattypan_squash', translations={'de': 'Patisson', 'en': 'Pattypan squash'}),
     CropSpeciesSeedEntry(key='peach', translations={'de': 'Pfirsich', 'en': 'Peach'}),
     CropSpeciesSeedEntry(key='peanut', translations={'de': 'Erdnuss', 'en': 'Peanut'}),
-    CropSpeciesSeedEntry(key='pea', translations={'de': 'Erbse', 'en': 'Pea'}),
+    CropSpeciesSeedEntry(
+        key='pea',
+        translations={'de': 'Erbse', 'en': 'Pea'},
+        synonyms={'de': ('Palerbse', 'Markerbse', 'Schalerbse')},
+    ),
     CropSpeciesSeedEntry(key='pear', translations={'de': 'Birne', 'en': 'Pear'}),
     CropSpeciesSeedEntry(key='pepper', translations={'de': 'Paprika', 'en': 'Sweet pepper'}),
     CropSpeciesSeedEntry(key='perilla', translations={'de': 'Shiso', 'en': 'Perilla'}),
     CropSpeciesSeedEntry(key='persian_clover', translations={'de': 'Perserklee', 'en': 'Persian clover'}),
     CropSpeciesSeedEntry(key='phacelia', translations={'de': 'Phacelia', 'en': 'Phacelia'}),
+    CropSpeciesSeedEntry(
+        key='pepperoncini',
+        translations={'de': 'Pfefferoni', 'en': 'Pepperoncini'},
+        scientific_name='Capsicum annuum var. longum',
+        family='Solanaceae',
+        categories=('vegetable',),
+        synonyms={'de': ('Spitzpaprika',)},
+    ),
     CropSpeciesSeedEntry(key='physalis', translations={'de': 'Physalis', 'en': 'Physalis'}),
     CropSpeciesSeedEntry(key='pole_bean', translations={'de': 'Stangenbohne', 'en': 'Pole bean'}),
     CropSpeciesSeedEntry(key='plum', translations={'de': 'Zwetschke', 'en': 'Plum'}),
     CropSpeciesSeedEntry(key='poppy', translations={'de': 'Mohn', 'en': 'Poppy'}),
-    CropSpeciesSeedEntry(key='potato', translations={'de': 'Kartoffel', 'en': 'Potato'}),
+    CropSpeciesSeedEntry(
+        key='potato',
+        translations={'de': 'Kartoffel', 'en': 'Potato'},
+        synonyms={'de': ('Erdäpfel',)},
+        regional_names={'de': {'austria': 'Erdapfel'}},
+    ),
     CropSpeciesSeedEntry(key='pumpkin', translations={'de': 'Kürbis', 'en': 'Pumpkin'}),
     CropSpeciesSeedEntry(key='purslane', translations={'de': 'Portulak', 'en': 'Purslane'}),
     CropSpeciesSeedEntry(key='quince', translations={'de': 'Quitte', 'en': 'Quince'}),
+    CropSpeciesSeedEntry(
+        key='puntarelle',
+        translations={'de': 'Puntarelle', 'en': 'Puntarelle'},
+        scientific_name='Cichorium intybus var. foliosum',
+        family='Asteraceae',
+        categories=('vegetable',),
+        synonyms={'de': ('Vulkanspargel',)},
+    ),
     CropSpeciesSeedEntry(key='quinoa', translations={'de': 'Quinoa', 'en': 'Quinoa'}),
-    CropSpeciesSeedEntry(key='radicchio', translations={'de': 'Radicchio', 'en': 'Radicchio'}),
+    CropSpeciesSeedEntry(
+        key='radicchio',
+        translations={'de': 'Radicchio', 'en': 'Radicchio'},
+        scientific_name='Cichorium intybus var. foliosum',
+        family='Asteraceae',
+        categories=('vegetable',),
+        synonyms={'de': ('Cicorino', 'Roter Chicorée')},
+        regional_names={'de': {'switzerland': 'Cicorino rosso'}},
+    ),
     CropSpeciesSeedEntry(key='radish', translations={'de': 'Radieschen', 'en': 'Radish'}),
     CropSpeciesSeedEntry(key='ramson', translations={'de': 'Bärlauch', 'en': 'Ramson'}),
     CropSpeciesSeedEntry(key='raspberry', translations={'de': 'Himbeere', 'en': 'Raspberry'}),
-    CropSpeciesSeedEntry(key='red_cabbage', translations={'de': 'Rotkraut', 'en': 'Red cabbage'}),
+    CropSpeciesSeedEntry(
+        key='red_cabbage',
+        translations={'de': 'Rotkraut', 'en': 'Red cabbage'},
+        synonyms={'de': ('Rotkohl', 'Blaukraut')},
+        regional_names={'de': {'switzerland': 'Rotkabis'}},
+    ),
     CropSpeciesSeedEntry(key='red_clover', translations={'de': 'Rotklee', 'en': 'Red clover'}),
     CropSpeciesSeedEntry(key='rhubarb', translations={'de': 'Rhabarber', 'en': 'Rhubarb'}),
     CropSpeciesSeedEntry(key='romaine_lettuce', translations={'de': 'Römersalat', 'en': 'Romaine lettuce'}),
@@ -182,32 +282,63 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
     CropSpeciesSeedEntry(key='rye', translations={'de': 'Roggen', 'en': 'Rye'}),
     CropSpeciesSeedEntry(key='sage', translations={'de': 'Salbei', 'en': 'Sage'}),
     CropSpeciesSeedEntry(key='savory', translations={'de': 'Bohnenkraut', 'en': 'Savory'}),
-    CropSpeciesSeedEntry(key='savoy_cabbage', translations={'de': 'Wirsing', 'en': 'Savoy cabbage'}),
+    CropSpeciesSeedEntry(
+        key='savoy_cabbage',
+        translations={'de': 'Wirsing', 'en': 'Savoy cabbage'},
+        synonyms={'de': ('Wirsingkohl',)},
+        regional_names={'de': {'switzerland': 'Wirz'}},
+    ),
     CropSpeciesSeedEntry(key='scabiosa', translations={'de': 'Skabiose', 'en': 'Scabiosa'}),
     CropSpeciesSeedEntry(key='sea_buckthorn', translations={'de': 'Sanddorn', 'en': 'Sea buckthorn'}),
     CropSpeciesSeedEntry(key='serradella', translations={'de': 'Serradella', 'en': 'Serradella'}),
     CropSpeciesSeedEntry(key='shallot', translations={'de': 'Schalotte', 'en': 'Shallot'}),
     CropSpeciesSeedEntry(key='snapdragon', translations={'de': 'Löwenmäulchen', 'en': 'Snapdragon'}),
     CropSpeciesSeedEntry(key='sorghum', translations={'de': 'Sorghum', 'en': 'Sorghum'}),
+    CropSpeciesSeedEntry(
+        key='snow_pea',
+        translations={'de': 'Zuckererbse', 'en': 'Snow pea'},
+        scientific_name='Pisum sativum var. saccharatum',
+        family='Fabaceae',
+        categories=('vegetable',),
+        synonyms={
+            'de': ('Kefen', 'Zuckerschote', 'Kaiserschote', 'Knackerbse'),
+            'en': ('Mangetout',),
+        },
+        regional_names={'de': {'switzerland': 'Kefe'}},
+    ),
     CropSpeciesSeedEntry(key='sorrel', translations={'de': 'Sauerampfer', 'en': 'Sorrel'}),
     CropSpeciesSeedEntry(key='soybean', translations={'de': 'Sojabohne', 'en': 'Soybean'}),
     CropSpeciesSeedEntry(key='spinach', translations={'de': 'Spinat', 'en': 'Spinach'}),
     CropSpeciesSeedEntry(key='spelt', translations={'de': 'Dinkel', 'en': 'Spelt'}),
-    CropSpeciesSeedEntry(key='pointed_cabbage', translations={'de': 'Spitzkraut', 'en': 'Pointed cabbage'}),
+    CropSpeciesSeedEntry(
+        key='pointed_cabbage',
+        translations={'de': 'Spitzkraut', 'en': 'Pointed cabbage'},
+        synonyms={'de': ('Spitzkohl',)},
+        regional_names={'de': {'switzerland': 'Spitzkabis'}},
+    ),
     CropSpeciesSeedEntry(key='spring_onion', translations={'de': 'Frühlingszwiebel', 'en': 'Spring onion'}),
     CropSpeciesSeedEntry(key='strawberry', translations={'de': 'Erdbeere', 'en': 'Strawberry'}),
     CropSpeciesSeedEntry(key='strawflower', translations={'de': 'Strohblume', 'en': 'Strawflower'}),
     CropSpeciesSeedEntry(key='sugar_beet', translations={'de': 'Zuckerrübe', 'en': 'Sugar beet'}),
     CropSpeciesSeedEntry(key='sugarloaf_chicory', translations={'de': 'Zuckerhut', 'en': 'Sugarloaf chicory'}),
     CropSpeciesSeedEntry(key='sunflower', translations={'de': 'Sonnenblume', 'en': 'Sunflower'}),
-    CropSpeciesSeedEntry(key='summer_squash', translations={'de': 'Zucchini', 'en': 'Zucchini'}),
+    CropSpeciesSeedEntry(
+        key='summer_squash',
+        translations={'de': 'Zucchini', 'en': 'Zucchini'},
+        regional_names={'de': {'switzerland': 'Zucchetti'}},
+    ),
     CropSpeciesSeedEntry(key='sweet_potato', translations={'de': 'Süßkartoffel', 'en': 'Sweet potato'}),
     CropSpeciesSeedEntry(key='sweet_pea', translations={'de': 'Duftwicke', 'en': 'Sweet pea'}),
     CropSpeciesSeedEntry(key='sweetcorn', translations={'de': 'Zuckermais', 'en': 'Sweetcorn'}),
     CropSpeciesSeedEntry(key='tarragon', translations={'de': 'Estragon', 'en': 'Tarragon'}),
     CropSpeciesSeedEntry(key='tatsoi', translations={'de': 'Tatsoi', 'en': 'Tatsoi'}),
     CropSpeciesSeedEntry(key='thyme', translations={'de': 'Thymian', 'en': 'Thyme'}),
-    CropSpeciesSeedEntry(key='tomato', translations={'de': 'Tomate', 'en': 'Tomato'}),
+    CropSpeciesSeedEntry(
+        key='tomato',
+        translations={'de': 'Tomate', 'en': 'Tomato'},
+        synonyms={'de': ('Paradeis',)},
+        regional_names={'de': {'austria': 'Paradeiser'}},
+    ),
     CropSpeciesSeedEntry(key='triticale', translations={'de': 'Triticale', 'en': 'Triticale'}),
     CropSpeciesSeedEntry(key='turnip', translations={'de': 'Speiserübe', 'en': 'Turnip'}),
     CropSpeciesSeedEntry(key='watercress', translations={'de': 'Brunnenkresse', 'en': 'Watercress'}),
@@ -225,3 +356,17 @@ CROP_SPECIES_SEED_DATA: tuple[CropSpeciesSeedEntry, ...] = (
 def get_crop_species_seed_name(entry: CropSpeciesSeedEntry, language_code: str = 'de') -> str:
     """Return the best display name currently supported by the species model."""
     return entry.translations.get(language_code) or entry.translations['de']
+
+
+def get_crop_species_seed_synonyms(
+    entry: CropSpeciesSeedEntry, language_code: str = 'de',
+) -> list[str]:
+    """Search-only aliases for one language, in seed order and without duplicates."""
+    return list(dict.fromkeys(entry.synonyms.get(language_code, ())))
+
+
+def get_crop_species_seed_regional_names(
+    entry: CropSpeciesSeedEntry, language_code: str = 'de',
+) -> dict[str, str]:
+    """Region -> display override for one language (``austria`` / ``switzerland``)."""
+    return dict(entry.regional_names.get(language_code, {}))
