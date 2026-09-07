@@ -40,6 +40,23 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-07 — Codex — Note attachment validation remediation
+
+**Scope:** Follow-up remediation for finding 1 in the Codex full application
+review immediately below.
+
+**Findings:**
+
+1. **`FIXED` — Note attachment captions bypassed serializer validation.** A
+   dedicated upload-metadata serializer now checks caption type and length
+   before image decoding/re-encoding. Overlong captions return 400 rather than
+   reaching the database, and the regression test verifies image processing
+   is skipped for invalid metadata
+   (`backend/farm/notes/serializers.py`, `backend/farm/notes/views.py`,
+   `backend/farm/tests/test_notes_api.py`).
+
+---
+
 ## 2026-09-07 — Codex — Full application follow-up at `fec31e5`
 
 **Scope:** Independent full backend/frontend review at `fec31e5`, covering all

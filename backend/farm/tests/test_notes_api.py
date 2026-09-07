@@ -133,6 +133,20 @@ class NoteAttachmentApiTest(DRFAPITestCase):
         delete_response = self.client.delete(f'/openfarmplanner/api/attachments/{attachment_id}/')
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
 
+    @patch('farm.notes.views.process_note_image')
+    def test_attachment_upload_rejects_overlong_caption_before_processing(self, mock_process):
+        upload = SimpleUploadedFile('raw.jpg', b'raw', content_type='image/jpeg')
+
+        response = self.client.post(
+            f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
+            {'image': upload, 'caption': 'x' * 256},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('caption', response.data)
+        mock_process.assert_not_called()
+
 
     @patch(
         'farm.notes.views.process_note_image',

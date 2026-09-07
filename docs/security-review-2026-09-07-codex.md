@@ -16,12 +16,12 @@ Claude's DataGrid and field/bed hierarchy continuous-scroll sizing work. That
 diff does not add a data source, HTML/URL sink, request, credential store, or
 authorization decision and is cross-confirmed here as security-neutral.
 
-## Confirmed open finding
+## Confirmed and remediated finding
 
-### Note attachment captions bypass serializer validation (low)
+### Note attachment captions bypassed serializer validation (low, fixed)
 
-**Location:** `backend/farm/notes/views.py:104,106-127` and
-`backend/farm/models/notes.py:22`.
+**Location:** `backend/farm/notes/views.py`,
+`backend/farm/notes/serializers.py`, and `backend/farm/models/notes.py`.
 
 The multipart note-attachment create endpoint reads `caption` directly from
 `request.data`, processes and re-encodes the image, and constructs and saves a
@@ -34,12 +34,10 @@ run. The caption remains safe from stored XSS because React renders it as text;
 the defect is incomplete boundary validation and a small avoidable
 availability/resource-amplification issue, not a tenant escape.
 
-**Suggested fix:** validate the upload metadata with a dedicated write
-serializer (preferred), or at minimum run a `CharField(max_length=255,
-allow_blank=True)` before image processing. Return a normal 400 for an
-overlong/non-string caption and add a regression test. This review leaves the
-finding OPEN because choosing the multipart write-serializer shape is an API
-design decision rather than an unambiguous missing tenant filter.
+**Resolution:** a dedicated metadata serializer now validates the caption's
+type and 255-character limit before image processing. Invalid captions return
+a normal 400 response, and a regression test verifies that the image processor
+is not invoked for an overlong caption.
 
 ## Multi-tenancy and season isolation
 
