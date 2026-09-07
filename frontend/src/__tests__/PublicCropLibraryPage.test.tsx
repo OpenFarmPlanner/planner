@@ -1909,6 +1909,7 @@ describe('PublicCropLibraryPage', () => {
 
   it('edits public crops with the shared crop form and public-library save shortcut', async () => {
     const user = userEvent.setup();
+    authMocks.user.is_staff = true;
     renderPage();
 
     await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
@@ -1951,6 +1952,17 @@ describe('PublicCropLibraryPage', () => {
     expect(publicCropApiMocks.update.mock.calls[0][1]).not.toHaveProperty('name');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' })).not.toBeInTheDocument());
   }, 30000);
+
+  it('keeps the public crop variety read-only for non-admin contributors', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
+    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+
+    const editDialog = await screen.findByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });
+    expect(within(editDialog).getByLabelText('Sorte')).toBeDisabled();
+  });
 
   it('adds a missing English notes translation from the Notes section dialog and refreshes the fallback state', async () => {
     await i18n.changeLanguage('en');
