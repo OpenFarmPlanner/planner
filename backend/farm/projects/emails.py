@@ -48,7 +48,7 @@ def _send_project_invitation_email(*, invitation: ProjectInvitation, project_nam
             return True, ''
         logger.error(
             'Project invitation email backend accepted request but returned zero deliveries',
-            extra={'project_id': invitation.project_id, 'invitation_id': invitation.id, 'email': invitation.email},
+            extra={'project_id': invitation.project_id, 'invitation_id': invitation.id},
         )
         return False, (
             'Die E-Mail konnte nicht gesendet werden. '
@@ -57,7 +57,7 @@ def _send_project_invitation_email(*, invitation: ProjectInvitation, project_nam
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             'Project invitation email could not be sent',
-            extra={'project_id': invitation.project_id, 'invitation_id': invitation.id, 'email': invitation.email},
+            extra={'project_id': invitation.project_id, 'invitation_id': invitation.id},
         )
         return False, (
             'Die E-Mail konnte nicht gesendet werden. '

@@ -1177,6 +1177,8 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(entry['imported_crops_count'], 2)
 
     def test_public_crop_edit_response_reports_imported_crops_count(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
         public_crop = PublicCrop.objects.create(
             name='Bean', variety='Canadian Wonder', status='published', created_by=self.user, version=1,
         )
@@ -1553,6 +1555,8 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         conflict as any other field change, with `variety_changed` set so the
         frontend can call the identity rename out explicitly.
         """
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
         public_crop = PublicCrop.objects.create(
             name='Carrot', variety='Nantes', status='published', created_by=self.user,
             growth_duration_days=70,
@@ -1579,6 +1583,8 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
     def _import_and_rename_variety(self, *, variety: str = 'Nantes', renamed_to: str = 'Nantes II'):
         """Publish `variety`, import it into the project, then rename it publicly."""
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
         public_crop = PublicCrop.objects.create(
             name='Carrot', variety=variety, status='published', created_by=self.user,
             growth_duration_days=70,
@@ -2290,7 +2296,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(public_crop.variety, 'Roma')
         self.assertEqual(public_crop.notes, 'Original notes')
 
-    def test_public_crop_direct_edit_allows_variety_rename(self):
+    def test_public_crop_direct_edit_allows_admin_variety_rename(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
         public_crop = PublicCrop.objects.create(
             name='Tomato',
             variety='Roma',
@@ -2317,7 +2325,26 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             revision.changed_fields,
         )
 
+    def test_public_crop_direct_edit_rejects_non_admin_variety_rename(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user, version=1,
+        )
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'base_version': 1, 'variety': 'Roma VF'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'public_crop_identity_admin_required')
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.variety, 'Roma')
+        self.assertEqual(public_crop.version, 1)
+
     def test_public_crop_direct_edit_rejects_variety_rename_that_collides_with_existing_entry(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
         tomato_species = CropSpecies.objects.create(name='Tomato')
         PublicCrop.objects.create(
             name='Tomato', variety='San Marzano', status='published', created_by=self.user,
@@ -2394,6 +2421,35 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(revisions.count(), 3)
         self.assertEqual(revisions.last().action, PublicCropRevision.ACTION_RESTORED)
         self.assertEqual(revisions.last().restored_from_version, 1)
+
+    def test_non_admin_cannot_restore_a_different_variety_identity(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma VF', status='published', created_by=self.user, version=2,
+        )
+        PublicCropRevision.objects.create(
+            public_crop=public_crop,
+            version=1,
+            action=PublicCropRevision.ACTION_CREATED,
+            snapshot={'variety': 'Roma'},
+        )
+        PublicCropRevision.objects.create(
+            public_crop=public_crop,
+            version=2,
+            action=PublicCropRevision.ACTION_UPDATED,
+            snapshot={'variety': 'Roma VF'},
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/revert/',
+            {'version': 1, 'base_version': 2},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'public_crop_identity_admin_required')
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.variety, 'Roma VF')
+        self.assertEqual(public_crop.version, 2)
 
     def test_public_crop_edit_and_revert_do_not_mutate_imported_project_crop(self):
         public_crop = PublicCrop.objects.create(
@@ -2472,6 +2528,93 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(PublicCropChangeProposal.objects.count(), 0)
+
+    def test_change_proposal_rejects_invalid_field_values(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/change-proposals/',
+            {
+                'summary': 'Malformed values',
+                'proposed_data': {
+                    'growth_duration_days': {'not': 'a number'},
+                    'seed_packages': [{'size_value': -1, 'size_unit': 'bucket'}],
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(PublicCropChangeProposal.objects.exists())
+
+    def test_change_proposal_accepts_valid_seed_package_values(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/change-proposals/',
+            {
+                'summary': 'Add package evidence',
+                'proposed_data': {
+                    'seed_packages': [{
+                        'size_value': 25.0,
+                        'size_unit': 'g',
+                        'evidence_text': 'Supplier catalogue',
+                    }],
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        proposal = PublicCropChangeProposal.objects.get()
+        moderator = User.objects.create_user(
+            username='seed-package-proposal-moderator', password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        self.client.force_authenticate(user=moderator)
+
+        approval = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/change-proposals/{proposal.id}/approve/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(approval.status_code, status.HTTP_200_OK, approval.data)
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.seed_packages[0]['size_value'], 25.0)
+
+    def test_change_proposal_approval_revalidates_legacy_payload(self):
+        moderator = User.objects.create_user(
+            username='legacy-proposal-moderator', password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+            growth_duration_days=60,
+        )
+        proposal = PublicCropChangeProposal.objects.create(
+            public_crop=public_crop,
+            proposed_by=self.user,
+            summary='Legacy malformed proposal',
+            proposed_data={'growth_duration_days': {'not': 'a number'}},
+        )
+        self.client.force_authenticate(user=moderator)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/change-proposals/{proposal.id}/approve/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        proposal.refresh_from_db()
+        public_crop.refresh_from_db()
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual(public_crop.growth_duration_days, 60)
 
     def test_only_moderator_can_approve_change_proposal_and_public_crop_version_increments(self):
         moderator = User.objects.create_user(

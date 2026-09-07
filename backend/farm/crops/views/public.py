@@ -94,7 +94,9 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             # class-level queryset filters to published-only) so a moderator
             # can find something to restore without exposing removed content
             # to everyone else.
-            base_queryset = PublicCrop.objects.filter(status=PublicCrop.STATUS_REMOVED)
+            base_queryset = PublicCrop.objects.filter(
+                status=PublicCrop.STATUS_REMOVED,
+            ).order_by('name', 'variety')
         else:
             base_queryset = super().get_queryset()
         queryset = (
@@ -514,11 +516,18 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._proposal_status_error()
 
         review_note = (request.data.get('review_note') or '').strip()
+        update_serializer = PublicCropUpdateSerializer(data=proposal.proposed_data, partial=True)
+        update_serializer.is_valid(raise_exception=True)
+        update_data = dict(update_serializer.validated_data)
+        if 'seed_packages' in update_data:
+            update_data['seed_packages'] = update_serializer.fields[
+                'seed_packages'
+            ].to_representation(update_data['seed_packages'])
         with transaction.atomic():
             update_public_crop_directly(
                 public_crop=public_crop,
                 user=request.user,
-                data=proposal.proposed_data,
+                data=update_data,
             )
             proposal.status = PublicCropChangeProposal.STATUS_APPROVED
             proposal.reviewed_by = request.user

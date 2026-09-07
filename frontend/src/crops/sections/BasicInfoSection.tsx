@@ -25,6 +25,7 @@ interface BasicInfoSectionProps {
   showVarietyField?: boolean;
   /** Whether the variety field is a required input. False for the public-library admin edit form, where a blank variety marks the species-level ("general crop") entry. */
   varietyRequired?: boolean;
+  varietyReadOnly?: boolean;
   showFirstVarietyField?: boolean;
   firstVarietyName?: string;
   onFirstVarietyNameChange?: (value: string) => void;
@@ -89,6 +90,7 @@ export function BasicInfoSection({
   showIdentityFields = true,
   showVarietyField = true,
   varietyRequired = true,
+  varietyReadOnly = false,
   showFirstVarietyField = false,
   firstVarietyName,
   onFirstVarietyNameChange,
@@ -210,6 +212,7 @@ export function BasicInfoSection({
           {showVarietyField ? (
             varietyAutocomplete ? (
               <Autocomplete<string, false, false, true>
+                disabled={varietyReadOnly}
                 freeSolo
                 clearOnBlur={false}
                 options={varietyAutocomplete.options}
@@ -255,6 +258,7 @@ export function BasicInfoSection({
             ) : (
               <TextField
                 sx={identityFieldSx}
+                disabled={varietyReadOnly}
                 required={varietyRequired}
                 label={t('form.variety')}
                 placeholder={t('form.varietyPlaceholder')}

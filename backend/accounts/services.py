@@ -156,7 +156,6 @@ def finalize_account_deletion(
 
         user: User = locked_deletion.user
         user_id = user.pk
-        username = user.username
         project_ids = list(
             ProjectMembership.objects.filter(user=user).values_list('project_id', flat=True)
         )
@@ -194,7 +193,6 @@ def finalize_account_deletion(
             'account_deletion_event': 'finalized',
             'account_deletion_request_id': deletion.pk,
             'user_id': user_id,
-            'username': username,
             'deletion_requested_at': locked_deletion.deletion_requested_at.isoformat()
             if locked_deletion.deletion_requested_at
             else None,

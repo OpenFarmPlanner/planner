@@ -132,6 +132,8 @@ interface CropFormProps {
    * radius of an edit — especially a variety rename — before saving.
    */
   importedCopiesCount?: number;
+  /** Prevent public-library identity edits for users without administrator privileges. */
+  publicIdentityReadOnly?: boolean;
 }
 
 // Default color for display color picker
@@ -327,6 +329,7 @@ export function CropForm({
   formKind = 'variety',
   initialDraft,
   importedCopiesCount,
+  publicIdentityReadOnly = false,
 }: CropFormProps) {
   const { t } = useTranslation('crops');
   const isEdit = Boolean(crop);
@@ -1198,6 +1201,7 @@ export function CropForm({
               showIdentityFields={isProjectForm}
               showVarietyField={showVarietyField}
               varietyRequired={isProjectForm}
+              varietyReadOnly={!isProjectForm && publicIdentityReadOnly}
               showFirstVarietyField={showFirstVarietyField}
               firstVarietyName={firstVarietyName}
               onFirstVarietyNameChange={handleFirstVarietyNameChange}
