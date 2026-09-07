@@ -52,6 +52,17 @@ describe('CollisionService', () => {
       const rows = CollisionService.detectOverlaps([]);
       expect(rows.length).toBe(0);
     });
+
+    test('filters tasks with invalid dates before packing rows', () => {
+      const invalidTask: Task = {
+        id: 'invalid',
+        name: 'Invalid task',
+        startDate: new Date('invalid'),
+        endDate: new Date('invalid'),
+      };
+
+      expect(CollisionService.detectOverlaps([invalidTask])).toEqual([]);
+    });
   });
 
   describe('wouldCollide', () => {
