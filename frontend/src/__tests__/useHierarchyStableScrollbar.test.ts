@@ -81,6 +81,44 @@ describe('useScrollDrivenRowWindow row-count transitions', () => {
   const ROWS_BEFORE_APPEND = 4512;
   const MAX_PAGE_SIZE = 100;
 
+  // FieldsBedsHierarchy's deep-link highlight expands ancestors and then
+  // pages to the target inside a requestAnimationFrame, i.e. after the row
+  // count has already changed. The page size is derived from that count, so
+  // the window has to be read at call time; a window captured before the
+  // expansion resolves the target page against the collapsed list's size.
+  it('resolves the target page against the current row count, not a captured one', () => {
+    const COLLAPSED_ROWS = 1;
+    const EXPANDED_ROWS = 107;
+    const targetRowIndex = 65;
+    const wrapperRef = createRef<HTMLElement>();
+
+    const { result, rerender } = renderHook(
+      ({ totalRowCount }: { totalRowCount: number }) => useScrollDrivenRowWindow(
+        totalRowCount,
+        MAX_PAGE_SIZE,
+        SELECTOR,
+        wrapperRef,
+      ),
+      { initialProps: { totalRowCount: COLLAPSED_ROWS } },
+    );
+
+    const capturedWindow = result.current;
+    rerender({ totalRowCount: EXPANDED_ROWS });
+
+    // Reading the window at call time pages to the row.
+    act(() => {
+      result.current.ensureRowIndexVisible(targetRowIndex);
+    });
+    const { page, pageSize } = result.current;
+    expect(targetRowIndex).toBeGreaterThanOrEqual(page * pageSize);
+    expect(targetRowIndex).toBeLessThan((page + 1) * pageSize);
+
+    // The window captured before the expansion still holds the collapsed
+    // list's page size, so it would page somewhere the row is not.
+    expect(capturedWindow.pageSize).not.toBe(pageSize);
+    expect(Math.floor(targetRowIndex / capturedWindow.pageSize)).not.toBe(page);
+  });
+
   it('pages to the row the caller is about to append, not to a stale page', () => {
     const wrapperRef = createRef<HTMLElement>();
     const { result, rerender } = renderHook(

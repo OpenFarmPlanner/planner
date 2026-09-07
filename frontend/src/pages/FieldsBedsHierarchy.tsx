@@ -327,10 +327,20 @@ function FieldsBedsHierarchy({
     rowsArrayRef.current = rows;
   }, [rows]);
 
+  // Also read through a ref: the deep-link highlight flow below defers this
+  // call into a requestAnimationFrame *after* expanding ancestors, so the
+  // callback it captured predates the expansion. The page size is derived
+  // from the row count, so a captured window would resolve the target page
+  // against the collapsed list's size and page somewhere the row isn't.
+  const hierarchyRowWindowRef = useRef(hierarchyRowWindow);
+  useLayoutEffect(() => {
+    hierarchyRowWindowRef.current = hierarchyRowWindow;
+  }, [hierarchyRowWindow]);
+
   const ensureRowVisibleOnPage = useCallback((rowId: GridRowId): boolean => {
     const rowIndex = rowsArrayRef.current.findIndex((row) => String(row.id) === String(rowId));
-    return hierarchyRowWindow.ensureRowIndexVisible(rowIndex);
-  }, [hierarchyRowWindow]);
+    return hierarchyRowWindowRef.current.ensureRowIndexVisible(rowIndex);
+  }, []);
 
   const {
     expandedRowsRef,
