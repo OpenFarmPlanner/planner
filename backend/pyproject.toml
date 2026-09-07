@@ -1,6 +1,6 @@
 [project]
 name = "OpenFarmPlanner-backend"
-version = "1.49.0"
+version = "1.49.1"
 description = "OpenFarmPlanner - Django REST API backend for managing farm operations"
 authors = [
     {name = "OpenFarmPlanner Team", email = "info@OpenFarmPlanner.com"},
