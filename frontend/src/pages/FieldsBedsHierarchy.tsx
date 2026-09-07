@@ -70,10 +70,7 @@ import { useHierarchyData, type HierarchyDataState } from "../components/hierarc
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { type TreeRowNode } from "../components/hierarchy/utils/treeRows";
 import { useHierarchyLevelToggle } from "../components/hierarchy/hooks/useHierarchyLevelToggle";
-import {
-  getBalancedHierarchyPageSize,
-  useHierarchyRowWindow,
-} from "../components/hierarchy/hooks/useHierarchyRowWindow";
+import { useHierarchyRowWindow } from "../components/hierarchy/hooks/useHierarchyRowWindow";
 import { useHierarchyStableScrollbar } from "../components/hierarchy/hooks/useHierarchyStableScrollbar";
 import { hasPersistedEntityId } from "../components/hierarchy/utils/hierarchyUtils";
 import { useBedOperations } from "../components/hierarchy/hooks/useBedOperations";
@@ -312,10 +309,11 @@ function FieldsBedsHierarchy({
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
-    // Balanced so the last internal page is never a stub: it is the page the
-    // user lands on at the end of the list, and a stub there leaves the table
-    // (sized via maxPageContentHeight below) mostly empty.
-    getBalancedHierarchyPageSize(rows.length, HIERARCHY_GRID_PAGE_SIZE),
+    // The hook balances this cap down so the last internal page is never a
+    // stub: it is the page the user lands on at the end of the list, and a
+    // stub there leaves the table (sized via maxPageContentHeight below)
+    // mostly empty.
+    HIERARCHY_GRID_PAGE_SIZE,
     HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
     tableWrapperRef,
   );

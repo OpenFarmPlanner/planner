@@ -102,7 +102,7 @@ export interface ScrollDrivenRowWindow {
 
 export function useScrollDrivenRowWindow(
   totalRowCount: number,
-  pageSize: number,
+  maxPageSize: number,
   scrollContainerSelector: string,
   wrapperRef: React.RefObject<HTMLElement | null>,
   options: { preservePageOnRowCountChange?: boolean } = {},
@@ -112,6 +112,11 @@ export function useScrollDrivenRowWindow(
   // differently-sized list) makes the stored page fall back to 0 purely by
   // derivation — no ref/effect needed to "reset" it.
   const [pageState, setPageState] = useState({ page: 0, forRowCount: totalRowCount });
+  // Derived here rather than by the caller so that ensureRowIndexVisible can
+  // resolve the size a *pending* row count will produce; the balanced size
+  // moves with the row count, so a page index computed against the outgoing
+  // size can point at rows the next render no longer puts there.
+  const pageSize = getBalancedPageSize(totalRowCount, maxPageSize);
   const pageCount = Math.max(1, Math.ceil(totalRowCount / pageSize));
   const page = options.preservePageOnRowCountChange || pageState.forRowCount === totalRowCount
     ? pageState.page
@@ -241,13 +246,19 @@ export function useScrollDrivenRowWindow(
     if (rowIndex < 0) {
       return false;
     }
-    const targetPage = Math.floor(rowIndex / pageSize);
-    if (targetPage === clampedPage) {
+    // A caller that is about to change the row count passes the count it is
+    // moving to, so the target page is resolved against the page size that
+    // count produces rather than the one still on screen.
+    const targetPageSize = options?.forRowCount === undefined
+      ? pageSize
+      : getBalancedPageSize(options.forRowCount, maxPageSize);
+    const targetPage = Math.floor(rowIndex / targetPageSize);
+    if (targetPage === clampedPage && targetPageSize === pageSize) {
       return false;
     }
     setPage(targetPage, options?.forRowCount);
     return true;
-  }, [clampedPage, pageSize, setPage]);
+  }, [clampedPage, maxPageSize, pageSize, setPage]);
 
   // Memoized so consumers that focus rows after changing the window can
   // safely depend on the whole returned object without it changing identity

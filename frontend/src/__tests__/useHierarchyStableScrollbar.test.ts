@@ -9,13 +9,17 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { act } from 'react';
 import { renderHook } from '@testing-library/react';
 import { createRef } from 'react';
 import {
   useHierarchyStableScrollbar,
   type HierarchyRowWindowForScrollbar,
 } from '../components/hierarchy/hooks/useHierarchyStableScrollbar';
-import { getBalancedPageSize } from '../components/data-grid/hooks/useScrollDrivenRowWindow';
+import {
+  getBalancedPageSize,
+  useScrollDrivenRowWindow,
+} from '../components/data-grid/hooks/useScrollDrivenRowWindow';
 
 const SELECTOR = '.mock-scroller';
 const ROW_HEIGHT = 30;
@@ -70,6 +74,38 @@ class MockResizeObserver {
   disconnect = vi.fn();
 }
 
+
+describe('useScrollDrivenRowWindow row-count transitions', () => {
+  // The balanced page size moves with the row count, so a page index resolved
+  // against the size still on screen can point at rows the next render no
+  // longer puts there. 4512 rows page at 96, 4513 at 89.
+  const ROWS_BEFORE_APPEND = 4512;
+  const MAX_PAGE_SIZE = 100;
+
+  it('pages to the row the caller is about to append, not to a stale page', () => {
+    const wrapperRef = createRef<HTMLElement>();
+    const { result, rerender } = renderHook(
+      ({ totalRowCount }: { totalRowCount: number }) => useScrollDrivenRowWindow(
+        totalRowCount,
+        MAX_PAGE_SIZE,
+        SELECTOR,
+        wrapperRef,
+        { preservePageOnRowCountChange: true },
+      ),
+      { initialProps: { totalRowCount: ROWS_BEFORE_APPEND } },
+    );
+
+    const newRowIndex = ROWS_BEFORE_APPEND;
+    act(() => {
+      result.current.ensureRowIndexVisible(newRowIndex, { forRowCount: ROWS_BEFORE_APPEND + 1 });
+    });
+    rerender({ totalRowCount: ROWS_BEFORE_APPEND + 1 });
+
+    const { page, pageSize } = result.current;
+    expect(newRowIndex).toBeGreaterThanOrEqual(page * pageSize);
+    expect(newRowIndex).toBeLessThan((page + 1) * pageSize);
+  });
+});
 
 describe('getBalancedPageSize', () => {
   it('leaves the page size alone while everything fits on one page', () => {
