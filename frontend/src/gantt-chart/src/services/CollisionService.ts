@@ -1,18 +1,10 @@
 import { type Task, ViewMode } from "../types";
 import { packIntoNonOverlappingRows } from "../utils/rowPacking";
+import { hasValidTaskDates } from "../utils/taskUtils";
 
 const MILLISECONDS_PER_MINUTE = 60_000;
 const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
-
-function hasValidTaskDates(task: Task): boolean {
-  return (
-    task.startDate instanceof Date &&
-    task.endDate instanceof Date &&
-    !Number.isNaN(task.startDate.getTime()) &&
-    !Number.isNaN(task.endDate.getTime())
-  );
-}
 
 /**
  * Service for detecting and resolving task collisions/overlaps

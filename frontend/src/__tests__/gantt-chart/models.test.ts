@@ -184,6 +184,28 @@ describe('detectTaskOverlaps', () => {
     expect(rows[1].length).toBe(1);
   });
 
+  test('returns no rows when tasks is not an array', () => {
+    expect(detectTaskOverlaps(undefined as unknown as Task[])).toEqual([]);
+    expect(detectTaskOverlaps(null as unknown as Task[])).toEqual([]);
+  });
+
+  test('skips null entries instead of throwing', () => {
+    const tasks = [
+      null,
+      {
+        id: '1',
+        name: 'Task 1',
+        startDate: new Date(2023, 0, 1),
+        endDate: new Date(2023, 0, 15),
+      },
+    ] as unknown as Task[];
+
+    const rows = detectTaskOverlaps(tasks);
+
+    expect(rows.length).toBe(1);
+    expect(rows[0].map((task) => task.id)).toEqual(['1']);
+  });
+
   test('handles invalid tasks', () => {
     const tasks: Task[] = [
       {

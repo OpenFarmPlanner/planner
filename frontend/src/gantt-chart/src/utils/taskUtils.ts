@@ -1,8 +1,14 @@
 import type { Task } from "../types";
 import { packIntoNonOverlappingRows } from "./rowPacking";
 
-function hasValidDateRange(task: Task): boolean {
+/**
+ * Accepts only tasks that carry a usable date range. Callers receive task
+ * lists from untyped runtime data, so malformed entries are rejected here
+ * rather than trusted from the `Task` type alone.
+ */
+export function hasValidTaskDates(task: Task): boolean {
   return (
+    task != null &&
     task.startDate instanceof Date &&
     task.endDate instanceof Date &&
     !Number.isNaN(task.startDate.getTime()) &&
@@ -21,5 +27,8 @@ function tasksOverlap(task: Task, existingTask: Task): boolean {
  * Detects task overlaps and organizes them into rows
  */
 export function detectTaskOverlaps(tasks: Task[]): Task[][] {
-  return packIntoNonOverlappingRows(tasks, hasValidDateRange, tasksOverlap);
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+  return packIntoNonOverlappingRows(tasks, hasValidTaskDates, tasksOverlap);
 }
