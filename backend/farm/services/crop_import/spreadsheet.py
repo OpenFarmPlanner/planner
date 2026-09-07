@@ -204,7 +204,10 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 if not confirm_updates:
                     skipped_count += 1
                     continue
-                serializer = CropSerializer(matching_crop, data=crop_data, partial=True)
+                serializer = CropSerializer(
+                    matching_crop, data=crop_data, partial=True,
+                    context={'project': project},
+                )
                 if serializer.is_valid():
                     serializer.save()
                     updated_count += 1
@@ -215,7 +218,13 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # server-side from the active project here; any client-supplied
                 # project in the payload is intentionally ignored to keep
                 # imports project-scoped.
-                serializer = CropSerializer(data=crop_data)
+                #
+                # The project also goes into the context: this runs outside a
+                # request cycle, and without it the serializer's cross-project
+                # checks on `image_file_id`/`supplier_id`/
+                # `selected_seed_demand_supplier` have no project to compare
+                # against on a create (there is no bound instance either).
+                serializer = CropSerializer(data=crop_data, context={'project': project})
                 if serializer.is_valid():
                     serializer.save(project=project)
                     created_count += 1

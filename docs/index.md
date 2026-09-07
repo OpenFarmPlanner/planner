@@ -105,6 +105,11 @@ table of what is and isn't implemented.
   backend runs under xdist, and where the runtime actually goes.
 - [`security-automation.md`](./security-automation.md) — automated dependency,
   SAST, Django deployment, and GitHub-native security coverage and triggers.
+- [`security-review-log.md`](./security-review-log.md) — the shared
+  append-only log Claude and Codex both write to when either reviews security,
+  so the two tools cross-check each other instead of duplicating or dropping
+  findings. The procedure to follow before and after a review is the
+  "Security Review Protocol" section of [`CLAUDE.md`](../CLAUDE.md#security-review-protocol).
 - [`security-review-2026-09-05.md`](./security-review-2026-09-05.md) — latest
   manual security-review baseline, confirmed findings, reviewed surfaces, and
   the areas that still require a future dedicated assessment.
