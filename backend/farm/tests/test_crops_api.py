@@ -616,6 +616,18 @@ class CropApiTest(ProjectApiTestCase):
         self.assertFalse(response.data['exists'])
         self.assertFalse(response.data['name_exists'])
 
+    def test_crop_duplicate_check_ignores_invalid_exclusion_id(self):
+        Crop.objects.create(name='Tomate', variety='', project=self.project)
+
+        response = self.client.get(
+            '/openfarmplanner/api/crops/duplicate-check/',
+            {'name': 'Tomate', 'variety': '', 'exclude_id': 'not-an-integer'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['exists'])
+        self.assertTrue(response.data['name_exists'])
+
     def test_public_crop_match_returns_exact_normalized_match(self):
         PublicCrop.objects.create(name='Tomate', variety='Roma', status='published')
 

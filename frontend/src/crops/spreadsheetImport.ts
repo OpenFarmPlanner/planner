@@ -3,7 +3,7 @@ import i18n from 'i18next';
 import { normalizeImportCropEntry } from './importUtils';
 import { buildHeaderToKeyMap, normalizeHeaderForLookup, CROP_COLUMNS } from './spreadsheetColumns';
 import { parseSpreadsheetRows } from './spreadsheetFile';
-import type { SpreadsheetExportFormat } from './spreadsheetExport';
+import type { SpreadsheetFormat } from './spreadsheetTypes';
 
 export type SpreadsheetParseResult = {
   entries: Record<string, unknown>[];
@@ -51,7 +51,7 @@ const parseRawValue = (
 
 export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParseResult> => {
   const buffer = await readFileAsArrayBuffer(file);
-  const extension = file.name.split('.').pop()?.toLowerCase() as SpreadsheetExportFormat | undefined;
+  const extension = file.name.split('.').pop()?.toLowerCase() as SpreadsheetFormat | undefined;
   if (extension !== 'xlsx' && extension !== 'ods' && extension !== 'csv') {
     return { entries: [], skippedRows: 0, warnings: [i18n.t('crops:import.errors.unsupportedFormat')] };
   }

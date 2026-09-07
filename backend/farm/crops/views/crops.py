@@ -56,6 +56,16 @@ def _request_boolean(value: object) -> bool:
     return False
 
 
+def _optional_integer(value: object) -> int | None:
+    """Return an integer query value, or ``None`` when it is absent or invalid."""
+    if value in (None, ''):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     """ViewSet for Crop model providing CRUD operations.
     
@@ -197,12 +207,9 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             return Response({'exists': False})
 
         queryset = self.get_queryset()
-        exclude_id = request.query_params.get('exclude_id')
-        if exclude_id:
-            try:
-                queryset = queryset.exclude(pk=int(exclude_id))
-            except (TypeError, ValueError):
-                pass
+        exclude_id = _optional_integer(request.query_params.get('exclude_id'))
+        if exclude_id is not None:
+            queryset = queryset.exclude(pk=exclude_id)
 
         name_queryset = queryset.filter(name_normalized=normalized_name)
         identity_queryset = name_queryset.filter(variety_normalized=normalized_variety)
