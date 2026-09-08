@@ -379,7 +379,8 @@
     },
     "feedback": {
       "versionHistoryLoadError": "Versionsverlauf konnte nicht geladen werden.",
-      "versionRestored": "Projektversion wurde wiederhergestellt.",
+      "versionRestored": "Version wiederhergestellt.",
+      "versionRestoredWithBackup": "Version wiederhergestellt. Die vorherige Version wurde automatisch gespeichert.",
       "versionRestoreError": "Projektversion konnte nicht wiederhergestellt werden.",
       "leaveDemoError": "Demo konnte nicht verlassen werden. Bitte versuche es erneut.",
       "logoutError": "Abmeldung fehlgeschlagen. Bitte versuche es erneut."

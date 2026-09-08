@@ -70,7 +70,11 @@ write path — it just creates an `EntityRevision` row. It's called:
   [datagrid-architecture.md](./datagrid-architecture.md#row-history--versioning--not-a-grid-feature))
   and as the project version-history dialog
   (`frontend/src/navigation/ProjectHistoryDialog.tsx`, opened from the global
-  menu / command palette).
+  menu / command palette). Loading those entries and both undo paths —
+  restoring one version and reverting a whole batch — live in
+  `frontend/src/navigation/useProjectHistory.ts`; `RootLayout` only mounts the
+  two dialogs. Both undo paths reload the page afterwards, because a restore
+  rewrites rows every open screen may already be showing.
 
 ## Batch operations (grouping a cascade)
 

@@ -379,7 +379,8 @@
     },
     "feedback": {
       "versionHistoryLoadError": "Could not load version history.",
-      "versionRestored": "Project version restored.",
+      "versionRestored": "Version restored.",
+      "versionRestoredWithBackup": "Version restored. The previous version was saved automatically.",
       "versionRestoreError": "Could not restore project version.",
       "leaveDemoError": "Could not leave the demo. Please try again.",
       "logoutError": "Logout failed. Please try again."
