@@ -1193,5 +1193,14 @@
       "previous": "previous, crop",
       "next": "next, crop"
     }
+  },
+  "restoreDialog": {
+    "title": "Restore version?",
+    "batchDescription": "This action and all related changes will be undone.",
+    "versionDescription": "You are restoring an earlier version.",
+    "batchNotice": "The previous state will be restored. The action remains in the history and can be performed again.",
+    "versionNotice": "The current version is retained. A new version is created automatically before restoring, so you can switch back at any time.",
+    "cancel": "Cancel",
+    "confirm": "Restore version"
   }
 }

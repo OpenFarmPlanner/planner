@@ -5,6 +5,27 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+const themeTokenPlugin = {
+  rules: {
+    'no-hardcoded-style-values': {
+      meta: { type: 'suggestion', schema: [], messages: { token: 'Use an MUI theme token or spacing unit instead of hardcoded style value {{value}}.' } },
+      create(context) {
+        const styleKeys = new Set(['color', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'border', 'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'gap', 'rowGap', 'columnGap']);
+        return {
+          Literal(node) {
+            if (typeof node.value !== 'string' || !node.parent || node.parent.type !== 'Property') return;
+            const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
+            if (!styleKeys.has(String(key))) return;
+            if (/(?:#[0-9a-f]{3,8}\b|rgba?\(|(?:^|\s)\d+(?:\.\d+)?px(?:\s|$))/i.test(node.value)) {
+              context.report({ node, messageId: 'token', data: { value: JSON.stringify(node.value) } });
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 export default defineConfig([
   // ESLint 10 no longer implicitly skips every dotfolder/build-cache
   // directory the way earlier versions did — `.vite`'s prebundled deps
@@ -25,7 +46,10 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    plugins: { 'theme-tokens': themeTokenPlugin },
     rules: {
+      'theme-tokens/no-hardcoded-style-values': 'warn',
+
       // Kept at `warn` deliberately, so that `quality.sh` can treat every
       // remaining ESLint error as a build failure (see scripts/quality.sh).
       //

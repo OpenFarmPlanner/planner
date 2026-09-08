@@ -284,7 +284,7 @@ export function PublicCropLibraryDialog({
           border: '1px solid',
           borderColor: 'divider',
           verticalAlign: 'middle',
-          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+          boxShadow: 1,
         }}
       >
         <MoreVertIcon sx={{ fontSize: 18 }} />
@@ -408,7 +408,7 @@ export function PublicCropLibraryDialog({
 
         <Box sx={{ position: 'relative', display: 'grid', gridTemplateColumns: useMobileFilterLayout ? '1fr' : { xs: '1fr', md: '1.2fr 1fr' }, gap: 2, minHeight: 0, flex: 1 }}>
           {loading ? (
-            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.6)', zIndex: 1 }}>
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.disabledBackground', zIndex: 1 }}>
               <CircularProgress />
             </Box>
           ) : null}

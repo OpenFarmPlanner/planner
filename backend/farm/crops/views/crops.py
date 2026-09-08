@@ -441,11 +441,16 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if not has_library_consent:
             record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         serializer = PublicCropSerializer(public_crop, context={'request': request})
+        response_status = (
+            status.HTTP_201_CREATED
+            if operation == 'created'
+            else status.HTTP_200_OK
+        )
         return Response({
             'operation': operation,
             'public_crop': serializer.data,
             'duplicates': self._serialize_duplicates(duplicates),
-        }, status=status.HTTP_201_CREATED)
+        }, status=response_status)
 
     @action(detail=True, methods=['post'], url_path='link-public-crop')
     def link_public_crop(self, request: Request, pk: str | None = None) -> Response:

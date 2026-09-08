@@ -1486,7 +1486,7 @@ function RootLayout() {
           <NotificationBell controller={notifications} buttonSize={36} />
           </Box>
           <IconButton
-            aria-label="Mehr"
+            aria-label={t('navigation:globalMenu.moreActions')}
             aria-controls={globalMenuAnchor ? 'global-actions-menu' : undefined}
             aria-haspopup="true"
             onClick={handleGlobalMenuOpen}

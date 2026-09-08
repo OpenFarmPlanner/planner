@@ -28,7 +28,7 @@ interface RestoreVersionDialogProps {
  * Presentational confirmation dialog for the project version history. A plain
  * revision entry offers "restore to this version"; a batch entry offers
  * "undo this action". State and the handlers live in RootLayout.tsx. The copy
- * is intentionally German-only, matching the original inline dialog.
+ * is sourced from the crops namespace so every supported UI language stays aligned.
  */
 export function RestoreVersionDialog({
   entry,
@@ -43,12 +43,12 @@ export function RestoreVersionDialog({
 
   return (
     <Dialog open={Boolean(entry)} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Version wiederherstellen?</DialogTitle>
+      <DialogTitle>{tCrops('restoreDialog.title')}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ mb: 1.5 }}>
           {isBatch
-            ? 'Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.'
-            : 'Du stellst eine frühere Version wieder her.'}
+            ? tCrops('restoreDialog.batchDescription')
+            : tCrops('restoreDialog.versionDescription')}
         </Typography>
         {entry ? (
           <Box sx={{ mb: 1.5 }}>
@@ -74,13 +74,13 @@ export function RestoreVersionDialog({
         >
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {isBatch
-              ? 'Der vorherige Stand wird wiederhergestellt. Die Aktion selbst bleibt im Verlauf und kann erneut ausgeführt werden.'
-              : 'Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.'}
+              ? tCrops('restoreDialog.batchNotice')
+              : tCrops('restoreDialog.versionNotice')}
           </Typography>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button autoFocus variant="outlined" onClick={onClose}>Abbrechen</Button>
+        <Button autoFocus variant="outlined" onClick={onClose}>{tCrops('restoreDialog.cancel')}</Button>
         <Button
           variant="contained"
           onClick={() => {
@@ -94,7 +94,7 @@ export function RestoreVersionDialog({
             }
           }}
         >
-          Version wiederherstellen
+          {tCrops('restoreDialog.confirm')}
         </Button>
       </DialogActions>
     </Dialog>

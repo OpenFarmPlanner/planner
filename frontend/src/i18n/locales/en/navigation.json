@@ -112,7 +112,8 @@
         "copyPreviewAll": "All {{total}} planting plans from {{label}} will be copied.",
         "copyPreviewPartial": "{{copied}} of {{total}} planting plans from {{label}} will be copied – {{skipped}} lie outside the period and will not be copied.",
         "copyPreviewFollowup": "Follow-up season {{label}}: {{copied}} of {{total}} planting plans will be copied."
-      }
+      },
+      "createDisabledTooltip": "Select an option for the season transition first."
     },
     "renameDialog": {
       "title": "Rename season",
@@ -128,7 +129,8 @@
       "summary_one": "→ 1 planting plan from season {{source}} will be added to season {{target}} (total afterwards: {{total}}).",
       "summary_other": "→ {{count}} planting plans from season {{source}} will be added to season {{target}} (total afterwards: {{total}}).",
       "confirm": "Copy",
-      "error": "Data could not be copied."
+      "error": "Data could not be copied.",
+      "confirmDisabledTooltip": "Select a source season first."
     }
   },
   "seasonSetup": {

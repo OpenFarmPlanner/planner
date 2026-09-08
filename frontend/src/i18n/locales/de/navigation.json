@@ -112,7 +112,8 @@
         "copyPreviewAll": "Alle {{total}} Anbaupläne aus {{label}} werden übernommen.",
         "copyPreviewPartial": "{{copied}} von {{total}} Anbauplänen aus {{label}} werden übernommen – {{skipped}} liegen außerhalb des Zeitraums und werden nicht übernommen.",
         "copyPreviewFollowup": "Folge-Saison {{label}}: {{copied}} von {{total}} Anbauplänen werden übernommen."
-      }
+      },
+      "createDisabledTooltip": "Bitte zuerst eine Option für den Saisonübergang auswählen."
     },
     "renameDialog": {
       "title": "Saison umbenennen",
@@ -128,7 +129,8 @@
       "summary_one": "→ 1 Anbauplan aus Saison {{source}} wird zu Saison {{target}} hinzugefügt (danach: {{total}} insgesamt).",
       "summary_other": "→ {{count}} Anbaupläne aus Saison {{source}} werden zu Saison {{target}} hinzugefügt (danach: {{total}} insgesamt).",
       "confirm": "Übernehmen",
-      "error": "Daten konnten nicht übernommen werden."
+      "error": "Daten konnten nicht übernommen werden.",
+      "confirmDisabledTooltip": "Bitte zuerst eine Quellsaison auswählen."
     }
   },
   "seasonSetup": {

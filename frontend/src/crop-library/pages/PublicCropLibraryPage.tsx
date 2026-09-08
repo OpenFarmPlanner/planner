@@ -1467,7 +1467,7 @@ export default function PublicCropLibraryPage() {
     borderRadius: 1,
     border: '1px solid',
     borderColor: 'divider',
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+    boxShadow: 3,
     overflow: 'hidden',
     bgcolor: 'background.paper',
   } as const;

@@ -209,6 +209,23 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
             'start_date': '2025-04-01', 'end_date': '2025-08-31',
         })
 
+    def test_creation_options_reports_overlap_without_silently_adjusting_dates(self):
+        self._set_pattern(1, 1)
+        Season.objects.create(
+            project=self.project, start_date=date(2025, 4, 1), end_date=date(2026, 3, 31),
+        )
+
+        response = self.client.get('/openfarmplanner/api/seasons/creation-options/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['due_period'], {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        self.assertEqual(response.data['transition'], {
+            'kind': 'overlap', 'start_date': '2026-01-01', 'end_date': '2026-03-31',
+        })
+        self.assertEqual(response.data['seamless_period']['start_date'], '2026-04-01')
+
     def test_creation_options_manual_start_reports_residual_gap(self):
         self._set_pattern(1, 9)
         Season.objects.create(
