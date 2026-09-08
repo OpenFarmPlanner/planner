@@ -750,7 +750,11 @@ frontend/src/crop-library/
   pages/
     PublicCropLibraryPage.tsx      /app/crop-library — the full workspace
     PublicLibraryModerationPage.tsx /app/public-library-moderation
-  hooks/                 still empty (README explains what goes here later)
+  hooks/
+    usePublicCropDiscussion.ts  one public crop's discussion topics,
+                                comments and versions: the REST loads,
+                                the socket refresh, and the reloads that
+                                follow a comment or topic mutation
   publicCropDisplay.ts, publicCropFilters.ts,
   publicCropListMerge.ts, publicCropLibraryCommandSpecs.ts
   index.ts               barrel (mirrors src/crops/index.ts's convention

@@ -50,7 +50,6 @@ import type {
   ImportPublicCropConfirmationRequiredError,
   PublicCrop,
   PublicCropDiscussionComment,
-  PublicCropDiscussionTopic,
   PublicCropRemovalReason,
   PublicCropRevision,
 } from '../../api/types';
@@ -75,15 +74,15 @@ import {
 import { useCommandContextTag, useRegisterCommands } from '../../commands/useCommandContext';
 import type { RootLayoutOutletContext, TopbarContextAction } from '../../navigation/topbarTypes';
 import { useTopbarContextActions } from '../../hooks/useTopbarContextActions';
-import { useWebSocket, type WebSocketEvent } from '../../realtime/useWebSocket';
 import { createPublicCropLibraryCommandSpecs } from '../publicCropLibraryCommandSpecs';
+import { usePublicCropDiscussion } from '../hooks/usePublicCropDiscussion';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import {
   getDescriptionFallbackNotice,
   getPublicCropDescription,
   getPublicCropName,
 } from '../publicCropDisplay';
-import { applySavedCrops, withCreatedTopic } from '../publicCropListMerge';
+import { applySavedCrops } from '../publicCropListMerge';
 import { MultilingualTextFieldSection } from '../components/MultilingualTextFieldSection';
 import { AppTooltip } from '../../components/AppTooltip';
 import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from '../../crops/CropSeedDetails';
@@ -136,7 +135,6 @@ import {
   type PublicCropLibraryViewState,
 } from '../components/publicCropLibrary/formatters';
 
-type CollaborationLoadStatus = 'idle' | 'loading' | 'success' | 'error';
 type PublicCropLoadStatus = 'loading' | 'success' | 'error';
 export default function PublicCropLibraryPage() {
   const { user } = useAuth();
@@ -166,11 +164,6 @@ export default function PublicCropLibraryPage() {
   const pendingNavigationCropIdRef = useRef<number | null>(selectedCropId);
   const [loadStatus, setLoadStatus] = useState<PublicCropLoadStatus>('loading');
   const [loadError, setLoadError] = useState('');
-  const [topics, setTopics] = useState<PublicCropDiscussionTopic[]>([]);
-  const [comments, setComments] = useState<PublicCropDiscussionComment[]>([]);
-  const [versions, setVersions] = useState<PublicCropRevision[]>([]);
-  const [collaborationStatus, setCollaborationStatus] = useState<CollaborationLoadStatus>('idle');
-  const [commentsStatus, setCommentsStatus] = useState<CollaborationLoadStatus>('idle');
   const [newTopicOpen, setNewTopicOpen] = useState(false);
   const [topicTitle, setTopicTitle] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -209,7 +202,6 @@ export default function PublicCropLibraryPage() {
   const cropListRef = useRef<HTMLUListElement>(null);
   const cropListScrollTopRef = useRef<number>(storedViewState?.listScrollTop ?? 0);
   const cropListRequestIdRef = useRef(0);
-  const collaborationLoadRequestIdRef = useRef(0);
   // Crops this client has saved, kept until a list response catches up with
   // them. Bumping cropListRequestIdRef on save only discards list requests
   // that are already in flight; one started right after the save (the search
@@ -358,6 +350,34 @@ export default function PublicCropLibraryPage() {
       replace: options.replace ?? true,
     });
   }, [activeTab, navigateToLibraryState]);
+
+  const handleSelectedTopicMissing = useCallback((): void => {
+    if (selectedCropId === null) return;
+    navigateToLibraryState({
+      cropId: selectedCropId,
+      tab: PUBLIC_CROP_TAB_INDEX_BY_PARAM.discussion,
+      discussionId: null,
+      replace: true,
+    });
+  }, [navigateToLibraryState, selectedCropId]);
+
+  const {
+    topics,
+    comments,
+    versions,
+    collaborationStatus,
+    commentsStatus,
+    reload: reloadCollaboration,
+    refreshComments,
+    refreshTopicsAndComments,
+    applyCreatedTopic,
+    clearComments,
+  } = usePublicCropDiscussion({
+    cropId: selectedCropId,
+    topicId: selectedTopicId,
+    liveUpdates: Boolean(user),
+    onSelectedTopicMissing: handleSelectedTopicMissing,
+  });
 
   const selectMobileCrop = useCallback((crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string): void => {
     updateSelectedCropId(crop.id, { replace: false, speciesViewKey: itemKind === 'species' ? speciesKey : null });
@@ -804,124 +824,9 @@ export default function PublicCropLibraryPage() {
     }
   }, [t, updateSelectedCropId]);
 
-  const loadCollaboration = useCallback(async (cropId: number): Promise<void> => {
-    const requestId = collaborationLoadRequestIdRef.current + 1;
-    collaborationLoadRequestIdRef.current = requestId;
-    setCollaborationStatus('loading');
-    try {
-      const [topicsResponse, versionsResponse] = await Promise.all([
-        publicCropAPI.discussionTopics(cropId),
-        publicCropAPI.versions(cropId),
-      ]);
-      if (requestId !== collaborationLoadRequestIdRef.current) {
-        return;
-      }
-      setTopics(topicsResponse.data);
-      setComments([]);
-      setVersions(versionsResponse.data);
-      setCollaborationStatus('success');
-    } catch {
-      if (requestId !== collaborationLoadRequestIdRef.current) {
-        return;
-      }
-      setComments([]);
-      setTopics([]);
-      setVersions([]);
-      setCollaborationStatus('error');
-    }
-  }, []);
-
-  const refreshDiscussions = useCallback(async (): Promise<void> => {
-    if (selectedCropId === null) return;
-    try {
-      const topicsResponse = await publicCropAPI.discussionTopics(selectedCropId);
-      setTopics(topicsResponse.data);
-      if (selectedTopicId !== null) {
-        const commentsResponse = await publicCropAPI.discussionComments(
-          selectedCropId,
-          selectedTopicId,
-        );
-        setComments(commentsResponse.data);
-        setCommentsStatus('success');
-      }
-    } catch {
-      // Keep the last usable REST state; the socket and fallback poll retry.
-    }
-  }, [selectedCropId, selectedTopicId]);
-
-  const handleDiscussionEvent = useCallback((event: WebSocketEvent): void => {
-    if (
-      event.type === 'discussion.updated'
-      && event.public_crop_id === selectedCropId
-    ) {
-      void refreshDiscussions();
-    }
-  }, [refreshDiscussions, selectedCropId]);
-
-  useWebSocket({
-    path: user && selectedCropId !== null
-      ? `ws/public-crops/${selectedCropId}/discussions/`
-      : null,
-    onEvent: handleDiscussionEvent,
-    onFallbackPoll: () => { void refreshDiscussions(); },
-  });
-
   useEffect(() => {
     void loadCrops();
   }, [loadCrops]);
-
-  useEffect(() => {
-    if (selectedCropId === null) {
-      setComments([]);
-      setVersions([]);
-      setCollaborationStatus('idle');
-      setCommentsStatus('idle');
-      return;
-    }
-    void loadCollaboration(selectedCropId);
-  }, [loadCollaboration, selectedCropId]);
-
-  useEffect(() => {
-    if (selectedCropId === null || selectedTopicId === null) {
-      setComments([]);
-      setCommentsStatus('idle');
-      return;
-    }
-    if (collaborationStatus !== 'success') {
-      return;
-    }
-    const topicExists = topics.some((topic) => topic.id === selectedTopicId);
-    if (!topicExists) {
-      navigateToLibraryState({
-        cropId: selectedCropId,
-        tab: PUBLIC_CROP_TAB_INDEX_BY_PARAM.discussion,
-        discussionId: null,
-        replace: true,
-      });
-      setComments([]);
-      setCommentsStatus('idle');
-      return;
-    }
-
-    let cancelled = false;
-    setCommentsStatus('loading');
-    publicCropAPI.discussionComments(selectedCropId, selectedTopicId)
-      .then((response) => {
-        if (!cancelled) {
-          setComments(response.data);
-          setCommentsStatus('success');
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setComments([]);
-          setCommentsStatus('error');
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [collaborationStatus, navigateToLibraryState, selectedCropId, selectedTopicId, topics]);
 
   useEffect(() => {
     setCommentBody('');
@@ -1243,7 +1148,7 @@ export default function PublicCropLibraryPage() {
 
       upsertCropInList(updatedCrop);
       setEditDialogOpen(false);
-      await loadCollaboration(updatedCrop.id);
+      await reloadCollaboration(updatedCrop.id);
       showGlobalSnackbar({ message: t('library.page.edit.success'), severity: 'success' });
     } catch (error) {
       if (
@@ -1269,7 +1174,7 @@ export default function PublicCropLibraryPage() {
         base_version: selectedCrop.version,
       });
       upsertCropInList(response.data);
-      await loadCollaboration(response.data.id);
+      await reloadCollaboration(response.data.id);
       showGlobalSnackbar({ message: t('library.page.versions.revertSuccess'), severity: 'success' });
     } catch {
       showGlobalSnackbar({ message: t('library.page.versions.revertError'), severity: 'error' });
@@ -1293,19 +1198,10 @@ export default function PublicCropLibraryPage() {
           const createdComment = await publicCropAPI.createDiscussionComment(selectedCrop.id, selectedTopicId, commentBody.trim(), replyTo ?? undefined);
           setPendingFocusCommentId(createdComment.data.id);
         }
-        const response = await publicCropAPI.discussionComments(selectedCrop.id, selectedTopicId);
-        setComments(response.data);
+        await refreshComments();
       } else {
         const createdTopic = await publicCropAPI.createDiscussionTopic(selectedCrop.id, { title: topicTitle.trim(), body: commentBody.trim(), revision: topicRevision });
-        collaborationLoadRequestIdRef.current += 1;
-        const [topicsResponse, commentsResponse] = await Promise.all([
-          publicCropAPI.discussionTopics(selectedCrop.id),
-          publicCropAPI.discussionComments(selectedCrop.id, createdTopic.data.id),
-        ]);
-        setTopics(withCreatedTopic(topicsResponse.data, createdTopic.data));
-        setComments(commentsResponse.data);
-        setCommentsStatus('success');
-        setCollaborationStatus('success');
+        await applyCreatedTopic(createdTopic.data);
         navigateToLibraryState({
           cropId: selectedCrop.id,
           tab: PUBLIC_CROP_TAB_INDEX_BY_PARAM.discussion,
@@ -1396,13 +1292,8 @@ export default function PublicCropLibraryPage() {
     if (!selectedCrop || !selectedTopicId) return;
     try {
       await publicCropAPI.deleteDiscussionComment(selectedCrop.id, commentId);
-      const [topicsResponse, commentsResponse] = await Promise.all([
-        publicCropAPI.discussionTopics(selectedCrop.id),
-        publicCropAPI.discussionComments(selectedCrop.id, selectedTopicId),
-      ]);
-      setTopics(topicsResponse.data);
-      setComments(commentsResponse.data);
-      if (!topicsResponse.data.some((topic) => topic.id === selectedTopicId)) {
+      const remainingTopics = await refreshTopicsAndComments();
+      if (!remainingTopics.some((topic) => topic.id === selectedTopicId)) {
         navigateToLibraryState({
           cropId: selectedCrop.id,
           tab: PUBLIC_CROP_TAB_INDEX_BY_PARAM.discussion,
@@ -1451,8 +1342,7 @@ export default function PublicCropLibraryPage() {
     if (!ensureDiscardableCommentDraft(null)) {
       return;
     }
-    setComments([]);
-    setCommentsStatus('idle');
+    clearComments();
     setReplyTo(null);
     setEditingCommentId(null);
     setCommentBody('');
