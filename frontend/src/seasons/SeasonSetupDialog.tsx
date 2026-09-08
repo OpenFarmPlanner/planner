@@ -3,6 +3,7 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typog
 import { seasonSetupAPI } from '../api/api';
 import type { SeasonSetupStatus } from '../api/types';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { SeasonStartDateFields } from './SeasonStartDateFields';
@@ -85,10 +86,14 @@ export function SeasonSetupDialog({ open, status, onApplied, onCancel }: SeasonS
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel} disabled={submitting}>{t('common:actions.cancel')}</Button>
-        <Button onClick={() => void handleSubmit()} variant="contained" disabled={submitting}>
-          {t('navigation:seasonSetup.submit')}
-        </Button>
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={onCancel} disabled={submitting}>{t('common:actions.cancel')}</Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={() => void handleSubmit()} variant="contained" disabled={submitting}>
+            {t('navigation:seasonSetup.submit')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

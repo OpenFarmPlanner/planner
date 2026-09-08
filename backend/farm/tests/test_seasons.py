@@ -825,6 +825,33 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(response.data['copied_count'], 1)
         self.assertEqual(response.data['target_planting_plan_count'], 1)
 
+    def test_copy_from_returns_structured_error_for_missing_source(self):
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
+            {'source_season_id': 999999},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data['code'], 'source_season_not_found')
+        self.assertEqual(response.data['detail'], 'Source season not found.')
+
+    def test_copy_from_returns_structured_error_for_same_season(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/seasons/{season.pk}/copy-from/',
+            {'source_season_id': season.pk},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'same_source_and_target_season')
+
     def test_create_resurrects_a_soft_deleted_season_for_the_same_period(self):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),

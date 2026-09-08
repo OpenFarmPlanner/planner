@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
+from farm.common.responses import api_error_response
 from farm.history import (
     _current_actor_label,
     _entity_display_name,
@@ -138,7 +139,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
     def undelete(self, request, pk=None):
         season = Season.all_objects.filter(project=self.request.active_project).filter(pk=pk).first()
         if season is None:
-            return Response({'detail': 'Season not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code='season_not_found', detail='Season not found.', status_code=status.HTTP_404_NOT_FOUND)
         if season.deleted_at is not None:
             with transaction.atomic():
                 batch = start_batch_operation(
@@ -169,9 +170,9 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             pk=serializer.validated_data['source_season_id'],
         ).first()
         if source_season is None:
-            return Response({'detail': 'Source season not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
         if source_season.pk == target_season.pk:
-            return Response({'detail': 'Source and target season must be different.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='same_source_and_target_season', detail='Source and target season must be different.', status_code=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             created_plans, skipped_count = copy_planting_plans(
@@ -337,12 +338,12 @@ class SeasonPatternPreviewView(APIView):
             try:
                 pattern.start_day = int(start_day)
             except ValueError:
-                return Response({'detail': 'start_day must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error_response(code='invalid_start_day', detail='start_day must be an integer.', status_code=status.HTTP_400_BAD_REQUEST)
         if start_month is not None:
             try:
                 pattern.start_month = int(start_month)
             except ValueError:
-                return Response({'detail': 'start_month must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error_response(code='invalid_start_month', detail='start_month must be an integer.', status_code=status.HTTP_400_BAD_REQUEST)
 
         periods = compute_preview_periods(pattern, date.today())
         latest_season = latest_existing_season(active_project)
@@ -389,7 +390,7 @@ class SeasonSetupStatusView(APIView):
                     start_month=int(start_month_param) if start_month_param is not None else pattern.start_month,
                 )
             except ValueError:
-                return Response({'detail': 'start_day and start_month must be integers.'}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error_response(code='invalid_season_pattern', detail='start_day and start_month must be integers.', status_code=status.HTTP_400_BAD_REQUEST)
         target_start, target_end = compute_setup_target_period(active_project, preview_pattern)
         return Response({
             'needs_setup': unassigned_count > 0,
@@ -410,7 +411,7 @@ class SeasonSetupApplyView(APIView):
             start_day = int(request.data.get('start_day'))
             start_month = int(request.data.get('start_month'))
         except (TypeError, ValueError):
-            return Response({'detail': 'start_day and start_month are required integers.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='season_pattern_required', detail='start_day and start_month are required integers.', status_code=status.HTTP_400_BAD_REQUEST)
 
         pattern_serializer = SeasonPatternSerializer(
             get_or_create_season_pattern(active_project),

@@ -22,6 +22,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import type { Crop, PublicCropUpdateFieldChange } from '../api/types';
 import {
   formatPublicCropValue,
@@ -125,27 +126,39 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexWrap: 'wrap', gap: 1 }}>
         {/* autoFocus on cancel so a reflexive Enter never overwrites the local copy. */}
-        <Button autoFocus variant="outlined" onClick={closeDiff} disabled={isBusy}>
-          {t('common:actions.cancel')}
-        </Button>
-        <Button
-          variant="outlined"
-          color="inherit"
-          onClick={rejectUpdate}
-          disabled={isBusy || update?.is_rejected}
-          startIcon={isRejecting ? <CircularProgress size={16} color="inherit" /> : undefined}
+        <DisabledActionTooltip title={isBusy ? t('common:disabledReasons.busy') : ''}>
+          <Button autoFocus variant="outlined" onClick={closeDiff} disabled={isBusy}>
+            {t('common:actions.cancel')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip
+          title={isBusy
+            ? t('common:disabledReasons.busy')
+            : update?.is_rejected
+              ? t('disabledReasons.alreadyRejected')
+              : ''}
         >
-          {isRejecting ? t('library.publicUpdate.rejecting') : t('library.publicUpdate.reject')}
-        </Button>
-        <Button
-          variant="contained"
-          color={update?.has_local_changes ? 'error' : 'primary'}
-          onClick={applyUpdate}
-          disabled={isBusy}
-          startIcon={isApplying ? <CircularProgress size={16} color="inherit" /> : undefined}
-        >
-          {isApplying ? t('library.publicUpdate.applying') : t('library.publicUpdate.apply')}
-        </Button>
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={rejectUpdate}
+            disabled={isBusy || update?.is_rejected}
+            startIcon={isRejecting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {isRejecting ? t('library.publicUpdate.rejecting') : t('library.publicUpdate.reject')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={isBusy ? t('common:disabledReasons.busy') : ''}>
+          <Button
+            variant="contained"
+            color={update?.has_local_changes ? 'error' : 'primary'}
+            onClick={applyUpdate}
+            disabled={isBusy}
+            startIcon={isApplying ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {isApplying ? t('library.publicUpdate.applying') : t('library.publicUpdate.apply')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

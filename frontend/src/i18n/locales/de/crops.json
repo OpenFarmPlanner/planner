@@ -1202,5 +1202,11 @@
     "versionNotice": "Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.",
     "cancel": "Abbrechen",
     "confirm": "Version wiederherstellen"
+  },
+  "disabledReasons": {
+    "requiredComment": "Bitte zuerst einen Kommentar eingeben.",
+    "selectCrop": "Bitte zuerst eine Kultur auswählen.",
+    "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
+    "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
   }
 }

@@ -4,6 +4,7 @@ import { Link as RouterLink } from 'react-router';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../../i18n';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import type { PublicCrop } from '../../api/types';
 import {
   Alert,
@@ -518,13 +519,21 @@ export function PublicCropLibraryDialog({
           {t('library.openFullPage')}
         </Button>
         <Button onClick={closeDialog}>{t('form.cancel')}</Button>
-        <Button
-          variant="contained"
-          onClick={() => selectedCrop && onImport(selectedCrop)}
-          disabled={!selectedCrop || importingId === selectedCrop?.id}
+        <DisabledActionTooltip
+          title={!selectedCrop
+            ? t('disabledReasons.selectCrop')
+            : importingId === selectedCrop.id
+              ? t('common:disabledReasons.busy')
+              : ''}
         >
-          {importingId === selectedCrop?.id ? t('library.importing') : t('library.importButton')}
-        </Button>
+          <Button
+            variant="contained"
+            onClick={() => selectedCrop && onImport(selectedCrop)}
+            disabled={!selectedCrop || importingId === selectedCrop?.id}
+          >
+            {importingId === selectedCrop?.id ? t('library.importing') : t('library.importButton')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

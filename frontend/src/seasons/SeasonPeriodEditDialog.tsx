@@ -21,6 +21,7 @@ import type {
   SeasonPeriodEditPlantingConflict,
 } from '../api/types';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { formatSeasonDate, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 
@@ -170,16 +171,28 @@ export function SeasonPeriodEditDialog({ open, season, onClose, onConfirm }: Sea
       <DialogActions>
         {/* Blocking edit: default focus stays on Cancel so a reflexive Enter
             never saves — the user must click Save (or Tab onto it) explicitly. */}
-        <Button autoFocus onClick={onClose} disabled={submitting}>
-          {t('common:actions.cancel')}
-        </Button>
-        <Button
-          onClick={() => void handleConfirm()}
-          variant="contained"
-          disabled={submitting || rangeInvalid || unchanged || !startDate || !endDate}
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button autoFocus onClick={onClose} disabled={submitting}>
+            {t('common:actions.cancel')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip
+          title={submitting
+            ? t('common:disabledReasons.busy')
+            : unchanged
+              ? t('common:disabledReasons.noChanges')
+              : rangeInvalid || !startDate || !endDate
+                ? t('common:disabledReasons.invalidDateRange')
+                : ''}
         >
-          {t('navigation:seasonSwitcher.periodEditDialog.save')}
-        </Button>
+          <Button
+            onClick={() => void handleConfirm()}
+            variant="contained"
+            disabled={submitting || rangeInvalid || unchanged || !startDate || !endDate}
+          >
+            {t('navigation:seasonSwitcher.periodEditDialog.save')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

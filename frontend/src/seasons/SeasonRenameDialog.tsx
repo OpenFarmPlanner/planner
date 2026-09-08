@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import type { Season } from '../api/types';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 
 interface SeasonRenameDialogProps {
@@ -58,10 +59,14 @@ export function SeasonRenameDialog({ open, season, onClose, onConfirm }: SeasonR
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
-        <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting}>
-          {t('navigation:seasonSwitcher.renameDialog.save')}
-        </Button>
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={onClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting}>
+            {t('navigation:seasonSwitcher.renameDialog.save')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

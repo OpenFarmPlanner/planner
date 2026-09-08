@@ -202,5 +202,10 @@
     "location": "Location",
     "non_field_errors": "Error"
   },
-  "dateFormatPlaceholder": "DD.MM.YYYY"
+  "dateFormatPlaceholder": "DD.MM.YYYY",
+  "disabledReasons": {
+    "busy": "The action is currently being processed.",
+    "noChanges": "There are no unsaved changes.",
+    "invalidDateRange": "Enter a valid date range first."
+  }
 }
