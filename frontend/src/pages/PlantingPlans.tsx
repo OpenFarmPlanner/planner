@@ -79,6 +79,7 @@ import { formatSeasonDate, resolveSeasonDateLocale } from "../seasons/formatSeas
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
 import { MobileCardList } from "../components/mobile/MobileCardList";
 import { NotesDrawer } from "../components/data-grid/NotesDrawer";
+import { useNotesEditor } from "../components/data-grid/useNotesEditor";
 import ProjectRequiredState from "../components/project/ProjectRequiredState";
 import {
   useCommandContextTag,
@@ -220,16 +221,27 @@ function PlantingPlans() {
   const [mobileLastEditedField, setMobileLastEditedField] = useState<
     "area_m2" | "plants_count" | null
   >(null);
-  const [isMobileNotesOpen, setIsMobileNotesOpen] = useState(false);
-  const [mobileNotesTarget, setMobileNotesTarget] = useState<PlantingPlanRow | null>(null);
-  const [mobileNotesDraft, setMobileNotesDraft] = useState("");
-  const [isMobileNotesSaving, setIsMobileNotesSaving] = useState(false);
   const [mobileActionMenuAnchor, setMobileActionMenuAnchor] = useState<HTMLElement | null>(null);
   const [mobileActionMenuRow, setMobileActionMenuRow] = useState<PlantingPlanRow | null>(null);
   const mobilePrefillHandledRef = useRef(false);
   const createIntentHandledRef = useRef(false);
   const planIdParamProcessedRef = useRef(false);
   const openMobileEditDialogRef = useRef<((row: PlantingPlanRow) => void) | null>(null);
+
+  // The mobile card list edits notes through the same drawer the desktop grid
+  // uses, so it shares the grid's notes editor rather than repeating its state.
+  const mobileNotesEditor = useNotesEditor<PlantingPlanRow>({
+    rows: mobileRows,
+    onSave: async ({ row, value }) => {
+      try {
+        await plantingPlanAPI.patch(row.id, { notes: value } as PlantingPlan);
+        await gridCommandApiRef.current?.reload();
+      } catch (error) {
+        throw new Error(extractApiErrorMessage(error, t, t("plantingPlans:errors.save")), { cause: error });
+      }
+    },
+    onError: setMobileCreateError,
+  });
 
   const replacePlantingPlanSearchParams = useCallback((nextParams: URLSearchParams): void => {
     const browserPathname = window.location.pathname;
@@ -1018,12 +1030,6 @@ function PlantingPlans() {
     mobilePrefillHandledRef.current = true;
   }, [isMobile, initialSelection.cropId, initialSelection.bedId, beds.length, openMobileCreateDialog]);
 
-  const openMobileNotesDialog = (row: PlantingPlanRow): void => {
-    setMobileNotesTarget(row);
-    setMobileNotesDraft(row.notes || "");
-    setIsMobileNotesOpen(true);
-  };
-
   const openMobileActionMenu = (
     event: ReactMouseEvent<HTMLElement>,
     row: PlantingPlanRow,
@@ -1036,38 +1042,6 @@ function PlantingPlans() {
   const closeMobileActionMenu = (): void => {
     setMobileActionMenuAnchor(null);
     setMobileActionMenuRow(null);
-  };
-
-  const closeMobileNotesDialog = (): void => {
-    setIsMobileNotesOpen(false);
-    setIsMobileNotesSaving(false);
-    setMobileNotesTarget(null);
-    setMobileNotesDraft("");
-  };
-
-  const saveMobileNotes = async (): Promise<void> => {
-    if (isMobileNotesSaving || !mobileNotesTarget?.id) {
-      return;
-    }
-
-    const targetId = mobileNotesTarget.id;
-    const draftToSave = mobileNotesDraft;
-
-    setIsMobileNotesSaving(true);
-    try {
-      await plantingPlanAPI.patch(targetId, {
-        notes: draftToSave,
-      } as PlantingPlan);
-
-      await gridCommandApiRef.current?.reload();
-      closeMobileNotesDialog();
-    } catch (error) {
-      setMobileCreateError(
-        extractApiErrorMessage(error, t, t("plantingPlans:errors.save")),
-      );
-    } finally {
-      setIsMobileNotesSaving(false);
-    }
   };
 
   const getDerivedAreaFromRow = (row: PlantingPlanRow): number | null => {
@@ -1606,7 +1580,7 @@ function PlantingPlans() {
                     variant="outlined"
                     startIcon={<PhotoCameraOutlinedIcon />}
                     size="small"
-                    onClick={() => openMobileNotesDialog(item)}
+                    onClick={() => mobileNotesEditor.handleOpen(item.id, "notes", { focusAttachments: true })}
                     aria-label={t("plantingPlans:mobile.notesPhotosAria")}
                     sx={{ minWidth: "auto" }}
                   >
@@ -2000,17 +1974,20 @@ function PlantingPlans() {
       )}
 
       <NotesDrawer
-        open={isMobileNotesOpen}
+        open={mobileNotesEditor.isOpen}
         title={t("common:fields.notes")}
-        value={mobileNotesDraft}
-        onChange={setMobileNotesDraft}
-        onSave={saveMobileNotes}
-        onClose={closeMobileNotesDialog}
-        hasUnsavedChanges={Boolean(mobileNotesTarget && mobileNotesDraft !== (mobileNotesTarget.notes || ""))}
-        loading={isMobileNotesSaving}
-        noteId={mobileNotesTarget?.id}
-        focusAttachments
-        focusRequestId={mobileNotesTarget?.id ?? 0}
+        value={mobileNotesEditor.draft}
+        onChange={mobileNotesEditor.setDraft}
+        onSave={mobileNotesEditor.handleSave}
+        onClose={mobileNotesEditor.handleClose}
+        hasUnsavedChanges={Boolean(
+          mobileNotesEditor.currentRow
+            && mobileNotesEditor.draft !== (mobileNotesEditor.currentRow.notes || ""),
+        )}
+        loading={mobileNotesEditor.isSaving}
+        noteId={mobileNotesEditor.currentRow?.id}
+        focusAttachments={mobileNotesEditor.focusAttachments}
+        focusRequestId={mobileNotesEditor.focusRequestId}
       />
     </PageContainer>
   );
