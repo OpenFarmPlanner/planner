@@ -139,3 +139,12 @@ the set of decisions this document is for.
 ```
 pdm run python manage.py audit_crop_species_coverage --project 1
 ```
+
+Two scoping rules matter when reading the output:
+
+- Only live projects are audited. Crops in a deactivated or soft-deleted
+  project are not names anyone still uses.
+- "Resolves to a species" means the library *knows* the name, which is a wider
+  question than which species a user may map onto. The discouraged umbrella
+  names above (`Bohne`) are excluded as mapping targets but are still part of
+  the library, so they count as covered rather than as gaps.
