@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import { ListItemButton, ListItemText, Typography } from '@mui/material';
+import { alpha, type Theme } from '@mui/material/styles';
 import { CropHierarchyExpandToggle } from './CropHierarchyExpandToggle';
 import { HighlightedText } from '../components/HighlightedText';
 import { compactCropChevronButtonSx } from './cropHierarchyRowSx';
@@ -142,10 +143,10 @@ export function CropHierarchyRow({
         border: '1px solid transparent',
         '&:hover': { bgcolor: '#f4f8f4', borderColor: '#d6e6d8' },
         '&.Mui-selected': {
-          bgcolor: 'rgba(37, 111, 42, 0.12)',
-          borderColor: 'rgba(37, 111, 42, 0.32)',
+          bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),
+          borderColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.32),
         },
-        '&.Mui-selected:hover': { bgcolor: 'rgba(37, 111, 42, 0.16)' },
+        '&.Mui-selected:hover': { bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.16) },
       }}
     >
       <CropHierarchyExpandToggle
