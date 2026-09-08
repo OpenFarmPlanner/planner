@@ -75,8 +75,6 @@ import {
   FIELD_WORLD_SCALE_FACTOR,
   LOCATION_FIELD_GAP,
   LOCATION_LAYOUT_PADDING,
-  MAX_STAGE_HEIGHT,
-  MIN_STAGE_HEIGHT,
   PAN_FAST_STEP,
   PAN_STEP,
   WORKSPACE_MIN_HEIGHT,
@@ -92,6 +90,7 @@ import {
   type RectViewModel,
   type SelectedElement,
 } from "./graphicalFieldsGeometry";
+import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { AppTooltip } from '../components/AppTooltip';
 
 /** Gap used when auto-arranging beds that do not yet have a saved layout. */
@@ -123,15 +122,6 @@ export default function GraphicalFields({
   const [layoutsByField, setLayoutsByField] = useState<
     Record<number, FieldLayoutEntry>
   >({});
-  const [stageWidth, setStageWidth] = useState<number>(() =>
-    Math.max(320, window.innerWidth - 48),
-  );
-  const [stageHeight, setStageHeight] = useState<number>(() =>
-    Math.max(
-      MIN_STAGE_HEIGHT,
-      Math.min(MAX_STAGE_HEIGHT, Math.round(window.innerHeight * 0.45)),
-    ),
-  );
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
   const [localInteractionMode, setLocalInteractionMode] =
     useState<InteractionMode>("view");
@@ -152,15 +142,20 @@ export default function GraphicalFields({
   const [activePanLocationId, setActivePanLocationId] = useState<number | null>(
     null,
   );
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
   const saveTimers = useRef<Record<string, number>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
-  const locationCanvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const pinchStateRef = useRef<
     Record<number, { distance: number; center: Point } | null>
   >({});
-  const [fullscreenLocationId, setFullscreenLocationId] = useState<number | null>(null);
+  const {
+    stageWidth,
+    stageHeight,
+    fullscreenLocationId,
+    containerRef,
+    locationCanvasRefs,
+    toggleFullscreen,
+  } = useGraphicalStageSize();
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
     Object.keys(panSessionRef.current).forEach((key) => {
@@ -180,54 +175,6 @@ export default function GraphicalFields({
       stage?.batchDraw?.();
     });
   };
-
-  useEffect(() => {
-    const handleResize = (): void => {
-      const fullscreenContainer =
-        fullscreenLocationId !== null
-          ? locationCanvasRefs.current[fullscreenLocationId]
-          : null;
-      const containerWidth =
-        fullscreenContainer?.clientWidth ??
-        containerRef.current?.clientWidth ??
-        window.innerWidth;
-      setStageWidth(Math.max(320, Math.round(containerWidth - 8)));
-      if (fullscreenContainer) {
-        setStageHeight(
-          Math.max(MIN_STAGE_HEIGHT, Math.round(fullscreenContainer.clientHeight - 8)),
-        );
-      } else {
-        setStageHeight(
-          Math.max(
-            MIN_STAGE_HEIGHT,
-            Math.min(MAX_STAGE_HEIGHT, Math.round(window.innerHeight * 0.45)),
-          ),
-        );
-      }
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [fullscreenLocationId]);
-
-  useEffect(() => {
-    const handleFullscreenChange = (): void => {
-      const element = document.fullscreenElement;
-      if (!element) {
-        setFullscreenLocationId(null);
-        return;
-      }
-      const matchingLocationId = Object.entries(locationCanvasRefs.current).find(
-        ([, node]) => node === element,
-      )?.[0];
-      setFullscreenLocationId(matchingLocationId ? Number(matchingLocationId) : null);
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
 
   useEffect(() => {
     if (
@@ -566,26 +513,6 @@ export default function GraphicalFields({
 
   const handleStageDoubleTap = (locationId: number): void => {
     handleZoom(locationId, ZOOM_STEP);
-  };
-
-  const toggleFullscreen = async (locationId: number): Promise<void> => {
-    const target = locationCanvasRefs.current[locationId];
-    if (!target) {
-      return;
-    }
-
-    try {
-      if (document.fullscreenElement === target) {
-        await document.exitFullscreen();
-        return;
-      }
-
-      if (!document.fullscreenElement && target.requestFullscreen) {
-        await target.requestFullscreen();
-      }
-    } catch (fullscreenError) {
-      console.error("Failed to toggle fullscreen", fullscreenError);
-    }
   };
 
   const canStartPanSession = (
