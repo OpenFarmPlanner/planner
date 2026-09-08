@@ -15,14 +15,24 @@ constant query (a new prefetch) is normally fine; a count that grows with
 
 from datetime import date
 
-from crops.models import CropSpecies, CropSpeciesTranslation
+from django.contrib.auth import get_user_model
+
+from crops.models import (
+    CropSpecies,
+    CropSpeciesTranslation,
+    PublicLibraryModeratorRequest,
+)
 from farm.models import (
     Bed,
     Crop,
     CropSupplierData,
+    EntityRevision,
     Field,
     Location,
     PlantingPlan,
+    ProjectApiToken,
+    Project,
+    ProjectMembership,
     PublicCrop,
     Season,
     SeedPackage,
@@ -31,9 +41,15 @@ from farm.models import (
 )
 from farm.tests.api_base import ProjectApiTestCase
 
+User = get_user_model()
+
 # Three is enough for an N+1 to change the total, and small enough that a
 # failure message stays readable.
 ROW_COUNT = 3
+
+# DRF's configured page size. The crop species catalogue is seeded by a data
+# migration, so that one list serves a full page instead of the fixture rows.
+PAGE_SIZE = 100
 
 
 class ListEndpointQueryCountTest(ProjectApiTestCase):
@@ -197,6 +213,165 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     def test_seasons_list_query_count(self):
         """`planting_plan_count` is a page-wide annotation, not a per-row lookup."""
         self.assert_list_query_count('/openfarmplanner/api/seasons/', 5)
+
+    def test_crop_species_list_query_count(self):
+        """The strongest N+1 guard here: the official species catalogue is
+        seeded by a data migration, so this list serves a *full* page rather
+        than the handful of fixture rows above. Every row renders its whole
+        `translations` list and resolves `display_name` through
+        `localized_name`; without the viewset's `prefetch_related` that is
+        three queries per species, so a regression would show up as roughly
+        `3 * PAGE_SIZE` here instead of a constant."""
+        self.assert_list_query_count(
+            '/openfarmplanner/api/crop-species/', 9, expected_rows=PAGE_SIZE,
+        )
+
+    def test_crop_species_list_query_count_includes_proposals(self):
+        """A moderator sees proposed rows too, which additionally resolve
+        `proposed_by` / `reviewed_by` and their public profiles. Those are
+        `select_related`, so a full page still costs a constant number.
+
+        It is *lower* than the anonymous count above rather than higher: the
+        non-moderator path filters through `public_species_mapping_targets`,
+        whose extra lookups the moderator path skips."""
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/crop-species/?include_proposed=1', 7,
+            expected_rows=PAGE_SIZE,
+        )
+
+    def test_crop_library_list_query_count(self):
+        """The public crop library list serves published entries with their
+        species translations resolved for the whole page."""
+        self.assert_list_query_count('/openfarmplanner/api/crop-library/', 8)
+
+    def test_moderator_requests_list_query_count(self):
+        """Each request resolves the requesting and reviewing user plus both
+        public profiles; all four are `select_related`."""
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+        for index in range(ROW_COUNT):
+            requester = User.objects.create_user(
+                username=f'moderator-candidate-{index}',
+                email=f'moderator-candidate-{index}@example.com',
+                password='pw',
+            )
+            PublicLibraryModeratorRequest.objects.create(
+                user=requester, reviewed_by=self.user, motivation=f'Request {index}',
+            )
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/public-library/moderator-requests/', 4,
+        )
+
+    def test_projects_bootstrap_query_count(self):
+        """`/projects-bootstrap/` serialises one entry per membership and reads
+        each membership's project, which `select_related` resolves for the
+        whole list."""
+        for index in range(ROW_COUNT):
+            other_project = Project.objects.create(
+                name=f'Extra project {index}', slug=f'extra-project-{index}',
+            )
+            ProjectMembership.objects.create(
+                user=self.user, project=other_project,
+                role=ProjectMembership.ROLE_ADMIN,
+            )
+
+        with self.assertNumQueries(7):
+            response = self.client.get('/openfarmplanner/api/projects-bootstrap/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), ROW_COUNT + 1)
+
+    def test_project_members_query_count(self):
+        """Every member row renders `user_email` and `get_full_name()`, both
+        read off the `user` relation this view selects."""
+        for index in range(ROW_COUNT):
+            member = User.objects.create_user(
+                username=f'member-{index}', email=f'member-{index}@example.com',
+                password='pw', first_name='Mit', last_name=f'Glied {index}',
+            )
+            ProjectMembership.objects.create(
+                user=member, project=self.project,
+                role=ProjectMembership.ROLE_MEMBER,
+            )
+
+        with self.assertNumQueries(5):
+            response = self.client.get(
+                f'/openfarmplanner/api/projects/{self.project.pk}/members/',
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), ROW_COUNT + 1)
+
+    def test_yield_calendar_query_count(self):
+        """The calendar walks every plan in the year and renders each crop's
+        localized name, so it needs the crop, its species and that species'
+        translations resolved for the whole set rather than per plan.
+
+        The crops need an `expected_yield` and a harvest date to appear at
+        all -- without them the endpoint returns an empty list, and a count
+        assertion over nothing would pass while measuring nothing."""
+        for crop in self.crops:
+            crop.expected_yield = 2
+            crop.save(update_fields=['expected_yield'])
+        for plan in PlantingPlan.objects.filter(project=self.project):
+            plan.harvest_date = date(2026, 6, 1)
+            plan.harvest_end_date = date(2026, 6, 21)
+            plan.save(update_fields=['harvest_date', 'harvest_end_date'])
+
+        with self.assertNumQueries(5):
+            response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.data), 0)
+
+    def test_global_history_list_query_count(self):
+        """`/history/global/` is unpaginated and covers 30 days of crop
+        revisions, so it can serve far more rows than a page.
+
+        It deliberately has no `select_related`, unlike its project-wide
+        sibling: the crop payload reads only plain columns off each revision
+        (`user_name`, `display_name`), never `batch_operation` or a user
+        relation. This pins that. Adding a field here that reaches through a
+        relation would turn the count per-row, and the fix would be a
+        `select_related` on the view rather than a bigger number here."""
+        crop_revisions = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop',
+        )
+        # The fixture's own crop writes already left revisions behind; add
+        # more so the list is comfortably longer than one batch of rows.
+        already_recorded = crop_revisions.count()
+        for index in range(ROW_COUNT):
+            EntityRevision.objects.create(
+                project=self.project,
+                entity_type='crop',
+                object_id=self.crops[index].id,
+                action=EntityRevision.ACTION_UPDATED,
+                display_name=f'Crop {index}',
+                snapshot={'name': f'Crop {index}'},
+                user_name='testuser',
+            )
+
+        with self.assertNumQueries(4):
+            response = self.client.get('/openfarmplanner/api/history/global/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), already_recorded + ROW_COUNT)
+
+    def test_api_tokens_list_query_count(self):
+        """`/api-tokens/` is unpaginated, so an N+1 here has no page size to
+        cap it. Every row's `project_name` reads through the `project`
+        relation, which `select_related` resolves for the whole list."""
+        for index in range(ROW_COUNT):
+            ProjectApiToken.create_token(
+                user=self.user, project=self.project,
+                name=f'Token {index}', scope=ProjectApiToken.SCOPE_READ,
+                expires_at=None,
+            )
+
+        with self.assertNumQueries(3):
+            response = self.client.get('/openfarmplanner/api/api-tokens/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), ROW_COUNT)
 
     def test_project_history_list_query_count(self):
         """`/history/project/` groups revisions by `batch_operation`; the FK is
