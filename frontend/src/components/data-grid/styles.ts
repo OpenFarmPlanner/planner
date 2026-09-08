@@ -280,9 +280,9 @@ export const dataGridAddRowButtonSx = {
  * Common styles for delete action IconButtons
  */
 export const deleteIconButtonSx = {
-  color: '#d32f2f',
+  color: 'error.main',
   '&:hover': {
-    backgroundColor: 'rgba(211, 47, 47, 0.08)',
+    backgroundColor: (theme: Theme) => alpha(theme.palette.error.main, 0.08),
   },
 };
 

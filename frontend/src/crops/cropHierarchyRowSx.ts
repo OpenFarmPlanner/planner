@@ -1,3 +1,5 @@
+import { alpha, type Theme } from '@mui/material/styles';
+
 export const cropChevronButtonSx = {
   width: 30,
   height: 30,
@@ -9,7 +11,7 @@ export const cropChevronButtonSx = {
   flexShrink: 0,
   '&:hover': {
     opacity: 1,
-    bgcolor: 'rgba(37, 111, 42, 0.08)',
+    bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.08),
   },
 } as const;
 
@@ -29,7 +31,7 @@ export const compactCropChevronButtonSx = {
   opacity: 0.4,
   '&:hover': {
     opacity: 1,
-    bgcolor: 'rgba(37, 111, 42, 0.08)',
+    bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.08),
   },
 } as const;
 

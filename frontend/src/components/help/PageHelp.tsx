@@ -38,7 +38,7 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme, type Theme } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react';
 import { useTranslation } from '../../i18n';
 import HelpIconRow from './HelpIconRow';
@@ -110,7 +110,7 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
     { key: 'add', icon: <AddIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
     { key: 'library', icon: <PublicIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
     { key: 'createPlan', icon: <AgricultureIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
-    { key: 'edit', icon: <EditIcon fontSize="small" sx={{ color: 'rgba(37, 111, 42, 0.86)' }} /> },
+    { key: 'edit', icon: <EditIcon fontSize="small" sx={{ color: (theme: Theme) => alpha(theme.palette.primary.main, 0.86) }} /> },
     { key: 'more', icon: <MoreVertIcon fontSize="small" sx={{ color: 'text.secondary' }} /> },
   ],
   plantingPlans: [

@@ -1,5 +1,6 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Typography, type SxProps, type Theme } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 
 interface CropTitleSelectorButtonProps {
   title: string;
@@ -36,7 +37,10 @@ export function CropTitleSelectorButton({
         borderRadius: 0.75,
         '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.04)' },
         '&:active': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
-        '&:focus-visible': { outline: '2px solid rgba(37, 111, 42, 0.28)', outlineOffset: 2 },
+        '&:focus-visible': {
+          outline: (theme: Theme) => `2px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+          outlineOffset: 2,
+        },
       }}
       aria-label={ariaLabel}
     >
