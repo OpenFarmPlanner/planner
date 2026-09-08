@@ -56,6 +56,29 @@ import { formatCropDisplayName } from '../crops/cropDisplay';
 // render while no project is selected.
 const EMPTY_SEED_DEMAND_ROWS: SeedDemand[] = [];
 
+/**
+ * What the project has set up, which is what decides whether a seed demand can
+ * be calculated at all and, if not, which setup step to point the user at.
+ * One value rather than six, because all six describe the same load.
+ */
+interface ProjectSetupCounts {
+  crops: number;
+  plans: number;
+  locations: number;
+  fields: number;
+  beds: number;
+  cropsWithSeedData: boolean;
+}
+
+const NO_PROJECT_SETUP: ProjectSetupCounts = {
+  crops: 0,
+  plans: 0,
+  locations: 0,
+  fields: 0,
+  beds: 0,
+  cropsWithSeedData: false,
+};
+
 export default function SeedDemandPage() {
   useCommandContextTag('seedDemand');
   const { t } = useTranslation(['crops', 'common']);
@@ -64,12 +87,7 @@ export default function SeedDemandPage() {
   const [loadedRows, setRows] = useState<SeedDemand[]>([]);
   const [isFetching, setIsLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
-  const [cropCount, setCropCount] = useState(0);
-  const [planCount, setPlanCount] = useState(0);
-  const [hasCropsWithSeedData, setHasCropsWithSeedData] = useState(false);
-  const [locationCount, setLocationCount] = useState(0);
-  const [loadedFieldCount, setFieldCount] = useState(0);
-  const [bedCount, setBedCount] = useState(0);
+  const [setupCounts, setSetupCounts] = useState<ProjectSetupCounts>(NO_PROJECT_SETUP);
 
   // Without a project nothing is fetched, so the page reports an empty,
   // settled state. Derived during render rather than pushed into state from
@@ -78,11 +96,12 @@ export default function SeedDemandPage() {
   const rows = shouldShowProjectRequiredState ? EMPTY_SEED_DEMAND_ROWS : loadedRows;
   const isLoading = shouldShowProjectRequiredState ? false : isFetching;
   const error = shouldShowProjectRequiredState ? null : fetchError;
-  const fieldCount = shouldShowProjectRequiredState ? 0 : loadedFieldCount;
+  const fieldCount = shouldShowProjectRequiredState ? 0 : setupCounts.fields;
 
-  const hasPlans = planCount > 0;
-  const hasSeedData = hasCropsWithSeedData;
-  const canCalculateSeedDemand = locationCount > 0 && fieldCount > 0 && bedCount > 0 && cropCount > 0 && hasPlans && hasSeedData;
+  const hasPlans = setupCounts.plans > 0;
+  const hasSeedData = setupCounts.cropsWithSeedData;
+  const canCalculateSeedDemand = setupCounts.locations > 0 && fieldCount > 0
+    && setupCounts.beds > 0 && setupCounts.crops > 0 && hasPlans && hasSeedData;
   const {
     showContextMenuHint,
     closeContextMenuHint,
@@ -99,8 +118,8 @@ export default function SeedDemandPage() {
   const rowLongPressTimer = useLongPressTimer(ROW_LONG_PRESS_MS);
   const firstMissingSetupStep = getFirstMissingProjectSetupStep({
     hasFields: fieldCount > 0,
-    hasBeds: bedCount > 0,
-    hasCrops: cropCount > 0,
+    hasBeds: setupCounts.beds > 0,
+    hasCrops: setupCounts.crops > 0,
     hasPlans,
   });
   const missingRequirement = useMemo(() => {
@@ -163,16 +182,18 @@ export default function SeedDemandPage() {
         bedAPI.list(),
       ]);
       const crops = cropsResponse.data.results;
-      setCropCount(crops.length);
-      setPlanCount(plansResponse.data.results.length);
-      setLocationCount(locationsResponse.data.results.length);
-      setFieldCount(fieldsResponse.data.results.length);
-      setBedCount(bedsResponse.data.results.length);
-      setHasCropsWithSeedData(crops.some((crop) => (
-        crop.seed_rate_value !== null
-        || crop.seed_rate_direct_value !== null
-        || crop.seed_rate_pre_cultivation_value !== null
-      )));
+      setSetupCounts({
+        crops: crops.length,
+        plans: plansResponse.data.results.length,
+        locations: locationsResponse.data.results.length,
+        fields: fieldsResponse.data.results.length,
+        beds: bedsResponse.data.results.length,
+        cropsWithSeedData: crops.some((crop) => (
+          crop.seed_rate_value !== null
+          || crop.seed_rate_direct_value !== null
+          || crop.seed_rate_pre_cultivation_value !== null
+        )),
+      });
     } catch {
       setError(t('seedDemand.loadError'));
     } finally {
