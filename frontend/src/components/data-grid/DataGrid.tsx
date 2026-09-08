@@ -58,6 +58,7 @@ import {
 } from './DeleteUndoSnackbar';
 import { getPlainExcerpt } from './markdown';
 import { useNotesEditor } from './useNotesEditor';
+import { useRowEditTracking } from './useRowEditTracking';
 import { useNotesPreview } from './useNotesPreview';
 import { NotesPreviewPopover } from './NotesPreviewPopover';
 import { extractApiErrorMessage } from '../../api/errors';
@@ -240,8 +241,13 @@ export function EditableDataGrid<T extends EditableRow>({
   const initialRowProcessedRef = useRef<boolean>(false);
   const initialFetchDoneRef = useRef<boolean>(false);
   const [selectedRowIds, setSelectedRowIds] = useState<GridRowId[]>([]);
-  const [dirtyRowIds, setDirtyRowIds] = useState<Set<string>>(new Set());
-  const [activeValidationErrors, setActiveValidationErrors] = useState<Record<string, Record<string, string>>>({});
+  const {
+    dirtyRowIds,
+    activeValidationErrors,
+    markRowDirty,
+    forgetRows,
+    setRowFieldErrors,
+  } = useRowEditTracking();
   const rowSnapshotRef = useRef<Map<string, T>>(new Map());
   const rowSavePromisesRef = useRef<Map<string, Promise<T>>>(new Map());
   const canceledRowIdsRef = useRef<Set<string>>(new Set());
@@ -551,18 +557,7 @@ export function EditableDataGrid<T extends EditableRow>({
     const savedRowKey = String(savedRowId);
     const preserveFocus = options.preserveFocus ?? true;
 
-    setDirtyRowIds((prev) => {
-      const next = new Set(prev);
-      next.delete(rowKey);
-      next.delete(savedRowKey);
-      return next;
-    });
-    setActiveValidationErrors((prev) => {
-      const next = { ...prev };
-      delete next[rowKey];
-      delete next[savedRowKey];
-      return next;
-    });
+    forgetRows(rowKey, savedRowKey);
     setSelectedRowIds([]);
 
     const api = gridApiRef.current as typeof gridApiRef.current & {
@@ -589,7 +584,7 @@ export function EditableDataGrid<T extends EditableRow>({
         document.activeElement.blur();
       }
     }
-  }, [gridApiRef]);
+  }, [forgetRows, gridApiRef]);
 
   const getFocusedCellFromEvent = useCallback((event: KeyboardEvent): { id: GridRowId; field: string } | null => (
     resolveFocusedCellFromEvent(gridApiRef.current, event)
@@ -838,16 +833,7 @@ export function EditableDataGrid<T extends EditableRow>({
       setRows((prevRows) => prevRows.map((row) => (String(row.id) === rowKey ? snapshot : row)));
     }
 
-    setDirtyRowIds((prev) => {
-      const next = new Set(prev);
-      next.delete(rowKey);
-      return next;
-    });
-    setActiveValidationErrors((prev) => {
-      const next = { ...prev };
-      delete next[rowKey];
-      return next;
-    });
+    forgetRows(rowKey);
     setRowModesModel((oldModel) => ({
       ...oldModel,
       [rowId]: { mode: GridRowModes.View, ignoreModifications: true },
@@ -861,18 +847,7 @@ export function EditableDataGrid<T extends EditableRow>({
         gridApiRef.current?.setCellFocus(rowId, fieldToRestoreFocus);
       });
     }
-  }, [clearSavedRowInteractionState, columns, gridApiRef, rowModesModel, rowsById]);
-
-  const markRowDirty = useCallback((rowKey: string): void => {
-    setDirtyRowIds((previous) => {
-      if (previous.has(rowKey)) {
-        return previous;
-      }
-      const next = new Set(previous);
-      next.add(rowKey);
-      return next;
-    });
-  }, []);
+  }, [clearSavedRowInteractionState, columns, forgetRows, gridApiRef, rowModesModel, rowsById]);
 
   const getDraftRow = useCallback((rowId: GridRowId): T | null => {
     const api = gridApiRef.current;
@@ -954,13 +929,10 @@ export function EditableDataGrid<T extends EditableRow>({
     if (targetRow) {
       const nextRow = { ...targetRow, ...values } as T;
       const fieldErrors = getRowValidationErrors?.(nextRow) ?? {};
-      setActiveValidationErrors((prev) => ({
-        ...prev,
-        [rowKey]: fieldErrors,
-      }));
+      setRowFieldErrors(rowKey, fieldErrors);
     }
     markRowDirty(rowKey);
-  }, [getRowValidationErrors, gridApiRef, isEditableCell, markRowDirty, rowModesModel, rowsById, toEditCellValue]);
+  }, [getRowValidationErrors, gridApiRef, isEditableCell, markRowDirty, rowModesModel, rowsById, setRowFieldErrors, toEditCellValue]);
 
   const runBeforeSaveGate = useCallback(async (row: T): Promise<T | null> => {
     if (!onBeforeSaveRow) {
@@ -1169,10 +1141,7 @@ export function EditableDataGrid<T extends EditableRow>({
     // Validate required fields
     const validationError = validateRow(rowAfterSaveGate);
     const fieldErrors = getRowValidationErrors?.(rowAfterSaveGate) ?? {};
-    setActiveValidationErrors((prev) => ({
-      ...prev,
-      [rowKey]: fieldErrors,
-    }));
+    setRowFieldErrors(rowKey, fieldErrors);
     if (validationError) {
       if (rowAfterSaveGate.isNew) {
         throw new Error(validationError);
@@ -1239,6 +1208,7 @@ export function EditableDataGrid<T extends EditableRow>({
     mapToApiData,
     mapToRow,
     saveErrorMessage,
+    setRowFieldErrors,
     t,
     validateRow,
   ]);
@@ -1248,16 +1218,7 @@ export function EditableDataGrid<T extends EditableRow>({
     if (canceledRowIdsRef.current.has(rowKey)) {
       canceledRowIdsRef.current.delete(rowKey);
       setError('');
-      setDirtyRowIds((prev) => {
-        const next = new Set(prev);
-        next.delete(rowKey);
-        return next;
-      });
-      setActiveValidationErrors((prev) => {
-        const next = { ...prev };
-        delete next[rowKey];
-        return next;
-      });
+      forgetRows(rowKey);
       return rowSnapshotRef.current.get(rowKey) ?? newRow;
     }
 
@@ -1294,6 +1255,7 @@ export function EditableDataGrid<T extends EditableRow>({
       rowSavePromisesRef.current.delete(rowKey);
     }
   }, [
+    forgetRows,
     runBeforeSaveGate,
     saveResolvedRow,
   ]);
@@ -1755,16 +1717,7 @@ export function EditableDataGrid<T extends EditableRow>({
     setSelectedRowIds((currentSelectedIds) =>
       currentSelectedIds.filter((selectedId) => String(selectedId) !== rowKey),
     );
-    setDirtyRowIds((previous) => {
-      const next = new Set(previous);
-      next.delete(rowKey);
-      return next;
-    });
-    setActiveValidationErrors((previous) => {
-      const next = { ...previous };
-      delete next[rowKey];
-      return next;
-    });
+    forgetRows(rowKey);
     setRowModesModel((previousModel) => {
       const next = { ...previousModel };
       delete next[rowId];
@@ -1773,7 +1726,7 @@ export function EditableDataGrid<T extends EditableRow>({
     });
     rowSnapshotRef.current.delete(rowKey);
     clearRowActionMenuForId(rowId);
-  }, [clearRowActionMenuForId]);
+  }, [clearRowActionMenuForId, forgetRows]);
 
   const moveFocusAwayFromRemovedRow = useCallback((rowId: GridRowId, remainingRows: readonly T[]): void => {
     const rowKey = String(rowId);
@@ -1860,16 +1813,12 @@ export function EditableDataGrid<T extends EditableRow>({
     const duplicatedRow = duplicateRow(row);
     setRows((previousRows) => [duplicatedRow, ...previousRows]);
     setStableRowOrder((previousOrder) => [duplicatedRow.id, ...previousOrder]);
-    setDirtyRowIds((previous) => {
-      const next = new Set(previous);
-      next.add(String(duplicatedRow.id));
-      return next;
-    });
+    markRowDirty(String(duplicatedRow.id));
     setRowModesModel((oldModel) => ({
       ...oldModel,
       [duplicatedRow.id]: { mode: GridRowModes.Edit, fieldToFocus: columns[0]?.field },
     }));
-  }, [columns, duplicateRow]);
+  }, [columns, duplicateRow, markRowDirty]);
 
   const rowActionHelpers = useMemo<EditableDataGridRowActionHelpers<T>>(() => ({
     startEdit: handleStartRowEdit,
