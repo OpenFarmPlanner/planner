@@ -57,14 +57,55 @@ frontend/src/components/data-grid/
   NotesCell.tsx, NotesDrawer.tsx, NotesPreviewPopover.tsx,
   useNotesEditor.ts, useNotesPreview.ts, markdown.ts,
   noteAttachmentsCache.ts               rich markdown notes + photo attachments
+  useEditCellAutoFocus.ts               focus an edit cell's input once MUI
+                                        reports the cell has focus
+  useEditCellTabNavigation.ts           Tab forwarding out of the custom
+                                        numeric/date edit cells
+  useSingleSelectEditCell.ts,
+  useSelectMenuEnterCommit.ts           shared wiring for the single-select
+                                        edit cells: menu open/close, closed
+                                        typeahead, Enter commits the focused
+                                        option (MUI's Select does not while
+                                        the grid is editing)
+  useRowEditTracking.ts                 which rows are dirty and which of
+                                        their fields failed validation; the
+                                        two are cleared together
+  useContinuousScrollSizing.ts,
+  continuousScrollLayout.ts             how tall the grid may be in
+                                        scrollMode="continuous" (see below)
   ../OverflowTooltip.tsx                overflow-only desktop tooltip wrapper
   ../AppTooltip.tsx                     the app's Tooltip (context-menu aware)
   tableClipboard.ts, TableCopyMenuItems.tsx   copy row/table as TSV
   columns.tsx, calculatedColumns.tsx    column builders (select, computed)
   dataGridUtils.tsx, handlers.ts, styles.ts, localeText.ts   shared helpers
+  types.ts                              the grid's public contracts
+                                        (EditableRow, DataGridAPI,
+                                        EditableDataGridCommandApi)
+  rowValidation.ts, draftRowReaders.ts  pure row validation, and the readers
+                                        that reconstruct a row's current draft
+  areaM2EditCellValue.ts                initial string shown in the m² edit cell
+  StandardSingleSelectEditCell.tsx      the plain single-select edit cell
+                                        (see useSingleSelectEditCell.ts above)
+  EditCellNavigationContext.tsx         context an edit cell uses to hand a Tab
+                                        keystroke back to the grid
+  domEventTargets.ts                    which DOM target a key event landed on
+                                        (combobox, Enter-to-save input, …)
+  RichTextEditor.tsx, RichTextViewer.tsx,
+  richText.ts, markdownComponents.tsx   the rich-text field and its rendering
+  DeleteUndoSnackbar.tsx                the shared undo snackbar after a delete
 
 frontend/src/components/contextMenu/
   CustomContextMenu.tsx          shared MUI Menu shell for app context menus
+  ContextMenuActionItem.tsx      one menu row: label, optional icon, colour,
+                                 emphasis and shortcut hint
+  contextMenuGroups.tsx          renders grouped actions with a divider wherever
+                                 the group changes; callers keep their own item
+                                 markup, since the menus differ in what an item
+                                 looks like, not in where the separators go
+  ContextMenuIndicator.tsx,
+  contextMenuIndicatorStyles.ts  the shared "actions available here" affordance
+                                 and its styles, used by every host that
+                                 supports right-click or long-press
   contextMenuFocus.ts            Arrow/Home/End/Enter/Esc navigation *inside* an
                                  open menu, plus focus restoration on close
   useContextMenuPositionState.ts generic open/close/reposition state
@@ -108,8 +149,10 @@ filtering, copy operations, and page-level mobile mirrors still operate on
 the complete loaded dataset.
 
 Continuous scroll uses `hooks/useScrollDrivenRowWindow.ts` for the internal
-100-row window and `hooks/useStableDataGridScrollbar.ts` for the visible
-thumb. The same stable-scrollbar hook is re-exported for the raw
+100-row window, `useContinuousScrollSizing.ts` for how tall the grid may be
+(it measures the header, footer and any banner above the grid, since those
+shift the grid's top without resizing it), and
+`hooks/useStableDataGridScrollbar.ts` for the visible thumb. The same stable-scrollbar hook is re-exported for the raw
 Standort/Parzelle/Beet hierarchy so both large table styles keep matching
 scrollbar behavior without parallel implementations; both also render the
 track/thumb overlay itself through the shared `StableScrollbarTrack.tsx`
