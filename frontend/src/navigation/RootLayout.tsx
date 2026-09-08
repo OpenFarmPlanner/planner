@@ -51,11 +51,11 @@ import { NotificationBell } from '../notifications/NotificationBell';
 import { useNotifications } from '../notifications/useNotifications';
 import { NOTIFICATION_HISTORY_ROUTE } from '../notifications/notificationDisplay';
 import { useNotificationMenuItems } from '../notifications/useNotificationMenuItems';
-import { cropAPI, projectAPI } from '../api/api';
-import type { CropHistoryEntry } from '../api/types';
+import { projectAPI } from '../api/api';
 import { MobileProjectSwitcherDialog } from './MobileProjectSwitcherDialog';
 import { RestoreVersionDialog } from './RestoreVersionDialog';
 import { ProjectHistoryDialog } from './ProjectHistoryDialog';
+import { useProjectHistory } from './useProjectHistory';
 import { CreateProjectDialog } from './CreateProjectDialog';
 import { useAuth } from '../auth/useAuth';
 import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation/topbarTypes';
@@ -312,11 +312,7 @@ function RootLayout() {
     window.localStorage.setItem('openfarmplanner.sidebarCollapsed', 'false');
   };
 
-  const [projectHistoryOpen, setProjectHistoryOpen] = useState(false);
   const [globalHelpOpen, setGlobalHelpOpen] = useState(false);
-  const [historyItems, setHistoryItems] = useState<CropHistoryEntry[]>([]);
-  const [pendingRestoreEntry, setPendingRestoreEntry] = useState<CropHistoryEntry | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     open: false,
     message: '',
@@ -341,48 +337,12 @@ function RootLayout() {
     return () => window.removeEventListener(GLOBAL_SNACKBAR_EVENT, handleGlobalSnackbar);
   }, [showSnackbar]);
 
-  const handleOpenProjectHistory = useCallback(async () => {
+  const projectHistory = useProjectHistory(showSnackbar);
+
+  const handleOpenProjectHistory = useCallback(async (): Promise<void> => {
     handleGlobalMenuClose();
-    setHistoryLoading(true);
-    try {
-      const response = await cropAPI.projectHistory();
-      setHistoryItems(response.data);
-      setProjectHistoryOpen(true);
-    } catch (error) {
-      console.error('Error loading project history:', error);
-      showSnackbar(t('commandPalette.feedback.versionHistoryLoadError'), 'error');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [showSnackbar, t]);
-
-  const handleRestoreProjectVersion = async (historyId: number) => {
-    try {
-      await cropAPI.projectRestore(historyId);
-      showSnackbar('Version wiederhergestellt. Die vorherige Version wurde automatisch gespeichert.', 'success');
-      setProjectHistoryOpen(false);
-      setPendingRestoreEntry(null);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error restoring project version:', error);
-      setPendingRestoreEntry(null);
-      showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
-    }
-  };
-
-  const handleRevertBatch = async (batchId: number) => {
-    try {
-      await cropAPI.revertBatch(batchId);
-      showSnackbar('Version wiederhergestellt.', 'success');
-      setProjectHistoryOpen(false);
-      setPendingRestoreEntry(null);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error reverting batch operation:', error);
-      setPendingRestoreEntry(null);
-      showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
-    }
-  };
+    await projectHistory.openHistory();
+  }, [handleGlobalMenuClose, projectHistory]);
 
   const formatHistoryTimestamp = (value: string): string => new Date(value).toLocaleString('de-DE');
 
@@ -1498,7 +1458,7 @@ function RootLayout() {
           <GlobalMenu
             anchorEl={globalMenuAnchor}
             open={Boolean(globalMenuAnchor)}
-            historyLoading={historyLoading}
+            historyLoading={projectHistory.loading}
             userLabel={user?.email ? `(${user.email})` : (user?.display_label ? `(${user.display_label})` : '')}
             isMobile={false}
             onClose={handleGlobalMenuClose}
@@ -1807,7 +1767,7 @@ function RootLayout() {
               <GlobalMenu
                 anchorEl={globalMenuAnchor}
                 open={Boolean(globalMenuAnchor)}
-                historyLoading={historyLoading}
+                historyLoading={projectHistory.loading}
                 userLabel={user?.email ? `(${user.email})` : (user?.display_label ? `(${user.display_label})` : '')}
                 isMobile={isCompactTopbar}
                 notificationItems={isCompactTopbar ? notificationMenuItems : undefined}
@@ -2096,14 +2056,14 @@ function RootLayout() {
       />
 
       <ProjectHistoryDialog
-        open={projectHistoryOpen}
-        items={historyItems}
+        open={projectHistory.open}
+        items={projectHistory.items}
         isPhonePortrait={isPhonePortrait}
         fallbackActorLabel={fallbackHistoryActorLabel}
         formatTimestamp={formatHistoryTimestamp}
-        onClose={() => setProjectHistoryOpen(false)}
-        onRestore={(entry) => setPendingRestoreEntry(entry)}
-        onRevertBatch={(entry) => setPendingRestoreEntry(entry)}
+        onClose={projectHistory.closeHistory}
+        onRestore={projectHistory.requestRestore}
+        onRevertBatch={projectHistory.requestRestore}
         t={t}
         tCrops={tCrops}
       />
@@ -2138,13 +2098,13 @@ function RootLayout() {
         onOpenCreateProject={handleOpenCreateProject}
       />
       <RestoreVersionDialog
-        entry={pendingRestoreEntry}
+        entry={projectHistory.pendingRestoreEntry}
         getEntryTitle={(entry) => getHistoryEntryTitle(entry, tCrops)}
         formatTimestamp={formatHistoryTimestamp}
         tCrops={tCrops}
-        onClose={() => setPendingRestoreEntry(null)}
-        onConfirm={(historyId) => void handleRestoreProjectVersion(historyId)}
-        onConfirmRevertBatch={(batchId) => void handleRevertBatch(batchId)}
+        onClose={projectHistory.cancelRestore}
+        onConfirm={(historyId) => void projectHistory.restoreVersion(historyId)}
+        onConfirmRevertBatch={(batchId) => void projectHistory.revertBatch(batchId)}
       />
 
       <CreateProjectDialog
