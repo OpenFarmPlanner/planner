@@ -29,12 +29,6 @@ class TestClearVarietySpeciesInvariantOverrides:
             project_id=project.id, crop_species_id=species.id,
             crop_family='Solanaceae', nutrient_demand='high', rotation_break_years=4,
         ).id
-        orphan_species = species_model.objects.create(name='Orphanus conservatus')
-        self.orphan_variety_id = crop_model.objects.create(
-            name='Orphan', name_normalized='orphan', variety='Only', variety_normalized='only',
-            project_id=project.id, crop_species_id=orphan_species.id,
-            crop_family='Preserved', nutrient_demand='low', rotation_break_years=2,
-        ).id
         self.free_text_variety_id = crop_model.objects.create(
             name='Kraut', name_normalized='kraut',
             variety='Freitext', variety_normalized='freitext',
@@ -63,11 +57,6 @@ class TestClearVarietySpeciesInvariantOverrides:
         assert general.crop_family == 'Solanaceae'
         assert general.nutrient_demand == 'high'
         assert general.rotation_break_years == 4
-
-        orphan = crop_model.objects.get(id=self.orphan_variety_id)
-        assert orphan.crop_family == 'Preserved'
-        assert orphan.nutrient_demand == 'low'
-        assert orphan.rotation_break_years == 2
 
         free_text = crop_model.objects.get(id=self.free_text_variety_id)
         assert free_text.crop_family == 'Brassicaceae'

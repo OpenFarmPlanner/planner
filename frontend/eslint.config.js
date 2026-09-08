@@ -10,13 +10,16 @@ const themeTokenPlugin = {
     'no-hardcoded-style-values': {
       meta: { type: 'suggestion', schema: [], messages: { token: 'Use an MUI theme token or spacing unit instead of hardcoded style value {{value}}.' } },
       create(context) {
-        const styleKeys = new Set(['color', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'border', 'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'gap', 'rowGap', 'columnGap']);
+        const colorKeys = new Set(['color', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'border']);
+        const spacingKeys = new Set(['padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'gap', 'rowGap', 'columnGap']);
         return {
           Literal(node) {
             if (typeof node.value !== 'string' || !node.parent || node.parent.type !== 'Property') return;
             const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
-            if (!styleKeys.has(String(key))) return;
-            if (/(?:#[0-9a-f]{3,8}\b|rgba?\(|(?:^|\s)\d+(?:\.\d+)?px(?:\s|$))/i.test(node.value)) {
+            const propertyName = String(key);
+            const hasLiteralColor = colorKeys.has(propertyName) && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(node.value);
+            const hasPixelSpacing = spacingKeys.has(propertyName) && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(node.value);
+            if (hasLiteralColor || hasPixelSpacing) {
               context.report({ node, messageId: 'token', data: { value: JSON.stringify(node.value) } });
             }
           },
@@ -48,8 +51,6 @@ export default defineConfig([
     },
     plugins: { 'theme-tokens': themeTokenPlugin },
     rules: {
-      'theme-tokens/no-hardcoded-style-values': 'warn',
-
       // Kept at `warn` deliberately, so that `quality.sh` can treat every
       // remaining ESLint error as a build failure (see scripts/quality.sh).
       //
@@ -85,6 +86,16 @@ export default defineConfig([
           },
         ],
       }],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/__tests__/**', 'src/gantt-chart/**', 'src/theme.ts'],
+    rules: {
+      // Legacy findings remain warnings until their theme-token migration is
+      // complete; tests, the theme definition, and vendored Gantt sources are
+      // excluded because literals are data or are authoritative there.
+      'theme-tokens/no-hardcoded-style-values': 'warn',
     },
   },
   {

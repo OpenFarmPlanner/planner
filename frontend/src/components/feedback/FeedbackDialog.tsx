@@ -31,7 +31,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import type { SvgIconComponent } from '@mui/icons-material';
 import { feedbackAPI, type FeedbackCategory } from '../../api/api';
 import { useTranslation } from '../../i18n';
-import { AppTooltip } from '../AppTooltip';
+import { DisabledActionTooltip } from '../DisabledActionTooltip';
 
 const CATEGORY_ICONS: Record<FeedbackCategory, SvgIconComponent> = {
   bug: ErrorOutlineIcon,
@@ -245,21 +245,16 @@ export function FeedbackDialog({ open, projectName, route, userEmail, onClose }:
         </DialogContent>
         <DialogActions>
           <Button type="button" onClick={handleClose} disabled={isSending}>{t('dialog.cancel')}</Button>
-          {/* A disabled button fires no pointer events, so the "why" tooltip
-              needs a wrapper element to hang off — same pattern as the
-              disabled menu entries in GlobalMenu. */}
-          <AppTooltip title={message.trim().length === 0 ? t('dialog.messageRequiredTooltip') : ''}>
-            <Box component="span">
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={!canSubmit}
-                startIcon={isSending ? <CircularProgress size={16} color="inherit" /> : undefined}
-              >
-                {t('dialog.submit')}
-              </Button>
-            </Box>
-          </AppTooltip>
+          <DisabledActionTooltip title={message.trim().length === 0 ? t('dialog.messageRequiredTooltip') : ''}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={!canSubmit}
+              startIcon={isSending ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {t('dialog.submit')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Box>
     </Dialog>

@@ -66,20 +66,37 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Added API integration coverage for an overlapping pattern transition. The
   test verifies the overlap is reported precisely and that the due period is
   not silently shifted.
-- Hardened migration `0101` for fresh installs and migration tests: a linked
-  variety is cleared only when a general-crop inheritance target exists;
-  otherwise its sole values are preserved. Missing values are promoted to an
-  existing general crop before the dead override is cleared.
-- Extended the migration test with an orphan linked variety to lock in the
-  no-silent-data-loss behavior.
+- Audited migration `0101` alongside the runtime resolver and retained its
+  original, already-applied implementation. Applied migrations are immutable;
+  live no-silent-change guarantees belong in current services and serializers,
+  while the existing migration test continues to lock its historical contract.
+- Added explicit manual-overlap API coverage, verifying that a user-entered
+  start date is returned unchanged together with the precise overlap range.
 
 ## Validation notes
 
 - Frontend ESLint and the focused inheritance unit suite pass locally.
-- Python modules compile successfully. Backend tests could not be executed in
-  this container because the project-mandated `pdm` executable is unavailable.
-- The disabled-control changes do not alter layout at any breakpoint: each
-  button remains in the same dialog action slot and is wrapped only for tooltip
-  event handling. Desktop and mobile use the same MUI dialogs. A browser
-  screenshot could not be produced because the backend test/dev runner depends
-  on the unavailable PDM environment.
+- Python modules compile successfully. PDM was installed through `uv tool`,
+  the locked backend test environment was synchronized, and the focused API,
+  migration, and seasons suite was executed.
+- The disabled-control changes keep each button in the same dialog action slot;
+  the shared wrapper is `inline-flex` and is used by the same MUI dialog at
+  desktop and mobile breakpoints. Component tests cover the tooltip interaction,
+  and the production build/prerender completed with system Chrome.
+
+## Follow-up refactoring
+
+- Restored migration `0101` byte-for-byte to its applied form rather than
+  changing historical migration behavior after release.
+- Introduced `DisabledActionTooltip` as the single event-wrapper pattern for
+  disabled controls and migrated season and feedback dialogs to it. A focused
+  component test exercises the disabled-button hover path.
+- Preserved the Crop Library loading mask's prior translucent white semantics
+  with `alpha(theme.palette.background.paper, 0.6)` instead of substituting an
+  unrelated disabled-control colour.
+- Scoped the theme-token lint rule away from tests, the authoritative theme,
+  and vendored Gantt sources, and stopped flagging structural border widths as
+  spacing violations. Application colour and spacing findings remain visible.
+- Reworked the overlap integration test around the reachable manual-start
+  model: regular suggestions skip existing periods, while an explicit
+  overlapping date remains unchanged and is accompanied by `manual_residual`.

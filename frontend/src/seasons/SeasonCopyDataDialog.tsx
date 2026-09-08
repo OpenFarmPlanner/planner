@@ -15,7 +15,7 @@ import {
 import type { Season } from '../api/types';
 import { useTranslation } from '../i18n';
 import { extractApiErrorMessage } from '../api/errors';
-import { AppTooltip } from '../components/AppTooltip';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 interface SeasonCopyDataDialogProps {
   open: boolean;
@@ -107,16 +107,13 @@ export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onC
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
-        <AppTooltip
+        <DisabledActionTooltip
           title={sourceSeasonId === '' ? t('navigation:seasonSwitcher.copyDialog.confirmDisabledTooltip') : ''}
-          describeChild
         >
-          <span>
-            <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting || sourceSeasonId === ''}>
+          <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting || sourceSeasonId === ''}>
               {t('navigation:seasonSwitcher.copyDialog.confirm')}
-            </Button>
-          </span>
-        </AppTooltip>
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

@@ -1,3 +1,4 @@
+import { alpha } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router';
 import ReactMarkdown from 'react-markdown';
@@ -408,7 +409,7 @@ export function PublicCropLibraryDialog({
 
         <Box sx={{ position: 'relative', display: 'grid', gridTemplateColumns: useMobileFilterLayout ? '1fr' : { xs: '1fr', md: '1.2fr 1fr' }, gap: 2, minHeight: 0, flex: 1 }}>
           {loading ? (
-            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.disabledBackground', zIndex: 1 }}>
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: (theme) => alpha(theme.palette.background.paper, 0.6), zIndex: 1 }}>
               <CircularProgress />
             </Box>
           ) : null}

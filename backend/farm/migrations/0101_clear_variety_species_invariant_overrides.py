@@ -32,30 +32,11 @@ def clear_variety_overrides(apps, schema_editor):
             | Q(rotation_break_years__isnull=False)
         )
     )
-    for variety in linked_varieties.iterator():
-        general = Crop.objects.filter(
-            project_id=variety.project_id,
-            crop_species_id=variety.crop_species_id,
-        ).filter(Q(variety__isnull=True) | Q(variety='')).order_by('pk').first()
-        # Without an inheritance target, clearing would silently destroy the
-        # only surviving value. Leave the row intact for manual repair.
-        if general is None:
-            continue
-        updates = {}
-        for field, empty in (
-            ('crop_family', ''),
-            ('nutrient_demand', ''),
-            ('rotation_break_years', None),
-        ):
-            general_value = getattr(general, field)
-            variety_value = getattr(variety, field)
-            if general_value in ('', None) and variety_value not in ('', None):
-                updates[field] = variety_value
-        if updates:
-            Crop.objects.filter(pk=general.pk).update(**updates)
-        Crop.objects.filter(pk=variety.pk).update(
-            crop_family='', nutrient_demand='', rotation_break_years=None,
-        )
+    linked_varieties.update(
+        crop_family='',
+        nutrient_demand='',
+        rotation_break_years=None,
+    )
 
 
 def noop_reverse(apps, schema_editor):
