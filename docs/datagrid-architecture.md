@@ -487,6 +487,15 @@ upload. `noteAttachmentsCache.ts` caches attachment fetches per note id so
 re-hovering a row doesn't refetch; the drawer explicitly invalidates that
 cache after upload/delete.
 
+`useNotesEditor.ts` holds the drawer's state — which row and field are open,
+the draft, the saving flag, and the focus token that re-focuses the
+attachments section on each open. It is not grid-only: any view that mounts
+`NotesDrawer` uses it, including the two that render their own rows rather
+than a grid (`FieldsBedsHierarchy.tsx` and the Anbaupläne mobile card list in
+`PlantingPlans.tsx`). Give it the rows currently on screen, an `onSave` that
+persists the value, and an `onError`; a rejected `onSave` keeps the drawer
+open with the draft intact and hands its message to `onError`.
+
 ## Cells edited in a popover/dialog (`dialogEditFields`)
 
 Some values are never typed into a cell — they are picked in a dialog
