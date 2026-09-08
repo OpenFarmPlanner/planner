@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from decimal import Decimal
 
 
@@ -21,12 +20,6 @@ SEED_RATE_UNITS = {
 SEED_PACKAGE_UNIT_GRAMS = 'g'
 SEED_PACKAGE_UNIT_SEEDS = 'seeds'
 SEED_PACKAGE_UNITS = {SEED_PACKAGE_UNIT_GRAMS, SEED_PACKAGE_UNIT_SEEDS}
-
-
-@dataclass(frozen=True)
-class SeedAmount:
-    value: Decimal
-    unit: str
 
 
 # These are the single source of truth for TKG conversion — the seed demand

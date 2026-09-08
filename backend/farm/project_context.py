@@ -166,14 +166,3 @@ def require_project_admin(user, project_id: int, request: Request | None = None)
     ).exists()
     if not is_admin:
         raise exceptions.PermissionDenied('Project admin role required.')
-
-
-def get_project_for_member(user, project_id: int) -> Project:
-    """Return project for user membership or raise permission denied."""
-    membership = get_object_or_404(
-        ProjectMembership.objects.select_related('project'),
-        user=user,
-        project_id=project_id,
-        project__deleted_at__isnull=True,
-    )
-    return membership.project
