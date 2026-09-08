@@ -51,24 +51,6 @@ def _invitation_error_response(exc: InvitationFlowError) -> Response:
     return Response({'code': exc.code, 'detail': exc.message}, status=status_code)
 
 
-def _coerce_request_string(value, default='') -> str:
-    """Coerce request payload values to safe strings."""
-    if value is None:
-        return default
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, (int, float, bool)):
-        return str(value).strip()
-    if isinstance(value, list):
-        if not value:
-            return default
-        first = value[0]
-        if isinstance(first, str):
-            return first.strip()
-        return str(first).strip()
-    return default
-
-
 def agent_login_consume_view(request, token: str):  # noqa: ANN001
     """Use an agent login token, establish session, and redirect to frontend."""
     if not getattr(settings, 'AGENT_LOGIN_ENABLED', False):
