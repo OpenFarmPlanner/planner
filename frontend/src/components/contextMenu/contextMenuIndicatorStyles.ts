@@ -6,8 +6,6 @@ import type { SystemStyleObject } from '@mui/system';
 export const CONTEXT_MENU_INDICATOR_CLASS = 'ofp-context-menu-indicator';
 
 /** The class every "actions overlay" host targets to reveal its indicator(s). */
-export const CONTEXT_MENU_ACTIONS_OVERLAY_CLASS = 'ofp-context-menu-actions-overlay';
-
 const revealOnHoverOrFocus = {
   opacity: 1,
   pointerEvents: 'auto' as const,
