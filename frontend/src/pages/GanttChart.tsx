@@ -85,6 +85,7 @@ import {
   storeTimelineViewMode,
   toSyntheticMousePoint,
 } from './ganttChartState';
+import { useGanttResizeHandleTop } from './useGanttResizeHandleTop';
 import { useGanttSidebarResize } from './useGanttSidebarResize';
 import { formatDateToAPI } from '../utils/isoDate';
 import {
@@ -265,7 +266,6 @@ function GanttChartPage() {
     () => getStoredGanttState(ganttStateStorageKey),
     [ganttStateStorageKey],
   );
-  const [ganttResizeHandleTop, setGanttResizeHandleTop] = useState<number | null>(null);
   const calendarViewStorageKey = useMemo(
     () => (canUseStoredCalendarView ? getCalendarViewStorageKey(activeProjectId) : null),
     [activeProjectId, canUseStoredCalendarView],
@@ -943,61 +943,10 @@ function GanttChartPage() {
   const isGanttRenderWindowVirtualized = useWindowedGanttRows
     && (renderWindow.startIndex > 0 || renderWindow.endIndex < activeTaskGroups.length);
 
-  useLayoutEffect(() => {
-    const boundary = ganttResizeBoundaryNode;
-    if (!boundary) {
-      return undefined;
-    }
-
-    let animationFrameId: number | null = null;
-    const measureHandleTop = (): void => {
-      animationFrameId = null;
-      const ganttBody = boundary.querySelector<HTMLElement>('.rmg-container');
-      if (!ganttBody) {
-        setGanttResizeHandleTop(null);
-        return;
-      }
-      const boundaryRect = boundary.getBoundingClientRect();
-      const bodyRect = ganttBody.getBoundingClientRect();
-      setGanttResizeHandleTop(Math.max(0, Math.round(bodyRect.top - boundaryRect.top)));
-    };
-    const queueMeasure = (): void => {
-      if (animationFrameId === null) {
-        animationFrameId = window.requestAnimationFrame(measureHandleTop);
-      }
-    };
-
-    measureHandleTop();
-
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', queueMeasure);
-      return () => {
-        window.removeEventListener('resize', queueMeasure);
-        if (animationFrameId !== null) {
-          window.cancelAnimationFrame(animationFrameId);
-        }
-      };
-    }
-
-    const observer = new ResizeObserver(queueMeasure);
-    observer.observe(boundary);
-    const ganttBody = boundary.querySelector<HTMLElement>('.rmg-container');
-    if (ganttBody) {
-      observer.observe(ganttBody);
-    }
-
-    return () => {
-      observer.disconnect();
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [
-    calendarMode,
+  const ganttResizeHandleTop = useGanttResizeHandleTop(
     ganttResizeBoundaryNode,
-    renderedTaskGroups.length,
-    timelineViewMode,
-  ]);
+    `${calendarMode}|${timelineViewMode}|${renderedTaskGroups.length}`,
+  );
 
   const totalTimelineItems = useMemo(
     // For occupancy mode, count tasks across the full tree (every bed),

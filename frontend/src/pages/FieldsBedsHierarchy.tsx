@@ -48,9 +48,8 @@ import {
   HIERARCHY_DATA_GRID_SX,
   HIERARCHY_GRID_PAGE_SIZE,
   HIERARCHY_VIRTUAL_SCROLLER_SELECTOR,
-  TABLE_BOTTOM_MARGIN_PX,
-  TABLE_MIN_HEIGHT_PX,
 } from "./fieldsBedsHierarchyStyles";
+import { useAvailableTableHeight } from "./useAvailableTableHeight";
 import {
   DeleteUndoSnackbar,
   ContextMenuHint,
@@ -1582,38 +1581,11 @@ function FieldsBedsHierarchy({
   // (e.g. an alert/hint whose height changes after an async data load), and
   // missing one leaves availableTableHeight stale, under-sizing the table
   // and making its last rows unreachable by scroll.
-  const [availableTableHeight, setAvailableTableHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    if (isMobileViewport) {
-      return;
-    }
-
-    const measure = (): void => {
-      const wrapper = tableWrapperRef.current;
-      if (!wrapper) {
-        return;
-      }
-      const top = wrapper.getBoundingClientRect().top;
-      setAvailableTableHeight(
-        Math.max(TABLE_MIN_HEIGHT_PX, window.innerHeight - top - TABLE_BOTTOM_MARGIN_PX),
-      );
-    };
-
-    measure();
-    window.addEventListener("resize", measure);
-
-    let resizeObserver: ResizeObserver | undefined;
-    const observedElement = pageContentRef.current;
-    if (observedElement && typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(measure);
-      resizeObserver.observe(observedElement);
-    }
-
-    return () => {
-      window.removeEventListener("resize", measure);
-      resizeObserver?.disconnect();
-    };
-  }, [isMobileViewport]);
+  const availableTableHeight = useAvailableTableHeight({
+    enabled: !isMobileViewport,
+    tableWrapperRef,
+    pageContentRef,
+  });
 
   const hasUnsavedInvalidNewRows = useMemo(() => (
     beds.some((bed) => isPartiallyFilledNamelessNewHierarchyRow({
