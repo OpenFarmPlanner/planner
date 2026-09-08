@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from config.languages import resolve_request_language
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
+from farm.common.responses import api_error_response
 from farm.history import _serialize_instance
 from farm.models import Bed, EntityRevision, PlantingPlan, Season, Task
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
@@ -69,10 +70,10 @@ class YieldCalendarListView(generics.GenericAPIView):
         try:
             iso_year = int(year_param) if year_param else date.today().year
         except ValueError:
-            return Response({'detail': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='invalid_year', detail='Invalid year parameter.', status_code=status.HTTP_400_BAD_REQUEST)
 
         if iso_year < 1 or iso_year > 9999:
-            return Response({'detail': 'Year out of supported range.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='year_out_of_range', detail='Year out of supported range.', status_code=status.HTTP_400_BAD_REQUEST)
 
         language_code = resolve_request_language(request)
         season_id = resolve_season_id_from_request(request)
@@ -150,16 +151,16 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         active_project = request.active_project
         params, error_detail = _parse_remaining_area_params(request.query_params)
         if error_detail:
-            return Response({'detail': error_detail}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='invalid_remaining_area_parameters', detail=error_detail, status_code=status.HTTP_400_BAD_REQUEST)
 
         bed = Bed.objects.filter(id=params['bed_id'], project=active_project).only('id').first()
         if bed is None:
-            return Response({'detail': 'Bed not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
 
         if params['exclude_plan_id'] is not None:
             plan_exists = PlantingPlan.objects.filter(id=params['exclude_plan_id'], project=active_project).exists()
             if not plan_exists:
-                return Response({'detail': 'exclude_plan_id not found in active project.'}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error_response(code='exclude_plan_not_found', detail='exclude_plan_id not found in active project.', status_code=status.HTTP_400_BAD_REQUEST)
 
         try:
             payload = calculate_remaining_bed_area(
@@ -169,9 +170,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 exclude_plan_id=params['exclude_plan_id'],
             )
         except ValueError as error:
-            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code='invalid_remaining_area_interval', detail=str(error), status_code=status.HTTP_400_BAD_REQUEST)
         except Bed.DoesNotExist:
-            return Response({'detail': 'Bed not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
 
         return Response({
             'bed_id': payload['bed_id'],

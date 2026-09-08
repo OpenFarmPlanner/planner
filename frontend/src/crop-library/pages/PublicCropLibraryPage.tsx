@@ -58,6 +58,7 @@ import { useAuth } from '../../auth/useAuth';
 import PageContainer from '../../components/layout/PageContainer';
 import { DetailPageActions } from '../../components/layout/DetailPageActions';
 import { useTranslation } from '../../i18n';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../i18n/languages';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { stripCitationMarkers } from '../../components/data-grid/markdown';
@@ -1467,7 +1468,7 @@ export default function PublicCropLibraryPage() {
     borderRadius: 1,
     border: '1px solid',
     borderColor: 'divider',
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+    boxShadow: 3,
     overflow: 'hidden',
     bgcolor: 'background.paper',
   } as const;
@@ -2319,14 +2320,22 @@ export default function PublicCropLibraryPage() {
           <Button variant="outlined" onClick={closeRemoveDialog} disabled={removing}>
             {t('common:actions.cancel')}
           </Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={!removeReason || removing}
-            onClick={() => void handleConfirmRemove()}
+          <DisabledActionTooltip
+            title={removing
+              ? t('common:disabledReasons.busy')
+              : !removeReason
+                ? t('disabledReasons.selectRemovalReason')
+                : ''}
           >
-            {removing ? t('library.moderation.saving') : t('library.removeAction')}
-          </Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={!removeReason || removing}
+              onClick={() => void handleConfirmRemove()}
+            >
+              {removing ? t('library.moderation.saving') : t('library.removeAction')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
       <ImportConflictDialog

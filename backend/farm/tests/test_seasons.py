@@ -209,6 +209,29 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
             'start_date': '2025-04-01', 'end_date': '2025-08-31',
         })
 
+    def test_creation_options_reports_manual_overlap_without_adjusting_the_date(self):
+        self._set_pattern(1, 1)
+        Season.objects.create(
+            project=self.project, start_date=date(2025, 4, 1), end_date=date(2026, 3, 31),
+        )
+
+        response = self.client.get(
+            '/openfarmplanner/api/seasons/creation-options/',
+            {'manual_start_date': '2026-01-01'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        # The regular suggestion skips to the first non-overlapping pattern
+        # period. The explicitly entered date is preserved and its overlap is
+        # reported for the user to resolve rather than silently corrected.
+        self.assertEqual(response.data['due_period'], {
+            'start_date': '2027-01-01', 'end_date': '2027-12-31',
+        })
+        self.assertEqual(response.data['manual_period']['start_date'], '2026-01-01')
+        self.assertEqual(response.data['manual_residual'], {
+            'kind': 'overlap', 'start_date': '2026-01-01', 'end_date': '2026-03-31',
+        })
+
     def test_creation_options_manual_start_reports_residual_gap(self):
         self._set_pattern(1, 9)
         Season.objects.create(
@@ -801,6 +824,33 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['copied_count'], 1)
         self.assertEqual(response.data['target_planting_plan_count'], 1)
+
+    def test_copy_from_returns_structured_error_for_missing_source(self):
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
+            {'source_season_id': 999999},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data['code'], 'source_season_not_found')
+        self.assertEqual(response.data['detail'], 'Source season not found.')
+
+    def test_copy_from_returns_structured_error_for_same_season(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/seasons/{season.pk}/copy-from/',
+            {'source_season_id': season.pk},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'same_source_and_target_season')
 
     def test_create_resurrects_a_soft_deleted_season_for_the_same_period(self):
         season = Season.objects.create(

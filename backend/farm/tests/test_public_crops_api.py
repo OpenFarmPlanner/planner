@@ -406,7 +406,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         second_publish = self.publish_current_crop()
 
-        self.assertEqual(second_publish.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second_publish.status_code, status.HTTP_200_OK)
         self.assertEqual(second_publish.data['operation'], 'updated')
         self.assertEqual(second_publish.data['public_crop']['id'], public_crop_id)
         # variety entry (updated in place) + the general entry auto-created on first publish
@@ -453,7 +453,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         response = self.publish_current_crop()
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['operation'], 'updated')
         self.assertEqual(response.data['public_crop']['id'], own_public.id)
 
@@ -627,7 +627,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['operation'], 'updated')
         self.assertEqual(response.data['public_crop']['id'], existing_general.id)
         self.assertEqual(PublicCrop.objects.filter(variety='').count(), 1)
@@ -794,7 +794,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['operation'], 'updated')
         self.assertEqual(PublicCrop.objects.filter(variety='').count(), 1)
         general_public_crop.refresh_from_db()
@@ -2772,7 +2772,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         response = self.publish_current_crop()
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['operation'], 'updated')
         self.assertEqual(response.data['public_crop']['id'], public_crop.id)
         public_crop.refresh_from_db()

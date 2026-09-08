@@ -1193,5 +1193,20 @@
       "previous": "vorherige, kultur",
       "next": "nächste, kultur"
     }
+  },
+  "restoreDialog": {
+    "title": "Version wiederherstellen?",
+    "batchDescription": "Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.",
+    "versionDescription": "Du stellst eine frühere Version wieder her.",
+    "batchNotice": "Der vorherige Stand wird wiederhergestellt. Die Aktion selbst bleibt im Verlauf und kann erneut ausgeführt werden.",
+    "versionNotice": "Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.",
+    "cancel": "Abbrechen",
+    "confirm": "Version wiederherstellen"
+  },
+  "disabledReasons": {
+    "requiredComment": "Bitte zuerst einen Kommentar eingeben.",
+    "selectCrop": "Bitte zuerst eine Kultur auswählen.",
+    "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
+    "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
   }
 }

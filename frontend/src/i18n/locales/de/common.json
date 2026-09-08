@@ -202,5 +202,10 @@
     "location": "Standort",
     "non_field_errors": "Fehler"
   },
-  "dateFormatPlaceholder": "TT.MM.JJJJ"
+  "dateFormatPlaceholder": "TT.MM.JJJJ",
+  "disabledReasons": {
+    "busy": "Aktion wird gerade verarbeitet.",
+    "noChanges": "Es gibt keine ungespeicherten Änderungen.",
+    "invalidDateRange": "Bitte einen gültigen Zeitraum eingeben."
+  }
 }

@@ -141,8 +141,11 @@ export function getEffectiveCropValue<TField extends CropInheritableField>(
   crop: Partial<Crop> | null | undefined,
   field: TField,
 ): Crop[TField] {
-  const effectiveValue = crop?.effective_values?.[field];
-  return (effectiveValue ?? crop?.[field]) as Crop[TField];
+  const effectiveValues = crop?.effective_values;
+  if (effectiveValues && Object.prototype.hasOwnProperty.call(effectiveValues, field)) {
+    return effectiveValues[field] as Crop[TField];
+  }
+  return crop?.[field] as Crop[TField];
 }
 
 export function getVarietyOwnValueSource(

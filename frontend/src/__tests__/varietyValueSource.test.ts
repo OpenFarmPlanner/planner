@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   areCropValuesEqual,
   buildVarietyInheritanceBaseline,
+  getEffectiveCropValue,
   getVarietyOwnValueSource,
   isEmptyCropValue,
   stripValuesMatchingBaseline,
@@ -43,6 +44,23 @@ describe('areCropValuesEqual', () => {
   it('compares strings and other scalars by identity', () => {
     expect(areCropValuesEqual('low', 'low')).toBe(true);
     expect(areCropValuesEqual('low', 'high')).toBe(false);
+  });
+});
+
+describe('getEffectiveCropValue', () => {
+  it('preserves an explicit null effective value instead of exposing stale raw data', () => {
+    const crop: Partial<Crop> = {
+      nutrient_demand: 'high',
+      effective_values: { nutrient_demand: null },
+    };
+
+    expect(getEffectiveCropValue(crop, 'nutrient_demand')).toBeNull();
+  });
+
+  it('falls back to the raw value for payloads without an effective field', () => {
+    const crop: Partial<Crop> = { growth_duration_days: 42 };
+
+    expect(getEffectiveCropValue(crop, 'growth_duration_days')).toBe(42);
   });
 });
 

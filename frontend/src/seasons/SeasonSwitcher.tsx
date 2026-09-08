@@ -37,6 +37,7 @@ import { SeasonRowActionsMenu } from './SeasonRowActionsMenu';
 import { SeasonRenameDialog } from './SeasonRenameDialog';
 import { SeasonPeriodEditDialog } from './SeasonPeriodEditDialog';
 import { SeasonCopyDataDialog } from './SeasonCopyDataDialog';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './seasonPeriodMath';
 import { SEASON_SWITCHER_EMOJI } from '../navigation/navigationIconEmoji';
@@ -504,9 +505,13 @@ export function SeasonCreateSuggestionDialog({
         <Button onClick={handleClose} disabled={creatingSuggested}>
           {t('common:actions.cancel')}
         </Button>
-        <Button variant="contained" onClick={() => void handleCreateSuggested()} disabled={!canSubmit}>
-          {t('navigation:seasonSwitcher.suggestion.create')}
-        </Button>
+        <DisabledActionTooltip
+          title={!canSubmit && !creatingSuggested ? t('navigation:seasonSwitcher.suggestion.createDisabledTooltip') : ''}
+        >
+          <Button variant="contained" onClick={() => void handleCreateSuggested()} disabled={!canSubmit}>
+              {t('navigation:seasonSwitcher.suggestion.create')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

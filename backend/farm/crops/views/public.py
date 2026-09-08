@@ -16,6 +16,7 @@ from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_
 from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
+from farm.common.responses import api_error_response
 from farm.models import (
     Crop,
     PublicCrop,
@@ -232,7 +233,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 'conflicting_public_crop_id': error.conflicting_public_crop.id,
             }, status=status.HTTP_409_CONFLICT)
         except UnsupportedPublicCropFieldsError as error:
-            return Response({'detail': error.detail, 'code': error.code}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(code=error.code, detail=error.detail, status_code=status.HTTP_400_BAD_REQUEST)
         return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
 
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -310,7 +311,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 descriptions=serializer.validated_data['translations'],
             )
         except PublicCropPermissionError as error:
-            return Response({'detail': error.message, 'code': error.code}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(code=error.code, detail=error.message, status_code=status.HTTP_403_FORBIDDEN)
         except PublicCropStatusTransitionError as error:
             return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
         return Response({
@@ -482,7 +483,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
         except PublicCropRevisionNotFoundError as error:
-            return Response({'detail': str(error), 'code': error.code}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code=error.code, detail=str(error), status_code=status.HTTP_404_NOT_FOUND)
         return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['get', 'post'], url_path='change-proposals')
@@ -505,7 +506,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
         if not self._is_moderator(request.user):
-            return Response({'detail': 'Moderator privileges are required.', 'code': 'moderator_required'}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(code='moderator_required', detail='Moderator privileges are required.', status_code=status.HTTP_403_FORBIDDEN)
 
         public_crop = self.get_object()
         proposal = get_object_or_404(
@@ -542,7 +543,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
         if not self._is_moderator(request.user):
-            return Response({'detail': 'Moderator privileges are required.', 'code': 'moderator_required'}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(code='moderator_required', detail='Moderator privileges are required.', status_code=status.HTTP_403_FORBIDDEN)
 
         public_crop = self.get_object()
         proposal = get_object_or_404(

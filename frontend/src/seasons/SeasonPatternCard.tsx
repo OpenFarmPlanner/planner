@@ -17,6 +17,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { seasonPatternAPI } from '../api/api';
 import type { SeasonPatternPreviewResponse } from '../api/types';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { SeasonStartDateFields } from './SeasonStartDateFields';
@@ -169,15 +170,19 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
         {feedback ? <Alert severity={feedback.severity} sx={{ mb: 2 }}>{feedback.message}</Alert> : null}
 
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-          <Button onClick={handleCancel} disabled={saving || !hasChanges}>{t('navigation:seasonPattern.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleSave()}
-            disabled={saving || !hasChanges}
-            aria-label={t('navigation:seasonPattern.saveAriaLabel')}
-          >
-            {t('navigation:seasonPattern.save')}
-          </Button>
+          <DisabledActionTooltip title={saving ? t('common:disabledReasons.busy') : !hasChanges ? t('common:disabledReasons.noChanges') : ''}>
+            <Button onClick={handleCancel} disabled={saving || !hasChanges}>{t('navigation:seasonPattern.cancel')}</Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={saving ? t('common:disabledReasons.busy') : !hasChanges ? t('common:disabledReasons.noChanges') : ''}>
+            <Button
+              variant="contained"
+              onClick={() => void handleSave()}
+              disabled={saving || !hasChanges}
+              aria-label={t('navigation:seasonPattern.saveAriaLabel')}
+            >
+              {t('navigation:seasonPattern.save')}
+            </Button>
+          </DisabledActionTooltip>
         </Stack>
       </CardContent>
     </Card>

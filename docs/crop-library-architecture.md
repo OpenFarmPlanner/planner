@@ -607,7 +607,10 @@ from its Kultur. The `crop_*` timing/cultivation fields the Gantt calendar
 plans from and the plant-count conversions also resolve through the service. On
 the frontend the same is true of `ganttChartUtils.ts`,
 `locationDerivedTasks.ts` and the "missing duration" tooltip in Anbaupläne, via
-`getEffectiveCropValue`.
+`getEffectiveCropValue`. The Anbauplan cultivation selector and the project
+crop list's family, nutrient, cultivation, duration, and yield filters use the
+same accessor; a Sorte is therefore filtered and constrained by the values it
+currently inherits, not by blank raw override columns.
 
 `Crop.plants_per_m2` is part of that: the model property still computes from
 the row's own spacing, but the serializer publishes the **effective** value.
