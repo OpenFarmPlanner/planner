@@ -55,6 +55,8 @@ import { projectAPI } from '../api/api';
 import { MobileProjectSwitcherDialog } from './MobileProjectSwitcherDialog';
 import { RestoreVersionDialog } from './RestoreVersionDialog';
 import { ProjectHistoryDialog } from './ProjectHistoryDialog';
+import { useCollapsibleSidebar } from './useCollapsibleSidebar';
+import { useDeletedProjectsCount } from './useDeletedProjectsCount';
 import { useProjectHistory } from './useProjectHistory';
 import { CreateProjectDialog } from './CreateProjectDialog';
 import { useAuth } from '../auth/useAuth';
@@ -210,11 +212,9 @@ function RootLayout() {
   const [projectMenuAnchor, setProjectMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileProjectSwitcherOpen, setMobileProjectSwitcherOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(!isLargeDesktop);
   const [isSwitchingProject, setIsSwitchingProject] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreatingDemoProject, setIsCreatingDemoProject] = useState(false);
-  const [deletedProjectsCount, setDeletedProjectsCount] = useState(0);
   const [newProjectName, setNewProjectName] = useState('');
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [topbarContextActions, setTopbarContextActions] = useState<TopbarContextAction[]>([]);
@@ -274,43 +274,19 @@ function RootLayout() {
   const closeMobileNav = () => {
     setMobileNavOpen(false);
   };
-  useEffect(() => {
-    const storedValue = window.localStorage.getItem('openfarmplanner.sidebarCollapsed');
-    if (storedValue !== null) {
-      setSidebarCollapsed(storedValue === 'true');
-    }
-  }, []);
-
-  const toggleSidebarCollapsed = useCallback((): void => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem('openfarmplanner.sidebarCollapsed', String(next));
-      // Transfer focus to the counterpart button so keyboard users don't lose their position
-      requestAnimationFrame(() => {
-        if (next) {
-          expandSidebarBtnRef.current?.focus();
-        } else {
-          collapseSidebarBtnRef.current?.focus();
-        }
-      });
-      return next;
-    });
-  }, []);
-
-  const handleCollapsedSidebarBackgroundClick = (event: React.MouseEvent<HTMLElement>): void => {
-    if (!sidebarCollapsed) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest('a, button, input, textarea, select, [role="button"], [role="link"], [tabindex]')) {
-      return;
-    }
-    setSidebarCollapsed(false);
-    window.localStorage.setItem('openfarmplanner.sidebarCollapsed', 'false');
-  };
+  const {
+    collapsed: sidebarCollapsed,
+    toggle: toggleSidebarCollapsed,
+    handleBackgroundClick: handleCollapsedSidebarBackgroundClick,
+  } = useCollapsibleSidebar({
+    collapsedForBreakpoint: !isLargeDesktop,
+    expandButtonRef: expandSidebarBtnRef,
+    collapseButtonRef: collapseSidebarBtnRef,
+  });
+  const {
+    deletedProjectsCount,
+    refresh: refreshDeletedProjectsCount,
+  } = useDeletedProjectsCount(user);
 
   const [globalHelpOpen, setGlobalHelpOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarState>({
@@ -399,36 +375,6 @@ function RootLayout() {
       showSnackbar(t('commandPalette.feedback.logoutError'), 'error');
     }
   }, [handleGlobalMenuClose, logout, navigate, showSnackbar, t]);
-
-  const refreshDeletedProjectsCount = useCallback(async (): Promise<void> => {
-    if (!user) {
-      setDeletedProjectsCount(0);
-      return;
-    }
-    try {
-      const response = await projectAPI.listDeleted();
-      const payload = response.data;
-      const deletedProjects = Array.isArray(payload) ? payload : payload.results;
-      setDeletedProjectsCount(deletedProjects.length);
-    } catch {
-      setDeletedProjectsCount(0);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-    void refreshDeletedProjectsCount();
-  }, [refreshDeletedProjectsCount, user]);
-
-  useEffect(() => {
-    const handleProjectTrashChanged = (): void => {
-      void refreshDeletedProjectsCount();
-    };
-    window.addEventListener('ofp:project-trash-changed', handleProjectTrashChanged);
-    return () => window.removeEventListener('ofp:project-trash-changed', handleProjectTrashChanged);
-  }, [refreshDeletedProjectsCount]);
 
   // Users with zero projects can only use project-independent pages (see
   // PROJECT_INDEPENDENT_APP_ROUTES) — everything else is project-scoped and
@@ -741,10 +687,6 @@ function RootLayout() {
   ]);
 
   useRegisterCommands('global-app', globalCommands);
-
-  useEffect(() => {
-    setSidebarCollapsed(!isLargeDesktop);
-  }, [isLargeDesktop]);
 
   const sidebarWidth = sidebarCollapsed ? 64 : 240;
   const currentPageTitle = useMemo(() => {
