@@ -473,6 +473,7 @@ class PlantingPlanRemainingAreaApiTest(DRFAPITestCase):
         response = self.client.get('/openfarmplanner/api/planting-plans/remaining-area/')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_remaining_area_parameters')
         self.assertIn('detail', response.data)
 
     def test_remaining_area_rejects_invalid_date_range(self):
@@ -486,6 +487,7 @@ class PlantingPlanRemainingAreaApiTest(DRFAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_remaining_area_interval')
         self.assertIn('detail', response.data)
 
     def test_remaining_area_rejects_invalid_bed_id_type(self):
@@ -499,6 +501,7 @@ class PlantingPlanRemainingAreaApiTest(DRFAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_remaining_area_parameters')
         self.assertIn('detail', response.data)
 
     def test_remaining_area_rejects_bed_from_other_project(self):
@@ -517,6 +520,7 @@ class PlantingPlanRemainingAreaApiTest(DRFAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'bed_not_found')
 
 
 class PlantingPlanAttachmentCountApiTest(DRFAPITestCase):

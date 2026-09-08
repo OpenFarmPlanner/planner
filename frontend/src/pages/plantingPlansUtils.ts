@@ -1,5 +1,6 @@
 import type { Bed, Crop, CultivationType, Field, PlantingPlan } from '../api/types';
 import type { EditableRow } from '../components/data-grid/types';
+import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { formatLocalizedNumber, parseLocalizedNumber } from '../utils/numberLocalization';
 
 export const AREA_LABEL_SEPARATOR = ' | ';
@@ -62,11 +63,13 @@ export const buildBedDisplayLabel = (
 export function getAllowedCultivationTypesForCrop(
   crop?: Crop | null,
 ): CultivationType[] {
+  const cultivationTypes = getEffectiveCropValue(crop, 'cultivation_types');
+  const cultivationType = getEffectiveCropValue(crop, 'cultivation_type');
   const allowedValues = (
-    crop?.cultivation_types?.length
-      ? crop.cultivation_types
-      : crop?.cultivation_type
-        ? [crop.cultivation_type]
+    cultivationTypes?.length
+      ? cultivationTypes
+      : cultivationType
+        ? [cultivationType]
         : []
   ).filter(
     (value): value is CultivationType =>

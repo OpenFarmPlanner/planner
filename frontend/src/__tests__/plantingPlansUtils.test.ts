@@ -22,6 +22,19 @@ describe('getAllowedCultivationTypesForCrop', () => {
     expect(options).toEqual(['pre_cultivation']);
   });
 
+  it('uses live inherited cultivation restrictions for a variety', () => {
+    const options = getAllowedCultivationTypesForCrop({
+      cultivation_types: [],
+      cultivation_type: '',
+      effective_values: {
+        cultivation_types: ['pre_cultivation'],
+        cultivation_type: 'pre_cultivation',
+      },
+    } as never);
+
+    expect(options).toEqual(['pre_cultivation']);
+  });
+
   it('falls back to both options when crop does not define restrictions', () => {
     const options = getAllowedCultivationTypesForCrop(undefined);
 

@@ -42,6 +42,18 @@ class YieldCalendarAPITest(TestCase):
         plan.refresh_from_db()
         return plan
 
+    def test_rejects_non_numeric_year_with_structured_error(self):
+        response = self.client.get('/openfarmplanner/api/yield-calendar/?year=invalid')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'invalid_year')
+
+    def test_rejects_out_of_range_year_with_structured_error(self):
+        response = self.client.get('/openfarmplanner/api/yield-calendar/?year=10000')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'year_out_of_range')
+
     def test_harvest_inside_single_week_goes_to_one_week(self):
         carrot = Crop.objects.create(name='Karotte', expected_yield=70, display_color='#F4A261', project=self.project)
         self._create_plan(crop=carrot, harvest_start=date(2026, 3, 3), harvest_end=date(2026, 3, 6))

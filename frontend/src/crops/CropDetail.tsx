@@ -68,7 +68,7 @@ import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from './CropS
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { CropVarietiesOverview } from './CropVarietiesOverview';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
-import { isEmptyCropValue, getVarietyOwnValueSource } from './varietyValueSource';
+import { getEffectiveCropValue, isEmptyCropValue, getVarietyOwnValueSource } from './varietyValueSource';
 import { buildLocalizedText, getDescriptionFallbackNotice } from '../crop-library/publicCropDisplay';
 
 interface CropDetailProps {
@@ -289,23 +289,29 @@ const detailSectionGridSx = {
 
     const selectedSupplierId = filters.selectedSupplierFilter ? Number(filters.selectedSupplierFilter) : null;
     return crops.filter((crop) => {
-      const familyMatches = filters.selectedFamilyFilter.length === 0 || crop.crop_family === filters.selectedFamilyFilter;
-      const cultivationValues = crop.cultivation_types && crop.cultivation_types.length > 0
-        ? crop.cultivation_types
-        : (crop.cultivation_type ? [crop.cultivation_type] : []);
+      const familyMatches = filters.selectedFamilyFilter.length === 0
+        || getEffectiveCropValue(crop, 'crop_family') === filters.selectedFamilyFilter;
+      const effectiveCultivationTypes = getEffectiveCropValue(crop, 'cultivation_types');
+      const effectiveCultivationType = getEffectiveCropValue(crop, 'cultivation_type');
+      const cultivationValues = effectiveCultivationTypes?.length
+        ? effectiveCultivationTypes
+        : (effectiveCultivationType ? [effectiveCultivationType] : []);
       const cultivationMatches = (
         filters.selectedCultivationFilter.length === 0
         || (filters.selectedCultivationFilter === 'both'
           ? cultivationValues.includes('direct_sowing') && cultivationValues.includes('pre_cultivation')
           : cultivationValues.includes(filters.selectedCultivationFilter as 'direct_sowing' | 'pre_cultivation'))
       );
-      const growthValue = typeof crop.growth_duration_days === 'number' ? crop.growth_duration_days : null;
+      const effectiveGrowthDays = getEffectiveCropValue(crop, 'growth_duration_days');
+      const growthValue = typeof effectiveGrowthDays === 'number' ? effectiveGrowthDays : null;
       const growthMatches = (
         (parsedGrowthDaysMin === null || (growthValue !== null && growthValue >= parsedGrowthDaysMin))
         && (parsedGrowthDaysMax === null || (growthValue !== null && growthValue <= parsedGrowthDaysMax))
       );
-      const nutrientMatches = filters.selectedNutrientFilter.length === 0 || crop.nutrient_demand === filters.selectedNutrientFilter;
-      const yieldValue = typeof crop.expected_yield === 'number' ? crop.expected_yield : null;
+      const nutrientMatches = filters.selectedNutrientFilter.length === 0
+        || getEffectiveCropValue(crop, 'nutrient_demand') === filters.selectedNutrientFilter;
+      const effectiveYield = getEffectiveCropValue(crop, 'expected_yield');
+      const yieldValue = typeof effectiveYield === 'number' ? effectiveYield : null;
       const yieldMatches = (
         (parsedYieldMin === null || (yieldValue !== null && yieldValue >= parsedYieldMin))
         && (parsedYieldMax === null || (yieldValue !== null && yieldValue <= parsedYieldMax))

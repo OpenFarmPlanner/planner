@@ -116,3 +116,34 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   and invalid copy sources without removing the backwards-compatible `detail`.
 - Added API assertions for missing-source and same-source season-copy failures.
   The full seasons test module passes with the new response envelope.
+
+## Theme and inheritance continuation
+
+- Migrated the project-crop hierarchy, detail selector, variety overview, and
+  shared DataGrid surfaces from literal colours and shadows to semantic MUI
+  palette tokens, `alpha()` derivations, and elevation values.
+- Removed raw-field reads from the Anbauplan cultivation-option resolver and
+  the project crop list's inheritable-field filters. Both now consume the same
+  authoritative effective-value accessor as Gantt and derived planning tasks.
+- Added regression coverage for a Sorte whose cultivation restriction exists
+  only in `effective_values`; the selector no longer incorrectly offers both
+  cultivation methods in that state.
+
+## Theme, inheritance, and planning continuation
+
+- Finished the remaining project-crop presentation literals: hierarchy rows,
+  selectors, detail panels, variety summaries, DataGrid calculated/editable
+  cells, delete actions, scrollbars, contextual hints, and undo notifications
+  now use semantic palette values, theme-derived alpha colours, or MUI
+  elevations. User-selected crop swatches remain data rather than UI tokens.
+- Corrected two additional raw/effective leaks. Crop-list family, cultivation,
+  duration, nutrient, and yield filters now evaluate inherited effective values,
+  and planting-plan cultivation choices resolve the same effective payload.
+  A variety that inherits a single cultivation method no longer incorrectly
+  offers both methods in the planting-plan editor.
+- Extended structured DRF errors to yield-calendar and remaining-area validation.
+  Invalid years, malformed interval parameters, inaccessible beds, missing
+  excluded plans, and invalid ranges now carry stable codes while retaining the
+  existing `detail` strings for compatibility.
+- Added focused frontend inheritance coverage and backend assertions for the new
+  planning error codes.
