@@ -210,6 +210,11 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   validation errors as `invalid_layout_collections` and
   `invalid_location_layout`. Focused integration tests now pin both codes while
   retaining the detailed ownership message used by existing clients.
+- Routed agent-import execution and token-context failures through the same
+  builder without changing their established codes. Completed the remaining
+  seasons transition errors with codes for malformed manual dates, inapplicable
+  transitions, and seamless periods where a transition is not required; one
+  focused API test locks all three distinctions.
 
 ### Internationalization
 
