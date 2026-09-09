@@ -286,3 +286,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   `build_effective_crop_values` now delegates every field to
   `resolve_crop_field`, so single-field and bulk effective reads return the
   same raw fallback when no inheritance source exists.
+- Repaired the CI regressions the previous two entries left behind. The
+  species-invariant write boundary now routes a Sorte-level value to the
+  general Kultur (filling a gap, or matching what it already says) and rejects
+  only a value that would contradict it, so creating the first Sorte for a
+  species keeps working while nothing is dropped silently. Promotion and
+  clearing are scoped to the fields a write actually sent. The auth API tests
+  again assert the German response texts the endpoints really return.

@@ -276,16 +276,15 @@ class CropApiTest(ProjectApiTestCase):
                 'variety': 'Matina',
                 'crop_species': species.id,
                 'growth_duration_days': 65,
-                'crop_family': 'Nightshade',
                 'nutrient_demand': 'high',
-                'rotation_break_years': 4,
                 'copy_values_to_crop': True,
             },
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         general.refresh_from_db()
+        # The Kultur keeps every value it already had; only its gaps are filled.
         self.assertEqual(general.growth_duration_days, 80)
         self.assertEqual(general.crop_family, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
@@ -294,6 +293,44 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(variety.crop_family, '')
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
+
+    def test_creating_variety_rejects_invariant_values_the_general_crop_contradicts(self):
+        """A Sorte value that the Kultur already contradicts is rejected, not
+        silently dropped: the caller has to change it on the Kultur."""
+        species = CropSpecies.objects.create(name='Solanum lycopersicum')
+        general = Crop.objects.create(
+            name='Tomato',
+            variety='',
+            project=self.project,
+            crop_species=species,
+            crop_family='Solanaceae',
+            rotation_break_years=6,
+        )
+
+        response = self.client.post(
+            '/openfarmplanner/api/crops/',
+            {
+                'name': 'Tomato',
+                'variety': 'Matina',
+                'crop_species': species.id,
+                'crop_family': 'Nightshade',
+                'nutrient_demand': 'high',
+                'rotation_break_years': 4,
+                'copy_values_to_crop': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('crop_family', response.data)
+        self.assertIn('rotation_break_years', response.data)
+        # The gap-filling value alone is not an error; the request still fails.
+        self.assertNotIn('nutrient_demand', response.data)
+        general.refresh_from_db()
+        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.nutrient_demand, '')
+        self.assertEqual(general.rotation_break_years, 6)
+        self.assertFalse(Crop.objects.filter(project=self.project, variety='Matina').exists())
 
     def test_creating_first_variety_skips_auto_general_when_name_taken_by_other_species(self):
         tomato_species = CropSpecies.objects.create(name='Solanum lycopersicum')

@@ -38,9 +38,12 @@ from farm.services.crop_inheritance import (
     build_effective_crop_values,
     build_general_crop_index,
     build_inherited_crop_values,
+    clear_species_invariant_overrides,
     ensure_general_crop_for_variety,
+    find_general_crop,
     get_general_crop,
     is_unset_crop_value,
+    promote_species_invariant_values,
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
@@ -655,10 +658,14 @@ class CropSerializer(serializers.ModelSerializer):
         try:
             with transaction.atomic():
                 crop = super().create(validated_data)
+                promote_fields = self._promotable_species_invariant_fields
                 crop._auto_general_crop = ensure_general_crop_for_variety(
                     crop,
                     copy_values=copy_values_to_crop,
+                    promote_fields=promote_fields,
                 )
+                if crop._auto_general_crop is not None:
+                    clear_species_invariant_overrides(crop, fields=promote_fields)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -690,6 +697,10 @@ class CropSerializer(serializers.ModelSerializer):
         try:
             with transaction.atomic():
                 crop = super().update(instance, validated_data)
+                promote_species_invariant_values(
+                    crop,
+                    self._promotable_species_invariant_fields,
+                )
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -808,13 +819,9 @@ class CropSerializer(serializers.ModelSerializer):
         """
         errors = {}
 
-        crop_species = attrs.get('crop_species', getattr(self.instance, 'crop_species', None))
-        variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
-        has_general_crop = self.instance is None or get_general_crop(self.instance) is not None
-        if crop_species is not None and (variety or '').strip() and has_general_crop:
-            for field in CROP_SPECIES_INVARIANT_FIELDS:
-                if field in attrs and not is_unset_crop_value(attrs[field]):
-                    errors[field] = 'This field belongs to the general crop and cannot be set on a variety.'
+        self._promotable_species_invariant_fields = self._validate_species_invariant_fields(
+            attrs, errors,
+        )
 
         general_name_conflict = self._validate_name_and_duplicates(attrs, errors)
         cultivation_types = self._validate_cultivation_types(attrs, errors)
@@ -872,6 +879,57 @@ class CropSerializer(serializers.ModelSerializer):
         if active_project is not None:
             return active_project
         return self.context.get('project')
+
+    # Species-invariant values this write may lift onto the general Kultur.
+    # Filled by validate(); create()/update() consume it right after saving.
+    _promotable_species_invariant_fields: tuple[str, ...] = ()
+
+    def _validate_species_invariant_fields(self, attrs, errors) -> tuple[str, ...]:
+        """Route species-invariant values for a linked Sorte to the general Kultur.
+
+        ``crop_family`` / ``nutrient_demand`` / ``rotation_break_years`` describe
+        the species, so a linked Sorte never stores them itself. A value sent for
+        one is accepted while it fills a gap on the general Kultur (or repeats
+        what that row already says) and is rejected when it would contradict the
+        stored value: the API neither drops the value silently nor overwrites the
+        Kultur behind the other Sorten's back. Returns the field names the caller
+        may promote once the row is saved.
+
+        A linked orphan (no general Kultur) and a free-text Sorte keep editing
+        the columns normally - there is nothing to inherit from, so the raw
+        column is the value.
+        """
+        crop_species = attrs.get('crop_species', getattr(self.instance, 'crop_species', None))
+        variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
+        if crop_species is None or not (variety or '').strip():
+            return ()
+
+        written = [
+            field
+            for field in CROP_SPECIES_INVARIANT_FIELDS
+            if field in attrs and not is_unset_crop_value(attrs[field])
+        ]
+        if not written:
+            return ()
+
+        project = self._resolve_project(attrs, instance_first=True)
+        general = find_general_crop(
+            getattr(project, 'id', None),
+            crop_species.id,
+            exclude_pk=self.instance.pk if self.instance is not None else None,
+        )
+
+        promotable: list[str] = []
+        for field in written:
+            general_value = None if general is None else getattr(general, field)
+            if general is None or is_unset_crop_value(general_value) or general_value == attrs[field]:
+                promotable.append(field)
+            else:
+                errors[field] = (
+                    'This field belongs to the general crop, which already holds a different '
+                    'value. Change it on the general crop instead.'
+                )
+        return tuple(promotable)
 
     def _validate_name_and_duplicates(self, attrs, errors) -> bool:
         """Require a name and reject duplicate crop identities per project.

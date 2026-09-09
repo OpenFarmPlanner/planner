@@ -56,7 +56,7 @@ class AuthApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(
             response.data['detail'],
-            'Registration successful. Please check your email to activate your account.',
+            'Registrierung erfolgreich. Bitte prüfe deine E-Mails, um dein Konto zu aktivieren.',
         )
         created = User.objects.get(email='new@example.com')
         self.assertFalse(created.is_active)
@@ -250,7 +250,7 @@ class AuthApiTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.get('code'), 'invalid_activation_link')
-        self.assertEqual(response.data.get('detail'), 'Invalid activation link.')
+        self.assertEqual(response.data.get('detail'), 'Ungültiger Aktivierungslink.')
 
     def test_activation_expired_pending_record_deletes_user(self) -> None:
         self.client.post(
@@ -273,7 +273,10 @@ class AuthApiTest(APITestCase):
         response = self.client.post('/openfarmplanner/api/auth/activate/', {'uid': uid, 'token': token}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.get('code'), 'invalid_activation_token')
-        self.assertEqual(response.data.get('detail'), 'Invalid or expired activation token.')
+        self.assertEqual(
+            response.data.get('detail'),
+            'Ungültiges oder abgelaufenes Aktivierungs-Token.',
+        )
         self.assertFalse(User.objects.filter(pk=user.pk).exists())
 
     def test_activation_token_cannot_be_reused_after_successful_activation(self) -> None:
@@ -406,7 +409,7 @@ class AuthApiTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'invalid_password_reset_link')
-        self.assertEqual(response.data.get('detail'), 'Invalid reset link.')
+        self.assertEqual(response.data.get('detail'), 'Ungültiger Zurücksetzungslink.')
 
     @override_settings(PUBLIC_FRONTEND_URL='https://zwiebelzopf.at/openfarmplanner')
     def test_password_reset_email_uses_public_frontend_url(self) -> None:
@@ -575,8 +578,9 @@ class AuthApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(
             response.data['detail'],
-            'Registration successful. In local development, the activation email is written '
-            'to the server log/terminal and is not delivered to an inbox.',
+            'Registrierung erfolgreich. In der lokalen Entwicklungsumgebung wird die '
+            'Aktivierungs-E-Mail im Server-Log/Terminal ausgegeben und nicht in ein Postfach '
+            'zugestellt.',
         )
 
 

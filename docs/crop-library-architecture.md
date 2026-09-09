@@ -535,14 +535,21 @@ planning calculations and the UI resolve it identically:
   renders the three fields read-only
   for a linked Sorte (`speciesInvariantFieldsReadOnly`, with an info icon next
   to the "Fruchtfolge-Eigenschaften" heading). On the write side
-  `CropSerializer` rejects a non-empty Sorte-level value with a field error
-  when a general Kultur exists; it never silently clears or promotes that
-  value during an unrelated write. A legacy linked orphan continues to use
-  and edit its raw value until an explicit workflow creates its Kultur.
-  Migration `0101_clear_variety_species_invariant_overrides` cleared the
-  columns on existing linked Sorten only when a general Kultur already held
-  the inheritance source. A free-text Sorte or a linked orphan without a
-  general Kultur retains its raw values so no only copy is lost.
+  `CropSerializer._validate_species_invariant_fields` routes a value sent for a
+  linked Sorte to the general Kultur instead of storing it on the Sorte: it is
+  accepted while it fills a gap on that Kultur (or repeats what the Kultur
+  already says) and **rejected with a field error** when it would contradict
+  the stored value, so the API neither drops the value silently nor overwrites
+  the Kultur behind the other Sorten's back. `promote_species_invariant_values`
+  (create routes through `ensure_general_crop_for_variety`, which may still have
+  to create the Kultur) then moves the accepted value across and clears it from
+  the Sorte — only for the fields the write actually sent, so an unrelated edit
+  never relocates or clears a legacy raw column. A legacy linked orphan
+  continues to use and edit its raw value until an explicit workflow creates
+  its Kultur. Migration `0101_clear_variety_species_invariant_overrides`
+  cleared the columns on existing linked Sorten only when a general Kultur
+  already held the inheritance source. A free-text Sorte or a linked orphan
+  without a general Kultur retains its raw values so no only copy is lost.
 - The same rule reaches the **public** side. `PublicCrop` only has
   `crop_family` and `nutrient_demand` (not `rotation_break_years`), and only
   the species-level (general) public entry carries them:
@@ -556,10 +563,12 @@ planning calculations and the UI resolve it identically:
   (`getPublicFieldValue` in `PublicCropLibraryPage`). Migration
   `0102_clear_public_variety_species_invariant_fields` blanked existing
   variety entries whose species already has a general entry.
-- Creating or editing a linked Sorte always ensures that its project has a
-  general Kultur row for the same species. The species-invariant fields fill
-  empty general values automatically (from the Sorte's create payload, before
-  it is cleared) because they describe the crop species, not a variety.
+- Creating a linked Sorte ensures that its project has a general Kultur row for
+  the same species; editing one leaves a linked orphan as it is, so an ordinary
+  edit cannot conjure a Kultur the user never asked for. The species-invariant
+  fields a write sent fill empty general values (from the payload, before they
+  are cleared off the Sorte) because they describe the crop species, not a
+  variety.
   Variety-variable timing, yield, spacing, and seed fields flow back only
   through the create API's optional `copy_values_to_crop` flag (default
   `false`), and then only into general fields that are still unset. Existing
