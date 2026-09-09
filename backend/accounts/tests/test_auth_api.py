@@ -391,6 +391,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_password_reset_token')
 
     def test_password_reset_confirm_rejects_invalid_uid(self) -> None:
         response = self.client.post(
@@ -404,6 +405,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_password_reset_link')
         self.assertEqual(response.data.get('detail'), 'Invalid reset link.')
 
     @override_settings(PUBLIC_FRONTEND_URL='https://zwiebelzopf.at/openfarmplanner')
@@ -582,6 +584,7 @@ class AuthApiTest(APITestCase):
         self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')
         response = self.client.post('/openfarmplanner/api/auth/account/delete-request/', {'password': 'wrong'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_password')
 
     def test_account_delete_request_and_login_block(self) -> None:
         self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')
@@ -634,6 +637,23 @@ class AuthApiTest(APITestCase):
         self.assertFalse(hasattr(record, 'username'))
         self.assertNotIn(self.user.email, record.getMessage())
 
+    def test_account_restore_validation_uses_structured_codes(self) -> None:
+        invalid_credentials = self.client.post(
+            '/openfarmplanner/api/auth/account/restore/',
+            {'email': self.user.email, 'password': 'wrong'},
+            format='json',
+        )
+        self.assertEqual(invalid_credentials.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_credentials.data['code'], 'invalid_restore_credentials')
+
+        no_request = self.client.post(
+            '/openfarmplanner/api/auth/account/restore/',
+            {'email': self.user.email, 'password': self.password},
+            format='json',
+        )
+        self.assertEqual(no_request.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(no_request.data['code'], 'no_restorable_deletion_request')
+
     def test_account_restore_after_grace_period_fails(self) -> None:
         AccountDeletionRequest.objects.create(
             user=self.user,
@@ -649,6 +669,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'deletion_grace_period_expired')
 
     def test_profile_update_changes_display_name(self) -> None:
         self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')
@@ -747,6 +768,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_password')
         self.assertFalse(AccountEmailChangeRequest.objects.exists())
 
     def test_email_change_sends_confirmation_mail_without_immediate_update(self) -> None:
@@ -804,6 +826,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_email_change_link')
 
     def test_password_change_rejects_wrong_current_password(self) -> None:
         self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')
@@ -813,6 +836,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_password')
 
     def test_password_change_with_valid_data(self) -> None:
         self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')

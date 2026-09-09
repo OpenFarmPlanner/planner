@@ -236,6 +236,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   retained the old import as a compatibility re-export. Authentication
   activation, login, and session errors can now use the same envelope without
   introducing an accounts-to-farm dependency; focused tests pin their codes.
+- Completed the remaining manually constructed account validation responses:
+  email/password changes, deletion restoration, and password-reset confirmation
+  now expose stable codes while preserving their existing status and detail
+  contracts. Existing endpoint tests assert the new codes.
 
 ### Internationalization
 

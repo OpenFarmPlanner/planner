@@ -370,7 +370,11 @@ class AccountEmailChangeRequestView(APIView):
         _validate_serializer_in_german(serializer)
 
         if not _password_confirmation_is_valid(request.user, serializer.validated_data.get('current_password', '')):
-            return Response({'detail': _de(_('Invalid password.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password',
+                detail=_de(_('Invalid password.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         AccountEmailChangeRequest.objects.filter(user=request.user, confirmed_at__isnull=True).delete()
         email_change_request = AccountEmailChangeRequest.objects.create(
@@ -409,11 +413,19 @@ class AccountEmailChangeConfirmView(APIView):
 
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
-            return Response({'detail': EMAIL_CHANGE_INVALID_LINK_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_email_change_link',
+                detail=EMAIL_CHANGE_INVALID_LINK_MESSAGE,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = User.objects.filter(pk=uid, is_active=True).first()
         if user is None:
-            return Response({'detail': EMAIL_CHANGE_INVALID_LINK_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_email_change_link',
+                detail=EMAIL_CHANGE_INVALID_LINK_MESSAGE,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         request_obj = AccountEmailChangeRequest.objects.filter(
             id=serializer.validated_data['request_id'],
@@ -421,13 +433,25 @@ class AccountEmailChangeConfirmView(APIView):
             confirmed_at__isnull=True,
         ).first()
         if request_obj is None or request_obj.expires_at <= timezone.now():
-            return Response({'detail': EMAIL_CHANGE_INVALID_LINK_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_email_change_link',
+                detail=EMAIL_CHANGE_INVALID_LINK_MESSAGE,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not default_token_generator.check_token(user, serializer.validated_data['token']):
-            return Response({'detail': EMAIL_CHANGE_INVALID_LINK_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_email_change_link',
+                detail=EMAIL_CHANGE_INVALID_LINK_MESSAGE,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         if User.objects.filter(email__iexact=request_obj.new_email).exclude(pk=user.pk).exists():
-            return Response({'detail': _de(_('An account with this email already exists.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='email_already_exists',
+                detail=_de(_('An account with this email already exists.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user.email = request_obj.new_email
         user.save(update_fields=['email'])
@@ -448,7 +472,11 @@ class AccountPasswordChangeView(APIView):
         _validate_serializer_in_german(serializer)
 
         if not request.user.check_password(serializer.validated_data['current_password']):
-            return Response({'detail': _de(_('Invalid password.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password',
+                detail=_de(_('Invalid password.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         request.user.set_password(serializer.validated_data['new_password'])
         request.user.save(update_fields=['password'])
@@ -467,7 +495,11 @@ class AccountDeleteRequestView(APIView):
 
         user = request.user
         if not _password_confirmation_is_valid(user, serializer.validated_data.get('password', '')):
-            return Response({'detail': _de(_('Invalid password.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password',
+                detail=_de(_('Invalid password.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         now = timezone.now()
         scheduled = now + timedelta(days=ACCOUNT_DELETION_GRACE_DAYS)
@@ -516,14 +548,26 @@ class AccountRestoreView(APIView):
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None or not user.check_password(password):
-            return Response({'detail': _de(_('Invalid credentials.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_restore_credentials',
+                detail=_de(_('Invalid credentials.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         deletion = AccountDeletionRequest.objects.filter(user=user).first()
         if deletion is None or not deletion.is_pending or deletion.scheduled_deletion_at is None:
-            return Response({'detail': _de(_('No restorable deletion request found.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='no_restorable_deletion_request',
+                detail=_de(_('No restorable deletion request found.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         if deletion.scheduled_deletion_at <= timezone.now():
-            return Response({'detail': _de(_('The deletion grace period has expired.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='deletion_grace_period_expired',
+                detail=_de(_('The deletion grace period has expired.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         deletion.clear_schedule()
         user.is_active = True
@@ -641,15 +685,27 @@ class PasswordResetConfirmView(APIView):
         _validate_serializer_in_german(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
-            return Response({'detail': _de(_('Invalid reset link.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password_reset_link',
+                detail=_de(_('Invalid reset link.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = User.objects.filter(pk=uid, is_active=True).first()
         if user is None:
-            return Response({'detail': _de(_('Invalid reset link.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password_reset_link',
+                detail=_de(_('Invalid reset link.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         token = serializer.validated_data['token']
         if not default_token_generator.check_token(user, token):
-            return Response({'detail': _de(_('Invalid or expired reset token.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_password_reset_token',
+                detail=_de(_('Invalid or expired reset token.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user.set_password(serializer.validated_data['password'])
         user.save(update_fields=['password'])
