@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 def _invitation_error_response(exc: InvitationFlowError) -> Response:
     """Build a consistent error response for invitation domain errors."""
     status_code = status.HTTP_403_FORBIDDEN if exc.code == 'email_mismatch' else status.HTTP_400_BAD_REQUEST
-    return Response({'code': exc.code, 'detail': exc.message}, status=status_code)
+    return api_error_response(code=exc.code, detail=exc.message, status_code=status_code)
 
 
 def agent_login_consume_view(request, token: str):  # noqa: ANN001
@@ -368,7 +368,11 @@ class ProjectInvitationView(APIView):
 
         invitation = result.invitation
         if invitation is None:
-            return Response({'code': 'invitation_error', 'detail': 'Invitation could not be created.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return api_error_response(
+                code='invitation_error',
+                detail='Invitation could not be created.',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         invite_link = build_public_frontend_url(f'/invite/accept?token={invitation.token}')
         mail_sent, mail_error = _send_project_invitation_email(
@@ -397,7 +401,7 @@ class PublicProjectInvitationView(APIView):
         try:
             invitation = get_invitation_by_token(token)
         except InvitationFlowError as exc:
-            return Response({'code': exc.code, 'detail': exc.message}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code=exc.code, detail=exc.message, status_code=status.HTTP_404_NOT_FOUND)
 
         if request.user.is_authenticated:
             clear_pending_invitation_token(session=request.session)

@@ -375,7 +375,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         comment_serializer.is_valid(raise_exception=True)
         revision = topic_serializer.validated_data.get('revision')
         if revision and revision.public_crop_id != public_crop.id:
-            return Response({'revision': ['The version does not belong to this public crop.']}, status=status.HTTP_400_BAD_REQUEST)
+            detail = 'The version does not belong to this public crop.'
+            return api_error_response(
+                code='revision_not_owned_by_public_crop',
+                detail=detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                revision=[detail],
+            )
         with transaction.atomic():
             topic = topic_serializer.save(public_crop=public_crop, created_by=request.user)
             comment_serializer.save(topic=topic, created_by=request.user)
@@ -419,7 +425,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         parent = serializer.validated_data.get('parent')
         if parent and parent.topic_id != topic.id:
-            return Response({'parent': ['The parent comment does not belong to this topic.']}, status=status.HTTP_400_BAD_REQUEST)
+            detail = 'The parent comment does not belong to this topic.'
+            return api_error_response(
+                code='parent_comment_not_owned_by_topic',
+                detail=detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                parent=[detail],
+            )
         comment = serializer.save(topic=topic, created_by=request.user)
         return Response(PublicCropDiscussionCommentSerializer(comment, context={'request': request}).data, status=status.HTTP_201_CREATED)
 

@@ -1979,6 +1979,32 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(PublicCropDiscussionComment.objects.count(), 2)
         self.assertEqual(reply_response.data['parent'], first_comment.id)
 
+    def test_discussion_relation_validation_uses_structured_codes(self):
+        public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=self.user)
+        other_crop = PublicCrop.objects.create(name='Bean', variety='Neckargold', status='published', created_by=self.user)
+        foreign_revision = PublicCropRevision.objects.create(public_crop=other_crop, version=1, action='created', snapshot={})
+
+        revision_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/',
+            {'title': 'Wrong version', 'body': 'Question', 'revision': foreign_revision.id},
+            format='json',
+        )
+        self.assertEqual(revision_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(revision_response.data['code'], 'revision_not_owned_by_public_crop')
+        self.assertIn('revision', revision_response.data)
+
+        topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Target topic', created_by=self.user)
+        foreign_topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Other topic', created_by=self.user)
+        foreign_parent = PublicCropDiscussionComment.objects.create(topic=foreign_topic, body='Foreign parent', created_by=self.user)
+        parent_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/',
+            {'body': 'Reply', 'parent': foreign_parent.id},
+            format='json',
+        )
+        self.assertEqual(parent_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(parent_response.data['code'], 'parent_comment_not_owned_by_topic')
+        self.assertIn('parent', parent_response.data)
+
     def test_nested_discussion_replies_keep_their_exact_parent(self):
         public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=self.user)
         topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Nested replies', created_by=self.user)

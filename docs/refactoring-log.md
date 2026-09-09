@@ -228,6 +228,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   errors. Comment ownership/deleted-state conflicts and malformed or
   unavailable supplier selections now expose stable codes, with integration
   tests covering each branch.
+- Standardized the last manually-built Crop Library relation-validation and
+  project-invitation error envelopes through `api_error_response`. Relation
+  failures retain their field-level arrays for backwards compatibility while
+  also exposing stable machine-readable codes.
 
 ### Internationalization
 
