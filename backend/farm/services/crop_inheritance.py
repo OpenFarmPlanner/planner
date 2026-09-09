@@ -191,6 +191,8 @@ def clear_species_invariant_overrides(crop: Crop) -> list[str]:
     }
     if not reset:
         return []
+    if get_general_crop(crop) is None:
+        return []
     Crop.objects.filter(pk=crop.pk).update(updated_at=timezone.now(), **reset)
     for field, unset_value in reset.items():
         setattr(crop, field, unset_value)
@@ -342,7 +344,7 @@ def resolve_crop_field(
         return own_value
     general_crop = get_general_crop(crop, index)
     if general_crop is None:
-        return None if force_inherit else own_value
+        return own_value
     general_value = getattr(general_crop, field)
     if force_inherit:
         return None if is_unset_crop_value(general_value) else general_value

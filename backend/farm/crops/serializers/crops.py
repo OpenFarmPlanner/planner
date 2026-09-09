@@ -690,7 +690,6 @@ class CropSerializer(serializers.ModelSerializer):
         try:
             with transaction.atomic():
                 crop = super().update(instance, validated_data)
-                crop._auto_general_crop = ensure_general_crop_for_variety(crop)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -811,7 +810,8 @@ class CropSerializer(serializers.ModelSerializer):
 
         crop_species = attrs.get('crop_species', getattr(self.instance, 'crop_species', None))
         variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
-        if crop_species is not None and (variety or '').strip():
+        has_general_crop = self.instance is None or get_general_crop(self.instance) is not None
+        if crop_species is not None and (variety or '').strip() and has_general_crop:
             for field in CROP_SPECIES_INVARIANT_FIELDS:
                 if field in attrs and not is_unset_crop_value(attrs[field]):
                     errors[field] = 'This field belongs to the general crop and cannot be set on a variety.'

@@ -233,6 +233,20 @@ class CropInheritanceTest(TestCase):
         variety.refresh_from_db()
         self.assertEqual(variety.crop_family, 'Own family')
 
+    def test_linked_orphan_keeps_its_only_species_invariant_values(self):
+        orphan_species = CropSpecies.objects.create(name='Daucus carota subsp. sativus')
+        orphan = self._variety(
+            crop_species=orphan_species,
+            crop_family='Apiaceae',
+            nutrient_demand='medium',
+            rotation_break_years=3,
+        )
+
+        self.assertEqual(resolve_crop_field(orphan, 'crop_family'), 'Apiaceae')
+        self.assertEqual(clear_species_invariant_overrides(orphan), [])
+        orphan.refresh_from_db()
+        self.assertEqual(orphan.crop_family, 'Apiaceae')
+
     def test_lookup_is_cached_on_the_instance(self):
         variety = self._variety()
         with self.assertNumQueries(1):

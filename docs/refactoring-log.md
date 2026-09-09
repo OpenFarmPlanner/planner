@@ -278,3 +278,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   unrelated updates preserve legacy raw columns. The override migration now
   retains linked orphan values when no general Kultur exists; API and migration
   regressions cover both no-silent-change guarantees.
+- Aligned runtime resolution with that orphan-migration guarantee. A linked
+  Sorte without a general Kultur now reads its own raw invariant value,
+  unrelated edits do not auto-create an empty Kultur, and explicit cleanup
+  refuses to remove the only copy. Service and API tests cover the full path.

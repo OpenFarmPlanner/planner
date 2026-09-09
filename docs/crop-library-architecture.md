@@ -534,8 +534,10 @@ planning calculations and the UI resolve it identically:
   even a stale column is harmless. The form renders the three fields read-only
   for a linked Sorte (`speciesInvariantFieldsReadOnly`, with an info icon next
   to the "Fruchtfolge-Eigenschaften" heading). On the write side
-  `CropSerializer` rejects a non-empty Sorte-level value with a field error;
-  it never silently clears or promotes that value during an unrelated write.
+  `CropSerializer` rejects a non-empty Sorte-level value with a field error
+  when a general Kultur exists; it never silently clears or promotes that
+  value during an unrelated write. A legacy linked orphan continues to use
+  and edit its raw value until an explicit workflow creates its Kultur.
   Migration `0101_clear_variety_species_invariant_overrides` cleared the
   columns on existing linked Sorten only when a general Kultur already held
   the inheritance source. A free-text Sorte or a linked orphan without a

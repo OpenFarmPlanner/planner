@@ -1271,6 +1271,29 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.sorte.refresh_from_db()
         self.assertEqual(self.sorte.crop_family, 'Legacy')
 
+    def test_linked_orphan_preserves_and_can_edit_its_only_invariant_value(self):
+        orphan_species = CropSpecies.objects.create(name='Pastinaca sativa')
+        orphan = Crop.objects.create(
+            name='Pastinake', variety='Halblange', project=self.project,
+            crop_species=orphan_species, crop_family='Apiaceae',
+        )
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{orphan.id}/',
+            {'crop_family': 'Apiaceae updated'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        orphan.refresh_from_db()
+        self.assertEqual(orphan.crop_family, 'Apiaceae updated')
+        row = self._row(orphan)
+        self.assertEqual(row['crop_family'], 'Apiaceae updated')
+        self.assertEqual(row['effective_values'], {})
+        self.assertFalse(Crop.objects.filter(
+            project=self.project, crop_species=orphan_species, variety_normalized__isnull=True,
+        ).exists())
+
     def test_linked_sorte_ignores_a_raw_species_invariant_value_from_the_db(self):
         """A value written straight to the column (pre-rule, or by a migration
         that has not run yet) is still ignored when resolving."""
