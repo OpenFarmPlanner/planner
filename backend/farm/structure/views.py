@@ -9,8 +9,8 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
-from farm.common.responses import api_error_response
 from farm.history import _serialize_instance
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
 from farm.project_context import get_active_project_or_400

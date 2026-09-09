@@ -259,3 +259,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   varieties, general crops, free-text/orphan varieties, and preservation of
   their only stored values. No uncovered branch requiring a new test was found
   in this follow-up.
+
+### Shared response import cleanup
+
+- Migrated all backend callers and the response-builder unit test to the
+  canonical `config.responses` module after the cross-app rollout. Removed the
+  temporary farm compatibility re-export so new code has one discoverable
+  import path and cannot recreate app-layer coupling.

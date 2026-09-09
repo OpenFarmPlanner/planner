@@ -14,8 +14,8 @@ from rest_framework.response import Response
 from accounts.consent import has_accepted_current, record_acceptance
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from accounts.models import DocumentConsent
+from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
-from farm.common.responses import api_error_response
 from farm.history import (
     _current_actor_label,
     build_crop_history_payload,

@@ -6,8 +6,8 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 
 from config.languages import resolve_request_language
+from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
-from farm.common.responses import api_error_response
 from farm.models import (
     Crop,
     CropSupplierData,

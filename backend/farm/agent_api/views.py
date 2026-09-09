@@ -16,8 +16,8 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
-from farm.common.responses import api_error_response
 from farm.models import CropImportDraft, Project, ProjectApiToken
 from farm.services.crop_import import analyze_import_payload
 from farm.services.crop_import.apply import ImportExecutionError, apply_import_draft

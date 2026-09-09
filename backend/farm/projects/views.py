@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from accounts.models import UserProjectSettings
 from config.frontend_urls import build_public_frontend_url
-from farm.common.responses import api_error_response
+from config.responses import api_error_response
 from farm.models import AgentLoginToken, Location, Project, ProjectInvitation, ProjectMembership
 from farm.project_context import require_project_admin, resolve_project_for_user
 from farm.services.demo_project import create_personal_demo_project, resolve_demo_request_language

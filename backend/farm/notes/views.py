@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
-from farm.common.responses import api_error_response
+from config.responses import api_error_response
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
 from farm.image_processing import (
     ImageProcessingBackendUnavailableError,
