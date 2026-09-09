@@ -109,6 +109,10 @@ describe('PublicLibraryModerationPage', () => {
     const approveButtons = screen.getAllByRole('button', { name: 'Annehmen' });
     const approveButton = approveButtons[approveButtons.length - 1];
     expect(approveButton).toBeDisabled();
+    await user.hover(approveButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Bitte zuerst den deutschen und englischen Namen eingeben.',
+    );
 
     await user.type(screen.getByLabelText(/Englischer Name/), 'Tree spinach');
     await user.click(approveButton);

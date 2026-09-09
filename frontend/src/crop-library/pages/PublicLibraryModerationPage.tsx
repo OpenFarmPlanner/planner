@@ -38,6 +38,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import { useTranslation } from '../../i18n';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 
 type RequiredSpeciesLanguage = 'de' | 'en';
 type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
@@ -561,15 +562,23 @@ export default function PublicLibraryModerationPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={closeSpeciesApproval} variant="outlined">{t('library.moderation.cancel')}</Button>
-          <Button
-            onClick={() => void approveSpecies()}
-            variant="contained"
-            disabled={!canApproveSpecies || busyAction !== null}
+          <DisabledActionTooltip
+            title={busyAction !== null
+              ? t('common:disabledReasons.busy')
+              : !canApproveSpecies
+                ? t('disabledReasons.requiredSpeciesNames')
+                : ''}
           >
-            {busyAction === `species-${approvalProposal?.id}-approve`
-              ? t('library.moderation.saving')
-              : t('library.moderation.approve')}
-          </Button>
+            <Button
+              onClick={() => void approveSpecies()}
+              variant="contained"
+              disabled={!canApproveSpecies || busyAction !== null}
+            >
+              {busyAction === `species-${approvalProposal?.id}-approve`
+                ? t('library.moderation.saving')
+                : t('library.moderation.approve')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(aliasSpeciesEdit)} onClose={closeAliasEditor} maxWidth="sm" fullWidth>
@@ -604,15 +613,17 @@ export default function PublicLibraryModerationPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={closeAliasEditor} variant="outlined">{t('library.moderation.cancel')}</Button>
-          <Button
-            onClick={() => void saveAliases()}
-            variant="contained"
-            disabled={busyAction !== null}
-          >
-            {busyAction === `alias-${aliasSpeciesEdit?.id}-save`
-              ? t('library.moderation.saving')
-              : t('library.moderation.speciesAliases.save')}
-          </Button>
+          <DisabledActionTooltip title={busyAction !== null ? t('common:disabledReasons.busy') : ''}>
+            <Button
+              onClick={() => void saveAliases()}
+              variant="contained"
+              disabled={busyAction !== null}
+            >
+              {busyAction === `alias-${aliasSpeciesEdit?.id}-save`
+                ? t('library.moderation.saving')
+                : t('library.moderation.speciesAliases.save')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
     </PageContainer>

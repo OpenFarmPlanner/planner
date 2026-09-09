@@ -174,6 +174,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   all three import-conflict decisions, and version restore. The shared wrapper
   keeps explanations reachable even though native disabled buttons do not emit
   pointer events.
+- Continued the moderation sweep with the species-approval and alias-save
+  actions. The approval tooltip distinguishes an in-progress request from
+  missing required German and English names.
 
 ### API consistency
 

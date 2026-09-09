@@ -1204,6 +1204,7 @@
     "confirm": "Version wiederherstellen"
   },
   "disabledReasons": {
+    "requiredSpeciesNames": "Bitte zuerst den deutschen und englischen Namen eingeben.",
     "requiredComment": "Bitte zuerst einen Kommentar eingeben.",
     "selectCrop": "Bitte zuerst eine Kultur auswählen.",
     "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
