@@ -27,7 +27,7 @@ export function CropVarietiesOverview({
   const { t } = useTranslation('crops');
 
   return (
-    <Box sx={{ mb: 3, p: { xs: 1.25, sm: 2 }, border: '1px solid #e5e7eb', borderRadius: 2 }}>
+    <Box sx={{ mb: 3, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'surface.surfaceBorder', borderRadius: 2 }}>
       <Stack
         direction="row"
         sx={{

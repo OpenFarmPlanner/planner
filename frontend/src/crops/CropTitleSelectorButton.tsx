@@ -35,8 +35,8 @@ export function CropTitleSelectorButton({
         color: 'inherit',
         textAlign: 'left',
         borderRadius: 0.75,
-        '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.04)' },
-        '&:active': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
+        '&:hover': { bgcolor: 'action.hover' },
+        '&:active': { bgcolor: 'action.selected' },
         '&:focus-visible': {
           outline: (theme: Theme) => `2px solid ${alpha(theme.palette.primary.main, 0.28)}`,
           outlineOffset: 2,

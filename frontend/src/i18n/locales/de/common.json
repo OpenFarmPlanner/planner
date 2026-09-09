@@ -65,6 +65,10 @@
     "empty": "Keine Notizen",
     "editEmpty": "Notiz hinzufügen",
     "editWithContent": "Notiz bearbeiten",
+    "compactNoteAndImages": "Notiz und Bilder vorhanden",
+    "compactNote": "Notiz vorhanden",
+    "compactImages": "Bilder vorhanden",
+    "compactEmpty": "Keine Notiz oder Bilder vorhanden",
     "attachmentsCount_one": "{{count}} Foto in Notizen",
     "attachmentsCount_other": "{{count}} Fotos in Notizen"
   },

@@ -17,6 +17,7 @@ import { publicCropAPI } from '../../api/api';
 import type { PublicCrop } from '../../api/types';
 import { useTranslation } from '../../i18n';
 import { getLanguageDisplayName } from '../../i18n/languages';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 
 interface PublicCropTranslationDialogProps {
   open: boolean;
@@ -145,10 +146,14 @@ export function PublicCropTranslationDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>{t('form.cancel')}</Button>
-        <Button variant="contained" onClick={() => void handleSave()} disabled={loading || saving}>
-          {saving ? t('library.page.edit.saving') : t('library.page.edit.save')}
-        </Button>
+        <DisabledActionTooltip title={saving ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={onClose} disabled={saving}>{t('form.cancel')}</Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={loading || saving ? t('common:disabledReasons.busy') : ''}>
+          <Button variant="contained" onClick={() => void handleSave()} disabled={loading || saving}>
+            {saving ? t('library.page.edit.saving') : t('library.page.edit.save')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

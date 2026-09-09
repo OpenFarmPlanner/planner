@@ -147,3 +147,52 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   existing `detail` strings for compatibility.
 - Added focused frontend inheritance coverage and backend assertions for the new
   planning error codes.
+
+## 2026-09-09 follow-up audit
+
+### Theme tokens
+
+- Replaced the last literal crop-hierarchy hover, title-button interaction, and
+  varieties-panel colours found by the source sweep with `surface` and MUI
+  action tokens. Dynamic crop swatches remain user data, not design tokens.
+
+### Four-case update model and live inheritance
+
+- Re-audited the publish wizard, project-copy update dialog, public import
+  endpoint, and crop-library action resolver. Pulls still converge on the
+  public import/update service and pushes still converge on the publishing
+  service; no competing update path was found.
+- Re-audited `CULTURE_INHERITABLE_FIELDS`, the backend resolver, form baseline
+  stripping, multilingual raw-value editing, and frontend effective-value
+  consumers. The existing authoritative-null handling and raw edit payloads
+  preserve explicit overrides without snapshotting inherited display values;
+  no further copying violation was found.
+
+### Disabled actions
+
+- Added explanatory busy-state tooltips to translation save/cancel actions,
+  all three import-conflict decisions, and version restore. The shared wrapper
+  keeps explanations reachable even though native disabled buttons do not emit
+  pointer events.
+
+### API consistency
+
+- Routed the remaining project-crop publish, duplicate, blocked-update, terms,
+  and reject-update errors through `api_error_response`. Existing codes,
+  details, context payloads, and HTTP statuses remain stable; the previously
+  code-less missing-name response now has `crop_name_required`.
+
+### Internationalization
+
+- Moved the compact notes cell's four German accessibility labels into the
+  German `common` resource first and added matching English translations. The
+  compact indicator now follows the active UI language.
+
+### Seasons and migration coverage
+
+- Confirmed the seasons suite already covers gap, overlap, seamless-boundary,
+  manual-residual, transition creation, and overlap rejection paths at service
+  and API levels. Confirmed the inheritance migrations separately cover linked
+  varieties, general crops, free-text/orphan varieties, and preservation of
+  their only stored values. No uncovered branch requiring a new test was found
+  in this follow-up.

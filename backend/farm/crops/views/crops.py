@@ -15,6 +15,7 @@ from accounts.consent import has_accepted_current, record_acceptance
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from accounts.models import DocumentConsent
 from farm.common.mixins import ProjectScopedMixin
+from farm.common.responses import api_error_response
 from farm.history import (
     _current_actor_label,
     build_crop_history_payload,
@@ -394,14 +395,19 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             return guest_demo_forbidden_response()
         crop = self.get_object()
         if not crop.name.strip():
-            return Response({'detail': 'Name is required for publishing.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='crop_name_required',
+                detail='Name is required for publishing.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         has_library_consent = has_accepted_current(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         accepted_library_terms = request.data.get('accepted_public_library_terms') is True
         if not has_library_consent and not accepted_library_terms:
-            return Response({
-                'code': 'public_library_terms_required',
-                'detail': 'Public library contribution terms must be accepted before publishing.',
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='public_library_terms_required',
+                detail='Public library contribution terms must be accepted before publishing.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             crop_species_id = request.data.get('crop_species_id')
@@ -417,27 +423,27 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 publish_as_general=_request_boolean(request.data.get('publish_as_general')),
             )
         except PublicCropPublishingValidationError as error:
-            return Response(
-                {
-                    'code': 'public_crop_publishing_checks_failed',
-                    'detail': 'Public crop publishing checks failed.',
-                    'checks': self._serialize_publishing_check_result(error.check_result),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='public_crop_publishing_checks_failed',
+                detail='Public crop publishing checks failed.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                checks=self._serialize_publishing_check_result(error.check_result),
             )
         except PublicCropUpdateBlockedError as error:
-            return Response({
-                'code': 'public_crop_update_blocked',
-                'detail': 'The public entry has a newer version this copy has not taken over.',
-                'reason': error.reason,
-            }, status=status.HTTP_409_CONFLICT)
+            return api_error_response(
+                code='public_crop_update_blocked',
+                detail='The public entry has a newer version this copy has not taken over.',
+                status_code=status.HTTP_409_CONFLICT,
+                reason=error.reason,
+            )
         except DuplicatePublicCropError as error:
-            return Response({
-                'code': 'duplicate_public_crop',
-                'detail': 'A similar public crop already exists.',
-                'duplicates': self._serialize_duplicates(error.duplicates),
-                'normalized_identity': error.normalized_identity,
-            }, status=status.HTTP_409_CONFLICT)
+            return api_error_response(
+                code='duplicate_public_crop',
+                detail='A similar public crop already exists.',
+                status_code=status.HTTP_409_CONFLICT,
+                duplicates=self._serialize_duplicates(error.duplicates),
+                normalized_identity=error.normalized_identity,
+            )
         if not has_library_consent:
             record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         serializer = PublicCropSerializer(public_crop, context={'request': request})
@@ -519,12 +525,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         crop = self.get_object()
         update_status = build_public_crop_update_status(crop)
         if update_status is None:
-            return Response(
-                {
-                    'detail': 'There is no pending public update for this crop.',
-                    'code': 'no_pending_public_update',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='no_pending_public_update',
+                detail='There is no pending public update for this crop.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         reject_public_crop_update(crop)
         serializer = self.get_serializer(crop)
