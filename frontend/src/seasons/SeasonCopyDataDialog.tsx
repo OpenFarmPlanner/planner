@@ -106,9 +106,15 @@ export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onC
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
+        <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={handleClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
+        </DisabledActionTooltip>
         <DisabledActionTooltip
-          title={sourceSeasonId === '' ? t('navigation:seasonSwitcher.copyDialog.confirmDisabledTooltip') : ''}
+          title={submitting
+            ? t('common:disabledReasons.busy')
+            : sourceSeasonId === ''
+              ? t('navigation:seasonSwitcher.copyDialog.confirmDisabledTooltip')
+              : ''}
         >
           <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting || sourceSeasonId === ''}>
               {t('navigation:seasonSwitcher.copyDialog.confirm')}

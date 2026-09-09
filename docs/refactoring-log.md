@@ -270,3 +270,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   serializers for multipart files. Missing, oversized, or invalid uploads now
   include stable codes while retaining the established `file`/`image` arrays;
   focused API tests cover every manual branch.
+- Closed the remaining disabled-action gaps in the season copy and suggested
+  season dialogs. Cancel and primary actions now explain active submissions,
+  while missing-selection guidance remains distinct from the busy state.
