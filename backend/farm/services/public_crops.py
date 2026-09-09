@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import json
+import re
+
 # The public crop library (PublicCrop + this module) is a candidate for
 # extraction into a separate service consumed by OFP over an API (under
 # discussion as of 2026-07). Keep this module's dependency on `farm.models`
 # limited to Crop/Project/PublicCrop, and avoid pulling in
 # project-history/EntityRevision or other farm-app-internal concerns here.
-
 from dataclasses import dataclass
-import json
-import re
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -29,6 +29,7 @@ from farm.models import (
     PublicCropStatusEvent,
     PublicCropTranslation,
 )
+
 # The local Kultur/Sorte grouping is a farm-app concern this module deliberately
 # does not re-implement: it only calls the service that owns it whenever
 # publishing links a project crop to a crop species.
@@ -36,7 +37,6 @@ from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
     GeneralCropIndex,
-    clear_species_invariant_overrides,
     get_general_crop,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
@@ -1470,9 +1470,6 @@ def _apply_public_crop_update(*, crop: Crop, public_crop: PublicCrop) -> Crop:
     # doesn't trigger another divergence pass or a second EntityRevision.
     Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=False)
     crop.is_modified_from_source = False
-    # A linked Sorte owns no species-invariant values; anything the public
-    # payload just wrote onto its columns is a dead override.
-    clear_species_invariant_overrides(crop)
     return crop
 
 

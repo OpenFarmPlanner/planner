@@ -1232,8 +1232,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
 
     def test_species_invariant_fields_are_read_only_for_a_linked_sorte(self):
         """crop_family / nutrient_demand / rotation_break_years belong to the
-        Kultur: a value sent for a linked Sorte is silently discarded, not
-        rejected, and never lands on the Sorte."""
+        Kultur, so an attempted Sorte override is rejected explicitly."""
         self.general.nutrient_demand = 'medium'
         self.general.rotation_break_years = 3
         self.general.save(update_fields=['nutrient_demand', 'rotation_break_years'])
@@ -1243,7 +1242,9 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             {'crop_family': 'Wrong', 'nutrient_demand': 'high', 'rotation_break_years': 9},
             format='json',
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        for field in ('crop_family', 'nutrient_demand', 'rotation_break_years'):
+            self.assertIn(field, response.data)
 
         self.sorte.refresh_from_db()
         self.assertEqual(self.sorte.crop_family, '')
@@ -1256,6 +1257,19 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(row['effective_values']['rotation_break_years'], 3)
         for field in ('crop_family', 'nutrient_demand', 'rotation_break_years'):
             self.assertIn(field, row['inherited_fields'])
+
+    def test_unrelated_update_does_not_silently_clear_legacy_invariant_values(self):
+        Crop.objects.filter(pk=self.sorte.pk).update(crop_family='Legacy')
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.sorte.id}/',
+            {'notes': 'Unrelated edit'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.sorte.refresh_from_db()
+        self.assertEqual(self.sorte.crop_family, 'Legacy')
 
     def test_linked_sorte_ignores_a_raw_species_invariant_value_from_the_db(self):
         """A value written straight to the column (pre-rule, or by a migration

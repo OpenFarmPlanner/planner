@@ -34,12 +34,13 @@ from farm.seed_units import (
 from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
+    CROP_SPECIES_INVARIANT_FIELDS,
     build_effective_crop_values,
     build_general_crop_index,
     build_inherited_crop_values,
-    clear_species_invariant_overrides,
     ensure_general_crop_for_variety,
     get_general_crop,
+    is_unset_crop_value,
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
@@ -658,12 +659,6 @@ class CropSerializer(serializers.ModelSerializer):
                     crop,
                     copy_values=copy_values_to_crop,
                 )
-                # The species-invariant fields belong to the general Kultur.
-                # ensure_general_crop_for_variety has just had its chance to
-                # lift a genuinely new value up there; whatever is still on the
-                # Sorte is a dead override and gets dropped (the API "silently
-                # discards" a Sorte-level value rather than rejecting it).
-                clear_species_invariant_overrides(crop)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -696,7 +691,6 @@ class CropSerializer(serializers.ModelSerializer):
             with transaction.atomic():
                 crop = super().update(instance, validated_data)
                 crop._auto_general_crop = ensure_general_crop_for_variety(crop)
-                clear_species_invariant_overrides(crop)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -814,6 +808,13 @@ class CropSerializer(serializers.ModelSerializer):
         later phases assume the earlier ones produced consistent data.
         """
         errors = {}
+
+        crop_species = attrs.get('crop_species', getattr(self.instance, 'crop_species', None))
+        variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
+        if crop_species is not None and (variety or '').strip():
+            for field in CROP_SPECIES_INVARIANT_FIELDS:
+                if field in attrs and not is_unset_crop_value(attrs[field]):
+                    errors[field] = 'This field belongs to the general crop and cannot be set on a variety.'
 
         general_name_conflict = self._validate_name_and_duplicates(attrs, errors)
         cultivation_types = self._validate_cultivation_types(attrs, errors)

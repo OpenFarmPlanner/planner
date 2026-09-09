@@ -273,3 +273,8 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Closed the remaining disabled-action gaps in the season copy and suggested
   season dialogs. Cancel and primary actions now explain active submissions,
   while missing-selection guidance remains distinct from the busy state.
+- Corrected the live-inheritance write boundary: non-empty species-invariant
+  Sorte values are now rejected instead of silently cleared or promoted, and
+  unrelated updates preserve legacy raw columns. The override migration now
+  retains linked orphan values when no general Kultur exists; API and migration
+  regressions cover both no-silent-change guarantees.

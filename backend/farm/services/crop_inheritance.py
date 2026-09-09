@@ -107,20 +107,15 @@ def ensure_general_crop_for_variety(
     *,
     copy_values: bool = False,
 ) -> Crop | None:
-    """Ensure a linked Sorte has a general Kultur and seed eligible gaps.
+    """Ensure a linked Sorte has a general Kultur and seed explicitly requested gaps.
 
-    Species-invariant fields are promoted to empty general Kultur fields
-    automatically. Variety-variable defaults are promoted only through the
-    explicit create-time choice. Neither path replaces existing project
-    defaults.
+    Values are promoted only through the explicit create-time copy choice.
+    Routine Sorte writes must not silently move raw values to another row.
     """
     if not inherits_from_general_crop(variety):
         return None
 
-    fields_to_copy = (
-        CROP_SPECIES_INVARIANT_FIELDS
-        + (CROP_OPTIONAL_GENERAL_COPY_FIELDS if copy_values else ())
-    )
+    fields_to_copy = CROP_OPTIONAL_GENERAL_COPY_FIELDS if copy_values else ()
     general_row_q = Q(variety_normalized__isnull=True) | Q(variety_normalized='')
     general = (
         Crop.objects
@@ -176,19 +171,16 @@ def ensure_general_crop_for_variety(
 
 
 def clear_species_invariant_overrides(crop: Crop) -> list[str]:
-    """Drop any raw species-invariant value stored on a linked Sorte.
+    """Explicitly drop raw species-invariant values stored on a linked Sorte.
 
     These fields belong to the general Kultur; a value on the Sorte is never
     read (see :func:`forces_species_invariant_inheritance`) and would only be
     dead weight. Free-text Sorten and general Kulturen are left untouched
     (nothing to inherit from).
 
-    Written through the queryset rather than ``save()``, like
-    :func:`sync_crop_species_across_crop_group`: this is data hygiene, not a
-    user edit, so it records no history revision and does not flag the row as
-    diverged from its public source. The in-memory instance is updated to
-    match. Returns the field names that were reset, empty when there was
-    nothing to do.
+    This helper is reserved for explicit maintenance operations. Normal API
+    writes reject these values rather than calling it as silent data hygiene.
+    Returns the field names that were reset, empty when there was nothing to do.
     """
     if not inherits_from_general_crop(crop):
         return []

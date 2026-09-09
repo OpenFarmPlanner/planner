@@ -10,8 +10,9 @@ of leaving the database with permanently dead override columns.
 ``crop_family`` and ``nutrient_demand`` are non-nullable ``CharField``s, so
 their empty state is the blank string, not ``NULL``.
 
-Free-text Sorten without a ``crop_species`` are left untouched — they have no
-general Kultur to inherit from, so those columns are their real values.
+Free-text Sorten and species-linked Sorten without a general Kultur are left
+untouched — they have no inheritance source, so clearing their only copy would
+silently lose data.
 
 Irreversible in substance: the old values are not recorded anywhere, so the
 reverse operation is a no-op.
@@ -23,9 +24,25 @@ from django.db.models import Q
 
 def clear_variety_overrides(apps, schema_editor):
     Crop = apps.get_model('farm', 'Crop')
-    linked_varieties = (
+    species_with_general_crop = set(
         Crop.objects.filter(crop_species__isnull=False)
-        .exclude(Q(variety__isnull=True) | Q(variety=''))
+        .filter(Q(variety__isnull=True) | Q(variety=''))
+        .values_list('project_id', 'crop_species_id')
+    )
+    if not species_with_general_crop:
+        return
+
+    backed_variety_ids = [
+        crop_id
+        for crop_id, project_id, species_id in Crop.objects.filter(
+            crop_species__isnull=False,
+        ).exclude(Q(variety__isnull=True) | Q(variety='')).values_list(
+            'id', 'project_id', 'crop_species_id',
+        )
+        if (project_id, species_id) in species_with_general_crop
+    ]
+    linked_varieties = (
+        Crop.objects.filter(id__in=backed_variety_ids)
         .filter(
             Q(crop_family__gt='')
             | Q(nutrient_demand__gt='')

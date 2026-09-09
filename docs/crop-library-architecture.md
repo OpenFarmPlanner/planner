@@ -533,14 +533,13 @@ planning calculations and the UI resolve it identically:
   Sorte still carries — `forces_species_invariant_inheritance` gates this, so
   even a stale column is harmless. The form renders the three fields read-only
   for a linked Sorte (`speciesInvariantFieldsReadOnly`, with an info icon next
-  to the "Fruchtfolge-Eigenschaften" heading). On the write side `CropSerializer`
-  **silently discards** a Sorte-level value rather than rejecting it: `create` /
-  `update` call `clear_species_invariant_overrides(crop)` right after
-  `ensure_general_crop_for_variety`, so a genuinely new value still promotes to
-  an empty general Kultur (below) but never sticks to the Sorte. Migration
-  `0101_clear_variety_species_invariant_overrides` cleared the columns on
-  existing linked Sorten. A free-text Sorte keeps editing all three normally
-  (it has no Kultur to inherit from).
+  to the "Fruchtfolge-Eigenschaften" heading). On the write side
+  `CropSerializer` rejects a non-empty Sorte-level value with a field error;
+  it never silently clears or promotes that value during an unrelated write.
+  Migration `0101_clear_variety_species_invariant_overrides` cleared the
+  columns on existing linked Sorten only when a general Kultur already held
+  the inheritance source. A free-text Sorte or a linked orphan without a
+  general Kultur retains its raw values so no only copy is lost.
 - The same rule reaches the **public** side. `PublicCrop` only has
   `crop_family` and `nutrient_demand` (not `rotation_break_years`), and only
   the species-level (general) public entry carries them:
