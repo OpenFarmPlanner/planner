@@ -282,3 +282,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   Sorte without a general Kultur now reads its own raw invariant value,
   unrelated edits do not auto-create an empty Kultur, and explicit cleanup
   refuses to remove the only copy. Service and API tests cover the full path.
+- Removed the final resolver split-brain for linked orphans:
+  `build_effective_crop_values` now delegates every field to
+  `resolve_crop_field`, so single-field and bulk effective reads return the
+  same raw fallback when no inheritance source exists.

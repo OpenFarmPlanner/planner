@@ -243,6 +243,7 @@ class CropInheritanceTest(TestCase):
         )
 
         self.assertEqual(resolve_crop_field(orphan, 'crop_family'), 'Apiaceae')
+        self.assertEqual(build_effective_crop_values(orphan)['crop_family'], 'Apiaceae')
         self.assertEqual(clear_species_invariant_overrides(orphan), [])
         orphan.refresh_from_db()
         self.assertEqual(orphan.crop_family, 'Apiaceae')

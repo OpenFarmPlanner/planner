@@ -528,10 +528,11 @@ planning calculations and the UI resolve it identically:
 - The three species-invariant fields (`CROP_SPECIES_INVARIANT_FIELDS`:
   `crop_family`, `nutrient_demand`, `rotation_break_years`) go further: on a
   linked Sorte they are **not overridable at all**. They describe the crop
-  species, so `resolve_crop_field` / `build_effective_crop_values` always return
-  the general Kultur's value (or nothing) for them and ignore any raw value the
-  Sorte still carries — `forces_species_invariant_inheritance` gates this, so
-  even a stale column is harmless. The form renders the three fields read-only
+  species, so `resolve_crop_field` / `build_effective_crop_values` return the
+  general Kultur's value whenever that inheritance source exists and ignore any
+  stale raw value the Sorte still carries. A linked orphan instead retains its
+  raw value as the effective value so its only copy stays visible. The form
+  renders the three fields read-only
   for a linked Sorte (`speciesInvariantFieldsReadOnly`, with an info icon next
   to the "Fruchtfolge-Eigenschaften" heading). On the write side
   `CropSerializer` rejects a non-empty Sorte-level value with a field error

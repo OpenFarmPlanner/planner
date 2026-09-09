@@ -312,13 +312,13 @@ def get_general_crop(
 
 
 def forces_species_invariant_inheritance(crop: Crop | None, field: str) -> bool:
-    """Whether ``field`` on ``crop`` must come from the general Kultur, always.
+    """Whether ``field`` must come from the general Kultur when one exists.
 
     ``crop_family``, ``nutrient_demand`` and ``rotation_break_years`` describe
-    the crop species, not a single variety. On a species-linked Sorte their
-    effective value is therefore always the general Kultur's, and a raw value
-    still stored on the Sorte (from before this rule, or written straight to the
-    database) is ignored rather than treated as an override.
+    the crop species, not a single variety. A linked Sorte therefore uses the
+    general Kultur's value whenever that row exists. A legacy linked orphan is
+    the safety exception: its raw value remains effective because it is the
+    only available copy.
     """
     return field in CROP_SPECIES_INVARIANT_FIELDS and inherits_from_general_crop(crop)
 
@@ -330,9 +330,9 @@ def resolve_crop_field(
 ) -> Any:
     """The effective value of ``field``: the Sorte's own value, else the Kultur's.
 
-    The species-invariant fields are the exception: on a linked Sorte they
-    always resolve to the general Kultur's value (or ``None`` when it has none),
-    never to a leftover raw value on the Sorte itself.
+    Species-invariant fields use the general Kultur whenever it exists. A
+    linked orphan falls back to its own raw value rather than hiding the only
+    copy.
     """
     if crop is None:
         return None
@@ -381,23 +381,13 @@ def build_effective_crop_values(
     crop: Crop | None,
     index: GeneralCropIndex | None = None,
 ) -> dict[str, Any]:
-    """The effective value of every inheritable field, own values included.
-
-    A species-invariant field on a linked Sorte never falls back to the Sorte's
-    raw value: it is the general Kultur's value or nothing.
-    """
+    """The effective value of every inheritable field, own values included."""
     if crop is None:
         return {}
-    inherited = build_inherited_crop_values(crop, index)
-
-    def effective(field: str) -> Any:
-        if field in inherited:
-            return inherited[field]
-        if forces_species_invariant_inheritance(crop, field):
-            return None
-        return getattr(crop, field)
-
-    return {field: effective(field) for field in CROP_INHERITABLE_FIELDS}
+    return {
+        field: resolve_crop_field(crop, field, index)
+        for field in CROP_INHERITABLE_FIELDS
+    }
 
 
 def resolve_plants_per_m2(
