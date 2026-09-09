@@ -1,4 +1,4 @@
-"""Stable response builders shared by DRF viewsets."""
+"""Stable response builders shared across Django apps."""
 
 from typing import Any
 

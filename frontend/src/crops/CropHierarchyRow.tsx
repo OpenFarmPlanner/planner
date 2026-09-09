@@ -141,7 +141,7 @@ export function CropHierarchyRow({
         mb: { xs: 0.125, lg: 0.1875 },
         alignItems: 'center',
         border: '1px solid transparent',
-        '&:hover': { bgcolor: '#f4f8f4', borderColor: '#d6e6d8' },
+        '&:hover': { bgcolor: 'surface.surfaceHoverBackground', borderColor: 'surface.surfaceBorder' },
         '&.Mui-selected': {
           bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, 0.12),
           borderColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.32),

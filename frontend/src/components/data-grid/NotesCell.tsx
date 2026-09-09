@@ -66,7 +66,7 @@ export function NotesCell({
         '& h1, & h2, & h3, & h4, & h5, & h6': { margin: '0.5em 0', fontSize: '1.1em' },
         '& ul, & ol': { margin: '0.5em 0', paddingLeft: 2 },
         '& code': {
-          backgroundColor: 'rgba(0,0,0,0.08)',
+          backgroundColor: 'action.hover',
           padding: '0.1em 0.3em',
           borderRadius: 0.5,
           fontSize: '0.85em',
@@ -98,12 +98,12 @@ export function NotesCell({
   }, [compactIndicator, hasFocus]);
 
   const compactAriaLabel = hasValue && hasAttachments
-    ? 'Notiz und Bilder vorhanden'
+    ? t('notes.compactNoteAndImages')
     : hasValue
-      ? 'Notiz vorhanden'
+      ? t('notes.compactNote')
       : hasAttachments
-        ? 'Bilder vorhanden'
-        : 'Keine Notiz oder Bilder vorhanden';
+        ? t('notes.compactImages')
+        : t('notes.compactEmpty');
 
   if (compactIndicator) {
     const hasPreview = Boolean(onPreviewOpen);

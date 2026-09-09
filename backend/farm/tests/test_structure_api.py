@@ -23,7 +23,7 @@ class TenantScopeApiTest(ProjectApiTestCase):
 
     def test_update_cannot_move_location_to_foreign_project(self):
         foreign_project = Project.objects.create(name='Foreign', slug='foreign-scope-proj')
-        response = self.client.patch(
+        self.client.patch(
             f'/openfarmplanner/api/locations/{self.location.id}/',
             {'project': foreign_project.id},
             format='json',
@@ -314,6 +314,7 @@ class CropLayoutApiTest(DRFAPITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_location_layout')
         self.assertIn('does not belong to location', response.data['detail'])
         self.assertFalse(BedLayout.objects.filter(bed=other_bed).exists())
 
@@ -328,6 +329,18 @@ class CropLayoutApiTest(DRFAPITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_location_layout')
         self.assertIn('does not belong to location', response.data['detail'])
         self.assertFalse(FieldLayout.objects.filter(field=other_field).exists())
 
+    def test_layouts_reject_non_list_collections_with_structured_error(self):
+        location = Location.objects.create(name='Layout collection test', project=self.project)
+
+        response = self.client.put(
+            f'/openfarmplanner/api/locations/{location.id}/layouts/',
+            {'bed_layouts': {}, 'field_layouts': []},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_layout_collections')

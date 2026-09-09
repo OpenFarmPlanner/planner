@@ -3,6 +3,7 @@ import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import type { PublicCropRevision } from '../../../api/types';
 import { getPublicCropFieldLabel, getRevisionValueLabel } from './formatters';
+import { DisabledActionTooltip } from '../../../components/DisabledActionTooltip';
 
 export interface VersionCardProps {
   revision: PublicCropRevision;
@@ -76,15 +77,17 @@ export function VersionCard({
       )}
       {!isCurrentVersion ? (
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<RestoreOutlinedIcon />}
-            disabled={revertingVersion !== null}
-            onClick={() => void onRevert(revision.version)}
-          >
-            {revertingVersion === revision.version ? t('library.page.versions.reverting') : t('library.page.versions.revert')}
-          </Button>
+          <DisabledActionTooltip title={revertingVersion !== null ? t('common:disabledReasons.busy') : ''}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RestoreOutlinedIcon />}
+              disabled={revertingVersion !== null}
+              onClick={() => void onRevert(revision.version)}
+            >
+              {revertingVersion === revision.version ? t('library.page.versions.reverting') : t('library.page.versions.revert')}
+            </Button>
+          </DisabledActionTooltip>
           <Button size="small" variant="text" startIcon={<ForumOutlinedIcon />} onClick={() => onDiscuss(revision)}>
             {t('library.page.versions.discuss')}
           </Button>

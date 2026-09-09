@@ -1,6 +1,7 @@
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import IconButton from '@mui/material/IconButton';
 import type { SxProps, Theme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import { useRef } from 'react';
 import type { MouseEvent, PointerEvent, TouchEvent } from 'react';
 import { CONTEXT_MENU_INDICATOR_CLASS } from './contextMenuIndicatorStyles';
@@ -113,9 +114,9 @@ export function ContextMenuIndicator({
           transition: 'opacity 120ms ease-in-out, background-color 120ms ease-in-out',
           ...(withBackdrop
             ? {
-                color: '#fff',
-                bgcolor: 'rgba(0, 0, 0, 0.32)',
-                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.48)' },
+                color: 'common.white',
+                bgcolor: (theme) => alpha(theme.palette.common.black, 0.32),
+                '&:hover': { bgcolor: (theme) => alpha(theme.palette.common.black, 0.48) },
               }
             : undefined),
           ...sx,

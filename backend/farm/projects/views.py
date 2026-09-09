@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from accounts.models import UserProjectSettings
 from config.frontend_urls import build_public_frontend_url
+from config.responses import api_error_response
 from farm.models import AgentLoginToken, Location, Project, ProjectInvitation, ProjectMembership
 from farm.project_context import require_project_admin, resolve_project_for_user
 from farm.services.demo_project import create_personal_demo_project, resolve_demo_request_language
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 def _invitation_error_response(exc: InvitationFlowError) -> Response:
     """Build a consistent error response for invitation domain errors."""
     status_code = status.HTTP_403_FORBIDDEN if exc.code == 'email_mismatch' else status.HTTP_400_BAD_REQUEST
-    return Response({'code': exc.code, 'detail': exc.message}, status=status_code)
+    return api_error_response(code=exc.code, detail=exc.message, status_code=status_code)
 
 
 def agent_login_consume_view(request, token: str):  # noqa: ANN001
@@ -116,7 +117,11 @@ class MyProjectsView(APIView):
             try:
                 bound_project_id = int(agent_project_id)
             except (TypeError, ValueError):
-                return Response({'detail': 'Invalid agent project binding.'}, status=status.HTTP_403_FORBIDDEN)
+                return api_error_response(
+                    code='invalid_agent_project_binding',
+                    detail='Invalid agent project binding.',
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
 
             project = get_object_or_404(Project, id=bound_project_id, is_active=True, deleted_at__isnull=True)
             return Response([
@@ -155,7 +160,11 @@ class ProjectSwitchView(APIView):
         try:
             project_id = int(project_id)
         except (TypeError, ValueError):
-            return Response({'detail': 'Invalid project_id.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_project_id',
+                detail='Invalid project_id.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         membership = ProjectMembership.objects.filter(
             user=request.user,
@@ -164,7 +173,11 @@ class ProjectSwitchView(APIView):
             project__deleted_at__isnull=True,
         ).first()
         if membership is None:
-            return Response({'detail': 'Not a member of the selected project.'}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(
+                code='project_membership_required',
+                detail='Not a member of the selected project.',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
         settings_obj, _ = UserProjectSettings.objects.get_or_create(user=request.user)
         settings_obj.last_project_id = project_id
@@ -282,7 +295,11 @@ class ProjectMembersView(APIView):
         project = get_object_or_404(Project, id=project_id, is_active=True, deleted_at__isnull=True)
         memberships = ProjectMembership.objects.select_related('user').filter(project=project, user__is_active=True)
         if not memberships.filter(user=request.user).exists():
-            return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(
+                code='project_membership_required',
+                detail='Forbidden.',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         return Response(ProjectMembershipSerializer(memberships, many=True).data)
 
     def patch(self, request, project_id: int):
@@ -292,13 +309,17 @@ class ProjectMembersView(APIView):
         role = request.data.get('role')
         membership = get_object_or_404(ProjectMembership, id=membership_id, project_id=project_id)
         if role not in {ProjectMembership.ROLE_ADMIN, ProjectMembership.ROLE_MEMBER}:
-            return Response({'detail': 'Invalid role.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_project_role',
+                detail='Invalid role.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         if membership.user_id == request.user.id:
-            return Response({'detail': 'You cannot change your own project role here.'}, status=status.HTTP_400_BAD_REQUEST)
-        if membership.role == ProjectMembership.ROLE_ADMIN and role != ProjectMembership.ROLE_ADMIN:
-            admin_count = ProjectMembership.objects.filter(project_id=project_id, role=ProjectMembership.ROLE_ADMIN).count()
-            if admin_count <= 1:
-                return Response({'detail': 'At least one project admin must remain.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='self_role_change_forbidden',
+                detail='You cannot change your own project role here.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         membership.role = role
         membership.save(update_fields=['role'])
         return Response(ProjectMembershipSerializer(membership).data)
@@ -309,11 +330,11 @@ class ProjectMembersView(APIView):
         membership_id = request.data.get('membership_id')
         membership = get_object_or_404(ProjectMembership, id=membership_id, project_id=project_id)
         if membership.user_id == request.user.id:
-            return Response({'detail': 'You cannot remove yourself from the project here.'}, status=status.HTTP_400_BAD_REQUEST)
-        if membership.role == ProjectMembership.ROLE_ADMIN:
-            admin_count = ProjectMembership.objects.filter(project_id=project_id, role=ProjectMembership.ROLE_ADMIN).count()
-            if admin_count <= 1:
-                return Response({'detail': 'At least one project admin must remain.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='self_removal_forbidden',
+                detail='You cannot remove yourself from the project here.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         membership.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -347,7 +368,11 @@ class ProjectInvitationView(APIView):
 
         invitation = result.invitation
         if invitation is None:
-            return Response({'code': 'invitation_error', 'detail': 'Invitation could not be created.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return api_error_response(
+                code='invitation_error',
+                detail='Invitation could not be created.',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         invite_link = build_public_frontend_url(f'/invite/accept?token={invitation.token}')
         mail_sent, mail_error = _send_project_invitation_email(
@@ -376,7 +401,7 @@ class PublicProjectInvitationView(APIView):
         try:
             invitation = get_invitation_by_token(token)
         except InvitationFlowError as exc:
-            return Response({'code': exc.code, 'detail': exc.message}, status=status.HTTP_404_NOT_FOUND)
+            return api_error_response(code=exc.code, detail=exc.message, status_code=status.HTTP_404_NOT_FOUND)
 
         if request.user.is_authenticated:
             clear_pending_invitation_token(session=request.session)
@@ -504,4 +529,3 @@ class RevokeProjectInvitationView(APIView):
         invitation = get_object_or_404(ProjectInvitation, id=invitation_id, project_id=project_id)
         result = revoke_invitation(invitation=invitation, actor=request.user)
         return Response({'code': result.code, 'detail': result.message})
-        active_project = request.active_project

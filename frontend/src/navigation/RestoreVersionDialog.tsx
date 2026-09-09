@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 
 import type { CropHistoryEntry } from '../api/types';
 import { getBatchSummary, isBatchGroupEntry } from '../pages/cropsHistoryUtils';
@@ -67,7 +68,7 @@ export function RestoreVersionDialog({
             borderRadius: 1.5,
             border: '1px solid',
             borderColor: 'success.light',
-            bgcolor: 'rgba(76, 175, 80, 0.08)',
+            bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
             px: 1.25,
             py: 1,
           }}

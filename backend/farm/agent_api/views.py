@@ -16,6 +16,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
 from farm.models import CropImportDraft, Project, ProjectApiToken
 from farm.services.crop_import import analyze_import_payload
@@ -152,9 +153,10 @@ class CropImportApplyView(ProjectScopedMixin, APIView):
                 acknowledge_warnings=data['acknowledge_warnings'],
             )
         except ImportExecutionError as exc:
-            return Response(
-                {'code': exc.code, 'detail': exc.message},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code=exc.code,
+                detail=exc.message,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         return Response(result, status=status.HTTP_200_OK)
 
@@ -168,12 +170,10 @@ class AgentContextView(APIView):
         """Return non-secret context for the project-bound token."""
         token = get_request_api_token(request)
         if token is None:
-            return Response(
-                {
-                    'detail': 'API token authentication is required.',
-                    'code': 'api_token_required',
-                },
-                status=status.HTTP_403_FORBIDDEN,
+            return api_error_response(
+                code='api_token_required',
+                detail='API token authentication is required.',
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         return Response(
             {

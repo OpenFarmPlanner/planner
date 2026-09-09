@@ -1,7 +1,8 @@
 """API tests for the public crop library endpoints."""
 
 
-from datetime import datetime, timedelta, timezone as datetime_timezone
+from datetime import datetime, timedelta
+from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
 from django.utils import timezone
@@ -1978,6 +1979,32 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(PublicCropDiscussionComment.objects.count(), 2)
         self.assertEqual(reply_response.data['parent'], first_comment.id)
 
+    def test_discussion_relation_validation_uses_structured_codes(self):
+        public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=self.user)
+        other_crop = PublicCrop.objects.create(name='Bean', variety='Neckargold', status='published', created_by=self.user)
+        foreign_revision = PublicCropRevision.objects.create(public_crop=other_crop, version=1, action='created', snapshot={})
+
+        revision_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/',
+            {'title': 'Wrong version', 'body': 'Question', 'revision': foreign_revision.id},
+            format='json',
+        )
+        self.assertEqual(revision_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(revision_response.data['code'], 'revision_not_owned_by_public_crop')
+        self.assertIn('revision', revision_response.data)
+
+        topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Target topic', created_by=self.user)
+        foreign_topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Other topic', created_by=self.user)
+        foreign_parent = PublicCropDiscussionComment.objects.create(topic=foreign_topic, body='Foreign parent', created_by=self.user)
+        parent_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/',
+            {'body': 'Reply', 'parent': foreign_parent.id},
+            format='json',
+        )
+        self.assertEqual(parent_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(parent_response.data['code'], 'parent_comment_not_owned_by_topic')
+        self.assertIn('parent', parent_response.data)
+
     def test_nested_discussion_replies_keep_their_exact_parent(self):
         public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=self.user)
         topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Nested replies', created_by=self.user)
@@ -2084,6 +2111,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.client.force_authenticate(other_user)
         forbidden = self.client.patch(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/', {'body': 'Changed'}, format='json')
         self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(forbidden.data['code'], 'comment_owner_required')
         self.client.force_authenticate(self.user)
         edited = self.client.patch(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/', {'body': 'Changed'}, format='json')
         deleted = self.client.delete(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/')
@@ -2093,6 +2121,13 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIsNotNone(comment.deleted_at)
         self.assertEqual(comment.body, '')
+        deleted_edit = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/',
+            {'body': 'Changed again'},
+            format='json',
+        )
+        self.assertEqual(deleted_edit.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(deleted_edit.data['code'], 'deleted_comment_not_editable')
         list_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         deleted_comment_payload = next(item for item in list_response.data if item['id'] == comment.id)

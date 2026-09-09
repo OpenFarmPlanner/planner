@@ -147,3 +147,149 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   existing `detail` strings for compatibility.
 - Added focused frontend inheritance coverage and backend assertions for the new
   planning error codes.
+
+## 2026-09-09 follow-up audit
+
+### CI repair
+
+- Updated five stale authentication test expectations to the API's established
+  English response contract, in line with the repository language rules.
+- Removed an accidental contradictory project-invitation assertion introduced
+  while extending membership error coverage, and removed two Ruff `F841`
+  findings (one unreachable assignment after a return and one unused test
+  response variable).
+
+### Theme tokens
+
+- Replaced the last literal crop-hierarchy hover, title-button interaction, and
+  varieties-panel colours found by the source sweep with `surface` and MUI
+  action tokens. Dynamic crop swatches remain user data, not design tokens.
+- Continued through the crop detail selector/card and colour-picker inset;
+  these now use surface palette entries, MUI elevation, and a theme-derived
+  alpha value rather than embedded hex/RGB values.
+- Extended the ESLint guard to cover `background`, `outlineColor`, logical
+  spacing properties, and template literals, closing parser/property gaps in
+  the original rule. Migrated the remaining notes/image overlays, context-menu
+  backdrop, command palette backdrop, restore notice, and stable scrollbar
+  colours found by that expanded sweep to palette-derived values.
+
+### Four-case update model and live inheritance
+
+- Re-audited the publish wizard, project-copy update dialog, public import
+  endpoint, and crop-library action resolver. Pulls still converge on the
+  public import/update service and pushes still converge on the publishing
+  service; no competing update path was found.
+- Re-audited `CULTURE_INHERITABLE_FIELDS`, the backend resolver, form baseline
+  stripping, multilingual raw-value editing, and frontend effective-value
+  consumers. The existing authoritative-null handling and raw edit payloads
+  preserve explicit overrides without snapshotting inherited display values;
+  no further copying violation was found.
+
+### Disabled actions
+
+- Added explanatory busy-state tooltips to translation save/cancel actions,
+  all three import-conflict decisions, and version restore. The shared wrapper
+  keeps explanations reachable even though native disabled buttons do not emit
+  pointer events.
+- Continued the moderation sweep with the species-approval and alias-save
+  actions. The approval tooltip distinguishes an in-progress request from
+  missing required German and English names.
+- Covered every remaining moderation table action (proposal decisions, alias
+  editing, moderator-request decisions, and removed-entry restoration) with
+  the same localized busy explanation.
+
+### API consistency
+
+- Routed the remaining project-crop publish, duplicate, blocked-update, terms,
+  and reject-update errors through `api_error_response`. Existing codes,
+  details, context payloads, and HTTP statuses remain stable; the previously
+  code-less missing-name response now has `crop_name_required`.
+- Extended the shared envelope to project switching and membership mutation,
+  with stable codes for malformed/inaccessible projects, invalid roles, and
+  forbidden self-mutation. Removed duplicate unreachable "last admin" checks:
+  these endpoints require the caller to be an admin and already reject changes
+  to that caller's own membership, so mutating another admin necessarily leaves
+  the caller in place.
+- Standardized note and media processing failures next. Backend-unavailable,
+  invalid processed-image, and per-note attachment-limit responses now expose
+  stable codes; the limit response also includes the numeric limit so clients
+  do not need to parse the English detail. DRF field-validation dictionaries
+  remain unchanged for missing/invalid form fields.
+- Standardized the location-layout endpoint's collection-shape and ownership
+  validation errors as `invalid_layout_collections` and
+  `invalid_location_layout`. Focused integration tests now pin both codes while
+  retaining the detailed ownership message used by existing clients.
+- Routed agent-import execution and token-context failures through the same
+  builder without changing their established codes. Completed the remaining
+  seasons transition errors with codes for malformed manual dates, inapplicable
+  transitions, and seamless periods where a transition is not required; one
+  focused API test locks all three distinctions.
+- Completed the remaining Crop Library discussion and seed-demand selection
+  errors. Comment ownership/deleted-state conflicts and malformed or
+  unavailable supplier selections now expose stable codes, with integration
+  tests covering each branch.
+- Standardized the last manually-built Crop Library relation-validation and
+  project-invitation error envelopes through `api_error_response`. Relation
+  failures retain their field-level arrays for backwards compatibility while
+  also exposing stable machine-readable codes.
+- Moved the shared error builder from the farm app boundary into `config` and
+  retained the old import as a compatibility re-export. Authentication
+  activation, login, and session errors can now use the same envelope without
+  introducing an accounts-to-farm dependency; focused tests pin their codes.
+- Completed the remaining manually constructed account validation responses:
+  email/password changes, deletion restoration, and password-reset confirmation
+  now expose stable codes while preserving their existing status and detail
+  contracts. Existing endpoint tests assert the new codes.
+- Removed the four duplicate email-delivery error payloads in the account API.
+  Registration, activation resend, email change, and password reset now share
+  one response helper, and the pending-deletion login response uses the same
+  project-wide envelope builder without changing its contextual timestamp.
+
+### Internationalization
+
+- Moved the compact notes cell's four German accessibility labels into the
+  German `common` resource first and added matching English translations. The
+  compact indicator now follows the active UI language.
+
+### Seasons and migration coverage
+
+- Confirmed the seasons suite already covers gap, overlap, seamless-boundary,
+  manual-residual, transition creation, and overlap rejection paths at service
+  and API levels. Confirmed the inheritance migrations separately cover linked
+  varieties, general crops, free-text/orphan varieties, and preservation of
+  their only stored values. No uncovered branch requiring a new test was found
+  in this follow-up.
+
+### Shared response import cleanup
+
+- Migrated all backend callers and the response-builder unit test to the
+  canonical `config.responses` module after the cross-app rollout. Removed the
+  temporary farm compatibility re-export so new code has one discoverable
+  import path and cannot recreate app-layer coupling.
+- Finished the notes/media upload validation branches that deliberately bypass
+  serializers for multipart files. Missing, oversized, or invalid uploads now
+  include stable codes while retaining the established `file`/`image` arrays;
+  focused API tests cover every manual branch.
+- Closed the remaining disabled-action gaps in the season copy and suggested
+  season dialogs. Cancel and primary actions now explain active submissions,
+  while missing-selection guidance remains distinct from the busy state.
+- Corrected the live-inheritance write boundary: non-empty species-invariant
+  Sorte values are now rejected instead of silently cleared or promoted, and
+  unrelated updates preserve legacy raw columns. The override migration now
+  retains linked orphan values when no general Kultur exists; API and migration
+  regressions cover both no-silent-change guarantees.
+- Aligned runtime resolution with that orphan-migration guarantee. A linked
+  Sorte without a general Kultur now reads its own raw invariant value,
+  unrelated edits do not auto-create an empty Kultur, and explicit cleanup
+  refuses to remove the only copy. Service and API tests cover the full path.
+- Removed the final resolver split-brain for linked orphans:
+  `build_effective_crop_values` now delegates every field to
+  `resolve_crop_field`, so single-field and bulk effective reads return the
+  same raw fallback when no inheritance source exists.
+- Repaired the CI regressions the previous two entries left behind. The
+  species-invariant write boundary now routes a Sorte-level value to the
+  general Kultur (filling a gap, or matching what it already says) and rejects
+  only a value that would contradict it, so creating the first Sorte for a
+  species keeps working while nothing is dropped silently. Promotion and
+  clearing are scoped to the fields a write actually sent. The auth API tests
+  again assert the German response texts the endpoints really return.

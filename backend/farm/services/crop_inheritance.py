@@ -13,6 +13,7 @@ and therefore always resolve to their own values.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -102,36 +103,54 @@ _UNRESOLVED = object()
 GeneralCropIndex = dict[int, Crop]
 
 
+GENERAL_CROP_ROW_Q = Q(variety_normalized__isnull=True) | Q(variety_normalized='')
+
+
+def find_general_crop(
+    project_id: int | None,
+    crop_species_id: int | None,
+    *,
+    exclude_pk: int | None = None,
+) -> Crop | None:
+    """The project's general Kultur for a crop species, looked up by ids.
+
+    The instance-based :func:`get_general_crop` needs a saved Sorte; this one
+    also answers for a Sorte that is still being validated and has no row yet.
+    """
+    if project_id is None or crop_species_id is None:
+        return None
+    queryset = Crop.objects.filter(
+        GENERAL_CROP_ROW_Q,
+        project_id=project_id,
+        crop_species_id=crop_species_id,
+    )
+    if exclude_pk is not None:
+        queryset = queryset.exclude(pk=exclude_pk)
+    return queryset.order_by('pk').first()
+
+
 def ensure_general_crop_for_variety(
     variety: Crop,
     *,
     copy_values: bool = False,
+    promote_fields: Sequence[str] = (),
 ) -> Crop | None:
-    """Ensure a linked Sorte has a general Kultur and seed eligible gaps.
+    """Ensure a linked Sorte has a general Kultur and seed explicitly written gaps.
 
-    Species-invariant fields are promoted to empty general Kultur fields
-    automatically. Variety-variable defaults are promoted only through the
-    explicit create-time choice. Neither path replaces existing project
-    defaults.
+    ``promote_fields`` names the species-invariant fields this write actually
+    sent (see :func:`promote_species_invariant_values`); they belong on the
+    general Kultur, so they are lifted there and, together with the optional
+    create-time copy choice, are the only values that move. A field the write
+    did not send is left alone, so a routine Sorte edit never relocates a raw
+    value behind the caller's back.
     """
     if not inherits_from_general_crop(variety):
         return None
 
-    fields_to_copy = (
-        CROP_SPECIES_INVARIANT_FIELDS
-        + (CROP_OPTIONAL_GENERAL_COPY_FIELDS if copy_values else ())
+    fields_to_copy = tuple(promote_fields) + (
+        CROP_OPTIONAL_GENERAL_COPY_FIELDS if copy_values else ()
     )
-    general_row_q = Q(variety_normalized__isnull=True) | Q(variety_normalized='')
-    general = (
-        Crop.objects
-        .filter(
-            general_row_q,
-            project_id=variety.project_id,
-            crop_species_id=variety.crop_species_id,
-        )
-        .order_by('pk')
-        .first()
-    )
+    general = find_general_crop(variety.project_id, variety.crop_species_id)
     if general is None:
         # unique_general_crop_name_per_project scopes by name alone, not by
         # crop_species, so a general Kultur for an unrelated species can already
@@ -141,7 +160,7 @@ def ensure_general_crop_for_variety(
         name_taken_by_other_species = (
             Crop.objects
             .filter(
-                general_row_q,
+                GENERAL_CROP_ROW_Q,
                 project_id=variety.project_id,
                 name_normalized=variety.name_normalized,
             )
@@ -175,34 +194,85 @@ def ensure_general_crop_for_variety(
     return general
 
 
-def clear_species_invariant_overrides(crop: Crop) -> list[str]:
-    """Drop any raw species-invariant value stored on a linked Sorte.
+def clear_species_invariant_overrides(
+    crop: Crop,
+    *,
+    fields: Sequence[str] | None = None,
+) -> list[str]:
+    """Drop raw species-invariant values stored on a linked Sorte.
 
     These fields belong to the general Kultur; a value on the Sorte is never
     read (see :func:`forces_species_invariant_inheritance`) and would only be
-    dead weight. Free-text Sorten and general Kulturen are left untouched
-    (nothing to inherit from).
+    dead weight. Free-text Sorten, general Kulturen and linked orphans without
+    a general Kultur are left untouched (nothing to inherit from, so the raw
+    column is the only copy of the value).
 
-    Written through the queryset rather than ``save()``, like
-    :func:`sync_crop_species_across_crop_group`: this is data hygiene, not a
-    user edit, so it records no history revision and does not flag the row as
-    diverged from its public source. The in-memory instance is updated to
-    match. Returns the field names that were reset, empty when there was
-    nothing to do.
+    ``fields`` restricts the reset to the named columns; API writes pass the
+    fields they just promoted so a legacy value on an untouched column is not
+    dropped as a side effect. Returns the field names that were reset, empty
+    when there was nothing to do.
     """
     if not inherits_from_general_crop(crop):
         return []
+    selected = SPECIES_INVARIANT_UNSET_VALUES if fields is None else {
+        field: SPECIES_INVARIANT_UNSET_VALUES[field]
+        for field in fields
+        if field in SPECIES_INVARIANT_UNSET_VALUES
+    }
     reset: dict[str, Any] = {
         field: unset_value
-        for field, unset_value in SPECIES_INVARIANT_UNSET_VALUES.items()
+        for field, unset_value in selected.items()
         if not is_unset_crop_value(getattr(crop, field))
     }
     if not reset:
+        return []
+    if get_general_crop(crop) is None:
         return []
     Crop.objects.filter(pk=crop.pk).update(updated_at=timezone.now(), **reset)
     for field, unset_value in reset.items():
         setattr(crop, field, unset_value)
     return list(reset)
+
+
+def promote_species_invariant_values(
+    variety: Crop,
+    fields: Sequence[str],
+) -> Crop | None:
+    """Move the species-invariant values this write sent onto the general Kultur.
+
+    The three species-invariant fields describe the species, not the Sorte, so a
+    value the API accepted for a linked Sorte is stored on the general Kultur and
+    cleared from the Sorte. Only a gap is filled: a general Kultur that already
+    holds a value keeps it, because ``CropSerializer`` rejects a contradicting
+    Sorte value before it ever gets here.
+
+    Does nothing for a linked orphan (no general Kultur): its raw column is the
+    only copy of the value. Returns the general Kultur the values landed on, or
+    ``None``.
+    """
+    if not fields or not inherits_from_general_crop(variety):
+        return None
+    # Same lookup the serializer validated against, so a row this write was
+    # checked against is also the row the values land on.
+    general = find_general_crop(
+        variety.project_id,
+        variety.crop_species_id,
+        exclude_pk=variety.pk,
+    )
+    if general is None:
+        return None
+    changed_fields = [
+        field
+        for field in fields
+        if not is_unset_crop_value(getattr(variety, field))
+        and is_unset_crop_value(getattr(general, field))
+    ]
+    for field in changed_fields:
+        setattr(general, field, getattr(variety, field))
+    if changed_fields:
+        general.save(update_fields=changed_fields)
+    clear_species_invariant_overrides(variety, fields=fields)
+    return general
 
 
 def sync_crop_species_across_crop_group(crop: Crop) -> int:
@@ -318,13 +388,13 @@ def get_general_crop(
 
 
 def forces_species_invariant_inheritance(crop: Crop | None, field: str) -> bool:
-    """Whether ``field`` on ``crop`` must come from the general Kultur, always.
+    """Whether ``field`` must come from the general Kultur when one exists.
 
     ``crop_family``, ``nutrient_demand`` and ``rotation_break_years`` describe
-    the crop species, not a single variety. On a species-linked Sorte their
-    effective value is therefore always the general Kultur's, and a raw value
-    still stored on the Sorte (from before this rule, or written straight to the
-    database) is ignored rather than treated as an override.
+    the crop species, not a single variety. A linked Sorte therefore uses the
+    general Kultur's value whenever that row exists. A legacy linked orphan is
+    the safety exception: its raw value remains effective because it is the
+    only available copy.
     """
     return field in CROP_SPECIES_INVARIANT_FIELDS and inherits_from_general_crop(crop)
 
@@ -336,9 +406,9 @@ def resolve_crop_field(
 ) -> Any:
     """The effective value of ``field``: the Sorte's own value, else the Kultur's.
 
-    The species-invariant fields are the exception: on a linked Sorte they
-    always resolve to the general Kultur's value (or ``None`` when it has none),
-    never to a leftover raw value on the Sorte itself.
+    Species-invariant fields use the general Kultur whenever it exists. A
+    linked orphan falls back to its own raw value rather than hiding the only
+    copy.
     """
     if crop is None:
         return None
@@ -350,7 +420,7 @@ def resolve_crop_field(
         return own_value
     general_crop = get_general_crop(crop, index)
     if general_crop is None:
-        return None if force_inherit else own_value
+        return own_value
     general_value = getattr(general_crop, field)
     if force_inherit:
         return None if is_unset_crop_value(general_value) else general_value
@@ -387,23 +457,13 @@ def build_effective_crop_values(
     crop: Crop | None,
     index: GeneralCropIndex | None = None,
 ) -> dict[str, Any]:
-    """The effective value of every inheritable field, own values included.
-
-    A species-invariant field on a linked Sorte never falls back to the Sorte's
-    raw value: it is the general Kultur's value or nothing.
-    """
+    """The effective value of every inheritable field, own values included."""
     if crop is None:
         return {}
-    inherited = build_inherited_crop_values(crop, index)
-
-    def effective(field: str) -> Any:
-        if field in inherited:
-            return inherited[field]
-        if forces_species_invariant_inheritance(crop, field):
-            return None
-        return getattr(crop, field)
-
-    return {field: effective(field) for field in CROP_INHERITABLE_FIELDS}
+    return {
+        field: resolve_crop_field(crop, field, index)
+        for field in CROP_INHERITABLE_FIELDS
+    }
 
 
 def resolve_plants_per_m2(

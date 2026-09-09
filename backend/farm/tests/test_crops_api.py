@@ -276,16 +276,15 @@ class CropApiTest(ProjectApiTestCase):
                 'variety': 'Matina',
                 'crop_species': species.id,
                 'growth_duration_days': 65,
-                'crop_family': 'Nightshade',
                 'nutrient_demand': 'high',
-                'rotation_break_years': 4,
                 'copy_values_to_crop': True,
             },
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         general.refresh_from_db()
+        # The Kultur keeps every value it already had; only its gaps are filled.
         self.assertEqual(general.growth_duration_days, 80)
         self.assertEqual(general.crop_family, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
@@ -294,6 +293,44 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(variety.crop_family, '')
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
+
+    def test_creating_variety_rejects_invariant_values_the_general_crop_contradicts(self):
+        """A Sorte value that the Kultur already contradicts is rejected, not
+        silently dropped: the caller has to change it on the Kultur."""
+        species = CropSpecies.objects.create(name='Solanum lycopersicum')
+        general = Crop.objects.create(
+            name='Tomato',
+            variety='',
+            project=self.project,
+            crop_species=species,
+            crop_family='Solanaceae',
+            rotation_break_years=6,
+        )
+
+        response = self.client.post(
+            '/openfarmplanner/api/crops/',
+            {
+                'name': 'Tomato',
+                'variety': 'Matina',
+                'crop_species': species.id,
+                'crop_family': 'Nightshade',
+                'nutrient_demand': 'high',
+                'rotation_break_years': 4,
+                'copy_values_to_crop': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('crop_family', response.data)
+        self.assertIn('rotation_break_years', response.data)
+        # The gap-filling value alone is not an error; the request still fails.
+        self.assertNotIn('nutrient_demand', response.data)
+        general.refresh_from_db()
+        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.nutrient_demand, '')
+        self.assertEqual(general.rotation_break_years, 6)
+        self.assertFalse(Crop.objects.filter(project=self.project, variety='Matina').exists())
 
     def test_creating_first_variety_skips_auto_general_when_name_taken_by_other_species(self):
         tomato_species = CropSpecies.objects.create(name='Solanum lycopersicum')
@@ -1232,8 +1269,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
 
     def test_species_invariant_fields_are_read_only_for_a_linked_sorte(self):
         """crop_family / nutrient_demand / rotation_break_years belong to the
-        Kultur: a value sent for a linked Sorte is silently discarded, not
-        rejected, and never lands on the Sorte."""
+        Kultur, so an attempted Sorte override is rejected explicitly."""
         self.general.nutrient_demand = 'medium'
         self.general.rotation_break_years = 3
         self.general.save(update_fields=['nutrient_demand', 'rotation_break_years'])
@@ -1243,7 +1279,9 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             {'crop_family': 'Wrong', 'nutrient_demand': 'high', 'rotation_break_years': 9},
             format='json',
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        for field in ('crop_family', 'nutrient_demand', 'rotation_break_years'):
+            self.assertIn(field, response.data)
 
         self.sorte.refresh_from_db()
         self.assertEqual(self.sorte.crop_family, '')
@@ -1256,6 +1294,42 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(row['effective_values']['rotation_break_years'], 3)
         for field in ('crop_family', 'nutrient_demand', 'rotation_break_years'):
             self.assertIn(field, row['inherited_fields'])
+
+    def test_unrelated_update_does_not_silently_clear_legacy_invariant_values(self):
+        Crop.objects.filter(pk=self.sorte.pk).update(crop_family='Legacy')
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.sorte.id}/',
+            {'notes': 'Unrelated edit'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.sorte.refresh_from_db()
+        self.assertEqual(self.sorte.crop_family, 'Legacy')
+
+    def test_linked_orphan_preserves_and_can_edit_its_only_invariant_value(self):
+        orphan_species = CropSpecies.objects.create(name='Pastinaca sativa')
+        orphan = Crop.objects.create(
+            name='Pastinake', variety='Halblange', project=self.project,
+            crop_species=orphan_species, crop_family='Apiaceae',
+        )
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{orphan.id}/',
+            {'crop_family': 'Apiaceae updated'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        orphan.refresh_from_db()
+        self.assertEqual(orphan.crop_family, 'Apiaceae updated')
+        row = self._row(orphan)
+        self.assertEqual(row['crop_family'], 'Apiaceae updated')
+        self.assertEqual(row['effective_values'], {})
+        self.assertFalse(Crop.objects.filter(
+            project=self.project, crop_species=orphan_species, variety_normalized__isnull=True,
+        ).exists())
 
     def test_linked_sorte_ignores_a_raw_species_invariant_value_from_the_db(self):
         """A value written straight to the column (pre-rule, or by a migration

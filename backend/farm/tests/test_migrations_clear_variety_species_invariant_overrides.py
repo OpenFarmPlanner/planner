@@ -17,7 +17,12 @@ class TestClearVarietySpeciesInvariantOverrides:
         crop_model = old_apps.get_model('farm', 'Crop')
         species_model = old_apps.get_model('crops', 'CropSpecies')
         project = project_model.objects.create(name='Migration', slug='migration-invariant')
-        species = species_model.objects.create(name='Solanum lycopersicum')
+        species = species_model.objects.create(
+            name='Solanum lycopersicum', name_normalized='solanum lycopersicum',
+        )
+        orphan_species = species_model.objects.create(
+            name='Daucus carota', name_normalized='daucus carota',
+        )
 
         self.linked_variety_id = crop_model.objects.create(
             name='Tomate', name_normalized='tomate', variety='Matina', variety_normalized='matina',
@@ -34,6 +39,12 @@ class TestClearVarietySpeciesInvariantOverrides:
             variety='Freitext', variety_normalized='freitext',
             project_id=project.id, crop_species_id=None,
             crop_family='Brassicaceae', nutrient_demand='medium', rotation_break_years=3,
+        ).id
+        self.orphan_linked_variety_id = crop_model.objects.create(
+            name='Karotte', name_normalized='karotte',
+            variety='Nantaise', variety_normalized='nantaise',
+            project_id=project.id, crop_species_id=orphan_species.id,
+            crop_family='Apiaceae', nutrient_demand='low', rotation_break_years=2,
         ).id
 
         self.executor.loader.build_graph()
@@ -62,3 +73,8 @@ class TestClearVarietySpeciesInvariantOverrides:
         assert free_text.crop_family == 'Brassicaceae'
         assert free_text.nutrient_demand == 'medium'
         assert free_text.rotation_break_years == 3
+
+        orphan = crop_model.objects.get(id=self.orphan_linked_variety_id)
+        assert orphan.crop_family == 'Apiaceae'
+        assert orphan.nutrient_demand == 'low'
+        assert orphan.rotation_break_years == 2

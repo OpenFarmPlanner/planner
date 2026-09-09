@@ -640,7 +640,7 @@ const detailSectionGridSx = {
   }, [activeCultivationTypes, getCropValue, getCropValueSource, selectedCrop]);
 
   const selectorControl = crops.length > 0 ? (
-      <Box sx={{ width: '100%', p: 1.25, borderBottom: '1px solid #e5e7eb', bgcolor: '#fcfdfc' }}>
+      <Box sx={{ width: '100%', p: 1.25, borderBottom: '1px solid', borderColor: 'surface.surfaceBorder', bgcolor: 'surface.surfaceSubtleBackground' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { xs: 'stretch', sm: 'center' }, }} >
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <TextField
@@ -734,8 +734,9 @@ const detailSectionGridSx = {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04)',
+              border: '1px solid',
+              borderColor: 'surface.surfaceBorder',
+              boxShadow: 1,
               borderRadius: 2,
             }}
           >

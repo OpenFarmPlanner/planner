@@ -1,4 +1,5 @@
 import { Box } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import type { StableDataGridScrollbar } from './hooks/useStableDataGridScrollbar';
 
 /**
@@ -77,9 +78,9 @@ export function StableScrollbarTrack({
           left: '2px',
           right: '2px',
           borderRadius: '4px',
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          backgroundColor: (theme) => alpha(theme.palette.common.black, 0.3),
           cursor: 'pointer',
-          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+          '&:hover': { backgroundColor: (theme) => alpha(theme.palette.common.black, 0.45) },
         }}
       />
     </Box>

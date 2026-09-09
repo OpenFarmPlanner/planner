@@ -11,8 +11,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
-from farm.common.responses import api_error_response
 from farm.history import (
     _current_actor_label,
     _entity_display_name,
@@ -215,9 +215,10 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             try:
                 manual_start = date.fromisoformat(manual_start_param)
             except ValueError:
-                return Response(
-                    {'detail': 'manual_start_date must be an ISO date (YYYY-MM-DD).'},
-                    status=status.HTTP_400_BAD_REQUEST,
+                return api_error_response(
+                    code='invalid_manual_start_date',
+                    detail='manual_start_date must be an ISO date (YYYY-MM-DD).',
+                    status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
         return Response(
@@ -235,15 +236,17 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         latest_season = latest_existing_season(project)
         due_period = find_due_but_missing_season(project)
         if latest_season is None or due_period is None:
-            return Response(
-                {'detail': 'No transition season is applicable.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='season_transition_not_applicable',
+                detail='No transition season is applicable.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         due_start, due_end = due_period
         if analyze_period_transition(latest_season.end_date, due_start) is None:
-            return Response(
-                {'detail': 'There is no gap between the last season and the next pattern period.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='season_transition_not_required',
+                detail='There is no gap between the last season and the next pattern period.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         seamless_start, seamless_end = compute_custom_season_period(
             pattern, latest_season.end_date + timedelta(days=1),

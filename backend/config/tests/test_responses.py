@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 from rest_framework import status
 
-from farm.common.responses import api_error_response
+from config.responses import api_error_response
 
 
 class ApiErrorResponseTests(SimpleTestCase):

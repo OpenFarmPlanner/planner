@@ -170,6 +170,28 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
             project=self.project, defaults={'start_day': day, 'start_month': month},
         )
 
+    def test_transition_input_errors_use_structured_codes(self):
+        invalid_date = self.client.get(
+            '/openfarmplanner/api/seasons/creation-options/',
+            {'manual_start_date': 'not-a-date'},
+        )
+        self.assertEqual(invalid_date.status_code, 400)
+        self.assertEqual(invalid_date.data['code'], 'invalid_manual_start_date')
+
+        not_applicable = self.client.post('/openfarmplanner/api/seasons/create-transition/', {})
+        self.assertEqual(not_applicable.status_code, 400)
+        self.assertEqual(not_applicable.data['code'], 'season_transition_not_applicable')
+
+        self._set_pattern(1, 1)
+        Season.objects.create(
+            project=self.project,
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 12, 31),
+        )
+        not_required = self.client.post('/openfarmplanner/api/seasons/create-transition/', {})
+        self.assertEqual(not_required.status_code, 400)
+        self.assertEqual(not_required.data['code'], 'season_transition_not_required')
+
     def test_pattern_preview_includes_reference_season_and_gap_row(self):
         self._set_pattern(1, 1)
         Season.objects.create(

@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
@@ -48,14 +49,19 @@ class BedLayoutByLocationView(APIView):
         bed_payload, field_payload = extract_layout_payloads(request.data)
 
         if not isinstance(bed_payload, list) or not isinstance(field_payload, list):
-            return Response(
-                {'detail': 'Expected lists under "bed_layouts" and "field_layouts".'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='invalid_layout_collections',
+                detail='Expected lists under "bed_layouts" and "field_layouts".',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         outcome = save_location_layouts(location, bed_payload, field_payload)
         if outcome.error_detail:
-            return Response({'detail': outcome.error_detail}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_location_layout',
+                detail=outcome.error_detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             {

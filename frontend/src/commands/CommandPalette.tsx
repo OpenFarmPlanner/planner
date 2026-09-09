@@ -9,6 +9,7 @@ import {
   Typography,
   Box,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useTranslation } from '../i18n';
 import type { CommandSpec } from './types';
 import { addGroupOffsets, filterCommands } from './commandPaletteUtils';
@@ -117,7 +118,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       maxWidth="sm"
       slotProps={{
         backdrop: {
-          sx: { backgroundColor: 'rgba(10, 18, 30, 0.22)' },
+          sx: { backgroundColor: (theme) => alpha(theme.palette.common.black, 0.22) },
         },
 
         transition: { onEntered: () => { inputRef.current?.focus(); } }

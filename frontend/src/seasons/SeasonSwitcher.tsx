@@ -502,11 +502,17 @@ export function SeasonCreateSuggestionDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={creatingSuggested}>
-          {t('common:actions.cancel')}
-        </Button>
+        <DisabledActionTooltip title={creatingSuggested ? t('common:disabledReasons.busy') : ''}>
+          <Button onClick={handleClose} disabled={creatingSuggested}>
+            {t('common:actions.cancel')}
+          </Button>
+        </DisabledActionTooltip>
         <DisabledActionTooltip
-          title={!canSubmit && !creatingSuggested ? t('navigation:seasonSwitcher.suggestion.createDisabledTooltip') : ''}
+          title={creatingSuggested
+            ? t('common:disabledReasons.busy')
+            : !canSubmit
+              ? t('navigation:seasonSwitcher.suggestion.createDisabledTooltip')
+              : ''}
         >
           <Button variant="contained" onClick={() => void handleCreateSuggested()} disabled={!canSubmit}>
               {t('navigation:seasonSwitcher.suggestion.create')}

@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
+import { DisabledActionTooltip } from '../../../components/DisabledActionTooltip';
 
 export interface ImportConflictDialogProps {
   open: boolean;
@@ -57,15 +58,21 @@ export function ImportConflictDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexWrap: 'wrap', gap: 1 }}>
         {/* autoFocus on cancel so a reflexive Enter never triggers the destructive "update" action below. */}
-        <Button autoFocus variant="outlined" onClick={onCancel} disabled={busy}>
-          {t('common:actions.cancel')}
-        </Button>
-        <Button variant="outlined" onClick={onImportAsNew} disabled={busy}>
-          {t('library.importConflictDialog.importAsNew')}
-        </Button>
-        <Button variant="contained" color="error" onClick={onUpdate} disabled={busy}>
-          {t('library.importConflictDialog.update')}
-        </Button>
+        <DisabledActionTooltip title={busy ? t('common:disabledReasons.busy') : ''}>
+          <Button autoFocus variant="outlined" onClick={onCancel} disabled={busy}>
+            {t('common:actions.cancel')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={busy ? t('common:disabledReasons.busy') : ''}>
+          <Button variant="outlined" onClick={onImportAsNew} disabled={busy}>
+            {t('library.importConflictDialog.importAsNew')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={busy ? t('common:disabledReasons.busy') : ''}>
+          <Button variant="contained" color="error" onClick={onUpdate} disabled={busy}>
+            {t('library.importConflictDialog.update')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

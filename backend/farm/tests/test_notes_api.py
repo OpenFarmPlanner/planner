@@ -21,6 +21,25 @@ from farm.tests.api_base import ProjectApiTestCase, User
 
 
 class MediaUploadApiTest(ProjectApiTestCase):
+    def test_media_upload_requires_file_with_structured_error(self):
+        response = self.client.post('/openfarmplanner/api/media-files/upload/', {}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'media_file_required')
+        self.assertIn('file', response.data)
+
+    def test_media_upload_rejects_oversized_file_with_structured_error(self):
+        upload = SimpleUploadedFile('large.png', b'x' * (10 * 1024 * 1024 + 1), content_type='image/png')
+        response = self.client.post(
+            '/openfarmplanner/api/media-files/upload/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'media_file_too_large')
+        self.assertIn('file', response.data)
+
     def test_media_upload_rejects_non_image_file(self):
         upload = SimpleUploadedFile('payload.txt', b'not-an-image', content_type='text/plain')
         response = self.client.post(
@@ -30,6 +49,7 @@ class MediaUploadApiTest(ProjectApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_media_file_type')
         self.assertIn('file', response.data)
 
     def test_media_upload_rejects_spoofed_image_content_type(self):
@@ -50,6 +70,7 @@ class MediaUploadApiTest(ProjectApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_media_file_type')
         self.assertIn('file', response.data)
 
     def test_media_upload_stores_image_with_format_derived_extension(self):
@@ -104,6 +125,17 @@ class NoteAttachmentApiTest(DRFAPITestCase):
             planting_date=date(2024, 3, 1),
             project=self.project,
         )
+
+    def test_attachment_upload_requires_image_with_structured_error(self):
+        response = self.client.post(
+            f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
+            {},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'note_attachment_image_required')
+        self.assertIn('image', response.data)
 
     @patch('farm.notes.views.process_note_image')
     def test_upload_list_delete_attachment(self, mock_process):
@@ -171,6 +203,7 @@ class NoteAttachmentApiTest(DRFAPITestCase):
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data['code'], 'image_processing_unavailable')
 
     @patch(
         'farm.notes.views.process_note_image',
@@ -184,6 +217,28 @@ class NoteAttachmentApiTest(DRFAPITestCase):
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_note_attachment_image')
+
+    def test_attachment_limit_returns_structured_error(self):
+        NoteAttachment.objects.bulk_create([
+            NoteAttachment(
+                planting_plan=self.plan,
+                project=self.project,
+                image=f'note-attachments/existing-{index}.webp',
+            )
+            for index in range(10)
+        ])
+        upload = SimpleUploadedFile('raw.jpg', b'raw', content_type='image/jpeg')
+
+        response = self.client.post(
+            f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
+            {'image': upload},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'note_attachment_limit_reached')
+        self.assertEqual(response.data['limit'], 10)
 
     def test_list_attachments_for_other_project_is_forbidden(self):
         other_user = User.objects.create_user(username='attachother', email='attachother@example.com', password='testpass', is_active=True)

@@ -90,6 +90,19 @@ class ProjectsApiTests(APITestCase):
         settings_obj = UserProjectSettings.objects.get(user=self.user)
         self.assertEqual(settings_obj.last_project_id, self.project2.id)
 
+    def test_switch_project_errors_use_structured_codes(self) -> None:
+        invalid = self.client.post('/openfarmplanner/api/projects-switch/', {'project_id': 'invalid'}, format='json')
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid.data['code'], 'invalid_project_id')
+
+        inaccessible = self.client.post(
+            '/openfarmplanner/api/projects-switch/',
+            {'project_id': self.project2.id},
+            format='json',
+        )
+        self.assertEqual(inaccessible.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(inaccessible.data['code'], 'project_membership_required')
+
     def test_project_history_restore_does_not_delete_other_project_data(self) -> None:
         create_response = self.client.post(
             '/openfarmplanner/api/locations/',
@@ -773,7 +786,7 @@ class ProjectsApiTests(APITestCase):
         invitee_row = next(row for row in response.data if row['user'] == self.invitee.id)
         self.assertEqual(invitee_row['user_display_name'], 'Martin Stipsitz')
 
-    def test_cannot_demote_last_admin(self) -> None:
+    def test_cannot_change_own_project_role(self) -> None:
         own_membership = ProjectMembership.objects.get(user=self.user, project=self.project)
         response = self.client.patch(
             f'/openfarmplanner/api/projects/{self.project.id}/members/',
@@ -781,6 +794,7 @@ class ProjectsApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'self_role_change_forbidden')
 
     def test_admin_can_remove_member(self) -> None:
         member = ProjectMembership.objects.create(user=self.invitee, project=self.project, role='member')
@@ -800,6 +814,7 @@ class ProjectsApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'self_removal_forbidden')
 
     def test_restore_deleted_project_before_retention_expires(self) -> None:
         trashed_project = Project.objects.create(

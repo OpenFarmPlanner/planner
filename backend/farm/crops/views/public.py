@@ -13,10 +13,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
+from config.responses import api_error_response
 from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
-from farm.common.responses import api_error_response
 from farm.models import (
     Crop,
     PublicCrop,
@@ -156,7 +156,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
     @staticmethod
     def _transition_error_response(error: Exception, response_status: int) -> Response:
         code = getattr(error, 'code', 'invalid_status_transition')
-        return Response({'detail': str(error), 'code': code}, status=response_status)
+        return api_error_response(code=code, detail=str(error), status_code=response_status)
 
     @staticmethod
     def _is_moderator(user: Any) -> bool:
@@ -375,7 +375,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         comment_serializer.is_valid(raise_exception=True)
         revision = topic_serializer.validated_data.get('revision')
         if revision and revision.public_crop_id != public_crop.id:
-            return Response({'revision': ['The version does not belong to this public crop.']}, status=status.HTTP_400_BAD_REQUEST)
+            detail = 'The version does not belong to this public crop.'
+            return api_error_response(
+                code='revision_not_owned_by_public_crop',
+                detail=detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                revision=[detail],
+            )
         with transaction.atomic():
             topic = topic_serializer.save(public_crop=public_crop, created_by=request.user)
             comment_serializer.save(topic=topic, created_by=request.user)
@@ -419,7 +425,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         parent = serializer.validated_data.get('parent')
         if parent and parent.topic_id != topic.id:
-            return Response({'parent': ['The parent comment does not belong to this topic.']}, status=status.HTTP_400_BAD_REQUEST)
+            detail = 'The parent comment does not belong to this topic.'
+            return api_error_response(
+                code='parent_comment_not_owned_by_topic',
+                detail=detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                parent=[detail],
+            )
         comment = serializer.save(topic=topic, created_by=request.user)
         return Response(PublicCropDiscussionCommentSerializer(comment, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
@@ -431,18 +443,20 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         comment = get_object_or_404(PublicCropDiscussionComment.objects.select_related('topic'), pk=comment_id, topic__public_crop=public_crop)
         may_moderate = self._is_moderator(request.user)
         if comment.created_by_id != request.user.id and not may_moderate:
-            return Response({'detail': 'You may only change your own comments.'}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(
+                code='comment_owner_required',
+                detail='You may only change your own comments.',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         if request.method == 'DELETE':
             root_comment_id = comment.topic.comments.order_by('created_at', 'id').values_list('id', flat=True).first()
             if comment.id == root_comment_id and not may_moderate:
                 visible_reply_exists = comment.topic.comments.filter(deleted_at__isnull=True).exclude(pk=comment.id).exists()
                 if visible_reply_exists:
-                    return Response(
-                        {
-                            'detail': 'The opening post cannot be deleted while visible replies exist.',
-                            'code': 'visible_replies_exist',
-                        },
-                        status=status.HTTP_409_CONFLICT,
+                    return api_error_response(
+                        code='visible_replies_exist',
+                        detail='The opening post cannot be deleted while visible replies exist.',
+                        status_code=status.HTTP_409_CONFLICT,
                     )
             if not comment.deleted_at:
                 comment.body = ''
@@ -451,7 +465,11 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 comment.save(update_fields=['body', 'deleted_at', 'deleted_by', 'updated_at'])
             return Response(status=status.HTTP_204_NO_CONTENT)
         if comment.deleted_at:
-            return Response({'detail': 'Deleted comments cannot be edited.'}, status=status.HTTP_409_CONFLICT)
+            return api_error_response(
+                code='deleted_comment_not_editable',
+                detail='Deleted comments cannot be edited.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
         serializer = PublicCropDiscussionCommentSerializer(comment, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save(edited_at=timezone.now())
