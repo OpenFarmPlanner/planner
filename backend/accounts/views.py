@@ -104,6 +104,16 @@ PASSWORD_UPDATED_MESSAGE = _de('Dein Passwort wurde erfolgreich geändert.')
 PROFILE_UPDATED_MESSAGE = _de('Dein Profil wurde erfolgreich gespeichert.')
 
 
+def _email_send_failed_response(message: str, status_code: int) -> Response:
+    """Build the shared email-delivery failure envelope."""
+    return api_error_response(
+        code='email_send_failed',
+        detail=message,
+        status_code=status_code,
+        message=message,
+    )
+
+
 def _password_confirmation_is_valid(user: User, password: str) -> bool:
     """Confirm a sensitive account action with the account password.
 
@@ -145,13 +155,9 @@ class RegisterView(APIView):
                 'Failed to send activation email after registration',
                 extra={'user_id': user.id},
             )
-            return Response(
-                {
-                    'code': 'email_send_failed',
-                    'message': REGISTRATION_EMAIL_SEND_FAILED_MESSAGE,
-                    'detail': REGISTRATION_EMAIL_SEND_FAILED_MESSAGE,
-                },
-                status=status.HTTP_201_CREATED,
+            return _email_send_failed_response(
+                REGISTRATION_EMAIL_SEND_FAILED_MESSAGE,
+                status.HTTP_201_CREATED,
             )
         detail_message = _registration_success_message()
         return Response({'detail': detail_message}, status=status.HTTP_201_CREATED)
@@ -255,13 +261,11 @@ class LoginView(APIView):
 
         deletion = AccountDeletionRequest.objects.filter(user=user).first()
         if deletion and deletion.is_pending and deletion.scheduled_deletion_at is not None and deletion.scheduled_deletion_at > timezone.now():
-            return Response(
-                {
-                    'detail': _de(_('This account is pending deletion. You can still restore it.')),
-                    'code': 'account_pending_deletion',
-                    'scheduled_deletion_at': deletion.scheduled_deletion_at.isoformat(),
-                },
-                status=status.HTTP_403_FORBIDDEN,
+            return api_error_response(
+                code='account_pending_deletion',
+                detail=_de(_('This account is pending deletion. You can still restore it.')),
+                status_code=status.HTTP_403_FORBIDDEN,
+                scheduled_deletion_at=deletion.scheduled_deletion_at.isoformat(),
             )
 
         if not user.is_active:
@@ -391,13 +395,9 @@ class AccountEmailChangeRequestView(APIView):
                 extra={'user_id': request.user.id, 'email_change_request_id': email_change_request.id},
             )
             email_change_request.delete()
-            return Response(
-                {
-                    'code': 'email_send_failed',
-                    'message': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                    'detail': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            return _email_send_failed_response(
+                GENERIC_EMAIL_SEND_FAILED_MESSAGE,
+                status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         return Response({'detail': EMAIL_CHANGE_CONFIRMATION_SENT_MESSAGE})
@@ -634,13 +634,9 @@ class ResendActivationView(APIView):
                     'Failed to resend activation email',
                     extra={'user_id': user.id},
                 )
-                return Response(
-                    {
-                        'code': 'email_send_failed',
-                        'message': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                        'detail': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                return _email_send_failed_response(
+                    GENERIC_EMAIL_SEND_FAILED_MESSAGE,
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
         return Response({'detail': GENERIC_EMAIL_SENT_MESSAGE})
@@ -664,13 +660,9 @@ class PasswordResetRequestView(APIView):
                     'Failed to send password reset email',
                     extra={'user_id': user.id},
                 )
-                return Response(
-                    {
-                        'code': 'email_send_failed',
-                        'message': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                        'detail': GENERIC_EMAIL_SEND_FAILED_MESSAGE,
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                return _email_send_failed_response(
+                    GENERIC_EMAIL_SEND_FAILED_MESSAGE,
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
         return Response({'detail': GENERIC_EMAIL_SENT_MESSAGE})

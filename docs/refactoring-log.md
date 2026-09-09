@@ -240,6 +240,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   email/password changes, deletion restoration, and password-reset confirmation
   now expose stable codes while preserving their existing status and detail
   contracts. Existing endpoint tests assert the new codes.
+- Removed the four duplicate email-delivery error payloads in the account API.
+  Registration, activation resend, email change, and password reset now share
+  one response helper, and the pending-deletion login response uses the same
+  project-wide envelope builder without changing its contextual timestamp.
 
 ### Internationalization
 
