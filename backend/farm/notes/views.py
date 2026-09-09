@@ -35,6 +35,16 @@ ALLOWED_MEDIA_UPLOAD_CONTENT_TYPES = {
 }
 
 
+def _upload_field_error(*, code: str, field: str, detail: str) -> Response:
+    """Return a structured upload error while retaining DRF's field array."""
+    return api_error_response(
+        code=code,
+        detail=detail,
+        status_code=status.HTTP_400_BAD_REQUEST,
+        **{field: [detail]},
+    )
+
+
 class MediaFileUploadView(APIView):
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
@@ -44,12 +54,20 @@ class MediaFileUploadView(APIView):
         active_project = get_active_project_or_400(request)
         upload = request.FILES.get('file')
         if upload is None:
-            return Response({'file': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+            return _upload_field_error(code='media_file_required', field='file', detail='This field is required.')
         if upload.size > MAX_MEDIA_UPLOAD_BYTES:
-            return Response({'file': ['File is too large. Maximum allowed size is 10 MB.']}, status=status.HTTP_400_BAD_REQUEST)
+            return _upload_field_error(
+                code='media_file_too_large',
+                field='file',
+                detail='File is too large. Maximum allowed size is 10 MB.',
+            )
         content_type = (getattr(upload, 'content_type', '') or '').lower()
         if content_type not in ALLOWED_MEDIA_UPLOAD_CONTENT_TYPES:
-            return Response({'file': ['Unsupported file type. Only image uploads are allowed.']}, status=status.HTTP_400_BAD_REQUEST)
+            return _upload_field_error(
+                code='invalid_media_file_type',
+                field='file',
+                detail='Unsupported file type. Only image uploads are allowed.',
+            )
 
         # The client-supplied Content-Type header and filename are both
         # attacker-controlled, so validate the actual bytes and derive the
@@ -65,7 +83,11 @@ class MediaFileUploadView(APIView):
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except ImageProcessingError:
-            return Response({'file': ['Unsupported file type. Only image uploads are allowed.']}, status=status.HTTP_400_BAD_REQUEST)
+            return _upload_field_error(
+                code='invalid_media_file_type',
+                field='file',
+                detail='Unsupported file type. Only image uploads are allowed.',
+            )
 
         rel_path = crop_media_upload_path(None, f'image.{extension}')
         saved_path = default_storage.save(rel_path, upload)
@@ -109,7 +131,11 @@ class NoteAttachmentListCreateView(APIView):
 
         upload = request.FILES.get('image')
         if upload is None:
-            return Response({'image': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+            return _upload_field_error(
+                code='note_attachment_image_required',
+                field='image',
+                detail='This field is required.',
+            )
 
         upload_serializer = NoteAttachmentUploadSerializer(data={
             'caption': request.data.get('caption', ''),

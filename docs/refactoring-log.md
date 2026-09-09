@@ -266,3 +266,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   canonical `config.responses` module after the cross-app rollout. Removed the
   temporary farm compatibility re-export so new code has one discoverable
   import path and cannot recreate app-layer coupling.
+- Finished the notes/media upload validation branches that deliberately bypass
+  serializers for multipart files. Missing, oversized, or invalid uploads now
+  include stable codes while retaining the established `file`/`image` arrays;
+  focused API tests cover every manual branch.
