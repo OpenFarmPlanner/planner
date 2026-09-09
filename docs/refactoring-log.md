@@ -195,6 +195,12 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   and reject-update errors through `api_error_response`. Existing codes,
   details, context payloads, and HTTP statuses remain stable; the previously
   code-less missing-name response now has `crop_name_required`.
+- Extended the shared envelope to project switching and membership mutation,
+  with stable codes for malformed/inaccessible projects, invalid roles, and
+  forbidden self-mutation. Removed duplicate unreachable "last admin" checks:
+  these endpoints require the caller to be an admin and already reject changes
+  to that caller's own membership, so mutating another admin necessarily leaves
+  the caller in place.
 
 ### Internationalization
 
