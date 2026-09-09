@@ -155,6 +155,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Replaced the last literal crop-hierarchy hover, title-button interaction, and
   varieties-panel colours found by the source sweep with `surface` and MUI
   action tokens. Dynamic crop swatches remain user data, not design tokens.
+- Continued through the crop detail selector/card and colour-picker inset;
+  these now use surface palette entries, MUI elevation, and a theme-derived
+  alpha value rather than embedded hex/RGB values.
 
 ### Four-case update model and live inheritance
 
@@ -177,6 +180,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Continued the moderation sweep with the species-approval and alias-save
   actions. The approval tooltip distinguishes an in-progress request from
   missing required German and English names.
+- Covered every remaining moderation table action (proposal decisions, alias
+  editing, moderator-request decisions, and removed-entry restoration) with
+  the same localized busy explanation.
 
 ### API consistency
 

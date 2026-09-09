@@ -3,6 +3,7 @@
  * @remarks Presentational, no internal state
  */
 import { Box, Stack, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
 
@@ -35,7 +36,7 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
               border: '1px solid',
               borderColor: 'divider',
               bgcolor: swatchColor,
-              boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.45)',
+              boxShadow: (theme) => `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.45)}`,
               cursor: 'pointer',
               flexShrink: 0,
               position: 'relative',
