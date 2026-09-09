@@ -525,4 +525,3 @@ class RevokeProjectInvitationView(APIView):
         invitation = get_object_or_404(ProjectInvitation, id=invitation_id, project_id=project_id)
         result = revoke_invitation(invitation=invitation, actor=request.user)
         return Response({'code': result.code, 'detail': result.message})
-        active_project = request.active_project

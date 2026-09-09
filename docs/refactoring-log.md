@@ -150,6 +150,15 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 
 ## 2026-09-09 follow-up audit
 
+### CI repair
+
+- Updated five stale authentication test expectations to the API's established
+  English response contract, in line with the repository language rules.
+- Removed an accidental contradictory project-invitation assertion introduced
+  while extending membership error coverage, and removed two Ruff `F841`
+  findings (one unreachable assignment after a return and one unused test
+  response variable).
+
 ### Theme tokens
 
 - Replaced the last literal crop-hierarchy hover, title-button interaction, and

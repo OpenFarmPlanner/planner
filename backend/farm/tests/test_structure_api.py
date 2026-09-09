@@ -23,7 +23,7 @@ class TenantScopeApiTest(ProjectApiTestCase):
 
     def test_update_cannot_move_location_to_foreign_project(self):
         foreign_project = Project.objects.create(name='Foreign', slug='foreign-scope-proj')
-        response = self.client.patch(
+        self.client.patch(
             f'/openfarmplanner/api/locations/{self.location.id}/',
             {'project': foreign_project.id},
             format='json',
