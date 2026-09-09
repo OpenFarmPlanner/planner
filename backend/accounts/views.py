@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import get_user_model, login, logout
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.tokens import default_token_generator
 from django.db import IntegrityError
 from django.http import JsonResponse
@@ -20,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.languages import UI_LANGUAGE_AUTO
+from config.responses import api_error_response
 from farm.services.demo_project import resolve_demo_request_language
 
 from .consent import record_acceptance
@@ -32,15 +32,6 @@ from .emails import (
     _uses_local_non_delivery_email_backend,
 )
 from .guest_demo import create_guest_demo_session, delete_guest_demo_session
-from .services import (
-    _clear_activation_expiry,
-    _decode_uid,
-    _logout_all_user_sessions,
-    _normalize_email,
-    _set_activation_expiry,
-    _validate_serializer_in_german,
-    record_verified_email as _record_verified_email,
-)
 from .models import (
     AccountDeletionRequest,
     AccountEmailChangeRequest,
@@ -50,10 +41,10 @@ from .models import (
     UserProjectSettings,
 )
 from .serializers import (
-    AccountEmailChangeConfirmSerializer,
-    AccountLanguageSerializer,
-    AccountEmailChangeRequestSerializer,
     AccountDeleteRequestSerializer,
+    AccountEmailChangeConfirmSerializer,
+    AccountEmailChangeRequestSerializer,
+    AccountLanguageSerializer,
     AccountPasswordChangeSerializer,
     AccountProfileSerializer,
     AccountPublicProfileSerializer,
@@ -66,6 +57,17 @@ from .serializers import (
     RegisterSerializer,
     ResendActivationSerializer,
     UserSerializer,
+)
+from .services import (
+    _clear_activation_expiry,
+    _decode_uid,
+    _logout_all_user_sessions,
+    _normalize_email,
+    _set_activation_expiry,
+    _validate_serializer_in_german,
+)
+from .services import (
+    record_verified_email as _record_verified_email,
 )
 
 User = get_user_model()
@@ -164,17 +166,29 @@ class ActivateView(APIView):
         _validate_serializer_in_german(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
-            return Response({'detail': _de(_('Invalid activation link.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_activation_link',
+                detail=_de(_('Invalid activation link.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = get_object_or_404(User, pk=uid)
         pending = PendingActivation.objects.filter(user=user).first()
         if pending is not None and pending.activation_expires_at < timezone.now():
             user.delete()
-            return Response({'detail': _de(_('Invalid or expired activation token.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_activation_token',
+                detail=_de(_('Invalid or expired activation token.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         token = serializer.validated_data['token']
         if not default_token_generator.check_token(user, token):
-            return Response({'detail': _de(_('Invalid or expired activation token.'))}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_activation_token',
+                detail=_de(_('Invalid or expired activation token.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         user.is_active = True
         user.save(update_fields=['is_active'])
@@ -233,7 +247,11 @@ class LoginView(APIView):
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None or not user.check_password(password):
-            return Response({'detail': _de(_('Invalid credentials.'))}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error_response(
+                code='invalid_credentials',
+                detail=_de(_('Invalid credentials.')),
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
 
         deletion = AccountDeletionRequest.objects.filter(user=user).first()
         if deletion and deletion.is_pending and deletion.scheduled_deletion_at is not None and deletion.scheduled_deletion_at > timezone.now():
@@ -247,7 +265,11 @@ class LoginView(APIView):
             )
 
         if not user.is_active:
-            return Response({'detail': _de(_('Account is not activated yet.'))}, status=status.HTTP_403_FORBIDDEN)
+            return api_error_response(
+                code='account_not_activated',
+                detail=_de(_('Account is not activated yet.')),
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
         login(request, user)
         return Response(UserSerializer(user).data)
@@ -264,7 +286,11 @@ class MeView(APIView):
 
     def get(self, request: Request) -> Response:
         if not request.user.is_authenticated:
-            return Response({'detail': _de(_('Authentication credentials were not provided.'))}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error_response(
+                code='authentication_required',
+                detail=_de(_('Authentication credentials were not provided.')),
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
         return Response(UserSerializer(request.user).data)
 
 

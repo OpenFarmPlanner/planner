@@ -1,16 +1,5 @@
-"""Stable response builders shared by DRF viewsets."""
+"""Compatibility import for the project-wide API response builder."""
 
-from typing import Any
+from config.responses import api_error_response
 
-from rest_framework.response import Response
-
-
-def api_error_response(
-    *,
-    code: str,
-    detail: str,
-    status_code: int,
-    **context: Any,
-) -> Response:
-    """Return the API's standard machine-code plus human-detail error shape."""
-    return Response({'code': code, 'detail': detail, **context}, status=status_code)
+__all__ = ['api_error_response']

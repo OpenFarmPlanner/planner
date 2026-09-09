@@ -234,6 +234,7 @@ class AuthApiTest(APITestCase):
 
         invalid = self.client.post('/openfarmplanner/api/auth/activate/', {'uid': uid, 'token': 'bad-token'}, format='json')
         self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid.data['code'], 'invalid_activation_token')
 
         valid = self.client.post('/openfarmplanner/api/auth/activate/', {'uid': uid, 'token': token}, format='json')
         self.assertEqual(valid.status_code, status.HTTP_200_OK)
@@ -248,6 +249,7 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data.get('code'), 'invalid_activation_link')
         self.assertEqual(response.data.get('detail'), 'Invalid activation link.')
 
     def test_activation_expired_pending_record_deletes_user(self) -> None:
@@ -270,6 +272,7 @@ class AuthApiTest(APITestCase):
 
         response = self.client.post('/openfarmplanner/api/auth/activate/', {'uid': uid, 'token': token}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data.get('code'), 'invalid_activation_token')
         self.assertEqual(response.data.get('detail'), 'Invalid or expired activation token.')
         self.assertFalse(User.objects.filter(pk=user.pk).exists())
 
@@ -292,6 +295,7 @@ class AuthApiTest(APITestCase):
         second = self.client.post('/openfarmplanner/api/auth/activate/', {'uid': uid, 'token': token}, format='json')
         self.assertEqual(first.status_code, status.HTTP_200_OK)
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(second.data['code'], 'invalid_activation_token')
 
         login_response = self.client.post(
             '/openfarmplanner/api/auth/login/',
@@ -314,6 +318,15 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(blocked.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(blocked.data['code'], 'account_not_activated')
+
+        invalid = self.client.post(
+            '/openfarmplanner/api/auth/login/',
+            {'email': self.user.email, 'password': 'wrong-password'},
+            format='json',
+        )
+        self.assertEqual(invalid.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(invalid.data['code'], 'invalid_credentials')
 
         success = self.client.post(
             '/openfarmplanner/api/auth/login/',
@@ -334,6 +347,7 @@ class AuthApiTest(APITestCase):
 
         me_after_logout = self.client.get('/openfarmplanner/api/auth/me/')
         self.assertEqual(me_after_logout.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(me_after_logout.data['code'], 'authentication_required')
 
     def test_password_reset_request_and_confirm(self) -> None:
         reset_request = self.client.post('/openfarmplanner/api/auth/password-reset/', {'email': self.user.email}, format='json')

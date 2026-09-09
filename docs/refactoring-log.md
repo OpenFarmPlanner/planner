@@ -232,6 +232,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   project-invitation error envelopes through `api_error_response`. Relation
   failures retain their field-level arrays for backwards compatibility while
   also exposing stable machine-readable codes.
+- Moved the shared error builder from the farm app boundary into `config` and
+  retained the old import as a compatibility re-export. Authentication
+  activation, login, and session errors can now use the same envelope without
+  introducing an accounts-to-farm dependency; focused tests pin their codes.
 
 ### Internationalization
 
