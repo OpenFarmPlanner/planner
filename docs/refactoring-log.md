@@ -158,6 +158,11 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Continued through the crop detail selector/card and colour-picker inset;
   these now use surface palette entries, MUI elevation, and a theme-derived
   alpha value rather than embedded hex/RGB values.
+- Extended the ESLint guard to cover `background`, `outlineColor`, logical
+  spacing properties, and template literals, closing parser/property gaps in
+  the original rule. Migrated the remaining notes/image overlays, context-menu
+  backdrop, command palette backdrop, restore notice, and stable scrollbar
+  colours found by that expanded sweep to palette-derived values.
 
 ### Four-case update model and live inheritance
 

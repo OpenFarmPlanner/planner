@@ -10,18 +10,24 @@ const themeTokenPlugin = {
     'no-hardcoded-style-values': {
       meta: { type: 'suggestion', schema: [], messages: { token: 'Use an MUI theme token or spacing unit instead of hardcoded style value {{value}}.' } },
       create(context) {
-        const colorKeys = new Set(['color', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'border']);
-        const spacingKeys = new Set(['padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'gap', 'rowGap', 'columnGap']);
+        const colorKeys = new Set(['color', 'background', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'outlineColor', 'border']);
+        const spacingKeys = new Set(['padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'paddingInline', 'paddingInlineStart', 'paddingInlineEnd', 'paddingBlock', 'paddingBlockStart', 'paddingBlockEnd', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'marginInline', 'marginInlineStart', 'marginInlineEnd', 'marginBlock', 'marginBlockStart', 'marginBlockEnd', 'gap', 'rowGap', 'columnGap']);
+        const checkStyleValue = (node, value) => {
+          if (!node.parent || node.parent.type !== 'Property') return;
+          const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
+          const propertyName = String(key);
+          const hasLiteralColor = colorKeys.has(propertyName) && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(value);
+          const hasPixelSpacing = spacingKeys.has(propertyName) && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(value);
+          if (hasLiteralColor || hasPixelSpacing) {
+            context.report({ node, messageId: 'token', data: { value: JSON.stringify(value) } });
+          }
+        };
         return {
           Literal(node) {
-            if (typeof node.value !== 'string' || !node.parent || node.parent.type !== 'Property') return;
-            const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
-            const propertyName = String(key);
-            const hasLiteralColor = colorKeys.has(propertyName) && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(node.value);
-            const hasPixelSpacing = spacingKeys.has(propertyName) && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(node.value);
-            if (hasLiteralColor || hasPixelSpacing) {
-              context.report({ node, messageId: 'token', data: { value: JSON.stringify(node.value) } });
-            }
+            if (typeof node.value === 'string') checkStyleValue(node, node.value);
+          },
+          TemplateLiteral(node) {
+            checkStyleValue(node, node.quasis.map((quasi) => quasi.value.raw).join(''));
           },
         };
       },

@@ -19,6 +19,7 @@ import {
   LinearProgress,
   Alert,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -478,7 +479,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
               {attachments.map((attachment) => (
                 <ImageListItem key={attachment.id}>
                   <img src={attachment.image_url ?? attachment.image} alt={attachment.caption || t('notesDrawer.attachmentAlt')} loading="lazy" style={{ cursor: 'pointer' }} onClick={() => setSelectedImage(attachment.image_url ?? attachment.image)} />
-                  <IconButton size="small" aria-label={t('actions.delete')} sx={{ position: 'absolute', right: 2, top: 2, bgcolor: 'rgba(0,0,0,0.4)', color: 'white' }} onClick={async () => {
+                  <IconButton size="small" aria-label={t('actions.delete')} sx={{ position: 'absolute', right: 2, top: 2, bgcolor: (theme) => alpha(theme.palette.common.black, 0.4), color: 'common.white' }} onClick={async () => {
                     await noteAttachmentAPI.delete(attachment.id);
                     if (noteId) invalidateNoteAttachmentsCache(noteId);
                     await loadAttachments();
@@ -509,7 +510,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
 
       <Dialog open={Boolean(selectedImage)} onClose={() => setSelectedImage(null)} maxWidth="lg" fullWidth>
         <DialogTitle>{t('notesDrawer.imageDialogTitle')}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', justifyContent: 'center', backgroundColor: '#111' }}>{selectedImage && <img src={selectedImage} style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }} alt={t('notesDrawer.attachmentPreviewAlt')} />}</DialogContent>
+        <DialogContent sx={{ display: 'flex', justifyContent: 'center', backgroundColor: 'common.black' }}>{selectedImage && <img src={selectedImage} style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain' }} alt={t('notesDrawer.attachmentPreviewAlt')} />}</DialogContent>
         <DialogActions><Button onClick={() => setSelectedImage(null)}>{t('actions.close')}</Button></DialogActions>
       </Dialog>
 
@@ -547,7 +548,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
             )}
             {cropRect && (
               <>
-                <Box sx={{ position: 'absolute', left: cropRect.x, top: cropRect.y, width: cropRect.width, height: cropRect.height, boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)', border: '2px solid #fff', cursor: 'move' }} onPointerDown={(event) => { event.stopPropagation(); onCropPointerDown(event, 'move'); }} />
+                <Box sx={{ position: 'absolute', left: cropRect.x, top: cropRect.y, width: cropRect.width, height: cropRect.height, boxShadow: (theme) => `0 0 0 9999px ${alpha(theme.palette.common.black, 0.55)}`, border: '2px solid', borderColor: 'common.white', cursor: 'move' }} onPointerDown={(event) => { event.stopPropagation(); onCropPointerDown(event, 'move'); }} />
                 {([
                   { key: 'nw', x: cropRect.x, y: cropRect.y, mode: 'resize-nw', cursor: 'nwse-resize' },
                   { key: 'ne', x: cropRect.x + cropRect.width, y: cropRect.y, mode: 'resize-ne', cursor: 'nesw-resize' },
@@ -557,7 +558,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
                   <Box
                     key={handle.key}
                     data-testid={`crop-handle-${handle.key}`}
-                    sx={{ position: 'absolute', left: handle.x - 7, top: handle.y - 7, width: 14, height: 14, borderRadius: '50%', border: '2px solid #fff', backgroundColor: 'primary.main', cursor: handle.cursor }}
+                    sx={{ position: 'absolute', left: handle.x - 7, top: handle.y - 7, width: 14, height: 14, borderRadius: '50%', border: '2px solid', borderColor: 'common.white', backgroundColor: 'primary.main', cursor: handle.cursor }}
                     onPointerDown={(event) => { event.stopPropagation(); onCropPointerDown(event, handle.mode); }}
                   />
                 ))}
@@ -580,7 +581,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
               {t('notesDrawer.camera.noSignal')}
             </Alert>
           ) : null}
-          <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center', backgroundColor: '#111' }}>
+          <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center', backgroundColor: 'common.black' }}>
             <video
               ref={attachCameraVideo}
               autoPlay
