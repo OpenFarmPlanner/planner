@@ -171,6 +171,7 @@ class NoteAttachmentApiTest(DRFAPITestCase):
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data['code'], 'image_processing_unavailable')
 
     @patch(
         'farm.notes.views.process_note_image',
@@ -184,6 +185,28 @@ class NoteAttachmentApiTest(DRFAPITestCase):
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_note_attachment_image')
+
+    def test_attachment_limit_returns_structured_error(self):
+        NoteAttachment.objects.bulk_create([
+            NoteAttachment(
+                planting_plan=self.plan,
+                project=self.project,
+                image=f'note-attachments/existing-{index}.webp',
+            )
+            for index in range(10)
+        ])
+        upload = SimpleUploadedFile('raw.jpg', b'raw', content_type='image/jpeg')
+
+        response = self.client.post(
+            f'/openfarmplanner/api/notes/{self.plan.id}/attachments/',
+            {'image': upload},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'note_attachment_limit_reached')
+        self.assertEqual(response.data['limit'], 10)
 
     def test_list_attachments_for_other_project_is_forbidden(self):
         other_user = User.objects.create_user(username='attachother', email='attachother@example.com', password='testpass', is_active=True)

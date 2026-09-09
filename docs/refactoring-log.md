@@ -201,6 +201,11 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   these endpoints require the caller to be an admin and already reject changes
   to that caller's own membership, so mutating another admin necessarily leaves
   the caller in place.
+- Standardized note and media processing failures next. Backend-unavailable,
+  invalid processed-image, and per-note attachment-limit responses now expose
+  stable codes; the limit response also includes the numeric limit so clients
+  do not need to parse the English detail. DRF field-validation dictionaries
+  remain unchanged for missing/invalid form fields.
 
 ### Internationalization
 

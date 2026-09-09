@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
+from farm.common.responses import api_error_response
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
 from farm.image_processing import (
     ImageProcessingBackendUnavailableError,
@@ -58,7 +59,11 @@ class MediaFileUploadView(APIView):
         try:
             extension, _mime_type = validate_image_upload(upload)
         except ImageProcessingBackendUnavailableError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return api_error_response(
+                code='image_processing_unavailable',
+                detail=str(exc),
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         except ImageProcessingError:
             return Response({'file': ['Unsupported file type. Only image uploads are allowed.']}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -95,7 +100,12 @@ class NoteAttachmentListCreateView(APIView):
         plan = get_object_or_404(PlantingPlan, pk=note_id, project=active_project)
 
         if plan.attachments.count() >= 10:
-            return Response({'detail': 'Attachment limit per note reached (10).'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='note_attachment_limit_reached',
+                detail='Attachment limit per note reached (10).',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                limit=10,
+            )
 
         upload = request.FILES.get('image')
         if upload is None:
@@ -110,9 +120,17 @@ class NoteAttachmentListCreateView(APIView):
         try:
             content, metadata = process_note_image(upload)
         except ImageProcessingBackendUnavailableError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return api_error_response(
+                code='image_processing_unavailable',
+                detail=str(exc),
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         except ImageProcessingError as exc:
-            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_note_attachment_image',
+                detail=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         attachment = NoteAttachment(
             planting_plan=plan,
