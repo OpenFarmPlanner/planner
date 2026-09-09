@@ -206,6 +206,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   stable codes; the limit response also includes the numeric limit so clients
   do not need to parse the English detail. DRF field-validation dictionaries
   remain unchanged for missing/invalid form fields.
+- Standardized the location-layout endpoint's collection-shape and ownership
+  validation errors as `invalid_layout_collections` and
+  `invalid_location_layout`. Focused integration tests now pin both codes while
+  retaining the detailed ownership message used by existing clients.
 
 ### Internationalization
 
