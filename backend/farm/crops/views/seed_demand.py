@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from config.languages import resolve_request_language
 from farm.common.mixins import ProjectScopedMixin
+from farm.common.responses import api_error_response
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -48,9 +49,17 @@ class SeedDemandListView(ProjectScopedMixin, generics.ListAPIView):
         try:
             crop_id = int(crop_id)
         except (TypeError, ValueError):
-            return Response({'detail': 'crop_id must be a positive integer.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_crop_id',
+                detail='crop_id must be a positive integer.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         if crop_id <= 0:
-            return Response({'detail': 'crop_id must be a positive integer.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_crop_id',
+                detail='crop_id must be a positive integer.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         crop = get_object_or_404(Crop, id=crop_id, project=request.active_project)
 
@@ -62,7 +71,11 @@ class SeedDemandListView(ProjectScopedMixin, generics.ListAPIView):
         try:
             supplier_id = int(supplier_id)
         except (TypeError, ValueError):
-            return Response({'detail': 'supplier_id must be an integer or null.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_supplier_id',
+                detail='supplier_id must be an integer or null.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         supplier = get_object_or_404(Supplier, id=supplier_id, project=request.active_project)
         has_supplier_data = CropSupplierData.objects.filter(
@@ -71,7 +84,11 @@ class SeedDemandListView(ProjectScopedMixin, generics.ListAPIView):
             supplier=supplier,
         ).exists()
         if not has_supplier_data:
-            return Response({'detail': 'Supplier is not available for this crop.'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='supplier_not_available_for_crop',
+                detail='Supplier is not available for this crop.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         crop.selected_seed_demand_supplier = supplier
         crop.save(update_fields=['selected_seed_demand_supplier', 'updated_at'])

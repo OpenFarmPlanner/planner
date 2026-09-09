@@ -224,6 +224,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   seasons transition errors with codes for malformed manual dates, inapplicable
   transitions, and seamless periods where a transition is not required; one
   focused API test locks all three distinctions.
+- Completed the remaining Crop Library discussion and seed-demand selection
+  errors. Comment ownership/deleted-state conflicts and malformed or
+  unavailable supplier selections now expose stable codes, with integration
+  tests covering each branch.
 
 ### Internationalization
 

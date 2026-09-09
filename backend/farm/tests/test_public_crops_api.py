@@ -1,7 +1,8 @@
 """API tests for the public crop library endpoints."""
 
 
-from datetime import datetime, timedelta, timezone as datetime_timezone
+from datetime import datetime, timedelta
+from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
 from django.utils import timezone
@@ -2084,6 +2085,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.client.force_authenticate(other_user)
         forbidden = self.client.patch(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/', {'body': 'Changed'}, format='json')
         self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(forbidden.data['code'], 'comment_owner_required')
         self.client.force_authenticate(self.user)
         edited = self.client.patch(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/', {'body': 'Changed'}, format='json')
         deleted = self.client.delete(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/')
@@ -2093,6 +2095,13 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIsNotNone(comment.deleted_at)
         self.assertEqual(comment.body, '')
+        deleted_edit = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/',
+            {'body': 'Changed again'},
+            format='json',
+        )
+        self.assertEqual(deleted_edit.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(deleted_edit.data['code'], 'deleted_comment_not_editable')
         list_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         deleted_comment_payload = next(item for item in list_response.data if item['id'] == comment.id)

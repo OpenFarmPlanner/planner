@@ -43,6 +43,33 @@ class SeedDemandSupplierSelectionApiTest(APITestCase):
             season=season,
         )
 
+    def test_supplier_selection_validation_uses_structured_codes(self):
+        invalid_crop = self.client.post(
+            '/openfarmplanner/api/seed-demand/',
+            {'crop_id': 'invalid', 'supplier_id': None},
+            format='json',
+        )
+        self.assertEqual(invalid_crop.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_crop.data['code'], 'invalid_crop_id')
+
+        crop = Crop.objects.create(name='Karotte', project=self.project)
+        invalid_supplier = self.client.post(
+            '/openfarmplanner/api/seed-demand/',
+            {'crop_id': crop.id, 'supplier_id': 'invalid'},
+            format='json',
+        )
+        self.assertEqual(invalid_supplier.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_supplier.data['code'], 'invalid_supplier_id')
+
+        supplier = Supplier.objects.create(name='Unavailable', project=self.project)
+        unavailable = self.client.post(
+            '/openfarmplanner/api/seed-demand/',
+            {'crop_id': crop.id, 'supplier_id': supplier.id},
+            format='json',
+        )
+        self.assertEqual(unavailable.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(unavailable.data['code'], 'supplier_not_available_for_crop')
+
     def test_seed_demand_can_switch_supplier_per_crop(self):
         crop = Crop.objects.create(
             name='Karotte',
