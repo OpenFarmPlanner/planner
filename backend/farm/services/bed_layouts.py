@@ -15,12 +15,17 @@ from django.db import transaction
 from farm.models import Bed, BedLayout, Field, FieldLayout, Location
 
 
-def extract_layout_payloads(data) -> tuple[object, object]:
+def extract_layout_payloads(data: object) -> tuple[object, object]:
     """Pull bed/field layout lists from the request body.
 
     Falls back to the Phase-1 payload format (a bare list or `layouts` key)
-    when neither modern key is present.
+    when neither modern key is present. A body that is not an object at all
+    is handed back unchanged, so the view rejects it with its structured
+    `invalid_layout_collections` error instead of raising.
     """
+    if not isinstance(data, dict):
+        return data, []
+
     bed_payload = data.get('bed_layouts')
     field_payload = data.get('field_layouts')
     if bed_payload is None and field_payload is None:

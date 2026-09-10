@@ -344,3 +344,182 @@ class CropLayoutApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'invalid_layout_collections')
+
+    def _location_with_bed(self, name: str) -> tuple[Location, Field, Bed]:
+        location = Location.objects.create(name=name, project=self.project)
+        field = Field.objects.create(name=f'{name} field', location=location, project=self.project)
+        bed = Bed.objects.create(name=f'{name} bed', field=field, area_sqm=5, project=self.project)
+        return location, field, bed
+
+    def _put_layouts(self, location: Location, payload):
+        return self.client.put(
+            f'/openfarmplanner/api/locations/{location.id}/layouts/',
+            payload,
+            format='json',
+        )
+
+    def test_layouts_reject_bed_from_another_project(self):
+        """A layout must not be able to reach a bed the active project does not own."""
+        location, _, _ = self._location_with_bed('Own location')
+        foreign = Project.objects.create(name='Foreign layout', slug='foreign-layout-project')
+        foreign_location = Location.objects.create(name='Foreign location', project=foreign)
+        foreign_field = Field.objects.create(
+            name='Foreign field', location=foreign_location, project=foreign,
+        )
+        foreign_bed = Bed.objects.create(
+            name='Foreign bed', field=foreign_field, area_sqm=5, project=foreign,
+        )
+
+        response = self._put_layouts(
+            location,
+            {'bed_layouts': [{'bed': foreign_bed.id, 'x': 1, 'y': 1}], 'field_layouts': []},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_location_layout')
+        self.assertFalse(BedLayout.objects.filter(bed=foreign_bed).exists())
+
+    def test_layouts_reject_a_location_of_another_project(self):
+        """The location itself is project-scoped, so a foreign one is not found."""
+        foreign = Project.objects.create(name='Foreign target', slug='foreign-target-project')
+        foreign_location = Location.objects.create(name='Foreign target location', project=foreign)
+
+        response = self._put_layouts(foreign_location, {'bed_layouts': [], 'field_layouts': []})
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_layouts_reject_an_unknown_bed_or_field(self):
+        location, _, _ = self._location_with_bed('Unknown reference location')
+
+        bed_response = self._put_layouts(
+            location,
+            {'bed_layouts': [{'bed': 9999999, 'x': 1, 'y': 1}], 'field_layouts': []},
+        )
+        self.assertEqual(bed_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('does not exist', bed_response.data['detail'])
+
+        field_response = self._put_layouts(
+            location,
+            {'bed_layouts': [], 'field_layouts': [{'field': 9999999, 'x': 1, 'y': 1}]},
+        )
+        self.assertEqual(field_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('does not exist', field_response.data['detail'])
+
+    def test_layouts_reject_an_entry_that_is_not_an_object(self):
+        location, _, _ = self._location_with_bed('Scalar entry location')
+
+        response = self._put_layouts(
+            location, {'bed_layouts': ['not-an-object'], 'field_layouts': []},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('must be an object', response.data['detail'])
+
+    def test_layouts_require_both_collections_when_either_modern_key_is_sent(self):
+        """Sending only `bed_layouts` leaves `field_layouts` unset, which is not a list."""
+        location, _, bed = self._location_with_bed('Single collection location')
+
+        response = self._put_layouts(location, {'bed_layouts': [{'bed': bed.id, 'x': 1, 'y': 1}]})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_layout_collections')
+        self.assertFalse(BedLayout.objects.filter(bed=bed).exists())
+
+    def test_layouts_accept_the_legacy_bare_list_payload(self):
+        """Kept for clients that still send the Phase-1 shape. Regression test:
+        this used to raise `AttributeError` on the list and answer with a 500."""
+        location, _, bed = self._location_with_bed('Legacy list location')
+
+        response = self._put_layouts(location, [{'bed': bed.id, 'x': 12.0, 'y': 34.0}])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['bed_layouts'][0]['bed'], bed.id)
+        self.assertEqual(response.data['field_layouts'], [])
+        self.assertEqual(BedLayout.objects.get(bed=bed).x, 12.0)
+
+    def test_layouts_accept_the_legacy_layouts_key(self):
+        location, _, bed = self._location_with_bed('Legacy key location')
+
+        response = self._put_layouts(location, {'layouts': [{'bed': bed.id, 'x': 56.0, 'y': 78.0}]})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(BedLayout.objects.get(bed=bed).y, 78.0)
+
+    def test_layouts_update_the_existing_entry_instead_of_adding_a_second(self):
+        location, _, bed = self._location_with_bed('Upsert location')
+
+        self._put_layouts(
+            location, {'bed_layouts': [{'bed': bed.id, 'x': 1.0, 'y': 2.0}], 'field_layouts': []},
+        )
+        response = self._put_layouts(
+            location,
+            {
+                'bed_layouts': [{'bed': bed.id, 'x': 9.0, 'y': 8.0, 'version': 3}],
+                'field_layouts': [],
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(BedLayout.objects.filter(bed=bed).count(), 1)
+        layout = BedLayout.objects.get(bed=bed)
+        self.assertEqual((layout.x, layout.y, layout.version), (9.0, 8.0, 3))
+
+    def test_layouts_fill_in_defaults_for_omitted_position_fields(self):
+        location, _, bed = self._location_with_bed('Defaults location')
+
+        response = self._put_layouts(
+            location, {'bed_layouts': [{'bed': bed.id}], 'field_layouts': []},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        layout = BedLayout.objects.get(bed=bed)
+        self.assertEqual((layout.x, layout.y), (0.0, 0.0))
+        self.assertEqual(layout.version, 1)
+        self.assertIsNone(layout.scale)
+        self.assertEqual(layout.project_id, self.project.id)
+        self.assertEqual(layout.location_id, location.id)
+
+    def test_layouts_accept_numeric_strings_from_the_client(self):
+        """The grid editor posts positions as strings. The explicit `float()`/`int()`
+        in the service is belt-and-braces here — the model fields coerce as well —
+        so this pins the endpoint contract rather than that one line."""
+        location, _, bed = self._location_with_bed('Coercion location')
+
+        response = self._put_layouts(
+            location,
+            {
+                'bed_layouts': [{'bed': bed.id, 'x': '4.5', 'y': '6', 'version': '2'}],
+                'field_layouts': [],
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        layout = BedLayout.objects.get(bed=bed)
+        self.assertEqual((layout.x, layout.y, layout.version), (4.5, 6.0, 2))
+
+    def test_layouts_reject_a_scalar_body_without_raising(self):
+        location, _, _ = self._location_with_bed('Scalar body location')
+
+        response = self._put_layouts(location, 'not-a-payload')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_layout_collections')
+
+    def test_layouts_keep_entries_saved_before_an_invalid_one(self):
+        """Documented failure semantics: the invalid entry returns from inside the
+        transaction rather than raising, so earlier upserts stay committed."""
+        location, _, bed = self._location_with_bed('Partial commit location')
+
+        response = self._put_layouts(
+            location,
+            {
+                'bed_layouts': [
+                    {'bed': bed.id, 'x': 5.0, 'y': 5.0},
+                    {'bed': 9999999, 'x': 1.0, 'y': 1.0},
+                ],
+                'field_layouts': [],
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(BedLayout.objects.filter(bed=bed).exists())
