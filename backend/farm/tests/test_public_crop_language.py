@@ -7,6 +7,7 @@ species, not through whichever localized name a user happened to type.
 
 from crops.models import CropSpecies, CropSpeciesTranslation
 from farm.models import Crop, PublicCrop, PublicCropTranslation
+from farm.services.crop_display import resolve_crop_display_name
 from farm.services.public_crops import (
     detect_public_crop_duplicates,
     normalize_language_code,
@@ -275,6 +276,80 @@ class PublicCropTranslationTest(ProjectApiTestCase):
 
         self.assertEqual(response.data['display_name'], 'Paradeiser')
         self.assertEqual(response.data['crop_species_name'], 'Paradeiser')
+
+
+class ProjectCropDisplayNameTest(ProjectApiTestCase):
+    """`resolve_crop_display_name` decides which name a project crop shows.
+
+    The status gate is the part worth guarding: only a published species has
+    moderator-approved translations, so an unpublished one must never override
+    the name the project itself typed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.species = CropSpecies.objects.get(name_normalized='tomate')
+        for language_code, common_name in (('de', 'Tomate'), ('en', 'Tomato')):
+            CropSpeciesTranslation.objects.update_or_create(
+                species=self.species,
+                language_code=language_code,
+                defaults={'common_name': common_name},
+            )
+        self.crop = Crop.objects.create(name='Hauskultur', project=self.project)
+
+    def _link(self, status_value: str) -> None:
+        self.species.status = status_value
+        self.species.save(update_fields=['status'])
+        self.crop.crop_species = self.species
+        self.crop.save(update_fields=['crop_species'])
+
+    def test_uses_the_species_translation_for_the_requested_language(self):
+        self._link(CropSpecies.STATUS_PUBLISHED)
+
+        self.assertEqual(resolve_crop_display_name(self.crop, 'de'), ('Tomate', 'de'))
+        self.assertEqual(resolve_crop_display_name(self.crop, 'en'), ('Tomato', 'en'))
+
+    def test_reports_the_language_actually_served_when_falling_back(self):
+        self._link(CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.filter(species=self.species, language_code='de').delete()
+
+        self.assertEqual(resolve_crop_display_name(self.crop, 'de'), ('Tomato', 'en'))
+
+    def test_prefers_the_regional_name_when_one_is_requested(self):
+        self._link(CropSpecies.STATUS_PUBLISHED)
+        translation = CropSpeciesTranslation.objects.get(species=self.species, language_code='de')
+        translation.regional_names = {'austria': 'Paradeiser'}
+        translation.save(update_fields=['regional_names'])
+
+        self.assertEqual(
+            resolve_crop_display_name(self.crop, 'de', region='austria'), ('Paradeiser', 'de'),
+        )
+
+    def test_keeps_the_crops_own_name_when_no_species_is_linked(self):
+        self.assertIsNone(self.crop.crop_species)
+
+        self.assertEqual(resolve_crop_display_name(self.crop, 'de'), ('Hauskultur', ''))
+
+    def test_keeps_the_crops_own_name_for_a_still_proposed_species(self):
+        """A proposal has no approved translations yet, so its name is not
+        authoritative — the empty language code tells callers that."""
+        self._link(CropSpecies.STATUS_PROPOSED)
+
+        self.assertEqual(resolve_crop_display_name(self.crop, 'de'), ('Hauskultur', ''))
+
+    def test_keeps_the_crops_own_name_for_a_rejected_species(self):
+        """A rejected species keeps whatever free text the proposer typed, which
+        can be an unrelated placeholder."""
+        self._link(CropSpecies.STATUS_REJECTED)
+
+        self.assertEqual(resolve_crop_display_name(self.crop, 'de'), ('Hauskultur', ''))
+
+    def test_an_empty_language_code_still_resolves_to_a_real_name(self):
+        self._link(CropSpecies.STATUS_PUBLISHED)
+
+        display_name, _ = resolve_crop_display_name(self.crop, '')
+
+        self.assertIn(display_name, {'Tomate', 'Tomato'})
 
 
 class LanguageCodeNormalizationTest(ProjectApiTestCase):
