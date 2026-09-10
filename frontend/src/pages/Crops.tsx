@@ -24,6 +24,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
 import {
   type SnackbarState,
@@ -66,7 +67,7 @@ import { normalizeCropIdentityValue } from '../crops/cropIdentity';
 const EMPTY_CROPS: Crop[] = [];
 
 const PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_CONTAINER_SX: SxProps<Theme> = {
-  backgroundColor: 'rgba(76, 175, 80, 0.06)',
+  backgroundColor: (theme) => alpha(theme.palette.success.main, 0.06),
   borderLeft: '3px solid',
   borderLeftColor: 'success.main',
   py: 1.25,
@@ -874,7 +875,7 @@ function Crops() {
         snackbarSx={{
           '& .MuiAlert-root': {
             borderRadius: 2,
-            boxShadow: '0 6px 20px rgba(15, 23, 42, 0.12)',
+            boxShadow: 4,
           },
         }}
         alertSx={{

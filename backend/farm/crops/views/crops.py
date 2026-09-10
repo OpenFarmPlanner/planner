@@ -240,9 +240,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     def import_preview(self, request):
         """Report per row whether importing it would create or update a crop."""
         if not isinstance(request.data, list):
-            return Response(
-                {'message': 'Request body must be an array of crop objects.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='invalid_crop_import_payload',
+                detail='Request body must be an array of crop objects.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         results = preview_crop_import(request.active_project, request.data)
@@ -253,9 +254,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         """Create the new crops and, when confirmed, update the matching ones."""
         items = request.data.get('items', [])
         if not isinstance(items, list):
-            return Response(
-                {'message': 'Items must be an array of crop objects.'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='invalid_crop_import_items',
+                detail='Items must be an array of crop objects.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         summary = apply_crop_import(

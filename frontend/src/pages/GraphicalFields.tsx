@@ -25,6 +25,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import { Group, Layer, Rect, Stage, Text } from "react-konva";
 import type Konva from "konva";
+import { alpha } from "@mui/material/styles";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData";
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
@@ -1384,7 +1385,7 @@ export default function GraphicalFields({
                       px: 1,
                       py: 0.5,
                       borderRadius: 2,
-                      bgcolor: "rgba(255,255,255,0.78)",
+                      bgcolor: (theme) => alpha(theme.palette.common.white, 0.78),
                       backdropFilter: "blur(2px)",
                     }}
                   >

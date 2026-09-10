@@ -293,3 +293,40 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   species keeps working while nothing is dropped silently. Promotion and
   clearing are scoped to the fields a write actually sent. The auth API tests
   again assert the German response texts the endpoints really return.
+
+## 2026-09-10 comprehensive audit
+
+### Theme tokens and lint guard
+
+- Replaced the remaining authentication-shell colour, focus-ring, border, and shadow literals with semantic surface/primary tokens, `alpha()` derivations, and theme elevations.
+- Migrated the graphical-field zoom badge and crop requirement/snackbar styling to palette-derived colours and elevations. Dynamic canvas colours and user-selected crop colours remain domain data, while the vendored Gantt implementation remains outside the application-theme boundary documented in the design system.
+- Re-ran the theme-token ESLint guard and TypeScript build after the migration. The changed authentication, graphical-field, and crop styles are clean; the audit also confirmed a legacy warning backlog elsewhere, now accurately documented in the design-system guide.
+
+### API error consistency
+
+- Routed malformed crop-import payloads and supplier deletion/restoration conflicts through the shared API error builder. These failures now consistently expose a stable `code` and English `detail` while retaining useful context such as supplier usage.
+- Added endpoint regression tests for both malformed crop-import shapes and the supplier-in-use conflict envelope.
+
+### Disabled-state explanations
+
+- Wrapped the consent gate's mutually disabled accept/logout actions in the shared disabled-action tooltip. During an in-flight consent request, both controls now expose the existing localized busy explanation instead of silently becoming unavailable.
+
+### Internationalization coverage
+
+- Swept maintained TSX sources (excluding tests and the vendored Gantt package) for literal JSX text and user-facing label, title, placeholder, helper-text, and ARIA attributes; no application-owned hardcoded UI copy remained.
+- Compared the complete nested key sets of every German and English locale namespace. The sets remain identical, confirming that no shared key was deleted and that the existing German-first resources retain matching English coverage.
+
+### Shared business logic
+
+- Rechecked the crop import/publish, inherited crop-value, crop display-name, season transition, seed-demand, and supplier deletion flows for parallel implementations across the frontend and backend. The domain calculations remain backend-owned services; frontend counterparts are presentation/validation boundary helpers rather than competing business rules. No additional duplication was introduced solely to manufacture an abstraction.
+- The API work above reused the project-wide `api_error_response` utility instead of adding endpoint-local envelope builders, and the consent work reused `DisabledActionTooltip` plus the shared `common.disabledReasons.busy` key.
+
+### Test coverage
+
+- Added interaction coverage for the consent gate's in-flight state: both actions are asserted disabled and the shared German explanation is asserted reachable through the tooltip.
+- Added backend integration coverage for the standardized crop-import and supplier error envelopes, targeting the newly changed high-branching endpoint paths rather than duplicating broad CRUD coverage.
+
+### Documentation
+
+- Corrected the design-system guide's stale approximate literal count. It now describes the ESLint warning inventory, its intentional exclusions, and the important distinction between a successful lint process and zero warnings.
+- Kept this log updated in every area-specific commit so theme, API, disabled-state, i18n, shared-logic, test, and documentation changes can be reviewed or reverted independently.
