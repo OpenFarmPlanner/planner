@@ -1,5 +1,7 @@
 """Unit tests for crop-import unit handling, conversion, and plausibility."""
 
+from decimal import Decimal
+
 from django.test import TestCase
 
 from farm.models import Crop, Project, Supplier
@@ -8,11 +10,17 @@ from farm.services.crop_import.analysis import (
     ACTION_CREATE,
     analyze_import_payload,
 )
+from farm.services.crop_import.field_specs import SEED_RATE_UNIT_VALUES
 from farm.services.crop_import.units import (
     CONFIDENCE_CONVERTED,
     CONFIDENCE_EXACT,
     CONFIDENCE_INVALID,
     CONFIDENCE_NEEDS_CLARIFICATION,
+    ParsedAmount,
+    convert_plain_number,
+    convert_to_canonical_length,
+    normalize_seed_rate_unit_input,
+    parse_raw_amount,
 )
 
 
@@ -494,3 +502,277 @@ class PreviewSummaryTests(ImportAnalysisTestCase):
         self.assertTrue(preview['has_warnings'])
         self.assertFalse(preview['has_errors'])
         self.assertGreaterEqual(preview['summary']['warnings'], 1)
+
+
+class ParseRawAmountTests(TestCase):
+    """Direct tests for the value/unit splitter behind the import preview."""
+
+    def test_reads_a_bare_number_with_the_unit_the_key_implies(self):
+        parsed = parse_raw_amount(50, 'cm')
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('50'), 'cm'))
+        self.assertFalse(parsed.unit_was_explicit)
+
+    def test_reads_a_bare_number_with_no_unit_at_all(self):
+        parsed = parse_raw_amount(50, None)
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('50'), None))
+
+    def test_rejects_a_boolean_rather_than_reading_it_as_one_or_zero(self):
+        # bool is a subclass of int, so it has to be excluded before the numeric
+        # branch — otherwise True would silently import as 1.
+        for value in (True, False):
+            with self.subTest(value=value):
+                self.assertEqual(parse_raw_amount(value, 'cm').error, 'not_a_number')
+
+    def test_rejects_a_type_it_has_no_rule_for(self):
+        for value in (None, [50], (50,), object()):
+            with self.subTest(value=value):
+                self.assertEqual(parse_raw_amount(value, 'cm').error, 'not_a_number')
+
+    def test_reads_an_inline_unit_out_of_a_string(self):
+        parsed = parse_raw_amount('50 cm', None)
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('50'), 'cm'))
+        self.assertTrue(parsed.unit_was_explicit)
+
+    def test_accepts_a_string_with_no_space_before_the_unit(self):
+        parsed = parse_raw_amount('12.5cm', None)
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('12.5'), 'cm'))
+
+    def test_reads_a_german_decimal_comma(self):
+        self.assertEqual(parse_raw_amount('12,5 cm', None).number, Decimal('12.5'))
+
+    def test_reads_a_signed_number(self):
+        self.assertEqual(parse_raw_amount('-3 cm', None).number, Decimal('-3'))
+        self.assertEqual(parse_raw_amount('+3 cm', None).number, Decimal('3'))
+
+    def test_a_unit_in_the_string_beats_the_one_the_key_implies(self):
+        # The payload said centimetres; the key only guessed metres.
+        parsed = parse_raw_amount('50 cm', 'm')
+        self.assertEqual(parsed.unit, 'cm')
+        self.assertTrue(parsed.unit_was_explicit)
+
+    def test_a_bare_numeric_string_falls_back_to_the_implied_unit(self):
+        parsed = parse_raw_amount('50', 'cm')
+        self.assertEqual(parsed.unit, 'cm')
+        self.assertFalse(parsed.unit_was_explicit)
+
+    def test_rejects_a_string_that_is_not_a_number(self):
+        for value in ('', '  ', 'fifty', '50 cm 60', '1.2.3'):
+            with self.subTest(value=value):
+                self.assertEqual(parse_raw_amount(value, 'cm').error, 'not_a_number')
+
+    def test_a_unit_spelled_with_an_umlaut_is_reported_as_not_a_number(self):
+        # The unit group is `[a-zA-Z_²/µ]*`, which admits ² and µ but no accented
+        # letters — so "5 stück" fails the pattern outright and comes back as
+        # 'not_a_number' rather than 'unit_unknown'. The number is plainly there,
+        # so the diagnostic points the importing user at the wrong half of the
+        # value. Recorded as current behaviour.
+        parsed = parse_raw_amount('5 stück', None)
+        self.assertEqual(parsed.error, 'not_a_number')
+        self.assertIsNone(parsed.number)
+
+    def test_a_unit_written_with_the_superscript_two_or_micro_sign_does_parse(self):
+        self.assertEqual(parse_raw_amount('5 cm²', None).unit, 'cm²')
+        self.assertEqual(parse_raw_amount('5 µm', None).unit, 'µm')
+
+    def test_reads_the_mapping_shape(self):
+        parsed = parse_raw_amount({'value': 50, 'unit': 'cm'}, None)
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('50'), 'cm'))
+        self.assertTrue(parsed.unit_was_explicit)
+
+    def test_a_mapping_unit_beats_the_one_the_key_implies(self):
+        self.assertEqual(parse_raw_amount({'value': 50, 'unit': 'cm'}, 'm').unit, 'cm')
+
+    def test_a_mapping_keeps_the_implied_unit_when_it_names_none(self):
+        for unit in (None, '', '   '):
+            with self.subTest(unit=unit):
+                parsed = parse_raw_amount({'value': 50, 'unit': unit}, 'cm')
+                self.assertEqual(parsed.unit, 'cm')
+                self.assertFalse(parsed.unit_was_explicit)
+
+    def test_a_mapping_reports_the_inner_value_error_rather_than_its_unit(self):
+        # A good unit must not make a bad number look importable.
+        parsed = parse_raw_amount({'value': 'fifty', 'unit': 'cm'}, None)
+        self.assertEqual(parsed.error, 'not_a_number')
+        self.assertIsNone(parsed.number)
+
+    def test_a_mapping_without_a_value_member_is_not_a_number(self):
+        self.assertEqual(parse_raw_amount({'unit': 'cm'}, None).error, 'not_a_number')
+
+    def test_a_mapping_strips_whitespace_around_its_unit(self):
+        self.assertEqual(parse_raw_amount({'value': 1, 'unit': ' cm '}, None).unit, 'cm')
+
+    def test_a_nested_mapping_value_is_parsed_by_the_same_rules(self):
+        parsed = parse_raw_amount({'value': '50 mm'}, 'cm')
+        self.assertEqual((parsed.number, parsed.unit), (Decimal('50'), 'mm'))
+
+
+class ConvertToCanonicalLengthTests(TestCase):
+    """Direct tests for the length conversion behind the import preview."""
+
+    def convert(self, raw_value, implied_unit=None):
+        return convert_to_canonical_length(parse_raw_amount(raw_value, implied_unit))
+
+    def test_metres_pass_through_as_exact(self):
+        result = self.convert('2 m')
+        self.assertEqual((result.value, result.canonical_unit), (Decimal('2'), 'm'))
+        self.assertEqual(result.confidence, CONFIDENCE_EXACT)
+
+    def test_centimetres_are_converted_and_marked_as_such(self):
+        result = self.convert('50 cm')
+        self.assertEqual(result.value, Decimal('0.50'))
+        self.assertEqual(result.confidence, CONFIDENCE_CONVERTED)
+
+    def test_millimetres_convert_too(self):
+        self.assertEqual(self.convert('500 mm').value, Decimal('0.500'))
+
+    def test_accepts_the_spelled_out_and_german_unit_names(self):
+        for text in ('2 meter', '2 metre', '2 meters'):
+            with self.subTest(text=text):
+                self.assertEqual(self.convert(text).value, Decimal('2'))
+        self.assertEqual(self.convert('50 zentimeter').value, Decimal('0.50'))
+
+    def test_matches_a_unit_regardless_of_case_or_padding(self):
+        self.assertEqual(self.convert({'value': 50, 'unit': ' CM '}).value, Decimal('0.50'))
+
+    def test_reports_the_normalized_unit_it_actually_used(self):
+        self.assertEqual(self.convert('50 CM').source_unit, 'cm')
+
+    def test_asks_rather_than_guessing_when_no_unit_is_stated_anywhere(self):
+        # This is the module's whole reason for existing: 30 must never be
+        # read as 30 m just because the field is a length.
+        result = self.convert(30)
+        self.assertEqual(result.confidence, CONFIDENCE_NEEDS_CLARIFICATION)
+        self.assertEqual(result.error, 'unit_missing')
+        self.assertIsNone(result.value)
+
+    def test_rejects_a_unit_it_was_never_taught(self):
+        result = self.convert('2 furlong')
+        self.assertEqual(result.confidence, CONFIDENCE_INVALID)
+        self.assertEqual(result.error, 'unit_unknown')
+
+    def test_passes_a_parse_error_through_as_invalid(self):
+        result = self.convert('fifty')
+        self.assertEqual(result.confidence, CONFIDENCE_INVALID)
+        self.assertEqual(result.error, 'not_a_number')
+
+    def test_strips_a_unit_that_reaches_it_unpadded(self):
+        # Every path through parse_raw_amount strips the unit already, so this
+        # exercises convert_to_canonical_length's own contract rather than a
+        # value the parser can produce.
+        result = convert_to_canonical_length(ParsedAmount(Decimal('2'), ' M ', True))
+        self.assertEqual(result.value, Decimal('2'))
+        self.assertEqual(result.source_unit, 'm')
+
+    def test_accepts_a_non_finite_number_as_a_converted_length(self):
+        # Python's json.loads accepts the bare NaN and Infinity literals, so a
+        # payload can carry one. Decimal(str(nan)) is a valid Decimal, and
+        # nothing downstream rejects it: the preview reports 'converted' with no
+        # error for a value that is not a measurement at all. Recorded as
+        # current behaviour — for a module whose stated rule is never to guess,
+        # this is the one input it accepts without complaint.
+        for raw in (float('nan'), float('inf')):
+            with self.subTest(raw=raw):
+                result = self.convert(raw, implied_unit='m')
+                self.assertIsNone(result.error)
+                self.assertEqual(result.confidence, CONFIDENCE_EXACT)
+                self.assertFalse(result.value.is_finite())
+
+    def test_still_names_metres_as_the_canonical_unit_when_it_fails(self):
+        # The preview column header is built from this, so it has to be right
+        # even for a row that could not be converted.
+        self.assertEqual(self.convert('fifty').canonical_unit, 'm')
+
+
+class ConvertPlainNumberTests(TestCase):
+    """Direct tests for fixed-unit fields (days, percent, grams)."""
+
+    def convert(self, raw_value, expected_unit, implied_unit=None):
+        return convert_plain_number(parse_raw_amount(raw_value, implied_unit), expected_unit)
+
+    def test_accepts_a_bare_number_for_a_fixed_unit_field(self):
+        result = self.convert(30, 'days')
+        self.assertEqual((result.value, result.canonical_unit), (Decimal('30'), 'days'))
+        self.assertEqual(result.confidence, CONFIDENCE_EXACT)
+
+    def test_accepts_a_unit_that_agrees_with_the_field(self):
+        self.assertEqual(self.convert('30 days', 'days').value, Decimal('30'))
+
+    def test_accepts_the_german_and_abbreviated_spellings(self):
+        for text in ('30 tage', '30 Tag', '30 d', '30 DAYS'):
+            with self.subTest(text=text):
+                self.assertEqual(self.convert(text, 'days').confidence, CONFIDENCE_EXACT)
+
+    def test_accepts_the_percent_and_gram_synonyms(self):
+        self.assertEqual(self.convert('5 prozent', 'percent').value, Decimal('5'))
+        self.assertEqual(self.convert({'value': 5, 'unit': '%'}, 'percent').value, Decimal('5'))
+        self.assertEqual(self.convert('5 gramm', 'g').value, Decimal('5'))
+        self.assertEqual(self.convert('5 kilogramm', 'kg').value, Decimal('5'))
+
+    def test_rejects_a_unit_that_contradicts_the_field(self):
+        # These fields have exactly one legal unit, so a stated "cm" on a
+        # days field is a mistake in the file, not something to convert.
+        result = self.convert('30 cm', 'days')
+        self.assertEqual((result.confidence, result.error), (CONFIDENCE_INVALID, 'unit_unknown'))
+
+    def test_falls_back_to_the_unit_itself_for_a_field_with_no_synonyms(self):
+        self.assertEqual(self.convert('5 stk', 'stk').value, Decimal('5'))
+        self.assertEqual(self.convert('5 kg', 'stk').error, 'unit_unknown')
+
+    def test_ignores_a_unit_that_was_only_implied_by_the_key(self):
+        # An implied unit is the importer's own guess, so it is never held
+        # against the row the way an explicitly stated one is.
+        result = self.convert(30, 'days', implied_unit='cm')
+        self.assertEqual(result.confidence, CONFIDENCE_EXACT)
+
+    def test_accepts_any_stated_unit_for_a_unitless_field(self):
+        # With no expected unit there is nothing to disagree with.
+        self.assertEqual(self.convert('30 anything', None).confidence, CONFIDENCE_EXACT)
+
+    def test_names_the_field_unit_when_the_value_stated_none(self):
+        self.assertEqual(self.convert(30, 'days').source_unit, 'days')
+
+    def test_passes_a_parse_error_through_as_invalid(self):
+        result = self.convert('thirty', 'days')
+        self.assertEqual((result.confidence, result.error), (CONFIDENCE_INVALID, 'not_a_number'))
+        self.assertEqual(result.canonical_unit, 'days')
+
+
+class NormalizeSeedRateUnitInputTests(TestCase):
+    """Direct tests for the seed-rate unit vocabulary mapping."""
+
+    def test_passes_a_canonical_unit_through(self):
+        self.assertEqual(normalize_seed_rate_unit_input('g_per_m2'), ('g_per_m2', None))
+
+    def test_translates_a_synonym_spelling(self):
+        canonical, error = normalize_seed_rate_unit_input('g/m²')
+        self.assertIsNone(error)
+        self.assertEqual(canonical, 'g_per_m2')
+
+    def test_ignores_surrounding_whitespace(self):
+        self.assertEqual(normalize_seed_rate_unit_input('  g_per_m2  ')[0], 'g_per_m2')
+
+    def test_reports_a_missing_unit_separately_from_an_unknown_one(self):
+        # The preview shows different guidance for the two, so they must not
+        # collapse into one code.
+        for raw in (None, '', '   ', '-'):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_seed_rate_unit_input(raw), (None, 'unit_missing'))
+
+    def test_rejects_a_unit_outside_the_project_vocabulary(self):
+        for raw in ('kg_per_hectare', 'cm', 'seeds'):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_seed_rate_unit_input(raw), (None, 'unit_unknown'))
+
+    def test_stringifies_a_non_string_before_matching(self):
+        self.assertEqual(normalize_seed_rate_unit_input(5), (None, 'unit_unknown'))
+
+    def test_every_spelling_it_accepts_lands_inside_the_project_vocabulary(self):
+        # The `not in SEED_RATE_UNIT_VALUES` half of the guard is redundant
+        # today: normalize_seed_rate_unit's own mapping only ever produces the
+        # five canonical units. It is a reasonable defence, since the mapping
+        # and the vocabulary live in different modules and could drift apart.
+        for spelling in ('g/m²', 'g_per_lfm', 'seeds_per_plant', 'Samen pro Pflanze'):
+            with self.subTest(spelling=spelling):
+                canonical, error = normalize_seed_rate_unit_input(spelling)
+                if error is None:
+                    self.assertIn(canonical, SEED_RATE_UNIT_VALUES)
