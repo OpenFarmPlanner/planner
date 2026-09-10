@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -6,6 +7,29 @@ from rest_framework.test import APIClient
 
 from crops.models import CropSpecies, CropSpeciesTranslation
 from farm.models import Location, Field, Bed, Crop, CropSupplierData, PlantingPlan, Project, ProjectMembership, Supplier
+from farm.seed_units import (
+    SEED_PACKAGE_UNIT_GRAMS,
+    SEED_PACKAGE_UNIT_SEEDS,
+    SEED_RATE_UNIT_G_PER_LFM,
+    SEED_RATE_UNIT_G_PER_M2,
+    SEED_RATE_UNIT_SEEDS_PER_M2,
+    SEED_RATE_UNIT_SEEDS_PER_PLANT,
+)
+from farm.services.seed_demand import (
+    CALCULATION_BLOCKER_MISSING_AREA,
+    CALCULATION_BLOCKER_MISSING_PLANT_QUANTITY,
+    CALCULATION_BLOCKER_MISSING_ROW_SPACING,
+    CALCULATION_BLOCKER_MISSING_SEED_RATE,
+    CALCULATION_BLOCKER_UNSUPPORTED_SEED_RATE_UNIT,
+    REQUIRED_AMOUNT_WARNING_MISSING_TKG,
+    compute_plan_requirement,
+    convert_requirement_to_unit,
+    get_required_amount_in_unit,
+    parse_selected_suppliers,
+    select_safety_margin_percent,
+    select_seed_rate,
+    select_tkg,
+)
 
 User = get_user_model()
 
@@ -359,3 +383,390 @@ def test_seed_rate_unit_legacy_value_is_normalized(api_client: APIClient, projec
     response = api_client.post('/openfarmplanner/api/crops/', payload, format='json')
     assert response.status_code == 201
     assert response.json()['seed_rate_unit'] == 'seeds_per_plant'
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for the pure helpers the API tests above exercise only indirectly.
+# These need no database: Crop and CropSupplierData are built unsaved.
+# ---------------------------------------------------------------------------
+
+
+def test_parse_selected_suppliers_reads_pairs():
+    assert parse_selected_suppliers('1:2,3:4') == {1: 2, 3: 4}
+
+
+def test_parse_selected_suppliers_tolerates_surrounding_whitespace():
+    # Note: the explicit `.strip()` calls are redundant — `int()` already
+    # tolerates surrounding whitespace — so this passes with or without them.
+    assert parse_selected_suppliers(' 1 : 2 , 3 : 4 ') == {1: 2, 3: 4}
+
+
+@pytest.mark.parametrize('raw', [None, '', ','])
+def test_parse_selected_suppliers_has_no_selection_for(raw):
+    assert parse_selected_suppliers(raw) == {}
+
+
+def test_parse_selected_suppliers_skips_malformed_items_but_keeps_the_rest():
+    # The parameter comes straight off the query string, so one bad pair must
+    # not discard a selection the user made for another crop.
+    assert parse_selected_suppliers('1:2,nonsense,3:x,:5,7:8') == {1: 2, 7: 8}
+
+
+@pytest.mark.parametrize('raw', ['0:2', '1:0', '-1:2', '1:-2'])
+def test_parse_selected_suppliers_rejects_non_positive_ids(raw):
+    # A zero or negative id cannot name a row; keeping it would send the
+    # calculation looking for a supplier that does not exist.
+    assert parse_selected_suppliers(raw) == {}
+
+
+def test_parse_selected_suppliers_keeps_only_the_first_colon():
+    # `split(':', 1)` means a stray second colon makes the supplier part
+    # unparsable rather than silently truncating it to the first number.
+    assert parse_selected_suppliers('1:2:3') == {}
+
+
+def test_parse_selected_suppliers_last_pair_wins_for_a_repeated_crop():
+    assert parse_selected_suppliers('1:2,1:5') == {1: 5}
+
+
+def test_select_seed_rate_prefers_the_cultivation_specific_field():
+    crop = Crop(
+        cultivation_types=['direct_sowing'],
+        seed_rate_direct_value=3,
+        seed_rate_direct_unit=SEED_RATE_UNIT_G_PER_M2,
+        seed_rate_value=99,
+        seed_rate_unit=SEED_RATE_UNIT_SEEDS_PER_M2,
+    )
+    assert select_seed_rate(crop, 'direct_sowing') == (Decimal('3'), SEED_RATE_UNIT_G_PER_M2)
+
+
+def test_select_seed_rate_falls_back_to_the_cultivation_map():
+    crop = Crop(
+        cultivation_types=['pre_cultivation'],
+        seed_rate_by_cultivation={
+            'pre_cultivation': {'value': '2.5', 'unit': SEED_RATE_UNIT_SEEDS_PER_PLANT},
+        },
+        seed_rate_value=99,
+        seed_rate_unit=SEED_RATE_UNIT_G_PER_M2,
+    )
+    assert select_seed_rate(crop, 'pre_cultivation') == (
+        Decimal('2.5'),
+        SEED_RATE_UNIT_SEEDS_PER_PLANT,
+    )
+
+
+def test_select_seed_rate_ignores_a_cultivation_map_entry_without_a_unit():
+    crop = Crop(
+        cultivation_types=['pre_cultivation'],
+        seed_rate_by_cultivation={'pre_cultivation': {'value': '2.5'}},
+        seed_rate_value=7,
+        seed_rate_unit=SEED_RATE_UNIT_G_PER_M2,
+    )
+    assert select_seed_rate(crop, 'pre_cultivation') == (Decimal('7'), SEED_RATE_UNIT_G_PER_M2)
+
+
+def test_select_seed_rate_ignores_a_cultivation_map_entry_that_is_not_a_mapping():
+    # `seed_rate_by_cultivation` is free-form JSON, so an entry can be a bare
+    # value rather than the {value, unit} object. Reading it as one would raise
+    # AttributeError in the middle of the seed-demand list request.
+    crop = Crop(
+        cultivation_types=['pre_cultivation'],
+        seed_rate_by_cultivation={'pre_cultivation': '2.5'},
+        seed_rate_value=7,
+        seed_rate_unit=SEED_RATE_UNIT_G_PER_M2,
+    )
+    assert select_seed_rate(crop, 'pre_cultivation') == (Decimal('7'), SEED_RATE_UNIT_G_PER_M2)
+
+
+def test_select_seed_rate_ignores_a_cultivation_map_that_is_not_a_mapping():
+    crop = Crop(
+        cultivation_types=['pre_cultivation'],
+        seed_rate_by_cultivation=['pre_cultivation'],
+        seed_rate_value=7,
+        seed_rate_unit=SEED_RATE_UNIT_G_PER_M2,
+    )
+    assert select_seed_rate(crop, 'pre_cultivation') == (Decimal('7'), SEED_RATE_UNIT_G_PER_M2)
+
+
+def test_select_seed_rate_falls_back_to_the_legacy_single_rate():
+    crop = Crop(seed_rate_value=4, seed_rate_unit=SEED_RATE_UNIT_G_PER_LFM)
+    assert select_seed_rate(crop, None) == (Decimal('4'), SEED_RATE_UNIT_G_PER_LFM)
+
+
+def test_select_seed_rate_refuses_a_cultivation_type_the_crop_does_not_offer():
+    # A plan can outlive a change to the crop's enabled cultivation types;
+    # inventing a rate for the stale one would quietly order the wrong seed.
+    crop = Crop(
+        cultivation_types=['direct_sowing'],
+        seed_rate_value=4,
+        seed_rate_unit=SEED_RATE_UNIT_G_PER_M2,
+    )
+    assert select_seed_rate(crop, 'pre_cultivation') == (None, None)
+
+
+def test_select_seed_rate_allows_any_cultivation_type_when_the_crop_lists_none():
+    crop = Crop(cultivation_types=[], seed_rate_value=4, seed_rate_unit=SEED_RATE_UNIT_G_PER_M2)
+    assert select_seed_rate(crop, 'pre_cultivation') == (Decimal('4'), SEED_RATE_UNIT_G_PER_M2)
+
+
+def test_select_seed_rate_has_no_rate_without_a_unit():
+    assert select_seed_rate(Crop(seed_rate_value=4, seed_rate_unit=''), None) == (None, None)
+
+
+def test_select_safety_margin_prefers_the_cultivation_specific_percentage():
+    crop = Crop(
+        cultivation_types=['direct_sowing'],
+        sowing_calculation_safety_percent_direct=15,
+        sowing_calculation_safety_percent=5,
+    )
+    assert select_safety_margin_percent(crop, 'direct_sowing') == Decimal('15')
+
+
+@pytest.mark.parametrize(
+    ('cultivation_type', 'field_name'),
+    [
+        ('direct_sowing', 'sowing_calculation_safety_percent_direct'),
+        ('pre_cultivation', 'sowing_calculation_safety_percent_pre_cultivation'),
+    ],
+)
+def test_select_safety_margin_honours_an_explicit_zero_rather_than_falling_back(
+    cultivation_type, field_name,
+):
+    # 0 is a deliberate "no margin for this method"; falling through to the
+    # general percentage would silently order more seed than asked for. Both
+    # methods are checked because each has its own `is not None` test.
+    crop = Crop(
+        cultivation_types=[cultivation_type],
+        sowing_calculation_safety_percent=5,
+        **{field_name: 0},
+    )
+    assert select_safety_margin_percent(crop, cultivation_type) == Decimal('0')
+
+
+def test_select_safety_margin_falls_back_to_the_general_percentage():
+    crop = Crop(sowing_calculation_safety_percent=5)
+    assert select_safety_margin_percent(crop, 'direct_sowing') == Decimal('5')
+
+
+def test_select_safety_margin_is_zero_for_a_cultivation_type_the_crop_does_not_offer():
+    crop = Crop(cultivation_types=['direct_sowing'], sowing_calculation_safety_percent=5)
+    assert select_safety_margin_percent(crop, 'pre_cultivation') == Decimal('0')
+
+
+def test_select_safety_margin_is_zero_when_nothing_is_configured():
+    assert select_safety_margin_percent(Crop(), None) == Decimal('0')
+
+
+def test_convert_requirement_returns_the_value_unchanged_for_the_same_unit():
+    value, warning = convert_requirement_to_unit(
+        requirement_value=Decimal('10'),
+        requirement_unit=SEED_PACKAGE_UNIT_GRAMS,
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=None,
+    )
+    assert (value, warning) == (Decimal('10'), None)
+
+
+def test_convert_requirement_needs_no_tkg_when_no_conversion_happens():
+    # The same-unit shortcut is checked before the TKG guard, so a crop with no
+    # TKG still gets its requirement through unchanged.
+    value, _ = convert_requirement_to_unit(
+        requirement_value=Decimal('10'),
+        requirement_unit=SEED_PACKAGE_UNIT_SEEDS,
+        target_unit=SEED_PACKAGE_UNIT_SEEDS,
+        tkg=None,
+    )
+    assert value == Decimal('10')
+
+
+@pytest.mark.parametrize('tkg', [None, Decimal('0'), Decimal('-1')])
+def test_convert_requirement_reports_a_missing_tkg(tkg):
+    value, warning = convert_requirement_to_unit(
+        requirement_value=Decimal('1000'),
+        requirement_unit=SEED_PACKAGE_UNIT_SEEDS,
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=tkg,
+    )
+    assert value is None
+    assert 'thousand-kernel weight' in warning
+
+
+def test_convert_requirement_converts_seeds_to_grams_via_tkg():
+    # 1000 seeds at 5 g per thousand kernels is 5 g.
+    value, warning = convert_requirement_to_unit(
+        requirement_value=Decimal('1000'),
+        requirement_unit=SEED_PACKAGE_UNIT_SEEDS,
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=Decimal('5'),
+    )
+    assert warning is None
+    assert value == Decimal('5')
+
+
+def test_convert_requirement_converts_grams_to_seeds_via_tkg():
+    value, warning = convert_requirement_to_unit(
+        requirement_value=Decimal('5'),
+        requirement_unit=SEED_PACKAGE_UNIT_GRAMS,
+        target_unit=SEED_PACKAGE_UNIT_SEEDS,
+        tkg=Decimal('5'),
+    )
+    assert warning is None
+    assert value == Decimal('1000')
+
+
+def test_convert_requirement_refuses_units_that_do_not_convert():
+    # The explicit `are_units_convertible` guard is redundant against the
+    # fallthrough: it only rejects pairs that neither direction branch handles,
+    # and those reach the identical message at the end of the function anyway.
+    # Kept here as the behaviour, not as proof the guard is load-bearing.
+    value, warning = convert_requirement_to_unit(
+        requirement_value=Decimal('5'),
+        requirement_unit=SEED_PACKAGE_UNIT_GRAMS,
+        target_unit='lfm',
+        tkg=Decimal('5'),
+    )
+    assert value is None
+    assert 'Cannot convert' in warning
+
+
+def test_required_amount_returns_the_target_unit_total_when_nothing_needs_converting():
+    total, warning = get_required_amount_in_unit(
+        amounts_by_unit={SEED_PACKAGE_UNIT_GRAMS: Decimal('12')},
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=None,
+    )
+    assert (total, warning) == (Decimal('12'), None)
+
+
+def test_required_amount_sums_across_units():
+    total, warning = get_required_amount_in_unit(
+        amounts_by_unit={
+            SEED_PACKAGE_UNIT_GRAMS: Decimal('5'),
+            SEED_PACKAGE_UNIT_SEEDS: Decimal('1000'),
+        },
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=Decimal('5'),
+    )
+    assert warning is None
+    assert total == Decimal('10')
+
+
+def test_required_amount_skips_a_zero_amount_in_another_unit():
+    # A zero contribution needs no conversion, so a missing TKG must not block
+    # the total it cannot change.
+    total, warning = get_required_amount_in_unit(
+        amounts_by_unit={
+            SEED_PACKAGE_UNIT_GRAMS: Decimal('5'),
+            SEED_PACKAGE_UNIT_SEEDS: Decimal('0'),
+        },
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=None,
+    )
+    assert (total, warning) == (Decimal('5'), None)
+
+
+def test_required_amount_reports_the_stable_missing_tkg_code():
+    # Between grams and seeds the caller gets the machine-readable code rather
+    # than the English sentence, because the UI localizes this one.
+    total, warning = get_required_amount_in_unit(
+        amounts_by_unit={SEED_PACKAGE_UNIT_SEEDS: Decimal('1000')},
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=None,
+    )
+    assert total is None
+    assert warning == REQUIRED_AMOUNT_WARNING_MISSING_TKG
+
+
+def test_required_amount_passes_other_conversion_warnings_through():
+    total, warning = get_required_amount_in_unit(
+        amounts_by_unit={'lfm': Decimal('3')},
+        target_unit=SEED_PACKAGE_UNIT_GRAMS,
+        tkg=Decimal('5'),
+    )
+    assert total is None
+    assert warning is not None
+    assert warning != REQUIRED_AMOUNT_WARNING_MISSING_TKG
+
+
+def test_select_tkg_prefers_the_selected_supplier():
+    supplier_data = CropSupplierData(thousand_kernel_weight_g=8)
+    assert select_tkg(Decimal('5'), supplier_data) == Decimal('8')
+
+
+def test_select_tkg_falls_back_to_the_crop_without_a_supplier():
+    assert select_tkg(Decimal('5'), None) == Decimal('5')
+
+
+@pytest.mark.parametrize('supplier_tkg', [None, 0])
+def test_select_tkg_falls_back_when_the_supplier_has_no_usable_value(supplier_tkg):
+    supplier_data = CropSupplierData(thousand_kernel_weight_g=supplier_tkg)
+    assert select_tkg(Decimal('5'), supplier_data) == Decimal('5')
+
+
+def test_compute_plan_requirement_multiplies_area_by_an_m2_rate():
+    crop = Crop(seed_rate_value=2, seed_rate_unit=SEED_RATE_UNIT_G_PER_M2)
+    plan = PlantingPlan(crop=crop, area_usage_sqm=10)
+    result = compute_plan_requirement(plan)
+    assert (result.value, result.unit, result.blockers) == (
+        Decimal('20'), SEED_PACKAGE_UNIT_GRAMS, (),
+    )
+
+
+def test_compute_plan_requirement_divides_area_by_row_spacing_for_an_lfm_rate():
+    # 10 m2 at 0.5 m row spacing is 20 running metres, at 2 g each.
+    crop = Crop(seed_rate_value=2, seed_rate_unit=SEED_RATE_UNIT_G_PER_LFM, row_spacing_m=0.5)
+    plan = PlantingPlan(crop=crop, area_usage_sqm=10)
+    result = compute_plan_requirement(plan)
+    assert result.value == Decimal('40')
+    assert result.unit == SEED_PACKAGE_UNIT_GRAMS
+
+
+def test_compute_plan_requirement_blocks_an_lfm_rate_without_row_spacing():
+    crop = Crop(seed_rate_value=2, seed_rate_unit=SEED_RATE_UNIT_G_PER_LFM)
+    plan = PlantingPlan(crop=crop, area_usage_sqm=10)
+    result = compute_plan_requirement(plan)
+    assert result.value is None
+    assert CALCULATION_BLOCKER_MISSING_ROW_SPACING in result.blockers
+    assert 'row spacing' in result.warning
+
+
+def test_compute_plan_requirement_reports_both_lfm_blockers_but_names_the_area_first():
+    # The warning sentence follows the first blocker, so a plan missing both
+    # gets told about the area rather than the row spacing.
+    crop = Crop(seed_rate_value=2, seed_rate_unit=SEED_RATE_UNIT_G_PER_LFM)
+    plan = PlantingPlan(crop=crop, area_usage_sqm=0)
+    result = compute_plan_requirement(plan)
+    assert result.blockers == (
+        CALCULATION_BLOCKER_MISSING_AREA,
+        CALCULATION_BLOCKER_MISSING_ROW_SPACING,
+    )
+    assert 'area usage' in result.warning
+
+
+def test_compute_plan_requirement_multiplies_quantity_by_a_per_plant_rate():
+    crop = Crop(seed_rate_value=3, seed_rate_unit=SEED_RATE_UNIT_SEEDS_PER_PLANT)
+    plan = PlantingPlan(crop=crop, quantity=50)
+    result = compute_plan_requirement(plan)
+    assert (result.value, result.unit) == (Decimal('150'), SEED_PACKAGE_UNIT_SEEDS)
+
+
+def test_compute_plan_requirement_blocks_a_per_plant_rate_without_a_quantity():
+    crop = Crop(seed_rate_value=3, seed_rate_unit=SEED_RATE_UNIT_SEEDS_PER_PLANT)
+    plan = PlantingPlan(crop=crop, quantity=0)
+    result = compute_plan_requirement(plan)
+    assert result.blockers == (CALCULATION_BLOCKER_MISSING_PLANT_QUANTITY,)
+
+
+@pytest.mark.parametrize('rate', [None, 0, -1])
+def test_compute_plan_requirement_blocks_a_missing_or_non_positive_rate(rate):
+    crop = Crop(seed_rate_value=rate, seed_rate_unit=SEED_RATE_UNIT_G_PER_M2)
+    plan = PlantingPlan(crop=crop, area_usage_sqm=10)
+    result = compute_plan_requirement(plan)
+    assert result.blockers == (CALCULATION_BLOCKER_MISSING_SEED_RATE,)
+
+
+def test_compute_plan_requirement_blocks_a_unit_it_does_not_understand():
+    crop = Crop(seed_rate_value=2, seed_rate_unit='g_per_hectare')
+    plan = PlantingPlan(crop=crop, area_usage_sqm=10)
+    result = compute_plan_requirement(plan)
+    assert result.blockers == (CALCULATION_BLOCKER_UNSUPPORTED_SEED_RATE_UNIT,)
