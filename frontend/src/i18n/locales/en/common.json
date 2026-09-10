@@ -210,6 +210,9 @@
   "disabledReasons": {
     "busy": "The action is currently being processed.",
     "noChanges": "There are no unsaved changes.",
-    "invalidDateRange": "Enter a valid date range first."
+    "invalidDateRange": "Enter a valid date range first.",
+    "requiredFields": "Complete all required fields.",
+    "selectFile": "Select a file first.",
+    "cameraNotReady": "The camera is not ready yet."
   }
 }

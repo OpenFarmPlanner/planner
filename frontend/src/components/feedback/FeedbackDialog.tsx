@@ -244,8 +244,10 @@ export function FeedbackDialog({ open, projectName, route, userEmail, onClose }:
           {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
         </DialogContent>
         <DialogActions>
-          <Button type="button" onClick={handleClose} disabled={isSending}>{t('dialog.cancel')}</Button>
-          <DisabledActionTooltip title={message.trim().length === 0 ? t('dialog.messageRequiredTooltip') : ''}>
+          <DisabledActionTooltip title={isSending ? t('common:disabledReasons.busy') : ''}>
+            <Button type="button" onClick={handleClose} disabled={isSending}>{t('dialog.cancel')}</Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={isSending ? t('common:disabledReasons.busy') : message.trim().length === 0 ? t('dialog.messageRequiredTooltip') : ''}>
             <Button
               type="submit"
               variant="contained"

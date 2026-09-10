@@ -344,3 +344,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   conflict, and disconnected-social-account failures on
   `api_error_response`. The social-account 404 now also has the stable
   `social_account_not_found` code that was missing from its peer errors.
+- Continued the disabled-control sweep through supplier editing, feedback
+  submission, note saving, attachment upload, and camera capture. Busy,
+  missing-required-field, missing-file, and camera-readiness states now expose
+  German-first explanations through the shared disabled-action tooltip.

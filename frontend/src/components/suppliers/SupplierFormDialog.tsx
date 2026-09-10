@@ -15,6 +15,7 @@ import { supplierAPI } from '../../api/api';
 import type { Supplier } from '../../api/types';
 import { useTranslation } from '../../i18n';
 import { wideFieldSx } from '../forms/formLayout';
+import { DisabledActionTooltip } from '../DisabledActionTooltip';
 
 interface SupplierDraft {
   name: string;
@@ -216,10 +217,14 @@ export function SupplierFormDialog({
           {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
         </DialogContent>
         <DialogActions>
-          <Button type="button" onClick={handleClose} disabled={isSaving}>{t('cancel')}</Button>
-          <Button type="submit" disabled={!canSave} variant="contained" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}>
-            {submitLabel ?? t('save')}
-          </Button>
+          <DisabledActionTooltip title={isSaving ? t('common:disabledReasons.busy') : ''}>
+            <Button type="button" onClick={handleClose} disabled={isSaving}>{t('cancel')}</Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={isSaving ? t('common:disabledReasons.busy') : !canSave ? t('common:disabledReasons.requiredFields') : ''}>
+            <Button type="submit" disabled={!canSave} variant="contained" startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}>
+              {submitLabel ?? t('save')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Box>
     </Dialog>
