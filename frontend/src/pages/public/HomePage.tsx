@@ -21,6 +21,8 @@ import { publicAssetUrl } from '../../utils/publicAssetUrl';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import { useGuestDemoStart } from './useGuestDemoStart';
 import AppIcon from '../../components/layout/AppIcon';
+import { alpha } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 
 const PRODUCT_TOUR_ITEMS = [
   {
@@ -73,14 +75,15 @@ type ProductTourKey = (typeof PRODUCT_TOUR_ITEMS)[number]['key'];
 // HERO_CARD_SX), so unlike the previous dark-glass version it no longer needs
 // a shadow to stay legible - it's kept subtle purely to soften edges against
 // the photo behind the panel's own edges/corners.
-const HERO_TEXT_SHADOW = '0 1px 2px rgba(255,255,255,0.4)';
+const HERO_TEXT_SHADOW = (theme: Theme) =>
+  `0 1px 2px ${alpha(theme.palette.common.white, 0.4)}`;
 
 // Near-black text tones tuned for AA contrast against the 85%-opacity white
 // panel background across a range of photos behind it, not just the current
 // one - lighter tones (e.g. MUI's default text.secondary at 0.6 alpha) can
 // fall below AA once a lighter/busier photo shows through the blur.
-const HERO_TEXT_PRIMARY = 'rgba(0,0,0,0.92)';
-const HERO_TEXT_SECONDARY = 'rgba(0,0,0,0.78)';
+const HERO_TEXT_PRIMARY = (theme: Theme) => alpha(theme.palette.common.black, 0.92);
+const HERO_TEXT_SECONDARY = (theme: Theme) => alpha(theme.palette.common.black, 0.78);
 
 // Single knob for the whole hero panel's text size: every fontSize below is
 // expressed as a base rem value run through heroRem(), and the panel/description
@@ -105,7 +108,7 @@ const HERO_ACTION_FONT_SIZE = { xs: heroRem(1.05), sm: heroRem(1.1) };
 // and translucent. Browsers without backdrop-filter support (the `@supports`
 // fallback below) get a near-opaque background instead, so text stays legible
 // even without the blur.
-const HERO_CARD_SX = {
+const HERO_CARD_SX: SxProps<Theme> = {
   position: 'relative' as const,
   zIndex: 1,
   width: '100%',
@@ -114,8 +117,9 @@ const HERO_CARD_SX = {
   px: { xs: 3, sm: 4, md: 4.5 },
   py: { xs: 3, sm: 3.5, md: 4 },
   borderRadius: { xs: 4, md: 6 },
-  border: '1px solid rgba(0,0,0,0.50)',
-  backgroundColor: 'rgba(255,255,255,0.85)',
+  border: '1px solid',
+  borderColor: (theme) => alpha(theme.palette.common.black, 0.5),
+  backgroundColor: (theme) => alpha(theme.palette.common.white, 0.85),
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   // Inset highlight/shade on top of the outer border gives the panel a
@@ -124,10 +128,9 @@ const HERO_CARD_SX = {
   // The `0 0 0 1px` shadow is a second 1px ring stacked right outside the
   // `border` above - two crisp lines read as a stronger frame than one
   // border alone, without needing an extra wrapper element.
-  boxShadow:
-    'inset 0 1.5px 0 rgba(255,255,255,1), inset 0 -1.5px 0 rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.65), 0 14px 44px rgba(0,0,0,0.24)',
+  boxShadow: 10,
   '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))': {
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: (theme) => alpha(theme.palette.common.white, 0.96),
   },
 };
 
@@ -220,7 +223,7 @@ export default function HomePage() {
               px: 2,
               py: { xs: 4, md: 5 },
               overflow: 'hidden',
-              bgcolor: '#0d1f12',
+              bgcolor: 'navigation.tooltipBackground',
           }}
         >
           <HeroImage alt={t('landing.heroImageAlt')} />
@@ -291,8 +294,8 @@ export default function HomePage() {
                       borderRadius: 2,
                       px: { xs: 2, sm: 3.2 },
                       color: 'primary.main',
-                      borderColor: '#fff',
-                      bgcolor: '#fff',
+                      borderColor: 'surface.surfaceBackground',
+                      bgcolor: 'surface.surfaceBackground',
                       fontSize: HERO_ACTION_FONT_SIZE,
                       whiteSpace: 'nowrap',
                       boxShadow: (theme) => theme.shadows[2],
@@ -300,8 +303,8 @@ export default function HomePage() {
                       '&:hover': {
                         transform: 'translateY(-1px)',
                         color: 'primary.dark',
-                        borderColor: '#fff',
-                        bgcolor: 'rgba(255,255,255,0.92)',
+                        borderColor: 'surface.surfaceBackground',
+                        bgcolor: (theme) => alpha(theme.palette.common.white, 0.92),
                         boxShadow: (theme) => theme.shadows[4],
                       },
                     }}
@@ -328,11 +331,11 @@ export default function HomePage() {
                     whiteSpace: 'nowrap',
                     '&:hover, &:focus-visible': {
                       color: 'primary.dark',
-                      bgcolor: 'rgba(0,0,0,0.06)',
+                      bgcolor: (theme) => alpha(theme.palette.common.black, 0.06),
                       textDecoration: 'underline',
                     },
                     '&.Mui-disabled': {
-                      color: 'rgba(0,0,0,0.42)',
+                      color: 'action.disabled',
                     },
                   }}
                 >
@@ -359,7 +362,7 @@ export default function HomePage() {
                     minHeight: 48,
                     textAlign: 'left',
                     color: 'error.dark',
-                    bgcolor: 'rgba(255,255,255,0.96)',
+                    bgcolor: (theme) => alpha(theme.palette.common.white, 0.96),
                     border: '1px solid',
                     borderColor: 'error.light',
                     '& .MuiAlert-icon': {
@@ -405,7 +408,7 @@ export default function HomePage() {
                     borderRadius: 1,
                     border: 2,
                     borderColor: 'primary.main',
-                    bgcolor: '#fff',
+                    bgcolor: 'surface.surfaceBackground',
                     cursor: 'pointer',
                     fontSize: { xs: heroRem(1.02), md: heroRem(1.08) },
                     fontWeight: 600,
@@ -415,7 +418,7 @@ export default function HomePage() {
                     '&:hover': {
                       color: 'primary.dark',
                       borderColor: 'primary.dark',
-                      bgcolor: '#fff',
+                      bgcolor: 'surface.surfaceBackground',
                     },
                   }}
                 >

@@ -17,8 +17,11 @@ import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import { useTranslation } from '../../i18n';
 import { useGuestDemoStart } from './useGuestDemoStart';
 import AppIcon from '../../components/layout/AppIcon';
+import { alpha } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 
-const HERO_TEXT_SHADOW = '0 1px 3px rgba(0,0,0,0.7), 0 2px 12px rgba(0,0,0,0.5)';
+const HERO_TEXT_SHADOW = (theme: Theme) =>
+  `0 1px 3px ${alpha(theme.palette.common.black, 0.7)}, 0 2px 12px ${alpha(theme.palette.common.black, 0.5)}`;
 
 export default function DemoPage() {
   const { t } = useTranslation('home');
@@ -73,7 +76,7 @@ export default function DemoPage() {
           px: 2,
           py: { xs: 5, md: 7 },
           overflow: 'hidden',
-          bgcolor: '#0d1f12',
+          bgcolor: 'navigation.tooltipBackground',
           minHeight: { xs: 'calc(100vh - 180px)', md: 'calc(100vh - 190px)' },
             '@media (max-height: 480px)': {
               py: 2,
@@ -92,11 +95,12 @@ export default function DemoPage() {
               px: { xs: 3, sm: 4, md: 5 },
               py: { xs: 3.5, sm: 4, md: 4.5 },
               borderRadius: { xs: 4, md: 6 },
-              border: '1px solid rgba(255,255,255,0.28)',
-              backgroundColor: 'rgba(8,24,14,0.52)',
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.common.white, 0.28),
+              backgroundColor: (theme) => alpha(theme.palette.navigation.tooltipBackground, 0.52),
               backdropFilter: 'blur(18px)',
               WebkitBackdropFilter: 'blur(18px)',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.28)',
+              boxShadow: 8,
               '@media (max-height: 480px)': {
                 py: 2.5,
               },
@@ -111,7 +115,7 @@ export default function DemoPage() {
                   fontSize: { xs: '2rem', md: '2.7rem' },
                   fontWeight: 600,
                   lineHeight: 1.1,
-                  color: '#fff',
+                  color: 'common.white',
                   textShadow: HERO_TEXT_SHADOW,
                   '@media (max-height: 480px)': {
                     fontSize: '1.7rem',
@@ -126,7 +130,7 @@ export default function DemoPage() {
                   maxWidth: 560,
                   fontWeight: 500,
                   lineHeight: 1.4,
-                  color: '#fff',
+                  color: 'common.white',
                   textShadow: HERO_TEXT_SHADOW,
                   '@media (max-height: 480px)': {
                     fontSize: '1rem',
@@ -139,7 +143,7 @@ export default function DemoPage() {
                 sx={{
                   maxWidth: 600,
                   lineHeight: 1.65,
-                  color: 'rgba(255,255,255,0.94)',
+                  color: (theme) => alpha(theme.palette.common.white, 0.94),
                   textShadow: HERO_TEXT_SHADOW,
                   '@media (max-height: 480px)': {
                     display: 'none',
@@ -181,7 +185,7 @@ export default function DemoPage() {
                     minHeight: 48,
                     textAlign: 'left',
                     color: 'error.dark',
-                    bgcolor: 'rgba(255,255,255,0.96)',
+                    bgcolor: (theme) => alpha(theme.palette.common.white, 0.96),
                     border: '1px solid',
                     borderColor: 'error.light',
                     '& .MuiAlert-icon': {
@@ -198,7 +202,7 @@ export default function DemoPage() {
                   maxWidth: 560,
                   fontSize: { xs: '0.88rem', md: '0.94rem' },
                   lineHeight: 1.55,
-                  color: 'rgba(255,255,255,0.9)',
+                  color: (theme) => alpha(theme.palette.common.white, 0.9),
                   textShadow: HERO_TEXT_SHADOW,
                 }}
               >

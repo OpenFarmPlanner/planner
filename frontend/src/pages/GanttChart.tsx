@@ -1574,7 +1574,7 @@ function GanttChartPage() {
                   px: 1,
                   borderRadius: 1,
                   backgroundColor: task.color || '#3b82f6',
-                  color: '#fff',
+                  color: 'common.white',
                   display: 'flex',
                   alignItems: 'center',
                   overflow: 'hidden',

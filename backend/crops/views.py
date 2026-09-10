@@ -16,6 +16,7 @@ from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from config.responses import api_error_response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from config.languages import REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
@@ -101,19 +102,18 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _moderator_required_response() -> Response:
-        return Response(
-            {'detail': 'Moderator privileges are required.', 'code': 'moderator_required'},
-            status=status.HTTP_403_FORBIDDEN,
+        return api_error_response(
+            code='moderator_required',
+            detail='Moderator privileges are required.',
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     @staticmethod
     def _proposal_status_error() -> Response:
-        return Response(
-            {
-                'detail': 'Only pending crop species proposals can be reviewed.',
-                'code': 'proposal_not_pending',
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        return api_error_response(
+            code='proposal_not_pending',
+            detail='Only pending crop species proposals can be reviewed.',
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     @action(detail=True, methods=['post'], url_path='approve')
@@ -226,9 +226,10 @@ class PublicLibraryModeratorRequestViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         if not is_public_library_admin(request.user):
-            return Response(
-                {'detail': 'Administrator privileges are required.', 'code': 'admin_required'},
-                status=status.HTTP_403_FORBIDDEN,
+            return api_error_response(
+                code='admin_required',
+                detail='Administrator privileges are required.',
+                status_code=status.HTTP_403_FORBIDDEN,
             )
         return super().list(request, *args, **kwargs)
 
@@ -236,23 +237,19 @@ class PublicLibraryModeratorRequestViewSet(viewsets.ModelViewSet):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         if is_public_library_moderator(request.user):
-            return Response(
-                {
-                    'detail': 'This account already has moderator privileges.',
-                    'code': 'already_moderator',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='already_moderator',
+                detail='This account already has moderator privileges.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         if PublicLibraryModeratorRequest.objects.filter(
             user=request.user,
             status=PublicLibraryModeratorRequest.STATUS_PENDING,
         ).exists():
-            return Response(
-                {
-                    'detail': 'A moderator request is already pending.',
-                    'code': 'moderator_request_pending',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='moderator_request_pending',
+                detail='A moderator request is already pending.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -279,19 +276,18 @@ class PublicLibraryModeratorRequestViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _admin_required_response() -> Response:
-        return Response(
-            {'detail': 'Administrator privileges are required.', 'code': 'admin_required'},
-            status=status.HTTP_403_FORBIDDEN,
+        return api_error_response(
+            code='admin_required',
+            detail='Administrator privileges are required.',
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     @staticmethod
     def _request_status_error() -> Response:
-        return Response(
-            {
-                'detail': 'Only pending moderator requests can be reviewed.',
-                'code': 'moderator_request_not_pending',
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        return api_error_response(
+            code='moderator_request_not_pending',
+            detail='Only pending moderator requests can be reviewed.',
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     @action(detail=True, methods=['post'], url_path='approve')

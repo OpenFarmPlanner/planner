@@ -111,14 +111,12 @@ there are library patches, not app styling (see
 [occupancy-tree-hierarchy.md](./occupancy-tree-hierarchy.md)).
 
 **Enforcement status:** ESLint's local
-`theme-tokens/no-hardcoded-style-values` rule reports application-owned
-colour literals and pixel spacing in style properties. It remains a warning
-while legacy findings are migrated, so a clean lint exit does not mean that
-the warning inventory is empty. The theme and vendored Gantt package are
-deliberately excluded; user/domain colour data (for example crop swatches)
-also remains valid outside the theme. Warnings in maintained UI styling are
-legacy, not precedent: migrate a literal when touching its surrounding code
-and never add another.
+`theme-tokens/no-hardcoded-style-values` rule rejects application-owned
+colour literals and pixel spacing in style properties. The theme and vendored
+Gantt package are deliberately excluded; user/domain colour data (for example
+crop swatches) also remains valid outside the theme. The maintained UI has no
+remaining rule findings, so new violations fail lint rather than accumulating
+as warnings.
 
 ## 5. i18n and writing direction
 

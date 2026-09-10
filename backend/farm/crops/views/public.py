@@ -170,9 +170,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _proposal_status_error() -> Response:
-        return Response(
-            {'detail': 'Only pending change proposals can be reviewed.', 'code': 'proposal_not_pending'},
-            status=status.HTTP_400_BAD_REQUEST,
+        return api_error_response(
+            code='proposal_not_pending',
+            detail='Only pending change proposals can be reviewed.',
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     @staticmethod
@@ -187,23 +188,19 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         species = public_crop.crop_species
         if species is None or not species.is_pending:
             return None
-        return Response(
-            {
-                'detail': 'The crop species of this entry is still awaiting moderation.',
-                'code': 'crop_species_pending',
-            },
-            status=status.HTTP_409_CONFLICT,
+        return api_error_response(
+            code='crop_species_pending',
+            detail='The crop species of this entry is still awaiting moderation.',
+            status_code=status.HTTP_409_CONFLICT,
         )
 
     @staticmethod
     def _edit_conflict_response(error: PublicCropEditConflictError) -> Response:
-        return Response(
-            {
-                'detail': str(error),
-                'code': error.code,
-                'current_version': error.current_version,
-            },
-            status=status.HTTP_409_CONFLICT,
+        return api_error_response(
+            code=error.code,
+            detail=str(error),
+            status_code=status.HTTP_409_CONFLICT,
+            current_version=error.current_version,
         )
 
     def update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -227,11 +224,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
         except PublicCropIdentityConflictError as error:
-            return Response({
-                'detail': str(error),
-                'code': error.code,
-                'conflicting_public_crop_id': error.conflicting_public_crop.id,
-            }, status=status.HTTP_409_CONFLICT)
+            return api_error_response(
+                code=error.code,
+                detail=str(error),
+                status_code=status.HTTP_409_CONFLICT,
+                conflicting_public_crop_id=error.conflicting_public_crop.id,
+            )
         except UnsupportedPublicCropFieldsError as error:
             return api_error_response(code=error.code, detail=error.detail, status_code=status.HTTP_400_BAD_REQUEST)
         return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)

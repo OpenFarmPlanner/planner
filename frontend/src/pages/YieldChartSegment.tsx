@@ -8,6 +8,7 @@ import { Box, Typography } from '@mui/material';
 import { ContextMenuIndicator } from "../components/contextMenu/ContextMenuIndicator";
 import { contextMenuIndicatorHostSx } from "../components/contextMenu/contextMenuIndicatorStyles";
 import { AppTooltip } from '../components/AppTooltip';
+import { alpha } from '@mui/material/styles';
 
 export interface YieldSegmentPayload {
   cropId: number;
@@ -108,7 +109,7 @@ export const YieldChartSegment = memo(function YieldChartSegment({
               lineHeight: "inherit",
             },
             "& [data-yield-tooltip-label='true']": {
-              color: "rgba(255, 255, 255, 0.72)",
+              color: (theme) => alpha(theme.palette.common.white, 0.72),
             },
           },
         },

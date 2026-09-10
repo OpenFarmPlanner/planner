@@ -98,10 +98,10 @@ export default defineConfig([
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/__tests__/**', 'src/gantt-chart/**', 'src/theme.ts'],
     rules: {
-      // Legacy findings remain warnings until their theme-token migration is
-      // complete; tests, the theme definition, and vendored Gantt sources are
-      // excluded because literals are data or are authoritative there.
-      'theme-tokens/no-hardcoded-style-values': 'warn',
+      // Tests, the theme definition, and vendored Gantt sources are excluded
+      // because literals are data or are authoritative there. Maintained UI
+      // code has no remaining findings, so regressions fail lint immediately.
+      'theme-tokens/no-hardcoded-style-values': 'error',
     },
   },
   {

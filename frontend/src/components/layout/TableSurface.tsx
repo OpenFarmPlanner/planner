@@ -34,7 +34,7 @@ export default function TableSurface({ sizingMode, children }: TableSurfaceProps
         sx={{
           ...paperByMode[sizingMode],
           borderRadius: 2,
-          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+          boxShadow: 1,
           '& .MuiTableContainer-root': { width: 'fit-content', maxWidth: '100%' },
           '& .MuiTable-root': { width: 'auto' },
           '& .MuiTableCell-head': { fontWeight: 600 },

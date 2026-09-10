@@ -330,3 +330,17 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 
 - Corrected the design-system guide's stale approximate literal count. It now describes the ESLint warning inventory, its intentional exclusions, and the important distinction between a successful lint process and zero warnings.
 - Kept this log updated in every area-specific commit so theme, API, disabled-state, i18n, shared-logic, test, and documentation changes can be reviewed or reverted independently.
+
+### 2026-09-10 continuation
+
+- Cleared the complete 43-item theme-token warning inventory across shared
+  DataGrid/hierarchy surfaces, public landing/demo pages, chart overlays, and
+  transient feedback. Values now use palette tokens, theme alpha derivations,
+  spacing units, or elevations.
+- Promoted the theme-token ESLint rule from warning to error now that its
+  maintained-source inventory is empty. This turns the audit into a durable
+  regression gate rather than a point-in-time cleanup.
+- Consolidated the remaining Crop Library moderation, proposal-state, edit
+  conflict, and disconnected-social-account failures on
+  `api_error_response`. The social-account 404 now also has the stable
+  `social_account_not_found` code that was missing from its peer errors.
