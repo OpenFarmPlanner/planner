@@ -1,12 +1,22 @@
 """API tests for the supplier endpoints."""
 
+import json
+from decimal import Decimal
 
+from django.utils import timezone
 from rest_framework import status
 
 from farm.models import (
+    Crop,
+    CropSupplierData,
     Project,
     ProjectMembership,
     Supplier,
+)
+from farm.services.suppliers import (
+    build_delete_undo_payload,
+    build_delete_usage,
+    unlink_supplier_references,
 )
 from farm.tests.api_base import ProjectApiTestCase
 
@@ -209,3 +219,244 @@ class SupplierApiTest(ProjectApiTestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED, f'Should accept domain-only URL: {input_url}')
             self.assertEqual(response.data['homepage_url'], expected_url, f'Should normalize {input_url} to {expected_url}')
 
+
+
+class SupplierDeleteUsageTest(ProjectApiTestCase):
+    """`build_delete_usage` decides whether the delete button is a delete or a
+    conflict dialog, and which crops that dialog names.
+
+    A supplier can be referenced three separate ways, and the same crop can hold
+    more than one of them — so the per-kind counts and the deduplicated total
+    are different numbers, not the same number reported twice.
+    """
+
+    def _crop(self, name: str, **kwargs) -> Crop:
+        return Crop.objects.create(name=name, project=self.project, **kwargs)
+
+    def test_an_unreferenced_supplier_can_be_deleted(self):
+        usage = build_delete_usage(self.supplier)
+
+        self.assertTrue(usage['can_delete'])
+        self.assertEqual(usage['total_crop_count'], 0)
+        self.assertEqual(usage['crop_ids'], [])
+
+    def test_counts_each_kind_of_reference_separately(self):
+        by_supplier = self._crop('Kultur Lieferant', supplier=self.supplier)
+        by_seed_demand = self._crop(
+            'Kultur Saatgutbedarf', selected_seed_demand_supplier=self.supplier,
+        )
+        with_data_row = self._crop('Kultur Datenzeile')
+        CropSupplierData.objects.create(
+            crop=with_data_row, supplier=self.supplier, project=self.project,
+        )
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertFalse(usage['can_delete'])
+        self.assertEqual(usage['crop_count'], 1)
+        self.assertEqual(usage['seed_demand_crop_count'], 1)
+        self.assertEqual(usage['supplier_data_crop_count'], 1)
+        self.assertEqual(usage['supplier_data_count'], 1)
+        self.assertEqual(usage['total_crop_count'], 3)
+        self.assertEqual(
+            usage['crop_ids'], sorted([by_supplier.id, by_seed_demand.id, with_data_row.id]),
+        )
+
+    def test_counts_one_crop_once_even_when_it_holds_every_reference(self):
+        crop = self._crop(
+            'Dreifach', supplier=self.supplier, selected_seed_demand_supplier=self.supplier,
+        )
+        CropSupplierData.objects.create(crop=crop, supplier=self.supplier, project=self.project)
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertEqual(usage['crop_count'], 1)
+        self.assertEqual(usage['seed_demand_crop_count'], 1)
+        self.assertEqual(usage['supplier_data_crop_count'], 1)
+        self.assertEqual(usage['total_crop_count'], 1)
+        self.assertEqual(usage['crop_ids'], [crop.id])
+
+    def test_the_row_count_and_the_crop_count_track_each_other(self):
+        """`CropSupplierData` is unique per (crop, supplier), so for one supplier
+        these two numbers can never diverge — worth stating, since the service
+        reports both and a reader would otherwise expect them to."""
+        for name in ('Kultur A', 'Kultur B'):
+            CropSupplierData.objects.create(
+                crop=self._crop(name), supplier=self.supplier, project=self.project,
+            )
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertEqual(usage['supplier_data_count'], 2)
+        self.assertEqual(usage['supplier_data_crop_count'], 2)
+        self.assertEqual(usage['total_crop_count'], 2)
+
+    def test_a_crop_reference_alone_blocks_the_delete(self):
+        """Each reference kind blocks on its own — a supplier does not become
+        deletable just because it has no data rows."""
+        self._crop('Nur Lieferant', supplier=self.supplier)
+
+        self.assertFalse(build_delete_usage(self.supplier)['can_delete'])
+
+    def test_a_seed_demand_reference_alone_blocks_the_delete(self):
+        self._crop('Nur Saatgutbedarf', selected_seed_demand_supplier=self.supplier)
+
+        self.assertFalse(build_delete_usage(self.supplier)['can_delete'])
+
+    def test_a_data_row_alone_blocks_the_delete(self):
+        # Note: `can_delete`'s `and supplier_data_rows == 0` clause is redundant.
+        # A data row always contributes its crop to `total_crop_ids`, so the
+        # first half already covers this case; dropping the clause breaks
+        # nothing. Kept as a test of the behaviour, not of that line.
+        CropSupplierData.objects.create(
+            crop=self._crop('Nur Datenzeile'), supplier=self.supplier, project=self.project,
+        )
+
+        self.assertFalse(build_delete_usage(self.supplier)['can_delete'])
+
+    def test_ignores_soft_deleted_crops(self):
+        """Usage answers "what would the user lose", so a crop already in the
+        trash must not block the delete."""
+        crop = self._crop(
+            'Gelöscht', supplier=self.supplier, selected_seed_demand_supplier=self.supplier,
+        )
+        CropSupplierData.objects.create(crop=crop, supplier=self.supplier, project=self.project)
+        crop.deleted_at = timezone.now()
+        crop.save(update_fields=['deleted_at'])
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertTrue(usage['can_delete'])
+        self.assertEqual(usage['total_crop_count'], 0)
+        self.assertEqual(usage['supplier_data_count'], 0)
+
+    def test_ignores_references_from_another_project(self):
+        other_project = Project.objects.create(name='Anderes', slug='supplier-usage-other')
+        Crop.objects.create(name='Fremd', project=other_project, supplier=self.supplier)
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertTrue(usage['can_delete'])
+        self.assertEqual(usage['total_crop_count'], 0)
+
+    def test_ignores_references_to_a_different_supplier(self):
+        other_supplier = Supplier.objects.create(
+            name='Anderer Lieferant', homepage_url='https://other.example', project=self.project,
+        )
+        self._crop('Andere Kultur', supplier=other_supplier)
+
+        usage = build_delete_usage(self.supplier)
+
+        self.assertTrue(usage['can_delete'])
+
+
+class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
+    """The undo payload has to survive a full unlink-delete-restore round trip.
+
+    Unlike the usage summary, the payload and the unlink use `all_objects`: a
+    soft-deleted crop still holds a foreign key, so it has to be detached too —
+    and restored, or undo would silently drop it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.linked_crop = Crop.objects.create(
+            name='Verknüpft', project=self.project,
+            supplier=self.supplier, selected_seed_demand_supplier=self.supplier,
+        )
+        self.data_row = CropSupplierData.objects.create(
+            crop=self.linked_crop,
+            supplier=self.supplier,
+            project=self.project,
+            supplier_product_name='Sorte A',
+            supplier_product_url='https://supplier.example/a',
+            germination_rate=85,
+            notes='Notiz',
+        )
+
+    def test_payload_captures_every_reference_including_soft_deleted_crops(self):
+        trashed = Crop.objects.create(
+            name='Papierkorb', project=self.project, supplier=self.supplier,
+        )
+        trashed.deleted_at = timezone.now()
+        trashed.save(update_fields=['deleted_at'])
+
+        payload = build_delete_undo_payload(self.supplier)
+
+        self.assertEqual(payload['supplier']['id'], self.supplier.id)
+        self.assertEqual(payload['supplier']['name'], self.supplier.name)
+        self.assertEqual(sorted(payload['crop_ids']), sorted([self.linked_crop.id, trashed.id]))
+        self.assertEqual(payload['seed_demand_crop_ids'], [self.linked_crop.id])
+        self.assertEqual(len(payload['supplier_data']), 1)
+        self.assertEqual(payload['supplier_data'][0]['supplier_product_name'], 'Sorte A')
+
+    def test_payload_serializes_decimals_as_strings_so_it_survives_json(self):
+        self.data_row.price = Decimal('4.25')
+        self.data_row.thousand_kernel_weight_g = Decimal('3.50')
+        self.data_row.save(update_fields=['price', 'thousand_kernel_weight_g'])
+
+        row = build_delete_undo_payload(self.supplier)['supplier_data'][0]
+
+        self.assertEqual(row['price'], '4.25')
+        self.assertEqual(row['thousand_kernel_weight_g'], '3.50')
+        json.dumps(row)
+
+    def test_payload_keeps_absent_decimals_as_null(self):
+        row = build_delete_undo_payload(self.supplier)['supplier_data'][0]
+
+        self.assertIsNone(row['price'])
+        self.assertIsNone(row['thousand_kernel_weight_g'])
+
+    def test_unlink_detaches_every_reference_and_drops_the_data_rows(self):
+        unlink_supplier_references(self.supplier)
+        self.linked_crop.refresh_from_db()
+
+        self.assertIsNone(self.linked_crop.supplier)
+        self.assertIsNone(self.linked_crop.selected_seed_demand_supplier)
+        self.assertFalse(CropSupplierData.objects.filter(supplier=self.supplier).exists())
+
+    def test_unlink_also_detaches_a_soft_deleted_crop(self):
+        trashed = Crop.objects.create(
+            name='Papierkorb', project=self.project, supplier=self.supplier,
+        )
+        trashed.deleted_at = timezone.now()
+        trashed.save(update_fields=['deleted_at'])
+
+        unlink_supplier_references(self.supplier)
+
+        self.assertIsNone(Crop.all_objects.get(pk=trashed.pk).supplier)
+
+    def test_unlink_leaves_other_suppliers_alone(self):
+        other_supplier = Supplier.objects.create(
+            name='Anderer', homepage_url='https://other.example', project=self.project,
+        )
+        other_crop = Crop.objects.create(
+            name='Andere', project=self.project, supplier=other_supplier,
+        )
+
+        unlink_supplier_references(self.supplier)
+        other_crop.refresh_from_db()
+
+        self.assertEqual(other_crop.supplier_id, other_supplier.id)
+
+    def test_the_endpoint_round_trip_restores_the_links_and_the_data_row(self):
+        undo_payload = self.client.post(
+            f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
+        )
+
+        self.assertEqual(undo_payload.status_code, status.HTTP_200_OK)
+        self.assertFalse(Supplier.objects.filter(pk=self.supplier.id).exists())
+
+        restore = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/',
+            undo_payload.data['undo_payload'],
+            format='json',
+        )
+
+        self.assertEqual(restore.status_code, status.HTTP_200_OK)
+        self.linked_crop.refresh_from_db()
+        self.assertEqual(self.linked_crop.supplier_id, self.supplier.id)
+        self.assertEqual(self.linked_crop.selected_seed_demand_supplier_id, self.supplier.id)
+        restored_row = CropSupplierData.objects.get(supplier_id=self.supplier.id)
+        self.assertEqual(restored_row.supplier_product_name, 'Sorte A')
+        self.assertEqual(restored_row.germination_rate, 85)
