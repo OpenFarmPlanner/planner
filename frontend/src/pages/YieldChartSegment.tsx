@@ -35,6 +35,7 @@ interface YieldChartSegmentProps {
   tooltipPeriodLabel: string;
   tooltipYieldLabel: string;
   actionsLabel: string;
+  yieldUnitLabel: string;
   onFocusSegment: (segmentKey: string) => void;
   onHoverStart: (segmentKey: string) => void;
   onHoverEnd: (segmentKey: string) => void;
@@ -79,6 +80,7 @@ export const YieldChartSegment = memo(function YieldChartSegment({
   tooltipPeriodLabel,
   tooltipYieldLabel,
   actionsLabel,
+  yieldUnitLabel,
   onFocusSegment,
   onHoverStart,
   onHoverEnd,
@@ -127,7 +129,7 @@ export const YieldChartSegment = memo(function YieldChartSegment({
             <Typography variant="caption" data-yield-tooltip-label="true" sx={{ fontWeight: 600 }}>
               {tooltipYieldLabel}:
             </Typography>
-            <Typography variant="caption">{yieldValue.toFixed(2)} kg</Typography>
+            <Typography variant="caption">{yieldValue.toFixed(2)} {yieldUnitLabel}</Typography>
           </Box>
         </Box>
       }
@@ -138,7 +140,7 @@ export const YieldChartSegment = memo(function YieldChartSegment({
         data-rmg-component="yield-segment"
         role="button"
         tabIndex={isTabbable ? 0 : -1}
-        aria-label={`${cropName}, ${periodLabel}, ${yieldValue.toFixed(2)} kg`}
+        aria-label={`${cropName}, ${periodLabel}, ${yieldValue.toFixed(2)} ${yieldUnitLabel}`}
         onFocus={() => onFocusSegment(segmentKey)}
         onKeyDown={(event) => onKeyDownSegment(event, columnIndex, cropIndex, payload)}
         onMouseEnter={() => onHoverStart(segmentKey)}

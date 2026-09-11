@@ -47,6 +47,7 @@ export function YieldDistributionChart({
   activeSeason,
 }: YieldDistributionChartProps) {
   const { t, i18n } = useTranslation(["yieldOverview", "common"]);
+  const yieldUnitLabel = t('common:units.kilograms');
   const navigate = useNavigate();
   const { chartData, chartCrops, maxTotalYield, yearBoundary } = useYieldChartData(
     weeklyYield,
@@ -120,9 +121,9 @@ export function YieldDistributionChart({
   }, [navigate]);
 
   const copySegmentSummary = useCallback((payload: YieldContextMenuPayload) => {
-    const summary = `${payload.cropName} · ${payload.periodLabel} · ${payload.yieldValue.toFixed(2)} kg`;
+    const summary = `${payload.cropName} · ${payload.periodLabel} · ${payload.yieldValue.toFixed(2)} ${yieldUnitLabel}`;
     copyTextToClipboardSilently(summary);
-  }, []);
+  }, [yieldUnitLabel]);
 
   // Keyboard navigation between bars — the chart-region reference
   // implementation described in docs/keyboard-architecture.md. Only one
@@ -395,7 +396,7 @@ export function YieldDistributionChart({
                     component="span"
                     sx={{ color: "text.secondary", fontWeight: 600, lineHeight: 1.3, whiteSpace: "nowrap" }}
                   >
-                    {formattedYield} kg
+                    {formattedYield} {yieldUnitLabel}
                   </Typography>
                 </Box>
               );
@@ -442,7 +443,7 @@ export function YieldDistributionChart({
                   variant="caption"
                   sx={{ textAlign: "right", color: "text.secondary" }}
                 >
-                  {tick.toFixed(1)} kg
+                  {tick.toFixed(1)} {yieldUnitLabel}
                 </Typography>
               ))}
             </Box>
@@ -510,6 +511,7 @@ export function YieldDistributionChart({
                           tooltipPeriodLabel={tooltipPeriodLabel}
                           tooltipYieldLabel={tooltipYieldLabel}
                           actionsLabel={actionsLabel}
+                          yieldUnitLabel={yieldUnitLabel}
                           onFocusSegment={setFocusedSegmentKey}
                           onHoverStart={setHoveredSegmentKey}
                           onHoverEnd={handleHoverEnd}

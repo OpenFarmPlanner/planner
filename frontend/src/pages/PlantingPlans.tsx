@@ -1508,7 +1508,7 @@ function PlantingPlans() {
             <Stack spacing={1.25} sx={{ alignItems: "center", }} >
               <CircularProgress size={24} />
               <Typography variant="body2" color="text.secondary">
-                Anbaupläne werden geladen…
+                {t('plantingPlans:loadingPlans')}
               </Typography>
             </Stack>
           </Box>

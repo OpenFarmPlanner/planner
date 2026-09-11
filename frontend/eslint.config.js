@@ -50,6 +50,41 @@ const themeTokenPlugin = {
   },
 };
 
+const i18nPlugin = {
+  rules: {
+    'no-hardcoded-ui-strings': {
+      meta: {
+        type: 'problem',
+        schema: [],
+        messages: { translate: 'Route user-visible text through the i18n resources instead of hardcoding {{value}}.' },
+      },
+      create(context) {
+        const userFacingAttributes = new Set(['aria-label', 'helperText', 'label', 'placeholder', 'title']);
+        const report = (node, value) => {
+          if (/[A-Za-zÄÖÜäöüß]/.test(value)) {
+            context.report({ node, messageId: 'translate', data: { value: JSON.stringify(value.trim()) } });
+          }
+        };
+        return {
+          JSXText(node) {
+            if (node.value.trim()) report(node, node.value);
+          },
+          JSXAttribute(node) {
+            if (
+              node.name?.type === 'JSXIdentifier'
+              && userFacingAttributes.has(node.name.name)
+              && node.value?.type === 'Literal'
+              && typeof node.value.value === 'string'
+            ) {
+              report(node.value, node.value.value);
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 export default defineConfig([
   // ESLint 10 no longer implicitly skips every dotfolder/build-cache
   // directory the way earlier versions did — `.vite`'s prebundled deps
@@ -70,7 +105,7 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    plugins: { 'theme-tokens': themeTokenPlugin },
+    plugins: { 'theme-tokens': themeTokenPlugin, i18n: i18nPlugin },
     rules: {
       // Kept at `warn` deliberately, so that `quality.sh` can treat every
       // remaining ESLint error as a build failure (see scripts/quality.sh).
@@ -123,6 +158,13 @@ export default defineConfig([
       // because literals are data or are authoritative there. Maintained UI
       // code has no remaining findings, so regressions fail lint immediately.
       'theme-tokens/no-hardcoded-style-values': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/__tests__/**', 'src/gantt-chart/**'],
+    rules: {
+      'i18n/no-hardcoded-ui-strings': 'error',
     },
   },
   {

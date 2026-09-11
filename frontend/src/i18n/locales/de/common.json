@@ -216,5 +216,9 @@
     "cameraNotReady": "Die Kamera ist noch nicht bereit.",
     "copyRowUnavailable": "Für diese Zeile sind keine kopierbaren Daten verfügbar.",
     "copyTableUnavailable": "Die Tabelle enthält keine kopierbaren Zeilen."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
   }
 }

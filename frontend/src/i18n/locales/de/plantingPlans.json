@@ -165,5 +165,6 @@
       "edit": "anbauplan, bearbeiten",
       "delete": "anbauplan, löschen"
     }
-  }
+  },
+  "loadingPlans": "Anbaupläne werden geladen…"
 }

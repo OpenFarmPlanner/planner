@@ -6,6 +6,7 @@ import { authLegalLinkSx } from './authPageStyles';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import AppIcon from '../../components/layout/AppIcon';
 import { alpha } from '@mui/material/styles';
+import { useTranslation } from '../../i18n';
 
 type AuthPageShellProps = {
   title: string;
@@ -15,6 +16,7 @@ type AuthPageShellProps = {
 };
 
 export default function AuthPageShell({ title, subtitle, children, legalLinksDense = false }: AuthPageShellProps) {
+  const { t } = useTranslation('common');
   return (
     <Box
       sx={{
@@ -73,7 +75,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
                   lineHeight: 1.1,
                 }}
               >
-                OpenFarmPlanner
+                {t('appName')}
               </Typography>
             </Stack>
             <PublicLanguageSwitcher dense />

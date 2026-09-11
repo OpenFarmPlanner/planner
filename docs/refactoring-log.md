@@ -382,3 +382,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   `DisabledMenuItemTooltip` and applied it to shared row/table copy actions.
   Empty context-menu states now explain that there is no row or table data to
   copy, with German-first translations and direct wrapper regression coverage.
+- Added an ESLint i18n guard for literal JSX text and user-facing
+  `aria-label`, helper, label, placeholder, and title attributes. Tests and
+  the vendored Gantt package are excluded; maintained application components
+  now fail lint if new visible copy bypasses locale resources.

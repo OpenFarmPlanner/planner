@@ -57,7 +57,7 @@ export function GraphicalFieldDetailsDialog({
             ) : null}
             {element.area !== null ? (
               <Typography>
-                {t("fields:graphical.area")}: {element.area} m²
+                {t("fields:graphical.area")}: {element.area} {t('common:units.squareMeters')}
               </Typography>
             ) : null}
           </Stack>

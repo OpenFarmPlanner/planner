@@ -385,7 +385,9 @@
       "leaveDemoError": "Could not leave the demo. Please try again.",
       "logoutError": "Logout failed. Please try again."
     },
-    "shortcutHint": "Tip: press Alt+K for the command palette."
+    "shortcutHint": "Tip: press Alt+K for the command palette.",
+    "historyBy": "By {{actor}}",
+    "unknownUser": "Unknown user"
   },
   "language": {
     "label": "Language"

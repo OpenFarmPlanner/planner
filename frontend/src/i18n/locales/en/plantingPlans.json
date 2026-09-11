@@ -165,5 +165,6 @@
       "edit": "planting plan, edit",
       "delete": "planting plan, delete"
     }
-  }
+  },
+  "loadingPlans": "Loading planting plans…"
 }

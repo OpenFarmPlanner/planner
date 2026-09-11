@@ -385,7 +385,9 @@
       "leaveDemoError": "Demo konnte nicht verlassen werden. Bitte versuche es erneut.",
       "logoutError": "Abmeldung fehlgeschlagen. Bitte versuche es erneut."
     },
-    "shortcutHint": "Tipp: Drücke Alt+K für die Command Palette."
+    "shortcutHint": "Tipp: Drücke Alt+K für die Command Palette.",
+    "historyBy": "Von {{actor}}",
+    "unknownUser": "Unbekannter Benutzer"
   },
   "language": {
     "label": "Sprache"
