@@ -69,6 +69,24 @@ const i18nPlugin = {
           JSXText(node) {
             if (node.value.trim()) report(node, node.value);
           },
+          JSXExpressionContainer(node) {
+            const attribute = node.parent?.type === 'JSXAttribute' ? node.parent : null;
+            if (
+              attribute?.name?.type === 'JSXIdentifier'
+              && !userFacingAttributes.has(attribute.name.name)
+            ) {
+              return;
+            }
+            if (node.expression?.type === 'Literal' && typeof node.expression.value === 'string') {
+              report(node.expression, node.expression.value);
+            }
+            if (node.expression?.type === 'TemplateLiteral') {
+              report(
+                node.expression,
+                node.expression.quasis.map((quasi) => quasi.value.cooked ?? quasi.value.raw).join(''),
+              );
+            }
+          },
           JSXAttribute(node) {
             if (
               node.name?.type === 'JSXIdentifier'

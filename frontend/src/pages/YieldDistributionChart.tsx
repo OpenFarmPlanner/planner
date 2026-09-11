@@ -350,7 +350,7 @@ export function YieldDistributionChart({
                   key={crop.id}
                   component="button"
                   type="button"
-                  aria-label={`${crop.name} ${formattedYield} kg`}
+                  aria-label={`${crop.name} ${formattedYield} ${yieldUnitLabel}`}
                   aria-pressed={isHighlighted}
                   onClick={() => toggleHighlightedCrop(crop.id)}
                   sx={{

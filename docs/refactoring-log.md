@@ -386,3 +386,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   `aria-label`, helper, label, placeholder, and title attributes. Tests and
   the vendored Gantt package are excluded; maintained application components
   now fail lint if new visible copy bypasses locale resources.
+- Extended the i18n guard to string and template expressions embedded in JSX
+  children or user-facing attributes, closing the expression-container escape
+  hatch left by the first pass without treating route/data attributes as copy.
