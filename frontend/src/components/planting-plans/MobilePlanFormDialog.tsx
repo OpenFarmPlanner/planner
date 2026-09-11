@@ -21,7 +21,7 @@ import {
 import type { CultivationType } from "../../api/types";
 import { useTranslation } from "../../i18n";
 import {
-  formatLocalizedNumber,
+  formatLocalizedNumberForInput,
   parseLocalizedNumber,
 } from "../../utils/numberLocalization";
 import type { SearchableSelectOption } from "../data-grid";
@@ -82,16 +82,6 @@ export function MobilePlanFormDialog({
 }: MobilePlanFormDialogProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
   const plantingDatePickerRef = useRef<HTMLInputElement | null>(null);
-
-  const formatNumberForInput = (
-    value: number,
-    options?: Intl.NumberFormatOptions,
-  ): string =>
-    formatLocalizedNumber(value, numberLocale, {
-      useGrouping: false,
-      maximumFractionDigits: 6,
-      ...options,
-    });
 
   const pickerValue = toIsoDateString(parseGermanDateText(form.planting_date)) ?? "";
   const openPlantingDatePicker = (): void => {
@@ -228,8 +218,9 @@ export function MobilePlanFormDialog({
                   area_m2: nextArea,
                   plants_count:
                     plantsPerSqm && parsedArea !== null
-                      ? formatNumberForInput(
+                      ? formatLocalizedNumberForInput(
                           Math.round(parsedArea * plantsPerSqm),
+                          numberLocale,
                           { maximumFractionDigits: 0 },
                         )
                       : previous.plants_count,
@@ -255,7 +246,7 @@ export function MobilePlanFormDialog({
                   plants_count: nextPlants,
                   area_m2:
                     plantsPerSqm && parsedPlants !== null
-                      ? formatNumberForInput(parsedPlants / plantsPerSqm, {
+                      ? formatLocalizedNumberForInput(parsedPlants / plantsPerSqm, numberLocale, {
                           maximumFractionDigits: 2,
                         })
                       : previous.area_m2,

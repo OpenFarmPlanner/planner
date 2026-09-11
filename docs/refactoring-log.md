@@ -395,3 +395,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Moved the generic requirement checklist's fallback status phrases into the
   common locale namespace. Its callers can still supply feature-specific labels,
   while the shared fallback no longer assumes German inside component code.
+- Consolidated the identical desktop-grid and mobile-dialog number-input
+  formatters into `formatLocalizedNumberForInput`. Both planting-plan editing
+  surfaces now share grouping and precision defaults, with utility-level tests
+  covering locale behavior and caller precision overrides.

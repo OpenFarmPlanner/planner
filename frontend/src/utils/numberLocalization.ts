@@ -50,6 +50,18 @@ export function formatLocalizedNumber(
   return getNumberFormat(locale, options).format(value);
 }
 
+export function formatLocalizedNumberForInput(
+  value: number,
+  locale: string,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return formatLocalizedNumber(value, locale, {
+    useGrouping: false,
+    maximumFractionDigits: 6,
+    ...options,
+  });
+}
+
 function getNumberSeparators(locale: string): {
   group: string;
   decimal: string;
