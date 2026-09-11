@@ -149,6 +149,7 @@ describe('ProjectSettingsPage', () => {
 
     expect(await screen.findByText('martin.stipsitz@gmail.com')).toBeInTheDocument();
     expect(screen.queryByText('Ohne Anzeigenamen')).not.toBeInTheDocument();
+    expect(screen.getByText('Die eigene Rolle kann hier nicht geändert werden.')).toBeInTheDocument();
     const removeSelfButton = screen.getByRole('button', { name: 'Aus Projekt entfernen' });
     expect(removeSelfButton).toBeDisabled();
     fireEvent.mouseOver(removeSelfButton.parentElement as HTMLElement);

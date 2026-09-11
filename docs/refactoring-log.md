@@ -427,3 +427,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Reused the existing self-removal warning as a reachable tooltip on the
   disabled member-removal action. The member-list test now confirms that the
   current user's protected action explains why it cannot be used.
+- Surfaced the matching existing role-change explanation as persistent helper
+  text beneath the current user's disabled role selector, covering the adjacent
+  disabled form control without relying on hover behavior.

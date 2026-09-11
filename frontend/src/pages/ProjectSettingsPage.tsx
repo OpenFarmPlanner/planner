@@ -1,5 +1,5 @@
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, FormHelperText, InputLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { projectAPI, type ProjectInvitationPayload, type ProjectMemberPayload, type ProjectRegion } from '../api/api';
@@ -525,6 +525,7 @@ export default function ProjectSettingsPage() {
                             <MenuItem value="member">{t('roleMember')}</MenuItem>
                             <MenuItem value="admin">{t('roleAdmin')}</MenuItem>
                           </Select>
+                          {isCurrentUser ? <FormHelperText>{t('roleChangeBlocked')}</FormHelperText> : null}
                         </FormControl>
                         <DisabledActionTooltip
                           title={!canManageMembers
