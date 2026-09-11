@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { projectAPI, type ProjectInvitationPayload, type ProjectMemberPayload, type ProjectRegion } from '../api/api';
 import { useAuth } from '../auth/useAuth';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
 import { useTranslation } from '../i18n';
 import { showProjectDeleteUndoSnackbar } from '../projects/projectDeletionFeedback';
@@ -381,14 +382,24 @@ export default function ProjectSettingsPage() {
                 }}
                 slotProps={{ htmlInput: { 'aria-label': t('currentProjectLabel') } }}
               />
-              <Button
-                variant="contained"
-                onClick={() => void handleProjectNameCommit()}
-                disabled={!isProjectAdmin || isSavingProjectName || !hasProjectNameChanges}
-                sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, minHeight: 56, minWidth: 140 }}
+              <DisabledActionTooltip
+                title={!isProjectAdmin
+                  ? t('memberManagementNoAccess')
+                  : isSavingProjectName
+                    ? t('common:disabledReasons.busy')
+                    : !hasProjectNameChanges
+                      ? t('common:disabledReasons.noChanges')
+                      : ''}
               >
-                {t('projectRename.save')}
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleProjectNameCommit()}
+                  disabled={!isProjectAdmin || isSavingProjectName || !hasProjectNameChanges}
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, minHeight: 56, minWidth: 140 }}
+                >
+                  {t('projectRename.save')}
+                </Button>
+              </DisabledActionTooltip>
             </Stack>
             <Divider sx={{ my: 2 }} />
             <FormControl
@@ -448,14 +459,22 @@ export default function ProjectSettingsPage() {
                   <MenuItem value="admin">{t('roleAdmin')}</MenuItem>
                 </Select>
               </FormControl>
-              <Button
-                variant="contained"
-                onClick={() => void handleInvite()}
-                disabled={!canManageMembers || !email.trim()}
-                sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+              <DisabledActionTooltip
+                title={!canManageMembers
+                  ? t('projectMembers.invite.noPermission')
+                  : !email.trim()
+                    ? t('common:disabledReasons.requiredFields')
+                    : ''}
               >
-                {t('sendInvite')}
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleInvite()}
+                  disabled={!canManageMembers || !email.trim()}
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+                >
+                  {t('sendInvite')}
+                </Button>
+              </DisabledActionTooltip>
             </Stack>
 
             {!canManageMembers ? (

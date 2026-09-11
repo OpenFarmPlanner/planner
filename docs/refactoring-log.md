@@ -420,3 +420,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   settings inline editor. Save actions now distinguish missing required fields
   from an in-flight request, while cancel actions explain the busy state; the
   account settings interaction test verifies the required-fields explanation.
+- Added contextual disabled explanations to project-name saving and member
+  invitations. Permission, busy, unchanged-name, and missing-email states now
+  reuse existing localized messages, with regression coverage for the
+  unchanged-name tooltip.
