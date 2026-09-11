@@ -31,7 +31,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
         position={{ xs: 'absolute', md: 'fixed' }}
         overlaySx={{
           backgroundImage: (theme) => {
-            const background = theme.palette.surface.surfaceHoverBackground;
+            const background = theme.palette.surface?.surfaceHoverBackground ?? theme.palette.background.default;
             return `linear-gradient(${alpha(background, 0.88)}, ${alpha(background, 0.9)})`;
           },
         }}

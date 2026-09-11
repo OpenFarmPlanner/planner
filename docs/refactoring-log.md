@@ -348,3 +348,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   submission, note saving, attachment upload, and camera capture. Busy,
   missing-required-field, missing-file, and camera-readiness states now expose
   German-first explanations through the shared disabled-action tooltip.
+- Extended the sweep to login/restore, project creation, and crop export
+  actions. The shared tooltip now supports full-width controls without changing
+  auth-page layout, and each busy or prerequisite state uses existing localized
+  guidance.
+- Restored compatibility with minimal MUI themes used by isolated component
+  tests: auth alpha derivations now fall back to standard MUI background
+  tokens when the application-specific `surface` palette is absent.

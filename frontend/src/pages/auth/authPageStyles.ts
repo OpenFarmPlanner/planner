@@ -32,7 +32,7 @@ export const authSecondaryButtonSx: SxProps<Theme> = {
     transform: 'translateY(-1px)',
     color: 'primary.dark',
     borderColor: 'surface.surfaceBackground',
-    bgcolor: (theme) => alpha(theme.palette.surface.surfaceBackground, 0.92),
+    bgcolor: (theme) => alpha(theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper, 0.92),
     boxShadow: 4,
   },
   '&:focus-visible': {
