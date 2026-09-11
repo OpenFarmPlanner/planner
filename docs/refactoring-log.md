@@ -430,3 +430,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Surfaced the matching existing role-change explanation as persistent helper
   text beneath the current user's disabled role selector, covering the adjacent
   disabled form control without relying on hover behavior.
+- Restored compatibility between the public demo hero and the minimal MUI theme
+  used by router-level tests. Its translucent panel now falls back to
+  `common.black` when the application-only navigation palette is absent.

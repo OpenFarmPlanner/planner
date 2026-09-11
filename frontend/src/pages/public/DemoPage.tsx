@@ -97,7 +97,10 @@ export default function DemoPage() {
               borderRadius: { xs: 4, md: 6 },
               border: '1px solid',
               borderColor: (theme) => alpha(theme.palette.common.white, 0.28),
-              backgroundColor: (theme) => alpha(theme.palette.navigation.tooltipBackground, 0.52),
+              backgroundColor: (theme) => alpha(
+                theme.palette.navigation?.tooltipBackground ?? theme.palette.common.black,
+                0.52,
+              ),
               backdropFilter: 'blur(18px)',
               WebkitBackdropFilter: 'blur(18px)',
               boxShadow: 8,
