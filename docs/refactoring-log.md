@@ -407,3 +407,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   local rule module. Focused Linter coverage now pins both its visible string
   findings and its deliberate exemptions for translation calls and non-visible
   discriminator attributes.
+- Extracted the theme-token guard into its own local rule module and added
+  direct regression tests for colours, pixel spacing, nested fallbacks, SVG
+  attributes, semantic tokens, numeric spacing, and domain-provided colours.
