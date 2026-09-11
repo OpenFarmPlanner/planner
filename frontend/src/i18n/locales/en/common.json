@@ -213,6 +213,8 @@
     "invalidDateRange": "Enter a valid date range first.",
     "requiredFields": "Complete all required fields.",
     "selectFile": "Select a file first.",
-    "cameraNotReady": "The camera is not ready yet."
+    "cameraNotReady": "The camera is not ready yet.",
+    "copyRowUnavailable": "No copyable data is available for this row.",
+    "copyTableUnavailable": "The table contains no copyable rows."
   }
 }

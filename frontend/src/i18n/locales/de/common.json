@@ -213,6 +213,8 @@
     "invalidDateRange": "Bitte einen gültigen Zeitraum eingeben.",
     "requiredFields": "Bitte alle Pflichtfelder ausfüllen.",
     "selectFile": "Bitte zuerst eine Datei auswählen.",
-    "cameraNotReady": "Die Kamera ist noch nicht bereit."
+    "cameraNotReady": "Die Kamera ist noch nicht bereit.",
+    "copyRowUnavailable": "Für diese Zeile sind keine kopierbaren Daten verfügbar.",
+    "copyTableUnavailable": "Die Tabelle enthält keine kopierbaren Zeilen."
   }
 }

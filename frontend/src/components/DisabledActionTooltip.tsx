@@ -19,3 +19,14 @@ export function DisabledActionTooltip({ children, title, fullWidth = false }: Di
     </AppTooltip>
   );
 }
+
+/** Block wrapper for disabled menu items, which do not emit hover events. */
+export function DisabledMenuItemTooltip({ children, title }: DisabledActionTooltipProps) {
+  return (
+    <AppTooltip title={title} describeChild>
+      <Box component="span" sx={{ display: 'block' }}>
+        {children}
+      </Box>
+    </AppTooltip>
+  );
+}

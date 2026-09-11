@@ -378,3 +378,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   expressions, closing the gap that allowed a literal Gantt fallback colour
   inside `task.color || ...`. The fallback is now the theme primary token;
   task-provided crop colours remain domain data.
+- Consolidated the repeated disabled-menu wrapper pattern into
+  `DisabledMenuItemTooltip` and applied it to shared row/table copy actions.
+  Empty context-menu states now explain that there is no row or table data to
+  copy, with German-first translations and direct wrapper regression coverage.
