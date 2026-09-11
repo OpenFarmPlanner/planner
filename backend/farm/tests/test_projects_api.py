@@ -20,6 +20,18 @@ from farm.models import (
     ProjectMembership,
 )
 from farm.services.demo_project import DEMO_PROJECT_NAME, DEMO_PROJECT_NAME_EN
+from farm.services.project_invitations import (
+    InvitationFlowError,
+    accept_invitation,
+    accept_pending_invitation_from_session,
+    build_public_status,
+    clear_pending_invitation_token,
+    create_or_resend_invitation,
+    get_invitation_by_token,
+    get_pending_invitation_token,
+    revoke_invitation,
+    store_pending_invitation_token,
+)
 
 User = get_user_model()
 
@@ -867,3 +879,318 @@ class ProjectsApiTests(APITestCase):
         self.assertTrue(Project.objects.filter(id=recently_trashed.id).exists())
         self.assertTrue(Project.objects.filter(id=self.project.id).exists())
         self.assertTrue(Project.objects.filter(id=never_deleted.id).exists())
+
+
+class PendingInvitationSessionTests(APITestCase):
+    """Direct tests for the session helpers that carry a token through login."""
+
+    def test_stores_and_reads_a_token_back(self):
+        session = {}
+        store_pending_invitation_token(session=session, token='abc')
+        self.assertEqual(get_pending_invitation_token(session=session), 'abc')
+
+    def test_has_no_token_when_none_was_stored(self):
+        self.assertIsNone(get_pending_invitation_token(session={}))
+
+    def test_treats_a_stored_value_that_is_not_a_usable_token_as_absent(self):
+        # A blank or non-string value would send the accept flow looking up a
+        # token that cannot match anything.
+        for value in ('', None, 123, []):
+            with self.subTest(value=value):
+                session = {'pending_project_invitation_token': value}
+                self.assertIsNone(get_pending_invitation_token(session=session))
+
+    def test_clearing_removes_the_token(self):
+        session = {}
+        store_pending_invitation_token(session=session, token='abc')
+        clear_pending_invitation_token(session=session)
+        self.assertIsNone(get_pending_invitation_token(session=session))
+
+    def test_clearing_an_empty_session_is_a_no_op(self):
+        session = {}
+        clear_pending_invitation_token(session=session)
+        self.assertEqual(session, {})
+
+    def test_marks_a_real_session_modified_so_the_change_is_persisted(self):
+        # Django only writes the session back when `modified` is set; a plain
+        # dict has no such attribute, which is why both helpers guard on it.
+        class FakeSession(dict):
+            modified = False
+
+        session = FakeSession()
+        store_pending_invitation_token(session=session, token='abc')
+        self.assertTrue(session.modified)
+
+        session.modified = False
+        clear_pending_invitation_token(session=session)
+        self.assertTrue(session.modified)
+
+    def test_does_not_mark_a_session_modified_when_there_was_nothing_to_clear(self):
+        class FakeSession(dict):
+            modified = False
+
+        session = FakeSession()
+        clear_pending_invitation_token(session=session)
+        self.assertFalse(session.modified)
+
+
+class InvitationServiceFlowTests(APITestCase):
+    """Direct tests for the invitation service, below the HTTP layer."""
+
+    def setUp(self) -> None:
+        self.admin = User.objects.create_user(
+            username='inv-admin', email='admin@example.com', password='pass12345', is_active=True,
+        )
+        self.invitee = User.objects.create_user(
+            username='inv-guest', email='guest@example.com', password='pass12345', is_active=True,
+        )
+        self.project = Project.objects.create(name='Invite P', slug='invite-p')
+        ProjectMembership.objects.create(user=self.admin, project=self.project, role='admin')
+
+    def invite(self, email='guest@example.com', role='member'):
+        return create_or_resend_invitation(
+            project=self.project, invited_by=self.admin, email=email, role=role,
+        )
+
+    def test_creating_an_invitation_reports_it_as_sent(self):
+        result = self.invite()
+        self.assertEqual(result.code, 'invitation_sent')
+        self.assertEqual(result.invitation.email_normalized, 'guest@example.com')
+
+    def test_a_second_invitation_to_the_same_address_is_a_resend(self):
+        # Two admins inviting the same person must not produce two live tokens.
+        first = self.invite()
+        second = self.invite()
+        self.assertEqual(second.code, 'invitation_resent')
+        self.assertEqual(second.invitation.pk, first.invitation.pk)
+
+    def test_rejects_an_address_that_normalizes_to_nothing(self):
+        with self.assertRaises(InvitationFlowError) as ctx:
+            self.invite(email='   ')
+        self.assertEqual(ctx.exception.code, 'invalid_email')
+
+    def test_rejects_inviting_someone_who_is_already_a_member(self):
+        ProjectMembership.objects.create(user=self.invitee, project=self.project, role='member')
+        with self.assertRaises(InvitationFlowError) as ctx:
+            self.invite()
+        self.assertEqual(ctx.exception.code, 'already_member')
+
+    def test_matches_an_existing_member_whose_stored_address_is_mixed_case(self):
+        # The invited address is lower-cased before the lookup, so the case of
+        # the *input* proves nothing — only a stored address in a different case
+        # shows that the query is case-insensitive. Without it, an account
+        # registered as Guest@Example.com could be invited to a project it is
+        # already a member of.
+        mixed = User.objects.create_user(
+            username='inv-mixed', email='Mixed@Example.com', password='pass12345', is_active=True,
+        )
+        ProjectMembership.objects.create(user=mixed, project=self.project, role='member')
+
+        with self.assertRaises(InvitationFlowError) as ctx:
+            self.invite(email='mixed@example.com')
+        self.assertEqual(ctx.exception.code, 'already_member')
+
+    def test_matches_an_existing_member_regardless_of_the_invited_address_case(self):
+        ProjectMembership.objects.create(user=self.invitee, project=self.project, role='member')
+        with self.assertRaises(InvitationFlowError) as ctx:
+            self.invite(email='GUEST@Example.com')
+        self.assertEqual(ctx.exception.code, 'already_member')
+
+    def test_accepting_creates_the_membership_with_the_invited_role(self):
+        invitation = self.invite(role='admin').invitation
+        result = accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(result.code, 'accepted')
+        membership = ProjectMembership.objects.get(project=self.project, user=self.invitee)
+        self.assertEqual(membership.role, 'admin')
+
+    def test_refuses_an_invitation_addressed_to_someone_else(self):
+        invitation = self.invite(email='other@example.com').invitation
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(ctx.exception.code, 'email_mismatch')
+        self.assertFalse(
+            ProjectMembership.objects.filter(project=self.project, user=self.invitee).exists(),
+        )
+
+    def test_refuses_an_expired_invitation(self):
+        invitation = self.invite().invitation
+        ProjectInvitation.objects.filter(pk=invitation.pk).update(
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+        invitation.refresh_from_db()
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(ctx.exception.code, 'expired')
+
+    def test_refuses_a_revoked_invitation(self):
+        invitation = self.invite().invitation
+        revoke_invitation(invitation=invitation, actor=self.admin)
+        invitation.refresh_from_db()
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(ctx.exception.code, 'revoked')
+
+    def test_refuses_an_invitation_that_was_already_used(self):
+        # The token stays valid-looking in the invitee's inbox, so a second
+        # click has to be rejected rather than silently re-accepted.
+        invitation = self.invite().invitation
+        accept_invitation(invitation=invitation, user=self.invitee)
+        invitation.refresh_from_db()
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(ctx.exception.code, 'accepted')
+
+    def test_marks_an_invitation_used_when_the_membership_already_existed(self):
+        # Someone added directly while their invitation was open should not be
+        # left with a token that still looks pending.
+        invitation = self.invite().invitation
+        ProjectMembership.objects.create(user=self.invitee, project=self.project, role='member')
+        result = accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(result.code, 'already_member')
+        self.assertEqual(result.invitation.status, ProjectInvitation.STATUS_ACCEPTED)
+
+    def test_revoking_twice_leaves_the_first_revocation_record_intact(self):
+        # A second revoke returns the same 'revoked' code either way, so the
+        # code alone cannot show the early return does anything. What it
+        # protects is the audit trail: without it the row is re-saved and
+        # revoked_at/revoked_by are overwritten by whoever clicked last.
+        invitation = self.invite().invitation
+        first = revoke_invitation(invitation=invitation, actor=self.admin)
+        original_revoked_at = first.invitation.revoked_at
+
+        other_admin = User.objects.create_user(
+            username='inv-admin2', email='admin2@example.com', password='pass12345', is_active=True,
+        )
+        ProjectMembership.objects.create(user=other_admin, project=self.project, role='admin')
+        second = revoke_invitation(invitation=invitation, actor=other_admin)
+
+        self.assertEqual(second.code, 'revoked')
+        self.assertEqual(second.invitation.revoked_at, original_revoked_at)
+        self.assertEqual(second.invitation.revoked_by_id, self.admin.id)
+
+    def test_revoking_an_accepted_invitation_reports_that_it_is_too_late(self):
+        invitation = self.invite().invitation
+        accept_invitation(invitation=invitation, user=self.invitee)
+        self.assertEqual(
+            revoke_invitation(invitation=invitation, actor=self.admin).code, 'already_accepted',
+        )
+
+    def test_revoking_an_expired_invitation_reports_it_as_expired(self):
+        invitation = self.invite().invitation
+        ProjectInvitation.objects.filter(pk=invitation.pk).update(
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+        self.assertEqual(revoke_invitation(invitation=invitation, actor=self.admin).code, 'expired')
+
+    def test_looking_up_an_unknown_token_is_a_flow_error(self):
+        with self.assertRaises(InvitationFlowError) as ctx:
+            get_invitation_by_token('no-such-token')
+        self.assertEqual(ctx.exception.code, 'invalid_token')
+
+
+class BuildPublicStatusTests(APITestCase):
+    """Direct tests for the payload the public invitation page renders from."""
+
+    def setUp(self) -> None:
+        self.admin = User.objects.create_user(
+            username='ps-admin', email='admin@example.com', password='pass12345', is_active=True,
+        )
+        self.invitee = User.objects.create_user(
+            username='ps-guest', email='guest@example.com', password='pass12345', is_active=True,
+        )
+        self.project = Project.objects.create(name='Status P', slug='status-p')
+        ProjectMembership.objects.create(user=self.admin, project=self.project, role='admin')
+        self.invitation = create_or_resend_invitation(
+            project=self.project, invited_by=self.admin, email='guest@example.com', role='member',
+        ).invitation
+
+    def test_an_anonymous_visitor_is_told_they_must_sign_in(self):
+        status_payload = build_public_status(self.invitation, None)
+        self.assertTrue(status_payload['requires_auth'])
+        self.assertEqual(status_payload['code'], ProjectInvitation.STATUS_PENDING)
+
+    def test_the_masked_address_is_shown_rather_than_the_real_one(self):
+        # This endpoint answers without authentication, so the full address
+        # must not be readable by anyone holding the link.
+        payload = build_public_status(self.invitation, None)
+        self.assertEqual(payload['email_masked'], 'g***@example.com')
+        self.assertNotIn('guest@example.com', str(payload))
+
+    def test_names_the_project_so_the_invitee_knows_what_they_are_joining(self):
+        self.assertEqual(build_public_status(self.invitation, None)['project_name'], 'Status P')
+
+    def test_a_signed_in_invitee_is_not_asked_to_sign_in_again(self):
+        payload = build_public_status(self.invitation, self.invitee)
+        self.assertFalse(payload['requires_auth'])
+        self.assertEqual(payload['code'], ProjectInvitation.STATUS_PENDING)
+
+    def test_a_signed_in_stranger_is_told_the_addresses_do_not_match(self):
+        payload = build_public_status(self.invitation, self.admin)
+        self.assertEqual(payload['code'], 'email_mismatch')
+
+    def test_a_signed_in_invitee_who_already_joined_is_told_so(self):
+        ProjectMembership.objects.create(user=self.invitee, project=self.project, role='member')
+        payload = build_public_status(self.invitation, self.invitee)
+        self.assertEqual(payload['code'], 'already_member')
+
+    def test_a_resolved_invitation_keeps_its_own_status_for_a_stranger(self):
+        # The email-mismatch check only applies while the invitation is still
+        # pending; a revoked one reads as revoked to everyone.
+        revoke_invitation(invitation=self.invitation, actor=self.admin)
+        self.invitation.refresh_from_db()
+        payload = build_public_status(self.invitation, self.admin)
+        self.assertEqual(payload['code'], ProjectInvitation.STATUS_REVOKED)
+
+
+class AcceptPendingInvitationFromSessionTests(APITestCase):
+    """Direct tests for the post-login hand-off through the session."""
+
+    def setUp(self) -> None:
+        self.admin = User.objects.create_user(
+            username='sess-admin', email='admin@example.com', password='pass12345', is_active=True,
+        )
+        self.invitee = User.objects.create_user(
+            username='sess-guest', email='guest@example.com', password='pass12345', is_active=True,
+        )
+        self.project = Project.objects.create(name='Session P', slug='session-p')
+        ProjectMembership.objects.create(user=self.admin, project=self.project, role='admin')
+        self.invitation = create_or_resend_invitation(
+            project=self.project, invited_by=self.admin, email='guest@example.com', role='member',
+        ).invitation
+
+    def test_accepts_the_stored_invitation_and_clears_the_token(self):
+        session = {}
+        store_pending_invitation_token(session=session, token=self.invitation.token)
+
+        result = accept_pending_invitation_from_session(session=session, user=self.invitee)
+
+        self.assertEqual(result.code, 'accepted')
+        self.assertIsNone(get_pending_invitation_token(session=session))
+
+    def test_reports_when_there_is_nothing_stored(self):
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_pending_invitation_from_session(session={}, user=self.invitee)
+        self.assertEqual(ctx.exception.code, 'no_pending_invitation')
+
+    def test_drops_a_token_that_can_never_succeed(self):
+        # An invalid, used, revoked or expired token would otherwise be retried
+        # on every subsequent login.
+        session = {}
+        store_pending_invitation_token(session=session, token='no-such-token')
+
+        with self.assertRaises(InvitationFlowError):
+            accept_pending_invitation_from_session(session=session, user=self.invitee)
+
+        self.assertIsNone(get_pending_invitation_token(session=session))
+
+    def test_keeps_a_token_that_the_right_user_could_still_accept(self):
+        # An email mismatch is about who is signed in, not about the token —
+        # the invitee may yet log in as themselves, so it is kept.
+        session = {}
+        store_pending_invitation_token(session=session, token=self.invitation.token)
+
+        with self.assertRaises(InvitationFlowError) as ctx:
+            accept_pending_invitation_from_session(session=session, user=self.admin)
+
+        self.assertEqual(ctx.exception.code, 'email_mismatch')
+        self.assertEqual(get_pending_invitation_token(session=session), self.invitation.token)
