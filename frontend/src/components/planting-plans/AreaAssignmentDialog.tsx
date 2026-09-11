@@ -468,13 +468,6 @@ function AreaAssignmentDialogComponent({
                       <MenuItem key={item.id} value={item.id} title={item.name}>{item.name}</MenuItem>
                     ))}
                   </Select>
-                  {isFieldSelectDisabled ? (
-                    <FormHelperText>
-                      {!activeDraft.locationId
-                        ? t('areaAssignment.selectLocationFirst')
-                        : t('areaAssignment.noFieldsForLocation')}
-                    </FormHelperText>
-                  ) : null}
                 </FormControl>
 
                 <FormControl size="small" sx={selectFieldSx}>
@@ -493,11 +486,11 @@ function AreaAssignmentDialogComponent({
                       <MenuItem key={item.id} value={item.id} title={item.name}>{item.name}</MenuItem>
                     ))}
                   </Select>
-                  {isBedSelectDisabled ? (
+                  {isFieldSelectDisabled ? (
                     <FormHelperText>
-                      {!activeDraft.fieldId
-                        ? t('areaAssignment.selectFieldFirst')
-                        : t('areaAssignment.noBedsForField')}
+                      {!activeDraft.locationId
+                        ? t('areaAssignment.selectLocationFirst')
+                        : t('areaAssignment.noFieldsForLocation')}
                     </FormHelperText>
                   ) : null}
                 </FormControl>
@@ -521,6 +514,13 @@ function AreaAssignmentDialogComponent({
                       );
                     })}
                   </Select>
+                  {isBedSelectDisabled ? (
+                    <FormHelperText>
+                      {!activeDraft.fieldId
+                        ? t('areaAssignment.selectFieldFirst')
+                        : t('areaAssignment.noBedsForField')}
+                    </FormHelperText>
+                  ) : null}
                 </FormControl>
               </Stack>
             </Box>

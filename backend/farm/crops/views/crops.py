@@ -467,9 +467,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         try:
             public_crop_id = int(public_crop_id)
         except (TypeError, ValueError):
-            return Response(
-                {'detail': 'A valid public crop ID is required.', 'code': 'public_crop_required'},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='public_crop_required',
+                detail='A valid public crop ID is required.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         public_crop = get_object_or_404(

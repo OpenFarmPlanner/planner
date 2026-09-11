@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from config.responses import api_error_response
 
 from farm.models import BatchOperation, Crop, EntityRevision
 from farm.project_context import get_active_project_or_400, require_project_admin
@@ -124,9 +125,10 @@ class BatchOperationRevertView(APIView):
         try:
             revert_batch_operation(active_project, batch, user_name=_current_actor_label(request))
         except BatchRevertError:
-            return Response(
-                {'detail': 'This action cannot be reverted.', 'code': 'batch_not_revertible'},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            return api_error_response(
+                code='batch_not_revertible',
+                detail='This action cannot be reverted.',
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         return Response({'detail': 'Reverted.'}, status=status.HTTP_200_OK)
 

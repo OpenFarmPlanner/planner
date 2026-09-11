@@ -362,3 +362,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Extended the area-assignment interaction suite to pin both the persistent
   downstream-selector explanation and the apply-button tooltip after changing
   a parent hierarchy selection.
+- Corrected the helper ownership found during review: location guidance now
+  belongs to the disabled field control and field guidance to the disabled bed
+  control, so each message is associated with the input it explains.
+- Finished the remaining structured backend-error sweep: guest-demo
+  restrictions, non-revertible history batches, and invalid public-crop links
+  now use the shared response builder. Serializer/service field dictionaries
+  remain deliberately untouched because they preserve field-level validation.
