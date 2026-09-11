@@ -418,7 +418,41 @@ class CropViewSetTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'missing_required_translations')
+        self.assertEqual(response.data['detail'], 'Required crop species translations are missing.')
         self.assertEqual(response.data['missing_languages'], ['de'])
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
+
+    def test_moderator_cannot_approve_duplicate_species_identity(self):
+        moderator = User.objects.create_user(
+            username='species-duplicate-moderator',
+            email='species-duplicate-moderator@example.com',
+            password='testpass',
+            is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        existing = CropSpecies.objects.create(name='Tree onion', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(
+            species=existing, language_code='de', common_name='Baumzwiebel',
+        )
+        CropSpeciesTranslation.objects.create(
+            species=existing, language_code='en', common_name='Tree onion',
+        )
+        proposal = CropSpecies.objects.create(
+            name='Egyptian onion', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
+        )
+        self.client.force_authenticate(user=moderator)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            self.species_approval_payload(),
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'duplicate_crop_species')
+        self.assertEqual(response.data['detail'], 'A published crop species with this name already exists.')
+        self.assertEqual(response.data['duplicate'], {'id': existing.id, 'name': existing.name})
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
 

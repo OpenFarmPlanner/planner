@@ -147,13 +147,11 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
                 if not (approved_translations.get(code, {}).get('common_name') or '').strip()
             ]
             if missing_languages:
-                return Response(
-                    {
-                        'detail': 'Required crop species translations are missing.',
-                        'code': 'missing_required_translations',
-                        'missing_languages': missing_languages,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
+                return api_error_response(
+                    code='missing_required_translations',
+                    detail='Required crop species translations are missing.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    missing_languages=missing_languages,
                 )
             from farm.utils import normalize_text
 
@@ -169,13 +167,11 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
                 status=CropSpecies.STATUS_PUBLISHED,
             ).filter(duplicate_query).exclude(pk=species.pk).first()
             if duplicate is not None:
-                return Response(
-                    {
-                        'detail': 'A published crop species with this name already exists.',
-                        'code': 'duplicate_crop_species',
-                        'duplicate': {'id': duplicate.id, 'name': duplicate.name},
-                    },
-                    status=status.HTTP_409_CONFLICT,
+                return api_error_response(
+                    code='duplicate_crop_species',
+                    detail='A published crop species with this name already exists.',
+                    status_code=status.HTTP_409_CONFLICT,
+                    duplicate={'id': duplicate.id, 'name': duplicate.name},
                 )
             CropSpeciesSerializer._write_translations(species, list(approved_translations.values()))
             if hasattr(species, '_prefetched_objects_cache'):

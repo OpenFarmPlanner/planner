@@ -399,3 +399,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   formatters into `formatLocalizedNumberForInput`. Both planting-plan editing
   surfaces now share grouping and precision defaults, with utility-level tests
   covering locale behavior and caller precision overrides.
+- Finished the remaining crop-species approval and demo-project creation error
+  branches that still constructed envelopes inline. They now use
+  `api_error_response`, retain their status and contextual fields, and have
+  regression assertions for stable codes, details, and unchanged state.
