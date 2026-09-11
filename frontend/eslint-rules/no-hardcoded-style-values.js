@@ -11,6 +11,13 @@ const colorKeys = new Set([
   'border',
 ]);
 const spacingKeys = new Set([
+  'p',
+  'pt',
+  'pr',
+  'pb',
+  'pl',
+  'px',
+  'py',
   'padding',
   'paddingTop',
   'paddingRight',
@@ -22,6 +29,13 @@ const spacingKeys = new Set([
   'paddingBlock',
   'paddingBlockStart',
   'paddingBlockEnd',
+  'm',
+  'mt',
+  'mr',
+  'mb',
+  'ml',
+  'mx',
+  'my',
   'margin',
   'marginTop',
   'marginRight',
@@ -58,7 +72,7 @@ const noHardcodedStyleValuesRule = {
       const hasLiteralColor = colorKeys.has(propertyName)
         && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(value);
       const hasPixelSpacing = spacingKeys.has(propertyName)
-        && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(value);
+        && /(?:^|[^\w.])-?\d+(?:\.\d+)?px(?![\w.])/i.test(value);
       if (hasLiteralColor || hasPixelSpacing) {
         context.report({ node, messageId: 'token', data: { value: JSON.stringify(value) } });
       }
@@ -72,17 +86,22 @@ const noHardcodedStyleValuesRule = {
         checkStyleValue(node, node.quasis.map((quasi) => quasi.value.raw).join(''));
       },
       JSXAttribute(node) {
+        const attributeValue = node.value?.type === 'Literal'
+          ? node.value
+          : node.value?.type === 'JSXExpressionContainer'
+            ? node.value.expression
+            : null;
         if (
           node.name?.type === 'JSXIdentifier'
           && (node.name.name === 'fill' || node.name.name === 'stroke')
-          && node.value?.type === 'Literal'
-          && typeof node.value.value === 'string'
-          && /#[0-9a-f]{3,8}\b/i.test(node.value.value)
+          && attributeValue?.type === 'Literal'
+          && typeof attributeValue.value === 'string'
+          && /#[0-9a-f]{3,8}\b/i.test(attributeValue.value)
         ) {
           context.report({
-            node: node.value,
+            node: attributeValue,
             messageId: 'token',
-            data: { value: JSON.stringify(node.value.value) },
+            data: { value: JSON.stringify(attributeValue.value) },
           });
         }
       },

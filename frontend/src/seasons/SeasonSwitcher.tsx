@@ -382,14 +382,14 @@ export function SeasonCreateSuggestionDialog({
                       </Typography>
                       {manualResidual === null ? (
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', color: 'success.main' }}>
-                          <CheckCircleOutlineIcon fontSize="small" sx={{ mt: '2px' }} />
+                          <CheckCircleOutlineIcon fontSize="small" sx={{ mt: 0.25 }} />
                           <Typography variant="body2">
                             {t(`navigation:seasonSwitcher.suggestion.gap.residualClosed.${transition.kind}`)}
                           </Typography>
                         </Stack>
                       ) : (
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', color: 'warning.dark' }}>
-                          <WarningAmberIcon fontSize="small" sx={{ mt: '2px' }} />
+                          <WarningAmberIcon fontSize="small" sx={{ mt: 0.25 }} />
                           <Typography variant="body2">
                             {t(`navigation:seasonSwitcher.suggestion.gap.residualRemains.${manualResidual.kind}`, {
                               period: formatSeasonPeriod(
@@ -476,7 +476,7 @@ export function SeasonCreateSuggestionDialog({
               bgcolor: 'action.hover',
             }}
           >
-            <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: '3px', flexShrink: 0 }} />
+            <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.375, flexShrink: 0 }} />
             <Typography variant="body2" color="text.secondary">
               {t('navigation:seasonSwitcher.suggestion.patternHint.prefix')}
               {' '}

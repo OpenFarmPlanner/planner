@@ -875,7 +875,7 @@ function GanttChartPage() {
                   minWidth: 0,
                   py: 0.75,
                   pl: 1,
-                  pr: '26px !important',
+                  pr: (theme) => `${theme.spacing(3.25)} !important`,
                 },
               }}
             >

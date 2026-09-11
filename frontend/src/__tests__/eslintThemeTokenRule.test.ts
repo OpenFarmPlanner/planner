@@ -22,12 +22,14 @@ describe('no-hardcoded-style-values', () => {
       const sx = {
         color: '#123456',
         padding: '10px 16px',
+        mx: 'calc(100% - 12px)',
+        mt: '-2px',
         backgroundColor: customColor || 'rgba(0, 0, 0, 0.5)',
       };
-      const icon = <path fill="#abcdef" stroke="#123" />;
+      const icon = <path fill="#abcdef" stroke={'#123'} />;
     `);
 
-    expect(messages).toHaveLength(5);
+    expect(messages).toHaveLength(7);
     expect(messages.every((message) => (
       message.ruleId === 'theme-tokens/no-hardcoded-style-values'
     ))).toBe(true);

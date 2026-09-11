@@ -410,3 +410,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Extracted the theme-token guard into its own local rule module and added
   direct regression tests for colours, pixel spacing, nested fallbacks, SVG
   attributes, semantic tokens, numeric spacing, and domain-provided colours.
+- Closed additional token-guard gaps for MUI's shorthand spacing properties,
+  signed pixel values, pixels embedded in `calc()`, and SVG colours expressed
+  through JSX expression containers.
+- Cleared the four findings exposed by the expanded rule: the compact Gantt
+  selector now derives its reserved adornment space from `theme.spacing`, and
+  season-dialog icon alignment uses equivalent numeric spacing factors.
