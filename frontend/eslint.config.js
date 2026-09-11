@@ -65,6 +65,24 @@ const i18nPlugin = {
             context.report({ node, messageId: 'translate', data: { value: JSON.stringify(value.trim()) } });
           }
         };
+        const inspectUiExpression = (expression) => {
+          if (expression?.type === 'Literal' && typeof expression.value === 'string') {
+            report(expression, expression.value);
+          } else if (expression?.type === 'TemplateLiteral') {
+            report(
+              expression,
+              expression.quasis.map((quasi) => quasi.value.cooked ?? quasi.value.raw).join(''),
+            );
+          } else if (expression?.type === 'ConditionalExpression') {
+            inspectUiExpression(expression.consequent);
+            inspectUiExpression(expression.alternate);
+          } else if (expression?.type === 'LogicalExpression') {
+            inspectUiExpression(expression.right);
+          } else if (expression?.type === 'BinaryExpression' && expression.operator === '+') {
+            inspectUiExpression(expression.left);
+            inspectUiExpression(expression.right);
+          }
+        };
         return {
           JSXText(node) {
             if (node.value.trim()) report(node, node.value);
@@ -77,15 +95,7 @@ const i18nPlugin = {
             ) {
               return;
             }
-            if (node.expression?.type === 'Literal' && typeof node.expression.value === 'string') {
-              report(node.expression, node.expression.value);
-            }
-            if (node.expression?.type === 'TemplateLiteral') {
-              report(
-                node.expression,
-                node.expression.quasis.map((quasi) => quasi.value.cooked ?? quasi.value.raw).join(''),
-              );
-            }
+            inspectUiExpression(node.expression);
           },
           JSXAttribute(node) {
             if (

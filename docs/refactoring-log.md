@@ -389,3 +389,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Extended the i18n guard to string and template expressions embedded in JSX
   children or user-facing attributes, closing the expression-container escape
   hatch left by the first pass without treating route/data attributes as copy.
+- Followed nested conditional, logical, and concatenated JSX expressions in
+  the same guard. Translation function arguments remain opaque, so locale keys
+  are not mistaken for visible copy while alternate render branches are checked.
+- Moved the generic requirement checklist's fallback status phrases into the
+  common locale namespace. Its callers can still supply feature-specific labels,
+  while the shared fallback no longer assumes German inside component code.
