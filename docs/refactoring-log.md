@@ -403,3 +403,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   branches that still constructed envelopes inline. They now use
   `api_error_response`, retain their status and contextual fields, and have
   regression assertions for stable codes, details, and unchanged state.
+- Extracted the i18n lint rule from the flat config into a directly testable
+  local rule module. Focused Linter coverage now pins both its visible string
+  findings and its deliberate exemptions for translation calls and non-visible
+  discriminator attributes.
