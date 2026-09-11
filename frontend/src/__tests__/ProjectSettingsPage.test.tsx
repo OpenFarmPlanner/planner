@@ -149,6 +149,12 @@ describe('ProjectSettingsPage', () => {
 
     expect(await screen.findByText('martin.stipsitz@gmail.com')).toBeInTheDocument();
     expect(screen.queryByText('Ohne Anzeigenamen')).not.toBeInTheDocument();
+    const removeSelfButton = screen.getByRole('button', { name: 'Aus Projekt entfernen' });
+    expect(removeSelfButton).toBeDisabled();
+    fireEvent.mouseOver(removeSelfButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Du kannst dich hier nicht selbst aus dem Projekt entfernen.',
+    );
   });
 
   it('shows a neutral no-access state for invitations when the user is not an admin', async () => {

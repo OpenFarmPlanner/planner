@@ -526,15 +526,23 @@ export default function ProjectSettingsPage() {
                             <MenuItem value="admin">{t('roleAdmin')}</MenuItem>
                           </Select>
                         </FormControl>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => setPendingRemovalMember(member)}
-                          disabled={!canManageMembers || isCurrentUser}
+                        <DisabledActionTooltip
+                          title={!canManageMembers
+                            ? t('memberManagementNoAccess')
+                            : isCurrentUser
+                              ? t('removeBlocked')
+                              : ''}
                         >
-                          {t('removeMember')}
-                        </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => setPendingRemovalMember(member)}
+                            disabled={!canManageMembers || isCurrentUser}
+                          >
+                            {t('removeMember')}
+                          </Button>
+                        </DisabledActionTooltip>
                       </Stack>
                     </Stack>
                   </Box>

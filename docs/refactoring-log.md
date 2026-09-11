@@ -424,3 +424,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   invitations. Permission, busy, unchanged-name, and missing-email states now
   reuse existing localized messages, with regression coverage for the
   unchanged-name tooltip.
+- Reused the existing self-removal warning as a reachable tooltip on the
+  disabled member-removal action. The member-list test now confirms that the
+  current user's protected action explains why it cannot be used.
