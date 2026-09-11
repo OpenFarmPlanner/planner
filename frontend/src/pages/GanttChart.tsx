@@ -1573,7 +1573,7 @@ function GanttChartPage() {
                   height: 26,
                   px: 1,
                   borderRadius: 1,
-                  backgroundColor: task.color || '#3b82f6',
+                  backgroundColor: task.color || theme.palette.primary.main,
                   color: 'common.white',
                   display: 'flex',
                   alignItems: 'center',

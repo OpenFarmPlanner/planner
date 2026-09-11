@@ -374,3 +374,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   Graphical field, bed, and alignment-guide shapes now consume semantic theme
   palette colours; the remaining dark-mode DataGrid literal uses
   `action.selected`.
+- Extended the style-value visitor through nested conditional/logical
+  expressions, closing the gap that allowed a literal Gantt fallback colour
+  inside `task.color || ...`. The fallback is now the theme primary token;
+  task-provided crop colours remain domain data.

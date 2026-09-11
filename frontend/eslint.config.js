@@ -13,8 +13,12 @@ const themeTokenPlugin = {
         const colorKeys = new Set(['color', 'background', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'outlineColor', 'border']);
         const spacingKeys = new Set(['padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'paddingInline', 'paddingInlineStart', 'paddingInlineEnd', 'paddingBlock', 'paddingBlockStart', 'paddingBlockEnd', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'marginInline', 'marginInlineStart', 'marginInlineEnd', 'marginBlock', 'marginBlockStart', 'marginBlockEnd', 'gap', 'rowGap', 'columnGap']);
         const checkStyleValue = (node, value) => {
-          if (!node.parent || node.parent.type !== 'Property') return;
-          const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
+          let property = node.parent;
+          while (property && property.type !== 'Property' && property.type !== 'JSXAttribute') {
+            property = property.parent;
+          }
+          if (!property || property.type !== 'Property') return;
+          const key = property.key.type === 'Identifier' ? property.key.name : property.key.value;
           const propertyName = String(key);
           const hasLiteralColor = colorKeys.has(propertyName) && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(value);
           const hasPixelSpacing = spacingKeys.has(propertyName) && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(value);
