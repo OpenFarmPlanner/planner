@@ -416,3 +416,7 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Cleared the four findings exposed by the expanded rule: the compact Gantt
   selector now derives its reserved adornment space from `theme.spacing`, and
   season-dialog icon alignment uses equivalent numeric spacing factors.
+- Applied the shared disabled-action tooltip inside the reusable account
+  settings inline editor. Save actions now distinguish missing required fields
+  from an in-flight request, while cancel actions explain the busy state; the
+  account settings interaction test verifies the required-fields explanation.
