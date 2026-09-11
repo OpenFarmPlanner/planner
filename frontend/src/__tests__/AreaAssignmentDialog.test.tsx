@@ -547,6 +547,12 @@ describe('AreaAssignmentDialog', () => {
         expect(screen.getByRole('combobox', { name: 'Parzelle' })).toHaveFocus();
       });
       expect(screen.getByRole('combobox', { name: 'Beet' })).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByText('Bitte zuerst eine Parzelle auswählen.')).toBeInTheDocument();
+
+      const applyButton = screen.getByRole('button', { name: 'Übernehmen' });
+      expect(applyButton).toBeDisabled();
+      await user.hover(applyButton.parentElement as HTMLElement);
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Bitte zuerst ein Beet auswählen.');
 
       await user.tab();
       expectFocusInsideDialog();

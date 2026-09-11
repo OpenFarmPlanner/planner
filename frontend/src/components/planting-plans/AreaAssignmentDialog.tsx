@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Stack,
@@ -27,6 +28,7 @@ import { formatAreaM2, toNumericValue } from '../../pages/plantingPlansUtils';
 import { TypeaheadSelect as Select } from '../inputs/TypeaheadSelect';
 import { fullWidthFieldSx } from '../forms/formLayout';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
+import { DisabledActionTooltip } from '../DisabledActionTooltip';
 
 interface AreaAssignmentDialogProps {
   bedId: number | null;
@@ -466,6 +468,13 @@ function AreaAssignmentDialogComponent({
                       <MenuItem key={item.id} value={item.id} title={item.name}>{item.name}</MenuItem>
                     ))}
                   </Select>
+                  {isFieldSelectDisabled ? (
+                    <FormHelperText>
+                      {!activeDraft.locationId
+                        ? t('areaAssignment.selectLocationFirst')
+                        : t('areaAssignment.noFieldsForLocation')}
+                    </FormHelperText>
+                  ) : null}
                 </FormControl>
 
                 <FormControl size="small" sx={selectFieldSx}>
@@ -484,6 +493,13 @@ function AreaAssignmentDialogComponent({
                       <MenuItem key={item.id} value={item.id} title={item.name}>{item.name}</MenuItem>
                     ))}
                   </Select>
+                  {isBedSelectDisabled ? (
+                    <FormHelperText>
+                      {!activeDraft.fieldId
+                        ? t('areaAssignment.selectFieldFirst')
+                        : t('areaAssignment.noBedsForField')}
+                    </FormHelperText>
+                  ) : null}
                 </FormControl>
 
                 <FormControl size="small" sx={selectFieldSx}>
@@ -511,7 +527,9 @@ function AreaAssignmentDialogComponent({
           </DialogContent>
           <DialogActions>
             <Button type="button" data-dialog-action="cancel" onClick={handleCancel}>{t('areaAssignment.cancel')}</Button>
-            <Button type="submit" data-dialog-action="apply" variant="contained" disabled={isApplyDisabled}>{t('areaAssignment.apply')}</Button>
+            <DisabledActionTooltip title={isApplyDisabled ? t('areaAssignment.selectBedFirst') : ''}>
+              <Button type="submit" data-dialog-action="apply" variant="contained" disabled={isApplyDisabled}>{t('areaAssignment.apply')}</Button>
+            </DisabledActionTooltip>
           </DialogActions>
         </Box>
       </Dialog>

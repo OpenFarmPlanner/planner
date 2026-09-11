@@ -355,3 +355,10 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Restored compatibility with minimal MUI themes used by isolated component
   tests: auth alpha derivations now fall back to standard MUI background
   tokens when the application-specific `surface` palette is absent.
+- Added persistent disabled-state guidance to the hierarchical area assignment
+  form. Field and bed selectors explain the missing parent choice or empty
+  hierarchy level, and the apply action points users to the required bed
+  selection instead of remaining silently unavailable.
+- Extended the area-assignment interaction suite to pin both the persistent
+  downstream-selector explanation and the apply-button tooltip after changing
+  a parent hierarchy selection.
