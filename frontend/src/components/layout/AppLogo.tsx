@@ -40,7 +40,8 @@ export default function AppLogo({ to = '/app/dashboard', size = 28, showText = t
         '&:focus-visible': {
           outline: 'none',
           borderColor: 'navigation.activeHoverBorder',
-          boxShadow: (theme) => `0 0 0 2px ${theme.palette.navigation.focusRing}`,
+          boxShadow: (theme) =>
+            `0 0 0 2px ${theme.palette.navigation?.focusRing ?? theme.palette.primary.main}`,
         },
       }}
       aria-label={t('globalMenu.dashboardLink')}

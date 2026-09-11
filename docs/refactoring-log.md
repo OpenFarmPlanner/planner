@@ -433,3 +433,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Restored compatibility between the public demo hero and the minimal MUI theme
   used by router-level tests. Its translucent panel now falls back to
   `common.black` when the application-only navigation palette is absent.
+- Applied the same compatibility guarantee to the shared application logo: its
+  focus ring falls back to the standard primary palette when tests or embedded
+  consumers provide an unextended MUI theme, with focused regression coverage.
