@@ -29,6 +29,17 @@ const themeTokenPlugin = {
           TemplateLiteral(node) {
             checkStyleValue(node, node.quasis.map((quasi) => quasi.value.raw).join(''));
           },
+          JSXAttribute(node) {
+            if (
+              node.name?.type === 'JSXIdentifier'
+              && (node.name.name === 'fill' || node.name.name === 'stroke')
+              && node.value?.type === 'Literal'
+              && typeof node.value.value === 'string'
+              && /#[0-9a-f]{3,8}\b/i.test(node.value.value)
+            ) {
+              context.report({ node: node.value, messageId: 'token', data: { value: JSON.stringify(node.value.value) } });
+            }
+          },
         };
       },
     },
@@ -96,7 +107,13 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/**/__tests__/**', 'src/gantt-chart/**', 'src/theme.ts'],
+    ignores: [
+      'src/**/__tests__/**',
+      'src/gantt-chart/**',
+      'src/theme.ts',
+      // Provider logo colours are part of the vendors' brand artwork.
+      'src/components/auth/providerIcons.tsx',
+    ],
     rules: {
       // Tests, the theme definition, and vendored Gantt sources are excluded
       // because literals are data or are authoritative there. Maintained UI

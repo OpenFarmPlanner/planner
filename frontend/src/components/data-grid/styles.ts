@@ -222,7 +222,7 @@ export const dataGridSx = {
   [SELECTED_ROW_EDITABLE_CELL_SELECTOR]: {
     bgcolor: (theme: Theme) =>
       theme.palette.mode === 'dark'
-        ? '#383838'
+        ? theme.palette.action.selected
         : (theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper),
   },
   [SELECTED_ROW_EDITABLE_CELL_HOVER_SELECTOR]: {

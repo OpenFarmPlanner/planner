@@ -369,3 +369,8 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   restrictions, non-revertible history batches, and invalid public-crop links
   now use the shared response builder. Serializer/service field dictionaries
   remain deliberately untouched because they preserve field-level validation.
+- Closed a token-lint AST gap for literal SVG `fill` and `stroke`
+  attributes, while explicitly excluding vendor-authentication logo artwork.
+  Graphical field, bed, and alignment-guide shapes now consume semantic theme
+  palette colours; the remaining dark-mode DataGrid literal uses
+  `action.selected`.

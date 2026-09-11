@@ -10,6 +10,7 @@ import {
   Paper,
   Stack,
   Typography,
+  useTheme,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -107,6 +108,7 @@ export default function GraphicalFields({
   hierarchyData,
 }: GraphicalFieldsProps) {
   const { t } = useTranslation(["fields", "common"]);
+  const theme = useTheme();
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const {
@@ -1524,7 +1526,7 @@ export default function GraphicalFields({
                               y={currentFieldRect.y}
                               width={baseRect.width}
                               height={baseRect.height}
-                              stroke="#2f855a"
+                              stroke={theme.palette.primary.main}
                               strokeWidth={2}
                               cornerRadius={4}
                               name="graphical-editable"
@@ -1571,8 +1573,8 @@ export default function GraphicalFields({
                                       }
                                       width={bedVm.width}
                                       height={bedVm.height}
-                                      fill="#bee3f8"
-                                      stroke="#2b6cb0"
+                                      fill={theme.palette.info.light}
+                                      stroke={theme.palette.info.main}
                                       strokeWidth={1}
                                       name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
@@ -1667,7 +1669,7 @@ export default function GraphicalFields({
                               ? Math.max(1, guide.end - guide.start)
                               : 1.5
                           }
-                          fill="#e53e3e"
+                          fill={theme.palette.error.main}
                           opacity={0.8}
                         />
                       ))}
