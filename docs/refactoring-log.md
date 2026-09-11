@@ -436,3 +436,9 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Applied the same compatibility guarantee to the shared application logo: its
   focus ring falls back to the standard primary palette when tests or embedded
   consumers provide an unextended MUI theme, with focused regression coverage.
+- Split the growing frontend unit suite across two deterministic Vitest shards
+  in CI and increased the per-shard guard to fifteen minutes so slower runners
+  retain meaningful headroom without weakening failure isolation.
+- Updated project-history assertions to derive the restore action's accessible
+  name from the same German translation resource as the component, preventing
+  stale copy from breaking otherwise valid CI coverage.
