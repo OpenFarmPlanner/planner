@@ -1,5 +1,98 @@
 # Refactoring log
 
+## 2026-09-12 comprehensive audit
+
+### Theme tokens and lint guard
+
+- Closed the remaining theme-token lint gap for pixel-based border radii.
+  Application-owned styles must now derive radii from the theme just as they
+  already derive colours and spacing, while percentages such as circular
+  `50%` radii remain valid.
+- Replaced the mobile help sheet's literal corner radii with values derived
+  from the theme spacing scale and added focused rule coverage to prevent a
+  regression.
+- Removed the remaining application colour and pixel literals from the global
+  stylesheet. Root/link colours and the minimum body width now live in the
+  theme's `MuiCssBaseline` overrides and consume semantic palette/spacing
+  tokens while retaining the existing rendered values.
+- Cleared the two legacy component findings exposed by the border-radius rule:
+  the stable DataGrid scrollbar thumb and yield-chart swatches now use MUI
+  radius factors with unchanged rendered corner sizes.
+- Generalized the border-radius guard to individual corner-radius properties,
+  so a literal can no longer bypass token enforcement by targeting one corner.
+
+### API error consistency
+
+- Routed the last-login-method social-account rejection and the public-crop
+  import confirmation conflict through the shared API error response builder.
+  Their status codes, stable codes, details, and conflict context remain
+  unchanged, but these endpoint branches no longer duplicate the canonical
+  error-envelope construction.
+- Standardized supplier-create payload failures without breaking field-level
+  consumers: these responses now include the stable English
+  `invalid_supplier_payload` code and detail alongside their established field
+  validation arrays.
+- Applied the same envelope to duplicate supplier names raised by the
+  service-level create path, so expected supplier-create failures now expose
+  a code and English detail consistently while retaining the localized `name`
+  field error used by the existing form.
+
+### Disabled-state explanations
+
+- Added a reachable, localized explanation to the additional-location
+  dialog's disabled submit action. An empty location name now points users to
+  the required field instead of leaving the unavailable action unexplained,
+  with an interaction test covering the tooltip.
+- Limited that explanation to the actually disabled state. Once a location
+  name is entered, the enabled submit action no longer retains an obsolete
+  required-field tooltip; the interaction test covers both transitions.
+- Added the shared busy-state explanation to disabled project-history menu
+  actions on desktop and mobile. The same shared disabled-menu wrapper now
+  handles both history variants and the unavailable page-help item instead of
+  retaining a menu-specific wrapper implementation.
+
+### Internationalization coverage
+
+- Extended the hardcoded-copy ESLint guard to image alternative text, closing
+  an accessibility-facing attribute gap while continuing to allow the empty
+  `alt` value used for decorative images.
+- Re-ran the maintained-source lint audit and compared the complete German and
+  English namespace key sets. No hardcoded UI copy remains under the guard,
+  every locale key is shared by both languages, and no German-authored key was
+  removed.
+- Extended the hardcoded-copy guard to the remaining ARIA attributes that
+  expose prose (`aria-description`, `aria-valuetext`, and
+  `aria-roledescription`), closing the accessibility-copy escape hatch while
+  preserving its data-attribute exemptions.
+
+### Shared business logic
+
+- Consolidated metre/centimetre boundary conversion into a typed measurement
+  utility. Public-crop form adaptation and the interactive crop form now share
+  the same rounding and null-handling rules instead of maintaining parallel
+  implementations; SI storage remains converted only at the form/API boundary.
+- Centralized supplier validation messages shared by service-level creation,
+  serializer validation, and integrity-error handling. Supplier endpoints now
+  have one source for required-name, URL, domain-list, domain-format, and
+  duplicate-name wording without changing their established response payloads.
+
+### Test coverage
+
+- Added focused unit coverage for the shared measurement boundary, including
+  half-centimetre rounding, zero, and the intentionally different null output
+  contracts used by form drafts and API payloads.
+- Completed the supplier validation consolidation with explicit serializer and
+  view method types, making the field-value boundary and update contract clear
+  to static analysis without changing API behavior.
+
+### Documentation
+
+- Updated the design-system enforcement reference to include tokenized border
+  radii and documented how compound radii should be derived.
+- Documented the maintained-source i18n lint boundary, including its
+  accessibility attributes, decorative-image exception, and vendor/test
+  exclusions.
+
 Date: 2026-09-08
 
 This log groups the refactoring pass by review area. It records both behavioral

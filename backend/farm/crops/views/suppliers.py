@@ -23,6 +23,7 @@ from farm.services.suppliers import (
     SupplierPayloadError,
     SupplierRestoreConflictError,
     SupplierRestoreFailedError,
+    SUPPLIER_NAME_DUPLICATE_MESSAGE,
     build_delete_undo_payload,
     build_delete_usage,
     create_supplier,
@@ -56,12 +57,12 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: SupplierSerializer) -> None:
         previous_snapshot = _serialize_instance(serializer.instance)
         try:
             instance = serializer.save()
         except IntegrityError as exc:
-            raise DRFValidationError({'name': ['Ein Lieferant mit diesem Namen existiert bereits.']}) from exc
+            raise DRFValidationError({'name': [SUPPLIER_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @action(detail=True, methods=['get'], url_path='delete-usage')
@@ -183,9 +184,19 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
             )
             supplier = create_supplier(project=request.active_project, **fields)
         except SupplierPayloadError as exc:
-            return Response(exc.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_supplier_payload',
+                detail='Supplier data is invalid.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                **exc.errors,
+            )
         except DuplicateSupplierNameError as exc:
-            raise DRFValidationError({'name': ['Ein Lieferant mit diesem Namen existiert bereits.']}) from exc
+            return api_error_response(
+                code='duplicate_supplier_name',
+                detail='A supplier with this name already exists in the project.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                name=[SUPPLIER_NAME_DUPLICATE_MESSAGE],
+            )
 
         serializer = self.get_serializer(supplier)
         data = serializer.data

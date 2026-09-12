@@ -15,6 +15,12 @@ from django.db import IntegrityError, transaction
 from farm.models import Crop, CropSupplierData, Supplier
 from farm.utils import normalize_supplier_name
 
+SUPPLIER_NAME_REQUIRED_MESSAGE = 'Dieses Feld ist erforderlich.'
+SUPPLIER_HOMEPAGE_INVALID_MESSAGE = 'Bitte geben Sie eine gültige URL ein.'
+SUPPLIER_DOMAINS_LIST_MESSAGE = 'Bitte geben Sie eine Liste von Domains an.'
+SUPPLIER_DOMAINS_INVALID_MESSAGE = 'Domains müssen gültige Hostnamen ohne Schema oder Pfad sein.'
+SUPPLIER_NAME_DUPLICATE_MESSAGE = 'Ein Lieferant mit diesem Namen existiert bereits.'
+
 
 class SupplierPayloadError(Exception):
     """A supplier payload failed field validation; `errors` maps field -> messages."""
@@ -253,7 +259,7 @@ def normalize_new_supplier_payload(
     homepage_url = (homepage_url or '').strip()
 
     if not name:
-        raise SupplierPayloadError({'name': ['Dieses Feld ist erforderlich.']})
+        raise SupplierPayloadError({'name': [SUPPLIER_NAME_REQUIRED_MESSAGE]})
 
     # Normalize homepage_url (prepend https:// if no protocol)
     if homepage_url and not homepage_url.startswith(('http://', 'https://')):
@@ -264,17 +270,17 @@ def normalize_new_supplier_payload(
         if homepage_url:
             url_validator(homepage_url)
     except DjangoValidationError:
-        raise SupplierPayloadError({'homepage_url': ['Bitte geben Sie eine gültige URL ein.']}) from None
+        raise SupplierPayloadError({'homepage_url': [SUPPLIER_HOMEPAGE_INVALID_MESSAGE]}) from None
 
     if allowed_domains and not isinstance(allowed_domains, list):
-        raise SupplierPayloadError({'allowed_domains': ['Bitte geben Sie eine Liste von Domains an.']})
+        raise SupplierPayloadError({'allowed_domains': [SUPPLIER_DOMAINS_LIST_MESSAGE]})
     if allowed_domains:
         normalized_domains = Supplier.normalize_allowed_domains(allowed_domains)
         invalid = [domain for domain in normalized_domains if not Supplier._is_valid_domain(Supplier._normalize_domain(domain))]
         if invalid:
             raise SupplierPayloadError({
                 'allowed_domains': [
-                    f'Ungültige Domain(s): {", ".join(invalid)}. Domains müssen gültige Hostnamen ohne Schema oder Pfad sein.'
+                    f'Ungültige Domain(s): {", ".join(invalid)}. {SUPPLIER_DOMAINS_INVALID_MESSAGE}'
                 ],
             })
 

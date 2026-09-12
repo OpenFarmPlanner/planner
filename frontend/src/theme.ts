@@ -5,6 +5,7 @@ import type { Theme } from '@mui/material/styles';
 import type {} from '@mui/x-data-grid/themeAugmentation';
 
 const surfaceColors = {
+  rootBackground: '#f7f6f1',
   appBackground: '#ffffff',
   sidebarBackground: '#ffffff',
   topbarBackground: '#ffffff',
@@ -49,6 +50,7 @@ const createPositiveFilledAlertStyles = (theme: Theme) => ({
 
 declare module '@mui/material/styles' {
   interface SurfacePalette {
+    rootBackground: string;
     appBackground: string;
     sidebarBackground: string;
     topbarBackground: string;
@@ -149,6 +151,9 @@ const theme = createTheme({
       light: '#4f9853',
       contrastText: '#ffffff',
     },
+    text: {
+      primary: '#213547',
+    },
     error: {
       main: '#d32f2f',
     },
@@ -186,6 +191,19 @@ const theme = createTheme({
 
     MuiCssBaseline: {
       styleOverrides: (theme) => ({
+        ':root': {
+          color: theme.palette.text.primary,
+          backgroundColor: theme.palette.surface.rootBackground,
+        },
+        body: {
+          minWidth: theme.spacing(40),
+        },
+        a: {
+          color: theme.palette.primary.main,
+          '&:hover, &:focus-visible, &:active, &:visited': {
+            color: theme.palette.primary.dark,
+          },
+        },
         // Baseline visible-focus ring for anything that doesn't already get
         // one from a component-specific override below (custom focus
         // regions, chart bars, gantt tasks, etc.) — part of the keyboard

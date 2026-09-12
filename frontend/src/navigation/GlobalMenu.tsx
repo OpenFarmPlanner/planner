@@ -10,7 +10,7 @@ import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { ACTION_MENU_ICON_PROPS, ACTION_MENU_ITEM_ICON_SX, MENU_SECTION_LABEL_SX } from './topbarMenuStyles';
 import { LanguageMenuItems } from '../i18n/LanguageSwitcher';
-import { AppTooltip } from '../components/AppTooltip';
+import { DisabledMenuItemTooltip } from '../components/DisabledActionTooltip';
 import type { ReactNode } from 'react';
 import type { SxProps, Theme } from '@mui/material/styles';
 
@@ -111,25 +111,42 @@ export function GlobalMenu(props: GlobalMenuProps) {
     </MenuItem>
   );
 
-  const pageHelpMenuItem = onOpenPageHelp ? (
-    <MenuItem
-      key="mobile-app-page-help"
-      onClick={() => { onClose(); onOpenPageHelp(); }}
-      disabled={!pageHelpAvailable}
-      sx={{ color: 'text.primary' }}
-    >
-      <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
-      {t('globalMenu.pageHelp')}
-    </MenuItem>
-  ) : null;
-  // A disabled MenuItem fires no pointer events, so the "why" tooltip needs a
-  // wrapper element to hang off — same pattern as CropHeaderActionsMenu's
-  // disabled publish item.
-  const pageHelpItem = onOpenPageHelp && !pageHelpAvailable ? (
-    <AppTooltip key="mobile-app-page-help-tooltip" title={pageHelpUnavailableReason ?? t('globalMenu.pageHelpUnavailable')}>
-      <Box component="span" sx={{ display: 'block' }}>{pageHelpMenuItem}</Box>
-    </AppTooltip>
-  ) : pageHelpMenuItem;
+  const pageHelpMenuItem = (key: string): ReactNode => {
+    if (!onOpenPageHelp) return null;
+    const item = (
+      <MenuItem
+        key={key}
+        onClick={() => { onClose(); onOpenPageHelp(); }}
+        disabled={!pageHelpAvailable}
+        sx={{ color: 'text.primary' }}
+      >
+        <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+        {t('globalMenu.pageHelp')}
+      </MenuItem>
+    );
+    // A disabled MenuItem fires no pointer events, so the "why" tooltip needs a
+    // wrapper element to hang off — same pattern as CropHeaderActionsMenu's
+    // disabled publish item.
+    return pageHelpAvailable ? item : (
+      <DisabledMenuItemTooltip key={`${key}-tooltip`} title={pageHelpUnavailableReason ?? t('globalMenu.pageHelpUnavailable')}>
+        {item}
+      </DisabledMenuItemTooltip>
+    );
+  };
+
+  const historyMenuItem = (key: string) => {
+    const item = (
+      <MenuItem key={key} onClick={wrapAsync(onOpenProjectHistory)} disabled={historyLoading}>
+        <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HistoryOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+        {t('commandPalette.commands.openVersionHistory')}
+      </MenuItem>
+    );
+    return historyLoading ? (
+      <DisabledMenuItemTooltip key={`${key}-tooltip`} title={t('common:disabledReasons.busy')}>
+        {item}
+      </DisabledMenuItemTooltip>
+    ) : item;
+  };
 
   const mobileMenuItems = [
     ...(notificationItems ? [
@@ -141,11 +158,11 @@ export function GlobalMenu(props: GlobalMenuProps) {
     <MenuItem key="mobile-project-switcher" onClick={wrap(onOpenProjectSwitcher)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SwapHorizIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('projectSwitcher.ariaLabel')}</MenuItem>,
     <MenuItem key="mobile-project-create" onClick={wrap(onOpenCreateProject)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><AddIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.create')}</MenuItem>,
     <MenuItem key="mobile-project-settings" onClick={wrap(onOpenProjectSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.settings')}</MenuItem>,
-    <MenuItem key="mobile-project-history" onClick={wrapAsync(onOpenProjectHistory)} disabled={historyLoading}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HistoryOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.openVersionHistory')}</MenuItem>,
+    historyMenuItem('mobile-project-history'),
     <Divider key="mobile-divider-project-app" />,
     <MenuItem key="mobile-section-app" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.app')}</MenuItem>,
     <MenuItem key="mobile-app-shortcuts" onClick={wrap(onOpenShortcuts)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><KeyboardOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.shortcuts')}</MenuItem>,
-    pageHelpItem,
+    pageHelpMenuItem('mobile-app-page-help'),
     <MenuItem key="mobile-app-help" onClick={wrap(onOpenHelp)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.appHelp')}</MenuItem>,
     feedbackItem('mobile-app-feedback'),
     <MenuItem key="mobile-app-account-settings" onClick={wrap(onOpenAccountSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('accountSettings')}</MenuItem>,
@@ -159,7 +176,7 @@ export function GlobalMenu(props: GlobalMenuProps) {
   ];
   const desktopMenuItems = [
     <MenuItem key="desktop-project-settings" onClick={wrap(onOpenProjectSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.settings')}</MenuItem>,
-    <MenuItem key="desktop-history" onClick={wrapAsync(onOpenProjectHistory)} disabled={historyLoading}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HistoryOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.openVersionHistory')}</MenuItem>,
+    historyMenuItem('desktop-history'),
     <Divider key="desktop-divider-project" />,
     <MenuItem key="desktop-account-settings" onClick={wrap(onOpenAccountSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('accountSettings')}</MenuItem>,
     <Divider key="desktop-divider-language" />,

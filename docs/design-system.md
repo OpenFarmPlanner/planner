@@ -87,10 +87,11 @@ the media query in the component only picks the tooltip text.
 
 Only two `.css` files are left in the app, and both are deliberate:
 
-**`src/index.css`** — global element base styles: the root font stack and
-colours, the body reset, the `overflow-x` clamp (whose comment explains a
+**`src/index.css`** — non-theme global element base styles: the root font
+rendering settings, the body reset, the `overflow-x` clamp (whose comment explains a
 non-obvious interaction with MUI's modal scroll lock — read it before touching
-it), link colours and `h1`.
+it), link decoration, and `h1`. Global colours, link states, and the minimum
+body width live in `MuiCssBaseline` so they can consume theme tokens.
 
 **`src/pages/GanttChart.css`** — overrides for the vendored Gantt library in
 `src/gantt-chart/`. Every rule targets `.rmg-*` DOM that this app does not
@@ -112,7 +113,10 @@ there are library patches, not app styling (see
 
 **Enforcement status:** ESLint's local
 `theme-tokens/no-hardcoded-style-values` rule rejects application-owned
-colour literals and pixel spacing in style properties. The theme and vendored
+colour literals, pixel spacing, and pixel-based border radii (including
+individual-corner radius properties) in style
+properties. Use numeric MUI radius factors or derive compound corner values
+with `theme.spacing()`. The theme and vendored
 Gantt package are deliberately excluded; user/domain colour data (for example
 crop swatches) also remains valid outside the theme. The maintained UI has no
 remaining rule findings, so new violations fail lint rather than accumulating

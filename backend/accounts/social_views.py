@@ -107,14 +107,10 @@ class SocialDisconnectView(APIView):
             )
 
         if not has_other_login_method(user=request.user, excluded_social_account_id=account.pk):
-            return Response(
-                {
-                    'code': 'last_login_method',
-                    'detail': _de(
-                        _('You cannot remove your last login method. Set a password first.')
-                    ),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error_response(
+                code='last_login_method',
+                detail=_de(_('You cannot remove your last login method. Set a password first.')),
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         account.delete()

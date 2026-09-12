@@ -22,6 +22,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { useHierarchyData } from '../components/hierarchy/hooks/useHierarchyData';
 import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUtils';
 import { keywordList } from '../commands/keywordList';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
@@ -478,9 +479,11 @@ export default function FieldsBedsPage() {
           </DialogContent>
           <DialogActions>
             <Button type="button" onClick={() => setAddLocationDialogOpen(false)}>{t('common:actions.cancel')}</Button>
-            <Button type="submit" variant="contained" color="success" disabled={!newLocationName.trim()}>
-              {t('hierarchy:dialogs.addAdditionalLocation.submit')}
-            </Button>
+            <DisabledActionTooltip title={!newLocationName.trim() ? t('common:disabledReasons.requiredFields') : ''}>
+              <Button type="submit" variant="contained" color="success" disabled={!newLocationName.trim()}>
+                {t('hierarchy:dialogs.addAdditionalLocation.submit')}
+              </Button>
+            </DisabledActionTooltip>
           </DialogActions>
         </Box>
       </Dialog>
