@@ -58,6 +58,10 @@
   English namespace key sets. No hardcoded UI copy remains under the guard,
   every locale key is shared by both languages, and no German-authored key was
   removed.
+- Extended the hardcoded-copy guard to the remaining ARIA attributes that
+  expose prose (`aria-description`, `aria-valuetext`, and
+  `aria-roledescription`), closing the accessibility-copy escape hatch while
+  preserving its data-attribute exemptions.
 
 ### Shared business logic
 

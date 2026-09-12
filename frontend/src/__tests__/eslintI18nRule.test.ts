@@ -22,12 +22,17 @@ describe('no-hardcoded-ui-strings', () => {
       const view = <>
         <p>Untranslated text</p>
         <input aria-label="Untranslated label" />
+        <input aria-description="Untranslated description" aria-valuetext="Untranslated value" />
+        <section aria-roledescription="Untranslated region" />
         <img alt="Untranslated alternative" />
         <span>{ready ? 'Ready' : \`Waiting for \${name}\`}</span>
       </>;
     `);
 
     expect(messages.map((message) => message.ruleId)).toEqual([
+      'i18n/no-hardcoded-ui-strings',
+      'i18n/no-hardcoded-ui-strings',
+      'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',

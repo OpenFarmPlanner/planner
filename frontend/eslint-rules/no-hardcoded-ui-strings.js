@@ -1,5 +1,8 @@
 const userFacingAttributes = new Set([
+  'aria-description',
   'aria-label',
+  'aria-roledescription',
+  'aria-valuetext',
   'alt',
   'helperText',
   'label',
