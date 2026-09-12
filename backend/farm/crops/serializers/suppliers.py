@@ -1,6 +1,8 @@
 """Serializers for suppliers and per-crop supplier data rows."""
 
 
+from typing import Any
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
@@ -25,7 +27,7 @@ class SupplierSerializer(serializers.ModelSerializer):
     created = serializers.BooleanField(read_only=True, default=False)
     homepage_url = serializers.CharField(required=False, allow_blank=True, max_length=200)
 
-    def get_image_file(self, obj):
+    def get_image_file(self, obj: Supplier) -> dict[str, int | str] | None:
         if not obj.image_file_id:
             return None
         return {
@@ -33,7 +35,7 @@ class SupplierSerializer(serializers.ModelSerializer):
             'storage_path': obj.image_file.storage_path,
         }
 
-    def validate_allowed_domains(self, value):
+    def validate_allowed_domains(self, value: Any) -> list[str]:
         if value is None:
             return []
         if not isinstance(value, list):
@@ -44,7 +46,7 @@ class SupplierSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(SUPPLIER_DOMAINS_INVALID_MESSAGE)
         return normalized
 
-    def validate_homepage_url(self, value):
+    def validate_homepage_url(self, value: Any) -> str:
         homepage_url = (value or '').strip()
         if not homepage_url:
             return ''
@@ -58,7 +60,7 @@ class SupplierSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(SUPPLIER_HOMEPAGE_INVALID_MESSAGE) from exc
         return homepage_url
 
-    def validate_name(self, value):
+    def validate_name(self, value: Any) -> str:
         from farm.utils import normalize_supplier_name
 
         name = (value or '').strip()

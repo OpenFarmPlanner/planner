@@ -67,6 +67,9 @@
 - Added focused unit coverage for the shared measurement boundary, including
   half-centimetre rounding, zero, and the intentionally different null output
   contracts used by form drafts and API payloads.
+- Completed the supplier validation consolidation with explicit serializer and
+  view method types, making the field-value boundary and update contract clear
+  to static analysis without changing API behavior.
 
 ### Documentation
 

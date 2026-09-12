@@ -57,7 +57,7 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: SupplierSerializer) -> None:
         previous_snapshot = _serialize_instance(serializer.instance)
         try:
             instance = serializer.save()
