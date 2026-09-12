@@ -1,10 +1,11 @@
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, FormHelperText, InputLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { projectAPI, type ProjectInvitationPayload, type ProjectMemberPayload, type ProjectRegion } from '../api/api';
 import { useAuth } from '../auth/useAuth';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
 import { useTranslation } from '../i18n';
 import { showProjectDeleteUndoSnackbar } from '../projects/projectDeletionFeedback';
@@ -381,14 +382,24 @@ export default function ProjectSettingsPage() {
                 }}
                 slotProps={{ htmlInput: { 'aria-label': t('currentProjectLabel') } }}
               />
-              <Button
-                variant="contained"
-                onClick={() => void handleProjectNameCommit()}
-                disabled={!isProjectAdmin || isSavingProjectName || !hasProjectNameChanges}
-                sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, minHeight: 56, minWidth: 140 }}
+              <DisabledActionTooltip
+                title={!isProjectAdmin
+                  ? t('memberManagementNoAccess')
+                  : isSavingProjectName
+                    ? t('common:disabledReasons.busy')
+                    : !hasProjectNameChanges
+                      ? t('common:disabledReasons.noChanges')
+                      : ''}
               >
-                {t('projectRename.save')}
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleProjectNameCommit()}
+                  disabled={!isProjectAdmin || isSavingProjectName || !hasProjectNameChanges}
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, minHeight: 56, minWidth: 140 }}
+                >
+                  {t('projectRename.save')}
+                </Button>
+              </DisabledActionTooltip>
             </Stack>
             <Divider sx={{ my: 2 }} />
             <FormControl
@@ -448,14 +459,22 @@ export default function ProjectSettingsPage() {
                   <MenuItem value="admin">{t('roleAdmin')}</MenuItem>
                 </Select>
               </FormControl>
-              <Button
-                variant="contained"
-                onClick={() => void handleInvite()}
-                disabled={!canManageMembers || !email.trim()}
-                sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+              <DisabledActionTooltip
+                title={!canManageMembers
+                  ? t('projectMembers.invite.noPermission')
+                  : !email.trim()
+                    ? t('common:disabledReasons.requiredFields')
+                    : ''}
               >
-                {t('sendInvite')}
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleInvite()}
+                  disabled={!canManageMembers || !email.trim()}
+                  sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
+                >
+                  {t('sendInvite')}
+                </Button>
+              </DisabledActionTooltip>
             </Stack>
 
             {!canManageMembers ? (
@@ -506,16 +525,25 @@ export default function ProjectSettingsPage() {
                             <MenuItem value="member">{t('roleMember')}</MenuItem>
                             <MenuItem value="admin">{t('roleAdmin')}</MenuItem>
                           </Select>
+                          {isCurrentUser ? <FormHelperText>{t('roleChangeBlocked')}</FormHelperText> : null}
                         </FormControl>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => setPendingRemovalMember(member)}
-                          disabled={!canManageMembers || isCurrentUser}
+                        <DisabledActionTooltip
+                          title={!canManageMembers
+                            ? t('memberManagementNoAccess')
+                            : isCurrentUser
+                              ? t('removeBlocked')
+                              : ''}
                         >
-                          {t('removeMember')}
-                        </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => setPendingRemovalMember(member)}
+                            disabled={!canManageMembers || isCurrentUser}
+                          >
+                            {t('removeMember')}
+                          </Button>
+                        </DisabledActionTooltip>
                       </Stack>
                     </Stack>
                   </Box>

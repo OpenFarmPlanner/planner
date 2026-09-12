@@ -110,11 +110,13 @@ ships with the vendored Gantt library. Treat it as third-party code — changes
 there are library patches, not app styling (see
 [occupancy-tree-hierarchy.md](./occupancy-tree-hierarchy.md)).
 
-**Reality check:** roughly 50 hex colour literals still exist in app `.ts`/`.tsx`
-files (`components/data-grid/styles.ts`, `NotesDrawer.tsx`,
-`ContextMenuIndicator.tsx`, `pages/auth/authPageStyles.ts`, and others). They
-are legacy, not precedent. The rule above is the rule; migrate a literal to a
-theme token when you touch the code around it, and don't add new ones.
+**Enforcement status:** ESLint's local
+`theme-tokens/no-hardcoded-style-values` rule rejects application-owned
+colour literals and pixel spacing in style properties. The theme and vendored
+Gantt package are deliberately excluded; user/domain colour data (for example
+crop swatches) also remains valid outside the theme. The maintained UI has no
+remaining rule findings, so new violations fail lint rather than accumulating
+as warnings.
 
 ## 5. i18n and writing direction
 

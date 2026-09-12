@@ -4,6 +4,7 @@ from typing import Any
 
 from rest_framework import status
 from rest_framework.response import Response
+from config.responses import api_error_response
 
 from .models import GuestDemoSession
 
@@ -20,10 +21,8 @@ def is_active_guest_demo_user(user: Any) -> bool:
 
 def guest_demo_forbidden_response() -> Response:
     """Build the standard response for demo-restricted side effects."""
-    return Response(
-        {
-            'detail': GUEST_DEMO_FORBIDDEN_DETAIL,
-            'code': GUEST_DEMO_FORBIDDEN_CODE,
-        },
-        status=status.HTTP_403_FORBIDDEN,
+    return api_error_response(
+        code=GUEST_DEMO_FORBIDDEN_CODE,
+        detail=GUEST_DEMO_FORBIDDEN_DETAIL,
+        status_code=status.HTTP_403_FORBIDDEN,
     )

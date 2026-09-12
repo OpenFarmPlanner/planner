@@ -4,6 +4,8 @@
 
 import { Alert, Box, Button, Divider, Stack } from '@mui/material';
 import { useState } from 'react';
+import { alpha } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { useLocation } from 'react-router';
 import {
   SOCIAL_ERROR_PARAM,
@@ -17,17 +19,17 @@ import { PROVIDER_ICONS } from './socialProviderIcons';
 import { socialLoginErrorKey } from './socialLoginErrors';
 import SocialLoginLegalNotice from './SocialLoginLegalNotice';
 
-const socialButtonSx = {
+const socialButtonSx: SxProps<Theme> = {
   ...authSecondaryButtonSx,
   justifyContent: 'flex-start',
   gap: 1.5,
   color: 'text.primary',
-  borderColor: 'rgba(46, 125, 50, 0.24)',
+  borderColor: (theme) => alpha(theme.palette.primary.main, 0.24),
   boxShadow: 0,
   '&:hover': {
-    ...authSecondaryButtonSx['&:hover'],
     color: 'text.primary',
-    borderColor: 'rgba(46, 125, 50, 0.42)',
+    borderColor: (theme) => alpha(theme.palette.primary.main, 0.42),
+    bgcolor: 'surface.surfaceBackground',
     transform: 'none',
     boxShadow: 1,
   },

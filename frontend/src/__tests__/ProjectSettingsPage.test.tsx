@@ -149,6 +149,13 @@ describe('ProjectSettingsPage', () => {
 
     expect(await screen.findByText('martin.stipsitz@gmail.com')).toBeInTheDocument();
     expect(screen.queryByText('Ohne Anzeigenamen')).not.toBeInTheDocument();
+    expect(screen.getByText('Die eigene Rolle kann hier nicht geändert werden.')).toBeInTheDocument();
+    const removeSelfButton = screen.getByRole('button', { name: 'Aus Projekt entfernen' });
+    expect(removeSelfButton).toBeDisabled();
+    fireEvent.mouseOver(removeSelfButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Du kannst dich hier nicht selbst aus dem Projekt entfernen.',
+    );
   });
 
   it('shows a neutral no-access state for invitations when the user is not an admin', async () => {
@@ -262,7 +269,10 @@ describe('ProjectSettingsPage', () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
     expect(await screen.findByLabelText('Projektname')).toHaveValue('Alpha');
     expect(screen.queryByRole('button', { name: 'Projekt umbenennen' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    const saveButton = screen.getByRole('button', { name: 'Speichern' });
+    expect(saveButton).toBeDisabled();
+    fireEvent.mouseOver(saveButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Es gibt keine ungespeicherten Änderungen.');
   });
 
   it('keeps inline project name changes unsaved when the field loses focus', async () => {

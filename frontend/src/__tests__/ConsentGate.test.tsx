@@ -37,6 +37,7 @@ vi.mock('../i18n', () => ({
         'reconsent.privacy.body': 'Bitte lies und bestätige die aktuelle Fassung, bevor du OpenFarmPlanner weiter nutzt.',
         'reconsent.privacy.linkLabel': 'Datenschutzerklärung lesen',
         'reconsent.privacy.acceptButton': 'Akzeptieren',
+        'common:disabledReasons.busy': 'Aktion wird gerade verarbeitet.',
         'home:legal.terms.version': 'Stand: 17. Juli 2026',
         'home:legal.privacy.version': 'Stand: 17. Juli 2026',
       };
@@ -165,6 +166,25 @@ describe('ConsentGate', () => {
     await user.click(screen.getByRole('button', { name: 'Abmelden' }));
 
     expect(logoutMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains why both actions are disabled while consent is being saved', async () => {
+    acceptConsentMock.mockImplementationOnce(() => new Promise(() => undefined));
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <ConsentGate />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Akzeptieren' }));
+
+    const acceptingButton = screen.getByRole('button', { name: 'Wird bestätigt…' });
+    expect(acceptingButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Abmelden' })).toBeDisabled();
+
+    await user.hover(acceptingButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Aktion wird gerade verarbeitet.');
   });
 
   it('shows an error message when accepting fails', async () => {

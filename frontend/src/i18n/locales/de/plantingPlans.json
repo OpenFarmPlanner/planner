@@ -104,7 +104,12 @@
     "emptyStateDescription": "Lege zuerst Parzellen und Beete an, bevor du einem Anbauplan eine Fläche zuweist.",
     "emptyStateAction": "Zu Anbauflächen",
     "apply": "Übernehmen",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "selectLocationFirst": "Bitte zuerst einen Standort auswählen.",
+    "noFieldsForLocation": "Für diesen Standort sind keine Parzellen verfügbar.",
+    "selectFieldFirst": "Bitte zuerst eine Parzelle auswählen.",
+    "noBedsForField": "Für diese Parzelle sind keine Beete verfügbar.",
+    "selectBedFirst": "Bitte zuerst ein Beet auswählen."
   },
   "mobile": {
     "showDetails": "Details anzeigen",
@@ -160,5 +165,6 @@
       "edit": "anbauplan, bearbeiten",
       "delete": "anbauplan, löschen"
     }
-  }
+  },
+  "loadingPlans": "Anbaupläne werden geladen…"
 }

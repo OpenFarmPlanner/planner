@@ -875,7 +875,7 @@ function GanttChartPage() {
                   minWidth: 0,
                   py: 0.75,
                   pl: 1,
-                  pr: '26px !important',
+                  pr: (theme) => `${theme.spacing(3.25)} !important`,
                 },
               }}
             >
@@ -1573,8 +1573,8 @@ function GanttChartPage() {
                   height: 26,
                   px: 1,
                   borderRadius: 1,
-                  backgroundColor: task.color || '#3b82f6',
-                  color: '#fff',
+                  backgroundColor: task.color || theme.palette.primary.main,
+                  color: 'common.white',
                   display: 'flex',
                   alignItems: 'center',
                   overflow: 'hidden',

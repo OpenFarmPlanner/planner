@@ -10,6 +10,7 @@ from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from config.responses import api_error_response
 
 from .social_linking import has_other_login_method
 from .social_urls import PROVIDER_ADAPTERS
@@ -99,9 +100,10 @@ class SocialDisconnectView(APIView):
             pk=request.data.get('id'),
         ).first()
         if account is None:
-            return Response(
-                {'detail': _de(_('This login method is not connected to your account.'))},
-                status=status.HTTP_404_NOT_FOUND,
+            return api_error_response(
+                code='social_account_not_found',
+                detail=_de(_('This login method is not connected to your account.')),
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
         if not has_other_login_method(user=request.user, excluded_social_account_id=account.pk):

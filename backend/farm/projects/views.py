@@ -244,9 +244,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
             result = create_personal_demo_project(user=request.user, language_code=resolve_demo_request_language(request))
         except Exception:  # noqa: BLE001
             logger.exception('Personal demo project creation failed', extra={'user_id': request.user.id})
-            return Response(
-                {'detail': 'Demo project could not be created.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            return api_error_response(
+                code='demo_project_creation_failed',
+                detail='Demo project could not be created.',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         response_status = status.HTTP_201_CREATED if result.created_project else status.HTTP_200_OK

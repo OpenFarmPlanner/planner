@@ -104,7 +104,12 @@
     "emptyStateDescription": "Create fields and beds first before assigning an area to a planting plan.",
     "emptyStateAction": "Go to Fields & Beds",
     "apply": "Apply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "selectLocationFirst": "Select a location first.",
+    "noFieldsForLocation": "No fields are available for this location.",
+    "selectFieldFirst": "Select a field first.",
+    "noBedsForField": "No beds are available for this field.",
+    "selectBedFirst": "Select a bed first."
   },
   "mobile": {
     "showDetails": "Show details",
@@ -160,5 +165,6 @@
       "edit": "planting plan, edit",
       "delete": "planting plan, delete"
     }
-  }
+  },
+  "loadingPlans": "Loading planting plans…"
 }

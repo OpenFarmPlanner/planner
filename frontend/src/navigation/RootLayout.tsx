@@ -809,7 +809,7 @@ function RootLayout() {
                     noWrap
                     sx={navigationLogoTextSx}
                   >
-                    OpenFarmPlanner
+                    {t('common:appName')}
                   </Typography>
                 </Box>
                 <AppTooltip

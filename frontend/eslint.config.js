@@ -4,34 +4,18 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import noHardcodedStyleValuesRule from './eslint-rules/no-hardcoded-style-values.js'
+import noHardcodedUiStringsRule from './eslint-rules/no-hardcoded-ui-strings.js'
 
 const themeTokenPlugin = {
   rules: {
-    'no-hardcoded-style-values': {
-      meta: { type: 'suggestion', schema: [], messages: { token: 'Use an MUI theme token or spacing unit instead of hardcoded style value {{value}}.' } },
-      create(context) {
-        const colorKeys = new Set(['color', 'background', 'backgroundColor', 'bgcolor', 'borderColor', 'boxShadow', 'textShadow', 'outline', 'outlineColor', 'border']);
-        const spacingKeys = new Set(['padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'paddingInline', 'paddingInlineStart', 'paddingInlineEnd', 'paddingBlock', 'paddingBlockStart', 'paddingBlockEnd', 'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'marginInline', 'marginInlineStart', 'marginInlineEnd', 'marginBlock', 'marginBlockStart', 'marginBlockEnd', 'gap', 'rowGap', 'columnGap']);
-        const checkStyleValue = (node, value) => {
-          if (!node.parent || node.parent.type !== 'Property') return;
-          const key = node.parent.key.type === 'Identifier' ? node.parent.key.name : node.parent.key.value;
-          const propertyName = String(key);
-          const hasLiteralColor = colorKeys.has(propertyName) && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(value);
-          const hasPixelSpacing = spacingKeys.has(propertyName) && /(?:^|\s)\d+(?:\.\d+)?px(?:\s|$)/i.test(value);
-          if (hasLiteralColor || hasPixelSpacing) {
-            context.report({ node, messageId: 'token', data: { value: JSON.stringify(value) } });
-          }
-        };
-        return {
-          Literal(node) {
-            if (typeof node.value === 'string') checkStyleValue(node, node.value);
-          },
-          TemplateLiteral(node) {
-            checkStyleValue(node, node.quasis.map((quasi) => quasi.value.raw).join(''));
-          },
-        };
-      },
-    },
+    'no-hardcoded-style-values': noHardcodedStyleValuesRule,
+  },
+};
+
+const i18nPlugin = {
+  rules: {
+    'no-hardcoded-ui-strings': noHardcodedUiStringsRule,
   },
 };
 
@@ -55,7 +39,7 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    plugins: { 'theme-tokens': themeTokenPlugin },
+    plugins: { 'theme-tokens': themeTokenPlugin, i18n: i18nPlugin },
     rules: {
       // Kept at `warn` deliberately, so that `quality.sh` can treat every
       // remaining ESLint error as a build failure (see scripts/quality.sh).
@@ -96,12 +80,25 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/**/__tests__/**', 'src/gantt-chart/**', 'src/theme.ts'],
+    ignores: [
+      'src/**/__tests__/**',
+      'src/gantt-chart/**',
+      'src/theme.ts',
+      // Provider logo colours are part of the vendors' brand artwork.
+      'src/components/auth/providerIcons.tsx',
+    ],
     rules: {
-      // Legacy findings remain warnings until their theme-token migration is
-      // complete; tests, the theme definition, and vendored Gantt sources are
-      // excluded because literals are data or are authoritative there.
-      'theme-tokens/no-hardcoded-style-values': 'warn',
+      // Tests, the theme definition, and vendored Gantt sources are excluded
+      // because literals are data or are authoritative there. Maintained UI
+      // code has no remaining findings, so regressions fail lint immediately.
+      'theme-tokens/no-hardcoded-style-values': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/__tests__/**', 'src/gantt-chart/**'],
+    rules: {
+      'i18n/no-hardcoded-ui-strings': 'error',
     },
   },
   {

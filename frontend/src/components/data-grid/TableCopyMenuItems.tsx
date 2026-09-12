@@ -3,6 +3,7 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import { Divider, ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import { useTranslation } from '../../i18n';
 import { copyRowsToClipboard, type TableClipboardRow } from './tableClipboard';
+import { DisabledMenuItemTooltip } from '../DisabledActionTooltip';
 
 interface TableCopyMenuItemsProps {
   rowValues: TableClipboardRow | null;
@@ -48,18 +49,22 @@ export function TableCopyMenuItems({
   return (
     <>
       {includeDivider ? <Divider role="separator" /> : null}
-      <MenuItem onClick={handleCopyRow} disabled={!rowValues}>
-        <ListItemIcon>
-          <ContentCopyIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText primary={t('actions.copyRow')} />
-      </MenuItem>
-      <MenuItem onClick={handleCopyTable} disabled={tableRows.length === 0}>
-        <ListItemIcon>
-          <TableRowsIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText primary={t('actions.copyTable')} />
-      </MenuItem>
+      <DisabledMenuItemTooltip title={!rowValues ? t('disabledReasons.copyRowUnavailable') : ''}>
+        <MenuItem onClick={handleCopyRow} disabled={!rowValues}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t('actions.copyRow')} />
+        </MenuItem>
+      </DisabledMenuItemTooltip>
+      <DisabledMenuItemTooltip title={tableRows.length === 0 ? t('disabledReasons.copyTableUnavailable') : ''}>
+        <MenuItem onClick={handleCopyTable} disabled={tableRows.length === 0}>
+          <ListItemIcon>
+            <TableRowsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t('actions.copyTable')} />
+        </MenuItem>
+      </DisabledMenuItemTooltip>
     </>
   );
 }

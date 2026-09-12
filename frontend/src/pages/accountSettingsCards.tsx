@@ -18,6 +18,7 @@ import {
 import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { actionButtonSx, type SectionSubmit } from './accountSettingsForm';
 
 export function SectionAlerts({ message, error }: Pick<SectionSubmit, 'message' | 'error'>) {
@@ -41,7 +42,7 @@ interface InlineEditorProps {
 }
 
 export function InlineEditor({ open, saveLabel, onSave, onCancel, submitting, saveDisabled = false, sx, children }: InlineEditorProps) {
-  const { t } = useTranslation('account');
+  const { t } = useTranslation(['account', 'common']);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -56,12 +57,22 @@ export function InlineEditor({ open, saveLabel, onSave, onCancel, submitting, sa
       <Stack component="form" spacing={2} sx={sx} onSubmit={handleSubmit}>
         {children}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button type="submit" variant="contained" disabled={submitting || saveDisabled} sx={actionButtonSx}>
-            {saveLabel}
-          </Button>
-          <Button type="button" variant="text" onClick={onCancel} disabled={submitting} sx={actionButtonSx}>
-            {t('cancel')}
-          </Button>
+          <DisabledActionTooltip
+            title={submitting
+              ? t('common:disabledReasons.busy')
+              : saveDisabled
+                ? t('common:disabledReasons.requiredFields')
+                : ''}
+          >
+            <Button type="submit" variant="contained" disabled={submitting || saveDisabled} sx={actionButtonSx}>
+              {saveLabel}
+            </Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+            <Button type="button" variant="text" onClick={onCancel} disabled={submitting} sx={actionButtonSx}>
+              {t('cancel')}
+            </Button>
+          </DisabledActionTooltip>
         </Stack>
       </Stack>
     </Collapse>

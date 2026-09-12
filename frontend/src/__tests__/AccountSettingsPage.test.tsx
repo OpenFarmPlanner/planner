@@ -129,6 +129,12 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByRole('button', { name: 'Login & Sicherheit' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.queryByRole('button', { name: 'Konto' })).not.toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole('button', { name: 'E-Mail-Adresse ändern' }));
+    const sendConfirmationButton = screen.getByRole('button', { name: 'Bestätigungslink senden' });
+    expect(sendConfirmationButton).toBeDisabled();
+    await userEvent.hover(sendConfirmationButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Bitte alle Pflichtfelder ausfüllen.');
+
     fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Anzeigename ändern' })).not.toBeInTheDocument();

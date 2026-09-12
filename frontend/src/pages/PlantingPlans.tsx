@@ -52,7 +52,7 @@ import {
 import type { CultivationType } from "../api/types";
 import { extractApiErrorMessage } from "../api/errors";
 import {
-  formatLocalizedNumber,
+  formatLocalizedNumberForInput,
   parseLocalizedNumber,
 } from "../utils/numberLocalization";
 import { AreaM2EditCell } from "../components/data-grid/AreaM2EditCell";
@@ -969,16 +969,6 @@ function PlantingPlans() {
     );
   }, [copyClipboardRows, getClipboardRowValues, t]);
 
-  const formatNumberForInput = (
-    value: number,
-    options?: Intl.NumberFormatOptions,
-  ): string =>
-    formatLocalizedNumber(value, numberLocale, {
-      useGrouping: false,
-      maximumFractionDigits: 6,
-      ...options,
-    });
-
   const toggleCardExpanded = (id: string | number): void => {
     setExpandedCardIds((previous) => {
       const next = new Set(previous);
@@ -1283,11 +1273,11 @@ function PlantingPlans() {
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
         derivedArea !== null
-          ? formatNumberForInput(derivedArea, { maximumFractionDigits: 2 })
+          ? formatLocalizedNumberForInput(derivedArea, numberLocale, { maximumFractionDigits: 2 })
           : "",
       plants_count:
         typeof row.plants_count === "number"
-          ? formatNumberForInput(Math.round(row.plants_count), {
+          ? formatLocalizedNumberForInput(Math.round(row.plants_count), numberLocale, {
               maximumFractionDigits: 0,
             })
           : "",
@@ -1360,11 +1350,11 @@ function PlantingPlans() {
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
         derivedArea !== null
-          ? formatNumberForInput(derivedArea, { maximumFractionDigits: 2 })
+          ? formatLocalizedNumberForInput(derivedArea, numberLocale, { maximumFractionDigits: 2 })
           : "",
       plants_count:
         typeof row.plants_count === "number"
-          ? formatNumberForInput(Math.round(row.plants_count), {
+          ? formatLocalizedNumberForInput(Math.round(row.plants_count), numberLocale, {
               maximumFractionDigits: 0,
             })
           : "",
@@ -1508,7 +1498,7 @@ function PlantingPlans() {
             <Stack spacing={1.25} sx={{ alignItems: "center", }} >
               <CircularProgress size={24} />
               <Typography variant="body2" color="text.secondary">
-                Anbaupläne werden geladen…
+                {t('plantingPlans:loadingPlans')}
               </Typography>
             </Stack>
           </Box>

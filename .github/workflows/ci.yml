@@ -7,18 +7,15 @@ on:
 
 jobs:
   frontend-tests:
-    # One job, not a shard matrix. The in-process parallelism re-enabled in
-    # vite.config.ts is what took this suite from ~9.5 minutes down; sharding
-    # it across two runners then split 4m51s of test work into 2m10s + 2m41s,
-    # but `backend-tests` runs 6-7.5 minutes in the same workflow, so the
-    # second runner bought nothing on the critical path. Merged back at ~5
-    # minutes it still finishes well before the backend job.
-    #
-    # Re-shard (a `strategy.matrix.shard` plus `--shard=N/<count>`, kept in
-    # step with each other) if this suite ever approaches the backend's
-    # runtime - there is roughly two minutes of headroom before that.
+    # Keep each frontend test process comfortably below the shell and job hard
+    # timeouts as the suite grows. The shard count and the Vitest denominator
+    # below must remain in sync.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -52,21 +49,19 @@ jobs:
         run: |
           set -euxo pipefail
           cd frontend
-          echo "Running test command (CI, non-watch): npm run test:ci"
+          echo "Running test command (CI, non-watch): npm run test:ci -- --shard=${{ matrix.shard }}/3"
           # Guards against a hung worker (hence the process dump below), not
-          # against the suite growing: a green run takes ~5 minutes of the
-          # job's 15, so a cap sitting on the current runtime turns the next
-          # added test into a red build. Keep it clear of both the real
-          # runtime and the job's timeout-minutes.
-          echo "Applying shell hard timeout: 10m"
+          # against the suite growing: keep the cap far enough below the
+          # job's 20 minutes that setup and process cleanup retain headroom.
+          echo "Applying shell hard timeout: 15m"
           echo "Test step start: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           set +e
-          timeout --foreground 10m npm run test:ci
+          timeout --foreground 15m npm run test:ci -- --shard=${{ matrix.shard }}/3
           exit_code=$?
           set -e
           echo "Test step end: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           if [ "$exit_code" -eq 124 ]; then
-            echo "Frontend tests were terminated by GNU timeout after 10 minutes." >&2
+            echo "Frontend tests were terminated by GNU timeout after 15 minutes." >&2
             echo "Active node-related processes at timeout:" >&2
             set +e
             ps -ef | grep -E 'node|vitest|v8' | grep -v grep >&2

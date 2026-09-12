@@ -9,8 +9,6 @@ import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { CALCULATED_COLUMN_CELL_CLASS, CALCULATED_COLUMN_HEADER_CLASS } from './calculatedColumns';
 
-const CALCULATED_COLUMN_BACKGROUND = '#F5F5F5';
-const CALCULATED_COLUMN_TEXT = 'rgba(0,0,0,0.85)';
 const EDITING_ROW_BACKGROUND_ALPHA = 0.06;
 const DIRTY_CELL_BACKGROUND_ALPHA = 0.08;
 const FOCUSED_CELL_BACKGROUND_ALPHA = 0.04;
@@ -75,7 +73,7 @@ export const dataGridSx = {
   borderColor: 'surface.surfaceSoftBorder',
   borderRadius: 3,
   backgroundColor: 'surface.surfaceBackground',
-  boxShadow: '0 1px 2px rgba(21, 31, 24, 0.03)',
+  boxShadow: 1,
   '& .MuiDataGrid-columnHeaders': {
     backgroundColor: 'surface.surfaceSubtleBackground',
     borderBottom: '1px solid',
@@ -104,7 +102,7 @@ export const dataGridSx = {
   '& .MuiDataGrid-cell--editable': {
     bgcolor: (theme: Theme) =>
       theme.palette.mode === 'dark'
-        ? '#383838'
+        ? theme.palette.action.selected
         : (theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper),
     cursor: 'pointer',
   },
@@ -143,16 +141,16 @@ export const dataGridSx = {
   },
   '& .MuiDataGrid-cell--editing .MuiInputBase-input': {
     lineHeight: 1.4,
-    paddingTop: '8px',
-    paddingBottom: '8px',
+    paddingTop: 1,
+    paddingBottom: 1,
   },
   '& .MuiDataGrid-cell--editing .MuiSelect-select': {
     minHeight: 'unset !important',
     display: 'flex',
     alignItems: 'center',
     lineHeight: 1.4,
-    paddingTop: '8px',
-    paddingBottom: '8px',
+    paddingTop: 1,
+    paddingBottom: 1,
   },
   '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
     outline: 'none',
@@ -185,15 +183,15 @@ export const dataGridSx = {
     backgroundColor: (theme: Theme) => getPrimaryOverlay(theme, EDITING_ROW_BACKGROUND_ALPHA),
   },
   [`& .${CALCULATED_COLUMN_HEADER_CLASS}`]: {
-    backgroundColor: CALCULATED_COLUMN_BACKGROUND,
-    color: CALCULATED_COLUMN_TEXT,
+    backgroundColor: 'action.disabledBackground',
+    color: 'text.primary',
   },
   [`& .${CALCULATED_COLUMN_HEADER_CLASS}:hover`]: {
-    backgroundColor: CALCULATED_COLUMN_BACKGROUND,
+    backgroundColor: 'action.disabledBackground',
   },
   [`& .${CALCULATED_COLUMN_CELL_CLASS}`]: {
-    backgroundColor: CALCULATED_COLUMN_BACKGROUND,
-    color: CALCULATED_COLUMN_TEXT,
+    backgroundColor: 'action.disabledBackground',
+    color: 'text.primary',
   },
   [`& .MuiDataGrid-row:hover .${CALCULATED_COLUMN_CELL_CLASS}`]: {
     backgroundColor: 'surface.surfaceHoverBackground',
@@ -224,15 +222,15 @@ export const dataGridSx = {
   [SELECTED_ROW_EDITABLE_CELL_SELECTOR]: {
     bgcolor: (theme: Theme) =>
       theme.palette.mode === 'dark'
-        ? '#383838'
+        ? theme.palette.action.selected
         : (theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper),
   },
   [SELECTED_ROW_EDITABLE_CELL_HOVER_SELECTOR]: {
     backgroundColor: 'surface.surfaceHoverBackground',
   },
   [SELECTED_ROW_CALCULATED_CELL_SELECTOR]: {
-    backgroundColor: CALCULATED_COLUMN_BACKGROUND,
-    color: CALCULATED_COLUMN_TEXT,
+    backgroundColor: 'action.disabledBackground',
+    color: 'text.primary',
   },
   [SELECTED_ROW_CALCULATED_CELL_HOVER_SELECTOR]: {
     backgroundColor: 'surface.surfaceHoverBackground',

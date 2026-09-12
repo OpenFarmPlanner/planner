@@ -293,3 +293,152 @@ changes and guardrails so reviewers can inspect or revert each area separately.
   species keeps working while nothing is dropped silently. Promotion and
   clearing are scoped to the fields a write actually sent. The auth API tests
   again assert the German response texts the endpoints really return.
+
+## 2026-09-10 comprehensive audit
+
+### Theme tokens and lint guard
+
+- Replaced the remaining authentication-shell colour, focus-ring, border, and shadow literals with semantic surface/primary tokens, `alpha()` derivations, and theme elevations.
+- Migrated the graphical-field zoom badge and crop requirement/snackbar styling to palette-derived colours and elevations. Dynamic canvas colours and user-selected crop colours remain domain data, while the vendored Gantt implementation remains outside the application-theme boundary documented in the design system.
+- Re-ran the theme-token ESLint guard and TypeScript build after the migration. The changed authentication, graphical-field, and crop styles are clean; the audit also confirmed a legacy warning backlog elsewhere, now accurately documented in the design-system guide.
+
+### API error consistency
+
+- Routed malformed crop-import payloads and supplier deletion/restoration conflicts through the shared API error builder. These failures now consistently expose a stable `code` and English `detail` while retaining useful context such as supplier usage.
+- Added endpoint regression tests for both malformed crop-import shapes and the supplier-in-use conflict envelope.
+
+### Disabled-state explanations
+
+- Wrapped the consent gate's mutually disabled accept/logout actions in the shared disabled-action tooltip. During an in-flight consent request, both controls now expose the existing localized busy explanation instead of silently becoming unavailable.
+
+### Internationalization coverage
+
+- Swept maintained TSX sources (excluding tests and the vendored Gantt package) for literal JSX text and user-facing label, title, placeholder, helper-text, and ARIA attributes; no application-owned hardcoded UI copy remained.
+- Compared the complete nested key sets of every German and English locale namespace. The sets remain identical, confirming that no shared key was deleted and that the existing German-first resources retain matching English coverage.
+
+### Shared business logic
+
+- Rechecked the crop import/publish, inherited crop-value, crop display-name, season transition, seed-demand, and supplier deletion flows for parallel implementations across the frontend and backend. The domain calculations remain backend-owned services; frontend counterparts are presentation/validation boundary helpers rather than competing business rules. No additional duplication was introduced solely to manufacture an abstraction.
+- The API work above reused the project-wide `api_error_response` utility instead of adding endpoint-local envelope builders, and the consent work reused `DisabledActionTooltip` plus the shared `common.disabledReasons.busy` key.
+
+### Test coverage
+
+- Added interaction coverage for the consent gate's in-flight state: both actions are asserted disabled and the shared German explanation is asserted reachable through the tooltip.
+- Added backend integration coverage for the standardized crop-import and supplier error envelopes, targeting the newly changed high-branching endpoint paths rather than duplicating broad CRUD coverage.
+
+### Documentation
+
+- Corrected the design-system guide's stale approximate literal count. It now describes the ESLint warning inventory, its intentional exclusions, and the important distinction between a successful lint process and zero warnings.
+- Kept this log updated in every area-specific commit so theme, API, disabled-state, i18n, shared-logic, test, and documentation changes can be reviewed or reverted independently.
+
+### 2026-09-10 continuation
+
+- Cleared the complete 43-item theme-token warning inventory across shared
+  DataGrid/hierarchy surfaces, public landing/demo pages, chart overlays, and
+  transient feedback. Values now use palette tokens, theme alpha derivations,
+  spacing units, or elevations.
+- Promoted the theme-token ESLint rule from warning to error now that its
+  maintained-source inventory is empty. This turns the audit into a durable
+  regression gate rather than a point-in-time cleanup.
+- Consolidated the remaining Crop Library moderation, proposal-state, edit
+  conflict, and disconnected-social-account failures on
+  `api_error_response`. The social-account 404 now also has the stable
+  `social_account_not_found` code that was missing from its peer errors.
+- Continued the disabled-control sweep through supplier editing, feedback
+  submission, note saving, attachment upload, and camera capture. Busy,
+  missing-required-field, missing-file, and camera-readiness states now expose
+  German-first explanations through the shared disabled-action tooltip.
+- Extended the sweep to login/restore, project creation, and crop export
+  actions. The shared tooltip now supports full-width controls without changing
+  auth-page layout, and each busy or prerequisite state uses existing localized
+  guidance.
+- Restored compatibility with minimal MUI themes used by isolated component
+  tests: auth alpha derivations now fall back to standard MUI background
+  tokens when the application-specific `surface` palette is absent.
+- Added persistent disabled-state guidance to the hierarchical area assignment
+  form. Field and bed selectors explain the missing parent choice or empty
+  hierarchy level, and the apply action points users to the required bed
+  selection instead of remaining silently unavailable.
+- Extended the area-assignment interaction suite to pin both the persistent
+  downstream-selector explanation and the apply-button tooltip after changing
+  a parent hierarchy selection.
+- Corrected the helper ownership found during review: location guidance now
+  belongs to the disabled field control and field guidance to the disabled bed
+  control, so each message is associated with the input it explains.
+- Finished the remaining structured backend-error sweep: guest-demo
+  restrictions, non-revertible history batches, and invalid public-crop links
+  now use the shared response builder. Serializer/service field dictionaries
+  remain deliberately untouched because they preserve field-level validation.
+- Closed a token-lint AST gap for literal SVG `fill` and `stroke`
+  attributes, while explicitly excluding vendor-authentication logo artwork.
+  Graphical field, bed, and alignment-guide shapes now consume semantic theme
+  palette colours; the remaining dark-mode DataGrid literal uses
+  `action.selected`.
+- Extended the style-value visitor through nested conditional/logical
+  expressions, closing the gap that allowed a literal Gantt fallback colour
+  inside `task.color || ...`. The fallback is now the theme primary token;
+  task-provided crop colours remain domain data.
+- Consolidated the repeated disabled-menu wrapper pattern into
+  `DisabledMenuItemTooltip` and applied it to shared row/table copy actions.
+  Empty context-menu states now explain that there is no row or table data to
+  copy, with German-first translations and direct wrapper regression coverage.
+- Added an ESLint i18n guard for literal JSX text and user-facing
+  `aria-label`, helper, label, placeholder, and title attributes. Tests and
+  the vendored Gantt package are excluded; maintained application components
+  now fail lint if new visible copy bypasses locale resources.
+- Extended the i18n guard to string and template expressions embedded in JSX
+  children or user-facing attributes, closing the expression-container escape
+  hatch left by the first pass without treating route/data attributes as copy.
+- Followed nested conditional, logical, and concatenated JSX expressions in
+  the same guard. Translation function arguments remain opaque, so locale keys
+  are not mistaken for visible copy while alternate render branches are checked.
+- Moved the generic requirement checklist's fallback status phrases into the
+  common locale namespace. Its callers can still supply feature-specific labels,
+  while the shared fallback no longer assumes German inside component code.
+- Consolidated the identical desktop-grid and mobile-dialog number-input
+  formatters into `formatLocalizedNumberForInput`. Both planting-plan editing
+  surfaces now share grouping and precision defaults, with utility-level tests
+  covering locale behavior and caller precision overrides.
+- Finished the remaining crop-species approval and demo-project creation error
+  branches that still constructed envelopes inline. They now use
+  `api_error_response`, retain their status and contextual fields, and have
+  regression assertions for stable codes, details, and unchanged state.
+- Extracted the i18n lint rule from the flat config into a directly testable
+  local rule module. Focused Linter coverage now pins both its visible string
+  findings and its deliberate exemptions for translation calls and non-visible
+  discriminator attributes.
+- Extracted the theme-token guard into its own local rule module and added
+  direct regression tests for colours, pixel spacing, nested fallbacks, SVG
+  attributes, semantic tokens, numeric spacing, and domain-provided colours.
+- Closed additional token-guard gaps for MUI's shorthand spacing properties,
+  signed pixel values, pixels embedded in `calc()`, and SVG colours expressed
+  through JSX expression containers.
+- Cleared the four findings exposed by the expanded rule: the compact Gantt
+  selector now derives its reserved adornment space from `theme.spacing`, and
+  season-dialog icon alignment uses equivalent numeric spacing factors.
+- Applied the shared disabled-action tooltip inside the reusable account
+  settings inline editor. Save actions now distinguish missing required fields
+  from an in-flight request, while cancel actions explain the busy state; the
+  account settings interaction test verifies the required-fields explanation.
+- Added contextual disabled explanations to project-name saving and member
+  invitations. Permission, busy, unchanged-name, and missing-email states now
+  reuse existing localized messages, with regression coverage for the
+  unchanged-name tooltip.
+- Reused the existing self-removal warning as a reachable tooltip on the
+  disabled member-removal action. The member-list test now confirms that the
+  current user's protected action explains why it cannot be used.
+- Surfaced the matching existing role-change explanation as persistent helper
+  text beneath the current user's disabled role selector, covering the adjacent
+  disabled form control without relying on hover behavior.
+- Restored compatibility between the public demo hero and the minimal MUI theme
+  used by router-level tests. Its translucent panel now falls back to
+  `common.black` when the application-only navigation palette is absent.
+- Applied the same compatibility guarantee to the shared application logo: its
+  focus ring falls back to the standard primary palette when tests or embedded
+  consumers provide an unextended MUI theme, with focused regression coverage.
+- Split the growing frontend unit suite across three deterministic Vitest shards
+  in CI and increased the per-shard guard to fifteen minutes so slower runners
+  retain meaningful headroom without weakening failure isolation.
+- Updated project-history assertions to use the current localized restore
+  action label, keeping the accessibility contract explicit rather than
+  deriving the expected value from the same resource as the component.

@@ -145,6 +145,8 @@ class SupplierApiTest(ProjectApiTestCase):
         response = self.client.delete(f'/openfarmplanner/api/suppliers/{self.supplier.id}/')
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'supplier_in_use')
+        self.assertIn('detail', response.data)
         self.assertFalse(response.data['usage']['can_delete'])
         self.assertTrue(Supplier.objects.filter(pk=self.supplier.id).exists())
 

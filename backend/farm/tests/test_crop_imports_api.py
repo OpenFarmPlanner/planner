@@ -50,6 +50,28 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['status'], 'create')
 
+    def test_import_preview_rejects_non_list_with_standard_error(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crops/import/preview/',
+            {'name': 'Cucumber'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'invalid_crop_import_payload')
+        self.assertIn('detail', response.data)
+
+    def test_import_apply_rejects_non_list_items_with_standard_error(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crops/import/apply/',
+            {'items': {'name': 'Cucumber'}},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'invalid_crop_import_items')
+        self.assertIn('detail', response.data)
+
     def test_import_preview_update_candidate(self):
         """Test preview endpoint for matching crop."""
         data = [{

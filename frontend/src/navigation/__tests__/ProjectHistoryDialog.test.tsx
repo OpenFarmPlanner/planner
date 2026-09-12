@@ -8,6 +8,7 @@ import type { CropHistoryEntry } from '../../api/types';
 
 const t = i18n.getFixedT('de', 'navigation');
 const tCrops = i18n.getFixedT('de', 'crops');
+const restoreVersionLabel = 'Zu dieser Version wechseln';
 
 function entry(partial: Partial<CropHistoryEntry>): CropHistoryEntry {
   return {
@@ -64,7 +65,7 @@ describe('ProjectHistoryDialog', () => {
     // One summary row, no individual child rows.
     expect(screen.queryByText(/Salat \/ Beet 1/)).not.toBeInTheDocument();
 
-    const buttons = screen.getAllByRole('button', { name: 'Version wiederherstellen' });
+    const buttons = screen.getAllByRole('button', { name: restoreVersionLabel });
     expect(buttons).toHaveLength(1);
     await user.click(buttons[0]);
     expect(onRevertBatch).toHaveBeenCalledWith(batchEntry);
@@ -82,17 +83,17 @@ describe('ProjectHistoryDialog', () => {
     const { onRevertBatch } = renderDialog([revertEntry]);
 
     expect(screen.getByText('Wiederhergestellt: Saison 25/26 gelöscht')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Version wiederherstellen' }));
+    await user.click(screen.getByRole('button', { name: restoreVersionLabel }));
     expect(onRevertBatch).toHaveBeenCalledWith(revertEntry);
   });
 
-  it('lists ungrouped revisions flat with "Version wiederherstellen"', () => {
+  it('lists ungrouped revisions flat with the localized restore action', () => {
     renderDialog([
       entry({ object_type: 'crop', object_display_name: 'Newest', action: 'updated' }),
       entry({ object_type: 'crop', object_display_name: 'Bijella', action: 'updated' }),
     ]);
 
     expect(screen.getByText(/Bijella/)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Version wiederherstellen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: restoreVersionLabel }).length).toBeGreaterThan(0);
   });
 });

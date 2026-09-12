@@ -235,7 +235,8 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
         placeholder={t('common:dateFormatPlaceholder')}
         sx={{
           '& .MuiInputBase-input': {
-            paddingInline: '8px 0',
+            paddingInline: 1,
+            paddingInlineEnd: 0,
           },
         }}
         slotProps={{

@@ -62,7 +62,7 @@ export function ContextMenuHint({
         borderRadius: 1.5,
         bgcolor: 'success.50',
         color: 'text.secondary',
-        boxShadow: '0 1px 2px rgba(21, 31, 24, 0.05)',
+        boxShadow: 1,
         ...sx,
       }}
     >

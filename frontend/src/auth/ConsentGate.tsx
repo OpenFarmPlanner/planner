@@ -3,6 +3,7 @@ import { Alert, Button, Container, Link, Stack, Typography } from '@mui/material
 import { Link as RouterLink } from 'react-router';
 import { useAuth } from './useAuth';
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 /**
  * Copy and target page per consent-requiring document. Add an entry here
@@ -94,12 +95,16 @@ export default function ConsentGate() {
           ) : null}
         </Stack>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button variant="contained" onClick={() => void handleAccept()} disabled={submitting}>
-            {submitting ? t('reconsent.accepting') : t(`reconsent.${config.translationKey}.acceptButton`)}
-          </Button>
-          <Button variant="outlined" onClick={() => void handleLogout()} disabled={submitting}>
-            {t('reconsent.logout')}
-          </Button>
+          <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+            <Button variant="contained" onClick={() => void handleAccept()} disabled={submitting}>
+              {submitting ? t('reconsent.accepting') : t(`reconsent.${config.translationKey}.acceptButton`)}
+            </Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
+            <Button variant="outlined" onClick={() => void handleLogout()} disabled={submitting}>
+              {t('reconsent.logout')}
+            </Button>
+          </DisabledActionTooltip>
         </Stack>
       </Stack>
     </Container>

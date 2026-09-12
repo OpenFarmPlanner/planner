@@ -653,6 +653,8 @@ class SocialApiEndpointTest(SocialLoginTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json()['code'], 'social_account_not_found')
+        self.assertIn('detail', response.json())
         self.assertTrue(SocialAccount.objects.filter(pk=identity.pk).exists())
 
 

@@ -11,7 +11,7 @@ interface AppLogoProps {
 }
 
 export default function AppLogo({ to = '/app/dashboard', size = 28, showText = true }: AppLogoProps) {
-  const { t } = useTranslation('navigation');
+  const { t } = useTranslation(['navigation', 'common']);
   const location = useLocation();
   const isActive = normalizeMainRoutePath(location.pathname) === '/app/dashboard';
 
@@ -40,7 +40,8 @@ export default function AppLogo({ to = '/app/dashboard', size = 28, showText = t
         '&:focus-visible': {
           outline: 'none',
           borderColor: 'navigation.activeHoverBorder',
-          boxShadow: (theme) => `0 0 0 2px ${theme.palette.navigation.focusRing}`,
+          boxShadow: (theme) =>
+            `0 0 0 2px ${theme.palette.navigation?.focusRing ?? theme.palette.primary.main}`,
         },
       }}
       aria-label={t('globalMenu.dashboardLink')}
@@ -49,7 +50,7 @@ export default function AppLogo({ to = '/app/dashboard', size = 28, showText = t
       <AppIcon size={size} sx={{ borderRadius: 0.5 }} />
       {showText ? (
         <Box component="span" sx={{ fontWeight: 600, fontSize: 16, whiteSpace: 'nowrap', color: isActive ? 'navigation.activeText' : 'navigation.inactiveText' }}>
-          OpenFarmPlanner
+          {t('common:appName')}
         </Box>
       ) : null}
     </Box>

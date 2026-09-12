@@ -210,6 +210,19 @@
   "disabledReasons": {
     "busy": "Aktion wird gerade verarbeitet.",
     "noChanges": "Es gibt keine ungespeicherten Änderungen.",
-    "invalidDateRange": "Bitte einen gültigen Zeitraum eingeben."
+    "invalidDateRange": "Bitte einen gültigen Zeitraum eingeben.",
+    "requiredFields": "Bitte alle Pflichtfelder ausfüllen.",
+    "selectFile": "Bitte zuerst eine Datei auswählen.",
+    "cameraNotReady": "Die Kamera ist noch nicht bereit.",
+    "copyRowUnavailable": "Für diese Zeile sind keine kopierbaren Daten verfügbar.",
+    "copyTableUnavailable": "Die Tabelle enthält keine kopierbaren Zeilen."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}} vorhanden",
+    "missing": "{{label}} fehlt"
   }
 }

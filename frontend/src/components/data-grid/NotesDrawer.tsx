@@ -30,6 +30,7 @@ import { useTranslation } from '../../i18n';
 import { ConfirmationDialog } from '../feedback/ConfirmationDialog';
 import { invalidateNoteAttachmentsCache } from './noteAttachmentsCache';
 import { markdownComponents } from './markdownComponents';
+import { DisabledActionTooltip } from '../DisabledActionTooltip';
 
 export interface NotesDrawerProps {
   open: boolean;
@@ -503,8 +504,12 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
         </Box>
 
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button onClick={requestClose} disabled={loading} variant="outlined">{t('actions.cancel')}</Button>
-          <Button onClick={() => void handleSaveClick()} disabled={loading} variant="contained" color="primary" startIcon={loading ? <CircularProgress size={16} /> : undefined}>{t('actions.save')}</Button>
+          <DisabledActionTooltip title={loading ? t('disabledReasons.busy') : ''}>
+            <Button onClick={requestClose} disabled={loading} variant="outlined">{t('actions.cancel')}</Button>
+          </DisabledActionTooltip>
+          <DisabledActionTooltip title={loading ? t('disabledReasons.busy') : ''}>
+            <Button onClick={() => void handleSaveClick()} disabled={loading} variant="contained" color="primary" startIcon={loading ? <CircularProgress size={16} /> : undefined}>{t('actions.save')}</Button>
+          </DisabledActionTooltip>
         </Box>
       </Box>
 
@@ -569,7 +574,9 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
         <DialogActions>
           <Button onClick={clearPendingSelection}>{t('actions.cancel')}</Button>
           <Button onClick={resetCrop}>{t('actions.reset')}</Button>
-          <Button onClick={() => void handleUpload()} disabled={uploading || !pendingFile} variant="contained">{t('actions.save')}</Button>
+          <DisabledActionTooltip title={uploading ? t('disabledReasons.busy') : !pendingFile ? t('disabledReasons.selectFile') : ''}>
+            <Button onClick={() => void handleUpload()} disabled={uploading || !pendingFile} variant="contained">{t('actions.save')}</Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
 
@@ -602,7 +609,9 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
           {cameraTimedOut ? (
             <Button onClick={handleCameraFallbackToFilePicker} variant="contained">{t('notesDrawer.camera.useFilePicker')}</Button>
           ) : (
-            <Button onClick={handleCameraCapture} variant="contained" disabled={!cameraReady}>{t('notesDrawer.camera.capture')}</Button>
+            <DisabledActionTooltip title={!cameraReady ? t('disabledReasons.cameraNotReady') : ''}>
+              <Button onClick={handleCameraCapture} variant="contained" disabled={!cameraReady}>{t('notesDrawer.camera.capture')}</Button>
+            </DisabledActionTooltip>
           )}
         </DialogActions>
       </Dialog>

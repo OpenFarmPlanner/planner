@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 
 import { useTranslation } from '../i18n';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -85,9 +86,11 @@ export function CreateProjectDialog({
         </DialogContent>
         <DialogActions>
           <Button type="button" onClick={onClose}>{t('projectSwitcher.createCancel')}</Button>
-          <Button type="submit" variant="contained" disabled={!name.trim() || isCreating}>
-            {t('projectSwitcher.createSubmit')}
-          </Button>
+          <DisabledActionTooltip title={isCreating ? t('common:disabledReasons.busy') : !name.trim() ? t('common:disabledReasons.requiredFields') : ''}>
+            <Button type="submit" variant="contained" disabled={!name.trim() || isCreating}>
+              {t('projectSwitcher.createSubmit')}
+            </Button>
+          </DisabledActionTooltip>
         </DialogActions>
       </Box>
     </Dialog>

@@ -44,7 +44,7 @@ interface ProjectHistoryDialogProps {
  * Presentational project version-history dialog. A cascading action (season
  * create/delete/undelete/data-copy) arrives from the API as one `is_batch`
  * entry that renders as a single row with a single "rückgängig machen"; every
- * other revision renders flat with "Version wiederherstellen". State, data
+ * other revision renders flat with its restore action. State, data
  * loading and the action handlers live in RootLayout.tsx. German-only copy is
  * intentional, matching RestoreVersionDialog.
  */
@@ -64,14 +64,14 @@ export function ProjectHistoryDialog({
     entry.actor_label?.trim()
     || entry.history_user?.trim()
     || fallbackActorLabel?.trim()
-    || 'Unbekannter Benutzer'
+    || t('commandPalette.unknownUser')
   );
 
   const renderBatchMeta = (entry: CropHistoryEntry) => (
     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
       <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
       <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-        Von {actorOf(entry)}
+        {t('commandPalette.historyBy', { actor: actorOf(entry) })}
       </Typography>
       <Typography variant="caption" color="text.secondary">
         · {formatTimestamp(entry.history_date)}
@@ -84,12 +84,12 @@ export function ProjectHistoryDialog({
       <>
         <Divider />
         <Button variant="outlined" size="small" onClick={onClick} sx={{ alignSelf: 'flex-start', minHeight: 34 }}>
-          Version wiederherstellen
+          {t('commandPalette.restoreVersion')}
         </Button>
       </>
     ) : (
       <Button onClick={onClick} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-        Version wiederherstellen
+        {t('commandPalette.restoreVersion')}
       </Button>
     )
   );
@@ -165,7 +165,7 @@ export function ProjectHistoryDialog({
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
               <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
               <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                Von {actorLabel}
+                {t('commandPalette.historyBy', { actor: actorLabel })}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 · {timestampLabel}
@@ -196,7 +196,7 @@ export function ProjectHistoryDialog({
             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
               <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
               <Typography component="span" variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                Von {actorLabel}
+                {t('commandPalette.historyBy', { actor: actorLabel })}
               </Typography>
               <Typography component="span" variant="caption" color="text.secondary">
                 · {timestampLabel}

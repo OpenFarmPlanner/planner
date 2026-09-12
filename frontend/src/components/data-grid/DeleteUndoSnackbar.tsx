@@ -54,7 +54,7 @@ export function DeleteUndoSnackbar({
             borderLeftColor: 'success.main',
             bgcolor: 'surface.surfaceBackground',
             color: 'text.primary',
-            boxShadow: '0 10px 28px rgba(21, 31, 24, 0.16)',
+            boxShadow: 6,
           }}
         >
           <CheckCircleOutlineIcon

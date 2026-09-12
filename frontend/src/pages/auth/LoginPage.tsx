@@ -13,6 +13,7 @@ import { AuthPasswordField } from './AuthPasswordField';
 import { getNextFromSearch } from '../invitationAcceptance';
 import AuthPageShell from './AuthPageShell';
 import { authFormSx, authPrimaryButtonSx, authSecondaryButtonSx, authTextButtonSx, authTextFieldSx } from './authPageStyles';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 
 export default function LoginPage() {
   const { user, login, restoreAccount } = useAuth();
@@ -120,13 +121,17 @@ export default function LoginPage() {
             showLabel={t('auth:login.showPassword')}
             hideLabel={t('auth:login.hidePassword')}
           />
-          <Button type="submit" variant="contained" size="large" disabled={submitting} fullWidth sx={authPrimaryButtonSx}>
-            {submitting ? t('auth:login.submitting') : t('auth:login.submit')}
-          </Button>
-          {pendingDeletionAt ? (
-            <Button variant="outlined" size="large" disabled={submitting} onClick={() => void handleRestore()} fullWidth sx={authSecondaryButtonSx}>
-              {t('auth:login.restoreAccount')}
+          <DisabledActionTooltip fullWidth title={submitting ? t('common:disabledReasons.busy') : ''}>
+            <Button type="submit" variant="contained" size="large" disabled={submitting} fullWidth sx={authPrimaryButtonSx}>
+              {submitting ? t('auth:login.submitting') : t('auth:login.submit')}
             </Button>
+          </DisabledActionTooltip>
+          {pendingDeletionAt ? (
+            <DisabledActionTooltip fullWidth title={submitting ? t('common:disabledReasons.busy') : ''}>
+              <Button variant="outlined" size="large" disabled={submitting} onClick={() => void handleRestore()} fullWidth sx={authSecondaryButtonSx}>
+                {t('auth:login.restoreAccount')}
+              </Button>
+            </DisabledActionTooltip>
           ) : null}
           <Button component={RouterLink} to={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : '/register'} state={location.state} sx={authTextButtonSx}>
             {t('auth:login.noAccount')}

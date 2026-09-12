@@ -1,5 +1,6 @@
 import {
   formatLocalizedNumber,
+  formatLocalizedNumberForInput,
   parseLocalizedNumber,
   resolveLocaleFromLanguage,
 } from "../utils/numberLocalization";
@@ -29,6 +30,13 @@ describe("numberLocalization utilities", () => {
   it("resolves language codes to locale tags", () => {
     expect(resolveLocaleFromLanguage("de")).toBe("de-DE");
     expect(resolveLocaleFromLanguage("en")).toBe("en-US");
+  });
+
+  it("formats editable values without grouping and allows precision overrides", () => {
+    expect(formatLocalizedNumberForInput(1234.5678912, "de-DE")).toBe("1234,567891");
+    expect(
+      formatLocalizedNumberForInput(1234.567, "en-US", { maximumFractionDigits: 2 }),
+    ).toBe("1234.57");
   });
 });
 

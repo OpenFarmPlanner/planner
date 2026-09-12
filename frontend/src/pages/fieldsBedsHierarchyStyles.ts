@@ -5,6 +5,8 @@
 
 import { CALCULATED_COLUMN_CELL_CLASS } from "../components/data-grid/calculatedColumns";
 import { dataGridSx } from "../components/data-grid/styles";
+import { alpha } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
 
 export const HIERARCHY_SELECTED_VIEW_ROW_SELECTOR =
   "& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing)";
@@ -97,23 +99,23 @@ export const HIERARCHY_DATA_GRID_SX = {
     },
   [`${HIERARCHY_SELECTED_VIEW_ROW_SELECTOR} .MuiDataGrid-cell.${CALCULATED_COLUMN_CELL_CLASS}`]:
     {
-      backgroundColor: "#F5F5F5",
+      backgroundColor: "action.disabledBackground",
     },
   [`${HIERARCHY_SELECTED_VIEW_ROW_SELECTOR} .MuiDataGrid-cell.ofp-hierarchy-cell-missing-dimension`]:
     {
-      backgroundColor: "#fbf2d5",
+      backgroundColor: "warning.50",
     },
   [`${HIERARCHY_SELECTED_VIEW_ROW_SELECTOR} .MuiDataGrid-cell:focus, ${HIERARCHY_SELECTED_VIEW_ROW_SELECTOR} .MuiDataGrid-cell:focus-within`]:
     {
       backgroundColor: "transparent",
     },
   "& .ofp-hierarchy-cell-missing-dimension": {
-    backgroundColor: "#fbf2d5",
+    backgroundColor: "warning.50",
     color: "text.primary",
   },
   "& .MuiDataGrid-row:hover .ofp-hierarchy-cell-missing-dimension": {
     backgroundColor: "surface.surfaceHoverBackground",
-    boxShadow: "inset 0 0 0 9999px rgba(237, 108, 2, 0.14)",
+    boxShadow: (theme: Theme) => `inset 0 0 0 9999px ${alpha(theme.palette.warning.main, 0.14)}`,
   },
   "& .ofp-hierarchy-row-highlighted .MuiDataGrid-cell": {
     animation: "ofp-hierarchy-row-highlight-flash 2.5s ease-out",
@@ -121,8 +123,8 @@ export const HIERARCHY_DATA_GRID_SX = {
   // Matches the app's established green "selected" look (e.g. CropDetail's
   // selected list item) instead of an unrelated yellow flash.
   "@keyframes ofp-hierarchy-row-highlight-flash": {
-    "0%": { backgroundColor: "rgba(37, 111, 42, 0.22)" },
-    "70%": { backgroundColor: "rgba(37, 111, 42, 0.14)" },
+    "0%": { backgroundColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.22) },
+    "70%": { backgroundColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.14) },
     "100%": { backgroundColor: "transparent" },
   },
   // Replaced by the custom track/thumb rendered alongside the grid (see

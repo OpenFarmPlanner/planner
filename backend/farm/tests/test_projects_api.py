@@ -383,6 +383,7 @@ class ProjectsApiTests(APITestCase):
         response = self.client.post('/openfarmplanner/api/projects/create-demo/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data['code'], 'demo_project_creation_failed')
         self.assertEqual(response.data['detail'], 'Demo project could not be created.')
         self.assertFalse(Project.objects.filter(memberships__user=self.user, name=DEMO_PROJECT_NAME).exists())
 

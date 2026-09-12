@@ -2,7 +2,7 @@
  * Custom footer for hierarchy grid
  */
 
-import { Box, IconButton } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
 import { useTranslation } from '../../i18n';
 import { dataGridFooterSx } from '../data-grid/styles';
 import type { Location } from '../../api/api';
@@ -29,14 +29,14 @@ export function HierarchyFooter({ locations, onAddField }: HierarchyFooterProps)
           size="small"
           aria-label={t('addField')}
         >
-          <span style={{ fontSize: '0.875rem', marginRight: '4px' }}>{t('addField')}</span>
+          <Typography component="span" variant="body2" sx={{ mr: 0.5 }}>{t('addField')}</Typography>
         </IconButton>
       )}
-      <span style={{ color: '#666', fontSize: '0.875rem' }}>
+      <Typography component="span" variant="body2" color="text.secondary">
         {hasMultipleLocations 
           ? t('footer.multipleLocations')
           : t('footer.singleLocation')}
-      </span>
+      </Typography>
     </Box>
   );
 }

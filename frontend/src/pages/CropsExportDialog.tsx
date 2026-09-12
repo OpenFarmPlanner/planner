@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import type { SpreadsheetExportFormat } from '../crops/spreadsheetExport';
+import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 type ExportScope = 'current' | 'all';
 type ExportFormat = SpreadsheetExportFormat | 'json';
@@ -122,16 +123,20 @@ export function CropsExportDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button variant="outlined" onClick={onClose} disabled={exporting}>
-          {t('export.cancel')}
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleExport()}
-          disabled={exporting || (scope === 'current' && !hasCurrentCrop)}
-        >
-          {t('export.submit')}
-        </Button>
+        <DisabledActionTooltip title={exporting ? t('common:disabledReasons.busy') : ''}>
+          <Button variant="outlined" onClick={onClose} disabled={exporting}>
+            {t('export.cancel')}
+          </Button>
+        </DisabledActionTooltip>
+        <DisabledActionTooltip title={exporting ? t('common:disabledReasons.busy') : scope === 'current' && !hasCurrentCrop ? t('export.scopeCurrentDisabled') : ''}>
+          <Button
+            variant="contained"
+            onClick={() => void handleExport()}
+            disabled={exporting || (scope === 'current' && !hasCurrentCrop)}
+          >
+            {t('export.submit')}
+          </Button>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );

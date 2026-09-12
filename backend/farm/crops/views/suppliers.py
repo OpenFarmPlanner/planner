@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import (
     _serialize_instance,
@@ -78,12 +79,11 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         instance = self.get_object()
         usage = build_delete_usage(instance)
         if not usage['can_delete']:
-            return Response(
-                {
-                    'detail': 'Supplier is still used and cannot be deleted.',
-                    'usage': usage,
-                },
-                status=status.HTTP_409_CONFLICT,
+            return api_error_response(
+                code='supplier_in_use',
+                detail='Supplier is still used and cannot be deleted.',
+                status_code=status.HTTP_409_CONFLICT,
+                usage=usage,
             )
         undo_payload = build_delete_undo_payload(instance)
         self.perform_destroy(instance)
@@ -123,9 +123,10 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         except SupplierPayloadError as exc:
             raise DRFValidationError(exc.errors) from exc
         except SupplierRestoreConflictError:
-            return Response(
-                {'detail': 'Supplier cannot be restored because the id is already in use.'},
-                status=status.HTTP_409_CONFLICT,
+            return api_error_response(
+                code='supplier_restore_conflict',
+                detail='Supplier cannot be restored because the id is already in use.',
+                status_code=status.HTTP_409_CONFLICT,
             )
         except SupplierRestoreFailedError as exc:
             raise DRFValidationError({'detail': ['Supplier could not be restored.']}) from exc

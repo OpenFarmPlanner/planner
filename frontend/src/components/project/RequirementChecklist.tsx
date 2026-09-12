@@ -1,6 +1,7 @@
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import { Chip, Stack } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface RequirementChecklistItem {
   label: string;
@@ -14,6 +15,8 @@ interface RequirementChecklistProps {
 }
 
 export default function RequirementChecklist({ items }: RequirementChecklistProps) {
+  const { t } = useTranslation('common');
+
   return (
     <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: 'flex-start',
       flexWrap: "wrap", }}  >
@@ -25,8 +28,8 @@ export default function RequirementChecklist({ items }: RequirementChecklistProp
             variant={item.satisfied ? 'filled' : 'outlined'}
             icon={item.satisfied ? <CheckCircleOutlineIcon /> : <ErrorOutlineIcon />}
             label={item.satisfied
-              ? (item.satisfiedLabel ?? `${item.label} vorhanden`)
-              : (item.missingLabel ?? `${item.label} fehlt`)}
+              ? (item.satisfiedLabel ?? t('requirements.satisfied', { label: item.label }))
+              : (item.missingLabel ?? t('requirements.missing', { label: item.label }))}
             sx={item.satisfied
               ? undefined
               : {

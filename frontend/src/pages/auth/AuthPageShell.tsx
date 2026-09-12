@@ -5,6 +5,8 @@ import HeroImage from '../../components/HeroImage';
 import { authLegalLinkSx } from './authPageStyles';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import AppIcon from '../../components/layout/AppIcon';
+import { alpha } from '@mui/material/styles';
+import { useTranslation } from '../../i18n';
 
 type AuthPageShellProps = {
   title: string;
@@ -14,6 +16,7 @@ type AuthPageShellProps = {
 };
 
 export default function AuthPageShell({ title, subtitle, children, legalLinksDense = false }: AuthPageShellProps) {
+  const { t } = useTranslation('common');
   return (
     <Box
       sx={{
@@ -21,7 +24,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: '#f5f7f1',
+        bgcolor: 'surface.surfaceHoverBackground',
         overflow: 'hidden',
       }}
     >
@@ -29,8 +32,10 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
         alt=""
         position={{ xs: 'absolute', md: 'fixed' }}
         overlaySx={{
-          backgroundImage:
-            'linear-gradient(rgba(245, 247, 241, 0.88), rgba(245, 247, 241, 0.9))',
+          backgroundImage: (theme) => {
+            const background = theme.palette.surface?.surfaceHoverBackground ?? theme.palette.background.default;
+            return `linear-gradient(${alpha(background, 0.88)}, ${alpha(background, 0.9)})`;
+          },
         }}
       />
       <Container
@@ -70,7 +75,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
                   lineHeight: 1.1,
                 }}
               >
-                OpenFarmPlanner
+                {t('appName')}
               </Typography>
             </Stack>
             <PublicLanguageSwitcher dense />
@@ -82,9 +87,10 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
               width: '100%',
               maxWidth: 560,
               borderRadius: { xs: 3, md: 4 },
-              border: '1px solid rgba(46, 125, 50, 0.12)',
-              boxShadow: '0 16px 44px rgba(28, 42, 30, 0.11)',
-              bgcolor: '#fff',
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.12),
+              boxShadow: 6,
+              bgcolor: 'surface.surfaceBackground',
               p: { xs: 2.5, sm: 4, md: 4.5 },
             }}
           >
@@ -110,7 +116,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
             dense={legalLinksDense}
             sx={{
               justifyContent: 'center',
-              textShadow: '0 1px 2px rgba(255, 255, 255, 0.9)',
+              textShadow: (theme) => `0 1px 2px ${alpha(theme.palette.common.white, 0.9)}`,
             }}
             linkSx={{
               ...authLegalLinkSx,

@@ -14,6 +14,7 @@ import { getCachedNoteAttachments } from './noteAttachmentsCache';
 import { stripMarkdown } from './markdown';
 import type { NoteAttachment } from '../../api/types';
 import { useTranslation } from '../../i18n';
+import { alpha } from '@mui/material/styles';
 
 const MAX_VISIBLE_THUMBNAILS = 3;
 const THUMBNAIL_SIZE = 56;
@@ -129,7 +130,7 @@ function NotesPreviewThumbnails({
             sx={{
               position: 'absolute',
               inset: 0,
-              bgcolor: 'rgba(0,0,0,0.55)',
+              bgcolor: (theme) => alpha(theme.palette.common.black, 0.55),
               color: 'common.white',
               display: 'flex',
               alignItems: 'center',
