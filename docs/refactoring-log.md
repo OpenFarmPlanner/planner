@@ -439,6 +439,6 @@ changes and guardrails so reviewers can inspect or revert each area separately.
 - Split the growing frontend unit suite across three deterministic Vitest shards
   in CI and increased the per-shard guard to fifteen minutes so slower runners
   retain meaningful headroom without weakening failure isolation.
-- Updated project-history assertions to derive the restore action's accessible
-  name from the same German translation resource as the component, preventing
-  stale copy from breaking otherwise valid CI coverage.
+- Updated project-history assertions to use the current localized restore
+  action label, keeping the accessibility contract explicit rather than
+  deriving the expected value from the same resource as the component.

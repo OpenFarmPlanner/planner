@@ -44,7 +44,7 @@ interface ProjectHistoryDialogProps {
  * Presentational project version-history dialog. A cascading action (season
  * create/delete/undelete/data-copy) arrives from the API as one `is_batch`
  * entry that renders as a single row with a single "rückgängig machen"; every
- * other revision renders flat with "Version wiederherstellen". State, data
+ * other revision renders flat with its restore action. State, data
  * loading and the action handlers live in RootLayout.tsx. German-only copy is
  * intentional, matching RestoreVersionDialog.
  */

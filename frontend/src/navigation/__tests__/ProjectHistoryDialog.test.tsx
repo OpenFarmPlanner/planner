@@ -8,7 +8,7 @@ import type { CropHistoryEntry } from '../../api/types';
 
 const t = i18n.getFixedT('de', 'navigation');
 const tCrops = i18n.getFixedT('de', 'crops');
-const restoreVersionLabel = t('commandPalette.restoreVersion');
+const restoreVersionLabel = 'Zu dieser Version wechseln';
 
 function entry(partial: Partial<CropHistoryEntry>): CropHistoryEntry {
   return {
@@ -87,7 +87,7 @@ describe('ProjectHistoryDialog', () => {
     expect(onRevertBatch).toHaveBeenCalledWith(revertEntry);
   });
 
-  it('lists ungrouped revisions flat with "Version wiederherstellen"', () => {
+  it('lists ungrouped revisions flat with the localized restore action', () => {
     renderDialog([
       entry({ object_type: 'crop', object_display_name: 'Newest', action: 'updated' }),
       entry({ object_type: 'crop', object_display_name: 'Bijella', action: 'updated' }),
