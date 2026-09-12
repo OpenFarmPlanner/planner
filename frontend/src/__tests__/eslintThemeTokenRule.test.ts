@@ -25,12 +25,13 @@ describe('no-hardcoded-style-values', () => {
         mx: 'calc(100% - 12px)',
         mt: '-2px',
         borderRadius: '16px 16px 0 0',
+        borderTopLeftRadius: '8px',
         backgroundColor: customColor || 'rgba(0, 0, 0, 0.5)',
       };
       const icon = <path fill="#abcdef" stroke={'#123'} />;
     `);
 
-    expect(messages).toHaveLength(8);
+    expect(messages).toHaveLength(9);
     expect(messages.every((message) => (
       message.ruleId === 'theme-tokens/no-hardcoded-style-values'
     ))).toBe(true);

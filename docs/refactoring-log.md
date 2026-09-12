@@ -18,6 +18,8 @@
 - Cleared the two legacy component findings exposed by the border-radius rule:
   the stable DataGrid scrollbar thumb and yield-chart swatches now use MUI
   radius factors with unchanged rendered corner sizes.
+- Generalized the border-radius guard to individual corner-radius properties,
+  so a literal can no longer bypass token enforcement by targeting one corner.
 
 ### API error consistency
 

@@ -113,7 +113,8 @@ there are library patches, not app styling (see
 
 **Enforcement status:** ESLint's local
 `theme-tokens/no-hardcoded-style-values` rule rejects application-owned
-colour literals, pixel spacing, and pixel-based border radii in style
+colour literals, pixel spacing, and pixel-based border radii (including
+individual-corner radius properties) in style
 properties. Use numeric MUI radius factors or derive compound corner values
 with `theme.spacing()`. The theme and vendored
 Gantt package are deliberately excluded; user/domain colour data (for example

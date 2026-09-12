@@ -51,7 +51,6 @@ const spacingKeys = new Set([
   'rowGap',
   'columnGap',
 ]);
-const radiusKeys = new Set(['borderRadius']);
 
 const noHardcodedStyleValuesRule = {
   meta: {
@@ -74,7 +73,7 @@ const noHardcodedStyleValuesRule = {
         && /(?:#[0-9a-f]{3,8}\b|rgba?\()/i.test(value);
       const hasPixelSpacing = spacingKeys.has(propertyName)
         && /(?:^|[^\w.])-?\d+(?:\.\d+)?px(?![\w.])/i.test(value);
-      const hasPixelRadius = radiusKeys.has(propertyName)
+      const hasPixelRadius = propertyName.endsWith('Radius')
         && /(?:^|[^\w.])-?\d+(?:\.\d+)?px(?![\w.])/i.test(value);
       if (hasLiteralColor || hasPixelSpacing || hasPixelRadius) {
         context.report({ node, messageId: 'token', data: { value: JSON.stringify(value) } });
