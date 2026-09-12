@@ -1,5 +1,63 @@
 # Refactoring log
 
+## 2026-09-12 comprehensive audit
+
+### Theme tokens and lint guard
+
+- Closed the remaining theme-token lint gap for pixel-based border radii.
+  Application-owned styles must now derive radii from the theme just as they
+  already derive colours and spacing, while percentages such as circular
+  `50%` radii remain valid.
+- Replaced the mobile help sheet's literal corner radii with values derived
+  from the theme spacing scale and added focused rule coverage to prevent a
+  regression.
+
+### API error consistency
+
+- Routed the last-login-method social-account rejection and the public-crop
+  import confirmation conflict through the shared API error response builder.
+  Their status codes, stable codes, details, and conflict context remain
+  unchanged, but these endpoint branches no longer duplicate the canonical
+  error-envelope construction.
+
+### Disabled-state explanations
+
+- Added a reachable, localized explanation to the additional-location
+  dialog's disabled submit action. An empty location name now points users to
+  the required field instead of leaving the unavailable action unexplained,
+  with an interaction test covering the tooltip.
+
+### Internationalization coverage
+
+- Extended the hardcoded-copy ESLint guard to image alternative text, closing
+  an accessibility-facing attribute gap while continuing to allow the empty
+  `alt` value used for decorative images.
+- Re-ran the maintained-source lint audit and compared the complete German and
+  English namespace key sets. No hardcoded UI copy remains under the guard,
+  every locale key is shared by both languages, and no German-authored key was
+  removed.
+
+### Shared business logic
+
+- Consolidated metre/centimetre boundary conversion into a typed measurement
+  utility. Public-crop form adaptation and the interactive crop form now share
+  the same rounding and null-handling rules instead of maintaining parallel
+  implementations; SI storage remains converted only at the form/API boundary.
+
+### Test coverage
+
+- Added focused unit coverage for the shared measurement boundary, including
+  half-centimetre rounding, zero, and the intentionally different null output
+  contracts used by form drafts and API payloads.
+
+### Documentation
+
+- Updated the design-system enforcement reference to include tokenized border
+  radii and documented how compound radii should be derived.
+- Documented the maintained-source i18n lint boundary, including its
+  accessibility attributes, decorative-image exception, and vendor/test
+  exclusions.
+
 Date: 2026-09-08
 
 This log groups the refactoring pass by review area. It records both behavioral

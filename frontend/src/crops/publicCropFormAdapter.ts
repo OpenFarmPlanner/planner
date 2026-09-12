@@ -8,20 +8,13 @@ import {
   normalizeSeedRateUnit,
 } from './enumNormalization';
 import { buildSeedRateByCultivation } from './seedRatePayload';
-
-const centimetersFromMeters = (value: number | null | undefined): number | undefined => (
-  value === null || value === undefined ? undefined : Math.round(value * 100)
-);
+import { centimetersToMeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 
 const publicCropCentimeters = (
   centimeters: number | null | undefined,
   meters: number | null | undefined,
 ): number | undefined => (
-  centimeters === null || centimeters === undefined ? centimetersFromMeters(meters) : centimeters
-);
-
-const metersFromCentimeters = (value: number | null | undefined): number | null => (
-  value === null || value === undefined ? null : value / 100
+  centimeters === null || centimeters === undefined ? metersToRoundedCentimeters(meters) : centimeters
 );
 
 const seedRateUnitOrNull = (value: unknown): SeedRateUnit | null => normalizeSeedRateUnit(value) ?? null;
@@ -153,9 +146,9 @@ export function buildPublicCropUpdatePayload(
     propagation_duration_days: draft.propagation_duration_days ?? null,
     harvest_method: normalizeHarvestMethod(draft.harvest_method),
     expected_yield: draft.expected_yield ?? null,
-    distance_within_row_m: metersFromCentimeters(draft.distance_within_row_cm),
-    row_spacing_m: metersFromCentimeters(draft.row_spacing_cm),
-    sowing_depth_m: metersFromCentimeters(draft.sowing_depth_cm),
+    distance_within_row_m: centimetersToMeters(draft.distance_within_row_cm),
+    row_spacing_m: centimetersToMeters(draft.row_spacing_cm),
+    sowing_depth_m: centimetersToMeters(draft.sowing_depth_cm),
     seed_rate_value: seedRateFallbackFields.seed_rate_value,
     seed_rate_unit: seedRateFallbackFields.seed_rate_unit,
     seed_rate_by_cultivation: seedRateFallbackFields.seed_rate_by_cultivation,

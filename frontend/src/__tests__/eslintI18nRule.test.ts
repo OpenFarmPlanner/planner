@@ -22,11 +22,13 @@ describe('no-hardcoded-ui-strings', () => {
       const view = <>
         <p>Untranslated text</p>
         <input aria-label="Untranslated label" />
+        <img alt="Untranslated alternative" />
         <span>{ready ? 'Ready' : \`Waiting for \${name}\`}</span>
       </>;
     `);
 
     expect(messages.map((message) => message.ruleId)).toEqual([
+      'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',
       'i18n/no-hardcoded-ui-strings',
@@ -38,7 +40,7 @@ describe('no-hardcoded-ui-strings', () => {
     const messages = lint(`
       const view = <section data-mode={mode === 'ready' ? 'complete' : 'pending'}>
         {enabled && t('status.ready')}
-        <a href={path || '/fallback'} title={t('actions.open')} />
+        <a href={path || '/fallback'} title={t('actions.open')}><img alt="" /></a>
       </section>;
     `);
 

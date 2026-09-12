@@ -332,15 +332,16 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             )
         except PublicCropImportConfirmationRequiredError as error:
             existing = error.existing_crop
-            return Response({
-                'code': error.code,
-                'detail': str(error),
-                'existing_crop_id': existing.id,
-                'existing_crop_name': format_crop_display_name(existing.name, existing.variety),
-                'variety_changed': (existing.variety or '') != (public_crop.variety or ''),
-                'existing_variety': existing.variety,
-                'public_variety': public_crop.variety,
-            }, status=status.HTTP_409_CONFLICT)
+            return api_error_response(
+                code=error.code,
+                detail=str(error),
+                status_code=status.HTTP_409_CONFLICT,
+                existing_crop_id=existing.id,
+                existing_crop_name=format_crop_display_name(existing.name, existing.variety),
+                variety_changed=(existing.variety or '') != (public_crop.variety or ''),
+                existing_variety=existing.variety,
+                public_variety=public_crop.variety,
+            )
         serializer = CropSerializer(imported, context={'request': request})
         response_status = status.HTTP_201_CREATED if operation == 'created' else status.HTTP_200_OK
         return Response({'crop': serializer.data, 'operation': operation}, status=response_status)

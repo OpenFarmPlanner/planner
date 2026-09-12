@@ -69,6 +69,7 @@ import {
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
 import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
+import { metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { buildVarietyFieldTooltipTitle, type GetVarietyFieldTooltipProps } from './varietyFieldTooltipHelpers';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import {
@@ -204,10 +205,6 @@ const PublicCropApplyHint = ({ hintText, actionLabel, onApply }: { hintText: str
 
 const DUPLICATE_CHECK_DEBOUNCE_MS = 400;
 
-const metersToCentimeters = (value: number | null | undefined): number | undefined => (
-  typeof value === 'number' ? Math.round(value * 100) : undefined
-);
-
 const getPublicCropDraftName = (publicCrop: PublicCrop): string => (
   publicCrop.display_name || publicCrop.crop_species_name || publicCrop.name
 );
@@ -230,9 +227,9 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   propagation_duration_days: publicCrop.propagation_duration_days ?? undefined,
   harvest_method: publicCrop.harvest_method ?? '',
   expected_yield: publicCrop.expected_yield ?? undefined,
-  distance_within_row_cm: metersToCentimeters(publicCrop.distance_within_row_m),
-  row_spacing_cm: metersToCentimeters(publicCrop.row_spacing_m),
-  sowing_depth_cm: metersToCentimeters(publicCrop.sowing_depth_m),
+  distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
+  row_spacing_cm: metersToRoundedCentimeters(publicCrop.row_spacing_m),
+  sowing_depth_cm: metersToRoundedCentimeters(publicCrop.sowing_depth_m),
   seed_rate_value: publicCrop.seed_rate_value ?? null,
   seed_rate_unit: publicCrop.seed_rate_unit ?? null,
   seed_rate_by_cultivation: publicCrop.seed_rate_by_cultivation ?? null,

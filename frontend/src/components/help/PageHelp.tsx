@@ -456,10 +456,10 @@ export default function PageHelp({ pageKey, ariaLabel, tooltip }: PageHelpProps)
         maxWidth="md"
         slotProps={{
           paper: {
-              sx: {
+            sx: {
               m: 0,
               mt: 'auto',
-              borderRadius: '16px 16px 0 0',
+              borderRadius: (theme) => `${theme.spacing(2)} ${theme.spacing(2)} 0 0`,
               maxHeight: '85vh',
             },
           }

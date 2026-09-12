@@ -1,5 +1,6 @@
 const userFacingAttributes = new Set([
   'aria-label',
+  'alt',
   'helperText',
   'label',
   'placeholder',

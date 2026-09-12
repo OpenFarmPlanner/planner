@@ -24,12 +24,13 @@ describe('no-hardcoded-style-values', () => {
         padding: '10px 16px',
         mx: 'calc(100% - 12px)',
         mt: '-2px',
+        borderRadius: '16px 16px 0 0',
         backgroundColor: customColor || 'rgba(0, 0, 0, 0.5)',
       };
       const icon = <path fill="#abcdef" stroke={'#123'} />;
     `);
 
-    expect(messages).toHaveLength(7);
+    expect(messages).toHaveLength(8);
     expect(messages.every((message) => (
       message.ruleId === 'theme-tokens/no-hardcoded-style-values'
     ))).toBe(true);
@@ -40,6 +41,7 @@ describe('no-hardcoded-style-values', () => {
       const sx = {
         color: 'text.primary',
         padding: 2,
+        borderRadius: theme.shape.borderRadius,
         backgroundColor: theme.palette.background.paper,
       };
       const icon = <path fill={crop.color} stroke="currentColor" />;

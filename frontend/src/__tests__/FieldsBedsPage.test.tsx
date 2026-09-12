@@ -202,6 +202,10 @@ describe('FieldsBedsPage', () => {
 
     await user.click(addLocationLink);
     expect(screen.getByRole('dialog', { name: 'Weiteren Standort hinzufügen' })).toBeInTheDocument();
+    const addLocationButton = screen.getByRole('button', { name: 'Standort anlegen' });
+    expect(addLocationButton).toBeDisabled();
+    await user.hover(addLocationButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Bitte alle Pflichtfelder ausfüllen.');
 
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
     await waitFor(() => {
