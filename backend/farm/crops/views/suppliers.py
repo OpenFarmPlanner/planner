@@ -191,7 +191,12 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
                 **exc.errors,
             )
         except DuplicateSupplierNameError as exc:
-            raise DRFValidationError({'name': [SUPPLIER_NAME_DUPLICATE_MESSAGE]}) from exc
+            return api_error_response(
+                code='duplicate_supplier_name',
+                detail='A supplier with this name already exists in the project.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                name=[SUPPLIER_NAME_DUPLICATE_MESSAGE],
+            )
 
         serializer = self.get_serializer(supplier)
         data = serializer.data

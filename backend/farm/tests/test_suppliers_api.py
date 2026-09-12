@@ -60,6 +60,8 @@ class SupplierApiTest(ProjectApiTestCase):
         response = self.client.post('/openfarmplanner/api/suppliers/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Supplier.objects.count(), 1)
+        self.assertEqual(response.data['code'], 'duplicate_supplier_name')
+        self.assertEqual(response.data['detail'], 'A supplier with this name already exists in the project.')
         self.assertIn('name', response.data)
         self.assertEqual(str(response.data['name'][0]), 'Ein Lieferant mit diesem Namen existiert bereits.')
 

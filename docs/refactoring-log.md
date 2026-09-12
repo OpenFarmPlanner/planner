@@ -30,6 +30,10 @@
   consumers: these responses now include the stable English
   `invalid_supplier_payload` code and detail alongside their established field
   validation arrays.
+- Applied the same envelope to duplicate supplier names raised by the
+  service-level create path, so expected supplier-create failures now expose
+  a code and English detail consistently while retaining the localized `name`
+  field error used by the existing form.
 
 ### Disabled-state explanations
 
