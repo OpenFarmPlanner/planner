@@ -383,7 +383,7 @@ export function YieldDistributionChart({
                     sx={{
                       width: 12,
                       height: 12,
-                      borderRadius: "2px",
+                      borderRadius: 0.5,
                       backgroundColor: crop.color,
                       flex: "0 0 auto",
                     }}

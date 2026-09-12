@@ -479,7 +479,7 @@ export default function FieldsBedsPage() {
           </DialogContent>
           <DialogActions>
             <Button type="button" onClick={() => setAddLocationDialogOpen(false)}>{t('common:actions.cancel')}</Button>
-            <DisabledActionTooltip title={t('common:disabledReasons.requiredFields')}>
+            <DisabledActionTooltip title={!newLocationName.trim() ? t('common:disabledReasons.requiredFields') : ''}>
               <Button type="submit" variant="contained" color="success" disabled={!newLocationName.trim()}>
                 {t('hierarchy:dialogs.addAdditionalLocation.submit')}
               </Button>

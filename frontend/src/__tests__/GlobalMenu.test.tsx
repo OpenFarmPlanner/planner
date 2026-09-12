@@ -17,6 +17,7 @@ const labels: Record<string, string> = {
   'language.label': 'Sprache',
   'projectSwitcher.ariaLabel': 'Aktives Projekt wechseln',
   'project.create': 'Neues Projekt',
+  'common:disabledReasons.busy': 'Aktion wird gerade verarbeitet.',
 };
 
 const t = (key: string) => labels[key] ?? key;
@@ -74,6 +75,18 @@ describe('GlobalMenu (desktop)', () => {
 
     expect(screen.queryByRole('menuitem', { name: 'Kulturbibliothek moderieren' })).not.toBeInTheDocument();
   });
+
+  it('explains why project history is temporarily disabled', async () => {
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+
+    render(<GlobalMenu {...baseProps} anchorEl={anchor} historyLoading />);
+
+    const historyItem = screen.getByRole('menuitem', { name: 'Versionsverlauf öffnen' });
+    expect(historyItem).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.hover(historyItem.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Aktion wird gerade verarbeitet.');
+  });
 });
 
 describe('GlobalMenu (mobile) "Hilfe zu dieser Seite" entry', () => {
@@ -104,7 +117,7 @@ describe('GlobalMenu (mobile) "Hilfe zu dieser Seite" entry', () => {
     expect(item).not.toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('is disabled with an explanatory tooltip when the current page has no page-specific help', () => {
+  it('is disabled with an explanatory tooltip when the current page has no page-specific help', async () => {
     const anchor = document.createElement('button');
     document.body.appendChild(anchor);
     const onOpenPageHelp = vi.fn();
@@ -115,7 +128,8 @@ describe('GlobalMenu (mobile) "Hilfe zu dieser Seite" entry', () => {
 
     const item = screen.getByRole('menuitem', { name: 'Hilfe zu dieser Seite' });
     expect(item).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByLabelText('Für diese Seite ist keine spezifische Hilfe verfügbar.')).toBeInTheDocument();
+    await userEvent.hover(item.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Für diese Seite ist keine spezifische Hilfe verfügbar.');
   });
 });
 

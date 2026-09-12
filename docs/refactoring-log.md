@@ -11,6 +11,13 @@
 - Replaced the mobile help sheet's literal corner radii with values derived
   from the theme spacing scale and added focused rule coverage to prevent a
   regression.
+- Removed the remaining application colour and pixel literals from the global
+  stylesheet. Root/link colours and the minimum body width now live in the
+  theme's `MuiCssBaseline` overrides and consume semantic palette/spacing
+  tokens while retaining the existing rendered values.
+- Cleared the two legacy component findings exposed by the border-radius rule:
+  the stable DataGrid scrollbar thumb and yield-chart swatches now use MUI
+  radius factors with unchanged rendered corner sizes.
 
 ### API error consistency
 
@@ -26,6 +33,13 @@
   dialog's disabled submit action. An empty location name now points users to
   the required field instead of leaving the unavailable action unexplained,
   with an interaction test covering the tooltip.
+- Limited that explanation to the actually disabled state. Once a location
+  name is entered, the enabled submit action no longer retains an obsolete
+  required-field tooltip; the interaction test covers both transitions.
+- Added the shared busy-state explanation to disabled project-history menu
+  actions on desktop and mobile. The same shared disabled-menu wrapper now
+  handles both history variants and the unavailable page-help item instead of
+  retaining a menu-specific wrapper implementation.
 
 ### Internationalization coverage
 

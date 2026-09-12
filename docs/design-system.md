@@ -87,10 +87,11 @@ the media query in the component only picks the tooltip text.
 
 Only two `.css` files are left in the app, and both are deliberate:
 
-**`src/index.css`** — global element base styles: the root font stack and
-colours, the body reset, the `overflow-x` clamp (whose comment explains a
+**`src/index.css`** — non-theme global element base styles: the root font
+rendering settings, the body reset, the `overflow-x` clamp (whose comment explains a
 non-obvious interaction with MUI's modal scroll lock — read it before touching
-it), link colours and `h1`.
+it), link decoration, and `h1`. Global colours, link states, and the minimum
+body width live in `MuiCssBaseline` so they can consume theme tokens.
 
 **`src/pages/GanttChart.css`** — overrides for the vendored Gantt library in
 `src/gantt-chart/`. Every rule targets `.rmg-*` DOM that this app does not

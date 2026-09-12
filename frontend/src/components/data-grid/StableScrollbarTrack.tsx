@@ -77,7 +77,7 @@ export function StableScrollbarTrack({
           height: `${scrollbar.thumbHeight}px`,
           left: '2px',
           right: '2px',
-          borderRadius: '4px',
+          borderRadius: 1,
           backgroundColor: (theme) => alpha(theme.palette.common.black, 0.3),
           cursor: 'pointer',
           '&:hover': { backgroundColor: (theme) => alpha(theme.palette.common.black, 0.45) },
