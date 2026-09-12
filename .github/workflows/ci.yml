@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -49,14 +49,14 @@ jobs:
         run: |
           set -euxo pipefail
           cd frontend
-          echo "Running test command (CI, non-watch): npm run test:ci -- --shard=${{ matrix.shard }}/2"
+          echo "Running test command (CI, non-watch): npm run test:ci -- --shard=${{ matrix.shard }}/3"
           # Guards against a hung worker (hence the process dump below), not
           # against the suite growing: keep the cap far enough below the
           # job's 20 minutes that setup and process cleanup retain headroom.
           echo "Applying shell hard timeout: 15m"
           echo "Test step start: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           set +e
-          timeout --foreground 15m npm run test:ci -- --shard=${{ matrix.shard }}/2
+          timeout --foreground 15m npm run test:ci -- --shard=${{ matrix.shard }}/3
           exit_code=$?
           set -e
           echo "Test step end: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
