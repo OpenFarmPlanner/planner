@@ -111,25 +111,28 @@ export function GlobalMenu(props: GlobalMenuProps) {
     </MenuItem>
   );
 
-  const pageHelpMenuItem = onOpenPageHelp ? (
-    <MenuItem
-      key="mobile-app-page-help"
-      onClick={() => { onClose(); onOpenPageHelp(); }}
-      disabled={!pageHelpAvailable}
-      sx={{ color: 'text.primary' }}
-    >
-      <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
-      {t('globalMenu.pageHelp')}
-    </MenuItem>
-  ) : null;
-  // A disabled MenuItem fires no pointer events, so the "why" tooltip needs a
-  // wrapper element to hang off — same pattern as CropHeaderActionsMenu's
-  // disabled publish item.
-  const pageHelpItem = onOpenPageHelp && !pageHelpAvailable ? (
-    <DisabledMenuItemTooltip key="mobile-app-page-help-tooltip" title={pageHelpUnavailableReason ?? t('globalMenu.pageHelpUnavailable')}>
-      {pageHelpMenuItem}
-    </DisabledMenuItemTooltip>
-  ) : pageHelpMenuItem;
+  const pageHelpMenuItem = (key: string): ReactNode => {
+    if (!onOpenPageHelp) return null;
+    const item = (
+      <MenuItem
+        key={key}
+        onClick={() => { onClose(); onOpenPageHelp(); }}
+        disabled={!pageHelpAvailable}
+        sx={{ color: 'text.primary' }}
+      >
+        <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+        {t('globalMenu.pageHelp')}
+      </MenuItem>
+    );
+    // A disabled MenuItem fires no pointer events, so the "why" tooltip needs a
+    // wrapper element to hang off — same pattern as CropHeaderActionsMenu's
+    // disabled publish item.
+    return pageHelpAvailable ? item : (
+      <DisabledMenuItemTooltip key={`${key}-tooltip`} title={pageHelpUnavailableReason ?? t('globalMenu.pageHelpUnavailable')}>
+        {item}
+      </DisabledMenuItemTooltip>
+    );
+  };
 
   const historyMenuItem = (key: string) => {
     const item = (
@@ -159,7 +162,7 @@ export function GlobalMenu(props: GlobalMenuProps) {
     <Divider key="mobile-divider-project-app" />,
     <MenuItem key="mobile-section-app" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.app')}</MenuItem>,
     <MenuItem key="mobile-app-shortcuts" onClick={wrap(onOpenShortcuts)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><KeyboardOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.shortcuts')}</MenuItem>,
-    pageHelpItem,
+    pageHelpMenuItem('mobile-app-page-help'),
     <MenuItem key="mobile-app-help" onClick={wrap(onOpenHelp)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.appHelp')}</MenuItem>,
     feedbackItem('mobile-app-feedback'),
     <MenuItem key="mobile-app-account-settings" onClick={wrap(onOpenAccountSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('accountSettings')}</MenuItem>,
