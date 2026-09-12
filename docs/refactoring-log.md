@@ -26,6 +26,10 @@
   Their status codes, stable codes, details, and conflict context remain
   unchanged, but these endpoint branches no longer duplicate the canonical
   error-envelope construction.
+- Standardized supplier-create payload failures without breaking field-level
+  consumers: these responses now include the stable English
+  `invalid_supplier_payload` code and detail alongside their established field
+  validation arrays.
 
 ### Disabled-state explanations
 

@@ -100,6 +100,14 @@ class SupplierApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['homepage_url'], '')
 
+    def test_supplier_create_invalid_payload_has_a_standard_error_envelope(self):
+        response = self.client.post('/openfarmplanner/api/suppliers/', {'name': ''})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'invalid_supplier_payload')
+        self.assertEqual(response.data['detail'], 'Supplier data is invalid.')
+        self.assertEqual(response.data['name'], ['Dieses Feld ist erforderlich.'])
+
     def test_supplier_create_allows_full_homepage_url(self):
         """Test creating supplier with a full website URL."""
         response = self.client.post(

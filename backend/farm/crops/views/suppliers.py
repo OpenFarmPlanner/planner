@@ -184,7 +184,12 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
             )
             supplier = create_supplier(project=request.active_project, **fields)
         except SupplierPayloadError as exc:
-            return Response(exc.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='invalid_supplier_payload',
+                detail='Supplier data is invalid.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                **exc.errors,
+            )
         except DuplicateSupplierNameError as exc:
             raise DRFValidationError({'name': [SUPPLIER_NAME_DUPLICATE_MESSAGE]}) from exc
 
