@@ -23,6 +23,7 @@ from farm.services.suppliers import (
     SupplierPayloadError,
     SupplierRestoreConflictError,
     SupplierRestoreFailedError,
+    SUPPLIER_NAME_DUPLICATE_MESSAGE,
     build_delete_undo_payload,
     build_delete_usage,
     create_supplier,
@@ -61,7 +62,7 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         try:
             instance = serializer.save()
         except IntegrityError as exc:
-            raise DRFValidationError({'name': ['Ein Lieferant mit diesem Namen existiert bereits.']}) from exc
+            raise DRFValidationError({'name': [SUPPLIER_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @action(detail=True, methods=['get'], url_path='delete-usage')
@@ -185,7 +186,7 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         except SupplierPayloadError as exc:
             return Response(exc.errors, status=status.HTTP_400_BAD_REQUEST)
         except DuplicateSupplierNameError as exc:
-            raise DRFValidationError({'name': ['Ein Lieferant mit diesem Namen existiert bereits.']}) from exc
+            raise DRFValidationError({'name': [SUPPLIER_NAME_DUPLICATE_MESSAGE]}) from exc
 
         serializer = self.get_serializer(supplier)
         data = serializer.data

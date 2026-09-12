@@ -57,6 +57,10 @@
   utility. Public-crop form adaptation and the interactive crop form now share
   the same rounding and null-handling rules instead of maintaining parallel
   implementations; SI storage remains converted only at the form/API boundary.
+- Centralized supplier validation messages shared by service-level creation,
+  serializer validation, and integrity-error handling. Supplier endpoints now
+  have one source for required-name, URL, domain-list, domain-format, and
+  duplicate-name wording without changing their established response payloads.
 
 ### Test coverage
 

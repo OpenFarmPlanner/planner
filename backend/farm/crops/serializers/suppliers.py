@@ -12,6 +12,13 @@ from farm.models import (
     CropSupplierData,
     Supplier,
 )
+from farm.services.suppliers import (
+    SUPPLIER_DOMAINS_INVALID_MESSAGE,
+    SUPPLIER_DOMAINS_LIST_MESSAGE,
+    SUPPLIER_HOMEPAGE_INVALID_MESSAGE,
+    SUPPLIER_NAME_DUPLICATE_MESSAGE,
+    SUPPLIER_NAME_REQUIRED_MESSAGE,
+)
 
 
 class SupplierSerializer(serializers.ModelSerializer):
@@ -30,11 +37,11 @@ class SupplierSerializer(serializers.ModelSerializer):
         if value is None:
             return []
         if not isinstance(value, list):
-            raise serializers.ValidationError('Bitte geben Sie eine Liste von Domains an.')
+            raise serializers.ValidationError(SUPPLIER_DOMAINS_LIST_MESSAGE)
         normalized = Supplier.normalize_allowed_domains(value)
         invalid = [domain for domain in normalized if not Supplier._is_valid_domain(Supplier._normalize_domain(domain))]
         if invalid:
-            raise serializers.ValidationError('Domains müssen gültige Hostnamen ohne Schema oder Pfad sein.')
+            raise serializers.ValidationError(SUPPLIER_DOMAINS_INVALID_MESSAGE)
         return normalized
 
     def validate_homepage_url(self, value):
@@ -48,7 +55,7 @@ class SupplierSerializer(serializers.ModelSerializer):
         try:
             URLValidator()(homepage_url)
         except ValidationError as exc:
-            raise serializers.ValidationError('Bitte geben Sie eine gültige URL ein.') from exc
+            raise serializers.ValidationError(SUPPLIER_HOMEPAGE_INVALID_MESSAGE) from exc
         return homepage_url
 
     def validate_name(self, value):
@@ -56,7 +63,7 @@ class SupplierSerializer(serializers.ModelSerializer):
 
         name = (value or '').strip()
         if not name:
-            raise serializers.ValidationError('Dieses Feld ist erforderlich.')
+            raise serializers.ValidationError(SUPPLIER_NAME_REQUIRED_MESSAGE)
         project = _resolve_active_project_from_serializer(self)
         if project is None:
             return name
@@ -65,7 +72,7 @@ class SupplierSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
-            raise serializers.ValidationError('Ein Lieferant mit diesem Namen existiert bereits.')
+            raise serializers.ValidationError(SUPPLIER_NAME_DUPLICATE_MESSAGE)
         return name
 
 
