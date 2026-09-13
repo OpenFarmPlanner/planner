@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
 from crops.models import CropSpecies, CropSpeciesTranslation
@@ -14,6 +14,12 @@ from farm.models import (
     Project,
     ProjectMembership,
     Season,
+)
+from farm.services.yield_calendar import (
+    build_yield_calendar,
+    build_yield_calendar_for_season,
+    iso_week_key,
+    week_start_for_iso_year,
 )
 
 User = get_user_model()
@@ -350,3 +356,250 @@ class YieldCalendarAPITest(TestCase):
             )
         )
         self.assertAlmostEqual(total, 70.0, places=2)
+
+
+class IsoWeekHelperTest(SimpleTestCase):
+    """The two pure helpers the whole calendar is keyed on.
+
+    Reached directly rather than through the endpoint: the year a week belongs
+    to and the shape of its key decide which request returns it, so getting
+    either wrong moves rows between years rather than changing a number inside
+    one.
+    """
+
+    def test_a_year_starts_on_a_monday(self):
+        for iso_year in (2024, 2025, 2026, 2027):
+            with self.subTest(iso_year=iso_year):
+                self.assertEqual(week_start_for_iso_year(iso_year).weekday(), 0)
+
+    def test_iso_week_one_can_start_in_the_previous_calendar_year(self):
+        # ISO week 1 is the week containing the first Thursday, so it reaches
+        # back into December whenever January 1 falls late in the week. Using
+        # the calendar January 1 as the year boundary would put those days in
+        # the wrong year's calendar.
+        self.assertEqual(week_start_for_iso_year(2026), date(2025, 12, 29))
+
+    def test_iso_week_one_can_start_on_january_first(self):
+        # The other side of the same rule: 2024 opens on a Monday, so nothing
+        # is borrowed from December.
+        self.assertEqual(week_start_for_iso_year(2024), date(2024, 1, 1))
+
+    def test_a_week_key_is_zero_padded(self):
+        # Keys are sorted as strings, so an unpadded "2026-W9" would sort
+        # after "2026-W10" and scramble the calendar's order.
+        self.assertEqual(iso_week_key(date(2026, 3, 2)), '2026-W10')
+        self.assertEqual(iso_week_key(date(2026, 1, 5)), '2026-W02')
+
+    def test_a_week_key_uses_the_iso_year_not_the_calendar_year(self):
+        # 2025-12-29 is a Monday in ISO week 1 of 2026.
+        self.assertEqual(iso_week_key(date(2025, 12, 29)), '2026-W01')
+
+
+class YieldCalendarServiceTest(TestCase):
+    """Cases the endpoint cannot express, reached through the service itself.
+
+    The view resolves the language and the season from the request before
+    calling in, so the two service entry points and their arguments are only
+    separable one level down.
+    """
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Service Project', slug='service-project')
+
+    def _create_plan(self, *, crop, harvest_start, harvest_end, season=None):
+        """Create a plan whose harvest window is exactly the one given.
+
+        The dates go in with a queryset update because ``PlantingPlan.save``
+        recalculates them from the crop's timing for every new instance. Same
+        approach as ``YieldCalendarAPITest``.
+        """
+        plan = PlantingPlan.objects.create(
+            crop=crop, planting_date=harvest_start, project=self.project, season=season,
+        )
+        PlantingPlan.objects.filter(id=plan.id).update(
+            harvest_date=harvest_start, harvest_end_date=harvest_end,
+        )
+        plan.refresh_from_db()
+        return plan
+
+    def _linked_crop(self, *, name: str, german_name: str, english_name: str) -> Crop:
+        species = CropSpecies.objects.create(
+            name=english_name, status=CropSpecies.STATUS_PUBLISHED,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=species, language_code='de', common_name=german_name,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=species, language_code='en', common_name=english_name,
+        )
+        return Crop.objects.create(
+            name=name, expected_yield=100, crop_species=species, project=self.project,
+        )
+
+    def test_the_requested_language_decides_the_display_name(self):
+        # The endpoint resolves one language per request, so asking for two
+        # different ones is the only way to show the argument is used at all
+        # rather than a fixed language being hardcoded.
+        crop = self._linked_crop(
+            name='Möhre Eigenname', german_name='Karotte', english_name='Carrot',
+        )
+        self._create_plan(crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
+
+        german = build_yield_calendar(self.project, 2026, 'de')
+        english = build_yield_calendar(self.project, 2026, 'en')
+
+        self.assertEqual(german[0]['crops'][0]['crop_display_name'], 'Karotte')
+        self.assertEqual(english[0]['crops'][0]['crop_display_name'], 'Carrot')
+
+    def test_crops_in_a_week_are_ordered_by_the_name_the_user_sees(self):
+        # The two orders disagree here on purpose: by stored name it is
+        # Alpha then Beta, by German display name it is Karotte then Zwiebel
+        # -- reversed. The chart's legend follows what is rendered, so the
+        # display name has to be what decides.
+        second = self._linked_crop(name='Alpha', german_name='Zwiebel', english_name='Onion')
+        first = self._linked_crop(name='Beta', german_name='Karotte', english_name='Carrot')
+        self._create_plan(crop=second, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
+        self._create_plan(crop=first, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
+
+        row = build_yield_calendar(self.project, 2026, 'de')[0]
+
+        self.assertEqual(
+            [crop['crop_display_name'] for crop in row['crops']], ['Karotte', 'Zwiebel'],
+        )
+        self.assertEqual([crop['crop_name'] for crop in row['crops']], ['Beta', 'Alpha'])
+
+    def test_a_season_spanning_two_years_stays_scoped_to_its_own_plans(self):
+        # The per-year loop passes the season down on every iteration. Dropping
+        # that would quietly widen a season-scoped chart to the whole project,
+        # which the single-year entry point's own scoping test cannot show.
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+        )
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        self._create_plan(
+            crop=crop,
+            harvest_start=date(2026, 10, 5),
+            harvest_end=date(2026, 10, 12),
+            season=season,
+        )
+        self._create_plan(
+            crop=crop, harvest_start=date(2026, 10, 5), harvest_end=date(2026, 10, 12), season=None,
+        )
+
+        rows = build_yield_calendar_for_season(self.project, season, 'de')
+
+        self.assertEqual([row['iso_week'] for row in rows], ['2026-W41'])
+        self.assertAlmostEqual(rows[0]['crops'][0]['yield'], 100.0, places=2)
+
+    def test_weeks_from_the_two_years_of_a_season_never_collide(self):
+        # Per-year results are concatenated rather than merged, which is only
+        # safe because the keys carry the ISO year: week 41 of one year and
+        # week 41 of the next stay separate rows.
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 12, 31),
+        )
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        # Derived from the week numbers rather than written as dates, since
+        # deliberately picking the same week in two different years is the
+        # whole point and the calendar dates for it do not line up.
+        for iso_year in (2026, 2027):
+            monday = date.fromisocalendar(iso_year, 41, 1)
+            self._create_plan(
+                crop=crop,
+                harvest_start=monday,
+                harvest_end=monday + timedelta(days=7),
+                season=season,
+            )
+
+        rows = build_yield_calendar_for_season(self.project, season, 'de')
+        weeks = [row['iso_week'] for row in rows]
+
+        self.assertEqual(weeks, ['2026-W41', '2027-W41'])
+
+    def test_a_plan_with_no_harvest_dates_is_left_out_even_with_a_yield(self):
+        # The existing endpoint test pairs its dateless plan with a crop that
+        # has no expected yield, so the yield filter excludes it first and the
+        # date filters are never the thing doing the work. Here the crop has a
+        # yield, which leaves the date filters as the only thing that can
+        # exclude it -- and reaching the distribution with null dates would
+        # raise rather than return an empty calendar.
+        #
+        # Which of the date filters does the excluding is not observable: the
+        # `isnull` pair and the year-window comparisons each drop a null row on
+        # their own, since SQL comparisons against NULL are never true. Removing
+        # either alone changes nothing, so this pins the outcome rather than the
+        # mechanism.
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        PlantingPlan.objects.create(
+            crop=crop, planting_date=date(2026, 3, 2), project=self.project,
+        )
+
+        self.assertEqual(build_yield_calendar(self.project, 2026, 'de'), [])
+
+    def test_a_plan_with_only_a_harvest_start_is_left_out(self):
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        plan = PlantingPlan.objects.create(
+            crop=crop, planting_date=date(2026, 3, 2), project=self.project,
+        )
+        PlantingPlan.objects.filter(id=plan.id).update(
+            harvest_date=date(2026, 3, 2), harvest_end_date=None,
+        )
+
+        self.assertEqual(build_yield_calendar(self.project, 2026, 'de'), [])
+
+    def test_a_whole_week_split_keeps_both_halves(self):
+        # One day of an eight-day window is an eighth of the yield, which lands
+        # exactly on two decimals and needs no rounding at all. This pins the
+        # split itself; the rounding mode is separated out below.
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        self._create_plan(crop=crop, harvest_start=date(2026, 3, 1), harvest_end=date(2026, 3, 9))
+
+        rows = build_yield_calendar(self.project, 2026, 'de')
+
+        self.assertEqual(
+            {row['iso_week']: row['crops'][0]['yield'] for row in rows},
+            {'2026-W09': 12.5, '2026-W10': 87.5},
+        )
+
+    def test_a_weekly_value_rounds_half_up_rather_than_to_even(self):
+        # The two modes only diverge when the third decimal is exactly 5, so
+        # the window is chosen to produce one: a yield of 1 over eight days
+        # gives the first week 0.125. Half-up rounds that to 0.13; banker's
+        # rounding would pull it down to 0.12 because 2 is even. The scale the
+        # user reads is kilograms, where rounding down a value that sits
+        # exactly on the boundary reads as the chart losing weight.
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=1, project=self.project)
+        self._create_plan(crop=crop, harvest_start=date(2026, 3, 1), harvest_end=date(2026, 3, 9))
+
+        rows = build_yield_calendar(self.project, 2026, 'de')
+
+        self.assertEqual(rows[0]['crops'][0]['yield'], 0.13)
+
+    def test_the_last_supported_year_does_not_overflow(self):
+        # The year window normally ends at the start of the next ISO year,
+        # which cannot be built for 9999 -- `date.fromisocalendar(10000, ...)`
+        # is out of range. The view rejects anything above 9999 before it gets
+        # here, so this is the one year that reaches the service at the very
+        # top of the supported range.
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        self._create_plan(crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
+
+        self.assertEqual(build_yield_calendar(self.project, 9999, 'de'), [])
+
+    def test_the_year_window_filters_are_an_optimisation_only(self):
+        # Recorded rather than asserted as a requirement. The queryset trims
+        # plans that cannot touch the requested year, but the distribution
+        # checks the ISO year of every week anyway, so removing either filter
+        # changes only how many rows are read -- never the answer. The two
+        # entry points below are the same harvest seen from both years.
+        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        self._create_plan(
+            crop=crop, harvest_start=date(2026, 12, 21), harvest_end=date(2027, 1, 11),
+        )
+
+        this_year = [row['iso_week'] for row in build_yield_calendar(self.project, 2026, 'de')]
+        next_year = [row['iso_week'] for row in build_yield_calendar(self.project, 2027, 'de')]
+
+        self.assertTrue(all(week.startswith('2026-') for week in this_year))
+        self.assertTrue(all(week.startswith('2027-') for week in next_year))
+        self.assertEqual(len(this_year) + len(next_year), 3)
