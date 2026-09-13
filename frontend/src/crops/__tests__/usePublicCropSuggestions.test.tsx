@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PublicCrop } from '../../api/types';
 import { usePublicCropSuggestions } from '../usePublicCropSuggestions';
@@ -43,9 +43,17 @@ const settleSearch = async () => {
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 };
 
-/** Lets the queued microtask state updates land without moving the clock. */
-const settle = async () => {
-  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+/**
+ * Lets queued microtasks and zero-delay timers land without moving the clock.
+ *
+ * Several turns, because the variety load is a chain: a microtask raises the
+ * loading flag, the request resolves, and its `then` writes the state. One
+ * turn settles the first link only.
+ */
+const settle = async (turns = 4) => {
+  for (let index = 0; index < turns; index += 1) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  }
 };
 
 const searchCalls = () => listMock.mock.calls.filter(([params]) => 'q' in params);
@@ -53,9 +61,13 @@ const speciesCalls = () => listMock.mock.calls.filter(([params]) => 'crop_specie
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // The clock advances on its own so `waitFor` can poll; the debounce is
-  // still stepped explicitly, which is what the search timing tests need.
-  vi.useFakeTimers({ shouldAdvanceTime: true });
+  // The clock does not advance on its own. It must not: the debounce tests
+  // assert that no request has been made one millisecond short of the
+  // threshold, and a clock that also moves in real time makes that a race
+  // the test loses on a slow machine. Everything here is stepped explicitly
+  // instead, and `settle` stands in for `waitFor`, which cannot poll while
+  // the clock is frozen.
+  vi.useFakeTimers({ shouldAdvanceTime: false });
   listMock.mockResolvedValue(results([]));
 });
 
@@ -373,7 +385,9 @@ describe('the variety suggestions', () => {
       crop({ id: 3, variety: 'Pariser Markt' }),
     ]);
 
-    await waitFor(() => expect(result.current.varietyOptions).toEqual(['Nantaise', 'Pariser Markt']));
+    await settle();
+
+    expect(result.current.varietyOptions).toEqual(['Nantaise', 'Pariser Markt']);
     expect(speciesCalls()[0][0]).toEqual({ crop_species: 7 });
   });
 
@@ -395,7 +409,9 @@ describe('the variety suggestions', () => {
       crop({ id: 3, variety: 'Nantaise' }),
     ]);
 
-    await waitFor(() => expect(result.current.varietyOptions).toEqual(['Nantaise']));
+    await settle();
+
+    expect(result.current.varietyOptions).toEqual(['Nantaise']);
   });
 
   it('lists a repeated variety once', async () => {
@@ -404,7 +420,9 @@ describe('the variety suggestions', () => {
       crop({ id: 3, variety: 'Nantaise' }),
     ]);
 
-    await waitFor(() => expect(result.current.varietyOptions).toEqual(['Nantaise']));
+    await settle();
+
+    expect(result.current.varietyOptions).toEqual(['Nantaise']);
   });
 
   it('keeps the entries themselves for the prefill', async () => {
@@ -413,13 +431,17 @@ describe('the variety suggestions', () => {
     const entries = [crop({ id: 2, variety: 'Nantaise' })];
     const { result } = await withMatchedSpecies(entries);
 
-    await waitFor(() => expect(result.current.varietyPublicCrops).toEqual(entries));
+    await settle();
+
+    expect(result.current.varietyPublicCrops).toEqual(entries);
   });
 
   it('reports which species the entries belong to', async () => {
     const { result } = await withMatchedSpecies([crop({ id: 2, variety: 'Nantaise' })]);
 
-    await waitFor(() => expect(result.current.loadedVarietySpeciesId).toBe(7));
+    await settle();
+
+    expect(result.current.loadedVarietySpeciesId).toBe(7);
   });
 
   it('reports no loaded species before a match', async () => {
@@ -449,12 +471,15 @@ describe('the variety suggestions', () => {
   it('stops loading once they arrive', async () => {
     const { result } = await withMatchedSpecies([crop({ id: 2, variety: 'Nantaise' })]);
 
-    await waitFor(() => expect(result.current.varietyOptionsLoading).toBe(false));
+    await settle();
+
+    expect(result.current.varietyOptionsLoading).toBe(false);
   });
 
   it('clears them when the name stops matching', async () => {
     const { result, rerender } = await withMatchedSpecies([crop({ id: 2, variety: 'Nantaise' })]);
-    await waitFor(() => expect(result.current.varietyOptions).toHaveLength(1));
+    await settle();
+    expect(result.current.varietyOptions).toHaveLength(1);
 
     rerender({ searchTerm: 'Möhre', nameText: 'Möhrchen' });
     await settle();
@@ -471,7 +496,8 @@ describe('the variety suggestions', () => {
     // option, so the other two would reach the same answer on their own.
 
     const { result, rerender } = await withMatchedSpecies([crop({ id: 2, variety: 'Nantaise' })]);
-    await waitFor(() => expect(result.current.varietyOptions).toHaveLength(1));
+    await settle();
+    expect(result.current.varietyOptions).toHaveLength(1);
 
     rerender({ enabled: false, searchTerm: 'Möhre', nameText: 'Möhre' });
     await settle();
@@ -499,7 +525,9 @@ describe('the variety suggestions', () => {
     await settleSearch();
     await settle();
 
-    await waitFor(() => expect(result.current.loadedVarietySpeciesId).toBe(7));
+    await settle();
+
+    expect(result.current.loadedVarietySpeciesId).toBe(7);
     expect(result.current.varietyPublicCrops).toEqual([]);
     expect(result.current.varietyOptionsLoading).toBe(false);
   });
@@ -535,7 +563,8 @@ describe('the variety suggestions', () => {
     // A stale variety list under a different species would offer the user
     // sorts that do not belong to the crop they are naming.
     const { result, rerender } = await withMatchedSpecies([crop({ id: 2, variety: 'Nantaise' })]);
-    await waitFor(() => expect(result.current.varietyPublicCrops).toHaveLength(1));
+    await settle();
+    expect(result.current.varietyPublicCrops).toHaveLength(1);
 
     listMock.mockImplementation((params: Record<string, unknown>) => (
       'crop_species' in params
@@ -548,7 +577,9 @@ describe('the variety suggestions', () => {
     await settleSearch();
     await settle();
 
-    await waitFor(() => expect(result.current.loadedVarietySpeciesId).toBe(8));
+    await settle();
+
+    expect(result.current.loadedVarietySpeciesId).toBe(8);
     expect(result.current.varietyPublicCrops).toEqual([]);
   });
 
