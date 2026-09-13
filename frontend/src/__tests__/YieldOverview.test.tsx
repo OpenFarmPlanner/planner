@@ -673,6 +673,10 @@ describe("YieldOverviewPage", () => {
  *   the same place here: a right-click on another bar either repositions the
  *   menu, or closes it and immediately reopens it from the segment's own
  *   handler.
+ * - The marker's own `aria-label` duplicates one MUI already writes. A
+ *   tooltip with a string title and no `describeChild` labels its child with
+ *   that same string, so the name below is asserted as the behaviour it is
+ *   rather than as proof of which line produced it.
  */
 describe("YieldDistributionChart", () => {
   const week = (
