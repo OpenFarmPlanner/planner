@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import { loginWithDeterministicProject, waitForStableRowCount } from './utils';
 
 test.describe('planting plans empty new row cancellation', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -15,7 +15,7 @@ test.describe('planting plans empty new row cancellation', () => {
 
   test('clicking outside an untouched new row discards it without validation', async ({ page }) => {
     const rows = page.locator('[role="row"][data-id]');
-    const rowCountBefore = await rows.count();
+    const rowCountBefore = await waitForStableRowCount(page);
 
     await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);
@@ -29,7 +29,7 @@ test.describe('planting plans empty new row cancellation', () => {
 
   test('Escape discards an untouched new row without validation', async ({ page }) => {
     const rows = page.locator('[role="row"][data-id]');
-    const rowCountBefore = await rows.count();
+    const rowCountBefore = await waitForStableRowCount(page);
 
     await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);

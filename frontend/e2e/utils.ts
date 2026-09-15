@@ -171,3 +171,27 @@ export async function waitForPageStable(page: Page, readyPattern?: RegExp): Prom
   }
   await expect(page.locator('main, [role="main"]').first()).toBeVisible();
 }
+
+// The data grids render their rows continuously (EditableDataGrid's
+// `scrollMode="continuous"`), so the number of rendered `[role="row"]` elements
+// keeps growing for a moment after the grid's first paint. Tests that snapshot a
+// "row count before" and assert the same count afterwards have to wait for that
+// growth to finish first, or they compare a partially rendered grid against a
+// fully rendered one and fail with a larger count than they captured.
+export async function waitForStableRowCount(page: Page): Promise<number> {
+  const rows = page.locator('[role="row"][data-id]');
+  await expect(rows.first()).toBeVisible();
+
+  let previousCount = -1;
+  let stableCount = await rows.count();
+  const deadline = Date.now() + 10_000;
+
+  while (previousCount !== stableCount && Date.now() < deadline) {
+    previousCount = stableCount;
+    await page.waitForTimeout(250);
+    stableCount = await rows.count();
+  }
+
+  expect(stableCount, 'grid row count did not settle').toBe(previousCount);
+  return stableCount;
+}
