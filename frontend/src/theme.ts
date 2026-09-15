@@ -3,9 +3,10 @@
 import { alpha, createTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import type {} from '@mui/x-data-grid/themeAugmentation';
+import { BRAND_PRIMARY_MAIN, BRAND_ROOT_BACKGROUND } from './brandColors';
 
 const surfaceColors = {
-  rootBackground: '#f7f6f1',
+  rootBackground: BRAND_ROOT_BACKGROUND,
   appBackground: '#ffffff',
   sidebarBackground: '#ffffff',
   topbarBackground: '#ffffff',
@@ -140,7 +141,7 @@ const theme = createTheme({
   palette: {
     // Primary color used by contained buttons and primary components
     primary: {
-      main: '#256f2a',
+      main: BRAND_PRIMARY_MAIN,
       dark: '#1b5e20',
       light: '#4f9853',
       contrastText: '#ffffff',

@@ -15,7 +15,7 @@ where a change belongs. For setup/commands see the root
 - PDM for dependency/script management (no `pip`/`requirements.txt`)
 
 **Frontend** (`frontend/`)
-- React 19 + TypeScript, built with Vite
+- React 19 + TypeScript, built with Vite (installable PWA — see [pwa.md](./pwa.md))
 - Material UI (MUI + MUI X DataGrid)
 - React Router (data router API, `createBrowserRouter`)
 - Plain `async`/`await` + component-local `useState`/`useEffect` for data
