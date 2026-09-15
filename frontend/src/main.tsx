@@ -11,6 +11,9 @@ import { AuthProvider } from './auth/AuthContext'
 import { FocusManagerProvider } from './focus/FocusManager'
 import LanguageSynchronizer from './i18n/LanguageSynchronizer'
 import PrerenderLanguageVisibilityGate from './startup/PrerenderLanguageVisibilityGate'
+import { registerServiceWorker } from './pwa/registerServiceWorker'
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

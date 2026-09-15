@@ -40,6 +40,10 @@
     "loadDemoProject": "Demo-Projekt laden",
     "trash": "Papierkorb ({{count}})"
   },
+  "connectionStatus": {
+    "online": "Online – Verbindung besteht",
+    "offline": "Offline – keine Verbindung. Änderungen können nicht gespeichert werden."
+  },
   "seasonSwitcher": {
     "ariaLabel": "Aktive Saison wechseln",
     "sectionTitle": "Saisonen",

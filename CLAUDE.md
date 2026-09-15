@@ -148,6 +148,21 @@ existing screenshot test happens to fail.
 
 Follow existing placement patterns before creating new directories.
 
+## Build Tooling
+
+- **Frontend build tool: Vite** (`frontend/vite.config.ts`). There is no
+  Webpack in this repository — do not add one, and do not reach for a
+  Webpack-only plugin or loader.
+- **Frontend package manager: npm**, with `frontend/package-lock.json` as the
+  committed lockfile. Do not introduce yarn or pnpm, and do not hand-edit the
+  lockfile. (The backend uses PDM — see "Backend Rules".)
+- **Node.js 22 LTS.** CI pins `lts/*` and `'22'`; the supported floor is Node
+  20 with npm 10 (`README.md`).
+- The frontend is a **PWA**: `vite-plugin-pwa` generates a service worker that
+  caches build assets only. API responses must never be cached — see
+  [`docs/pwa.md`](docs/pwa.md) before touching the service worker, the
+  manifest, or the caching configuration.
+
 Deploy scripts, cron/scheduling config, and infra are **not** in this repo — they live in the separate `ops` repo (sibling directory `ops/`). Before concluding that a management command is never scheduled, or that a deploy/retention step is missing, check `ops` (`cron.d/`, `deploy/`, `services.d/`) as well as this repo.
 
 ## Frontend and UX Rules
