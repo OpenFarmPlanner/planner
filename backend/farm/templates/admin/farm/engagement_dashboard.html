@@ -1,6 +1,16 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
 
+{% block extrastyle %}{{ block.super }}
+<style>
+  /* The count tables are wider than a phone viewport. `min-width: 0` lets the
+     flex item shrink below its content so each module can scroll on its own,
+     instead of putting the whole admin page into horizontal scroll. */
+  #content-main { min-width: 0; }
+  #content-main .module { overflow-x: auto; }
+</style>
+{% endblock %}
+
 {% block breadcrumbs %}
 <div class="breadcrumbs">
   <a href="{% url 'admin:index' %}">{% translate "Start" %}</a> &rsaquo;
@@ -32,6 +42,7 @@
         <th>{% translate "Zuletzt aktiv" %}</th>
         <th>{% translate "Objekte angelegt (letzte 7 Tage)" %}</th>
         <th>{% translate "Objekte angelegt (letzte 30 Tage)" %}</th>
+        <th>{% translate "Mitglieder" %}</th>
         <th>{% translate "Aktive Nutzer (letzte 30 Tage)" %}</th>
         <th>{% translate "Status" %}</th>
       </tr></thead>
@@ -42,11 +53,259 @@
           <td>{{ row.last_active|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</td>
           <td>{{ row.created_last_7_days }}</td>
           <td>{{ row.created_last_30_days }}</td>
+          <td>{{ row.member_count }}</td>
           <td>{{ row.active_users_last_30_days }}</td>
           <td>{{ row.status }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="6">{% translate "Keine Projekte vorhanden." %}</td></tr>
+        <tr><td colspan="7">{% translate "Keine Projekte vorhanden." %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Datenreichtum je Projekt" %}</caption>
+      <thead><tr>
+        <th>{% translate "Projektname" %}</th>
+        <th>{% translate "Standorte" %}</th>
+        <th>{% translate "Flächen" %}</th>
+        <th>{% translate "Beete" %}</th>
+        <th>{% translate "Kulturen" %}</th>
+        <th>{% translate "Anbauplanungen" %}</th>
+        <th>{% translate "Bilder" %}</th>
+        <th>{% translate "Gesamt" %}</th>
+      </tr></thead>
+      <tbody>
+      {% for row in dashboard.projects_by_data %}
+        <tr>
+          <th><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
+          <td>{{ row.location_count }}</td>
+          <td>{{ row.field_count }}</td>
+          <td>{{ row.bed_count }}</td>
+          <td>{{ row.crop_count }}</td>
+          <td>{{ row.planting_plan_count }}</td>
+          <td>{{ row.image_count }}</td>
+          <td>{{ row.data_total }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% translate "Keine Projekte vorhanden." %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Aktive Projekte im Detail" %}</caption>
+      <thead><tr>
+        <th>{% translate "Projektname" %}</th>
+        <th>{% translate "Standorte" %}</th>
+        <th>{% translate "Flächen" %}</th>
+        <th>{% translate "Beete" %}</th>
+        <th>{% translate "Kulturen" %}</th>
+        <th>{% translate "Anbauplanungen" %}</th>
+        <th>{% translate "Bilder" %}</th>
+        <th>{% translate "Mitglieder" %}</th>
+        <th>{% translate "Gesamt" %}</th>
+      </tr></thead>
+      <tbody>
+      {% for row in dashboard.active_projects %}
+        <tr>
+          <th><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
+          <td>{{ row.location_count }}</td>
+          <td>{{ row.field_count }}</td>
+          <td>{{ row.bed_count }}</td>
+          <td>{{ row.crop_count }}</td>
+          <td>{{ row.planting_plan_count }}</td>
+          <td>{{ row.image_count }}</td>
+          <td>{{ row.member_count }}</td>
+          <td>{{ row.data_total }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">{% translate "Keine aktiven Projekte vorhanden." %}</td></tr>
+      {% endfor %}
+      </tbody>
+      {% if dashboard.active_projects %}
+      <tfoot>
+        <tr>
+          <th>{% translate "Durchschnitt" %}</th>
+          <td>{{ dashboard.active_project_averages.locations }}</td>
+          <td>{{ dashboard.active_project_averages.fields }}</td>
+          <td>{{ dashboard.active_project_averages.beds }}</td>
+          <td>{{ dashboard.active_project_averages.crops }}</td>
+          <td>{{ dashboard.active_project_averages.planting_plans }}</td>
+          <td>{{ dashboard.active_project_averages.images }}</td>
+          <td>{{ dashboard.active_project_averages.members }}</td>
+          <td>{{ dashboard.active_project_averages.data_total }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Feature-Nutzung" %}</caption>
+      <thead><tr>
+        <th>{% translate "Funktion" %}</th>
+        <th>{% translate "Projekte" %}</th>
+        <th>{% translate "Anteil" %}</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <th>{% translate "Mehr als ein Standort" %}</th>
+          <td>{{ dashboard.adoption.multiple_locations.count }}</td>
+          <td>{{ dashboard.adoption.multiple_locations.percent }} %</td>
+        </tr>
+        <tr>
+          <th>{% translate "Mindestens ein Notizfoto" %}</th>
+          <td>{{ dashboard.adoption.planting_plan_photos.count }}</td>
+          <td>{{ dashboard.adoption.planting_plan_photos.percent }} %</td>
+        </tr>
+        <tr>
+          <th>{% translate "Saatgut-Gebinde" %}</th>
+          <td>{{ dashboard.adoption.seed_packages.count }}</td>
+          <td>{{ dashboard.adoption.seed_packages.percent }} %</td>
+        </tr>
+        <tr>
+          <th>{% translate "Lieferanten" %}</th>
+          <td>{{ dashboard.adoption.suppliers.count }}</td>
+          <td>{{ dashboard.adoption.suppliers.percent }} %</td>
+        </tr>
+        <tr>
+          <th>{% translate "Aufgaben" %}</th>
+          <td>{{ dashboard.adoption.tasks.count }}</td>
+          <td>{{ dashboard.adoption.tasks.percent }} %</td>
+        </tr>
+        <tr>
+          <th>{% translate "Feedback abgesendet" %}</th>
+          <td>{{ dashboard.adoption.feedback.count }}</td>
+          <td>{{ dashboard.adoption.feedback.percent }} %</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Wachstum und Aktivierung" %}</caption>
+      <thead><tr>
+        <th>{% translate "Monat" %}</th>
+        <th>{% translate "Neue Projekte" %}</th>
+        <th>{% translate "Davon aktiviert" %}</th>
+        <th>{% translate "Anteil aktiviert" %}</th>
+        <th>{% translate "Ø Tage bis Aktivierung" %}</th>
+      </tr></thead>
+      <tbody>
+      {% for row in dashboard.monthly_growth %}
+        <tr>
+          <th>{{ row.month|date:"m/Y" }}</th>
+          <td>{{ row.new_projects }}</td>
+          <td>{{ row.activated_projects }}</td>
+          <td>{{ row.activation.percent }} %</td>
+          <td>{{ row.average_days_to_activation|default_if_none:"–" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% translate "Keine Projekte vorhanden." %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="help">{% translate "Aktiviert bedeutet: das Projekt hat nach der Anlage einen ersten Standort oder eine erste Anbauplanung erstellt." %}</p>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Saisonen, Layouts und Kulturen" %}</caption>
+      <tbody>
+        <tr>
+          <th>{% translate "Ø Saisonen je Projekt" %}</th>
+          <td>{{ dashboard.season_usage.average_seasons_per_project }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Projekte mit Saison-Muster" %}</th>
+          <td>{{ dashboard.season_usage.projects_with_pattern.count }} ({{ dashboard.season_usage.projects_with_pattern.percent }} %)</td>
+        </tr>
+        <tr>
+          <th>{% translate "Projekte mit Beet-Layout" %}</th>
+          <td>{{ dashboard.layout_usage.projects_with_bed_layout.count }} ({{ dashboard.layout_usage.projects_with_bed_layout.percent }} %)</td>
+        </tr>
+        <tr>
+          <th>{% translate "Projekte mit Flächen-Layout" %}</th>
+          <td>{{ dashboard.layout_usage.projects_with_field_layout.count }} ({{ dashboard.layout_usage.projects_with_field_layout.percent }} %)</td>
+        </tr>
+        <tr>
+          <th>{% translate "Projekte mit mindestens einem Layout" %}</th>
+          <td>{{ dashboard.layout_usage.projects_with_any_layout.count }} ({{ dashboard.layout_usage.projects_with_any_layout.percent }} %)</td>
+        </tr>
+        <tr>
+          <th>{% translate "Ø verschiedene Kulturen je Projekt" %}</th>
+          <td>{{ dashboard.average_distinct_crops_per_project }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Aufgaben angelegt" %}</th>
+          <td>{{ dashboard.task_usage.created }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Aufgaben erledigt" %}</th>
+          <td>{{ dashboard.task_usage.completed }} ({{ dashboard.task_usage.completion.percent }} %)</td>
+        </tr>
+        <tr>
+          <th>{% translate "Projekte aus Demo-Vorlage" %}</th>
+          <td>{{ dashboard.projects_from_template.count }} ({{ dashboard.projects_from_template.percent }} %)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Kulturen-Bibliothek" %}</caption>
+      <tbody>
+        <tr>
+          <th>{% translate "Veröffentlichte Einträge" %}</th>
+          <td>{{ dashboard.crop_library.published_entries }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Kulturen aus der Bibliothek übernommen" %}</th>
+          <td>{{ dashboard.crop_library.imported_crops }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Selbst angelegte Kulturen" %}</th>
+          <td>{{ dashboard.crop_library.self_entered_crops }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Kulturen mit offener Bibliotheks-Aktualisierung" %}</th>
+          <td>{{ dashboard.crop_library.crops_with_pending_update }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Diskussionsbeiträge" %}</th>
+          <td>{{ dashboard.crop_library.discussion_comments }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Versionen öffentlicher Einträge" %}</th>
+          <td>{{ dashboard.crop_library.revisions }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Beiträge zur Kulturen-Bibliothek je Projekt" %}</caption>
+      <thead><tr>
+        <th>{% translate "Projektname" %}</th>
+        <th>{% translate "Veröffentlichte Einträge" %}</th>
+      </tr></thead>
+      <tbody>
+      {% for row in dashboard.crop_library.contributions %}
+        <tr>
+          <th>{{ row.project_name|default:"–" }}</th>
+          <td>{{ row.published_count }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2">{% translate "Noch keine veröffentlichten Einträge." %}</td></tr>
       {% endfor %}
       </tbody>
     </table>

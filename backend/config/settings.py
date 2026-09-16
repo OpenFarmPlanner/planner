@@ -168,7 +168,9 @@ INSTALLED_APPS = [
     # `/ws/` WebSocket endpoints and the frontend socket fails to connect.
     'daphne',
     'channels',
-    'django.contrib.admin',
+    # Replaces `django.contrib.admin` so `admin.site` is the OpenFarmPlanner
+    # admin site (adds the Nutzungsübersicht entry to the nav sidebar).
+    'config.admin_site.OpenFarmPlannerAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
