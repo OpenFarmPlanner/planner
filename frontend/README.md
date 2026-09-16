@@ -100,9 +100,10 @@ npm run preview          # http://localhost:4173
    appears within a second (the full desktop topbar shows no indicator at
    all, online or offline — it was removed as noise). Reloading the page
    will **not** work; that is the documented scope, not a bug.
-6. **Install** — the install icon in the address bar, or ⋮ → *Cast, save and
-   share* → *Install page as app*. The installed window opens on the
-   dashboard with no browser chrome.
+6. **Install** — the install icon in the address bar, ⋮ → *Cast, save and
+   share* → *Install page as app*, or the "App installieren" button on the
+   landing page (`/`) hero. The installed window opens on the dashboard with
+   no browser chrome.
 
 **On a real phone**
 

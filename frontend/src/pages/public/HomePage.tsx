@@ -21,6 +21,7 @@ import { publicAssetUrl } from '../../utils/publicAssetUrl';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import { useGuestDemoStart } from './useGuestDemoStart';
 import AppIcon from '../../components/layout/AppIcon';
+import { InstallAppButton } from '../../pwa/InstallAppButton';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 
@@ -312,6 +313,24 @@ export default function HomePage() {
                     {t('landing.actions.openApp')}
                   </Button>
                 </Stack>
+                <InstallAppButton
+                  sx={{
+                    minHeight: 42,
+                    borderRadius: 2,
+                    px: { xs: 2, sm: 3.2 },
+                    color: 'primary.main',
+                    borderColor: 'surface.surfaceBackground',
+                    bgcolor: 'surface.surfaceBackground',
+                    fontSize: HERO_ACTION_FONT_SIZE,
+                    whiteSpace: 'nowrap',
+                    boxShadow: (theme) => theme.shadows[1],
+                    '&:hover': {
+                      color: 'primary.dark',
+                      borderColor: 'surface.surfaceBackground',
+                      bgcolor: (theme) => alpha(theme.palette.common.white, 0.92),
+                    },
+                  }}
+                />
                 <Button
                   variant="text"
                   disabled={isDemoButtonDisabled}

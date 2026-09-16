@@ -144,6 +144,23 @@ from that worker itself being the stale part.
 It reports the browser's *link* state, not backend reachability. The wording
 is about the connection, never about the server.
 
+## Install button
+
+`src/pwa/InstallAppButton.tsx`, fed by `useInstallPrompt`. Rendered on the
+landing page's hero, next to Register/Sign in, as a more visible install
+affordance than the browser's own (easy to miss) address-bar icon.
+
+- **Chrome/Edge/Android** — `beforeinstallprompt` fires once per page load at
+  most and is *not* re-firable; the hook captures and holds the event (also
+  suppressing the browser's own mini-infobar via `preventDefault()`, so this
+  button is the only prompt trigger) until the button is clicked, which
+  shows the native install dialog via `event.prompt()`.
+- **iOS Safari** — never fires `beforeinstallprompt` at all. The button opens
+  a small dialog with the manual "Share → Add to Home Screen" steps instead
+  of a native prompt.
+- **Already installed, or no installability signal at all** (e.g. desktop
+  Firefox) — renders nothing; there is nothing for the button to do.
+
 ## Testing it locally
 
 See [`../frontend/README.md`](../frontend/README.md#testing-the-pwa-locally)
