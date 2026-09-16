@@ -9,7 +9,9 @@ import type {
 import { handleEditableCellClick } from "../../data-grid/handlers";
 import {
   focusKeyboardNavigableCell,
+  getDatasetEdgeKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
+  getPagingKeyboardNavigationTarget,
 } from "../../data-grid/keyboardNavigation";
 import { useSpreadsheetEditStarter } from "../../data-grid/keyboardEditing";
 import type { HierarchyRow } from "../utils/types";
@@ -23,6 +25,7 @@ interface HierarchyGridKeyboardApi {
   getCellElement?: (id: GridRowId, field: string) => HTMLElement | null;
   getCellParams?: (id: GridRowId, field: string) => GridCellParams<HierarchyRow>;
   getRowIndexRelativeToVisibleRows?: (id: GridRowId) => number;
+  getViewportPageSize?: () => number;
   getVisibleColumns?: () => GridColDef<HierarchyRow>[];
   isCellEditable?: (params: GridCellParams<HierarchyRow>) => boolean;
   scrollToIndexes?: (indexes: { rowIndex?: number; colIndex?: number }) => void;
@@ -51,6 +54,12 @@ interface UseHierarchyGridKeyboardParams {
   ) => void;
   rememberFocusedField: (field: string) => void;
   rememberRowSnapshot: (rowId: GridRowId) => void;
+  // Ensures the target row's page is loaded (paging the continuous-scroll
+  // row window when needed) before running `action` — see
+  // FieldsBedsHierarchy.tsx's `runAfterRowVisibleOnPage`. Used for Home/End/
+  // PageUp/PageDown, which can jump beyond the hierarchy's currently
+  // mounted internal row window.
+  runAfterRowVisible: (rowId: GridRowId, action: () => void) => void;
   rowModesModel: GridRowModesModel;
   rows: readonly HierarchyRow[];
   rowsById: Map<string, HierarchyRow>;
@@ -105,6 +114,7 @@ export function useHierarchyGridKeyboard({
   openContextMenuForRow,
   rememberFocusedField,
   rememberRowSnapshot,
+  runAfterRowVisible,
   rowModesModel,
   rows,
   rowsById,
@@ -196,6 +206,73 @@ export function useHierarchyGridKeyboard({
     setTreeActive,
   ]);
 
+  // Ctrl/Shift+Home, Ctrl/Shift+End, and PageUp/PageDown resolved against the
+  // complete loaded hierarchy (`rows`), not the grid's currently mounted
+  // internal row window — see docs/keyboard-architecture.md,
+  // "Continuous-scroll paging". Bare Home/End are left to MUI's default
+  // handling: they only move within the current row, which is always
+  // already visible.
+  const navigateEdgeOrPage = useCallback((
+    params: GridCellParams<HierarchyRow>,
+    event: HierarchyKeyboardEvent,
+  ): boolean => {
+    if (isRowEditing(rowModesModel, params.id) || event.altKey) {
+      return false;
+    }
+
+    const isEdgeKey = event.key === "Home" || event.key === "End";
+    const isPagingKey = event.key === "PageUp" || event.key === "PageDown";
+    if (!isPagingKey && (!isEdgeKey || !(event.ctrlKey || event.metaKey || event.shiftKey))) {
+      return false;
+    }
+
+    const target = isEdgeKey
+      ? getDatasetEdgeKeyboardNavigationTarget<HierarchyRow>({
+        api: gridApiRef.current,
+        columns,
+        edge: event.key === "Home" ? "first" : "last",
+        isActionCell: isHierarchyCellAction,
+        rows,
+      })
+      : getPagingKeyboardNavigationTarget<HierarchyRow>({
+        api: gridApiRef.current,
+        columns,
+        current: { id: params.id, field: params.field },
+        direction: event.key === "PageDown" ? 1 : -1,
+        isActionCell: isHierarchyCellAction,
+        pageSize: gridApiRef.current?.getViewportPageSize?.() ?? 1,
+        rows,
+      });
+
+    if (!target) {
+      return false;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.defaultMuiPrevented = true;
+    rememberFocusedField(target.field);
+    selectRow(target.id);
+    setTreeActive(true);
+    runAfterRowVisible(target.id, () => {
+      focusKeyboardNavigableCell<HierarchyRow>({
+        api: gridApiRef.current,
+        cell: target,
+      });
+    });
+    return true;
+  }, [
+    columns,
+    gridApiRef,
+    isHierarchyCellAction,
+    rememberFocusedField,
+    rowModesModel,
+    rows,
+    runAfterRowVisible,
+    selectRow,
+    setTreeActive,
+  ]);
+
   const handleCellClick = useCallback((
     params: GridCellParams<HierarchyRow>,
     event?: React.MouseEvent<HTMLElement> & { defaultMuiPrevented?: boolean },
@@ -263,6 +340,17 @@ export function useHierarchyGridKeyboard({
       || keyboardEvent.key === "ArrowRight"
     ) {
       if (navigateCell(params, keyboardEvent)) {
+        return;
+      }
+    }
+
+    if (
+      keyboardEvent.key === "Home"
+      || keyboardEvent.key === "End"
+      || keyboardEvent.key === "PageUp"
+      || keyboardEvent.key === "PageDown"
+    ) {
+      if (navigateEdgeOrPage(params, keyboardEvent)) {
         return;
       }
     }
@@ -338,6 +426,7 @@ export function useHierarchyGridKeyboard({
   }, [
     discardRowEdit,
     navigateCell,
+    navigateEdgeOrPage,
     notesEditor,
     openContextMenuForRow,
     rememberFocusedField,

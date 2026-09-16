@@ -90,6 +90,7 @@ const renderKeyboardHook = (
   const openContextMenu = vi.fn();
   const rememberFocusedField = vi.fn();
   const rememberRowSnapshot = vi.fn();
+  const runAfterRowVisible = vi.fn((_rowId: GridRowId, action: () => void) => action());
   const selectRow = vi.fn();
   const setEditCellValue = vi.fn().mockResolvedValue(true);
   const setRowModesModel = vi.fn();
@@ -113,6 +114,7 @@ const renderKeyboardHook = (
       columns.findIndex((column) => column.field === field),
     getRowIndexRelativeToVisibleRows: (id: GridRowId) =>
       hookRows.findIndex((row) => String(row.id) === String(id)),
+    getViewportPageSize: () => 1,
     getVisibleColumns: () => columns,
     isCellEditable: (params: GridCellParams<HierarchyRow>) =>
       params.field === 'name' || params.field === 'length_m' || params.field === 'width_m',
@@ -134,6 +136,7 @@ const renderKeyboardHook = (
       openContextMenuForRow: openContextMenu,
       rememberFocusedField,
       rememberRowSnapshot,
+      runAfterRowVisible,
       rowModesModel,
       rows: hookRows,
       rowsById: hookRowsById,
@@ -154,6 +157,7 @@ const renderKeyboardHook = (
     openContextMenu,
     rememberFocusedField,
     rememberRowSnapshot,
+    runAfterRowVisible,
     scrollToIndexes,
     selectRow,
     setEditCellValue,
@@ -493,5 +497,74 @@ describe('useHierarchyGridKeyboard', () => {
     expect(leafEvent.defaultMuiPrevented).toBe(true);
     expect(leafEvent.preventDefault).toHaveBeenCalled();
     expect(toggleExpand).toHaveBeenCalledTimes(1);
+  });
+
+  it('Ctrl+End jumps to the last row of the complete dataset, not just the current cell', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+      { id: 103, type: 'bed', name: 'Bed 3', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, runAfterRowVisible, selectRow } = renderKeyboardHook({}, manyRows);
+    const event = makeKeyboardEvent('End', { ctrlKey: true });
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams('field-1', 'name', manyRows[0]), event);
+    });
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.defaultMuiPrevented).toBe(true);
+    expect(selectRow).toHaveBeenCalledWith(103);
+    expect(runAfterRowVisible).toHaveBeenCalledWith(103, expect.any(Function));
+    expect(focusCell).toHaveBeenCalledWith(103, 'notes');
+  });
+
+  it('Ctrl+Home jumps to the first row of the complete dataset', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, manyRows);
+    const event = makeKeyboardEvent('Home', { ctrlKey: true });
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(102, 'name', manyRows[2]), event);
+    });
+
+    expect(selectRow).toHaveBeenCalledWith('field-1');
+    expect(focusCell).toHaveBeenCalledWith('field-1', 'name');
+  });
+
+  it('bare Home/End are left to the grid default (no navigation, not marked handled)', () => {
+    const { result, selectRow } = renderKeyboardHook();
+    const homeEvent = makeKeyboardEvent('Home');
+    const endEvent = makeKeyboardEvent('End');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams('field-1', 'name'), homeEvent);
+      result.current.handleCellKeyDown(makeCellParams('field-1', 'name'), endEvent);
+    });
+
+    expect(homeEvent.preventDefault).not.toHaveBeenCalled();
+    expect(endEvent.preventDefault).not.toHaveBeenCalled();
+    expect(selectRow).not.toHaveBeenCalled();
+  });
+
+  it('PageDown moves a page of rows forward across the complete dataset', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, runAfterRowVisible, selectRow } = renderKeyboardHook({}, manyRows);
+    const event = makeKeyboardEvent('PageDown');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams('field-1', 'name', manyRows[0]), event);
+    });
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(selectRow).toHaveBeenCalledWith(101);
+    expect(runAfterRowVisible).toHaveBeenCalledWith(101, expect.any(Function));
+    expect(focusCell).toHaveBeenCalledWith(101, 'name');
   });
 });

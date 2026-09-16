@@ -157,9 +157,38 @@ is the *pattern*, demonstrated end-to-end on the yield distribution chart
    "Tooltips never cover an open context menu").
 
 Applying this same pattern to the Gantt calendar's bars (2D, collision-based
-layout) and to DataGrid (which already has its own cell-navigation code) is
-future work — the reference implementation and this write-up are meant to
-make that a mechanical port rather than a fresh design exercise each time.
+layout) is future work — the reference implementation and this write-up are
+meant to make that a mechanical port rather than a fresh design exercise
+each time.
+
+### Continuous-scroll paging (Home/End/PageUp/PageDown)
+
+`EditableDataGrid` and `FieldsBedsHierarchy` (see
+[datagrid-architecture.md](./datagrid-architecture.md) and
+[large-dataset-rendering.md](./large-dataset-rendering.md)) both load their
+*complete* dataset up front but only mount one internal ~100-row page at a
+time via `useScrollDrivenRowWindow`, advancing it as the user scrolls near an
+edge. MUI's own keyboard handling for Ctrl/Shift+Home, Ctrl/Shift+End, and
+PageUp/PageDown resolves against `getCurrentPageRows()` — the *mounted*
+page only — so those keys used to jump to the edge of whatever page happened
+to be loaded, not the actual start/end of the dataset. Tab and the arrow keys
+were unaffected because OpenFarmPlanner already routes them through its own
+navigation, resolved against the complete row array (`api.getAllRowIds()`,
+which returns every id in the underlying `rows` prop regardless of
+pagination) rather than MUI's page-scoped list.
+
+`getDatasetEdgeKeyboardNavigationTarget` and
+`getPagingKeyboardNavigationTarget` (`components/data-grid/keyboardNavigation.ts`)
+extend the same approach to Ctrl/Shift+Home, Ctrl/Shift+End, and
+PageUp/PageDown: both resolve their target against the complete dataset, then
+the caller pages the row window into place (`ensureRowIndexVisible` /
+`runAfterRowVisible` in `DataGrid.tsx`, `runAfterRowVisibleOnPage` in
+`FieldsBedsHierarchy.tsx`) before focusing, using the same
+"page-then-focus-after-the-next-paint" pattern the arrow-key navigation and
+the deep-link/new-row focus flows already use. Bare Home/End are left to
+MUI's default handling: they only move to the first/last column of the
+*current* row, which is always already mounted, so there is nothing to fix
+there.
 
 Crop master-detail lists use the same local-widget approach through
 `crops/useCropListKeyboardNavigation.ts`: the visible list rows are a

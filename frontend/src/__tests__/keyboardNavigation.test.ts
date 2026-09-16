@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   focusKeyboardNavigableCell,
   getCellLocationFromDomTarget,
+  getDatasetEdgeKeyboardNavigationTarget,
   getHorizontalKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
+  getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
   getViewModeNavigationRequest,
   getVisibleColumnIndex,
@@ -537,6 +539,157 @@ describe('getVerticalKeyboardNavigationTarget', () => {
       { field: 'notes', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 2 },
     ];
     expect(down({ id: 1, field: 'name' }, columns)).toEqual({ id: 3, field: 'name' });
+  });
+});
+
+// Simulates a continuous-scroll grid: the loaded dataset (LARGE_ROWS) is
+// much bigger than what a single internal page/window would hold. These
+// functions must resolve against the complete dataset regardless.
+const LARGE_ROWS = Array.from({ length: 250 }, (_, index) => ({ id: index + 1 }));
+const largeGridApi = (columns: Col[] = COLUMNS, rows = LARGE_ROWS) => ({
+  getAllRowIds: vi.fn(() => rows.map((row) => row.id)),
+  getVisibleColumns: vi.fn(() => columns),
+  getCellParams: vi.fn((id: unknown, field: string) => ({ id, field, row: { id } })),
+});
+
+describe('getDatasetEdgeKeyboardNavigationTarget', () => {
+  it('jumps to the first navigable cell of the complete dataset, not just an internal window', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      edge: 'first',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 1, field: 'name' });
+  });
+
+  it('jumps to the last navigable cell of the complete dataset', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'notes' });
+  });
+
+  it('skips a read-only edge column and lands on the nearest navigable one', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true },
+      { field: 'width_m', editable: true },
+      { field: 'notes' },
+    ];
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'width_m' });
+  });
+
+  it('skips a wholly unnavigable edge row and lands on the next one in', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+      { field: 'width_m', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+      { field: 'notes', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+    ];
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 249, field: 'notes' });
+  });
+
+  it('returns null for an empty dataset', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(COLUMNS, []),
+      columns: COLUMNS,
+      edge: 'first',
+      rows: [],
+    })).toBeNull();
+  });
+});
+
+describe('getPagingKeyboardNavigationTarget', () => {
+  it('moves a full page of rows down in the same column, across the complete dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 1, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 101, field: 'width_m' });
+  });
+
+  it('moves a full page of rows up', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 150, field: 'width_m' },
+      direction: -1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 50, field: 'width_m' });
+  });
+
+  it('clamps to the last row instead of overshooting the dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 200, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'width_m' });
+  });
+
+  it('clamps to the first row instead of undershooting the dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 50, field: 'width_m' },
+      direction: -1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 1, field: 'width_m' });
+  });
+
+  it('returns null when already at the dataset edge', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 250, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toBeNull();
+  });
+
+  it('falls back sideways when the paged-to cell is not navigable', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true },
+      { field: 'width_m', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 101 },
+      { field: 'notes', editable: true },
+    ];
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      current: { id: 1, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 101, field: 'notes' });
+  });
+
+  it('returns nothing for a row that is not in the grid', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 999, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toBeNull();
   });
 });
 

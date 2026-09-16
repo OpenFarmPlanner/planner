@@ -18,6 +18,7 @@ interface DataGridNavigationApi<Row extends GridValidRowModel> {
   getCellElement?: (id: GridRowId, field: string) => HTMLElement | null;
   getCellParams?: (id: GridRowId, field: string) => GridCellParams<Row>;
   getRowIndexRelativeToVisibleRows?: (id: GridRowId) => number;
+  getViewportPageSize?: () => number;
   getVisibleColumns?: () => GridColDef<Row>[];
   scrollToIndexes?: (indexes: { rowIndex?: number; colIndex?: number }) => void;
   setCellFocus?: (id: GridRowId, field: string) => void;
@@ -207,23 +208,26 @@ export function getKeyboardNavigationTarget<Row extends GridValidRowModel>({
   return null;
 }
 
-export function getVerticalKeyboardNavigationTarget<Row extends GridValidRowModel>({
-  api,
-  columns = [],
-  current,
-  direction,
-  isActionCell,
-  rows = [],
-}: GetKeyboardNavigationTargetOptions<Row>): CellLocation | null {
-  const visibleColumns = getColumns(api, columns);
-  const rowIds = getRowIds(api, rows);
-  const currentRowIndex = rowIds.findIndex((rowId) => String(rowId) === String(current.id));
-  if (currentRowIndex < 0) {
-    return null;
-  }
-
-  for (let rowIndex = currentRowIndex + direction; rowIndex >= 0 && rowIndex < rowIds.length; rowIndex += direction) {
-    const candidate = { id: rowIds[rowIndex], field: current.field };
+/**
+ * Shared by the single-step vertical arrow-key search and the page-sized
+ * Home/End/PageUp/PageDown searches below: starting at `startRowIndex`,
+ * looks for a navigable cell in `field`'s column, and — when that row's own
+ * cell in that column isn't navigable — falls back to the nearest navigable
+ * column in the same row before continuing to the next row in `direction`.
+ * Pure function of its arguments.
+ */
+function findNavigableRowCell<Row extends GridValidRowModel>(
+  api: DataGridNavigationApi<Row> | null | undefined,
+  visibleColumns: readonly GridColDef<Row>[],
+  rowIds: readonly GridRowId[],
+  rows: readonly Row[],
+  startRowIndex: number,
+  direction: Direction,
+  field: string,
+  isActionCell?: (params: GridCellParams<Row>) => boolean,
+): CellLocation | null {
+  for (let rowIndex = startRowIndex; rowIndex >= 0 && rowIndex < rowIds.length; rowIndex += direction) {
+    const candidate = { id: rowIds[rowIndex], field };
     const row = rows.find((currentRow) => String(currentRow.id) === String(candidate.id));
     if (isCellKeyboardNavigable({
       api,
@@ -236,7 +240,7 @@ export function getVerticalKeyboardNavigationTarget<Row extends GridValidRowMode
       return candidate;
     }
 
-    const sameFieldIndex = visibleColumns.findIndex((column) => column.field === current.field);
+    const sameFieldIndex = visibleColumns.findIndex((column) => column.field === field);
     for (let offset = 1; offset < visibleColumns.length; offset += 1) {
       const rightIndex = sameFieldIndex + offset;
       if (rightIndex < visibleColumns.length) {
@@ -271,6 +275,131 @@ export function getVerticalKeyboardNavigationTarget<Row extends GridValidRowMode
   }
 
   return null;
+}
+
+export function getVerticalKeyboardNavigationTarget<Row extends GridValidRowModel>({
+  api,
+  columns = [],
+  current,
+  direction,
+  isActionCell,
+  rows = [],
+}: GetKeyboardNavigationTargetOptions<Row>): CellLocation | null {
+  const visibleColumns = getColumns(api, columns);
+  const rowIds = getRowIds(api, rows);
+  const currentRowIndex = rowIds.findIndex((rowId) => String(rowId) === String(current.id));
+  if (currentRowIndex < 0) {
+    return null;
+  }
+
+  return findNavigableRowCell(
+    api,
+    visibleColumns,
+    rowIds,
+    rows,
+    currentRowIndex + direction,
+    direction,
+    current.field,
+    isActionCell,
+  );
+}
+
+export interface GetPagingKeyboardNavigationTargetOptions<Row extends GridValidRowModel> {
+  api: DataGridNavigationApi<Row> | null | undefined;
+  columns?: readonly GridColDef<Row>[];
+  current: CellLocation;
+  direction: Direction;
+  isActionCell?: (params: GridCellParams<Row>) => boolean;
+  pageSize: number;
+  rows?: readonly Row[];
+}
+
+/**
+ * Resolves the PageUp/PageDown target: `pageSize` rows away from `current`
+ * in the same column, clamped to the *complete* loaded dataset (`rows`)
+ * rather than to whatever internal row window the grid currently has
+ * mounted — see keyboard-architecture.md, "Continuous-scroll paging". Returns
+ * null when `current` is already at the dataset edge in that direction.
+ */
+export function getPagingKeyboardNavigationTarget<Row extends GridValidRowModel>({
+  api,
+  columns = [],
+  current,
+  direction,
+  isActionCell,
+  pageSize,
+  rows = [],
+}: GetPagingKeyboardNavigationTargetOptions<Row>): CellLocation | null {
+  const visibleColumns = getColumns(api, columns);
+  const rowIds = getRowIds(api, rows);
+  const currentRowIndex = rowIds.findIndex((rowId) => String(rowId) === String(current.id));
+  if (currentRowIndex < 0 || rowIds.length === 0) {
+    return null;
+  }
+
+  const boundedPageSize = Math.max(1, Math.floor(pageSize) || 1);
+  const targetRowIndex = direction > 0
+    ? Math.min(currentRowIndex + boundedPageSize, rowIds.length - 1)
+    : Math.max(currentRowIndex - boundedPageSize, 0);
+  if (targetRowIndex === currentRowIndex) {
+    return null;
+  }
+
+  return findNavigableRowCell(
+    api,
+    visibleColumns,
+    rowIds,
+    rows,
+    targetRowIndex,
+    direction,
+    current.field,
+    isActionCell,
+  );
+}
+
+export interface GetDatasetEdgeKeyboardNavigationTargetOptions<Row extends GridValidRowModel> {
+  api: DataGridNavigationApi<Row> | null | undefined;
+  columns?: readonly GridColDef<Row>[];
+  edge: 'first' | 'last';
+  isActionCell?: (params: GridCellParams<Row>) => boolean;
+  rows?: readonly Row[];
+}
+
+/**
+ * Resolves the Ctrl/Shift+Home ('first') or Ctrl/Shift+End ('last') target:
+ * the first (or last) navigable cell of the *complete* loaded dataset
+ * (`rows`), not just the grid's currently mounted internal row window — see
+ * keyboard-architecture.md, "Continuous-scroll paging". Searches forward
+ * from the very first row/column for 'first', backward from the very last
+ * row/column for 'last', in case the edge row has no navigable cell at all.
+ */
+export function getDatasetEdgeKeyboardNavigationTarget<Row extends GridValidRowModel>({
+  api,
+  columns = [],
+  edge,
+  isActionCell,
+  rows = [],
+}: GetDatasetEdgeKeyboardNavigationTargetOptions<Row>): CellLocation | null {
+  const visibleColumns = getColumns(api, columns);
+  const rowIds = getRowIds(api, rows);
+  if (rowIds.length === 0 || visibleColumns.length === 0) {
+    return null;
+  }
+
+  const direction: Direction = edge === 'first' ? 1 : -1;
+  const startRowIndex = edge === 'first' ? 0 : rowIds.length - 1;
+  const edgeField = edge === 'first' ? visibleColumns[0].field : visibleColumns[visibleColumns.length - 1].field;
+
+  return findNavigableRowCell(
+    api,
+    visibleColumns,
+    rowIds,
+    rows,
+    startRowIndex,
+    direction,
+    edgeField,
+    isActionCell,
+  );
 }
 
 /**

@@ -236,6 +236,36 @@ test.describe('planting plans continuous scroll', () => {
     expect(thumb!.y + thumb!.height).toBeLessThanOrEqual(track!.y + track!.height + 1);
   });
 
+  test('Ctrl+End/Ctrl+Home jump to the actual start/end of the complete dataset, not just the internal page', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    // More than the 100-row internal page size, so the dataset's real last
+    // row lives on a second internal page that isn't mounted yet when the
+    // grid first renders.
+    await createPlantingPlanFixtures(page, request, 'planting-plans-keyboard-paging', 120);
+
+    await page.goto('/app/planting-plans');
+    await expect(page.getByText('Scrollkultur (Sorte A)').first()).toBeVisible({ timeout: 10_000 });
+
+    const firstCell = page.locator('[role="row"][data-rowindex="0"] [role="gridcell"][data-field="planting_date"]');
+    await firstCell.click();
+
+    await page.keyboard.press('Control+End');
+    await expect.poll(async () => page.evaluate(() => {
+      const rows = document.querySelectorAll('.MuiDataGrid-row');
+      return rows[rows.length - 1]?.getAttribute('data-rowindex') ?? null;
+    }), { timeout: 20_000 }).toBe('119');
+    const lastRow = page.locator('[role="row"][data-rowindex="119"]');
+    await expect(lastRow.locator('[role="gridcell"][data-field="planting_date"]')).toHaveAttribute('tabindex', '0');
+
+    await page.keyboard.press('Control+Home');
+    await expect.poll(async () => page.evaluate(() => {
+      const rows = document.querySelectorAll('.MuiDataGrid-row');
+      return rows[0]?.getAttribute('data-rowindex') ?? null;
+    }), { timeout: 20_000 }).toBe('0');
+    const firstRow = page.locator('[role="row"][data-rowindex="0"]');
+    await expect(firstRow.locator('[role="gridcell"][data-field="planting_date"]')).toHaveAttribute('tabindex', '0');
+  });
+
   test('keeps the vertical scrollbar track on-screen after scrolling horizontally on a narrow viewport', async ({ page, request }) => {
     const viewportWidth = 1000;
     await page.setViewportSize({ width: viewportWidth, height: 900 });

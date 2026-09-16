@@ -341,6 +341,20 @@ function FieldsBedsHierarchy({
     return hierarchyRowWindowRef.current.ensureRowIndexVisible(rowIndex);
   }, []);
 
+  // Same "page first, focus after the next paint" pattern as the deep-link
+  // highlight flow above, generalized for keyboard navigation (Home/End/
+  // PageUp/PageDown): a row on a page that isn't mounted yet doesn't exist
+  // in the DataGrid's virtualized viewport until one more render pass.
+  const runAfterRowVisibleOnPage = useCallback((rowId: GridRowId, action: () => void): void => {
+    if (!ensureRowVisibleOnPage(rowId)) {
+      action();
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(action);
+    });
+  }, [ensureRowVisibleOnPage]);
+
   const {
     expandedRowsRef,
     rowsRef,
@@ -1475,6 +1489,7 @@ function FieldsBedsHierarchy({
     gridApiRef,
     isCellFocusable: isHierarchyCellFocusable,
     isHierarchyCellAction,
+    runAfterRowVisible: runAfterRowVisibleOnPage,
     notesEditor,
     openContextMenuForRow,
     rememberFocusedField,

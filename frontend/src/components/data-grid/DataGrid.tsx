@@ -121,7 +121,9 @@ import {
 } from './rowValidation';
 import {
   focusKeyboardNavigableCell as focusDataGridKeyboardNavigableCell,
+  getDatasetEdgeKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
+  getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
   getCellLocationFromDomTarget,
   getHorizontalKeyboardNavigationTarget,
@@ -2345,6 +2347,64 @@ export function EditableDataGrid<T extends EditableRow>({
     runAfterRowVisible,
   ]);
 
+  // Ctrl/Shift+Home, Ctrl/Shift+End, and PageUp/PageDown resolved against the
+  // complete loaded dataset (`rowsForGrid`), not MUI's currently mounted
+  // internal row window — see keyboard-architecture.md, "Continuous-scroll
+  // paging". Bare Home/End are left to MUI's default handling: they only
+  // move within the current row, which is always already visible.
+  const handleEdgeAndPagingCellNavigation = useCallback((params: GridCellParams<T>, event: DataGridKeyboardEvent): boolean => {
+    if (rowModesModel[params.id]?.mode === GridRowModes.Edit || event.altKey) {
+      return false;
+    }
+
+    const isEdgeKey = event.key === 'Home' || event.key === 'End';
+    const isPagingKey = event.key === 'PageUp' || event.key === 'PageDown';
+    if (!isPagingKey && (!isEdgeKey || !(event.ctrlKey || event.metaKey || event.shiftKey))) {
+      return false;
+    }
+
+    const target = isEdgeKey
+      ? getDatasetEdgeKeyboardNavigationTarget<T>({
+        api: gridApiRef.current,
+        columns: columnsWithActions,
+        edge: event.key === 'Home' ? 'first' : 'last',
+        isActionCell: isActionCellKeyboardNavigable,
+        rows: rowsForGrid,
+      })
+      : getPagingKeyboardNavigationTarget<T>({
+        api: gridApiRef.current,
+        columns: columnsWithActions,
+        current: { id: params.id, field: params.field },
+        direction: event.key === 'PageDown' ? 1 : -1,
+        isActionCell: isActionCellKeyboardNavigable,
+        pageSize: gridApiRef.current?.getViewportPageSize?.() ?? scrollDrivenRowWindow.pageSize,
+        rows: rowsForGrid,
+      });
+
+    if (!target) {
+      return false;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.defaultMuiPrevented = true;
+    runAfterRowVisible(target.id, () => {
+      focusDataGridKeyboardNavigableCell<T>({
+        api: gridApiRef.current,
+        cell: target,
+      });
+    });
+    return true;
+  }, [
+    columnsWithActions,
+    gridApiRef,
+    isActionCellKeyboardNavigable,
+    rowModesModel,
+    rowsForGrid,
+    runAfterRowVisible,
+    scrollDrivenRowWindow.pageSize,
+  ]);
+
   const getNotesDrawerTitle = (): string => {
     if (!notesEditor.field || !notes) return 'Notizen';
     
@@ -2629,6 +2689,18 @@ export function EditableDataGrid<T extends EditableRow>({
               event.key === 'ArrowDown'
             ) {
               const didNavigate = handleViewModeCellNavigation(params, event as unknown as DataGridKeyboardEvent);
+              if (didNavigate) {
+                return;
+              }
+            }
+
+            if (
+              event.key === 'Home' ||
+              event.key === 'End' ||
+              event.key === 'PageUp' ||
+              event.key === 'PageDown'
+            ) {
+              const didNavigate = handleEdgeAndPagingCellNavigation(params, event as unknown as DataGridKeyboardEvent);
               if (didNavigate) {
                 return;
               }
