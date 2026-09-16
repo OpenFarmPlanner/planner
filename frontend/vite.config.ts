@@ -99,8 +99,19 @@ function pwaPlugin() {
       skipWaiting: true,
       runtimeCaching: [
         {
-          urlPattern: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
-            sameOrigin && url.pathname.startsWith(apiPathPrefix),
+          // workbox-build serializes this matcher into sw.js by calling
+          // Function.prototype.toString() on it (see workbox-build's
+          // runtime-caching-converter.js) and re-evaluating that source in
+          // the worker — which has no access to this module's scope. A
+          // closure over `apiPathPrefix` compiles here but throws
+          // "apiPathPrefix is not defined" once the worker runs it. Build
+          // the function so its source has the value baked in as a literal
+          // instead of a free variable: `Function`'s own toString() output
+          // is exactly its parameter list and body, nothing else.
+          urlPattern: new Function(
+            '{ url, sameOrigin }',
+            `return sameOrigin && url.pathname.startsWith(${JSON.stringify(apiPathPrefix)});`,
+          ) as (options: { url: URL; sameOrigin: boolean }) => boolean,
           handler: 'NetworkOnly',
         },
       ],

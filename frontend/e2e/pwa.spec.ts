@@ -1,5 +1,10 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { loginWithDeterministicProject } from './utils';
+
+const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
 
 /**
  * Pins the PWA setup's two load-bearing promises: the app is installable, and
@@ -73,5 +78,36 @@ test.describe('progressive web app', () => {
     // The SPA shell is served for every app route; a cached "/" would pin a
     // stale document across deploys.
     expect(cachedUrls).not.toContain('/');
+  });
+
+  test('the generated API route matcher has no dangling reference to vite.config.ts scope', async () => {
+    // Regression guard for a real bug: workbox-build serializes a function
+    // urlPattern into sw.js via Function.prototype.toString() (see
+    // runtime-caching-converter.js), which drops any closure. A matcher that
+    // reads a variable from vite.config.ts's module scope (e.g.
+    // `apiPathPrefix`) compiles there without error but throws
+    // "<name> is not defined" once the browser evaluates the extracted
+    // source with no access to that scope — a failure the other test above
+    // cannot see, because Workbox silently drops a route whose matcher
+    // throws instead of registering it, and an unmatched request still ends
+    // up uncached either way. Extract the matcher's actual source from the
+    // built sw.js and run it standalone, exactly as the worker does.
+    const sw = await readFile(path.join(distDir, 'sw.js'), 'utf-8');
+
+    const registerRouteCall = sw.match(/\.registerRoute\(([\s\S]*?),new [^,]+\.NetworkOnly/);
+    expect(registerRouteCall, 'sw.js contains a NetworkOnly registerRoute call').not.toBeNull();
+
+    const matcherSource = registerRouteCall![1];
+    // Deliberately re-creating the matcher with no closure, exactly like
+    // workbox-build's own toString()-then-reevaluate round trip.
+    const matcher = new Function(`return ${matcherSource};`)() as (options: {
+      url: URL;
+      sameOrigin: boolean;
+    }) => boolean;
+
+    expect(() => matcher({ url: new URL('https://example.test/api/crops/'), sameOrigin: true })).not.toThrow();
+    expect(matcher({ url: new URL('https://example.test/api/crops/'), sameOrigin: true })).toBe(true);
+    expect(matcher({ url: new URL('https://example.test/app/dashboard'), sameOrigin: true })).toBe(false);
+    expect(matcher({ url: new URL('https://example.test/api/crops/'), sameOrigin: false })).toBe(false);
   });
 });
