@@ -25,7 +25,6 @@ interface HierarchyGridKeyboardApi {
   getCellElement?: (id: GridRowId, field: string) => HTMLElement | null;
   getCellParams?: (id: GridRowId, field: string) => GridCellParams<HierarchyRow>;
   getRowIndexRelativeToVisibleRows?: (id: GridRowId) => number;
-  getViewportPageSize?: () => number;
   getVisibleColumns?: () => GridColDef<HierarchyRow>[];
   isCellEditable?: (params: GridCellParams<HierarchyRow>) => boolean;
   scrollToIndexes?: (indexes: { rowIndex?: number; colIndex?: number }) => void;
@@ -60,6 +59,11 @@ interface UseHierarchyGridKeyboardParams {
   // PageUp/PageDown, which can jump beyond the hierarchy's currently
   // mounted internal row window.
   runAfterRowVisible: (rowId: GridRowId, action: () => void) => void;
+  // How many rows currently fit in the grid's visible scroll viewport —
+  // the PageUp/PageDown step size. See
+  // `getViewportRowPageSize` in `keyboardNavigation.ts` for why this is
+  // measured from the DOM rather than MUI's own apiRef method.
+  getViewportRowPageSize: () => number;
   rowModesModel: GridRowModesModel;
   rows: readonly HierarchyRow[];
   rowsById: Map<string, HierarchyRow>;
@@ -111,6 +115,7 @@ export function useHierarchyGridKeyboard({
   isCellFocusable,
   isHierarchyCellAction,
   notesEditor,
+  getViewportRowPageSize,
   openContextMenuForRow,
   rememberFocusedField,
   rememberRowSnapshot,
@@ -240,7 +245,7 @@ export function useHierarchyGridKeyboard({
         current: { id: params.id, field: params.field },
         direction: event.key === "PageDown" ? 1 : -1,
         isActionCell: isHierarchyCellAction,
-        pageSize: gridApiRef.current?.getViewportPageSize?.() ?? 1,
+        pageSize: getViewportRowPageSize(),
         rows,
       });
 
@@ -263,6 +268,7 @@ export function useHierarchyGridKeyboard({
     return true;
   }, [
     columns,
+    getViewportRowPageSize,
     gridApiRef,
     isHierarchyCellAction,
     rememberFocusedField,

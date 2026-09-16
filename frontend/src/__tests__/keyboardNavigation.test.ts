@@ -8,6 +8,7 @@ import {
   getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
   getViewModeNavigationRequest,
+  getViewportRowPageSize,
   getVisibleColumnIndex,
   isCellKeyboardNavigable,
   isInteractiveCellTarget,
@@ -550,6 +551,54 @@ const largeGridApi = (columns: Col[] = COLUMNS, rows = LARGE_ROWS) => ({
   getAllRowIds: vi.fn(() => rows.map((row) => row.id)),
   getVisibleColumns: vi.fn(() => columns),
   getCellParams: vi.fn((id: unknown, field: string) => ({ id, field, row: { id } })),
+});
+
+describe('getViewportRowPageSize', () => {
+  it('divides the visible viewport height by the row height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBe(10);
+  });
+
+  it('floors a fractional row count instead of overshooting', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 340, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBe(9);
+  });
+
+  it('returns undefined instead of 0 when the container has no measured height yet', () => {
+    // This is the scenario MUI's own apiRef.getViewportPageSize() collapses
+    // to 0 for (dimensions not marked "ready"), which — before this fix —
+    // silently turned into a 1-row PageUp/PageDown step. Returning undefined
+    // here lets callers fall back to a real page size instead.
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 0, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBeUndefined();
+  });
+
+  it('returns undefined for a missing container or a non-positive row height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(null, 35)).toBeUndefined();
+    expect(getViewportRowPageSize(container, 0)).toBeUndefined();
+  });
+
+  it('subtracts the column header height, which MUI renders inside the same scroll container', () => {
+    // MUI renders the column header row *inside* .MuiDataGrid-virtualScroller,
+    // so its clientHeight covers the header plus the rows, not just the rows
+    // (see useStableDataGridScrollbar's identical `clientHeight - headerHeight`
+    // correction). Without this, PageDown/PageUp overshot by roughly one row.
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(container, 35, 70)).toBe(8);
+    expect(getViewportRowPageSize(container, 35)).toBe(10);
+  });
+
+  it('returns undefined when the header height consumes the entire measured height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 60, configurable: true });
+    expect(getViewportRowPageSize(container, 35, 70)).toBeUndefined();
+  });
 });
 
 describe('getDatasetEdgeKeyboardNavigationTarget', () => {

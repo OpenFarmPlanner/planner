@@ -125,6 +125,7 @@ import {
   getKeyboardNavigationTarget,
   getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
+  getViewportRowPageSize,
   getCellLocationFromDomTarget,
   getHorizontalKeyboardNavigationTarget,
   getViewModeNavigationRequest,
@@ -2347,6 +2348,18 @@ export function EditableDataGrid<T extends EditableRow>({
     runAfterRowVisible,
   ]);
 
+  // The PageUp/PageDown step size: how many rows currently fit in the grid's
+  // visible scroll viewport. Measured from the DOM rather than MUI's own
+  // apiRef.getViewportPageSize() — see getViewportRowPageSize's doc comment
+  // for why that internal helper isn't reliable here.
+  const getEditableGridViewportRowPageSize = useCallback((): number => (
+    getViewportRowPageSize(
+      gridSurfaceRef.current?.querySelector<HTMLElement>(DATA_GRID_VIRTUAL_SCROLLER_SELECTOR) ?? null,
+      CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX,
+      continuousScrollLayoutHeights.header,
+    ) ?? scrollDrivenRowWindow.pageSize
+  ), [continuousScrollLayoutHeights.header, scrollDrivenRowWindow.pageSize]);
+
   // Ctrl/Shift+Home, Ctrl/Shift+End, and PageUp/PageDown resolved against the
   // complete loaded dataset (`rowsForGrid`), not MUI's currently mounted
   // internal row window — see keyboard-architecture.md, "Continuous-scroll
@@ -2377,7 +2390,7 @@ export function EditableDataGrid<T extends EditableRow>({
         current: { id: params.id, field: params.field },
         direction: event.key === 'PageDown' ? 1 : -1,
         isActionCell: isActionCellKeyboardNavigable,
-        pageSize: gridApiRef.current?.getViewportPageSize?.() ?? scrollDrivenRowWindow.pageSize,
+        pageSize: getEditableGridViewportRowPageSize(),
         rows: rowsForGrid,
       });
 
@@ -2397,12 +2410,12 @@ export function EditableDataGrid<T extends EditableRow>({
     return true;
   }, [
     columnsWithActions,
+    getEditableGridViewportRowPageSize,
     gridApiRef,
     isActionCellKeyboardNavigable,
     rowModesModel,
     rowsForGrid,
     runAfterRowVisible,
-    scrollDrivenRowWindow.pageSize,
   ]);
 
   const getNotesDrawerTitle = (): string => {

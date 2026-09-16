@@ -61,6 +61,7 @@ import {
   StableScrollbarTrack,
 } from "../components/data-grid";
 import {
+  getViewportRowPageSize,
   isInteractiveCellTarget,
   preventReadOnlyCellMouseFocus,
 } from "../components/data-grid/keyboardNavigation";
@@ -354,6 +355,21 @@ function FieldsBedsHierarchy({
       requestAnimationFrame(action);
     });
   }, [ensureRowVisibleOnPage]);
+
+  // The PageUp/PageDown step size: how many rows currently fit in the grid's
+  // visible scroll viewport. Measured from the DOM rather than MUI's own
+  // apiRef.getViewportPageSize() — see getViewportRowPageSize's doc comment
+  // in keyboardNavigation.ts for why that internal helper isn't reliable
+  // here. Rows have different heights by type (location/field/bed); using
+  // the shortest (BED_ROW_HEIGHT) underestimates rather than overshoots the
+  // visible count, which is the safer direction for a page jump.
+  const getHierarchyViewportRowPageSize = useCallback((): number => (
+    getViewportRowPageSize(
+      tableWrapperRef.current?.querySelector<HTMLElement>(HIERARCHY_VIRTUAL_SCROLLER_SELECTOR) ?? null,
+      BED_ROW_HEIGHT,
+      HEADER_ROW_HEIGHT,
+    ) ?? hierarchyRowWindowRef.current.pageSize
+  ), [BED_ROW_HEIGHT, HEADER_ROW_HEIGHT]);
 
   const {
     expandedRowsRef,
@@ -1489,6 +1505,7 @@ function FieldsBedsHierarchy({
     gridApiRef,
     isCellFocusable: isHierarchyCellFocusable,
     isHierarchyCellAction,
+    getViewportRowPageSize: getHierarchyViewportRowPageSize,
     runAfterRowVisible: runAfterRowVisibleOnPage,
     notesEditor,
     openContextMenuForRow,

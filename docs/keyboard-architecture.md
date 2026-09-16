@@ -190,6 +190,25 @@ MUI's default handling: they only move to the first/last column of the
 *current* row, which is always already mounted, so there is nothing to fix
 there.
 
+**PageUp/PageDown's step size is measured from the DOM, not from MUI's
+`apiRef.getViewportPageSize()`.** That internal helper
+(`@mui/x-virtualizer/features/keyboard.mjs`) returns `0` whenever its
+dimensions state isn't marked "ready" yet, which is common here since these
+grids' height is driven by `useContinuousScrollSizing`/hierarchy-specific
+sizing rather than MUI's own resize observer. A `0` step size silently
+collapsed to a 1-row jump once `Math.floor(0) || 1` was applied downstream —
+PageUp/PageDown looked like they only moved a single row. `getViewportRowPageSize`
+(`components/data-grid/keyboardNavigation.ts`) sidesteps that internal
+readiness gate entirely by measuring the actual scroll container's
+`clientHeight` against the grid's row height, the same
+DOM-over-internal-state approach `useScrollDrivenRowWindow` already uses for
+its own edge detection. Both `DataGrid.tsx` and `useHierarchyGridKeyboard.ts`
+fall back to the row window's internal page size only if the container isn't
+mounted yet (e.g. before first paint) — the hierarchy, whose rows vary in
+height by type, deliberately measures against the *shortest* row height
+(`BED_ROW_HEIGHT`) so the estimate undershoots rather than overshoots the
+actually-visible row count.
+
 Crop master-detail lists use the same local-widget approach through
 `crops/useCropListKeyboardNavigation.ts`: the visible list rows are a
 `listbox`/`option` set with roving tabindex, ArrowUp/ArrowDown/Home/End move

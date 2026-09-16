@@ -18,7 +18,6 @@ interface DataGridNavigationApi<Row extends GridValidRowModel> {
   getCellElement?: (id: GridRowId, field: string) => HTMLElement | null;
   getCellParams?: (id: GridRowId, field: string) => GridCellParams<Row>;
   getRowIndexRelativeToVisibleRows?: (id: GridRowId) => number;
-  getViewportPageSize?: () => number;
   getVisibleColumns?: () => GridColDef<Row>[];
   scrollToIndexes?: (indexes: { rowIndex?: number; colIndex?: number }) => void;
   setCellFocus?: (id: GridRowId, field: string) => void;
@@ -302,6 +301,53 @@ export function getVerticalKeyboardNavigationTarget<Row extends GridValidRowMode
     current.field,
     isActionCell,
   );
+}
+
+/**
+ * Estimates how many rows fit in the grid's visible scroll viewport, for use
+ * as the PageUp/PageDown step size. Deliberately measured from the actual
+ * scroll container's `clientHeight` rather than MUI's own
+ * `apiRef.getViewportPageSize()`: that internal helper returns 0 whenever
+ * its dimensions state isn't marked ready yet
+ * (`@mui/x-virtualizer/features/keyboard.mjs`), which is common in
+ * OpenFarmPlanner's continuous-scroll grids since their height is driven by
+ * `useContinuousScrollSizing`/custom sizing rather than MUI's own resize
+ * observer — a 0 that silently collapsed PageUp/PageDown to a single row
+ * once `Math.floor(0) || 1` was applied. Measuring the DOM directly
+ * sidesteps that internal readiness state entirely, matching the same
+ * DOM-over-internal-state approach `useScrollDrivenRowWindow` already uses
+ * for its own edge detection.
+ *
+ * `headerHeightPx` must be subtracted first: MUI renders the column header
+ * row *inside* `.MuiDataGrid-virtualScroller`, so its `clientHeight` covers
+ * the header plus the data rows, not just the rows — see
+ * `useStableDataGridScrollbar`'s `container.clientHeight - headerHeight`,
+ * which the scrollbar thumb needed the exact same correction for. Skipping
+ * it overcounts by roughly one row per `headerHeightPx / rowHeightPx`, which
+ * is why PageUp/PageDown initially overshot by a row or two after this was
+ * first measured without the subtraction.
+ *
+ * Returns undefined when the container isn't mounted yet, the corrected
+ * height is non-positive, or the row height itself is non-positive; callers
+ * should fall back to a sane default (e.g. the row window's page size) in
+ * that case.
+ */
+export function getViewportRowPageSize(
+  container: HTMLElement | null | undefined,
+  rowHeightPx: number,
+  headerHeightPx = 0,
+): number | undefined {
+  if (!container || rowHeightPx <= 0) {
+    return undefined;
+  }
+
+  const rowsOnlyHeight = container.clientHeight - headerHeightPx;
+  if (rowsOnlyHeight <= 0) {
+    return undefined;
+  }
+
+  const rowsPerPage = Math.floor(rowsOnlyHeight / rowHeightPx);
+  return rowsPerPage > 0 ? rowsPerPage : undefined;
 }
 
 export interface GetPagingKeyboardNavigationTargetOptions<Row extends GridValidRowModel> {

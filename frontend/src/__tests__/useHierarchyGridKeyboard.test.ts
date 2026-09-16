@@ -80,7 +80,7 @@ const makeMouseEvent = (): MouseEventStub => ({
 const renderKeyboardHook = (
   rowModesModel: GridRowModesModel = {},
   hookRows: HierarchyRow[] = rows,
-  options: { deferCrossRowEditOnClick?: boolean } = {},
+  options: { deferCrossRowEditOnClick?: boolean; viewportRowPageSize?: number } = {},
 ) => {
   const hookRowsById = new Map(hookRows.map((row) => [String(row.id), row]));
   const discardRowEdit = vi.fn();
@@ -114,7 +114,6 @@ const renderKeyboardHook = (
       columns.findIndex((column) => column.field === field),
     getRowIndexRelativeToVisibleRows: (id: GridRowId) =>
       hookRows.findIndex((row) => String(row.id) === String(id)),
-    getViewportPageSize: () => 1,
     getVisibleColumns: () => columns,
     isCellEditable: (params: GridCellParams<HierarchyRow>) =>
       params.field === 'name' || params.field === 'length_m' || params.field === 'width_m',
@@ -129,6 +128,7 @@ const renderKeyboardHook = (
       columns,
       deferCrossRowEditOnClick: options.deferCrossRowEditOnClick,
       discardRowEdit,
+      getViewportRowPageSize: () => options.viewportRowPageSize ?? 1,
       gridApiRef: { current: api },
       isCellFocusable: (row, field) => field === 'notes' || row.type !== 'location' && field !== 'area_sqm',
       isHierarchyCellAction: (params) => params.field === 'notes',
@@ -566,5 +566,73 @@ describe('useHierarchyGridKeyboard', () => {
     expect(selectRow).toHaveBeenCalledWith(101);
     expect(runAfterRowVisible).toHaveBeenCalledWith(101, expect.any(Function));
     expect(focusCell).toHaveBeenCalledWith(101, 'name');
+  });
+
+  it('PageDown moves a full visible page, not a single row, when several rows fit in the viewport', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+      { id: 103, type: 'bed', name: 'Bed 3', level: 1, hasChildren: false, isNew: false },
+      { id: 104, type: 'bed', name: 'Bed 4', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, manyRows, { viewportRowPageSize: 3 });
+    const event = makeKeyboardEvent('PageDown');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams('field-1', 'name', manyRows[0]), event);
+    });
+
+    expect(selectRow).toHaveBeenCalledWith(103);
+    expect(focusCell).toHaveBeenCalledWith(103, 'name');
+  });
+
+  it('PageUp moves a full visible page back up', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+      { id: 103, type: 'bed', name: 'Bed 3', level: 1, hasChildren: false, isNew: false },
+      { id: 104, type: 'bed', name: 'Bed 4', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, manyRows, { viewportRowPageSize: 3 });
+    const event = makeKeyboardEvent('PageUp');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(104, 'name', manyRows[4]), event);
+    });
+
+    expect(selectRow).toHaveBeenCalledWith(101);
+    expect(focusCell).toHaveBeenCalledWith(101, 'name');
+  });
+
+  it('PageDown near the end clamps to the last row instead of overshooting', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, manyRows, { viewportRowPageSize: 10 });
+    const event = makeKeyboardEvent('PageDown');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(101, 'name', manyRows[1]), event);
+    });
+
+    expect(selectRow).toHaveBeenCalledWith(102);
+    expect(focusCell).toHaveBeenCalledWith(102, 'name');
+  });
+
+  it('PageUp near the start clamps to the first row instead of undershooting', () => {
+    const manyRows: HierarchyRow[] = [
+      ...rows,
+      { id: 102, type: 'bed', name: 'Bed 2', level: 1, hasChildren: false, isNew: false },
+    ];
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, manyRows, { viewportRowPageSize: 10 });
+    const event = makeKeyboardEvent('PageUp');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(101, 'name', manyRows[1]), event);
+    });
+
+    expect(selectRow).toHaveBeenCalledWith('field-1');
+    expect(focusCell).toHaveBeenCalledWith('field-1', 'name');
   });
 });
