@@ -2,10 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   focusKeyboardNavigableCell,
   getCellLocationFromDomTarget,
+  getDatasetEdgeKeyboardNavigationTarget,
   getHorizontalKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
+  getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
   getViewModeNavigationRequest,
+  getViewportRowPageSize,
   getVisibleColumnIndex,
   isCellKeyboardNavigable,
   isInteractiveCellTarget,
@@ -26,6 +29,59 @@ function buildGridCell(rowId: string, field: string): HTMLElement {
 }
 
 describe('keyboardNavigation', () => {
+  it('gives the cell element DOM focus in view mode', () => {
+    const cellElement = document.createElement('div');
+    cellElement.tabIndex = 0;
+    document.body.append(cellElement);
+
+    const api = {
+      getCellElement: vi.fn(() => cellElement),
+      getVisibleColumns: vi.fn(() => [{ field: 'name' }]),
+      getRowIndexRelativeToVisibleRows: vi.fn(() => 0),
+      scrollToIndexes: vi.fn(),
+      setCellFocus: vi.fn(),
+    };
+
+    focusKeyboardNavigableCell({ api, cell: { id: 1, field: 'name' } });
+
+    expect(api.setCellFocus).toHaveBeenCalledWith(1, 'name');
+    expect(document.activeElement).toBe(cellElement);
+
+    cellElement.remove();
+  });
+
+  it('retries focusing across frames while the target row is still being mounted', async () => {
+    // The row's page is swapped in a render or two after setCellFocus, so the
+    // cell element doesn't exist yet on the first attempt — without the retry
+    // focus would stay on <body> and every following keypress would be lost.
+    const cellElement = document.createElement('div');
+    cellElement.tabIndex = 0;
+    let mountedAfterCalls = 2;
+    const api = {
+      getCellElement: vi.fn(() => {
+        if (mountedAfterCalls > 0) {
+          mountedAfterCalls -= 1;
+          return null;
+        }
+        document.body.append(cellElement);
+        return cellElement;
+      }),
+      getVisibleColumns: vi.fn(() => [{ field: 'name' }]),
+      getRowIndexRelativeToVisibleRows: vi.fn(() => 0),
+      scrollToIndexes: vi.fn(),
+      setCellFocus: vi.fn(),
+    };
+
+    focusKeyboardNavigableCell({ api, cell: { id: 7, field: 'name' } });
+    expect(document.activeElement).not.toBe(cellElement);
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(cellElement);
+    });
+
+    cellElement.remove();
+  });
+
   it('focuses the edit input inside a focused editable cell', () => {
     const cellElement = document.createElement('div');
     const input = document.createElement('input');
@@ -537,6 +593,205 @@ describe('getVerticalKeyboardNavigationTarget', () => {
       { field: 'notes', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 2 },
     ];
     expect(down({ id: 1, field: 'name' }, columns)).toEqual({ id: 3, field: 'name' });
+  });
+});
+
+// Simulates a continuous-scroll grid: the loaded dataset (LARGE_ROWS) is
+// much bigger than what a single internal page/window would hold. These
+// functions must resolve against the complete dataset regardless.
+const LARGE_ROWS = Array.from({ length: 250 }, (_, index) => ({ id: index + 1 }));
+const largeGridApi = (columns: Col[] = COLUMNS, rows = LARGE_ROWS) => ({
+  getAllRowIds: vi.fn(() => rows.map((row) => row.id)),
+  getVisibleColumns: vi.fn(() => columns),
+  getCellParams: vi.fn((id: unknown, field: string) => ({ id, field, row: { id } })),
+});
+
+describe('getViewportRowPageSize', () => {
+  it('divides the visible viewport height by the row height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBe(10);
+  });
+
+  it('floors a fractional row count instead of overshooting', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 340, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBe(9);
+  });
+
+  it('returns undefined instead of 0 when the container has no measured height yet', () => {
+    // This is the scenario MUI's own apiRef.getViewportPageSize() collapses
+    // to 0 for (dimensions not marked "ready"), which — before this fix —
+    // silently turned into a 1-row PageUp/PageDown step. Returning undefined
+    // here lets callers fall back to a real page size instead.
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 0, configurable: true });
+    expect(getViewportRowPageSize(container, 35)).toBeUndefined();
+  });
+
+  it('returns undefined for a missing container or a non-positive row height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(null, 35)).toBeUndefined();
+    expect(getViewportRowPageSize(container, 0)).toBeUndefined();
+  });
+
+  it('subtracts the column header height, which MUI renders inside the same scroll container', () => {
+    // MUI renders the column header row *inside* .MuiDataGrid-virtualScroller,
+    // so its clientHeight covers the header plus the rows, not just the rows
+    // (see useStableDataGridScrollbar's identical `clientHeight - headerHeight`
+    // correction). Without this, PageDown/PageUp overshot by roughly one row.
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 350, configurable: true });
+    expect(getViewportRowPageSize(container, 35, 70)).toBe(8);
+    expect(getViewportRowPageSize(container, 35)).toBe(10);
+  });
+
+  it('returns undefined when the header height consumes the entire measured height', () => {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientHeight', { value: 60, configurable: true });
+    expect(getViewportRowPageSize(container, 35, 70)).toBeUndefined();
+  });
+});
+
+describe('getDatasetEdgeKeyboardNavigationTarget', () => {
+  it('jumps to the first navigable cell of the complete dataset, not just an internal window', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      edge: 'first',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 1, field: 'name' });
+  });
+
+  it('jumps to the last navigable cell of the complete dataset', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'notes' });
+  });
+
+  it('skips a read-only edge column and lands on the nearest navigable one', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true },
+      { field: 'width_m', editable: true },
+      { field: 'notes' },
+    ];
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'width_m' });
+  });
+
+  it('skips a wholly unnavigable edge row and lands on the next one in', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+      { field: 'width_m', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+      { field: 'notes', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 250 },
+    ];
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      edge: 'last',
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 249, field: 'notes' });
+  });
+
+  it('returns null for an empty dataset', () => {
+    expect(getDatasetEdgeKeyboardNavigationTarget({
+      api: largeGridApi(COLUMNS, []),
+      columns: COLUMNS,
+      edge: 'first',
+      rows: [],
+    })).toBeNull();
+  });
+});
+
+describe('getPagingKeyboardNavigationTarget', () => {
+  it('moves a full page of rows down in the same column, across the complete dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 1, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 101, field: 'width_m' });
+  });
+
+  it('moves a full page of rows up', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 150, field: 'width_m' },
+      direction: -1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 50, field: 'width_m' });
+  });
+
+  it('clamps to the last row instead of overshooting the dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 200, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 250, field: 'width_m' });
+  });
+
+  it('clamps to the first row instead of undershooting the dataset', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 50, field: 'width_m' },
+      direction: -1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 1, field: 'width_m' });
+  });
+
+  it('returns null when already at the dataset edge', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 250, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toBeNull();
+  });
+
+  it('falls back sideways when the paged-to cell is not navigable', () => {
+    const columns: Col[] = [
+      { field: 'name', editable: true },
+      { field: 'width_m', editable: true, isCellEditable: (params) => (params as { id: number }).id !== 101 },
+      { field: 'notes', editable: true },
+    ];
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(columns),
+      columns,
+      current: { id: 1, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toEqual({ id: 101, field: 'notes' });
+  });
+
+  it('returns nothing for a row that is not in the grid', () => {
+    expect(getPagingKeyboardNavigationTarget({
+      api: largeGridApi(),
+      columns: COLUMNS,
+      current: { id: 999, field: 'width_m' },
+      direction: 1,
+      pageSize: 100,
+      rows: LARGE_ROWS,
+    })).toBeNull();
   });
 });
 

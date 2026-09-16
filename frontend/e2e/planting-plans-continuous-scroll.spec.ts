@@ -236,6 +236,104 @@ test.describe('planting plans continuous scroll', () => {
     expect(thumb!.y + thumb!.height).toBeLessThanOrEqual(track!.y + track!.height + 1);
   });
 
+  test('Ctrl+End/Ctrl+Home jump to the actual start/end of the complete dataset, not just the internal page', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    // More than the 100-row internal page size, so the dataset's real last
+    // row lives on a second internal page that isn't mounted yet when the
+    // grid first renders.
+    await createPlantingPlanFixtures(page, request, 'planting-plans-keyboard-paging', 120);
+
+    await page.goto('/app/planting-plans');
+    await expect(page.getByText('Scrollkultur (Sorte A)').first()).toBeVisible({ timeout: 10_000 });
+
+    // A single click starts row edit mode and puts focus inside the cell's
+    // editor; Escape leaves edit mode with the cell itself focused, which is
+    // the view-mode state these keys act on (edit mode has its own Tab/arrow
+    // handling — see keyboard-architecture.md).
+    const firstCell = page.locator('[role="row"][data-rowindex="0"] [role="gridcell"][data-field="planting_date"]');
+    await firstCell.click();
+    await page.keyboard.press('Escape');
+    await expect(firstCell).toHaveAttribute('tabindex', '0');
+
+    // Spreadsheet semantics: Ctrl+End lands on the last row's last navigable
+    // column, Ctrl+Home on the first row's first one.
+    await page.keyboard.press('Control+End');
+    await expect.poll(async () => page.evaluate(() => {
+      const rows = document.querySelectorAll('.MuiDataGrid-row');
+      return rows[rows.length - 1]?.getAttribute('data-rowindex') ?? null;
+    }), { timeout: 20_000 }).toBe('119');
+    const lastRow = page.locator('[role="row"][data-rowindex="119"]');
+    await expect(lastRow.locator('[role="gridcell"][data-field="notes"]')).toHaveAttribute('tabindex', '0');
+
+    await page.keyboard.press('Control+Home');
+    await expect.poll(async () => page.evaluate(() => {
+      const rows = document.querySelectorAll('.MuiDataGrid-row');
+      return rows[0]?.getAttribute('data-rowindex') ?? null;
+    }), { timeout: 20_000 }).toBe('0');
+    const firstRow = page.locator('[role="row"][data-rowindex="0"]');
+    await expect(firstRow.locator('[role="gridcell"][data-field="crop"]')).toHaveAttribute('tabindex', '0');
+  });
+
+  test('PageDown/PageUp move a full visible page of rows, not a single row', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    // More than the 100-row internal page size, so a PageDown chain has to
+    // cross the internal row-window boundary before reaching the end.
+    await createPlantingPlanFixtures(page, request, 'planting-plans-page-keys', 120);
+
+    await page.goto('/app/planting-plans');
+    await expect(page.getByText('Scrollkultur (Sorte A)').first()).toBeVisible({ timeout: 10_000 });
+
+    const getFocusedRowIndex = (): Promise<number> => page.evaluate(() => {
+      const cell = document.querySelector('[role="gridcell"][tabindex="0"]');
+      const row = cell?.closest('[role="row"]');
+      return Number(row?.getAttribute('data-rowindex') ?? '-1');
+    });
+
+    // See the Ctrl+End/Ctrl+Home test above: click, then Escape back out of
+    // row edit mode so the cell itself carries focus.
+    const firstCell = page.locator('[role="row"][data-rowindex="0"] [role="gridcell"][data-field="planting_date"]');
+    await firstCell.click();
+    await page.keyboard.press('Escape');
+    await expect.poll(getFocusedRowIndex).toBe(0);
+
+    // Crossing an internal row-window boundary re-mounts the grid's rows, so
+    // each press gets its own settling time instead of firing a burst the grid
+    // would coalesce. While the boundary is being crossed no rendered cell
+    // carries the roving tabindex, so wait for a real row to own focus again
+    // before pressing on — a press that lands in that gap simply repeats.
+    const pressUntilRowIndex = async (key: 'PageDown' | 'PageUp', edgeRowIndex: number): Promise<void> => {
+      for (let attempt = 0; attempt < 25; attempt += 1) {
+        if (await getFocusedRowIndex() === edgeRowIndex) {
+          return;
+        }
+        await page.keyboard.press(key);
+        await expect.poll(getFocusedRowIndex, { timeout: 10_000 }).toBeGreaterThanOrEqual(0);
+      }
+    };
+
+    await page.keyboard.press('PageDown');
+    await expect.poll(getFocusedRowIndex, { timeout: 20_000 }).toBeGreaterThan(1);
+    const rowIndexAfterOnePageDown = await getFocusedRowIndex();
+
+    // A second PageDown must move at least as far again, proving the step is
+    // a repeatable "screenful" rather than a one-off jump, and must cross
+    // into the second internal ~100-row page once it goes far enough.
+    await page.keyboard.press('PageDown');
+    await expect.poll(getFocusedRowIndex, { timeout: 20_000 })
+      .toBeGreaterThanOrEqual(Math.min(119, rowIndexAfterOnePageDown * 2 - 1));
+
+    // Repeated PageDown clamps at the real last row instead of overshooting.
+    await pressUntilRowIndex('PageDown', 119);
+    await expect.poll(getFocusedRowIndex, { timeout: 20_000 }).toBe(119);
+
+    // PageUp mirrors the same full-page step back toward the start.
+    await page.keyboard.press('PageUp');
+    await expect.poll(getFocusedRowIndex, { timeout: 20_000 }).toBeLessThan(118);
+
+    await pressUntilRowIndex('PageUp', 0);
+    await expect.poll(getFocusedRowIndex, { timeout: 20_000 }).toBe(0);
+  });
+
   test('keeps the vertical scrollbar track on-screen after scrolling horizontally on a narrow viewport', async ({ page, request }) => {
     const viewportWidth = 1000;
     await page.setViewportSize({ width: viewportWidth, height: 900 });

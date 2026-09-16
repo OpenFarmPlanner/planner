@@ -61,6 +61,8 @@ import {
   StableScrollbarTrack,
 } from "../components/data-grid";
 import {
+  cancelPendingCellFocus,
+  getViewportRowPageSize,
   isInteractiveCellTarget,
   preventReadOnlyCellMouseFocus,
 } from "../components/data-grid/keyboardNavigation";
@@ -340,6 +342,51 @@ function FieldsBedsHierarchy({
     const rowIndex = rowsArrayRef.current.findIndex((row) => String(row.id) === String(rowId));
     return hierarchyRowWindowRef.current.ensureRowIndexVisible(rowIndex);
   }, []);
+
+  // "Page first, focus once the new page is committed", for keyboard
+  // navigation (Home/End/PageUp/PageDown): a row on a page that isn't mounted
+  // yet doesn't exist in the DataGrid's virtualized viewport. The action is
+  // parked and run from the effect below rather than after a fixed number of
+  // animation frames, which raced MUI's own page-change handler resetting
+  // focus to the first cell of the freshly mounted page — see
+  // docs/keyboard-architecture.md, "Continuous-scroll paging".
+  const pendingRowVisibleActionRef = useRef<(() => void) | null>(null);
+
+  const runAfterRowVisibleOnPage = useCallback((rowId: GridRowId, action: () => void): void => {
+    if (!ensureRowVisibleOnPage(rowId)) {
+      action();
+      return;
+    }
+    pendingRowVisibleActionRef.current = action;
+  }, [ensureRowVisibleOnPage]);
+
+  useEffect(() => {
+    const pendingAction = pendingRowVisibleActionRef.current;
+    if (!pendingAction) {
+      return;
+    }
+
+    pendingRowVisibleActionRef.current = null;
+    const frame = requestAnimationFrame(pendingAction);
+    return () => window.cancelAnimationFrame(frame);
+  }, [hierarchyRowWindow.page]);
+
+  useEffect(() => cancelPendingCellFocus, []);
+
+  // The PageUp/PageDown step size: how many rows currently fit in the grid's
+  // visible scroll viewport. Measured from the DOM rather than MUI's own
+  // apiRef.getViewportPageSize() — see getViewportRowPageSize's doc comment
+  // in keyboardNavigation.ts for why that internal helper isn't reliable
+  // here. Rows have different heights by type (location/field/bed); using
+  // the shortest (BED_ROW_HEIGHT) underestimates rather than overshoots the
+  // visible count, which is the safer direction for a page jump.
+  const getHierarchyViewportRowPageSize = useCallback((): number => (
+    getViewportRowPageSize(
+      tableWrapperRef.current?.querySelector<HTMLElement>(HIERARCHY_VIRTUAL_SCROLLER_SELECTOR) ?? null,
+      BED_ROW_HEIGHT,
+      HEADER_ROW_HEIGHT,
+    ) ?? hierarchyRowWindowRef.current.pageSize
+  ), [BED_ROW_HEIGHT, HEADER_ROW_HEIGHT]);
 
   const {
     expandedRowsRef,
@@ -1475,6 +1522,8 @@ function FieldsBedsHierarchy({
     gridApiRef,
     isCellFocusable: isHierarchyCellFocusable,
     isHierarchyCellAction,
+    getViewportRowPageSize: getHierarchyViewportRowPageSize,
+    runAfterRowVisible: runAfterRowVisibleOnPage,
     notesEditor,
     openContextMenuForRow,
     rememberFocusedField,

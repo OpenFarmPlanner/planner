@@ -157,9 +157,91 @@ is the *pattern*, demonstrated end-to-end on the yield distribution chart
    "Tooltips never cover an open context menu").
 
 Applying this same pattern to the Gantt calendar's bars (2D, collision-based
-layout) and to DataGrid (which already has its own cell-navigation code) is
-future work — the reference implementation and this write-up are meant to
-make that a mechanical port rather than a fresh design exercise each time.
+layout) is future work — the reference implementation and this write-up are
+meant to make that a mechanical port rather than a fresh design exercise
+each time.
+
+### Continuous-scroll paging (Home/End/PageUp/PageDown)
+
+`EditableDataGrid` and `FieldsBedsHierarchy` (see
+[datagrid-architecture.md](./datagrid-architecture.md) and
+[large-dataset-rendering.md](./large-dataset-rendering.md)) both load their
+*complete* dataset up front but only mount one internal ~100-row page at a
+time via `useScrollDrivenRowWindow`, advancing it as the user scrolls near an
+edge. MUI's own keyboard handling for Ctrl/Shift+Home, Ctrl/Shift+End, and
+PageUp/PageDown resolves against `getCurrentPageRows()` — the *mounted*
+page only — so those keys used to jump to the edge of whatever page happened
+to be loaded, not the actual start/end of the dataset. Tab and the arrow keys
+were unaffected because OpenFarmPlanner already routes them through its own
+navigation, resolved against the complete row array (`api.getAllRowIds()`,
+which returns every id in the underlying `rows` prop regardless of
+pagination) rather than MUI's page-scoped list.
+
+`getDatasetEdgeKeyboardNavigationTarget` and
+`getPagingKeyboardNavigationTarget` (`components/data-grid/keyboardNavigation.ts`)
+extend the same approach to Ctrl/Shift+Home, Ctrl/Shift+End, and
+PageUp/PageDown: both resolve their target against the complete dataset, then
+the caller pages the row window into place (`ensureRowIndexVisible` /
+`runAfterRowVisible` in `DataGrid.tsx`, `runAfterRowVisibleOnPage` in
+`FieldsBedsHierarchy.tsx`) before focusing, using the same
+"page-then-focus-after-the-next-paint" pattern the arrow-key navigation and
+the deep-link/new-row focus flows already use. Bare Home/End are left to
+MUI's default handling: they only move to the first/last column of the
+*current* row, which is always already mounted, so there is nothing to fix
+there.
+
+Like the arrow keys, these are **view-mode keys**: a row that is in edit mode
+keeps its own Tab/arrow/editor handling, so the paging handler bails out for
+it. In `EditableDataGrid` a single click starts row edit mode, which is why
+the e2e coverage clicks a cell and then presses Escape to get a view-mode
+focused cell before pressing Ctrl+End or PageDown.
+
+**Focusing a cell whose page is still mounting.** `setCellFocus` only updates
+the grid's own focus state; the cell element takes DOM focus when MUI renders
+it. A paging key that swaps the row window targets a row that doesn't exist in
+the DOM yet, and if the element is still missing when the focus state lands,
+the browser leaves focus on `<body>` while the cell keeps the roving
+`tabindex="0"` that claims it is focused — the grid then looks focused but
+swallows every following keypress. Two things keep that from happening:
+
+- `runAfterRowVisible` (`DataGrid.tsx`) and `runAfterRowVisibleOnPage`
+  (`FieldsBedsHierarchy.tsx`) park the focus move and run it from an effect
+  keyed on the row window's page, so it happens once React has committed the
+  new page. Timing it by a fixed number of animation frames instead raced
+  MUI's own page-change handler, which resets focus to the first cell of the
+  freshly mounted page: whichever landed last won, and when MUI won the
+  browser was left with no focused cell at all.
+- `focusKeyboardNavigableCell` then re-asserts the scroll and the focus state
+  each frame until DOM focus has actually landed on the cell (virtualization
+  can still need a scroll pass first), and keeps watching briefly afterwards
+  to take focus back if it is dropped out of the grid. A newer focus request
+  — a fresh keypress or a click — supersedes an older one immediately.
+
+**At the dataset edge the keys are still consumed.** `PageDown` on the last
+row (and the mirrored cases) resolves to no target, but the handler still
+marks the event handled instead of letting it fall through: MUI's default
+would resolve the key against its mounted page and move focus to a row this
+grid doesn't have rendered, losing focus entirely. Standing still is also what
+a spreadsheet does there.
+
+**PageUp/PageDown's step size is measured from the DOM, not from MUI's
+`apiRef.getViewportPageSize()`.** That internal helper
+(`@mui/x-virtualizer/features/keyboard.mjs`) returns `0` whenever its
+dimensions state isn't marked "ready" yet, which is common here since these
+grids' height is driven by `useContinuousScrollSizing`/hierarchy-specific
+sizing rather than MUI's own resize observer. A `0` step size silently
+collapsed to a 1-row jump once `Math.floor(0) || 1` was applied downstream —
+PageUp/PageDown looked like they only moved a single row. `getViewportRowPageSize`
+(`components/data-grid/keyboardNavigation.ts`) sidesteps that internal
+readiness gate entirely by measuring the actual scroll container's
+`clientHeight` against the grid's row height, the same
+DOM-over-internal-state approach `useScrollDrivenRowWindow` already uses for
+its own edge detection. Both `DataGrid.tsx` and `useHierarchyGridKeyboard.ts`
+fall back to the row window's internal page size only if the container isn't
+mounted yet (e.g. before first paint) — the hierarchy, whose rows vary in
+height by type, deliberately measures against the *shortest* row height
+(`BED_ROW_HEIGHT`) so the estimate undershoots rather than overshoots the
+actually-visible row count.
 
 Crop master-detail lists use the same local-widget approach through
 `crops/useCropListKeyboardNavigation.ts`: the visible list rows are a

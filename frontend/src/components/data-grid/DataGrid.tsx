@@ -120,9 +120,13 @@ import {
   hasInvalidRowInEditMode as hasInvalidRowInEditModeState,
 } from './rowValidation';
 import {
+  cancelPendingCellFocus,
   focusKeyboardNavigableCell as focusDataGridKeyboardNavigableCell,
+  getDatasetEdgeKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
+  getPagingKeyboardNavigationTarget,
   getVerticalKeyboardNavigationTarget,
+  getViewportRowPageSize,
   getCellLocationFromDomTarget,
   getHorizontalKeyboardNavigationTarget,
   getViewModeNavigationRequest,
@@ -309,16 +313,34 @@ export function EditableDataGrid<T extends EditableRow>({
     return scrollDrivenRowWindow.ensureRowIndexVisible(rowIndex);
   }, [isContinuousScroll, rowsForGrid, scrollDrivenRowWindow]);
 
+  // A focus move that had to page the row window first is parked here and run
+  // from the effect below, once React has committed the new page. Timing it by
+  // animation frames instead raced MUI's own page-change handler, which resets
+  // focus to the first cell of the freshly mounted page: whichever landed last
+  // won, and when MUI won the browser was left with no focused cell at all.
+  const pendingRowVisibleActionRef = useRef<(() => void) | null>(null);
+
   const runAfterRowVisible = useCallback((rowId: GridRowId, action: () => void): void => {
     const changedPage = ensureRowVisible(rowId);
     if (!changedPage) {
       action();
       return;
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(action);
-    });
+    pendingRowVisibleActionRef.current = action;
   }, [ensureRowVisible]);
+
+  useEffect(() => {
+    const pendingAction = pendingRowVisibleActionRef.current;
+    if (!pendingAction) {
+      return;
+    }
+
+    pendingRowVisibleActionRef.current = null;
+    const frame = requestAnimationFrame(pendingAction);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activePaginationModel.page]);
+
+  useEffect(() => cancelPendingCellFocus, []);
 
   useEffect(() => {
     if (!import.meta.env.DEV || (!showPaginationControls && !isContinuousScroll) || loading) {
@@ -2345,6 +2367,80 @@ export function EditableDataGrid<T extends EditableRow>({
     runAfterRowVisible,
   ]);
 
+  // The PageUp/PageDown step size: how many rows currently fit in the grid's
+  // visible scroll viewport. Measured from the DOM rather than MUI's own
+  // apiRef.getViewportPageSize() — see getViewportRowPageSize's doc comment
+  // for why that internal helper isn't reliable here.
+  const getEditableGridViewportRowPageSize = useCallback((): number => (
+    getViewportRowPageSize(
+      gridSurfaceRef.current?.querySelector<HTMLElement>(DATA_GRID_VIRTUAL_SCROLLER_SELECTOR) ?? null,
+      CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX,
+      continuousScrollLayoutHeights.header,
+    ) ?? scrollDrivenRowWindow.pageSize
+  ), [continuousScrollLayoutHeights.header, scrollDrivenRowWindow.pageSize]);
+
+  // Ctrl/Shift+Home, Ctrl/Shift+End, and PageUp/PageDown resolved against the
+  // complete loaded dataset (`rowsForGrid`), not MUI's currently mounted
+  // internal row window — see keyboard-architecture.md, "Continuous-scroll
+  // paging". Bare Home/End are left to MUI's default handling: they only
+  // move within the current row, which is always already visible.
+  const handleEdgeAndPagingCellNavigation = useCallback((params: GridCellParams<T>, event: DataGridKeyboardEvent): boolean => {
+    if (rowModesModel[params.id]?.mode === GridRowModes.Edit || event.altKey) {
+      return false;
+    }
+
+    const isEdgeKey = event.key === 'Home' || event.key === 'End';
+    const isPagingKey = event.key === 'PageUp' || event.key === 'PageDown';
+    if (!isPagingKey && (!isEdgeKey || !(event.ctrlKey || event.metaKey || event.shiftKey))) {
+      return false;
+    }
+
+    const target = isEdgeKey
+      ? getDatasetEdgeKeyboardNavigationTarget<T>({
+        api: gridApiRef.current,
+        columns: columnsWithActions,
+        edge: event.key === 'Home' ? 'first' : 'last',
+        isActionCell: isActionCellKeyboardNavigable,
+        rows: rowsForGrid,
+      })
+      : getPagingKeyboardNavigationTarget<T>({
+        api: gridApiRef.current,
+        columns: columnsWithActions,
+        current: { id: params.id, field: params.field },
+        direction: event.key === 'PageDown' ? 1 : -1,
+        isActionCell: isActionCellKeyboardNavigable,
+        pageSize: getEditableGridViewportRowPageSize(),
+        rows: rowsForGrid,
+      });
+
+    // Taken over even when there is nowhere left to go: at the dataset edge
+    // MUI's own handling would resolve the key against its mounted page and
+    // jump focus to a row this grid doesn't have rendered, losing focus
+    // entirely. Standing still is also what a spreadsheet does there.
+    event.preventDefault();
+    event.stopPropagation();
+    event.defaultMuiPrevented = true;
+    if (!target) {
+      return true;
+    }
+
+    runAfterRowVisible(target.id, () => {
+      focusDataGridKeyboardNavigableCell<T>({
+        api: gridApiRef.current,
+        cell: target,
+      });
+    });
+    return true;
+  }, [
+    columnsWithActions,
+    getEditableGridViewportRowPageSize,
+    gridApiRef,
+    isActionCellKeyboardNavigable,
+    rowModesModel,
+    rowsForGrid,
+    runAfterRowVisible,
+  ]);
+
   const getNotesDrawerTitle = (): string => {
     if (!notesEditor.field || !notes) return 'Notizen';
     
@@ -2629,6 +2725,18 @@ export function EditableDataGrid<T extends EditableRow>({
               event.key === 'ArrowDown'
             ) {
               const didNavigate = handleViewModeCellNavigation(params, event as unknown as DataGridKeyboardEvent);
+              if (didNavigate) {
+                return;
+              }
+            }
+
+            if (
+              event.key === 'Home' ||
+              event.key === 'End' ||
+              event.key === 'PageUp' ||
+              event.key === 'PageDown'
+            ) {
+              const didNavigate = handleEdgeAndPagingCellNavigation(params, event as unknown as DataGridKeyboardEvent);
               if (didNavigate) {
                 return;
               }
