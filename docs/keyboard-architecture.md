@@ -190,6 +190,12 @@ MUI's default handling: they only move to the first/last column of the
 *current* row, which is always already mounted, so there is nothing to fix
 there.
 
+Like the arrow keys, these are **view-mode keys**: a row that is in edit mode
+keeps its own Tab/arrow/editor handling, so the paging handler bails out for
+it. In `EditableDataGrid` a single click starts row edit mode, which is why
+the e2e coverage clicks a cell and then presses Escape to get a view-mode
+focused cell before pressing Ctrl+End or PageDown.
+
 **PageUp/PageDown's step size is measured from the DOM, not from MUI's
 `apiRef.getViewportPageSize()`.** That internal helper
 (`@mui/x-virtualizer/features/keyboard.mjs`) returns `0` whenever its
