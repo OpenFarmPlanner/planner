@@ -196,6 +196,17 @@ it. In `EditableDataGrid` a single click starts row edit mode, which is why
 the e2e coverage clicks a cell and then presses Escape to get a view-mode
 focused cell before pressing Ctrl+End or PageDown.
 
+**Focusing a cell whose page is still mounting.** `setCellFocus` only updates
+the grid's own focus state; the cell element takes DOM focus when MUI renders
+it. A paging key that swaps the row window targets a row that doesn't exist in
+the DOM yet, and if the element is still missing when the focus state lands,
+the browser leaves focus on `<body>` while the cell keeps the roving
+`tabindex="0"` that claims it is focused — the grid then looks focused but
+swallows every following keypress. `focusKeyboardNavigableCell` therefore
+re-asserts DOM focus across the next few animation frames until it has
+actually landed, giving up early if another cell has been focused in the
+meantime.
+
 **PageUp/PageDown's step size is measured from the DOM, not from MUI's
 `apiRef.getViewportPageSize()`.** That internal helper
 (`@mui/x-virtualizer/features/keyboard.mjs`) returns `0` whenever its

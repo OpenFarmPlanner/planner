@@ -560,6 +560,53 @@ export function getViewModeNavigationRequest(
   }
 }
 
+/**
+ * Number of animation frames `enforceDomCellFocus` keeps retrying for. Thirty
+ * frames (~500ms at 60fps) covers a row-window page swap on a loaded machine,
+ * while still giving up quickly enough that a target that never mounts can't
+ * keep chasing focus.
+ */
+const DOM_CELL_FOCUS_RETRY_FRAMES = 30;
+
+/**
+ * Keeps the browser's DOM focus in step with the grid's own focus state.
+ * `setCellFocus` only updates that state — the cell element takes DOM focus
+ * when MUI renders it. When the target row lives on a row-window page that is
+ * still being mounted, the element doesn't exist yet at that moment, the
+ * browser leaves focus on `<body>`, and every following keypress is lost even
+ * though the cell keeps the roving `tabindex="0"` that says it is focused.
+ * Retries across the next few frames until focus has actually landed.
+ */
+function enforceDomCellFocus<Row extends GridValidRowModel>(
+  api: DataGridNavigationApi<Row>,
+  cell: CellLocation,
+  remainingFrames: number,
+): void {
+  const cellElement = api.getCellElement?.(cell.id, cell.field) ?? null;
+  if (cellElement) {
+    if (!cellElement.contains(document.activeElement)) {
+      cellElement.focus({ preventScroll: true });
+    }
+    if (cellElement.contains(document.activeElement)) {
+      return;
+    }
+  }
+
+  // Someone else (a click, another navigation) has claimed a different cell in
+  // the meantime — that wins over a focus move this one asked for earlier.
+  if (document.activeElement?.closest('[role="gridcell"]')) {
+    return;
+  }
+
+  if (remainingFrames <= 0 || typeof window.requestAnimationFrame !== 'function') {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    enforceDomCellFocus(api, cell, remainingFrames - 1);
+  });
+}
+
 export function focusKeyboardNavigableCell<Row extends GridValidRowModel>({
   api,
   cell,
@@ -573,6 +620,9 @@ export function focusKeyboardNavigableCell<Row extends GridValidRowModel>({
   api.setCellFocus(cell.id, cell.field);
 
   if (!focusEditInput) {
+    // The editor path below runs its own focus retries into the cell's input,
+    // so only the view-mode path needs the cell element itself chased down.
+    enforceDomCellFocus(api, cell, DOM_CELL_FOCUS_RETRY_FRAMES);
     return;
   }
 

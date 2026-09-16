@@ -29,6 +29,59 @@ function buildGridCell(rowId: string, field: string): HTMLElement {
 }
 
 describe('keyboardNavigation', () => {
+  it('gives the cell element DOM focus in view mode', () => {
+    const cellElement = document.createElement('div');
+    cellElement.tabIndex = 0;
+    document.body.append(cellElement);
+
+    const api = {
+      getCellElement: vi.fn(() => cellElement),
+      getVisibleColumns: vi.fn(() => [{ field: 'name' }]),
+      getRowIndexRelativeToVisibleRows: vi.fn(() => 0),
+      scrollToIndexes: vi.fn(),
+      setCellFocus: vi.fn(),
+    };
+
+    focusKeyboardNavigableCell({ api, cell: { id: 1, field: 'name' } });
+
+    expect(api.setCellFocus).toHaveBeenCalledWith(1, 'name');
+    expect(document.activeElement).toBe(cellElement);
+
+    cellElement.remove();
+  });
+
+  it('retries focusing across frames while the target row is still being mounted', async () => {
+    // The row's page is swapped in a render or two after setCellFocus, so the
+    // cell element doesn't exist yet on the first attempt — without the retry
+    // focus would stay on <body> and every following keypress would be lost.
+    const cellElement = document.createElement('div');
+    cellElement.tabIndex = 0;
+    let mountedAfterCalls = 2;
+    const api = {
+      getCellElement: vi.fn(() => {
+        if (mountedAfterCalls > 0) {
+          mountedAfterCalls -= 1;
+          return null;
+        }
+        document.body.append(cellElement);
+        return cellElement;
+      }),
+      getVisibleColumns: vi.fn(() => [{ field: 'name' }]),
+      getRowIndexRelativeToVisibleRows: vi.fn(() => 0),
+      scrollToIndexes: vi.fn(),
+      setCellFocus: vi.fn(),
+    };
+
+    focusKeyboardNavigableCell({ api, cell: { id: 7, field: 'name' } });
+    expect(document.activeElement).not.toBe(cellElement);
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(cellElement);
+    });
+
+    cellElement.remove();
+  });
+
   it('focuses the edit input inside a focused editable cell', () => {
     const cellElement = document.createElement('div');
     const input = document.createElement('input');
