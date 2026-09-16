@@ -96,10 +96,19 @@ imported, and the two must not drift.
 ### Icons
 
 `public/icons/` holds three PNGs derived from the existing brand mark
-(`public/favicon.png`), not placeholders: 192×192 and 512×512 `any` variants,
-plus a 512×512 `maskable` variant that keeps the mark at 60% of the canvas so
-Android's adaptive-icon crop cannot clip it. iOS ignores manifest icons for
-"Add to Home Screen", so `pwa-192x192.png` is also linked as
+(`public/favicon.png`), not placeholders: 192×192 and 512×512 `any` variants
+(the flat favicon, background included, inset slightly), plus a 512×512
+`maskable` variant. The `any` variants just shrink the flat favicon onto a
+transparent canvas; the `maskable` one is generated differently, because
+Android's adaptive-icon mask can crop it down to a circle inscribed in the
+canvas — shrinking the *whole* flat favicon (rounded corners, background and
+all) the same way would leave the actual motif tiny, floating in a sea of
+background. Instead `generatePwaIcons.ts` chroma-keys the motif out of the
+flat favicon in-browser (Canvas 2D, no image-processing dependency added)
+and redraws it full-bleed on its own background colour at 85% of the
+canvas — checked against both a circular and a squircle mask with no
+clipping of the roof peak, leaf tips, or field lines. iOS ignores manifest
+icons for "Add to Home Screen", so `pwa-192x192.png` is also linked as
 `apple-touch-icon` in `index.html`.
 
 Regenerate them after a brand change with:
