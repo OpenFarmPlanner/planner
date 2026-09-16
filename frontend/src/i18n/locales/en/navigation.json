@@ -40,6 +40,10 @@
     "loadDemoProject": "Load demo project",
     "trash": "Trash ({{count}})"
   },
+  "connectionStatus": {
+    "online": "Online – connected",
+    "offline": "Offline – no connection. Changes cannot be saved."
+  },
   "seasonSwitcher": {
     "ariaLabel": "Switch active season",
     "sectionTitle": "Seasons",

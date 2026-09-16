@@ -7,11 +7,13 @@
  */
 
 import crops from '../i18n/locales/de/crops.json';
+import home from '../i18n/locales/de/home.json';
 import navigation from '../i18n/locales/de/navigation.json';
 
 const translations = {
   navigation,
   crops,
+  home,
 };
 
 export default translations;

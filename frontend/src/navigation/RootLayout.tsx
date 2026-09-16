@@ -48,6 +48,7 @@ import { GlobalMenu } from './GlobalMenu';
 import { hasSeenFeedbackBadge, markFeedbackBadgeSeen } from './feedbackBadgeStorage';
 import { FeedbackDialog } from '../components/feedback/FeedbackDialog';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { ConnectionStatusIndicator } from '../pwa/ConnectionStatusIndicator';
 import { useNotifications } from '../notifications/useNotifications';
 import { NOTIFICATION_HISTORY_ROUTE } from '../notifications/notificationDisplay';
 import { useNotificationMenuItems } from '../notifications/useNotificationMenuItems';
@@ -114,6 +115,9 @@ const TOPBAR_ACTION_GROUP_GAP = 1.25;
 // The visible distance is the flex gap plus the controls' own horizontal padding.
 const TOPBAR_TRAILING_CONTROL_GAP = 0.5;
 const TOPBAR_STATUS_BUTTON_PX = 1;
+// Square size shared by the icon-only controls in the trailing status
+// cluster (connection indicator, notification bell), so they line up.
+const TOPBAR_STATUS_ICON_SIZE = 36;
 const TOPBAR_STATUS_CLUSTER_GAP = TOPBAR_TRAILING_CONTROL_GAP;
 const TOPBAR_OVERFLOW_MENU_GAP = TOPBAR_TRAILING_CONTROL_GAP;
 const COMPACT_TOPBAR_TOGGLE_SIZE = 44;
@@ -1385,7 +1389,7 @@ function RootLayout() {
             onOpenProjectTrash={handleOpenProjectTrash}
             t={t}
           />
-          <NotificationBell controller={notifications} buttonSize={36} />
+          <NotificationBell controller={notifications} buttonSize={TOPBAR_STATUS_ICON_SIZE} />
           </Box>
           <IconButton
             aria-label={t('navigation:globalMenu.moreActions')}
@@ -1682,6 +1686,7 @@ function RootLayout() {
               {/* Tight sub-group so the season switcher always sits directly
                   next to "Mehr", regardless of the outer group's spacing. */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+                <ConnectionStatusIndicator size={COMPACT_TOPBAR_TOGGLE_SIZE} hideWhenOnline />
                 {hasActiveProject ? (
                   <SeasonSwitcher
                     controller={activeSeason}

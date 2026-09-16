@@ -8,6 +8,7 @@
     "actions": {
       "openApp": "Sign in",
       "register": "Register",
+      "installApp": "Install app",
       "demo": "View demo",
       "demoWithoutRegistration": "View demo without registration",
       "startingDemo": "Starting demo...",
@@ -18,6 +19,11 @@
       "demoServerError": "The demo could not be started because of a server error. Please try again later.",
       "demoUnexpectedResponse": "The demo could not be started because the server response was unexpected. Please try again.",
       "demoAvailableIn": "Demo available again in {{time}}"
+    },
+    "installIos": {
+      "title": "Install app",
+      "instructions": "Tap the Share icon below and choose \"Add to Home Screen\" to install OpenFarmPlanner like an app.",
+      "dismiss": "Got it"
     },
     "retryTime": {
       "lessThanMinute": "in less than a minute",

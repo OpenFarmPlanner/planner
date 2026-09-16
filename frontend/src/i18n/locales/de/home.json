@@ -8,6 +8,7 @@
     "actions": {
       "openApp": "Anmelden",
       "register": "Registrieren",
+      "installApp": "App installieren",
       "demo": "Demo ansehen",
       "demoWithoutRegistration": "Demo ohne Registrierung ansehen",
       "startingDemo": "Demo wird gestartet…",
@@ -18,6 +19,11 @@
       "demoServerError": "Die Demo konnte wegen eines Serverfehlers nicht gestartet werden. Bitte versuche es später erneut.",
       "demoUnexpectedResponse": "Die Demo konnte nicht gestartet werden, weil die Serverantwort unerwartet war. Bitte versuche es erneut.",
       "demoAvailableIn": "Demo wieder verfügbar in {{time}}"
+    },
+    "installIos": {
+      "title": "App installieren",
+      "instructions": "Tippe unten auf das Teilen-Symbol und wähle \"Zum Home-Bildschirm\", um OpenFarmPlanner wie eine App zu installieren.",
+      "dismiss": "Verstanden"
     },
     "retryTime": {
       "lessThanMinute": "in weniger als einer Minute",

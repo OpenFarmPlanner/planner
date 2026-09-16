@@ -71,6 +71,11 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   `EntityRevision` audit trail and how crop/project restore works.
 - **[Large-Dataset Rendering](./large-dataset-rendering.md)** — pagination,
   bulk-read limits, and scroll-driven windowing for large projects.
+- **[Progressive Web App](./pwa.md)** — the build tooling (Vite, npm, Node
+  22), what the service worker caches (build assets only) and what it must
+  never cache (API responses, because of the `X-Project-Id`/`X-Season-Id`
+  multi-tenancy headers), the manifest and icons, and the topbar connection
+  indicator.
 - **[Seasons](./seasons-architecture.md)** — the project-scoped `Season` and
   `SeasonPattern` models, the season switcher and its "copy data" action, the
   first-run setup that migrates a project's pre-existing planting plans, and

@@ -1,3 +1,5 @@
+import { unregisterServiceWorkers } from '../pwa/registerServiceWorker';
+
 const CHUNK_RELOAD_STORAGE_KEY = 'openFarmPlanner.lastChunkReloadAt';
 const CHUNK_RELOAD_WINDOW_MS = 60_000;
 const ROUTE_LOAD_RETRY_STORAGE_PREFIX = 'openFarmPlanner.routeLoadRetry.';
@@ -118,8 +120,22 @@ export function clearRouteLoadRetry(routeKey = getCurrentRouteKey()): void {
   storage.removeItem(getRouteLoadRetryStorageKey(routeKey));
 }
 
+/**
+ * A stale service worker left over from an older build can keep serving its
+ * own mismatched precached assets after a plain reload (see
+ * `unregisterServiceWorkers`'s doc comment). Clearing it first is what makes
+ * this reload an actual recovery attempt rather than a repeat of the same
+ * failure.
+ */
 export function reloadPage(): void {
-  window.location.reload();
+  void unregisterServiceWorkers()
+    .catch(() => {
+      /* unregisterServiceWorkers already swallows its own failures; this is
+         only a safeguard against a mocked or future implementation that does not. */
+    })
+    .finally(() => {
+      window.location.reload();
+    });
 }
 
 export function reloadOnceForDynamicImportError(error: unknown): boolean {
