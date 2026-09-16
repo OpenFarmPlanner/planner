@@ -46,3 +46,27 @@ export function registerServiceWorker(baseUrl: string = import.meta.env.BASE_URL
       });
   });
 }
+
+/**
+ * Unregisters every service worker controlling this origin.
+ *
+ * A chunk-load failure (see `runtime/chunkLoadErrors.ts`) can now be caused
+ * not just by a stale hashed asset after a deploy, but by a worker left
+ * over from an *older* build: `clientsClaim`/`skipWaiting` (vite.config.ts)
+ * mean it takes over immediately and keeps serving its own precached, and
+ * now mismatched, assets on every reload — a plain reload alone cannot
+ * recover from that. Called from the runtime-error recovery path before it
+ * reloads; safe to call even where no worker was ever registered.
+ */
+export async function unregisterServiceWorkers(): Promise<void> {
+  if (!isServiceWorkerSupported()) {
+    return;
+  }
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+  } catch {
+    /* Best-effort: the reload must proceed either way. */
+  }
+}

@@ -1,12 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearRouteLoadRetry,
   isDynamicImportLoadError,
   markDynamicImportRecoverySpent,
+  reloadPage,
   routeLoadRetryIsAvailable,
   shouldAutomaticallyReloadForChunkError,
   shouldAutomaticallyReloadForRouteLoadError,
 } from '../runtime/chunkLoadErrors';
+import { unregisterServiceWorkers } from '../pwa/registerServiceWorker';
+
+vi.mock('../pwa/registerServiceWorker', () => ({
+  unregisterServiceWorkers: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('route load error recovery', () => {
   beforeEach(() => {
@@ -159,5 +165,45 @@ describe('shouldAutomaticallyReloadForChunkError', () => {
     sessionStorage.setItem('openFarmPlanner.lastChunkReloadAt', 'unsinn');
 
     expect(shouldAutomaticallyReloadForChunkError(NOW)).toBe(true);
+  });
+});
+
+describe('reloadPage', () => {
+  const originalLocation = window.location;
+
+  // jsdom's window.location.reload is a non-configurable, non-writable own
+  // property, so it can't be spied on directly. Replace the whole object
+  // instead, and restore the original afterwards so no other test observes this.
+  function stubLocationReload(): ReturnType<typeof vi.fn> {
+    const reloadSpy = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, reload: reloadSpy },
+    });
+    return reloadSpy;
+  }
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+  });
+
+  it('clears a stale service worker before reloading, so it cannot keep serving mismatched assets', async () => {
+    const reloadSpy = stubLocationReload();
+
+    reloadPage();
+
+    expect(reloadSpy).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1));
+    expect(unregisterServiceWorkers).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads even when clearing the service worker fails', async () => {
+    vi.mocked(unregisterServiceWorkers).mockRejectedValueOnce(new Error('unregister failed'));
+    const reloadSpy = stubLocationReload();
+
+    reloadPage();
+
+    await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1));
   });
 });

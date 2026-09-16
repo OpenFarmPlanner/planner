@@ -121,7 +121,12 @@ keep the app from booting.
 
 `registerType: 'autoUpdate'` means a new deploy's worker takes over on the
 next load. Open tabs still hit the existing chunk-load recovery path
-(`RuntimeErrorState variant="applicationUpdated"`), unchanged by the worker.
+(`RuntimeErrorState variant="applicationUpdated"`). That path's `reloadPage`
+(`src/runtime/chunkLoadErrors.ts`) now also unregisters every service worker
+on this origin before reloading: `clientsClaim`/`skipWaiting` mean an *older*
+worker can take over immediately and keep serving its own precached, now
+mismatched, assets on every reload, so a plain reload alone would not recover
+from that worker itself being the stale part.
 
 ## Connection indicator
 

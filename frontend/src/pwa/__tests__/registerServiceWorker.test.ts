@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerServiceWorker } from '../registerServiceWorker';
+import { registerServiceWorker, unregisterServiceWorkers } from '../registerServiceWorker';
 
 const registerMock = vi.fn();
+const getRegistrationsMock = vi.fn();
 
 function stubServiceWorkerSupport(): void {
   Object.defineProperty(window.navigator, 'serviceWorker', {
     configurable: true,
-    value: { register: registerMock },
+    value: { register: registerMock, getRegistrations: getRegistrationsMock },
   });
 }
 
@@ -33,6 +34,8 @@ function captureLoadHandlers(): () => void {
 beforeEach(() => {
   registerMock.mockReset();
   registerMock.mockResolvedValue({});
+  getRegistrationsMock.mockReset();
+  getRegistrationsMock.mockResolvedValue([]);
   stubServiceWorkerSupport();
   vi.stubEnv('PROD', true);
 });
@@ -98,5 +101,31 @@ describe('registerServiceWorker', () => {
     expect(() => fireLoad()).not.toThrow();
 
     await expect(registerMock.mock.results[0]?.value).rejects.toThrow('blocked');
+  });
+});
+
+describe('unregisterServiceWorkers', () => {
+  it('unregisters every worker controlling this origin', async () => {
+    const unregisterA = vi.fn().mockResolvedValue(true);
+    const unregisterB = vi.fn().mockResolvedValue(true);
+    getRegistrationsMock.mockResolvedValue([{ unregister: unregisterA }, { unregister: unregisterB }]);
+
+    await unregisterServiceWorkers();
+
+    expect(unregisterA).toHaveBeenCalledTimes(1);
+    expect(unregisterB).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when the browser has no service worker support', async () => {
+    removeServiceWorkerSupport();
+
+    await expect(unregisterServiceWorkers()).resolves.toBeUndefined();
+    expect(getRegistrationsMock).not.toHaveBeenCalled();
+  });
+
+  it('resolves even when a worker refuses to unregister, so the caller can still reload', async () => {
+    getRegistrationsMock.mockRejectedValue(new Error('blocked'));
+
+    await expect(unregisterServiceWorkers()).resolves.toBeUndefined();
   });
 });
