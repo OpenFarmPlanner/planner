@@ -296,17 +296,18 @@ test.describe('planting plans continuous scroll', () => {
     await page.keyboard.press('Escape');
     await expect.poll(getFocusedRowIndex).toBe(0);
 
-    // Crossing an internal row-window boundary re-mounts the grid's rows and
-    // the new focus only lands on the following paint, so each press waits for
-    // its own move instead of firing a burst the grid would coalesce.
+    // Crossing an internal row-window boundary re-mounts the grid's rows, so
+    // each press gets its own settling time instead of firing a burst the grid
+    // would coalesce. While the boundary is being crossed no rendered cell
+    // carries the roving tabindex, so wait for a real row to own focus again
+    // before pressing on — a press that lands in that gap simply repeats.
     const pressUntilRowIndex = async (key: 'PageDown' | 'PageUp', edgeRowIndex: number): Promise<void> => {
       for (let attempt = 0; attempt < 25; attempt += 1) {
-        const rowIndexBefore = await getFocusedRowIndex();
-        if (rowIndexBefore === edgeRowIndex) {
+        if (await getFocusedRowIndex() === edgeRowIndex) {
           return;
         }
         await page.keyboard.press(key);
-        await expect.poll(getFocusedRowIndex, { timeout: 20_000 }).not.toBe(rowIndexBefore);
+        await expect.poll(getFocusedRowIndex, { timeout: 10_000 }).toBeGreaterThanOrEqual(0);
       }
     };
 

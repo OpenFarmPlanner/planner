@@ -620,6 +620,23 @@ describe('useHierarchyGridKeyboard', () => {
     expect(focusCell).toHaveBeenCalledWith(102, 'name');
   });
 
+  it('PageDown on the last row stays put instead of handing the key to the grid default', () => {
+    // MUI's own paging resolves against its mounted row window, so letting the
+    // key through at the dataset edge can move focus to a row that isn't
+    // rendered — which loses keyboard focus entirely.
+    const { result, focusCell, selectRow } = renderKeyboardHook({}, rows, { viewportRowPageSize: 10 });
+    const event = makeKeyboardEvent('PageDown');
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(101, 'name', rows[rows.length - 1]), event);
+    });
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.defaultMuiPrevented).toBe(true);
+    expect(selectRow).not.toHaveBeenCalled();
+    expect(focusCell).not.toHaveBeenCalled();
+  });
+
   it('PageUp near the start clamps to the first row instead of undershooting', () => {
     const manyRows: HierarchyRow[] = [
       ...rows,

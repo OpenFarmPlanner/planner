@@ -202,10 +202,27 @@ it. A paging key that swaps the row window targets a row that doesn't exist in
 the DOM yet, and if the element is still missing when the focus state lands,
 the browser leaves focus on `<body>` while the cell keeps the roving
 `tabindex="0"` that claims it is focused — the grid then looks focused but
-swallows every following keypress. `focusKeyboardNavigableCell` therefore
-re-asserts DOM focus across the next few animation frames until it has
-actually landed, giving up early if another cell has been focused in the
-meantime.
+swallows every following keypress. Two things keep that from happening:
+
+- `runAfterRowVisible` (`DataGrid.tsx`) and `runAfterRowVisibleOnPage`
+  (`FieldsBedsHierarchy.tsx`) park the focus move and run it from an effect
+  keyed on the row window's page, so it happens once React has committed the
+  new page. Timing it by a fixed number of animation frames instead raced
+  MUI's own page-change handler, which resets focus to the first cell of the
+  freshly mounted page: whichever landed last won, and when MUI won the
+  browser was left with no focused cell at all.
+- `focusKeyboardNavigableCell` then re-asserts the scroll and the focus state
+  each frame until DOM focus has actually landed on the cell (virtualization
+  can still need a scroll pass first), and keeps watching briefly afterwards
+  to take focus back if it is dropped out of the grid. A newer focus request
+  — a fresh keypress or a click — supersedes an older one immediately.
+
+**At the dataset edge the keys are still consumed.** `PageDown` on the last
+row (and the mirrored cases) resolves to no target, but the handler still
+marks the event handled instead of letting it fall through: MUI's default
+would resolve the key against its mounted page and move focus to a row this
+grid doesn't have rendered, losing focus entirely. Standing still is also what
+a spreadsheet does there.
 
 **PageUp/PageDown's step size is measured from the DOM, not from MUI's
 `apiRef.getViewportPageSize()`.** That internal helper

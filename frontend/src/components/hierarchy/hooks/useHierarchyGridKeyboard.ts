@@ -249,13 +249,17 @@ export function useHierarchyGridKeyboard({
         rows,
       });
 
-    if (!target) {
-      return false;
-    }
-
+    // Taken over even when there is nowhere left to go: at the dataset edge
+    // MUI's own handling would resolve the key against its mounted page and
+    // jump focus to a row this grid doesn't have rendered, losing focus
+    // entirely. Standing still is also what a spreadsheet does there.
     event.preventDefault();
     event.stopPropagation();
     event.defaultMuiPrevented = true;
+    if (!target) {
+      return true;
+    }
+
     rememberFocusedField(target.field);
     selectRow(target.id);
     setTreeActive(true);

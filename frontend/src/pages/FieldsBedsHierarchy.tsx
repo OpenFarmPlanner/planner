@@ -61,6 +61,7 @@ import {
   StableScrollbarTrack,
 } from "../components/data-grid";
 import {
+  cancelPendingCellFocus,
   getViewportRowPageSize,
   isInteractiveCellTarget,
   preventReadOnlyCellMouseFocus,
@@ -342,19 +343,35 @@ function FieldsBedsHierarchy({
     return hierarchyRowWindowRef.current.ensureRowIndexVisible(rowIndex);
   }, []);
 
-  // Same "page first, focus after the next paint" pattern as the deep-link
-  // highlight flow above, generalized for keyboard navigation (Home/End/
-  // PageUp/PageDown): a row on a page that isn't mounted yet doesn't exist
-  // in the DataGrid's virtualized viewport until one more render pass.
+  // "Page first, focus once the new page is committed", for keyboard
+  // navigation (Home/End/PageUp/PageDown): a row on a page that isn't mounted
+  // yet doesn't exist in the DataGrid's virtualized viewport. The action is
+  // parked and run from the effect below rather than after a fixed number of
+  // animation frames, which raced MUI's own page-change handler resetting
+  // focus to the first cell of the freshly mounted page — see
+  // docs/keyboard-architecture.md, "Continuous-scroll paging".
+  const pendingRowVisibleActionRef = useRef<(() => void) | null>(null);
+
   const runAfterRowVisibleOnPage = useCallback((rowId: GridRowId, action: () => void): void => {
     if (!ensureRowVisibleOnPage(rowId)) {
       action();
       return;
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(action);
-    });
+    pendingRowVisibleActionRef.current = action;
   }, [ensureRowVisibleOnPage]);
+
+  useEffect(() => {
+    const pendingAction = pendingRowVisibleActionRef.current;
+    if (!pendingAction) {
+      return;
+    }
+
+    pendingRowVisibleActionRef.current = null;
+    const frame = requestAnimationFrame(pendingAction);
+    return () => window.cancelAnimationFrame(frame);
+  }, [hierarchyRowWindow.page]);
+
+  useEffect(() => cancelPendingCellFocus, []);
 
   // The PageUp/PageDown step size: how many rows currently fit in the grid's
   // visible scroll viewport. Measured from the DOM rather than MUI's own

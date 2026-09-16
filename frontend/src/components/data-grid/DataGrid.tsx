@@ -120,6 +120,7 @@ import {
   hasInvalidRowInEditMode as hasInvalidRowInEditModeState,
 } from './rowValidation';
 import {
+  cancelPendingCellFocus,
   focusKeyboardNavigableCell as focusDataGridKeyboardNavigableCell,
   getDatasetEdgeKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
@@ -312,16 +313,34 @@ export function EditableDataGrid<T extends EditableRow>({
     return scrollDrivenRowWindow.ensureRowIndexVisible(rowIndex);
   }, [isContinuousScroll, rowsForGrid, scrollDrivenRowWindow]);
 
+  // A focus move that had to page the row window first is parked here and run
+  // from the effect below, once React has committed the new page. Timing it by
+  // animation frames instead raced MUI's own page-change handler, which resets
+  // focus to the first cell of the freshly mounted page: whichever landed last
+  // won, and when MUI won the browser was left with no focused cell at all.
+  const pendingRowVisibleActionRef = useRef<(() => void) | null>(null);
+
   const runAfterRowVisible = useCallback((rowId: GridRowId, action: () => void): void => {
     const changedPage = ensureRowVisible(rowId);
     if (!changedPage) {
       action();
       return;
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(action);
-    });
+    pendingRowVisibleActionRef.current = action;
   }, [ensureRowVisible]);
+
+  useEffect(() => {
+    const pendingAction = pendingRowVisibleActionRef.current;
+    if (!pendingAction) {
+      return;
+    }
+
+    pendingRowVisibleActionRef.current = null;
+    const frame = requestAnimationFrame(pendingAction);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activePaginationModel.page]);
+
+  useEffect(() => cancelPendingCellFocus, []);
 
   useEffect(() => {
     if (!import.meta.env.DEV || (!showPaginationControls && !isContinuousScroll) || loading) {
@@ -2394,13 +2413,17 @@ export function EditableDataGrid<T extends EditableRow>({
         rows: rowsForGrid,
       });
 
-    if (!target) {
-      return false;
-    }
-
+    // Taken over even when there is nowhere left to go: at the dataset edge
+    // MUI's own handling would resolve the key against its mounted page and
+    // jump focus to a row this grid doesn't have rendered, losing focus
+    // entirely. Standing still is also what a spreadsheet does there.
     event.preventDefault();
     event.stopPropagation();
     event.defaultMuiPrevented = true;
+    if (!target) {
+      return true;
+    }
+
     runAfterRowVisible(target.id, () => {
       focusDataGridKeyboardNavigableCell<T>({
         api: gridApiRef.current,

@@ -561,50 +561,107 @@ export function getViewModeNavigationRequest(
 }
 
 /**
- * Number of animation frames `enforceDomCellFocus` keeps retrying for. Thirty
- * frames (~500ms at 60fps) covers a row-window page swap on a loaded machine,
- * while still giving up quickly enough that a target that never mounts can't
- * keep chasing focus.
+ * Number of animation frames `settleCellFocus` keeps retrying for before focus
+ * has landed. Thirty frames (~500ms at 60fps) covers a row-window page swap
+ * plus the scroll and virtualization pass behind it on a loaded machine, while
+ * still giving up quickly enough that a target that never mounts can't keep
+ * chasing focus.
  */
-const DOM_CELL_FOCUS_RETRY_FRAMES = 30;
+const CELL_FOCUS_RETRY_FRAMES = 30;
 
 /**
- * Keeps the browser's DOM focus in step with the grid's own focus state.
- * `setCellFocus` only updates that state — the cell element takes DOM focus
- * when MUI renders it. When the target row lives on a row-window page that is
- * still being mounted, the element doesn't exist yet at that moment, the
- * browser leaves focus on `<body>`, and every following keypress is lost even
- * though the cell keeps the roving `tabindex="0"` that says it is focused.
- * Retries across the next few frames until focus has actually landed.
+ * Number of frames `settleCellFocus` keeps watching *after* focus has landed.
+ * MUI's page-change handler resets focus to the first cell of the newly
+ * mounted page, which can arrive several frames after our move looked
+ * finished and drops DOM focus out of the grid entirely.
  */
-function enforceDomCellFocus<Row extends GridValidRowModel>(
+const CELL_FOCUS_HOLD_FRAMES = 30;
+
+/**
+ * True when nothing in the grid holds DOM focus any more — the state MUI's
+ * page-change reset leaves behind. Focus that moved to another cell is a
+ * deliberate move (a click, a newer navigation) and is left alone.
+ */
+function focusWasDroppedOutsideGrid(cellElement: HTMLElement): boolean {
+  const activeElement = cellElement.ownerDocument.activeElement;
+  return !activeElement
+    || activeElement === cellElement.ownerDocument.body
+    || !activeElement.closest('[role="grid"]');
+}
+
+/**
+ * Identifies the most recent focus request. A retry loop belonging to an older
+ * request stops as soon as a newer one starts, so a fresh keypress or click
+ * always wins over a move still settling from before.
+ */
+let latestCellFocusRequest = 0;
+
+function requestCellFocusState<Row extends GridValidRowModel>(
   api: DataGridNavigationApi<Row>,
   cell: CellLocation,
-  remainingFrames: number,
 ): void {
+  scrollCellIntoView(api, cell);
+  api.setCellFocus?.(cell.id, cell.field);
+}
+
+/**
+ * Drives a focus move to completion against a virtualized, internally paged
+ * grid. `setCellFocus` only updates the grid's own focus state, and the cell
+ * element takes DOM focus when MUI renders it — which it cannot do while the
+ * target row's page is still being mounted or the row is still outside the
+ * scrolled viewport. Left at one attempt, the browser keeps focus on `<body>`
+ * (or on the cell the user came from) while the grid's focus state points at
+ * an unrendered row, so no cell carries the roving `tabindex="0"` and every
+ * following keypress is swallowed. Re-asserting the scroll and the focus
+ * state each frame also outlasts MUI's own page-change handler, which resets
+ * focus to the first cell of the newly mounted page.
+ */
+function settleCellFocus<Row extends GridValidRowModel>(
+  api: DataGridNavigationApi<Row>,
+  cell: CellLocation,
+  request: number,
+  framesUntilLanded: number,
+  framesAfterLanded: number,
+): void {
+  if (request !== latestCellFocusRequest || typeof window.requestAnimationFrame !== 'function') {
+    return;
+  }
+  if (framesUntilLanded <= 0 && framesAfterLanded <= 0) {
+    return;
+  }
+
   const cellElement = api.getCellElement?.(cell.id, cell.field) ?? null;
-  if (cellElement) {
-    if (!cellElement.contains(document.activeElement)) {
-      cellElement.focus({ preventScroll: true });
-    }
-    if (cellElement.contains(document.activeElement)) {
-      return;
-    }
+  if (cellElement
+    && !cellElement.contains(document.activeElement)
+    && (framesUntilLanded > 0 || focusWasDroppedOutsideGrid(cellElement))) {
+    cellElement.focus({ preventScroll: true });
   }
 
-  // Someone else (a click, another navigation) has claimed a different cell in
-  // the meantime — that wins over a focus move this one asked for earlier.
-  if (document.activeElement?.closest('[role="gridcell"]')) {
+  if (cellElement?.contains(document.activeElement)) {
+    window.requestAnimationFrame(() => {
+      settleCellFocus(api, cell, request, 0, framesAfterLanded - 1);
+    });
     return;
   }
 
-  if (remainingFrames <= 0 || typeof window.requestAnimationFrame !== 'function') {
+  if (framesUntilLanded <= 0) {
+    // Past the initial budget, focus sitting on another cell is someone
+    // else's — only a focus this move dropped is worth taking back.
     return;
   }
 
+  requestCellFocusState(api, cell);
   window.requestAnimationFrame(() => {
-    enforceDomCellFocus(api, cell, remainingFrames - 1);
+    settleCellFocus(api, cell, request, framesUntilLanded - 1, framesAfterLanded);
   });
+}
+
+/**
+ * Drops any focus move still settling. Grids call this when they unmount, so a
+ * retry loop can't keep reaching for a cell of a grid that is gone.
+ */
+export function cancelPendingCellFocus(): void {
+  latestCellFocusRequest += 1;
 }
 
 export function focusKeyboardNavigableCell<Row extends GridValidRowModel>({
@@ -616,13 +673,13 @@ export function focusKeyboardNavigableCell<Row extends GridValidRowModel>({
     return;
   }
 
-  scrollCellIntoView(api, cell);
-  api.setCellFocus(cell.id, cell.field);
+  latestCellFocusRequest += 1;
+  requestCellFocusState(api, cell);
 
   if (!focusEditInput) {
     // The editor path below runs its own focus retries into the cell's input,
     // so only the view-mode path needs the cell element itself chased down.
-    enforceDomCellFocus(api, cell, DOM_CELL_FOCUS_RETRY_FRAMES);
+    settleCellFocus(api, cell, latestCellFocusRequest, CELL_FOCUS_RETRY_FRAMES, CELL_FOCUS_HOLD_FRAMES);
     return;
   }
 
