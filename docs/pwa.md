@@ -133,12 +133,13 @@ from that worker itself being the stale part.
 `src/pwa/ConnectionStatusIndicator.tsx`, fed by `useOnlineStatus`
 (`navigator.onLine` through `useSyncExternalStore`).
 
-- **Full topbar** — always rendered at a fixed 36px in the trailing status
-  cluster: muted when online, `error.main` when not. Always-rendered so the
-  state change recolours an icon instead of reflowing the trailing controls.
-- **Compact topbar** — rendered only while offline. That topbar already folded
-  the notification bell into the "Mehr" menu for space, so a permanent status
-  icon does not fit; the offline state is when it earns its place.
+- **Full topbar** — not rendered here; the always-visible icon in the trailing
+  status cluster was removed as noise once online (it only ever needs to say
+  something when the connection is actually lost).
+- **Compact topbar** — rendered only while offline, via `hideWhenOnline`. That
+  topbar already folded the notification bell into the "Mehr" menu for space,
+  so a permanent status icon does not fit; the offline state is when it earns
+  its place.
 
 It reports the browser's *link* state, not backend reachability. The wording
 is about the connection, never about the server.

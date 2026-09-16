@@ -1329,13 +1329,12 @@ function RootLayout() {
             </Menu>
           ) : null}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_OVERFLOW_MENU_GAP, ml: TOPBAR_ACTION_GROUP_GAP, flexShrink: 0 }}>
-          {/* Connection indicator, season switcher, project switcher, and the
-              notification bell read as one "status" cluster — tighter gap than
-              the group's own separation from the primary action button before
-              it (this Box's ml plus the action group's pr) and from the "Mehr"
-              overflow menu after it. */}
+          {/* Season switcher, project switcher, and the notification bell
+              read as one "status" cluster — tighter gap than the group's own
+              separation from the primary action button before it (this Box's
+              ml plus the action group's pr) and from the "Mehr" overflow menu
+              after it. */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_STATUS_CLUSTER_GAP }}>
-          <ConnectionStatusIndicator size={TOPBAR_STATUS_ICON_SIZE} />
           {hasActiveProject ? (
             <SeasonSwitcher
               controller={activeSeason}

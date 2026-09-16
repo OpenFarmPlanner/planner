@@ -96,9 +96,10 @@ npm run preview          # http://localhost:4173
 4. **Network** — reload and confirm the bundle rows say *(ServiceWorker)* in
    the Size column while `/api/...` rows still show a real transfer size.
 5. **Offline** — tick DevTools' *Offline* box (Network tab, or Service
-   Workers → Offline). The topbar indicator turns into a red crossed-out wifi
-   icon within a second. Reloading the page will **not** work; that is the
-   documented scope, not a bug.
+   Workers → Offline). On a narrow/compact topbar a red crossed-out wifi icon
+   appears within a second (the full desktop topbar shows no indicator at
+   all, online or offline — it was removed as noise). Reloading the page
+   will **not** work; that is the documented scope, not a bug.
 6. **Install** — the install icon in the address bar, or ⋮ → *Cast, save and
    share* → *Install page as app*. The installed window opens on the
    dashboard with no browser chrome.
