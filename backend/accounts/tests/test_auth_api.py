@@ -28,7 +28,7 @@ from accounts.models import (
     PublicProfile,
 )
 from accounts.throttling import EmailDomainRateThrottle
-from accounts.views import RegisterView
+from accounts.views import LoginView, RegisterView
 from farm.models import Crop, Location, Project, ProjectMembership, PublicCrop
 
 User = get_user_model()
@@ -1217,3 +1217,41 @@ class RegistrationAbuseThrottleTests(APITestCase):
             )
             self.assertEqual(blocked_response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
             self.assertFalse(User.objects.filter(email='domain-capped-2@same-domain-example.com').exists())
+
+    @override_settings(THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP='100000/hour')
+    def test_per_email_domain_throttle_does_not_apply_to_login(self) -> None:
+        """The domain throttle is a global default throttle class, so it would
+        otherwise also count logins: every user sharing a domain (a company
+        domain, gmail.com, or the e2e fixture domain) would then lock each
+        other out of the login endpoint after a handful of sign-ins."""
+        password = 'new-safe-password-123'
+        user = User.objects.create_user(
+            username='login-domain',
+            email='login-domain@same-domain-example.com',
+            password=password,
+            is_active=True,
+        )
+
+        domain_rates = {
+            **settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'],
+            'auth_login': '100000/minute',
+            'auth_register_domain': '2/hour',
+        }
+        with (
+            override_settings(
+                REST_FRAMEWORK={
+                    **settings.REST_FRAMEWORK,
+                    'DEFAULT_THROTTLE_RATES': domain_rates,
+                },
+            ),
+            patch.object(ScopedRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(EmailDomainRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(LoginView, 'throttle_classes', [ScopedRateThrottle, EmailDomainRateThrottle]),
+        ):
+            for _attempt in range(4):
+                response = self.client.post(
+                    '/openfarmplanner/api/auth/login/',
+                    {'email': user.email, 'password': password},
+                    format='json',
+                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)

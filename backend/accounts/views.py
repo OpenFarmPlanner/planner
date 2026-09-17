@@ -144,6 +144,8 @@ class CsrfTokenView(APIView):
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_register'
+    # Opts this view into the globally registered EmailDomainRateThrottle.
+    throttle_email_domain = True
 
     def post(self, request: Request) -> Response:
         # Honeypot: only automated clients fill this hidden field. Respond as

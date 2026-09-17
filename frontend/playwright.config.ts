@@ -55,6 +55,14 @@ export default defineConfig({
         THROTTLE_AUTH_REGISTER: '1000/minute',
         GUEST_DEMO_THROTTLE_RATE: '1000/minute',
         THROTTLE_INVITATION_ACCEPT: '1000/hour',
+        // Every fixture account is created moments before it is used, so all of
+        // them sit at the "new" trust level and share the same per-account write
+        // ceiling. A spec that reuses one deterministic scenario user across many
+        // write-heavy tests would otherwise exhaust the production default.
+        THROTTLE_WRITE_NEW_ACCOUNT: '100000/hour',
+        // Fixture emails all share one domain, so the registration domain bucket
+        // is a single bucket for the whole suite.
+        THROTTLE_AUTH_REGISTER_DOMAIN: '100000/hour',
       },
     },
     {

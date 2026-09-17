@@ -14,12 +14,21 @@ class EmailDomainRateThrottle(SimpleRateThrottle):
 
     Complements the IP-scoped `auth_register` throttle: an attacker rotating
     IPs but reusing one throwaway-domain family is still bounded.
+
+    This runs as a global default throttle class, so it must opt in per view:
+    only views setting `throttle_email_domain = True` are covered. Without
+    that gate every endpoint taking an `email` in its body (login, password
+    reset, resend activation) would share one domain-wide bucket, and all
+    users behind a common domain would lock each other out.
     """
 
     scope = 'auth_register_domain'
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
         from accounts.serializers import normalize_email_lower
+
+        if not getattr(view, 'throttle_email_domain', False):
+            return None
 
         email = request.data.get('email') if hasattr(request, 'data') else None
         if not email:
