@@ -558,6 +558,9 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'public_crop',
+            'kind',
+            'origin_api',
+            'origin_declared_agent',
             'summary',
             'proposed_data',
             'status',
@@ -571,6 +574,9 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'public_crop',
+            'kind',
+            'origin_api',
+            'origin_declared_agent',
             'status',
             'proposed_by_label',
             'reviewed_by_label',

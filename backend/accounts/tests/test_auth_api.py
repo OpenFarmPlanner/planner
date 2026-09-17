@@ -6,15 +6,18 @@ from datetime import timedelta
 from io import StringIO
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import override_settings
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.consent import CURRENT_VERSIONS
 from accounts.models import (
@@ -24,6 +27,8 @@ from accounts.models import (
     PendingActivation,
     PublicProfile,
 )
+from accounts.throttling import EmailDomainRateThrottle
+from accounts.views import RegisterView
 from farm.models import Crop, Location, Project, ProjectMembership, PublicCrop
 
 User = get_user_model()
@@ -200,6 +205,54 @@ class AuthApiTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('password_confirm', response.data)
+
+    def test_registration_rejects_disposable_email_domain(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/auth/register/',
+            {
+                'email': 'throwaway@mailinator.com',
+                'password': 'new-safe-password-123',
+                'password_confirm': 'new-safe-password-123',
+                'accept_terms': True,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertFalse(User.objects.filter(email='throwaway@mailinator.com').exists())
+
+    def test_registration_honeypot_field_silently_discards_submission(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/auth/register/',
+            {
+                'email': 'bot@example.com',
+                'password': 'new-safe-password-123',
+                'password_confirm': 'new-safe-password-123',
+                'accept_terms': True,
+                'website': 'https://spam.example.com',
+            },
+            format='json',
+        )
+        # A bot filling the hidden honeypot field must see the same success
+        # response a real registration would get, and no account is created.
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(User.objects.filter(email='bot@example.com').exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_registration_ignores_blank_honeypot_field(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/auth/register/',
+            {
+                'email': 'real-user@example.com',
+                'password': 'new-safe-password-123',
+                'password_confirm': 'new-safe-password-123',
+                'accept_terms': True,
+                'website': '',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email='real-user@example.com').exists())
 
     def test_login_required_field_error_is_localized_to_german(self) -> None:
         response = self.client.post(
@@ -1082,3 +1135,85 @@ class ConsentApiTest(APITestCase):
         )
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         self.assertEqual(login_response.data['pending_consents'], [])
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', FRONTEND_URL='http://localhost:5173')
+class RegistrationAbuseThrottleTests(APITestCase):
+    """DRF scoped throttling is disabled in test settings (config/settings_test.py)
+    by default, so these tests re-enable exactly the throttle classes they exercise,
+    following the pattern in test_guest_demo.py's `enabled_scoped_throttling`."""
+
+    def setUp(self) -> None:
+        cache.clear()
+
+    @override_settings(THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP='2/hour')
+    def test_per_ip_success_cap_blocks_after_limit_reached(self) -> None:
+        for index in range(2):
+            response = self.client.post(
+                '/openfarmplanner/api/auth/register/',
+                {
+                    'email': f'ip-capped-{index}@example.com',
+                    'password': 'new-safe-password-123',
+                    'password_confirm': 'new-safe-password-123',
+                    'accept_terms': True,
+                },
+                format='json',
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        blocked_response = self.client.post(
+            '/openfarmplanner/api/auth/register/',
+            {
+                'email': 'ip-capped-2@example.com',
+                'password': 'new-safe-password-123',
+                'password_confirm': 'new-safe-password-123',
+                'accept_terms': True,
+            },
+            format='json',
+        )
+        self.assertEqual(blocked_response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertFalse(User.objects.filter(email='ip-capped-2@example.com').exists())
+
+    @override_settings(THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP='100000/hour')
+    def test_per_email_domain_throttle_blocks_repeated_domain(self) -> None:
+        domain_rates = {
+            **settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'],
+            'auth_register': '100000/minute',
+            'auth_register_domain': '2/hour',
+        }
+        with (
+            override_settings(
+                REST_FRAMEWORK={
+                    **settings.REST_FRAMEWORK,
+                    'DEFAULT_THROTTLE_RATES': domain_rates,
+                },
+            ),
+            patch.object(ScopedRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(EmailDomainRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(RegisterView, 'throttle_classes', [ScopedRateThrottle, EmailDomainRateThrottle]),
+        ):
+            for index in range(2):
+                response = self.client.post(
+                    '/openfarmplanner/api/auth/register/',
+                    {
+                        'email': f'domain-capped-{index}@same-domain-example.com',
+                        'password': 'new-safe-password-123',
+                        'password_confirm': 'new-safe-password-123',
+                        'accept_terms': True,
+                    },
+                    format='json',
+                )
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+            blocked_response = self.client.post(
+                '/openfarmplanner/api/auth/register/',
+                {
+                    'email': 'domain-capped-2@same-domain-example.com',
+                    'password': 'new-safe-password-123',
+                    'password_confirm': 'new-safe-password-123',
+                    'accept_terms': True,
+                },
+                format='json',
+            )
+            self.assertEqual(blocked_response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+            self.assertFalse(User.objects.filter(email='domain-capped-2@same-domain-example.com').exists())

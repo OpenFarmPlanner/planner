@@ -14,6 +14,7 @@ from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import permissions, serializers, status
+from rest_framework.exceptions import Throttled
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -58,6 +59,7 @@ from .serializers import (
     ResendActivationSerializer,
     UserSerializer,
 )
+from .registration_abuse import record_registration_success, registration_ip_limit_exceeded
 from .services import (
     _clear_activation_expiry,
     _decode_uid,
@@ -144,9 +146,22 @@ class RegisterView(APIView):
     throttle_scope = 'auth_register'
 
     def post(self, request: Request) -> Response:
+        # Honeypot: only automated clients fill this hidden field. Respond as
+        # if registration succeeded so a bot cannot distinguish this from a
+        # real success and adjust its behavior.
+        if str(request.data.get('website', '')).strip():
+            logger.info('Discarded honeypot-triggered registration attempt')
+            return Response({'detail': _registration_success_message()}, status=status.HTTP_201_CREATED)
+
+        client_ip = request.META.get('REMOTE_ADDR')
+        if client_ip and registration_ip_limit_exceeded(client_ip):
+            raise Throttled()
+
         serializer = RegisterSerializer(data=request.data)
         _validate_serializer_in_german(serializer)
         user = serializer.save()
+        if client_ip:
+            record_registration_success(client_ip)
         _set_activation_expiry(user)
         try:
             _send_activation_email(user)

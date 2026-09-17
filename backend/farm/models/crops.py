@@ -913,6 +913,7 @@ class PublicCrop(TimestampedModel):
     REMOVAL_REASON_WRONG_MAPPING = 'wrong_mapping'
     REMOVAL_REASON_UNLAWFUL_CONTENT = 'unlawful_content'
     REMOVAL_REASON_SPECIES_REJECTED = 'species_rejected'
+    REMOVAL_REASON_PROPOSAL_REJECTED = 'proposal_rejected'
     REMOVAL_REASON_OTHER = 'other'
     REMOVAL_REASON_CHOICES = [
         (REMOVAL_REASON_ACCIDENTAL, 'Accidental publication'),
@@ -924,6 +925,10 @@ class PublicCrop(TimestampedModel):
         # when a moderator rejects the crop species a crop is published
         # under, see crops.services.remove_public_crops_for_rejected_species.
         (REMOVAL_REASON_SPECIES_REJECTED, 'Crop species rejected'),
+        # System-applied only: set when a moderator rejects a still-draft
+        # new-publish PublicCropChangeProposal (never any other entry's
+        # status), see farm.services.public_crops.reject_new_publish_proposal.
+        (REMOVAL_REASON_PROPOSAL_REJECTED, 'New-publish proposal rejected'),
         (REMOVAL_REASON_OTHER, 'Other'),
     ]
 
@@ -1159,7 +1164,15 @@ class PublicCropDiscussionComment(models.Model):
 
 
 class PublicCropChangeProposal(models.Model):
-    """Reviewed edit proposal for a shared crop-library entry."""
+    """Reviewed edit proposal for a shared crop-library entry.
+
+    Originally an edit-only queue (`KIND_EDIT`); extended to also cover a
+    brand-new publish (`KIND_NEW_PUBLISH`), where `public_crop` points at a
+    `PublicCrop` row created with `status=STATUS_DRAFT` — invisible everywhere
+    else until a moderator approves the proposal and the entry is published.
+    See docs/account-trust-levels.md and the "Legacy reviewed change
+    proposals" section of docs/crop-library-architecture.md.
+    """
 
     STATUS_PENDING = 'pending'
     STATUS_APPROVED = 'approved'
@@ -1170,7 +1183,23 @@ class PublicCropChangeProposal(models.Model):
         (STATUS_REJECTED, 'Rejected'),
     ]
 
+    KIND_EDIT = 'edit'
+    KIND_NEW_PUBLISH = 'new_publish'
+    KIND_CHOICES = [
+        (KIND_EDIT, 'Edit'),
+        (KIND_NEW_PUBLISH, 'New publish'),
+    ]
+
     public_crop = models.ForeignKey(PublicCrop, on_delete=models.CASCADE, related_name='change_proposals')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_EDIT)
+    origin_api = models.BooleanField(
+        default=False,
+        help_text='Whether this proposal was created through a ProjectApiToken-authenticated request.',
+    )
+    origin_declared_agent = models.BooleanField(
+        default=False,
+        help_text='Whether the request self-declared as an automated/agent client (X-Client-Declared-Type).',
+    )
     summary = models.CharField(max_length=240)
     proposed_data = models.JSONField(default=dict, blank=True, encoder=DjangoJSONEncoder)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)

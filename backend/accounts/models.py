@@ -185,6 +185,41 @@ class PublicProfile(models.Model):
         return f'Public profile for {identifier}'
 
 
+class AccountTrustProfile(models.Model):
+    """Tracks the anti-abuse trust level of an account.
+
+    A brand-new account starts at ``TRUST_NEW``: stricter write throttling
+    (see ``accounts.throttling.TrustAwareWriteRateThrottle``) and every public
+    crop-library contribution forced into the moderation queue regardless of
+    the existing direct-edit workflow (see
+    ``crops.permissions.requires_moderation_queue``). The transition to
+    ``TRUST_ESTABLISHED`` is decided by ``accounts.trust.resolve_trust_level``,
+    not by this model directly, so the eligibility rule stays a single,
+    testable function. See docs/account-trust-levels.md.
+    """
+
+    TRUST_NEW = 'new'
+    TRUST_ESTABLISHED = 'established'
+    TRUST_LEVEL_CHOICES = [
+        (TRUST_NEW, 'New'),
+        (TRUST_ESTABLISHED, 'Established'),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='trust_profile',
+    )
+    trust_level = models.CharField(max_length=20, choices=TRUST_LEVEL_CHOICES, default=TRUST_NEW)
+    established_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        identifier = getattr(self.user, 'email', '') or getattr(self.user, 'username', '')
+        return f'{identifier} ({self.trust_level})'
+
+
 class AccountEmailChangeRequest(models.Model):
     """Stores pending email-change requests that require token confirmation."""
 

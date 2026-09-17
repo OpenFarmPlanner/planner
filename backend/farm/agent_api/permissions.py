@@ -35,6 +35,23 @@ def get_request_api_token(request) -> ProjectApiToken | None:
     return auth if isinstance(auth, ProjectApiToken) else None
 
 
+DECLARED_CLIENT_TYPE_HEADER = 'HTTP_X_CLIENT_DECLARED_TYPE'
+DECLARED_AGENT_CLIENT_TYPE = 'agent'
+
+
+def client_declared_as_agent(request) -> bool:
+    """Whether this request opted into declaring itself an automated/agent client.
+
+    Purely a self-declaration honored for its own incentive (see
+    docs/agent-api.md and docs/account-trust-levels.md): a declared client
+    gets a higher token rate-limit ceiling and its crop-library submissions
+    are flagged for moderators as `origin_declared_agent`, never trusted for
+    anything security-relevant.
+    """
+    header_value = request.META.get(DECLARED_CLIENT_TYPE_HEADER, '')
+    return header_value.strip().lower() == DECLARED_AGENT_CLIENT_TYPE
+
+
 def _resolve_action(request, view) -> str:
     """Return the allowlist key for this request.
 
