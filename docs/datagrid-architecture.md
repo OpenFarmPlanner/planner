@@ -73,6 +73,8 @@ frontend/src/components/data-grid/
   useContinuousScrollSizing.ts,
   continuousScrollLayout.ts             how tall the grid may be in
                                         scrollMode="continuous" (see below)
+  ../TruncatedTextWithTooltip.tsx       ellipsised single-line text + its
+                                        overflow tooltip, in one element
   ../OverflowTooltip.tsx                overflow-only desktop tooltip wrapper
   ../AppTooltip.tsx                     the app's Tooltip (context-menu aware)
   tableClipboard.ts, TableCopyMenuItems.tsx   copy row/table as TSV
@@ -429,8 +431,9 @@ Tooltip surfaces subscribe to it and suppress themselves while it is set:
 
 - `components/AppTooltip.tsx` is the app's tooltip and the only place allowed
   to import MUI's `Tooltip` (enforced by `no-restricted-imports` in
-  `eslint.config.js`). `OverflowTooltip`, `FullCellTooltip`,
-  `DropdownAwareTooltip` and `ContextMenuIndicator` all build on it.
+  `eslint.config.js`). `OverflowTooltip` (and through it
+  `TruncatedTextWithTooltip`), `FullCellTooltip`, `DropdownAwareTooltip` and
+  `ContextMenuIndicator` all build on it.
 - the Gantt task tooltip (`gantt-chart/src/components/ui/Tooltip.tsx`)
 - the notes preview popover (`useNotesPreview.ts`)
 
@@ -632,7 +635,50 @@ measures the hovered/focused element only on fine-pointer desktop
 interaction (and while the active element resizes) and shows the full text
 only when the element actually overflows. This keeps desktop truncation
 recoverable without adding hover-equivalent popovers or tap targets on
-mobile/touch surfaces. Explanatory tooltips remain separate: icon labels,
+mobile/touch surfaces.
+
+**Reach for `components/TruncatedTextWithTooltip.tsx` first.** The two
+halves — `overflow/textOverflow/whiteSpace` and the overflow tooltip — are
+one decision, and splitting them is how a cell ends up ellipsised with no
+way to read the hidden text. The component renders a `Box` carrying the
+truncation styles wrapped in `OverflowTooltip`, takes the full string as
+`text`, and merges any extra `sx`, so a call site only states what is
+specific to it:
+
+```tsx
+<TruncatedTextWithTooltip text={name} sx={{ width: '100%' }} />
+```
+
+It is used by the shared column builders (`columns.tsx`), the default
+column header (`dataGridUtils.tsx`), the inline-row-action cell
+(`DataGrid.tsx`) and the Anbauflächen name cell
+(`hierarchy/hierarchyNameCell.tsx`), and outside tables by the topbar
+project switcher, the season switcher and the varieties comparison table.
+
+Two limits are deliberate, not oversights:
+
+- **The inline-row-action cell only wraps plain text.** When a column
+  supplies its own `renderCell`, that cell may already render a
+  `TruncatedTextWithTooltip` of its own — the select column builders do —
+  and two tooltips on the same text is worse than one. So the outer wrapper
+  passes an empty title there and the column owns its own affordance.
+- **The tooltip opens on hover, and on focus only where the text is
+  focusable.** `OverflowTooltip` binds focus to the element it wraps, and a
+  focus event on an enclosing button, `MenuItem` or grid cell does not reach
+  a `span` inside it. Pass `focusable` to put the text in the tab order and
+  get the keyboard reveal; it is off by default because turning it on
+  everywhere would add a tab stop per label rather than fix that. On touch
+  there is no reveal at all, by design (see above).
+
+Where the truncated element must stay a specific MUI component — a
+`Typography`, whose `variant` carries theme typography the wrapper's plain
+`Box` would drop, and which already truncates via `noWrap` — wrap that
+element in `OverflowTooltip` directly instead. That is the only reason to
+use the wrapper by hand; the topbar page title, the Anbaukalender title,
+the graphical-fields location title and the crop title selector do exactly
+that.
+
+Explanatory tooltips remain separate: icon labels,
 calculated-column explanations, unavailable-value reasons, note previews,
 and package/blocker diagnostics should still use their dedicated tooltip or
 popover components — all of which render through `AppTooltip`, so they hide

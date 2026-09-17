@@ -94,6 +94,7 @@ import {
 } from "./graphicalFieldsGeometry";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { AppTooltip } from '../components/AppTooltip';
+import { OverflowTooltip } from '../components/OverflowTooltip';
 
 /** Gap used when auto-arranging beds that do not yet have a saved layout. */
 const BED_AUTO_LAYOUT_GAP = DEFAULT_PLACEMENT_SPACING;
@@ -1037,17 +1038,20 @@ export default function GraphicalFields({
                     pr: 1,
                   }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      minWidth: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {t("fields:graphical.locationTitle", { name: location.name })}
-                  </Typography>
+                  <OverflowTooltip title={t("fields:graphical.locationTitle", { name: location.name })}>
+                    <Typography
+                      variant="h6"
+                      noWrap
+                      sx={{
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {t("fields:graphical.locationTitle", { name: location.name })}
+                    </Typography>
+                  </OverflowTooltip>
                   {!globalEditMode ? (
                     <>
                       <AppTooltip

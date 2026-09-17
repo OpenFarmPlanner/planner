@@ -1,6 +1,7 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Typography, type SxProps, type Theme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { OverflowTooltip } from '../components/OverflowTooltip';
 
 interface CropTitleSelectorButtonProps {
   title: string;
@@ -44,24 +45,26 @@ export function CropTitleSelectorButton({
       }}
       aria-label={ariaLabel}
     >
-      <Typography
-        data-testid="crop-title-selector-label"
-        component="span"
-        noWrap
-        sx={[
-          {
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            fontSize: '1.25rem',
-            lineHeight: 1.2,
-            fontWeight: 600,
-          },
-          ...(Array.isArray(titleSx) ? titleSx : [titleSx]),
-        ]}
-      >
-        {title}
-      </Typography>
+      <OverflowTooltip title={title}>
+        <Typography
+          data-testid="crop-title-selector-label"
+          component="span"
+          noWrap
+          sx={[
+            {
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontSize: '1.25rem',
+              lineHeight: 1.2,
+              fontWeight: 600,
+            },
+            ...(Array.isArray(titleSx) ? titleSx : [titleSx]),
+          ]}
+        >
+          {title}
+        </Typography>
+      </OverflowTooltip>
       <ExpandMoreIcon data-testid="crop-title-selector-chevron" sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
     </Box>
   );

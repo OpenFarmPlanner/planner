@@ -12,6 +12,7 @@ import {
   type NameCellCallbacks,
 } from './hierarchyColumnShared';
 import { AppTooltip } from '../AppTooltip';
+import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 
 const EXPAND_ICON_SLOT_SIZE = 32;
 
@@ -101,13 +102,11 @@ export function renderNameCell(
           callbacks.onOpenContextMenu(event, row);
         }}
       >
-        <Box
-          component="span"
+        <TruncatedTextWithTooltip
+          text={String(params.value ?? '')}
           data-testid="hierarchy-name-text"
           sx={{
-            display: 'block',
             flex: '1 1 auto',
-            minWidth: 0,
             width: '100%',
             maxWidth: 'none',
             boxSizing: 'border-box',
@@ -117,13 +116,8 @@ export function renderNameCell(
             bgcolor: 'transparent',
             borderRadius: 0.5,
             px: row.type === 'bed' ? 0.5 : 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
           }}
-        >
-          {params.value}
-        </Box>
+        />
 
         {persistentContextMenuButton}
 

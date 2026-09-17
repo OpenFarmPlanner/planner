@@ -157,6 +157,7 @@ export type {
   NotesFieldConfig,
 } from './types';
 import { AppTooltip } from '../AppTooltip';
+import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import {
   isSelectEditMenuCloseOutsideElement,
   isSelectEditMenuEscapeClose,
@@ -1916,22 +1917,20 @@ export function EditableDataGrid<T extends EditableRow>({
           overflow: 'hidden',
         }}
       >
-        <Box
-          sx={{
-            display: 'block',
-            flex: '1 1 auto',
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
+        {/* Only a column without its own renderCell gets the overflow tooltip
+            here: a custom renderCell may already render one (the select column
+            builders do), and nesting two tooltips on the same text is worse
+            than none. Such a column owns its own truncation affordance. */}
+        <TruncatedTextWithTooltip
+          text={typeof baseContent === 'string' ? baseContent : ''}
+          sx={{ flex: '1 1 auto' }}
         >
           {hasEmptyTextContent ? (
             <Box component="span" aria-hidden="true" sx={{ visibility: 'hidden' }}>
               {'\u00a0'}
             </Box>
           ) : baseContent}
-        </Box>
+        </TruncatedTextWithTooltip>
         <Box
           className="ofp-inline-row-actions"
           sx={{

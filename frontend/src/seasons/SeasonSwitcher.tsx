@@ -44,6 +44,7 @@ import { SEASON_SWITCHER_EMOJI } from '../navigation/navigationIconEmoji';
 import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
 import { DeleteUndoSnackbar } from '../components/data-grid';
 import { extractApiErrorMessage } from '../api/errors';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 interface SeasonSwitcherProps {
   controller: UseActiveSeasonReturn;
@@ -577,9 +578,7 @@ export function SeasonSwitcher({
         startIcon={!isPhone ? <NavEmojiIcon emoji={SEASON_SWITCHER_EMOJI} /> : undefined}
         endIcon={!isPhone ? <KeyboardArrowDownIcon fontSize="small" /> : undefined}
       >
-        <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {activeSeason?.label ?? '–'}
-        </Box>
+        <TruncatedTextWithTooltip text={activeSeason?.label ?? '–'} />
       </Button>
 
       <Menu

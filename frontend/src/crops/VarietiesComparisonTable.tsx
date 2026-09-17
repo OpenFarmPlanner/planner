@@ -1,5 +1,4 @@
 import {
-  Box,
   Table,
   TableBody,
   TableCell,
@@ -11,6 +10,7 @@ import type { Crop } from '../api/types';
 import { useTranslation } from '../i18n';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import TableSurface from '../components/layout/TableSurface';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 import { getComparisonCellValue, getVaryingComparisonFields } from './varietyComparisonFields';
 
 interface VarietyRow {
@@ -109,21 +109,15 @@ export function VarietiesComparisonTable({
                 })}
               >
                 <TableCell sx={stickyNameCellSx}>
-                  <Box
-                    component="span"
+                  <TruncatedTextWithTooltip
+                    text={label}
                     sx={{
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
                       [`.variety-row:hover &, ${VARIETY_ROW_KEYBOARD_FOCUS_SELECTOR}`]: {
                         color: 'primary.main',
                         textDecoration: 'underline',
                       },
                     }}
-                  >
-                    {label}
-                  </Box>
+                  />
                 </TableCell>
                 {showNoDifferencesNotice ? (
                   <TableCell sx={{ color: 'text.secondary' }}>
