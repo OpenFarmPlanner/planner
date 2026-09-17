@@ -269,10 +269,6 @@
           "title": "Service scope",
           "content": "OpenFarmPlanner provides digital planning functions as a hosted web application."
         },
-        "contractLanguage": {
-          "title": "Contract language",
-          "content": "These Terms of Service may be provided in several language versions. The German version is the original and prevails in the event of differences between language versions."
-        },
         "accounts": {
           "title": "User accounts",
           "content": "A user account is required to use the application. You are obliged to provide truthful information during registration and to keep your password confidential.\n\nYou are responsible for all activities carried out through your user account. Please inform us immediately at info@openfarmplanner.org if you suspect that someone has gained unauthorized access to your account. A user account is personal and non-transferable."
@@ -326,6 +322,10 @@
         "changes": {
           "title": "Changes to these Terms of Service",
           "content": "We update these Terms of Service if the offered functions or legal framework change. The version published within the application at the time of your use is authoritative; the date of the last change can be found at the top of this page. In the event of material changes, we will inform active users in an appropriate way, for example by email or through a notice in the application."
+        },
+        "languageVersions": {
+          "title": "Language versions",
+          "content": "This document is provided in German and English. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
         }
       }
     }

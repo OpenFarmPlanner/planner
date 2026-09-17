@@ -32,7 +32,7 @@ describe('TermsOfServicePage', () => {
     expect(sectionHeadings[0].textContent).toMatch(/^1\./);
   });
 
-  it('identifies the provider, service scope, and contract language', () => {
+  it('identifies the provider, service scope, and authoritative language version', () => {
     renderTermsOfServicePage();
 
     expect(screen.getByRole('heading', { name: /Anbieter und Kontakt/ })).toBeInTheDocument();
@@ -45,10 +45,11 @@ describe('TermsOfServicePage', () => {
     expect(screen.queryByText(/gesonderter Bedingungen/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Zahlungsabwicklung/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Preisen, Versandkosten, Zahlungsmitteln/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Vertragssprache/ })).toBeInTheDocument();
-    expect(screen.getByText(/mehreren Sprachfassungen bereitgestellt/)).toBeInTheDocument();
-    expect(screen.getByText(/Die deutsche Fassung ist das Original/)).toBeInTheDocument();
-    expect(screen.getByText(/bei Abweichungen zwischen Sprachfassungen maßgeblich/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Sprachfassungen/ })).toBeInTheDocument();
+    expect(screen.getByText(/in deutscher und englischer Sprache bereitgestellt/)).toBeInTheDocument();
+    expect(screen.getByText(/ist die englische Fassung maßgeblich/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Vertragssprache/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Die deutsche Fassung ist das Original/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Die Vertragssprache.*ist Deutsch/)).not.toBeInTheDocument();
   });
 
