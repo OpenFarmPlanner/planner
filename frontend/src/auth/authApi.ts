@@ -262,6 +262,10 @@ export async function register(
   password: string,
   passwordConfirm: string,
   displayName = '',
+  // Honeypot: always empty for real users, filled only by automated clients
+  // that autofill every form field. Forwarded as-is to the backend, which
+  // discards the submission silently when it is non-empty.
+  website = '',
 ): Promise<{ detail: string }> {
   await ensureCsrfCookie();
   return request<{ detail: string }>('/auth/register/', {
@@ -272,6 +276,7 @@ export async function register(
       password,
       password_confirm: passwordConfirm,
       display_name: displayName,
+      website,
     }),
   });
 }
