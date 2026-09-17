@@ -53,22 +53,72 @@ export async function resetE2EScenario(
   await invokeE2EAction(request, 'reset', { scenario_id: scenarioId });
 }
 
-// Submits the already-filled login form and waits for the app shell. A
-// transiently failed login request (backend/network hiccup under CI load)
-// keeps the login form on screen with an error alert instead of navigating,
-// so one resubmit is attempted before failing the test. Anything else — e.g.
-// a slow but ongoing navigation where the form is already gone — rethrows.
-export async function submitLoginFormAndAwaitApp(page: Page): Promise<void> {
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+const LOGIN_SUBMIT_ATTEMPTS = 3;
+const LOGIN_RETRY_BACKOFF_MS = 1_000;
+
+export async function fillLoginForm(page: Page, credentials: LoginCredentials): Promise<void> {
+  await page.getByLabel('E-Mail').fill(credentials.email);
+  await page.locator('input[type="password"]').fill(credentials.password);
+}
+
+// Submits the already-filled login form and waits for the app shell. Every
+// spec starts here, so one transient failure costs a whole test — and two
+// different causes produce the identical symptom (form still on screen, URL
+// still /login), which is why they are retried the same way:
+//
+//  - The invite flow reaches /login through InvitationAcceptPage's
+//    client-side `navigate()`, fired from an effect that can run again and
+//    re-render the form after the fields were filled. The typed values are
+//    then gone and the submit posts empty credentials, which only produces an
+//    error alert. Passing `credentials` lets each attempt re-assert the
+//    fields, which is the only way to recover from that one.
+//  - A login POST can fail transiently under CI load (a throttled burst, a
+//    backend hiccup), leaving the same error alert.
+//
+// A form that has already disappeared means a navigation is under way and
+// just slower than the wait, so that case rethrows rather than resubmitting.
+// A failure that survives every attempt reports the form's own alert text, so
+// the next CI failure says why instead of only "still on /login".
+export async function submitLoginFormAndAwaitApp(
+  page: Page,
+  credentials?: LoginCredentials,
+): Promise<void> {
   const submit = page.getByRole('button', { name: 'Anmelden', exact: true });
-  await submit.click();
-  try {
-    await expect(page).toHaveURL(/\/app\//, { timeout: 10_000 });
-  } catch (error) {
-    if (!(await submit.isVisible().catch(() => false))) {
-      throw error;
+  const emailField = page.getByLabel('E-Mail');
+
+  for (let attempt = 1; attempt <= LOGIN_SUBMIT_ATTEMPTS; attempt += 1) {
+    if (credentials && (await emailField.inputValue().catch(() => '')) !== credentials.email) {
+      await fillLoginForm(page, credentials);
     }
+
+    // The button is disabled while a submit is in flight, so this also keeps a
+    // retry from clicking into the previous attempt.
+    await expect(submit).toBeEnabled();
     await submit.click();
-    await expect(page).toHaveURL(/\/app\//, { timeout: 10_000 });
+
+    try {
+      await expect(page).toHaveURL(/\/app\//, { timeout: 10_000 });
+      return;
+    } catch (error) {
+      if (!(await submit.isVisible().catch(() => false))) {
+        throw error;
+      }
+      if (attempt === LOGIN_SUBMIT_ATTEMPTS) {
+        const alerts = await page.getByRole('alert').allTextContents().catch(() => []);
+        const reported = alerts.map((text) => text.trim()).filter(Boolean).join(' | ');
+        throw new Error(
+          `Login did not reach the app shell after ${LOGIN_SUBMIT_ATTEMPTS} attempts. `
+          + `URL: ${page.url()}. Form alerts: ${reported || 'none'}.`,
+          { cause: error },
+        );
+      }
+      await page.waitForTimeout(LOGIN_RETRY_BACKOFF_MS);
+    }
   }
 }
 
@@ -91,9 +141,8 @@ export async function loginWithDeterministicProject(
 
   const loginUser = options.loginAsAdmin ? fixture.admin : fixture.invitee;
   await page.goto(options.loginAsAdmin ? '/login' : fixture.inviteUrl);
-  await page.getByLabel('E-Mail').fill(loginUser.email);
-  await page.locator('input[type="password"]').fill(loginUser.password);
-  await submitLoginFormAndAwaitApp(page);
+  await fillLoginForm(page, loginUser);
+  await submitLoginFormAndAwaitApp(page, loginUser);
 }
 
 // Saves a fields-beds hierarchy row by tabbing through the editable cells, then
