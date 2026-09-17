@@ -18,6 +18,7 @@ from config.frontend_urls import build_public_frontend_url
 
 from accounts.consent import record_acceptance
 from accounts.models import DocumentConsent
+from accounts.trust import grant_established_trust
 from farm.models import Project, ProjectInvitation, ProjectMembership, PublicCrop
 from farm.services.demo_project import get_demo_project_name, populate_demo_project, resolve_demo_language
 
@@ -56,6 +57,24 @@ def _scenario_user_emails(scenario: str) -> list[str]:
         _user_email(scenario, 'outsider'),
         _user_email(scenario, 'starter'),
     ]
+
+
+def _grant_fixture_user_trust(user: User) -> None:
+    """Put a fixture user at the `established` trust level.
+
+    Fixture users are created directly rather than through registration, so
+    they are brand new by `accounts.trust`'s age/activity rule and would be
+    treated as untrusted signups: writes throttled harder, and every
+    crop-library contribution queued as a `PublicCropChangeProposal` instead
+    of publishing live (see docs/account-trust-levels.md). The specs that
+    publish to the library assert the direct-publish response, so they need
+    the established path — the same reason `record_acceptance` is called
+    explicitly here.
+
+    E2E coverage of the moderated path would need its own fixture that leaves
+    a user at the `new` level deliberately.
+    """
+    grant_established_trust(user)
 
 
 def _delete_legacy_public_crop_versions(public_crop_ids: list[int]) -> None:
@@ -126,6 +145,7 @@ class E2EInvitationFixtureView(APIView):
             is_active=True,
         )
         record_acceptance(user, DocumentConsent.DOCUMENT_TERMS)
+        _grant_fixture_user_trust(user)
         return {'user': {'email': user.email, 'password': E2E_PASSWORD}}
 
     def _setup(self, request: Request, scenario: str, *, demo_project: bool = False) -> dict[str, object]:
@@ -158,6 +178,7 @@ class E2EInvitationFixtureView(APIView):
         # every E2E login would be blocked by the Terms of Service re-consent gate.
         for fixture_user in (admin, invitee, outsider):
             record_acceptance(fixture_user, DocumentConsent.DOCUMENT_TERMS)
+            _grant_fixture_user_trust(fixture_user)
         ProjectMembership.objects.create(user=admin, project=project, role=ProjectMembership.ROLE_ADMIN)
         if demo_project:
             populate_demo_project(project, owner=admin, language_code=demo_language)
