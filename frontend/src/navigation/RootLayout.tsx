@@ -106,6 +106,8 @@ import { useSeasonSetupPrompt } from '../seasons/useSeasonSetupPrompt';
 import { PanelLeft } from 'lucide-react';
 import AppIcon from '../components/layout/AppIcon';
 import { AppTooltip } from '../components/AppTooltip';
+import { OverflowTooltip } from '../components/OverflowTooltip';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 import { TOPBAR_BADGE_SX } from './topbarMenuStyles';
 
 const HIERARCHY_CREATE_LOCATION_ACTION_ID = 'fields-global-add-location';
@@ -932,42 +934,46 @@ function RootLayout() {
             overflow: 'hidden',
  }}>
             {!isDesktopUp ? (
-              <Typography
-                component="h1"
-                variant="subtitle1"
-                noWrap
-                sx={{
-                  minWidth: 0,
-                  maxWidth: { xs: 180, sm: 220 },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: { xs: '0.98rem', sm: '1.02rem' },
-                  fontWeight: 600,
-                  lineHeight: 1.2,
-                  flexShrink: 1,
-                }}
-              >
-                {currentPageTitle}
-              </Typography>
+              <OverflowTooltip title={currentPageTitle}>
+                <Typography
+                  component="h1"
+                  variant="subtitle1"
+                  noWrap
+                  sx={{
+                    minWidth: 0,
+                    maxWidth: { xs: 180, sm: 220 },
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: { xs: '0.98rem', sm: '1.02rem' },
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    flexShrink: 1,
+                  }}
+                >
+                  {currentPageTitle}
+                </Typography>
+              </OverflowTooltip>
             ) : (
-              <Typography
-                component="h1"
-                variant="h5"
-                noWrap
-                sx={{
-                  minWidth: 0,
-                  maxWidth: { sm: 260, md: 360, lg: 440 },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: { xs: '1rem', md: '1.25rem' },
-                  fontWeight: 600,
-                  lineHeight: 1.15,
-                }}
-              >
-                {currentPageTitle}
-              </Typography>
+              <OverflowTooltip title={currentPageTitle}>
+                <Typography
+                  component="h1"
+                  variant="h5"
+                  noWrap
+                  sx={{
+                    minWidth: 0,
+                    maxWidth: { sm: 260, md: 360, lg: 440 },
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: { xs: '1rem', md: '1.25rem' },
+                    fontWeight: 600,
+                    lineHeight: 1.15,
+                  }}
+                >
+                  {currentPageTitle}
+                </Typography>
+              </OverflowTooltip>
             )}
             {topbarHelpConfig ? (
               // The trigger button moves into the "Mehr" menu on the compact
@@ -1364,13 +1370,10 @@ function RootLayout() {
             {/* The class name carries no styling — it is the selector
                 e2e/onboarding-demo-project.spec.ts uses to read the active
                 project name out of the topbar. */}
-            <Box
-              component="span"
+            <TruncatedTextWithTooltip
+              text={activeProjectLabel}
               className="project-switcher-label"
-              sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {activeProjectLabel}
-            </Box>
+            />
           </Button>
           <ProjectMenu
             anchorEl={projectMenuAnchor}

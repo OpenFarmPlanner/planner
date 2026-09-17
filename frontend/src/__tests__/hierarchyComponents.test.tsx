@@ -7,6 +7,7 @@ import { HierarchyFooter } from '../components/hierarchy/HierarchyFooter';
 import { buildHierarchyRows } from '../components/hierarchy/utils/hierarchyUtils';
 import { createBed, createField, createLocation } from './helpers/factories';
 import { mockT } from './helpers/testI18n';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 vi.mock('../i18n', () => ({
   useTranslation: () => ({ t: mockT }),
@@ -16,6 +17,7 @@ type ElementWithSx = ReactElement<{
   children?: ReactNode;
   'data-testid'?: string;
   sx?: Record<string, unknown>;
+  text?: string;
 }>;
 
 const findElementByTestId = (node: ReactNode, testId: string): ElementWithSx | null => {
@@ -39,6 +41,28 @@ const findElementByTestId = (node: ReactNode, testId: string): ElementWithSx | n
 
   return null;
 };
+
+function mockFinePointer(matches: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches,
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  });
+}
+
+function mockElementOverflow(element: HTMLElement, sizes: { clientWidth: number; scrollWidth: number }): void {
+  Object.defineProperty(element, 'clientWidth', { configurable: true, value: sizes.clientWidth });
+  Object.defineProperty(element, 'scrollWidth', { configurable: true, value: sizes.scrollWidth });
+  Object.defineProperty(element, 'clientHeight', { configurable: true, value: 20 });
+  Object.defineProperty(element, 'scrollHeight', { configurable: true, value: 20 });
+}
 
 describe('hierarchy components and behaviors', () => {
   it('renders nested rows, handles duplicate labels and deep nesting expansion states', () => {
@@ -401,6 +425,44 @@ describe('hierarchy components and behaviors', () => {
     expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
   });
 
+  it('reveals the full hierarchy name in a tooltip only while it is truncated', async () => {
+    mockFinePointer(true);
+    const user = userEvent.setup();
+    const longName = 'Sehr langer Parzellenname der in der Spalte abgeschnitten wird';
+
+    const columns = createHierarchyColumns(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      mockT as never,
+    );
+    const nameColumn = columns.find((column) => column.field === 'name');
+    const renderedCell = nameColumn?.renderCell?.({
+      id: 'field-10',
+      field: 'name',
+      value: longName,
+      api: {},
+      cellMode: 'view',
+      row: { id: 'field-10', type: 'field', fieldId: 10, level: 1, expanded: true },
+    } as never);
+
+    render(<>{renderedCell}</>);
+    const nameText = screen.getByTestId('hierarchy-name-text');
+
+    mockElementOverflow(nameText, { clientWidth: 280, scrollWidth: 280 });
+    await user.hover(nameText);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    await user.unhover(nameText);
+
+    mockElementOverflow(nameText, { clientWidth: 280, scrollWidth: 640 });
+    await user.hover(nameText);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(longName);
+  });
+
   it('lets long hierarchy names use the full normal-state name cell width', () => {
     const columns = createHierarchyColumns(
       vi.fn(),
@@ -427,15 +489,13 @@ describe('hierarchy components and behaviors', () => {
     const textElement = findElementByTestId(renderedCell, 'hierarchy-name-text');
     const actionOverlay = findElementByTestId(renderedCell, 'hierarchy-name-actions-overlay');
 
+    // Truncation and the overflow tooltip come from TruncatedTextWithTooltip;
+    // the cell only adds the layout that lets the name claim the free width.
+    expect(textElement?.type).toBe(TruncatedTextWithTooltip);
     expect(textElement?.props.sx).toMatchObject({
-      display: 'block',
       flex: '1 1 auto',
-      minWidth: 0,
       width: '100%',
       maxWidth: 'none',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
     });
     expect(actionOverlay?.props.sx).toMatchObject({
       position: 'absolute',

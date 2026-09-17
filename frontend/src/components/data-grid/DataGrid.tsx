@@ -157,6 +157,7 @@ export type {
   NotesFieldConfig,
 } from './types';
 import { AppTooltip } from '../AppTooltip';
+import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import {
   isSelectEditMenuCloseOutsideElement,
   isSelectEditMenuEscapeClose,
@@ -1916,22 +1917,16 @@ export function EditableDataGrid<T extends EditableRow>({
           overflow: 'hidden',
         }}
       >
-        <Box
-          sx={{
-            display: 'block',
-            flex: '1 1 auto',
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
+        <TruncatedTextWithTooltip
+          text={typeof baseContent === 'string' ? baseContent : ''}
+          sx={{ flex: '1 1 auto' }}
         >
           {hasEmptyTextContent ? (
             <Box component="span" aria-hidden="true" sx={{ visibility: 'hidden' }}>
               {'\u00a0'}
             </Box>
           ) : baseContent}
-        </Box>
+        </TruncatedTextWithTooltip>
         <Box
           className="ofp-inline-row-actions"
           sx={{

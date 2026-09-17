@@ -3,8 +3,7 @@
  */
 
 import type { GridColDef } from '@mui/x-data-grid';
-import { Box } from '@mui/material';
-import { OverflowTooltip } from '../OverflowTooltip';
+import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import { SearchableSelectEditCell } from './SearchableSelectEditCell';
 import type { SearchableSelectOption } from './SearchableSelectEditCell';
 import { StandardSingleSelectEditCell } from './StandardSingleSelectEditCell';
@@ -69,22 +68,7 @@ export const createSearchableSelectColumn = <Row extends { [key: string]: unknow
       }
 
       const text = String(params.formattedValue ?? '');
-      return (
-        <OverflowTooltip title={text}>
-          <Box
-            component="span"
-            sx={{
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              width: '100%',
-            }}
-          >
-            {text}
-          </Box>
-        </OverflowTooltip>
-      );
+      return <TruncatedTextWithTooltip text={text} sx={{ width: '100%' }} />;
     },
     renderEditCell: (params) => (
       <SearchableSelectEditCell
@@ -153,22 +137,7 @@ export const createSingleSelectColumn = <Row extends { [key: string]: unknown }>
       }
 
       const text = String(params.formattedValue ?? '');
-      return (
-        <OverflowTooltip title={text}>
-          <Box
-            component="span"
-            sx={{
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              width: '100%',
-            }}
-          >
-            {text}
-          </Box>
-        </OverflowTooltip>
-      );
+      return <TruncatedTextWithTooltip text={text} sx={{ width: '100%' }} />;
     },
     renderEditCell: (params) => (
       <StandardSingleSelectEditCell

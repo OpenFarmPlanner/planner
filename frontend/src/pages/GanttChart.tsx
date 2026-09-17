@@ -118,6 +118,7 @@ import { OccupancyFilterRow } from '../components/gantt/OccupancyFilterRow';
 import { SeedlingFilters } from '../components/gantt/SeedlingFilters';
 import { OccupancyMobileFilterBar } from '../components/gantt/OccupancyMobileFilterBar';
 import { AppTooltip } from '../components/AppTooltip';
+import { OverflowTooltip } from '../components/OverflowTooltip';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 
 const GanttChartWithFocusMode = GanttChart as React.ComponentType<
@@ -783,19 +784,22 @@ function GanttChartPage() {
           overflow: 'hidden',
           }}
         >
-          <Typography
-            component="h1"
-            className="rmg-title"
-            sx={{
-              flex: '0 1 auto',
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {title}
-          </Typography>
+          <OverflowTooltip title={title}>
+            <Typography
+              component="h1"
+              className="rmg-title"
+              noWrap
+              sx={{
+                flex: '0 1 auto',
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {title}
+            </Typography>
+          </OverflowTooltip>
           {calendarMode === 'occupancy' ? (
             <AppTooltip
               title={(

@@ -6,6 +6,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { ACTION_MENU_ICON_PROPS, ACTION_MENU_ITEM_ICON_SX } from './topbarMenuStyles';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 interface ProjectMenuProps {
   anchorEl: HTMLElement | null;
@@ -63,7 +64,7 @@ export function ProjectMenu(props: ProjectMenuProps) {
           >
             <Stack direction="row" sx={{ width: '100%',
               alignItems: "center", }}  spacing={1} >
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{membership.project_name}</span>
+              <TruncatedTextWithTooltip text={membership.project_name} sx={{ flex: 1 }} />
               {membership.project_id === activeProjectId ? <CheckIcon fontSize="small" /> : null}
             </Stack>
           </MenuItem>

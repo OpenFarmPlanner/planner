@@ -6,8 +6,7 @@ import {
   getGridStringOperators,
 } from '@mui/x-data-grid';
 import type { GridColDef, GridFilterOperator, GridRowId, GridSortModel } from '@mui/x-data-grid';
-import { Box } from '@mui/material';
-import { OverflowTooltip } from '../OverflowTooltip';
+import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import { DateEditCell } from './DateEditCell';
 import type { EditableDataGridClipboardColumn, EditableRow } from './types';
 
@@ -114,23 +113,7 @@ const applyDefaultHeaderOverflowTooltip = (column: GridColDef): GridColDef => {
   const headerName = column.headerName ?? column.field;
   return {
     ...column,
-    renderHeader: () => (
-      <OverflowTooltip title={headerName}>
-        <Box
-          component="span"
-          sx={{
-            display: 'block',
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            width: '100%',
-          }}
-        >
-          {headerName}
-        </Box>
-      </OverflowTooltip>
-    ),
+    renderHeader: () => <TruncatedTextWithTooltip text={headerName} sx={{ width: '100%' }} />,
   };
 };
 

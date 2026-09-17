@@ -83,7 +83,19 @@ title column shrink and wrap instead. The switch is plain responsive `sx`, not
 a measured width, so the header renders at its final size on the first paint;
 the media query in the component only picks the tooltip text.
 
-## 4. The two remaining stylesheets
+## 4. Text that can overflow
+
+Any single-line label that can be longer than its container — a table cell,
+a topbar title, a menu entry, a button label — uses
+`components/TruncatedTextWithTooltip.tsx` rather than a hand-written
+`overflow: hidden; text-overflow: ellipsis; white-space: nowrap`. It pairs
+those styles with an `OverflowTooltip`, so the full text is reachable on
+hover and on keyboard focus, and only while the text is actually cut off.
+See ["Text overflow tooltips"](./datagrid-architecture.md#text-overflow-tooltips)
+for the component's API and the one case that still wraps `OverflowTooltip`
+by hand.
+
+## 5. The two remaining stylesheets
 
 Only two `.css` files are left in the app, and both are deliberate:
 
@@ -122,7 +134,7 @@ crop swatches) also remains valid outside the theme. The maintained UI has no
 remaining rule findings, so new violations fail lint rather than accumulating
 as warnings.
 
-## 5. i18n and writing direction
+## 6. i18n and writing direction
 
 The UI ships German and English (see [i18n.md](./i18n.md)), both
 left-to-right. Nothing in the styling encodes a direction today, and a future
@@ -139,7 +151,7 @@ RTL locale should stay a layout concern rather than a styling one:
   left edge of the device, so a logical property would move it to the wrong
   side in RTL.
 
-## 6. Verifying a visual change
+## 7. Verifying a visual change
 
 `frontend/e2e/responsive-layouts.spec.ts` captures 32 screenshot baselines —
 8 main routes × 4 viewports (375 / 768 / 1024 / 1440). They run on every pull
