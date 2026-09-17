@@ -192,7 +192,7 @@ class AccountTrustProfile(models.Model):
     (see ``accounts.throttling.TrustAwareWriteRateThrottle``) and every public
     crop-library contribution forced into the moderation queue regardless of
     the existing direct-edit workflow (see
-    ``crops.permissions.requires_moderation_queue``). The transition to
+    ``farm.crops.moderation.requires_moderation_queue``). The transition to
     ``TRUST_ESTABLISHED`` is decided by ``accounts.trust.resolve_trust_level``,
     not by this model directly, so the eligibility rule stays a single,
     testable function. See docs/account-trust-levels.md.
