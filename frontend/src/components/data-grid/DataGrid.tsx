@@ -1917,6 +1917,10 @@ export function EditableDataGrid<T extends EditableRow>({
           overflow: 'hidden',
         }}
       >
+        {/* Only a column without its own renderCell gets the overflow tooltip
+            here: a custom renderCell may already render one (the select column
+            builders do), and nesting two tooltips on the same text is worse
+            than none. Such a column owns its own truncation affordance. */}
         <TruncatedTextWithTooltip
           text={typeof baseContent === 'string' ? baseContent : ''}
           sx={{ flex: '1 1 auto' }}

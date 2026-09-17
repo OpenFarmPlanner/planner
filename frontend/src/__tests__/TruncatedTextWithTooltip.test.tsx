@@ -62,15 +62,23 @@ describe('TruncatedTextWithTooltip', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
-  it('reveals the full text on keyboard focus', async () => {
-    mockFinePointer(true);
+  it('stays out of the tab order unless it is asked to be focusable', async () => {
     const user = userEvent.setup();
-    render(
-      <TruncatedTextWithTooltip text="Sorte mit langem Namen" data-testid="truncated" sx={{ outline: 'none' }} />,
-    );
+    render(<TruncatedTextWithTooltip text="Sorte mit langem Namen" data-testid="truncated" />);
 
     const element = screen.getByTestId('truncated');
-    element.setAttribute('tabindex', '0');
+    expect(element).not.toHaveAttribute('tabindex');
+
+    await user.tab();
+    expect(element).not.toHaveFocus();
+  });
+
+  it('reveals the full text on keyboard focus when focusable', async () => {
+    mockFinePointer(true);
+    const user = userEvent.setup();
+    render(<TruncatedTextWithTooltip text="Sorte mit langem Namen" focusable data-testid="truncated" />);
+
+    const element = screen.getByTestId('truncated');
     mockElementOverflow(element, { clientWidth: 60, scrollWidth: 300 });
     await user.tab();
 

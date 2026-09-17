@@ -86,14 +86,18 @@ the media query in the component only picks the tooltip text.
 ## 4. Text that can overflow
 
 Any single-line label that can be longer than its container — a table cell,
-a topbar title, a menu entry, a button label — uses
+a topbar title, a button label — uses
 `components/TruncatedTextWithTooltip.tsx` rather than a hand-written
 `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`. It pairs
 those styles with an `OverflowTooltip`, so the full text is reachable on
-hover and on keyboard focus, and only while the text is actually cut off.
-See ["Text overflow tooltips"](./datagrid-architecture.md#text-overflow-tooltips)
-for the component's API and the one case that still wraps `OverflowTooltip`
-by hand.
+hover — and on keyboard focus where the text is `focusable` — and only while
+the text is actually cut off.
+Truncating is not always the right answer: a surface with room to wrap, such
+as the project menu, stays wrapping so the full name is readable without a
+pointer at all. See
+["Text overflow tooltips"](./datagrid-architecture.md#text-overflow-tooltips)
+for the component's API, its two deliberate limits, and the case that still
+wraps `OverflowTooltip` by hand.
 
 ## 5. The two remaining stylesheets
 
