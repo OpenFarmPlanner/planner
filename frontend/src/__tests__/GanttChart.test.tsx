@@ -652,6 +652,11 @@ describe('GanttChartPage', () => {
   });
 
   it('scrolls the first calendar open to the current period instead of the timeline end', async () => {
+    // Pin "today" to the middle of the plan's date range: the scroll offset
+    // this test asserts on is proportional to how far through the year
+    // "today" falls, so leaving it on the real wall-clock date made the test
+    // fail as the year progressed.
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'));
     mocks.planList.mockResolvedValue({
       data: {
         results: [
@@ -668,19 +673,23 @@ describe('GanttChartPage', () => {
     });
     mocks.cropList.mockResolvedValue({ data: { results: [{ id: 5, name: 'Salat' }] } });
 
-    renderWithAuth();
+    try {
+      renderWithAuth();
 
-    const scrollContainer = await screen.findByTestId('mock-gantt-scroll-container');
-    await waitFor(() => {
-      expect(scrollContainer.scrollLeft).toBeGreaterThan(0);
-      expect(scrollContainer.scrollLeft).toBeLessThan(900);
-    });
-    expect(mocks.ganttProps.mock.calls.at(-1)?.[0]?.focusMode).toBe(false);
-    expect(JSON.parse(window.localStorage.getItem(GANTT_STATE_STORAGE_KEY) ?? '{}')).toMatchObject({
-      calendarMode: 'occupancy',
-      timelineViewMode: 'month',
-      referenceDate: getTodayIsoDate(),
-    });
+      const scrollContainer = await screen.findByTestId('mock-gantt-scroll-container');
+      await waitFor(() => {
+        expect(scrollContainer.scrollLeft).toBeGreaterThan(0);
+        expect(scrollContainer.scrollLeft).toBeLessThan(900);
+      });
+      expect(mocks.ganttProps.mock.calls.at(-1)?.[0]?.focusMode).toBe(false);
+      expect(JSON.parse(window.localStorage.getItem(GANTT_STATE_STORAGE_KEY) ?? '{}')).toMatchObject({
+        calendarMode: 'occupancy',
+        timelineViewMode: 'month',
+        referenceDate: getTodayIsoDate(),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('restores the saved calendar mode, timeline period, and row scroll for the active project', async () => {

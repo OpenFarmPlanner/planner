@@ -4,6 +4,8 @@ This module configures the Django admin interface for all farm models,
 providing customized list displays, filters, and search capabilities.
 """
 
+from dataclasses import replace
+
 from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
@@ -33,7 +35,11 @@ from .models import (
     Supplier,
     Task,
 )
-from .services.engagement_dashboard import build_engagement_dashboard
+from .services.engagement_dashboard import (
+    PROJECT_SORT_FIELDS,
+    build_engagement_dashboard,
+    sort_project_rows,
+)
 
 
 @admin.register(Project)
@@ -60,13 +66,46 @@ class ProjectAdmin(admin.ModelAdmin):
         """Show internal aggregates; never extend this to individual behavior tracking."""
         if not request.user.is_superuser:
             raise PermissionDenied
+        dashboard = build_engagement_dashboard()
+        order_param = request.GET.get('o', '')
+        descending = order_param.startswith('-')
+        sort_key = order_param[1:] if descending else order_param
+        if sort_key in PROJECT_SORT_FIELDS:
+            dashboard = replace(
+                dashboard,
+                projects=sort_project_rows(dashboard.projects, sort_key, descending=descending),
+            )
+        else:
+            sort_key = ''
         context = {
             **self.admin_site.each_context(request),
             'title': _('Nutzungsübersicht'),
-            'dashboard': build_engagement_dashboard(),
+            'dashboard': dashboard,
+            'project_columns': self._project_column_headers(sort_key, descending),
             'opts': self.model._meta,
         }
         return TemplateResponse(request, 'admin/farm/engagement_dashboard.html', context)
+
+    @staticmethod
+    def _project_column_headers(current_sort_key: str, descending: bool) -> dict[str, dict[str, object]]:
+        """Build Django-admin-style sortable header state for the "Projekte" table.
+
+        Mirrors the `sorted`/`sortoptions`/`toggle` markup and CSS classes from
+        Django's own `admin/change_list_results.html` so the headers look and
+        behave like the sortable columns on other admin list pages (e.g. users).
+        """
+        columns = {}
+        for key in PROJECT_SORT_FIELDS:
+            is_sorted = key == current_sort_key
+            ascending = is_sorted and not descending
+            columns[key] = {
+                'is_sorted': is_sorted,
+                'ascending': ascending,
+                'url_primary': f'?o={key}',
+                'url_toggle': f'?o={"-" if ascending else ""}{key}',
+                'url_remove': '?',
+            }
+        return columns
 
 
 @admin.register(ProjectMembership)

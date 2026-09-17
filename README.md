@@ -27,18 +27,50 @@ Built with a Django REST Framework backend and a React frontend in a single repo
 ## Aggregated Usage Insight and Privacy
 
 The superuser-only Django admin includes a **Nutzungsübersicht** (engagement
-dashboard) for internal product-development decisions. It derives project
-activity from the existing `created_at` and `updated_at` timestamps on farm
-data (suppliers, crops and supplier data, seed packages, locations, fields,
-beds and layouts, planting plans, tasks, and note attachments). It shows only
-per-project totals and recency/status buckets, plus aggregate registration and
-recent-login totals. A project's active-user count uses the existing
-`last_login` value for its members.
+dashboard) for internal product-development decisions, reachable from the Farm
+section of the admin navigation. It derives project activity from the existing
+`created_at` and `updated_at` timestamps on farm data (suppliers, crops and
+supplier data, seed packages, locations, fields, beds and layouts, planting
+plans, tasks, and note attachments). It shows only per-project totals and
+recency/status buckets, plus aggregate registration and recent-login totals. A
+project's active-user count uses the existing `last_login` value for its
+members.
+
+Beyond that activity view it reads the following existing data, always as
+per-project counts or aggregates over all projects, never as per-user
+behavior:
+
+- **Data richness and active-project detail:** per-project counts of locations,
+  fields/parcels, beds, crops, planting plans, and note photo attachments, plus
+  the average of those counts across active projects.
+- **Project membership:** the number of members per project, from the existing
+  project memberships.
+- **Feature adoption:** the share of projects that have more than one location,
+  at least one uploaded planting-plan photo, seed packages, suppliers, tasks, or
+  submitted in-app feedback (feedback rows, counted per project; message texts
+  are not shown).
+- **Growth and activation:** new projects per calendar month derived from the
+  project `created_at` timestamp, and how many of them later created their first
+  location or planting plan, including the average number of days that took.
+- **Seasons:** the average number of seasons per project and the share of
+  projects with a configured Saison-Muster (`SeasonPattern`).
+- **Layouts:** the share of projects with at least one bed layout or field
+  layout.
+- **Crop diversity:** the average number of distinct crop names per project.
+- **Tasks:** created and completed task totals in aggregate.
+- **Template origin:** the share of projects created from the demo template,
+  identified by the template's own project description.
+- **Crop library:** published `PublicCrop` entries per contributing project,
+  project crops imported from the library (`source_public_crop`) versus
+  self-entered ones, crops whose linked library entry has a newer version than
+  the imported copy, and the aggregate number of public-library discussion
+  comments and revisions.
 
 The dashboard does **not** create tracking records or collect clicks, sessions,
-time on page, navigation paths, or other individual behavioral data. Adding
-such tracking would require a separate privacy review and an update to the
-privacy policy before implementation.
+time on page, navigation paths, or other individual behavioral data — including
+counters for how often a view such as the graphical Beet-/Flächen-Layout is
+opened. Adding such tracking would require a separate privacy review and an
+update to the privacy policy before implementation.
 
 ## Repository Structure
 
