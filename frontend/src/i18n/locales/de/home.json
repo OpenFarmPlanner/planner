@@ -269,10 +269,6 @@
           "title": "Leistungsumfang",
           "content": "OpenFarmPlanner stellt digitale Planungsfunktionen als gehostete Webanwendung bereit."
         },
-        "contractLanguage": {
-          "title": "Vertragssprache",
-          "content": "Diese Nutzungsbedingungen können in mehreren Sprachfassungen bereitgestellt werden. Die deutsche Fassung ist das Original und bei Abweichungen zwischen Sprachfassungen maßgeblich."
-        },
         "accounts": {
           "title": "Benutzerkonten",
           "content": "Für die Nutzung der Anwendung ist ein Benutzerkonto erforderlich. Sie sind verpflichtet, bei der Registrierung wahrheitsgemäße Angaben zu machen und Ihr Passwort geheim zu halten.\n\nSie sind für sämtliche Aktivitäten verantwortlich, die über Ihr Benutzerkonto erfolgen. Informieren Sie uns bitte unverzüglich unter info@openfarmplanner.org, wenn Sie den Verdacht haben, dass jemand unbefugt auf Ihr Konto zugreift. Ein Benutzerkonto ist persönlich und nicht übertragbar."
@@ -326,6 +322,10 @@
         "changes": {
           "title": "Änderungen dieser Nutzungsbedingungen",
           "content": "Wir passen diese Nutzungsbedingungen an, wenn sich die angebotenen Funktionen oder rechtliche Rahmenbedingungen ändern. Maßgeblich ist die zum Zeitpunkt Ihrer Nutzung innerhalb der Anwendung veröffentlichte Fassung; das Datum der letzten Änderung finden Sie am Ende dieser Seite. Bei wesentlichen Änderungen informieren wir aktive Nutzer in geeigneter Weise, etwa per E-Mail oder durch einen Hinweis in der Anwendung."
+        },
+        "languageVersions": {
+          "title": "Sprachfassungen",
+          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
         }
       }
     }
