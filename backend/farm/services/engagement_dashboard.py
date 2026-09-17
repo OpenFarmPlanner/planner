@@ -8,8 +8,10 @@ tracking needs a separate privacy review first, see the README section
 """
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, F, Max, Min, Model, Q
@@ -166,6 +168,34 @@ class ProjectEngagement:
         if self.last_active >= now - timedelta(days=30):
             return STATUS_QUIET
         return STATUS_INACTIVE
+
+
+# Sort keys the "Projekte" usage table can be ordered by, keyed by the same
+# name the admin view accepts in its `?o=` query parameter. Each key returns a
+# `(is_missing, value)` tuple so rows without a value (e.g. `last_active` of
+# `None`) sort consistently without comparing `None` to a real value.
+PROJECT_SORT_FIELDS: dict[str, Callable[['ProjectEngagement'], Any]] = {
+    'name': lambda row: (False, row.project.name.casefold()),
+    'last_active': lambda row: (row.last_active is None, row.last_active or datetime.min),
+    'created_last_7_days': lambda row: (False, row.created_last_7_days),
+    'created_last_30_days': lambda row: (False, row.created_last_30_days),
+    'member_count': lambda row: (False, row.member_count),
+    'active_users_last_30_days': lambda row: (False, row.active_users_last_30_days),
+    'status': lambda row: (False, row.status),
+}
+
+
+def sort_project_rows(
+    rows: list[ProjectEngagement],
+    sort_key: str,
+    *,
+    descending: bool,
+) -> list[ProjectEngagement]:
+    """Sort project rows by one of `PROJECT_SORT_FIELDS`; unknown keys leave `rows` unchanged."""
+    key_func = PROJECT_SORT_FIELDS.get(sort_key)
+    if key_func is None:
+        return rows
+    return sorted(rows, key=key_func, reverse=descending)
 
 
 @dataclass(frozen=True)

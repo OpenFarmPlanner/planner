@@ -31,9 +31,11 @@ from farm.models import (
 from farm.services.demo_project import DEMO_PROJECT_DESCRIPTION
 from farm.services.engagement_dashboard import (
     ENGAGEMENT_MODELS,
+    PROJECT_SORT_FIELDS,
     ProjectEngagement,
     Share,
     build_engagement_dashboard,
+    sort_project_rows,
 )
 
 
@@ -124,6 +126,72 @@ class EngagementDashboardTests(TestCase):
         response = self.client.get(reverse('admin:farm_project_engagement'))
 
         self.assertEqual(response.status_code, 403)
+
+    def test_the_projects_table_can_be_sorted_by_column(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {'o': 'name'})
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertLess(content.index('Active'), content.index('Empty'))
+
+    def test_sorting_is_reversed_with_a_leading_minus(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {'o': '-name'})
+
+        content = response.content.decode()
+        self.assertLess(content.index('Empty'), content.index('Active'))
+
+    def test_an_unknown_sort_key_falls_back_to_the_default_order(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {'o': 'not-a-real-column'})
+
+        self.assertEqual(response.status_code, 200)
+
+
+class EngagementDashboardSortingTests(TestCase):
+    """`sort_project_rows` backs the sortable headers on the "Projekte" table."""
+
+    def _row(self, name: str, **kwargs) -> ProjectEngagement:
+        project = Project.objects.create(name=name, slug=name.lower())
+        return ProjectEngagement(project=project, **kwargs)
+
+    def test_every_rendered_column_has_a_registered_sort_key(self) -> None:
+        for key in (
+            'name',
+            'last_active',
+            'created_last_7_days',
+            'created_last_30_days',
+            'member_count',
+            'active_users_last_30_days',
+            'status',
+        ):
+            self.assertIn(key, PROJECT_SORT_FIELDS)
+
+    def test_sorting_by_name_is_case_insensitive(self) -> None:
+        rows = [self._row('beta'), self._row('Alpha')]
+
+        sorted_rows = sort_project_rows(rows, 'name', descending=False)
+
+        self.assertEqual([row.project.name for row in sorted_rows], ['Alpha', 'beta'])
+
+    def test_projects_that_were_never_active_sort_to_the_end_ascending(self) -> None:
+        active = self._row('Active', last_active=timezone.now())
+        never_active = self._row('Never', last_active=None)
+
+        sorted_rows = sort_project_rows([never_active, active], 'last_active', descending=False)
+
+        self.assertEqual([row.project.name for row in sorted_rows], ['Active', 'Never'])
+
+    def test_an_unregistered_sort_key_leaves_the_order_unchanged(self) -> None:
+        rows = [self._row('beta'), self._row('Alpha')]
+
+        sorted_rows = sort_project_rows(rows, 'not-a-real-column', descending=False)
+
+        self.assertEqual(sorted_rows, rows)
 
 
 class EngagementStatusTests(TestCase):

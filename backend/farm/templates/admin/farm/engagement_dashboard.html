@@ -38,13 +38,76 @@
     <table>
       <caption>{% translate "Projekte" %}</caption>
       <thead><tr>
-        <th>{% translate "Projektname" %}</th>
-        <th>{% translate "Zuletzt aktiv" %}</th>
-        <th>{% translate "Objekte angelegt (letzte 7 Tage)" %}</th>
-        <th>{% translate "Objekte angelegt (letzte 30 Tage)" %}</th>
-        <th>{% translate "Mitglieder" %}</th>
-        <th>{% translate "Aktive Nutzer (letzte 30 Tage)" %}</th>
-        <th>{% translate "Status" %}</th>
+        <th{% if project_columns.name.is_sorted %} class="sorted {{ project_columns.name.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.name.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.name.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.name.url_toggle }}" class="toggle {{ project_columns.name.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.name.url_primary }}">{% translate "Projektname" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.last_active.is_sorted %} class="sorted {{ project_columns.last_active.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.last_active.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.last_active.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.last_active.url_toggle }}" class="toggle {{ project_columns.last_active.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.last_active.url_primary }}">{% translate "Zuletzt aktiv" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.created_last_7_days.is_sorted %} class="sorted {{ project_columns.created_last_7_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.created_last_7_days.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.created_last_7_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.created_last_7_days.url_toggle }}" class="toggle {{ project_columns.created_last_7_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.created_last_7_days.url_primary }}">{% translate "Objekte angelegt (letzte 7 Tage)" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.created_last_30_days.is_sorted %} class="sorted {{ project_columns.created_last_30_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.created_last_30_days.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.created_last_30_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.created_last_30_days.url_toggle }}" class="toggle {{ project_columns.created_last_30_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.created_last_30_days.url_primary }}">{% translate "Objekte angelegt (letzte 30 Tage)" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.member_count.is_sorted %} class="sorted {{ project_columns.member_count.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.member_count.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.member_count.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.member_count.url_toggle }}" class="toggle {{ project_columns.member_count.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.member_count.url_primary }}">{% translate "Mitglieder" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.active_users_last_30_days.is_sorted %} class="sorted {{ project_columns.active_users_last_30_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.active_users_last_30_days.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.active_users_last_30_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.active_users_last_30_days.url_toggle }}" class="toggle {{ project_columns.active_users_last_30_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.active_users_last_30_days.url_primary }}">{% translate "Aktive Nutzer (letzte 30 Tage)" %}</a></div>
+          <div class="clear"></div>
+        </th>
+        <th{% if project_columns.status.is_sorted %} class="sorted {{ project_columns.status.ascending|yesno:"ascending,descending" }}"{% endif %}>
+          {% if project_columns.status.is_sorted %}
+          <div class="sortoptions">
+            <a class="sortremove" href="{{ project_columns.status.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
+            <a href="{{ project_columns.status.url_toggle }}" class="toggle {{ project_columns.status.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+          </div>
+          {% endif %}
+          <div class="text"><a href="{{ project_columns.status.url_primary }}">{% translate "Status" %}</a></div>
+          <div class="clear"></div>
+        </th>
       </tr></thead>
       <tbody>
       {% for row in dashboard.projects %}
