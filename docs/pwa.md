@@ -159,6 +159,11 @@ is about the connection, never about the server.
 landing page's hero, next to Register/Sign in, as a more visible install
 affordance than the browser's own (easy to miss) address-bar icon.
 
+- **Mobile only** — gated by `useIsMobile` (`src/hooks/useIsMobile.ts`, same
+  `md` breakpoint as the app shell's own mobile check in `RootLayout`).
+  Desktop browsers already surface their own install icon in the address bar,
+  so the button never renders there even when `beforeinstallprompt` fires
+  (Chrome/Edge on desktop do fire it).
 - **Chrome/Edge/Android** — `beforeinstallprompt` fires once per page load at
   most and is *not* re-firable; the hook captures and holds the event (also
   suppressing the browser's own mini-infobar via `preventDefault()`, so this

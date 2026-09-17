@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 import { useTranslation } from '../i18n';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useInstallPrompt } from './useInstallPrompt';
 
 interface InstallAppButtonProps {
@@ -20,16 +21,18 @@ interface InstallAppButtonProps {
 /**
  * The landing page's install CTA, on top of the browser's own (easy to miss)
  * install icon in the address bar. Renders nothing once the app is already
- * installed, or on a browser that never offers installation at all (neither
- * `beforeinstallprompt` nor iOS Safari's manual flow) — there would be
- * nothing for the button to do.
+ * installed, on a browser that never offers installation at all (neither
+ * `beforeinstallprompt` nor iOS Safari's manual flow), or on desktop — "Install
+ * app" only makes sense as a mobile home-screen affordance; desktop browsers
+ * already surface their own install icon in the address bar.
  */
 export function InstallAppButton({ sx }: InstallAppButtonProps) {
   const { t } = useTranslation('home');
   const { canPromptInstall, isIos, isInstalled, promptInstall } = useInstallPrompt();
+  const isMobile = useIsMobile();
   const [showIosInstructions, setShowIosInstructions] = useState(false);
 
-  if (isInstalled || (!canPromptInstall && !isIos)) {
+  if (!isMobile || isInstalled || (!canPromptInstall && !isIos)) {
     return null;
   }
 
