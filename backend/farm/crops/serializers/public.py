@@ -263,10 +263,6 @@ class PublicCropSerializer(serializers.ModelSerializer):
         if not crops:
             return None
         crop = crops[0]
-        # The prefetch filters on this very entry, so the link is already known
-        # here; assigning it keeps `is_project_crop_up_to_date` from loading
-        # `source_public_crop` again per row.
-        crop.source_public_crop = obj
         # `is_project_crop_up_to_date` answers from these two fields alone
         # unless the copy is pristine *and* behind the library version, so the
         # index query is only worth paying for in that case.

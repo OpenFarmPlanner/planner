@@ -123,7 +123,12 @@ The public Crop Library follows an open-data model:
   comparison behind it runs against the general-crop index the serializer
   builds once per page, and only for copies that are actually behind their
   entry's `version` — `test_public_crops_list_query_count` pins that it stays
-  one query per page rather than one per imported copy.
+  one query per page rather than one per imported copy. The library page
+  replaces its row from the response of an edit, a version revert or a
+  status change, so `PublicCropViewSet._public_crop_response` re-attaches
+  the project-import prefetch those write paths lose when the service
+  returns a freshly locked row — otherwise the button would fall back to
+  its "import" label until the next list reload.
 - This link is recorded on **publish**, not only on import.
   `publish_crop_to_public_library` calls `link_local_crop_to_owned_public_entry`
   for the published crop (and, on a variety publish, links the project's

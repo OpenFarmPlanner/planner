@@ -1174,6 +1174,35 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         # must stay clickable even though nothing in the library moved.
         self.assertFalse(detail_response.data['project_import_status']['is_up_to_date'])
 
+    def test_public_crop_edit_response_keeps_the_project_import_status(self):
+        """A write response feeds the library page's import/update button directly.
+
+        The edit endpoint re-serializes a freshly locked row, so without the
+        view re-attaching the project-import prefetch the response would report
+        the entry as never imported and the button would fall back to its
+        "import" label and lose the `is_up_to_date` state.
+        """
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+        public_crop = PublicCrop.objects.create(
+            name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
+            notes='Public notes',
+        )
+        self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'notes': 'Revised public notes', 'base_version': public_crop.version},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        import_status = response.data['project_import_status']
+        self.assertIsNotNone(import_status)
+        # The edit moved the entry past the copy, so the update action has to
+        # come back on without waiting for a list reload.
+        self.assertFalse(import_status['is_up_to_date'])
+
     def test_public_crop_import_status_flags_local_modification(self):
         public_crop = PublicCrop.objects.create(
             name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
