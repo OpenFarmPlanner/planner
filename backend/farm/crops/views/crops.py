@@ -16,6 +16,7 @@ from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_
 from accounts.models import DocumentConsent
 from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
+from farm.crops.moderation import describe_contribution_origin, requires_moderation_queue
 from farm.history import (
     _current_actor_label,
     build_crop_history_payload,
@@ -28,6 +29,7 @@ from farm.models import (
     MediaFile,
     PlantingPlan,
     PublicCrop,
+    PublicCropChangeProposal,
     format_crop_display_name,
 )
 from farm.services.crop_import.field_specs import seed_rate_unit_constraints_payload
@@ -39,6 +41,7 @@ from farm.services.public_crops import (
     build_public_crop_update_status,
     build_publishing_check_result,
     link_project_crop_to_public_reference,
+    notify_moderators_of_change_proposal,
     publish_crop_to_public_library,
     reject_public_crop_update,
 )
@@ -47,6 +50,7 @@ from ..serializers import (
     CropSerializer,
     PublicCropSerializer,
 )
+from ..serializers.public import PublicCropChangeProposalSerializer
 
 
 def _request_boolean(value: object) -> bool:
@@ -98,6 +102,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         'duplicate_check',
         'seed_rate_constraints',
         'history',
+        # Safe to opt in: requires_moderation_queue() forces any
+        # token-authenticated publish into the moderation queue as a draft
+        # PublicCrop, never live (see farm/crops/moderation.py).
+        'publish_public',
         'undelete',
     }
     api_token_delete_actions = {'destroy', 'undelete'}
@@ -411,6 +419,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        publish_as_general = _request_boolean(request.data.get('publish_as_general'))
         try:
             crop_species_id = request.data.get('crop_species_id')
             try:
@@ -422,7 +431,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 user=request.user,
                 crop_species_id=crop_species_id,
                 original_language_code=request.data.get('original_language_code'),
-                publish_as_general=_request_boolean(request.data.get('publish_as_general')),
+                publish_as_general=publish_as_general,
+                require_moderation=requires_moderation_queue(request),
             )
         except PublicCropPublishingValidationError as error:
             return api_error_response(
@@ -448,6 +458,25 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             )
         if not has_library_consent:
             record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+
+        if operation == 'pending_moderation':
+            origin_api, origin_declared_agent = describe_contribution_origin(request)
+            proposal = PublicCropChangeProposal.objects.create(
+                public_crop=public_crop,
+                kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
+                summary=f'New publish awaiting moderation: {format_crop_display_name(crop.name, crop.variety)}',
+                proposed_data={'_source_crop_id': crop.id, '_publish_as_general': publish_as_general},
+                proposed_by=request.user,
+                origin_api=origin_api,
+                origin_declared_agent=origin_declared_agent,
+            )
+            notify_moderators_of_change_proposal(proposal)
+            return Response({
+                'operation': operation,
+                'change_proposal': PublicCropChangeProposalSerializer(proposal).data,
+                'duplicates': self._serialize_duplicates(duplicates),
+            }, status=status.HTTP_202_ACCEPTED)
+
         serializer = PublicCropSerializer(public_crop, context={'request': request})
         response_status = (
             status.HTTP_201_CREATED
