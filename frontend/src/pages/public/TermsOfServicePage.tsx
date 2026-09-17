@@ -6,7 +6,6 @@ const termsSections = [
   'provider',
   'scope',
   'serviceAndCosts',
-  'contractLanguage',
   'accounts',
   'userContent',
   'publicLibrary',
@@ -19,6 +18,7 @@ const termsSections = [
   'openSource',
   'futureFeatures',
   'changes',
+  'languageVersions',
 ] as const;
 
 const termsSectionBulletKeys: Partial<Record<(typeof termsSections)[number], readonly string[]>> = {
