@@ -57,7 +57,12 @@ export function createPublicCropLibraryCommandSpecs({
       shortcutHint: 'Alt+I',
       keys: { alt: true, key: 'i' },
       contextTags: ['publicCropLibrary'],
-      isEnabled: () => Boolean(selectedCrop) && !importing,
+      // Mirrors the header button: an imported copy that already matches the
+      // library has nothing to pull, so the command is off too rather than
+      // being the one way left to trigger the no-op.
+      isEnabled: () => Boolean(selectedCrop)
+        && !importing
+        && !selectedCrop?.project_import_status?.is_up_to_date,
       action: handleImport,
     },
     {

@@ -2273,7 +2273,7 @@ describe('PublicCropLibraryPage', () => {
       publicCropApiMocks.list.mockResolvedValue(paginated([
         {
           ...publicCrops[0],
-          project_import_status: { crop_id: 5, crop_name: 'Tomate (Roma)', is_modified_from_source: false },
+          project_import_status: { crop_id: 5, crop_name: 'Tomate (Roma)', is_modified_from_source: false, is_up_to_date: false },
         },
         publicCrops[1],
       ]));
@@ -2308,6 +2308,61 @@ describe('PublicCropLibraryPage', () => {
       await user.click(within(cropDetailHeader).getByRole('button', { name: 'In Projekt importieren' }));
 
       expect(await within(cropDetailHeader).findByRole('button', { name: 'Im Projekt aktualisieren' })).toBeInTheDocument();
+    });
+
+    it('disables the update button and explains why when the project copy already matches the library', async () => {
+      publicCropApiMocks.list.mockResolvedValue(paginated([
+        {
+          ...publicCrops[0],
+          project_import_status: { crop_id: 5, crop_name: 'Tomate (Roma)', is_modified_from_source: false, is_up_to_date: true },
+        },
+        publicCrops[1],
+      ]));
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
+      const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
+      const updateButton = within(cropDetailHeader).getByRole('button', { name: 'Im Projekt aktualisieren' });
+      expect(updateButton).toBeDisabled();
+
+      await user.hover(updateButton.parentElement as HTMLElement);
+      expect(await screen.findByText('Bereits aktuell – keine Änderungen vorhanden')).toBeInTheDocument();
+      expect(publicCropApiMocks.importToProject).not.toHaveBeenCalled();
+    });
+
+    it('re-enables the update button when the library entry moves ahead of the project copy', async () => {
+      const importedUpToDate = {
+        ...publicCrops[0],
+        project_import_status: { crop_id: 5, crop_name: 'Tomate (Roma)', is_modified_from_source: false, is_up_to_date: true },
+      };
+      publicCropApiMocks.list.mockResolvedValue(paginated([importedUpToDate, publicCrops[1]]));
+      // Saving the entry publishes a new library version the project copy has
+      // not taken, so the action has to come back on without a page reload.
+      publicCropApiMocks.update.mockResolvedValue({
+        data: {
+          ...importedUpToDate,
+          notes: 'Aktualisierte Notizen.',
+          version: 2,
+          project_import_status: { ...importedUpToDate.project_import_status, is_up_to_date: false },
+        },
+      });
+      authMocks.user.is_staff = true;
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
+      const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
+      expect(within(cropDetailHeader).getByRole('button', { name: 'Im Projekt aktualisieren' })).toBeDisabled();
+
+      await user.click(within(cropDetailHeader).getByRole('button', { name: 'Bearbeiten' }));
+      const editDialog = await screen.findByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });
+      fireEvent.change(within(editDialog).getByLabelText('Notizen'), { target: { value: 'Aktualisierte Notizen.' } });
+      await user.click(within(editDialog).getByRole('button', { name: 'Speichern' }));
+
+      await waitFor(() => expect(
+        within(screen.getByTestId('public-crop-detail-header')).getByRole('button', { name: 'Im Projekt aktualisieren' }),
+      ).toBeEnabled());
     });
   });
   describe('crop species awaiting moderation', () => {

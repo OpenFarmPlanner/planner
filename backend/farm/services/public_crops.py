@@ -1517,19 +1517,20 @@ def _compared_public_update_fields(crop: Crop) -> list[str]:
     return [field for field in CROP_COPY_FIELDS if field not in excluded]
 
 
-def public_crop_update_changes(
+def public_crop_field_changes(
     crop: Crop,
+    public_crop: PublicCrop,
     index: GeneralCropIndex | None = None,
 ) -> list[tuple[str, Any, Any]]:
     """``(field, local_value, public_value)`` for every compared field that differs
-    between ``crop`` and its linked public entry (empty when not linked).
+    between ``crop`` and ``public_crop``.
 
     The local side is resolved through inheritance, so a Sorte field that only
     takes its value from the general Kultur is not reported as a local change.
+    Takes the public entry explicitly so a caller that already holds it (a
+    serializer rendering that entry's rows) compares without dereferencing
+    ``crop.source_public_crop`` once per row.
     """
-    public_crop = crop.source_public_crop
-    if public_crop is None:
-        return []
     local = _resolved_copy_fields(crop, index)
     remote = _copy_fields(public_crop)
     return [
@@ -1537,6 +1538,40 @@ def public_crop_update_changes(
         for field in _compared_public_update_fields(crop)
         if local[field] != remote[field]
     ]
+
+
+def public_crop_update_changes(
+    crop: Crop,
+    index: GeneralCropIndex | None = None,
+) -> list[tuple[str, Any, Any]]:
+    """:func:`public_crop_field_changes` against ``crop``'s linked public entry.
+
+    Empty when the crop is not linked to one.
+    """
+    public_crop = crop.source_public_crop
+    if public_crop is None:
+        return []
+    return public_crop_field_changes(crop, public_crop, index)
+
+
+def is_project_crop_up_to_date(
+    crop: Crop,
+    public_crop: PublicCrop,
+    index: GeneralCropIndex | None = None,
+) -> bool:
+    """Whether importing ``public_crop`` into ``crop`` again would change nothing.
+
+    Mirrors the ``unchanged`` outcome of
+    :func:`import_public_crop_into_project` in ``auto`` mode, so the UI can
+    disable the "update in project" action up front instead of letting the user
+    discover the no-op by clicking. A locally modified copy is *not* up to date:
+    that import path raises the conflict the dialog resolves.
+    """
+    if crop.is_modified_from_source:
+        return False
+    if crop.source_public_version == public_crop.version:
+        return True
+    return not public_crop_field_changes(crop, public_crop, index)
 
 
 def has_pending_public_crop_update(
@@ -1722,16 +1757,14 @@ def import_public_crop_into_project(
     if existing.is_modified_from_source:
         raise PublicCropImportConfirmationRequiredError(existing_crop=existing)
 
-    if existing.source_public_version == public_crop.version:
-        return existing, 'unchanged'
-
     # A version bump that changed none of the compared fields (a
     # translation-only edit, or values this copy already matches) is not a real
     # update: applying it would clear species-invariant overrides and record a
     # spurious revision. It would also contradict has_pending_public_crop_update
-    # -- which the detail badge reads -- so gate the auto-sync on the same
-    # comparison to keep the badge and the re-import decision in lockstep.
-    if not public_crop_update_changes(existing):
+    # -- which the detail badge reads -- so `is_project_crop_up_to_date` gates
+    # the auto-sync on the same comparison, and the serializer's
+    # `project_import_status.is_up_to_date` reads it to disable the action.
+    if is_project_crop_up_to_date(existing, public_crop):
         return existing, 'unchanged'
 
     crop = _apply_public_crop_update(crop=existing, public_crop=public_crop)

@@ -22,7 +22,11 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional
-from farm.services.public_crops import PUBLIC_CROP_EDITABLE_FIELDS
+from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.public_crops import (
+    PUBLIC_CROP_EDITABLE_FIELDS,
+    is_project_crop_up_to_date,
+)
 
 PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'notes',
@@ -229,6 +233,19 @@ class PublicCropSerializer(serializers.ModelSerializer):
     def get_created_by_label(self, obj: PublicCrop) -> str:
         return obj.created_by_label
 
+    def _general_crop_index(self, project_id: int | None) -> GeneralCropIndex:
+        """The project's Sorte-to-Kultur fallback map, built at most once per project.
+
+        Only the ``is_up_to_date`` field comparison needs it, and only for rows
+        whose imported copy is behind the library version — so it is built
+        lazily and shared across the whole list instead of once per row.
+        """
+        cache: dict[int | None, GeneralCropIndex] = getattr(self, '_cached_general_crop_indexes', None) or {}
+        if project_id not in cache:
+            cache[project_id] = build_general_crop_index(project_id)
+            self._cached_general_crop_indexes = cache
+        return cache[project_id]
+
     def get_project_import_status(self, obj: PublicCrop) -> dict[str, Any] | None:
         """Whether the active project already imported this entry, for the import button state.
 
@@ -236,15 +253,36 @@ class PublicCropSerializer(serializers.ModelSerializer):
         active project's Crops linked to this public entry via
         ``source_public_crop``) so this stays a single extra query for
         the whole list rather than one per row.
+
+        ``is_up_to_date`` answers what a re-import would do without performing
+        one: true means the "update in project" action is a no-op, so the UI
+        disables it instead of surfacing the no-op as a snackbar after the
+        click.
         """
         crops = getattr(obj, 'prefetched_project_crops', None)
         if not crops:
             return None
         crop = crops[0]
+        # The prefetch filters on this very entry, so the link is already known
+        # here; assigning it keeps `is_project_crop_up_to_date` from loading
+        # `source_public_crop` again per row.
+        crop.source_public_crop = obj
+        # `is_project_crop_up_to_date` answers from these two fields alone
+        # unless the copy is pristine *and* behind the library version, so the
+        # index query is only worth paying for in that case.
+        needs_field_diff = (
+            not crop.is_modified_from_source
+            and crop.source_public_version != obj.version
+        )
         return {
             'crop_id': crop.id,
             'crop_name': format_crop_display_name(crop.name, crop.variety),
             'is_modified_from_source': crop.is_modified_from_source,
+            'is_up_to_date': is_project_crop_up_to_date(
+                crop,
+                obj,
+                self._general_crop_index(crop.project_id) if needs_field_diff else None,
+            ),
         }
 
     def _language(self) -> str:
