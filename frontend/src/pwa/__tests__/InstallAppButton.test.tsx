@@ -6,11 +6,11 @@ import theme from '../../theme';
 import translations from '../../test-utils/translations';
 import { InstallAppButton } from '../InstallAppButton';
 
-function setStandalone(value: boolean): void {
+function setMatchMedia({ standalone, mobile }: { standalone: boolean; mobile: boolean }): void {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: vi.fn().mockImplementation((query: string) => ({
-      matches: value,
+      matches: query.includes('display-mode: standalone') ? standalone : mobile,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -18,6 +18,10 @@ function setStandalone(value: boolean): void {
       dispatchEvent: vi.fn(),
     })),
   });
+}
+
+function setStandalone(value: boolean): void {
+  setMatchMedia({ standalone: value, mobile: true });
 }
 
 function setIosUserAgent(isIos: boolean): void {
@@ -63,6 +67,17 @@ describe('InstallAppButton', () => {
 
   it('renders nothing once the app is already installed, even with a captured prompt', () => {
     setStandalone(true);
+    renderButton();
+
+    act(() => {
+      window.dispatchEvent(createBeforeInstallPromptEvent());
+    });
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing on desktop, even with a captured prompt', () => {
+    setMatchMedia({ standalone: false, mobile: false });
     renderButton();
 
     act(() => {
