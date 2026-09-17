@@ -204,8 +204,13 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     def test_public_crops_list_query_count(self):
         """Species translations, description translations, the species status
         behind `crop_species_status` and the active project's imported copies
-        are all resolved for the whole page rather than per row."""
-        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 8)
+        are all resolved for the whole page rather than per row.
+
+        The last query is the general-crop index `project_import_status.
+        is_up_to_date` compares through: one per page, not one per imported
+        copy, and only when a copy is actually behind its library entry (which
+        every copy in this fixture is)."""
+        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 9)
 
     def test_projects_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/projects/', 4, expected_rows=1)

@@ -826,6 +826,7 @@
     },
     "importButton": "Import into project",
     "importUpdateButton": "Update in project",
+    "importUpToDateTooltip": "Already up to date – no changes available",
     "importing": "Importing…",
     "importSuccess": "“{{name}}” was imported into this project.",
     "importError": "The public crop could not be imported.",

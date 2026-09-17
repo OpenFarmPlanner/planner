@@ -509,6 +509,13 @@ export default function PublicCropLibraryPage() {
   }, [isSpeciesView, selectedCrop, selectedSpeciesCrop]);
   const showVarietyValueLegend = Boolean(!isSpeciesView && selectedCrop?.variety && selectedSpeciesCrop);
   const isSelectedSpeciesPending = isCropSpeciesPending(selectedCrop);
+  // The backend answers what a re-import would do (same comparison the import
+  // endpoint runs before it reports 'unchanged'), so the update action can be
+  // disabled up front rather than explaining the no-op in a snackbar after the
+  // click. Derived from `selectedCrop`, so a library entry that changes while
+  // the page is open — a refetch, an edit, or the row `performImport` writes
+  // back — re-enables or re-disables the button on its own.
+  const isSelectedCropUpToDate = Boolean(selectedCrop?.project_import_status?.is_up_to_date);
   const publicActiveCultivationTypes: CultivationType[] = useMemo(() => (selectedCrop
     ? (
       selectedCrop.cultivation_types && selectedCrop.cultivation_types.length > 0
@@ -914,6 +921,10 @@ export default function PublicCropLibraryPage() {
             crop_id: importedCrop.id as number,
             crop_name: importedCrop.crop_display_name || importedCrop.name,
             is_modified_from_source: Boolean(importedCrop.is_modified_from_source),
+            // The copy that just landed carries the library's current values,
+            // so the update action disables itself without waiting for a
+            // refetch of the row.
+            is_up_to_date: !importedCrop.is_modified_from_source,
           },
         };
         savedCropsRef.current.set(crop.id, updated);
@@ -924,6 +935,11 @@ export default function PublicCropLibraryPage() {
       } else if (mode === 'new') {
         showGlobalSnackbar({ message: t('library.importedAsNew', { name }), severity: 'success' });
       } else if (response.data.operation === 'unchanged') {
+        // The button and the Alt+I command are disabled on
+        // `project_import_status.is_up_to_date`, so this is now only reachable
+        // from a stale snapshot -- someone reverting the library entry between
+        // this page's last fetch and the click. Rare, but reporting it as a
+        // successful import would be a lie.
         showGlobalSnackbar({ message: t('library.importUnchanged', { name }), severity: 'info' });
       } else if (response.data.operation === 'updated') {
         showGlobalSnackbar({ message: t('library.importUpdated', { name }), severity: 'success' });
@@ -1389,9 +1405,15 @@ export default function PublicCropLibraryPage() {
             : <DownloadOutlinedIcon fontSize="small" />,
           onClick: () => void handleImport(),
           // Import and the library-update sync both copy an entry whose
-          // species is not settled yet; they wait for the moderator.
-          disabled: importingId !== null || isSelectedSpeciesPending,
-          tooltip: isSelectedSpeciesPending ? t('library.badges.speciesPendingTooltip') : undefined,
+          // species is not settled yet; they wait for the moderator. An
+          // imported copy that already matches the library has nothing to
+          // pull, so the update is a no-op and stays disabled too.
+          disabled: importingId !== null || isSelectedSpeciesPending || isSelectedCropUpToDate,
+          tooltip: isSelectedSpeciesPending
+            ? t('library.badges.speciesPendingTooltip')
+            : isSelectedCropUpToDate
+              ? t('library.importUpToDateTooltip')
+              : undefined,
           variant: 'contained',
         },
       ]}
@@ -1399,6 +1421,7 @@ export default function PublicCropLibraryPage() {
   ) : null), [
     handleImport,
     importingId,
+    isSelectedCropUpToDate,
     isSelectedSpeciesPending,
     openEditDialog,
     selectedCrop,

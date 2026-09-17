@@ -1127,7 +1127,81 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             'crop_id': imported_id,
             'crop_name': 'Bean (Canadian Wonder)',
             'is_modified_from_source': False,
+            'is_up_to_date': True,
         })
+
+    def test_public_crop_import_status_reports_a_pending_library_change_as_not_up_to_date(self):
+        public_crop = PublicCrop.objects.create(
+            name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
+            notes='Public notes',
+        )
+        self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+        PublicCrop.objects.filter(id=public_crop.id).update(
+            notes='Revised public notes', version=public_crop.version + 1,
+        )
+
+        detail_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/')
+
+        self.assertFalse(detail_response.data['project_import_status']['is_up_to_date'])
+
+    def test_public_crop_import_status_stays_up_to_date_for_a_version_bump_without_field_changes(self):
+        public_crop = PublicCrop.objects.create(
+            name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
+            notes='Public notes',
+        )
+        self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+        # A translation-only edit bumps the version without touching any
+        # compared field, which the import endpoint reports as 'unchanged'.
+        PublicCrop.objects.filter(id=public_crop.id).update(version=public_crop.version + 1)
+
+        detail_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/')
+
+        self.assertTrue(detail_response.data['project_import_status']['is_up_to_date'])
+
+    def test_public_crop_import_status_reports_a_locally_modified_copy_as_not_up_to_date(self):
+        public_crop = PublicCrop.objects.create(
+            name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
+            notes='Public notes',
+        )
+        import_response = self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+        imported = Crop.objects.get(id=import_response.data['crop']['id'])
+        imported.notes = 'Locally edited notes'
+        imported.save()
+
+        detail_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/')
+
+        # The re-import raises the conflict the dialog resolves, so the action
+        # must stay clickable even though nothing in the library moved.
+        self.assertFalse(detail_response.data['project_import_status']['is_up_to_date'])
+
+    def test_public_crop_edit_response_keeps_the_project_import_status(self):
+        """A write response feeds the library page's import/update button directly.
+
+        The edit endpoint re-serializes a freshly locked row, so without the
+        view re-attaching the project-import prefetch the response would report
+        the entry as never imported and the button would fall back to its
+        "import" label and lose the `is_up_to_date` state.
+        """
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+        public_crop = PublicCrop.objects.create(
+            name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
+            notes='Public notes',
+        )
+        self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'notes': 'Revised public notes', 'base_version': public_crop.version},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        import_status = response.data['project_import_status']
+        self.assertIsNotNone(import_status)
+        # The edit moved the entry past the copy, so the update action has to
+        # come back on without waiting for a list reload.
+        self.assertFalse(import_status['is_up_to_date'])
 
     def test_public_crop_import_status_flags_local_modification(self):
         public_crop = PublicCrop.objects.create(

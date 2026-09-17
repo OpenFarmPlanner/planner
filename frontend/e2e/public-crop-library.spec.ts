@@ -99,9 +99,13 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await expect(page.getByRole('heading', { name: 'Allgemeine Informationen' })).toBeVisible();
     await expect(page.getByText(publicCrop.variety).first()).toBeVisible();
 
-    await expect(page.getByRole('button', { name: 'Im Projekt aktualisieren' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Im Projekt aktualisieren' }).click();
-    await expect(page.getByText(/ist bereits identisch/i)).toBeVisible();
+    // The project copy is still identical to the entry it was published from,
+    // so there is nothing to pull: the action is disabled and says why instead
+    // of reporting the no-op after a click.
+    const updateInProjectButton = page.getByRole('button', { name: 'Im Projekt aktualisieren' });
+    await expect(updateInProjectButton).toBeDisabled();
+    await updateInProjectButton.hover({ force: true });
+    await expect(page.getByText('Bereits aktuell – keine Änderungen vorhanden')).toBeVisible();
 
     await page.getByRole('tab', { name: /Diskussion/ }).click();
     await expect(page.getByText('Noch keine Diskussionen')).toBeVisible();

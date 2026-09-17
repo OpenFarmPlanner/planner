@@ -153,6 +153,29 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             pk=self.kwargs.get(self.lookup_url_kwarg or self.lookup_field),
         )
 
+    def _public_crop_response(self, public_crop: PublicCrop) -> Response:
+        """Serialize a write result with the list queryset's project-import prefetch.
+
+        The write services return a freshly locked/refetched row, which carries
+        none of `get_queryset()`'s prefetches. `project_import_status` reads
+        `prefetched_project_crops`, so without this the response reports an
+        already-imported entry as not imported at all, and the client state the
+        library page's import/update button reads (label, icon and the
+        `is_up_to_date` disable) is wiped until the next list reload.
+        """
+        active_project = get_active_project_optional(self.request)
+        if active_project is not None:
+            public_crop.prefetched_project_crops = list(
+                Crop.objects
+                .filter(
+                    source_public_crop=public_crop,
+                    project=active_project,
+                    deleted_at__isnull=True,
+                )
+                .order_by('-id')
+            )
+        return Response(PublicCropSerializer(public_crop, context=self.get_serializer_context()).data)
+
     @staticmethod
     def _transition_error_response(error: Exception, response_status: int) -> Response:
         code = getattr(error, 'code', 'invalid_status_transition')
@@ -232,7 +255,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             )
         except UnsupportedPublicCropFieldsError as error:
             return api_error_response(code=error.code, detail=error.detail, status_code=status.HTTP_400_BAD_REQUEST)
-        return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
+        return self._public_crop_response(updated)
 
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         kwargs['partial'] = True
@@ -501,7 +524,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._edit_conflict_response(error)
         except PublicCropRevisionNotFoundError as error:
             return api_error_response(code=error.code, detail=str(error), status_code=status.HTTP_404_NOT_FOUND)
-        return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
+        return self._public_crop_response(updated)
 
     @action(detail=True, methods=['get', 'post'], url_path='change-proposals')
     def change_proposals(self, request: Request, pk: int | None = None) -> Response:
@@ -593,7 +616,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)
         except PublicCropStatusTransitionError as error:
             return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
-        return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
+        return self._public_crop_response(updated)
 
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request: Request, pk: str | None = None) -> Response:
@@ -607,7 +630,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)
         except PublicCropStatusTransitionError as error:
             return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
-        return Response(PublicCropSerializer(updated, context=self.get_serializer_context()).data)
+        return self._public_crop_response(updated)
 
     @action(detail=True, methods=['post'], url_path='hard-delete')
     def hard_delete(self, request, pk=None):

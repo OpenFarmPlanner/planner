@@ -355,6 +355,13 @@ export interface PublicCropProjectImportStatus {
   crop_id: number;
   crop_name: string;
   is_modified_from_source: boolean;
+  /**
+   * True when re-importing this entry would change nothing in the project —
+   * the copy is pristine and already carries the library's current values.
+   * The update action is disabled on it, so the no-op never has to be
+   * explained after the fact.
+   */
+  is_up_to_date: boolean;
 }
 
 export interface PublicCropTranslations {
