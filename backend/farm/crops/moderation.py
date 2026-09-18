@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.conf import settings
+
 from accounts.models import AccountTrustProfile
 from accounts.trust import resolve_trust_level
 from farm.agent_api.permissions import client_declared_as_agent, get_request_api_token
@@ -39,3 +41,27 @@ def describe_contribution_origin(request: Request) -> tuple[bool, bool]:
     origin_api = get_request_api_token(request) is not None
     origin_declared_agent = client_declared_as_agent(request)
     return origin_api, origin_declared_agent
+
+
+def pending_queue_limit_exceeded(request: Request) -> bool:
+    """Whether this request's author already has too many proposals awaiting review.
+
+    Bounds how far a single account (or, more likely in practice, a token
+    routed into the queue by `requires_moderation_queue`) can flood the
+    moderation queue while contributions are still pending a human decision.
+    Rejecting new proposals here is independent of the write-rate throttles
+    (`accounts.throttling.TrustAwareWriteRateThrottle`,
+    `farm.agent_api.throttling`): those bound requests per hour, this bounds
+    standing backlog regardless of how slowly it was built up.
+    """
+    from farm.models import PublicCropChangeProposal
+
+    user = getattr(request, 'user', None)
+    if user is None or not user.is_authenticated:
+        return False
+    limit = int(getattr(settings, 'PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER', 20))
+    pending_count = PublicCropChangeProposal.objects.filter(
+        proposed_by=user,
+        status=PublicCropChangeProposal.STATUS_PENDING,
+    ).count()
+    return pending_count >= limit

@@ -16,7 +16,11 @@ from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_
 from accounts.models import DocumentConsent
 from config.responses import api_error_response
 from farm.common.mixins import ProjectScopedMixin
-from farm.crops.moderation import describe_contribution_origin, requires_moderation_queue
+from farm.crops.moderation import (
+    describe_contribution_origin,
+    pending_queue_limit_exceeded,
+    requires_moderation_queue,
+)
 from farm.history import (
     _current_actor_label,
     build_crop_history_payload,
@@ -417,6 +421,12 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 code='public_library_terms_required',
                 detail='Public library contribution terms must be accepted before publishing.',
                 status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if requires_moderation_queue(request) and pending_queue_limit_exceeded(request):
+            return api_error_response(
+                code='pending_proposal_limit_exceeded',
+                detail='Too many contributions are already awaiting moderation for this account.',
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
         publish_as_general = _request_boolean(request.data.get('publish_as_general'))

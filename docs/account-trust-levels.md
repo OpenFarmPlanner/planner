@@ -71,7 +71,35 @@ Because it is a global default class, it is on for every endpoint. There is
 no per-view opt-in for this one, by design: the point is a ceiling across the
 whole write surface, not per-endpoint tuning.
 
-**2. Crop-library contributions go through moderation.** See below.
+**2. API-token read/write throughput, independent of trust level.**
+`farm.agent_api.throttling.ApiTokenReadRateThrottle`,
+`ApiTokenWriteRateThrottle`, and `ApiTokenWriteDeclaredAgentRateThrottle`
+are global default throttle classes that key on the authenticating
+`ProjectApiToken`'s id (not the user), at the `api_token_read`,
+`api_token_write`, and `api_token_write_declared_agent` scopes respectively.
+Unlike `TrustAwareWriteRateThrottle`, these apply to **every** token request
+regardless of the token owner's trust level — closing the gap where an
+established account's token had no dedicated write ceiling at all. Each
+class is a no-op outside its own method/declaration combination (e.g. the
+write throttle ignores `GET` and ignores a declared-agent request, leaving
+that to the declared-agent class), so all three coexist without double
+counting one request. A session-authenticated request is never seen by any
+of them, since `get_request_api_token()` returns `None` for it.
+
+**3. Crop-library contributions go through moderation.** See below.
+
+**4. A cap on standing moderation backlog per account.**
+`farm.crops.moderation.pending_queue_limit_exceeded()` rejects a new
+`PublicCropChangeProposal` (edit or new-publish) with
+`429 pending_proposal_limit_exceeded` once the submitting account already has
+`PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER` (default 20) proposals sitting
+at `STATUS_PENDING`. This is deliberately independent of the write-rate
+throttles above: those bound requests per hour, so a slow drip that never
+trips the hourly rate could still, given enough hours, pile up an unbounded
+backlog for moderators to work through. The cap is checked per-request in
+both `PublicCropViewSet._queue_edit_proposal` and `CropViewSet.publish_public`
+rather than in `requires_moderation_queue()` itself, since only a request
+already routed into the queue needs it.
 
 ## Moderated crop-library contributions
 
@@ -241,13 +269,6 @@ Stated plainly so nobody re-derives them from the code:
   `approveChangeProposal` / `rejectChangeProposal` wrappers in
   `frontend/src/api/api.ts` all exist; only the UI is missing. **Until that
   page is built, a queued contribution has no in-app way to be approved.**
-- **The `api_token_*` throttle rates are declared but unwired.**
-  `api_token_read`, `api_token_write`, and `api_token_write_declared_agent`
-  exist in `DEFAULT_THROTTLE_RATES` with no throttle class or view
-  referencing them. Consequently the "a declared agent client gets a higher
-  rate-limit ceiling" incentive described around
-  `client_declared_as_agent()` is **not implemented** — declaring yourself an
-  agent currently only sets the `origin_declared_agent` provenance flag.
 - **Existing accounts are not backfilled.** Migration
   `accounts/0012_accounttrustprofile` creates the table and nothing else, and
   `trust_level` defaults to `new`. On deploy, *every* pre-existing account

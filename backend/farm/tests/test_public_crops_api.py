@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -2906,6 +2907,71 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
         crop.refresh_from_db()
         self.assertIsNone(crop.source_public_crop)
+
+    @override_settings(PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER=1)
+    def test_edit_proposal_is_rejected_once_pending_queue_limit_is_reached(self):
+        """A flood of edits from one account stops once its backlog hits the cap."""
+        new_user = User.objects.create_user(
+            username='flooder', email='flooder@example.com', password='pw', is_active=True,
+        )
+        self.client.force_authenticate(user=new_user)
+        first_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+        )
+        second_crop = PublicCrop.objects.create(
+            name='Potato', variety='Charlotte', status='published', created_by=self.user,
+        )
+
+        first = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{first_crop.id}/',
+            {'notes': 'First'}, format='json',
+        )
+        self.assertEqual(first.status_code, status.HTTP_202_ACCEPTED)
+
+        second = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{second_crop.id}/',
+            {'notes': 'Second'}, format='json',
+        )
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'pending_proposal_limit_exceeded')
+        self.assertEqual(PublicCropChangeProposal.objects.filter(proposed_by=new_user).count(), 1)
+
+    @override_settings(PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER=1)
+    def test_new_publish_is_rejected_once_pending_queue_limit_is_reached(self):
+        """The same cap applies to brand-new-publish proposals, not only edits."""
+        new_user = User.objects.create_user(
+            username='flood-publisher', email='flood-publisher@example.com',
+            password='pw', is_active=True,
+        )
+        project = Project.objects.create(name='Flood Project', slug='flood-project')
+        ProjectMembership.objects.create(user=new_user, project=project, role='admin')
+        # An existing pending proposal for this user already fills the cap.
+        PublicCropChangeProposal.objects.create(
+            public_crop=PublicCrop.objects.create(
+                name='Existing draft', status=PublicCrop.STATUS_DRAFT, created_by=new_user,
+            ),
+            kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
+            summary='Already pending',
+            proposed_data={},
+            proposed_by=new_user,
+        )
+        crop = Crop.objects.create(
+            name='Carrot', variety='Nantaise',
+            growth_duration_days=70, harvest_duration_days=20, project=project,
+        )
+        client = APIClient()
+        client.force_authenticate(user=new_user)
+        client.defaults['HTTP_X_PROJECT_ID'] = str(project.id)
+
+        response = client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'original_language_code': 'en'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(response.data['code'], 'pending_proposal_limit_exceeded')
+        self.assertFalse(PublicCrop.objects.filter(name='Carrot', variety='Nantaise').exists())
 
     def test_approving_new_publish_proposal_publishes_and_links_project_crop(self):
         new_user, crop, response = self._publish_as_new_trust_level_user()

@@ -514,6 +514,14 @@ THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP = _registration_success_ip_rate(DJANGO_ENV
 TRUST_ESTABLISHED_MIN_AGE_DAYS = int(_env_str('TRUST_ESTABLISHED_MIN_AGE_DAYS', '7'))
 TRUST_ESTABLISHED_MIN_ACTIVITY = int(_env_str('TRUST_ESTABLISHED_MIN_ACTIVITY', '3'))
 
+# Caps how many of one account's public-crop-library proposals may sit in
+# PublicCropChangeProposal.STATUS_PENDING at once — see
+# farm.crops.moderation.pending_queue_limit_exceeded and
+# docs/account-trust-levels.md.
+PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER = int(
+    _env_str('PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER', '20')
+)
+
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -540,6 +548,12 @@ REST_FRAMEWORK = {
         # level (docs/account-trust-levels.md). No-ops for everything else
         # (reads, anonymous requests, established accounts).
         'accounts.throttling.TrustAwareWriteRateThrottle',
+        # Per-token read/write ceilings, independent of the token owner's
+        # trust level — see docs/account-trust-levels.md. Each is a no-op
+        # outside its own method/declaration combination.
+        'farm.agent_api.throttling.ApiTokenReadRateThrottle',
+        'farm.agent_api.throttling.ApiTokenWriteRateThrottle',
+        'farm.agent_api.throttling.ApiTokenWriteDeclaredAgentRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'auth_login': _env_str('THROTTLE_AUTH_LOGIN', '10/minute'),

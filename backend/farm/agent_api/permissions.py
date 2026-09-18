@@ -43,12 +43,12 @@ def client_declared_as_agent(request) -> bool:
     """Whether this request opted into declaring itself an automated/agent client.
 
     Purely a self-declaration, never trusted for anything security-relevant
-    — any client can send or omit the header at will. Today its only effect
-    is to flag a crop-library submission for moderators as
-    `origin_declared_agent`. The intended incentive (a higher token
-    rate-limit ceiling for declared clients) is NOT implemented: the
-    `api_token_*` throttle rates exist in settings but no throttle class
-    reads them. See docs/account-trust-levels.md.
+    — any client can send or omit the header at will. It flags a
+    crop-library submission for moderators as `origin_declared_agent`, and
+    it is also what `farm.agent_api.throttling.ApiTokenWriteRateThrottle`
+    vs. `ApiTokenWriteDeclaredAgentRateThrottle` key on: declaring yourself
+    an agent moves a token's writes to the (higher) `api_token_write_declared_agent`
+    ceiling instead of `api_token_write`. See docs/account-trust-levels.md.
     """
     header_value = request.META.get(DECLARED_CLIENT_TYPE_HEADER, '')
     return header_value.strip().lower() == DECLARED_AGENT_CLIENT_TYPE

@@ -18,7 +18,11 @@ from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
 from farm.agent_api.permissions import ApiTokenAccessPermission
-from farm.crops.moderation import describe_contribution_origin, requires_moderation_queue
+from farm.crops.moderation import (
+    describe_contribution_origin,
+    pending_queue_limit_exceeded,
+    requires_moderation_queue,
+)
 from farm.models import (
     Crop,
     PublicCrop,
@@ -253,6 +257,14 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             current_version=error.current_version,
         )
 
+    @staticmethod
+    def _pending_queue_limit_response() -> Response:
+        return api_error_response(
+            code='pending_proposal_limit_exceeded',
+            detail='Too many contributions are already awaiting moderation for this account.',
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     def _queue_edit_proposal(self, request: Request, public_crop: PublicCrop) -> Response:
         """Route an edit into the moderation queue instead of applying it live.
 
@@ -262,6 +274,8 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         """
         if (forbidden := self._crop_species_pending_forbidden(public_crop)) is not None:
             return forbidden
+        if pending_queue_limit_exceeded(request):
+            return self._pending_queue_limit_response()
         proposed_data = {key: value for key, value in request.data.items() if key != 'base_version'}
         origin_api, origin_declared_agent = describe_contribution_origin(request)
         serializer = PublicCropChangeProposalSerializer(
