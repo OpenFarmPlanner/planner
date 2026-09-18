@@ -253,9 +253,16 @@ only when the immediate TCP peer is itself inside `TRUSTED_PROXY_NETWORKS`
 ["Settings reference"](#settings-reference)). That network-layer check is
 what stops a direct client from setting the header itself to claim an
 arbitrary IP and evade every check above. It is a no-op — and therefore safe
-to leave in place unconditionally — until `TRUSTED_PROXY_CIDRS` is set, which
-is not done in this repo; populating it with a real CDN's edge ranges is an
-`ops`-repo deploy-config change, not a code change.
+to leave in place unconditionally — until `TRUSTED_PROXY_CIDRS` is set.
+
+That setting is a Django runtime value, not a deploy-script one: it belongs
+in the remote backend `.env` (see the commented-out template and current
+Cloudflare ranges in `backend/.env.example`), the same way `SECRET_KEY` or
+`ALLOWED_HOSTS` do. The `ops` repo deliberately does not provision the
+backend `.env` at all (see its
+`docs/environment-variables.md`, "Supervisor-rendered runtime values") —
+only the actual CDN/DNS switch (nameservers, proxy status, TLS mode) is an
+`ops`-side/dashboard action, not this setting.
 
 ## Settings reference
 
