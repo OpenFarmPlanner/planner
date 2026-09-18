@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import ipaddress
 import os
 import socket
 from importlib.util import find_spec
@@ -98,6 +99,19 @@ def _dedupe(values: list[str]) -> list[str]:
     return list(dict.fromkeys(values))
 
 
+def _env_ip_networks(name: str) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """Parse a comma-separated list of CIDR ranges for TrustedProxyRemoteAddrMiddleware."""
+    networks = []
+    for cidr in _env_list(name):
+        try:
+            networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError as exc:
+            raise ImproperlyConfigured(
+                f'{name} entry "{cidr}" is not a valid IP network in CIDR notation.'
+            ) from exc
+    return networks
+
+
 def _detect_lan_ip() -> str:
     """Best-effort local LAN IP detection for development settings only."""
     try:
@@ -174,6 +188,13 @@ ALLOWED_HOSTS = _dedupe(
     + DEVELOPMENT_LAN_HOSTS
 )
 
+# CIDR ranges of trusted reverse proxies (e.g. Cloudflare's published edge
+# ranges) allowed to report the real client IP via TRUSTED_PROXY_IP_HEADER —
+# see config/middleware.TrustedProxyRemoteAddrMiddleware. Empty by default:
+# not yet behind such a proxy.
+TRUSTED_PROXY_NETWORKS = _env_ip_networks('TRUSTED_PROXY_CIDRS')
+TRUSTED_PROXY_IP_HEADER = _env_str('TRUSTED_PROXY_IP_HEADER', 'HTTP_CF_CONNECTING_IP')
+
 
 # Application definition
 
@@ -224,6 +245,10 @@ if DEBUG_TOOLBAR_ENABLED:
     INSTALLED_APPS.append('debug_toolbar')
 
 MIDDLEWARE = [
+    # Must run before anything reads REMOTE_ADDR (IP-scoped throttles,
+    # registration_abuse) — see config/middleware.py. A no-op until
+    # TRUSTED_PROXY_CIDRS is set.
+    'config.middleware.TrustedProxyRemoteAddrMiddleware',
     *(['debug_toolbar.middleware.DebugToolbarMiddleware'] if DEBUG_TOOLBAR_ENABLED else []),
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

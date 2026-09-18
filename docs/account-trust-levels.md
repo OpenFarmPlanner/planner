@@ -235,6 +235,28 @@ The same applies to any future throttle added to `DEFAULT_THROTTLE_CLASSES`:
 a global throttle class needs a per-view opt-in unless it genuinely belongs
 on every endpoint.
 
+### All of the above breaks silently behind a reverse proxy/CDN
+
+Every check in this section keys on `REMOTE_ADDR`: the per-IP registration
+cap reads it directly (`accounts/views.py`), and DRF's default
+`SimpleRateThrottle.get_ident()` (used by every IP-scoped throttle, e.g.
+`auth_login`, `auth_register`) falls back to it. A CDN or reverse proxy in
+front of the app (Cloudflare being the motivating case) terminates the
+client's connection itself, so `REMOTE_ADDR` becomes the proxy's own edge IP
+for every request — collapsing every visitor into one shared bucket instead
+of one each.
+
+`config.middleware.TrustedProxyRemoteAddrMiddleware` fixes this by rewriting
+`REMOTE_ADDR` from a client-IP header (`CF-Connecting-IP` by default), but
+only when the immediate TCP peer is itself inside `TRUSTED_PROXY_NETWORKS`
+(from the `TRUSTED_PROXY_CIDRS` env var — see
+["Settings reference"](#settings-reference)). That network-layer check is
+what stops a direct client from setting the header itself to claim an
+arbitrary IP and evade every check above. It is a no-op — and therefore safe
+to leave in place unconditionally — until `TRUSTED_PROXY_CIDRS` is set, which
+is not done in this repo; populating it with a real CDN's edge ranges is an
+`ops`-repo deploy-config change, not a code change.
+
 ## Settings reference
 
 All are read from the environment in `backend/config/settings.py`.
@@ -247,6 +269,12 @@ All are read from the environment in `backend/config/settings.py`.
 | `THROTTLE_AUTH_REGISTER` | `5/minute` | Registration attempts per IP |
 | `THROTTLE_AUTH_REGISTER_DOMAIN` | `10/hour` | Registration attempts per email domain |
 | `THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP` | `3/hour` (`100000/hour` in dev/test) | Successful registrations per IP |
+| `THROTTLE_API_TOKEN_READ` | `2000/hour` | Read ceiling per `ProjectApiToken` |
+| `THROTTLE_API_TOKEN_WRITE` | `300/hour` | Write ceiling per `ProjectApiToken` (not declared as an agent) |
+| `THROTTLE_API_TOKEN_WRITE_DECLARED_AGENT` | `600/hour` | Write ceiling per `ProjectApiToken` declared as an agent |
+| `PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER` | `20` | Cap on one account's standing moderation-queue backlog |
+| `TRUSTED_PROXY_CIDRS` | *(empty)* | CIDR ranges of reverse proxies allowed to report the real client IP |
+| `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Header read for the real client IP, once the peer is trusted |
 
 The E2E backend raises the trust/registration rates in
 `frontend/playwright.config.ts` alongside the auth rates already raised
