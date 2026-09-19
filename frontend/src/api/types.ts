@@ -396,12 +396,36 @@ export interface PublicCropRevision {
   id: number;
   public_crop: number;
   version: number;
-  action: 'created' | 'updated' | 'restored';
+  action: 'created' | 'updated' | 'restored' | 'species_relinked';
   snapshot: Partial<PublicCrop>;
   changed_fields: PublicCropRevisionChange[];
   restored_from_version?: number | null;
   created_by_label?: string;
   created_at?: string;
+}
+
+export interface PublicCropSpeciesRelinkRequest {
+  id: number;
+  public_crop: number;
+  from_crop_species: number | null;
+  to_crop_species: number;
+  status: 'pending' | 'completed' | 'cancelled';
+  note: string;
+  resolution_note: string;
+  requested_by_label?: string;
+  created_at?: string;
+  resolved_at?: string | null;
+}
+
+export interface PublicCropSpeciesRelinkResponse {
+  /**
+   * `relinked` when the correction was applied. `pending_species_proposal`
+   * when the target species is still awaiting moderation — the entry keeps its
+   * current species and the relink runs on approval.
+   */
+  relink_status: 'relinked' | 'pending_species_proposal';
+  crop: PublicCrop;
+  relink_request: PublicCropSpeciesRelinkRequest | null;
 }
 
 export interface PublicCropDiscussionComment {

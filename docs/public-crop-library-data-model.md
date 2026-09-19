@@ -101,6 +101,10 @@ species identity table:
   direct edits, neither of which mutates imported project copies.
   `PublicCropChangeProposal` is the legacy reviewed-edit table from an
   earlier iteration; it is retained for audit only.
+- `PublicCropSpeciesRelinkRequest` parks a moderator's "Kulturart korrigieren"
+  correction whose target species still has to be proposed, so approving the
+  species completes the relink instead of the moderator repeating it. See
+  [crop-library-architecture.md §9](./crop-library-architecture.md).
 
 `CropSupplierData` and `SeedPackage` are project-owned child records.
 `PlantingPlan` intentionally points to the private `Crop` snapshot, not to

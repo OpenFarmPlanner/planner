@@ -26,6 +26,7 @@ from farm.models import (
     Project,
     PublicCrop,
     PublicCropRevision,
+    PublicCropSpeciesRelinkRequest,
     PublicCropStatusEvent,
     PublicCropTranslation,
 )
@@ -214,6 +215,21 @@ class PublicCropIdentityConflictError(Exception):
         self.code = 'public_crop_variety_conflict'
 
 
+class PublicCropSpeciesRelinkError(Exception):
+    """Raised when a "Kulturart korrigieren" relink is not applicable at all.
+
+    Distinct from :class:`PublicCropIdentityConflictError`, which means the
+    relink itself is well-formed but would collide with another entry: this
+    one means the requested move makes no sense (same species, a rejected
+    target, or an entry that is not published).
+    """
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.code = code
+
+
 class UnsupportedPublicCropFieldsError(Exception):
     """Raised when an edit payload carries fields that are not publicly editable.
 
@@ -359,6 +375,7 @@ def find_public_crop_identity_conflict(
     public_crop: PublicCrop,
     *,
     variety: str,
+    crop_species_id: int | None = None,
 ) -> PublicCrop | None:
     """Another published entry that a variety rename would collide with, if any.
 
@@ -366,15 +383,23 @@ def find_public_crop_identity_conflict(
     (species, or legacy name, plus normalized variety) but starts from an
     existing ``PublicCrop`` being renamed rather than a project ``Crop``
     being published, and excludes the entry itself.
+
+    ``crop_species_id`` asks the same question about a species the entry does
+    not carry yet, which is what the "Kulturart korrigieren" relink needs:
+    the identity a relink lands on is the *target* species plus this entry's
+    variety. It defaults to the entry's own species.
     """
+    target_species_id = (
+        crop_species_id if crop_species_id is not None else public_crop.crop_species_id
+    )
     normalized_variety = normalize_identity_value(variety)
     queryset = PublicCrop.objects.filter(
         status=PublicCrop.STATUS_PUBLISHED,
         variety_normalized=normalized_variety,
     ).exclude(pk=public_crop.pk)
-    if public_crop.crop_species_id:
+    if target_species_id:
         queryset = queryset.filter(
-            Q(crop_species_id=public_crop.crop_species_id)
+            Q(crop_species_id=target_species_id)
             | Q(crop_species__isnull=True, name_normalized=public_crop.name_normalized),
         )
     else:
@@ -1151,17 +1176,309 @@ def _update_public_crop_from_project_crop(
     return public_crop
 
 
-def _link_crop_to_crop_species(*, crop: Crop, crop_species: CropSpecies) -> None:
+def _link_crop_to_crop_species(
+    *,
+    crop: Crop,
+    crop_species: CropSpecies,
+    previous_species_id: int | None = None,
+) -> None:
     """Record the species the crop was published under, group and all.
 
     Publishing must leave the project's own Kulturen exactly as they were apart
     from this link, so the rest of the crop's Kultur group adopts the species
     with it — otherwise publishing one Sorte would leave a second Kultur of the
     same name behind for the Sorten that stayed unpublished.
+
+    ``previous_species_id`` carries the same guarantee through a public
+    "Kulturart korrigieren" correction, where the group's rows already hold the
+    species being corrected away from instead of none.
     """
     crop.crop_species = crop_species
     crop.save(update_fields=['crop_species', 'updated_at'])
-    sync_crop_species_across_crop_group(crop)
+    sync_crop_species_across_crop_group(crop, previous_species_id=previous_species_id)
+
+
+@dataclass(frozen=True)
+class PublicCropSpeciesRelinkResult:
+    """Outcome of a "Kulturart korrigieren" request.
+
+    ``status`` is ``RELINKED`` when the correction was applied, or
+    ``PENDING_SPECIES_PROPOSAL`` when the target species is still awaiting
+    moderation and the relink was recorded to run on approval instead.
+    """
+
+    STATUS_RELINKED = 'relinked'
+    STATUS_PENDING_SPECIES_PROPOSAL = 'pending_species_proposal'
+
+    public_crop: PublicCrop
+    status: str
+    relink_request: PublicCropSpeciesRelinkRequest | None = None
+
+
+def _validate_public_crop_species_relink(
+    *,
+    public_crop: PublicCrop,
+    user: User | None,
+    crop_species: CropSpecies,
+) -> None:
+    """Everything that makes a relink inapplicable, before anything is written.
+
+    Moderator-gated rather than admin-gated on purpose: correcting a wrong
+    species mapping does not mutate the entry's locked ``name``/``variety``
+    identity, it only points the entry at the species it always belonged to.
+    """
+    if not _is_public_library_moderator(user):
+        raise PublicCropPermissionError(
+            'Moderator privileges are required to correct a crop species mapping.',
+            code='moderator_required',
+        )
+    if public_crop.status != PublicCrop.STATUS_PUBLISHED:
+        raise PublicCropStatusTransitionError(
+            'Only published entries can have their crop species corrected.',
+        )
+    if crop_species.status == CropSpecies.STATUS_REJECTED:
+        raise PublicCropSpeciesRelinkError(
+            'A rejected crop species cannot be used as a mapping target.',
+            code='crop_species_rejected',
+        )
+    if crop_species.pk == public_crop.crop_species_id:
+        raise PublicCropSpeciesRelinkError(
+            'This entry is already mapped to that crop species.',
+            code='crop_species_unchanged',
+        )
+    conflict = find_public_crop_identity_conflict(
+        public_crop,
+        variety=public_crop.variety,
+        crop_species_id=crop_species.pk,
+    )
+    if conflict is not None:
+        raise PublicCropIdentityConflictError(conflicting_public_crop=conflict)
+
+
+def _apply_public_crop_species_relink(
+    *,
+    public_crop: PublicCrop,
+    user: User | None,
+    crop_species: CropSpecies,
+) -> PublicCrop:
+    """Move a published entry onto another species and audit the move.
+
+    The audit is a :class:`PublicCropRevision`, not a
+    :class:`PublicCropStatusEvent`: the entry's status does not change, and the
+    revision's ``changed_fields`` already carry exactly what has to be on
+    record — who, when, and the old and new ``crop_species``.
+
+    The species being corrected away from is deliberately left untouched: other
+    entries may still map to it correctly, and taking it out of circulation is
+    the separate species reject/lifecycle decision.
+    """
+    with transaction.atomic():
+        locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+        previous_species_id = locked.crop_species_id
+        if previous_species_id == crop_species.pk:
+            return locked
+        # Re-asked under the row lock: the caller's check ran before it, so a
+        # concurrent publish or relink could have claimed this identity since.
+        conflict = find_public_crop_identity_conflict(
+            locked,
+            variety=locked.variety,
+            crop_species_id=crop_species.pk,
+        )
+        if conflict is not None:
+            raise PublicCropIdentityConflictError(conflicting_public_crop=conflict)
+        ensure_public_crop_revision(locked)
+        previous_snapshot = build_public_crop_snapshot(locked)
+        locked.crop_species = crop_species
+        locked.version = max(locked.version, 1) + 1
+        locked.save(update_fields=['crop_species', 'version', 'updated_at'])
+        create_public_crop_revision(
+            public_crop=locked,
+            user=user,
+            action=PublicCropRevision.ACTION_SPECIES_RELINKED,
+            previous_snapshot=previous_snapshot,
+        )
+        _sync_owned_crop_group_species(
+            public_crop=locked,
+            crop_species=crop_species,
+            previous_species_id=previous_species_id,
+        )
+        return locked
+
+
+def _sync_owned_crop_group_species(
+    *,
+    public_crop: PublicCrop,
+    crop_species: CropSpecies,
+    previous_species_id: int | None,
+) -> None:
+    """Keep the private crop group behind an entry on the corrected species.
+
+    Publishing links the source crop and its Kultur group to the species it was
+    published under; a correction has to follow, or the owner is left with a
+    group split between the wrong species and the corrected one.
+    """
+    crop = public_crop.source_project_crop
+    if crop is None or crop.deleted_at is not None:
+        return
+    _link_crop_to_crop_species(
+        crop=crop,
+        crop_species=crop_species,
+        previous_species_id=previous_species_id,
+    )
+
+
+def relink_public_crop_species(
+    *,
+    public_crop: PublicCrop,
+    user: User | None,
+    crop_species: CropSpecies,
+    note: str = '',
+) -> PublicCropSpeciesRelinkResult:
+    """Correct a published entry's crop species mapping ("Kulturart korrigieren").
+
+    A species that is still ``proposed`` is not applied right away — see
+    :class:`~farm.models.PublicCropSpeciesRelinkRequest` for why the entry has
+    to stay on its current species until the proposal is decided.
+    """
+    _validate_public_crop_species_relink(
+        public_crop=public_crop,
+        user=user,
+        crop_species=crop_species,
+    )
+    if crop_species.is_pending:
+        return PublicCropSpeciesRelinkResult(
+            public_crop=public_crop,
+            status=PublicCropSpeciesRelinkResult.STATUS_PENDING_SPECIES_PROPOSAL,
+            relink_request=_record_pending_species_relink(
+                public_crop=public_crop,
+                user=user,
+                crop_species=crop_species,
+                note=note,
+            ),
+        )
+    return PublicCropSpeciesRelinkResult(
+        public_crop=_apply_public_crop_species_relink(
+            public_crop=public_crop,
+            user=user,
+            crop_species=crop_species,
+        ),
+        status=PublicCropSpeciesRelinkResult.STATUS_RELINKED,
+    )
+
+
+def _record_pending_species_relink(
+    *,
+    public_crop: PublicCrop,
+    user: User | None,
+    crop_species: CropSpecies,
+    note: str,
+) -> PublicCropSpeciesRelinkRequest:
+    """Park a relink until its target species proposal is reviewed.
+
+    An entry has at most one pending correction: a moderator who changes their
+    mind about the target replaces the earlier request rather than queueing a
+    second one that would fight it on approval.
+    """
+    with transaction.atomic():
+        PublicCropSpeciesRelinkRequest.objects.filter(
+            public_crop=public_crop,
+            status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
+        ).update(
+            status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+            resolution_note='Superseded by a newer crop species correction.',
+            resolved_at=timezone.now(),
+        )
+        return PublicCropSpeciesRelinkRequest.objects.create(
+            public_crop=public_crop,
+            from_crop_species_id=public_crop.crop_species_id,
+            to_crop_species=crop_species,
+            requested_by=user,
+            note=note,
+        )
+
+
+def _resolve_relink_request(
+    request: PublicCropSpeciesRelinkRequest,
+    *,
+    status: str,
+    resolution_note: str = '',
+) -> None:
+    request.status = status
+    request.resolution_note = resolution_note
+    request.resolved_at = timezone.now()
+    request.save(update_fields=['status', 'resolution_note', 'resolved_at'])
+
+
+def complete_public_crop_species_relinks(
+    *,
+    crop_species: CropSpecies,
+    user: User | None,
+) -> list[PublicCrop]:
+    """Apply every correction that was waiting for this species to be approved.
+
+    Called from the species approval so the moderator who filed the correction
+    never has to repeat it. Each request is re-validated: the entry may have
+    been removed, or another entry may have claimed the same species+variety
+    identity in the meantime, and neither may be forced through just because
+    the request is older — nor may either fail the approval itself.
+    """
+    pending = (
+        PublicCropSpeciesRelinkRequest.objects
+        .filter(
+            to_crop_species=crop_species,
+            status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
+        )
+        .select_related('public_crop')
+    )
+    relinked: list[PublicCrop] = []
+    for request in pending:
+        public_crop = request.public_crop
+        if public_crop.status != PublicCrop.STATUS_PUBLISHED:
+            _resolve_relink_request(
+                request,
+                status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+                resolution_note='The entry is no longer published.',
+            )
+            continue
+        if public_crop.crop_species_id == crop_species.pk:
+            _resolve_relink_request(request, status=PublicCropSpeciesRelinkRequest.STATUS_COMPLETED)
+            continue
+        try:
+            relinked.append(_apply_public_crop_species_relink(
+                public_crop=public_crop,
+                user=request.requested_by or user,
+                crop_species=crop_species,
+            ))
+        except PublicCropIdentityConflictError:
+            # Someone published that identity while the proposal was in review.
+            # The approval itself is sound, so drop the correction rather than
+            # failing the moderator's decision.
+            _resolve_relink_request(
+                request,
+                status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+                resolution_note=(
+                    'Another published entry already uses this crop species and variety.'
+                ),
+            )
+            continue
+        _resolve_relink_request(request, status=PublicCropSpeciesRelinkRequest.STATUS_COMPLETED)
+    return relinked
+
+
+def cancel_public_crop_species_relinks(*, crop_species: CropSpecies) -> int:
+    """Drop the corrections waiting on a species proposal a moderator rejected."""
+    return (
+        PublicCropSpeciesRelinkRequest.objects
+        .filter(
+            to_crop_species=crop_species,
+            status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
+        )
+        .update(
+            status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+            resolution_note='The proposed crop species was rejected.',
+            resolved_at=timezone.now(),
+        )
+    )
 
 
 def publish_crop_to_public_library(

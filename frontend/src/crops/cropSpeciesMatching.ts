@@ -146,3 +146,19 @@ export const isCropSpeciesSearchMatch = (searchValue: string, searchNames: strin
   if (!normalizedSearch) return false;
   return searchNames.some((name) => isCloseCropSpeciesMatch(normalizedSearch, normalizedCropSpeciesNameKey(name)));
 };
+
+/**
+ * Species label for a picker option: the canonical name, plus the alias the
+ * user's search actually matched when that alias is what made the option
+ * appear (so a regional or synonym hit is never silent).
+ */
+export const getCropSpeciesOptionLabel = (
+  option: CropSpecies,
+  searchValue = '',
+): string => {
+  const canonicalName = getCropSpeciesCanonicalName(option);
+  return formatCropSpeciesMatchLabel(
+    canonicalName,
+    findMatchedCropSpeciesAlias(searchValue, canonicalName, getCropSpeciesSearchNames(option)),
+  );
+};

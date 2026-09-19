@@ -29,6 +29,7 @@ import type {
   PublicCropMatchResponse,
   PublicCropRemovalReason,
   PublicCropRevision,
+  PublicCropSpeciesRelinkResponse,
   PublicCropDuplicateCandidate,
   PublicCropTranslations,
   CropSpecies,
@@ -222,6 +223,14 @@ export const publicCropAPI = {
   // somebody else's entry must supply a structured moderation reason.
   remove: (id: number, reason?: PublicCropRemovalReason) =>
     http.post<PublicCrop>(`/public-crops/${id}/remove/`, reason ? { reason } : {}),
+  // Moderator-only: correct which crop species a published entry maps to.
+  // Never touches the locked name/variety identity — a target species that is
+  // still a proposal parks the correction until it is reviewed.
+  relinkSpecies: (id: number, cropSpeciesId: number, note?: string) =>
+    http.post<PublicCropSpeciesRelinkResponse>(
+      `/public-crops/${id}/relink-species/`,
+      { crop_species: cropSpeciesId, ...(note ? { note } : {}) },
+    ),
   // Moderator-only undo for a moderator removal; no time limit (see
   // reinstate_removed_public_crop on the backend for why a contributor
   // can't just republish their way past a moderation decision).
