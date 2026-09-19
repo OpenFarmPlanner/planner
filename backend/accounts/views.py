@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from datetime import timedelta
 
 from django.conf import settings
@@ -151,7 +152,8 @@ class RegisterView(APIView):
         # Honeypot: only automated clients fill this hidden field. Respond as
         # if registration succeeded so a bot cannot distinguish this from a
         # real success and adjust its behavior.
-        if str(request.data.get('website', '')).strip():
+        honeypot_value = request.data.get('website', '') if isinstance(request.data, Mapping) else ''
+        if str(honeypot_value).strip():
             logger.info('Discarded honeypot-triggered registration attempt')
             return Response({'detail': _registration_success_message()}, status=status.HTTP_201_CREATED)
 

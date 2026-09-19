@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from rest_framework.throttling import SimpleRateThrottle
@@ -30,7 +31,11 @@ class EmailDomainRateThrottle(SimpleRateThrottle):
         if not getattr(view, 'throttle_email_domain', False):
             return None
 
-        email = request.data.get('email') if hasattr(request, 'data') else None
+        # A non-dict body (a bare JSON list, say) must not raise here: this
+        # throttle runs before the view's own validation, so an AttributeError
+        # would turn a 400 into a 500.
+        data = getattr(request, 'data', None)
+        email = data.get('email') if isinstance(data, Mapping) else None
         if not email:
             return None
         try:

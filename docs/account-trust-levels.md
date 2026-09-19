@@ -304,6 +304,11 @@ Stated plainly so nobody re-derives them from the code:
   `approveChangeProposal` / `rejectChangeProposal` wrappers in
   `frontend/src/api/api.ts` all exist; only the UI is missing. **Until that
   page is built, a queued contribution has no in-app way to be approved.**
+  The contributor's own side is wired up: a `pending_moderation` publish shows
+  `crops:library.publishPendingModeration` instead of the publish-success
+  snackbar, co-published Sorten are counted separately from published ones,
+  and both proposal notification types have German and English wording in
+  `notifications.json`.
 - **Existing accounts are not backfilled.** Migration
   `accounts/0012_accounttrustprofile` creates the table and nothing else, and
   `trust_level` defaults to `new`. On deploy, *every* pre-existing account

@@ -135,18 +135,24 @@ export default function RegisterPage() {
           ) : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
           {success ? <Alert severity="success">{success}</Alert> : null}
-          {/* Honeypot: hidden from sighted and screen-reader users alike; only
-              an automated client that fills every form field populates it. */}
-          <TextField
-            label={t('auth:register.honeypotLabel')}
-            name="website"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            tabIndex={-1}
-            autoComplete="off"
+          {/* Honeypot: hidden from sighted, screen-reader and keyboard users
+              alike; only an automated client that fills every form field
+              populates it. `tabIndex` has to go on the input itself (the
+              TextField would put it on the wrapper, leaving the input in the
+              tab order and scrolling the page off-screen on the first Tab). */}
+          <Box
             aria-hidden="true"
             sx={{ position: 'absolute', left: '-9999px', width: 1, height: 0, overflow: 'hidden' }}
-          />
+          >
+            <TextField
+              label={t('auth:register.honeypotLabel')}
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              autoComplete="off"
+              slotProps={{ htmlInput: { tabIndex: -1, autoComplete: 'off' } }}
+            />
+          </Box>
           <TextField
             label={t('auth:register.email')}
             type="email"

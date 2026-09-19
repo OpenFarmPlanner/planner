@@ -149,6 +149,9 @@ export function usePublicCropLibrary({
     if (result.alreadyPublic > 0) {
       messages.push(t('library.publishVarietiesAlreadyPublic', { count: result.alreadyPublic }));
     }
+    if (result.pendingModeration > 0) {
+      messages.push(t('library.publishVarietiesPendingModeration', { count: result.pendingModeration }));
+    }
     if (result.failed > 0) {
       messages.push(t('library.publishVarietiesPartialError', { count: result.failed }));
     }
@@ -190,9 +193,17 @@ export function usePublicCropLibrary({
           ...(publishingData.publishAsGeneral !== undefined ? { publish_as_general: publishingData.publishAsGeneral } : {}),
         } : {}),
       });
-      const cropMessage = response.data.operation === 'updated'
-        ? t('library.updateSuccess', { name: formatCropDisplayName(selectedCrop) })
-        : t('library.publishSuccess', { name: formatCropDisplayName(selectedCrop) });
+      const publishMessageKeys = {
+        updated: 'library.updateSuccess',
+        // Queued for moderation: the entry is not in the library yet, so the
+        // message must not read as a completed publish.
+        pending_moderation: 'library.publishPendingModeration',
+        created: 'library.publishSuccess',
+      } as const;
+      const cropMessage = t(
+        publishMessageKeys[response.data.operation] ?? publishMessageKeys.created,
+        { name: formatCropDisplayName(selectedCrop) },
+      );
       if (acceptedPublicLibraryTerms) {
         await refreshUser();
       }

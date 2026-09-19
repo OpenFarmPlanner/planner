@@ -1255,3 +1255,27 @@ class RegistrationAbuseThrottleTests(APITestCase):
                     format='json',
                 )
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @override_settings(THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP='100000/hour')
+    def test_register_with_non_dict_body_is_rejected_not_a_server_error(self) -> None:
+        """The domain throttle reads the body before the view validates it, so a
+        JSON body that is not an object must still produce a 400."""
+        domain_rates = {
+            **settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'],
+            'auth_register': '100000/minute',
+            'auth_register_domain': '100000/hour',
+        }
+        with (
+            override_settings(
+                REST_FRAMEWORK={
+                    **settings.REST_FRAMEWORK,
+                    'DEFAULT_THROTTLE_RATES': domain_rates,
+                },
+            ),
+            patch.object(ScopedRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(EmailDomainRateThrottle, 'THROTTLE_RATES', domain_rates),
+            patch.object(RegisterView, 'throttle_classes', [ScopedRateThrottle, EmailDomainRateThrottle]),
+        ):
+            response = self.client.post('/openfarmplanner/api/auth/register/', [], format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
