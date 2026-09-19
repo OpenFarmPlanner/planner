@@ -456,6 +456,7 @@ export type PublicCropRemovalReason =
   // System-applied only, set when the crop species behind an entry is
   // rejected — never offered as a choice in the manual removal dialog.
   | 'species_rejected'
+  | 'proposal_rejected'
   | 'other';
 
 export interface PublicCropDuplicateCandidate {
@@ -583,8 +584,14 @@ export interface PublishPublicCropPreview {
 }
 
 export interface PublishPublicCropResponse {
-  operation: 'created' | 'updated';
-  public_crop: PublicCrop;
+  /**
+   * `pending_moderation` means the contribution was queued for review instead
+   * of published: the response then carries `change_proposal` and no
+   * `public_crop`.
+   */
+  operation: 'created' | 'updated' | 'pending_moderation';
+  public_crop?: PublicCrop;
+  change_proposal?: PublicCropChangeProposal;
   duplicates: PublicCropDuplicateCandidate[];
 }
 
@@ -1001,7 +1008,9 @@ export type NotificationType =
   | 'crop_species_proposal_rejected'
   | 'crop_species_proposal_submitted'
   | 'moderator_request_submitted'
-  | 'public_crop_removed';
+  | 'public_crop_removed'
+  | 'public_crop_change_proposal_submitted'
+  | 'public_crop_change_proposal_reviewed';
 
 export type NotificationTargetType = 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
 

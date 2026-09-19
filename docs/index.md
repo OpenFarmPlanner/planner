@@ -42,6 +42,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   external tools, scripts, and coding agents: the security model, the available
   permissions, the crop validation and plausibility rules, and the two-step
   preview/apply import flow.
+- **[Account Trust Levels](./account-trust-levels.md)** — the anti-abuse
+  `new`/`established` split: how an account is promoted, the narrowed write
+  throttle, which crop-library contributions get queued for moderation
+  instead of applying live, and the registration hardening layers.
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.

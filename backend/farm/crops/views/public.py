@@ -17,6 +17,12 @@ from config.responses import api_error_response
 from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
+from farm.agent_api.permissions import ApiTokenAccessPermission
+from farm.crops.moderation import (
+    describe_contribution_origin,
+    pending_queue_limit_exceeded,
+    requires_moderation_queue,
+)
 from farm.models import (
     Crop,
     PublicCrop,
@@ -33,9 +39,13 @@ from farm.services.public_crops import (
     PublicCropRevisionNotFoundError,
     PublicCropStatusTransitionError,
     UnsupportedPublicCropFieldsError,
+    approve_new_publish_proposal,
     hard_delete_public_crop,
     import_public_crop_into_project,
+    notify_change_proposal_reviewed,
+    notify_moderators_of_change_proposal,
     reinstate_removed_public_crop,
+    reject_new_publish_proposal,
     remove_public_crop,
     replace_public_crop_translations,
     restore_public_crop_version,
@@ -65,6 +75,14 @@ class PublicCropViewSet(viewsets.ModelViewSet):
     not couple this API to project-scoped history.
     """
 
+    # Only `update`/`partial_update` are opted into the token surface so far,
+    # and only because `requires_moderation_queue()` (farm/crops/moderation.py)
+    # unconditionally routes any token-authenticated write into the
+    # PublicCropChangeProposal queue — a token can never publish/edit the
+    # public library live. Broader read access is deferred (see
+    # docs/agent-api.md).
+    api_token_actions = {'update', 'partial_update'}
+
     queryset = (
         PublicCrop.objects
         .filter(status=PublicCrop.STATUS_PUBLISHED)
@@ -72,7 +90,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         .order_by('name', 'variety')
     )
     serializer_class = PublicCropSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # This view sets its own permission_classes (overriding the project
+    # default), so ApiTokenAccessPermission must be listed explicitly here —
+    # ApiTokenSurfaceMiddleware only gates at the class level (does this view
+    # declare *any* api_token_actions), never per-action. Without this, once
+    # api_token_actions is non-empty, every action (including list/retrieve,
+    # not just the opted-in update/partial_update) would be reachable.
+    permission_classes = [permissions.IsAuthenticated, ApiTokenAccessPermission]
 
     def get_permissions(self):
         if self.action in {'discussion_topics', 'topic_comments'} and self.request.method == 'GET':
@@ -98,6 +122,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             base_queryset = PublicCrop.objects.filter(
                 status=PublicCrop.STATUS_REMOVED,
             ).order_by('name', 'variety')
+        elif self.action in {'approve_change_proposal', 'reject_change_proposal'} and is_public_library_moderator(self.request.user):
+            # A pending KIND_NEW_PUBLISH proposal's public_crop is a
+            # still-draft row (invisible on every other surface — the
+            # class-level queryset filters to published-only). Both actions
+            # already require moderator privileges before reaching this
+            # queryset, so it is safe to widen it to every status here.
+            base_queryset = PublicCrop.objects.all().order_by('name', 'variety')
         else:
             base_queryset = super().get_queryset()
         queryset = (
@@ -226,11 +257,51 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             current_version=error.current_version,
         )
 
+    @staticmethod
+    def _pending_queue_limit_response() -> Response:
+        return api_error_response(
+            code='pending_proposal_limit_exceeded',
+            detail='Too many contributions are already awaiting moderation for this account.',
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    def _queue_edit_proposal(self, request: Request, public_crop: PublicCrop) -> Response:
+        """Route an edit into the moderation queue instead of applying it live.
+
+        Used when `requires_moderation_queue(request)` is true (a new-trust-level
+        account or any API-token-authenticated request) — see
+        docs/account-trust-levels.md.
+        """
+        if (forbidden := self._crop_species_pending_forbidden(public_crop)) is not None:
+            return forbidden
+        if pending_queue_limit_exceeded(request):
+            return self._pending_queue_limit_response()
+        proposed_data = {key: value for key, value in request.data.items() if key != 'base_version'}
+        origin_api, origin_declared_agent = describe_contribution_origin(request)
+        serializer = PublicCropChangeProposalSerializer(
+            data={
+                'summary': f'Direct edit awaiting moderation ({len(proposed_data)} field(s) changed)',
+                'proposed_data': proposed_data,
+            },
+        )
+        serializer.is_valid(raise_exception=True)
+        proposal = serializer.save(
+            public_crop=public_crop,
+            proposed_by=request.user,
+            kind=PublicCropChangeProposal.KIND_EDIT,
+            origin_api=origin_api,
+            origin_declared_agent=origin_declared_agent,
+        )
+        notify_moderators_of_change_proposal(proposal)
+        return Response(PublicCropChangeProposalSerializer(proposal).data, status=status.HTTP_202_ACCEPTED)
+
     def update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
         partial = kwargs.pop('partial', False)
         public_crop = self.get_object()
+        if requires_moderation_queue(request):
+            return self._queue_edit_proposal(request, public_crop)
         serializer = PublicCropUpdateSerializer(public_crop, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         validated_data = dict(serializer.validated_data)
@@ -557,25 +628,37 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._proposal_status_error()
 
         review_note = (request.data.get('review_note') or '').strip()
-        update_serializer = PublicCropUpdateSerializer(data=proposal.proposed_data, partial=True)
-        update_serializer.is_valid(raise_exception=True)
-        update_data = dict(update_serializer.validated_data)
-        if 'seed_packages' in update_data:
-            update_data['seed_packages'] = update_serializer.fields[
-                'seed_packages'
-            ].to_representation(update_data['seed_packages'])
+
         with transaction.atomic():
-            update_public_crop_directly(
-                public_crop=public_crop,
-                user=request.user,
-                data=update_data,
-            )
+            if proposal.kind == PublicCropChangeProposal.KIND_NEW_PUBLISH:
+                source_crop_id = proposal.proposed_data.get('_source_crop_id')
+                source_crop = Crop.objects.filter(pk=source_crop_id).first() if source_crop_id else None
+                approve_new_publish_proposal(
+                    public_crop=public_crop,
+                    source_crop=source_crop,
+                    publish_as_general=bool(proposal.proposed_data.get('_publish_as_general')),
+                    user=request.user,
+                )
+            else:
+                update_serializer = PublicCropUpdateSerializer(data=proposal.proposed_data, partial=True)
+                update_serializer.is_valid(raise_exception=True)
+                update_data = dict(update_serializer.validated_data)
+                if 'seed_packages' in update_data:
+                    update_data['seed_packages'] = update_serializer.fields[
+                        'seed_packages'
+                    ].to_representation(update_data['seed_packages'])
+                update_public_crop_directly(
+                    public_crop=public_crop,
+                    user=request.user,
+                    data=update_data,
+                )
             proposal.status = PublicCropChangeProposal.STATUS_APPROVED
             proposal.reviewed_by = request.user
             proposal.reviewed_at = timezone.now()
             proposal.review_note = review_note
             proposal.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_note', 'updated_at'])
 
+        notify_change_proposal_reviewed(proposal)
         return Response(PublicCropChangeProposalSerializer(proposal).data)
 
     @action(detail=True, methods=['post'], url_path=r'change-proposals/(?P<proposal_id>[^/.]+)/reject')
@@ -593,11 +676,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
             return self._proposal_status_error()
 
-        proposal.status = PublicCropChangeProposal.STATUS_REJECTED
-        proposal.reviewed_by = request.user
-        proposal.reviewed_at = timezone.now()
-        proposal.review_note = (request.data.get('review_note') or '').strip()
-        proposal.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_note', 'updated_at'])
+        with transaction.atomic():
+            if proposal.kind == PublicCropChangeProposal.KIND_NEW_PUBLISH:
+                reject_new_publish_proposal(public_crop=public_crop, user=request.user)
+            proposal.status = PublicCropChangeProposal.STATUS_REJECTED
+            proposal.reviewed_by = request.user
+            proposal.reviewed_at = timezone.now()
+            proposal.review_note = (request.data.get('review_note') or '').strip()
+            proposal.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_note', 'updated_at'])
+        notify_change_proposal_reviewed(proposal)
         return Response(PublicCropChangeProposalSerializer(proposal).data)
 
     @action(detail=True, methods=['post'], url_path='remove')

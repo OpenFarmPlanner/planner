@@ -35,6 +35,25 @@ def get_request_api_token(request) -> ProjectApiToken | None:
     return auth if isinstance(auth, ProjectApiToken) else None
 
 
+DECLARED_CLIENT_TYPE_HEADER = 'HTTP_X_CLIENT_DECLARED_TYPE'
+DECLARED_AGENT_CLIENT_TYPE = 'agent'
+
+
+def client_declared_as_agent(request) -> bool:
+    """Whether this request opted into declaring itself an automated/agent client.
+
+    Purely a self-declaration, never trusted for anything security-relevant
+    — any client can send or omit the header at will. It flags a
+    crop-library submission for moderators as `origin_declared_agent`, and
+    it is also what `farm.agent_api.throttling.ApiTokenWriteRateThrottle`
+    vs. `ApiTokenWriteDeclaredAgentRateThrottle` key on: declaring yourself
+    an agent moves a token's writes to the (higher) `api_token_write_declared_agent`
+    ceiling instead of `api_token_write`. See docs/account-trust-levels.md.
+    """
+    header_value = request.META.get(DECLARED_CLIENT_TYPE_HEADER, '')
+    return header_value.strip().lower() == DECLARED_AGENT_CLIENT_TYPE
+
+
 def _resolve_action(request, view) -> str:
     """Return the allowlist key for this request.
 
