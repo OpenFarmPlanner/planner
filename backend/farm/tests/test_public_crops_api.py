@@ -30,6 +30,7 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import get_general_crop
 from farm.tests.api_base import User
+from notifications.models import Notification
 
 
 class PublicCropLibraryApiTest(DRFAPITestCase):
@@ -3647,6 +3648,36 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'crop_species_rejected')
 
+    def test_the_moderator_note_is_recorded_even_when_the_relink_applies_at_once(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'note': 'Bean was too broad.'},
+            format='json',
+        )
+
+        record = self.entry.species_relink_requests.get()
+        self.assertEqual(record.status, PublicCropSpeciesRelinkRequest.STATUS_COMPLETED)
+        self.assertEqual(record.note, 'Bean was too broad.')
+        self.assertEqual(record.from_crop_species_id, self.broad_species.id)
+        self.assertEqual(record.to_crop_species_id, self.correct_species.id)
+        self.assertEqual(record.requested_by_id, self.moderator.id)
+
+    def test_a_rejected_relink_leaves_no_record_behind(self):
+        PublicCrop.objects.create(
+            name='Runner bean',
+            variety='Neckarkoenigin',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.correct_species,
+        )
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(self.entry.species_relink_requests.exists())
+
     def test_a_removed_entry_cannot_be_relinked(self):
         self.entry.status = PublicCrop.STATUS_REMOVED
         self.entry.save(update_fields=['status'])
@@ -3772,3 +3803,47 @@ class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
             self.entry.species_relink_requests.get().status,
             PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
         )
+
+    def test_rejecting_the_species_tells_the_moderator_the_correction_was_dropped(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+
+        self.client.post(
+            f'/openfarmplanner/api/crop-species/{self.proposed_species.id}/reject/', {}, format='json',
+        )
+
+        notification = Notification.objects.filter(
+            recipient=self.moderator,
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.context['name'], self.entry.name)
+        self.assertEqual(notification.context['species_name'], self.proposed_species.name)
+        self.assertEqual(notification.target_id, self.entry.id)
+
+    def test_a_conflict_at_approval_time_tells_the_moderator_too(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        PublicCrop.objects.create(
+            name='Vertusleaf kale',
+            variety='Vertus',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.proposed_species,
+        )
+
+        self.approve_proposed_species()
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.moderator,
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).exists())
+
+    def test_a_superseded_correction_is_not_announced_as_a_broken_promise(self):
+        other_proposed = CropSpecies.objects.create(
+            name='Spitzleaf kale', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.moderator,
+        )
+
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        self.client.post(self.url, {'crop_species': other_proposed.id}, format='json')
+
+        self.assertFalse(Notification.objects.filter(
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).exists())

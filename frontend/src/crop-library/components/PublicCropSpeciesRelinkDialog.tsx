@@ -95,13 +95,23 @@ export function PublicCropSpeciesRelinkDialog({
     if (!crop) return;
     setSubmitting(true);
     setErrorText('');
+    // Filing the proposal and relinking are two calls, and only the second can
+    // fail on its own. When it does, the species proposal is already real, so
+    // the retry must reuse it instead of filing a duplicate — it stays
+    // selected, and the message says so rather than reading like nothing
+    // happened.
+    let proposalFiled = false;
     try {
       let target = selectedSpecies;
       if (!target && proposalName?.trim()) {
         // Routed through the existing "Kulturart vorschlagen" endpoint so this
         // never becomes a second way to create a species.
-        const proposal = await cropSpeciesAPI.propose(proposalName.trim(), (i18n.language || 'de').split('-')[0]);
+        const proposal = await cropSpeciesAPI.propose(
+          proposalName.trim(),
+          (i18n.language || 'de').split('-')[0],
+        );
         target = proposal.data;
+        proposalFiled = true;
         addSpecies(target);
         setSelectedSpecies(target);
         setProposalName(null);
@@ -112,7 +122,10 @@ export function PublicCropSpeciesRelinkDialog({
       await onRelinked(response.data, getCropSpeciesOptionLabel(target));
     } catch (error) {
       const inlineKey = INLINE_ERROR_KEYS[getApiErrorCode(error) ?? ''];
-      setErrorText(t(inlineKey ?? 'library.relinkSpecies.error'));
+      setErrorText(t(
+        inlineKey
+        ?? (proposalFiled ? 'library.relinkSpecies.proposalFiledError' : 'library.relinkSpecies.error'),
+      ));
     } finally {
       setSubmitting(false);
     }

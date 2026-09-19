@@ -1188,7 +1188,8 @@
       "error": "The crop species could not be changed.",
       "conflictError": "A published entry with this variety already exists under this crop species.",
       "unchangedError": "This entry is already mapped to that crop species.",
-      "rejectedError": "A rejected crop species cannot be used as a target."
+      "rejectedError": "A rejected crop species cannot be used as a target.",
+      "proposalFiledError": "The crop species was suggested, but the mapping could not be saved. The suggestion stays selected — please try again."
     }
   },
   "commands": {

@@ -1345,39 +1345,53 @@ def relink_public_crop_species(
         user=user,
         crop_species=crop_species,
     )
-    if crop_species.is_pending:
-        return PublicCropSpeciesRelinkResult(
-            public_crop=public_crop,
-            status=PublicCropSpeciesRelinkResult.STATUS_PENDING_SPECIES_PROPOSAL,
-            relink_request=_record_pending_species_relink(
-                public_crop=public_crop,
-                user=user,
-                crop_species=crop_species,
-                note=note,
-            ),
-        )
-    return PublicCropSpeciesRelinkResult(
-        public_crop=_apply_public_crop_species_relink(
+    with transaction.atomic():
+        relink_request = _record_species_relink_request(
             public_crop=public_crop,
             user=user,
             crop_species=crop_species,
-        ),
-        status=PublicCropSpeciesRelinkResult.STATUS_RELINKED,
-    )
+            note=note,
+        )
+        if crop_species.is_pending:
+            return PublicCropSpeciesRelinkResult(
+                public_crop=public_crop,
+                status=PublicCropSpeciesRelinkResult.STATUS_PENDING_SPECIES_PROPOSAL,
+                relink_request=relink_request,
+            )
+        updated = _apply_public_crop_species_relink(
+            public_crop=public_crop,
+            user=user,
+            crop_species=crop_species,
+        )
+        _resolve_relink_request(
+            relink_request,
+            status=PublicCropSpeciesRelinkRequest.STATUS_COMPLETED,
+        )
+        return PublicCropSpeciesRelinkResult(
+            public_crop=updated,
+            status=PublicCropSpeciesRelinkResult.STATUS_RELINKED,
+            relink_request=relink_request,
+        )
 
 
-def _record_pending_species_relink(
+def _record_species_relink_request(
     *,
     public_crop: PublicCrop,
     user: User | None,
     crop_species: CropSpecies,
     note: str,
 ) -> PublicCropSpeciesRelinkRequest:
-    """Park a relink until its target species proposal is reviewed.
+    """Record the correction itself, before it is applied or parked.
 
-    An entry has at most one pending correction: a moderator who changes their
-    mind about the target replaces the earlier request rather than queueing a
-    second one that would fight it on approval.
+    Every relink gets a row, not just the ones waiting on a species proposal:
+    it is where the moderator's ``note`` (the *why* of the correction) lives —
+    :class:`PublicCropRevision` has no free-text field — and it keeps "which
+    entries were remapped, by whom, from what, and why" answerable with one
+    query instead of a scan through revision diffs.
+
+    An entry has at most one *pending* correction: a moderator who changes
+    their mind about the target replaces the earlier request rather than
+    queueing a second one that would fight it on approval.
     """
     with transaction.atomic():
         PublicCropSpeciesRelinkRequest.objects.filter(
@@ -1409,6 +1423,54 @@ def _resolve_relink_request(
     request.save(update_fields=['status', 'resolution_note', 'resolved_at'])
 
 
+def _notify_relink_request_cancelled(
+    request: PublicCropSpeciesRelinkRequest,
+    *,
+    reason_context: str,
+) -> None:
+    """Tell the moderator their parked correction will not happen after all.
+
+    The dialog promises the entry is relinked automatically once the species is
+    approved. When that promise cannot be kept — the proposal was rejected, the
+    entry is gone, or somebody else claimed the identity meanwhile — the
+    moderator has to hear it, or they are left believing a correction was made
+    that silently was not. Nothing else surfaces a resolved request.
+
+    Imported locally for the same reason the rest of this module's cross-app
+    calls are: `notifications` is a separate app and this keeps the public crop
+    library's import surface unchanged.
+    """
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    public_crop = request.public_crop
+    species_name = request.to_crop_species.name
+    create_notification(
+        recipient=request.requested_by,
+        notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        message=(
+            f'The crop species correction of "{public_crop.name}" to '
+            f'"{species_name}" was not applied: {reason_context}'
+        ),
+        context={'name': public_crop.name, 'species_name': species_name},
+        target_type=Notification.TARGET_PUBLIC_CROP,
+        target_id=public_crop.id,
+    )
+
+
+def _cancel_relink_request(
+    request: PublicCropSpeciesRelinkRequest,
+    *,
+    resolution_note: str,
+) -> None:
+    _resolve_relink_request(
+        request,
+        status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+        resolution_note=resolution_note,
+    )
+    _notify_relink_request_cancelled(request, reason_context=resolution_note)
+
+
 def complete_public_crop_species_relinks(
     *,
     crop_species: CropSpecies,
@@ -1428,17 +1490,13 @@ def complete_public_crop_species_relinks(
             to_crop_species=crop_species,
             status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
         )
-        .select_related('public_crop')
+        .select_related('public_crop', 'to_crop_species', 'requested_by')
     )
     relinked: list[PublicCrop] = []
     for request in pending:
         public_crop = request.public_crop
         if public_crop.status != PublicCrop.STATUS_PUBLISHED:
-            _resolve_relink_request(
-                request,
-                status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
-                resolution_note='The entry is no longer published.',
-            )
+            _cancel_relink_request(request, resolution_note='The entry is no longer published.')
             continue
         if public_crop.crop_species_id == crop_species.pk:
             _resolve_relink_request(request, status=PublicCropSpeciesRelinkRequest.STATUS_COMPLETED)
@@ -1453,9 +1511,8 @@ def complete_public_crop_species_relinks(
             # Someone published that identity while the proposal was in review.
             # The approval itself is sound, so drop the correction rather than
             # failing the moderator's decision.
-            _resolve_relink_request(
+            _cancel_relink_request(
                 request,
-                status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
                 resolution_note=(
                     'Another published entry already uses this crop species and variety.'
                 ),
@@ -1466,19 +1523,22 @@ def complete_public_crop_species_relinks(
 
 
 def cancel_public_crop_species_relinks(*, crop_species: CropSpecies) -> int:
-    """Drop the corrections waiting on a species proposal a moderator rejected."""
-    return (
+    """Drop the corrections waiting on a species proposal a moderator rejected.
+
+    Resolved one by one rather than with a bulk ``update()``: each requesting
+    moderator is owed the news that their correction will not happen.
+    """
+    pending = list(
         PublicCropSpeciesRelinkRequest.objects
         .filter(
             to_crop_species=crop_species,
             status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
         )
-        .update(
-            status=PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
-            resolution_note='The proposed crop species was rejected.',
-            resolved_at=timezone.now(),
-        )
+        .select_related('public_crop', 'to_crop_species', 'requested_by')
     )
+    for request in pending:
+        _cancel_relink_request(request, resolution_note='The proposed crop species was rejected.')
+    return len(pending)
 
 
 def publish_crop_to_public_library(

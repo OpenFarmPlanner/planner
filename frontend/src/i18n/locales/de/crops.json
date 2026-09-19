@@ -1188,7 +1188,8 @@
       "error": "Die Kulturart konnte nicht geändert werden.",
       "conflictError": "Unter dieser Kulturart gibt es bereits einen veröffentlichten Eintrag mit dieser Sorte.",
       "unchangedError": "Dieser Eintrag ist dieser Kulturart bereits zugeordnet.",
-      "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden."
+      "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden.",
+      "proposalFiledError": "Die Kulturart wurde vorgeschlagen, aber die Zuordnung konnte nicht gespeichert werden. Der Vorschlag bleibt ausgewählt — bitte versuche es erneut."
     }
   },
   "commands": {

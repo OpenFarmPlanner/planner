@@ -1242,10 +1242,23 @@ own action:
   `crops.services.apply_public_crop_species_relinks_for_approved_species()`.
   A rejection cancels the parked request; an entry holds at most one pending
   request, and a newer one supersedes the older.
-- **Audit.** The move is written as a `PublicCropRevision` with action
-  `species_relinked`, whose `changed_fields` already carry author, timestamp,
-  and the old and new `crop_species`. No `PublicCropStatusEvent` is written:
-  the entry's status does not change.
+- **A cancelled correction is announced.** The dialog promises the relink
+  happens automatically on approval, so every way that promise can break — the
+  species was rejected, the entry is no longer published, or another entry
+  claimed the identity while the proposal was in review — notifies the
+  requesting moderator (`public_crop_species_relink_cancelled`, see
+  [notifications.md](./notifications.md)). A correction the same moderator
+  deliberately superseded is not a broken promise and stays silent.
+- **Audit.** The field-level move is written as a `PublicCropRevision` with
+  action `species_relinked`, whose `changed_fields` already carry author,
+  timestamp, and the old and new `crop_species`. No `PublicCropStatusEvent` is
+  written: the entry's status does not change.
+  `PublicCropSpeciesRelinkRequest` is written for *every* correction, not only
+  the parked ones (an immediately applied one is created and resolved as
+  `completed` in the same transaction). It is where the moderator's free-text
+  `note` lives — `PublicCropRevision` has no such field — and it makes "which
+  entries were remapped, by whom, from what, and why" one query instead of a
+  scan through revision diffs.
 - **The private crop group follows.** If the entry still has its
   `source_project_crop`, the relink runs the same
   `sync_crop_species_across_crop_group()` publishing uses, extended with the

@@ -124,6 +124,21 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     );
   });
 
+  it('says the proposal was filed when only the relink call failed, so the retry reuses it', async () => {
+    cropSpeciesProposeMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'proposed' } });
+    relinkSpeciesMock.mockRejectedValue(new Error('network'));
+    renderDialog();
+
+    const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
+    await user.click(screen.getByRole('button', { name: /Kulturart vorschlagen und übernehmen/ }));
+
+    expect(await screen.findByText(/Vorschlag bleibt ausgewählt/)).toBeInTheDocument();
+    // Retrying must not file the proposal a second time.
+    await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledTimes(2));
+    expect(cropSpeciesProposeMock).toHaveBeenCalledTimes(1);
+  });
+
   it('surfaces the identity conflict inline instead of closing the dialog', async () => {
     relinkSpeciesMock.mockRejectedValue({
       isAxiosError: true,
