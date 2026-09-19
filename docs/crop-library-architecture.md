@@ -21,6 +21,7 @@ two disagree about what exists, this file wins.
 | Threaded discussions (`PublicCropDiscussionTopic` → `…Comment`, soft delete) | **implemented** |
 | Non-destructive lifecycle (`draft`/`published`/`withdrawn`/`removed`) + status events + staff hard delete | **implemented** |
 | Moderation surfaces: species proposals, moderator-access requests, restoring removed entries (`/app/public-library-moderation`) | **implemented** |
+| Moderator crop-species correction of a published entry ("Kulturart korrigieren", §9) | **implemented** |
 | Full library workspace at `/app/crop-library` (browse, import, discuss, edit, versions) | **implemented** |
 | `PublicCropChangeProposal` review workflow | **legacy** — model, endpoints and API-client wrappers still exist, no UI creates or reviews them (see §0) |
 | `/api/crop-library/` as the *only* library surface; frontend switched off `/api/public-crops/` | **not done** — see §5 |
@@ -1202,3 +1203,67 @@ checks, match endpoints, and imports only expose `published` rows. Project
 imports remain protected because importing creates a private `Crop` copy
 with its own fields; status changes on `PublicCrop` never mutate already
 imported project data.
+
+## 9. Correcting a wrong crop species mapping ("Kulturart korrigieren")
+
+An entry can be published under a species that is plainly wrong or simply too
+broad ("Bohne" where "Feuerbohne" was meant). The identity lock on `name` and
+`variety` deliberately stops a contributor — and a moderator — from editing
+their way out of that, but the *mapping* is not the identity, so it has its
+own action:
+
+- **Where.** `POST /api/public-crops/<id>/relink-species/`, behind
+  `PublicCropViewSet.relink_species`, with
+  `farm.services.public_crops.relink_public_crop_species()` doing the work.
+  In the UI it is "Kulturart korrigieren" in the moderator context menu of the
+  public library page, next to "Aus Bibliothek entfernen".
+- **Moderator-gated, not admin-gated.** Renaming a variety needs a public
+  library *admin* because it mutates an identity
+  (`public_crop_identity_admin_required`). A relink invents nothing: it points
+  the entry at the species it always belonged to, so a moderator is the right
+  level. `name` and `variety` are never part of the payload.
+- **Same identity rule as publishing.** The relink runs
+  `find_public_crop_identity_conflict()` against the *target* species plus this
+  entry's variety — the same check publish and variety-rename already run — and
+  is rejected with the same 409 `public_crop_variety_conflict` shape, including
+  `conflicting_public_crop_id`. The dialog shows that inline rather than
+  closing.
+- **Target species that does not exist yet.** The picker is the publishing
+  wizard's own `CropSpeciesPicker`, propose affordance included, so a missing
+  species is filed through the existing "Kulturart vorschlagen" flow
+  (`CropSpecies.STATUS_PROPOSED`) instead of a second species-creation path.
+  The entry is *not* moved onto the proposal: a `proposed` species would block
+  import, update and discussion for everyone (see "While a species is
+  `PROPOSED`") and a rejection would sweep the entry out with
+  `remove_public_crops_for_rejected_species()`, even though nothing was wrong
+  with the entry. Instead `PublicCropSpeciesRelinkRequest` parks the
+  correction, the response reports `relink_status='pending_species_proposal'`,
+  and `CropSpeciesViewSet.approve()` completes it through
+  `crops.services.apply_public_crop_species_relinks_for_approved_species()`.
+  A rejection cancels the parked request; an entry holds at most one pending
+  request, and a newer one supersedes the older.
+- **A cancelled correction is announced.** The dialog promises the relink
+  happens automatically on approval, so every way that promise can break — the
+  species was rejected, the entry is no longer published, or another entry
+  claimed the identity while the proposal was in review — notifies the
+  requesting moderator (`public_crop_species_relink_cancelled`, see
+  [notifications.md](./notifications.md)). A correction the same moderator
+  deliberately superseded is not a broken promise and stays silent.
+- **Audit.** The field-level move is written as a `PublicCropRevision` with
+  action `species_relinked`, whose `changed_fields` already carry author,
+  timestamp, and the old and new `crop_species`. No `PublicCropStatusEvent` is
+  written: the entry's status does not change.
+  `PublicCropSpeciesRelinkRequest` is written for *every* correction, not only
+  the parked ones (an immediately applied one is created and resolved as
+  `completed` in the same transaction). It is where the moderator's free-text
+  `note` lives — `PublicCropRevision` has no such field — and it makes "which
+  entries were remapped, by whom, from what, and why" one query instead of a
+  scan through revision diffs.
+- **The private crop group follows.** If the entry still has its
+  `source_project_crop`, the relink runs the same
+  `sync_crop_species_across_crop_group()` publishing uses, extended with the
+  previous species id so the group's rows move off the old species with it
+  instead of splitting the owner's Kultur in two.
+- **The old species is left alone.** It stays published and usable by whatever
+  else maps to it correctly. Taking it out of circulation is the separate
+  species reject/lifecycle decision, not something this action triggers.

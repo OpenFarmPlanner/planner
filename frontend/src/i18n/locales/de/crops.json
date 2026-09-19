@@ -1081,10 +1081,7 @@
       "publicCropLabel": "Passende öffentliche Kultur",
       "publicCropHelp": "Freitext bleibt privat. Für die Veröffentlichung muss eine passende öffentliche Kultur gewählt oder ein neuer öffentlicher Eintrag vorgeschlagen werden.",
       "publicCropNone": "Keine passende öffentliche Kultur ausgewählt.",
-      "speciesLabel": "Offizielle Kulturart",
       "speciesMissing": "Keine offizielle Kulturart ausgewählt",
-      "speciesNoOptions": "Keine passende offizielle Kulturart gefunden.",
-      "proposeSpeciesInline": "„{{name}}“ als neue Kulturart vorschlagen",
       "proposeSpeciesSubmit": "Kulturart vorschlagen",
       "proposeSpeciesPublishHint": "Deine Sorte wird vorläufig unter „{{name}}“ veröffentlicht, bis der Vorschlag geprüft wurde.",
       "proposedSpeciesNotice": "Dein Vorschlag für die neue Kulturart „{{name}}“ wurde zur Prüfung eingereicht. Du kannst deine Sorte jetzt trotzdem veröffentlichen — sie erscheint vorläufig unter „{{name}}“, bis der Vorschlag bestätigt ist.",
@@ -1170,6 +1167,29 @@
         "previous": "vorherige, kultur",
         "next": "nächste, kultur"
       }
+    },
+    "speciesPicker": {
+      "label": "Offizielle Kulturart",
+      "proposeInline": "„{{name}}“ als neue Kulturart vorschlagen",
+      "noOptions": "Keine passende offizielle Kulturart gefunden."
+    },
+    "relinkSpecies": {
+      "action": "Kulturart korrigieren",
+      "title": "Kulturart korrigieren",
+      "description": "Ordne „{{name}}“ der richtigen Kulturart zu. Name und Sorte des Eintrags bleiben unverändert, die bisherige Kulturart bleibt bestehen.",
+      "currentSpeciesLabel": "Bisherige Kulturart",
+      "noCurrentSpecies": "Keine Kulturart hinterlegt",
+      "submit": "Kulturart ändern",
+      "submitProposal": "Kulturart vorschlagen und übernehmen",
+      "saving": "Wird gespeichert …",
+      "success": "„{{name}}“ ist jetzt der Kulturart „{{species}}“ zugeordnet.",
+      "proposalSuccess": "Die Kulturart „{{species}}“ wurde vorgeschlagen. Sobald sie freigegeben ist, wird „{{name}}“ automatisch umgehängt.",
+      "proposalHint": "Die Kulturart „{{name}}“ gibt es noch nicht. Sie wird als Vorschlag eingereicht; der Eintrag bleibt bis zur Freigabe bei seiner bisherigen Kulturart.",
+      "error": "Die Kulturart konnte nicht geändert werden.",
+      "conflictError": "Unter dieser Kulturart gibt es bereits einen veröffentlichten Eintrag mit dieser Sorte.",
+      "unchangedError": "Dieser Eintrag ist dieser Kulturart bereits zugeordnet.",
+      "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden.",
+      "proposalFiledError": "Die Kulturart wurde vorgeschlagen, aber die Zuordnung konnte nicht gespeichert werden. Der Vorschlag bleibt ausgewählt — bitte versuche es erneut."
     }
   },
   "commands": {

@@ -31,11 +31,13 @@ from farm.services.public_crops import (
     PublicCropImportConfirmationRequiredError,
     PublicCropPermissionError,
     PublicCropRevisionNotFoundError,
+    PublicCropSpeciesRelinkError,
     PublicCropStatusTransitionError,
     UnsupportedPublicCropFieldsError,
     hard_delete_public_crop,
     import_public_crop_into_project,
     reinstate_removed_public_crop,
+    relink_public_crop_species,
     remove_public_crop,
     replace_public_crop_translations,
     restore_public_crop_version,
@@ -52,6 +54,8 @@ from ..serializers.public import (
     PublicCropDiscussionTopicSerializer,
     PublicCropRevertSerializer,
     PublicCropRevisionSerializer,
+    PublicCropSpeciesRelinkRequestSerializer,
+    PublicCropSpeciesRelinkSerializer,
     PublicCropTranslationsUpdateSerializer,
     PublicCropUpdateSerializer,
 )
@@ -154,6 +158,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         )
 
     def _public_crop_response(self, public_crop: PublicCrop) -> Response:
+        """The standard write-result response: the entry and nothing else."""
+        return Response(self._serialize_public_crop(public_crop))
+
+    def _serialize_public_crop(self, public_crop: PublicCrop) -> dict[str, Any]:
         """Serialize a write result with the list queryset's project-import prefetch.
 
         The write services return a freshly locked/refetched row, which carries
@@ -162,6 +170,9 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         already-imported entry as not imported at all, and the client state the
         library page's import/update button reads (label, icon and the
         `is_up_to_date` disable) is wiped until the next list reload.
+
+        Split out from :meth:`_public_crop_response` so actions that answer
+        with more than the entry itself keep that guarantee too.
         """
         active_project = get_active_project_optional(self.request)
         if active_project is not None:
@@ -174,7 +185,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 )
                 .order_by('-id')
             )
-        return Response(PublicCropSerializer(public_crop, context=self.get_serializer_context()).data)
+        return PublicCropSerializer(public_crop, context=self.get_serializer_context()).data
 
     @staticmethod
     def _transition_error_response(error: Exception, response_status: int) -> Response:
@@ -617,6 +628,51 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         except PublicCropStatusTransitionError as error:
             return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
         return self._public_crop_response(updated)
+
+    @action(detail=True, methods=['post'], url_path='relink-species')
+    def relink_species(self, request: Request, pk: str | None = None) -> Response:
+        """Moderator-only: correct which crop species a published entry maps to.
+
+        Moderator-gated rather than admin-gated: this corrects a mapping, it
+        does not touch the entry's locked `name`/`variety` identity. A target
+        species that is still a proposal parks the correction until the
+        proposal is reviewed, which the response reports as
+        `pending_species_proposal` rather than as a completed relink.
+        """
+        if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
+            return forbidden
+        public_crop = self._get_public_crop_for_status_action()
+        serializer = PublicCropSpeciesRelinkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            result = relink_public_crop_species(
+                public_crop=public_crop,
+                user=request.user,
+                crop_species=serializer.validated_data['crop_species'],
+                note=serializer.validated_data.get('note', ''),
+            )
+        except PublicCropPermissionError as error:
+            return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)
+        except PublicCropStatusTransitionError as error:
+            return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
+        except PublicCropSpeciesRelinkError as error:
+            return self._transition_error_response(error, status.HTTP_400_BAD_REQUEST)
+        except PublicCropIdentityConflictError as error:
+            return api_error_response(
+                code=error.code,
+                detail=str(error),
+                status_code=status.HTTP_409_CONFLICT,
+                conflicting_public_crop_id=error.conflicting_public_crop.id,
+            )
+        return Response({
+            'relink_status': result.status,
+            'crop': self._serialize_public_crop(result.public_crop),
+            'relink_request': (
+                PublicCropSpeciesRelinkRequestSerializer(result.relink_request).data
+                if result.relink_request is not None
+                else None
+            ),
+        })
 
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request: Request, pk: str | None = None) -> Response:

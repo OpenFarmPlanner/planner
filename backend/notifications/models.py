@@ -24,12 +24,14 @@ class Notification(models.Model):
     TYPE_CROP_SPECIES_PROPOSAL_SUBMITTED = 'crop_species_proposal_submitted'
     TYPE_MODERATOR_REQUEST_SUBMITTED = 'moderator_request_submitted'
     TYPE_PUBLIC_CROP_REMOVED = 'public_crop_removed'
+    TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED = 'public_crop_species_relink_cancelled'
     TYPE_CHOICES = [
         (TYPE_CROP_SPECIES_PROPOSAL_ACCEPTED, 'Crop species proposal accepted'),
         (TYPE_CROP_SPECIES_PROPOSAL_REJECTED, 'Crop species proposal rejected'),
         (TYPE_CROP_SPECIES_PROPOSAL_SUBMITTED, 'Crop species proposal submitted'),
         (TYPE_MODERATOR_REQUEST_SUBMITTED, 'Moderator request submitted'),
         (TYPE_PUBLIC_CROP_REMOVED, 'Public crop removed'),
+        (TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED, 'Public crop species correction cancelled'),
     ]
 
     TARGET_PUBLIC_CROP = 'public_crop'

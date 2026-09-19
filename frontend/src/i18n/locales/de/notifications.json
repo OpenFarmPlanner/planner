@@ -22,6 +22,7 @@
     "crop_species_proposal_rejected": "Dein Vorschlag für die Kulturart „{{name}}“ wurde abgelehnt.",
     "crop_species_proposal_submitted": "Neuer Kulturart-Vorschlag „{{name}}“ wartet auf Prüfung.",
     "moderator_request_submitted": "{{name}} hat Moderationsrechte für die Kulturbibliothek beantragt.",
-    "public_crop_removed": "Deine veröffentlichte Kultur „{{name}}“ wurde aus der Kulturbibliothek entfernt, da die Kulturart „{{species_name}}“ abgelehnt wurde."
+    "public_crop_removed": "Deine veröffentlichte Kultur „{{name}}“ wurde aus der Kulturbibliothek entfernt, da die Kulturart „{{species_name}}“ abgelehnt wurde.",
+    "public_crop_species_relink_cancelled": "Die Kulturart-Korrektur von „{{name}}“ auf „{{species_name}}“ wurde nicht ausgeführt. Bitte prüfe den Eintrag erneut."
   }
 }

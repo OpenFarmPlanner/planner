@@ -62,7 +62,7 @@ server-side through `notifications.services.create_notification`.
 
 ## Producers
 
-All three producers today live in `crops.services`:
+All but one producer live in `crops.services`:
 
 - `notify_species_proposal_reviewed(species)`, called from
   `CropSpeciesViewSet.approve()`/`reject()`. Tells the *proposer* the outcome.
@@ -80,7 +80,23 @@ All three producers today live in `crops.services`:
   admin* (`crops.permissions.public_library_admin_users()`) — not every
   moderator, since only admins can review these requests.
 
-The latter two both use `target_type = Notification.TARGET_PUBLIC_LIBRARY_MODERATION`,
+The fourth producer is the exception, and lives next to the code that raises
+the situation rather than in `crops.services`:
+
+- `farm.services.public_crops._notify_relink_request_cancelled()`, reached
+  whenever a parked "Kulturart korrigieren" correction
+  (`PublicCropSpeciesRelinkRequest`, see
+  [crop-library-architecture.md §9](./crop-library-architecture.md)) is
+  cancelled instead of applied — the proposed target species was rejected, the
+  entry is no longer published, or another entry claimed the same
+  species+variety identity while the proposal was in review. Tells the
+  *requesting moderator*, because the dialog told them the entry would be
+  relinked automatically on approval and nothing else ever surfaces a resolved
+  request. A correction the same moderator deliberately superseded with a newer
+  one is not a broken promise and is not notified.
+
+The two moderation-queue producers both use
+`target_type = Notification.TARGET_PUBLIC_LIBRARY_MODERATION`,
 which the frontend resolves to `/app/public-library-moderation` — the
 moderation queue has no per-item detail route, so every notification of this
 kind opens the same page.

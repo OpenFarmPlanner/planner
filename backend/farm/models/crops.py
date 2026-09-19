@@ -1203,10 +1203,12 @@ class PublicCropRevision(models.Model):
     ACTION_CREATED = 'created'
     ACTION_UPDATED = 'updated'
     ACTION_RESTORED = 'restored'
+    ACTION_SPECIES_RELINKED = 'species_relinked'
     ACTION_CHOICES = [
         (ACTION_CREATED, 'Created'),
         (ACTION_UPDATED, 'Updated'),
         (ACTION_RESTORED, 'Restored'),
+        (ACTION_SPECIES_RELINKED, 'Crop species relinked'),
     ]
 
     public_crop = models.ForeignKey(PublicCrop, on_delete=models.CASCADE, related_name='revisions')
@@ -1232,6 +1234,75 @@ class PublicCropRevision(models.Model):
 
     def __str__(self) -> str:
         return f"{self.public_crop} v{self.version}"
+
+
+class PublicCropSpeciesRelinkRequest(models.Model):
+    """A "Kulturart korrigieren" relink still waiting on a species proposal.
+
+    A moderator correcting a wrong ``crop_species`` mapping can apply the
+    relink straight away only when the target species is already published.
+    When they propose the target species instead, the entry has to stay on its
+    current (wrong, but reviewed) species until the proposal is decided:
+    pointing it at a ``proposed`` species would block import, update and
+    discussion for everyone, and a later rejection would drag the entry into
+    ``crops.services.remove_public_crops_for_rejected_species`` even though
+    nothing was wrong with the entry itself.
+
+    This row remembers the correction so approving the species completes it
+    without the moderator having to repeat the action.
+    """
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    public_crop = models.ForeignKey(
+        PublicCrop,
+        on_delete=models.CASCADE,
+        related_name='species_relink_requests',
+    )
+    from_crop_species = models.ForeignKey(
+        'crops.CropSpecies',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='public_crop_relinks_away',
+    )
+    to_crop_species = models.ForeignKey(
+        'crops.CropSpecies',
+        on_delete=models.CASCADE,
+        related_name='public_crop_relinks_to',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    note = models.TextField(blank=True)
+    resolution_note = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='public_crop_species_relink_requests',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['public_crop'],
+                condition=Q(status='pending'),
+                name='unique_pending_public_crop_species_relink',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.public_crop_id} -> species {self.to_crop_species_id} ({self.status})'
 
 
 class SeedPackage(TimestampedModel):
