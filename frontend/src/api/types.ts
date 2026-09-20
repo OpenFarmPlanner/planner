@@ -372,9 +372,19 @@ export interface PublicCropTranslations {
 
 export type PublicCropChangeProposalStatus = 'pending' | 'approved' | 'rejected';
 
+/** An edit to an existing entry, or a brand-new publish awaiting approval. */
+export type PublicCropChangeProposalKind = 'edit' | 'new_publish';
+
 export interface PublicCropChangeProposal {
   id: number;
   public_crop: number;
+  /** Display name of the entry, so the cross-entry queue can label a row. */
+  public_crop_label?: string;
+  kind?: PublicCropChangeProposalKind;
+  /** Submitted through a ProjectApiToken. Derived from the credential. */
+  origin_api?: boolean;
+  /** Self-declared automated client — context for a moderator, never trusted. */
+  origin_declared_agent?: boolean;
   summary: string;
   proposed_data: Partial<PublicCrop>;
   status: PublicCropChangeProposalStatus;

@@ -28,8 +28,8 @@ yet.**
   recorded as an immutable `PublicCropRevision`, with threaded
   `PublicCropDiscussionTopic`/`…Comment` discussions alongside it. The
   reviewed-proposal workflow (`PublicCropChangeProposal`) is the moderation
-  queue for new-account and API-token contributions; the backend is complete,
-  no UI reviews them yet.
+  queue for new-account and API-token contributions, reviewed in the
+  contributions queue on the moderation page.
 
 ### Still future work from this plan
 

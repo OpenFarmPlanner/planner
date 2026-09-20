@@ -956,6 +956,36 @@
         "approveSuccess": "The crop species was approved.",
         "rejectSuccess": "The crop species proposal was rejected."
       },
+      "contributions": {
+        "title": "Crop library contributions",
+        "empty": "No open contributions.",
+        "intro": "Contributions from new accounts and from API tokens are reviewed here before they appear in the library.",
+        "review": "Review",
+        "kind": {
+          "edit": "Edit",
+          "new_publish": "New entry"
+        },
+        "origin": {
+          "api": "API token",
+          "agent": "Automated client",
+          "agentTooltip": "Self-declared by the client — not verifiable."
+        },
+        "dialogTitle": "Review contribution",
+        "dialogIntroEdit": "Proposed changes to “{{name}}”.",
+        "dialogIntroNewPublish": "“{{name}}” is proposed as a new crop library entry. It stays invisible until approved.",
+        "proposedBy": "Submitted by {{name}} on {{date}}",
+        "columns": {
+          "entry": "Entry",
+          "kind": "Type",
+          "field": "Field",
+          "value": "Proposed value"
+        },
+        "noFieldChanges": "No field changes included.",
+        "reviewNote": "Note on the decision (optional)",
+        "reviewNoteHint": "Shared with the person who submitted it.",
+        "approveSuccess": "The contribution was approved and is now in the library.",
+        "rejectSuccess": "The contribution was rejected."
+      },
       "speciesAliases": {
         "title": "Crop species aliases",
         "intro": "Regional and colloquial names lead to the official crop species instead of creating a second one.",

@@ -132,8 +132,13 @@ export function isCurrentHistoryEntry(
   return entry.is_current_version ?? index === 0;
 }
 
+/** Localized label for a raw crop field name, for any surface that shows one. */
+export function getCropFieldLabel(field: string, t: TFunction<'crops'>): string {
+  return t(HISTORY_FIELD_LABEL_KEYS[field] ?? 'history.fieldLabels.fallback');
+}
+
 export function getHistoryChangeFieldLabel(change: CropHistoryChange, t: TFunction<'crops'>): string {
-  return t(HISTORY_FIELD_LABEL_KEYS[change.field] ?? 'history.fieldLabels.fallback');
+  return getCropFieldLabel(change.field, t);
 }
 
 function formatNumberValue(value: number): string {

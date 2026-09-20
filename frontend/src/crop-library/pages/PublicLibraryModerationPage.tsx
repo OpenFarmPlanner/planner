@@ -30,6 +30,7 @@ import type {
   CropSpecies,
   CropSpeciesTranslation,
   PublicCrop,
+  PublicCropChangeProposal,
   PublicLibraryModeratorRequest,
 } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
@@ -39,6 +40,7 @@ import { useTranslation } from '../../i18n';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
+import ChangeProposalQueue from '../components/ChangeProposalQueue';
 
 type RequiredSpeciesLanguage = 'de' | 'en';
 type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
@@ -72,6 +74,7 @@ export default function PublicLibraryModerationPage() {
   const [speciesProposals, setSpeciesProposals] = useState<CropSpecies[]>([]);
   const [moderatorRequests, setModeratorRequests] = useState<PublicLibraryModeratorRequest[]>([]);
   const [removedCrops, setRemovedCrops] = useState<PublicCrop[]>([]);
+  const [changeProposals, setChangeProposals] = useState<PublicCropChangeProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -129,6 +132,8 @@ export default function PublicLibraryModerationPage() {
       }
       const removedResponse = await publicCropAPI.list({ status: 'removed' });
       setRemovedCrops(removedResponse.data.results);
+      const proposalsResponse = await publicCropAPI.pendingChangeProposals();
+      setChangeProposals(proposalsResponse.data.results);
     } catch {
       setError(t('library.moderation.loadError'));
     } finally {
@@ -196,6 +201,30 @@ export default function PublicLibraryModerationPage() {
         await publicLibraryModeratorRequestAPI.reject(request.id);
       }
       showGlobalSnackbar({ message: t(`library.moderation.requests.${action}Success`), severity: 'success' });
+      await loadQueues();
+    } catch {
+      showGlobalSnackbar({ message: t('library.moderation.actionError'), severity: 'error' });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const reviewChangeProposal = async (
+    proposal: PublicCropChangeProposal,
+    action: 'approve' | 'reject',
+    reviewNote: string,
+  ): Promise<void> => {
+    setBusyAction(`proposal-${proposal.id}-${action}`);
+    try {
+      if (action === 'approve') {
+        await publicCropAPI.approveChangeProposal(proposal.public_crop, proposal.id, reviewNote);
+      } else {
+        await publicCropAPI.rejectChangeProposal(proposal.public_crop, proposal.id, reviewNote);
+      }
+      showGlobalSnackbar({
+        message: t(`library.moderation.contributions.${action}Success`),
+        severity: 'success',
+      });
       await loadQueues();
     } catch {
       showGlobalSnackbar({ message: t('library.moderation.actionError'), severity: 'error' });
@@ -311,6 +340,16 @@ export default function PublicLibraryModerationPage() {
           </Box>
         ) : (
           <>
+            {/* First: this is the queue the proposal notifications link here
+                for, so it must be what a moderator lands on. */}
+            <ChangeProposalQueue
+              proposals={changeProposals}
+              loading={false}
+              busyAction={busyAction}
+              formatDate={formatDate}
+              onReview={reviewChangeProposal}
+            />
+
             <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 1 }}>
               <Stack direction="row" spacing={1} sx={{ mb: 1.5,
                 alignItems: "center", }}  >

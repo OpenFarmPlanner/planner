@@ -222,8 +222,8 @@ erDiagram
   `new` trust level and those made with a `ProjectApiToken`. `kind`
   distinguishes an edit from a new publish, the latter pointing at a
   still-`draft` `PublicCrop`. See
-  [account-trust-levels.md](./account-trust-levels.md). The backend is
-  complete; no UI reviews proposals yet.
+  [account-trust-levels.md](./account-trust-levels.md). Moderators review
+  them in the contributions queue on the moderation page.
 - **`PublicLibraryModeratorRequest`** backs the "request moderator access"
   flow. Approval only adds the user to the `Public Library Moderators` group
   (permission `crops.moderate_crop_species`) — it never grants staff or Django

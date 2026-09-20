@@ -2777,6 +2777,77 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_APPROVED)
         self.assertEqual(proposal.reviewed_by, moderator)
 
+    def _make_moderator(self, username: str):
+        moderator = User.objects.create_user(
+            username=username,
+            email=f'{username}@example.com',
+            password='testpass',
+            is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        return moderator
+
+    def test_pending_change_proposals_requires_moderator(self):
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pending_change_proposals_lists_only_pending_across_entries(self):
+        moderator = self._make_moderator('queue-moderator')
+        first = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user, version=1,
+        )
+        second = PublicCrop.objects.create(
+            name='Carrot', variety='Nantes', status='published', created_by=self.user, version=1,
+        )
+        pending_first = PublicCropChangeProposal.objects.create(
+            public_crop=first, proposed_by=self.user, summary='First', proposed_data={'notes': 'a'},
+        )
+        pending_second = PublicCropChangeProposal.objects.create(
+            public_crop=second, proposed_by=self.user, summary='Second', proposed_data={'notes': 'b'},
+        )
+        PublicCropChangeProposal.objects.create(
+            public_crop=first,
+            proposed_by=self.user,
+            summary='Already handled',
+            proposed_data={'notes': 'c'},
+            status=PublicCropChangeProposal.STATUS_APPROVED,
+        )
+
+        self.client.force_authenticate(user=moderator)
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in response.data['results']],
+            [pending_first.id, pending_second.id],
+        )
+        self.assertEqual(response.data['results'][1]['public_crop_label'], 'Carrot (Nantes)')
+
+    def test_pending_change_proposals_includes_drafts_hidden_from_the_library(self):
+        """A new-publish proposal points at a draft entry, which the viewset's
+        published-only queryset hides — the queue must still list it, or the
+        proposal could never be approved."""
+        moderator = self._make_moderator('queue-draft-moderator')
+        draft = PublicCrop.objects.create(
+            name='Rhabarber', variety='Holsteiner', status=PublicCrop.STATUS_DRAFT,
+            created_by=self.user, version=1,
+        )
+        proposal = PublicCropChangeProposal.objects.create(
+            public_crop=draft,
+            proposed_by=self.user,
+            kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
+            summary='New publish awaiting moderation',
+            proposed_data={},
+        )
+
+        self.client.force_authenticate(user=moderator)
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in response.data['results']], [proposal.id])
+        self.assertEqual(response.data['results'][0]['kind'], PublicCropChangeProposal.KIND_NEW_PUBLISH)
+
     def test_moderator_can_reject_change_proposal_without_changing_public_crop(self):
         moderator = User.objects.create_user(
             username='proposal-reject-moderator',

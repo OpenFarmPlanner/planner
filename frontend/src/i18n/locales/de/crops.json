@@ -956,6 +956,36 @@
         "approveSuccess": "Die Kulturart wurde angenommen.",
         "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt."
       },
+      "contributions": {
+        "title": "Beiträge zur Kulturbibliothek",
+        "empty": "Keine offenen Beiträge.",
+        "intro": "Beiträge von neuen Konten und von API-Zugängen werden hier geprüft, bevor sie in der Bibliothek erscheinen.",
+        "review": "Prüfen",
+        "kind": {
+          "edit": "Änderung",
+          "new_publish": "Neuer Eintrag"
+        },
+        "origin": {
+          "api": "API-Zugang",
+          "agent": "Automatisierter Client",
+          "agentTooltip": "Selbstauskunft des Clients – nicht überprüfbar."
+        },
+        "dialogTitle": "Beitrag prüfen",
+        "dialogIntroEdit": "Vorgeschlagene Änderungen an „{{name}}“.",
+        "dialogIntroNewPublish": "„{{name}}“ soll neu in die Kulturbibliothek aufgenommen werden. Der Eintrag ist bis zur Freigabe unsichtbar.",
+        "proposedBy": "Eingereicht von {{name}} am {{date}}",
+        "columns": {
+          "entry": "Eintrag",
+          "kind": "Art",
+          "field": "Feld",
+          "value": "Vorgeschlagener Wert"
+        },
+        "noFieldChanges": "Keine Feldänderungen enthalten.",
+        "reviewNote": "Notiz zur Entscheidung (optional)",
+        "reviewNoteHint": "Wird der einreichenden Person mitgeteilt.",
+        "approveSuccess": "Der Beitrag wurde angenommen und ist jetzt in der Bibliothek.",
+        "rejectSuccess": "Der Beitrag wurde abgelehnt."
+      },
       "speciesAliases": {
         "title": "Kulturart-Synonyme",
         "intro": "Regionale und umgangssprachliche Bezeichnungen führen zur offiziellen Kulturart, statt eine zweite anzulegen.",

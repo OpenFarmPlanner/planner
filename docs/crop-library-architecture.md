@@ -22,7 +22,7 @@ two disagree about what exists, this file wins.
 | Non-destructive lifecycle (`draft`/`published`/`withdrawn`/`removed`) + status events + staff hard delete | **implemented** |
 | Moderation surfaces: species proposals, moderator-access requests, restoring removed entries (`/app/public-library-moderation`) | **implemented** |
 | Full library workspace at `/app/crop-library` (browse, import, discuss, edit, versions) | **implemented** |
-| `PublicCropChangeProposal` review workflow | **backend only** — revived to queue contributions from new accounts and API tokens (see [account-trust-levels.md](./account-trust-levels.md)); no UI reviews them yet (see §0) |
+| `PublicCropChangeProposal` review workflow | **implemented** — queues contributions from new accounts and API tokens, reviewed in the contributions queue on the moderation page (see [account-trust-levels.md](./account-trust-levels.md)) |
 | `/api/crop-library/` as the *only* library surface; frontend switched off `/api/public-crops/` | **not done** — see §5 |
 | Unauthenticated public `/crops` route | **not done** — see §5 |
 | Separate `CropVariety` entity and species→variety attribute inheritance | **not done** — planned in public-crop-library-data-model.md §2 |
@@ -521,15 +521,11 @@ every listing filters out until a moderator approves it.
 [`account-trust-levels.md`](./account-trust-levels.md) for the full rules,
 the approve/reject paths, and the draft lifecycle.
 
-One caveat carried over from the dormant period: the backend side is
-complete, but **no UI reviews these proposals yet**. The moderation page
-renders crop-species proposals and moderator requests only, so a queued
-contribution notifies moderators and then has no in-app way to be approved.
-The model, the `change-proposals/` list/create/approve/reject actions on
-`PublicCropViewSet`, and the `publicCropAPI.changeProposals(...)` /
-`createChangeProposal` / `approveChangeProposal` / `rejectChangeProposal`
-wrappers in `frontend/src/api/api.ts` all exist and work — only the
-reviewing components are missing.
+Moderators review them in the contributions queue at the top of
+`/app/public-library-moderation`, which lists everything pending across
+entries via `GET /public-crops/pending-change-proposals/` and opens a review
+dialog per row. See
+[`account-trust-levels.md`](./account-trust-levels.md#where-a-moderator-actually-reviews-them).
 
 ### Sorte → Kultur value inheritance
 

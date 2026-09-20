@@ -249,10 +249,12 @@ export default function PublicCropLibraryPage() {
       return undefined;
     }
     let cancelled = false;
-    // Same queues the moderation page itself reads (proposed species + pending
-    // moderator requests) — page_size:1 keeps this to a cheap count-only call.
+    // Same queues the moderation page itself reads (proposed species, pending
+    // contributions, and pending moderator requests) — page_size:1 keeps these
+    // to cheap count-only calls.
     const countRequests: Array<Promise<{ data: { count: number } }>> = [
       cropSpeciesAPI.list({ status: 'proposed', page_size: 1 }),
+      publicCropAPI.pendingChangeProposals({ page_size: 1 }),
     ];
     if (canManageModeratorRequests) {
       countRequests.push(publicLibraryModeratorRequestAPI.list({ status: 'pending', page_size: 1 }));

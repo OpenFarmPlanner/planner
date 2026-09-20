@@ -552,12 +552,18 @@ class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
 class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
     proposed_by_label = serializers.SerializerMethodField()
     reviewed_by_label = serializers.SerializerMethodField()
+    # The moderation queue lists proposals across crops, so a row has to name
+    # its entry without a second request per row. Reads a FK, so the listing
+    # queryset must `select_related('public_crop')` — see
+    # farm/tests/test_api_query_counts.py.
+    public_crop_label = serializers.SerializerMethodField()
 
     class Meta:
         model = PublicCropChangeProposal
         fields = [
             'id',
             'public_crop',
+            'public_crop_label',
             'kind',
             'origin_api',
             'origin_declared_agent',
@@ -574,6 +580,7 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'public_crop',
+            'public_crop_label',
             'kind',
             'origin_api',
             'origin_declared_agent',
@@ -585,6 +592,9 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+    def get_public_crop_label(self, obj: PublicCropChangeProposal) -> str:
+        return format_crop_display_name(obj.public_crop.name, obj.public_crop.variety)
 
     def validate_proposed_data(self, value: Any) -> dict[str, Any]:
         if not isinstance(value, dict):

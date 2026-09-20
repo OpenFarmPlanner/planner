@@ -597,6 +597,35 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return api_error_response(code=error.code, detail=str(error), status_code=status.HTTP_404_NOT_FOUND)
         return self._public_crop_response(updated)
 
+    @action(detail=False, methods=['get'], url_path='pending-change-proposals')
+    def pending_change_proposals(self, request: Request) -> Response:
+        """List every pending change proposal, across all library entries.
+
+        The per-entry `change-proposals` action above needs an entry id, which
+        the moderation queue does not have — it is asking the opposite
+        question ("what is waiting for me?"). Queried off the model rather
+        than through `get_queryset()` on purpose: a pending `new_publish`
+        proposal points at a still-`draft` entry that the class-level
+        published-only queryset hides.
+        """
+        if not self._is_moderator(request.user):
+            return api_error_response(
+                code='moderator_required',
+                detail='Moderator privileges are required.',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
+        proposals = (
+            PublicCropChangeProposal.objects
+            .filter(status=PublicCropChangeProposal.STATUS_PENDING)
+            .select_related('public_crop', 'proposed_by__public_profile', 'reviewed_by__public_profile')
+            .order_by('created_at', 'id')
+        )
+        page = self.paginate_queryset(proposals)
+        if page is not None:
+            return self.get_paginated_response(PublicCropChangeProposalSerializer(page, many=True).data)
+        return Response(PublicCropChangeProposalSerializer(proposals, many=True).data)
+
     @action(detail=True, methods=['get', 'post'], url_path='change-proposals')
     def change_proposals(self, request: Request, pk: int | None = None) -> Response:
         public_crop = self.get_object()

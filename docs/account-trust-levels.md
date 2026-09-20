@@ -163,6 +163,33 @@ plumbing: `TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_SUBMITTED` to every moderator on
 submission, `TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_REVIEWED` back to the proposer
 on the decision.
 
+### Where a moderator actually reviews them
+
+`/app/public-library-moderation` opens with the contributions queue
+(`crop-library/components/ChangeProposalQueue.tsx`), above the crop-species
+and moderator-request queues, because that is where the submission
+notification links. Each row names the entry, its kind and provenance, and
+opens a review dialog; approve/reject post to the per-entry actions above,
+with an optional note that reaches the proposer through the reviewed
+notification. The library page's moderation badge counts this queue too.
+
+The list behind it is `GET /public-crops/pending-change-proposals/`, a
+moderator-only action added for this screen: the per-entry
+`change-proposals` endpoint needs an entry id, which a queue asking "what is
+waiting?" does not have. It is queried off `PublicCropChangeProposal`
+directly rather than through `get_queryset()`, since a pending
+`new_publish` proposal points at a `draft` entry the published-only queryset
+hides — without that, exactly the proposals that most need review would be
+the ones missing from the queue.
+
+The dialog renders `proposed_data` through `formatHistoryChangeValue`, the
+same formatter the crop history uses. That is not only about consistency:
+the proposable fields store SI units, so a raw render shows `row_spacing_m:
+0.5` under a label reading "Reihenabstand (cm)" — 50 cm presented as 0.5 cm,
+to the one person whose job is to judge whether the value is right. Keys
+prefixed `_` are approval plumbing (`_source_crop_id`,
+`_publish_as_general`) and are filtered out of the diff.
+
 ### Why `PublicCropViewSet` lists `ApiTokenAccessPermission` explicitly
 
 `PublicCropViewSet` overrides `permission_classes`, which drops the project
@@ -294,21 +321,11 @@ production defaults would throttle it. See
 
 Stated plainly so nobody re-derives them from the code:
 
-- **There is no moderator UI for these proposals.** The backend queues them,
-  notifies every moderator, and the notification links to
-  `/app/public-library-moderation` — but that page only renders crop-species
-  proposals and moderator requests. It has no `PublicCropChangeProposal`
-  section, so the notification currently leads to a page that shows nothing
-  about the thing it is announcing. The REST actions and the
-  `publicCropAPI.changeProposals` / `createChangeProposal` /
-  `approveChangeProposal` / `rejectChangeProposal` wrappers in
-  `frontend/src/api/api.ts` all exist; only the UI is missing. **Until that
-  page is built, a queued contribution has no in-app way to be approved.**
-  The contributor's own side is wired up: a `pending_moderation` publish shows
-  `crops:library.publishPendingModeration` instead of the publish-success
-  snackbar, co-published Sorten are counted separately from published ones,
-  and both proposal notification types have German and English wording in
-  `notifications.json`.
+- **Pagination in the queue is not surfaced.** The moderation page renders
+  the first page of `pending-change-proposals` and nothing else. At the
+  default page size that is 100 waiting contributions before the 101st
+  becomes unreachable from the UI, so a backlog that deep needs a "load more"
+  control (or a filter) before it can be worked through.
 - **Existing accounts are not backfilled.** Migration
   `accounts/0012_accounttrustprofile` creates the table and nothing else, and
   `trust_level` defaults to `new`. On deploy, *every* pre-existing account
