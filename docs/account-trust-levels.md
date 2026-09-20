@@ -121,6 +121,21 @@ edit/publish behavior.
 | API token, any trust level | Queued as a `PublicCropChangeProposal` |
 | Anonymous | Rejected earlier by authentication, never reaches this check |
 
+**Owning the entry is not a way around this.** `publish_crop_to_public_library`
+resolves `find_owned_public_crop_for_update` before it publishes, and that
+branch used to return `'updated'` without ever consulting `require_moderation`
+— so a contributor who had already published an entry could overwrite the live
+row on the next publish, token included. The gate now runs before any
+mutation in that branch and the publish is queued as a `KIND_EDIT` proposal
+carrying the crop's proposable fields.
+
+For the same reason, a queued **variety** publish no longer runs
+`ensure_general_public_crop`. That helper creates the species-level entry
+*published*, from the contributing crop's own values, so running it on the
+queued path put untrusted values live under the species name while the
+variety they arrived with was still a draft. It is deferred to
+`approve_new_publish_proposal`.
+
 ### The two proposal kinds
 
 The branch revived the legacy `PublicCropChangeProposal` queue rather than

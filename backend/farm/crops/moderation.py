@@ -65,3 +65,19 @@ def pending_queue_limit_exceeded(request: Request) -> bool:
         status=PublicCropChangeProposal.STATUS_PENDING,
     ).count()
     return pending_count >= limit
+
+
+def truncate_proposal_summary(summary: str) -> str:
+    """Fit a composed summary into `PublicCropChangeProposal.summary`.
+
+    The field is a `CharField(max_length=240)` while a crop's name and variety
+    are 200 characters each, so a label built from both can exceed it. Django
+    does not truncate on save and PostgreSQL rejects the oversized value, so
+    the caller has to clamp it.
+    """
+    from farm.models import PublicCropChangeProposal
+
+    max_length = PublicCropChangeProposal._meta.get_field('summary').max_length
+    if len(summary) <= max_length:
+        return summary
+    return summary[: max_length - 1] + '…'

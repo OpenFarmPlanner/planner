@@ -1,6 +1,7 @@
 """Public crop library endpoints."""
 
 
+from collections.abc import Mapping
 from typing import Any
 
 from django.db import transaction
@@ -276,6 +277,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return forbidden
         if pending_queue_limit_exceeded(request):
             return self._pending_queue_limit_response()
+        # A non-dict body (a bare JSON list, say) reaches this branch before
+        # any serializer has validated it, so `.items()` would turn a 400 into
+        # a 500.
+        if not isinstance(request.data, Mapping):
+            return api_error_response(
+                code='invalid_payload',
+                detail='A JSON object is required.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         proposed_data = {key: value for key, value in request.data.items() if key != 'base_version'}
         origin_api, origin_declared_agent = describe_contribution_origin(request)
         serializer = PublicCropChangeProposalSerializer(

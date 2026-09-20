@@ -1196,6 +1196,17 @@ def publish_crop_to_public_library(
     public_variety = _resolve_public_variety(publish_as_general)
     update_target = find_owned_public_crop_for_update(crop=crop, user=user)
     duplicates = check_result.duplicates
+    if update_target and require_moderation:
+        # Must come before any mutation below: an untrusted contributor who
+        # already owns a published entry would otherwise overwrite the live
+        # library row, which is exactly what the moderation queue exists to
+        # prevent (and what CropViewSet.api_token_actions assumes cannot
+        # happen). The caller queues this as a KIND_EDIT proposal instead.
+        return (
+            update_target,
+            [item for item in duplicates if item.id != update_target.id],
+            'pending_moderation_edit',
+        )
     if update_target:
         previous_status = update_target.status
         _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
@@ -1235,11 +1246,17 @@ def publish_crop_to_public_library(
             },
         )
     _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
-    if not publish_as_general:
+    if not publish_as_general and not require_moderation:
         # Publishing a variety always needs a species-level entry for the crop
         # to hang off; create it from this crop's own values if the
         # species doesn't have one yet. An existing general entry is never
         # touched here (see ensure_general_public_crop's docstring).
+        #
+        # Skipped while the contribution is only queued: this entry is created
+        # *published*, so running it here would put an untrusted contributor's
+        # values live under the species name while the variety they came with
+        # is still waiting for review. `approve_new_publish_proposal` creates
+        # it on approval instead.
         ensure_general_public_crop(
             crop_species=check_result.crop_species,
             crop=crop,
@@ -1305,8 +1322,16 @@ def approve_new_publish_proposal(
     Mirrors the tail of `publish_crop_to_public_library`'s create branch
     (status transition, revision, project-crop link) for the
     moderation-approval path, since the draft was created without any of
-    that.
+    that — including the species-level entry a variety hangs off, which the
+    publish path deliberately skips while the contribution is only queued.
     """
+    if not publish_as_general and source_crop is not None and public_crop.crop_species is not None:
+        ensure_general_public_crop(
+            crop_species=public_crop.crop_species,
+            crop=source_crop,
+            original_language_code=public_crop.original_language_code,
+            user=user,
+        )
     _set_public_crop_status(public_crop=public_crop, status=PublicCrop.STATUS_PUBLISHED, user=user)
     sync_original_language_translation(public_crop)
     create_public_crop_revision(

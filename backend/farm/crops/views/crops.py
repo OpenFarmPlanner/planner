@@ -20,6 +20,7 @@ from farm.crops.moderation import (
     describe_contribution_origin,
     pending_queue_limit_exceeded,
     requires_moderation_queue,
+    truncate_proposal_summary,
 )
 from farm.history import (
     _current_actor_label,
@@ -42,6 +43,7 @@ from farm.services.public_crops import (
     DuplicatePublicCropError,
     PublicCropPublishingValidationError,
     PublicCropUpdateBlockedError,
+    build_public_crop_payload,
     build_public_crop_update_status,
     build_publishing_check_result,
     link_project_crop_to_public_reference,
@@ -54,7 +56,10 @@ from ..serializers import (
     CropSerializer,
     PublicCropSerializer,
 )
-from ..serializers.public import PublicCropChangeProposalSerializer
+from ..serializers.public import (
+    PUBLIC_CROP_PROPOSABLE_FIELDS,
+    PublicCropChangeProposalSerializer,
+)
 
 
 def _request_boolean(value: object) -> bool:
@@ -469,20 +474,49 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if not has_library_consent:
             record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
 
-        if operation == 'pending_moderation':
+        if operation in ('pending_moderation', 'pending_moderation_edit'):
             origin_api, origin_declared_agent = describe_contribution_origin(request)
+            # `summary` is a CharField(max_length=240) and a crop's name and
+            # variety are 200 characters each, so the composed label has to be
+            # truncated: PostgreSQL rejects an over-long value outright.
+            is_edit = operation == 'pending_moderation_edit'
+            if is_edit:
+                # The contributor owns this published entry but may not write
+                # to it directly, so the values their crop would have pushed
+                # become an edit proposal against the live row. Restricted to
+                # the proposable fields, which is what the approval path
+                # re-validates before applying.
+                label = format_crop_display_name(public_crop.name, public_crop.variety)
+                summary = truncate_proposal_summary(f'Update awaiting moderation: {label}')
+                payload = build_public_crop_payload(
+                    crop, public_variety=None if publish_as_general else crop.variety,
+                )
+                proposed_data = {
+                    field: value for field, value in payload.items()
+                    if field in PUBLIC_CROP_PROPOSABLE_FIELDS
+                }
+            else:
+                summary = truncate_proposal_summary(
+                    f'New publish awaiting moderation: {format_crop_display_name(crop.name, crop.variety)}',
+                )
+                proposed_data = {'_source_crop_id': crop.id, '_publish_as_general': publish_as_general}
             proposal = PublicCropChangeProposal.objects.create(
                 public_crop=public_crop,
-                kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
-                summary=f'New publish awaiting moderation: {format_crop_display_name(crop.name, crop.variety)}',
-                proposed_data={'_source_crop_id': crop.id, '_publish_as_general': publish_as_general},
+                kind=(
+                    PublicCropChangeProposal.KIND_EDIT if is_edit
+                    else PublicCropChangeProposal.KIND_NEW_PUBLISH
+                ),
+                summary=summary,
+                proposed_data=proposed_data,
                 proposed_by=request.user,
                 origin_api=origin_api,
                 origin_declared_agent=origin_declared_agent,
             )
             notify_moderators_of_change_proposal(proposal)
             return Response({
-                'operation': operation,
+                # One operation on the wire: the client's concern is "queued,
+                # not live", and it already has `change_proposal.kind`.
+                'operation': 'pending_moderation',
                 'change_proposal': PublicCropChangeProposalSerializer(proposal).data,
                 'duplicates': self._serialize_duplicates(duplicates),
             }, status=status.HTTP_202_ACCEPTED)

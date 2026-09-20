@@ -2979,6 +2979,104 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         crop.refresh_from_db()
         self.assertIsNone(crop.source_public_crop)
 
+    def test_republish_by_new_trust_level_owner_queues_instead_of_overwriting_live_entry(self):
+        """Owning the published entry must not be a way around the queue.
+
+        `find_owned_public_crop_for_update` matched before the moderation gate
+        was consulted, so an untrusted contributor (or any API token) that had
+        already published an entry could overwrite the live library row.
+        """
+        new_user, crop, first_response = self._publish_as_new_trust_level_user()
+        self.assertEqual(first_response.status_code, status.HTTP_202_ACCEPTED)
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        # Approve it, so the contributor now owns a *published* entry.
+        moderator = self._make_moderator('republish-moderator')
+        self.client.force_authenticate(user=moderator)
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        approve = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/approve/',
+            {}, format='json',
+        )
+        self.assertEqual(approve.status_code, status.HTTP_200_OK)
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, PublicCrop.STATUS_PUBLISHED)
+        published_notes = draft.notes
+        published_version = draft.version
+
+        # Same account, still at the "new" trust level, publishes again with
+        # changed values.
+        crop.notes = 'Injected content on the live entry'
+        crop.growth_duration_days = 999
+        crop.save(update_fields=['notes', 'growth_duration_days'])
+        client = APIClient()
+        client.force_authenticate(user=new_user)
+        client.defaults['HTTP_X_PROJECT_ID'] = str(crop.project_id)
+        response = client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'original_language_code': 'en'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['operation'], 'pending_moderation')
+        self.assertEqual(response.data['change_proposal']['kind'], PublicCropChangeProposal.KIND_EDIT)
+        draft.refresh_from_db()
+        self.assertEqual(draft.notes, published_notes)
+        self.assertEqual(draft.version, published_version)
+        self.assertNotEqual(draft.growth_duration_days, 999)
+        queued = PublicCropChangeProposal.objects.get(
+            public_crop=draft, status=PublicCropChangeProposal.STATUS_PENDING,
+        )
+        self.assertEqual(queued.proposed_data['growth_duration_days'], 999)
+
+        # The queued payload must survive the approval path's re-validation,
+        # or the contributor's update would be unapprovable rather than merely
+        # deferred.
+        self.client.force_authenticate(user=moderator)
+        approve_edit = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{queued.id}/approve/',
+            {}, format='json',
+        )
+        self.assertEqual(approve_edit.status_code, status.HTTP_200_OK, approve_edit.data)
+        draft.refresh_from_db()
+        self.assertEqual(draft.growth_duration_days, 999)
+        self.assertEqual(draft.notes, 'Injected content on the live entry')
+
+    def test_queued_variety_publish_does_not_publish_a_live_species_entry(self):
+        """`ensure_general_public_crop` created a *published* species-level
+        entry from the untrusted crop's own values, while the variety it came
+        with was only queued as a draft."""
+        _new_user, _crop, response = self._publish_as_new_trust_level_user()
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertFalse(
+            PublicCrop.objects.filter(
+                name='Carrot', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            ).exists(),
+            'a queued variety publish must not put a species-level entry live',
+        )
+
+    def test_approving_a_queued_variety_publish_creates_the_species_entry(self):
+        """The species-level entry a variety hangs off is deferred to approval,
+        not dropped."""
+        _new_user, _crop, response = self._publish_as_new_trust_level_user()
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        moderator = self._make_moderator('species-entry-moderator')
+        self.client.force_authenticate(user=moderator)
+
+        approve = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/approve/',
+            {}, format='json',
+        )
+
+        self.assertEqual(approve.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            PublicCrop.objects.filter(
+                name='Carrot', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            ).exists(),
+        )
+
     @override_settings(PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER=1)
     def test_edit_proposal_is_rejected_once_pending_queue_limit_is_reached(self):
         """A flood of edits from one account stops once its backlog hits the cap."""
