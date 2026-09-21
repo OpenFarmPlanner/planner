@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from farm.models import Crop
@@ -308,8 +308,29 @@ def sync_crop_species_across_crop_group(
     """
     if not crop.crop_species_id or not crop.name_normalized:
         return 0
+    return crop_group_rows_to_sync(
+        crop,
+        target_species_id=crop.crop_species_id,
+        previous_species_id=previous_species_id,
+    ).update(crop_species_id=crop.crop_species_id, updated_at=timezone.now())
+
+
+def crop_group_rows_to_sync(
+    crop: Crop,
+    *,
+    target_species_id: int,
+    previous_species_id: int | None = None,
+) -> QuerySet[Crop]:
+    """The rows :func:`sync_crop_species_across_crop_group` would hand the species to.
+
+    Separate from the update itself so a caller can look at those rows *before*
+    the move — which is what the public library's "Kulturart korrigieren"
+    correction needs to tell whether the move changes anyone's inherited
+    values. ``target_species_id`` is passed explicitly rather than read off
+    ``crop`` so the same set resolves before and after the move.
+    """
     group_filter = Q(crop_species__isnull=True)
-    if previous_species_id and previous_species_id != crop.crop_species_id:
+    if previous_species_id and previous_species_id != target_species_id:
         group_filter |= Q(crop_species_id=previous_species_id)
     return (
         Crop.objects
@@ -319,7 +340,6 @@ def sync_crop_species_across_crop_group(
             name_normalized=crop.name_normalized,
         )
         .exclude(pk=crop.pk)
-        .update(crop_species_id=crop.crop_species_id, updated_at=timezone.now())
     )
 
 

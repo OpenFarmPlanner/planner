@@ -3847,3 +3847,145 @@ class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
         self.assertFalse(Notification.objects.filter(
             notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
         ).exists())
+
+
+class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
+    """Private Sorten whose inherited values move when a moderator corrects a mapping.
+
+    Inheritance in this project is live and project-local: a Sorte resolves its
+    unset fields through the general Kultur of its `(project, crop_species)`
+    group. Correcting the mapping moves that group onto another species, where
+    the project may already keep a general Kultur under a different name — and
+    `get_general_crop()` then resolves to the older of the two. What the Sorte
+    is planned with changes without anybody in the project touching anything,
+    which is what gets announced.
+    """
+
+    def setUp(self):
+        self.moderator = User.objects.create_user(
+            username='reassign-moderator', email='reassign-moderator@example.com',
+            password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(self.moderator)
+        self.owner = User.objects.create_user(
+            username='reassign-owner', email='reassign-owner@example.com',
+            password='testpass', is_active=True,
+        )
+        self.collaborator = User.objects.create_user(
+            username='reassign-collaborator', email='reassign-collaborator@example.com',
+            password='testpass', is_active=True,
+        )
+        self.outsider = User.objects.create_user(
+            username='reassign-outsider', email='reassign-outsider@example.com',
+            password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Reassign Project', slug='reassign-project')
+        ProjectMembership.objects.create(user=self.owner, project=self.project, role='admin')
+        ProjectMembership.objects.create(
+            user=self.collaborator, project=self.project, role='member',
+        )
+        self.broad_species = CropSpecies.objects.create(name='Chard-like greens')
+        self.correct_species = CropSpecies.objects.create(name='Swiss chard')
+        # Created first on purpose: once the corrected group lands on the same
+        # species, get_general_crop() breaks the tie by the lowest primary key,
+        # so this is the Kultur the Sorte starts inheriting from.
+        self.existing_general = Crop.objects.create(
+            name='Krautstiel', variety='', crop_species=self.correct_species,
+            project=self.project, rotation_break_years=3,
+        )
+        self.wrong_general = Crop.objects.create(
+            name='Mangold', variety='', crop_species=self.broad_species,
+            project=self.project, rotation_break_years=3,
+        )
+        self.variety = Crop.objects.create(
+            name='Mangold', variety='Lucullus', crop_species=self.broad_species,
+            project=self.project,
+        )
+        self.entry = PublicCrop.objects.create(
+            name='Mangold', variety='Lucullus', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.broad_species, created_by=self.owner,
+            source_project_crop=self.variety, source_project=self.project,
+        )
+        self.client.force_authenticate(user=self.moderator)
+        self.url = f'/openfarmplanner/api/public-crops/{self.entry.id}/relink-species/'
+
+    def set_existing_general_values(self, **values):
+        for field, value in values.items():
+            setattr(self.existing_general, field, value)
+        self.existing_general.save(update_fields=list(values))
+
+    def relink(self):
+        return self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+    def reassignment_notifications(self):
+        return Notification.objects.filter(
+            notification_type=Notification.TYPE_CROP_SPECIES_REASSIGNED,
+        )
+
+    def test_no_notification_when_the_correction_changes_no_inherited_value(self):
+        response = self.relink()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.variety.refresh_from_db()
+        self.assertEqual(self.variety.crop_species_id, self.correct_species.id)
+        self.assertFalse(self.reassignment_notifications().exists())
+
+    def test_every_project_member_is_told_when_an_inherited_value_moves(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        recipients = set(self.reassignment_notifications().values_list('recipient_id', flat=True))
+        self.assertIn(self.owner.id, recipients)
+        self.assertIn(self.collaborator.id, recipients)
+        self.assertNotIn(self.outsider.id, recipients)
+
+    def test_the_notification_names_the_changed_values_and_both_species(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        notification = self.reassignment_notifications().filter(recipient=self.owner).first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.context['old_name'], 'Chard-like greens')
+        self.assertEqual(notification.context['new_name'], 'Swiss chard')
+        self.assertIn(
+            {'field': 'rotation_break_years', 'old_value': 3, 'new_value': 4},
+            notification.context['changed_fields'],
+        )
+
+    def test_the_notification_points_at_the_affected_project_crop(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        notification = self.reassignment_notifications().filter(recipient=self.owner).first()
+        self.assertEqual(notification.target_type, Notification.TARGET_CROP)
+        self.assertEqual(notification.target_id, self.variety.id)
+
+    def test_a_sorte_value_the_sorte_sets_itself_is_not_reported_as_changed(self):
+        # A local override wins over both general Kulturen, so nothing moves for
+        # that field — an existing override is not what this notification is about.
+        self.variety.growth_duration_days = 70
+        self.variety.save(update_fields=['growth_duration_days'])
+        self.wrong_general.growth_duration_days = 80
+        self.wrong_general.save(update_fields=['growth_duration_days'])
+        self.set_existing_general_values(growth_duration_days=90)
+
+        self.relink()
+
+        changed_for_variety = [
+            change['field']
+            for notification in self.reassignment_notifications().filter(target_id=self.variety.id)
+            for change in notification.context['changed_fields']
+        ]
+        self.assertNotIn('growth_duration_days', changed_for_variety)
+
+    def test_an_entry_without_a_source_project_crop_notifies_nobody(self):
+        self.entry.source_project_crop = None
+        self.entry.save(update_fields=['source_project_crop'])
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        self.assertFalse(self.reassignment_notifications().exists())

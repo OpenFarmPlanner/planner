@@ -1259,11 +1259,20 @@ own action:
   `note` lives — `PublicCropRevision` has no such field — and it makes "which
   entries were remapped, by whom, from what, and why" one query instead of a
   scan through revision diffs.
-- **The private crop group follows.** If the entry still has its
-  `source_project_crop`, the relink runs the same
-  `sync_crop_species_across_crop_group()` publishing uses, extended with the
-  previous species id so the group's rows move off the old species with it
-  instead of splitting the owner's Kultur in two.
+- **The private crop group follows — and the project is told when that
+  changes its values.** If the entry still has its `source_project_crop`, the
+  relink runs the same `sync_crop_species_across_crop_group()` publishing uses,
+  extended with the previous species id so the group's rows move off the old
+  species with it instead of splitting the owner's Kultur in two. Because
+  inheritance is live and resolved per `(project, crop_species)`, that move can
+  land the group on a general Kultur the project already keeps for the
+  corrected species (`get_general_crop()` breaks the tie by the lowest primary
+  key), silently changing what its Sorten inherit. The effective values are
+  therefore snapshotted before the move and compared after it; every member of
+  the project is notified per affected crop when they really differ
+  (`crop_species_reassigned`, see [notifications.md](./notifications.md)).
+  Other projects are untouched: their rows keep the old species and their own
+  general Kultur, so nothing they plan with moves.
 - **The old species is left alone.** It stays published and usable by whatever
   else maps to it correctly. Taking it out of circulation is the separate
   species reject/lifecycle decision, not something this action triggers.

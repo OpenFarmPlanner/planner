@@ -1060,7 +1060,15 @@
           "seeding_requirement": "Aussaatbedarf",
           "seeding_requirement_type": "Bezugsgröße Aussaatbedarf",
           "display_color": "Anzeigefarbe",
-          "seed_packages": "Packungsgrößen"
+          "seed_packages": "Packungsgrößen",
+          "rotation_break_years": "Anbaupause (Jahre)",
+          "sowing_calculation_safety_percent": "Sicherheitszuschlag für Saatgut (%)",
+          "sowing_calculation_safety_percent_direct": "Sicherheitszuschlag Direktsaat",
+          "sowing_calculation_safety_percent_pre_cultivation": "Sicherheitszuschlag Pflanzung",
+          "seed_rate_direct_value": "Direktsaat Menge",
+          "seed_rate_direct_unit": "Direktsaat Einheit",
+          "seed_rate_pre_cultivation_value": "Pflanzung Menge",
+          "seed_rate_pre_cultivation_unit": "Pflanzung Einheit"
         },
         "values": {
           "low": "Niedrig",
@@ -1075,7 +1083,8 @@
           "seeds_per_m2": "Körner/m²",
           "seeds_per_lfm": "Körner/lfm",
           "seeds_per_plant": "Körner/Pflanze"
-        }
+        },
+        "changeEntry": "{{label}}: {{oldValue}} → {{newValue}}"
       },
       "summaryTitle": "Zusammenfassung",
       "publicCropLabel": "Passende öffentliche Kultur",

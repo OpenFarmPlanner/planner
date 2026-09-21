@@ -8,6 +8,7 @@ import re
 # discussion as of 2026-07). Keep this module's dependency on `farm.models`
 # limited to Crop/Project/PublicCrop, and avoid pulling in
 # project-history/EntityRevision or other farm-app-internal concerns here.
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,6 +30,7 @@ from farm.models import (
     PublicCropSpeciesRelinkRequest,
     PublicCropStatusEvent,
     PublicCropTranslation,
+    format_crop_display_name,
 )
 
 # The local Kultur/Sorte grouping is a farm-app concern this module deliberately
@@ -38,6 +40,9 @@ from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
     GeneralCropIndex,
+    build_effective_crop_values,
+    build_general_crop_index,
+    crop_group_rows_to_sync,
     get_general_crop,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
@@ -1301,6 +1306,7 @@ def _apply_public_crop_species_relink(
             public_crop=locked,
             crop_species=crop_species,
             previous_species_id=previous_species_id,
+            user=user,
         )
         return locked
 
@@ -1310,21 +1316,172 @@ def _sync_owned_crop_group_species(
     public_crop: PublicCrop,
     crop_species: CropSpecies,
     previous_species_id: int | None,
+    user: User | None,
 ) -> None:
     """Keep the private crop group behind an entry on the corrected species.
 
     Publishing links the source crop and its Kultur group to the species it was
     published under; a correction has to follow, or the owner is left with a
     group split between the wrong species and the corrected one.
+
+    The move can change what those rows inherit, so their effective values are
+    snapshotted first and the project is told about any real change — see
+    :func:`notify_project_of_crop_species_reassignment`.
     """
     crop = public_crop.source_project_crop
     if crop is None or crop.deleted_at is not None:
         return
+    moved_crop_ids = _crop_group_member_ids(
+        crop,
+        target_species_id=crop_species.pk,
+        previous_species_id=previous_species_id,
+    )
+    values_before = _effective_values_by_crop(moved_crop_ids, project_id=crop.project_id)
     _link_crop_to_crop_species(
         crop=crop,
         crop_species=crop_species,
         previous_species_id=previous_species_id,
     )
+    notify_project_of_crop_species_reassignment(
+        project_id=crop.project_id,
+        values_before=values_before,
+        previous_species_id=previous_species_id,
+        crop_species=crop_species,
+        user=user,
+    )
+
+
+def _crop_group_member_ids(
+    crop: Crop,
+    *,
+    target_species_id: int,
+    previous_species_id: int | None,
+) -> list[int]:
+    """``crop`` plus every row the group sync will move with it."""
+    sibling_ids = crop_group_rows_to_sync(
+        crop,
+        target_species_id=target_species_id,
+        previous_species_id=previous_species_id,
+    ).values_list('pk', flat=True)
+    return [crop.pk, *sibling_ids]
+
+
+def _effective_values_by_crop(
+    crop_ids: Sequence[int],
+    *,
+    project_id: int | None,
+) -> dict[int, dict[str, Any]]:
+    """Every listed crop's effective inheritable values, freshly resolved.
+
+    Read from the database rather than from instances the caller holds:
+    :func:`get_general_crop` caches its lookup on the instance, so a snapshot
+    taken after the move would otherwise still answer with the general Kultur
+    resolved before it.
+    """
+    index = build_general_crop_index(project_id)
+    return {
+        crop.pk: build_effective_crop_values(crop, index)
+        for crop in Crop.objects.filter(pk__in=list(crop_ids))
+    }
+
+
+def _inherited_value_changes(
+    previous_values: dict[str, Any],
+    current_values: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """``{field, old_value, new_value}`` for every effective value that moved.
+
+    The same diff shape the public-update preview renders, so the notification
+    reuses the frontend's existing field labels and value formatting instead of
+    growing a second one.
+    """
+    return [
+        {
+            'field': field,
+            'old_value': _json_safe(previous_values.get(field)),
+            'new_value': _json_safe(current_values.get(field)),
+        }
+        for field in CROP_INHERITABLE_FIELDS
+        if previous_values.get(field) != current_values.get(field)
+    ]
+
+
+def notify_project_of_crop_species_reassignment(
+    *,
+    project_id: int | None,
+    values_before: dict[int, dict[str, Any]],
+    previous_species_id: int | None,
+    crop_species: CropSpecies,
+    user: User | None,
+) -> int:
+    """Tell a project that a moderator's species correction moved its own values.
+
+    The public library's inheritance is live, not a snapshot: a Sorte resolves
+    its unset fields through the general Kultur of its ``(project, species)``
+    group. Moving the group onto another species can therefore land it on a
+    *different* general Kultur — one the project already had for that species —
+    and the Sorte's effective values change without anybody in the project
+    touching anything. "Explizit statt still" means that has to be announced.
+
+    Only rows whose effective values actually moved are reported, so a pure
+    mapping correction stays silent. Every member of the project is notified,
+    not only its admins: the values are what everyone plans with. Returns the
+    number of notifications created.
+
+    Imported locally for the same reason this module's other cross-app call is
+    (see :func:`_notify_relink_request_cancelled`).
+    """
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    if project_id is None or not values_before:
+        return 0
+    values_after = _effective_values_by_crop(values_before, project_id=project_id)
+    changes_by_crop = {
+        crop_id: changes
+        for crop_id, previous_values in values_before.items()
+        if (changes := _inherited_value_changes(previous_values, values_after.get(crop_id, {})))
+    }
+    if not changes_by_crop:
+        return 0
+
+    previous_species_name = _crop_species_name(previous_species_id)
+    recipients = list(
+        User.objects
+        .filter(project_memberships__project_id=project_id, is_active=True)
+        .distinct()
+    )
+    created = 0
+    for crop in Crop.objects.filter(pk__in=list(changes_by_crop)):
+        crop_label = format_crop_display_name(crop.name, crop.variety)
+        for recipient in recipients:
+            notification = create_notification(
+                recipient=recipient,
+                notification_type=Notification.TYPE_CROP_SPECIES_REASSIGNED,
+                message=(
+                    f'The crop species of "{crop_label}" changed from '
+                    f'"{previous_species_name}" to "{crop_species.name}", '
+                    f'which changed values it inherits.'
+                ),
+                context={
+                    'crop_name': crop_label,
+                    'old_name': previous_species_name,
+                    'new_name': crop_species.name,
+                    'changed_fields': changes_by_crop[crop.pk],
+                },
+                target_type=Notification.TARGET_CROP,
+                target_id=crop.pk,
+            )
+            created += notification is not None
+    return created
+
+
+def _crop_species_name(crop_species_id: int | None) -> str:
+    if crop_species_id is None:
+        return ''
+    species = CropSpecies.objects.filter(pk=crop_species_id).first()
+    return species.name if species is not None else ''
+
 
 
 def relink_public_crop_species(

@@ -80,7 +80,7 @@ All but one producer live in `crops.services`:
   admin* (`crops.permissions.public_library_admin_users()`) — not every
   moderator, since only admins can review these requests.
 
-The fourth producer is the exception, and lives next to the code that raises
+Two further producers are the exception, and live next to the code that raises
 the situation rather than in `crops.services`:
 
 - `farm.services.public_crops._notify_relink_request_cancelled()`, reached
@@ -94,6 +94,23 @@ the situation rather than in `crops.services`:
   relinked automatically on approval and nothing else ever surfaces a resolved
   request. A correction the same moderator deliberately superseded with a newer
   one is not a broken promise and is not notified.
+
+- `farm.services.public_crops.notify_project_of_crop_species_reassignment()`,
+  called from the same correction when it moves the owner's private Kultur
+  group onto the corrected species. Inheritance in this project is live and
+  project-local — a Sorte resolves its unset fields through the general Kultur
+  of its `(project, crop_species)` group — so the move can land the group on a
+  *different* general Kultur the project already keeps for that species, and
+  the Sorte's effective values change without anybody in the project touching
+  anything. Tells *every member* of that project (not only its admins: the
+  values are what everyone plans with), one notification per affected crop,
+  `target_type` `crop`. Only rows whose effective values actually moved are
+  reported, so a pure mapping correction stays silent, and a value the Sorte
+  sets itself never appears — an existing local override is not news.
+  `context.changed_fields` carries `{field, old_value, new_value}`, the same
+  diff shape the public-update preview renders, so the frontend reuses
+  `formatPublicCropFieldChanges()` and the crop library's field labels instead
+  of a second formatter.
 
 The two moderation-queue producers both use
 `target_type = Notification.TARGET_PUBLIC_LIBRARY_MODERATION`,

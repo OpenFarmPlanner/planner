@@ -23,6 +23,7 @@
     "crop_species_proposal_submitted": "New crop species proposal \"{{name}}\" is waiting for review.",
     "moderator_request_submitted": "{{name}} requested moderator access for the crop library.",
     "public_crop_removed": "Your published crop \"{{name}}\" was removed from the crop library because its crop species \"{{species_name}}\" was rejected.",
-    "public_crop_species_relink_cancelled": "The crop species correction of \"{{name}}\" to \"{{species_name}}\" was not applied. Please check the entry again."
+    "public_crop_species_relink_cancelled": "The crop species correction of \"{{name}}\" to \"{{species_name}}\" was not applied. Please check the entry again.",
+    "crop_species_reassigned": "The crop species of \"{{crop_name}}\" was corrected from \"{{old_name}}\" to \"{{new_name}}\". Inherited values that changed: {{changes}}."
   }
 }

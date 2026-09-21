@@ -404,6 +404,18 @@ export interface PublicCropRevision {
   created_at?: string;
 }
 
+/**
+ * One inheritable field moving from an old to a new value.
+ *
+ * Emitted in a notification's `changed_fields` context so the UI can render it
+ * with the same labels and value formatting as the public-update diff table.
+ */
+export interface PublicCropFieldChange {
+  field: string;
+  old_value: unknown;
+  new_value: unknown;
+}
+
 export interface PublicCropSpeciesRelinkRequest {
   id: number;
   public_crop: number;
@@ -1027,7 +1039,7 @@ export type NotificationType =
   | 'moderator_request_submitted'
   | 'public_crop_removed';
 
-export type NotificationTargetType = 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
+export type NotificationTargetType = 'crop' | 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
 
 export interface AppNotification {
   id: number;

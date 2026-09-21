@@ -1060,7 +1060,15 @@
           "seeding_requirement": "Seeding requirement",
           "seeding_requirement_type": "Seeding requirement basis",
           "display_color": "Display color",
-          "seed_packages": "Package sizes"
+          "seed_packages": "Package sizes",
+          "rotation_break_years": "Rotation break (years)",
+          "sowing_calculation_safety_percent": "Seed safety surcharge (%)",
+          "sowing_calculation_safety_percent_direct": "Direct sowing safety surcharge",
+          "sowing_calculation_safety_percent_pre_cultivation": "Transplanting safety surcharge",
+          "seed_rate_direct_value": "Direct sowing quantity",
+          "seed_rate_direct_unit": "Direct sowing unit",
+          "seed_rate_pre_cultivation_value": "Transplanting quantity",
+          "seed_rate_pre_cultivation_unit": "Transplanting unit"
         },
         "values": {
           "low": "Low",
@@ -1075,7 +1083,8 @@
           "seeds_per_m2": "Seeds/m²",
           "seeds_per_lfm": "Seeds/linear m",
           "seeds_per_plant": "Seeds/plant"
-        }
+        },
+        "changeEntry": "{{label}}: {{oldValue}} → {{newValue}}"
       },
       "summaryTitle": "Summary",
       "publicCropLabel": "Matching public crop",
