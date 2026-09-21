@@ -483,13 +483,23 @@ describe('auth endpoints', () => {
     },
   );
 
-  it('sends an empty display name by default rather than omitting the field', async () => {
+  it('sends an empty display name and honeypot field by default rather than omitting them', async () => {
     const fetchMock = installOkFetch();
 
     await register('a@b.de', 'pw', 'pw');
 
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      email: 'a@b.de', password: 'pw', password_confirm: 'pw', display_name: '',
+      email: 'a@b.de', password: 'pw', password_confirm: 'pw', display_name: '', website: '',
+    });
+  });
+
+  it('forwards a non-empty honeypot value untouched', async () => {
+    const fetchMock = installOkFetch();
+
+    await register('a@b.de', 'pw', 'pw', '', 'https://spam.example.com');
+
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      website: 'https://spam.example.com',
     });
   });
 });

@@ -882,12 +882,15 @@
       "pushUpdateTooltip": "Push your local changes into the public version in the library."
     },
     "publishSuccess": "“{{name}}” was published to the crop library.",
+    "publishPendingModeration": "“{{name}}” was submitted for review and will appear in the crop library once a moderator has approved it.",
     "updateSuccess": "The public version of “{{name}}” was updated.",
     "linkPublicCropSuccess": "“{{name}}” was linked to the crop library.",
     "publishVarietiesSuccess_one": "1 variety was published along with it.",
     "publishVarietiesSuccess_other": "{{count}} varieties were published along with it.",
     "publishVarietiesAlreadyPublic_one": "1 variety was already in the library.",
     "publishVarietiesAlreadyPublic_other": "{{count}} varieties were already in the library.",
+    "publishVarietiesPendingModeration_one": "1 variety was submitted for review.",
+    "publishVarietiesPendingModeration_other": "{{count}} varieties were submitted for review.",
     "publishVarietiesPartialError_one": "1 variety could not be published.",
     "publishVarietiesPartialError_other": "{{count}} varieties could not be published.",
     "publishDuplicateError": "This crop already exists in the crop library.",
@@ -916,6 +919,7 @@
       "wrong_mapping": "Wrong mapping",
       "unlawful_content": "Unlawful content",
       "species_rejected": "Crop species proposal rejected",
+      "proposal_rejected": "New-publish proposal rejected",
       "other": "Other"
     },
     "loadError": "The crop library could not be loaded.",
@@ -951,6 +955,36 @@
         "englishName": "English name",
         "approveSuccess": "The crop species was approved.",
         "rejectSuccess": "The crop species proposal was rejected."
+      },
+      "contributions": {
+        "title": "Crop library contributions",
+        "empty": "No open contributions.",
+        "intro": "Contributions from new accounts and from API tokens are reviewed here before they appear in the library.",
+        "review": "Review",
+        "kind": {
+          "edit": "Edit",
+          "new_publish": "New entry"
+        },
+        "origin": {
+          "api": "API token",
+          "agent": "Automated client",
+          "agentTooltip": "Self-declared by the client — not verifiable."
+        },
+        "dialogTitle": "Review contribution",
+        "dialogIntroEdit": "Proposed changes to “{{name}}”.",
+        "dialogIntroNewPublish": "“{{name}}” is proposed as a new crop library entry. It stays invisible until approved.",
+        "proposedBy": "Submitted by {{name}} on {{date}}",
+        "columns": {
+          "entry": "Entry",
+          "kind": "Type",
+          "field": "Field",
+          "value": "Proposed value"
+        },
+        "noFieldChanges": "No field changes included.",
+        "reviewNote": "Note on the decision (optional)",
+        "reviewNoteHint": "Shared with the person who submitted it.",
+        "approveSuccess": "The contribution was approved and is now in the library.",
+        "rejectSuccess": "The contribution was rejected."
       },
       "speciesAliases": {
         "title": "Crop species aliases",

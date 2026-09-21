@@ -20,6 +20,7 @@ from farm.project_context import resolve_project_for_user
 from farm.services.demo_project import is_demo_project_description
 
 from .consent import get_pending_consent_documents, has_accepted_current, record_acceptance
+from .disposable_domains import is_disposable_email_domain
 from .models import AccountDeletionRequest, DocumentConsent, PublicProfile
 
 User = get_user_model()
@@ -205,11 +206,19 @@ class RegisterSerializer(serializers.Serializer):
     display_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     password = serializers.CharField(**_password_field_kwargs)
     password_confirm = serializers.CharField(**_password_field_kwargs)
+    # Honeypot: real users never see or fill this field (hidden in the form).
+    # A filled value marks the submission as automated; RegisterView discards
+    # it silently instead of surfacing this as a validation error.
+    website = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def validate_email(self, value: str) -> str:
         normalized = normalize_email_lower(value)
         if User.objects.filter(email__iexact=normalized).exists():
             raise serializers.ValidationError(_de(_('An account with this email already exists.')))
+        if is_disposable_email_domain(normalized):
+            raise serializers.ValidationError(
+                _de(_('Please use a permanent email address instead of a disposable one.')),
+            )
         return normalized
 
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:

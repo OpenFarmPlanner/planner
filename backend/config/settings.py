@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import ipaddress
 import os
 import socket
 from importlib.util import find_spec
@@ -67,6 +68,22 @@ def _validate_throttle_rate(name: str, value: str) -> str:
     return value
 
 
+def _registration_success_ip_rate(django_env: str) -> str:
+    """Resolve the per-IP successful-registration cap (registration_abuse.py).
+
+    Not a DRF `ScopedRateThrottle`, so it is not covered by
+    `settings_test.py` clearing `DEFAULT_THROTTLE_CLASSES` — mirrors
+    `_guest_demo_throttle_rate_for_env`'s environment-aware default instead so
+    the test/dev suites are not accidentally rate-limited by real traffic
+    defaults.
+    """
+    default_rate = '100000/hour' if django_env in ('development', 'test') else '3/hour'
+    return _validate_throttle_rate(
+        'THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP',
+        _env_str('THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP') or default_rate,
+    )
+
+
 def _guest_demo_throttle_rate_for_env(
     django_env: str,
     guest_demo_rate: str = '',
@@ -80,6 +97,19 @@ def _guest_demo_throttle_rate_for_env(
 
 def _dedupe(values: list[str]) -> list[str]:
     return list(dict.fromkeys(values))
+
+
+def _env_ip_networks(name: str) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """Parse a comma-separated list of CIDR ranges for TrustedProxyRemoteAddrMiddleware."""
+    networks = []
+    for cidr in _env_list(name):
+        try:
+            networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError as exc:
+            raise ImproperlyConfigured(
+                f'{name} entry "{cidr}" is not a valid IP network in CIDR notation.'
+            ) from exc
+    return networks
 
 
 def _detect_lan_ip() -> str:
@@ -158,6 +188,13 @@ ALLOWED_HOSTS = _dedupe(
     + DEVELOPMENT_LAN_HOSTS
 )
 
+# CIDR ranges of trusted reverse proxies (e.g. Cloudflare's published edge
+# ranges) allowed to report the real client IP via TRUSTED_PROXY_IP_HEADER —
+# see config/middleware.TrustedProxyRemoteAddrMiddleware. Empty by default:
+# not yet behind such a proxy.
+TRUSTED_PROXY_NETWORKS = _env_ip_networks('TRUSTED_PROXY_CIDRS')
+TRUSTED_PROXY_IP_HEADER = _env_str('TRUSTED_PROXY_IP_HEADER', 'HTTP_CF_CONNECTING_IP')
+
 
 # Application definition
 
@@ -208,6 +245,10 @@ if DEBUG_TOOLBAR_ENABLED:
     INSTALLED_APPS.append('debug_toolbar')
 
 MIDDLEWARE = [
+    # Must run before anything reads REMOTE_ADDR (IP-scoped throttles,
+    # registration_abuse) — see config/middleware.py. A no-op until
+    # TRUSTED_PROXY_CIDRS is set.
+    'config.middleware.TrustedProxyRemoteAddrMiddleware',
     *(['debug_toolbar.middleware.DebugToolbarMiddleware'] if DEBUG_TOOLBAR_ENABLED else []),
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -488,6 +529,24 @@ if not DEBUG:
     X_FRAME_OPTIONS = _env_str('X_FRAME_OPTIONS', 'DENY')
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# Per-IP cap on successful registrations, checked in accounts/registration_abuse.py
+# separately from the auth_register DRF throttle scope below (which counts every
+# attempt, not only ones that created an account).
+THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP = _registration_success_ip_rate(DJANGO_ENV)
+
+# Account trust-level promotion thresholds — see accounts/trust.py and
+# docs/account-trust-levels.md.
+TRUST_ESTABLISHED_MIN_AGE_DAYS = int(_env_str('TRUST_ESTABLISHED_MIN_AGE_DAYS', '7'))
+TRUST_ESTABLISHED_MIN_ACTIVITY = int(_env_str('TRUST_ESTABLISHED_MIN_ACTIVITY', '3'))
+
+# Caps how many of one account's public-crop-library proposals may sit in
+# PublicCropChangeProposal.STATUS_PENDING at once — see
+# farm.crops.moderation.pending_queue_limit_exceeded and
+# docs/account-trust-levels.md.
+PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER = int(
+    _env_str('PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER', '20')
+)
+
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -507,6 +566,19 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
+        # Only engages on RegisterView (needs an 'email' in the request
+        # body); a no-op everywhere else.
+        'accounts.throttling.EmailDomainRateThrottle',
+        # Narrows write throughput for accounts still in the "new" trust
+        # level (docs/account-trust-levels.md). No-ops for everything else
+        # (reads, anonymous requests, established accounts).
+        'accounts.throttling.TrustAwareWriteRateThrottle',
+        # Per-token read/write ceilings, independent of the token owner's
+        # trust level — see docs/account-trust-levels.md. Each is a no-op
+        # outside its own method/declaration combination.
+        'farm.agent_api.throttling.ApiTokenReadRateThrottle',
+        'farm.agent_api.throttling.ApiTokenWriteRateThrottle',
+        'farm.agent_api.throttling.ApiTokenWriteDeclaredAgentRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'auth_login': _env_str('THROTTLE_AUTH_LOGIN', '10/minute'),
@@ -516,6 +588,7 @@ REST_FRAMEWORK = {
             _env_str('THROTTLE_GUEST_DEMO_START'),
         ),
         'auth_register': _env_str('THROTTLE_AUTH_REGISTER', '5/minute'),
+        'auth_register_domain': _env_str('THROTTLE_AUTH_REGISTER_DOMAIN', '10/hour'),
         'auth_activation': _env_str('THROTTLE_AUTH_ACTIVATION', '10/minute'),
         'auth_resend_activation': _env_str('THROTTLE_AUTH_RESEND_ACTIVATION', '5/minute'),
         'auth_password_reset_request': _env_str('THROTTLE_AUTH_PASSWORD_RESET_REQUEST', '5/minute'),
@@ -523,6 +596,10 @@ REST_FRAMEWORK = {
         'invitation_accept': _env_str('THROTTLE_INVITATION_ACCEPT', '20/hour'),
         'agent_login_consume': _env_str('THROTTLE_AGENT_LOGIN_CONSUME', '30/hour'),
         'feedback_submit': _env_str('THROTTLE_FEEDBACK_SUBMIT', '20/hour'),
+        'write_new_account': _env_str('THROTTLE_WRITE_NEW_ACCOUNT', '100/hour'),
+        'api_token_read': _env_str('THROTTLE_API_TOKEN_READ', '2000/hour'),
+        'api_token_write': _env_str('THROTTLE_API_TOKEN_WRITE', '300/hour'),
+        'api_token_write_declared_agent': _env_str('THROTTLE_API_TOKEN_WRITE_DECLARED_AGENT', '600/hour'),
     },
     'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.OpenFarmPlannerPageNumberPagination',

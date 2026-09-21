@@ -17,6 +17,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 
+from crops.permissions import grant_public_library_moderator_access
 from crops.models import (
     CropSpecies,
     CropSpeciesTranslation,
@@ -34,6 +35,7 @@ from farm.models import (
     Project,
     ProjectMembership,
     PublicCrop,
+    PublicCropChangeProposal,
     Season,
     SeedPackage,
     Supplier,
@@ -269,6 +271,40 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
         self.assert_list_query_count(
             '/openfarmplanner/api/public-library/moderator-requests/', 4,
+        )
+
+    def test_pending_change_proposals_list_query_count(self):
+        """Each pending proposal resolves its public crop plus the proposing
+        and reviewing users and their public profiles; all are
+        `select_related`, so the count must not grow with ROW_COUNT.
+
+        Two queries above the other list endpoints here: this one gates on
+        `is_public_library_moderator`, which reads the user's permissions.
+        That pair is per-request, not per-row.
+        """
+        grant_public_library_moderator_access(self.user)
+        for index in range(ROW_COUNT):
+            entry = PublicCrop.objects.create(
+                name=f'Queued crop {index}',
+                variety=f'Sorte {index}',
+                status='published',
+                created_by=self.user,
+                version=1,
+            )
+            proposer = User.objects.create_user(
+                username=f'queue-proposer-{index}',
+                email=f'queue-proposer-{index}@example.com',
+                password='pw',
+            )
+            PublicCropChangeProposal.objects.create(
+                public_crop=entry,
+                proposed_by=proposer,
+                summary=f'Proposal {index}',
+                proposed_data={'notes': f'note {index}'},
+            )
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/public-crops/pending-change-proposals/', 6,
         )
 
     def test_projects_bootstrap_query_count(self):

@@ -19,6 +19,9 @@ const apiMocks = vi.hoisted(() => ({
   moderatorRequestReject: vi.fn(),
   publicCropList: vi.fn(),
   publicCropRestore: vi.fn(),
+  pendingChangeProposals: vi.fn(),
+  approveChangeProposal: vi.fn(),
+  rejectChangeProposal: vi.fn(),
 }));
 
 vi.mock('../auth/useAuth', () => ({
@@ -40,6 +43,9 @@ vi.mock('../api/api', () => ({
   publicCropAPI: {
     list: apiMocks.publicCropList,
     restore: apiMocks.publicCropRestore,
+    pendingChangeProposals: apiMocks.pendingChangeProposals,
+    approveChangeProposal: apiMocks.approveChangeProposal,
+    rejectChangeProposal: apiMocks.rejectChangeProposal,
   },
 }));
 
@@ -90,6 +96,102 @@ describe('PublicLibraryModerationPage', () => {
     apiMocks.moderatorRequestReject.mockResolvedValue({ data: { id: 3, status: 'rejected' } });
     apiMocks.publicCropList.mockResolvedValue({ data: { results: [] } });
     apiMocks.publicCropRestore.mockResolvedValue({ data: { id: 9, status: 'published' } });
+    apiMocks.pendingChangeProposals.mockResolvedValue({
+      data: {
+        count: 1,
+        results: [
+          {
+            id: 11,
+            public_crop: 42,
+            public_crop_label: 'Tomate (Roma)',
+            kind: 'edit',
+            origin_api: true,
+            origin_declared_agent: true,
+            summary: 'Direct edit awaiting moderation (1 field(s) changed)',
+            proposed_data: { growth_duration_days: 55 },
+            status: 'pending',
+            proposed_by_label: 'Mara',
+            created_at: '2026-07-27T08:00:00Z',
+          },
+        ],
+      },
+    });
+    apiMocks.approveChangeProposal.mockResolvedValue({ data: { id: 11, status: 'approved' } });
+    apiMocks.rejectChangeProposal.mockResolvedValue({ data: { id: 11, status: 'rejected' } });
+  });
+
+  it('approves a queued crop library contribution with a review note', async () => {
+    const user = userEvent.setup();
+    render(<PublicLibraryModerationPage />);
+
+    expect(await screen.findByText('Beiträge zur Kulturbibliothek')).toBeInTheDocument();
+    expect(screen.getByText('Tomate (Roma)')).toBeInTheDocument();
+    expect(screen.getByText('Änderung')).toBeInTheDocument();
+    expect(screen.getByText('API-Zugang')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Prüfen' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Beitrag prüfen' });
+    // The moderator must see what they are approving, not just a summary.
+    expect(within(dialog).getByText('55')).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Notiz zur Entscheidung/), 'Plausibel.');
+    await user.click(within(dialog).getByRole('button', { name: 'Annehmen' }));
+
+    await waitFor(() => expect(apiMocks.approveChangeProposal).toHaveBeenCalledWith(42, 11, 'Plausibel.'));
+  });
+
+  it('rejects a queued contribution and reloads the queue', async () => {
+    const user = userEvent.setup();
+    render(<PublicLibraryModerationPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Prüfen' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Beitrag prüfen' });
+    await user.click(within(dialog).getByRole('button', { name: 'Ablehnen' }));
+
+    await waitFor(() => expect(apiMocks.rejectChangeProposal).toHaveBeenCalledWith(42, 11, ''));
+    // Two calls: the initial load and the reload after the decision.
+    await waitFor(() => expect(apiMocks.pendingChangeProposals).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows the new-publish wording for a queued brand-new entry', async () => {
+    apiMocks.pendingChangeProposals.mockResolvedValue({
+      data: {
+        count: 1,
+        results: [
+          {
+            id: 12,
+            public_crop: 43,
+            public_crop_label: 'Rhabarber (Holsteiner)',
+            kind: 'new_publish',
+            origin_api: false,
+            origin_declared_agent: false,
+            summary: 'New publish awaiting moderation',
+            // Only the backend's internal plumbing keys, never a field diff.
+            proposed_data: { _source_crop_id: 5, _publish_as_general: false },
+            status: 'pending',
+            proposed_by_label: 'Jonas',
+            created_at: '2026-07-27T08:00:00Z',
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    render(<PublicLibraryModerationPage />);
+
+    expect(await screen.findByText('Neuer Eintrag')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Prüfen' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Beitrag prüfen' });
+    expect(within(dialog).getByText(/soll neu in die Kulturbibliothek aufgenommen werden/)).toBeInTheDocument();
+    // The internal keys must not leak into the moderator's view.
+    expect(within(dialog).queryByText(/_source_crop_id/)).not.toBeInTheDocument();
+  });
+
+  it('shows an empty state when no contribution is waiting', async () => {
+    apiMocks.pendingChangeProposals.mockResolvedValue({ data: { count: 0, results: [] } });
+    render(<PublicLibraryModerationPage />);
+
+    expect(await screen.findByText('Keine offenen Beiträge.')).toBeInTheDocument();
   });
 
   it('reviews crop species proposals and admin moderator requests', async () => {

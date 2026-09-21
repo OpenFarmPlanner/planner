@@ -114,7 +114,7 @@ describe('publishSelectedVarieties', () => {
       crop_species_id: 1,
       original_language_code: 'de',
     });
-    expect(result).toEqual({ published: 1, linked: 1, alreadyPublic: 0, failed: 0 });
+    expect(result).toEqual({ published: 1, linked: 1, alreadyPublic: 0, pendingModeration: 0, failed: 0 });
   });
 
   it('keeps going when a single Sorte fails', async () => {
@@ -130,7 +130,7 @@ describe('publishSelectedVarieties', () => {
     });
 
     expect(publishPublicMock).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({ published: 1, linked: 0, alreadyPublic: 0, failed: 1 });
+    expect(result).toEqual({ published: 1, linked: 0, alreadyPublic: 0, pendingModeration: 0, failed: 1 });
   });
 
   it('counts a Sorte the backend rejects as a duplicate as already public, not as a failure', async () => {
@@ -144,7 +144,21 @@ describe('publishSelectedVarieties', () => {
       originalLanguageCode: 'de',
     });
 
-    expect(result).toEqual({ published: 0, linked: 0, alreadyPublic: 1, failed: 0 });
+    expect(result).toEqual({ published: 0, linked: 0, alreadyPublic: 1, pendingModeration: 0, failed: 0 });
+  });
+
+  it('counts a Sorte queued for moderation separately, not as published', async () => {
+    // A new-trust-level account or an API token gets 202 pending_moderation
+    // instead of a live publish (see docs/account-trust-levels.md); reporting
+    // it as published would claim a co-publish that has not happened.
+    publishPublicMock.mockResolvedValueOnce({ data: { operation: 'pending_moderation' } });
+
+    const result = await publishSelectedVarieties({
+      varieties: [{ cropId: 2, publicCropId: null }],
+      originalLanguageCode: 'de',
+    });
+
+    expect(result).toEqual({ published: 0, linked: 0, alreadyPublic: 0, pendingModeration: 1, failed: 0 });
   });
 
   it('passes the accepted library terms on so a Sorte is not rejected for missing consent', async () => {
