@@ -195,7 +195,7 @@ erDiagram
     PublicCropDiscussionTopic ||--o{ PublicCropDiscussionComment : "posts and replies"
     PublicCropDiscussionComment ||--o{ PublicCropDiscussionComment : "parent / reply"
     PublicCropRevision ||--o{ PublicCropDiscussionTopic : "optionally discusses a version"
-    PublicCrop ||--o{ PublicCropChangeProposal : "legacy, audit only"
+    PublicCrop ||--o{ PublicCropChangeProposal : "moderation queue for new/API-token writes"
     User ||--o{ PublicLibraryModeratorRequest : "requests moderator access"
 ```
 
@@ -217,9 +217,13 @@ erDiagram
 - **`PublicCropStatusEvent`** records every `draft`/`published`/
   `withdrawn`/`removed` transition, which is what makes contributor withdrawal
   and moderator removal auditable instead of destructive.
-- **`PublicCropChangeProposal`** is a legacy table from an earlier
-  reviewed-edit workflow. It is retained for audit; nothing in the UI creates
-  or reviews proposals today.
+- **`PublicCropChangeProposal`** is the moderation queue for crop-library
+  contributions that may not apply live: those from accounts still at the
+  `new` trust level and those made with a `ProjectApiToken`. `kind`
+  distinguishes an edit from a new publish, the latter pointing at a
+  still-`draft` `PublicCrop`. See
+  [account-trust-levels.md](./account-trust-levels.md). Moderators review
+  them in the contributions queue on the moderation page.
 - **`PublicLibraryModeratorRequest`** backs the "request moderator access"
   flow. Approval only adds the user to the `Public Library Moderators` group
   (permission `crops.moderate_crop_species`) — it never grants staff or Django

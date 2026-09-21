@@ -255,6 +255,10 @@ export const publicCropAPI = {
   updateTranslations: (id: number, translations: Record<string, string>) =>
     http.put<PublicCropTranslations>(`/public-crops/${id}/translations/`, { translations }),
   changeProposals: (id: number) => http.get<PublicCropChangeProposal[]>(`/public-crops/${id}/change-proposals/`),
+  // The moderation queue's cross-entry view: everything still waiting, which
+  // the per-entry endpoint above cannot answer without an entry id.
+  pendingChangeProposals: (params?: { page?: number; page_size?: number }) =>
+    http.get<PaginatedResponse<PublicCropChangeProposal>>('/public-crops/pending-change-proposals/', { params }),
   createChangeProposal: (id: number, data: { summary: string; proposed_data: Partial<PublicCrop> }) =>
     http.post<PublicCropChangeProposal>(`/public-crops/${id}/change-proposals/`, data),
   approveChangeProposal: (id: number, proposalId: number, reviewNote = '') =>

@@ -517,9 +517,12 @@ naming the same crop is blocked with `duplicate_in_payload`.
   the browser and crop endpoints.
 - **`last_used_at` is coalesced** to at most one write per minute, so it is
   accurate to the minute rather than the request.
-- **No rate limiting specific to tokens.** The existing DRF throttles are scoped
-  to named endpoints (login, registration, …) and do not cover the agent
-  surface.
+- **Rate limiting is per-token, not per-endpoint.** `farm.agent_api.throttling`
+  applies read/write ceilings keyed on the token id (`api_token_read`,
+  `api_token_write`, `api_token_write_declared_agent` scopes — see
+  [`account-trust-levels.md`](./account-trust-levels.md)), independent of
+  which endpoint a given request hits. There is still no per-endpoint budget
+  within those ceilings.
 
 ## Where the code lives
 

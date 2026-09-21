@@ -23,7 +23,7 @@ two disagree about what exists, this file wins.
 | Moderation surfaces: species proposals, moderator-access requests, restoring removed entries (`/app/public-library-moderation`) | **implemented** |
 | Moderator crop-species correction of a published entry ("Kulturart korrigieren", §9) | **implemented** |
 | Full library workspace at `/app/crop-library` (browse, import, discuss, edit, versions) | **implemented** |
-| `PublicCropChangeProposal` review workflow | **legacy** — model, endpoints and API-client wrappers still exist, no UI creates or reviews them (see §0) |
+| `PublicCropChangeProposal` review workflow | **implemented** — queues contributions from new accounts and API tokens, reviewed in the contributions queue on the moderation page (see [account-trust-levels.md](./account-trust-levels.md)) |
 | `/api/crop-library/` as the *only* library surface; frontend switched off `/api/public-crops/` | **not done** — see §5 |
 | Unauthenticated public `/crops` route | **not done** — see §5 |
 | Separate `CropVariety` entity and species→variety attribute inheritance | **not done** — planned in public-crop-library-data-model.md §2 |
@@ -507,16 +507,26 @@ every moderator/admin, so the queue is discoverable even off the crop library
 page — the button badge and the bell read the same underlying pending state,
 just through two different existing surfaces.
 
-Legacy reviewed change proposals (`PublicCropChangeProposal`) are retained
-in the database for audit and transition safety. No UI creates, reviews, or
-displays them any more, and existing proposals are not automatically applied.
-The plumbing underneath is still there and still reachable: the model, the
-`change-proposals/` list/create/approve/reject actions on
-`PublicCropViewSet`, and the `publicCropAPI.changeProposals(...)` /
-`createChangeProposal` / `approveChangeProposal` / `rejectChangeProposal`
-wrappers in `frontend/src/api/api.ts` all still exist — only the components
-that used to call them are gone. Treat it as dead-but-live surface: don't build
-on it, and don't assume removing it is a no-op for API clients.
+Reviewed change proposals (`PublicCropChangeProposal`) were dormant for a
+long stretch — retained for audit and transition safety, with no UI creating
+or reviewing them. **They are in use again.** Rather than build a parallel
+structure, the account-trust-level work revived this queue: a crop-library
+contribution from an account still at the `new` trust level, or from any
+`ProjectApiToken`-authenticated request, is now routed into it instead of
+applying live. The model gained a `kind` field (`edit` vs. `new_publish`) and
+the `origin_api`/`origin_declared_agent` provenance flags. A `new_publish`
+proposal points at a `PublicCrop` created with `status=STATUS_DRAFT`, which
+every listing filters out until a moderator approves it.
+
+`farm/crops/moderation.py` holds the routing decision; see
+[`account-trust-levels.md`](./account-trust-levels.md) for the full rules,
+the approve/reject paths, and the draft lifecycle.
+
+Moderators review them in the contributions queue at the top of
+`/app/public-library-moderation`, which lists everything pending across
+entries via `GET /public-crops/pending-change-proposals/` and opens a review
+dialog per row. See
+[`account-trust-levels.md`](./account-trust-levels.md#where-a-moderator-actually-reviews-them).
 
 ### Sorte → Kultur value inheritance
 

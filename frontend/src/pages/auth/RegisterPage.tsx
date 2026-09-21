@@ -19,6 +19,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
+  // Honeypot: hidden from real users; only automated form-fillers set this.
+  const [website, setWebsite] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function RegisterPage() {
       if (nextPath) {
         storeInvitationRedirect(nextPath, getTokenFromNextPath(nextPath));
       }
-      const message = await register(email.trim().toLowerCase(), password, passwordConfirm, displayName.trim());
+      const message = await register(email.trim().toLowerCase(), password, passwordConfirm, displayName.trim(), website);
       setSuccess(pendingInvitation ? t('projectInvitations:registerSuccessWithInvitation', { detail: message }) : message);
       setRegistrationSucceeded(true);
     } catch (err) {
@@ -133,6 +135,24 @@ export default function RegisterPage() {
           ) : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
           {success ? <Alert severity="success">{success}</Alert> : null}
+          {/* Honeypot: hidden from sighted, screen-reader and keyboard users
+              alike; only an automated client that fills every form field
+              populates it. `tabIndex` has to go on the input itself (the
+              TextField would put it on the wrapper, leaving the input in the
+              tab order and scrolling the page off-screen on the first Tab). */}
+          <Box
+            aria-hidden="true"
+            sx={{ position: 'absolute', left: '-9999px', width: 1, height: 0, overflow: 'hidden' }}
+          >
+            <TextField
+              label={t('auth:register.honeypotLabel')}
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              autoComplete="off"
+              slotProps={{ htmlInput: { tabIndex: -1, autoComplete: 'off' } }}
+            />
+          </Box>
           <TextField
             label={t('auth:register.email')}
             type="email"

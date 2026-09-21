@@ -882,12 +882,15 @@
       "pushUpdateTooltip": "Deine lokalen Änderungen in die öffentliche Version in der Bibliothek übernehmen."
     },
     "publishSuccess": "„{{name}}“ wurde in die Kulturbibliothek veröffentlicht.",
+    "publishPendingModeration": "„{{name}}“ wurde zur Prüfung eingereicht und erscheint in der Kulturbibliothek, sobald ein Moderator den Beitrag freigegeben hat.",
     "updateSuccess": "Die öffentliche Version von „{{name}}“ wurde aktualisiert.",
     "linkPublicCropSuccess": "„{{name}}“ wurde mit der Kulturbibliothek verknüpft.",
     "publishVarietiesSuccess_one": "1 Sorte wurde mitveröffentlicht.",
     "publishVarietiesSuccess_other": "{{count}} Sorten wurden mitveröffentlicht.",
     "publishVarietiesAlreadyPublic_one": "1 Sorte war bereits in der Bibliothek vorhanden.",
     "publishVarietiesAlreadyPublic_other": "{{count}} Sorten waren bereits in der Bibliothek vorhanden.",
+    "publishVarietiesPendingModeration_one": "1 Sorte wurde zur Prüfung eingereicht.",
+    "publishVarietiesPendingModeration_other": "{{count}} Sorten wurden zur Prüfung eingereicht.",
     "publishVarietiesPartialError_one": "1 Sorte konnte nicht mitveröffentlicht werden.",
     "publishVarietiesPartialError_other": "{{count}} Sorten konnten nicht mitveröffentlicht werden.",
     "publishDuplicateError": "Diese Kultur ist bereits in der Kulturbibliothek vorhanden.",
@@ -916,6 +919,7 @@
       "wrong_mapping": "Falsche Zuordnung",
       "unlawful_content": "Unzulässiger Inhalt",
       "species_rejected": "Kulturart-Vorschlag abgelehnt",
+      "proposal_rejected": "Veröffentlichungsvorschlag abgelehnt",
       "other": "Sonstiges"
     },
     "loadError": "Die Kulturbibliothek konnte nicht geladen werden.",
@@ -951,6 +955,36 @@
         "englishName": "Englischer Name",
         "approveSuccess": "Die Kulturart wurde angenommen.",
         "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt."
+      },
+      "contributions": {
+        "title": "Beiträge zur Kulturbibliothek",
+        "empty": "Keine offenen Beiträge.",
+        "intro": "Beiträge von neuen Konten und von API-Zugängen werden hier geprüft, bevor sie in der Bibliothek erscheinen.",
+        "review": "Prüfen",
+        "kind": {
+          "edit": "Änderung",
+          "new_publish": "Neuer Eintrag"
+        },
+        "origin": {
+          "api": "API-Zugang",
+          "agent": "Automatisierter Client",
+          "agentTooltip": "Selbstauskunft des Clients – nicht überprüfbar."
+        },
+        "dialogTitle": "Beitrag prüfen",
+        "dialogIntroEdit": "Vorgeschlagene Änderungen an „{{name}}“.",
+        "dialogIntroNewPublish": "„{{name}}“ soll neu in die Kulturbibliothek aufgenommen werden. Der Eintrag ist bis zur Freigabe unsichtbar.",
+        "proposedBy": "Eingereicht von {{name}} am {{date}}",
+        "columns": {
+          "entry": "Eintrag",
+          "kind": "Art",
+          "field": "Feld",
+          "value": "Vorgeschlagener Wert"
+        },
+        "noFieldChanges": "Keine Feldänderungen enthalten.",
+        "reviewNote": "Notiz zur Entscheidung (optional)",
+        "reviewNoteHint": "Wird der einreichenden Person mitgeteilt.",
+        "approveSuccess": "Der Beitrag wurde angenommen und ist jetzt in der Bibliothek.",
+        "rejectSuccess": "Der Beitrag wurde abgelehnt."
       },
       "speciesAliases": {
         "title": "Kulturart-Synonyme",

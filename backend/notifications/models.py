@@ -26,6 +26,8 @@ class Notification(models.Model):
     TYPE_PUBLIC_CROP_REMOVED = 'public_crop_removed'
     TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED = 'public_crop_species_relink_cancelled'
     TYPE_CROP_SPECIES_REASSIGNED = 'crop_species_reassigned'
+    TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_SUBMITTED = 'public_crop_change_proposal_submitted'
+    TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_REVIEWED = 'public_crop_change_proposal_reviewed'
     TYPE_CHOICES = [
         (TYPE_CROP_SPECIES_PROPOSAL_ACCEPTED, 'Crop species proposal accepted'),
         (TYPE_CROP_SPECIES_PROPOSAL_REJECTED, 'Crop species proposal rejected'),
@@ -34,6 +36,8 @@ class Notification(models.Model):
         (TYPE_PUBLIC_CROP_REMOVED, 'Public crop removed'),
         (TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED, 'Public crop species correction cancelled'),
         (TYPE_CROP_SPECIES_REASSIGNED, 'Crop species reassigned'),
+        (TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_SUBMITTED, 'Public crop change proposal submitted'),
+        (TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_REVIEWED, 'Public crop change proposal reviewed'),
     ]
 
     TARGET_CROP = 'crop'

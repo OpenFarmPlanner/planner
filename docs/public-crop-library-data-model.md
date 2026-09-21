@@ -27,8 +27,9 @@ yet.**
   editing a public entry is a direct, immediately-published wiki-style edit
   recorded as an immutable `PublicCropRevision`, with threaded
   `PublicCropDiscussionTopic`/`…Comment` discussions alongside it. The
-  reviewed-proposal workflow (`PublicCropChangeProposal`) is legacy: rows
-  and endpoints remain, no UI creates or reviews them.
+  reviewed-proposal workflow (`PublicCropChangeProposal`) is the moderation
+  queue for new-account and API-token contributions, reviewed in the
+  contributions queue on the moderation page.
 
 ### Still future work from this plan
 
@@ -99,8 +100,8 @@ species identity table:
   `PublicCropRevision` are additive collaboration records on
   `PublicCrop`: threaded discussion plus an immutable version history for
   direct edits, neither of which mutates imported project copies.
-  `PublicCropChangeProposal` is the legacy reviewed-edit table from an
-  earlier iteration; it is retained for audit only.
+  `PublicCropChangeProposal` queues contributions that may not apply live —
+  from `new`-trust-level accounts and from API tokens.
 - `PublicCropSpeciesRelinkRequest` parks a moderator's "Kulturart korrigieren"
   correction whose target species still has to be proposed, so approving the
   species completes the relink instead of the moderator repeating it. See

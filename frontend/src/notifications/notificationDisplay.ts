@@ -38,8 +38,13 @@ export function getNotificationMessage(
   t: TFunction,
   tCrops: TFunction,
 ): string {
+  // A decision notification carries its outcome in `context.status`; passing it
+  // as the i18next context picks `<type>_approved` / `<type>_rejected` and falls
+  // back to the neutral `<type>` key, so the raw enum is never rendered.
+  const statusContext = typeof notification.context?.status === 'string' ? notification.context.status : undefined;
   return t(`messages.${notification.notification_type}`, {
     ...buildMessageContext(notification, tCrops),
+    context: statusContext,
     // An unknown type must never render a raw enum value at the user; the
     // English fallback text the backend already stored is the safer default.
     defaultValue: notification.message,

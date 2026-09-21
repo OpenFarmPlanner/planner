@@ -372,9 +372,19 @@ export interface PublicCropTranslations {
 
 export type PublicCropChangeProposalStatus = 'pending' | 'approved' | 'rejected';
 
+/** An edit to an existing entry, or a brand-new publish awaiting approval. */
+export type PublicCropChangeProposalKind = 'edit' | 'new_publish';
+
 export interface PublicCropChangeProposal {
   id: number;
   public_crop: number;
+  /** Display name of the entry, so the cross-entry queue can label a row. */
+  public_crop_label?: string;
+  kind?: PublicCropChangeProposalKind;
+  /** Submitted through a ProjectApiToken. Derived from the credential. */
+  origin_api?: boolean;
+  /** Self-declared automated client — context for a moderator, never trusted. */
+  origin_declared_agent?: boolean;
   summary: string;
   proposed_data: Partial<PublicCrop>;
   status: PublicCropChangeProposalStatus;
@@ -492,6 +502,7 @@ export type PublicCropRemovalReason =
   // System-applied only, set when the crop species behind an entry is
   // rejected — never offered as a choice in the manual removal dialog.
   | 'species_rejected'
+  | 'proposal_rejected'
   | 'other';
 
 export interface PublicCropDuplicateCandidate {
@@ -619,8 +630,14 @@ export interface PublishPublicCropPreview {
 }
 
 export interface PublishPublicCropResponse {
-  operation: 'created' | 'updated';
-  public_crop: PublicCrop;
+  /**
+   * `pending_moderation` means the contribution was queued for review instead
+   * of published: the response then carries `change_proposal` and no
+   * `public_crop`.
+   */
+  operation: 'created' | 'updated' | 'pending_moderation';
+  public_crop?: PublicCrop;
+  change_proposal?: PublicCropChangeProposal;
   duplicates: PublicCropDuplicateCandidate[];
 }
 
@@ -1037,7 +1054,9 @@ export type NotificationType =
   | 'crop_species_proposal_rejected'
   | 'crop_species_proposal_submitted'
   | 'moderator_request_submitted'
-  | 'public_crop_removed';
+  | 'public_crop_removed'
+  | 'public_crop_change_proposal_submitted'
+  | 'public_crop_change_proposal_reviewed';
 
 export type NotificationTargetType = 'crop' | 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
 

@@ -5,12 +5,15 @@ from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.test import APIClient
 from rest_framework.test import APITestCase as DRFAPITestCase
 
 from accounts.guest_demo import create_guest_demo_session
 from accounts.models import DocumentConsent
+from accounts.trust import grant_established_trust
 from crops.models import CropSpecies, CropSpeciesTranslation
 from crops.permissions import grant_public_library_moderator_access
 from farm.models import (
@@ -38,6 +41,10 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.user = User.objects.create_user(username='library-user', email='library@example.com', password='testpass', is_active=True)
         self.project = Project.objects.create(name='Library Project', slug='library-project')
         ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        # This test class exercises the pre-existing direct-edit/publish
+        # behavior, not the new-trust-level moderation-queue routing (which
+        # has its own dedicated tests) — grandfather the fixture user in.
+        grant_established_trust(self.user)
         self.client.force_authenticate(user=self.user)
         self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
         self.species = CropSpecies.objects.create(name='Lettuce')
@@ -2772,6 +2779,77 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_APPROVED)
         self.assertEqual(proposal.reviewed_by, moderator)
 
+    def _make_moderator(self, username: str):
+        moderator = User.objects.create_user(
+            username=username,
+            email=f'{username}@example.com',
+            password='testpass',
+            is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        return moderator
+
+    def test_pending_change_proposals_requires_moderator(self):
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pending_change_proposals_lists_only_pending_across_entries(self):
+        moderator = self._make_moderator('queue-moderator')
+        first = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user, version=1,
+        )
+        second = PublicCrop.objects.create(
+            name='Carrot', variety='Nantes', status='published', created_by=self.user, version=1,
+        )
+        pending_first = PublicCropChangeProposal.objects.create(
+            public_crop=first, proposed_by=self.user, summary='First', proposed_data={'notes': 'a'},
+        )
+        pending_second = PublicCropChangeProposal.objects.create(
+            public_crop=second, proposed_by=self.user, summary='Second', proposed_data={'notes': 'b'},
+        )
+        PublicCropChangeProposal.objects.create(
+            public_crop=first,
+            proposed_by=self.user,
+            summary='Already handled',
+            proposed_data={'notes': 'c'},
+            status=PublicCropChangeProposal.STATUS_APPROVED,
+        )
+
+        self.client.force_authenticate(user=moderator)
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item['id'] for item in response.data['results']],
+            [pending_first.id, pending_second.id],
+        )
+        self.assertEqual(response.data['results'][1]['public_crop_label'], 'Carrot (Nantes)')
+
+    def test_pending_change_proposals_includes_drafts_hidden_from_the_library(self):
+        """A new-publish proposal points at a draft entry, which the viewset's
+        published-only queryset hides — the queue must still list it, or the
+        proposal could never be approved."""
+        moderator = self._make_moderator('queue-draft-moderator')
+        draft = PublicCrop.objects.create(
+            name='Rhabarber', variety='Holsteiner', status=PublicCrop.STATUS_DRAFT,
+            created_by=self.user, version=1,
+        )
+        proposal = PublicCropChangeProposal.objects.create(
+            public_crop=draft,
+            proposed_by=self.user,
+            kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
+            summary='New publish awaiting moderation',
+            proposed_data={},
+        )
+
+        self.client.force_authenticate(user=moderator)
+        response = self.client.get('/openfarmplanner/api/public-crops/pending-change-proposals/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item['id'] for item in response.data['results']], [proposal.id])
+        self.assertEqual(response.data['results'][0]['kind'], PublicCropChangeProposal.KIND_NEW_PUBLISH)
+
     def test_moderator_can_reject_change_proposal_without_changing_public_crop(self):
         moderator = User.objects.create_user(
             username='proposal-reject-moderator',
@@ -2807,6 +2885,313 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(public_crop.notes, 'Original notes')
         self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_REJECTED)
         self.assertEqual(proposal.review_note, 'Needs sources.')
+
+    def test_new_trust_level_user_edit_creates_proposal_instead_of_live_update(self):
+        """A fresh account's direct PATCH is queued for moderation, not applied."""
+        new_user = User.objects.create_user(
+            username='fresh-account', email='fresh-account@example.com', password='pw', is_active=True,
+        )
+        self.client.force_authenticate(user=new_user)
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user, notes='Original',
+        )
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'notes': 'Changed by a brand-new account'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.notes, 'Original')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=public_crop)
+        self.assertEqual(proposal.kind, PublicCropChangeProposal.KIND_EDIT)
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual(proposal.proposed_by, new_user)
+        self.assertEqual(proposal.proposed_data['notes'], 'Changed by a brand-new account')
+        self.assertFalse(proposal.origin_api)
+        self.assertFalse(proposal.origin_declared_agent)
+
+    def test_api_token_edit_always_creates_proposal_regardless_of_trust_level(self):
+        """A ProjectApiToken write always queues, even for the token owner's own established account."""
+        from farm.models import ProjectApiToken
+
+        grant_established_trust(self.user)
+        token, raw_token = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name='Agent token', scope=ProjectApiToken.SCOPE_WRITE,
+        )
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user, notes='Original',
+        )
+        token_client = APIClient()
+        token_client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_token}', HTTP_X_CLIENT_DECLARED_TYPE='agent')
+
+        response = token_client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'notes': 'Changed via API token'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.notes, 'Original')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=public_crop)
+        self.assertTrue(proposal.origin_api)
+        self.assertTrue(proposal.origin_declared_agent)
+
+    def _publish_as_new_trust_level_user(self):
+        """A fresh account with its own project/crop/species, ready to publish."""
+        new_user = User.objects.create_user(
+            username='fresh-publisher', email='fresh-publisher@example.com', password='pw', is_active=True,
+        )
+        project = Project.objects.create(name='Fresh Project', slug='fresh-project')
+        ProjectMembership.objects.create(user=new_user, project=project, role='admin')
+        species = CropSpecies.objects.create(name='Carrot')
+        crop = Crop.objects.create(
+            name='Carrot', variety='Nantaise', crop_species=species,
+            growth_duration_days=70, harvest_duration_days=20, project=project,
+        )
+        client = APIClient()
+        client.force_authenticate(user=new_user)
+        client.defaults['HTTP_X_PROJECT_ID'] = str(project.id)
+        response = client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'crop_species_id': species.id, 'original_language_code': 'en'},
+            format='json',
+        )
+        return new_user, crop, response
+
+    def test_new_trust_level_user_publish_creates_draft_and_proposal(self):
+        new_user, crop, response = self._publish_as_new_trust_level_user()
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['operation'], 'pending_moderation')
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        self.assertEqual(draft.status, PublicCrop.STATUS_DRAFT)
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        self.assertEqual(proposal.kind, PublicCropChangeProposal.KIND_NEW_PUBLISH)
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual(proposal.proposed_by, new_user)
+        # A draft is invisible on the published-only list/detail surface.
+        list_response = self.client.get('/openfarmplanner/api/public-crops/')
+        self.assertNotIn(draft.id, [row['id'] for row in list_response.data['results']])
+        detail_response = self.client.get(f'/openfarmplanner/api/public-crops/{draft.id}/')
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        crop.refresh_from_db()
+        self.assertIsNone(crop.source_public_crop)
+
+    def test_republish_by_new_trust_level_owner_queues_instead_of_overwriting_live_entry(self):
+        """Owning the published entry must not be a way around the queue.
+
+        `find_owned_public_crop_for_update` matched before the moderation gate
+        was consulted, so an untrusted contributor (or any API token) that had
+        already published an entry could overwrite the live library row.
+        """
+        new_user, crop, first_response = self._publish_as_new_trust_level_user()
+        self.assertEqual(first_response.status_code, status.HTTP_202_ACCEPTED)
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        # Approve it, so the contributor now owns a *published* entry.
+        moderator = self._make_moderator('republish-moderator')
+        self.client.force_authenticate(user=moderator)
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        approve = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/approve/',
+            {}, format='json',
+        )
+        self.assertEqual(approve.status_code, status.HTTP_200_OK)
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, PublicCrop.STATUS_PUBLISHED)
+        published_notes = draft.notes
+        published_version = draft.version
+
+        # Same account, still at the "new" trust level, publishes again with
+        # changed values.
+        crop.notes = 'Injected content on the live entry'
+        crop.growth_duration_days = 999
+        crop.save(update_fields=['notes', 'growth_duration_days'])
+        client = APIClient()
+        client.force_authenticate(user=new_user)
+        client.defaults['HTTP_X_PROJECT_ID'] = str(crop.project_id)
+        response = client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'original_language_code': 'en'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['operation'], 'pending_moderation')
+        self.assertEqual(response.data['change_proposal']['kind'], PublicCropChangeProposal.KIND_EDIT)
+        draft.refresh_from_db()
+        self.assertEqual(draft.notes, published_notes)
+        self.assertEqual(draft.version, published_version)
+        self.assertNotEqual(draft.growth_duration_days, 999)
+        queued = PublicCropChangeProposal.objects.get(
+            public_crop=draft, status=PublicCropChangeProposal.STATUS_PENDING,
+        )
+        self.assertEqual(queued.proposed_data['growth_duration_days'], 999)
+
+        # The queued payload must survive the approval path's re-validation,
+        # or the contributor's update would be unapprovable rather than merely
+        # deferred.
+        self.client.force_authenticate(user=moderator)
+        approve_edit = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{queued.id}/approve/',
+            {}, format='json',
+        )
+        self.assertEqual(approve_edit.status_code, status.HTTP_200_OK, approve_edit.data)
+        draft.refresh_from_db()
+        self.assertEqual(draft.growth_duration_days, 999)
+        self.assertEqual(draft.notes, 'Injected content on the live entry')
+
+    def test_queued_variety_publish_does_not_publish_a_live_species_entry(self):
+        """`ensure_general_public_crop` created a *published* species-level
+        entry from the untrusted crop's own values, while the variety it came
+        with was only queued as a draft."""
+        _new_user, _crop, response = self._publish_as_new_trust_level_user()
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertFalse(
+            PublicCrop.objects.filter(
+                name='Carrot', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            ).exists(),
+            'a queued variety publish must not put a species-level entry live',
+        )
+
+    def test_approving_a_queued_variety_publish_creates_the_species_entry(self):
+        """The species-level entry a variety hangs off is deferred to approval,
+        not dropped."""
+        _new_user, _crop, response = self._publish_as_new_trust_level_user()
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        moderator = self._make_moderator('species-entry-moderator')
+        self.client.force_authenticate(user=moderator)
+
+        approve = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/approve/',
+            {}, format='json',
+        )
+
+        self.assertEqual(approve.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            PublicCrop.objects.filter(
+                name='Carrot', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            ).exists(),
+        )
+
+    @override_settings(PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER=1)
+    def test_edit_proposal_is_rejected_once_pending_queue_limit_is_reached(self):
+        """A flood of edits from one account stops once its backlog hits the cap."""
+        new_user = User.objects.create_user(
+            username='flooder', email='flooder@example.com', password='pw', is_active=True,
+        )
+        self.client.force_authenticate(user=new_user)
+        first_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+        )
+        second_crop = PublicCrop.objects.create(
+            name='Potato', variety='Charlotte', status='published', created_by=self.user,
+        )
+
+        first = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{first_crop.id}/',
+            {'notes': 'First'}, format='json',
+        )
+        self.assertEqual(first.status_code, status.HTTP_202_ACCEPTED)
+
+        second = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{second_crop.id}/',
+            {'notes': 'Second'}, format='json',
+        )
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'pending_proposal_limit_exceeded')
+        self.assertEqual(PublicCropChangeProposal.objects.filter(proposed_by=new_user).count(), 1)
+
+    @override_settings(PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER=1)
+    def test_new_publish_is_rejected_once_pending_queue_limit_is_reached(self):
+        """The same cap applies to brand-new-publish proposals, not only edits."""
+        new_user = User.objects.create_user(
+            username='flood-publisher', email='flood-publisher@example.com',
+            password='pw', is_active=True,
+        )
+        project = Project.objects.create(name='Flood Project', slug='flood-project')
+        ProjectMembership.objects.create(user=new_user, project=project, role='admin')
+        # An existing pending proposal for this user already fills the cap.
+        PublicCropChangeProposal.objects.create(
+            public_crop=PublicCrop.objects.create(
+                name='Existing draft', status=PublicCrop.STATUS_DRAFT, created_by=new_user,
+            ),
+            kind=PublicCropChangeProposal.KIND_NEW_PUBLISH,
+            summary='Already pending',
+            proposed_data={},
+            proposed_by=new_user,
+        )
+        crop = Crop.objects.create(
+            name='Carrot', variety='Nantaise',
+            growth_duration_days=70, harvest_duration_days=20, project=project,
+        )
+        client = APIClient()
+        client.force_authenticate(user=new_user)
+        client.defaults['HTTP_X_PROJECT_ID'] = str(project.id)
+
+        response = client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'original_language_code': 'en'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(response.data['code'], 'pending_proposal_limit_exceeded')
+        self.assertFalse(PublicCrop.objects.filter(name='Carrot', variety='Nantaise').exists())
+
+    def test_approving_new_publish_proposal_publishes_and_links_project_crop(self):
+        new_user, crop, response = self._publish_as_new_trust_level_user()
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        moderator = User.objects.create_user(
+            username='publish-moderator', email='publish-moderator@example.com', password='pw', is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        self.client.force_authenticate(user=moderator)
+
+        approve_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/approve/',
+            {}, format='json',
+        )
+
+        self.assertEqual(approve_response.status_code, status.HTTP_200_OK)
+        draft.refresh_from_db()
+        proposal.refresh_from_db()
+        crop.refresh_from_db()
+        self.assertEqual(draft.status, PublicCrop.STATUS_PUBLISHED)
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_APPROVED)
+        self.assertEqual(crop.source_public_crop, draft)
+        list_response = self.client.get('/openfarmplanner/api/public-crops/')
+        self.assertIn(draft.id, [row['id'] for row in list_response.data['results']])
+
+    def test_rejecting_new_publish_proposal_removes_the_draft_non_destructively(self):
+        _new_user, _crop, _response = self._publish_as_new_trust_level_user()
+        draft = PublicCrop.objects.get(name='Carrot', variety='Nantaise')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=draft)
+        moderator = User.objects.create_user(
+            username='reject-publish-moderator', email='reject-publish-moderator@example.com', password='pw', is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        self.client.force_authenticate(user=moderator)
+
+        reject_response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{draft.id}/change-proposals/{proposal.id}/reject/',
+            {'review_note': 'Not ready yet.'}, format='json',
+        )
+
+        self.assertEqual(reject_response.status_code, status.HTTP_200_OK)
+        draft.refresh_from_db()
+        proposal.refresh_from_db()
+        self.assertEqual(draft.status, PublicCrop.STATUS_REMOVED)
+        self.assertEqual(draft.removal_reason, PublicCrop.REMOVAL_REASON_PROPOSAL_REJECTED)
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_REJECTED)
+        # The proposal row survives the rejection (it did not cascade-delete).
+        self.assertTrue(PublicCropChangeProposal.objects.filter(pk=proposal.pk).exists())
 
     def test_import_requires_project_membership_header(self):
         public_crop = PublicCrop.objects.create(name='Kale', variety='Nero', status='published', created_by=self.user)
@@ -3458,6 +3843,7 @@ class UnsupportedPublicCropFieldsErrorTest(DRFAPITestCase):
         user = User.objects.create_user(
             username='editor-leak', email='editor-leak@example.com', password='pw', is_active=True
         )
+        grant_established_trust(user)
         self.client.force_authenticate(user=user)
 
         secret = 'invalid literal for int() with base 10: /srv/internal/secret/path'

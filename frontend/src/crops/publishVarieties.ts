@@ -32,6 +32,8 @@ export interface PublishVarietiesResult {
   linked: number;
   /** Rejected by the backend's duplicate gate — the Sorte is public already. */
   alreadyPublic: number;
+  /** Queued for moderator review instead of published (see docs/account-trust-levels.md). */
+  pendingModeration: number;
   failed: number;
 }
 
@@ -107,7 +109,7 @@ export const publishSelectedVarieties = async ({
   originalLanguageCode: string;
   acceptedPublicLibraryTerms?: boolean;
 }): Promise<PublishVarietiesResult> => {
-  const result: PublishVarietiesResult = { published: 0, linked: 0, alreadyPublic: 0, failed: 0 };
+  const result: PublishVarietiesResult = { published: 0, linked: 0, alreadyPublic: 0, pendingModeration: 0, failed: 0 };
   for (const variety of varieties) {
     try {
       if (variety.publicCropId) {
@@ -115,7 +117,7 @@ export const publishSelectedVarieties = async ({
         result.linked += 1;
         continue;
       }
-      await cropAPI.publishPublic(variety.cropId, {
+      const response = await cropAPI.publishPublic(variety.cropId, {
         // The backend only records an acceptance while none exists, so
         // repeating the flag from the Kultur publish costs nothing. The wizard
         // collects it on every path that publishes a Sorte, including the one
@@ -124,7 +126,13 @@ export const publishSelectedVarieties = async ({
         crop_species_id: cropSpeciesId,
         original_language_code: originalLanguageCode,
       });
-      result.published += 1;
+      // A queued contribution is not in the library yet, so counting it as
+      // published would report a co-publish that did not happen.
+      if (response.data.operation === 'pending_moderation') {
+        result.pendingModeration += 1;
+      } else {
+        result.published += 1;
+      }
     } catch (error) {
       // A duplicate is not a failure the user has to act on: the Sorte the
       // conflict check did not see (a stale or failed lookup) is in the

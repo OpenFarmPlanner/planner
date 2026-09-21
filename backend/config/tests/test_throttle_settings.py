@@ -4,6 +4,7 @@ import pytest
 from django.core.exceptions import ImproperlyConfigured
 
 from config.settings import (
+    _env_ip_networks,
     _guest_demo_throttle_rate_for_env,
     _loopback_dev_origins,
     _validate_external_base_url,
@@ -77,3 +78,24 @@ def test_external_base_url_accepts_https_with_deployment_path() -> None:
 
     assert parsed.scheme == 'https'
     assert parsed.path == '/openfarmplanner'
+
+
+def test_env_ip_networks_returns_empty_list_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('TRUSTED_PROXY_CIDRS', raising=False)
+
+    assert _env_ip_networks('TRUSTED_PROXY_CIDRS') == []
+
+
+def test_env_ip_networks_parses_multiple_cidrs(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('TRUSTED_PROXY_CIDRS', '173.245.48.0/20, 2400:cb00::/32')
+
+    networks = [str(network) for network in _env_ip_networks('TRUSTED_PROXY_CIDRS')]
+
+    assert networks == ['173.245.48.0/20', '2400:cb00::/32']
+
+
+def test_env_ip_networks_rejects_invalid_cidr(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('TRUSTED_PROXY_CIDRS', 'not-a-cidr')
+
+    with pytest.raises(ImproperlyConfigured):
+        _env_ip_networks('TRUSTED_PROXY_CIDRS')
