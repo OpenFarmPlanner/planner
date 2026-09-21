@@ -1094,7 +1094,15 @@
           "seeding_requirement": "Seeding requirement",
           "seeding_requirement_type": "Seeding requirement basis",
           "display_color": "Display color",
-          "seed_packages": "Package sizes"
+          "seed_packages": "Package sizes",
+          "rotation_break_years": "Rotation break (years)",
+          "sowing_calculation_safety_percent": "Seed safety surcharge (%)",
+          "sowing_calculation_safety_percent_direct": "Direct sowing safety surcharge",
+          "sowing_calculation_safety_percent_pre_cultivation": "Transplanting safety surcharge",
+          "seed_rate_direct_value": "Direct sowing quantity",
+          "seed_rate_direct_unit": "Direct sowing unit",
+          "seed_rate_pre_cultivation_value": "Transplanting quantity",
+          "seed_rate_pre_cultivation_unit": "Transplanting unit"
         },
         "values": {
           "low": "Low",
@@ -1109,16 +1117,14 @@
           "seeds_per_m2": "Seeds/m²",
           "seeds_per_lfm": "Seeds/linear m",
           "seeds_per_plant": "Seeds/plant"
-        }
+        },
+        "changeEntry": "{{label}}: {{oldValue}} → {{newValue}}"
       },
       "summaryTitle": "Summary",
       "publicCropLabel": "Matching public crop",
       "publicCropHelp": "Free text stays private. Publishing requires either selecting a matching public crop or proposing a new public entry.",
       "publicCropNone": "No matching public crop selected.",
-      "speciesLabel": "Official crop species",
       "speciesMissing": "No official crop species selected",
-      "speciesNoOptions": "No matching official crop species found.",
-      "proposeSpeciesInline": "Suggest \"{{name}}\" as a new crop species",
       "proposeSpeciesSubmit": "Suggest crop species",
       "proposeSpeciesPublishHint": "Your variety will be published provisionally under \"{{name}}\" until the proposal has been reviewed.",
       "proposedSpeciesNotice": "Your suggestion for the new crop species \"{{name}}\" has been submitted for review. You can go ahead and publish your variety now — it will appear provisionally under \"{{name}}\" until it's approved.",
@@ -1204,6 +1210,29 @@
         "previous": "previous, crop",
         "next": "next, crop"
       }
+    },
+    "speciesPicker": {
+      "label": "Official crop species",
+      "proposeInline": "Suggest \"{{name}}\" as a new crop species",
+      "noOptions": "No matching official crop species found."
+    },
+    "relinkSpecies": {
+      "action": "Correct crop species",
+      "title": "Correct crop species",
+      "description": "Map \"{{name}}\" to the correct crop species. The entry’s name and variety stay unchanged, and the previous crop species is kept.",
+      "currentSpeciesLabel": "Current crop species",
+      "noCurrentSpecies": "No crop species set",
+      "submit": "Change crop species",
+      "submitProposal": "Suggest crop species and apply",
+      "saving": "Saving …",
+      "success": "\"{{name}}\" is now mapped to the crop species \"{{species}}\".",
+      "proposalSuccess": "The crop species \"{{species}}\" was suggested. \"{{name}}\" is relinked automatically once it is approved.",
+      "proposalHint": "The crop species \"{{name}}\" does not exist yet. It is submitted as a suggestion; the entry stays on its current crop species until it is approved.",
+      "error": "The crop species could not be changed.",
+      "conflictError": "A published entry with this variety already exists under this crop species.",
+      "unchangedError": "This entry is already mapped to that crop species.",
+      "rejectedError": "A rejected crop species cannot be used as a target.",
+      "proposalFiledError": "The crop species was suggested, but the mapping could not be saved. The suggestion stays selected — please try again."
     }
   },
   "commands": {

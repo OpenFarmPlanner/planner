@@ -406,12 +406,48 @@ export interface PublicCropRevision {
   id: number;
   public_crop: number;
   version: number;
-  action: 'created' | 'updated' | 'restored';
+  action: 'created' | 'updated' | 'restored' | 'species_relinked';
   snapshot: Partial<PublicCrop>;
   changed_fields: PublicCropRevisionChange[];
   restored_from_version?: number | null;
   created_by_label?: string;
   created_at?: string;
+}
+
+/**
+ * One inheritable field moving from an old to a new value.
+ *
+ * Emitted in a notification's `changed_fields` context so the UI can render it
+ * with the same labels and value formatting as the public-update diff table.
+ */
+export interface PublicCropFieldChange {
+  field: string;
+  old_value: unknown;
+  new_value: unknown;
+}
+
+export interface PublicCropSpeciesRelinkRequest {
+  id: number;
+  public_crop: number;
+  from_crop_species: number | null;
+  to_crop_species: number;
+  status: 'pending' | 'completed' | 'cancelled';
+  note: string;
+  resolution_note: string;
+  requested_by_label?: string;
+  created_at?: string;
+  resolved_at?: string | null;
+}
+
+export interface PublicCropSpeciesRelinkResponse {
+  /**
+   * `relinked` when the correction was applied. `pending_species_proposal`
+   * when the target species is still awaiting moderation — the entry keeps its
+   * current species and the relink runs on approval.
+   */
+  relink_status: 'relinked' | 'pending_species_proposal';
+  crop: PublicCrop;
+  relink_request: PublicCropSpeciesRelinkRequest | null;
 }
 
 export interface PublicCropDiscussionComment {
@@ -1022,7 +1058,7 @@ export type NotificationType =
   | 'public_crop_change_proposal_submitted'
   | 'public_crop_change_proposal_reviewed';
 
-export type NotificationTargetType = 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
+export type NotificationTargetType = 'crop' | 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
 
 export interface AppNotification {
   id: number;

@@ -27,6 +27,9 @@ export function NotificationItemContent({
 }: NotificationItemContentProps): ReactElement {
   const { t, i18n } = useTranslation('notifications');
   const language = i18n.resolvedLanguage ?? i18n.language;
+  // Field labels and values inside a message come from the crop library's own
+  // diff formatter, which resolves its keys in the `crops` namespace.
+  const tCrops = i18n.getFixedT(null, 'crops');
 
   const text = (
     <Box sx={{ minWidth: 0 }}>
@@ -34,7 +37,7 @@ export function NotificationItemContent({
         variant="body2"
         sx={{ whiteSpace: 'normal', fontWeight: notification.is_read ? 400 : 600 }}
       >
-        {getNotificationMessage(notification, t)}
+        {getNotificationMessage(notification, t, tCrops)}
       </Typography>
       <Typography variant="caption" color="text.secondary">
         {formatRelativeTime(notification.created_at, language)}

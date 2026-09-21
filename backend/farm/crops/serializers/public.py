@@ -10,6 +10,7 @@ from config.languages import (
     normalize_language_tag,
     resolve_request_language,
 )
+from crops.models import CropSpecies
 from crops.permissions import is_public_library_moderator
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
 from farm.models import (
@@ -18,6 +19,7 @@ from farm.models import (
     PublicCropDiscussionComment,
     PublicCropDiscussionTopic,
     PublicCropRevision,
+    PublicCropSpeciesRelinkRequest,
     SeedPackage,
     format_crop_display_name,
 )
@@ -391,6 +393,40 @@ class PublicCropTranslationsUpdateSerializer(serializers.Serializer):
 class PublicCropRevertSerializer(serializers.Serializer):
     version = serializers.IntegerField(min_value=1)
     base_version = serializers.IntegerField(required=False, min_value=1)
+
+
+class PublicCropSpeciesRelinkSerializer(serializers.Serializer):
+    """Payload of the moderator's "Kulturart korrigieren" action.
+
+    Deliberately carries no ``name``/``variety``: the relink corrects which
+    species an entry maps to, it never touches the locked identity fields.
+    """
+
+    crop_species = serializers.PrimaryKeyRelatedField(queryset=CropSpecies.objects.all())
+    note = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+
+
+class PublicCropSpeciesRelinkRequestSerializer(serializers.ModelSerializer):
+    requested_by_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PublicCropSpeciesRelinkRequest
+        fields = [
+            'id',
+            'public_crop',
+            'from_crop_species',
+            'to_crop_species',
+            'status',
+            'note',
+            'resolution_note',
+            'requested_by_label',
+            'created_at',
+            'resolved_at',
+        ]
+        read_only_fields = fields
+
+    def get_requested_by_label(self, obj: PublicCropSpeciesRelinkRequest) -> str:
+        return get_public_user_label(obj.requested_by)
 
 
 class PublicCropRevisionSerializer(serializers.ModelSerializer):

@@ -366,9 +366,13 @@ def remove_public_crops_for_rejected_species(
     else's still-under-review species proposal would otherwise never learn
     their contribution was pulled.
     """
-    from farm.services.public_crops import remove_public_crop
+    from farm.services.public_crops import cancel_public_crop_species_relinks, remove_public_crop
     from notifications.models import Notification
     from notifications.services import create_notification
+
+    # A parked "Kulturart korrigieren" correction pointing at this species can
+    # never run now; drop it rather than leaving it pending forever.
+    cancel_public_crop_species_relinks(crop_species=species)
 
     affected = PublicCrop.objects.filter(
         crop_species=species, status=PublicCrop.STATUS_PUBLISHED,
@@ -396,6 +400,28 @@ def remove_public_crops_for_rejected_species(
                 target_type=Notification.TARGET_PUBLIC_CROP,
                 target_id=public_crop.id,
             )
+
+
+def apply_public_crop_species_relinks_for_approved_species(
+    species: CropSpecies, moderator: AbstractBaseUser,
+) -> None:
+    """Finish the crop species corrections that were waiting on this proposal.
+
+    The counterpart of :func:`remove_public_crops_for_rejected_species`, called
+    from `CropSpeciesViewSet.approve()`. A moderator correcting an entry's
+    mapping onto a species that did not exist yet files the proposal and the
+    correction in one action; approving the species has to complete it, or the
+    moderator would have to remember to come back and repeat the correction by
+    hand.
+
+    Imports the relink service locally for the same reason the rejection
+    cleanup does: it lives in `farm.services.public_crops` and only ever
+    touches `PublicCrop` rows, so it does not cross the "crop library knows
+    nothing about projects" boundary documented at the top of this file.
+    """
+    from farm.services.public_crops import complete_public_crop_species_relinks
+
+    complete_public_crop_species_relinks(crop_species=species, user=moderator)
 
 
 def notify_moderators_of_species_proposal(species: CropSpecies) -> None:

@@ -52,6 +52,7 @@ import type {
   PublicCropDiscussionComment,
   PublicCropRemovalReason,
   PublicCropRevision,
+  PublicCropSpeciesRelinkResponse,
 } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import PageContainer from '../../components/layout/PageContainer';
@@ -108,6 +109,7 @@ import { CommentForm } from '../components/publicCropLibrary/CommentForm';
 import { ThreadCommentBranch } from '../components/publicCropLibrary/DiscussionComment';
 import { PublicCropMobileSelectorDialog } from '../components/publicCropLibrary/PublicCropMobileSelectorDialog';
 import { ImportConflictDialog } from '../components/publicCropLibrary/ImportConflictDialog';
+import { PublicCropSpeciesRelinkDialog } from '../components/PublicCropSpeciesRelinkDialog';
 import { PublicCropTranslationDialog } from '../components/PublicCropTranslationDialog';
 import {
   PUBLIC_CROP_TAB_BY_INDEX,
@@ -179,6 +181,7 @@ export default function PublicCropLibraryPage() {
   } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [translationDialogOpen, setTranslationDialogOpen] = useState(false);
+  const [relinkSpeciesDialogOpen, setRelinkSpeciesDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [removeReason, setRemoveReason] = useState<PublicCropRemovalReason | ''>('');
   const [removing, setRemoving] = useState(false);
@@ -1057,6 +1060,13 @@ export default function PublicCropLibraryPage() {
     }
   };
 
+  const openRelinkSpeciesDialog = useCallback((): void => {
+    if (!selectedCrop) {
+      return;
+    }
+    setRelinkSpeciesDialogOpen(true);
+  }, [selectedCrop]);
+
   const openModeration = useCallback((): void => {
     navigate('/app/public-library-moderation');
   }, [navigate]);
@@ -1079,6 +1089,13 @@ export default function PublicCropLibraryPage() {
               label: t('library.moderation.title'),
               onClick: openModeration,
             },
+            // Correcting the mapping only means anything while the entry is
+            // actually in the library; the backend rejects the rest anyway.
+            ...(selectedCrop?.status === 'published' ? [{
+              id: 'public-crop-library-relink-species',
+              label: t('library.relinkSpecies.action'),
+              onClick: openRelinkSpeciesDialog,
+            }] : []),
             ...(selectedCrop ? [{
               id: 'public-crop-library-remove',
               label: t('library.removeAction'),
@@ -1089,7 +1106,7 @@ export default function PublicCropLibraryPage() {
         },
       ]
       : []
-  ), [canModeratePublicLibrary, openModeration, openRemoveDialog, pendingModerationCount, selectedCrop, t]);
+  ), [canModeratePublicLibrary, openModeration, openRelinkSpeciesDialog, openRemoveDialog, pendingModerationCount, selectedCrop, t]);
 
   useTopbarContextActions(setTopbarContextActions, topbarContextActions);
 
@@ -1127,6 +1144,29 @@ export default function PublicCropLibraryPage() {
       next[existingIndex] = updatedCrop;
       return next;
     });
+  };
+
+  const handleSpeciesRelinked = async (
+    result: PublicCropSpeciesRelinkResponse,
+    speciesLabel: string,
+  ): Promise<void> => {
+    setRelinkSpeciesDialogOpen(false);
+    const name = getCropTitle(result.crop, t, language);
+    if (result.relink_status === 'pending_species_proposal') {
+      // Nothing moved yet: the entry keeps its current species until a
+      // moderator approves the proposed one, which then completes the relink.
+      showGlobalSnackbar({
+        message: t('library.relinkSpecies.proposalSuccess', { name, species: speciesLabel }),
+        severity: 'info',
+      });
+      return;
+    }
+    upsertCropInList(result.crop);
+    showGlobalSnackbar({
+      message: t('library.relinkSpecies.success', { name, species: speciesLabel }),
+      severity: 'success',
+    });
+    await loadCrops();
   };
 
   const handleTranslationDialogSaved = async (): Promise<void> => {
@@ -2198,6 +2238,12 @@ export default function PublicCropLibraryPage() {
           onSaved={handleTranslationDialogSaved}
         />
       ) : null}
+      <PublicCropSpeciesRelinkDialog
+        open={relinkSpeciesDialogOpen}
+        crop={selectedCrop ?? null}
+        onClose={() => setRelinkSpeciesDialogOpen(false)}
+        onRelinked={handleSpeciesRelinked}
+      />
       <Dialog open={removeDialogOpen} onClose={closeRemoveDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{t('library.removeDialog.title')}</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>

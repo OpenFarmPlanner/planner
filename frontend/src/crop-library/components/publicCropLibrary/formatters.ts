@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import type {
   PublicCrop,
   PublicCropDiscussionComment,
+  PublicCropFieldChange,
 } from '../../../api/types';
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../../i18n/languages';
 import { stripCitationMarkers } from '../../../components/data-grid/markdown';
@@ -316,6 +317,32 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
     return t(`library.publishWizard.comparison.values.${String(normalized)}`, String(normalized));
   }
   return String(normalized);
+}
+
+/**
+ * One field's move from an old to a new value, e.g. "Anbaupause: 3 → 4".
+ *
+ * Built on the same label and value helpers every diff surface uses, so a
+ * change rendered outside a diff table (a notification line) cannot drift from
+ * the table's wording.
+ */
+export function formatPublicCropFieldChange(
+  change: PublicCropFieldChange,
+  t: TFunction,
+): string {
+  return t('library.publishWizard.comparison.changeEntry', {
+    label: getPublicCropComparisonFieldLabel(change.field, t),
+    oldValue: formatPublicCropValue(change.field, change.old_value, t),
+    newValue: formatPublicCropValue(change.field, change.new_value, t),
+  });
+}
+
+/** Several field changes as one readable line. */
+export function formatPublicCropFieldChanges(
+  changes: PublicCropFieldChange[],
+  t: TFunction,
+): string {
+  return changes.map((change) => formatPublicCropFieldChange(change, t)).join('; ');
 }
 
 export function getRevisionValueLabel(value: unknown, fallback: string): string {

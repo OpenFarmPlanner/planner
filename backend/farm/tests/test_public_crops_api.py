@@ -26,12 +26,14 @@ from farm.models import (
     PublicCropDiscussionComment,
     PublicCropDiscussionTopic,
     PublicCropRevision,
+    PublicCropSpeciesRelinkRequest,
     PublicCropStatusEvent,
     PublicCropTranslation,
     SeedPackage,
 )
 from farm.services.crop_inheritance import get_general_crop
 from farm.tests.api_base import User
+from notifications.models import Notification
 
 
 class PublicCropLibraryApiTest(DRFAPITestCase):
@@ -2699,7 +2701,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             format='json',
         )
 
-        self.assertEqual(approval.status_code, status.HTTP_200_OK, approval.data)
+        self.assertEqual(approval.status_code, status.HTTP_200_OK)
         public_crop.refresh_from_db()
         self.assertEqual(public_crop.seed_packages[0]['size_value'], 25.0)
 
@@ -3855,3 +3857,521 @@ class UnsupportedPublicCropFieldsErrorTest(DRFAPITestCase):
                     {'notes': 'x'},
                     format='json',
                 )
+
+
+class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
+    """The moderator-only "Kulturart korrigieren" correction of a wrong mapping.
+
+    The action exists because an entry can be published under a species that is
+    simply too broad or plainly wrong. Correcting that is a mapping fix, not an
+    identity mutation, so it is moderator-gated and must leave `name`/`variety`
+    and the old species itself untouched.
+    """
+
+    def setUp(self):
+        self.moderator = User.objects.create_user(
+            username='relink-moderator', email='relink-moderator@example.com', password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(self.moderator)
+        self.contributor = User.objects.create_user(
+            username='relink-contributor', email='relink-contributor@example.com', password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Relink Project', slug='relink-project')
+        ProjectMembership.objects.create(user=self.contributor, project=self.project, role='admin')
+        self.broad_species = CropSpecies.objects.create(name='Bean')
+        self.correct_species = CropSpecies.objects.create(name='Runner bean')
+        self.source_crop = Crop.objects.create(
+            name='Bean',
+            variety='Neckarkoenigin',
+            crop_species=self.broad_species,
+            project=self.project,
+        )
+        self.sibling_crop = Crop.objects.create(
+            name='Bean',
+            variety='',
+            crop_species=self.broad_species,
+            project=self.project,
+        )
+        self.entry = PublicCrop.objects.create(
+            name='Bean',
+            variety='Neckarkoenigin',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.broad_species,
+            created_by=self.contributor,
+            source_project_crop=self.source_crop,
+            source_project=self.project,
+        )
+        self.url = f'/openfarmplanner/api/public-crops/{self.entry.id}/relink-species/'
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+
+    def test_moderator_relinks_a_published_entry_to_another_species(self):
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['relink_status'], 'relinked')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
+        self.assertEqual(response.data['crop']['id'], self.entry.id)
+
+    def test_the_locked_identity_fields_are_left_alone(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.name, 'Bean')
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin')
+
+    def test_the_old_species_is_neither_deleted_nor_renamed(self):
+        other_entry = PublicCrop.objects.create(
+            name='Bean', variety='Borlotto', status=PublicCrop.STATUS_PUBLISHED, crop_species=self.broad_species,
+        )
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.broad_species.refresh_from_db()
+        other_entry.refresh_from_db()
+        self.assertEqual(self.broad_species.name, 'Bean')
+        self.assertEqual(self.broad_species.status, CropSpecies.STATUS_PUBLISHED)
+        self.assertEqual(other_entry.crop_species_id, self.broad_species.id)
+
+    def test_the_relink_is_audited_as_a_revision_with_both_species(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        revision = self.entry.revisions.filter(
+            action=PublicCropRevision.ACTION_SPECIES_RELINKED,
+        ).first()
+        self.assertIsNotNone(revision)
+        self.assertEqual(revision.created_by_id, self.moderator.id)
+        self.assertIsNotNone(revision.created_at)
+        self.assertIn(
+            {
+                'field': 'crop_species',
+                'old_value': self.broad_species.id,
+                'new_value': self.correct_species.id,
+            },
+            revision.changed_fields,
+        )
+
+    def test_no_status_event_is_recorded_because_the_status_does_not_change(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, PublicCrop.STATUS_PUBLISHED)
+        self.assertFalse(PublicCropStatusEvent.objects.filter(public_crop=self.entry).exists())
+
+    def test_the_owned_private_crop_group_moves_with_the_entry(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.source_crop.refresh_from_db()
+        self.sibling_crop.refresh_from_db()
+        self.assertEqual(self.source_crop.crop_species_id, self.correct_species.id)
+        self.assertEqual(self.sibling_crop.crop_species_id, self.correct_species.id)
+
+    def test_a_crop_group_of_another_species_is_not_dragged_along(self):
+        unrelated_species = CropSpecies.objects.create(name='Soybean')
+        unrelated_crop = Crop.objects.create(
+            name='Bean', variety='Tofu', crop_species=unrelated_species, project=self.project,
+        )
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        unrelated_crop.refresh_from_db()
+        self.assertEqual(unrelated_crop.crop_species_id, unrelated_species.id)
+
+    def test_a_colliding_identity_is_rejected_with_the_same_409_shape(self):
+        conflicting = PublicCrop.objects.create(
+            name='Runner bean',
+            variety='Neckarkoenigin',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.correct_species,
+        )
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'public_crop_variety_conflict')
+        self.assertEqual(response.data['conflicting_public_crop_id'], conflicting.id)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+
+    def test_a_non_moderator_may_not_relink_even_their_own_entry(self):
+        self.authenticate(self.contributor)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'moderator_required')
+
+    def test_relinking_to_the_current_species_is_rejected(self):
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.broad_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'crop_species_unchanged')
+
+    def test_a_rejected_species_is_not_a_valid_mapping_target(self):
+        rejected = CropSpecies.objects.create(name='Beanish', status=CropSpecies.STATUS_REJECTED)
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': rejected.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'crop_species_rejected')
+
+    def test_the_moderator_note_is_recorded_even_when_the_relink_applies_at_once(self):
+        self.authenticate(self.moderator)
+
+        self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'note': 'Bean was too broad.'},
+            format='json',
+        )
+
+        record = self.entry.species_relink_requests.get()
+        self.assertEqual(record.status, PublicCropSpeciesRelinkRequest.STATUS_COMPLETED)
+        self.assertEqual(record.note, 'Bean was too broad.')
+        self.assertEqual(record.from_crop_species_id, self.broad_species.id)
+        self.assertEqual(record.to_crop_species_id, self.correct_species.id)
+        self.assertEqual(record.requested_by_id, self.moderator.id)
+
+    def test_a_rejected_relink_leaves_no_record_behind(self):
+        PublicCrop.objects.create(
+            name='Runner bean',
+            variety='Neckarkoenigin',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.correct_species,
+        )
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(self.entry.species_relink_requests.exists())
+
+    def test_a_removed_entry_cannot_be_relinked(self):
+        self.entry.status = PublicCrop.STATUS_REMOVED
+        self.entry.save(update_fields=['status'])
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
+    """Relinking onto a species that has to be proposed first.
+
+    The correction waits for the proposal: linking the entry to a `proposed`
+    species right away would block import/update/discussion for everyone and
+    would pull the entry into the rejected-species removal sweep.
+    """
+
+    def setUp(self):
+        self.moderator = User.objects.create_user(
+            username='proposal-moderator', email='proposal-moderator@example.com', password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(self.moderator)
+        self.project = Project.objects.create(name='Proposal Project', slug='proposal-project')
+        ProjectMembership.objects.create(user=self.moderator, project=self.project, role='admin')
+        self.client.force_authenticate(user=self.moderator)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.broad_species = CropSpecies.objects.create(name='Broadleaf kale')
+        self.proposed_species = CropSpecies.objects.create(
+            name='Vertusleaf kale', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.moderator,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=self.proposed_species, language_code='de', common_name='Wirsingblatt',
+        )
+        CropSpeciesTranslation.objects.create(
+            species=self.proposed_species, language_code='en', common_name='Vertusleaf kale',
+        )
+        self.entry = PublicCrop.objects.create(
+            name='Broadleaf kale',
+            variety='Vertus',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.broad_species,
+            created_by=self.moderator,
+        )
+        self.url = f'/openfarmplanner/api/public-crops/{self.entry.id}/relink-species/'
+
+    def approve_proposed_species(self):
+        return self.client.post(
+            f'/openfarmplanner/api/crop-species/{self.proposed_species.id}/approve/',
+            {'translations': [
+                {'language_code': 'de', 'common_name': 'Wirsingblatt'},
+                {'language_code': 'en', 'common_name': 'Vertusleaf kale'},
+            ]},
+            format='json',
+        )
+
+    def test_a_proposed_target_parks_the_relink_instead_of_applying_it(self):
+        response = self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['relink_status'], 'pending_species_proposal')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(response.data['relink_request']['status'], 'pending')
+
+    def test_approving_the_species_completes_the_relink_without_repeating_it(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+
+        approval = self.approve_proposed_species()
+
+        self.assertEqual(approval.status_code, status.HTTP_200_OK, approval.data)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.proposed_species.id)
+        self.assertEqual(
+            self.entry.species_relink_requests.get().status,
+            PublicCropSpeciesRelinkRequest.STATUS_COMPLETED,
+        )
+
+    def test_rejecting_the_species_drops_the_parked_relink_and_keeps_the_entry(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+
+        rejection = self.client.post(
+            f'/openfarmplanner/api/crop-species/{self.proposed_species.id}/reject/', {}, format='json',
+        )
+
+        self.assertEqual(rejection.status_code, status.HTTP_200_OK)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(self.entry.status, PublicCrop.STATUS_PUBLISHED)
+        self.assertEqual(
+            self.entry.species_relink_requests.get().status,
+            PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+        )
+
+    def test_a_second_request_supersedes_the_first_instead_of_queueing(self):
+        other_proposed = CropSpecies.objects.create(
+            name='Spitzleaf kale', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.moderator,
+        )
+
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        self.client.post(self.url, {'crop_species': other_proposed.id}, format='json')
+
+        pending = self.entry.species_relink_requests.filter(
+            status=PublicCropSpeciesRelinkRequest.STATUS_PENDING,
+        )
+        self.assertEqual(pending.count(), 1)
+        self.assertEqual(pending.get().to_crop_species_id, other_proposed.id)
+
+    def test_an_identity_conflict_appearing_first_cancels_the_parked_relink(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        PublicCrop.objects.create(
+            name='Vertusleaf kale',
+            variety='Vertus',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.proposed_species,
+        )
+
+        self.approve_proposed_species()
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(
+            self.entry.species_relink_requests.get().status,
+            PublicCropSpeciesRelinkRequest.STATUS_CANCELLED,
+        )
+
+    def test_rejecting_the_species_tells_the_moderator_the_correction_was_dropped(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+
+        self.client.post(
+            f'/openfarmplanner/api/crop-species/{self.proposed_species.id}/reject/', {}, format='json',
+        )
+
+        notification = Notification.objects.filter(
+            recipient=self.moderator,
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.context['name'], self.entry.name)
+        self.assertEqual(notification.context['species_name'], self.proposed_species.name)
+        self.assertEqual(notification.target_id, self.entry.id)
+
+    def test_a_conflict_at_approval_time_tells_the_moderator_too(self):
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        PublicCrop.objects.create(
+            name='Vertusleaf kale',
+            variety='Vertus',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.proposed_species,
+        )
+
+        self.approve_proposed_species()
+
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.moderator,
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).exists())
+
+    def test_a_superseded_correction_is_not_announced_as_a_broken_promise(self):
+        other_proposed = CropSpecies.objects.create(
+            name='Spitzleaf kale', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.moderator,
+        )
+
+        self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
+        self.client.post(self.url, {'crop_species': other_proposed.id}, format='json')
+
+        self.assertFalse(Notification.objects.filter(
+            notification_type=Notification.TYPE_PUBLIC_CROP_SPECIES_RELINK_CANCELLED,
+        ).exists())
+
+
+class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
+    """Private Sorten whose inherited values move when a moderator corrects a mapping.
+
+    Inheritance in this project is live and project-local: a Sorte resolves its
+    unset fields through the general Kultur of its `(project, crop_species)`
+    group. Correcting the mapping moves that group onto another species, where
+    the project may already keep a general Kultur under a different name — and
+    `get_general_crop()` then resolves to the older of the two. What the Sorte
+    is planned with changes without anybody in the project touching anything,
+    which is what gets announced.
+    """
+
+    def setUp(self):
+        self.moderator = User.objects.create_user(
+            username='reassign-moderator', email='reassign-moderator@example.com',
+            password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(self.moderator)
+        self.owner = User.objects.create_user(
+            username='reassign-owner', email='reassign-owner@example.com',
+            password='testpass', is_active=True,
+        )
+        self.collaborator = User.objects.create_user(
+            username='reassign-collaborator', email='reassign-collaborator@example.com',
+            password='testpass', is_active=True,
+        )
+        self.outsider = User.objects.create_user(
+            username='reassign-outsider', email='reassign-outsider@example.com',
+            password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Reassign Project', slug='reassign-project')
+        ProjectMembership.objects.create(user=self.owner, project=self.project, role='admin')
+        ProjectMembership.objects.create(
+            user=self.collaborator, project=self.project, role='member',
+        )
+        self.broad_species = CropSpecies.objects.create(name='Chard-like greens')
+        self.correct_species = CropSpecies.objects.create(name='Swiss chard')
+        # Created first on purpose: once the corrected group lands on the same
+        # species, get_general_crop() breaks the tie by the lowest primary key,
+        # so this is the Kultur the Sorte starts inheriting from.
+        self.existing_general = Crop.objects.create(
+            name='Krautstiel', variety='', crop_species=self.correct_species,
+            project=self.project, rotation_break_years=3,
+        )
+        self.wrong_general = Crop.objects.create(
+            name='Mangold', variety='', crop_species=self.broad_species,
+            project=self.project, rotation_break_years=3,
+        )
+        self.variety = Crop.objects.create(
+            name='Mangold', variety='Lucullus', crop_species=self.broad_species,
+            project=self.project,
+        )
+        self.entry = PublicCrop.objects.create(
+            name='Mangold', variety='Lucullus', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.broad_species, created_by=self.owner,
+            source_project_crop=self.variety, source_project=self.project,
+        )
+        self.client.force_authenticate(user=self.moderator)
+        self.url = f'/openfarmplanner/api/public-crops/{self.entry.id}/relink-species/'
+
+    def set_existing_general_values(self, **values):
+        for field, value in values.items():
+            setattr(self.existing_general, field, value)
+        self.existing_general.save(update_fields=list(values))
+
+    def relink(self):
+        return self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+    def reassignment_notifications(self):
+        return Notification.objects.filter(
+            notification_type=Notification.TYPE_CROP_SPECIES_REASSIGNED,
+        )
+
+    def test_no_notification_when_the_correction_changes_no_inherited_value(self):
+        response = self.relink()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.variety.refresh_from_db()
+        self.assertEqual(self.variety.crop_species_id, self.correct_species.id)
+        self.assertFalse(self.reassignment_notifications().exists())
+
+    def test_every_project_member_is_told_when_an_inherited_value_moves(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        recipients = set(self.reassignment_notifications().values_list('recipient_id', flat=True))
+        self.assertIn(self.owner.id, recipients)
+        self.assertIn(self.collaborator.id, recipients)
+        self.assertNotIn(self.outsider.id, recipients)
+
+    def test_the_notification_names_the_changed_values_and_both_species(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        notification = self.reassignment_notifications().filter(recipient=self.owner).first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.context['old_name'], 'Chard-like greens')
+        self.assertEqual(notification.context['new_name'], 'Swiss chard')
+        self.assertIn(
+            {'field': 'rotation_break_years', 'old_value': 3, 'new_value': 4},
+            notification.context['changed_fields'],
+        )
+
+    def test_the_notification_points_at_the_affected_project_crop(self):
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        notification = self.reassignment_notifications().filter(recipient=self.owner).first()
+        self.assertEqual(notification.target_type, Notification.TARGET_CROP)
+        self.assertEqual(notification.target_id, self.variety.id)
+
+    def test_a_sorte_value_the_sorte_sets_itself_is_not_reported_as_changed(self):
+        # A local override wins over both general Kulturen, so nothing moves for
+        # that field — an existing override is not what this notification is about.
+        self.variety.growth_duration_days = 70
+        self.variety.save(update_fields=['growth_duration_days'])
+        self.wrong_general.growth_duration_days = 80
+        self.wrong_general.save(update_fields=['growth_duration_days'])
+        self.set_existing_general_values(growth_duration_days=90)
+
+        self.relink()
+
+        changed_for_variety = [
+            change['field']
+            for notification in self.reassignment_notifications().filter(target_id=self.variety.id)
+            for change in notification.context['changed_fields']
+        ]
+        self.assertNotIn('growth_duration_days', changed_for_variety)
+
+    def test_an_entry_without_a_source_project_crop_notifies_nobody(self):
+        self.entry.source_project_crop = None
+        self.entry.save(update_fields=['source_project_crop'])
+        self.set_existing_general_values(rotation_break_years=4)
+
+        self.relink()
+
+        self.assertFalse(self.reassignment_notifications().exists())

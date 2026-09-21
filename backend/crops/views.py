@@ -182,6 +182,7 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             species.reviewed_at = timezone.now()
             species.review_note = review_note
             species.save(update_fields=['name', 'name_normalized', 'status', 'reviewed_by', 'reviewed_at', 'review_note'])
+        services.apply_public_crop_species_relinks_for_approved_species(species, request.user)
         services.notify_species_proposal_reviewed(species)
         return Response(self.get_serializer(species).data)
 
