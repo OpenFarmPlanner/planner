@@ -3864,8 +3864,10 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
 
     The action exists because an entry can be published under a species that is
     simply too broad or plainly wrong. Correcting that is a mapping fix, not an
-    identity mutation, so it is moderator-gated and must leave `name`/`variety`
-    and the old species itself untouched.
+    identity mutation, so it is moderator-gated and must leave `name` and the
+    old species itself untouched. `variety` may be corrected alongside the
+    species, since splitting a too-general species usually means each Sorte's
+    variety needs relabelling too.
     """
 
     def setUp(self):
@@ -3873,6 +3875,13 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
             username='relink-moderator', email='relink-moderator@example.com', password='testpass', is_active=True,
         )
         grant_public_library_moderator_access(self.moderator)
+        # A variety change is an identity mutation, so it needs the same admin
+        # gate the ordinary edit form uses — the plain moderator above cannot
+        # exercise it.
+        self.admin = User.objects.create_user(
+            username='relink-admin', email='relink-admin@example.com', password='testpass',
+            is_active=True, is_staff=True,
+        )
         self.contributor = User.objects.create_user(
             username='relink-contributor', email='relink-contributor@example.com', password='testpass', is_active=True,
         )
@@ -4025,6 +4034,111 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'crop_species_unchanged')
 
+    def test_the_current_species_with_a_changed_variety_is_accepted(self):
+        """Splitting a too-general species usually means re-labelling the Sorte too,
+        not just moving it, so a variety change alone must not be treated as a no-op."""
+        self.authenticate(self.admin)
+
+        response = self.client.post(
+            self.url,
+            {'crop_species': self.broad_species.id, 'variety': 'Neckarkoenigin (Busch)'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['relink_status'], 'relinked')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin (Busch)')
+
+    def test_relinking_to_the_current_species_and_variety_is_still_rejected(self):
+        self.authenticate(self.moderator)
+
+        response = self.client.post(
+            self.url,
+            {'crop_species': self.broad_species.id, 'variety': self.entry.variety},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'crop_species_unchanged')
+
+    def test_a_plain_moderator_cannot_change_the_variety(self):
+        """Renaming a variety mutates a locked identity field — the same admin
+        gate `update_public_crop_directly` uses applies here too, even though
+        the relink action itself is moderator-gated."""
+        self.authenticate(self.moderator)
+
+        response = self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'variety': 'Kelvedon Marvel'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'public_crop_identity_admin_required')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin')
+
+    def test_a_plain_moderator_can_still_relink_the_species_alone(self):
+        self.authenticate(self.moderator)
+
+        response = self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin')
+
+    def test_the_species_and_variety_can_change_together(self):
+        self.authenticate(self.admin)
+
+        response = self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'variety': 'Kelvedon Marvel'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
+        self.assertEqual(self.entry.variety, 'Kelvedon Marvel')
+
+    def test_a_variety_change_that_collides_is_rejected_with_the_same_409_shape(self):
+        conflicting = PublicCrop.objects.create(
+            name='Runner bean',
+            variety='Kelvedon Marvel',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.correct_species,
+        )
+        self.authenticate(self.admin)
+
+        response = self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'variety': 'Kelvedon Marvel'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'public_crop_variety_conflict')
+        self.assertEqual(response.data['conflicting_public_crop_id'], conflicting.id)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin')
+
+    def test_the_name_stays_locked_even_when_the_variety_changes(self):
+        self.authenticate(self.admin)
+
+        self.client.post(
+            self.url,
+            {'crop_species': self.correct_species.id, 'variety': 'Kelvedon Marvel'},
+            format='json',
+        )
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.name, 'Bean')
+
     def test_a_rejected_species_is_not_a_valid_mapping_target(self):
         rejected = CropSpecies.objects.create(name='Beanish', status=CropSpecies.STATUS_REJECTED)
         self.authenticate(self.moderator)
@@ -4141,6 +4255,30 @@ class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
             self.entry.species_relink_requests.get().status,
             PublicCropSpeciesRelinkRequest.STATUS_COMPLETED,
         )
+
+    def test_a_variety_change_parked_with_the_proposal_applies_on_approval(self):
+        # A variety change is an identity mutation and needs the admin gate
+        # `update_public_crop_directly` uses; `self.moderator` above is not
+        # an admin. Being staff also satisfies the moderator checks the rest
+        # of this flow (filing the request, approving the species) needs.
+        admin = User.objects.create_user(
+            username='proposal-admin', email='proposal-admin@example.com', password='testpass',
+            is_active=True, is_staff=True,
+        )
+        self.client.force_authenticate(user=admin)
+
+        self.client.post(
+            self.url,
+            {'crop_species': self.proposed_species.id, 'variety': 'Vertus (Winter)'},
+            format='json',
+        )
+
+        approval = self.approve_proposed_species()
+
+        self.assertEqual(approval.status_code, status.HTTP_200_OK, approval.data)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.proposed_species.id)
+        self.assertEqual(self.entry.variety, 'Vertus (Winter)')
 
     def test_rejecting_the_species_drops_the_parked_relink_and_keeps_the_entry(self):
         self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')

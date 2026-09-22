@@ -1227,17 +1227,26 @@ own action:
   `farm.services.public_crops.relink_public_crop_species()` doing the work.
   In the UI it is "Kulturart korrigieren" in the moderator context menu of the
   public library page, next to "Aus Bibliothek entfernen".
-- **Moderator-gated, not admin-gated.** Renaming a variety needs a public
-  library *admin* because it mutates an identity
-  (`public_crop_identity_admin_required`). A relink invents nothing: it points
+- **Moderator-gated, not admin-gated.** A relink invents nothing: it points
   the entry at the species it always belonged to, so a moderator is the right
-  level. `name` and `variety` are never part of the payload.
+  level. `name` is never part of the payload — that part of the identity stays
+  admin-only. `variety` *is* an optional part of the payload: splitting a
+  too-general species (e.g. "Gurke" into "Schlangengurke", "Gewürzgurke", …)
+  usually means each Sorte's variety needs relabelling in the same step, not
+  only moving it, so the dialog carries a variety field alongside the species
+  picker rather than requiring a second trip through the ordinary edit form.
+  Omitting `variety` from the payload leaves it untouched, matching the
+  pre-existing behavior.
 - **Same identity rule as publishing.** The relink runs
-  `find_public_crop_identity_conflict()` against the *target* species plus this
-  entry's variety — the same check publish and variety-rename already run — and
-  is rejected with the same 409 `public_crop_variety_conflict` shape, including
-  `conflicting_public_crop_id`. The dialog shows that inline rather than
-  closing.
+  `find_public_crop_identity_conflict()` against the *target* species plus the
+  (possibly also corrected) variety — the same check publish and
+  variety-rename already run — and is rejected with the same 409
+  `public_crop_variety_conflict` shape, including `conflicting_public_crop_id`.
+  The dialog shows that inline rather than closing.
+- **"Unchanged" means both fields.** The request is rejected with
+  `crop_species_unchanged` only when neither the species nor the variety would
+  actually change — a variety-only correction (species left as-is) is a real,
+  applicable relink, not a no-op.
 - **Target species that does not exist yet.** The picker is the publishing
   wizard's own `CropSpeciesPicker`, propose affordance included, so a missing
   species is filed through the existing "Kulturart vorschlagen" flow
@@ -1268,7 +1277,10 @@ own action:
   `completed` in the same transaction). It is where the moderator's free-text
   `note` lives — `PublicCropRevision` has no such field — and it makes "which
   entries were remapped, by whom, from what, and why" one query instead of a
-  scan through revision diffs.
+  scan through revision diffs. When a variety correction is parked alongside a
+  species proposal, `PublicCropSpeciesRelinkRequest.to_variety` carries it
+  through to `apply_public_crop_species_relinks_for_approved_species()`, so
+  approval applies species and variety together instead of only the species.
 - **The private crop group follows — and the project is told when that
   changes its values.** If the entry still has its `source_project_crop`, the
   relink runs the same `sync_crop_species_across_crop_group()` publishing uses,

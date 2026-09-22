@@ -1219,7 +1219,7 @@
     "relinkSpecies": {
       "action": "Kulturart korrigieren",
       "title": "Kulturart korrigieren",
-      "description": "Ordne „{{name}}“ der richtigen Kulturart zu. Name und Sorte des Eintrags bleiben unverändert, die bisherige Kulturart bleibt bestehen.",
+      "description": "Ordne „{{name}}“ der richtigen Kulturart zu und passe bei Bedarf die Sorte an. Der Name des Eintrags bleibt unverändert.",
       "currentSpeciesLabel": "Bisherige Kulturart",
       "noCurrentSpecies": "Keine Kulturart hinterlegt",
       "submit": "Kulturart ändern",
@@ -1232,7 +1232,8 @@
       "conflictError": "Unter dieser Kulturart gibt es bereits einen veröffentlichten Eintrag mit dieser Sorte.",
       "unchangedError": "Dieser Eintrag ist dieser Kulturart bereits zugeordnet.",
       "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden.",
-      "proposalFiledError": "Die Kulturart wurde vorgeschlagen, aber die Zuordnung konnte nicht gespeichert werden. Der Vorschlag bleibt ausgewählt — bitte versuche es erneut."
+      "proposalFiledError": "Die Kulturart wurde vorgeschlagen, aber die Zuordnung konnte nicht gespeichert werden. Der Vorschlag bleibt ausgewählt — bitte versuche es erneut.",
+      "varietyAdminOnly": "Nur Administratoren können die Sorte umbenennen."
     }
   },
   "commands": {

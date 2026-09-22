@@ -1219,7 +1219,7 @@
     "relinkSpecies": {
       "action": "Correct crop species",
       "title": "Correct crop species",
-      "description": "Map \"{{name}}\" to the correct crop species. The entry’s name and variety stay unchanged, and the previous crop species is kept.",
+      "description": "Map \"{{name}}\" to the correct crop species, and adjust the variety if needed. The entry's name stays unchanged.",
       "currentSpeciesLabel": "Current crop species",
       "noCurrentSpecies": "No crop species set",
       "submit": "Change crop species",
@@ -1232,7 +1232,8 @@
       "conflictError": "A published entry with this variety already exists under this crop species.",
       "unchangedError": "This entry is already mapped to that crop species.",
       "rejectedError": "A rejected crop species cannot be used as a target.",
-      "proposalFiledError": "The crop species was suggested, but the mapping could not be saved. The suggestion stays selected — please try again."
+      "proposalFiledError": "The crop species was suggested, but the mapping could not be saved. The suggestion stays selected — please try again.",
+      "varietyAdminOnly": "Only administrators can rename the variety."
     }
   },
   "commands": {

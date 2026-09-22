@@ -431,6 +431,7 @@ export interface PublicCropSpeciesRelinkRequest {
   public_crop: number;
   from_crop_species: number | null;
   to_crop_species: number;
+  to_variety: string | null;
   status: 'pending' | 'completed' | 'cancelled';
   note: string;
   resolution_note: string;

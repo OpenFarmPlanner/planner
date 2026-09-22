@@ -40,13 +40,14 @@ const CROP = {
   crop_species_name: 'Bohne',
 } as PublicCrop;
 
-const renderDialog = (onRelinked = vi.fn()) => {
+const renderDialog = (onRelinked = vi.fn(), varietyEditable = true) => {
   render(
     <PublicCropSpeciesRelinkDialog
       open
       crop={CROP}
       onClose={vi.fn()}
       onRelinked={onRelinked}
+      varietyEditable={varietyEditable}
     />,
   );
   return onRelinked;
@@ -56,6 +57,9 @@ const pickSpecies = async (typed: string, optionName: RegExp) => {
   const user = userEvent.setup();
   const field = await screen.findByLabelText(/Offizielle Kulturart/i);
   await user.click(field);
+  // The field is preselected with the entry's current species, so it has to
+  // be cleared before typing a replacement search term.
+  await user.clear(field);
   await user.type(field, typed);
   await user.click(await screen.findByRole('option', { name: optionName }));
   return user;
@@ -94,11 +98,39 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     const user = await pickSpecies('Feuer', /Feuerbohne/);
     await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
 
-    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2));
+    // The variety field is preselected with the entry's current variety and
+    // was not touched, so it rides along unchanged.
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2, { variety: 'Neckarkönigin' }));
     expect(onRelinked).toHaveBeenCalledWith(
       expect.objectContaining({ relink_status: 'relinked' }),
       'Feuerbohne',
     );
+  });
+
+  it('sends an edited variety alongside the species correction', async () => {
+    renderDialog();
+
+    const user = await pickSpecies('Feuer', /Feuerbohne/);
+    const varietyField = screen.getByLabelText('Sorte');
+    await user.clear(varietyField);
+    await user.type(varietyField, 'Neckarkönigin (Busch)');
+    await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
+
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(
+      7, 2, { variety: 'Neckarkönigin (Busch)' },
+    ));
+  });
+
+  it('disables the variety field and omits it from the payload for a non-admin moderator', async () => {
+    renderDialog(vi.fn(), false);
+
+    const varietyField = screen.getByLabelText('Sorte');
+    expect(varietyField).toBeDisabled();
+
+    const user = await pickSpecies('Feuer', /Feuerbohne/);
+    await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
+
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2, undefined));
   });
 
   it('files a species proposal through the existing propose flow when the target does not exist yet', async () => {
@@ -117,7 +149,7 @@ describe('PublicCropSpeciesRelinkDialog', () => {
 
     await waitFor(() => expect(cropSpeciesProposeMock).toHaveBeenCalled());
     expect(cropSpeciesProposeMock.mock.calls[0][0]).toBe('Stangenbohne');
-    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 9));
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 9, { variety: 'Neckarkönigin' }));
     expect(onRelinked).toHaveBeenCalledWith(
       expect.objectContaining({ relink_status: 'pending_species_proposal' }),
       'Stangenbohne',
