@@ -1214,7 +1214,8 @@
     "speciesPicker": {
       "label": "Official crop species",
       "proposeInline": "Suggest \"{{name}}\" as a new crop species",
-      "noOptions": "No matching official crop species found."
+      "noOptions": "No matching official crop species found.",
+      "pendingOptionSuffix": "{{name}} · Proposal under review"
     },
     "relinkSpecies": {
       "action": "Correct crop species",
@@ -1223,16 +1224,19 @@
       "currentSpeciesLabel": "Current crop species",
       "noCurrentSpecies": "No crop species set",
       "submit": "Change crop species",
-      "submitProposal": "Suggest crop species and apply",
+      "submitProposal": "Create, approve and apply crop species",
+      "submitApproval": "Approve crop species and apply",
       "saving": "Saving …",
       "success": "\"{{name}}\" is now mapped to the crop species \"{{species}}\".",
       "proposalSuccess": "The crop species \"{{species}}\" was suggested. \"{{name}}\" is relinked automatically once it is approved.",
-      "proposalHint": "The crop species \"{{name}}\" does not exist yet. It is submitted as a suggestion; the entry stays on its current crop species until it is approved.",
+      "proposalHint": "The crop species \"{{name}}\" does not exist yet. Confirming creates it, approves it, and relinks the entry right away.",
+      "pendingSpeciesHint": "The crop species \"{{name}}\" was already suggested and is still awaiting approval. Confirming approves it and relinks the entry right away.",
       "error": "The crop species could not be changed.",
       "conflictError": "A published entry with this variety already exists under this crop species.",
       "unchangedError": "This entry is already mapped to that crop species.",
       "rejectedError": "A rejected crop species cannot be used as a target.",
-      "proposalFiledError": "The crop species was suggested, but the mapping could not be saved. The suggestion stays selected — please try again.",
+      "duplicateSpeciesError": "A published crop species with this name already exists. Check the names, or pick the existing crop species from the list instead.",
+      "approvalFailedError": "The crop species could not be approved. Your selection is kept — please try again.",
       "varietyAdminOnly": "Only administrators can rename the variety."
     }
   },

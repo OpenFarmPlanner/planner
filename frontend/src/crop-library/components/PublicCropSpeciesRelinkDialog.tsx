@@ -15,7 +15,12 @@ import {
 import { cropSpeciesAPI, publicCropAPI } from '../../api/api';
 import type { CropSpecies, PublicCrop, PublicCropSpeciesRelinkResponse } from '../../api/types';
 import { CropSpeciesPicker } from '../../crops/CropSpeciesPicker';
-import { getCropSpeciesOptionLabel } from '../../crops/cropSpeciesMatching';
+import {
+  getCropSpeciesOptionLabel,
+  getInitialSpeciesApprovalTranslations,
+  REQUIRED_SPECIES_LANGUAGES,
+  type SpeciesApprovalTranslations,
+} from '../../crops/cropSpeciesMatching';
 import { useCropSpeciesOptions } from '../../crops/useCropSpeciesOptions';
 import { useTranslation } from '../../i18n';
 
@@ -38,6 +43,7 @@ const INLINE_ERROR_KEYS: Record<string, string> = {
   public_crop_variety_conflict: 'library.relinkSpecies.conflictError',
   crop_species_unchanged: 'library.relinkSpecies.unchangedError',
   crop_species_rejected: 'library.relinkSpecies.rejectedError',
+  duplicate_crop_species: 'library.relinkSpecies.duplicateSpeciesError',
   // Belt-and-braces: the variety field is already disabled for a
   // non-admin, so this should not normally fire from this dialog.
   public_crop_identity_admin_required: 'library.relinkSpecies.varietyAdminOnly',
@@ -49,6 +55,8 @@ const getApiErrorCode = (error: unknown): string | undefined => (
     : undefined
 );
 
+const languageCodeOf = (i18nLanguage: string): string => (i18nLanguage || 'de').split('-')[0];
+
 /**
  * Moderators' "Kulturart korrigieren" dialog for a published Sorte.
  *
@@ -56,11 +64,17 @@ const getApiErrorCode = (error: unknown): string | undefined => (
  * label — splitting a too-general species (e.g. "Gurke") into more specific
  * ones usually means each Sorte's variety needs relabelling in the same step,
  * not just moving it. The entry's `name` stays locked, and the species it is
- * moved off of stays available for whatever else legitimately maps to it. The
- * picker is the same one the publishing wizard uses, including its "propose a
- * new species" affordance — a target species that does not exist yet is filed
- * through that existing proposal flow, and the backend completes the
- * correction (species and variety together) once a moderator approves it.
+ * moved off of stays available for whatever else legitimately maps to it.
+ *
+ * The picker is the same one the publishing wizard uses, including its
+ * "propose a new species" affordance, plus (moderator-only, via
+ * `useCropSpeciesOptions`'s `includeProposed`) every species someone already
+ * proposed. Either way, a target species that is still `proposed` is
+ * self-approved right here rather than parked behind a manual detour through
+ * the moderation queue: a moderator who can open this dialog already has
+ * approval authority, so submitting collects the same two required
+ * translations the moderation queue's own approval dialog asks for, approves
+ * the species, and relinks in one step.
  */
 export function PublicCropSpeciesRelinkDialog({
   open,
@@ -70,11 +84,12 @@ export function PublicCropSpeciesRelinkDialog({
   varietyEditable,
 }: PublicCropSpeciesRelinkDialogProps) {
   const { t, i18n } = useTranslation(['crops', 'common']);
-  const { species, loading: speciesLoading, addSpecies } = useCropSpeciesOptions(open);
+  const { species, loading: speciesLoading, addSpecies } = useCropSpeciesOptions(open, true);
   const [selectedSpecies, setSelectedSpecies] = useState<CropSpecies | null>(null);
   const [speciesInputValue, setSpeciesInputValue] = useState('');
   const [proposalName, setProposalName] = useState<string | null>(null);
   const [varietyDraft, setVarietyDraft] = useState('');
+  const [approvalTranslations, setApprovalTranslations] = useState<SpeciesApprovalTranslations>({ de: '', en: '' });
   const [submitting, setSubmitting] = useState(false);
   const [errorText, setErrorText] = useState('');
   // Guards the species-prefill effect below so it runs exactly once per open
@@ -88,6 +103,7 @@ export function PublicCropSpeciesRelinkDialog({
     setSelectedSpecies(null);
     setSpeciesInputValue('');
     setProposalName(null);
+    setApprovalTranslations({ de: '', en: '' });
     setErrorText('');
     /* eslint-enable react-hooks/set-state-in-effect */
     prefilledSpeciesRef.current = false;
@@ -118,14 +134,23 @@ export function PublicCropSpeciesRelinkDialog({
   const handleSpeciesChange = useCallback((value: CropSpecies | null) => {
     setSelectedSpecies(value);
     setErrorText('');
-  }, []);
+    // A pending species picked straight from the list needs the same
+    // approval translations a freshly typed one does; existing ones are
+    // preselected so the moderator only fills in what is actually missing.
+    setApprovalTranslations(
+      value?.status === 'proposed'
+        ? getInitialSpeciesApprovalTranslations(value, value.name, languageCodeOf(i18n.language))
+        : { de: '', en: '' },
+    );
+  }, [i18n.language]);
 
   const handleProposalNameChange = useCallback((name: string | null) => {
     setProposalName(name);
     if (!name) return;
     setSelectedSpecies(null);
     setErrorText('');
-  }, []);
+    setApprovalTranslations(getInitialSpeciesApprovalTranslations(null, name, languageCodeOf(i18n.language)));
+  }, [i18n.language]);
 
   const handleInputValueChange = useCallback((value: string) => {
     setSpeciesInputValue(value);
@@ -136,33 +161,51 @@ export function PublicCropSpeciesRelinkDialog({
     setErrorText('');
   }, []);
 
+  const handleApprovalTranslationChange = useCallback((languageCode: 'de' | 'en', value: string) => {
+    setApprovalTranslations((previous) => ({ ...previous, [languageCode]: value }));
+    setErrorText('');
+  }, []);
+
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!crop) return;
     setSubmitting(true);
     setErrorText('');
-    // Filing the proposal and relinking are two calls, and only the second can
-    // fail on its own. When it does, the species proposal is already real, so
-    // the retry must reuse it instead of filing a duplicate — it stays
-    // selected, and the message says so rather than reading like nothing
-    // happened.
-    let proposalFiled = false;
+    // Approving a still-pending species is the step most likely to fail on
+    // its own (a name that collides with an already-published species, a
+    // translation left blank) — after it succeeds, the retry must reuse the
+    // now-published species instead of proposing a duplicate.
+    let approvalAttempted = false;
     try {
       let target = selectedSpecies;
       if (!target && proposalName?.trim()) {
         // Routed through the existing "Kulturart vorschlagen" endpoint so this
         // never becomes a second way to create a species.
-        const proposal = await cropSpeciesAPI.propose(
-          proposalName.trim(),
-          (i18n.language || 'de').split('-')[0],
-        );
+        const proposal = await cropSpeciesAPI.propose(proposalName.trim(), languageCodeOf(i18n.language));
         target = proposal.data;
-        proposalFiled = true;
         addSpecies(target);
         setSelectedSpecies(target);
         setProposalName(null);
         setSpeciesInputValue(getCropSpeciesOptionLabel(target));
       }
       if (!target) return;
+      if (target.status === 'proposed') {
+        approvalAttempted = true;
+        const approved = await cropSpeciesAPI.approve(
+          target.id,
+          '',
+          REQUIRED_SPECIES_LANGUAGES.map((languageCode) => ({
+            language_code: languageCode,
+            common_name: approvalTranslations[languageCode].trim(),
+          })),
+        );
+        target = approved.data;
+        addSpecies(target);
+        setSelectedSpecies(target);
+        setSpeciesInputValue(getCropSpeciesOptionLabel(target));
+        // Approval itself succeeded — a relink failure past this point is not
+        // an approval failure, and must not be reported as one.
+        approvalAttempted = false;
+      }
       const response = await publicCropAPI.relinkSpecies(
         crop.id,
         target.id,
@@ -173,14 +216,19 @@ export function PublicCropSpeciesRelinkDialog({
       const inlineKey = INLINE_ERROR_KEYS[getApiErrorCode(error) ?? ''];
       setErrorText(t(
         inlineKey
-        ?? (proposalFiled ? 'library.relinkSpecies.proposalFiledError' : 'library.relinkSpecies.error'),
+        ?? (approvalAttempted ? 'library.relinkSpecies.approvalFailedError' : 'library.relinkSpecies.error'),
       ));
     } finally {
       setSubmitting(false);
     }
-  }, [addSpecies, crop, i18n.language, onRelinked, proposalName, selectedSpecies, t, varietyDraft, varietyEditable]);
+  }, [
+    addSpecies, approvalTranslations, crop, i18n.language, onRelinked, proposalName,
+    selectedSpecies, t, varietyDraft, varietyEditable,
+  ]);
 
   const isProposing = Boolean(proposalName?.trim()) && !selectedSpecies;
+  const needsApproval = isProposing || selectedSpecies?.status === 'proposed';
+  const approvalTranslationsComplete = Boolean(approvalTranslations.de.trim() && approvalTranslations.en.trim());
 
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
@@ -207,6 +255,33 @@ export function PublicCropSpeciesRelinkDialog({
             proposing={submitting}
             required
           />
+          {needsApproval ? (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                {isProposing
+                  ? t('library.relinkSpecies.proposalHint', { name: proposalName?.trim() ?? '' })
+                  : t('library.relinkSpecies.pendingSpeciesHint', {
+                    name: selectedSpecies ? getCropSpeciesOptionLabel(selectedSpecies) : '',
+                  })}
+              </Typography>
+              <TextField
+                label={t('library.moderation.species.germanName')}
+                value={approvalTranslations.de}
+                required
+                fullWidth
+                disabled={submitting}
+                onChange={(event) => handleApprovalTranslationChange('de', event.target.value)}
+              />
+              <TextField
+                label={t('library.moderation.species.englishName')}
+                value={approvalTranslations.en}
+                required
+                fullWidth
+                disabled={submitting}
+                onChange={(event) => handleApprovalTranslationChange('en', event.target.value)}
+              />
+            </>
+          ) : null}
           <TextField
             label={t('form.variety')}
             placeholder={t('form.varietyPlaceholder')}
@@ -217,11 +292,6 @@ export function PublicCropSpeciesRelinkDialog({
             fullWidth
           />
           {errorText ? <Alert severity="error">{errorText}</Alert> : null}
-          {isProposing ? (
-            <Typography variant="body2" color="text.secondary">
-              {t('library.relinkSpecies.proposalHint', { name: proposalName?.trim() ?? '' })}
-            </Typography>
-          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
@@ -231,13 +301,19 @@ export function PublicCropSpeciesRelinkDialog({
         <Button
           variant="contained"
           onClick={() => void handleSubmit()}
-          disabled={submitting || (!selectedSpecies && !isProposing)}
+          disabled={
+            submitting
+            || (!selectedSpecies && !isProposing)
+            || (needsApproval && !approvalTranslationsComplete)
+          }
         >
           {submitting
             ? t('library.relinkSpecies.saving')
             : isProposing
               ? t('library.relinkSpecies.submitProposal')
-              : t('library.relinkSpecies.submit')}
+              : needsApproval
+                ? t('library.relinkSpecies.submitApproval')
+                : t('library.relinkSpecies.submit')}
         </Button>
       </DialogActions>
     </Dialog>

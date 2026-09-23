@@ -8,10 +8,12 @@ import type { PublicCrop } from '../api/types';
 const {
   cropSpeciesListMock,
   cropSpeciesProposeMock,
+  cropSpeciesApproveMock,
   relinkSpeciesMock,
 } = vi.hoisted(() => ({
   cropSpeciesListMock: vi.fn(),
   cropSpeciesProposeMock: vi.fn(),
+  cropSpeciesApproveMock: vi.fn(),
   relinkSpeciesMock: vi.fn(),
 }));
 
@@ -23,6 +25,7 @@ vi.mock('../api/api', async () => {
       ...actual.cropSpeciesAPI,
       list: cropSpeciesListMock,
       propose: cropSpeciesProposeMock,
+      approve: cropSpeciesApproveMock,
     },
     publicCropAPI: {
       ...actual.publicCropAPI,
@@ -65,6 +68,15 @@ const pickSpecies = async (typed: string, optionName: RegExp) => {
   return user;
 };
 
+const fillApprovalTranslations = async (user: ReturnType<typeof userEvent.setup>, de: string, en: string) => {
+  const deField = screen.getByLabelText(/Deutscher Name/);
+  await user.clear(deField);
+  await user.type(deField, de);
+  const enField = screen.getByLabelText(/Englischer Name/);
+  await user.clear(enField);
+  await user.type(enField, en);
+};
+
 describe('PublicCropSpeciesRelinkDialog', () => {
   beforeEach(() => {
     cropSpeciesListMock.mockReset();
@@ -80,6 +92,7 @@ describe('PublicCropSpeciesRelinkDialog', () => {
       },
     });
     cropSpeciesProposeMock.mockReset();
+    cropSpeciesApproveMock.mockReset();
     relinkSpeciesMock.mockReset();
     relinkSpeciesMock.mockResolvedValue({
       data: { relink_status: 'relinked', crop: { ...CROP, crop_species: 2 }, relink_request: null },
@@ -133,42 +146,110 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2, undefined));
   });
 
-  it('files a species proposal through the existing propose flow when the target does not exist yet', async () => {
+  it('proposes, self-approves, and relinks a brand new species in one step', async () => {
     cropSpeciesProposeMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'proposed' } });
-    relinkSpeciesMock.mockResolvedValue({
-      data: {
-        relink_status: 'pending_species_proposal',
-        crop: CROP,
-        relink_request: { id: 3, status: 'pending' },
-      },
-    });
+    cropSpeciesApproveMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'published' } });
     const onRelinked = renderDialog();
 
     const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
-    await user.click(screen.getByRole('button', { name: /Kulturart vorschlagen und übernehmen/ }));
+    // Only the current UI language is preseeded; the moderator still has to
+    // consciously provide the other one before submitting is possible.
+    expect(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ })).toBeDisabled();
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
 
     await waitFor(() => expect(cropSpeciesProposeMock).toHaveBeenCalled());
     expect(cropSpeciesProposeMock.mock.calls[0][0]).toBe('Stangenbohne');
+    await waitFor(() => expect(cropSpeciesApproveMock).toHaveBeenCalledWith(
+      9,
+      '',
+      [
+        { language_code: 'de', common_name: 'Stangenbohne' },
+        { language_code: 'en', common_name: 'Pole bean' },
+      ],
+    ));
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 9, { variety: 'Neckarkönigin' }));
     expect(onRelinked).toHaveBeenCalledWith(
-      expect.objectContaining({ relink_status: 'pending_species_proposal' }),
+      expect.objectContaining({ relink_status: 'relinked' }),
       'Stangenbohne',
     );
   });
 
-  it('says the proposal was filed when only the relink call failed, so the retry reuses it', async () => {
+  it('reuses the already-approved species on retry after the relink call failed', async () => {
     cropSpeciesProposeMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'proposed' } });
-    relinkSpeciesMock.mockRejectedValue(new Error('network'));
+    cropSpeciesApproveMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'published' } });
+    relinkSpeciesMock.mockRejectedValueOnce(new Error('network'));
     renderDialog();
 
     const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
-    await user.click(screen.getByRole('button', { name: /Kulturart vorschlagen und übernehmen/ }));
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
 
-    expect(await screen.findByText(/Vorschlag bleibt ausgewählt/)).toBeInTheDocument();
-    // Retrying must not file the proposal a second time.
+    expect(await screen.findByText('Die Kulturart konnte nicht geändert werden.')).toBeInTheDocument();
+    // Retrying must not re-propose or re-approve the species.
     await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledTimes(2));
     expect(cropSpeciesProposeMock).toHaveBeenCalledTimes(1);
+    expect(cropSpeciesApproveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports an approval failure distinctly and lets the moderator retry without re-proposing', async () => {
+    cropSpeciesProposeMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'proposed' } });
+    cropSpeciesApproveMock.mockRejectedValueOnce(new Error('network'));
+    renderDialog();
+
+    const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
+
+    expect(await screen.findByText(/konnte nicht freigegeben werden/)).toBeInTheDocument();
+    expect(relinkSpeciesMock).not.toHaveBeenCalled();
+
+    cropSpeciesApproveMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'published' } });
+    await user.click(screen.getByRole('button', { name: /Kulturart freigeben und übernehmen/ }));
+
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 9, { variety: 'Neckarkönigin' }));
+    expect(cropSpeciesProposeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a moderator approve and relink an already-pending species straight from the list', async () => {
+    cropSpeciesListMock.mockResolvedValue({
+      data: {
+        count: 3,
+        next: null,
+        previous: null,
+        results: [
+          { id: 1, name: 'Bohne', status: 'published' },
+          { id: 2, name: 'Feuerbohne', status: 'published' },
+          {
+            id: 5,
+            name: 'Schlangengurke',
+            status: 'proposed',
+            translations: [{ language_code: 'de', common_name: 'Schlangengurke' }],
+          },
+        ],
+      },
+    });
+    cropSpeciesApproveMock.mockResolvedValue({ data: { id: 5, name: 'Schlangengurke', status: 'published' } });
+    renderDialog();
+
+    const user = await pickSpecies('Schlangengurke', /Schlangengurke/);
+    // The German name is pre-filled from the existing pending species; only
+    // the missing English one still has to be provided.
+    expect(screen.getByLabelText(/Deutscher Name/)).toHaveValue('Schlangengurke');
+    await fillApprovalTranslations(user, 'Schlangengurke', 'Snake cucumber');
+    await user.click(screen.getByRole('button', { name: /Kulturart freigeben und übernehmen/ }));
+
+    expect(cropSpeciesProposeMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(cropSpeciesApproveMock).toHaveBeenCalledWith(
+      5,
+      '',
+      [
+        { language_code: 'de', common_name: 'Schlangengurke' },
+        { language_code: 'en', common_name: 'Snake cucumber' },
+      ],
+    ));
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 5, { variety: 'Neckarkönigin' }));
   });
 
   it('surfaces the identity conflict inline instead of closing the dialog', async () => {

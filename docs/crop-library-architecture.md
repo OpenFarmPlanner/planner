@@ -1247,20 +1247,33 @@ own action:
   `crop_species_unchanged` only when neither the species nor the variety would
   actually change — a variety-only correction (species left as-is) is a real,
   applicable relink, not a no-op.
-- **Target species that does not exist yet.** The picker is the publishing
-  wizard's own `CropSpeciesPicker`, propose affordance included, so a missing
-  species is filed through the existing "Kulturart vorschlagen" flow
-  (`CropSpecies.STATUS_PROPOSED`) instead of a second species-creation path.
-  The entry is *not* moved onto the proposal: a `proposed` species would block
-  import, update and discussion for everyone (see "While a species is
-  `PROPOSED`") and a rejection would sweep the entry out with
+- **Target species that does not exist yet, or is still pending.** The picker
+  is the publishing wizard's own `CropSpeciesPicker`, propose affordance
+  included, so a missing species is filed through the existing "Kulturart
+  vorschlagen" flow (`CropSpecies.STATUS_PROPOSED`) instead of a second
+  species-creation path — and (moderator-only, via `useCropSpeciesOptions`'s
+  `includeProposed`) the picker also lists species someone already proposed,
+  selectable the same way. Either way, the *frontend* self-approves it right
+  there: a moderator who can open this dialog already has authority to
+  approve a proposal through `CropSpeciesViewSet.approve()` (that action has
+  no self-approval ban), so the dialog collects the same two required
+  translations the moderation queue's own approval dialog asks for, calls
+  `propose()` (only for a brand-new name) then `approve()`, and only then
+  calls `relink-species` — three existing, unchanged endpoints chained by the
+  client, no new backend surface for this. The relink therefore reports
+  `relink_status='relinked'` immediately in the common case.
+  `PublicCropSpeciesRelinkRequest`'s park-until-approved path (reported as
+  `relink_status='pending_species_proposal'`, completed later by
+  `crops.services.apply_public_crop_species_relinks_for_approved_species()`)
+  still exists and still runs whenever a relink targets a species that is
+  `proposed` and the approve step is skipped or itself fails — it is not
+  dead code, just no longer the path this dialog takes on the happy path.
+  Entry is *not* moved onto a species still `proposed` for that reason: it
+  would block import, update and discussion for everyone (see "While a
+  species is `PROPOSED`") and a rejection would sweep the entry out with
   `remove_public_crops_for_rejected_species()`, even though nothing was wrong
-  with the entry. Instead `PublicCropSpeciesRelinkRequest` parks the
-  correction, the response reports `relink_status='pending_species_proposal'`,
-  and `CropSpeciesViewSet.approve()` completes it through
-  `crops.services.apply_public_crop_species_relinks_for_approved_species()`.
-  A rejection cancels the parked request; an entry holds at most one pending
-  request, and a newer one supersedes the older.
+  with the entry. A rejection cancels a parked request; an entry holds at
+  most one pending request, and a newer one supersedes the older.
 - **A cancelled correction is announced.** The dialog promises the relink
   happens automatically on approval, so every way that promise can break — the
   species was rejected, the entry is no longer published, or another entry

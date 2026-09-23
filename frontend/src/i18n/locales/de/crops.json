@@ -1214,7 +1214,8 @@
     "speciesPicker": {
       "label": "Offizielle Kulturart",
       "proposeInline": "„{{name}}“ als neue Kulturart vorschlagen",
-      "noOptions": "Keine passende offizielle Kulturart gefunden."
+      "noOptions": "Keine passende offizielle Kulturart gefunden.",
+      "pendingOptionSuffix": "{{name}} · Vorschlag in Prüfung"
     },
     "relinkSpecies": {
       "action": "Kulturart korrigieren",
@@ -1223,16 +1224,19 @@
       "currentSpeciesLabel": "Bisherige Kulturart",
       "noCurrentSpecies": "Keine Kulturart hinterlegt",
       "submit": "Kulturart ändern",
-      "submitProposal": "Kulturart vorschlagen und übernehmen",
+      "submitProposal": "Kulturart anlegen, freigeben und übernehmen",
+      "submitApproval": "Kulturart freigeben und übernehmen",
       "saving": "Wird gespeichert …",
       "success": "„{{name}}“ ist jetzt der Kulturart „{{species}}“ zugeordnet.",
       "proposalSuccess": "Die Kulturart „{{species}}“ wurde vorgeschlagen. Sobald sie freigegeben ist, wird „{{name}}“ automatisch umgehängt.",
-      "proposalHint": "Die Kulturart „{{name}}“ gibt es noch nicht. Sie wird als Vorschlag eingereicht; der Eintrag bleibt bis zur Freigabe bei seiner bisherigen Kulturart.",
+      "proposalHint": "Die Kulturart „{{name}}“ gibt es noch nicht. Beim Bestätigen wird sie angelegt, freigegeben und der Eintrag direkt umgehängt.",
+      "pendingSpeciesHint": "Die Kulturart „{{name}}“ wurde bereits vorgeschlagen und wartet noch auf Freigabe. Beim Bestätigen wird sie freigegeben und der Eintrag direkt umgehängt.",
       "error": "Die Kulturart konnte nicht geändert werden.",
       "conflictError": "Unter dieser Kulturart gibt es bereits einen veröffentlichten Eintrag mit dieser Sorte.",
       "unchangedError": "Dieser Eintrag ist dieser Kulturart bereits zugeordnet.",
       "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden.",
-      "proposalFiledError": "Die Kulturart wurde vorgeschlagen, aber die Zuordnung konnte nicht gespeichert werden. Der Vorschlag bleibt ausgewählt — bitte versuche es erneut.",
+      "duplicateSpeciesError": "Eine veröffentlichte Kulturart mit diesem Namen existiert bereits. Prüfe die Bezeichnungen oder wähle stattdessen die bestehende Kulturart aus der Liste.",
+      "approvalFailedError": "Die Kulturart konnte nicht freigegeben werden. Deine Auswahl bleibt erhalten — bitte versuche es erneut.",
       "varietyAdminOnly": "Nur Administratoren können die Sorte umbenennen."
     }
   },
