@@ -1105,6 +1105,35 @@ a "View entry" link to `/app/crop-library?cropId=<id>` so a name collision
 with someone else's entry points at a concrete place to look, rather than
 only naming it in text.
 
+Each blocking duplicate also gets a "Mit diesem Eintrag verknüpfen" ("Link to
+this entry") action, so a general Kultur that collides with someone else's
+general public entry — the common case once `ensure_general_public_crop()`
+has auto-created that entry from a Sorte someone else published first — is
+never simply stuck behind the disabled submit button. Picking it fetches the
+full `PublicCrop` and switches the dialog into a confirmation view instead of
+opening a nested dialog: a heading, a sentence naming the local and public
+entry, a field-by-field comparison (the same `buildPublicCropComparison`
+logic the owned-entry update flow already uses, so only differing fields are
+shown), and an irreversibility notice, since the underlying `link-public-crop`
+action cannot be undone. The "Sorten mitveröffentlichen" checklist stays
+visible and keeps its selection; the CC BY-SA consent step is shown before the
+final action only if at least one checked Sorte still needs to be newly
+published. The primary button reads "Verknüpfen" or "Verknüpfen und Sorten
+veröffentlichen" depending on whether any Sorte is selected, and "Zurück"
+returns to the (re-checked) warning view without submitting anything.
+
+The confirmation view only *shows* differences — it never changes local
+values. `link_project_crop_to_public_reference()` (used by both this general
+Kultur case and the pre-existing per-Sorte "existing variety" picker) only
+ever sets the linkage fields (`crop_species`, `source_public_crop`,
+`source_public_version`, `origin_type=imported`, `is_modified_from_source`);
+it accepts a varietyless local crop and a public entry owned by a different
+user without extra checks beyond the entry being `published`, and needs no CC
+BY-SA consent of its own. If the candidate was withdrawn or removed between
+the preview and the confirm click, the backend 404s; the dialog shows the
+error inline and drops back to the warning view with a freshly re-run
+duplicate check, since the stale candidate should no longer be offered.
+
 Missing translations remain optional and are not shown as a normal blocking
 step. The existing CC BY-SA public-library contribution consent is also not
 shown permanently; if it has not already been accepted, the dialog reveals it

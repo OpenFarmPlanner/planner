@@ -898,6 +898,87 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(get_general_crop(linked_sorte), kultur)
         self.assertEqual(get_general_crop(other_sorte), kultur)
 
+    def test_link_public_crop_links_general_kultur_to_foreign_general_entry(self):
+        # The blocking-duplicate case the publishing wizard's "Mit diesem
+        # Eintrag verknüpfen" action resolves: a general Kultur collides with
+        # a general public entry someone else already published.
+        other_user = User.objects.create_user(
+            username='other-library-user', email='other-library@example.com', password='testpass', is_active=True,
+        )
+        species = CropSpecies.objects.create(name='Carrot')
+        foreign_entry = PublicCrop.objects.create(
+            name='Karotte',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=species,
+            created_by=other_user,
+            growth_duration_days=70,
+            notes='Public description',
+        )
+        own_kultur = Crop.objects.create(
+            name='Karotte',
+            variety='',
+            growth_duration_days=999,
+            notes='My own private notes',
+            project=self.project,
+        )
+        own_sorte = Crop.objects.create(
+            name='Karotte', variety='Nantaise', growth_duration_days=75, harvest_duration_days=20, project=self.project,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{own_kultur.id}/link-public-crop/',
+            {'public_crop_id': foreign_entry.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        own_kultur.refresh_from_db()
+        self.assertEqual(own_kultur.crop_species_id, species.id)
+        self.assertEqual(own_kultur.source_public_crop_id, foreign_entry.id)
+        self.assertEqual(own_kultur.origin_type, Crop.ORIGIN_IMPORTED)
+        # Linking must not silently change any local value.
+        self.assertEqual(own_kultur.name, 'Karotte')
+        self.assertEqual(own_kultur.growth_duration_days, 999)
+        self.assertEqual(own_kultur.notes, 'My own private notes')
+
+        # The Kultur's Sorte can then be linked/published under the same
+        # (now shared) species too.
+        variety_response = self.client.post(
+            f'/openfarmplanner/api/crops/{own_sorte.id}/publish-public/',
+            {
+                'accepted_public_library_terms': True,
+                'crop_species_id': species.id,
+                'original_language_code': 'de',
+            },
+            format='json',
+        )
+        self.assertIn(variety_response.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED))
+        own_sorte.refresh_from_db()
+        self.assertEqual(own_sorte.crop_species_id, species.id)
+        self.assertEqual(get_general_crop(own_sorte), own_kultur)
+
+    def test_link_public_crop_rejects_entry_that_is_not_published(self):
+        species = CropSpecies.objects.create(name='Beetroot')
+        draft_entry = PublicCrop.objects.create(
+            name='Rote Bete',
+            variety='',
+            status=PublicCrop.STATUS_DRAFT,
+            crop_species=species,
+        )
+        own_kultur = Crop.objects.create(name='Rote Bete', variety='', project=self.project)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{own_kultur.id}/link-public-crop/',
+            {'public_crop_id': draft_entry.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        own_kultur.refresh_from_db()
+        self.assertIsNone(own_kultur.source_public_crop_id)
+        self.assertEqual(own_kultur.origin_type, Crop.ORIGIN_MANUAL)
+
     def test_publish_preview_reports_stale_general_crop_notice(self):
         general = PublicCrop.objects.create(
             name='Lettuce',

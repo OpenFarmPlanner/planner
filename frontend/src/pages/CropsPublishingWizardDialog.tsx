@@ -22,8 +22,9 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
+import { AppTooltip } from '../components/AppTooltip';
 import { cropSpeciesAPI, cropAPI, publicCropAPI, type Crop } from '../api/api';
-import type { CropSpecies, PublicCrop, PublishPublicCropPreview } from '../api/types';
+import type { CropSpecies, PublicCrop, PublicCropDuplicateCandidate, PublishPublicCropPreview } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import i18n from '../i18n/config';
@@ -62,6 +63,20 @@ interface CropsPublishingWizardDialogProps {
     publishAsGeneral?: boolean;
     varieties?: PublishVarietySelection[];
   }) => void;
+  /**
+   * Confirms linking a general Kultur to a foreign duplicate candidate found
+   * by the blocking duplicate check. Unlike `onPublish`, this is awaited: the
+   * dialog stays open and shows the confirmation view again (with a refreshed
+   * duplicate list) if the backend rejects the link, e.g. because the
+   * candidate was withdrawn between preview and confirm.
+   */
+  onLinkPublicCrop: (data: {
+    acceptedPublicLibraryTerms: boolean;
+    cropSpeciesId?: number;
+    originalLanguageCode: string;
+    publicCropId: number;
+    varieties?: PublishVarietySelection[];
+  }) => Promise<boolean>;
 }
 
 const LANGUAGE_CODES = ['de', 'en'] as const;
@@ -107,6 +122,7 @@ export function CropsPublishingWizardDialog({
   publishing,
   onClose,
   onPublish,
+  onLinkPublicCrop,
 }: CropsPublishingWizardDialogProps) {
   const { t } = useTranslation(['crops', 'common']);
   const [selectedSpecies, setSelectedSpecies] = useState<CropSpecies | null>(null);
@@ -136,6 +152,14 @@ export function CropsPublishingWizardDialog({
   // lookup would silently offer every Sorte as new.
   const [varietyLookupSettled, setVarietyLookupSettled] = useState(false);
   const [varietyLookupFailed, setVarietyLookupFailed] = useState(false);
+  // Set once the user picks "Mit diesem Eintrag verknüpfen" on a blocking
+  // duplicate candidate; switches the dialog into the link-confirmation view.
+  const [showLinkConfirmation, setShowLinkConfirmation] = useState(false);
+  const [linkConfirmLoadingId, setLinkConfirmLoadingId] = useState<number | null>(null);
+  const [linkConfirmError, setLinkConfirmError] = useState('');
+  // Whether the "Verknüpfen" submit itself is in flight, separate from
+  // `publishing` (which the parent also uses for the ordinary publish flow).
+  const [linkConfirmSubmitting, setLinkConfirmSubmitting] = useState(false);
   const speciesInputRef = useRef<HTMLInputElement | null>(null);
   const languageInputRef = useRef<HTMLInputElement | null>(null);
   // The initial species guess is applied once per opening: re-running it after
@@ -184,6 +208,10 @@ export function CropsPublishingWizardDialog({
       setDeselectedVarietyIds(new Set());
       setVarietyLookupSettled(false);
       setVarietyLookupFailed(false);
+      setShowLinkConfirmation(false);
+      setLinkConfirmLoadingId(null);
+      setLinkConfirmError('');
+      setLinkConfirmSubmitting(false);
     });
   }, [crop?.name, crop?.variety, open]);
 
@@ -288,10 +316,10 @@ export function CropsPublishingWizardDialog({
     selectedPublicCrop && selectedPublicCrop.id === ownedPublicCropId,
   );
   const comparison = useMemo(
-    () => (isUpdatingOwnedPublicCrop && crop && selectedPublicCrop
+    () => ((isUpdatingOwnedPublicCrop || showLinkConfirmation) && crop && selectedPublicCrop
       ? buildPublicCropComparison(crop, selectedPublicCrop, t, { publishAsGeneral: isCropLevelPublish })
       : null),
-    [isUpdatingOwnedPublicCrop, crop, isCropLevelPublish, selectedPublicCrop, t],
+    [isUpdatingOwnedPublicCrop, showLinkConfirmation, crop, isCropLevelPublish, selectedPublicCrop, t],
   );
   const isBlockedByValidation = !isUpdatingOwnedPublicCrop
     && !selectedPublicCrop
@@ -390,6 +418,98 @@ export function CropsPublishingWizardDialog({
     }
   }, [addSpecies, originalLanguageCode, resetValidationResult, t]);
 
+  // Shared with the link-confirmation flow's "back to warning" path, which
+  // re-runs this after a rejected link so a withdrawn candidate disappears.
+  const runPublishPreview = useCallback(async (
+    cropSpeciesId: number,
+  ): Promise<PublishPublicCropPreview | null> => {
+    if (!crop?.id) return null;
+    setValidationLoading(true);
+    try {
+      const response = await cropAPI.publishPreview(crop.id, {
+        crop_species_id: cropSpeciesId,
+        original_language_code: originalLanguageCode,
+        ...(isCropLevelPublish ? { publish_as_general: true } : {}),
+      });
+      setValidationResult(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking publishing readiness:', error);
+      return null;
+    } finally {
+      setValidationLoading(false);
+    }
+  }, [crop, isCropLevelPublish, originalLanguageCode]);
+
+  const handleLinkDuplicate = useCallback(async (candidate: PublicCropDuplicateCandidate) => {
+    setLinkConfirmError('');
+    setLinkConfirmLoadingId(candidate.id);
+    try {
+      const response = await publicCropAPI.get(candidate.id);
+      setSelectedPublicCrop(response.data);
+      setShowLinkConfirmation(true);
+    } catch (error) {
+      setLinkConfirmError(extractApiErrorMessage(error, t, t('library.publishWizard.linkConfirm.loadError')));
+    } finally {
+      setLinkConfirmLoadingId(null);
+    }
+  }, [t]);
+
+  const handleCancelLinkConfirmation = useCallback(() => {
+    setShowLinkConfirmation(false);
+    setSelectedPublicCrop(null);
+    setLinkConfirmError('');
+    setShowLicenseConfirmation(false);
+  }, []);
+
+  const handleConfirmLink = useCallback(async () => {
+    if (!crop?.id || !selectedPublicCrop) return;
+    // Linking needs no license acceptance, but a Sorte published along with
+    // it does — without it the backend rejects every one of them with
+    // `public_library_terms_required`.
+    const publishesNewVarieties = selectedVarieties.some((variety) => !variety.publicCropId);
+    const needsLicense = publishesNewVarieties && !termsAlreadyAccepted;
+    if (needsLicense && (!showLicenseConfirmation || !acceptedLicense)) {
+      setShowLicenseConfirmation(true);
+      return;
+    }
+    setLinkConfirmError('');
+    setLinkConfirmSubmitting(true);
+    const cropSpeciesIdForRefresh = selectedPublicCrop.crop_species ?? selectedSpecies?.id;
+    try {
+      const success = await onLinkPublicCrop({
+        acceptedPublicLibraryTerms: needsLicense && acceptedLicense,
+        cropSpeciesId: selectedPublicCrop.crop_species ?? undefined,
+        originalLanguageCode,
+        publicCropId: selectedPublicCrop.id,
+        varieties: selectedVarieties,
+      });
+      if (!success) {
+        // The candidate may have been withdrawn between preview and confirm —
+        // return to the warning view with a refreshed duplicate list.
+        setShowLinkConfirmation(false);
+        setSelectedPublicCrop(null);
+        setShowLicenseConfirmation(false);
+        if (cropSpeciesIdForRefresh) {
+          void runPublishPreview(cropSpeciesIdForRefresh);
+        }
+      }
+    } finally {
+      setLinkConfirmSubmitting(false);
+    }
+  }, [
+    acceptedLicense,
+    crop,
+    onLinkPublicCrop,
+    originalLanguageCode,
+    runPublishPreview,
+    selectedPublicCrop,
+    selectedSpecies,
+    selectedVarieties,
+    showLicenseConfirmation,
+    termsAlreadyAccepted,
+  ]);
+
   const handlePublish = useCallback(async () => {
     if (!crop?.id) return;
     if (selectedPublicCrop && !isUpdatingOwnedPublicCrop) {
@@ -433,21 +553,8 @@ export function CropsPublishingWizardDialog({
       languageInputRef.current?.focus();
       return;
     }
-    setValidationLoading(true);
-    try {
-      const response = await cropAPI.publishPreview(crop.id, {
-        crop_species_id: cropSpeciesId,
-        original_language_code: originalLanguageCode,
-        ...(isCropLevelPublish ? { publish_as_general: true } : {}),
-      });
-      setValidationResult(response.data);
-      if (!response.data.can_publish) return;
-    } catch (error) {
-      console.error('Error checking publishing readiness:', error);
-      return;
-    } finally {
-      setValidationLoading(false);
-    }
+    const previewResult = await runPublishPreview(cropSpeciesId);
+    if (!previewResult?.can_publish) return;
 
     if (!termsAlreadyAccepted && !showLicenseConfirmation) {
       setShowLicenseConfirmation(true);
@@ -474,6 +581,7 @@ export function CropsPublishingWizardDialog({
     onPublish,
     originalLanguageCode,
     pendingSpeciesProposalName,
+    runPublishPreview,
     selectedPublicCrop,
     selectedSpecies,
     selectedVarieties,
@@ -481,6 +589,186 @@ export function CropsPublishingWizardDialog({
     termsAlreadyAccepted,
     isUpdatingOwnedPublicCrop,
   ]);
+
+  // Shared between the ordinary flow and the link-confirmation view — only
+  // the comparison box's header and "no changes" wording differ, since the
+  // confirmation view already carries its own heading and intro sentence.
+  const comparisonBox = comparison ? (
+    <Box
+      aria-label={t('library.publishWizard.comparison.ariaLabel')}
+      sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
+    >
+      {showLinkConfirmation ? null : (
+        <Box sx={{ px: 2, py: 1.5, bgcolor: 'action.hover' }}>
+          <Typography variant="subtitle2">{t('library.publishWizard.comparison.title')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('library.publishWizard.comparison.description')}
+          </Typography>
+        </Box>
+      )}
+      {comparison.length ? (
+        <Box component="dl" sx={{ m: 0 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'minmax(8rem, 0.8fr) 1fr 1fr' },
+              gap: { xs: 0.5, sm: 1.5 },
+              px: 2,
+              py: 1,
+              borderTop: showLinkConfirmation ? 0 : '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} />
+            <Typography variant="caption" color="text.secondary">{t('library.publishWizard.comparison.publicValue')}</Typography>
+            <Typography variant="caption" color="text.secondary">{t('library.publishWizard.comparison.privateValue')}</Typography>
+          </Box>
+          {comparison.map((change) => (
+            <Box
+              key={change.field}
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'minmax(8rem, 0.8fr) 1fr 1fr' },
+                gap: { xs: 0.5, sm: 1.5 },
+                px: 2,
+                py: 1,
+                borderTop: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography component="dt" variant="body2" sx={{ fontWeight: 600, }} >{change.label}</Typography>
+              <Typography component="dd" variant="body2" sx={{ m: 0, color: 'text.secondary' }}>{change.publicValue}</Typography>
+              <Typography component="dd" variant="body2" sx={{ m: 0 }}>{change.privateValue}</Typography>
+            </Box>
+          ))}
+        </Box>
+      ) : (
+        <Alert severity="info" sx={{ borderRadius: 0 }}>
+          {t(showLinkConfirmation ? 'library.publishWizard.linkConfirm.noChanges' : 'library.publishWizard.comparison.noChanges')}
+        </Alert>
+      )}
+    </Box>
+  ) : null;
+
+  const varietySelectionBox = showVarietySelection ? (
+    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 2, py: 1.5 }}>
+      <Typography variant="subtitle2">
+        {t('library.publishWizard.varieties.title')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {t('library.publishWizard.varieties.description')}
+      </Typography>
+      {varietyConflictsPending ? (
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.5 }}>
+          <CircularProgress color="inherit" size={14} />
+          <Typography variant="caption" color="text.secondary">
+            {t('library.publishWizard.varieties.checking')}
+          </Typography>
+        </Stack>
+      ) : null}
+      {varietyLookupFailed ? (
+        <Alert severity="warning" sx={{ mt: 1 }}>
+          {t('library.publishWizard.varieties.checkFailed')}
+        </Alert>
+      ) : null}
+      <FormGroup sx={{ mt: 0.5 }}>
+        {varietyCandidates.map((candidate) => (
+          <FormControlLabel
+            key={candidate.cropId}
+            control={(
+              <Checkbox
+                size="small"
+                checked={!deselectedVarietyIds.has(candidate.cropId)}
+                onChange={() => toggleVariety(candidate.cropId)}
+              />
+            )}
+            // The hint sits inside the label so it stays with its own Sorte
+            // when it wraps to a second line on narrow screens, and so the
+            // checkbox announces it too.
+            label={(
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <span>{candidate.label}</span>
+                {candidate.existingPublicCrop ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('library.publishWizard.varieties.alreadyPublic')}
+                  </Typography>
+                ) : null}
+              </Stack>
+            )}
+          />
+        ))}
+      </FormGroup>
+    </Box>
+  ) : null;
+
+  const licenseBox = showLicenseConfirmation && !termsAlreadyAccepted ? (
+    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5 }}>
+      <FormControlLabel
+        control={<Checkbox checked={acceptedLicense} onChange={(event) => setAcceptedLicense(event.target.checked)} />}
+        label={t('library.publishConfirm.acceptLicense')}
+      />
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        {t('library.publishConfirm.linkPrefix')}
+        <Link component={RouterLink} to="/datenschutz" target="_blank" rel="noopener">{t('library.publishConfirm.privacyLinkLabel')}</Link>
+        {t('library.publishConfirm.linkMiddle')}
+        <Link component={RouterLink} to="/nutzungsbedingungen" target="_blank" rel="noopener">{t('library.publishConfirm.termsLinkLabel')}</Link>
+        {t('library.publishConfirm.linkSuffix')}
+      </Typography>
+    </Box>
+  ) : null;
+
+  if (showLinkConfirmation && selectedPublicCrop) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2.25} sx={{ pt: 0.5 }}>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {t('library.publishWizard.linkConfirm.heading')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {t('library.publishWizard.linkConfirm.description', {
+                  localName: crop?.name ?? '',
+                  publicName: getPublicCropOptionLabel(selectedPublicCrop),
+                })}
+              </Typography>
+            </Box>
+
+            {comparisonBox}
+
+            <Alert severity="warning">{t('library.publishWizard.linkConfirm.irreversible')}</Alert>
+
+            {varietySelectionBox}
+
+            {linkConfirmError ? <Alert severity="error">{linkConfirmError}</Alert> : null}
+
+            {licenseBox}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Button onClick={handleCancelLinkConfirmation} variant="outlined">
+            {t('library.publishWizard.linkConfirm.back')}
+          </Button>
+          <Button
+            onClick={() => void handleConfirmLink()}
+            variant="contained"
+            disabled={
+              linkConfirmSubmitting
+              || publishing
+              || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
+            }
+          >
+            {linkConfirmSubmitting || publishing
+              ? t('library.publishing')
+              : selectedVarieties.length > 0
+                ? t('library.publishWizard.linkConfirm.submitWithVarieties')
+                : t('library.publishWizard.linkConfirm.submit')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -524,56 +812,7 @@ export function CropsPublishingWizardDialog({
                   required
                 />
 
-                {showVarietySelection ? (
-                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 2, py: 1.5 }}>
-                    <Typography variant="subtitle2">
-                      {t('library.publishWizard.varieties.title')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t('library.publishWizard.varieties.description')}
-                    </Typography>
-                    {varietyConflictsPending ? (
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.5 }}>
-                        <CircularProgress color="inherit" size={14} />
-                        <Typography variant="caption" color="text.secondary">
-                          {t('library.publishWizard.varieties.checking')}
-                        </Typography>
-                      </Stack>
-                    ) : null}
-                    {varietyLookupFailed ? (
-                      <Alert severity="warning" sx={{ mt: 1 }}>
-                        {t('library.publishWizard.varieties.checkFailed')}
-                      </Alert>
-                    ) : null}
-                    <FormGroup sx={{ mt: 0.5 }}>
-                      {varietyCandidates.map((candidate) => (
-                        <FormControlLabel
-                          key={candidate.cropId}
-                          control={(
-                            <Checkbox
-                              size="small"
-                              checked={!deselectedVarietyIds.has(candidate.cropId)}
-                              onChange={() => toggleVariety(candidate.cropId)}
-                            />
-                          )}
-                          // The hint sits inside the label so it stays with its
-                          // own Sorte when it wraps to a second line on narrow
-                          // screens, and so the checkbox announces it too.
-                          label={(
-                            <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span>{candidate.label}</span>
-                              {candidate.existingPublicCrop ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  {t('library.publishWizard.varieties.alreadyPublic')}
-                                </Typography>
-                              ) : null}
-                            </Stack>
-                          )}
-                        />
-                      ))}
-                    </FormGroup>
-                  </Box>
-                ) : null}
+                {varietySelectionBox}
 
                 {isCropLevelPublish ? null : (
                   <Autocomplete
@@ -620,60 +859,7 @@ export function CropsPublishingWizardDialog({
               </>
             )}
 
-            {comparison ? (
-              <Box
-                aria-label={t('library.publishWizard.comparison.ariaLabel')}
-                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
-              >
-                <Box sx={{ px: 2, py: 1.5, bgcolor: 'action.hover' }}>
-                  <Typography variant="subtitle2">{t('library.publishWizard.comparison.title')}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('library.publishWizard.comparison.description')}
-                  </Typography>
-                </Box>
-                {comparison.length ? (
-                  <Box component="dl" sx={{ m: 0 }}>
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: 'minmax(8rem, 0.8fr) 1fr 1fr' },
-                        gap: { xs: 0.5, sm: 1.5 },
-                        px: 2,
-                        py: 1,
-                        borderTop: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} />
-                      <Typography variant="caption" color="text.secondary">{t('library.publishWizard.comparison.publicValue')}</Typography>
-                      <Typography variant="caption" color="text.secondary">{t('library.publishWizard.comparison.privateValue')}</Typography>
-                    </Box>
-                    {comparison.map((change) => (
-                      <Box
-                        key={change.field}
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: { xs: '1fr', sm: 'minmax(8rem, 0.8fr) 1fr 1fr' },
-                          gap: { xs: 0.5, sm: 1.5 },
-                          px: 2,
-                          py: 1,
-                          borderTop: '1px solid',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        <Typography component="dt" variant="body2" sx={{ fontWeight: 600, }} >{change.label}</Typography>
-                        <Typography component="dd" variant="body2" sx={{ m: 0, color: 'text.secondary' }}>{change.publicValue}</Typography>
-                        <Typography component="dd" variant="body2" sx={{ m: 0 }}>{change.privateValue}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Alert severity="info" sx={{ borderRadius: 0 }}>
-                    {t('library.publishWizard.comparison.noChanges')}
-                  </Alert>
-                )}
-              </Box>
-            ) : null}
+            {comparisonBox}
 
             {!isOwnedPublicCropUpdate ? (
               showLanguageOverride ? (
@@ -746,44 +932,42 @@ export function CropsPublishingWizardDialog({
               ) : null}
               {duplicates.length ? (
                 <Alert severity="warning">
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2">
                     {t('library.publishWizard.duplicateBlockingIntro')}
                   </Typography>
-                  <Stack component="ul" sx={{ m: 0, pl: 2.5 }} spacing={0.25}>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    {t('library.publishWizard.duplicateBlockingLinkHint')}
+                  </Typography>
+                  <Stack component="ul" sx={{ m: 0, pl: 2.5 }} spacing={0.5}>
                     {duplicates.map((item) => (
-                      <Typography component="li" variant="body2" key={item.id}>
-                        {item.variety ? `${item.name} (${item.variety})` : item.name}
-                        {!item.is_mine ? (
-                          <>
-                            {' — '}
-                            <Link component={RouterLink} to={`/app/crop-library?cropId=${item.id}`} target="_blank" rel="noopener">
-                              {t('library.publishWizard.duplicateViewLink')}
-                            </Link>
-                          </>
-                        ) : null}
-                      </Typography>
+                      <Stack component="li" key={item.id} spacing={0.25} sx={{ display: 'list-item' }}>
+                        <Typography variant="body2">
+                          {item.variety ? `${item.name} (${item.variety})` : item.name}
+                        </Typography>
+                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Link component={RouterLink} to={`/app/crop-library?cropId=${item.id}`} target="_blank" rel="noopener">
+                            {t('library.publishWizard.duplicateViewLink')}
+                          </Link>
+                          <Button
+                            size="small"
+                            onClick={() => void handleLinkDuplicate(item)}
+                            disabled={linkConfirmLoadingId !== null}
+                          >
+                            {linkConfirmLoadingId === item.id
+                              ? t('library.publishing')
+                              : t('library.publishWizard.duplicateLinkAction')}
+                          </Button>
+                        </Stack>
+                      </Stack>
                     ))}
                   </Stack>
                 </Alert>
               ) : null}
+              {linkConfirmError ? <Alert severity="error">{linkConfirmError}</Alert> : null}
             </Stack>
           ) : null}
 
-          {showLicenseConfirmation && !termsAlreadyAccepted ? (
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5 }}>
-              <FormControlLabel
-                control={<Checkbox checked={acceptedLicense} onChange={(event) => setAcceptedLicense(event.target.checked)} />}
-                label={t('library.publishConfirm.acceptLicense')}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {t('library.publishConfirm.linkPrefix')}
-                <Link component={RouterLink} to="/datenschutz" target="_blank" rel="noopener">{t('library.publishConfirm.privacyLinkLabel')}</Link>
-                {t('library.publishConfirm.linkMiddle')}
-                <Link component={RouterLink} to="/nutzungsbedingungen" target="_blank" rel="noopener">{t('library.publishConfirm.termsLinkLabel')}</Link>
-                {t('library.publishConfirm.linkSuffix')}
-              </Typography>
-            </Box>
-          ) : null}
+          {licenseBox}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
@@ -795,6 +979,11 @@ export function CropsPublishingWizardDialog({
           </Typography>
         ) : null}
         <Button onClick={onClose} variant="outlined">{t('common:actions.cancel')}</Button>
+        <AppTooltip
+          title={isBlockedByValidation ? t('library.publishWizard.resolveBlockingIssuesTooltip') : ''}
+          disableHoverListener={!isBlockedByValidation}
+        >
+          <span>
         <Button
           onClick={() => void handlePublish()}
           variant="contained"
@@ -824,6 +1013,8 @@ export function CropsPublishingWizardDialog({
                     ? t('library.publishWizard.linkExisting')
                     : t('library.publishWizard.publishNow')}
         </Button>
+          </span>
+        </AppTooltip>
       </DialogActions>
     </Dialog>
   );
