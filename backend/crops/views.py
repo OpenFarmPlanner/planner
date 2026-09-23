@@ -79,11 +79,48 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
-        serializer = self.get_serializer(data=request.data)
+        revivable = self._revivable_rejected_species(request.data.get('name'))
+        serializer = (
+            self.get_serializer(revivable, data=request.data)
+            if revivable is not None
+            else self.get_serializer(data=request.data)
+        )
         serializer.is_valid(raise_exception=True)
-        species = serializer.save(status=CropSpecies.STATUS_PROPOSED, proposed_by=request.user)
+        save_kwargs = {'status': CropSpecies.STATUS_PROPOSED, 'proposed_by': request.user}
+        if revivable is not None:
+            save_kwargs.update(reviewed_by=None, reviewed_at=None, review_note='')
+        species = serializer.save(**save_kwargs)
         services.notify_moderators_of_species_proposal(species)
-        return Response(self.get_serializer(species).data, status=status.HTTP_201_CREATED)
+        response_status = status.HTTP_200_OK if revivable is not None else status.HTTP_201_CREATED
+        return Response(self.get_serializer(species).data, status=response_status)
+
+    @staticmethod
+    def _revivable_rejected_species(raw_name: object) -> CropSpecies | None:
+        """A rejected species whose name exactly matches a fresh proposal.
+
+        ``CropSpecies.name_normalized`` is unique, so once a proposal is
+        rejected, proposing the identical name again could otherwise never
+        succeed — the row is never deleted, so a new one always collides
+        with it, and `CropSpeciesSerializer.validate_name` reports the same
+        generic "already exists or has already been proposed" either way.
+        Rejecting a proposal was never meant to permanently claim the name,
+        so this revives that row (reset to `proposed`, review cleared)
+        instead of creating a second one that cannot exist.
+
+        Only an exact match on the species' own canonical name revives it —
+        a name that merely aliases a *different* rejected species through a
+        translation or synonym is a more ambiguous case (which rejected row
+        would it even revive?) and keeps raising the normal validation error.
+        """
+        from farm.utils import normalize_text
+
+        trimmed = ' '.join(raw_name.split()) if isinstance(raw_name, str) else ''
+        normalized = normalize_text(trimmed) if trimmed else ''
+        if not normalized:
+            return None
+        return CropSpecies.objects.filter(
+            name_normalized=normalized, status=CropSpecies.STATUS_REJECTED,
+        ).first()
 
     def update(self, request, *args, **kwargs):
         if not is_public_library_moderator(request.user):

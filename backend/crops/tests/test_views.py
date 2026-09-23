@@ -221,6 +221,55 @@ class CropViewSetTest(DRFAPITestCase):
         self.assertEqual(proposal.proposed_by, self.user)
         self.assertTrue(proposal.translations.filter(language_code='en', common_name='Tree onion').exists())
 
+    def test_reproposing_a_rejected_name_revives_the_same_row_instead_of_failing(self):
+        """`name_normalized` is unique, so a second row can never be created for
+        a name a first proposal already claimed — even after that proposal was
+        rejected and the row is (deliberately) never deleted. Rejecting was
+        never meant to permanently squat the name, so re-proposing it exactly
+        has to revive that row rather than raising a generic conflict nobody
+        could act on."""
+        rejected = CropSpecies.objects.create(
+            name='Snake cucumber',
+            status=CropSpecies.STATUS_REJECTED,
+            proposed_by=self.user,
+            reviewed_by=self.user,
+            review_note='Duplicate of an existing species.',
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            '/openfarmplanner/api/crop-species/',
+            {'name': 'Snake cucumber', 'translations': [{'language_code': 'en', 'common_name': 'Snake cucumber'}]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], rejected.id)
+        rejected.refresh_from_db()
+        self.assertEqual(rejected.status, CropSpecies.STATUS_PROPOSED)
+        self.assertEqual(rejected.proposed_by, self.user)
+        self.assertIsNone(rejected.reviewed_by)
+        self.assertIsNone(rejected.reviewed_at)
+        self.assertEqual(rejected.review_note, '')
+        self.assertEqual(CropSpecies.objects.filter(name_normalized=rejected.name_normalized).count(), 1)
+
+    def test_reproposing_a_name_only_aliased_by_a_rejected_species_still_fails(self):
+        """A name that merely *aliases* a different rejected species through a
+        translation is a more ambiguous case — which row would it even
+        revive? — so it keeps raising the normal validation error."""
+        rejected = CropSpecies.objects.create(name='Zzz-Testfrucht-Kanonisch', status=CropSpecies.STATUS_REJECTED)
+        CropSpeciesTranslation.objects.create(
+            species=rejected, language_code='en', common_name='Zzz-Testfrucht-Alias',
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post('/openfarmplanner/api/crop-species/', {'name': 'Zzz-Testfrucht-Alias'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(CropSpecies.objects.filter(name='Zzz-Testfrucht-Alias').count(), 0)
+        rejected.refresh_from_db()
+        self.assertEqual(rejected.status, CropSpecies.STATUS_REJECTED)
+
     def test_species_create_notifies_public_library_moderators(self):
         staff_moderator = User.objects.create_user(
             username='staff-moderator', email='staff-moderator@example.com', password='testpass',
