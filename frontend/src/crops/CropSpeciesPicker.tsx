@@ -185,9 +185,12 @@ export function CropSpeciesPicker({
             </Box>
           );
         }
+        const label = getCropSpeciesOptionLabel(option, inputValue);
         return (
           <li {...optionProps} key={key}>
-            {getCropSpeciesOptionLabel(option, inputValue)}
+            {option.status === 'proposed'
+              ? t('library.speciesPicker.pendingOptionSuffix', { name: label })
+              : label}
           </li>
         );
       }}

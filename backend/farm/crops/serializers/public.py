@@ -398,11 +398,14 @@ class PublicCropRevertSerializer(serializers.Serializer):
 class PublicCropSpeciesRelinkSerializer(serializers.Serializer):
     """Payload of the moderator's "Kulturart korrigieren" action.
 
-    Deliberately carries no ``name``/``variety``: the relink corrects which
-    species an entry maps to, it never touches the locked identity fields.
+    Deliberately carries no ``name``: the relink never touches that locked
+    identity field. ``variety`` may move alongside the species correction —
+    splitting a too-general species into more specific ones usually means
+    each Sorte's variety needs correcting in the same step.
     """
 
     crop_species = serializers.PrimaryKeyRelatedField(queryset=CropSpecies.objects.all())
+    variety = serializers.CharField(required=False, allow_blank=True, max_length=200)
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000)
 
 
@@ -416,6 +419,7 @@ class PublicCropSpeciesRelinkRequestSerializer(serializers.ModelSerializer):
             'public_crop',
             'from_crop_species',
             'to_crop_species',
+            'to_variety',
             'status',
             'note',
             'resolution_note',

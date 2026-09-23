@@ -757,13 +757,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='relink-species')
     def relink_species(self, request: Request, pk: str | None = None) -> Response:
-        """Moderator-only: correct which crop species a published entry maps to.
+        """Moderator-only: correct which crop species (and optionally variety) a published entry maps to.
 
         Moderator-gated rather than admin-gated: this corrects a mapping, it
-        does not touch the entry's locked `name`/`variety` identity. A target
-        species that is still a proposal parks the correction until the
-        proposal is reviewed, which the response reports as
-        `pending_species_proposal` rather than as a completed relink.
+        never touches the entry's locked `name` identity. `variety` may move
+        alongside the species when the caller sends it — e.g. splitting a
+        too-general species into more specific ones. A target species that is
+        still a proposal parks the correction until the proposal is reviewed,
+        which the response reports as `pending_species_proposal` rather than
+        as a completed relink.
         """
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
@@ -776,6 +778,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 user=request.user,
                 crop_species=serializer.validated_data['crop_species'],
                 note=serializer.validated_data.get('note', ''),
+                variety=serializer.validated_data.get('variety'),
             )
         except PublicCropPermissionError as error:
             return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)

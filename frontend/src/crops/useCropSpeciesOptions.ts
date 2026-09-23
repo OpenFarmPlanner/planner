@@ -13,7 +13,12 @@ export interface CropSpeciesOptions {
    * a genuinely empty one.
    */
   loaded: boolean;
-  /** Makes a freshly proposed species selectable without reloading the list. */
+  /**
+   * Makes a freshly proposed species selectable without reloading the list —
+   * or, for an id already in the list (e.g. one just approved), replaces it
+   * in place so the option reflects its new status/name instead of leaving a
+   * stale duplicate behind.
+   */
   addSpecies: (species: CropSpecies) => void;
 }
 
@@ -24,8 +29,15 @@ export interface CropSpeciesOptions {
  * list, not a server-searched one — it needs every published species in one
  * page, not just the API's default page_size (100), or species sorted past
  * that cutoff silently become unselectable.
+ *
+ * @param includeProposed - Moderator-only surfaces (the species relink
+ * dialog) also want a species someone already proposed selectable, instead
+ * of only letting the moderator type the same name again and hit "already
+ * proposed". Non-moderators never see proposed species here regardless (the
+ * backend's `public_species_mapping_targets` enforces that), and a rejected
+ * species is filtered out client-side — it is not a valid target either way.
  */
-export function useCropSpeciesOptions(enabled: boolean): CropSpeciesOptions {
+export function useCropSpeciesOptions(enabled: boolean, includeProposed = false): CropSpeciesOptions {
   const [species, setSpecies] = useState<CropSpecies[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -36,10 +48,10 @@ export function useCropSpeciesOptions(enabled: boolean): CropSpeciesOptions {
     queueMicrotask(() => {
       if (!cancelled) setLoading(true);
     });
-    cropSpeciesAPI.list({ page_size: 1000 })
+    cropSpeciesAPI.list({ page_size: 1000, ...(includeProposed ? { include_proposed: true } : {}) })
       .then((response) => {
         if (cancelled) return;
-        setSpecies(response.data.results);
+        setSpecies(response.data.results.filter((option) => option.status !== 'rejected'));
         setLoaded(true);
       })
       .catch((error) => {
@@ -51,10 +63,14 @@ export function useCropSpeciesOptions(enabled: boolean): CropSpeciesOptions {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, includeProposed]);
 
   const addSpecies = useCallback((created: CropSpecies) => {
-    setSpecies((previous) => [...previous, created]);
+    setSpecies((previous) => (
+      previous.some((option) => option.id === created.id)
+        ? previous.map((option) => (option.id === created.id ? created : option))
+        : [...previous, created]
+    ));
   }, []);
 
   return { species, loading, loaded, addSpecies };

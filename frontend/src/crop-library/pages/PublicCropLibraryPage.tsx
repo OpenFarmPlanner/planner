@@ -2243,6 +2243,7 @@ export default function PublicCropLibraryPage() {
         crop={selectedCrop ?? null}
         onClose={() => setRelinkSpeciesDialogOpen(false)}
         onRelinked={handleSpeciesRelinked}
+        varietyEditable={canManageModeratorRequests}
       />
       <Dialog open={removeDialogOpen} onClose={closeRemoveDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{t('library.removeDialog.title')}</DialogTitle>

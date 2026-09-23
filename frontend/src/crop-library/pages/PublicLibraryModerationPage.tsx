@@ -41,11 +41,12 @@ import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import ChangeProposalQueue from '../components/ChangeProposalQueue';
+import {
+  getInitialSpeciesApprovalTranslations,
+  REQUIRED_SPECIES_LANGUAGES,
+  type SpeciesApprovalTranslations,
+} from '../../crops/cropSpeciesMatching';
 
-type RequiredSpeciesLanguage = 'de' | 'en';
-type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
-
-const REQUIRED_SPECIES_LANGUAGES: RequiredSpeciesLanguage[] = ['de', 'en'];
 const ALIAS_SEARCH_DEBOUNCE_MS = 250;
 const ALIAS_SPECIES_PAGE_SIZE = 20;
 
@@ -98,22 +99,6 @@ export default function PublicLibraryModerationPage() {
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
   };
 
-  const getInitialApprovalTranslations = (proposal: CropSpecies): SpeciesApprovalTranslations => {
-    const translations: SpeciesApprovalTranslations = { de: '', en: '' };
-    for (const translation of proposal.translations ?? []) {
-      if (translation.language_code === 'de' || translation.language_code === 'en') {
-        translations[translation.language_code] = translation.common_name;
-      }
-    }
-    if (!translations.de && !translations.en) {
-      const fallbackLanguage = proposal.display_language_code === 'de' || proposal.display_language_code === 'en'
-        ? proposal.display_language_code
-        : i18n.resolvedLanguage === 'de' ? 'de' : 'en';
-      translations[fallbackLanguage] = proposal.display_name || proposal.name;
-    }
-    return translations;
-  };
-
   const loadQueues = useCallback(async (): Promise<void> => {
     if (!canModerate) {
       setLoading(false);
@@ -147,7 +132,9 @@ export default function PublicLibraryModerationPage() {
 
   const openSpeciesApproval = (proposal: CropSpecies): void => {
     setApprovalProposal(proposal);
-    setApprovalTranslations(getInitialApprovalTranslations(proposal));
+    setApprovalTranslations(getInitialSpeciesApprovalTranslations(
+      proposal, proposal.name, i18n.resolvedLanguage === 'de' ? 'de' : 'en',
+    ));
   };
 
   const closeSpeciesApproval = (): void => {

@@ -1307,6 +1307,10 @@ class PublicCropSpeciesRelinkRequest(models.Model):
         on_delete=models.CASCADE,
         related_name='public_crop_relinks_to',
     )
+    # None means "leave the variety as it is when this completes"; an empty
+    # string is a deliberate request to clear it. Distinct from
+    # ``PublicCrop.variety`` (blank=True, never null) for that reason.
+    to_variety = models.CharField(max_length=200, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     note = models.TextField(blank=True)
     resolution_note = models.TextField(blank=True)
