@@ -180,6 +180,10 @@ describe('CropForm variety override highlighting', () => {
     expect(rowSpacingField).toHaveValue(30);
     expect(rowSpacingField).toBeEnabled();
 
+    // CropForm focuses its first input one animation frame after mount. Wait
+    // for that before clicking, or it can steal focus and close the tooltip.
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+
     await user.click(rowSpacingField);
     await user.hover(rowSpacingField);
     expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.inheritedFieldTooltip');
