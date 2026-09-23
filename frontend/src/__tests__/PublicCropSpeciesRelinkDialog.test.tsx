@@ -146,6 +146,31 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2, undefined));
   });
 
+  it('never shows the variety field for the species-level (general) entry, even for an admin', async () => {
+    // A blank variety is the entry that IS the general/species-level default
+    // (`find_general_public_crop` keys off exactly this) — not a Sorte
+    // waiting to be named. Offering to fill one in here would silently turn
+    // it into a named variety instead of correcting a mapping.
+    const generalCrop = { ...CROP, variety: '' };
+    render(
+      <PublicCropSpeciesRelinkDialog
+        open
+        crop={generalCrop}
+        onClose={vi.fn()}
+        onRelinked={vi.fn()}
+        varietyEditable
+      />,
+    );
+
+    expect(await screen.findByText(/Bisherige Kulturart/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Sorte')).not.toBeInTheDocument();
+
+    const user = await pickSpecies('Feuer', /Feuerbohne/);
+    await user.click(screen.getByRole('button', { name: 'Kulturart ändern' }));
+
+    await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 2, undefined));
+  });
+
   it('proposes, self-approves, and relinks a brand new species in one step', async () => {
     cropSpeciesProposeMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'proposed' } });
     cropSpeciesApproveMock.mockResolvedValue({ data: { id: 9, name: 'Stangenbohne', status: 'published' } });

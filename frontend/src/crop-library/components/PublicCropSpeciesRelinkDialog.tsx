@@ -34,6 +34,8 @@ interface PublicCropSpeciesRelinkDialogProps {
    * admin gate the ordinary edit form uses (`public_crop_identity_admin_required`)
    * — a plain moderator can still relink the species alone. False disables the
    * variety field instead of hiding it, matching the edit form's own pattern.
+   * Irrelevant (the field never renders) for an entry with a blank variety —
+   * see `isVarietyEntry` below.
    */
   varietyEditable: boolean;
 }
@@ -130,6 +132,12 @@ export function PublicCropSpeciesRelinkDialog({
   }, [open, speciesLoading, species, crop]);
 
   const currentSpeciesLabel = crop?.crop_species_name || t('library.relinkSpecies.noCurrentSpecies');
+  // A blank variety is the species-level "general" entry
+  // (`find_general_public_crop` keys off exactly this), not "a Sorte with no
+  // name yet" — offering to fill one in here would silently turn it into a
+  // named variety instead of correcting a mapping, which is a different,
+  // bigger edit this dialog does not make.
+  const isVarietyEntry = Boolean((crop?.variety ?? '').trim());
 
   const handleSpeciesChange = useCallback((value: CropSpecies | null) => {
     setSelectedSpecies(value);
@@ -209,7 +217,7 @@ export function PublicCropSpeciesRelinkDialog({
       const response = await publicCropAPI.relinkSpecies(
         crop.id,
         target.id,
-        varietyEditable ? { variety: varietyDraft.trim() } : undefined,
+        varietyEditable && isVarietyEntry ? { variety: varietyDraft.trim() } : undefined,
       );
       await onRelinked(response.data, getCropSpeciesOptionLabel(target));
     } catch (error) {
@@ -222,7 +230,7 @@ export function PublicCropSpeciesRelinkDialog({
       setSubmitting(false);
     }
   }, [
-    addSpecies, approvalTranslations, crop, i18n.language, onRelinked, proposalName,
+    addSpecies, approvalTranslations, crop, i18n.language, isVarietyEntry, onRelinked, proposalName,
     selectedSpecies, t, varietyDraft, varietyEditable,
   ]);
 
@@ -282,15 +290,17 @@ export function PublicCropSpeciesRelinkDialog({
               />
             </>
           ) : null}
-          <TextField
-            label={t('form.variety')}
-            placeholder={t('form.varietyPlaceholder')}
-            value={varietyDraft}
-            onChange={(event) => handleVarietyChange(event.target.value)}
-            disabled={submitting || !varietyEditable}
-            helperText={varietyEditable ? undefined : t('library.relinkSpecies.varietyAdminOnly')}
-            fullWidth
-          />
+          {isVarietyEntry ? (
+            <TextField
+              label={t('form.variety')}
+              placeholder={t('form.varietyPlaceholder')}
+              value={varietyDraft}
+              onChange={(event) => handleVarietyChange(event.target.value)}
+              disabled={submitting || !varietyEditable}
+              helperText={varietyEditable ? undefined : t('library.relinkSpecies.varietyAdminOnly')}
+              fullWidth
+            />
+          ) : null}
           {errorText ? <Alert severity="error">{errorText}</Alert> : null}
         </Stack>
       </DialogContent>

@@ -1236,7 +1236,12 @@ own action:
   only moving it, so the dialog carries a variety field alongside the species
   picker rather than requiring a second trip through the ordinary edit form.
   Omitting `variety` from the payload leaves it untouched, matching the
-  pre-existing behavior.
+  pre-existing behavior. The dialog's own variety field only renders for an
+  entry that already has one — an entry with a *blank* variety is the
+  species-level "general" entry (`find_general_public_crop()` keys off
+  exactly `variety_normalized=''`), not a Sorte waiting to be named, and
+  filling one in there would silently turn it into a named variety instead of
+  correcting a mapping.
 - **Same identity rule as publishing.** The relink runs
   `find_public_crop_identity_conflict()` against the *target* species plus the
   (possibly also corrected) variety — the same check publish and
