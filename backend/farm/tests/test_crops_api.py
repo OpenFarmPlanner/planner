@@ -704,7 +704,12 @@ class CropApiTest(ProjectApiTestCase):
         private_crop.refresh_from_db()
         self.assertEqual(PublicCrop.objects.count(), public_count_before)
         self.assertEqual(private_crop.source_public_crop_id, public_crop.id)
-        self.assertEqual(private_crop.source_public_version, 4)
+        # Content diverges (name, missing growth_duration_days), so this must
+        # not be recorded as already synced to version 4 — that would hide
+        # the divergence from has_pending_public_crop_update() and leave only
+        # a push action that can never succeed for an entry this user doesn't
+        # own. See link_project_crop_to_public_reference().
+        self.assertIsNone(private_crop.source_public_version)
         self.assertEqual(private_crop.crop_species_id, species.id)
         self.assertEqual(private_crop.name, 'Paradeiser')
         self.assertTrue(private_crop.is_modified_from_source)

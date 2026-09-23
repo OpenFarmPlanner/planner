@@ -767,6 +767,15 @@ def link_project_crop_to_public_reference(*, crop: Crop, public_crop: PublicCrop
     source), not the same check as ``Crop._flag_source_divergence``, which
     compares a crop's *own* previous vs. current row on every save to
     detect edits made after an import. There is no "previous row" yet here.
+
+    Deliberately does not copy any of the public entry's field values into
+    ``crop`` — linking must never silently change local data. If the crop's
+    own values already diverge from the entry at link time,
+    ``source_public_version`` is left unset (rather than pinned to the
+    entry's current version) so :func:`has_pending_public_crop_update` still
+    recognizes the divergence and offers the existing pull ("Kultur
+    aktualisieren") flow instead of only the push direction, which can never
+    resolve for an entry this user doesn't own.
     """
     source_payload = build_project_crop_payload(public_crop)
     tracked_fields = Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS
@@ -780,7 +789,10 @@ def link_project_crop_to_public_reference(*, crop: Crop, public_crop: PublicCrop
 
     crop.crop_species = public_crop.crop_species
     crop.source_public_crop = public_crop
-    crop.source_public_version = public_crop.version
+    # Computed after crop_species is reassigned above, so this sees the same
+    # species-invariant-field exclusions has_pending_public_crop_update() will
+    # see later (public_crop_field_changes reads crop.crop_species_id).
+    crop.source_public_version = None if public_crop_field_changes(crop, public_crop) else public_crop.version
     crop.origin_type = Crop.ORIGIN_IMPORTED
     crop.is_modified_from_source = is_modified
     crop.save(update_fields=[

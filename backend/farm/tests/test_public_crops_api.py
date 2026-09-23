@@ -897,6 +897,10 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         other_sorte.refresh_from_db()
         self.assertEqual(get_general_crop(linked_sorte), kultur)
         self.assertEqual(get_general_crop(other_sorte), kultur)
+        # linked_sorte has neither growth_duration_days nor
+        # harvest_duration_days set, unlike the entry — so this link also
+        # diverges and must not be recorded as already synced.
+        self.assertIsNone(linked_sorte.source_public_version)
 
     def test_link_public_crop_links_general_kultur_to_foreign_general_entry(self):
         # The blocking-duplicate case the publishing wizard's "Mit diesem
@@ -941,6 +945,16 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(own_kultur.name, 'Karotte')
         self.assertEqual(own_kultur.growth_duration_days, 999)
         self.assertEqual(own_kultur.notes, 'My own private notes')
+        # Content genuinely diverges from the entry it was linked to, so this
+        # must surface as a pending pull ("Kultur aktualisieren"), not as an
+        # already-synced copy — otherwise the only offered direction would be
+        # a push that can never succeed for an entry this user doesn't own.
+        self.assertIsNone(own_kultur.source_public_version)
+        update_response = self.client.get(f'/openfarmplanner/api/crops/{own_kultur.id}/public-update/')
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(update_response.data['available'])
+        changed_fields = {change['field'] for change in update_response.data['changes']}
+        self.assertIn('growth_duration_days', changed_fields)
 
         # The Kultur's Sorte can then be linked/published under the same
         # (now shared) species too.
@@ -957,6 +971,43 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         own_sorte.refresh_from_db()
         self.assertEqual(own_sorte.crop_species_id, species.id)
         self.assertEqual(get_general_crop(own_sorte), own_kultur)
+
+    def test_link_public_crop_records_the_entry_version_when_content_already_matches(self):
+        # The complementary case: nothing diverges, so the link is already
+        # fully in sync and must not falsely report a pending pull update.
+        other_user = User.objects.create_user(
+            username='matching-library-user', email='matching-library@example.com', password='testpass', is_active=True,
+        )
+        species = CropSpecies.objects.create(name='Sellerie')
+        foreign_entry = PublicCrop.objects.create(
+            name='Sellerie',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=species,
+            created_by=other_user,
+            growth_duration_days=80,
+            harvest_duration_days=100,
+        )
+        own_kultur = Crop.objects.create(
+            name='Sellerie',
+            variety='',
+            growth_duration_days=80,
+            harvest_duration_days=100,
+            project=self.project,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{own_kultur.id}/link-public-crop/',
+            {'public_crop_id': foreign_entry.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        own_kultur.refresh_from_db()
+        self.assertEqual(own_kultur.source_public_version, foreign_entry.version)
+        update_response = self.client.get(f'/openfarmplanner/api/crops/{own_kultur.id}/public-update/')
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(update_response.data['available'])
 
     def test_link_public_crop_rejects_entry_that_is_not_published(self):
         species = CropSpecies.objects.create(name='Beetroot')

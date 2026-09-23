@@ -1134,6 +1134,16 @@ the preview and the confirm click, the backend 404s; the dialog shows the
 error inline and drops back to the warning view with a freshly re-run
 duplicate check, since the stale candidate should no longer be offered.
 
+Since local values stay untouched, a link commonly leaves the crop's content
+diverging from the entry it now points to. `link_project_crop_to_public_reference()`
+only sets `source_public_version` to the entry's current version when the
+content already matches it exactly; otherwise it leaves the field unset, so
+`public_update_available` (§0, "One control carries all of this") still
+recognizes the divergence and the crop detail page's badge row offers the
+pull ("Kultur aktualisieren") direction, not the push one — pushing can never
+succeed for an entry this user doesn't own, since `publish-public` always
+resolves a non-owner's target species back to the same entry as a duplicate.
+
 Missing translations remain optional and are not shown as a normal blocking
 step. The existing CC BY-SA public-library contribution consent is also not
 shown permanently; if it has not already been accepted, the dialog reveals it
