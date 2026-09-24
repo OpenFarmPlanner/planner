@@ -984,35 +984,35 @@ export function CropsPublishingWizardDialog({
           disableHoverListener={!isBlockedByValidation}
         >
           <span>
-        <Button
-          onClick={() => void handlePublish()}
-          variant="contained"
-          disabled={
-            (isUpdatingOwnedPublicCrop
-              ? !selectedPublicCrop?.crop_species
-              : !selectedSpecies && !isProposingNewSpecies)
-            || !originalLanguageCode
-            || publishing
-            || validationLoading
-            || proposingSpecies
-            || varietyConflictsPending
-            || isBlockedByValidation
-            || (isUpdatingOwnedPublicCrop && comparison?.length === 0)
-            || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
-          }
-        >
-          {publishing || validationLoading || proposingSpecies
-            ? t('library.publishing')
-            : isBlockedByValidation
-              ? t('library.publishWizard.resolveBlockingIssues')
-              : isUpdatingOwnedPublicCrop
-                ? t('library.publishWizard.updateExisting')
-                : isProposingNewSpecies
-                  ? t('library.publishWizard.proposeSpeciesSubmit')
-                  : selectedPublicCrop
-                    ? t('library.publishWizard.linkExisting')
-                    : t('library.publishWizard.publishNow')}
-        </Button>
+          <Button
+            onClick={() => void handlePublish()}
+            variant="contained"
+            disabled={
+              (isUpdatingOwnedPublicCrop
+                ? !selectedPublicCrop?.crop_species
+                : !selectedSpecies && !isProposingNewSpecies)
+              || !originalLanguageCode
+              || publishing
+              || validationLoading
+              || proposingSpecies
+              || varietyConflictsPending
+              || isBlockedByValidation
+              || (isUpdatingOwnedPublicCrop && comparison?.length === 0)
+              || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
+            }
+          >
+            {publishing || validationLoading || proposingSpecies
+              ? t('library.publishing')
+              : isBlockedByValidation
+                ? t('library.publishWizard.resolveBlockingIssues')
+                : isUpdatingOwnedPublicCrop
+                  ? t('library.publishWizard.updateExisting')
+                  : isProposingNewSpecies
+                    ? t('library.publishWizard.proposeSpeciesSubmit')
+                    : selectedPublicCrop
+                      ? t('library.publishWizard.linkExisting')
+                      : t('library.publishWizard.publishNow')}
+          </Button>
           </span>
         </AppTooltip>
       </DialogActions>

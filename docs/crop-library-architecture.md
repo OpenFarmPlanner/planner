@@ -1130,8 +1130,9 @@ ever sets the linkage fields (`crop_species`, `source_public_crop`,
 it accepts a varietyless local crop and a public entry owned by a different
 user without extra checks beyond the entry being `published`, and needs no CC
 BY-SA consent of its own. If the candidate was withdrawn or removed between
-the preview and the confirm click, the backend 404s; the dialog shows the
-error inline and drops back to the warning view with a freshly re-run
+the preview and the confirm click, the backend 404s; the parent shows the
+error as a snackbar and the dialog (which awaits the link, unlike the ordinary
+publish submit) drops back to the warning view with a freshly re-run
 duplicate check, since the stale candidate should no longer be offered.
 
 Since local values stay untouched, a link commonly leaves the crop's content

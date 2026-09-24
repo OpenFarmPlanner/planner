@@ -1150,6 +1150,7 @@
         "noChanges": "No differences from the public entry.",
         "irreversible": "This link cannot be undone. Your crop will then count as adopted from the crop library.",
         "back": "Back",
+        "loadError": "The entry could not be loaded. Please try again.",
         "submit": "Link",
         "submitWithVarieties": "Link and publish varieties"
       },

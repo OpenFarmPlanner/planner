@@ -1150,6 +1150,7 @@
         "noChanges": "Keine Abweichungen zum öffentlichen Eintrag.",
         "irreversible": "Die Verknüpfung kann nicht rückgängig gemacht werden. Deine Kultur gilt danach als aus der Kulturbibliothek übernommen.",
         "back": "Zurück",
+        "loadError": "Der Eintrag konnte nicht geladen werden. Bitte versuche es erneut.",
         "submit": "Verknüpfen",
         "submitWithVarieties": "Verknüpfen und Sorten veröffentlichen"
       },
