@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Crop } from '../api/types';
-import { resolveCropLibraryAction } from '../crops/cropLibraryAction';
+import { resolveCropLibraryAction, resolveCropLibraryStatusVisual } from '../crops/cropLibraryAction';
 
 const openUpdate = { hasOpenUpdate: true, isRejected: false };
 const rejectedUpdate = { hasOpenUpdate: false, isRejected: true };
@@ -14,6 +14,51 @@ const crop = (over: Partial<Crop> = {}): Crop => ({
 });
 
 describe('resolveCropLibraryAction', () => {
+  it('state 2c: an own proposal under review replaces the push with a status chip', () => {
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        is_modified_from_source: true,
+        public_publish_blocked_reason: null,
+        public_change_proposal_pending: true,
+      }),
+      inSync,
+    );
+    expect(action).toMatchObject({
+      kind: 'proposalPending',
+      variant: 'chip',
+      labelKey: 'libraryAction.proposalPending',
+      tooltipKey: 'libraryAction.proposalPendingTooltip',
+      disabled: false,
+      trigger: null,
+    });
+    expect(resolveCropLibraryStatusVisual(action)).toBe('pending');
+  });
+
+  it('a pending proposal does not hide a newer library version to pull', () => {
+    const action = resolveCropLibraryAction(
+      crop({ source_public_crop: 9, public_update_available: true, public_change_proposal_pending: true }),
+      openUpdate,
+    );
+    expect(action.kind).toBe('pullUpdate');
+  });
+
+  it('resolves to "Aktuell" after a sync left nothing to pull or push', () => {
+    // What `public-sync` returns once every difference was decided and pushed live.
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        source_public_version: 7,
+        is_modified_from_source: false,
+        public_update_available: false,
+        public_update_rejected: false,
+        public_publish_blocked_reason: 'no_local_changes',
+        public_change_proposal_pending: false,
+      }),
+    );
+    expect(action).toMatchObject({ kind: 'upToDate', variant: 'chip' });
+  });
+
   it('state 1: not linked to any public entry -> publish', () => {
     const action = resolveCropLibraryAction(crop({ crop_species: 3 }), inSync);
     expect(action).toMatchObject({

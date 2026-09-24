@@ -290,6 +290,8 @@ function Crops() {
     handleOpenPublicLibrary,
     handleImportPublicCrop,
     handlePublishCurrentCrop,
+    handleLinkPublicCrop,
+    handleSyncPublicCrop,
   } = usePublicCropLibrary({
     shouldShowProjectRequiredState,
     selectedCrop,
@@ -341,24 +343,25 @@ function Crops() {
   // link-confirmation view stays open (and shows the error inline) if the
   // link is rejected, e.g. because the candidate was withdrawn in the
   // meantime, instead of closing the dialog before the result is known.
-  const handleLinkPublicCropSubmit = useCallback(async (data: {
-    acceptedPublicLibraryTerms: boolean;
-    cropSpeciesId?: number;
-    originalLanguageCode: string;
-    publicCropId: number;
-    varieties?: PublishVarietySelection[];
-  }): Promise<boolean> => {
-    const success = await handlePublishCurrentCrop(data.acceptedPublicLibraryTerms, {
-      cropSpeciesId: data.cropSpeciesId,
-      originalLanguageCode: data.originalLanguageCode,
-      publicCropId: data.publicCropId,
-      varieties: data.varieties,
-    });
+  const handleLinkPublicCropSubmit = useCallback(async (
+    data: Parameters<typeof handleLinkPublicCrop>[0],
+  ): Promise<boolean> => {
+    const success = await handleLinkPublicCrop(data);
     if (success) {
       setPublishWizardOpen(false);
     }
     return success;
-  }, [handlePublishCurrentCrop]);
+  }, [handleLinkPublicCrop]);
+
+  const handleSyncPublicCropSubmit = useCallback(async (
+    data: Parameters<typeof handleSyncPublicCrop>[0],
+  ): Promise<boolean> => {
+    const success = await handleSyncPublicCrop(data);
+    if (success) {
+      setPublishWizardOpen(false);
+    }
+    return success;
+  }, [handleSyncPublicCrop]);
 
   // Fetch crops on mount
   useEffect(() => {
@@ -833,6 +836,7 @@ function Crops() {
         onClose={() => setPublishWizardOpen(false)}
         onPublish={handlePublishingWizardPublish}
         onLinkPublicCrop={handleLinkPublicCropSubmit}
+        onSyncPublicCrop={handleSyncPublicCropSubmit}
       />
 
       {showForm ? (

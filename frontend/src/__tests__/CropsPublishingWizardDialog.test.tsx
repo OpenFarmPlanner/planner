@@ -11,12 +11,14 @@ const {
   publicCropListMock,
   publicCropGetMock,
   publishPreviewMock,
+  publicSyncPreviewMock,
 } = vi.hoisted(() => ({
   cropSpeciesListMock: vi.fn(),
   cropSpeciesProposeMock: vi.fn(),
   publicCropListMock: vi.fn(),
   publicCropGetMock: vi.fn(),
   publishPreviewMock: vi.fn(),
+  publicSyncPreviewMock: vi.fn(),
 }));
 
 vi.mock('../api/api', async () => {
@@ -36,6 +38,7 @@ vi.mock('../api/api', async () => {
     cropAPI: {
       ...actual.cropAPI,
       publishPreview: publishPreviewMock,
+      publicSyncPreview: publicSyncPreviewMock,
     },
   };
 });
@@ -54,6 +57,7 @@ const renderWizard = (
     varieties?: Crop[];
     onPublish?: (data: unknown) => void;
     onLinkPublicCrop?: (data: unknown) => Promise<boolean>;
+    onSyncPublicCrop?: (data: unknown) => Promise<boolean>;
     termsAlreadyAccepted?: boolean;
   } = {},
 ) => render(
@@ -67,6 +71,7 @@ const renderWizard = (
       onClose={vi.fn()}
       onPublish={options.onPublish ?? vi.fn()}
       onLinkPublicCrop={options.onLinkPublicCrop ?? vi.fn().mockResolvedValue(true)}
+      onSyncPublicCrop={options.onSyncPublicCrop ?? vi.fn().mockResolvedValue(true)}
     />
   </MemoryRouter>,
 );
@@ -95,6 +100,10 @@ describe('CropsPublishingWizardDialog', () => {
     publicCropListMock.mockReset();
     publicCropListMock.mockResolvedValue({ data: { results: [] } });
     publicCropGetMock.mockReset();
+    publicSyncPreviewMock.mockReset();
+    publicSyncPreviewMock.mockResolvedValue({
+      data: { public_crop_id: 0, public_version: 1, requires_moderation: false, changes: [] },
+    });
     publishPreviewMock.mockReset();
     publishPreviewMock.mockResolvedValue({
       data: {
@@ -531,6 +540,17 @@ describe('CropsPublishingWizardDialog', () => {
 
     it('walks from the blocking warning through the confirmation view to a link submission', async () => {
       mockBlockingDuplicate();
+      publicSyncPreviewMock.mockResolvedValue({
+        data: {
+          public_crop_id: 77,
+          public_version: 4,
+          requires_moderation: false,
+          changes: [
+            { field: 'growth_duration_days', local_value: 90, public_value: 80, pushable: true },
+            { field: 'notes', local_value: 'Meine Notiz', public_value: '', pushable: true },
+          ],
+        },
+      });
       const onLinkPublicCrop = vi.fn().mockResolvedValue(true);
       const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
 
@@ -548,6 +568,12 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByText('Mit bestehendem Eintrag verknüpfen');
       await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(77));
+      await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(cropLevelCrop.id, 77));
+      expect(screen.getByText(/Wähle für jeden abweichenden Wert, welcher gelten soll/)).toBeInTheDocument();
+      // Both set and different -> library; only the local value set -> mine.
+      expect(await screen.findByTestId('public-crop-sync-summary')).toHaveTextContent(
+        '1 Wert wird in deine Kultur übernommen, 1 Wert wird in der Kulturbibliothek aktualisiert.',
+      );
 
       const submitButton = await screen.findByRole('button', { name: 'Verknüpfen' });
       fireEvent.click(submitButton);
@@ -556,6 +582,9 @@ describe('CropsPublishingWizardDialog', () => {
         publicCropId: 77,
         cropSpeciesId: 1,
         originalLanguageCode: 'de',
+        baseVersion: 4,
+        pullFields: ['growth_duration_days'],
+        pushFields: ['notes'],
         varieties: [],
       })));
     });
@@ -608,36 +637,100 @@ describe('CropsPublishingWizardDialog', () => {
     ));
   });
 
-  it('publishes as general when updating an already-linked public entry that has no variety', async () => {
+  describe('syncing an already linked crop ("Bibliothek aktualisieren")', () => {
     const linkedPublicCrop: PublicCrop = {
       id: 55,
       status: 'published',
       name: 'Bohne',
+      display_name: 'Bohne',
       variety: '',
       crop_species: 1,
-      thousand_kernel_weight_g: 400,
-      version: 1,
+      version: 6,
     };
-    publicCropGetMock.mockResolvedValue({ data: linkedPublicCrop });
-    const ownedGeneralCrop: Crop = {
-      ...CROP,
-      variety: '',
-      owned_public_crop_id: 55,
-      thousand_kernel_weight_g: 472,
-    };
+    const ownedGeneralCrop: Crop = { ...CROP, variety: '', owned_public_crop_id: 55 };
 
-    renderWizard(ownedGeneralCrop);
+    beforeEach(() => {
+      publicCropGetMock.mockResolvedValue({ data: linkedPublicCrop });
+      publicSyncPreviewMock.mockResolvedValue({
+        data: {
+          public_crop_id: 55,
+          public_version: 6,
+          requires_moderation: false,
+          changes: [
+            { field: 'thousand_kernel_weight_g', local_value: 472, public_value: 400, pushable: true },
+            { field: 'harvest_duration_days', local_value: 60, public_value: null, pushable: true },
+          ],
+        },
+      });
+    });
 
-    await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(55));
-    const updateButton = await screen.findByRole('button', { name: 'Öffentliche Version aktualisieren' });
-    await waitFor(() => expect(updateButton).toBeEnabled());
+    it('offers the field-by-field sync instead of pushing every difference', async () => {
+      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
 
-    fireEvent.click(updateButton);
+      expect(await screen.findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
+      await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(ownedGeneralCrop.id, 55));
+      expect(screen.queryByLabelText(/Offizielle Kulturart/i)).not.toBeInTheDocument();
 
-    await waitFor(() => expect(publishPreviewMock).toHaveBeenCalledWith(
-      ownedGeneralCrop.id,
-      expect.objectContaining({ publish_as_general: true }),
-    ));
+      fireEvent.click(await screen.findByRole('button', { name: 'Alle aus Bibliothek' }));
+      const submit = screen.getByRole('button', { name: 'Abgleichen' });
+      await waitFor(() => expect(submit).toBeEnabled());
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledWith({
+        acceptedPublicLibraryTerms: false,
+        publicCropId: 55,
+        baseVersion: 6,
+        pullFields: ['thousand_kernel_weight_g', 'harvest_duration_days'],
+        pushFields: [],
+      }));
+      expect(publishPreviewMock).not.toHaveBeenCalled();
+    });
+
+    it('syncs a crop imported from someone else\'s entry the same way', async () => {
+      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      renderWizard({ ...CROP, variety: '', source_public_crop: 55 }, { onSyncPublicCrop });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Alle meine Werte' }));
+      const submit = screen.getByRole('button', { name: 'Abgleichen' });
+      await waitFor(() => expect(submit).toBeEnabled());
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
+        pullFields: [],
+        pushFields: ['thousand_kernel_weight_g', 'harvest_duration_days'],
+      })));
+    });
+
+    it('asks for the license before pushing values', async () => {
+      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      renderWizard(ownedGeneralCrop, { onSyncPublicCrop, termsAlreadyAccepted: false });
+
+      const submit = await screen.findByRole('button', { name: 'Abgleichen' });
+      await waitFor(() => expect(submit).toBeEnabled());
+      fireEvent.click(submit);
+
+      const licenseCheckbox = await screen.findByRole('checkbox', { name: /Lizenz|CC BY-SA|akzeptiere/i });
+      expect(onSyncPublicCrop).not.toHaveBeenCalled();
+      fireEvent.click(licenseCheckbox);
+      fireEvent.click(screen.getByRole('button', { name: 'Abgleichen' }));
+
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
+        acceptedPublicLibraryTerms: true,
+        pushFields: ['harvest_duration_days'],
+      })));
+    });
+
+    it('explains the disabled button when nothing differs', async () => {
+      publicSyncPreviewMock.mockResolvedValue({
+        data: { public_crop_id: 55, public_version: 6, requires_moderation: false, changes: [] },
+      });
+      renderWizard(ownedGeneralCrop);
+
+      expect(await screen.findByText('Keine Abweichungen zum öffentlichen Eintrag.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Abgleichen' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'Alle aus Bibliothek' })).not.toBeInTheDocument();
+    });
   });
 
   it('prefills the species field with the local crop name on open, for crop-level and variety crops', async () => {
@@ -755,43 +848,6 @@ describe('CropsPublishingWizardDialog', () => {
         ],
       })));
     });
-    it('asks for the license before co-publishing Sorten on the link path', async () => {
-      // Linking the Kultur itself needs no license, but the Sorten published
-      // along with it do — without the acceptance the backend rejects each of
-      // them with `public_library_terms_required`.
-      const linkedGeneralEntry: PublicCrop = {
-        id: 55,
-        status: 'published',
-        name: 'Tomate',
-        display_name: 'Tomate',
-        variety: '',
-        crop_species: 1,
-        version: 3,
-      };
-      publicCropGetMock.mockResolvedValue({ data: linkedGeneralEntry });
-      const onPublish = vi.fn();
-      renderWizard(
-        { ...GENERAL_CROP, source_public_crop: 55 },
-        { varieties: [VARIETY_ROMA], onPublish, termsAlreadyAccepted: false },
-      );
-
-      await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(55));
-      fireEvent.click(await findEnabledPublishButton('Mit öffentlicher Kultur verknüpfen'));
-
-      // First click only reveals the license box; nothing is published yet.
-      const licenseCheckbox = await screen.findByRole('checkbox', { name: /Lizenz|CC BY-SA|akzeptiere/i });
-      expect(onPublish).not.toHaveBeenCalled();
-
-      fireEvent.click(licenseCheckbox);
-      fireEvent.click(screen.getByRole('button', { name: 'Mit öffentlicher Kultur verknüpfen' }));
-
-      await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        acceptedPublicLibraryTerms: true,
-        publicCropId: 55,
-        varieties: [{ cropId: 2, publicCropId: null }],
-      })));
-    });
-
     it('warns instead of silently offering every Sorte as new when the library lookup fails', async () => {
       publicCropListMock.mockRejectedValue(new Error('network down'));
       const onPublish = vi.fn();

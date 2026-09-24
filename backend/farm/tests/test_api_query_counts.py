@@ -178,11 +178,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         Kultur a Sorte inherits from, and the imported copy's
         `description_language_code` (which reads the linked public entry's
         `original_language_code`) are all per-row data that the viewset
-        resolves for the whole page."""
+        resolves for the whole page. So is `public_change_proposal_pending`:
+        one lookup of the user's pending edit proposals per page."""
         # Each crop created above also has an imported sibling row, so the
         # project holds twice ROW_COUNT crops.
         self.assert_list_query_count(
-            '/openfarmplanner/api/crops/', 12, expected_rows=ROW_COUNT * 2,
+            '/openfarmplanner/api/crops/', 13, expected_rows=ROW_COUNT * 2,
         )
 
     def test_crops_list_carries_library_status_fields(self):
@@ -194,8 +195,18 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         declined = imported.first()
         PublicCrop.objects.filter(pk=declined.source_public_crop_id).update(version=2)
         Crop.objects.filter(pk=declined.pk).update(source_public_version=1, rejected_public_version=2)
+        # A pending own edit proposal per linked entry: the flag behind the
+        # "Vorschlag in Prüfung" chip is resolved once for the page.
+        for public_crop in self.public_crops:
+            PublicCropChangeProposal.objects.create(
+                public_crop=public_crop,
+                kind=PublicCropChangeProposal.KIND_EDIT,
+                summary='Pending sync',
+                proposed_data={'notes': 'Proposed'},
+                proposed_by=self.user,
+            )
 
-        with self.assertNumQueries(12):
+        with self.assertNumQueries(13):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -210,6 +221,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             'public_update_rejected',
             'public_publish_blocked_reason',
             'public_crop_species_pending',
+            'public_change_proposal_pending',
         }
         for row in rows:
             self.assertLessEqual(library_fields, row.keys())
@@ -221,6 +233,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         )
         # The fixture's first species is still a proposal.
         self.assertTrue(any(row['public_crop_species_pending'] for row in rows))
+        self.assertEqual(
+            sum(1 for row in rows if row['public_change_proposal_pending']), ROW_COUNT,
+        )
 
     def test_crop_supplier_data_list_query_count(self):
         """Rows embed a full nested `SupplierSerializer`."""

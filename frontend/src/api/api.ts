@@ -18,6 +18,9 @@ import type {
   NoteAttachment,
   CropHistoryEntry,
   CropDuplicateCheckResponse,
+  CropPublicSyncPreview,
+  CropPublicSyncRequest,
+  CropPublicSyncResponse,
   CropPublicUpdate,
   SeedRateConstraintsResponse,
   ImportPublicCropResponse,
@@ -156,8 +159,19 @@ export const cropAPI = {
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
   publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
-  linkPublicCrop: (id: number, publicCropId: number) =>
-    http.post<Crop>(`/crops/${id}/link-public-crop/`, { public_crop_id: publicCropId }),
+  // `pullFields` (link confirmation) take the entry's values in the same
+  // transaction as the link; omitted, no local value changes.
+  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[]) =>
+    http.post<Crop>(`/crops/${id}/link-public-crop/`, {
+      public_crop_id: publicCropId,
+      ...(pullFields ? { pull_fields: pullFields } : {}),
+    }),
+  // Field-by-field differences to an entry (linked, or a link candidate).
+  publicSyncPreview: (id: number, publicCropId: number) =>
+    http.get<CropPublicSyncPreview>(`/crops/${id}/public-sync/`, { params: { public_crop_id: publicCropId } }),
+  // Applies the per-field decision: pull fields locally, push the rest into the entry.
+  publicSync: (id: number, data: CropPublicSyncRequest) =>
+    http.post<CropPublicSyncResponse>(`/crops/${id}/public-sync/`, data),
   // Read-only preview of the pending library update; applying it goes through
   // publicCropAPI.importToProject(publicCropId, 'update').
   publicUpdate: (id: number) => http.get<CropPublicUpdate>(`/crops/${id}/public-update/`),
