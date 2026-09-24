@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from farm.models import Crop, EntityRevision, Location, MediaFile, CropRevision, Project, ProjectMembership, ProjectRevision
+from farm.tests.api_base import record_later_revision
 
 User = get_user_model()
 
@@ -254,6 +255,43 @@ class CropHistoryTests(TestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.name, 'Carrot')
 
+    def test_project_history_marks_only_the_newest_revision_as_current(self):
+        for name in ('Beetroot', 'Onion'):
+            response = self.client.patch(
+                f'/openfarmplanner/api/crops/{self.crop.id}/',
+                data={'name': name},
+                content_type='application/json',
+            )
+            self.assertEqual(response.status_code, 200)
+
+        entries = self.client.get('/openfarmplanner/api/history/project/').json()
+
+        self.assertGreaterEqual(len(entries), 2)
+        self.assertTrue(entries[0]['is_current_version'])
+        self.assertFalse(any(entry['is_current_version'] for entry in entries[1:]))
+
+    def test_project_restore_refuses_the_current_version(self):
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.crop.id}/',
+            data={'name': 'Beetroot'},
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        history = self.client.get('/openfarmplanner/api/history/project/').json()
+        current_id = history[0]['history_id']
+        revisions = EntityRevision.objects.filter(project=self.project)
+        revision_count = revisions.count()
+
+        restore_response = self.client.post(
+            '/openfarmplanner/api/history/project/restore/',
+            data={'history_id': current_id},
+            content_type='application/json',
+        )
+
+        self.assertEqual(restore_response.status_code, 409)
+        self.assertEqual(restore_response.json()['code'], 'already_current_version')
+        self.assertEqual(revisions.count(), revision_count)
+
     def test_project_restore_ignores_fields_removed_since_the_snapshot_was_taken(self):
         """A restorable entity's revision may carry a field no longer on the model
         (renamed/removed in a later schema change) — restore must skip it, not crash."""
@@ -286,6 +324,7 @@ class CropHistoryTests(TestCase):
         self.assertEqual(mutation_response.status_code, 200)
         after = self.client.get('/openfarmplanner/api/history/project/')
         latest_revision_id = after.json()[0]['history_id']
+        record_later_revision(self.project)
 
         restore_response = self.client.post(
             '/openfarmplanner/api/history/project/restore/',
@@ -310,6 +349,7 @@ class CropHistoryTests(TestCase):
 
         before = self.client.get('/openfarmplanner/api/history/project/')
         target_revision_id = before.json()[0]['history_id']
+        record_later_revision(self.project)
 
         # Simulate the referenced PublicCrop being hard-deleted later (e.g. a
         # data reset), which is not something the whole-project restore tracks.

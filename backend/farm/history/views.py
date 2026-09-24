@@ -18,6 +18,7 @@ from .records import _current_actor_label, record_entity_revision
 from .restore import (
     BatchRevertError,
     _restore_project_state_at,
+    is_latest_project_revision,
     restore_crop_from_revision,
     revert_batch_operation,
 )
@@ -29,18 +30,21 @@ class ProjectHistoryListView(APIView):
 
     Revisions produced by the same cascading action (see `BatchOperation`) are
     folded into one `is_batch` entry with a single revert action; ungrouped
-    revisions are listed flat.
+    revisions are listed flat. The flat entry for the project's newest revision
+    carries `is_current_version` — restoring it would change nothing, so the
+    dialog shows a badge there instead of the restore action.
     """
 
     def get(self, request):
         active_project = get_active_project_or_400(request)
         since = timezone.now() - timedelta(days=30)
-        rows = (
+        rows = list(
             EntityRevision.objects
             .filter(project=active_project, created_at__gte=since)
             .select_related('batch_operation')
-            .order_by('-created_at')
+            .order_by('-created_at', '-id')
         )
+        current_revision_id = rows[0].id if rows and rows[0].batch_operation is None else None
 
         def revision_payload(row):
             return {
@@ -53,6 +57,7 @@ class ProjectHistoryListView(APIView):
                 'object_display_name': row.display_name or None,
                 'action': row.action,
                 'actor_label': row.user_name or None,
+                'is_current_version': row.id == current_revision_id,
             }
 
         payload = []
@@ -97,6 +102,12 @@ class ProjectHistoryRestoreView(APIView):
         revision_id = serializer.validated_data['history_id']
 
         revision = get_object_or_404(EntityRevision.objects.filter(project=active_project), id=revision_id)
+        if is_latest_project_revision(active_project, revision):
+            return api_error_response(
+                code='already_current_version',
+                detail='This version is already the current state of the project.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
         _restore_project_state_at(active_project, revision.created_at)
         record_entity_revision(
             project=active_project,
