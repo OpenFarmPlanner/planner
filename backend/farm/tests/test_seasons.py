@@ -794,6 +794,19 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(second.status_code, 200, second.data)
         self.assertFalse(Season.objects.filter(pk=season_id).exists())
 
+    def test_project_history_marks_no_flat_entry_current_when_a_batch_is_newest(self):
+        """A newest batch keeps its revert action (undoing it changes state), so
+        no flat entry below it may claim to be the current version."""
+        self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {'name': 'Renamed'})
+        self.client.post('/openfarmplanner/api/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+
+        entries = self.client.get('/openfarmplanner/api/history/project/').json()
+
+        self.assertTrue(entries[0]['is_batch'])
+        self.assertFalse(any(entry.get('is_current_version') for entry in entries))
+
     def test_reverting_a_season_create_batch_deletes_the_season(self):
         create = self.client.post('/openfarmplanner/api/seasons/', {
             'start_date': '2026-01-01', 'end_date': '2026-12-31',

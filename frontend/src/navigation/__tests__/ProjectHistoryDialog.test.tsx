@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import i18n from '../../i18n';
@@ -9,6 +9,7 @@ import type { CropHistoryEntry } from '../../api/types';
 const t = i18n.getFixedT('de', 'navigation');
 const tCrops = i18n.getFixedT('de', 'crops');
 const restoreVersionLabel = 'Zu dieser Version wechseln';
+const currentVersionLabel = 'Aktuelle Version';
 
 function entry(partial: Partial<CropHistoryEntry>): CropHistoryEntry {
   return {
@@ -95,5 +96,37 @@ describe('ProjectHistoryDialog', () => {
 
     expect(screen.getByText(/Bijella/)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: restoreVersionLabel }).length).toBeGreaterThan(0);
+  });
+
+  it('shows a badge instead of the restore action on the current version only', async () => {
+    const user = userEvent.setup();
+    const older = entry({ object_type: 'crop', object_display_name: 'Older', action: 'updated' });
+    const { onRestore } = renderDialog([
+      entry({ object_type: 'crop', object_display_name: 'Newest', action: 'updated', is_current_version: true }),
+      older,
+      entry({ object_type: 'crop', object_display_name: 'Oldest', action: 'created' }),
+    ]);
+
+    const [currentRow, ...otherRows] = screen.getAllByRole('listitem');
+    expect(within(currentRow).getByText(currentVersionLabel)).toBeInTheDocument();
+    expect(within(currentRow).queryByRole('button')).not.toBeInTheDocument();
+    expect(otherRows).toHaveLength(2);
+    for (const row of otherRows) {
+      expect(within(row).getByRole('button', { name: restoreVersionLabel })).toBeInTheDocument();
+      expect(within(row).queryByText(currentVersionLabel)).not.toBeInTheDocument();
+    }
+
+    await user.click(within(otherRows[0]).getByRole('button', { name: restoreVersionLabel }));
+    expect(onRestore).toHaveBeenCalledWith(older);
+  });
+
+  it('does not infer the current version from list position', () => {
+    renderDialog([
+      entry({ object_type: 'crop', object_display_name: 'Newest', action: 'updated' }),
+      entry({ object_type: 'crop', object_display_name: 'Older', action: 'updated' }),
+    ]);
+
+    expect(screen.queryByText(currentVersionLabel)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: restoreVersionLabel })).toHaveLength(2);
   });
 });

@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -44,7 +45,8 @@ interface ProjectHistoryDialogProps {
  * Presentational project version-history dialog. A cascading action (season
  * create/delete/undelete/data-copy) arrives from the API as one `is_batch`
  * entry that renders as a single row with a single "rückgängig machen"; every
- * other revision renders flat with its restore action. State, data
+ * other revision renders flat with its restore action, except the one the
+ * backend flags `is_current_version`, which shows a badge instead. State, data
  * loading and the action handlers live in RootLayout.tsx. German-only copy is
  * intentional, matching RestoreVersionDialog.
  */
@@ -92,6 +94,23 @@ export function ProjectHistoryDialog({
         {t('commandPalette.restoreVersion')}
       </Button>
     )
+  );
+
+  const currentVersionBadge = (
+    <>
+      {isPhonePortrait ? <Divider /> : null}
+      <Chip
+        label={tCrops('history.currentVersion')}
+        size="small"
+        color="success"
+        variant="outlined"
+        sx={{ alignSelf: 'flex-start', flexShrink: 0 }}
+      />
+    </>
+  );
+
+  const entryAction = (entry: CropHistoryEntry) => (
+    entry.is_current_version ? currentVersionBadge : restoreButton(() => onRestore(entry))
   );
 
   const renderBatchGroup = (entry: CropHistoryEntry) => {
@@ -171,7 +190,7 @@ export function ProjectHistoryDialog({
                 · {timestampLabel}
               </Typography>
             </Box>
-            {restoreButton(() => onRestore(entry))}
+            {entryAction(entry)}
           </Stack>
         </Paper>
       );
@@ -204,7 +223,7 @@ export function ProjectHistoryDialog({
             </Box>
           )}
         />
-        {restoreButton(() => onRestore(entry))}
+        {entryAction(entry)}
       </Stack>
     );
   };

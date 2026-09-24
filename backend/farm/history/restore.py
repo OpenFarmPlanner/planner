@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from farm.models import Crop, EntityRevision, PlantingPlan, Project, Task
@@ -74,6 +75,22 @@ def _entity_states_at(project: Project, entity_type: str, target_time) -> dict[i
 
 
 _SKIP_ON_UPDATE = {'id', 'created_at', 'updated_at'}
+
+
+def is_latest_project_revision(project: Project, revision: EntityRevision) -> bool:
+    """Whether `revision` is the project's newest one, i.e. the current state.
+
+    Ordered by `(created_at, id)`, matching `ProjectHistoryListView`.
+    """
+    return not (
+        EntityRevision.objects
+        .filter(project=project)
+        .filter(
+            Q(created_at__gt=revision.created_at)
+            | Q(created_at=revision.created_at, id__gt=revision.id)
+        )
+        .exists()
+    )
 
 
 def _restore_project_state_at(project: Project, target_time) -> None:

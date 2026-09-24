@@ -119,7 +119,14 @@ Two restore paths, both admin-only (`require_project_admin`):
   `Crop.all_objects`, not the default manager) crop row, clears
   `deleted_at`, and saves with `_history_action = ACTION_RESTORED`.
 - **`ProjectHistoryRestoreView`** rolls the *whole project* back to the
-  clicked revision's timestamp (`_restore_project_state_at`). It works purely
+  clicked revision's timestamp (`_restore_project_state_at`). The project's
+  newest revision (by `created_at`, then `id`) is the current state, so
+  restoring it is refused with `409 already_current_version`
+  (`is_latest_project_revision`). `ProjectHistoryListView` flags that entry
+  `is_current_version` when it is a flat row, and `ProjectHistoryDialog`
+  shows an "Aktuelle Version" badge there instead of the restore action. If
+  the newest revision belongs to a batch, no row is flagged: the batch row
+  keeps its revert action, because undoing it does change state. It works purely
   through recorded revisions and **never mass-deletes**:
   - `_entity_states_at(project, entity_type, target_time)` gives, per
     `object_id`, the most recent revision at or before `target_time` — a

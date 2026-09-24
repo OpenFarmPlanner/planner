@@ -3,9 +3,30 @@
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase as DRFAPITestCase
 
-from farm.models import Bed, Crop, Field, Location, Project, ProjectMembership, Supplier
+from farm.models import (
+    Bed,
+    Crop,
+    EntityRevision,
+    Field,
+    Location,
+    Project,
+    ProjectMembership,
+    Supplier,
+)
 
 User = get_user_model()
+
+
+def record_later_revision(project: Project) -> EntityRevision:
+    """Record a neutral, non-restorable revision so an earlier restore point
+    is no longer the current version (restoring the current one is refused)."""
+    return EntityRevision.objects.create(
+        project=project,
+        entity_type='project',
+        object_id=project.id,
+        action=EntityRevision.ACTION_UPDATED,
+        snapshot={},
+    )
 
 
 class ProjectApiTestCase(DRFAPITestCase):

@@ -32,6 +32,7 @@ from farm.services.project_invitations import (
     revoke_invitation,
     store_pending_invitation_token,
 )
+from farm.tests.api_base import record_later_revision
 
 User = get_user_model()
 
@@ -132,6 +133,7 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(history_response.data), 1)
         history_id = history_response.data[0]['history_id']
+        record_later_revision(self.project)
 
         Location.objects.filter(project=self.project).delete()
 
@@ -174,6 +176,7 @@ class ProjectsApiTests(APITestCase):
         history_response = self.client.get('/openfarmplanner/api/history/project/', **headers)
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
         history_id = history_response.data[0]['history_id']
+        record_later_revision(self.project)
 
         restore_response = self.client.post(
             '/openfarmplanner/api/history/project/restore/',
@@ -212,6 +215,7 @@ class ProjectsApiTests(APITestCase):
 
         history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
         history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
+        record_later_revision(self.project)
         response = self.client.post(
             '/openfarmplanner/api/history/project/restore/',
             {'history_id': history_id}, format='json', **headers,
