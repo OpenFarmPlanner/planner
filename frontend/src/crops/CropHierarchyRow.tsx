@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { ListItemButton, ListItemText, Typography } from '@mui/material';
+import { Box, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { alpha, type Theme } from '@mui/material/styles';
 import { CropHierarchyExpandToggle } from './CropHierarchyExpandToggle';
 import { HighlightedText } from '../components/HighlightedText';
-import { compactCropChevronButtonSx } from './cropHierarchyRowSx';
+import { compactCropChevronButtonSx, CROP_LIBRARY_STATUS_ICON_SLOT } from './cropHierarchyRowSx';
 import type { CropListItemProps } from './useCropListKeyboardNavigation';
 
 interface CropHierarchyRowProps {
@@ -44,6 +44,13 @@ interface CropHierarchyRowProps {
   onKeyboardActivate?: () => boolean;
   endAdornment?: ReactNode;
   /**
+   * A fixed-width status column after the name and before the "(N)" count —
+   * the private crop list puts its library status icon here. On the right it
+   * stays in one column regardless of tree depth and name length. The public
+   * library list leaves it unset.
+   */
+  statusAdornment?: ReactNode;
+  /**
    * When true, `endAdornment` (the pending-suggestion hourglass) takes the
    * slot the "(N)" count normally occupies instead of following it, so the
    * icon lines up with rows that have no count at all. The count still shows
@@ -79,6 +86,7 @@ export function CropHierarchyRow({
   itemProps = {},
   onKeyboardActivate,
   endAdornment,
+  statusAdornment,
   isPendingSuggestion = false,
 }: CropHierarchyRowProps) {
   const { onKeyDown: itemOnKeyDown, ...listItemProps } = itemProps;
@@ -178,6 +186,20 @@ export function CropHierarchyRow({
             },
           }
         }} />
+      {statusAdornment ? (
+        <Box
+          component="span"
+          sx={{
+            display: 'inline-flex',
+            justifyContent: 'center',
+            width: CROP_LIBRARY_STATUS_ICON_SLOT,
+            flexShrink: 0,
+            ml: 0.5,
+          }}
+        >
+          {statusAdornment}
+        </Box>
+      ) : null}
       {isPendingSuggestion ? (
         <>
           {endAdornment}

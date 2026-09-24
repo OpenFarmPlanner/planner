@@ -13,6 +13,7 @@ import { useTranslation } from '../i18n';
 import { cropAPI, publicCropAPI } from '../api/api';
 import type { Crop, CropPublicUpdate } from '../api/types';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
+import { readCropLibrarySyncFlags } from './cropLibraryAction';
 
 export interface PublicCropUpdateController {
   /** The loaded diff while the dialog is open, `null` while it is closed. */
@@ -45,8 +46,7 @@ export function usePublicCropUpdate(
   const [isRejecting, setIsRejecting] = useState(false);
 
   const cropId = crop?.id;
-  const hasOpenUpdate = Boolean(crop?.public_update_available);
-  const isRejected = Boolean(crop?.public_update_rejected);
+  const { hasOpenUpdate, isRejected } = readCropLibrarySyncFlags(crop);
 
   const openDiff = useCallback((): void => {
     if (!cropId) {

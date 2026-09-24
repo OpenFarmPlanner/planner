@@ -23,6 +23,8 @@ import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
+import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
+import type { CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
 import { usePublicCropUpdate } from './usePublicCropUpdate';
 import {
@@ -51,6 +53,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { getCropDisplayName } from './cropDisplay';
 import {
+  type ProjectCropHierarchyItem,
   buildCropHierarchy,
   findSpeciesCrop,
   getCropSpeciesKey,
@@ -436,6 +439,49 @@ const detailSectionGridSx = {
     },
   });
 
+  // A list row's library status icon opens the same dialog as the badge-row
+  // button, and both dialogs act on the selected crop. Clicking the icon of
+  // another row therefore selects that row first and opens the dialog once the
+  // selection has landed. A ref, not state: it only bridges one selection.
+  const pendingListLibraryActionRef = useRef<{
+    cropId: number;
+    fromCropId: number | null;
+    trigger: CropLibraryTrigger;
+  } | null>(null);
+  const runLibraryTrigger = useCallback((trigger: CropLibraryTrigger): void => {
+    if (trigger === 'publish') {
+      onPublishCrop?.();
+    } else if (!publicUpdate.isLoading) {
+      publicUpdate.openDiff();
+    }
+  }, [onPublishCrop, publicUpdate]);
+  const handleListLibraryAction = (node: ProjectCropHierarchyItem, trigger: CropLibraryTrigger): void => {
+    const cropId = node.crop?.id;
+    if (cropId === undefined) {
+      return;
+    }
+    if (selectedCrop?.id === cropId) {
+      runLibraryTrigger(trigger);
+      return;
+    }
+    pendingListLibraryActionRef.current = { cropId, fromCropId: selectedCrop?.id ?? null, trigger };
+    cropListNavigation.selectItem(node, false);
+  };
+  useEffect(() => {
+    const pending = pendingListLibraryActionRef.current;
+    if (!pending) {
+      return;
+    }
+    const currentCropId = selectedCrop?.id ?? null;
+    if (currentCropId === pending.cropId) {
+      pendingListLibraryActionRef.current = null;
+      runLibraryTrigger(pending.trigger);
+    } else if (currentCropId !== pending.fromCropId) {
+      // The selection went somewhere else; never open a dialog for it later.
+      pendingListLibraryActionRef.current = null;
+    }
+  }, [runLibraryTrigger, selectedCrop]);
+
   // Declared after the keyboard navigation hook on purpose: both act on the
   // list in the same commit, and the restored offset must win over the
   // "scroll the selected row into view" the navigation hook does on mount.
@@ -803,6 +849,18 @@ const detailSectionGridSx = {
                     varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
                     showZeroVarietyCount={node.kind === 'species'}
                     highlightQuery={normalizedSearchQuery}
+                    statusAdornment={onPublishCrop ? (
+                      crop ? (
+                        <CropLibraryStatusIcon
+                          crop={crop}
+                          onActivate={(trigger) => handleListLibraryAction(node, trigger)}
+                        />
+                      ) : (
+                        // A Kultur header without its own entry has nothing to
+                        // publish; the empty slot keeps its count in the column.
+                        <Box component="span" />
+                      )
+                    ) : undefined}
                     onKeyboardActivate={() => {
                       // Enter on a Kultur group header opens or closes the
                       // group and leaves the selection alone; the Sorte rows

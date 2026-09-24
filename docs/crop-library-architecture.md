@@ -181,6 +181,33 @@ The public Crop Library follows an open-data model:
   cases 2-4 as a disabled button with the existing "Vorschlag in Prüfung"
   tooltip (case 2b as an inert, non-clickable chip carrying the same tooltip);
   the `CropSpeciesPendingChip` stays in the row as the explanation.
+
+  **The crop list shows the same state per row.** `CropLibraryStatusIcon` is
+  the compact form of the button: an 18px circle in a fixed-width column
+  after the name and before the "(N)" count of every row in the private crop
+  list (`CropDetail` passes it through `CropHierarchyRow`'s `statusAdornment`;
+  the public library list does not). It sits on the right rather than before
+  the name so its position depends on neither tree depth nor name length, and
+  the name stays the row's first scan point.
+  It resolves through the same `resolveCropLibraryAction` — list rows have no
+  `usePublicCropUpdate` controller, so the pull flags come from the crop
+  itself via `readCropLibrarySyncFlags`, which the controller also uses — and
+  `resolveCropLibraryStatusVisual` maps the result to a look: dashed circle
+  (not linked), blue down arrow (pull), orange up arrow (push), grey
+  sync-disabled (declined), a bare green check (in sync — no filled circle, so
+  synced rows stay quiet) and a brown clock for any state frozen by a species
+  under moderation. Tooltips are the button's tooltips. Clicking opens the
+  same dialog as the button; both dialogs act on the selected crop, so the
+  icon of another row selects that row first and opens the dialog once the
+  selection has landed. The "Aktuell" and moderation states are inert, the
+  latter still focusable so its tooltip is reachable by keyboard. The icon
+  stops click propagation, so it never also triggers the row's selection. A
+  Kultur header without its own entry keeps an empty slot of the same width,
+  so the counts stay aligned. The list
+  endpoint needs nothing extra for this: `CropViewSet` serves the list with
+  the same `CropSerializer`, and
+  `test_crops_list_carries_library_status_fields` pins that every row carries
+  the library fields at the unchanged query count.
 - Declining a public change is a third, explicit outcome next to applying and
   cancelling. `POST /api/crops/<id>/public-update/reject/` stores
   `Crop.rejected_public_version` and touches no library-sourced field, so the
