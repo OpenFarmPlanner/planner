@@ -277,7 +277,10 @@ The public Crop Library follows an open-data model:
   /api/crops/<id>/public-sync/?public_crop_id=` lists every compared field that
   differs (the same set as the pull diff: `CROP_COPY_FIELDS` minus
   `display_color`, minus `crop_family` / `nutrient_demand` on a species-linked
-  Sorte, `variety` and `name` included; multilingual `notes` as one field)
+  Sorte, `variety` and `name` included — except `variety` against a general
+  (species-level) entry, where a linked Sorte, e.g. after a
+  `publish_as_general` publish, differs by granularity, not by an edit
+  (`_sync_compared_fields`); multilingual `notes` as one field)
   with a `pushable` flag, and `POST` applies the user's per-field choice via
   `sync_crop_with_public_entry()`: `pull_fields` take the entry's values
   locally, `push_fields` write the crop's effective values

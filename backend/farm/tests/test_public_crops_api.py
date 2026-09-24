@@ -5079,3 +5079,45 @@ class PublicCropUnlinkApiTest(DRFAPITestCase):
         self.kultur.refresh_from_db()
         self.assertEqual(self.kultur.source_public_crop_id, self.entry.id)
         self.assertEqual(self.kultur.growth_duration_days, 120)
+
+    def test_sync_ignores_the_variety_of_a_sorte_linked_to_a_general_entry(self):
+        # A `publish_as_general` publish links a Sorte to the species-level
+        # entry. The variety difference is granularity, not an edit: offering
+        # it would either blank the Sorte's name (pull) or turn the general
+        # entry into a variety entry (push by its publisher).
+        own_general_entry = PublicCrop.objects.create(
+            name='Spinat',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.user,
+            growth_duration_days=40,
+        )
+        sorte = Crop.objects.create(
+            name='Spinat', variety='Matador', crop_species=self.species,
+            growth_duration_days=40, project=self.project,
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/link-public-crop/',
+            {'public_crop_id': own_general_entry.id, 'pull_fields': []},
+            format='json',
+        )
+
+        preview = self.client.get(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': own_general_entry.id},
+        )
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        self.assertNotIn('variety', {change['field'] for change in preview.data['changes']})
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': own_general_entry.id, 'push_fields': ['variety']},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        own_general_entry.refresh_from_db()
+        self.assertEqual(own_general_entry.variety, '')
+        sorte.refresh_from_db()
+        self.assertEqual(sorte.variety, 'Matador')
+        self.assertFalse(sorte.is_modified_from_source)

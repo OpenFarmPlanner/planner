@@ -798,7 +798,7 @@ def link_project_crop_to_public_reference(
     aktualisieren") flow.
     """
     if pull_fields is not None:
-        _validate_sync_fields(crop, pull_fields)
+        _validate_sync_fields(crop, public_crop, pull_fields)
     with transaction.atomic():
         source_payload = build_project_crop_payload(public_crop)
         tracked_fields = Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS
@@ -822,7 +822,7 @@ def link_project_crop_to_public_reference(
         remaining_changes = public_crop_field_changes(crop, public_crop)
         if pull_fields is not None:
             crop.source_public_version = public_crop.version
-            is_modified = bool(remaining_changes)
+            is_modified = bool(_public_crop_sync_changes(crop, public_crop))
         else:
             crop.source_public_version = None if remaining_changes else public_crop.version
         crop.origin_type = Crop.ORIGIN_IMPORTED
@@ -905,8 +905,50 @@ class PublicCropSyncResult:
     proposal: PublicCropChangeProposal | None = None
 
 
-def _validate_sync_fields(crop: Crop, fields: Sequence[str]) -> None:
-    unknown = sorted(set(fields) - set(_compared_public_update_fields(crop)))
+def _sync_comparison_crop(crop: Crop, public_crop: PublicCrop) -> Crop:
+    """``crop`` as the sync compares it: with the species the link sets.
+
+    The species decides which fields a species-linked Sorte compares, so the
+    preview, the validation and the resulting baseline must all read it from
+    the entry. Only the id is read by the comparison; assigning it on a shallow
+    copy leaves the caller's instance (and its relation cache) untouched.
+    """
+    if crop.crop_species_id == public_crop.crop_species_id:
+        return crop
+    comparison_crop = copy.copy(crop)
+    comparison_crop.crop_species_id = public_crop.crop_species_id
+    return comparison_crop
+
+
+def _sync_compared_fields(crop: Crop, public_crop: PublicCrop) -> list[str]:
+    """The fields a sync compares, pulls and pushes between ``crop`` and ``public_crop``.
+
+    ``variety`` is left out against a general (species-level) entry, the same
+    rule as :func:`_owned_entry_is_locally_modified`: a Sorte linked to it (a
+    ``publish_as_general`` publish) differs by granularity, not by an edit, and
+    neither pulling the blank nor pushing the Sorte's name would be a sync.
+    """
+    fields = _compared_public_update_fields(_sync_comparison_crop(crop, public_crop))
+    if not (public_crop.variety or '').strip():
+        fields = [field for field in fields if field != 'variety']
+    return fields
+
+
+def _public_crop_sync_changes(
+    crop: Crop, public_crop: PublicCrop,
+) -> list[tuple[str, Any, Any]]:
+    """:func:`public_crop_field_changes` restricted to :func:`_sync_compared_fields`."""
+    compared = set(_sync_compared_fields(crop, public_crop))
+    comparison_crop = _sync_comparison_crop(crop, public_crop)
+    return [
+        change
+        for change in public_crop_field_changes(comparison_crop, public_crop)
+        if change[0] in compared
+    ]
+
+
+def _validate_sync_fields(crop: Crop, public_crop: PublicCrop, fields: Sequence[str]) -> None:
+    unknown = sorted(set(fields) - set(_sync_compared_fields(crop, public_crop)))
     if unknown:
         raise PublicCropSyncFieldsError(unknown)
 
@@ -924,7 +966,7 @@ def public_crop_pushable_sync_fields(
     only its publisher or a library admin may rename it, and never through the
     moderation queue (proposals carry no identity changes).
     """
-    fields = set(_compared_public_update_fields(crop)) & set(PUBLIC_CROP_EDITABLE_FIELDS)
+    fields = set(_sync_compared_fields(crop, public_crop)) & set(PUBLIC_CROP_EDITABLE_FIELDS)
     can_rename_variety = bool(
         user is not None
         and not require_moderation
@@ -945,14 +987,9 @@ def build_public_crop_sync_preview(
     """Every compared field where ``crop`` and ``public_crop`` differ.
 
     Also answers for an entry the crop is not linked to yet (the link
-    confirmation): the comparison then assumes the species the link would set,
-    since that decides which fields a species-linked Sorte compares.
+    confirmation): the comparison then assumes the species the link would set
+    (see :func:`_sync_comparison_crop`).
     """
-    if crop.crop_species_id != public_crop.crop_species_id:
-        # Only the id is read by the comparison; assigning it on a shallow copy
-        # leaves the caller's instance (and its relation cache) untouched.
-        crop = copy.copy(crop)
-        crop.crop_species_id = public_crop.crop_species_id
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
@@ -963,7 +1000,7 @@ def build_public_crop_sync_preview(
             public_value=_json_safe(public_value),
             pushable=field in pushable,
         )
-        for field, local_value, public_value in public_crop_field_changes(crop, public_crop)
+        for field, local_value, public_value in _public_crop_sync_changes(crop, public_crop)
     ]
 
 
@@ -1031,7 +1068,7 @@ def sync_crop_with_public_entry(
     Nothing to push creates no public version. Afterwards the crop's baseline
     is the entry's resulting version.
     """
-    _validate_sync_fields(crop, [*pull_fields, *push_fields])
+    _validate_sync_fields(crop, public_crop, [*pull_fields, *push_fields])
     overlap = sorted(set(pull_fields) & set(push_fields))
     if overlap:
         raise PublicCropSyncFieldsError(overlap)
@@ -1067,7 +1104,7 @@ def sync_crop_with_public_entry(
                     data=data,
                     allow_variety_rename='variety' in pushable,
                 )
-        is_modified = bool(public_crop_field_changes(crop, locked))
+        is_modified = bool(_public_crop_sync_changes(crop, locked))
         Crop.objects.filter(pk=crop.pk).update(
             source_public_crop=locked,
             source_public_version=locked.version,
