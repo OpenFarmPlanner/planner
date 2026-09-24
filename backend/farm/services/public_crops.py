@@ -761,6 +761,7 @@ def build_project_crop_payload(public_crop: PublicCrop) -> dict[str, Any]:
     payload = _copy_fields(public_crop)
     payload['crop_species'] = public_crop.crop_species
     payload['source_public_crop'] = public_crop
+    payload['derived_from_public_crop'] = public_crop
     payload['source_public_version'] = public_crop.version
     payload['origin_type'] = Crop.ORIGIN_IMPORTED
     payload['is_modified_from_source'] = False
@@ -831,6 +832,48 @@ def link_project_crop_to_public_reference(
         Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=is_modified)
         crop.is_modified_from_source = is_modified
         sync_crop_species_across_crop_group(crop)
+    return crop
+
+
+class PublicCropUnlinkError(Exception):
+    """Raised when a crop's library link may not be removed."""
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.code = code
+
+
+def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
+    """Remove a crop's sync link to somebody else's public entry.
+
+    Clears only what the update model reads (`source_public_crop`,
+    `source_public_version`, `rejected_public_version`,
+    `is_modified_from_source`); no crop value, no provenance
+    (`derived_from_public_crop`), no `origin_type` and nothing in the public
+    library changes. Linked Sorten keep their own links. A link to the user's
+    own entry is refused: withdrawing the entry is the path there, and an
+    unlinked copy would collide with that entry on its next publish.
+
+    Saved through `Crop.save()` so the change is a normal crop revision in the
+    project history and can be restored from there.
+    """
+    public_crop = crop.source_public_crop
+    if public_crop is None:
+        raise PublicCropUnlinkError(
+            'The crop is not linked to a public entry.', code='crop_not_linked',
+        )
+    if user is not None and public_crop.created_by_id == user.id:
+        raise PublicCropUnlinkError(
+            'The crop is linked to your own public entry.', code='crop_link_owned',
+        )
+    # Keep (or, for a link written by a queryset update, record) provenance.
+    crop.derived_from_public_crop_id = crop.derived_from_public_crop_id or public_crop.id
+    crop.source_public_crop = None
+    crop.source_public_version = None
+    crop.rejected_public_version = None
+    crop.is_modified_from_source = False
+    crop.save()
     return crop
 
 
@@ -2409,8 +2452,10 @@ def _apply_public_crop_update(*, crop: Crop, public_crop: PublicCrop) -> Crop:
     payload.pop('display_color', None)
     # A crop the user *published* is linked to its own entry the same way an
     # import is, but pulling a later library change into it must not relabel it
-    # as imported — `origin_type` stays whatever it was.
+    # as imported — `origin_type` stays whatever it was. Provenance is where the
+    # crop came from, not the entry it syncs with, so an update leaves it alone.
     payload.pop('origin_type', None)
+    payload.pop('derived_from_public_crop', None)
     for field, value in payload.items():
         setattr(crop, field, value)
     crop.save()

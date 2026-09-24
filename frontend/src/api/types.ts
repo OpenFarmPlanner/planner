@@ -103,6 +103,8 @@ export interface Crop {
   /** Explicitly seed empty general-crop fields when creating this variety. */
   copy_values_to_crop?: boolean;
   source_public_crop?: number | null;
+  /** Provenance: the entry this crop was imported from or linked to; survives an unlink. */
+  derived_from_public_crop?: number | null;
   source_public_version?: number | null;
   origin_type?: 'manual' | 'imported';
   owned_public_crop_id?: number | null;

@@ -166,6 +166,8 @@ export const cropAPI = {
       public_crop_id: publicCropId,
       ...(pullFields ? { pull_fields: pullFields } : {}),
     }),
+  // Removes the sync link to somebody else's entry; values and provenance stay.
+  unlinkPublicCrop: (id: number) => http.post<Crop>(`/crops/${id}/unlink-public-crop/`),
   // Field-by-field differences to an entry (linked, or a link candidate).
   publicSyncPreview: (id: number, publicCropId: number) =>
     http.get<CropPublicSyncPreview>(`/crops/${id}/public-sync/`, { params: { public_crop_id: publicCropId } }),

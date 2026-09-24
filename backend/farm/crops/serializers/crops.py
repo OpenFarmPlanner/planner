@@ -316,7 +316,9 @@ class CropSerializer(serializers.ModelSerializer):
         # (see CropViewSet.perform_create) and must never be settable by the
         # client, otherwise a member could reassign a record to another project
         # via update and inject data across tenant boundaries.
-        read_only_fields = ['project']
+        # `derived_from_public_crop` is provenance: set server-side from the
+        # library link a crop is created or linked with, never by a client.
+        read_only_fields = ['project', 'derived_from_public_crop']
 
     def _request_language(self) -> str:
         request = self.context.get('request')
@@ -346,13 +348,15 @@ class CropSerializer(serializers.ModelSerializer):
         return self._get_localized_crop_name(obj)[1]
 
     def get_description_language_code(self, obj: Crop) -> str | None:
+        # Provenance, not the sync link: an unlinked copy's untouched notes are
+        # still the library's text in the library's language.
         if (
-            not obj.source_public_crop_id
+            not obj.derived_from_public_crop_id
             or obj.is_modified_from_source
             or not (obj.notes or '').strip()
         ):
             return None
-        return obj.source_public_crop.original_language_code or None
+        return obj.derived_from_public_crop.original_language_code or None
 
     def get_crop_species_translations(self, obj: Crop) -> dict[str, str]:
         species = self._get_crop_species(obj)

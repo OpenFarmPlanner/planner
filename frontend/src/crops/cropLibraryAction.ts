@@ -200,3 +200,16 @@ export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropL
       return 'upToDate';
   }
 }
+
+/**
+ * Whether "Verknüpfung aufheben" is offered: the crop syncs with a public
+ * entry the user did not publish. A link to the user's own entry is not
+ * removable — withdrawing the entry is the path there, and an unlinked copy
+ * would collide with that entry on its next publish.
+ */
+export function canUnlinkPublicCrop(crop: Crop | null | undefined): boolean {
+  if (!crop?.source_public_crop) return false;
+  const ownsLinkedEntry = crop.owned_public_crop_id === crop.source_public_crop
+    && crop.owned_public_crop_role === 'contributor';
+  return !ownsLinkedEntry;
+}

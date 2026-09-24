@@ -287,7 +287,29 @@ class Crop(TimestampedModel):
         related_name='project_crops',
         help_text='Optional official crop species link used when publishing to the public library.',
     )
-    source_public_crop = models.ForeignKey('PublicCrop', null=True, blank=True, on_delete=models.SET_NULL, related_name='imported_crops')
+    source_public_crop = models.ForeignKey(
+        'PublicCrop',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='imported_crops',
+        help_text=(
+            'Library sync link: the public entry this crop pulls updates from and pushes '
+            'changes to. Cleared by an unlink; provenance lives in derived_from_public_crop.'
+        ),
+    )
+    derived_from_public_crop = models.ForeignKey(
+        'PublicCrop',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='derived_crops',
+        help_text=(
+            'Provenance: the public entry this crop was imported from or linked to. '
+            'Kept when the library link is removed, since values taken from the '
+            'library remain CC BY-SA data.'
+        ),
+    )
     source_public_version = models.IntegerField(null=True, blank=True)
     rejected_public_version = models.IntegerField(
         null=True,
@@ -634,6 +656,9 @@ class Crop(TimestampedModel):
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
 
         self._flag_source_divergence(previous)
+        # Provenance follows the first library link and outlives an unlink.
+        if self.source_public_crop_id and not self.derived_from_public_crop_id:
+            self.derived_from_public_crop_id = self.source_public_crop_id
 
         # Generate display color on creation if not set.
         if not self.pk and not self.display_color:

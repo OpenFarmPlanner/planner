@@ -1154,7 +1154,8 @@
         "back": "Back",
         "loadError": "The entry could not be loaded. Please try again.",
         "submit": "Link",
-        "submitWithVarieties": "Link and publish varieties"
+        "submitWithVarieties": "Link and publish varieties",
+        "relinkable": "You can remove the link again later. Values already taken over are kept."
       },
       "generalCropNoticeStale": "The general data for {{name}} hasn't been updated in a long time.",
       "generalCropNoticeIncomplete": "The general data for {{name}} looks incomplete.",
@@ -1288,6 +1289,19 @@
       "staleError": "The public entry has changed in the meantime. Please review the differences again.",
       "proposalLimitError": "Too many of your contributions are already awaiting approval. Please try again later.",
       "error": "Syncing with the crop library failed. Please try again."
+    },
+    "unlink": {
+      "menuItem": "Remove link",
+      "title": "Remove link?",
+      "description": "Your crop \"{{local}}\" will be separated from the public entry \"{{public}}\". You will no longer receive updates from the crop library and can no longer push changes to it.",
+      "publicEntryFallback": "public entry",
+      "keepsValues": "Your current values stay unchanged.",
+      "keepsLibraryValues": "Values you already updated in the crop library stay there.",
+      "keepsVarietyLinks": "Linked varieties stay linked.",
+      "canRelink": "You can link the crop again later.",
+      "confirm": "Remove link",
+      "success": "Link removed.",
+      "error": "The link could not be removed. Please try again."
     }
   },
   "commands": {

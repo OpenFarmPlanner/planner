@@ -250,6 +250,23 @@ export function usePublicCropLibrary({
     }
   };
 
+  // "Verknüpfung aufheben": the crop stops syncing with somebody else's entry.
+  const handleUnlinkPublicCrop = async (crop: Crop): Promise<boolean> => {
+    if (!crop.id) {
+      return false;
+    }
+    try {
+      await cropAPI.unlinkPublicCrop(crop.id);
+      showSnackbar(t('library.unlink.success'), 'success');
+      await refreshPublicCropStatusContext();
+      return true;
+    } catch (error) {
+      console.error('Error unlinking crop from the library:', error);
+      showSnackbar(t('library.unlink.error'), 'error');
+      return false;
+    }
+  };
+
   // "Mit Kulturbibliothek abgleichen" for an already connected crop.
   const handleSyncPublicCrop = async (data: {
     acceptedPublicLibraryTerms: boolean;
@@ -397,5 +414,6 @@ export function usePublicCropLibrary({
     handlePublishCurrentCrop,
     handleLinkPublicCrop,
     handleSyncPublicCrop,
+    handleUnlinkPublicCrop,
   };
 }

@@ -52,7 +52,7 @@ const isConnectedToLibrary = (crop: Crop): boolean => (
  * and whitespace only, the same normalization the duplicate check uses), not
  * the species picker's fuzzy matcher. Linking is destructive in a way the
  * species picker's suggestion is not — it points the user's own Sorte at a
- * stranger's entry and flips `origin_type` to `imported`, with no undo — so a
+ * stranger's entry and flips `origin_type` to `imported` for good — so a
  * near-miss like "Matina"/"Marina" must stay two Sorten. Missing a match only
  * means the backend's own duplicate gate reports it afterwards.
  */

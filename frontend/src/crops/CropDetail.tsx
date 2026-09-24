@@ -24,7 +24,7 @@ import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
 import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
-import type { CropLibraryTrigger } from './cropLibraryAction';
+import { canUnlinkPublicCrop, type CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
 import { usePublicCropUpdate } from './usePublicCropUpdate';
 import {
@@ -97,6 +97,8 @@ interface CropDetailProps {
   /** Called after a pending public-library update was applied to the selected crop. */
   onPublicUpdateApplied?: () => void;
   onDeleteCrop?: (crop: Crop) => void;
+  /** Opens the "Verknüpfung aufheben" confirmation for the selected crop. */
+  onUnlinkPublicCrop?: (crop: Crop) => void;
   canCreatePlan?: boolean;
   createPlanDisabledTooltip?: string;
   isPublishingCrop?: boolean;
@@ -128,6 +130,7 @@ export function CropDetail({
   onPublishCrop,
   onPublicUpdateApplied,
   onDeleteCrop,
+  onUnlinkPublicCrop,
   canCreatePlan = true,
   createPlanDisabledTooltip,
   isPublishingCrop = false,
@@ -1022,6 +1025,9 @@ const detailSectionGridSx = {
                 onOpenHistory={() => onOpenHistory?.()}
                 onExport={() => onExportCrop?.()}
                 onDelete={() => onDeleteCrop?.(selectedCrop)}
+                onUnlinkPublicCrop={onUnlinkPublicCrop && canUnlinkPublicCrop(selectedCrop)
+                  ? () => onUnlinkPublicCrop(selectedCrop)
+                  : undefined}
                 t={t}
               />
             </Box>

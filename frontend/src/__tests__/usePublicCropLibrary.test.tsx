@@ -5,10 +5,11 @@ import { MemoryRouter } from 'react-router';
 import { usePublicCropLibrary } from '../pages/usePublicCropLibrary';
 import type { Crop } from '../api/types';
 
-const { publishPublicMock, linkPublicCropMock, publicSyncMock, refreshUserMock } = vi.hoisted(() => ({
+const { publishPublicMock, linkPublicCropMock, publicSyncMock, unlinkPublicCropMock, refreshUserMock } = vi.hoisted(() => ({
   publishPublicMock: vi.fn(),
   linkPublicCropMock: vi.fn(),
   publicSyncMock: vi.fn(),
+  unlinkPublicCropMock: vi.fn(),
   refreshUserMock: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ vi.mock('../api/api', async () => {
       publishPublic: publishPublicMock,
       linkPublicCrop: linkPublicCropMock,
       publicSync: publicSyncMock,
+      unlinkPublicCrop: unlinkPublicCropMock,
     },
   };
 });
@@ -193,5 +195,19 @@ describe('usePublicCropLibrary field-by-field sync', () => {
       '„Tomate“ wurde abgeglichen. Deine Änderungen an der Kulturbibliothek warten auf Freigabe.',
       'success',
     );
+  });
+});
+
+describe('usePublicCropLibrary unlink', () => {
+  it('removes the link and confirms with "Verknüpfung aufgehoben."', async () => {
+    unlinkPublicCropMock.mockReset();
+    unlinkPublicCropMock.mockResolvedValue({ data: { id: 1, source_public_crop: null } });
+    const showSnackbar = vi.fn();
+    const { result } = renderLibraryHook(showSnackbar);
+
+    await expect(result.current.handleUnlinkPublicCrop(SELECTED_CROP)).resolves.toBe(true);
+
+    expect(unlinkPublicCropMock).toHaveBeenCalledWith(1);
+    expect(showSnackbar).toHaveBeenCalledWith('Verknüpfung aufgehoben.', 'success');
   });
 });

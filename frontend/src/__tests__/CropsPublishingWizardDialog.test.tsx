@@ -568,6 +568,8 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByText('Mit bestehendem Eintrag verknüpfen');
       await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(77));
+      expect(screen.getByText('Du kannst die Verknüpfung später wieder aufheben. Bereits übernommene Werte bleiben dabei erhalten.'))
+        .toBeInTheDocument();
       await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(cropLevelCrop.id, 77));
       expect(screen.getByText(/Wähle für jeden abweichenden Wert, welcher gelten soll/)).toBeInTheDocument();
       // Both set and different -> library; only the local value set -> mine.
@@ -731,6 +733,15 @@ describe('CropsPublishingWizardDialog', () => {
       expect(screen.getByRole('button', { name: 'Abgleichen' })).toBeDisabled();
       expect(screen.queryByRole('button', { name: 'Alle aus Bibliothek' })).not.toBeInTheDocument();
     });
+  });
+
+  it('offers publishing or linking again after the library link was removed', async () => {
+    // Provenance survives the unlink, but only the sync link decides the flow.
+    renderWizard({ ...CROP, variety: '', derived_from_public_crop: 55, origin_type: 'imported' });
+
+    expect(await screen.findByLabelText(/Offizielle Kulturart/i)).toBeInTheDocument();
+    expect(screen.queryByText('Mit Kulturbibliothek abgleichen')).not.toBeInTheDocument();
+    expect(publicSyncPreviewMock).not.toHaveBeenCalled();
   });
 
   it('prefills the species field with the local crop name on open, for crop-level and variety crops', async () => {

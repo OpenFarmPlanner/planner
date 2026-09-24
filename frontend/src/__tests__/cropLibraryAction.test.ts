@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Crop } from '../api/types';
-import { resolveCropLibraryAction, resolveCropLibraryStatusVisual } from '../crops/cropLibraryAction';
+import {
+  canUnlinkPublicCrop,
+  resolveCropLibraryAction,
+  resolveCropLibraryStatusVisual,
+} from '../crops/cropLibraryAction';
 
 const openUpdate = { hasOpenUpdate: true, isRejected: false };
 const rejectedUpdate = { hasOpenUpdate: false, isRejected: true };
@@ -258,5 +262,40 @@ describe('resolveCropLibraryAction', () => {
       inSync,
     );
     expect(push).toMatchObject({ kind: 'pushUpdate', disabled: true, trigger: null });
+  });
+});
+
+describe('canUnlinkPublicCrop', () => {
+  it('offers the unlink for a crop linked to someone else\'s entry', () => {
+    expect(canUnlinkPublicCrop(crop({ source_public_crop: 9, origin_type: 'imported' }))).toBe(true);
+  });
+
+  it('treats a moderator\'s access as not owning the entry', () => {
+    expect(canUnlinkPublicCrop(crop({
+      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'moderator',
+    }))).toBe(true);
+  });
+
+  it('never offers it for a link to the user\'s own entry', () => {
+    expect(canUnlinkPublicCrop(crop({
+      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'contributor',
+    }))).toBe(false);
+  });
+
+  it('never offers it for a crop without a sync link', () => {
+    expect(canUnlinkPublicCrop(crop())).toBe(false);
+    // Provenance alone is not a link.
+    expect(canUnlinkPublicCrop(crop({ derived_from_public_crop: 9, origin_type: 'imported' }))).toBe(false);
+  });
+
+  it('an unlinked crop resolves to "In Bibliothek teilen" again', () => {
+    const unlinked = crop({
+      source_public_crop: null,
+      source_public_version: null,
+      derived_from_public_crop: 9,
+      origin_type: 'imported',
+      public_publish_blocked_reason: null,
+    });
+    expect(resolveCropLibraryAction(unlinked)).toMatchObject({ kind: 'publish', trigger: 'publish' });
   });
 });

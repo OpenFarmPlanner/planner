@@ -741,7 +741,7 @@ export function CropsPublishingWizardDialog({
 
             {syncPanel}
 
-            <Alert severity="warning">{t('library.publishWizard.linkConfirm.irreversible')}</Alert>
+            <Alert severity="info">{t('library.publishWizard.linkConfirm.relinkable')}</Alert>
 
             {varietySelectionBox}
 

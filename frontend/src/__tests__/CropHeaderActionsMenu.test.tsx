@@ -8,11 +8,14 @@ const labels: Record<string, string> = {
   'buttons.versions': 'Versionen',
   'buttons.exportCrop': 'Kultur exportieren',
   'buttons.delete': 'Löschen',
+  'library.unlink.menuItem': 'Verknüpfung aufheben',
 };
 
 const t = ((key: string) => labels[key] ?? key) as TFunction<'crops'>;
 
-const renderMenu = (props: { onExport?: () => void; onDelete?: () => void } = {}) => {
+const renderMenu = (
+  props: { onExport?: () => void; onDelete?: () => void; onUnlinkPublicCrop?: () => void } = {},
+) => {
   const anchor = document.createElement('button');
   document.body.appendChild(anchor);
 
@@ -23,6 +26,7 @@ const renderMenu = (props: { onExport?: () => void; onDelete?: () => void } = {}
       onOpenHistory={vi.fn()}
       onExport={props.onExport ?? vi.fn()}
       onDelete={props.onDelete ?? vi.fn()}
+      onUnlinkPublicCrop={props.onUnlinkPublicCrop}
       t={t}
     />,
   );
@@ -60,5 +64,26 @@ describe('CropHeaderActionsMenu', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'Löschen' }));
 
     expect(onDelete).toHaveBeenCalled();
+  });
+});
+
+describe('CropHeaderActionsMenu "Verknüpfung aufheben"', () => {
+  it('is only listed when the crop may be unlinked', () => {
+    renderMenu();
+    expect(screen.queryByRole('menuitem', { name: 'Verknüpfung aufheben' })).not.toBeInTheDocument();
+  });
+
+  it('sits before the delete entry and calls the handler', async () => {
+    const onUnlinkPublicCrop = vi.fn();
+    renderMenu({ onUnlinkPublicCrop });
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Versionen',
+      'Kultur exportieren',
+      'Verknüpfung aufheben',
+      'Löschen',
+    ]);
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Verknüpfung aufheben' }));
+    expect(onUnlinkPublicCrop).toHaveBeenCalled();
   });
 });

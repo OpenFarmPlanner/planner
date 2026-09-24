@@ -8,7 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from farm.models import Crop, EntityRevision, PlantingPlan, Project, Task
+from farm.models import Crop, EntityRevision, PlantingPlan, Project, PublicCrop, Task
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -200,10 +200,20 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         field.name for field in Crop._meta.fields
         if field.name not in {'id', 'created_at', 'updated_at'}
     }
+    # Snapshots store foreign keys under their `_id` attname. The library link
+    # is restored too (so undoing an unlink works), but only while the entry
+    # still exists; other relations keep their established behaviour.
+    link_attnames = {'source_public_crop_id', 'derived_from_public_crop_id'}
+    linked_ids = {revision.snapshot.get(key) for key in link_attnames} - {None}
+    existing_public_ids = set(
+        PublicCrop.objects.filter(pk__in=linked_ids).values_list('pk', flat=True)
+    ) if linked_ids else set()
 
     with transaction.atomic():
         for key, value in revision.snapshot.items():
             if key in restorable_fields:
+                setattr(crop, key, value)
+            elif key in link_attnames and (value is None or value in existing_public_ids):
                 setattr(crop, key, value)
         crop.deleted_at = None
         crop._history_action = EntityRevision.ACTION_RESTORED

@@ -46,6 +46,7 @@ from farm.services.public_crops import (
     PublicCropPermissionError,
     PublicCropPublishingValidationError,
     PublicCropSyncFieldsError,
+    PublicCropUnlinkError,
     PublicCropUpdateBlockedError,
     build_public_crop_payload,
     build_public_crop_sync_preview,
@@ -57,6 +58,7 @@ from farm.services.public_crops import (
     publish_crop_to_public_library,
     reject_public_crop_update,
     sync_crop_with_public_entry,
+    unlink_crop_from_public_entry,
 )
 
 from ..serializers import (
@@ -234,7 +236,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             .filter(project=self.request.active_project)
             .select_related(
                 'supplier', 'image_file', 'source_public_crop',
-                'source_public_crop__crop_species', 'crop_species',
+                'source_public_crop__crop_species', 'crop_species', 'derived_from_public_crop',
             )
             .prefetch_related('supplier_data__supplier', 'seed_packages', 'crop_species__translations', owned_public_crops_prefetch)
         )
@@ -595,6 +597,26 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             return _invalid_sync_fields_response(error.fields, code=error.code)
         serializer = self.get_serializer(linked)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='unlink-public-crop')
+    def unlink_public_crop(self, request: Request, pk: str | None = None) -> Response:
+        """Remove the library sync link to somebody else's public entry.
+
+        Same permission as editing the crop. Keeps every value, the provenance
+        (`derived_from_public_crop`) and `origin_type`; changes nothing in the
+        public library. Recorded as a normal crop revision.
+        """
+        if is_active_guest_demo_user(request.user):
+            return guest_demo_forbidden_response()
+        crop = self.get_object()
+        try:
+            unlink_crop_from_public_entry(crop=crop, user=request.user)
+        except PublicCropUnlinkError as error:
+            return api_error_response(
+                code=error.code, detail=error.message, status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        self._set_latest_revision_actor(crop)
+        return Response(self.get_serializer(self.get_queryset().get(pk=crop.pk)).data)
 
     def _resolve_public_sync_target(
         self, request: Request, crop: Crop, raw_id: object, *, require_link: bool = True,

@@ -514,8 +514,8 @@ def _build_crop_library(rows: dict[int, ProjectEngagement]) -> CropLibraryEngage
         )
 
     crop_origins = Crop.objects.aggregate(
-        imported=Count('pk', filter=Q(source_public_crop__isnull=False)),
-        self_entered=Count('pk', filter=Q(source_public_crop__isnull=True)),
+        imported=Count('pk', filter=Q(derived_from_public_crop__isnull=False)),
+        self_entered=Count('pk', filter=Q(derived_from_public_crop__isnull=True)),
     )
     # Version-level approximation of `has_pending_public_crop_update`: the
     # per-field comparison that helper runs cannot be expressed in SQL, so this
