@@ -50,7 +50,12 @@ const CROP: Crop = {
 
 const renderWizard = (
   crop: Crop = CROP,
-  options: { varieties?: Crop[]; onPublish?: (data: unknown) => void; termsAlreadyAccepted?: boolean } = {},
+  options: {
+    varieties?: Crop[];
+    onPublish?: (data: unknown) => void;
+    onLinkPublicCrop?: (data: unknown) => Promise<boolean>;
+    termsAlreadyAccepted?: boolean;
+  } = {},
 ) => render(
   <MemoryRouter>
     <CropsPublishingWizardDialog
@@ -61,6 +66,7 @@ const renderWizard = (
       publishing={false}
       onClose={vi.fn()}
       onPublish={options.onPublish ?? vi.fn()}
+      onLinkPublicCrop={options.onLinkPublicCrop ?? vi.fn().mockResolvedValue(true)}
     />
   </MemoryRouter>,
 );
@@ -496,6 +502,95 @@ describe('CropsPublishingWizardDialog', () => {
 
     const viewLink = await screen.findByRole('link', { name: 'Eintrag ansehen' });
     expect(viewLink).toHaveAttribute('href', '/app/crop-library?cropId=55');
+  });
+
+  describe('linking a general Kultur to a foreign duplicate', () => {
+    const foreignGeneralEntry: PublicCrop = {
+      id: 77,
+      status: 'published',
+      name: 'Tomate',
+      variety: '',
+      crop_species: 1,
+      version: 1,
+    };
+
+    const mockBlockingDuplicate = () => {
+      publishPreviewMock.mockResolvedValue({
+        data: {
+          crop_species: { id: 1, name: 'Tomate' },
+          original_language_code: 'de',
+          available_language_codes: ['de'],
+          missing_required_fields: [],
+          duplicates: [{ id: 77, name: 'Tomate', variety: '', version: 1, published_at: null, is_mine: false }],
+          can_publish: false,
+          general_crop_notice: null,
+        },
+      });
+      publicCropGetMock.mockResolvedValue({ data: foreignGeneralEntry });
+    };
+
+    it('walks from the blocking warning through the confirmation view to a link submission', async () => {
+      mockBlockingDuplicate();
+      const onLinkPublicCrop = vi.fn().mockResolvedValue(true);
+      const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
+
+      renderWizard(cropLevelCrop, { onLinkPublicCrop });
+      await screen.findByLabelText(/Offizielle Kulturart/i);
+
+      // Disabled while the warning is unresolved, with a tooltip explaining why.
+      const blockedButton = await screen.findByRole('button', { name: 'Jetzt veröffentlichen' });
+      fireEvent.click(blockedButton);
+      const resolveButton = await screen.findByRole('button', { name: 'Warnungen zuerst lösen' });
+      expect(resolveButton).toBeDisabled();
+
+      const linkAction = await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' });
+      fireEvent.click(linkAction);
+
+      await screen.findByText('Mit bestehendem Eintrag verknüpfen');
+      await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(77));
+
+      const submitButton = await screen.findByRole('button', { name: 'Verknüpfen' });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => expect(onLinkPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
+        publicCropId: 77,
+        cropSpeciesId: 1,
+        originalLanguageCode: 'de',
+        varieties: [],
+      })));
+    });
+
+    it('switches the submit label once a Sorte is selected for co-publication', async () => {
+      mockBlockingDuplicate();
+      const sorte: Crop = { ...VARIETY_ROMA, name: 'Tomate' };
+      const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
+
+      renderWizard(cropLevelCrop, { varieties: [sorte] });
+      await screen.findByLabelText(/Offizielle Kulturart/i);
+
+      fireEvent.click(await findEnabledPublishButton());
+      fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
+
+      await screen.findByText('Mit bestehendem Eintrag verknüpfen');
+      await screen.findByRole('button', { name: 'Verknüpfen und Sorten veröffentlichen' });
+    });
+
+    it('returns to the refreshed warning view via "Zurück"', async () => {
+      mockBlockingDuplicate();
+      const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
+
+      renderWizard(cropLevelCrop);
+      await screen.findByLabelText(/Offizielle Kulturart/i);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
+      await screen.findByText('Mit bestehendem Eintrag verknüpfen');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+
+      await screen.findByText('Diese Kultur scheint bereits öffentlich vorhanden zu sein. Bitte prüfe zuerst den bestehenden Eintrag:');
+      expect(screen.getByRole('button', { name: 'Warnungen zuerst lösen' })).toBeDisabled();
+    });
   });
 
   it('hides the "Existing variety" field and publishes as general for a crop-level crop (no variety)', async () => {
