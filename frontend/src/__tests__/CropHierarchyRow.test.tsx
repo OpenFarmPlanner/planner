@@ -31,6 +31,20 @@ describe('CropHierarchyRow', () => {
     expect(screen.queryByText(/varieties/i)).not.toBeInTheDocument();
   });
 
+  it('places the status column after the name and before the "(N)" count', () => {
+    render(
+      <List>
+        <CropHierarchyRow {...baseProps} varietyCount={3} statusAdornment={<span>status</span>} />
+      </List>,
+    );
+
+    const name = screen.getByText('Tomate');
+    const status = screen.getByText('status');
+    const count = screen.getByText('(3)');
+    expect(name.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('omits the count badge when there are no varieties', () => {
     render(
       <List>

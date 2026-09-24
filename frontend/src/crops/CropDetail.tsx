@@ -24,7 +24,6 @@ import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
 import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
-import { CROP_LIBRARY_STATUS_ICON_SLOT } from './cropHierarchyRowSx';
 import type { CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
 import { usePublicCropUpdate } from './usePublicCropUpdate';
@@ -850,7 +849,7 @@ const detailSectionGridSx = {
                     varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
                     showZeroVarietyCount={node.kind === 'species'}
                     highlightQuery={normalizedSearchQuery}
-                    startAdornment={onPublishCrop ? (
+                    statusAdornment={onPublishCrop ? (
                       crop ? (
                         <CropLibraryStatusIcon
                           crop={crop}
@@ -858,8 +857,8 @@ const detailSectionGridSx = {
                         />
                       ) : (
                         // A Kultur header without its own entry has nothing to
-                        // publish; the spacer keeps its name aligned.
-                        <Box component="span" sx={{ width: CROP_LIBRARY_STATUS_ICON_SLOT, flexShrink: 0 }} />
+                        // publish; the empty slot keeps its count in the column.
+                        <Box component="span" />
                       )
                     ) : undefined}
                     onKeyboardActivate={() => {
