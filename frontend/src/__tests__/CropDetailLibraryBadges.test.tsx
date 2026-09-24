@@ -184,6 +184,23 @@ describe('CropDetail list library status icons', () => {
     expect(onPublishCrop).toHaveBeenCalledTimes(1);
   });
 
+  it('does not reopen the publishing wizard while the selected crop is being published', () => {
+    const onPublishCrop = vi.fn();
+    render(
+      <CropDetail
+        crops={[localCrop, tomatoSibling]}
+        selectedCropId={localCrop.id!}
+        onCropSelect={vi.fn()}
+        onPublishCrop={onPublishCrop}
+        isPublishingCrop
+      />,
+      { wrapper: MemoryRouter },
+    );
+
+    fireEvent.click(rowIcon('Matina'));
+    expect(onPublishCrop).not.toHaveBeenCalled();
+  });
+
   it('selects another row first, then opens that crop\'s pull diff', async () => {
     const onPublishCrop = vi.fn();
     render(

@@ -449,12 +449,16 @@ const detailSectionGridSx = {
     trigger: CropLibraryTrigger;
   } | null>(null);
   const runLibraryTrigger = useCallback((trigger: CropLibraryTrigger): void => {
+    // Same guards as the badge-row button, which is disabled while a publish
+    // of the selected crop is in flight or while its diff is loading.
     if (trigger === 'publish') {
-      onPublishCrop?.();
+      if (!isPublishingCrop) {
+        onPublishCrop?.();
+      }
     } else if (!publicUpdate.isLoading) {
       publicUpdate.openDiff();
     }
-  }, [onPublishCrop, publicUpdate]);
+  }, [isPublishingCrop, onPublishCrop, publicUpdate]);
   const handleListLibraryAction = (node: ProjectCropHierarchyItem, trigger: CropLibraryTrigger): void => {
     const cropId = node.crop?.id;
     if (cropId === undefined) {
