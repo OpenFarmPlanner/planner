@@ -185,6 +185,43 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/crops/', 12, expected_rows=ROW_COUNT * 2,
         )
 
+    def test_crops_list_carries_library_status_fields(self):
+        """The crop list's per-row library status icon resolves its state from
+        the list payload alone, so every row must carry the same library fields
+        as the detail panel -- and a declined update must not cost a query of
+        its own."""
+        imported = Crop.objects.filter(project=self.project, source_public_crop__isnull=False)
+        declined = imported.first()
+        PublicCrop.objects.filter(pk=declined.source_public_crop_id).update(version=2)
+        Crop.objects.filter(pk=declined.pk).update(source_public_version=1, rejected_public_version=2)
+
+        with self.assertNumQueries(12):
+            response = self.client.get('/openfarmplanner/api/crops/')
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results']
+        self.assertEqual(len(rows), ROW_COUNT * 2)
+
+        library_fields = {
+            'source_public_crop',
+            'source_public_version',
+            'rejected_public_version',
+            'owned_public_crop_id',
+            'public_update_available',
+            'public_update_rejected',
+            'public_publish_blocked_reason',
+            'public_crop_species_pending',
+        }
+        for row in rows:
+            self.assertLessEqual(library_fields, row.keys())
+
+        rows_by_id = {row['id']: row for row in rows}
+        self.assertEqual(rows_by_id[declined.pk]['rejected_public_version'], 2)
+        self.assertEqual(
+            sum(1 for row in rows if row['source_public_crop'] is not None), ROW_COUNT,
+        )
+        # The fixture's first species is still a proposal.
+        self.assertTrue(any(row['public_crop_species_pending'] for row in rows))
+
     def test_crop_supplier_data_list_query_count(self):
         """Rows embed a full nested `SupplierSerializer`."""
         self.assert_list_query_count('/openfarmplanner/api/crop-supplier-data/', 5)

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { ListItemButton, ListItemText, Typography } from '@mui/material';
+import { Box, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { alpha, type Theme } from '@mui/material/styles';
 import { CropHierarchyExpandToggle } from './CropHierarchyExpandToggle';
 import { HighlightedText } from '../components/HighlightedText';
@@ -44,6 +44,11 @@ interface CropHierarchyRowProps {
   onKeyboardActivate?: () => boolean;
   endAdornment?: ReactNode;
   /**
+   * Rendered between the chevron and the name — the private crop list puts
+   * its library status icon here. The public library list leaves it unset.
+   */
+  startAdornment?: ReactNode;
+  /**
    * When true, `endAdornment` (the pending-suggestion hourglass) takes the
    * slot the "(N)" count normally occupies instead of following it, so the
    * icon lines up with rows that have no count at all. The count still shows
@@ -79,6 +84,7 @@ export function CropHierarchyRow({
   itemProps = {},
   onKeyboardActivate,
   endAdornment,
+  startAdornment,
   isPendingSuggestion = false,
 }: CropHierarchyRowProps) {
   const { onKeyDown: itemOnKeyDown, ...listItemProps } = itemProps;
@@ -157,6 +163,11 @@ export function CropHierarchyRow({
         collapseLabel={collapseLabel}
         sx={compactCropChevronButtonSx}
       />
+      {startAdornment ? (
+        <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0, mr: 0.5 }}>
+          {startAdornment}
+        </Box>
+      ) : null}
       <ListItemText
         primary={highlightQuery ? <HighlightedText text={primary} query={highlightQuery} /> : primary}
         secondary={secondary}

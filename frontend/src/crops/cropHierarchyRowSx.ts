@@ -51,3 +51,10 @@ export const mobileCropChevronButtonSx = {
   minWidth: MOBILE_TOUCH_TARGET_SIZE,
   mr: 0.25,
 } as const;
+
+/**
+ * Width of the library status icon slot in the private crop list: the same
+ * 24px box as the compact chevron. Rows without an icon use it as a spacer so
+ * the names stay aligned.
+ */
+export const CROP_LIBRARY_STATUS_ICON_SLOT = 24;

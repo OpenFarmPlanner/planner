@@ -1,9 +1,20 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropDetail } from '../crops/CropDetail';
 import type { Crop } from '../api/types';
 import i18n from '../i18n/config';
+
+const apiMocks = vi.hoisted(() => ({ publicUpdate: vi.fn() }));
+
+vi.mock('../api/api', async () => {
+  const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
+  return {
+    ...actual,
+    cropAPI: { ...actual.cropAPI, publicUpdate: apiMocks.publicUpdate },
+  };
+});
 
 const localCrop: Crop = {
   id: 1,
@@ -111,5 +122,85 @@ describe('CropDetail library badge row', () => {
     fireEvent.mouseOver(screen.getByText('Importiert'));
     expect(await screen.findByRole('tooltip', {}, { timeout: 4000 }))
       .toHaveTextContent('Diese Kultur wurde aus der öffentlichen Kulturbibliothek importiert.');
+  });
+});
+
+describe('CropDetail list library status icons', () => {
+  const tomatoSibling: Crop = {
+    ...localCrop,
+    id: 4,
+    variety: 'Roma',
+    source_public_crop: 12,
+    public_update_available: true,
+    public_publish_blocked_reason: 'update_pending',
+  };
+
+  function SelectionHarness({ crops, initialId, onPublishCrop }: {
+    crops: Crop[];
+    initialId: number;
+    onPublishCrop: () => void;
+  }) {
+    const [selectedCropId, setSelectedCropId] = useState(initialId);
+    return (
+      <CropDetail
+        crops={crops}
+        selectedCropId={selectedCropId}
+        onCropSelect={(crop) => setSelectedCropId(crop?.id ?? initialId)}
+        onPublishCrop={onPublishCrop}
+      />
+    );
+  }
+
+  const rowIcon = (varietyName: string) => within(
+    screen.getByRole('option', { name: new RegExp(varietyName) }),
+  ).getByTestId('crop-list-library-status');
+
+  beforeEach(async () => {
+    apiMocks.publicUpdate.mockReset();
+    apiMocks.publicUpdate.mockResolvedValue({
+      data: { available: true, public_crop_id: 12, public_version: 2, changes: [] },
+    });
+    await i18n.changeLanguage('de');
+  });
+
+  it('shows one status icon per crop row, reflecting each crop\'s own state', () => {
+    render(
+      <SelectionHarness crops={[localCrop, tomatoSibling]} initialId={localCrop.id!} onPublishCrop={vi.fn()} />,
+      { wrapper: MemoryRouter },
+    );
+
+    expect(rowIcon('Matina')).toHaveAttribute('data-status', 'notLinked');
+    expect(rowIcon('Roma')).toHaveAttribute('data-status', 'pull');
+  });
+
+  it('opens the publishing wizard straight away for the selected row', () => {
+    const onPublishCrop = vi.fn();
+    render(
+      <SelectionHarness crops={[localCrop, tomatoSibling]} initialId={localCrop.id!} onPublishCrop={onPublishCrop} />,
+      { wrapper: MemoryRouter },
+    );
+
+    fireEvent.click(rowIcon('Matina'));
+    expect(onPublishCrop).toHaveBeenCalledTimes(1);
+  });
+
+  it('selects another row first, then opens that crop\'s pull diff', async () => {
+    const onPublishCrop = vi.fn();
+    render(
+      <SelectionHarness crops={[localCrop, tomatoSibling]} initialId={localCrop.id!} onPublishCrop={onPublishCrop} />,
+      { wrapper: MemoryRouter },
+    );
+
+    fireEvent.click(rowIcon('Roma'));
+
+    await waitFor(() => expect(apiMocks.publicUpdate).toHaveBeenCalledWith(tomatoSibling.id));
+    expect(onPublishCrop).not.toHaveBeenCalled();
+    // The open diff dialog hides the page behind it from the accessibility tree.
+    expect(screen.getByRole('option', { name: /Roma/, hidden: true })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('renders no list icons when no publish handler is wired', () => {
+    renderDetail(localCrop, { withPublishHandler: false });
+    expect(screen.queryByTestId('crop-list-library-status')).not.toBeInTheDocument();
   });
 });

@@ -2,10 +2,11 @@ import type { Crop } from '../api/types';
 import type { PublicCropUpdateController } from './usePublicCropUpdate';
 
 /**
- * The single public-library action shown in the crop detail badge row. One
- * button whose label, colour, enabled state and target change with context —
- * it replaced the header overflow entry, the "Update verfügbar" banner and the
- * sync marker chip.
+ * The public-library state of a crop, shown as an action in the crop detail
+ * badge row and as a compact status icon per crop list row. In the badge row
+ * it is one button whose label, colour, enabled state and target change with
+ * context — it replaced the header overflow entry, the "Update verfügbar"
+ * banner and the sync marker chip.
  */
 export type CropLibraryActionKind =
   | 'publish'
@@ -41,11 +42,30 @@ export interface CropLibraryAction {
    * update through its own flow); `diff` opens the pull diff/apply dialog;
    * `null` when the button is inert.
    */
-  trigger: 'publish' | 'diff' | null;
+  trigger: CropLibraryTrigger | null;
+}
+
+/** The dialog a library action opens: the publishing wizard or the pull diff. */
+export type CropLibraryTrigger = 'publish' | 'diff';
+
+export type CropLibrarySyncFlags = Pick<PublicCropUpdateController, 'hasOpenUpdate' | 'isRejected'>;
+
+/**
+ * The two pull-side flags straight from the serialized crop. The detail
+ * page's `usePublicCropUpdate` controller exposes the same values; list rows
+ * that hold no controller read them here.
+ */
+export function readCropLibrarySyncFlags(crop: Crop | null | undefined): CropLibrarySyncFlags {
+  return {
+    hasOpenUpdate: Boolean(crop?.public_update_available),
+    isRejected: Boolean(crop?.public_update_rejected),
+  };
 }
 
 /**
- * Resolves the button state. Priority order (first match wins):
+ * Resolves the library state of a crop. Shared by the detail badge row's
+ * `CropLibraryActionButton` and the crop list's `CropLibraryStatusIcon`, so
+ * both always show the same state. Priority order (first match wins):
  *
  * 1. Not connected to any public entry -> publish.
  * 2. The library is ahead and undecided (`public_update_available`) -> pull.
@@ -69,7 +89,7 @@ export interface CropLibraryAction {
  */
 export function resolveCropLibraryAction(
   crop: Crop | null | undefined,
-  controller: Pick<PublicCropUpdateController, 'hasOpenUpdate' | 'isRejected'>,
+  controller: CropLibrarySyncFlags = readCropLibrarySyncFlags(crop),
 ): CropLibraryAction {
   const linked = Boolean(crop?.owned_public_crop_id || crop?.source_public_crop);
   const speciesPending = Boolean(crop?.public_crop_species_pending);
@@ -132,4 +152,32 @@ export function resolveCropLibraryAction(
     tooltipKey: 'publicUpdate.markerUpToDateTooltip',
     trigger: null,
   };
+}
+
+/** How the crop list's compact status icon presents a resolved action. */
+export type CropLibraryStatusVisual =
+  | 'notLinked'
+  | 'upToDate'
+  | 'push'
+  | 'pull'
+  | 'rejected'
+  | 'pending';
+
+/** A species under moderation freezes every action it touches into one "pending" look. */
+export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropLibraryStatusVisual {
+  if (action.disabled) {
+    return 'pending';
+  }
+  switch (action.kind) {
+    case 'publish':
+      return 'notLinked';
+    case 'pullUpdate':
+      return 'pull';
+    case 'pushUpdate':
+      return 'push';
+    case 'updateRejected':
+      return 'rejected';
+    case 'upToDate':
+      return 'upToDate';
+  }
 }
