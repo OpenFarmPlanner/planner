@@ -158,7 +158,7 @@ function formatCultivationType(value: unknown, t: TFunction<'crops'>): string {
   return typeof value === 'string' ? value : t('history.emptyValue');
 }
 
-function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'>): string {
+export function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'>): string {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return t('history.emptyValue');
   }

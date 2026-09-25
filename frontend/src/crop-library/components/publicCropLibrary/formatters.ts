@@ -10,6 +10,7 @@ import {
   getCultivationTypeLabel,
   getPublicCropTitle,
 } from '../../publicCropDisplay';
+import { formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
 import { readWithLegacyKey } from '../../../compat/legacyCropNames';
 
 export type PublicCropTab = 'details' | 'versions' | 'discussion';
@@ -312,6 +313,7 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
       return t(`library.publishWizard.comparison.values.${String(item)}`, String(item));
     }).join(', ');
   }
+  if (field === 'seed_rate_by_cultivation') return formatSeedRateByCultivation(normalized, t);
   if (typeof normalized === 'object') return JSON.stringify(normalized);
   if (['nutrient_demand', 'harvest_method', 'seed_rate_unit', 'seeding_requirement_type'].includes(field)) {
     return t(`library.publishWizard.comparison.values.${String(normalized)}`, String(normalized));

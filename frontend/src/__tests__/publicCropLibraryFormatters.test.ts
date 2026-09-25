@@ -531,6 +531,16 @@ describe('formatPublicCropValue', () => {
     expect(formatPublicCropValue('harvest_method', 'per_sqm', t)).toBe('Pro Quadratmeter');
   });
 
+  it('renders the per-cultivation seed rate as readable text, never as JSON', () => {
+    const rendered = formatPublicCropValue('seed_rate_by_cultivation', {
+      direct_sowing: { unit: 'seeds_per_plant', value: 2 },
+      pre_cultivation: { unit: 'seeds_per_plant', value: 1.2 },
+    }, t);
+    expect(rendered).not.toContain('{');
+    expect(rendered).toContain('Direktsaat');
+    expect(rendered).toContain('Pflanzung');
+  });
+
   it('leaves a plain text field unlocalized', () => {
     // 'high' is a real enum value elsewhere; on a text field it must be shown
     // verbatim rather than translated as if it were one.
