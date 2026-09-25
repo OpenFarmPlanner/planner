@@ -3,6 +3,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined';
 import SyncDisabledOutlinedIcon from '@mui/icons-material/SyncDisabledOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import type { Crop } from '../api/types';
@@ -10,9 +11,9 @@ import type { PublicCropUpdateController } from './usePublicCropUpdate';
 import { resolveCropLibraryAction, type CropLibraryActionKind } from './cropLibraryAction';
 
 function chipIcon(kind: CropLibraryActionKind) {
-  return kind === 'updateRejected'
-    ? <SyncDisabledOutlinedIcon fontSize="small" />
-    : <SyncOutlinedIcon fontSize="small" />;
+  if (kind === 'updateRejected') return <SyncDisabledOutlinedIcon fontSize="small" />;
+  if (kind === 'proposalPending') return <ScheduleOutlinedIcon fontSize="small" />;
+  return <SyncOutlinedIcon fontSize="small" />;
 }
 
 interface CropLibraryActionButtonProps {

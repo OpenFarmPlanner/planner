@@ -97,8 +97,9 @@ at `STATUS_PENDING`. This is deliberately independent of the write-rate
 throttles above: those bound requests per hour, so a slow drip that never
 trips the hourly rate could still, given enough hours, pile up an unbounded
 backlog for moderators to work through. The cap is checked per-request in
-both `PublicCropViewSet._queue_edit_proposal` and `CropViewSet.publish_public`
-rather than in `requires_moderation_queue()` itself, since only a request
+`PublicCropViewSet._queue_edit_proposal`, `CropViewSet.publish_public` and the
+push part of `CropViewSet.public_sync` rather than in
+`requires_moderation_queue()` itself, since only a request
 already routed into the queue needs it.
 
 ## Moderated crop-library contributions
@@ -128,6 +129,13 @@ branch used to return `'updated'` without ever consulting `require_moderation`
 row on the next publish, token included. The gate now runs before any
 mutation in that branch and the publish is queued as a `KIND_EDIT` proposal
 carrying the crop's proposable fields.
+
+The field-by-field sync of a linked crop (`public-sync`, see
+crop-library-architecture.md §0 and §7) follows the same rule: for a moderated
+caller its "Meinen Wert" fields become one `KIND_EDIT` proposal instead of a new
+version (the "Aus Bibliothek" fields still apply locally right away), and the
+crop's `public_change_proposal_pending` flag replaces the push action with a
+"Vorschlag in Prüfung" chip until a moderator decides.
 
 For the same reason, a queued **variety** publish no longer runs
 `ensure_general_public_crop`. That helper creates the species-level entry

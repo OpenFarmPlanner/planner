@@ -41,15 +41,24 @@ from farm.services.crop_import.field_specs import seed_rate_unit_constraints_pay
 from farm.services.crop_import.spreadsheet import apply_crop_import, preview_crop_import
 from farm.services.public_crops import (
     DuplicatePublicCropError,
+    PublicCropEditConflictError,
+    PublicCropIdentityConflictError,
+    PublicCropPermissionError,
     PublicCropPublishingValidationError,
+    PublicCropSyncFieldsError,
+    PublicCropUnlinkError,
     PublicCropUpdateBlockedError,
     build_public_crop_payload,
+    build_public_crop_sync_preview,
     build_public_crop_update_status,
     build_publishing_check_result,
+    find_owned_public_crop_for_update,
     link_project_crop_to_public_reference,
     notify_moderators_of_change_proposal,
     publish_crop_to_public_library,
     reject_public_crop_update,
+    sync_crop_with_public_entry,
+    unlink_crop_from_public_entry,
 )
 
 from ..serializers import (
@@ -60,6 +69,24 @@ from ..serializers.public import (
     PUBLIC_CROP_PROPOSABLE_FIELDS,
     PublicCropChangeProposalSerializer,
 )
+
+
+def _request_field_list(value: object) -> list[str] | None:
+    """A JSON list of field names from the request, or None when it is malformed."""
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        return None
+    return list(dict.fromkeys(value))
+
+
+def _invalid_sync_fields_response(
+    fields: list[str] | None = None, *, code: str = 'invalid_public_crop_sync_fields',
+) -> Response:
+    return api_error_response(
+        code=code,
+        detail='The selected sync fields are not valid for this crop.',
+        status_code=status.HTTP_400_BAD_REQUEST,
+        fields=fields or [],
+    )
 
 
 def _request_boolean(value: object) -> bool:
@@ -209,7 +236,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             .filter(project=self.request.active_project)
             .select_related(
                 'supplier', 'image_file', 'source_public_crop',
-                'source_public_crop__crop_species', 'crop_species',
+                'source_public_crop__crop_species', 'crop_species', 'derived_from_public_crop',
             )
             .prefetch_related('supplier_data__supplier', 'seed_packages', 'crop_species__translations', owned_public_crops_prefetch)
         )
@@ -535,6 +562,13 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='link-public-crop')
     def link_public_crop(self, request: Request, pk: str | None = None) -> Response:
+        """Link the crop to a published entry, optionally pulling chosen fields.
+
+        `pull_fields` (optional) lists the differing fields that take the
+        entry's value; they are applied in the same transaction as the link,
+        and the entry's current version becomes the baseline. The remaining
+        differences are the user's values, pushed afterwards via `public-sync`.
+        """
         crop = self.get_object()
         public_crop_id = request.data.get('public_crop_id')
         try:
@@ -545,14 +579,226 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 detail='A valid public crop ID is required.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        pull_fields: list[str] | None = None
+        if 'pull_fields' in request.data:
+            pull_fields = _request_field_list(request.data.get('pull_fields'))
+            if pull_fields is None:
+                return _invalid_sync_fields_response()
 
         public_crop = get_object_or_404(
             PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED),
             pk=public_crop_id,
         )
-        linked = link_project_crop_to_public_reference(crop=crop, public_crop=public_crop)
+        try:
+            linked = link_project_crop_to_public_reference(
+                crop=crop, public_crop=public_crop, pull_fields=pull_fields,
+            )
+        except PublicCropSyncFieldsError as error:
+            return _invalid_sync_fields_response(error.fields, code=error.code)
         serializer = self.get_serializer(linked)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='unlink-public-crop')
+    def unlink_public_crop(self, request: Request, pk: str | None = None) -> Response:
+        """Remove the library sync link to somebody else's public entry.
+
+        Same permission as editing the crop. Keeps every value, the provenance
+        (`derived_from_public_crop`) and `origin_type`; changes nothing in the
+        public library. Recorded as a normal crop revision.
+        """
+        if is_active_guest_demo_user(request.user):
+            return guest_demo_forbidden_response()
+        crop = self.get_object()
+        try:
+            unlink_crop_from_public_entry(crop=crop, user=request.user)
+        except PublicCropUnlinkError as error:
+            return api_error_response(
+                code=error.code, detail=error.message, status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        self._set_latest_revision_actor(crop)
+        return Response(self.get_serializer(self.get_queryset().get(pk=crop.pk)).data)
+
+    def _resolve_public_sync_target(
+        self, request: Request, crop: Crop, raw_id: object, *, require_link: bool = True,
+    ) -> PublicCrop | Response:
+        """The published entry named by `raw_id` — one `crop` is linked to or owns
+        unless `require_link` is off (the link confirmation's preview)."""
+        try:
+            public_crop_id = int(raw_id)
+        except (TypeError, ValueError):
+            return api_error_response(
+                code='public_crop_required',
+                detail='A valid public crop ID is required.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        public_crop = get_object_or_404(
+            PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED)
+            .select_related('crop_species'),
+            pk=public_crop_id,
+        )
+        if not require_link:
+            return public_crop
+        owned = find_owned_public_crop_for_update(crop=crop, user=request.user)
+        if public_crop.id not in {crop.source_public_crop_id, owned.id if owned else None}:
+            return api_error_response(
+                code='public_crop_not_linked',
+                detail='The crop is not linked to this public entry.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return public_crop
+
+    @staticmethod
+    def _public_sync_push_precondition_error(
+        request: Request, target: PublicCrop, *, has_library_consent: bool, moderated: bool,
+    ) -> Response | None:
+        """Why pushing values into `target` may not happen right now, if it may not."""
+        if target.crop_species is not None and target.crop_species.is_pending:
+            return api_error_response(
+                code='crop_species_pending',
+                detail='The crop species of this entry is still awaiting moderation.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        accepted_terms = request.data.get('accepted_public_library_terms') is True
+        if not has_library_consent and not accepted_terms:
+            return api_error_response(
+                code='public_library_terms_required',
+                detail='Public library contribution terms must be accepted before publishing.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if moderated and pending_queue_limit_exceeded(request):
+            return api_error_response(
+                code='pending_proposal_limit_exceeded',
+                detail='Too many contributions are already awaiting moderation for this account.',
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        return None
+
+    @staticmethod
+    def _public_sync_error_response(error: Exception) -> Response:
+        if isinstance(error, PublicCropSyncFieldsError):
+            return _invalid_sync_fields_response(error.fields, code=error.code)
+        if isinstance(error, PublicCropEditConflictError):
+            return api_error_response(
+                code=error.code,
+                detail=str(error),
+                status_code=status.HTTP_409_CONFLICT,
+                current_version=error.current_version,
+            )
+        if isinstance(error, PublicCropPermissionError):
+            return api_error_response(
+                code=error.code, detail=error.message, status_code=status.HTTP_403_FORBIDDEN,
+            )
+        assert isinstance(error, PublicCropIdentityConflictError)
+        return api_error_response(
+            code=error.code,
+            detail=str(error),
+            status_code=status.HTTP_409_CONFLICT,
+            conflicting_public_crop_id=error.conflicting_public_crop.id,
+        )
+
+    @action(detail=True, methods=['get', 'post'], url_path='public-sync')
+    def public_sync(self, request: Request, pk: str | None = None) -> Response:
+        """Field-by-field sync of a linked crop with its public entry.
+
+        GET lists every differing field (with whether this user may push it)
+        against any published entry, so the link confirmation can show it
+        before the link exists.
+        POST applies the user's decision: `pull_fields` take the entry's
+        values locally, `push_fields` write the crop's values into the entry —
+        live through the direct-edit path, or as one edit proposal when the
+        contribution is moderated. Nothing to push creates no public version.
+        """
+        crop = self.get_object()
+        if request.method == 'GET':
+            return self._public_sync_preview(request, crop)
+        if is_active_guest_demo_user(request.user):
+            return guest_demo_forbidden_response()
+        return self._apply_public_sync(request, crop)
+
+    def _public_sync_preview(self, request: Request, crop: Crop) -> Response:
+        target = self._resolve_public_sync_target(
+            request, crop, request.query_params.get('public_crop_id'), require_link=False,
+        )
+        if isinstance(target, Response):
+            return target
+        moderated = requires_moderation_queue(request)
+        changes = build_public_crop_sync_preview(
+            crop=crop, public_crop=target, user=request.user, require_moderation=moderated,
+        )
+        return Response({
+            'public_crop_id': target.id,
+            'public_version': target.version,
+            'requires_moderation': moderated,
+            'changes': [
+                {
+                    'field': change.field,
+                    'local_value': change.local_value,
+                    'public_value': change.public_value,
+                    'pushable': change.pushable,
+                }
+                for change in changes
+            ],
+        })
+
+    def _apply_public_sync(self, request: Request, crop: Crop) -> Response:
+        target = self._resolve_public_sync_target(request, crop, request.data.get('public_crop_id'))
+        if isinstance(target, Response):
+            return target
+        pull_fields = _request_field_list(request.data.get('pull_fields', []))
+        push_fields = _request_field_list(request.data.get('push_fields', []))
+        if pull_fields is None or push_fields is None:
+            return _invalid_sync_fields_response()
+        base_version = request.data.get('base_version')
+        if base_version is not None and not isinstance(base_version, int):
+            return api_error_response(
+                code='invalid_base_version',
+                detail='base_version must be an integer.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        moderated = requires_moderation_queue(request)
+        has_library_consent = not push_fields or has_accepted_current(
+            request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
+        )
+        if push_fields:
+            precondition_error = self._public_sync_push_precondition_error(
+                request, target, has_library_consent=has_library_consent, moderated=moderated,
+            )
+            if precondition_error is not None:
+                return precondition_error
+
+        origin_api, origin_declared_agent = describe_contribution_origin(request)
+        try:
+            result = sync_crop_with_public_entry(
+                crop=crop,
+                public_crop=target,
+                user=request.user,
+                pull_fields=pull_fields,
+                push_fields=push_fields,
+                base_version=base_version,
+                require_moderation=moderated,
+                origin_api=origin_api,
+                origin_declared_agent=origin_declared_agent,
+            )
+        except (
+            PublicCropSyncFieldsError,
+            PublicCropEditConflictError,
+            PublicCropPermissionError,
+            PublicCropIdentityConflictError,
+        ) as error:
+            return self._public_sync_error_response(error)
+        if not has_library_consent:
+            record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+
+        refreshed = self.get_queryset().get(pk=crop.pk)
+        proposal = result.proposal
+        return Response({
+            'operation': result.operation,
+            'crop': self.get_serializer(refreshed).data,
+            'change_proposal': (
+                PublicCropChangeProposalSerializer(proposal).data if proposal else None
+            ),
+        })
 
     @action(detail=True, methods=['get'], url_path='public-update')
     def public_update(self, request: Request, pk: str | None = None) -> Response:

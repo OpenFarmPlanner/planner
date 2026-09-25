@@ -44,6 +44,7 @@ import { CropsImportDialog } from './CropsImportDialog';
 import { CropsImportStartDialog } from './CropsImportStartDialog';
 import { CropsExportDialog } from './CropsExportDialog';
 import { CropsPublishingWizardDialog } from './CropsPublishingWizardDialog';
+import { UnlinkPublicCropDialog } from '../crops/UnlinkPublicCropDialog';
 import { CropsHistoryDialog } from './CropsHistoryDialog';
 import { AlertSnackbar } from '../components/feedback/AlertSnackbar';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
@@ -290,6 +291,9 @@ function Crops() {
     handleOpenPublicLibrary,
     handleImportPublicCrop,
     handlePublishCurrentCrop,
+    handleLinkPublicCrop,
+    handleSyncPublicCrop,
+    handleUnlinkPublicCrop,
   } = usePublicCropLibrary({
     shouldShowProjectRequiredState,
     selectedCrop,
@@ -300,6 +304,28 @@ function Crops() {
   });
 
   const [publishWizardOpen, setPublishWizardOpen] = useState(false);
+  const [unlinkCrop, setUnlinkCrop] = useState<Crop | null>(null);
+  // "Verknüpfte Sorten bleiben verknüpft." is only worth saying when there are some.
+  const unlinkCropHasLinkedVarieties = useMemo(() => {
+    if (!unlinkCrop || (unlinkCrop.variety ?? '').trim()) {
+      return false;
+    }
+    const speciesKey = getCropSpeciesKey(unlinkCrop);
+    return crops.some((candidate) => (
+      candidate.id !== unlinkCrop.id
+      && Boolean((candidate.variety ?? '').trim())
+      && getCropSpeciesKey(candidate) === speciesKey
+      && Boolean(candidate.source_public_crop || candidate.owned_public_crop_id)
+    ));
+  }, [crops, unlinkCrop]);
+
+  const handleConfirmUnlink = useCallback(() => {
+    const crop = unlinkCrop;
+    setUnlinkCrop(null);
+    if (crop) {
+      void handleUnlinkPublicCrop(crop);
+    }
+  }, [handleUnlinkPublicCrop, unlinkCrop]);
 
   // Only a general Kultur has Sorten to offer: the group members of a Sorte
   // are its siblings, which are published from their own page.
@@ -341,24 +367,25 @@ function Crops() {
   // link-confirmation view stays open (and shows the error inline) if the
   // link is rejected, e.g. because the candidate was withdrawn in the
   // meantime, instead of closing the dialog before the result is known.
-  const handleLinkPublicCropSubmit = useCallback(async (data: {
-    acceptedPublicLibraryTerms: boolean;
-    cropSpeciesId?: number;
-    originalLanguageCode: string;
-    publicCropId: number;
-    varieties?: PublishVarietySelection[];
-  }): Promise<boolean> => {
-    const success = await handlePublishCurrentCrop(data.acceptedPublicLibraryTerms, {
-      cropSpeciesId: data.cropSpeciesId,
-      originalLanguageCode: data.originalLanguageCode,
-      publicCropId: data.publicCropId,
-      varieties: data.varieties,
-    });
+  const handleLinkPublicCropSubmit = useCallback(async (
+    data: Parameters<typeof handleLinkPublicCrop>[0],
+  ): Promise<boolean> => {
+    const success = await handleLinkPublicCrop(data);
     if (success) {
       setPublishWizardOpen(false);
     }
     return success;
-  }, [handlePublishCurrentCrop]);
+  }, [handleLinkPublicCrop]);
+
+  const handleSyncPublicCropSubmit = useCallback(async (
+    data: Parameters<typeof handleSyncPublicCrop>[0],
+  ): Promise<boolean> => {
+    const success = await handleSyncPublicCrop(data);
+    if (success) {
+      setPublishWizardOpen(false);
+    }
+    return success;
+  }, [handleSyncPublicCrop]);
 
   // Fetch crops on mount
   useEffect(() => {
@@ -768,6 +795,7 @@ function Crops() {
             void fetchCrops();
           }}
           onDeleteCrop={handleDelete}
+          onUnlinkPublicCrop={setUnlinkCrop}
           canCreatePlan={canCreatePlantingPlan}
           createPlanDisabledTooltip={createPlanDisabledTooltip}
           isPublishingCrop={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}
@@ -824,6 +852,14 @@ function Crops() {
         confirmButtonProps={{ color: 'error', variant: 'contained' }}
       />
 
+      <UnlinkPublicCropDialog
+        open={unlinkCrop !== null}
+        crop={unlinkCrop ?? undefined}
+        hasLinkedVarieties={unlinkCropHasLinkedVarieties}
+        onCancel={() => setUnlinkCrop(null)}
+        onConfirm={handleConfirmUnlink}
+      />
+
       <CropsPublishingWizardDialog
         open={publishWizardOpen}
         crop={selectedCrop}
@@ -833,6 +869,7 @@ function Crops() {
         onClose={() => setPublishWizardOpen(false)}
         onPublish={handlePublishingWizardPublish}
         onLinkPublicCrop={handleLinkPublicCropSubmit}
+        onSyncPublicCrop={handleSyncPublicCropSubmit}
       />
 
       {showForm ? (

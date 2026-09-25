@@ -22,6 +22,7 @@ from farm.models import (
     CropSupplierData,
     MediaFile,
     PublicCrop,
+    PublicCropChangeProposal,
     SeedPackage,
     Supplier,
     is_supplier_domain,
@@ -294,6 +295,7 @@ class CropSerializer(serializers.ModelSerializer):
     public_update_rejected = serializers.SerializerMethodField()
     public_publish_blocked_reason = serializers.SerializerMethodField()
     public_crop_species_pending = serializers.SerializerMethodField()
+    public_change_proposal_pending = serializers.SerializerMethodField()
 
     def get_image_file(self, obj):
         if not obj.image_file_id:
@@ -314,7 +316,9 @@ class CropSerializer(serializers.ModelSerializer):
         # (see CropViewSet.perform_create) and must never be settable by the
         # client, otherwise a member could reassign a record to another project
         # via update and inject data across tenant boundaries.
-        read_only_fields = ['project']
+        # `derived_from_public_crop` is provenance: set server-side from the
+        # library link a crop is created or linked with, never by a client.
+        read_only_fields = ['project', 'derived_from_public_crop']
 
     def _request_language(self) -> str:
         request = self.context.get('request')
@@ -344,13 +348,15 @@ class CropSerializer(serializers.ModelSerializer):
         return self._get_localized_crop_name(obj)[1]
 
     def get_description_language_code(self, obj: Crop) -> str | None:
+        # Provenance, not the sync link: an unlinked copy's untouched notes are
+        # still the library's text in the library's language.
         if (
-            not obj.source_public_crop_id
+            not obj.derived_from_public_crop_id
             or obj.is_modified_from_source
             or not (obj.notes or '').strip()
         ):
             return None
-        return obj.source_public_crop.original_language_code or None
+        return obj.derived_from_public_crop.original_language_code or None
 
     def get_crop_species_translations(self, obj: Crop) -> dict[str, str]:
         species = self._get_crop_species(obj)
@@ -554,6 +560,44 @@ class CropSerializer(serializers.ModelSerializer):
         public_crop = self._resolve_owned_public_crop(obj)
         species = public_crop.crop_species if public_crop else None
         return bool(species and species.is_pending)
+
+    def get_public_change_proposal_pending(self, obj: Crop) -> bool:
+        """Whether the user's own edit proposal for the linked entry awaits review.
+
+        A moderated contributor's push becomes a proposal instead of a new
+        version, so the crop still differs from the entry; without this flag
+        the badge row would offer the very same push again.
+        """
+        target_ids = {obj.source_public_crop_id}
+        owned = self._resolve_owned_public_crop(obj)
+        if owned is not None:
+            target_ids.add(owned.id)
+        target_ids.discard(None)
+        if not target_ids:
+            return False
+        return bool(target_ids & self._pending_edit_proposal_public_crop_ids())
+
+    def _pending_edit_proposal_public_crop_ids(self) -> set[int]:
+        """Entries with a pending edit proposal by the requesting user — one query per request."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return set()
+        cache_attribute = '_pending_edit_proposal_public_crop_ids'
+        cached = getattr(request, cache_attribute, None)
+        if cached is None:
+            cached = set(
+                PublicCropChangeProposal.objects
+                .filter(
+                    proposed_by=user,
+                    status=PublicCropChangeProposal.STATUS_PENDING,
+                    kind=PublicCropChangeProposal.KIND_EDIT,
+                )
+                .order_by()
+                .values_list('public_crop_id', flat=True)
+            )
+            setattr(request, cache_attribute, cached)
+        return cached
 
     def get_public_publish_blocked_reason(self, obj: Crop) -> str | None:
         """Why publishing/updating the public entry from this copy is blocked, if it is."""

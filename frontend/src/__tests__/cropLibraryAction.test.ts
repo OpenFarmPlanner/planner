@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Crop } from '../api/types';
-import { resolveCropLibraryAction } from '../crops/cropLibraryAction';
+import {
+  canUnlinkPublicCrop,
+  resolveCropLibraryAction,
+  resolveCropLibraryStatusVisual,
+} from '../crops/cropLibraryAction';
 
 const openUpdate = { hasOpenUpdate: true, isRejected: false };
 const rejectedUpdate = { hasOpenUpdate: false, isRejected: true };
@@ -14,6 +18,51 @@ const crop = (over: Partial<Crop> = {}): Crop => ({
 });
 
 describe('resolveCropLibraryAction', () => {
+  it('state 2c: an own proposal under review replaces the push with a status chip', () => {
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        is_modified_from_source: true,
+        public_publish_blocked_reason: null,
+        public_change_proposal_pending: true,
+      }),
+      inSync,
+    );
+    expect(action).toMatchObject({
+      kind: 'proposalPending',
+      variant: 'chip',
+      labelKey: 'libraryAction.proposalPending',
+      tooltipKey: 'libraryAction.proposalPendingTooltip',
+      disabled: false,
+      trigger: null,
+    });
+    expect(resolveCropLibraryStatusVisual(action)).toBe('pending');
+  });
+
+  it('a pending proposal does not hide a newer library version to pull', () => {
+    const action = resolveCropLibraryAction(
+      crop({ source_public_crop: 9, public_update_available: true, public_change_proposal_pending: true }),
+      openUpdate,
+    );
+    expect(action.kind).toBe('pullUpdate');
+  });
+
+  it('resolves to "Aktuell" after a sync left nothing to pull or push', () => {
+    // What `public-sync` returns once every difference was decided and pushed live.
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        source_public_version: 7,
+        is_modified_from_source: false,
+        public_update_available: false,
+        public_update_rejected: false,
+        public_publish_blocked_reason: 'no_local_changes',
+        public_change_proposal_pending: false,
+      }),
+    );
+    expect(action).toMatchObject({ kind: 'upToDate', variant: 'chip' });
+  });
+
   it('state 1: not linked to any public entry -> publish', () => {
     const action = resolveCropLibraryAction(crop({ crop_species: 3 }), inSync);
     expect(action).toMatchObject({
@@ -213,5 +262,40 @@ describe('resolveCropLibraryAction', () => {
       inSync,
     );
     expect(push).toMatchObject({ kind: 'pushUpdate', disabled: true, trigger: null });
+  });
+});
+
+describe('canUnlinkPublicCrop', () => {
+  it('offers the unlink for a crop linked to someone else\'s entry', () => {
+    expect(canUnlinkPublicCrop(crop({ source_public_crop: 9, origin_type: 'imported' }))).toBe(true);
+  });
+
+  it('treats a moderator\'s access as not owning the entry', () => {
+    expect(canUnlinkPublicCrop(crop({
+      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'moderator',
+    }))).toBe(true);
+  });
+
+  it('never offers it for a link to the user\'s own entry', () => {
+    expect(canUnlinkPublicCrop(crop({
+      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'contributor',
+    }))).toBe(false);
+  });
+
+  it('never offers it for a crop without a sync link', () => {
+    expect(canUnlinkPublicCrop(crop())).toBe(false);
+    // Provenance alone is not a link.
+    expect(canUnlinkPublicCrop(crop({ derived_from_public_crop: 9, origin_type: 'imported' }))).toBe(false);
+  });
+
+  it('an unlinked crop resolves to "In Bibliothek teilen" again', () => {
+    const unlinked = crop({
+      source_public_crop: null,
+      source_public_version: null,
+      derived_from_public_crop: 9,
+      origin_type: 'imported',
+      public_publish_blocked_reason: null,
+    });
+    expect(resolveCropLibraryAction(unlinked)).toMatchObject({ kind: 'publish', trigger: 'publish' });
   });
 });

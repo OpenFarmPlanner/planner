@@ -19,6 +19,8 @@ const {
   publicCropGetMock,
   publicCropImportToProjectMock,
   publishPublicMock,
+  publicSyncPreviewMock,
+  publicSyncMock,
   deletePreviewMock,
   deleteMock,
   undeleteMock,
@@ -36,6 +38,8 @@ const {
   publicCropGetMock: vi.fn(),
   publicCropImportToProjectMock: vi.fn(),
   publishPublicMock: vi.fn(),
+  publicSyncPreviewMock: vi.fn(),
+  publicSyncMock: vi.fn(),
   deletePreviewMock: vi.fn(),
   deleteMock: vi.fn(),
   undeleteMock: vi.fn(),
@@ -59,6 +63,8 @@ vi.mock('../api/api', async () => {
       list: listMock,
       publishPreview: publishPreviewMock,
       publishPublic: publishPublicMock,
+      publicSyncPreview: publicSyncPreviewMock,
+      publicSync: publicSyncMock,
       deletePreview: deletePreviewMock,
       delete: deleteMock,
       undelete: undeleteMock,
@@ -581,7 +587,7 @@ describe('Crops action area', () => {
   // The dynamic label per library-link state is covered by cropLibraryAction.test.ts;
   // this suite drives the flow through a mocked CropDetail with a plain button.
 
-  it('keeps the public target fixed in the owned public crop update dialog', async () => {
+  it('syncs an owned entry field by field instead of re-running the publishing mapping', async () => {
     authUser.public_library_terms_accepted = true;
     listMock.mockResolvedValue({
       data: {
@@ -616,6 +622,16 @@ describe('Crops action area', () => {
       },
     });
 
+    publicSyncPreviewMock.mockResolvedValue({
+      data: {
+        public_crop_id: 77,
+        public_version: 1,
+        requires_moderation: false,
+        changes: [{ field: 'growth_duration_days', local_value: 2, public_value: 1, pushable: true }],
+      },
+    });
+    publicSyncMock.mockResolvedValue({ data: { operation: 'synced', crop: {}, change_proposal: null } });
+
     renderCrops('/crops?cropId=1');
 
     await waitFor(() => {
@@ -624,22 +640,25 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByText('Tomate · Roma aktualisieren')).toBeInTheDocument();
-    expect(within(dialog).getByText('Nur die folgenden abweichenden Werte werden in die Kulturbibliothek übernommen.')).toBeInTheDocument();
-    expect(within(dialog).queryByRole('combobox', { name: 'Passende öffentliche Kultur' })).not.toBeInTheDocument();
+    expect(await within(dialog).findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
     expect(within(dialog).queryByLabelText(/Offizielle Kulturart/)).not.toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
     expect(publicCropListMock).not.toHaveBeenCalled();
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Öffentliche Version aktualisieren' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Alle meine Werte' }));
+    const submit = within(dialog).getByRole('button', { name: 'Abgleichen' });
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.click(submit);
 
     await waitFor(() => {
-      expect(publishPublicMock).toHaveBeenCalledWith(1, {
-        accepted_public_library_terms: false,
-        crop_species_id: 12,
-        original_language_code: 'en',
+      expect(publicSyncMock).toHaveBeenCalledWith(1, {
+        public_crop_id: 77,
+        base_version: 1,
+        pull_fields: [],
+        push_fields: ['growth_duration_days'],
       });
     });
+    expect(publishPublicMock).not.toHaveBeenCalled();
   });
 
   it('does not expose the remove from library action for owned public crops', async () => {

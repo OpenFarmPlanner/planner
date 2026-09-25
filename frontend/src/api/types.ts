@@ -103,6 +103,8 @@ export interface Crop {
   /** Explicitly seed empty general-crop fields when creating this variety. */
   copy_values_to_crop?: boolean;
   source_public_crop?: number | null;
+  /** Provenance: the entry this crop was imported from or linked to; survives an unlink. */
+  derived_from_public_crop?: number | null;
   source_public_version?: number | null;
   origin_type?: 'manual' | 'imported';
   owned_public_crop_id?: number | null;
@@ -116,6 +118,8 @@ export interface Crop {
   public_publish_blocked_reason?: PublicPublishBlockedReason | null;
   /** True while this crop's own library entry sits under a crop species no moderator reviewed yet. */
   public_crop_species_pending?: boolean;
+  /** True while the user's own edit proposal for the linked library entry awaits moderation. */
+  public_change_proposal_pending?: boolean;
   crop_species?: number | null;
   thousand_kernel_weight_g?: number;
   package_size_g?: number; // deprecated, replaced by seed_packages
@@ -349,6 +353,40 @@ export interface CropPublicUpdate {
   /** True when this exact public version was already declined by the user. */
   is_rejected?: boolean;
   changes?: PublicCropUpdateFieldChange[];
+}
+
+/** One field where a crop and its public entry differ, for the field-by-field sync. */
+export interface PublicCropSyncFieldChange {
+  field: string;
+  local_value: unknown;
+  public_value: unknown;
+  /** Whether this user may write the local value into the entry (e.g. not the fixed `name`). */
+  pushable: boolean;
+}
+
+export interface CropPublicSyncPreview {
+  public_crop_id: number;
+  public_version: number;
+  /** The user's library contributions go to the moderation queue. */
+  requires_moderation: boolean;
+  changes: PublicCropSyncFieldChange[];
+}
+
+export interface CropPublicSyncRequest {
+  public_crop_id: number;
+  base_version: number;
+  /** Fields that take the library's value locally. */
+  pull_fields: string[];
+  /** Fields whose local value is written into the library entry. */
+  push_fields: string[];
+  accepted_public_library_terms?: boolean;
+}
+
+export interface CropPublicSyncResponse {
+  /** `pending_moderation`: the pushed values became an edit proposal. */
+  operation: 'synced' | 'pending_moderation';
+  crop: Crop;
+  change_proposal: PublicCropChangeProposal | null;
 }
 
 export interface PublicCropProjectImportStatus {

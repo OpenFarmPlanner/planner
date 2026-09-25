@@ -287,7 +287,29 @@ class Crop(TimestampedModel):
         related_name='project_crops',
         help_text='Optional official crop species link used when publishing to the public library.',
     )
-    source_public_crop = models.ForeignKey('PublicCrop', null=True, blank=True, on_delete=models.SET_NULL, related_name='imported_crops')
+    source_public_crop = models.ForeignKey(
+        'PublicCrop',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='imported_crops',
+        help_text=(
+            'Library sync link: the public entry this crop pulls updates from and pushes '
+            'changes to. Cleared by an unlink; provenance lives in derived_from_public_crop.'
+        ),
+    )
+    derived_from_public_crop = models.ForeignKey(
+        'PublicCrop',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='derived_crops',
+        help_text=(
+            'Provenance: the public entry this crop was imported from or linked to. '
+            'Kept when the library link is removed, since values taken from the '
+            'library remain CC BY-SA data.'
+        ),
+    )
     source_public_version = models.IntegerField(null=True, blank=True)
     rejected_public_version = models.IntegerField(
         null=True,
@@ -634,6 +656,9 @@ class Crop(TimestampedModel):
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
 
         self._flag_source_divergence(previous)
+        # Provenance follows the first library link and outlives an unlink.
+        if self.source_public_crop_id and not self.derived_from_public_crop_id:
+            self.derived_from_public_crop_id = self.source_public_crop_id
 
         # Generate display color on creation if not set.
         if not self.pk and not self.display_color:
@@ -657,8 +682,17 @@ class Crop(TimestampedModel):
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
 
     def _flag_source_divergence(self, previous: dict[str, Any] | None) -> None:
-        """Mark an imported, still-pristine crop as modified if a tracked field changed."""
-        if not (previous and previous.get('source_public_crop_id') and not previous.get('is_modified_from_source')):
+        """Mark a library-derived, still-pristine crop as modified if a tracked field changed.
+
+        Provenance counts as well as the sync link: after an unlink the flag
+        still tells provenance readers whether the values are the library's.
+        """
+        if not previous or previous.get('is_modified_from_source'):
+            return
+        if not (
+            previous.get('source_public_crop_id')
+            or previous.get('derived_from_public_crop_id')
+        ):
             return
         if any(previous.get(field) != getattr(self, field) for field in self._SOURCE_DIVERGENCE_TRACKED_FIELDS):
             self.is_modified_from_source = True

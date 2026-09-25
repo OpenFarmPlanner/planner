@@ -130,6 +130,43 @@ The public Crop Library follows an open-data model:
   the project-import prefetch those write paths lose when the service
   returns a freshly locked row — otherwise the button would fall back to
   its "import" label until the next list reload.
+- **Sync link vs. provenance.** `Crop.source_public_crop` (with
+  `source_public_version` and `rejected_public_version`) is the *sync link*
+  everything in this update model reads. `is_modified_from_source` belongs to
+  both: `Crop.save()` sets it on the first tracked edit of a crop that is
+  linked *or* derived from an entry, and an unlink keeps it, so provenance
+  readers can still tell the library's values from the user's own. Where a
+  crop came from is recorded separately in
+  `Crop.derived_from_public_crop` (FK, `SET_NULL`, read-only in the API):
+  `Crop.save()` fills it from the first sync link a row gets (import, link,
+  form autofill), and migration `0109_crop_derived_from_public_crop`
+  backfilled it for every crop linked at the time. Provenance readers use it —
+  `CropSerializer.description_language_code` (an untouched copy's notes are the
+  library's text) and the engagement dashboard's imported/self-entered split —
+  so values taken from the library stay attributed as CC BY-SA data after an
+  unlink. `origin_type` is independent of both and never reset.
+- **Removing a library link ("Verknüpfung aufheben").** `POST
+  /api/crops/<id>/unlink-public-crop/` (`unlink_crop_from_public_entry()`,
+  same permission as editing the crop) clears only the sync link fields above
+  (`is_modified_from_source` stays);
+  no crop value, no provenance, no `origin_type` and nothing in the public
+  library changes, and linked Sorten keep their own links (live inheritance
+  runs over `crop_species`, not the link). It is a normal `Crop.save()`, so the
+  project history records it and the existing restore puts the link back
+  (`restore_crop_from_revision` restores the two library FKs from the
+  snapshot's `_id` keys while the entry still exists). Errors:
+  `crop_not_linked` (no sync link) and `crop_link_owned` (the linked entry was
+  published by this user — withdrawing it is the path there, and an unlinked
+  copy would collide with the user's own entry on its next publish). The UI
+  offers it as "Verknüpfung aufheben" in the crop's ⋮ menu only when
+  `canUnlinkPublicCrop` holds (a sync link to an entry the user is not the
+  contributor of; a moderator's access does not count as owning), behind a
+  confirmation that lists what stays ("Verknüpfte Sorten bleiben verknüpft."
+  only when the Kultur has linked Sorten). Afterwards the crop resolves to
+  case 1 ("In Bibliothek teilen"), the "Importiert" badge stays, and the
+  wizard offers the duplicate's "Mit diesem Eintrag verknüpfen" again. This is
+  also the way out for a farm that deliberately keeps its own values and does
+  not want a standing "Bibliothek aktualisieren" action.
 - This link is recorded on **publish**, not only on import.
   `publish_crop_to_public_library` calls `link_local_crop_to_owned_public_entry`
   for the published crop (and, on a variety publish, links the project's
@@ -164,14 +201,29 @@ The public Crop Library follows an open-data model:
      same diff, so a change of mind never needs another public edit. It is
      ranked above the push cases deliberately: pushing a declined copy would
      silently undo the very change the user declined.
+  2c. **own proposal under review** (`public_change_proposal_pending` while a
+     push would otherwise be offered) -> no button, only a neutral
+     "Vorschlag in Prüfung" status chip (clock icon), tooltip "Deine Änderungen
+     an der Kulturbibliothek warten auf Freigabe." A contributor whose edits go
+     to the `PublicCropChangeProposal` queue (see
+     [account-trust-levels.md](./account-trust-levels.md)) still differs from
+     the entry after a sync — the proposal is not a new version — so without
+     this state the badge row would offer the same push again. The serializer
+     flag is true when the requesting user has a pending `edit` proposal for
+     the crop's linked or owned entry, resolved with one query per response
+     (only when a row on the page is linked at all). Once a moderator applies
+     the proposal the crop resolves to case 5 on its own (the values now
+     match); a rejection brings the push back.
   3./4. **linked with local changes** (`public_publish_blocked_reason` is
      `null` — the `update_pending` reason always coincides with case 2 and
      `update_rejected` with case 2b, which also catches an imported foreign
      copy whose decline leaves the reason `null`) -> button "Bibliothek
      aktualisieren", green, up arrow (push),
-     opens the wizard (which routes an owned-entry update through its own flow).
-     Own entry vs a foreign imported one is the same direct-update path, so the
-     label does not distinguish them.
+     opens the wizard, which for any connected crop (own entry or a foreign
+     one it was imported from or linked to) is the field-by-field sync
+     "Mit Kulturbibliothek abgleichen" (§7, "Field-by-field sync"). Own entry
+     vs a foreign one is the same direct-update path, so the label does not
+     distinguish them.
   5. **linked, nothing pending, nothing to contribute** -> not a button but a
      plain "Aktuell" status chip (`crop-detail-library-status`), tooltip
      "Diese Kultur entspricht dem aktuellen Stand in der Kulturbibliothek."
@@ -224,6 +276,39 @@ The public Crop Library follows an open-data model:
   is the whole difference between "Ablehnen" and "Abbrechen" in the dialog:
   cancelling stores nothing and leaves the "Kultur aktualisieren" button
   standing, declining stores `rejected_public_version` and retires it.
+- **Field-by-field sync resolves every difference in one step.** The push
+  dialog does not push "all differences" any more: `GET
+  /api/crops/<id>/public-sync/?public_crop_id=` lists every compared field that
+  differs (the same set as the pull diff: `CROP_COPY_FIELDS` minus
+  `display_color`, minus `crop_family` / `nutrient_demand` on a species-linked
+  Sorte, `variety` and `name` included — except `variety` against a general
+  (species-level) entry, where a linked Sorte, e.g. after a
+  `publish_as_general` publish, differs by granularity, not by an edit
+  (`_sync_compared_fields`); multilingual `notes` as one field)
+  with a `pushable` flag, and `POST` applies the user's per-field choice via
+  `sync_crop_with_public_entry()`: `pull_fields` take the entry's values
+  locally, `push_fields` write the crop's effective values
+  (`build_public_crop_payload`, restricted to exactly those fields) into the
+  entry through `update_public_crop_directly()` — the wiki-style edit path,
+  which records a revision naming only those fields. A moderated contributor's
+  push becomes one `edit` `PublicCropChangeProposal` instead (case 2c). Pulling
+  and pushing run in one transaction under a row lock on the entry, guarded by
+  `base_version` (409 `stale_public_crop_version` if the entry moved since the
+  preview). Afterwards the baseline is the entry's resulting version and
+  `is_modified_from_source` is whatever difference is left, so a fully
+  decided live sync resolves to case 5. Choosing "Aus Bibliothek" for every
+  field pushes nothing and creates no public version. This also repairs crops
+  linked before the sync existed, with no migration.
+  `name` is never pushable (fixed after publication); `variety` only for the
+  entry's publisher or a library admin and never through the queue
+  (`public_crop_pushable_sync_fields`; `update_public_crop_directly` takes
+  `allow_variety_rename` for the publisher). The endpoint is session-only, like
+  `link-public-crop` (not in `CropViewSet.api_token_actions`).
+- **Pulling never breaks live inheritance.** `_pull_public_crop_fields()` (used
+  by the link's and the sync's pull) writes a raw value only when the entry's
+  value differs from the crop's *effective* one. A Sorte that inherits a field
+  from its general Kultur, and whose library value equals that inherited
+  value, keeps inheriting instead of gaining a frozen local override.
 - `CropSerializer.public_publish_blocked_reason` reports why a *push* is not on
   offer: `update_pending` / `update_rejected` (the library is ahead — the
   button shows case 2 instead) and `no_local_changes` (aligned copy with
@@ -429,7 +514,8 @@ instead of being proposed as a duplicate, and says so in its row. That match is
 the strict identity rule (`normalizeCropIdentityValue` — casing and whitespace
 only, the same normalization the duplicate check uses), deliberately *not* the
 species picker's fuzzy matcher: linking points the user's own Sorte at somebody
-else's entry and flips `origin_type` to `imported` with no undo, so two
+else's entry and flips `origin_type` to `imported` for good (the link itself
+can be removed again, `origin_type` stays), so two
 cultivars a letter apart ("Matina"/"Marina") must stay two Sorten. Sorten
 already connected to the library (`owned_public_crop_id` or
 `source_public_crop`) are not offered at all: re-linking would flip an owned
@@ -1139,38 +1225,64 @@ has auto-created that entry from a Sorte someone else published first — is
 never simply stuck behind the disabled submit button. Picking it fetches the
 full `PublicCrop` and switches the dialog into a confirmation view instead of
 opening a nested dialog: a heading, a sentence naming the local and public
-entry, a field-by-field comparison (the same `buildPublicCropComparison`
-logic the owned-entry update flow already uses, so only differing fields are
-shown), and an irreversibility notice, since the underlying `link-public-crop`
-action cannot be undone. The "Sorten mitveröffentlichen" checklist stays
+entry ("Wähle für jeden abweichenden Wert, welcher gelten soll."), the
+field-by-field sync component (below), and an info notice "Du kannst die
+Verknüpfung später wieder aufheben. Bereits übernommene Werte bleiben dabei
+erhalten." — the link can be removed again with "Verknüpfung aufheben" (§0,
+"Removing a library link"), while `origin_type` flips to `imported` and stays
+so. The "Sorten mitveröffentlichen" checklist stays
 visible and keeps its selection; the CC BY-SA consent step is shown before the
 final action only if at least one checked Sorte still needs to be newly
-published. The primary button reads "Verknüpfen" or "Verknüpfen und Sorten
-veröffentlichen" depending on whether any Sorte is selected, and "Zurück"
-returns to the (re-checked) warning view without submitting anything.
+published — or at least one field is set to "Meinen Wert übernehmen", since
+that contributes content too. The primary button reads "Verknüpfen" or
+"Verknüpfen und Sorten veröffentlichen" depending on whether any Sorte is
+selected, and "Zurück" returns to the (re-checked) warning view without
+submitting anything.
 
-The confirmation view only *shows* differences — it never changes local
-values. `link_project_crop_to_public_reference()` (used by both this general
-Kultur case and the pre-existing per-Sorte "existing variety" picker) only
-ever sets the linkage fields (`crop_species`, `source_public_crop`,
-`source_public_version`, `origin_type=imported`, `is_modified_from_source`);
-it accepts a varietyless local crop and a public entry owned by a different
-user without extra checks beyond the entry being `published`, and needs no CC
-BY-SA consent of its own. If the candidate was withdrawn or removed between
-the preview and the confirm click, the backend 404s; the parent shows the
-error as a snackbar and the dialog (which awaits the link, unlike the ordinary
-publish submit) drops back to the warning view with a freshly re-run
-duplicate check, since the stale candidate should no longer be offered.
+**Field-by-field sync (`PublicCropSyncPanel`).** One shared component, used
+here and in the "Mit Kulturbibliothek abgleichen" dialog below. It loads the
+differences from `GET /api/crops/<id>/public-sync/` (which also answers for a
+not-yet-linked candidate, comparing as if the link had set the entry's
+species) and shows one row per differing field: label, "Bibliothek" value,
+"Meine Kultur" value, and a two-way choice "Aus Bibliothek übernehmen" /
+"Meinen Wert übernehmen". Preselection (`crops/publicCropSync.ts`): only the
+library has a value -> library; only the local crop has one -> mine; both set
+and different -> library; a field the user may not push (`name`, a foreign
+`variety`) always starts on, and stays on, the library side with a tooltip on
+the disabled option. "Alle aus Bibliothek" / "Alle meine Werte" set every row
+at once, and a live summary below counts both directions with i18n plurals
+("… werden in deine Kultur übernommen, … werden in der Kulturbibliothek
+aktualisiert.", a part is dropped when its count is 0; for a moderated
+contributor the push part reads "… werden zur Prüfung eingereicht"). Without
+differences it shows "Keine Abweichungen zum öffentlichen Eintrag." and no
+choice UI. There is deliberately no "keep only locally" option: the update
+model has no "linked but intentionally different" state, so such a choice
+would leave a permanent push action.
 
-Since local values stay untouched, a link commonly leaves the crop's content
-diverging from the entry it now points to. `link_project_crop_to_public_reference()`
-only sets `source_public_version` to the entry's current version when the
-content already matches it exactly; otherwise it leaves the field unset, so
-`public_update_available` (§0, "One control carries all of this") still
-recognizes the divergence and the crop detail page's badge row offers the
-pull ("Kultur aktualisieren") direction, not the push one — pushing can never
-succeed for an entry this user doesn't own, since `publish-public` always
-resolves a non-owner's target species back to the same entry as a duplicate.
+On confirm the link runs in three steps. (1) `link-public-crop` with
+`pull_fields`: `link_project_crop_to_public_reference()` links the crop
+(`crop_species`, `source_public_crop`, `origin_type=imported`) *and* applies
+the "Aus Bibliothek" fields in one transaction, with the entry's current
+version as the baseline, so the remaining differences — exactly the "Meinen
+Wert" fields — read as local changes to contribute. (2) Those fields go
+through `public-sync` with `push_fields` only (above), never a separate push
+path. (3) The selected Sorten are published or linked as before. A failing
+push does not roll the link back — it keeps link and pulled values: the
+snackbar says the values could not be applied, and the crop shows the
+ordinary "Bibliothek aktualisieren" action (case 3/4) to retry. The link
+accepts a varietyless local crop and a public entry owned by a different user
+without extra checks beyond the entry being `published`, and needs no CC BY-SA
+consent of its own. If the candidate was withdrawn or removed between the
+preview and the confirm click, the backend 404s; the parent shows the error as
+a snackbar and the dialog (which awaits the link, unlike the ordinary publish
+submit) drops back to the warning view with a freshly re-run duplicate check,
+since the stale candidate should no longer be offered.
+
+A link *without* `pull_fields` (the per-Sorte "existing variety" picker and
+older clients) still copies no value: it only sets `source_public_version`
+when the content already matches the entry exactly and otherwise leaves it
+unset, so `public_update_available` (§0, "One control carries all of this")
+offers the pull ("Kultur aktualisieren") direction for the divergence.
 
 Missing translations remain optional and are not shown as a normal blocking
 step. The existing CC BY-SA public-library contribution consent is also not
@@ -1231,12 +1343,18 @@ species already stored in a database so they stop being public mapping targets.
 `python manage.py audit_crop_species_coverage` reports crop names used in
 projects that the catalogue does not know yet.
 
-When a project crop already points to an owned public entry, the wizard is
-an update flow instead of a mapping flow. The owned public crop is shown as
-a read-only information block, and the official species plus original language
-are taken from that public entry. The user reviews only the field-level
-differences before applying them to the existing public version, preventing
-accidental relinking to a different public crop from the update dialog.
+When a project crop is already connected to a public entry — its own
+(`owned_public_crop_id`) or one it was imported from or linked to
+(`source_public_crop`) — the wizard is not a mapping flow but the sync dialog
+"Mit Kulturbibliothek abgleichen" with the field-by-field sync component above
+and the primary button "Abgleichen" (disabled with an explanatory tooltip while
+loading or when nothing differs). Confirming sends one `public-sync` request
+with both `pull_fields` and `push_fields`; if the entry changed since the
+preview (409) or the request fails, the dialog stays open and reloads the
+differences. There is no species picker, variety selection or Sorten
+co-publication in this dialog, which also rules out accidentally relinking to a
+different public crop. Pushing own values asks for the CC BY-SA contribution
+consent first when it has not been accepted yet.
 
 ## 8. Withdrawal, removal, and hard delete
 

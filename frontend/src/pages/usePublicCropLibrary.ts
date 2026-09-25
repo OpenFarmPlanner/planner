@@ -130,9 +130,10 @@ export function usePublicCropLibrary({
     varieties: PublishVarietySelection[] | undefined,
     publishingData: { cropSpeciesId?: number; originalLanguageCode: string } | undefined,
     acceptedPublicLibraryTerms: boolean,
+    cropSeverity: 'success' | 'error' = 'success',
   ): Promise<void> => {
     if (!varieties?.length || !publishingData) {
-      showSnackbar(cropMessage, 'success');
+      showSnackbar(cropMessage, cropSeverity);
       return;
     }
     const result = await publishSelectedVarieties({
@@ -155,7 +156,145 @@ export function usePublicCropLibrary({
     if (result.failed > 0) {
       messages.push(t('library.publishVarietiesPartialError', { count: result.failed }));
     }
-    showSnackbar(messages.join(' '), result.failed > 0 ? 'error' : 'success');
+    showSnackbar(messages.join(' '), result.failed > 0 || cropSeverity === 'error' ? 'error' : 'success');
+  };
+
+  const describePublicSyncError = (error: unknown): string => {
+    const code = axios.isAxiosError(error)
+      ? (error.response?.data as { code?: string } | undefined)?.code
+      : undefined;
+    if (code === 'stale_public_crop_version') {
+      return t('library.sync.staleError');
+    }
+    if (code === 'pending_proposal_limit_exceeded') {
+      return t('library.sync.proposalLimitError');
+    }
+    return t('library.sync.error');
+  };
+
+  const pushSyncFields = async (
+    cropId: number,
+    data: {
+      publicCropId: number;
+      baseVersion: number;
+      pullFields: string[];
+      pushFields: string[];
+      acceptedPublicLibraryTerms: boolean;
+    },
+  ) => {
+    const response = await cropAPI.publicSync(cropId, {
+      public_crop_id: data.publicCropId,
+      base_version: data.baseVersion,
+      pull_fields: data.pullFields,
+      push_fields: data.pushFields,
+      ...(data.acceptedPublicLibraryTerms ? { accepted_public_library_terms: true } : {}),
+    });
+    if (data.acceptedPublicLibraryTerms) {
+      await refreshUser();
+    }
+    return response.data;
+  };
+
+  // Link confirmation: link + pulled values in one backend transaction, then
+  // push the user's own values into the entry, then the Sorten. The link
+  // cannot be undone, so a failed push keeps it: the crop then shows the
+  // ordinary "Bibliothek aktualisieren" action to retry.
+  const handleLinkPublicCrop = async (data: {
+    acceptedPublicLibraryTerms: boolean;
+    cropSpeciesId?: number;
+    originalLanguageCode: string;
+    publicCropId: number;
+    baseVersion: number;
+    pullFields: string[];
+    pushFields: string[];
+    varieties?: PublishVarietySelection[];
+  }): Promise<boolean> => {
+    if (!selectedCrop?.id) {
+      return false;
+    }
+    const name = formatCropDisplayName(selectedCrop);
+    try {
+      setPublishingCropId(selectedCrop.id);
+      try {
+        await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields);
+      } catch (error) {
+        console.error('Error linking crop:', error);
+        showSnackbar(extractApiErrorMessage(error, t, t('library.publishError')), 'error');
+        return false;
+      }
+      let cropMessage = t('library.linkPublicCropSuccess', { name });
+      let cropSeverity: 'success' | 'error' = 'success';
+      if (data.pushFields.length > 0) {
+        try {
+          const result = await pushSyncFields(selectedCrop.id, { ...data, pullFields: [] });
+          if (result.operation === 'pending_moderation') {
+            cropMessage = t('library.sync.linkPendingModeration', { name });
+          }
+        } catch (error) {
+          console.error('Error pushing values after linking:', error);
+          cropMessage = t('library.sync.linkPushFailed', { name });
+          cropSeverity = 'error';
+        }
+      }
+      await publishCropVarieties(
+        cropMessage,
+        data.varieties,
+        data,
+        data.acceptedPublicLibraryTerms,
+        cropSeverity,
+      );
+      await refreshPublicCropStatusContext();
+      return true;
+    } finally {
+      setPublishingCropId(null);
+    }
+  };
+
+  // "Verknüpfung aufheben": the crop stops syncing with somebody else's entry.
+  const handleUnlinkPublicCrop = async (crop: Crop): Promise<boolean> => {
+    if (!crop.id) {
+      return false;
+    }
+    try {
+      await cropAPI.unlinkPublicCrop(crop.id);
+      showSnackbar(t('library.unlink.success'), 'success');
+      await refreshPublicCropStatusContext();
+      return true;
+    } catch (error) {
+      console.error('Error unlinking crop from the library:', error);
+      showSnackbar(t('library.unlink.error'), 'error');
+      return false;
+    }
+  };
+
+  // "Mit Kulturbibliothek abgleichen" for an already connected crop.
+  const handleSyncPublicCrop = async (data: {
+    acceptedPublicLibraryTerms: boolean;
+    publicCropId: number;
+    baseVersion: number;
+    pullFields: string[];
+    pushFields: string[];
+  }): Promise<boolean> => {
+    if (!selectedCrop?.id) {
+      return false;
+    }
+    const name = formatCropDisplayName(selectedCrop);
+    try {
+      setPublishingCropId(selectedCrop.id);
+      const result = await pushSyncFields(selectedCrop.id, data);
+      showSnackbar(
+        t(result.operation === 'pending_moderation' ? 'library.sync.pendingModeration' : 'library.sync.success', { name }),
+        'success',
+      );
+      await refreshPublicCropStatusContext();
+      return true;
+    } catch (error) {
+      console.error('Error syncing crop with the library:', error);
+      showSnackbar(describePublicSyncError(error), 'error');
+      return false;
+    } finally {
+      setPublishingCropId(null);
+    }
   };
 
   const handlePublishCurrentCrop = async (
@@ -273,5 +412,8 @@ export function usePublicCropLibrary({
     handleViewPublicLibraryMatch,
     handleImportPublicCrop,
     handlePublishCurrentCrop,
+    handleLinkPublicCrop,
+    handleSyncPublicCrop,
+    handleUnlinkPublicCrop,
   };
 }

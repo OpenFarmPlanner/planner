@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.test import APITestCase as DRFAPITestCase
 
+from accounts.consent import record_acceptance
 from accounts.guest_demo import create_guest_demo_session
 from accounts.models import DocumentConsent
 from accounts.trust import grant_established_trust
@@ -4645,3 +4646,514 @@ class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
         self.relink()
 
         self.assertFalse(self.reassignment_notifications().exists())
+
+
+class PublicCropFieldSyncApiTest(DRFAPITestCase):
+    """Field-by-field sync between a linked crop and its public entry.
+
+    Covers the link confirmation's pulled fields (`link-public-crop` with
+    `pull_fields`) and the combined pull/push of `public-sync`.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='sync-user', email='sync@example.com', password='testpass', is_active=True,
+        )
+        self.other_user = User.objects.create_user(
+            username='sync-other', email='sync-other@example.com', password='testpass',
+            is_active=True,
+        )
+        self.project = Project.objects.create(name='Sync Project', slug='sync-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        grant_established_trust(self.user)
+        record_acceptance(self.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.species = CropSpecies.objects.create(name='Spinach')
+        self.entry = PublicCrop.objects.create(
+            name='Spinat',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.other_user,
+            growth_duration_days=40,
+            harvest_duration_days=20,
+            notes='Public notes',
+        )
+        self.kultur = Crop.objects.create(
+            name='Spinat',
+            variety='',
+            growth_duration_days=55,
+            harvest_duration_days=20,
+            notes='My notes',
+            project=self.project,
+        )
+
+    def _link(self, crop, pull_fields):
+        return self.client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/link-public-crop/',
+            {'public_crop_id': self.entry.id, 'pull_fields': pull_fields},
+            format='json',
+        )
+
+    def _sync(self, crop, *, pull_fields=(), push_fields=(), base_version=None):
+        return self.client.post(
+            f'/openfarmplanner/api/crops/{crop.id}/public-sync/',
+            {
+                'public_crop_id': self.entry.id,
+                'pull_fields': list(pull_fields),
+                'push_fields': list(push_fields),
+                'base_version': base_version if base_version is not None else self.entry.version,
+            },
+            format='json',
+        )
+
+    def test_link_with_pulled_fields_changes_only_those_fields(self):
+        response = self._link(self.kultur, ['growth_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.source_public_crop_id, self.entry.id)
+        self.assertEqual(self.kultur.growth_duration_days, 40)
+        # Not chosen: stays the user's value, to be pushed afterwards.
+        self.assertEqual(self.kultur.notes, 'My notes')
+        # The baseline is the entry's version at link time, so the remaining
+        # difference is a local change to contribute, not a pending pull.
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertTrue(self.kultur.is_modified_from_source)
+        self.assertFalse(response.data['public_update_available'])
+        self.assertIsNone(response.data['public_publish_blocked_reason'])
+
+    def test_link_rejects_fields_outside_the_compared_set(self):
+        response = self._link(self.kultur, ['display_color'])
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['fields'], ['display_color'])
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+
+    def test_link_and_pull_roll_back_together(self):
+        from unittest import mock
+
+        from farm.services.public_crops import link_project_crop_to_public_reference
+
+        with mock.patch(
+            'farm.services.public_crops.sync_crop_species_across_crop_group',
+            side_effect=RuntimeError('boom'),
+        ):
+            with self.assertRaises(RuntimeError):
+                link_project_crop_to_public_reference(
+                    crop=self.kultur, public_crop=self.entry, pull_fields=['growth_duration_days'],
+                )
+
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.kultur.growth_duration_days, 55)
+
+    def test_pulling_an_inherited_equal_value_creates_no_override(self):
+        variety_entry = PublicCrop.objects.create(
+            name='Spinat',
+            variety='Matador',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.other_user,
+            growth_duration_days=55,
+            harvest_duration_days=30,
+        )
+        self.kultur.crop_species = self.species
+        self.kultur.save()
+        sorte = Crop.objects.create(
+            name='Spinat', variety='Matador', crop_species=self.species, project=self.project,
+        )
+        self.assertIsNone(sorte.growth_duration_days)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/link-public-crop/',
+            {
+                'public_crop_id': variety_entry.id,
+                'pull_fields': ['growth_duration_days', 'harvest_duration_days'],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        sorte.refresh_from_db()
+        # 55 is what the Sorte already inherits from its Kultur: no raw copy.
+        self.assertIsNone(sorte.growth_duration_days)
+        self.assertIn('growth_duration_days', response.data['inherited_fields'])
+        # 30 differs from the inherited 20, so it becomes the Sorte's own value.
+        self.assertEqual(sorte.harvest_duration_days, 30)
+        self.assertFalse(sorte.is_modified_from_source)
+        self.assertEqual(response.data['public_publish_blocked_reason'], 'no_local_changes')
+
+    def test_sync_pulls_and_pushes_in_one_step_and_resolves_to_up_to_date(self):
+        self._link(self.kultur, [])
+        self.entry.refresh_from_db()
+        previous_version = self.entry.version
+
+        response = self._sync(
+            self.kultur, pull_fields=['growth_duration_days'], push_fields=['notes'],
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['operation'], 'synced')
+        self.entry.refresh_from_db()
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 40)
+        self.assertEqual(self.entry.notes, 'My notes')
+        # Only the pushed field changed publicly.
+        self.assertEqual(self.entry.growth_duration_days, 40)
+        self.assertEqual(self.entry.version, previous_version + 1)
+        revision = self.entry.revisions.get(version=self.entry.version)
+        self.assertEqual([change['field'] for change in revision.changed_fields], ['notes'])
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        crop_data = response.data['crop']
+        self.assertFalse(crop_data['public_update_available'])
+        self.assertEqual(crop_data['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertFalse(crop_data['public_change_proposal_pending'])
+
+    def test_sync_with_everything_from_the_library_creates_no_public_version(self):
+        self._link(self.kultur, [])
+        self.entry.refresh_from_db()
+        previous_version = self.entry.version
+        revision_count = self.entry.revisions.count()
+
+        response = self._sync(self.kultur, pull_fields=['growth_duration_days', 'notes'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.version, previous_version)
+        self.assertEqual(self.entry.revisions.count(), revision_count)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.notes, 'Public notes')
+        self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
+
+    def test_sync_preview_lists_differences_and_what_may_be_pushed(self):
+        self._link(self.kultur, [])
+
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/public-sync/',
+            {'public_crop_id': self.entry.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        changes = {change['field']: change for change in response.data['changes']}
+        self.assertEqual(set(changes), {'growth_duration_days', 'notes'})
+        self.assertEqual(changes['growth_duration_days']['local_value'], 55)
+        self.assertEqual(changes['growth_duration_days']['public_value'], 40)
+        self.assertTrue(changes['notes']['pushable'])
+        self.assertFalse(response.data['requires_moderation'])
+
+    def test_sync_rejects_a_stale_base_version(self):
+        self._link(self.kultur, [])
+
+        response = self._sync(
+            self.kultur, push_fields=['notes'], base_version=self.entry.version + 5,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'stale_public_crop_version')
+
+    def test_sync_refuses_a_variety_rename_on_a_foreign_entry(self):
+        variety_entry = PublicCrop.objects.create(
+            name='Spinat',
+            variety='Matador',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.other_user,
+        )
+        sorte = Crop.objects.create(
+            name='Spinat', variety='Matador F1', crop_species=self.species, project=self.project,
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/link-public-crop/',
+            {'public_crop_id': variety_entry.id, 'pull_fields': []},
+            format='json',
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': variety_entry.id, 'push_fields': ['variety']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'public_crop_sync_field_not_pushable')
+        variety_entry.refresh_from_db()
+        self.assertEqual(variety_entry.variety, 'Matador')
+
+    def test_moderated_push_becomes_a_proposal_and_marks_the_crop(self):
+        new_user = User.objects.create_user(
+            username='sync-new', email='sync-new@example.com', password='testpass', is_active=True,
+        )
+        ProjectMembership.objects.create(user=new_user, project=self.project, role='admin')
+        record_acceptance(new_user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        self.client.force_authenticate(user=new_user)
+        self._link(self.kultur, [])
+        self.entry.refresh_from_db()
+        previous_version = self.entry.version
+
+        response = self._sync(
+            self.kultur, pull_fields=['growth_duration_days'], push_fields=['notes'],
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['operation'], 'pending_moderation')
+        proposal = PublicCropChangeProposal.objects.get(public_crop=self.entry)
+        self.assertEqual(proposal.kind, PublicCropChangeProposal.KIND_EDIT)
+        self.assertEqual(proposal.proposed_by, new_user)
+        self.assertEqual(proposal.proposed_data, {'notes': 'My notes'})
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.version, previous_version)
+        self.assertEqual(self.entry.notes, 'Public notes')
+        self.kultur.refresh_from_db()
+        # The pull still applies right away.
+        self.assertEqual(self.kultur.growth_duration_days, 40)
+        crop_data = response.data['crop']
+        self.assertTrue(crop_data['public_change_proposal_pending'])
+        # Still a local change to contribute — the frontend shows the pending
+        # proposal instead of offering the same push again.
+        self.assertIsNone(crop_data['public_publish_blocked_reason'])
+
+    def test_sync_preview_answers_for_a_link_candidate(self):
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/public-sync/',
+            {'public_crop_id': self.entry.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        fields = {change['field'] for change in response.data['changes']}
+        self.assertEqual(fields, {'growth_duration_days', 'notes'})
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+
+    def test_sync_apply_requires_the_linked_entry(self):
+        response = self._sync(self.kultur, push_fields=['notes'])
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'public_crop_not_linked')
+
+
+class PublicCropUnlinkApiTest(DRFAPITestCase):
+    """`unlink-public-crop`: removes the sync link to a foreign entry only."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='unlink-user', email='unlink@example.com', password='testpass',
+            is_active=True,
+        )
+        self.other_user = User.objects.create_user(
+            username='unlink-other', email='unlink-other@example.com', password='testpass',
+            is_active=True,
+        )
+        self.project = Project.objects.create(name='Unlink Project', slug='unlink-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        grant_established_trust(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.species = CropSpecies.objects.create(name='Leek')
+        self.entry = PublicCrop.objects.create(
+            name='Lauch',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.other_user,
+            growth_duration_days=120,
+            notes='Public notes',
+        )
+        self.kultur = Crop.objects.create(
+            name='Lauch', variety='', growth_duration_days=100, notes='Mine', project=self.project,
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/link-public-crop/',
+            {'public_crop_id': self.entry.id, 'pull_fields': []},
+            format='json',
+        )
+        self.kultur.refresh_from_db()
+
+    def _unlink(self, crop):
+        return self.client.post(f'/openfarmplanner/api/crops/{crop.id}/unlink-public-crop/')
+
+    def test_unlink_clears_only_the_sync_state(self):
+        self.assertEqual(self.kultur.derived_from_public_crop_id, self.entry.id)
+        Crop.objects.filter(pk=self.kultur.pk).update(rejected_public_version=3)
+        entry_version = self.entry.version
+        crop_revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+        revisions_before = crop_revisions.count()
+
+        response = self._unlink(self.kultur)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertIsNone(self.kultur.source_public_version)
+        self.assertIsNone(self.kultur.rejected_public_version)
+        # Provenance, values and origin stay.
+        self.assertEqual(self.kultur.derived_from_public_crop_id, self.entry.id)
+        self.assertEqual(self.kultur.origin_type, Crop.ORIGIN_IMPORTED)
+        self.assertEqual(self.kultur.growth_duration_days, 100)
+        self.assertEqual(self.kultur.notes, 'Mine')
+        self.assertEqual(self.kultur.crop_species_id, self.species.id)
+        # Nothing in the library changes.
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.version, entry_version)
+        # A normal crop revision records the unlink.
+        revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+        self.assertEqual(revisions.count(), revisions_before + 1)
+        self.assertIn('source_public_crop_id', revisions.order_by('-id').first().changed_fields)
+        # The crop now reads as "not linked".
+        self.assertIsNone(response.data['source_public_crop'])
+        self.assertIsNone(response.data['owned_public_crop_id'])
+        self.assertFalse(response.data['public_update_available'])
+
+    def test_unlink_keeps_notes_language_honest_for_later_edits(self):
+        pristine = Crop.objects.create(
+            name='Sellerie', variety='', notes='Public notes', project=self.project,
+        )
+        entry = PublicCrop.objects.create(
+            name='Sellerie', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            created_by=self.other_user, notes='Public notes', original_language_code='en',
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{pristine.id}/link-public-crop/',
+            {'public_crop_id': entry.id, 'pull_fields': []},
+            format='json',
+        )
+        edited_before = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/',
+            {'notes': 'Eigene Notizen'},
+            format='json',
+        )
+        self.assertEqual(edited_before.status_code, status.HTTP_200_OK)
+
+        self._unlink(self.kultur)
+        response = self._unlink(pristine)
+
+        # Untouched library notes keep the library's language after an unlink ...
+        self.assertEqual(response.data['description_language_code'], 'en')
+        # ... a copy edited before the unlink stays marked as the user's own ...
+        kultur = self.client.get(f'/openfarmplanner/api/crops/{self.kultur.id}/')
+        self.assertIsNone(kultur.data['description_language_code'])
+        # ... and so does one edited after it.
+        edited_after = self.client.patch(
+            f'/openfarmplanner/api/crops/{pristine.id}/',
+            {'notes': 'Eigene Notizen'},
+            format='json',
+        )
+        self.assertIsNone(edited_after.data['description_language_code'])
+
+    def test_unlink_can_be_restored_from_history(self):
+        linked_revision = (
+            EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+            .order_by('-id').first()
+        )
+        self._unlink(self.kultur)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/restore/',
+            {'history_id': linked_revision.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.source_public_crop_id, self.entry.id)
+
+    def test_unlink_leaves_linked_sorten_alone(self):
+        variety_entry = PublicCrop.objects.create(
+            name='Lauch', variety='Blauwgroene', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.other_user,
+        )
+        sorte = Crop.objects.create(
+            name='Lauch', variety='Blauwgroene', crop_species=self.species, project=self.project,
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/link-public-crop/',
+            {'public_crop_id': variety_entry.id, 'pull_fields': []},
+            format='json',
+        )
+
+        self._unlink(self.kultur)
+
+        sorte.refresh_from_db()
+        self.assertEqual(sorte.source_public_crop_id, variety_entry.id)
+        self.assertEqual(get_general_crop(sorte), self.kultur)
+
+    def test_unlink_rejects_a_crop_that_is_not_linked(self):
+        local = Crop.objects.create(name='Sellerie', variety='', project=self.project)
+
+        response = self._unlink(local)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'crop_not_linked')
+
+    def test_unlink_rejects_a_link_to_the_users_own_entry(self):
+        own_entry = PublicCrop.objects.create(
+            name='Zwiebel', variety='', status=PublicCrop.STATUS_PUBLISHED, created_by=self.user,
+        )
+        own = Crop.objects.create(
+            name='Zwiebel', variety='', project=self.project, source_public_crop=own_entry,
+        )
+
+        response = self._unlink(own)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'crop_link_owned')
+        own.refresh_from_db()
+        self.assertEqual(own.source_public_crop_id, own_entry.id)
+
+    def test_relinking_after_unlink_is_possible(self):
+        self._unlink(self.kultur)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/link-public-crop/',
+            {'public_crop_id': self.entry.id, 'pull_fields': ['growth_duration_days']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.source_public_crop_id, self.entry.id)
+        self.assertEqual(self.kultur.growth_duration_days, 120)
+
+    def test_sync_ignores_the_variety_of_a_sorte_linked_to_a_general_entry(self):
+        # A `publish_as_general` publish links a Sorte to the species-level
+        # entry. The variety difference is granularity, not an edit: offering
+        # it would either blank the Sorte's name (pull) or turn the general
+        # entry into a variety entry (push by its publisher).
+        own_general_entry = PublicCrop.objects.create(
+            name='Spinat',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.user,
+            growth_duration_days=40,
+        )
+        sorte = Crop.objects.create(
+            name='Spinat', variety='Matador', crop_species=self.species,
+            growth_duration_days=40, project=self.project,
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/link-public-crop/',
+            {'public_crop_id': own_general_entry.id, 'pull_fields': []},
+            format='json',
+        )
+
+        preview = self.client.get(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': own_general_entry.id},
+        )
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        self.assertNotIn('variety', {change['field'] for change in preview.data['changes']})
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': own_general_entry.id, 'push_fields': ['variety']},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        own_general_entry.refresh_from_db()
+        self.assertEqual(own_general_entry.variety, '')
+        sorte.refresh_from_db()
+        self.assertEqual(sorte.variety, 'Matador')
+        self.assertFalse(sorte.is_modified_from_source)

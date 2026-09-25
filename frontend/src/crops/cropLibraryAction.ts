@@ -13,6 +13,7 @@ export type CropLibraryActionKind =
   | 'pullUpdate'
   | 'pushUpdate'
   | 'updateRejected'
+  | 'proposalPending'
   | 'upToDate';
 
 export interface CropLibraryAction {
@@ -78,6 +79,10 @@ export function readCropLibrarySyncFlags(crop: Crop | null | undefined): CropLib
  *    same diff can still be reopened and applied after a change of mind. This
  *    case sits above the push cases on purpose: pushing a declined copy would
  *    silently undo the very change the user declined.
+ * 2c. The user's own contribution to the entry waits in the moderation queue
+ *    (`public_change_proposal_pending`) while the crop still differs -> a
+ *    neutral "Vorschlag in Prüfung" status chip. Offering the push again would
+ *    only file the same values a second time.
  * 3./4. Connected (own entry or imported) with local changes to contribute
  *    -> push. `public_publish_blocked_reason` is `null` exactly then; the
  *    `update_pending` reason always coincides with case 2 and is handled there.
@@ -131,6 +136,18 @@ export function resolveCropLibraryAction(
     };
   }
 
+  if (crop?.public_publish_blocked_reason == null && crop?.public_change_proposal_pending) {
+    return {
+      kind: 'proposalPending',
+      variant: 'chip',
+      labelKey: 'libraryAction.proposalPending',
+      color: 'default',
+      disabled: false,
+      tooltipKey: 'libraryAction.proposalPendingTooltip',
+      trigger: null,
+    };
+  }
+
   if (crop?.public_publish_blocked_reason == null) {
     return {
       kind: 'pushUpdate',
@@ -177,7 +194,22 @@ export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropL
       return 'push';
     case 'updateRejected':
       return 'rejected';
+    case 'proposalPending':
+      return 'pending';
     case 'upToDate':
       return 'upToDate';
   }
+}
+
+/**
+ * Whether "Verknüpfung aufheben" is offered: the crop syncs with a public
+ * entry the user did not publish. A link to the user's own entry is not
+ * removable — withdrawing the entry is the path there, and an unlinked copy
+ * would collide with that entry on its next publish.
+ */
+export function canUnlinkPublicCrop(crop: Crop | null | undefined): boolean {
+  if (!crop?.source_public_crop) return false;
+  const ownsLinkedEntry = crop.owned_public_crop_id === crop.source_public_crop
+    && crop.owned_public_crop_role === 'contributor';
+  return !ownsLinkedEntry;
 }

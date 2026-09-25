@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import re
 
@@ -419,7 +420,14 @@ def update_public_crop_directly(
     user: User | None,
     data: dict[str, Any],
     base_version: int | None = None,
+    allow_variety_rename: bool = False,
 ) -> PublicCrop:
+    """Apply a wiki-style edit to a public entry as a new version.
+
+    Renaming ``variety`` needs a library admin; ``allow_variety_rename`` lets
+    the entry's own publisher do it too, which the full publish path has
+    always allowed them.
+    """
     _validate_public_crop_edit_user(user)
     unknown_fields = sorted(set(data) - set(PUBLIC_CROP_EDITABLE_FIELDS))
     if unknown_fields:
@@ -433,6 +441,7 @@ def update_public_crop_directly(
         if (
             'variety' in data
             and previous_snapshot.get('variety') != _json_safe(data['variety'])
+            and not allow_variety_rename
             and not is_public_library_admin(user)
         ):
             raise PublicCropPermissionError(
@@ -752,6 +761,7 @@ def build_project_crop_payload(public_crop: PublicCrop) -> dict[str, Any]:
     payload = _copy_fields(public_crop)
     payload['crop_species'] = public_crop.crop_species
     payload['source_public_crop'] = public_crop
+    payload['derived_from_public_crop'] = public_crop
     payload['source_public_version'] = public_crop.version
     payload['origin_type'] = Crop.ORIGIN_IMPORTED
     payload['is_modified_from_source'] = False
@@ -760,7 +770,12 @@ def build_project_crop_payload(public_crop: PublicCrop) -> dict[str, Any]:
     return payload
 
 
-def link_project_crop_to_public_reference(*, crop: Crop, public_crop: PublicCrop) -> Crop:
+def link_project_crop_to_public_reference(
+    *,
+    crop: Crop,
+    public_crop: PublicCrop,
+    pull_fields: Sequence[str] | None = None,
+) -> Crop:
     """Link a private crop to a published public crop without publishing a duplicate.
 
     This is a one-time baseline comparison (crop-as-linked vs. public
@@ -768,43 +783,345 @@ def link_project_crop_to_public_reference(*, crop: Crop, public_crop: PublicCrop
     compares a crop's *own* previous vs. current row on every save to
     detect edits made after an import. There is no "previous row" yet here.
 
-    Deliberately does not copy any of the public entry's field values into
-    ``crop`` — linking must never silently change local data. If the crop's
-    own values already diverge from the entry at link time,
-    ``source_public_version`` is left unset (rather than pinned to the
-    entry's current version) so :func:`has_pending_public_crop_update` still
-    recognizes the divergence and offers the existing pull ("Kultur
-    aktualisieren") flow instead of only the push direction, which can never
-    resolve for an entry this user doesn't own.
-    """
-    source_payload = build_project_crop_payload(public_crop)
-    tracked_fields = Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS
-    if not (public_crop.variety or '').strip():
-        # A general (species-level) public entry has no variety of its own, so
-        # the private crop naming a specific cultivar is an inherent
-        # granularity difference between the two, not a sign the user edited
-        # anything relative to the source it's being linked to.
-        tracked_fields = tracked_fields - {'variety'}
-    is_modified = any(getattr(crop, field) != source_payload.get(field) for field in tracked_fields)
+    ``pull_fields`` is the user's per-field decision from the link
+    confirmation: those fields take the entry's values (see
+    :func:`_pull_public_crop_fields`), every other difference is the user's own
+    value, which the caller pushes afterwards. With a decision the baseline is
+    always the entry's current version, so a remaining difference reads as a
+    local change to contribute. Linking and pulling happen in one transaction.
 
-    crop.crop_species = public_crop.crop_species
-    crop.source_public_crop = public_crop
-    # Computed after crop_species is reassigned above, so this sees the same
-    # species-invariant-field exclusions has_pending_public_crop_update() will
-    # see later (public_crop_field_changes reads crop.crop_species_id).
-    crop.source_public_version = None if public_crop_field_changes(crop, public_crop) else public_crop.version
-    crop.origin_type = Crop.ORIGIN_IMPORTED
-    crop.is_modified_from_source = is_modified
-    crop.save(update_fields=[
-        'crop_species',
-        'source_public_crop',
-        'source_public_version',
-        'origin_type',
-        'is_modified_from_source',
-        'updated_at',
-    ])
-    sync_crop_species_across_crop_group(crop)
+    Without a decision (``None``, the per-Sorte "existing variety" link and
+    older clients) no public value is copied — linking must never silently
+    change local data. If the crop's own values then diverge from the entry,
+    ``source_public_version`` is left unset so
+    :func:`has_pending_public_crop_update` still offers the pull ("Kultur
+    aktualisieren") flow.
+    """
+    if pull_fields is not None:
+        _validate_sync_fields(crop, public_crop, pull_fields)
+    with transaction.atomic():
+        source_payload = build_project_crop_payload(public_crop)
+        tracked_fields = Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS
+        if not (public_crop.variety or '').strip():
+            # A general (species-level) public entry has no variety of its own, so
+            # the private crop naming a specific cultivar is an inherent
+            # granularity difference between the two, not a sign the user edited
+            # anything relative to the source it's being linked to.
+            tracked_fields = tracked_fields - {'variety'}
+
+        crop.crop_species = public_crop.crop_species
+        if pull_fields is not None:
+            _pull_public_crop_fields(crop=crop, public_crop=public_crop, fields=pull_fields)
+        is_modified = any(
+            getattr(crop, field) != source_payload.get(field) for field in tracked_fields
+        )
+        crop.source_public_crop = public_crop
+        # Computed after crop_species is reassigned above, so this sees the same
+        # species-invariant-field exclusions has_pending_public_crop_update() will
+        # see later (public_crop_field_changes reads crop.crop_species_id).
+        remaining_changes = public_crop_field_changes(crop, public_crop)
+        if pull_fields is not None:
+            crop.source_public_version = public_crop.version
+            is_modified = bool(_public_crop_sync_changes(crop, public_crop))
+        else:
+            crop.source_public_version = None if remaining_changes else public_crop.version
+        crop.origin_type = Crop.ORIGIN_IMPORTED
+        crop.save()
+        # Crop.save() flags divergence against the pre-link row; the link sets
+        # its own baseline flag instead (queryset update: no second revision).
+        Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=is_modified)
+        crop.is_modified_from_source = is_modified
+        sync_crop_species_across_crop_group(crop)
     return crop
+
+
+class PublicCropUnlinkError(Exception):
+    """Raised when a crop's library link may not be removed."""
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.code = code
+
+
+def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
+    """Remove a crop's sync link to somebody else's public entry.
+
+    Clears only the link the update model reads (`source_public_crop`,
+    `source_public_version`, `rejected_public_version`); no crop value, no
+    provenance (`derived_from_public_crop`), no `origin_type` and nothing in
+    the public library changes. `is_modified_from_source` stays: provenance
+    readers (`description_language_code`) still need to know whether the
+    copy's values are the library's, and a relink recomputes it anyway.
+    Linked Sorten keep their own links. A link to the user's own entry is
+    refused: withdrawing the entry is the path there, and an unlinked copy
+    would collide with that entry on its next publish.
+
+    Saved through `Crop.save()` so the change is a normal crop revision in the
+    project history and can be restored from there.
+    """
+    public_crop = crop.source_public_crop
+    if public_crop is None:
+        raise PublicCropUnlinkError(
+            'The crop is not linked to a public entry.', code='crop_not_linked',
+        )
+    if user is not None and public_crop.created_by_id == user.id:
+        raise PublicCropUnlinkError(
+            'The crop is linked to your own public entry.', code='crop_link_owned',
+        )
+    # Keep (or, for a link written by a queryset update, record) provenance.
+    crop.derived_from_public_crop_id = crop.derived_from_public_crop_id or public_crop.id
+    crop.source_public_crop = None
+    crop.source_public_version = None
+    crop.rejected_public_version = None
+    crop.save()
+    return crop
+
+
+class PublicCropSyncFieldsError(Exception):
+    """Raised when a sync names fields outside the compared set or not pushable."""
+
+    def __init__(self, fields: list[str], *, code: str = 'invalid_public_crop_sync_fields') -> None:
+        super().__init__(f"Invalid public crop sync fields: {', '.join(fields)}")
+        self.fields = fields
+        self.code = code
+
+
+@dataclass(frozen=True)
+class PublicCropSyncField:
+    """One differing field of a linked crop and its public entry."""
+
+    field: str
+    local_value: Any
+    public_value: Any
+    pushable: bool
+
+
+@dataclass(frozen=True)
+class PublicCropSyncResult:
+    crop: Crop
+    public_crop: PublicCrop
+    # 'synced' (pushed live or nothing to push) or 'pending_moderation'.
+    operation: str
+    proposal: PublicCropChangeProposal | None = None
+
+
+def _sync_comparison_crop(crop: Crop, public_crop: PublicCrop) -> Crop:
+    """``crop`` as the sync compares it: with the species the link sets.
+
+    The species decides which fields a species-linked Sorte compares, so the
+    preview, the validation and the resulting baseline must all read it from
+    the entry. Only the id is read by the comparison; assigning it on a shallow
+    copy leaves the caller's instance (and its relation cache) untouched.
+    """
+    if crop.crop_species_id == public_crop.crop_species_id:
+        return crop
+    comparison_crop = copy.copy(crop)
+    comparison_crop.crop_species_id = public_crop.crop_species_id
+    return comparison_crop
+
+
+def _sync_compared_fields(crop: Crop, public_crop: PublicCrop) -> list[str]:
+    """The fields a sync compares, pulls and pushes between ``crop`` and ``public_crop``.
+
+    ``variety`` is left out against a general (species-level) entry, the same
+    rule as :func:`_owned_entry_is_locally_modified`: a Sorte linked to it (a
+    ``publish_as_general`` publish) differs by granularity, not by an edit, and
+    neither pulling the blank nor pushing the Sorte's name would be a sync.
+    """
+    fields = _compared_public_update_fields(_sync_comparison_crop(crop, public_crop))
+    if not (public_crop.variety or '').strip():
+        fields = [field for field in fields if field != 'variety']
+    return fields
+
+
+def _public_crop_sync_changes(
+    crop: Crop, public_crop: PublicCrop,
+) -> list[tuple[str, Any, Any]]:
+    """:func:`public_crop_field_changes` restricted to :func:`_sync_compared_fields`."""
+    compared = set(_sync_compared_fields(crop, public_crop))
+    comparison_crop = _sync_comparison_crop(crop, public_crop)
+    return [
+        change
+        for change in public_crop_field_changes(comparison_crop, public_crop)
+        if change[0] in compared
+    ]
+
+
+def _validate_sync_fields(crop: Crop, public_crop: PublicCrop, fields: Sequence[str]) -> None:
+    unknown = sorted(set(fields) - set(_sync_compared_fields(crop, public_crop)))
+    if unknown:
+        raise PublicCropSyncFieldsError(unknown)
+
+
+def public_crop_pushable_sync_fields(
+    *,
+    crop: Crop,
+    public_crop: PublicCrop,
+    user: User | None,
+    require_moderation: bool,
+) -> set[str]:
+    """The compared fields a sync may write into ``public_crop``.
+
+    ``name`` is fixed once published. ``variety`` is the entry's identity:
+    only its publisher or a library admin may rename it, and never through the
+    moderation queue (proposals carry no identity changes).
+    """
+    fields = set(_sync_compared_fields(crop, public_crop)) & set(PUBLIC_CROP_EDITABLE_FIELDS)
+    can_rename_variety = bool(
+        user is not None
+        and not require_moderation
+        and (public_crop.created_by_id == user.id or is_public_library_admin(user))
+    )
+    if not can_rename_variety:
+        fields.discard('variety')
+    return fields
+
+
+def build_public_crop_sync_preview(
+    *,
+    crop: Crop,
+    public_crop: PublicCrop,
+    user: User | None,
+    require_moderation: bool,
+) -> list[PublicCropSyncField]:
+    """Every compared field where ``crop`` and ``public_crop`` differ.
+
+    Also answers for an entry the crop is not linked to yet (the link
+    confirmation): the comparison then assumes the species the link would set
+    (see :func:`_sync_comparison_crop`).
+    """
+    pushable = public_crop_pushable_sync_fields(
+        crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
+    )
+    return [
+        PublicCropSyncField(
+            field=field,
+            local_value=_json_safe(local_value),
+            public_value=_json_safe(public_value),
+            pushable=field in pushable,
+        )
+        for field, local_value, public_value in _public_crop_sync_changes(crop, public_crop)
+    ]
+
+
+def _pull_public_crop_fields(
+    *, crop: Crop, public_crop: PublicCrop, fields: Sequence[str],
+) -> list[str]:
+    """Copy ``fields`` from ``public_crop`` onto ``crop`` (unsaved); returns the ones written.
+
+    A field whose *effective* value already equals the entry's is left alone:
+    on a Sorte that inherits it from its general Kultur, writing the same value
+    as a raw one would turn live inheritance into a frozen local override.
+    """
+    remote = _copy_fields(public_crop)
+    effective = _resolved_copy_fields(crop)
+    written = [field for field in fields if effective[field] != remote[field]]
+    for field in written:
+        setattr(crop, field, remote[field])
+    return written
+
+
+def _queue_public_crop_sync_proposal(
+    *,
+    public_crop: PublicCrop,
+    user: User | None,
+    data: dict[str, Any],
+    origin_api: bool,
+    origin_declared_agent: bool,
+) -> PublicCropChangeProposal:
+    # Local import: the moderation helpers live with the views' request logic.
+    from farm.crops.moderation import truncate_proposal_summary
+
+    label = format_crop_display_name(public_crop.name, public_crop.variety)
+    proposal = PublicCropChangeProposal.objects.create(
+        public_crop=public_crop,
+        kind=PublicCropChangeProposal.KIND_EDIT,
+        summary=truncate_proposal_summary(f'Update awaiting moderation: {label}'),
+        proposed_data=_json_safe(data),
+        proposed_by=user,
+        origin_api=origin_api,
+        origin_declared_agent=origin_declared_agent,
+    )
+    notify_moderators_of_change_proposal(proposal)
+    return proposal
+
+
+def sync_crop_with_public_entry(
+    *,
+    crop: Crop,
+    public_crop: PublicCrop,
+    user: User | None,
+    pull_fields: Sequence[str],
+    push_fields: Sequence[str],
+    base_version: int | None,
+    require_moderation: bool = False,
+    origin_api: bool = False,
+    origin_declared_agent: bool = False,
+) -> PublicCropSyncResult:
+    """Resolve every difference between a linked crop and its entry in one step.
+
+    ``pull_fields`` take the entry's values locally (the same rules as the
+    link's pull, :func:`_pull_public_crop_fields`); ``push_fields`` write the
+    crop's effective values into the entry through the direct-edit path
+    (:func:`update_public_crop_directly`), restricted to exactly those fields —
+    or, for a contributor whose edits are moderated, into one edit proposal.
+    Nothing to push creates no public version. Afterwards the crop's baseline
+    is the entry's resulting version.
+    """
+    _validate_sync_fields(crop, public_crop, [*pull_fields, *push_fields])
+    overlap = sorted(set(pull_fields) & set(push_fields))
+    if overlap:
+        raise PublicCropSyncFieldsError(overlap)
+    pushable = public_crop_pushable_sync_fields(
+        crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
+    )
+    not_pushable = sorted(set(push_fields) - pushable)
+    if not_pushable:
+        raise PublicCropSyncFieldsError(not_pushable, code='public_crop_sync_field_not_pushable')
+
+    proposal: PublicCropChangeProposal | None = None
+    with transaction.atomic():
+        locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+        _validate_base_version(locked, base_version)
+        if pull_fields:
+            _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
+            crop.save()
+        if push_fields:
+            payload = build_public_crop_payload(crop)
+            data = {field: payload[field] for field in push_fields if field in payload}
+            if require_moderation:
+                proposal = _queue_public_crop_sync_proposal(
+                    public_crop=locked,
+                    user=user,
+                    data=data,
+                    origin_api=origin_api,
+                    origin_declared_agent=origin_declared_agent,
+                )
+            else:
+                locked = update_public_crop_directly(
+                    public_crop=locked,
+                    user=user,
+                    data=data,
+                    allow_variety_rename='variety' in pushable,
+                )
+        is_modified = bool(_public_crop_sync_changes(crop, locked))
+        Crop.objects.filter(pk=crop.pk).update(
+            source_public_crop=locked,
+            source_public_version=locked.version,
+            is_modified_from_source=is_modified,
+            rejected_public_version=None,
+        )
+        crop.source_public_crop = locked
+        crop.source_public_version = locked.version
+        crop.is_modified_from_source = is_modified
+        crop.rejected_public_version = None
+    return PublicCropSyncResult(
+        crop=crop,
+        public_crop=locked,
+        operation='pending_moderation' if proposal is not None else 'synced',
+        proposal=proposal,
+    )
 
 
 def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> bool:
@@ -2173,8 +2490,10 @@ def _apply_public_crop_update(*, crop: Crop, public_crop: PublicCrop) -> Crop:
     payload.pop('display_color', None)
     # A crop the user *published* is linked to its own entry the same way an
     # import is, but pulling a later library change into it must not relabel it
-    # as imported — `origin_type` stays whatever it was.
+    # as imported — `origin_type` stays whatever it was. Provenance is where the
+    # crop came from, not the entry it syncs with, so an update leaves it alone.
     payload.pop('origin_type', None)
+    payload.pop('derived_from_public_crop', None)
     for field, value in payload.items():
         setattr(crop, field, value)
     crop.save()
