@@ -131,9 +131,12 @@ The public Crop Library follows an open-data model:
   returns a freshly locked row — otherwise the button would fall back to
   its "import" label until the next list reload.
 - **Sync link vs. provenance.** `Crop.source_public_crop` (with
-  `source_public_version`, `rejected_public_version` and
-  `is_modified_from_source`) is the *sync link* everything in this update model
-  reads. Where a crop came from is recorded separately in
+  `source_public_version` and `rejected_public_version`) is the *sync link*
+  everything in this update model reads. `is_modified_from_source` belongs to
+  both: `Crop.save()` sets it on the first tracked edit of a crop that is
+  linked *or* derived from an entry, and an unlink keeps it, so provenance
+  readers can still tell the library's values from the user's own. Where a
+  crop came from is recorded separately in
   `Crop.derived_from_public_crop` (FK, `SET_NULL`, read-only in the API):
   `Crop.save()` fills it from the first sync link a row gets (import, link,
   form autofill), and migration `0109_crop_derived_from_public_crop`
@@ -144,7 +147,8 @@ The public Crop Library follows an open-data model:
   unlink. `origin_type` is independent of both and never reset.
 - **Removing a library link ("Verknüpfung aufheben").** `POST
   /api/crops/<id>/unlink-public-crop/` (`unlink_crop_from_public_entry()`,
-  same permission as editing the crop) clears only the sync link fields above;
+  same permission as editing the crop) clears only the sync link fields above
+  (`is_modified_from_source` stays);
   no crop value, no provenance, no `origin_type` and nothing in the public
   library changes, and linked Sorten keep their own links (live inheritance
   runs over `crop_species`, not the link). It is a normal `Crop.save()`, so the

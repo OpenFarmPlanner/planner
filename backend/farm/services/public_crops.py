@@ -847,13 +847,15 @@ class PublicCropUnlinkError(Exception):
 def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
     """Remove a crop's sync link to somebody else's public entry.
 
-    Clears only what the update model reads (`source_public_crop`,
-    `source_public_version`, `rejected_public_version`,
-    `is_modified_from_source`); no crop value, no provenance
-    (`derived_from_public_crop`), no `origin_type` and nothing in the public
-    library changes. Linked Sorten keep their own links. A link to the user's
-    own entry is refused: withdrawing the entry is the path there, and an
-    unlinked copy would collide with that entry on its next publish.
+    Clears only the link the update model reads (`source_public_crop`,
+    `source_public_version`, `rejected_public_version`); no crop value, no
+    provenance (`derived_from_public_crop`), no `origin_type` and nothing in
+    the public library changes. `is_modified_from_source` stays: provenance
+    readers (`description_language_code`) still need to know whether the
+    copy's values are the library's, and a relink recomputes it anyway.
+    Linked Sorten keep their own links. A link to the user's own entry is
+    refused: withdrawing the entry is the path there, and an unlinked copy
+    would collide with that entry on its next publish.
 
     Saved through `Crop.save()` so the change is a normal crop revision in the
     project history and can be restored from there.
@@ -872,7 +874,6 @@ def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
     crop.source_public_crop = None
     crop.source_public_version = None
     crop.rejected_public_version = None
-    crop.is_modified_from_source = False
     crop.save()
     return crop
 

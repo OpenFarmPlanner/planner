@@ -5006,6 +5006,42 @@ class PublicCropUnlinkApiTest(DRFAPITestCase):
         self.assertIsNone(response.data['owned_public_crop_id'])
         self.assertFalse(response.data['public_update_available'])
 
+    def test_unlink_keeps_notes_language_honest_for_later_edits(self):
+        pristine = Crop.objects.create(
+            name='Sellerie', variety='', notes='Public notes', project=self.project,
+        )
+        entry = PublicCrop.objects.create(
+            name='Sellerie', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            created_by=self.other_user, notes='Public notes', original_language_code='en',
+        )
+        self.client.post(
+            f'/openfarmplanner/api/crops/{pristine.id}/link-public-crop/',
+            {'public_crop_id': entry.id, 'pull_fields': []},
+            format='json',
+        )
+        edited_before = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/',
+            {'notes': 'Eigene Notizen'},
+            format='json',
+        )
+        self.assertEqual(edited_before.status_code, status.HTTP_200_OK)
+
+        self._unlink(self.kultur)
+        response = self._unlink(pristine)
+
+        # Untouched library notes keep the library's language after an unlink ...
+        self.assertEqual(response.data['description_language_code'], 'en')
+        # ... a copy edited before the unlink stays marked as the user's own ...
+        kultur = self.client.get(f'/openfarmplanner/api/crops/{self.kultur.id}/')
+        self.assertIsNone(kultur.data['description_language_code'])
+        # ... and so does one edited after it.
+        edited_after = self.client.patch(
+            f'/openfarmplanner/api/crops/{pristine.id}/',
+            {'notes': 'Eigene Notizen'},
+            format='json',
+        )
+        self.assertIsNone(edited_after.data['description_language_code'])
+
     def test_unlink_can_be_restored_from_history(self):
         linked_revision = (
             EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
