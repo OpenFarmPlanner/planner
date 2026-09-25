@@ -873,6 +873,23 @@ def unpublished_link_reason(crop: Crop) -> str | None:
     return _UNPUBLISHED_LINK_REASONS.get(public_crop.status)
 
 
+def can_republish_withdrawn_entry(crop: Crop, user: User | None) -> bool:
+    """Whether ``user`` may bring the crop's own withdrawn entry back by publishing again.
+
+    A contributor's withdrawal is reversible (docs/crop-library-architecture.md
+    §8); a removed entry is not (moderation decision), and a foreign withdrawn
+    entry is not the user's to republish. The publish guard and the serializer's
+    ``can_republish_public_crop`` both read this, so the offer matches the endpoint.
+    """
+    public_crop = crop.source_public_crop
+    return bool(
+        public_crop is not None
+        and public_crop.status == PublicCrop.STATUS_WITHDRAWN
+        and user is not None
+        and public_crop.created_by_id == user.id
+    )
+
+
 def resolve_public_crop_unlink_block(crop: Crop, user: User | None) -> str | None:
     """Why the crop's library link may not be removed right now, or None if it may.
 
@@ -2132,9 +2149,7 @@ def publish_crop_to_public_library(
     update_target_for_guard = find_owned_public_crop_for_update(crop=crop, user=user)
     unpublished_reason = unpublished_link_reason(crop)
     if unpublished_reason is not None and not (
-        # A contributor's own withdrawn entry is republished by publishing the
-        # crop again (docs/crop-library-architecture.md §8).
-        unpublished_reason == 'entry_withdrawn'
+        can_republish_withdrawn_entry(crop, user)
         and update_target_for_guard is not None
         and update_target_for_guard.id == crop.source_public_crop_id
     ):

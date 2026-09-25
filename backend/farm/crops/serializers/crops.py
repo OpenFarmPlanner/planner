@@ -49,6 +49,7 @@ from farm.services.crop_inheritance import (
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
+    can_republish_withdrawn_entry,
     has_open_public_crop_update,
     is_public_crop_contributor,
     is_public_crop_update_rejected,
@@ -301,6 +302,7 @@ class CropSerializer(serializers.ModelSerializer):
     source_public_crop_status = serializers.SerializerMethodField()
     source_public_crop_title = serializers.SerializerMethodField()
     can_unlink_public_crop = serializers.SerializerMethodField()
+    can_republish_public_crop = serializers.SerializerMethodField()
     unlink_public_crop_blocked_reason = serializers.SerializerMethodField()
 
     def get_image_file(self, obj):
@@ -631,6 +633,12 @@ class CropSerializer(serializers.ModelSerializer):
     def get_can_unlink_public_crop(self, obj: Crop) -> bool:
         """Same predicate as the ``unlink-public-crop`` endpoint."""
         return self._unlink_block(obj) is None
+
+    def get_can_republish_public_crop(self, obj: Crop) -> bool:
+        """Same predicate as the publish guard: the user's own withdrawn entry can be republished."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return can_republish_withdrawn_entry(obj, user if user and user.is_authenticated else None)
 
     def get_unlink_public_crop_blocked_reason(self, obj: Crop) -> str | None:
         """Error code the endpoint would answer with (``crop_not_linked`` / ``crop_link_owned``)."""

@@ -126,6 +126,8 @@ export interface Crop {
   source_public_crop_title?: string | null;
   /** Same predicate the `unlink-public-crop` endpoint applies. */
   can_unlink_public_crop?: boolean;
+  /** True for the user's own withdrawn entry: publishing again brings it back. */
+  can_republish_public_crop?: boolean;
   unlink_public_crop_blocked_reason?: 'crop_not_linked' | 'crop_link_owned' | null;
   crop_species?: number | null;
   thousand_kernel_weight_g?: number;

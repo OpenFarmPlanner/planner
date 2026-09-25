@@ -193,17 +193,21 @@ The public Crop Library follows an open-data model:
      the publishing wizard.
   1b. **linked entry withdrawn or removed** (`public_publish_blocked_reason`
      `entry_withdrawn` / `entry_removed`, with `source_public_crop_status`) ->
-     no button, only a neutral status chip "Eintrag zurückgezogen" / "Eintrag
-     entfernt" (link-off icon) whose tooltip says the entry is no longer in the
+     no push/pull button, only a neutral status chip "Eintrag zurückgezogen" /
+     "Eintrag entfernt" (link-off icon) whose tooltip says the entry is no longer in the
      library and the link can be removed or the entry restored. The link is
      kept because withdrawal and removal are restorable; after a restore the
      crop resolves normally again, and a crop unlinked meanwhile stays
-     unlinked. Ranked before every push and pull case. The backend backs this:
+     unlinked. Ranked before every push and pull case. The one exception is a
+     contributor's **own withdrawn** entry (`can_republish_public_crop`, the same
+     `can_republish_withdrawn_entry()` predicate the publish guard uses): there
+     the chip is replaced by the button "Wieder veröffentlichen", which asks for
+     one confirmation and calls `publish-public` (the single push path), bringing
+     the entry back as published. A removed entry is a moderation decision and
+     is never republishable by its contributor. The backend backs this:
      `public-sync` (GET and POST) and `publish-public` answer 409
-     `public_crop_link_unavailable` (with `reason`) for such a link — the one
-     exception is the documented republish of the contributor's *own withdrawn*
-     entry through `publish-public` (see §8 and the open question in
-     [crop-library-state-matrix.md](./crop-library-state-matrix.md)). Status
+     `public_crop_link_unavailable` (with `reason`) for such a link — except
+     `publish-public` for the contributor's own withdrawn entry (§8). Status
      changes of a `PublicCrop` never modify the private crop.
   2. **`public_update_available`** (an undecided pending version) -> button
      "Kultur aktualisieren", blue, down arrow (pull), opens the pull diff/apply

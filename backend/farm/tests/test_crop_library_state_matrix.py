@@ -99,6 +99,34 @@ class LibraryStateMatrixTest(DRFAPITestCase):
                 self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
                 self.assertEqual(response.data['code'], 'public_crop_link_unavailable')
 
+    def test_own_withdrawn_entry_can_be_republished_and_nothing_else_can(self):
+        cell = self.fixture.cells['own_withdrawn']
+        self._login(cell)
+        self.assertTrue(self._get(cell).data['can_republish_public_crop'])
+        crop = Crop.objects.get(pk=cell.crop_id)
+
+        response = self.client.post(
+            f'{API}/crops/{cell.crop_id}/publish-public/',
+            {
+                'accepted_public_library_terms': True,
+                'crop_species_id': crop.crop_species_id,
+                'original_language_code': 'de',
+                'publish_as_general': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        entry = PublicCrop.objects.get(pk=cell.public_crop_id)
+        self.assertEqual(entry.status, PublicCrop.STATUS_PUBLISHED)
+        data = self._get(cell).data
+        self.assertEqual(data['source_public_crop_status'], 'published')
+        self.assertFalse(data['can_republish_public_crop'])
+        for key in ('own_removed', 'foreign_withdrawn', 'foreign_removed'):
+            with self.subTest(cell=key):
+                other = self.fixture.cells[key]
+                self.assertFalse(self._get(other).data['can_republish_public_crop'])
+
     def test_status_changes_never_touch_private_values_and_restore_resumes_the_link(self):
         cell = self.fixture.cells['foreign_published_local_changes']
         moderator = self.fixture.users[PUBLISHER_USERNAME]

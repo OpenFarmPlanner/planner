@@ -12,6 +12,7 @@ export type CropLibraryActionKind =
   | 'publish'
   | 'pullUpdate'
   | 'pushUpdate'
+  | 'republish'
   | 'entryWithdrawn'
   | 'entryRemoved'
   | 'updateRejected'
@@ -121,6 +122,18 @@ export function resolveCropLibraryAction(
   const blockedReason = crop?.public_publish_blocked_reason;
   if (blockedReason === 'entry_withdrawn' || blockedReason === 'entry_removed') {
     const withdrawn = blockedReason === 'entry_withdrawn';
+    if (withdrawn && crop?.can_republish_public_crop) {
+      // The contributor's own withdrawal is reversible by publishing again.
+      return {
+        kind: 'republish',
+        variant: 'button',
+        labelKey: 'libraryAction.republish',
+        color: 'primary',
+        disabled: false,
+        tooltipKey: 'libraryAction.republishTooltip',
+        trigger: 'publish',
+      };
+    }
     return {
       kind: withdrawn ? 'entryWithdrawn' : 'entryRemoved',
       variant: 'chip',
@@ -218,6 +231,8 @@ export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropL
     case 'entryWithdrawn':
     case 'entryRemoved':
       return 'unavailable';
+    case 'republish':
+      return 'push';
     case 'proposalPending':
       return 'pending';
     case 'upToDate':

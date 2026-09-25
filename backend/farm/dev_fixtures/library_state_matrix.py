@@ -64,6 +64,7 @@ def _expected(
     update_available: bool = False,
     update_rejected: bool = False,
     proposal_pending: bool = False,
+    can_republish: bool = False,
 ) -> dict[str, Any]:
     return {
         'source_public_crop_status': status,
@@ -72,6 +73,7 @@ def _expected(
         'public_update_available': update_available,
         'public_update_rejected': update_rejected,
         'public_change_proposal_pending': proposal_pending,
+        'can_republish_public_crop': can_republish,
     }
 
 
@@ -90,7 +92,7 @@ CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     ),
     'own_withdrawn': (
         'self', 'withdrawn', 'aligned',
-        _expected(status='withdrawn', blocked='entry_withdrawn', can_unlink=True),
+        _expected(status='withdrawn', blocked='entry_withdrawn', can_unlink=True, can_republish=True),
     ),
     'own_removed': (
         'self', 'removed', 'aligned',
@@ -162,6 +164,7 @@ def _entry_for(key: str, species: CropSpecies, owner: Any, entry_status: str) ->
     )
     PublicCrop.objects.filter(pk=entry.pk).update(
         status=entry_status, version=1, growth_duration_days=BASE_DURATION_DAYS,
+        harvest_duration_days=14,
         removal_reason=(
             PublicCrop.REMOVAL_REASON_TEST_DATA if entry_status == PublicCrop.STATUS_REMOVED else ''
         ),
@@ -173,7 +176,8 @@ def _entry_for(key: str, species: CropSpecies, owner: Any, entry_status: str) ->
 def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: Any, user: Any) -> None:
     updates: dict[str, Any] = {
         'source_public_crop': entry, 'source_public_version': 1, 'rejected_public_version': None,
-        'growth_duration_days': BASE_DURATION_DAYS, 'is_modified_from_source': False,
+        'growth_duration_days': BASE_DURATION_DAYS, 'harvest_duration_days': 14,
+        'is_modified_from_source': False,
     }
     if state in {'local_changes', 'proposal'}:
         updates.update(growth_duration_days=BASE_DURATION_DAYS + 7, is_modified_from_source=True)
@@ -211,7 +215,11 @@ def build_library_state_matrix() -> MatrixFixture:
         species, _ = CropSpecies.objects.get_or_create(name=f'Matrix {key}')
         crop, _ = Crop.objects.get_or_create(
             project=project, name=f'Matrix {key}', variety='',
-            defaults={'crop_species': species, 'growth_duration_days': BASE_DURATION_DAYS},
+            defaults={
+                'crop_species': species,
+                'growth_duration_days': BASE_DURATION_DAYS,
+                'harvest_duration_days': 14,
+            },
         )
         entry = None
         if owner_kind is None:

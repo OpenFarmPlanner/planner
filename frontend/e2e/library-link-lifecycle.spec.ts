@@ -55,7 +55,7 @@ async function openCrop(page: Page, variety: string): Promise<void> {
   await page.getByText(variety, { exact: true }).first().click();
 }
 
-test('a crop whose library entry was withdrawn shows a status chip and can be unlinked', async ({ page, request }) => {
+test('a crop whose own library entry was withdrawn offers republishing and can be unlinked', async ({ page, request }) => {
   const failures = trackFailedApiCalls(page);
   await loginWithDeterministicProject(page, request, `library-withdrawn-${Date.now()}`, { loginAsAdmin: true });
   const [species] = await listSpecies(page, 1);
@@ -65,9 +65,7 @@ test('a crop whose library entry was withdrawn shows a status chip and can be un
 
   await openCrop(page, variety);
 
-  const chip = page.getByTestId('crop-detail-library-status');
-  await expect(chip).toHaveText('Eintrag zurückgezogen');
-  await expect(page.getByTestId('crop-detail-publish-action')).toHaveCount(0);
+  await expect(page.getByTestId('crop-detail-publish-action')).toHaveText('Wieder veröffentlichen');
 
   await page.getByRole('button', { name: 'Weitere Aktionen' }).first().click();
   await page.getByRole('menuitem', { name: 'Verknüpfung aufheben' }).click();
@@ -77,6 +75,23 @@ test('a crop whose library entry was withdrawn shows a status chip and can be un
   await dialog.getByRole('button', { name: 'Verknüpfung aufheben' }).click();
 
   await expect(page.getByRole('button', { name: 'In Bibliothek teilen' })).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
+test('an own withdrawn entry is republished with one confirmation', async ({ page, request }) => {
+  const failures = trackFailedApiCalls(page);
+  await loginWithDeterministicProject(page, request, `library-republish-${Date.now()}`, { loginAsAdmin: true });
+  const [species] = await listSpecies(page, 1);
+  const variety = `E2E Wieder ${Date.now()}`;
+  const { publicCropId } = await publishVariety(page, species, variety);
+  await apiRequest(page, 'POST', `/public-crops/${publicCropId}/remove/`, {});
+
+  await openCrop(page, variety);
+  await page.getByTestId('crop-detail-publish-action').click();
+  await page.getByRole('dialog', { name: 'Wieder veröffentlichen?' })
+    .getByRole('button', { name: 'Wieder veröffentlichen' }).click();
+
+  await expect(page.getByTestId('crop-detail-library-status')).toHaveText('Aktuell');
   expect(failures).toEqual([]);
 });
 

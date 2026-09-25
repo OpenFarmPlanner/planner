@@ -265,6 +265,35 @@ describe('resolveCropLibraryAction', () => {
   });
 });
 
+describe('republishing an own withdrawn entry', () => {
+  it('offers "Wieder veröffentlichen" as a push button, ranked before pull states', () => {
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        public_publish_blocked_reason: 'entry_withdrawn',
+        can_republish_public_crop: true,
+      }),
+      openUpdate,
+    );
+    expect(action).toMatchObject({
+      kind: 'republish',
+      variant: 'button',
+      labelKey: 'libraryAction.republish',
+      tooltipKey: 'libraryAction.republishTooltip',
+      trigger: 'publish',
+      disabled: false,
+    });
+  });
+
+  it('a removed entry is never republishable by the user', () => {
+    const action = resolveCropLibraryAction(
+      crop({ source_public_crop: 9, public_publish_blocked_reason: 'entry_removed', can_republish_public_crop: true }),
+      inSync,
+    );
+    expect(action.kind).toBe('entryRemoved');
+  });
+});
+
 describe('unpublished linked entry', () => {
   it.each([
     ['entry_withdrawn', 'entryWithdrawn', 'libraryAction.entryWithdrawn'],

@@ -54,7 +54,7 @@ columns are what the crop serializer must report.
 | `unlinked` | – | – | `null` | no | button "In Bibliothek teilen" |
 | `own_published_aligned` | own, published | aligned | `no_local_changes` | no (`crop_link_owned`) | chip "Aktuell" |
 | `own_published_local_changes` | own, published | local changes | `null` | no | button "Bibliothek aktualisieren" |
-| `own_withdrawn` | own, withdrawn | aligned | `entry_withdrawn` | **yes** | chip "Eintrag zurückgezogen" |
+| `own_withdrawn` | own, withdrawn | aligned | `entry_withdrawn`, `can_republish_public_crop` | **yes** | button "Wieder veröffentlichen" |
 | `own_removed` | own, removed | aligned | `entry_removed` | **yes** | chip "Eintrag entfernt" |
 | `foreign_published_aligned` | foreign, published | aligned | `no_local_changes` | yes | chip "Aktuell" |
 | `foreign_published_local_changes` | foreign, published | local changes | `null` | yes | button "Bibliothek aktualisieren" |
@@ -71,6 +71,7 @@ Rules that cut across cells:
   push and pull state. `public-sync` (GET/POST) and `publish-public` answer 409
   `public_crop_link_unavailable` with `reason`. Unlink is always allowed here,
   including for the user's own entry.
+- **Republish**: the contributor's own withdrawn entry gets a "Wieder veröffentlichen" button (one confirmation, `publish-public`); foreign withdrawn and removed entries never do.
 - **Restore** puts a still-linked crop back to its normal state (values are
   untouched); a crop unlinked meanwhile stays unlinked.
 - **Rejected proposal**: when a moderated edit proposal is rejected the
@@ -105,14 +106,8 @@ Rules that cut across cells:
 
 ## Open questions
 
-1. **Republishing a withdrawn own entry.** The docs (§8) say a contributor's
-   withdrawal is "reversible by publishing the project crop again". The
-   target behaviour here says withdrawn entries show only the chip. The
-   backend keeps that documented republish through `publish-public`
-   unchanged, but the UI no longer offers a button for it. Decide whether a
-   "Wieder veröffentlichen" action belongs on the chip.
-2. **Pull against an unpublished entry via the library page.**
+1. **Pull against an unpublished entry via the library page.**
    `public-crops/<id>/import/` still answers a plain 404 for anything not
    published; no crop-side control reaches it any more.
-3. **API-token push into a removed entry** follows the same 409 as a session
+2. **API-token push into a removed entry** follows the same 409 as a session
    push; the token surface itself was not changed.

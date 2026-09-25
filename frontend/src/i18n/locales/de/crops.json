@@ -884,7 +884,9 @@
       "proposalPendingTooltip": "Deine Änderungen an der Kulturbibliothek warten auf Freigabe.",
       "entryRemoved": "Eintrag entfernt",
       "entryWithdrawn": "Eintrag zurückgezogen",
-      "entryUnavailableTooltip": "Der verknüpfte Eintrag ist nicht mehr in der Kulturbibliothek. Du kannst die Verknüpfung aufheben oder warten, bis er wiederhergestellt wird."
+      "entryUnavailableTooltip": "Der verknüpfte Eintrag ist nicht mehr in der Kulturbibliothek. Du kannst die Verknüpfung aufheben oder warten, bis er wiederhergestellt wird.",
+      "republish": "Wieder veröffentlichen",
+      "republishTooltip": "Den zurückgezogenen Eintrag wieder in der Kulturbibliothek veröffentlichen."
     },
     "publishSuccess": "„{{name}}“ wurde in die Kulturbibliothek veröffentlicht.",
     "publishPendingModeration": "„{{name}}“ wurde zur Prüfung eingereicht und erscheint in der Kulturbibliothek, sobald ein Moderator den Beitrag freigegeben hat.",
@@ -1310,6 +1312,11 @@
         "crop_link_owned": "Diese Verknüpfung kann nicht aufgehoben werden, solange dein eigener Eintrag veröffentlicht ist. Ziehe den Eintrag zurück, um die Verknüpfung zu lösen.",
         "crop_not_linked": "Diese Kultur ist mit keinem Eintrag der Kulturbibliothek verknüpft."
       }
+    },
+    "republish": {
+      "title": "Wieder veröffentlichen?",
+      "message": "„{{name}}“ wird mit den aktuellen Werten dieser Kultur wieder in der Kulturbibliothek veröffentlicht.",
+      "confirm": "Wieder veröffentlichen"
     }
   },
   "commands": {

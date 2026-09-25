@@ -884,7 +884,9 @@
       "proposalPendingTooltip": "Your changes to the crop library are awaiting approval.",
       "entryRemoved": "Entry removed",
       "entryWithdrawn": "Entry withdrawn",
-      "entryUnavailableTooltip": "The linked entry is no longer in the crop library. You can remove the link or wait until it is restored."
+      "entryUnavailableTooltip": "The linked entry is no longer in the crop library. You can remove the link or wait until it is restored.",
+      "republish": "Publish again",
+      "republishTooltip": "Publish the withdrawn entry in the crop library again."
     },
     "publishSuccess": "“{{name}}” was published to the crop library.",
     "publishPendingModeration": "“{{name}}” was submitted for review and will appear in the crop library once a moderator has approved it.",
@@ -1310,6 +1312,11 @@
         "crop_link_owned": "This link cannot be removed while your own entry is published. Withdraw the entry to remove the link.",
         "crop_not_linked": "This crop is not linked to a crop library entry."
       }
+    },
+    "republish": {
+      "title": "Publish again?",
+      "message": "“{{name}}” will be published in the crop library again with this crop's current values.",
+      "confirm": "Publish again"
     }
   },
   "commands": {
