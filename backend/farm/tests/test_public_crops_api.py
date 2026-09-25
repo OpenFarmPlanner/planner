@@ -5157,3 +5157,56 @@ class PublicCropUnlinkApiTest(DRFAPITestCase):
         sorte.refresh_from_db()
         self.assertEqual(sorte.variety, 'Matador')
         self.assertFalse(sorte.is_modified_from_source)
+
+
+class PublicCropUnpublishedLinkReproTest(DRFAPITestCase):
+    """Reproductions of the linked-entry-no-longer-published bugs.
+
+    A crop keeps its library link when the entry is withdrawn or removed
+    (removal is restorable). The crop serializer must then describe that link
+    itself — the detail page must not need the public endpoint, which answers
+    404 for non-published entries — and "Verknüpfung aufheben" must be
+    offered exactly when the endpoint accepts it.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='repro-user', email='repro@example.com', password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Repro Project', slug='repro-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        grant_established_trust(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.species = CropSpecies.objects.create(name='Repro Leek')
+        self.entry = PublicCrop.objects.create(
+            name='Lauch', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.user, growth_duration_days=120,
+        )
+        self.crop = Crop.objects.create(
+            name='Lauch', variety='', growth_duration_days=120, project=self.project,
+            crop_species=self.species, source_public_crop=self.entry, source_public_version=1,
+        )
+
+    def _crop_data(self):
+        return self.client.get(f'/openfarmplanner/api/crops/{self.crop.id}/').data
+
+    def test_linked_entry_name_and_status_come_with_the_crop(self):
+        PublicCrop.objects.filter(pk=self.entry.pk).update(status=PublicCrop.STATUS_REMOVED)
+
+        data = self._crop_data()
+
+        self.assertEqual(data['source_public_crop_status'], 'removed')
+        self.assertEqual(data['source_public_crop_title'], 'Lauch')
+
+    def test_own_withdrawn_entry_can_be_unlinked(self):
+        PublicCrop.objects.filter(pk=self.entry.pk).update(status=PublicCrop.STATUS_WITHDRAWN)
+
+        self.assertTrue(self._crop_data()['can_unlink_public_crop'])
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.crop.id}/unlink-public-crop/',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.crop.refresh_from_db()
+        self.assertIsNone(self.crop.source_public_crop_id)

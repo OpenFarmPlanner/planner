@@ -19,6 +19,7 @@ from config.frontend_urls import build_public_frontend_url
 from accounts.consent import record_acceptance
 from accounts.models import DocumentConsent
 from accounts.trust import grant_established_trust
+from crops.permissions import grant_public_library_moderator_access
 from farm.models import Project, ProjectInvitation, ProjectMembership, PublicCrop
 from farm.services.demo_project import get_demo_project_name, populate_demo_project, resolve_demo_language
 
@@ -179,6 +180,8 @@ class E2EInvitationFixtureView(APIView):
         for fixture_user in (admin, invitee, outsider):
             record_acceptance(fixture_user, DocumentConsent.DOCUMENT_TERMS)
             _grant_fixture_user_trust(fixture_user)
+        if request.data.get('library_moderator') is True:
+            grant_public_library_moderator_access(admin)
         ProjectMembership.objects.create(user=admin, project=project, role=ProjectMembership.ROLE_ADMIN)
         if demo_project:
             populate_demo_project(project, owner=admin, language_code=demo_language)

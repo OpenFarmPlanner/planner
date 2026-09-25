@@ -155,14 +155,18 @@ The public Crop Library follows an open-data model:
   project history records it and the existing restore puts the link back
   (`restore_crop_from_revision` restores the two library FKs from the
   snapshot's `_id` keys while the entry still exists). Errors:
-  `crop_not_linked` (no sync link) and `crop_link_owned` (the linked entry was
-  published by this user — withdrawing it is the path there, and an unlinked
-  copy would collide with the user's own entry on its next publish). The UI
-  offers it as "Verknüpfung aufheben" in the crop's ⋮ menu only when
-  `canUnlinkPublicCrop` holds (a sync link to an entry the user is not the
-  contributor of; a moderator's access does not count as owning), behind a
+  `crop_not_linked` (no sync link) and `crop_link_owned` (the linked entry is
+  *published* by this user — withdrawing it is the path there, and an unlinked
+  copy would collide with the user's own entry on its next publish; once that
+  entry is withdrawn or removed the collision risk is gone and the unlink is
+  allowed). One predicate, `resolve_public_crop_unlink_block()`, backs both the
+  endpoint and the serializer fields `can_unlink_public_crop` /
+  `unlink_public_crop_blocked_reason`; the UI offers "Verknüpfung aufheben" in
+  the crop's ⋮ menu exactly when `can_unlink_public_crop` is true
+  (`canUnlinkPublicCrop` reads only that flag), behind a
   confirmation that lists what stays ("Verknüpfte Sorten bleiben verknüpft."
-  only when the Kultur has linked Sorten). Afterwards the crop resolves to
+  only when the Kultur has linked Sorten). The dialog names the entry from
+  `source_public_crop_title`, and shows a backend rejection inline. Afterwards the crop resolves to
   case 1 ("In Bibliothek teilen"), the "Importiert" badge stays, and the
   wizard offers the duplicate's "Mit diesem Eintrag verknüpfen" again. This is
   also the way out for a farm that deliberately keeps its own values and does
@@ -187,6 +191,24 @@ The public Crop Library follows an open-data model:
   tooltip, on hover and on keyboard focus):
   1. **not linked** -> button "In Bibliothek teilen", up arrow, opens
      the publishing wizard.
+  1b. **linked entry withdrawn or removed** (`public_publish_blocked_reason`
+     `entry_withdrawn` / `entry_removed`, with `source_public_crop_status`) ->
+     no push/pull button, only a neutral status chip "Eintrag zurückgezogen" /
+     "Eintrag entfernt" (link-off icon) whose tooltip says the entry is no longer in the
+     library and the link can be removed or the entry restored. The link is
+     kept because withdrawal and removal are restorable; after a restore the
+     crop resolves normally again, and a crop unlinked meanwhile stays
+     unlinked. Ranked before every push and pull case. The one exception is a
+     contributor's **own withdrawn** entry (`can_republish_public_crop`, the same
+     `can_republish_withdrawn_entry()` predicate the publish guard uses): there
+     the chip is replaced by the button "Wieder veröffentlichen", which asks for
+     one confirmation and calls `publish-public` (the single push path), bringing
+     the entry back as published. A removed entry is a moderation decision and
+     is never republishable by its contributor. The backend backs this:
+     `public-sync` (GET and POST) and `publish-public` answer 409
+     `public_crop_link_unavailable` (with `reason`) for such a link — except
+     `publish-public` for the contributor's own withdrawn entry (§8). Status
+     changes of a `PublicCrop` never modify the private crop.
   2. **`public_update_available`** (an undecided pending version) -> button
      "Kultur aktualisieren", blue, down arrow (pull), opens the pull diff/apply
      dialog. Wins over any push offer.
@@ -1436,7 +1458,13 @@ own action:
 - **"Unchanged" means both fields.** The request is rejected with
   `crop_species_unchanged` only when neither the species nor the variety would
   actually change — a variety-only correction (species left as-is) is a real,
-  applicable relink, not a no-op.
+  applicable relink, not a no-op. The dialog applies the same rule up front:
+  "Kulturart ändern" stays disabled (tooltip "Wähle eine andere Kulturart oder
+  Sorte aus.") while the picked species equals the entry's and the variety —
+  which only counts when the user may edit it — is unchanged. The dialog
+  preselects the entry's current species once the species list has *loaded*
+  (`useCropSpeciesOptions().loaded`, not `!loading`, which is also true before
+  the fetch starts).
 - **Target species that does not exist yet, or is still pending.** The picker
   is the publishing wizard's own `CropSpeciesPicker`, propose affordance
   included, so a missing species is filed through the existing "Kulturart

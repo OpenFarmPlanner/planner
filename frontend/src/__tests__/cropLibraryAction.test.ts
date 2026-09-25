@@ -265,27 +265,66 @@ describe('resolveCropLibraryAction', () => {
   });
 });
 
+describe('republishing an own withdrawn entry', () => {
+  it('offers "Wieder veröffentlichen" as a push button, ranked before pull states', () => {
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        public_publish_blocked_reason: 'entry_withdrawn',
+        can_republish_public_crop: true,
+      }),
+      openUpdate,
+    );
+    expect(action).toMatchObject({
+      kind: 'republish',
+      variant: 'button',
+      labelKey: 'libraryAction.republish',
+      tooltipKey: 'libraryAction.republishTooltip',
+      trigger: 'publish',
+      disabled: false,
+    });
+  });
+
+  it('a removed entry is never republishable by the user', () => {
+    const action = resolveCropLibraryAction(
+      crop({ source_public_crop: 9, public_publish_blocked_reason: 'entry_removed', can_republish_public_crop: true }),
+      inSync,
+    );
+    expect(action.kind).toBe('entryRemoved');
+  });
+});
+
+describe('unpublished linked entry', () => {
+  it.each([
+    ['entry_withdrawn', 'entryWithdrawn', 'libraryAction.entryWithdrawn'],
+    ['entry_removed', 'entryRemoved', 'libraryAction.entryRemoved'],
+  ] as const)('%s ranks before push and pull as a bare status chip', (reason, kind, labelKey) => {
+    const action = resolveCropLibraryAction(
+      crop({ source_public_crop: 9, public_publish_blocked_reason: reason, is_modified_from_source: true }),
+      openUpdate,
+    );
+    expect(action).toMatchObject({
+      kind,
+      variant: 'chip',
+      labelKey,
+      tooltipKey: 'libraryAction.entryUnavailableTooltip',
+      trigger: null,
+      disabled: false,
+    });
+    expect(resolveCropLibraryStatusVisual(action)).toBe('unavailable');
+  });
+});
+
 describe('canUnlinkPublicCrop', () => {
-  it('offers the unlink for a crop linked to someone else\'s entry', () => {
-    expect(canUnlinkPublicCrop(crop({ source_public_crop: 9, origin_type: 'imported' }))).toBe(true);
-  });
-
-  it('treats a moderator\'s access as not owning the entry', () => {
+  it('follows the backend flag and nothing else', () => {
+    expect(canUnlinkPublicCrop(crop({ source_public_crop: 9, can_unlink_public_crop: true }))).toBe(true);
     expect(canUnlinkPublicCrop(crop({
-      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'moderator',
-    }))).toBe(true);
-  });
-
-  it('never offers it for a link to the user\'s own entry', () => {
-    expect(canUnlinkPublicCrop(crop({
-      source_public_crop: 9, owned_public_crop_id: 9, owned_public_crop_role: 'contributor',
+      source_public_crop: 9,
+      can_unlink_public_crop: false,
+      unlink_public_crop_blocked_reason: 'crop_link_owned',
     }))).toBe(false);
-  });
-
-  it('never offers it for a crop without a sync link', () => {
-    expect(canUnlinkPublicCrop(crop())).toBe(false);
-    // Provenance alone is not a link.
-    expect(canUnlinkPublicCrop(crop({ derived_from_public_crop: 9, origin_type: 'imported' }))).toBe(false);
+    expect(canUnlinkPublicCrop(crop({ source_public_crop: 9 }))).toBe(false);
+    expect(canUnlinkPublicCrop(null)).toBe(false);
   });
 
   it('an unlinked crop resolves to "In Bibliothek teilen" again', () => {

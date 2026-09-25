@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useTranslation } from '../i18n';
+import { formatCropDisplayName } from '../crops/cropDisplay';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
 import type { CropHistoryEntry } from '../api/types';
@@ -80,7 +81,7 @@ const PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_TITLE_SX: SxProps<Theme> = {
 };
 
 function Crops() {
-  const { t } = useTranslation(['crops', 'common']);
+  const { t, i18n } = useTranslation(['crops', 'common']);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
@@ -319,13 +320,23 @@ function Crops() {
     ));
   }, [crops, unlinkCrop]);
 
-  const handleConfirmUnlink = useCallback(() => {
-    const crop = unlinkCrop;
+  const [unlinkError, setUnlinkError] = useState('');
+  const [unlinkSubmitting, setUnlinkSubmitting] = useState(false);
+
+  const closeUnlinkDialog = useCallback(() => {
     setUnlinkCrop(null);
-    if (crop) {
-      void handleUnlinkPublicCrop(crop);
-    }
-  }, [handleUnlinkPublicCrop, unlinkCrop]);
+    setUnlinkError('');
+  }, []);
+
+  const handleConfirmUnlink = useCallback(async () => {
+    const crop = unlinkCrop;
+    if (!crop) return;
+    setUnlinkSubmitting(true);
+    setUnlinkError('');
+    const unlinked = await handleUnlinkPublicCrop(crop, setUnlinkError);
+    setUnlinkSubmitting(false);
+    if (unlinked) closeUnlinkDialog();
+  }, [closeUnlinkDialog, handleUnlinkPublicCrop, unlinkCrop]);
 
   // Only a general Kultur has Sorten to offer: the group members of a Sorte
   // are its siblings, which are published from their own page.
@@ -341,9 +352,28 @@ function Crops() {
     ));
   }, [crops, selectedCrop]);
 
+  // The contributor's own withdrawn entry comes back with one confirmation: the
+  // wizard would open its field-by-field sync, which needs a published entry.
+  const [republishOpen, setRepublishOpen] = useState(false);
+
   const handleRequestPublishCrop = useCallback(() => {
-    setPublishWizardOpen(true);
-  }, []);
+    if (selectedCrop?.can_republish_public_crop) {
+      setRepublishOpen(true);
+    } else {
+      setPublishWizardOpen(true);
+    }
+  }, [selectedCrop?.can_republish_public_crop]);
+
+  const handleConfirmRepublish = useCallback(() => {
+    setRepublishOpen(false);
+    if (!selectedCrop) return;
+    const language = (i18n.language || 'de').split('-')[0];
+    void handlePublishCurrentCrop(Boolean(user?.public_library_terms_accepted), {
+      cropSpeciesId: selectedCrop.crop_species ?? undefined,
+      originalLanguageCode: language === 'en' ? 'en' : 'de',
+      publishAsGeneral: !(selectedCrop.variety ?? '').trim(),
+    });
+  }, [handlePublishCurrentCrop, i18n.language, selectedCrop, user?.public_library_terms_accepted]);
 
   const handlePublishingWizardPublish = useCallback((data: {
     acceptedPublicLibraryTerms: boolean;
@@ -856,8 +886,23 @@ function Crops() {
         open={unlinkCrop !== null}
         crop={unlinkCrop ?? undefined}
         hasLinkedVarieties={unlinkCropHasLinkedVarieties}
-        onCancel={() => setUnlinkCrop(null)}
-        onConfirm={handleConfirmUnlink}
+        errorText={unlinkError}
+        submitting={unlinkSubmitting}
+        onCancel={closeUnlinkDialog}
+        onConfirm={() => void handleConfirmUnlink()}
+      />
+
+      <ConfirmationDialog
+        open={republishOpen}
+        title={t('library.republish.title')}
+        message={t('library.republish.message', { name: selectedCrop ? formatCropDisplayName(selectedCrop) : '' })}
+        cancelLabel={t('common:actions.cancel')}
+        confirmLabel={t('library.republish.confirm')}
+        onCancel={() => setRepublishOpen(false)}
+        onConfirm={handleConfirmRepublish}
+        actionsSx={{ px: 3, pb: 2.5, pt: 1 }}
+        cancelButtonProps={{ variant: 'outlined' }}
+        confirmButtonProps={{ variant: 'contained', color: 'primary' }}
       />
 
       <CropsPublishingWizardDialog

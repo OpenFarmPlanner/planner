@@ -49,6 +49,9 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.
+- **[Crop Library State Matrix](./crop-library-state-matrix.md)** — every
+  state a private crop and its public library link can be in, what each
+  action must do there, and the fixtures/tests that pin it.
 - **[Crop Taxonomy Guidelines](./crop-taxonomy-guidelines.md)** — when a name
   is a crop species of its own, an alias, or a variety; how regional AT/DE/CH
   terms are stored; and the audit command that finds gaps in the official

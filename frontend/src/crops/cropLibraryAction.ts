@@ -12,6 +12,9 @@ export type CropLibraryActionKind =
   | 'publish'
   | 'pullUpdate'
   | 'pushUpdate'
+  | 'republish'
+  | 'entryWithdrawn'
+  | 'entryRemoved'
   | 'updateRejected'
   | 'proposalPending'
   | 'upToDate';
@@ -69,6 +72,10 @@ export function readCropLibrarySyncFlags(crop: Crop | null | undefined): CropLib
  * both always show the same state. Priority order (first match wins):
  *
  * 1. Not connected to any public entry -> publish.
+ * 1b. The linked entry is withdrawn or removed (`public_publish_blocked_reason`
+ *    `entry_withdrawn` / `entry_removed`; the link is kept because both are
+ *    restorable) -> a status chip only. Ranked before every push and pull case:
+ *    neither is possible against an unpublished entry.
  * 2. The library is ahead and undecided (`public_update_available`) -> pull.
  *    Wins over any push offer: while the library is ahead, a push is never
  *    offered at the same time.
@@ -109,6 +116,32 @@ export function resolveCropLibraryAction(
       disabled: false,
       tooltipKey: 'libraryAction.publishTooltip',
       trigger: 'publish',
+    };
+  }
+
+  const blockedReason = crop?.public_publish_blocked_reason;
+  if (blockedReason === 'entry_withdrawn' || blockedReason === 'entry_removed') {
+    const withdrawn = blockedReason === 'entry_withdrawn';
+    if (withdrawn && crop?.can_republish_public_crop) {
+      // The contributor's own withdrawal is reversible by publishing again.
+      return {
+        kind: 'republish',
+        variant: 'button',
+        labelKey: 'libraryAction.republish',
+        color: 'primary',
+        disabled: false,
+        tooltipKey: 'libraryAction.republishTooltip',
+        trigger: 'publish',
+      };
+    }
+    return {
+      kind: withdrawn ? 'entryWithdrawn' : 'entryRemoved',
+      variant: 'chip',
+      labelKey: withdrawn ? 'libraryAction.entryWithdrawn' : 'libraryAction.entryRemoved',
+      color: 'default',
+      disabled: false,
+      tooltipKey: 'libraryAction.entryUnavailableTooltip',
+      trigger: null,
     };
   }
 
@@ -178,6 +211,7 @@ export type CropLibraryStatusVisual =
   | 'push'
   | 'pull'
   | 'rejected'
+  | 'unavailable'
   | 'pending';
 
 /** A species under moderation freezes every action it touches into one "pending" look. */
@@ -194,6 +228,11 @@ export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropL
       return 'push';
     case 'updateRejected':
       return 'rejected';
+    case 'entryWithdrawn':
+    case 'entryRemoved':
+      return 'unavailable';
+    case 'republish':
+      return 'push';
     case 'proposalPending':
       return 'pending';
     case 'upToDate':
@@ -202,14 +241,10 @@ export function resolveCropLibraryStatusVisual(action: CropLibraryAction): CropL
 }
 
 /**
- * Whether "Verknüpfung aufheben" is offered: the crop syncs with a public
- * entry the user did not publish. A link to the user's own entry is not
- * removable — withdrawing the entry is the path there, and an unlinked copy
- * would collide with that entry on its next publish.
+ * Whether "Verknüpfung aufheben" is offered. The backend decides
+ * (`can_unlink_public_crop` is computed by the same predicate the
+ * `unlink-public-crop` endpoint uses); there is deliberately no frontend rule.
  */
 export function canUnlinkPublicCrop(crop: Crop | null | undefined): boolean {
-  if (!crop?.source_public_crop) return false;
-  const ownsLinkedEntry = crop.owned_public_crop_id === crop.source_public_crop
-    && crop.owned_public_crop_role === 'contributor';
-  return !ownsLinkedEntry;
+  return crop?.can_unlink_public_crop === true;
 }

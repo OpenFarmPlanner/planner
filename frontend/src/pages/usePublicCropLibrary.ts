@@ -21,6 +21,8 @@ interface UsePublicCropLibraryConfig {
   showSnackbar: (message: string, severity: 'success' | 'error' | 'info') => void;
 }
 
+const UNLINK_ERROR_CODES = ['crop_not_linked', 'crop_link_owned'];
+
 export function usePublicCropLibrary({
   shouldShowProjectRequiredState,
   selectedCrop,
@@ -251,7 +253,12 @@ export function usePublicCropLibrary({
   };
 
   // "Verknüpfung aufheben": the crop stops syncing with somebody else's entry.
-  const handleUnlinkPublicCrop = async (crop: Crop): Promise<boolean> => {
+  // `onError` receives the localized rejection so the confirmation dialog can
+  // show it inline; without it the failure is a snackbar.
+  const handleUnlinkPublicCrop = async (
+    crop: Crop,
+    onError?: (message: string) => void,
+  ): Promise<boolean> => {
     if (!crop.id) {
       return false;
     }
@@ -262,7 +269,17 @@ export function usePublicCropLibrary({
       return true;
     } catch (error) {
       console.error('Error unlinking crop from the library:', error);
-      showSnackbar(t('library.unlink.error'), 'error');
+      const code = axios.isAxiosError(error)
+        ? (error.response?.data as { code?: string } | undefined)?.code
+        : undefined;
+      const message = t(code && UNLINK_ERROR_CODES.includes(code)
+        ? `library.unlink.errors.${code}`
+        : 'library.unlink.error');
+      if (onError) {
+        onError(message);
+      } else {
+        showSnackbar(message, 'error');
+      }
       return false;
     }
   };
