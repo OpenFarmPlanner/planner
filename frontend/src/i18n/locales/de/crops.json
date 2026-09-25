@@ -881,7 +881,10 @@
       "pushUpdate": "Bibliothek aktualisieren",
       "pushUpdateTooltip": "Deine lokalen Änderungen in die öffentliche Version in der Bibliothek übernehmen.",
       "proposalPending": "Vorschlag in Prüfung",
-      "proposalPendingTooltip": "Deine Änderungen an der Kulturbibliothek warten auf Freigabe."
+      "proposalPendingTooltip": "Deine Änderungen an der Kulturbibliothek warten auf Freigabe.",
+      "entryRemoved": "Eintrag entfernt",
+      "entryWithdrawn": "Eintrag zurückgezogen",
+      "entryUnavailableTooltip": "Der verknüpfte Eintrag ist nicht mehr in der Kulturbibliothek. Du kannst die Verknüpfung aufheben oder warten, bis er wiederhergestellt wird."
     },
     "publishSuccess": "„{{name}}“ wurde in die Kulturbibliothek veröffentlicht.",
     "publishPendingModeration": "„{{name}}“ wurde zur Prüfung eingereicht und erscheint in der Kulturbibliothek, sobald ein Moderator den Beitrag freigegeben hat.",
@@ -1253,7 +1256,8 @@
       "rejectedError": "Eine abgelehnte Kulturart kann nicht als Ziel gewählt werden.",
       "duplicateSpeciesError": "Eine veröffentlichte Kulturart mit diesem Namen existiert bereits. Prüfe die Bezeichnungen oder wähle stattdessen die bestehende Kulturart aus der Liste.",
       "approvalFailedError": "Die Kulturart konnte nicht freigegeben werden. Deine Auswahl bleibt erhalten — bitte versuche es erneut.",
-      "varietyAdminOnly": "Nur Administratoren können die Sorte umbenennen."
+      "varietyAdminOnly": "Nur Administratoren können die Sorte umbenennen.",
+      "unchangedTooltip": "Wähle eine andere Kulturart oder Sorte aus."
     },
     "sync": {
       "dialogTitle": "Mit Kulturbibliothek abgleichen",
@@ -1301,7 +1305,11 @@
       "canRelink": "Du kannst die Kultur später erneut verknüpfen.",
       "confirm": "Verknüpfung aufheben",
       "success": "Verknüpfung aufgehoben.",
-      "error": "Die Verknüpfung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+      "error": "Die Verknüpfung konnte nicht aufgehoben werden. Bitte versuche es erneut.",
+      "errors": {
+        "crop_link_owned": "Diese Verknüpfung kann nicht aufgehoben werden, solange dein eigener Eintrag veröffentlicht ist. Ziehe den Eintrag zurück, um die Verknüpfung zu lösen.",
+        "crop_not_linked": "Diese Kultur ist mit keinem Eintrag der Kulturbibliothek verknüpft."
+      }
     }
   },
   "commands": {

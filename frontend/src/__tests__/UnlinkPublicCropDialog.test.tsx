@@ -10,7 +10,10 @@ vi.mock('../api/api', async () => {
   return { ...actual, publicCropAPI: { ...actual.publicCropAPI, get: publicCropGetMock } };
 });
 
-const CROP: Crop = { id: 1, name: 'Lauch', variety: '', source_public_crop: 9, origin_type: 'imported' };
+const CROP: Crop = {
+  id: 1, name: 'Lauch', variety: '', source_public_crop: 9, origin_type: 'imported',
+  source_public_crop_title: 'Porree', source_public_crop_status: 'published',
+};
 
 const renderDialog = (hasLinkedVarieties: boolean, handlers = { onCancel: vi.fn(), onConfirm: vi.fn() }) => render(
   <UnlinkPublicCropDialog open crop={CROP} hasLinkedVarieties={hasLinkedVarieties} {...handlers} />,
@@ -36,6 +39,36 @@ describe('UnlinkPublicCropDialog', () => {
       'Werte, die du bereits in der Kulturbibliothek aktualisiert hast, bleiben dort erhalten.',
       'Du kannst die Kultur später erneut verknüpfen.',
     ]);
+  });
+
+  it('names a removed entry from the crop itself, without any public request', () => {
+    render(
+      <UnlinkPublicCropDialog
+        open
+        crop={{ ...CROP, source_public_crop_status: 'removed' }}
+        hasLinkedVarieties={false}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/vom öffentlichen Eintrag „Porree“ getrennt/)).toBeInTheDocument();
+    expect(publicCropGetMock).not.toHaveBeenCalled();
+  });
+
+  it('shows a rejection inline and keeps the confirm button usable', () => {
+    render(
+      <UnlinkPublicCropDialog
+        open
+        crop={CROP}
+        hasLinkedVarieties={false}
+        errorText="Grund"
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('unlink-public-crop-error')).toHaveTextContent('Grund');
   });
 
   it('mentions linked Sorten only when the Kultur has some', () => {

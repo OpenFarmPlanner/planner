@@ -319,13 +319,23 @@ function Crops() {
     ));
   }, [crops, unlinkCrop]);
 
-  const handleConfirmUnlink = useCallback(() => {
-    const crop = unlinkCrop;
+  const [unlinkError, setUnlinkError] = useState('');
+  const [unlinkSubmitting, setUnlinkSubmitting] = useState(false);
+
+  const closeUnlinkDialog = useCallback(() => {
     setUnlinkCrop(null);
-    if (crop) {
-      void handleUnlinkPublicCrop(crop);
-    }
-  }, [handleUnlinkPublicCrop, unlinkCrop]);
+    setUnlinkError('');
+  }, []);
+
+  const handleConfirmUnlink = useCallback(async () => {
+    const crop = unlinkCrop;
+    if (!crop) return;
+    setUnlinkSubmitting(true);
+    setUnlinkError('');
+    const unlinked = await handleUnlinkPublicCrop(crop, setUnlinkError);
+    setUnlinkSubmitting(false);
+    if (unlinked) closeUnlinkDialog();
+  }, [closeUnlinkDialog, handleUnlinkPublicCrop, unlinkCrop]);
 
   // Only a general Kultur has Sorten to offer: the group members of a Sorte
   // are its siblings, which are published from their own page.
@@ -856,8 +866,10 @@ function Crops() {
         open={unlinkCrop !== null}
         crop={unlinkCrop ?? undefined}
         hasLinkedVarieties={unlinkCropHasLinkedVarieties}
-        onCancel={() => setUnlinkCrop(null)}
-        onConfirm={handleConfirmUnlink}
+        errorText={unlinkError}
+        submitting={unlinkSubmitting}
+        onCancel={closeUnlinkDialog}
+        onConfirm={() => void handleConfirmUnlink()}
       />
 
       <CropsPublishingWizardDialog

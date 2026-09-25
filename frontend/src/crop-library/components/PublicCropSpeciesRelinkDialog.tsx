@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -21,6 +22,7 @@ import {
   REQUIRED_SPECIES_LANGUAGES,
   type SpeciesApprovalTranslations,
 } from '../../crops/cropSpeciesMatching';
+import { AppTooltip } from '../../components/AppTooltip';
 import { useCropSpeciesOptions } from '../../crops/useCropSpeciesOptions';
 import { useTranslation } from '../../i18n';
 
@@ -86,7 +88,9 @@ export function PublicCropSpeciesRelinkDialog({
   varietyEditable,
 }: PublicCropSpeciesRelinkDialogProps) {
   const { t, i18n } = useTranslation(['crops', 'common']);
-  const { species, loading: speciesLoading, addSpecies } = useCropSpeciesOptions(open, true);
+  const {
+    species, loading: speciesLoading, loaded: speciesLoaded, addSpecies,
+  } = useCropSpeciesOptions(open, true);
   const [selectedSpecies, setSelectedSpecies] = useState<CropSpecies | null>(null);
   const [speciesInputValue, setSpeciesInputValue] = useState('');
   const [proposalName, setProposalName] = useState<string | null>(null);
@@ -118,7 +122,7 @@ export function PublicCropSpeciesRelinkDialog({
   }, [open, crop]);
 
   useEffect(() => {
-    if (!open || speciesLoading || prefilledSpeciesRef.current) return;
+    if (!open || !speciesLoaded || prefilledSpeciesRef.current) return;
     prefilledSpeciesRef.current = true;
     // Preselected with the entry's current species: the moderator is
     // correcting *from* it, and leaving it as-is while only relabelling the
@@ -129,7 +133,7 @@ export function PublicCropSpeciesRelinkDialog({
     setSelectedSpecies(currentSpecies);
     setSpeciesInputValue(getCropSpeciesOptionLabel(currentSpecies));
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [open, speciesLoading, species, crop]);
+  }, [open, speciesLoaded, species, crop]);
 
   const currentSpeciesLabel = crop?.crop_species_name || t('library.relinkSpecies.noCurrentSpecies');
   // A blank variety is the species-level "general" entry
@@ -236,6 +240,12 @@ export function PublicCropSpeciesRelinkDialog({
 
   const isProposing = Boolean(proposalName?.trim()) && !selectedSpecies;
   const needsApproval = isProposing || selectedSpecies?.status === 'proposed';
+  // Mirrors the backend's `crop_species_unchanged` rule: the request only carries
+  // a variety when it is editable, so only then does the variety count.
+  const varietyIsSubmitted = varietyEditable && isVarietyEntry;
+  const isUnchanged = Boolean(crop)
+    && selectedSpecies?.id === crop?.crop_species
+    && (!varietyIsSubmitted || varietyDraft.trim() === (crop?.variety ?? ''));
   const approvalTranslationsComplete = Boolean(approvalTranslations.de.trim() && approvalTranslations.en.trim());
 
   return (
@@ -308,23 +318,34 @@ export function PublicCropSpeciesRelinkDialog({
         <Button variant="outlined" onClick={onClose} disabled={submitting}>
           {t('common:actions.cancel')}
         </Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleSubmit()}
-          disabled={
-            submitting
-            || (!selectedSpecies && !isProposing)
-            || (needsApproval && !approvalTranslationsComplete)
-          }
-        >
-          {submitting
-            ? t('library.relinkSpecies.saving')
-            : isProposing
-              ? t('library.relinkSpecies.submitProposal')
-              : needsApproval
-                ? t('library.relinkSpecies.submitApproval')
-                : t('library.relinkSpecies.submit')}
-        </Button>
+        <AppTooltip title={isUnchanged ? t('library.relinkSpecies.unchangedTooltip') : ''}>
+          {/* A disabled button swallows hover and focus, so the tooltip hangs off a wrapper. */}
+          <Box
+            component="span"
+            tabIndex={isUnchanged ? 0 : undefined}
+            aria-label={isUnchanged ? t('library.relinkSpecies.unchangedTooltip') : undefined}
+            sx={{ display: 'inline-flex' }}
+          >
+            <Button
+              variant="contained"
+              onClick={() => void handleSubmit()}
+              disabled={
+                submitting
+                || isUnchanged
+                || (!selectedSpecies && !isProposing)
+                || (needsApproval && !approvalTranslationsComplete)
+              }
+            >
+              {submitting
+                ? t('library.relinkSpecies.saving')
+                : isProposing
+                  ? t('library.relinkSpecies.submitProposal')
+                  : needsApproval
+                    ? t('library.relinkSpecies.submitApproval')
+                    : t('library.relinkSpecies.submit')}
+            </Button>
+          </Box>
+        </AppTooltip>
       </DialogActions>
     </Dialog>
   );

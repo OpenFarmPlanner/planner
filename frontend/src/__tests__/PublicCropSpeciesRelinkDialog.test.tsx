@@ -105,6 +105,19 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     expect(await screen.findByText(/Bisherige Kulturart/)).toBeInTheDocument();
   });
 
+  it('disables "Kulturart ändern" while neither species nor variety changed, and says why', async () => {
+    renderDialog();
+
+    const submit = await screen.findByRole('button', { name: 'Kulturart ändern' });
+    await waitFor(() => expect(submit).toBeDisabled());
+    expect(await screen.findByLabelText('Wähle eine andere Kulturart oder Sorte aus.')).toContainElement(submit);
+
+    const varietyField = screen.getByLabelText('Sorte');
+    await userEvent.setup().type(varietyField, ' (Busch)');
+    expect(screen.getByRole('button', { name: 'Kulturart ändern' })).toBeEnabled();
+    expect(relinkSpeciesMock).not.toHaveBeenCalled();
+  });
+
   it('relinks to an already published species', async () => {
     const onRelinked = renderDialog();
 

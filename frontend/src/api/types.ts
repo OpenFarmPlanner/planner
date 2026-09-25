@@ -120,6 +120,13 @@ export interface Crop {
   public_crop_species_pending?: boolean;
   /** True while the user's own edit proposal for the linked library entry awaits moderation. */
   public_change_proposal_pending?: boolean;
+  /** Lifecycle status of the linked library entry; the link outlives a withdrawal or removal. */
+  source_public_crop_status?: PublicCropStatus | null;
+  /** Display name of the linked library entry, so the crop never needs the public endpoint for it. */
+  source_public_crop_title?: string | null;
+  /** Same predicate the `unlink-public-crop` endpoint applies. */
+  can_unlink_public_crop?: boolean;
+  unlink_public_crop_blocked_reason?: 'crop_not_linked' | 'crop_link_owned' | null;
   crop_species?: number | null;
   thousand_kernel_weight_g?: number;
   package_size_g?: number; // deprecated, replaced by seed_packages
@@ -264,7 +271,7 @@ export interface CropSupplierDataInput {
 
 export interface PublicCrop {
   id: number;
-  status: 'draft' | 'published' | 'withdrawn' | 'removed';
+  status: PublicCropStatus;
   removal_reason?: PublicCropRemovalReason | '';
   name: string;
   variety?: string;
@@ -530,7 +537,14 @@ export type PublicCropOwnershipRole = 'contributor' | 'moderator';
  * an undecided library update, a version the user declined, or a copy that is
  * aligned with the library and carries no local edits worth contributing.
  */
-export type PublicPublishBlockedReason = 'update_pending' | 'update_rejected' | 'no_local_changes';
+export type PublicCropStatus = 'draft' | 'published' | 'withdrawn' | 'removed';
+
+export type PublicPublishBlockedReason =
+  | 'update_pending'
+  | 'update_rejected'
+  | 'no_local_changes'
+  | 'entry_withdrawn'
+  | 'entry_removed';
 
 export type PublicCropRemovalReason =
   | 'accidental_publication'
