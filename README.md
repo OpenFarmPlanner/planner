@@ -47,6 +47,28 @@ adds the superuser back into the registered-user totals; every other
 breakdown below (data richness, feature adoption, growth, crop library, ...)
 always covers every project regardless of this filter.
 
+A **Demo-Nutzung** block, placed between the Gesamtübersicht and the
+"Projekte" table, reports how often the demo is used and whether it leads to
+real usage, for the last 7 days, the last 30 days, and all-time:
+
+- **Demo-Projekte angelegt:** demo projects created in the window.
+- **Demo-Projekte genutzt:** of those, how many have at least one
+  `EntityRevision` — i.e. were created or changed through the app by a real
+  user after creation. Demo seeding writes its objects with the plain ORM and
+  never records a revision, so a revision on a demo project can only come
+  from an actual user action; no separate seed/user marker was needed.
+- **Eigenes Projekt danach angelegt:** how many of the users who created a
+  demo project in the window later created or joined a project of their own
+  (a `ProjectMembership` on a non-demo project, dated after the demo project
+  was created), shown as a count and as a percentage of that window's
+  distinct demo users.
+
+This block applies the same superuser exclusion as the rest of the dashboard:
+a demo project where the logged-in superuser is the sole member is left out
+of "angelegt"/"genutzt", and the superuser is never counted as a demo user
+for the conversion metric, even when sharing a demo project with someone
+else.
+
 Beyond that activity view it reads the following existing data, always as
 per-project counts or aggregates over all projects, never as per-user
 behavior:
