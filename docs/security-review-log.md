@@ -40,6 +40,43 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-28 — Claude — Demo-usage metrics on the engagement dashboard (PR #700)
+
+**Scope:** Never previously reviewed. Full diff of this PR against `main`:
+the new `build_demo_usage_summary`/`DemoUsagePeriod`/`DemoUsageSummary` in
+`backend/farm/services/engagement_dashboard.py`, its wiring into
+`ProjectAdmin.engagement_dashboard_view` (`backend/farm/admin.py`), the new
+"Demo-Nutzung" table in `backend/farm/templates/admin/farm/engagement_dashboard.html`,
+and the accompanying README/test changes.
+
+**Findings:** None at any confidence.
+
+- The new code adds no route and no new permission surface: it only feeds an
+  extra block into the existing `engagement/` admin view, which still gates
+  on `request.user.is_superuser` (unchanged by this PR) before either the
+  pre-existing `build_engagement_dashboard` or the new
+  `build_demo_usage_summary` call runs.
+- All new queries are plain aggregate ORM (`Count`/`Min`/`.distinct().count()`)
+  over `Project`, `ProjectMembership`, and `EntityRevision`; none use `.raw()`,
+  `.extra()`, or string-built SQL.
+- The block renders only integer counts and a rounded percentage through
+  ordinary Django template variables (`{{ }}`), which auto-escape; no
+  `mark_safe`/`|safe` was added, and no per-user data (username, email) is
+  rendered — only aggregate counts, consistent with the module's existing
+  "Every value here is ... never per-user behavioral data" docstring.
+- The superuser-exclusion logic reused for this block
+  (`_projects_where_user_is_sole_member`, refactored out of the pre-existing
+  `_excluded_project_ids` with no behavior change to the original caller) and
+  the `include_hidden`/`show_all` toggle mirror the already-reviewed main
+  dashboard's own-project exclusion; this is an internal, superuser-only
+  aggregate view, so cross-project visibility here is intended, not a tenant
+  isolation gap.
+- No new dependency, migration, or settings change is part of this PR.
+
+No fixes were needed as a result of this review.
+
+---
+
 ## 2026-09-28 — Claude — Crop-library state-matrix branch (`fix/crop-library-state-matrix`, `bc6cfe89`..`16a4d062`)
 
 **Scope:** Never previously reviewed. Full diff of this branch against `main`:
