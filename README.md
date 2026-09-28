@@ -67,7 +67,9 @@ This block applies the same superuser exclusion as the rest of the dashboard:
 a demo project where the logged-in superuser is the sole member is left out
 of "angelegt"/"genutzt", and the superuser is never counted as a demo user
 for the conversion metric, even when sharing a demo project with someone
-else.
+else. Like the "Projekte" table and the Gesamtübersicht totals, the
+`?show_all=1` toggle lifts this exclusion here too, so it also surfaces the
+superuser's own demo activity.
 
 Beyond that activity view it reads the following existing data, always as
 per-project counts or aggregates over all projects, never as per-user

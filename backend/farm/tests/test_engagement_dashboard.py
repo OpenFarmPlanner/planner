@@ -1187,6 +1187,25 @@ class DemoUsageSummaryTests(TestCase):
         self.assertEqual(summary.last_7_days.created, 1)
         self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
 
+    def test_include_hidden_surfaces_the_superusers_own_solo_demo_project(self) -> None:
+        """`include_hidden` mirrors the main dashboard's `?show_all=1`: it must
+        lift the exclusion here too, not just on the "Projekte" table."""
+        project = Project.objects.create(
+            name='Superuser-Test', slug='du-show-all-solo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = self._summary(current_user_id=self.superuser.pk, include_hidden=True)
+
+        self.assertEqual(summary.last_7_days.created, 1)
+        self.assertEqual(summary.last_7_days.used, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+
     def test_without_a_current_user_no_project_is_excluded(self) -> None:
         self._demo_project(days_ago=1, slug='du-no-current-user')
 
@@ -1204,3 +1223,37 @@ class DemoUsageSummaryTests(TestCase):
         self.assertContains(response, 'Demo-Projekte angelegt')
         self.assertContains(response, 'Demo-Projekte genutzt')
         self.assertContains(response, 'Eigenes Projekt danach angelegt')
+
+    @staticmethod
+    def _demo_usage_table_html(response) -> str:
+        content = response.content.decode()
+        start = content.index('<caption>Demo-Nutzung</caption>')
+        end = content.index('</table>', start)
+        return content[start:end]
+
+    def test_show_all_reveals_the_superusers_own_demo_project_in_the_view(self) -> None:
+        """The admin view must thread `show_all` into the service call, not
+        only into the main dashboard, or toggling "Alle anzeigen" would leave
+        this block silently stuck on the filtered numbers."""
+        project = Project.objects.create(
+            name='Superuser-Test', slug='du-view-show-all', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+        real_project = Project.objects.create(name='Echt', slug='du-view-show-all-real')
+        ProjectMembership.objects.create(user=self.superuser, project=real_project)
+        self.client.force_login(self.superuser)
+
+        default_response = self.client.get(reverse('admin:farm_project_engagement'))
+        show_all_response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'show_all': '1'},
+        )
+
+        default_table = self._demo_usage_table_html(default_response)
+        show_all_table = self._demo_usage_table_html(show_all_response)
+        self.assertIn('<td>0</td>', default_table)
+        self.assertNotIn('<td>0</td>', show_all_table)

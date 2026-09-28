@@ -72,7 +72,10 @@ class ProjectAdmin(admin.ModelAdmin):
             current_user_id=request.user.pk,
             include_hidden=show_all,
         )
-        demo_usage = build_demo_usage_summary(current_user_id=request.user.pk)
+        demo_usage = build_demo_usage_summary(
+            current_user_id=request.user.pk,
+            include_hidden=show_all,
+        )
         order_param = request.GET.get('o', '')
         descending = order_param.startswith('-')
         sort_key = order_param[1:] if descending else order_param

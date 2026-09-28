@@ -723,36 +723,41 @@ def build_demo_usage_summary(
     now: datetime | None = None,
     *,
     current_user_id: int | None = None,
+    include_hidden: bool = False,
 ) -> DemoUsageSummary:
     """Measure how often the demo is used and whether it leads to real usage.
 
     Mirrors the main dashboard's default exclusion: a demo project whose only
     member is `current_user_id` (the logged-in superuser's own test run) is
-    left out, and that user is never counted as a demo user.
+    left out, and that user is never counted as a demo user. Like the main
+    dashboard's `include_hidden`/`?show_all=1`, passing `include_hidden=True`
+    lifts that exclusion so the same toggle also reveals the superuser's own
+    demo activity here.
     """
+    effective_user_id = None if include_hidden else current_user_id
     current_time = now or timezone.now()
     cutoff_7_days = current_time - timedelta(days=7)
     cutoff_30_days = current_time - timedelta(days=30)
     excluded_project_ids = (
-        _projects_where_user_is_sole_member(current_user_id)
-        if current_user_id is not None
+        _projects_where_user_is_sole_member(effective_user_id)
+        if effective_user_id is not None
         else set()
     )
 
     return DemoUsageSummary(
         last_7_days=_demo_usage_period(
             cutoff_7_days,
-            current_user_id=current_user_id,
+            current_user_id=effective_user_id,
             excluded_project_ids=excluded_project_ids,
         ),
         last_30_days=_demo_usage_period(
             cutoff_30_days,
-            current_user_id=current_user_id,
+            current_user_id=effective_user_id,
             excluded_project_ids=excluded_project_ids,
         ),
         all_time=_demo_usage_period(
             None,
-            current_user_id=current_user_id,
+            current_user_id=effective_user_id,
             excluded_project_ids=excluded_project_ids,
         ),
     )
