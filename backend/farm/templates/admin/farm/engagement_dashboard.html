@@ -35,6 +35,39 @@
   </div>
 
   <div class="module">
+    <table>
+      <caption>{% translate "Demo-Nutzung" %}</caption>
+      <thead><tr>
+        <th>{% translate "Kennzahl" %}</th>
+        <th>{% translate "Letzte 7 Tage" %}</th>
+        <th>{% translate "Letzte 30 Tage" %}</th>
+        <th>{% translate "Gesamt" %}</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <th>{% translate "Demo-Projekte angelegt" %}</th>
+          <td>{{ demo_usage.last_7_days.created }}</td>
+          <td>{{ demo_usage.last_30_days.created }}</td>
+          <td>{{ demo_usage.all_time.created }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Demo-Projekte genutzt" %}</th>
+          <td>{{ demo_usage.last_7_days.used }}</td>
+          <td>{{ demo_usage.last_30_days.used }}</td>
+          <td>{{ demo_usage.all_time.used }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Eigenes Projekt danach angelegt" %}</th>
+          <td>{{ demo_usage.last_7_days.converted_to_own_project.count }} ({{ demo_usage.last_7_days.converted_to_own_project.percent }} %)</td>
+          <td>{{ demo_usage.last_30_days.converted_to_own_project.count }} ({{ demo_usage.last_30_days.converted_to_own_project.percent }} %)</td>
+          <td>{{ demo_usage.all_time.converted_to_own_project.count }} ({{ demo_usage.all_time.converted_to_own_project.percent }} %)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="help">{% translate "„Genutzt“ zählt Demo-Projekte mit mindestens einer Änderung durch die Nutzerin oder den Nutzer nach der Anlage; von der Demo-Vorlage selbst angelegte Daten zählen nicht mit." %}</p>
+  </div>
+
+  <div class="module">
     {% if dashboard.show_all %}
     <p class="help">
       {% translate "Alle Projekte werden angezeigt." %}

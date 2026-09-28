@@ -85,6 +85,24 @@ class Share:
         return round(100 * self.count / self.total, 1)
 
 
+@dataclass(frozen=True)
+class DemoUsagePeriod:
+    """Demo-project creation, usage, and conversion to real usage in one time window."""
+
+    created: int
+    used: int
+    converted_to_own_project: Share
+
+
+@dataclass(frozen=True)
+class DemoUsageSummary:
+    """Demo-usage metrics broken down into the three windows the admin shows."""
+
+    last_7_days: DemoUsagePeriod
+    last_30_days: DemoUsagePeriod
+    all_time: DemoUsagePeriod
+
+
 @dataclass
 class ProjectEngagement:
     """Aggregated engagement values for one project."""
@@ -542,16 +560,8 @@ def _build_crop_library(rows: dict[int, ProjectEngagement]) -> CropLibraryEngage
     )
 
 
-def _excluded_project_ids(current_user_id: int | None) -> set[int]:
-    """Return ids of projects hidden by default: demo templates and projects
-    where `current_user_id` is the sole member (own scratch/test projects)."""
-    demo_ids = set(
-        Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
-        .values_list('pk', flat=True),
-    )
-    if current_user_id is None:
-        return demo_ids
-
+def _projects_where_user_is_sole_member(user_id: int) -> set[int]:
+    """Return ids of projects whose only membership row belongs to `user_id`."""
     member_totals = dict(
         ProjectMembership.objects.values('project_id')
         .annotate(total=Count('pk'))
@@ -561,11 +571,22 @@ def _excluded_project_ids(current_user_id: int | None) -> set[int]:
         project_id for project_id, total in member_totals.items() if total == 1
     }
     current_user_project_ids = set(
-        ProjectMembership.objects.filter(user_id=current_user_id)
+        ProjectMembership.objects.filter(user_id=user_id)
         .values_list('project_id', flat=True),
     )
-    sole_owner_ids = sole_member_project_ids & current_user_project_ids
-    return demo_ids | sole_owner_ids
+    return sole_member_project_ids & current_user_project_ids
+
+
+def _excluded_project_ids(current_user_id: int | None) -> set[int]:
+    """Return ids of projects hidden by default: demo templates and projects
+    where `current_user_id` is the sole member (own scratch/test projects)."""
+    demo_ids = set(
+        Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
+        .values_list('pk', flat=True),
+    )
+    if current_user_id is None:
+        return demo_ids
+    return demo_ids | _projects_where_user_is_sole_member(current_user_id)
 
 
 def build_engagement_dashboard(
@@ -642,4 +663,101 @@ def build_engagement_dashboard(
         crop_library=_build_crop_library(all_rows),
         hidden_projects_count=hidden_projects_count,
         show_all=include_hidden,
+    )
+
+
+def _demo_usage_period(
+    cutoff: datetime | None,
+    *,
+    current_user_id: int | None,
+    excluded_project_ids: set[int],
+) -> DemoUsagePeriod:
+    """Aggregate demo-project creation, usage, and conversion for one window.
+
+    "Used" means the project has at least one `EntityRevision` row. Demo
+    seeding (`populate_demo_project` and its callers) writes objects with the
+    plain ORM and never calls `record_entity_revision`, so a revision on a
+    demo project can only come from a real user action through the API — no
+    extra marker is needed to tell seed data from user activity.
+    """
+    demo_projects = Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
+    if cutoff is not None:
+        demo_projects = demo_projects.filter(created_at__gte=cutoff)
+    if excluded_project_ids:
+        demo_projects = demo_projects.exclude(pk__in=excluded_project_ids)
+
+    created = demo_projects.count()
+    used = demo_projects.filter(entity_revisions__isnull=False).distinct().count()
+
+    demo_first_seen = dict(
+        ProjectMembership.objects.filter(project__in=demo_projects)
+        .exclude(user_id=current_user_id)
+        .values('user_id')
+        .annotate(first_demo_created=Min('project__created_at'))
+        .values_list('user_id', 'first_demo_created'),
+    )
+    converted = 0
+    if demo_first_seen:
+        earliest_real_project = dict(
+            ProjectMembership.objects
+            .exclude(project__description__in=DEMO_PROJECT_DESCRIPTIONS)
+            .filter(user_id__in=demo_first_seen)
+            .values('user_id')
+            .annotate(earliest_real=Min('created_at'))
+            .values_list('user_id', 'earliest_real'),
+        )
+        converted = sum(
+            1
+            for user_id, first_demo in demo_first_seen.items()
+            if user_id in earliest_real_project and earliest_real_project[user_id] > first_demo
+        )
+
+    return DemoUsagePeriod(
+        created=created,
+        used=used,
+        converted_to_own_project=Share(count=converted, total=len(demo_first_seen)),
+    )
+
+
+def build_demo_usage_summary(
+    now: datetime | None = None,
+    *,
+    current_user_id: int | None = None,
+    include_hidden: bool = False,
+) -> DemoUsageSummary:
+    """Measure how often the demo is used and whether it leads to real usage.
+
+    Mirrors the main dashboard's default exclusion: a demo project whose only
+    member is `current_user_id` (the logged-in superuser's own test run) is
+    left out, and that user is never counted as a demo user. Like the main
+    dashboard's `include_hidden`/`?show_all=1`, passing `include_hidden=True`
+    lifts that exclusion so the same toggle also reveals the superuser's own
+    demo activity here.
+    """
+    effective_user_id = None if include_hidden else current_user_id
+    current_time = now or timezone.now()
+    cutoff_7_days = current_time - timedelta(days=7)
+    cutoff_30_days = current_time - timedelta(days=30)
+    excluded_project_ids = (
+        _projects_where_user_is_sole_member(effective_user_id)
+        if effective_user_id is not None
+        else set()
+    )
+
+    return DemoUsageSummary(
+        last_7_days=_demo_usage_period(
+            cutoff_7_days,
+            current_user_id=effective_user_id,
+            excluded_project_ids=excluded_project_ids,
+        ),
+        last_30_days=_demo_usage_period(
+            cutoff_30_days,
+            current_user_id=effective_user_id,
+            excluded_project_ids=excluded_project_ids,
+        ),
+        all_time=_demo_usage_period(
+            None,
+            current_user_id=effective_user_id,
+            excluded_project_ids=excluded_project_ids,
+        ),
     )

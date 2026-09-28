@@ -10,6 +10,7 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    EntityRevision,
     Feedback,
     Field,
     FieldLayout,
@@ -34,6 +35,7 @@ from farm.services.engagement_dashboard import (
     PROJECT_SORT_FIELDS,
     ProjectEngagement,
     Share,
+    build_demo_usage_summary,
     build_engagement_dashboard,
     sort_project_rows,
 )
@@ -1051,3 +1053,207 @@ class EngagementDashboardShowAllViewTests(TestCase):
             self._projects_table_rows(default_response),
             self._projects_table_rows(explicit_response),
         )
+
+
+class DemoUsageSummaryTests(TestCase):
+    """The "Demo-Nutzung" block: how often the demo is created, used, and
+    leads to a real (non-demo) project afterwards."""
+
+    def setUp(self) -> None:
+        self.now = timezone.now()
+        # A data migration seeds one project into every fresh database; the
+        # counts below are only readable with a known population.
+        Project.objects.all().delete()
+        self.superuser = get_user_model().objects.create_superuser(
+            username='demo-usage-admin',
+            email='demo-usage-admin@example.com',
+            password='test-password',
+        )
+
+    def _demo_project(self, *, days_ago: float, slug: str):
+        user = get_user_model().objects.create_user(
+            username=f'demo-user-{slug}', password='test-password',
+        )
+        project = Project.objects.create(
+            name=f'Demo {slug}', slug=slug, description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=days_ago))
+        project.refresh_from_db()
+        ProjectMembership.objects.create(user=user, project=project)
+        return project, user
+
+    def _summary(self, **kwargs):
+        return build_demo_usage_summary(now=self.now, **kwargs)
+
+    def test_created_counts_demo_projects_within_each_window(self) -> None:
+        self._demo_project(days_ago=1, slug='du-recent')
+        self._demo_project(days_ago=15, slug='du-mid')
+        self._demo_project(days_ago=100, slug='du-old')
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.created, 1)
+        self.assertEqual(summary.last_30_days.created, 2)
+        self.assertEqual(summary.all_time.created, 3)
+
+    def test_seed_data_alone_does_not_count_as_used(self) -> None:
+        """Seeding writes objects with the plain ORM and never records a
+        revision, so a demo project with only seeded data is not "used"."""
+        project, _user = self._demo_project(days_ago=1, slug='du-seed-only')
+        Location.objects.create(name='Seed-Standort', project=project)
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.used, 0)
+        self.assertEqual(summary.all_time.used, 0)
+
+    def test_a_real_entity_revision_marks_the_project_as_used(self) -> None:
+        project, _user = self._demo_project(days_ago=1, slug='du-used')
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.used, 1)
+        self.assertEqual(summary.all_time.used, 1)
+
+    def test_a_user_who_later_joins_a_real_project_counts_as_converted(self) -> None:
+        _project, user = self._demo_project(days_ago=1, slug='du-converted')
+        real_project = Project.objects.create(name='Echt', slug='du-real')
+        ProjectMembership.objects.create(user=user, project=real_project)
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.converted_to_own_project.count, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.percent, 100.0)
+
+    def test_a_user_without_a_later_real_project_is_not_converted(self) -> None:
+        self._demo_project(days_ago=1, slug='du-not-converted')
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.converted_to_own_project.count, 0)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+
+    def test_joining_a_real_project_before_the_demo_does_not_count_as_conversion(self) -> None:
+        """Only a project joined *after* the demo counts — a membership that
+        predates trying the demo was not caused by it."""
+        user = get_user_model().objects.create_user(
+            username='du-preexisting', password='test-password',
+        )
+        real_project = Project.objects.create(name='Vorher', slug='du-preexisting-real')
+        ProjectMembership.objects.create(user=user, project=real_project)
+        ProjectMembership.objects.filter(user=user, project=real_project).update(
+            created_at=self.now - timedelta(days=10),
+        )
+        demo_project = Project.objects.create(
+            name='Demo danach', slug='du-preexisting-demo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=demo_project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=user, project=demo_project)
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.converted_to_own_project.count, 0)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+
+    def test_the_superusers_own_solo_demo_project_is_excluded_from_created_and_used(self) -> None:
+        project = Project.objects.create(
+            name='Superuser-Test', slug='du-superuser-solo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = self._summary(current_user_id=self.superuser.pk)
+
+        self.assertEqual(summary.last_7_days.created, 0)
+        self.assertEqual(summary.last_7_days.used, 0)
+
+    def test_the_superuser_is_never_counted_as_a_demo_user_even_on_a_shared_project(self) -> None:
+        project, _other_user = self._demo_project(days_ago=1, slug='du-shared')
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+
+        summary = self._summary(current_user_id=self.superuser.pk)
+
+        # The project stays visible (shared, not solely the superuser's), but
+        # only the other member counts towards the demo-user population.
+        self.assertEqual(summary.last_7_days.created, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+
+    def test_include_hidden_surfaces_the_superusers_own_solo_demo_project(self) -> None:
+        """`include_hidden` mirrors the main dashboard's `?show_all=1`: it must
+        lift the exclusion here too, not just on the "Projekte" table."""
+        project = Project.objects.create(
+            name='Superuser-Test', slug='du-show-all-solo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = self._summary(current_user_id=self.superuser.pk, include_hidden=True)
+
+        self.assertEqual(summary.last_7_days.created, 1)
+        self.assertEqual(summary.last_7_days.used, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 1)
+
+    def test_without_a_current_user_no_project_is_excluded(self) -> None:
+        self._demo_project(days_ago=1, slug='du-no-current-user')
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.created, 1)
+
+    def test_the_view_renders_the_demo_usage_block(self) -> None:
+        self._demo_project(days_ago=1, slug='du-view')
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'))
+
+        self.assertContains(response, 'Demo-Nutzung')
+        self.assertContains(response, 'Demo-Projekte angelegt')
+        self.assertContains(response, 'Demo-Projekte genutzt')
+        self.assertContains(response, 'Eigenes Projekt danach angelegt')
+
+    @staticmethod
+    def _demo_usage_table_html(response) -> str:
+        content = response.content.decode()
+        start = content.index('<caption>Demo-Nutzung</caption>')
+        end = content.index('</table>', start)
+        return content[start:end]
+
+    def test_show_all_reveals_the_superusers_own_demo_project_in_the_view(self) -> None:
+        """The admin view must thread `show_all` into the service call, not
+        only into the main dashboard, or toggling "Alle anzeigen" would leave
+        this block silently stuck on the filtered numbers."""
+        project = Project.objects.create(
+            name='Superuser-Test', slug='du-view-show-all', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        Project.objects.filter(pk=project.pk).update(created_at=self.now - timedelta(days=1))
+        ProjectMembership.objects.create(user=self.superuser, project=project)
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+        real_project = Project.objects.create(name='Echt', slug='du-view-show-all-real')
+        ProjectMembership.objects.create(user=self.superuser, project=real_project)
+        self.client.force_login(self.superuser)
+
+        default_response = self.client.get(reverse('admin:farm_project_engagement'))
+        show_all_response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'show_all': '1'},
+        )
+
+        default_table = self._demo_usage_table_html(default_response)
+        show_all_table = self._demo_usage_table_html(show_all_response)
+        self.assertIn('<td>0</td>', default_table)
+        self.assertNotIn('<td>0</td>', show_all_table)
