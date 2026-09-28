@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.db.models import Exists, OuterRef, QuerySet
+from django.db.models import Exists, F, OuterRef, QuerySet
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
@@ -34,6 +34,7 @@ class OpenFarmPlannerUserAdmin(DjangoUserAdmin):
         'date_joined',
         'last_login',
     ]
+    ordering = [F('last_login').desc(nulls_last=True)]
     fieldsets = tuple(
         (
             name,
