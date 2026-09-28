@@ -368,3 +368,33 @@ review of a boundary, or the security part of a larger change:
 
 A review that produced no findings still gets an entry. "Nothing found here on
 this date, by this tool" is exactly the information the other tool needs.
+
+## Automated Claude PR Review
+`.github/workflows/claude-pr.yml` runs on `opened`, `synchronize`,
+`ready_for_review` and `labeled`. A deterministic triage job decides whether
+Claude runs a code review, a security review, or both; the exact path and
+content patterns live, commented, in the triage step's `env` block.
+
+- **Never runs** for drafts, fork PRs, Dependabot PRs, PRs labeled
+  `skip-claude`, or events sent by `claude[bot]` (its own fix pushes).
+- **Code review** when the PR changes ≥ 300 lines or ≥ 15 files (not counting
+  auto-generated migrations, lockfiles, snapshots, locale files, `docs/**`,
+  `*.md`), touches core domain logic (`crop_inheritance.py`,
+  `public_crops.py`, `services/seasons.py`), adds a hand-written migration
+  (`RunPython`/`RunSQL`), changes models, or carries the `claude-review` label.
+- **Security review** when it touches security-relevant paths (tenancy
+  context, views/serializers/permissions/urls, auth and API tokens, settings,
+  moderation/trust levels, personal data, Channels, workflows, Docker), adds a
+  new dependency, adds a line matching a risky pattern (`.raw(`,
+  `csrf_exempt`, `dangerouslySetInnerHTML`, `X-Project-Id`, …), or carries the
+  `claude-security` label. It runs after the code review, never in parallel.
+- **Fix rules:** every finding is fixed on the PR branch, one commit per
+  finding prefixed `claude-review:` or `claude-security:`, with migrations,
+  docs and i18n in the same commit per the rules above. The affected tests
+  (plus `tsc` and ESLint for frontend changes) run before each push; a fix
+  that cannot be made to pass is dropped and reported as not fixed. Security
+  findings are logged in `docs/security-review-log.md`. Each job ends with
+  one summary comment listing fixes by commit SHA and flagging behavior,
+  API, data or migration changes and uncertain fixes.
+- The action refuses to run on a PR that changes `claude-pr.yml` itself until
+  that change is on the default branch.
