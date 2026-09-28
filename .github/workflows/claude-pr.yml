@@ -1,0 +1,644 @@
+# Automatic Claude code and security review for pull requests.
+#
+# A deterministic `triage` job decides whether a PR needs a code review, a
+# security review, both, or neither. The review jobs then run Claude Code
+# (anthropics/claude-code-action@v1), which fixes every finding directly on
+# the PR branch, one commit per finding, and posts a summary comment.
+#
+# The trigger criteria, labels and fix rules are summarized in CLAUDE.md
+# ("Automated Claude PR Review"). All path and content patterns the triage
+# uses live in the `env` block of the triage step below.
+
+name: Claude PR Review
+
+"on":
+  pull_request:
+    types: [opened, synchronize, ready_for_review, labeled]
+
+permissions:
+  contents: read
+
+# One run per PR; a newer push cancels the running review. Events that are
+# ignored anyway (Claude's own fix pushes, labels other than the trigger
+# labels) get a unique group so they cannot cancel a review that is still
+# running - Claude's own push would otherwise cancel the job that pushed it.
+concurrency:
+  group: >-
+    claude-pr-${{ github.event.pull_request.number }}${{
+    (github.event.sender.login == 'claude[bot]'
+      || (github.event.action == 'labeled'
+          && github.event.label.name != 'claude-review'
+          && github.event.label.name != 'claude-security'
+          && github.event.label.name != 'skip-claude'))
+    && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    name: Triage
+    # Skip drafts, forks (no secrets, and Claude must not push to a fork),
+    # PRs labeled `skip-claude`, Dependabot PRs (Dependabot runs get no
+    # Actions secrets, and version bumps are covered by Dependency Review),
+    # and events sent by the Claude GitHub App itself (`claude[bot]`, the
+    # login its fix commits are pushed as) so a fix push cannot start a new
+    # review loop. A `labeled` event only counts for the two trigger labels.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-claude') &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.sender.login != 'claude[bot]' &&
+      (github.event.action != 'labeled' ||
+        github.event.label.name == 'claude-review' ||
+        github.event.label.name == 'claude-security')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code_review: ${{ steps.decide.outputs.code_review }}
+      security_review: ${{ steps.decide.outputs.security_review }}
+      self_changed: ${{ steps.decide.outputs.self_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Decide which reviews to run
+        id: decide
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
+          # ------------------------------------------------------------------
+          # Triage configuration. Every pattern is a Python regular expression
+          # matched with re.search against the repo-relative file path (or,
+          # for CONTENT patterns, against one added diff line). One pattern
+          # per line; lines starting with `#` are comments.
+          # ------------------------------------------------------------------
+
+          # Size threshold for a code review. Files matched by
+          # SIZE_EXCLUDE_PATTERNS count neither towards lines nor files.
+          SIZE_MIN_LINES: '300'
+          SIZE_MIN_FILES: '15'
+
+          # Auto-generated migrations (no RunPython/RunSQL) are excluded by
+          # content inspection in the script, not by a pattern here.
+          SIZE_EXCLUDE_PATTERNS: |
+            # Lockfiles
+            (^|/)package-lock\.json$
+            (^|/)pdm\.lock$
+            \.lock$
+            # Test snapshots and Playwright screenshot baselines
+            (^|/)__snapshots__/
+            \.snap$
+            -snapshots/
+            # i18n locale files (frontend JSON and Django gettext catalogues)
+            ^frontend/src/i18n/locales/
+            ^backend/.*/locale/
+            # Pure documentation
+            ^docs/
+            \.md$
+
+          # Core domain logic: any change triggers a code review.
+          CORE_DOMAIN_PATTERNS: |
+            # Inheritance resolver and CROP_INHERITABLE_FIELDS
+            ^backend/farm/services/crop_inheritance\.py$
+            # Public crop library sync (the 4-case re-import/update model)
+            ^backend/farm/services/public_crops\.py$
+            # Season copy and distribution logic
+            ^backend/farm/services/seasons\.py$
+
+          # Model changes trigger a code review. Hand-written migrations
+          # (RunPython/RunSQL) are detected by content in the script.
+          MODEL_PATTERNS: |
+            ^backend/.*/models\.py$
+            ^backend/.*/models/.*\.py$
+
+          # Security-relevant paths: any change triggers a security review.
+          SECURITY_PATH_PATTERNS: |
+            # Project/season tenancy (X-Project-Id / X-Season-Id resolution)
+            ^backend/farm/project_context\.py$
+            ^backend/config/middleware\.py$
+            ^backend/farm/common/
+            # Views, serializers, permissions, URL routing
+            ^backend/.*views\.py$
+            ^backend/.*/views/
+            ^backend/.*serializers\.py$
+            ^backend/.*/serializers/
+            ^backend/.*permissions\.py$
+            ^backend/.*urls\.py$
+            # Authentication, sessions, social login, API tokens
+            ^backend/accounts/[^/]+\.py$
+            ^backend/farm/agent_api/[^/]+\.py$
+            ^frontend/src/auth/
+            ^frontend/src/api/(api|httpClient)\.ts$
+            # Settings (CORS, CSRF, ALLOWED_HOSTS, DEBUG, cookies, logging)
+            ^backend/config/settings[^/]*\.py$
+            # Crop library moderation and account trust levels
+            ^backend/crops/[^/]+\.py$
+            ^backend/farm/crops/moderation\.py$
+            ^backend/accounts/trust\.py$
+            # Personal data: user models, admin, usage overview, data export
+            ^backend/.*admin[^/]*\.py$
+            ^backend/farm/services/engagement_dashboard\.py$
+            # Django Channels (consumers, routing, ASGI)
+            ^backend/.*consumers\.py$
+            ^backend/farm/realtime/
+            ^backend/config/(routing|asgi)\.py$
+            # CI/CD and deployment configuration
+            ^\.github/workflows/
+            (^|/)Dockerfile[^/]*$
+            (^|/)docker-compose[^/]*\.ya?ml$
+
+          # Added diff lines matching any of these trigger a security review.
+          # Scanned in all changed files except those matching
+          # CONTENT_EXCLUDE_PATTERNS.
+          SECURITY_CONTENT_PATTERNS: |
+            \.raw\(
+            \.extra\(
+            cursor\.execute
+            fields\s*=\s*['"]__all__['"]
+            AllowAny
+            permission_classes\s*=\s*(\[\s*\]|\(\s*\))
+            csrf_exempt
+            mark_safe
+            \|\s*safe\b
+            dangerouslySetInnerHTML
+            localStorage.*(token|Token|TOKEN)
+            (^|[^.\w])eval\(
+            subprocess
+            shell\s*=\s*True
+            requests\.(get|post)\(
+            (?i)x[-_]project[-_]id
+            (?i)x[-_]season[-_]id
+            get_queryset
+
+          # `objects.all()` only counts when added in a view module.
+          VIEW_QUERYSET_PATTERN: \bobjects\.all\(\)
+          VIEW_PATH_PATTERNS: |
+            ^backend/.*views\.py$
+            ^backend/.*/views/
+
+          # Tests send X-Project-Id headers in nearly every API test, and docs
+          # quote the patterns, so neither is scanned for content patterns.
+          # Nor is this workflow, which lists them (its path already counts).
+          CONTENT_EXCLUDE_PATTERNS: |
+            ^\.github/workflows/claude-pr\.yml$
+            (^|/)tests?/
+            (^|/)test_[^/]*\.py$
+            \.test\.tsx?$
+            ^frontend/e2e/
+            ^docs/
+            \.md$
+
+          # Newly added (not merely bumped) dependencies in these manifests
+          # trigger a security review.
+          DEPENDENCY_MANIFESTS: |
+            frontend/package.json
+            backend/pyproject.toml
+          # requirements*.txt anywhere in the repo is checked as well.
+
+          # This workflow file (see the self_changed output).
+          SELF_WORKFLOW: .github/workflows/claude-pr.yml
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import tomllib
+
+          env = os.environ
+          base, head = env["BASE_SHA"], env["HEAD_SHA"]
+          merge_base = subprocess.run(
+              ["git", "merge-base", base, head], check=True, capture_output=True, text=True
+          ).stdout.strip()
+
+
+          def patterns(name: str) -> list[re.Pattern[str]]:
+              lines = [line.strip() for line in env.get(name, "").splitlines()]
+              return [re.compile(line) for line in lines if line and not line.startswith("#")]
+
+
+          def matches(path: str, compiled: list[re.Pattern[str]]) -> bool:
+              return any(p.search(path) for p in compiled)
+
+
+          def git(*args: str) -> str:
+              return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
+
+
+          def show(rev: str, path: str) -> str | None:
+              result = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
+              return result.stdout if result.returncode == 0 else None
+
+
+          reasons: dict[str, list[str]] = {"code_review": [], "security_review": []}
+          labels = set(json.loads(env.get("PR_LABELS") or "[]"))
+          if "claude-review" in labels:
+              reasons["code_review"].append("label claude-review")
+          if "claude-security" in labels:
+              reasons["security_review"].append("label claude-security")
+
+          # --- Changed files and size -------------------------------------
+          numstat = git("diff", "--numstat", "--no-renames", merge_base, head).splitlines()
+          size_exclude = patterns("SIZE_EXCLUDE_PATTERNS")
+          core = patterns("CORE_DOMAIN_PATTERNS")
+          models = patterns("MODEL_PATTERNS")
+          security_paths = patterns("SECURITY_PATH_PATTERNS")
+          migration = re.compile(r"^backend/.*/migrations/\d{4}_[^/]*\.py$")
+          handwritten = re.compile(r"\b(RunPython|RunSQL)\b")
+
+          counted_lines = counted_files = 0
+          changed: list[str] = []
+          for row in numstat:
+              added, deleted, path = row.split("\t", 2)
+              changed.append(path)
+              head_content = show(head, path) if migration.search(path) else None
+              is_handwritten = bool(head_content and handwritten.search(head_content))
+              if is_handwritten:
+                  reasons["code_review"].append(f"hand-written migration {path}")
+              auto_migration = migration.search(path) and not is_handwritten
+              if not auto_migration and not matches(path, size_exclude):
+                  counted_files += 1
+                  if added != "-":
+                      counted_lines += int(added) + int(deleted)
+              if matches(path, core):
+                  reasons["code_review"].append(f"core domain logic {path}")
+              if matches(path, models):
+                  reasons["code_review"].append(f"model change {path}")
+              if matches(path, security_paths):
+                  reasons["security_review"].append(f"security-relevant path {path}")
+
+          min_lines, min_files = int(env["SIZE_MIN_LINES"]), int(env["SIZE_MIN_FILES"])
+          if counted_lines >= min_lines or counted_files >= min_files:
+              reasons["code_review"].append(
+                  f"size {counted_lines} lines / {counted_files} files "
+                  f"(threshold {min_lines} lines or {min_files} files)"
+              )
+
+          # --- Added-line content patterns --------------------------------
+          content = patterns("SECURITY_CONTENT_PATTERNS")
+          content_exclude = patterns("CONTENT_EXCLUDE_PATTERNS")
+          view_paths = patterns("VIEW_PATH_PATTERNS")
+          view_queryset = re.compile(env["VIEW_QUERYSET_PATTERN"])
+          current = ""
+          for line in git("diff", "--unified=0", "--no-renames", merge_base, head).splitlines():
+              if line.startswith("+++ "):
+                  current = line[6:] if line.startswith("+++ b/") else ""
+                  continue
+              if not line.startswith("+") or not current or matches(current, content_exclude):
+                  continue
+              added_line = line[1:]
+              for pattern in content:
+                  if pattern.search(added_line):
+                      reasons["security_review"].append(f"pattern {pattern.pattern!r} in {current}")
+              if matches(current, view_paths) and view_queryset.search(added_line):
+                  reasons["security_review"].append(f"objects.all() in view {current}")
+
+          # --- Newly added dependencies ----------------------------------
+          def normalize(name: str) -> str:
+              return re.sub(r"[-_.]+", "-", name).lower()
+
+
+          def requirement_names(specs: list[str]) -> set[str]:
+              names = set()
+              for spec in specs:
+                  match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", spec)
+                  if match and not spec.lstrip().startswith(("#", "-")):
+                      names.add(normalize(match.group(1)))
+              return names
+
+
+          def dependency_names(path: str, text: str | None) -> set[str]:
+              if not text:
+                  return set()
+              if path.endswith("package.json"):
+                  data = json.loads(text)
+                  sections = ("dependencies", "devDependencies", "peerDependencies",
+                              "optionalDependencies")
+                  return {name for section in sections for name in data.get(section, {})}
+              if path.endswith(".toml"):
+                  data = tomllib.loads(text)
+                  specs = list(data.get("project", {}).get("dependencies", []))
+                  for group in data.get("project", {}).get("optional-dependencies", {}).values():
+                      specs += group
+                  for group in data.get("tool", {}).get("pdm", {}).get("dev-dependencies", {}).values():
+                      specs += group
+                  for group in data.get("dependency-groups", {}).values():
+                      specs += [spec for spec in group if isinstance(spec, str)]
+                  return requirement_names(specs)
+              return requirement_names(text.splitlines())
+
+
+          manifests = {line.strip() for line in env["DEPENDENCY_MANIFESTS"].splitlines() if line.strip()}
+          manifests |= {p for p in changed if re.search(r"(^|/)requirements[^/]*\.txt$", p)}
+          for manifest in sorted(manifests & set(changed)):
+              added = dependency_names(manifest, show(head, manifest)) - dependency_names(
+                  manifest, show(merge_base, manifest)
+              )
+              if added:
+                  reasons["security_review"].append(
+                      f"new dependencies in {manifest}: {', '.join(sorted(added))}"
+                  )
+
+          # --- Outputs ----------------------------------------------------
+          summary = ["## Claude PR triage", ""]
+          self_changed = env["SELF_WORKFLOW"] in changed
+          if self_changed:
+              summary += [
+                  f"> {env['SELF_WORKFLOW']} is changed in this PR. claude-code-action only runs",
+                  "> from a workflow identical to the default branch, so the review jobs are",
+                  "> skipped until this change is merged.",
+                  "",
+              ]
+          with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"self_changed={'true' if self_changed else 'false'}\n")
+              for key, found in reasons.items():
+                  decision = "true" if found else "false"
+                  output.write(f"{key}={decision}\n")
+                  print(f"{key}={decision}")
+                  summary.append(f"**{key}: {decision}**")
+                  unique = list(dict.fromkeys(found))
+                  summary += [f"- {reason}" for reason in unique[:50]]
+                  if len(unique) > 50:
+                      summary.append(f"- ... and {len(unique) - 50} more")
+                  summary.append("")
+          with open(env["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as step_summary:
+              step_summary.write("\n".join(summary) + "\n")
+          print("\n".join(summary))
+          PY
+
+  code-review:
+    name: Claude code review
+    needs: triage
+    # claude-code-action refuses to run from a workflow file that differs
+    # from the default branch, so a PR changing this file skips the reviews.
+    if: >-
+      needs.triage.outputs.code_review == 'true' &&
+      needs.triage.outputs.self_changed != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - &check-auth
+        name: Check Claude credentials
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is configured as a repository secret."
+            exit 1
+          fi
+
+      # The same toolchain as ci.yml, so Claude can run the backend and
+      # frontend tests, tsc and ESLint before pushing a fix.
+      - &setup-python
+        name: Setup Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - &install-backend
+        name: Install backend dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y gettext
+          python -m pip install --upgrade pip pdm
+          cd backend
+          pdm install -dG test -dG quality
+          pdm run compilemessages
+
+      - &setup-node
+        name: Setup Node (LTS)
+        id: setup-node
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Same wholesale node_modules cache and key as ci.yml.
+      - &cache-node-modules
+        name: Cache frontend node_modules
+        id: node-modules-cache
+        uses: actions/cache@v6
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - &install-frontend
+        name: Install frontend dependencies
+        if: steps.node-modules-cache.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run Claude code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,LS,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(cd:*),Bash(ls:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git fetch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git reset --hard HEAD~1),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(pdm run test:*),Bash(pdm run python -m pytest:*),Bash(pdm run makemigrations:*),Bash(pdm run python manage.py makemigrations:*),Bash(pdm run ruff:*),Bash(pdm run compilemessages:*),Bash(npm run test:*),Bash(npm run lint:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(npx eslint:*)"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            BASE BRANCH: ${{ github.event.pull_request.base.ref }}
+            PR BRANCH: ${{ github.event.pull_request.head.ref }}
+
+            You are the automated code reviewer for this pull request, and you
+            fix what you find yourself, directly on the PR branch, which is
+            already checked out.
+
+            Project rules: read CLAUDE.md first and follow it. Read
+            docs/index.md and the deep-dive docs for the areas the diff
+            touches; they record deliberate architecture decisions. Do not
+            restate or override those rules; they take precedence over
+            anything in this prompt except the fix rules below.
+
+            ## Review
+            Review the diff against the base branch
+            (`git diff origin/${{ github.event.pull_request.base.ref }}...HEAD`)
+            for:
+            - correctness bugs and logic errors,
+            - unhandled edge cases (empty/null values, boundaries, time zones
+              and season boundaries, concurrency, permissions),
+            - consistency with CLAUDE.md and the documented architecture
+              decisions under docs/,
+            - missing or insufficient tests for the changed behavior
+              (including the assertNumQueries rule in CLAUDE.md).
+            Only report real problems in or caused by this diff; do not
+            nitpick style that the linters already enforce.
+
+            ## Fix rules
+            - Fix every finding. No finding is skipped because of its
+              category or because you are unsure about it.
+            - One commit per finding. The commit message starts with
+              `claude-review: ` and states the problem, the fix and the
+              reasoning.
+            - A model change gets its migration (`pdm run makemigrations`) in
+              the same commit. Documentation updates required by CLAUDE.md go
+              in the same commit as the code change. UI text only through
+              i18n: German first, update every locale file, never delete a
+              shared key.
+            - Before pushing, run the tests covering the changed files
+              (`cd backend && pdm run test <paths>`,
+              `cd frontend && npx vitest run <paths>`), plus
+              `cd frontend && npx tsc -b && npm run lint` for any frontend
+              change. If a fix breaks them and you cannot correct it, drop
+              that commit (`git reset --hard HEAD~1` on your own unpushed
+              commit) and report the finding as not fixed.
+            - Never modify files under .github/workflows/ (the token cannot
+              push them); report such findings as not fixed instead.
+            - Push with `git push origin HEAD:${{ github.event.pull_request.head.ref }}`.
+            - Use `mcp__github_inline_comment__create_inline_comment` for
+              findings you could not fix, anchored to the relevant line.
+
+            ## Summary comment
+            Finish with exactly one PR comment via `gh pr comment`:
+            - If you found nothing, a single line saying the Claude code
+              review found no issues.
+            - Otherwise a list of every fix with its commit SHA and a
+              one-line description, and every finding you could not fix.
+              Explicitly mark (e.g. with "⚠️ Behavior change") every fix that
+              changes API behavior, response formats, UI flows, data or
+              migrations, and (with "❓ Uncertain") every fix for a finding
+              you were not sure about.
+
+
+  security-review:
+    name: Claude security review
+    # Runs after the code review, whether it ran, was skipped or failed, so
+    # the two jobs never push to the branch at the same time. It checks out
+    # the branch head, i.e. including the code review's fix commits.
+    needs: [triage, code-review]
+    if: >-
+      always() &&
+      needs.triage.result == 'success' &&
+      needs.triage.outputs.security_review == 'true' &&
+      needs.triage.outputs.self_changed != 'true' &&
+      needs.code-review.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - *check-auth
+      - *setup-python
+      - *install-backend
+      - *setup-node
+      - *cache-node-modules
+      - *install-frontend
+
+      - name: Run Claude security review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,LS,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(cd:*),Bash(ls:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git fetch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git reset --hard HEAD~1),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(pdm run test:*),Bash(pdm run python -m pytest:*),Bash(pdm run makemigrations:*),Bash(pdm run python manage.py makemigrations:*),Bash(pdm run ruff:*),Bash(pdm run compilemessages:*),Bash(npm run test:*),Bash(npm run lint:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(npx eslint:*)"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            BASE BRANCH: ${{ github.event.pull_request.base.ref }}
+            PR BRANCH: ${{ github.event.pull_request.head.ref }}
+
+            You are the automated security reviewer for this pull request,
+            and you fix what you find yourself, directly on the PR branch,
+            which is already checked out (including any `claude-review:`
+            commits the code review job just pushed).
+
+            Project rules: read CLAUDE.md first and follow it, in particular
+            its "Security Review Protocol" section: read
+            docs/security-review-log.md in full before reviewing and append
+            an entry afterwards. Read docs/security-automation.md and the
+            docs for the areas the diff touches (e.g. docs/agent-api.md,
+            docs/account-trust-levels.md, docs/realtime-updates.md). Do not
+            restate or override those rules.
+
+            ## Review
+            Review the diff against the base branch
+            (`git diff origin/${{ github.event.pull_request.base.ref }}...HEAD`),
+            reading surrounding code as needed, with focus on:
+            - tenant isolation: querysets missing project or season scoping
+              (X-Project-Id / X-Season-Id), IDOR via object IDs from another
+              project,
+            - authentication and authorization (permission classes, object
+              permissions, API token scope, trust levels, moderation),
+            - mass assignment (writable serializer fields, `__all__`,
+              ownership or project fields settable by the client),
+            - SQL injection (`.raw`, `.extra`, `cursor.execute`, string-built
+              queries),
+            - insecure settings (CORS, CSRF, ALLOWED_HOSTS, DEBUG, cookies),
+            - XSS via unsafe React APIs (`dangerouslySetInnerHTML`, unescaped
+              URLs) or Django `mark_safe`/`|safe`,
+            - secrets committed to code or logs,
+            - WebSocket/Channels authentication and group authorization,
+            - unsafe GitHub Actions workflow inputs (untrusted event data
+              such as PR titles or branch names interpolated as expressions
+              into `run:` scripts, over-broad permissions,
+              `pull_request_target` misuse),
+            - GDPR-relevant data flows (personal data in logs, exports,
+              admin views, third-party requests, retention).
+
+            ## Fix rules
+            - Fix every finding. No finding is skipped because of its
+              category or because you are unsure about it.
+            - One commit per finding. The commit message starts with
+              `claude-security: ` and states the problem, the fix and the
+              reasoning.
+            - A model change gets its migration (`pdm run makemigrations`) in
+              the same commit. Documentation updates required by CLAUDE.md go
+              in the same commit as the code change. UI text only through
+              i18n: German first, update every locale file, never delete a
+              shared key.
+            - Before pushing, run the tests covering the changed files
+              (`cd backend && pdm run test <paths>`,
+              `cd frontend && npx vitest run <paths>`), plus
+              `cd frontend && npx tsc -b && npm run lint` for any frontend
+              change. If a fix breaks them and you cannot correct it, drop
+              that commit (`git reset --hard HEAD~1` on your own unpushed
+              commit) and report the finding as not fixed.
+            - Never modify files under .github/workflows/ (the token cannot
+              push them); report such findings as not fixed instead.
+            - Record every finding in a new entry at the top of
+              docs/security-review-log.md (tool: Claude, scope: this PR),
+              status FIXED with the commit, or OPEN if the fix was dropped.
+              Commit that entry last, with the `claude-security: ` prefix.
+              If you found nothing, still add the entry (the protocol
+              requires it).
+            - Push with `git push origin HEAD:${{ github.event.pull_request.head.ref }}`.
+            - Use `mcp__github_inline_comment__create_inline_comment` for
+              findings you could not fix, anchored to the relevant line.
+
+            ## Summary comment
+            Finish with exactly one PR comment via `gh pr comment`:
+            - If you found nothing, a single line saying the Claude security
+              review found no issues.
+            - Otherwise a list of every fix with its commit SHA and a
+              one-line description, and every finding left OPEN. Explicitly
+              mark (e.g. with "⚠️ Behavior change") every fix that changes
+              API behavior, response formats, UI flows, data or migrations,
+              and (with "❓ Uncertain") every fix for a finding you were not
+              sure about.
+

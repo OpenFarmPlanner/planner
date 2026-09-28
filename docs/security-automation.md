@@ -61,3 +61,11 @@ review. Those reviews are logged in
 before starting one. Conversely, an ordinary UI-only change normally needs no
 additional backend-specific manual security procedure beyond the automated
 required checks.
+
+The `Claude PR Review` workflow (`.github/workflows/claude-pr.yml`) runs such
+an AI-assisted security review automatically on pull requests whose paths or
+added lines hit the security triage rules, fixes the findings on the PR
+branch, and appends its entry to the review log. Its trigger criteria and fix
+rules are summarized in the "Automated Claude PR Review" section of
+[`CLAUDE.md`](../CLAUDE.md#automated-claude-pr-review); the exact patterns
+live in the workflow's triage step.
