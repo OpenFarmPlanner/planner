@@ -40,6 +40,53 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-28 — Claude — Engagement dashboard exclusions (PR #698, `feat/engagement-dashboard-exclusions` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff of this PR against `main`:
+the `show_all`/`current_user_id`-aware filtering added to
+`build_engagement_dashboard` and `_excluded_project_ids` in
+`backend/farm/services/engagement_dashboard.py`, the corresponding
+`show_all` query-param handling and toggle-URL construction in
+`ProjectAdmin.engagement_dashboard_view` (`backend/farm/admin.py`), the new
+banner markup in `backend/farm/templates/admin/farm/engagement_dashboard.html`,
+and the associated tests and README update.
+
+**Findings:** None at any confidence level.
+
+- The view's existing `if not request.user.is_superuser: raise PermissionDenied`
+  gate (`backend/farm/admin.py`) is unchanged and still runs before any of the
+  new `show_all`/`current_user_id` logic, and the URL is still wrapped in
+  `self.admin_site.admin_view(...)`, so the dashboard remains superuser-only
+  exactly as before this PR.
+- `show_all` is a plain read-only GET query parameter (`== '1'` check) that
+  only changes which rows/aggregates are included in a report already
+  restricted to superusers; it performs no write and needs no CSRF
+  protection.
+- `_excluded_project_ids` only ever adds projects to a *hide* set (demo
+  projects by `description`, and projects where `current_user_id` is the sole
+  `ProjectMembership`); it cannot be used to reveal a project a superuser
+  could not already see with `show_all=1`, since superusers already had
+  unfiltered access before this change. Net effect is a reduction in default
+  exposure (the superuser's own scratch projects and their own account are
+  hidden from the default view), not an increase.
+- `sort_key` used to build `url_primary`/`url_toggle`/`url_remove` is
+  whitelist-checked against `PROJECT_SORT_FIELDS` before being interpolated
+  into the URL strings (pre-existing logic, unchanged); the new `show_all`
+  suffix appended alongside it is a fixed literal (`'&show_all=1'`), not
+  user-controlled data. The template renders these URLs through Django's
+  default auto-escaping, so no reflected-XSS vector was introduced.
+- No new model fields, migrations, `.raw`/`.extra`/`cursor.execute`, mass
+  assignment, or serializer changes; the only new queryset
+  (`ProjectMembership.objects.values('project_id').annotate(total=Count('pk'))`)
+  uses the ORM with no interpolated input.
+- README.md documents the new default-hide behavior and the `?show_all=1`
+  escape hatch, consistent with the existing "Aggregated Usage Insight and
+  Privacy" section this dashboard already operates under.
+
+No fixes were needed as a result of this review.
+
+---
+
 ## 2026-09-28 — Claude — Crop-library state-matrix branch (`fix/crop-library-state-matrix`, `bc6cfe89`..`16a4d062`)
 
 **Scope:** Never previously reviewed. Full diff of this branch against `main`:
