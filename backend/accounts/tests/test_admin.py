@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from allauth.account.models import EmailAddress
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.utils import timezone
 
 from accounts.admin import OpenFarmPlannerUserAdmin
 
@@ -54,6 +57,32 @@ class UserAdminConfigTests(SimpleTestCase):
             ('Important dates', {'fields': ('last_login', 'date_joined')}),
             admin_class.fieldsets,
         )
+
+
+class UserAdminOrderingTests(TestCase):
+    def test_changelist_defaults_to_most_recent_login_first(self) -> None:
+        user_model = get_user_model()
+        now = timezone.now()
+        never_logged_in = user_model.objects.create_user(
+            username='never', email='never@example.com'
+        )
+        logged_in_earlier = user_model.objects.create_user(
+            username='earlier', email='earlier@example.com', last_login=now - timedelta(days=1)
+        )
+        logged_in_recently = user_model.objects.create_user(
+            username='recent', email='recent@example.com', last_login=now
+        )
+
+        request = RequestFactory().get('/admin/auth/user/')
+        user_admin = OpenFarmPlannerUserAdmin(user_model, admin.site)
+        ordered_usernames = list(
+            user_admin.get_queryset(request)
+            .filter(pk__in=[never_logged_in.pk, logged_in_earlier.pk, logged_in_recently.pk])
+            .order_by(*user_admin.ordering)
+            .values_list('username', flat=True)
+        )
+
+        self.assertEqual(ordered_usernames, ['recent', 'earlier', 'never'])
 
 
 class UserAdminEmailVerificationTests(TestCase):
