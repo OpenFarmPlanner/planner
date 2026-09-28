@@ -311,6 +311,8 @@ class EngagementDashboard:
     task_usage: TaskUsage
     projects_from_template: Share
     crop_library: CropLibraryEngagement
+    hidden_projects_count: int
+    show_all: bool
 
 
 def _collect_project_rows(
@@ -540,30 +542,85 @@ def _build_crop_library(rows: dict[int, ProjectEngagement]) -> CropLibraryEngage
     )
 
 
-def build_engagement_dashboard(now: datetime | None = None) -> EngagementDashboard:
-    """Build the dashboard with a fixed number of aggregate queries, never per project."""
+def _excluded_project_ids(current_user_id: int | None) -> set[int]:
+    """Return ids of projects hidden by default: demo templates and projects
+    where `current_user_id` is the sole member (own scratch/test projects)."""
+    demo_ids = set(
+        Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
+        .values_list('pk', flat=True),
+    )
+    if current_user_id is None:
+        return demo_ids
+
+    member_totals = dict(
+        ProjectMembership.objects.values('project_id')
+        .annotate(total=Count('pk'))
+        .values_list('project_id', 'total'),
+    )
+    sole_member_project_ids = {
+        project_id for project_id, total in member_totals.items() if total == 1
+    }
+    current_user_project_ids = set(
+        ProjectMembership.objects.filter(user_id=current_user_id)
+        .values_list('project_id', flat=True),
+    )
+    sole_owner_ids = sole_member_project_ids & current_user_project_ids
+    return demo_ids | sole_owner_ids
+
+
+def build_engagement_dashboard(
+    now: datetime | None = None,
+    *,
+    current_user_id: int | None = None,
+    include_hidden: bool = False,
+) -> EngagementDashboard:
+    """Build the dashboard with a fixed number of aggregate queries, never per project.
+
+    By default (`include_hidden=False`), demo/template projects and projects
+    where `current_user_id` is the sole member are hidden from the "Projekte"
+    table and from the top-line project and user counts, so the dashboard
+    reflects real external usage. Every other breakdown (data richness,
+    feature adoption, growth, crop library, ...) always covers every project,
+    unaffected by this default-only filter.
+    """
     current_time = now or timezone.now()
     cutoff_7_days = current_time - timedelta(days=7)
     cutoff_30_days = current_time - timedelta(days=30)
 
-    rows = _collect_project_rows(cutoff_7_days, cutoff_30_days)
-    _add_membership_and_feedback(rows, cutoff_30_days)
+    all_rows = _collect_project_rows(cutoff_7_days, cutoff_30_days)
+    _add_membership_and_feedback(all_rows, cutoff_30_days)
 
-    projects = sorted(
-        rows.values(),
-        key=lambda row: row.last_active or datetime.min.replace(tzinfo=current_time.tzinfo),
-        reverse=True,
+    excluded_ids = _excluded_project_ids(current_user_id)
+    hidden_projects_count = sum(1 for pk in all_rows if pk in excluded_ids)
+    visible_rows = (
+        all_rows
+        if include_hidden
+        else {pk: row for pk, row in all_rows.items() if pk not in excluded_ids}
     )
+
+    def _by_recency(rows: dict[int, ProjectEngagement]) -> list[ProjectEngagement]:
+        return sorted(
+            rows.values(),
+            key=lambda row: row.last_active or datetime.min.replace(tzinfo=current_time.tzinfo),
+            reverse=True,
+        )
+
+    projects = _by_recency(visible_rows)
+    all_projects = _by_recency(all_rows)
     total_projects = len(projects)
-    active_projects = [row for row in projects if row.status == STATUS_ACTIVE]
+    all_total_projects = len(all_projects)
+    active_projects = [row for row in all_projects if row.status == STATUS_ACTIVE]
     user_model = get_user_model()
+    user_qs = user_model.objects.all()
+    if not include_hidden and current_user_id is not None:
+        user_qs = user_qs.exclude(pk=current_user_id)
     template_projects = Project.objects.filter(
         description__in=DEMO_PROJECT_DESCRIPTIONS,
     ).count()
 
     return EngagementDashboard(
         projects=projects,
-        projects_by_data=sorted(projects, key=lambda row: row.data_total, reverse=True),
+        projects_by_data=sorted(all_projects, key=lambda row: row.data_total, reverse=True),
         active_projects=active_projects,
         active_project_averages=_average_counts(active_projects),
         total_projects=total_projects,
@@ -573,14 +630,16 @@ def build_engagement_dashboard(now: datetime | None = None) -> EngagementDashboa
         active_projects_30_days=sum(
             row.last_active is not None and row.last_active >= cutoff_30_days for row in projects
         ),
-        total_users=user_model.objects.count(),
-        users_logged_in_30_days=user_model.objects.filter(last_login__gte=cutoff_30_days).count(),
-        adoption=_build_adoption(projects),
-        monthly_growth=_build_monthly_growth(projects),
-        season_usage=_build_season_usage(total_projects),
-        layout_usage=_build_layout_usage(projects),
-        average_distinct_crops_per_project=_average_distinct_crops(total_projects),
+        total_users=user_qs.count(),
+        users_logged_in_30_days=user_qs.filter(last_login__gte=cutoff_30_days).count(),
+        adoption=_build_adoption(all_projects),
+        monthly_growth=_build_monthly_growth(all_projects),
+        season_usage=_build_season_usage(all_total_projects),
+        layout_usage=_build_layout_usage(all_projects),
+        average_distinct_crops_per_project=_average_distinct_crops(all_total_projects),
         task_usage=_build_task_usage(),
-        projects_from_template=Share(count=template_projects, total=total_projects),
-        crop_library=_build_crop_library(rows),
+        projects_from_template=Share(count=template_projects, total=all_total_projects),
+        crop_library=_build_crop_library(all_rows),
+        hidden_projects_count=hidden_projects_count,
+        show_all=include_hidden,
     )

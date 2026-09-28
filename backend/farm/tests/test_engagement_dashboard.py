@@ -62,7 +62,7 @@ class EngagementDashboardTests(TestCase):
         recent_time = timezone.now() - timedelta(days=2)
         Location.objects.filter(pk=self.location.pk).update(updated_at=recent_time)
 
-        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 15):
+        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 16):
             dashboard = build_engagement_dashboard()
 
         projects_by_slug = {row.project.slug: row for row in dashboard.projects}
@@ -836,3 +836,218 @@ class EngagementCropLibraryTests(TestCase):
 
         self.assertEqual(library.discussion_comments, 1)
         self.assertEqual(library.revisions, 2)
+
+
+class EngagementDashboardExclusionTests(TestCase):
+    """Demo/template projects and the current superuser's solo projects are
+    hidden from the "Projekte" table and the Gesamtübersicht numbers by
+    default, but stay visible when shown explicitly."""
+
+    def setUp(self) -> None:
+        self.now = timezone.now()
+        # A data migration seeds one project into every fresh database; the
+        # counts below are only readable with a known population.
+        Project.objects.all().delete()
+        self.superuser = get_user_model().objects.create_superuser(
+            username='exclusion-admin',
+            email='exclusion-admin@example.com',
+            password='test-password',
+            last_login=self.now,
+        )
+        self.other_user = get_user_model().objects.create_user(
+            username='exclusion-other', password='test-password',
+        )
+
+        self.external_project = Project.objects.create(name='Extern', slug='exclusion-extern')
+        ProjectMembership.objects.create(user=self.other_user, project=self.external_project)
+
+        self.own_solo_project = Project.objects.create(
+            name='Meine Spielwiese', slug='exclusion-own-solo',
+        )
+        ProjectMembership.objects.create(user=self.superuser, project=self.own_solo_project)
+
+        self.shared_project = Project.objects.create(name='Gemeinsam', slug='exclusion-shared')
+        ProjectMembership.objects.create(user=self.superuser, project=self.shared_project)
+        ProjectMembership.objects.create(user=self.other_user, project=self.shared_project)
+
+        self.demo_project = Project.objects.create(
+            name='Solawi Sonnenacker', slug='exclusion-demo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        ProjectMembership.objects.create(user=self.other_user, project=self.demo_project)
+
+    def _dashboard(self, **kwargs):
+        return build_engagement_dashboard(now=self.now, **kwargs)
+
+    def test_without_a_current_user_only_demo_projects_are_hidden(self) -> None:
+        slugs = {row.project.slug for row in self._dashboard().projects}
+
+        self.assertIn('exclusion-own-solo', slugs)
+        self.assertNotIn('exclusion-demo', slugs)
+
+    def test_a_project_where_the_superuser_is_the_sole_member_is_hidden(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        slugs = {row.project.slug for row in dashboard.projects}
+        self.assertNotIn('exclusion-own-solo', slugs)
+
+    def test_a_project_shared_with_others_stays_visible_even_as_a_member(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        slugs = {row.project.slug for row in dashboard.projects}
+        self.assertIn('exclusion-shared', slugs)
+
+    def test_demo_projects_are_hidden_regardless_of_who_is_a_member(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        slugs = {row.project.slug for row in dashboard.projects}
+        self.assertNotIn('exclusion-demo', slugs)
+
+    def test_external_projects_the_superuser_is_not_part_of_stay_visible(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        slugs = {row.project.slug for row in dashboard.projects}
+        self.assertIn('exclusion-extern', slugs)
+
+    def test_include_hidden_shows_every_project_again(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+
+        slugs = {row.project.slug for row in dashboard.projects}
+        self.assertEqual(
+            slugs,
+            {'exclusion-extern', 'exclusion-own-solo', 'exclusion-shared', 'exclusion-demo'},
+        )
+        self.assertTrue(dashboard.show_all)
+
+    def test_hidden_projects_count_reports_how_many_are_excluded(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        self.assertEqual(dashboard.hidden_projects_count, 2)
+
+    def test_hidden_projects_count_stays_the_same_when_showing_all(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+
+        self.assertEqual(dashboard.hidden_projects_count, 2)
+
+    def test_gesamtuebersicht_project_totals_match_the_filtered_table(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        self.assertEqual(dashboard.total_projects, len(dashboard.projects))
+        self.assertEqual(dashboard.total_projects, 2)
+
+    def test_user_totals_exclude_only_the_current_superuser(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        self.assertEqual(dashboard.total_users, 1)
+        self.assertEqual(dashboard.users_logged_in_30_days, 0)
+
+    def test_user_totals_include_the_superuser_again_when_showing_all(self) -> None:
+        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+
+        self.assertEqual(dashboard.total_users, 2)
+        self.assertEqual(dashboard.users_logged_in_30_days, 1)
+
+    def test_other_breakdowns_are_not_scoped_by_the_default_exclusion(self) -> None:
+        """Only the "Projekte" table and the Gesamtübersicht numbers are
+        filtered by default; every other breakdown keeps covering all
+        projects, since the task only scoped the exclusion to those two."""
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        slugs = {row.project.slug for row in dashboard.projects_by_data}
+        self.assertIn('exclusion-own-solo', slugs)
+        self.assertIn('exclusion-demo', slugs)
+
+
+class EngagementDashboardShowAllViewTests(TestCase):
+    """The admin view's `show_all` query parameter and the banner it drives."""
+
+    def setUp(self) -> None:
+        self.superuser = get_user_model().objects.create_superuser(
+            username='show-all-admin',
+            email='show-all-admin@example.com',
+            password='test-password',
+        )
+        self.solo_project = Project.objects.create(name='Nur ich', slug='show-all-solo')
+        ProjectMembership.objects.create(user=self.superuser, project=self.solo_project)
+        self.shared_project = Project.objects.create(name='Team', slug='show-all-shared')
+        other = get_user_model().objects.create_user(
+            username='show-all-other', password='test-password',
+        )
+        ProjectMembership.objects.create(user=self.superuser, project=self.shared_project)
+        ProjectMembership.objects.create(user=other, project=self.shared_project)
+
+    @staticmethod
+    def _projects_table_html(response) -> str:
+        """Return only the "Projekte" table's markup.
+
+        Other tables (e.g. "Datenreichtum je Projekt") intentionally still
+        list every project regardless of the exclusion filter, so assertions
+        about which projects the *table* shows have to look only there.
+        """
+        content = response.content.decode()
+        start = content.index('<caption>Projekte</caption>')
+        end = content.index('</table>', start)
+        return content[start:end]
+
+    @classmethod
+    def _projects_table_rows(cls, response) -> str:
+        """Return only the `<tbody>` of the "Projekte" table (row order, no headers)."""
+        table = cls._projects_table_html(response)
+        start = table.index('<tbody>')
+        end = table.index('</tbody>') + len('</tbody>')
+        return table[start:end]
+
+    def test_the_default_view_hides_the_superusers_own_project_and_shows_a_count(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'))
+
+        table = self._projects_table_html(response)
+        self.assertNotIn('Nur ich', table)
+        self.assertIn('Team', table)
+        self.assertContains(response, 'ausgeblendet (nur eigene oder Demo-Projekte)')
+        self.assertContains(response, 'Alle anzeigen')
+
+    def test_show_all_reveals_every_project_and_the_reset_link(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {'show_all': '1'})
+
+        table = self._projects_table_html(response)
+        self.assertIn('Nur ich', table)
+        self.assertIn('Team', table)
+        self.assertContains(response, 'Alle Projekte werden angezeigt')
+        self.assertContains(response, 'Filter wieder aktivieren')
+
+    def test_show_all_survives_column_sorting(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'o': 'name', 'show_all': '1'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        table = self._projects_table_html(response)
+        self.assertLess(table.index('Nur ich'), table.index('Team'))
+        self.assertIn('show_all=1', response.content.decode())
+
+    def test_sorting_survives_the_show_all_toggle_link(self) -> None:
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {'o': 'name'})
+
+        self.assertContains(response, 'href="?o=name&amp;show_all=1"')
+
+    def test_the_default_order_without_an_o_param_matches_sorting_by_last_active_desc(self) -> None:
+        self.client.force_login(self.superuser)
+
+        default_response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'show_all': '1'},
+        )
+        explicit_response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'show_all': '1', 'o': '-last_active'},
+        )
+
+        self.assertEqual(
+            self._projects_table_rows(default_response),
+            self._projects_table_rows(explicit_response),
+        )

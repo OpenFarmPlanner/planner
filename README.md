@@ -36,6 +36,17 @@ recency/status buckets, plus aggregate registration and recent-login totals. A
 project's active-user count uses the existing `last_login` value for its
 members.
 
+By default, the "Projekte" table and the "Gesamtübersicht" totals (total
+projects, active-project counts, registered users, and users with a recent
+login) hide two kinds of noise: projects where the logged-in superuser is the
+sole member (their own scratch/test projects), and demo/template projects,
+identified by the template's own project description (never by project name,
+since either can be renamed). The banner above the table names how many
+projects are hidden and links to an unfiltered view (`?show_all=1`) that also
+adds the superuser back into the registered-user totals; every other
+breakdown below (data richness, feature adoption, growth, crop library, ...)
+always covers every project regardless of this filter.
+
 Beyond that activity view it reads the following existing data, always as
 per-project counts or aggregates over all projects, never as per-user
 behavior:

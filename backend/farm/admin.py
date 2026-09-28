@@ -66,7 +66,11 @@ class ProjectAdmin(admin.ModelAdmin):
         """Show internal aggregates; never extend this to individual behavior tracking."""
         if not request.user.is_superuser:
             raise PermissionDenied
-        dashboard = build_engagement_dashboard()
+        show_all = request.GET.get('show_all') == '1'
+        dashboard = build_engagement_dashboard(
+            current_user_id=request.user.pk,
+            include_hidden=show_all,
+        )
         order_param = request.GET.get('o', '')
         descending = order_param.startswith('-')
         sort_key = order_param[1:] if descending else order_param
@@ -81,19 +85,32 @@ class ProjectAdmin(admin.ModelAdmin):
             **self.admin_site.each_context(request),
             'title': _('Nutzungsübersicht'),
             'dashboard': dashboard,
-            'project_columns': self._project_column_headers(sort_key, descending),
+            'project_columns': self._project_column_headers(
+                sort_key, descending, show_all=show_all,
+            ),
+            'show_all_toggle_url': self._show_all_toggle_url(
+                sort_key, descending, show_all=show_all,
+            ),
             'opts': self.model._meta,
         }
         return TemplateResponse(request, 'admin/farm/engagement_dashboard.html', context)
 
     @staticmethod
-    def _project_column_headers(current_sort_key: str, descending: bool) -> dict[str, dict[str, object]]:
+    def _project_column_headers(
+        current_sort_key: str,
+        descending: bool,
+        *,
+        show_all: bool,
+    ) -> dict[str, dict[str, object]]:
         """Build Django-admin-style sortable header state for the "Projekte" table.
 
         Mirrors the `sorted`/`sortoptions`/`toggle` markup and CSS classes from
         Django's own `admin/change_list_results.html` so the headers look and
         behave like the sortable columns on other admin list pages (e.g. users).
+        The `show_all` query parameter is carried along so sorting never drops
+        out of the "show every project" view (and vice versa).
         """
+        show_all_suffix = '&show_all=1' if show_all else ''
         columns = {}
         for key in PROJECT_SORT_FIELDS:
             is_sorted = key == current_sort_key
@@ -101,11 +118,25 @@ class ProjectAdmin(admin.ModelAdmin):
             columns[key] = {
                 'is_sorted': is_sorted,
                 'ascending': ascending,
-                'url_primary': f'?o={key}',
-                'url_toggle': f'?o={"-" if ascending else ""}{key}',
-                'url_remove': '?',
+                'url_primary': f'?o={key}{show_all_suffix}',
+                'url_toggle': f'?o={"-" if ascending else ""}{key}{show_all_suffix}',
+                'url_remove': '?show_all=1' if show_all else '?',
             }
         return columns
+
+    @staticmethod
+    def _show_all_toggle_url(current_sort_key: str, descending: bool, *, show_all: bool) -> str:
+        """Build the URL for the "Alle anzeigen" / "Filter wieder aktivieren" link.
+
+        Preserves the current `?o=` sort so toggling the exclusion filter never
+        loses the active column sort (and vice versa).
+        """
+        params = []
+        if current_sort_key:
+            params.append(f'o={"-" if descending else ""}{current_sort_key}')
+        if not show_all:
+            params.append('show_all=1')
+        return f'?{"&".join(params)}' if params else '?'
 
 
 @admin.register(ProjectMembership)
