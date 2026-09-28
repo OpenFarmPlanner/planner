@@ -30,3 +30,10 @@ REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES'] = [  # type: ignore[name-defined]
     'farm.agent_api.permissions.ApiTokenAccessPermission',
 ]
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []  # type: ignore[name-defined]
+
+# Django's default PBKDF2 hasher runs 1,000,000 iterations per hash, and the
+# suite hashes on every create_user(), set_password() and password login. The
+# tests check that authentication works, not how strong the hash is, and
+# production keeps the default hasher from settings.py. Django's testing docs
+# recommend exactly this: it takes the API test files from minutes to seconds.
+PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
