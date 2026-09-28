@@ -21,7 +21,11 @@ from django.utils import timezone
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
-from crops.permissions import is_public_library_admin, is_public_library_moderator, public_library_moderator_users
+from crops.permissions import (
+    is_public_library_admin,
+    is_public_library_moderator,
+    public_library_moderator_users,
+)
 from crops.services import find_species_by_common_name
 from farm.models import (
     Crop,
@@ -176,6 +180,21 @@ class PublicCropUpdateBlockedError(Exception):
 
     def __init__(self, *, reason: str) -> None:
         super().__init__('Publishing this crop would overwrite an unreviewed public version.')
+        self.reason = reason
+
+
+class PublicCropLinkUnavailableError(Exception):
+    """Raised when a crop's linked library entry is no longer published.
+
+    The link is kept (withdrawal and removal are restorable), but neither a
+    push into nor a pull from an unpublished entry is possible. ``reason`` is
+    ``entry_withdrawn`` or ``entry_removed``.
+    """
+
+    code = 'public_crop_link_unavailable'
+
+    def __init__(self, *, reason: str) -> None:
+        super().__init__('The linked public entry is no longer published.')
         self.reason = reason
 
 
@@ -835,6 +854,9 @@ def link_project_crop_to_public_reference(
     return crop
 
 
+_UNRESOLVED_UPDATE_TARGET = object()
+
+
 class PublicCropUnlinkError(Exception):
     """Raised when a crop's library link may not be removed."""
 
@@ -844,8 +866,97 @@ class PublicCropUnlinkError(Exception):
         self.code = code
 
 
+_UNPUBLISHED_LINK_REASONS = {
+    PublicCrop.STATUS_WITHDRAWN: 'entry_withdrawn',
+    PublicCrop.STATUS_REMOVED: 'entry_removed',
+}
+
+
+def unpublished_link_reason(crop: Crop) -> str | None:
+    """``entry_withdrawn`` / ``entry_removed`` while the linked entry is not published, else None.
+
+    Reads ``crop.source_public_crop`` — the copy attached (and possibly cached)
+    on ``crop`` itself. A caller that already holds a *freshly* fetched
+    `PublicCrop` row for the same entry should read its status directly
+    instead (see `unpublished_reason_for_status`): `crop` may have been loaded
+    earlier in the request, before a concurrent status change.
+    """
+    public_crop = crop.source_public_crop
+    if public_crop is None:
+        return None
+    return unpublished_reason_for_status(public_crop.status)
+
+
+def unpublished_reason_for_status(status: str) -> str | None:
+    """``entry_withdrawn`` / ``entry_removed`` for a `PublicCrop.status` value, else None."""
+    return _UNPUBLISHED_LINK_REASONS.get(status)
+
+
+def can_republish_withdrawn_entry(
+    crop: Crop, user: User | None, update_target: PublicCrop | None = _UNRESOLVED_UPDATE_TARGET,
+) -> bool:
+    """Whether ``user`` may bring the crop's own withdrawn entry back by publishing again.
+
+    A contributor's withdrawal is reversible (docs/crop-library-architecture.md
+    §8); a removed entry is not (moderation decision), and a foreign withdrawn
+    entry is not the user's to republish. The publish guard and the serializer's
+    ``can_republish_public_crop`` both read this — the single predicate behind
+    the offer and the endpoint — passing the same "entry a publish would
+    target" value each already resolves for its own purposes
+    (``find_owned_public_crop_for_update`` at write time,
+    ``CropSerializer._resolve_owned_public_crop`` for the cheap list read), so
+    neither call site adds an extra query.
+
+    ``update_target`` narrows the check to "and that target is actually this
+    withdrawn entry", not some other entry the user happens to own (e.g. their
+    general Kultur's). Left at its sentinel default, that narrowing is skipped
+    — only the caller in this module supplies it, since resolving it always
+    costs a query and the serializer's list-safe resolver is a different
+    per-request-cached function.
+    """
+    public_crop = crop.source_public_crop
+    if (
+        public_crop is None
+        or public_crop.status != PublicCrop.STATUS_WITHDRAWN
+        or user is None
+        or public_crop.created_by_id != user.id
+    ):
+        return False
+    if update_target is _UNRESOLVED_UPDATE_TARGET:
+        return True
+    return update_target is not None and update_target.id == public_crop.id
+
+
+def resolve_public_crop_unlink_block(crop: Crop, user: User | None) -> str | None:
+    """Why the crop's library link may not be removed right now, or None if it may.
+
+    The single predicate behind both the ``unlink-public-crop`` endpoint and the
+    serializer's ``can_unlink_public_crop``, so the UI offers the action exactly
+    when the endpoint accepts it. A link to the user's own entry is refused only
+    while that entry is published: withdrawing it is the way out then, and an
+    unlinked copy would collide with it on its next publish. Once the entry is
+    withdrawn or removed the duplicate risk is gone.
+    """
+    public_crop = crop.source_public_crop
+    if public_crop is None:
+        return 'crop_not_linked'
+    if (
+        user is not None
+        and public_crop.status == PublicCrop.STATUS_PUBLISHED
+        and public_crop.created_by_id == user.id
+    ):
+        return 'crop_link_owned'
+    return None
+
+
+_UNLINK_BLOCK_MESSAGES = {
+    'crop_not_linked': 'The crop is not linked to a public entry.',
+    'crop_link_owned': 'The crop is linked to your own public entry.',
+}
+
+
 def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
-    """Remove a crop's sync link to somebody else's public entry.
+    """Remove a crop's sync link to a public entry.
 
     Clears only the link the update model reads (`source_public_crop`,
     `source_public_version`, `rejected_public_version`); no crop value, no
@@ -853,22 +964,16 @@ def unlink_crop_from_public_entry(*, crop: Crop, user: User | None) -> Crop:
     the public library changes. `is_modified_from_source` stays: provenance
     readers (`description_language_code`) still need to know whether the
     copy's values are the library's, and a relink recomputes it anyway.
-    Linked Sorten keep their own links. A link to the user's own entry is
-    refused: withdrawing the entry is the path there, and an unlinked copy
-    would collide with that entry on its next publish.
+    Linked Sorten keep their own links. See
+    :func:`resolve_public_crop_unlink_block` for when it is refused.
 
     Saved through `Crop.save()` so the change is a normal crop revision in the
     project history and can be restored from there.
     """
+    block = resolve_public_crop_unlink_block(crop, user)
+    if block is not None:
+        raise PublicCropUnlinkError(_UNLINK_BLOCK_MESSAGES[block], code=block)
     public_crop = crop.source_public_crop
-    if public_crop is None:
-        raise PublicCropUnlinkError(
-            'The crop is not linked to a public entry.', code='crop_not_linked',
-        )
-    if user is not None and public_crop.created_by_id == user.id:
-        raise PublicCropUnlinkError(
-            'The crop is linked to your own public entry.', code='crop_link_owned',
-        )
     # Keep (or, for a link written by a queryset update, record) provenance.
     crop.derived_from_public_crop_id = crop.derived_from_public_crop_id or public_crop.id
     crop.source_public_crop = None
@@ -2078,8 +2183,11 @@ def publish_crop_to_public_library(
 ) -> tuple[PublicCrop, list[DuplicateCandidate], str]:
     # Checked before the quality gate: a copy that has not taken over the current
     # public version must not overwrite it, however complete its own fields are.
-    update_target_for_guard = find_owned_public_crop_for_update(crop=crop, user=user)
-    if update_target_for_guard and has_pending_public_crop_update(crop):
+    update_target = find_owned_public_crop_for_update(crop=crop, user=user)
+    unpublished_reason = unpublished_link_reason(crop)
+    if unpublished_reason is not None and not can_republish_withdrawn_entry(crop, user, update_target):
+        raise PublicCropLinkUnavailableError(reason=unpublished_reason)
+    if update_target and has_pending_public_crop_update(crop):
         rejected = is_public_crop_update_rejected(crop)
         raise PublicCropUpdateBlockedError(
             reason='update_rejected' if rejected else 'update_pending',
@@ -2096,7 +2204,6 @@ def publish_crop_to_public_library(
         raise PublicCropPublishingValidationError(check_result=check_result)
 
     public_variety = _resolve_public_variety(publish_as_general)
-    update_target = find_owned_public_crop_for_update(crop=crop, user=user)
     duplicates = check_result.duplicates
     if update_target and require_moderation:
         # Must come before any mutation below: an untrusted contributor who
@@ -2675,7 +2782,15 @@ def resolve_public_publish_block(
       pushing would silently undo the very change they declined.
     - ``no_local_changes``: the copy's published fields already match the
       public entry, so there is nothing to contribute.
+
+    ``entry_withdrawn`` / ``entry_removed`` rank before all of them: the link
+    is kept but the entry is not published, so neither pushing nor pulling is
+    possible until it is restored (or the link is removed).
     """
+    unpublished_reason = unpublished_link_reason(crop)
+    if unpublished_reason is not None:
+        return unpublished_reason
+
     if owned_public_crop is None:
         # No entry of the user's own to update. A push would fork a new entry,
         # so it is only worth offering when the copy actually diverges from the

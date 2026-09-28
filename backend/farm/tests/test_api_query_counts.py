@@ -186,6 +186,26 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/crops/', 13, expected_rows=ROW_COUNT * 2,
         )
 
+    def test_crops_list_query_count_is_flat_for_unpublished_links(self):
+        """Withdrawn/removed linked entries add the link description
+        (`source_public_crop_status`, `..._title`) and the shared unlink
+        predicate (`can_unlink_public_crop`) to every row -- all read from the
+        already joined entry, so the count must not move."""
+        for index, public_crop in enumerate(self.public_crops):
+            PublicCrop.objects.filter(pk=public_crop.pk).update(
+                status=PublicCrop.STATUS_REMOVED if index % 2 else PublicCrop.STATUS_WITHDRAWN,
+            )
+
+        with self.assertNumQueries(13):
+            response = self.client.get('/openfarmplanner/api/crops/')
+        self.assertEqual(response.status_code, 200)
+        linked = [row for row in response.data['results'] if row['source_public_crop']]
+        self.assertEqual(len(linked), ROW_COUNT)
+        for row in linked:
+            self.assertIn(row['source_public_crop_status'], {'withdrawn', 'removed'})
+            self.assertTrue(row['source_public_crop_title'])
+            self.assertIn('can_unlink_public_crop', row)
+
     def test_crops_list_carries_library_status_fields(self):
         """The crop list's per-row library status icon resolves its state from
         the list payload alone, so every row must carry the same library fields

@@ -6,6 +6,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CheckIcon from '@mui/icons-material/Check';
 import SyncDisabledOutlinedIcon from '@mui/icons-material/SyncDisabledOutlined';
+import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
@@ -26,6 +27,7 @@ const GLYPHS: Record<CropLibraryStatusVisual, SvgIconComponent | null> = {
   push: ArrowUpwardIcon,
   pull: ArrowDownwardIcon,
   rejected: SyncDisabledOutlinedIcon,
+  unavailable: LinkOffOutlinedIcon,
   pending: ScheduleOutlinedIcon,
 };
 
@@ -41,6 +43,7 @@ function statusColor(theme: Theme, visual: CropLibraryStatusVisual): string {
       // Yellowish brown: kept apart from the orange push state.
       return darken(theme.palette.warning.light, 0.4);
     case 'rejected':
+    case 'unavailable':
     case 'notLinked':
       return theme.palette.text.disabled;
   }

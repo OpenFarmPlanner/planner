@@ -1,10 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { Alert, Box, Stack, Typography } from '@mui/material';
 import { useTranslation } from '../i18n';
-import { publicCropAPI } from '../api/api';
 import type { Crop } from '../api/types';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
-import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 import { formatCropDisplayName } from './cropDisplay';
 
 interface UnlinkPublicCropDialogProps {
@@ -12,9 +9,14 @@ interface UnlinkPublicCropDialogProps {
   crop: Crop | undefined;
   /** Whether Sorten of this Kultur have library links of their own (they keep them). */
   hasLinkedVarieties: boolean;
+  /** The localized rejection of the last attempt, shown inline. */
+  errorText?: string;
+  submitting?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
+
+const NOOP = (): void => undefined;
 
 /**
  * Confirms "Verknüpfung aufheben": the crop stops syncing with somebody
@@ -24,29 +26,12 @@ export function UnlinkPublicCropDialog({
   open,
   crop,
   hasLinkedVarieties,
+  errorText = '',
+  submitting = false,
   onCancel,
   onConfirm,
 }: UnlinkPublicCropDialogProps) {
-  const { t, i18n } = useTranslation('crops');
-  const language = i18n.resolvedLanguage ?? i18n.language;
-  const [publicName, setPublicName] = useState('');
-  const publicCropId = crop?.source_public_crop ?? null;
-
-  useEffect(() => {
-    queueMicrotask(() => setPublicName(''));
-    if (!open || !publicCropId) return undefined;
-    let cancelled = false;
-    publicCropAPI.get(publicCropId)
-      .then((response) => {
-        if (!cancelled) {
-          setPublicName(getPublicCropTitle(response.data, language, t('library.translation.missingName')));
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [language, open, publicCropId, t]);
+  const { t } = useTranslation('crops');
 
   const bullets = [
     t('library.unlink.keepsValues'),
@@ -67,7 +52,7 @@ export function UnlinkPublicCropDialog({
           <Box component="span">
             {t('library.unlink.description', {
               local: crop ? formatCropDisplayName(crop) : '',
-              public: publicName || t('library.unlink.publicEntryFallback'),
+              public: crop?.source_public_crop_title || t('library.unlink.publicEntryFallback'),
             })}
           </Box>
           <Box component="ul" sx={{ m: 0, pl: 2.5 }} data-testid="unlink-public-crop-bullets">
@@ -75,12 +60,18 @@ export function UnlinkPublicCropDialog({
               <Typography key={bullet} component="li" variant="body2">{bullet}</Typography>
             ))}
           </Box>
+          {errorText ? <Alert severity="error" data-testid="unlink-public-crop-error">{errorText}</Alert> : null}
         </Stack>
       )}
       cancelLabel={t('common:actions.cancel')}
       confirmLabel={t('library.unlink.confirm')}
-      confirmButtonProps={{ variant: 'contained', color: 'warning' }}
-      onCancel={onCancel}
+      confirmButtonProps={{ variant: 'contained', color: 'warning', disabled: submitting }}
+      // While the request is in flight, closing the dialog any way (Cancel,
+      // Escape, backdrop) would leave a rejection with nowhere to show once
+      // it lands — the dialog carries the error inline, not a snackbar.
+      cancelButtonProps={{ disabled: submitting }}
+      disableBackdropClose={submitting}
+      onCancel={submitting ? NOOP : onCancel}
       onConfirm={onConfirm}
     />
   );

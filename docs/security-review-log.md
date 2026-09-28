@@ -40,6 +40,49 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-28 — Claude — Crop-library state-matrix branch (`fix/crop-library-state-matrix`, `bc6cfe89`..`16a4d062`)
+
+**Scope:** Never previously reviewed. Full diff of this branch against `main`:
+the new `source_public_crop_*`/`can_unlink_public_crop`/`can_republish_public_crop`
+serializer fields, the unlink/republish/unpublished-link authorization logic in
+`farm/services/public_crops.py` and its callers in `farm/crops/views/crops.py`,
+the new dev-only `seed_library_state_matrix` management command and
+`farm/dev_fixtures/library_state_matrix.py`, the `library_moderator` addition to
+the E2E fixture endpoint (`farm/e2e_views.py`), and the frontend dialogs/i18n/
+Playwright dev-tool touched by the same work.
+
+**Findings:** None at HIGH or MEDIUM confidence.
+
+- `seed_library_state_matrix` correctly refuses to run unless `settings.DEBUG`
+  is true.
+- The new `library_moderator` flag in `E2EInvitationFixtureView.post` sits
+  behind the endpoint's existing, unweakened `_ensure_e2e_request` gate
+  (`DEBUG` truthy + matching `X-E2E-Token`), checked before any mutation.
+- The new serializer fields only ever read `obj.source_public_crop` off a
+  `Crop` the requester already owns (project-scoped), so they cannot be used
+  to learn about an entry or user with no existing relationship to the caller.
+- `resolve_public_crop_unlink_block` is a straight refactor of the pre-existing
+  "can't unlink your own published entry" rule — no logic change.
+- `can_republish_withdrawn_entry` reads `crop.source_public_crop`, which can be
+  stale within a request, but the actual write-time gate in
+  `publish_crop_to_public_library` requires the *freshly queried*
+  `find_owned_public_crop_for_update` result to match that entry's id, so a
+  stale read cannot be used to republish a removed or reassigned entry.
+- `_resolve_public_sync_target` now fetches a `PublicCrop` regardless of
+  status (previously `PUBLISHED`-only), but still 404s unless
+  `crop.source_public_crop_id == public_crop.id` — it does not expose an
+  unpublished entry belonging to another user, only the withdrawn/removed
+  status of an entry the requesting crop is already linked to.
+- `frontend/e2e/library-matrix.explore.ts` (dev-only) refuses any base URL
+  that isn't loopback, and its fixture password is meaningless outside the
+  DEBUG-gated seed command.
+- New frontend dialogs render all user-facing text through i18n `t()`
+  interpolation; no `dangerouslySetInnerHTML` or raw HTML injection.
+
+No fixes were needed as a result of this review.
+
+---
+
 ## 2026-09-07 — Codex — Note attachment validation remediation
 
 **Scope:** Follow-up remediation for finding 1 in the Codex full application

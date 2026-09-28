@@ -881,7 +881,12 @@
       "pushUpdate": "Update library",
       "pushUpdateTooltip": "Push your local changes into the public version in the library.",
       "proposalPending": "Proposal under review",
-      "proposalPendingTooltip": "Your changes to the crop library are awaiting approval."
+      "proposalPendingTooltip": "Your changes to the crop library are awaiting approval.",
+      "entryRemoved": "Entry removed",
+      "entryWithdrawn": "Entry withdrawn",
+      "entryUnavailableTooltip": "The linked entry is no longer in the crop library. You can remove the link or wait until it is restored.",
+      "republish": "Publish again",
+      "republishTooltip": "Publish the withdrawn entry in the crop library again."
     },
     "publishSuccess": "“{{name}}” was published to the crop library.",
     "publishPendingModeration": "“{{name}}” was submitted for review and will appear in the crop library once a moderator has approved it.",
@@ -1253,7 +1258,8 @@
       "rejectedError": "A rejected crop species cannot be used as a target.",
       "duplicateSpeciesError": "A published crop species with this name already exists. Check the names, or pick the existing crop species from the list instead.",
       "approvalFailedError": "The crop species could not be approved. Your selection is kept — please try again.",
-      "varietyAdminOnly": "Only administrators can rename the variety."
+      "varietyAdminOnly": "Only administrators can rename the variety.",
+      "unchangedTooltip": "Choose a different crop species or variety."
     },
     "sync": {
       "dialogTitle": "Sync with crop library",
@@ -1301,7 +1307,16 @@
       "canRelink": "You can link the crop again later.",
       "confirm": "Remove link",
       "success": "Link removed.",
-      "error": "The link could not be removed. Please try again."
+      "error": "The link could not be removed. Please try again.",
+      "errors": {
+        "crop_link_owned": "This link cannot be removed while your own entry is published. Withdraw the entry to remove the link.",
+        "crop_not_linked": "This crop is not linked to a crop library entry."
+      }
+    },
+    "republish": {
+      "title": "Publish again?",
+      "message": "“{{name}}” will be published in the crop library again with this crop's current values.",
+      "confirm": "Publish again"
     }
   },
   "commands": {

@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Prefetch, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -43,6 +44,7 @@ from farm.services.public_crops import (
     DuplicatePublicCropError,
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
+    PublicCropLinkUnavailableError,
     PublicCropPermissionError,
     PublicCropPublishingValidationError,
     PublicCropSyncFieldsError,
@@ -59,6 +61,7 @@ from farm.services.public_crops import (
     reject_public_crop_update,
     sync_crop_with_public_entry,
     unlink_crop_from_public_entry,
+    unpublished_reason_for_status,
 )
 
 from ..serializers import (
@@ -483,6 +486,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 checks=self._serialize_publishing_check_result(error.check_result),
             )
+        except PublicCropLinkUnavailableError as error:
+            return self._link_unavailable_response(error)
         except PublicCropUpdateBlockedError as error:
             return api_error_response(
                 code='public_crop_update_blocked',
@@ -632,10 +637,24 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         public_crop = get_object_or_404(
-            PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED)
-            .select_related('crop_species'),
-            pk=public_crop_id,
+            PublicCrop.objects.select_related('crop_species'), pk=public_crop_id,
         )
+        if public_crop.status != PublicCrop.STATUS_PUBLISHED:
+            # The kept link of a withdrawn/removed entry gets a stable code;
+            # any other unpublished entry stays invisible (404). The reason
+            # comes from `public_crop` itself (just fetched above), not from
+            # `crop.source_public_crop` (possibly loaded earlier in this
+            # request, via `get_object()`'s `select_related`) — reading the
+            # stale copy could report the wrong reason for the narrow window
+            # where the entry's status changed between the two fetches. A
+            # status this mapping doesn't know (`draft`) can't reach here:
+            # `crop.source_public_crop_id != public_crop.id` above already
+            # guards every id that is not this crop's own kept link, and a
+            # kept link is never a draft.
+            reason = unpublished_reason_for_status(public_crop.status)
+            if crop.source_public_crop_id != public_crop.id or reason is None:
+                raise Http404
+            return self._link_unavailable_response(PublicCropLinkUnavailableError(reason=reason))
         if not require_link:
             return public_crop
         owned = find_owned_public_crop_for_update(crop=crop, user=request.user)
@@ -646,6 +665,15 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         return public_crop
+
+    @staticmethod
+    def _link_unavailable_response(error: PublicCropLinkUnavailableError) -> Response:
+        return api_error_response(
+            code=error.code,
+            detail='The linked public entry is no longer published.',
+            status_code=status.HTTP_409_CONFLICT,
+            reason=error.reason,
+        )
 
     @staticmethod
     def _public_sync_push_precondition_error(
