@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import axios from 'axios';
 import {
   Alert,
   Box,
@@ -14,6 +13,7 @@ import {
 } from '@mui/material';
 
 import { cropSpeciesAPI, publicCropAPI } from '../../api/api';
+import { extractApiErrorCode } from '../../api/errors';
 import type { CropSpecies, PublicCrop, PublicCropSpeciesRelinkResponse } from '../../api/types';
 import { CropSpeciesPicker } from '../../crops/CropSpeciesPicker';
 import {
@@ -52,12 +52,6 @@ const INLINE_ERROR_KEYS: Record<string, string> = {
   // non-admin, so this should not normally fire from this dialog.
   public_crop_identity_admin_required: 'library.relinkSpecies.varietyAdminOnly',
 };
-
-const getApiErrorCode = (error: unknown): string | undefined => (
-  axios.isAxiosError(error)
-    ? (error.response?.data as { code?: string } | undefined)?.code
-    : undefined
-);
 
 const languageCodeOf = (i18nLanguage: string): string => (i18nLanguage || 'de').split('-')[0];
 
@@ -225,7 +219,7 @@ export function PublicCropSpeciesRelinkDialog({
       );
       await onRelinked(response.data, getCropSpeciesOptionLabel(target));
     } catch (error) {
-      const inlineKey = INLINE_ERROR_KEYS[getApiErrorCode(error) ?? ''];
+      const inlineKey = INLINE_ERROR_KEYS[extractApiErrorCode(error) ?? ''];
       setErrorText(t(
         inlineKey
         ?? (approvalAttempted ? 'library.relinkSpecies.approvalFailedError' : 'library.relinkSpecies.error'),

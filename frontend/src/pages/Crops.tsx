@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useTranslation } from '../i18n';
 import { formatCropDisplayName } from '../crops/cropDisplay';
+import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
 import type { CropHistoryEntry } from '../api/types';
@@ -367,10 +368,15 @@ function Crops() {
   const handleConfirmRepublish = useCallback(() => {
     setRepublishOpen(false);
     if (!selectedCrop) return;
-    const language = (i18n.language || 'de').split('-')[0];
+    // Keep the entry's own original language rather than guessing from the
+    // current UI language, which could retag e.g. an entry published in `en`
+    // while the contributor is now browsing in `de`.
+    const originalLanguageCode = normalizeLanguageTag(selectedCrop.source_public_crop_original_language)
+      ?? normalizeLanguageTag(i18n.language)
+      ?? FALLBACK_LANGUAGE;
     void handlePublishCurrentCrop(Boolean(user?.public_library_terms_accepted), {
       cropSpeciesId: selectedCrop.crop_species ?? undefined,
-      originalLanguageCode: language === 'en' ? 'en' : 'de',
+      originalLanguageCode,
       publishAsGeneral: !(selectedCrop.variety ?? '').trim(),
     });
   }, [handlePublishCurrentCrop, i18n.language, selectedCrop, user?.public_library_terms_accepted]);

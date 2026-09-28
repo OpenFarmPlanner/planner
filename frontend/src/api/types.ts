@@ -124,6 +124,8 @@ export interface Crop {
   source_public_crop_status?: PublicCropStatus | null;
   /** Display name of the linked library entry, so the crop never needs the public endpoint for it. */
   source_public_crop_title?: string | null;
+  /** The linked entry's own original language — read by a republish so it doesn't retag the entry. */
+  source_public_crop_original_language?: string | null;
   /** Same predicate the `unlink-public-crop` endpoint applies. */
   can_unlink_public_crop?: boolean;
   /** True for the user's own withdrawn entry: publishing again brings it back. */

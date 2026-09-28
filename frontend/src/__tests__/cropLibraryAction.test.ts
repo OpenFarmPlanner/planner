@@ -292,6 +292,24 @@ describe('republishing an own withdrawn entry', () => {
     );
     expect(action.kind).toBe('entryRemoved');
   });
+
+  it('freezes like every other push while the crop species is still under moderation', () => {
+    const action = resolveCropLibraryAction(
+      crop({
+        source_public_crop: 9,
+        public_publish_blocked_reason: 'entry_withdrawn',
+        can_republish_public_crop: true,
+        public_crop_species_pending: true,
+      }),
+      openUpdate,
+    );
+    expect(action).toMatchObject({
+      kind: 'republish',
+      disabled: true,
+      tooltipKey: 'badges.speciesPendingTooltip',
+      trigger: null,
+    });
+  });
 });
 
 describe('unpublished linked entry', () => {

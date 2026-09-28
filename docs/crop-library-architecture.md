@@ -203,8 +203,13 @@ The public Crop Library follows an open-data model:
      `can_republish_withdrawn_entry()` predicate the publish guard uses): there
      the chip is replaced by the button "Wieder veröffentlichen", which asks for
      one confirmation and calls `publish-public` (the single push path), bringing
-     the entry back as published. A removed entry is a moderation decision and
-     is never republishable by its contributor. The backend backs this:
+     the entry back as published. It keeps the entry's own original language
+     (`source_public_crop_original_language`) rather than the UI's current
+     language, which could otherwise retag an entry published in one language
+     while the contributor now browses in another. A removed entry is a
+     moderation decision and is never republishable by its contributor. Like
+     every other frozen/disabled state in this row, it disables (with the
+     species-pending tooltip) while `public_crop_species_pending` is true. The backend backs this:
      `public-sync` (GET and POST) and `publish-public` answer 409
      `public_crop_link_unavailable` (with `reason`) for such a link — except
      `publish-public` for the contributor's own withdrawn entry (§8). Status

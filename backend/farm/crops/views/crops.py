@@ -44,9 +44,9 @@ from farm.services.public_crops import (
     DuplicatePublicCropError,
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
+    PublicCropLinkUnavailableError,
     PublicCropPermissionError,
     PublicCropPublishingValidationError,
-    PublicCropLinkUnavailableError,
     PublicCropSyncFieldsError,
     PublicCropUnlinkError,
     PublicCropUpdateBlockedError,
@@ -61,7 +61,7 @@ from farm.services.public_crops import (
     reject_public_crop_update,
     sync_crop_with_public_entry,
     unlink_crop_from_public_entry,
-    unpublished_link_reason,
+    unpublished_reason_for_status,
 )
 
 from ..serializers import (
@@ -641,12 +641,20 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         )
         if public_crop.status != PublicCrop.STATUS_PUBLISHED:
             # The kept link of a withdrawn/removed entry gets a stable code;
-            # any other unpublished entry stays invisible (404).
-            if crop.source_public_crop_id != public_crop.id:
+            # any other unpublished entry stays invisible (404). The reason
+            # comes from `public_crop` itself (just fetched above), not from
+            # `crop.source_public_crop` (possibly loaded earlier in this
+            # request, via `get_object()`'s `select_related`) — reading the
+            # stale copy could report the wrong reason for the narrow window
+            # where the entry's status changed between the two fetches. A
+            # status this mapping doesn't know (`draft`) can't reach here:
+            # `crop.source_public_crop_id != public_crop.id` above already
+            # guards every id that is not this crop's own kept link, and a
+            # kept link is never a draft.
+            reason = unpublished_reason_for_status(public_crop.status)
+            if crop.source_public_crop_id != public_crop.id or reason is None:
                 raise Http404
-            return self._link_unavailable_response(
-                PublicCropLinkUnavailableError(reason=unpublished_link_reason(crop) or 'entry_removed'),
-            )
+            return self._link_unavailable_response(PublicCropLinkUnavailableError(reason=reason))
         if not require_link:
             return public_crop
         owned = find_owned_public_crop_for_update(crop=crop, user=request.user)

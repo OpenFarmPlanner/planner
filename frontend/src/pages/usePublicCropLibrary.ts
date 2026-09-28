@@ -6,7 +6,7 @@ import type { Crop } from '../api/api';
 import type { PublicCrop, PublishPublicCropDuplicateError } from '../api/types';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
-import { extractApiErrorMessage } from '../api/errors';
+import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { dedupePublicCrops } from './publicCropUtils';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
@@ -162,9 +162,7 @@ export function usePublicCropLibrary({
   };
 
   const describePublicSyncError = (error: unknown): string => {
-    const code = axios.isAxiosError(error)
-      ? (error.response?.data as { code?: string } | undefined)?.code
-      : undefined;
+    const code = extractApiErrorCode(error);
     if (code === 'stale_public_crop_version') {
       return t('library.sync.staleError');
     }
@@ -269,9 +267,7 @@ export function usePublicCropLibrary({
       return true;
     } catch (error) {
       console.error('Error unlinking crop from the library:', error);
-      const code = axios.isAxiosError(error)
-        ? (error.response?.data as { code?: string } | undefined)?.code
-        : undefined;
+      const code = extractApiErrorCode(error);
       const message = t(code && UNLINK_ERROR_CODES.includes(code)
         ? `library.unlink.errors.${code}`
         : 'library.unlink.error');

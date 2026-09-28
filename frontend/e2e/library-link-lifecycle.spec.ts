@@ -31,6 +31,7 @@ async function publishVariety(
   page: Page,
   species: CropSpecies,
   variety: string,
+  originalLanguageCode: 'de' | 'en' = 'de',
 ): Promise<{ crop: CropRow; publicCropId: number }> {
   const crop = await apiRequest<CropRow>(page, 'POST', '/crops/', {
     name: species.name,
@@ -44,7 +45,7 @@ async function publishVariety(
   const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${crop.id}/publish-public/`, {
     accepted_public_library_terms: true,
     crop_species_id: species.id,
-    original_language_code: 'de',
+    original_language_code: originalLanguageCode,
   });
   return { crop, publicCropId: published.public_crop.id };
 }
@@ -78,12 +79,14 @@ test('a crop whose own library entry was withdrawn offers republishing and can b
   expect(failures).toEqual([]);
 });
 
-test('an own withdrawn entry is republished with one confirmation', async ({ page, request }) => {
+test('an own withdrawn entry is republished with one confirmation, keeping its original language', async ({ page, request }) => {
   const failures = trackFailedApiCalls(page);
   await loginWithDeterministicProject(page, request, `library-republish-${Date.now()}`, { loginAsAdmin: true });
   const [species] = await listSpecies(page, 1);
   const variety = `E2E Wieder ${Date.now()}`;
-  const { publicCropId } = await publishVariety(page, species, variety);
+  // Published in English while the suite runs in German (playwright.config.ts):
+  // republishing must not silently retag the entry to the UI's language.
+  const { publicCropId } = await publishVariety(page, species, variety, 'en');
   await apiRequest(page, 'POST', `/public-crops/${publicCropId}/remove/`, {});
 
   await openCrop(page, variety);
@@ -92,6 +95,10 @@ test('an own withdrawn entry is republished with one confirmation', async ({ pag
     .getByRole('button', { name: 'Wieder veröffentlichen' }).click();
 
   await expect(page.getByTestId('crop-detail-library-status')).toHaveText('Aktuell');
+  const republished = await apiRequest<{ original_language_code: string }>(
+    page, 'GET', `/public-crops/${publicCropId}/`,
+  );
+  expect(republished.original_language_code).toBe('en');
   expect(failures).toEqual([]);
 });
 

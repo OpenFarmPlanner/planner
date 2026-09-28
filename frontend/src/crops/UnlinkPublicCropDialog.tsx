@@ -16,6 +16,8 @@ interface UnlinkPublicCropDialogProps {
   onConfirm: () => void;
 }
 
+const NOOP = (): void => undefined;
+
 /**
  * Confirms "Verknüpfung aufheben": the crop stops syncing with somebody
  * else's public entry. Nothing is lost, which the bullet list spells out.
@@ -64,7 +66,12 @@ export function UnlinkPublicCropDialog({
       cancelLabel={t('common:actions.cancel')}
       confirmLabel={t('library.unlink.confirm')}
       confirmButtonProps={{ variant: 'contained', color: 'warning', disabled: submitting }}
-      onCancel={onCancel}
+      // While the request is in flight, closing the dialog any way (Cancel,
+      // Escape, backdrop) would leave a rejection with nowhere to show once
+      // it lands — the dialog carries the error inline, not a snackbar.
+      cancelButtonProps={{ disabled: submitting }}
+      disableBackdropClose={submitting}
+      onCancel={submitting ? NOOP : onCancel}
       onConfirm={onConfirm}
     />
   );

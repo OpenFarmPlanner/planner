@@ -220,6 +220,20 @@ export function extractApiErrorMessage(
 
 
 /**
+ * Extracts the stable `code` field OpenFarmPlanner's `api_error_response`
+ * always attaches to a structured rejection (e.g. `crop_link_owned`,
+ * `crop_species_unchanged`), or `undefined` for a non-Axios error or a
+ * response with no such code.
+ */
+export function extractApiErrorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) {
+    return undefined;
+  }
+  const data = error.response?.data as { code?: string } | undefined;
+  return data?.code;
+}
+
+/**
  * Detects whether an Axios request was canceled/aborted by the client.
  */
 export function isApiRequestCanceled(error: unknown): boolean {

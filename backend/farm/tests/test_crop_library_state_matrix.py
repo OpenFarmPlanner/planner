@@ -99,6 +99,10 @@ class LibraryStateMatrixTest(DRFAPITestCase):
                 self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
                 self.assertEqual(response.data['code'], 'public_crop_link_unavailable')
 
+    def test_source_public_crop_original_language_matches_the_linked_entry(self):
+        cell = self.fixture.cells['own_withdrawn']
+        self.assertEqual(self._get(cell).data['source_public_crop_original_language'], 'en')
+
     def test_own_withdrawn_entry_can_be_republished_and_nothing_else_can(self):
         cell = self.fixture.cells['own_withdrawn']
         self._login(cell)

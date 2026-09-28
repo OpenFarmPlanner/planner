@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.contrib.auth import get_user_model
+
 from accounts.consent import record_acceptance
 from accounts.models import DocumentConsent
 from accounts.trust import grant_established_trust
@@ -23,7 +25,6 @@ from farm.models import (
     PublicCrop,
     PublicCropChangeProposal,
 )
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -50,7 +51,7 @@ class MatrixCell:
 
 @dataclass
 class MatrixFixture:
-    users: dict[str, Any] = field(default_factory=dict)
+    users: dict[str, User] = field(default_factory=dict)
     projects: dict[str, Project] = field(default_factory=dict)
     cells: dict[str, MatrixCell] = field(default_factory=dict)
     api_token: str = ''
@@ -137,7 +138,7 @@ CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
 }
 
 
-def _ensure_user(username: str, *, established: bool) -> Any:
+def _ensure_user(username: str, *, established: bool) -> User:
     user, created = User.objects.get_or_create(
         username=username, defaults={'email': f'{username}@example.invalid', 'is_active': True},
     )
@@ -151,13 +152,13 @@ def _ensure_user(username: str, *, established: bool) -> Any:
     return user
 
 
-def _ensure_project(user: Any, slug: str, name: str) -> Project:
+def _ensure_project(user: User, slug: str, name: str) -> Project:
     project, _ = Project.objects.get_or_create(slug=slug, defaults={'name': name})
     ProjectMembership.objects.get_or_create(user=user, project=project, defaults={'role': 'admin'})
     return project
 
 
-def _entry_for(key: str, species: CropSpecies, owner: Any, entry_status: str) -> PublicCrop:
+def _entry_for(key: str, species: CropSpecies, owner: User, entry_status: str) -> PublicCrop:
     entry, _ = PublicCrop.objects.get_or_create(
         name=f'Matrix {key}', variety='', crop_species=species, created_by=owner,
         defaults={'status': PublicCrop.STATUS_PUBLISHED},
@@ -165,6 +166,10 @@ def _entry_for(key: str, species: CropSpecies, owner: Any, entry_status: str) ->
     PublicCrop.objects.filter(pk=entry.pk).update(
         status=entry_status, version=1, growth_duration_days=BASE_DURATION_DAYS,
         harvest_duration_days=14,
+        # Deliberately not the fixture users' UI language (German is the
+        # default), so a republish that read the UI language instead of this
+        # stored value would be caught mistagging the entry.
+        original_language_code='en',
         removal_reason=(
             PublicCrop.REMOVAL_REASON_TEST_DATA if entry_status == PublicCrop.STATUS_REMOVED else ''
         ),
@@ -173,7 +178,7 @@ def _entry_for(key: str, species: CropSpecies, owner: Any, entry_status: str) ->
     return entry
 
 
-def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: Any, user: Any) -> None:
+def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: User, user: User) -> None:
     updates: dict[str, Any] = {
         'source_public_crop': entry, 'source_public_version': 1, 'rejected_public_version': None,
         'growth_duration_days': BASE_DURATION_DAYS, 'harvest_duration_days': 14,
@@ -237,7 +242,7 @@ def build_library_state_matrix() -> MatrixFixture:
     return fixture
 
 
-def _ensure_api_token(user: Any, project: Project) -> tuple[ProjectApiToken, str]:
+def _ensure_api_token(user: User, project: Project) -> tuple[ProjectApiToken, str]:
     ProjectApiToken.objects.filter(user=user, project=project, name='Matrix token').delete()
     return ProjectApiToken.create_token(
         user=user, project=project, name='Matrix token', scope=ProjectApiToken.SCOPE_WRITE,

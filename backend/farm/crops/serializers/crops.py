@@ -301,6 +301,7 @@ class CropSerializer(serializers.ModelSerializer):
     public_change_proposal_pending = serializers.SerializerMethodField()
     source_public_crop_status = serializers.SerializerMethodField()
     source_public_crop_title = serializers.SerializerMethodField()
+    source_public_crop_original_language = serializers.SerializerMethodField()
     can_unlink_public_crop = serializers.SerializerMethodField()
     can_republish_public_crop = serializers.SerializerMethodField()
     unlink_public_crop_blocked_reason = serializers.SerializerMethodField()
@@ -625,17 +626,40 @@ class CropSerializer(serializers.ModelSerializer):
         public_crop = obj.source_public_crop
         return format_crop_display_name(public_crop.name, public_crop.variety)
 
+    def get_source_public_crop_original_language(self, obj: Crop) -> str | None:
+        """The linked entry's own original language, so a republish (see
+        `can_republish_public_crop`) can keep it instead of guessing from the
+        current UI language, which would mistag an entry published in a
+        different language than the one the contributor is now browsing in."""
+        if not obj.source_public_crop_id:
+            return None
+        return obj.source_public_crop.original_language_code or None
+
     def _unlink_block(self, obj: Crop) -> str | None:
+        # Read by both get_can_unlink_public_crop and
+        # get_unlink_public_crop_blocked_reason, so cache it on the row like
+        # _resolve_owned_public_crop above.
+        cached = getattr(obj, '_resolved_unlink_block', _UNRESOLVED)
+        if cached is not _UNRESOLVED:
+            return cached
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        return resolve_public_crop_unlink_block(obj, user if user and user.is_authenticated else None)
+        resolved = resolve_public_crop_unlink_block(obj, user if user and user.is_authenticated else None)
+        obj._resolved_unlink_block = resolved
+        return resolved
 
     def get_can_unlink_public_crop(self, obj: Crop) -> bool:
         """Same predicate as the ``unlink-public-crop`` endpoint."""
         return self._unlink_block(obj) is None
 
     def get_can_republish_public_crop(self, obj: Crop) -> bool:
-        """Same predicate as the publish guard: the user's own withdrawn entry can be republished."""
+        """Same predicate as the publish guard, minus the guard's extra "and the resolved
+        update target is actually this entry" narrowing: that target only comes from
+        `find_owned_public_crop_for_update`, a write-time lookup that costs a query and
+        has no list-safe, per-request-cached equivalent here (`_resolve_owned_public_crop`
+        only resolves *published* entries, never a withdrawn one). The gap this leaves is
+        the same one every other field on this serializer already accepts for the same
+        reason — see `get_public_publish_blocked_reason`."""
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         return can_republish_withdrawn_entry(obj, user if user and user.is_authenticated else None)
