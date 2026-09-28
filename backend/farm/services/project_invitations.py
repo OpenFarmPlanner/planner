@@ -42,10 +42,11 @@ class InvitationResult:
 class InvitationFlowError(Exception):
     """Domain error for invitation operations."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str, **context: Any) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.context = context
 
 
 def clear_pending_invitation_token(*, session: Any) -> None:
@@ -248,7 +249,11 @@ def accept_invitation(*, invitation: ProjectInvitation, user: User) -> Invitatio
                 'token': _mask_token(invitation.token),
             },
         )
-        raise InvitationFlowError('email_mismatch', 'Invitation belongs to another email address.')
+        raise InvitationFlowError(
+            'email_mismatch',
+            'Invitation belongs to another email address.',
+            email_masked=mask_email(invitation.email_normalized),
+        )
 
     with transaction.atomic():
         locked = ProjectInvitation.objects.select_for_update().get(pk=invitation.pk)

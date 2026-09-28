@@ -614,6 +614,7 @@ class ProjectsApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data['code'], 'email_mismatch')
+        self.assertEqual(response.data['email_masked'], 'i***@example.com')
         self.assertEqual(self.client.session.get('pending_project_invitation_token'), invitation.token)
 
     def test_accept_invitation_email_mismatch(self) -> None:
@@ -629,6 +630,7 @@ class ProjectsApiTests(APITestCase):
             response = self.client.post(f'/openfarmplanner/api/project-invitations/{invitation.token}/accept/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data['code'], 'email_mismatch')
+        self.assertEqual(response.data['email_masked'], 't***@example.com')
         joined = '\n'.join(captured.output)
         self.assertNotIn(invitation.email, joined)
         self.assertNotIn(self.user.email, joined)
