@@ -56,6 +56,7 @@ jobs:
     outputs:
       code_review: ${{ steps.decide.outputs.code_review }}
       security_review: ${{ steps.decide.outputs.security_review }}
+      self_changed: ${{ steps.decide.outputs.self_changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -182,7 +183,9 @@ jobs:
 
           # Tests send X-Project-Id headers in nearly every API test, and docs
           # quote the patterns, so neither is scanned for content patterns.
+          # Nor is this workflow, which lists them (its path already counts).
           CONTENT_EXCLUDE_PATTERNS: |
+            ^\.github/workflows/claude-pr\.yml$
             (^|/)tests?/
             (^|/)test_[^/]*\.py$
             \.test\.tsx?$
@@ -196,6 +199,9 @@ jobs:
             frontend/package.json
             backend/pyproject.toml
           # requirements*.txt anywhere in the repo is checked as well.
+
+          # This workflow file (see the self_changed output).
+          SELF_WORKFLOW: .github/workflows/claude-pr.yml
         run: |
           python3 - <<'PY'
           import json
@@ -340,7 +346,16 @@ jobs:
 
           # --- Outputs ----------------------------------------------------
           summary = ["## Claude PR triage", ""]
+          self_changed = env["SELF_WORKFLOW"] in changed
+          if self_changed:
+              summary += [
+                  f"> {env['SELF_WORKFLOW']} is changed in this PR. claude-code-action only runs",
+                  "> from a workflow identical to the default branch, so the review jobs are",
+                  "> skipped until this change is merged.",
+                  "",
+              ]
           with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"self_changed={'true' if self_changed else 'false'}\n")
               for key, found in reasons.items():
                   decision = "true" if found else "false"
                   output.write(f"{key}={decision}\n")
@@ -359,7 +374,11 @@ jobs:
   code-review:
     name: Claude code review
     needs: triage
-    if: needs.triage.outputs.code_review == 'true'
+    # claude-code-action refuses to run from a workflow file that differs
+    # from the default branch, so a PR changing this file skips the reviews.
+    if: >-
+      needs.triage.outputs.code_review == 'true' &&
+      needs.triage.outputs.self_changed != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -498,13 +517,6 @@ jobs:
               migrations, and (with "❓ Uncertain") every fix for a finding
               you were not sure about.
 
-      - &workflow-change-note
-        name: Note skipped self-review
-        if: always()
-        run: |
-          if ! git diff --quiet "origin/${{ github.event.pull_request.base.ref }}...HEAD" -- .github/workflows/claude-pr.yml; then
-            echo "::notice::This PR changes claude-pr.yml. The Claude GitHub App only accepts a workflow identical to the default branch, so the action skips itself until the change is merged."
-          fi
 
   security-review:
     name: Claude security review
@@ -516,6 +528,7 @@ jobs:
       always() &&
       needs.triage.result == 'success' &&
       needs.triage.outputs.security_review == 'true' &&
+      needs.triage.outputs.self_changed != 'true' &&
       needs.code-review.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -629,4 +642,3 @@ jobs:
               and (with "❓ Uncertain") every fix for a finding you were not
               sure about.
 
-      - *workflow-change-note
