@@ -35,6 +35,17 @@
   </div>
 
   <div class="module">
+    {% if dashboard.show_all %}
+    <p class="help">
+      {% translate "Alle Projekte werden angezeigt." %}
+      <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
+    </p>
+    {% elif dashboard.hidden_projects_count %}
+    <p class="help">
+      {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Projekt ausgeblendet (nur eigene oder Demo-Projekte).{% plural %}{{ counter }} Projekte ausgeblendet (nur eigene oder Demo-Projekte).{% endblocktranslate %}
+      <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
+    </p>
+    {% endif %}
     <table>
       <caption>{% translate "Projekte" %}</caption>
       <thead><tr>
