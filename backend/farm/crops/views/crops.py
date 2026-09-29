@@ -7,6 +7,13 @@ from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -16,6 +23,14 @@ from accounts.consent import has_accepted_current, record_acceptance
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from accounts.models import DocumentConsent
 from config.responses import api_error_response
+from farm.agent_api.schema_serializers import (
+    ApiErrorSerializer,
+    CropDeletePreviewSerializer,
+    CropDuplicateCheckSerializer,
+    PublishPublicRequestSerializer,
+    PublishPublicResponseSerializer,
+    SeedRateConstraintsSerializer,
+)
 from farm.common.mixins import ProjectScopedMixin
 from farm.crops.moderation import (
     describe_contribution_origin,
@@ -110,6 +125,29 @@ def _optional_integer(value: object) -> int | None:
         return None
 
 
+_INCLUDE_DELETED_PARAMETER = OpenApiParameter(
+    'include_deleted',
+    OpenApiTypes.BOOL,
+    description='Also return soft-deleted crops (`1` or `true`).',
+)
+_CROP_WRITE_ERROR_RESPONSES = {
+    400: OpenApiResponse(description='Validation error, keyed by field.'),
+    409: OpenApiResponse(
+        ApiErrorSerializer,
+        description=(
+            '`crop_name_conflict`: a general crop (empty variety) with this name '
+            'already exists in the project.'
+        ),
+    ),
+}
+
+
+@extend_schema_view(
+    list=extend_schema(parameters=[_INCLUDE_DELETED_PARAMETER]),
+    create=extend_schema(responses={201: CropSerializer, **_CROP_WRITE_ERROR_RESPONSES}),
+    update=extend_schema(responses={200: CropSerializer, **_CROP_WRITE_ERROR_RESPONSES}),
+    partial_update=extend_schema(responses={200: CropSerializer, **_CROP_WRITE_ERROR_RESPONSES}),
+)
 class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     """ViewSet for Crop model providing CRUD operations.
     
@@ -244,6 +282,22 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             .prefetch_related('supplier_data__supplier', 'seed_packages', 'crop_species__translations', owned_public_crops_prefetch)
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('name', OpenApiTypes.STR, description='Crop (Kultur) name to check.'),
+            OpenApiParameter(
+                'variety',
+                OpenApiTypes.STR,
+                description='Sorte; omit or leave empty for a general crop.',
+            ),
+            OpenApiParameter(
+                'exclude_id',
+                OpenApiTypes.INT,
+                description='Crop id to ignore (the row being edited).',
+            ),
+        ],
+        responses=CropDuplicateCheckSerializer,
+    )
     @action(detail=False, methods=['get'], url_path='duplicate-check')
     def duplicate_check(self, request):
         """Check whether a crop identity already exists in the active project."""
@@ -278,6 +332,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             'name_exists': general_name_queryset.exists(),
         })
 
+    @extend_schema(responses=SeedRateConstraintsSerializer)
     @action(detail=False, methods=['get'], url_path='seed-rate-constraints')
     def seed_rate_constraints(self, request):
         """Return backend-owned seed-rate value constraints for crop forms."""
@@ -334,11 +389,13 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(responses=CropDeletePreviewSerializer)
     @action(detail=True, methods=['get'], url_path='delete-preview')
     def delete_preview(self, request, pk=None):
         crop = self.get_object()
         return Response(self._delete_preview_payload(crop), status=status.HTTP_200_OK)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='undelete')
     def undelete(self, request, pk=None):
         crop = get_object_or_404(
@@ -406,6 +463,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             sibling.name = updated.name
             sibling.save(update_fields=['name', 'name_normalized', 'updated_at'])
 
+    @extend_schema(responses=CropHistoryEntrySerializer(many=True))
     @action(detail=True, methods=['get'], url_path='history')
     def history(self, request, pk=None):
         crop = self.get_object()
@@ -438,6 +496,20 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
         return Response(self.get_serializer(crop).data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        request=PublishPublicRequestSerializer,
+        responses={
+            200: PublishPublicResponseSerializer,
+            201: PublishPublicResponseSerializer,
+            202: OpenApiResponse(
+                PublishPublicResponseSerializer,
+                description='Queued for moderation. Always the outcome for API tokens.',
+            ),
+            400: ApiErrorSerializer,
+            409: ApiErrorSerializer,
+            429: ApiErrorSerializer,
+        },
+    )
     @action(detail=True, methods=['post'], url_path='publish-public')
     def publish_public(self, request, pk=None):
         if is_active_guest_demo_user(request.user):

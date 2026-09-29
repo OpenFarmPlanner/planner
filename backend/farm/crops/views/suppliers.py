@@ -2,6 +2,8 @@
 
 
 from django.db import IntegrityError, transaction
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
@@ -38,6 +40,17 @@ from ..serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                'q',
+                OpenApiTypes.STR,
+                description='Case-insensitive name search. The list returns at most 20 suppliers.',
+            ),
+        ],
+    ),
+)
 class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
     """ViewSet for Supplier model providing CRUD operations.
 

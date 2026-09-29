@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Count, Max, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -19,6 +20,7 @@ from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
 from farm.agent_api.permissions import ApiTokenAccessPermission
+from farm.agent_api.schema_serializers import ApiErrorSerializer
 from farm.crops.moderation import (
     describe_contribution_origin,
     pending_queue_limit_exceeded,
@@ -71,7 +73,27 @@ from ..serializers.public import (
     PublicCropUpdateSerializer,
 )
 
+_PUBLIC_CROP_UPDATE_SCHEMA = extend_schema(
+    request=PublicCropUpdateSerializer,
+    responses={
+        200: OpenApiResponse(
+            PublicCropSerializer,
+            description='Applied live. Only for established session users, never for API tokens.',
+        ),
+        202: OpenApiResponse(
+            PublicCropChangeProposalSerializer,
+            description=(
+                'Queued as a change proposal for moderation. Always the outcome for API tokens.'
+            ),
+        ),
+        400: ApiErrorSerializer,
+        409: ApiErrorSerializer,
+        429: ApiErrorSerializer,
+    },
+)
 
+
+@extend_schema_view(update=_PUBLIC_CROP_UPDATE_SCHEMA, partial_update=_PUBLIC_CROP_UPDATE_SCHEMA)
 class PublicCropViewSet(viewsets.ModelViewSet):
     """Public library for published crops with project import and direct edit actions.
 

@@ -21,6 +21,8 @@ from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from config.version import VERSION as APP_VERSION
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -214,6 +216,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     # django-allauth provides the OAuth 2.0 / OpenID Connect machinery for
     # social login. `allauth.account` is a hard dependency of
@@ -619,6 +622,55 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.OpenFarmPlannerPageNumberPagination',
     'PAGE_SIZE': 100,
+    # Only generates the published reference at /api/schema/ — see
+    # farm/agent_api/schema.py. Request handling is unaffected.
+    'DEFAULT_SCHEMA_CLASS': 'farm.agent_api.schema.PublicApiAutoSchema',
+}
+
+API_GUIDE_PATH = BASE_DIR.parent / 'docs' / 'api.md'
+
+
+def _read_api_guide(path: Path) -> str:
+    """Return docs/api.md without its H1 title, for the schema description.
+
+    docs/api.md is the single source of the hand-written guide; Redoc renders
+    it above the generated reference. A checkout without docs/ still serves a
+    valid schema with a pointer instead of failing at startup.
+    """
+    try:
+        text = path.read_text(encoding='utf-8')
+    except OSError:
+        return 'See docs/api.md in the OpenFarmPlanner repository.'
+    lines = text.splitlines()
+    if lines and lines[0].startswith('# '):
+        lines = lines[1:]
+    return '\n'.join(lines).strip()
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'OpenFarmPlanner API',
+    'DESCRIPTION': _read_api_guide(API_GUIDE_PATH),
+    'VERSION': APP_VERSION,
+    'OAS_VERSION': '3.1.0',
+    # Only the token-reachable surface is published (preprocess_public_endpoints).
+    'PREPROCESSING_HOOKS': ['farm.agent_api.schema.preprocess_public_endpoints'],
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+        'farm.agent_api.schema.annotate_inherited_crop_fields',
+    ],
+    # Bearer tokens are the only documented credential; the browser session is
+    # an implementation detail of the first-party frontend.
+    'AUTHENTICATION_WHITELIST': ['farm.agent_api.authentication.ProjectApiTokenAuthentication'],
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0',
+    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0/favicon-32x32.png',
+    'REDOC_DIST': 'https://cdn.jsdelivr.net/npm/redoc@2.5.4',
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': False,
+        'displayOperationId': False,
+    },
 }
 
 # Social login (Google / Microsoft) via django-allauth — see docs/social-login.md.
