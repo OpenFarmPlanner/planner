@@ -1236,7 +1236,8 @@
       "label": "Offizielle Kulturart",
       "proposeInline": "„{{name}}“ als neue Kulturart vorschlagen",
       "noOptions": "Keine passende offizielle Kulturart gefunden.",
-      "pendingOptionSuffix": "{{name}} · Vorschlag in Prüfung"
+      "pendingOptionSuffix": "{{name}} · Vorschlag in Prüfung",
+      "proposingHelp": "Neue Kulturart wird vorgeschlagen: {{name}}"
     },
     "relinkSpecies": {
       "action": "Kulturart korrigieren",

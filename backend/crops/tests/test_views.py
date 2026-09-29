@@ -195,6 +195,45 @@ class CropViewSetTest(DRFAPITestCase):
         )
         self.assertIn('Erdapfel', potato['search_names'])
 
+    def test_species_search_tolerates_a_typo(self):
+        """A single-letter typo in a longer name still finds it via fuzzy similarity."""
+        self.client.force_authenticate(user=self.user)
+        typo_target = CropSpecies.objects.create(name='Fleischtomate', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=typo_target, language_code='de', common_name='Fleischtomate')
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Fleichtomate'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [item['name'] for item in response.data['results']]
+        self.assertIn('Fleischtomate', names)
+
+    def test_species_search_orders_exact_then_prefix_then_similarity(self):
+        self.client.force_authenticate(user=self.user)
+        exact = CropSpecies.objects.create(name='Zwiebeltest', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=exact, language_code='de', common_name='Zwiebeltest')
+        prefix = CropSpecies.objects.create(name='Zwiebeltestsorte', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=prefix, language_code='de', common_name='Zwiebeltestsorte')
+        # Not a substring/prefix of the query (extra "s"), only similar to it.
+        similar = CropSpecies.objects.create(name='Zwiebeltesst', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=similar, language_code='de', common_name='Zwiebeltesst')
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Zwiebeltest'})
+
+        # Exact, then prefix, then fuzzy-similarity matches — a real but
+        # unrelated species ("Zwiebel") may still rank behind them by
+        # similarity alone (it's not part of this test's scoped assertion).
+        names = [item['name'] for item in response.data['results']]
+        self.assertEqual(names[:3], ['Zwiebeltest', 'Zwiebeltestsorte', 'Zwiebeltesst'])
+
+    def test_species_search_drops_low_similarity_unrelated_results(self):
+        """A minimum-similarity cutoff keeps irrelevant noise out of the results."""
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Xyzzyquuxfnord'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'], [])
+
     def test_species_search_uses_concrete_green_manure_species(self):
         self.client.force_authenticate(user=self.user)
 

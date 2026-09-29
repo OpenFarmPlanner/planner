@@ -71,10 +71,26 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_filter)
         elif not include_proposed:
             queryset = queryset.filter(status=CropSpecies.STATUS_PUBLISHED)
-        query = (self.request.query_params.get('q') or '').strip()
-        if query:
-            queryset = queryset.filter(services.build_species_search_query(query)).distinct()
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        query = (request.query_params.get('q') or '').strip()
+        if not query:
+            return super().list(request, *args, **kwargs)
+        # Typo-tolerant ranked search (exact > prefix > similarity) replaces
+        # the default list/pagination path here rather than pre-filtering
+        # `get_queryset` with a plain substring match — a substring filter
+        # would exclude the very typos this search exists to tolerate before
+        # similarity ranking ever sees them. See
+        # `services.search_crop_species` / docs/crop-library-architecture.md.
+        try:
+            requested_limit = int(request.query_params.get('page_size') or services.SPECIES_SEARCH_RESULT_LIMIT)
+        except ValueError:
+            requested_limit = services.SPECIES_SEARCH_RESULT_LIMIT
+        limit = max(1, min(requested_limit, services.SPECIES_SEARCH_RESULT_LIMIT))
+        results = services.search_crop_species(query, queryset=self.get_queryset(), limit=limit)
+        serializer = self.get_serializer(results, many=True)
+        return Response({'count': len(results), 'next': None, 'previous': None, 'results': serializer.data})
 
     def create(self, request, *args, **kwargs):
         if is_active_guest_demo_user(request.user):

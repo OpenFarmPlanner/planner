@@ -163,6 +163,52 @@ export const getCropSpeciesOptionLabel = (
   );
 };
 
+export interface CropSpeciesResultLabel {
+  label: string;
+  /** True when no translation exists in `uiLanguageCode` and `label` falls back to another language. */
+  usedFallbackLanguage: boolean;
+}
+
+/**
+ * Label for one hit in the "Offizielle Kulturart" results list.
+ *
+ * Primarily shows the canonical name in the current UI language (for German,
+ * the canonical bundesdeutsche `common_name` — not a regional AT/CH
+ * override, unlike `display_name`/`localized_name` elsewhere in the app,
+ * since a search result should read the same regardless of the viewer's
+ * region). A parenthetical is appended only when the hit actually came from
+ * a synonym/regional alias that differs from that displayed name (e.g.
+ * "Zuckerhut (Fleischkraut)"). When the species has no translation at all in
+ * the UI language, falls back to `display_name` with its source language
+ * appended ("Beefsteak tomato · EN") so a foreign-language hit is never
+ * passed off as a UI-language one.
+ */
+export const getCropSpeciesResultLabel = (
+  option: CropSpecies,
+  searchValue: string,
+  uiLanguageCode: string,
+): CropSpeciesResultLabel => {
+  const baseLanguage = (uiLanguageCode || '').split('-')[0];
+  const translation = option.translations?.find(
+    (item) => item.language_code === baseLanguage && item.common_name,
+  );
+  if (translation) {
+    const matchedAlias = findMatchedCropSpeciesAlias(
+      searchValue, translation.common_name, getCropSpeciesSearchNames(option),
+    );
+    return {
+      label: formatCropSpeciesMatchLabel(translation.common_name, matchedAlias),
+      usedFallbackLanguage: false,
+    };
+  }
+  const fallbackName = option.display_name || getCropSpeciesCanonicalName(option);
+  const fallbackLanguageCode = (option.display_language_code || '').toUpperCase();
+  return {
+    label: fallbackLanguageCode ? `${fallbackName} · ${fallbackLanguageCode}` : fallbackName,
+    usedFallbackLanguage: true,
+  };
+};
+
 /**
  * Both required common names for approving a species proposal — must mirror
  * the backend's `REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES`

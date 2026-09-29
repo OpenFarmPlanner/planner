@@ -195,8 +195,10 @@ export const notificationAPI = {
 };
 
 export const cropSpeciesAPI = {
-  list: (params?: { q?: string; include_proposed?: boolean; status?: CropSpecies['status']; page_size?: number }) =>
-    http.get<PaginatedResponse<CropSpecies>>('/crop-species/', { params }),
+  list: (
+    params?: { q?: string; include_proposed?: boolean; status?: CropSpecies['status']; page_size?: number },
+    signal?: AbortSignal,
+  ) => http.get<PaginatedResponse<CropSpecies>>('/crop-species/', { params, signal }),
   propose: (name: string, languageCode?: string) => http.post<CropSpecies>('/crop-species/', {
     name,
     ...(languageCode ? { translations: [{ language_code: languageCode, common_name: name }] } : {}),
