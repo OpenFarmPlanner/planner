@@ -126,7 +126,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "version": "Status: August 18, 2026",
+      "version": "Status: September 29, 2026",
       "sections": {
         "controller": {
           "title": "Controller",
@@ -149,6 +149,11 @@
           },
           "legalBasis": "The web server log files are deleted automatically after 7 days. In addition, we process technical application logs (for example Django or Gunicorn error logs). These primarily contain technical information such as error messages, timestamps, and affected requests; in individual error cases relating to account, login, or invitation management, they may also contain the affected email address, username, or an internal user ID. The logs are used exclusively for troubleshooting and secure, stable operation of the application.\n\nLegal basis: Art. 6(1)(f) GDPR (legitimate interest in secure and stable operation of the application)."
         },
+        "cloudflare": {
+          "title": "Cloudflare (DNS, CDN and security)",
+          "content": "We use the following provider for resolving our domain name (DNS), as a content delivery network (CDN), and for security features such as protection against DDoS attacks:\n\nCloudflare, Inc.\n101 Townsend St.\nSan Francisco, CA 94107\nUSA\n\nWhere Cloudflare is set up as a reverse proxy in front of our server at Uberspace, requests to the application first pass through Cloudflare's servers. In doing so, Cloudflare processes your IP address and technical connection data (for example the time of the request, the requested resource, and browser and device information) in order to ensure the availability, performance, and security of the website and to block malicious requests.",
+          "legalBasis": "Legal basis: Art. 6(1)(f) GDPR (legitimate interest in secure and available operation of the platform). Cloudflare, Inc. is headquartered in the USA; the transfer is based on the EU Standard Contractual Clauses (see the \"Third-country transfers\" section). For more information, see Cloudflare's privacy policy (https://www.cloudflare.com/privacypolicy/)."
+        },
         "registration": {
           "title": "Registration and user account",
           "content": "To use OpenFarmPlanner, you can create a user account, either with an email address and password or alternatively via your Google account (see the \"Sign-in with Google\" section). When registering with an email address and password, the following data may be processed:",
@@ -158,6 +163,11 @@
             "encryptedPassword": "Password (stored securely hashed – not viewable by us in plain text)"
           },
           "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of a contract)"
+        },
+        "turnstile": {
+          "title": "Bot protection during registration (Cloudflare Turnstile)",
+          "content": "To prevent abuse and automated mass registrations, we use Cloudflare Turnstile, a service provided by Cloudflare, Inc. (see the \"Cloudflare\" section), on the registration form. Turnstile uses a behavior-based check, usually invisible to you, to determine whether a registration is carried out by a person or by an automated program (bot); no traditional image puzzles are required. For this purpose, technical device and behavior signals from your browser are transmitted to Cloudflare and evaluated there during the registration process.\n\nTurnstile is used exclusively to protect against automated abuse and not for tracking, analytics, or marketing. As it is a technically necessary security measure, no separate consent is required.",
+          "legalBasis": "Legal basis: Art. 6(1)(f) GDPR (legitimate interest in protecting the platform and its users against automated abuse). As Turnstile is also operated by Cloudflare, Inc., headquartered in the USA, the transfer is based on the EU Standard Contractual Clauses (see the \"Third-country transfers\" section). For more information, see Cloudflare's privacy policy (https://www.cloudflare.com/privacypolicy/)."
         },
         "socialLogin": {
           "title": "Sign-in with Google",
@@ -214,11 +224,11 @@
         },
         "dataSharing": {
           "title": "Data sharing",
-          "content": "Apart from cooperation with our hosting provider as a processor (see the Hosting section), we share your personal data only if:\n\n- this is necessary for technical email delivery in connection with your account or project invitations; email delivery uses the mail infrastructure operated by Uberspace,\n- you sign in or register with your Google account; in that case, Google receives the technical data required for sign-in (see the \"Sign-in with Google\" and \"Third-country transfers\" sections),\n- you actively publish a crop in the public crop library and thereby choose visibility for all logged-in users, including your public display name if you have set one (see the Public crop library section), or\n- we are legally required to do so, for example toward authorities."
+          "content": "Apart from cooperation with our hosting provider as a processor (see the Hosting section), we share your personal data only if:\n\n- this is necessary for technical email delivery in connection with your account or project invitations; email delivery uses the mail infrastructure operated by Uberspace,\n- you sign in or register with your Google account; in that case, Google receives the technical data required for sign-in (see the \"Sign-in with Google\" and \"Third-country transfers\" sections),\n- you access the application or use the registration form; in that case, Cloudflare processes the technical data required for delivery, security, and bot protection (see the \"Cloudflare\", \"Bot protection during registration\", and \"Third-country transfers\" sections),\n- you actively publish a crop in the public crop library and thereby choose visibility for all logged-in users, including your public display name if you have set one (see the Public crop library section), or\n- we are legally required to do so, for example toward authorities."
         },
         "thirdCountryTransfers": {
           "title": "Third-country transfers",
-          "content": "If you sign in or register with your Google account (see the \"Sign-in with Google\" section), personal data is transferred to Google LLC, headquartered in the USA. To the best of our current knowledge, Google LLC is certified under the EU-U.S. Data Privacy Framework (DPF). The European Commission has determined that an adequate level of data protection applies to data transferred to certified companies (adequacy decision under Art. 45 GDPR of July 10, 2023). You can check the current certification status yourself at any time via the official DPF participant list (https://www.dataprivacyframework.gov/list).\n\nBeyond that, based on the current assessment, personal data is not transferred to recipients outside the European Union or the European Economic Area. Sign-in with a Microsoft account is prepared in the OpenFarmPlanner source code but not currently activated; it will only become part of this privacy policy once activated."
+          "content": "If you sign in or register with your Google account (see the \"Sign-in with Google\" section), personal data is transferred to Google LLC, headquartered in the USA. To the best of our current knowledge, Google LLC is certified under the EU-U.S. Data Privacy Framework (DPF). The European Commission has determined that an adequate level of data protection applies to data transferred to certified companies (adequacy decision under Art. 45 GDPR of July 10, 2023). You can check the current certification status yourself at any time via the official DPF participant list (https://www.dataprivacyframework.gov/list).\n\nWhen the application is accessed via Cloudflare and during the bot check with Cloudflare Turnstile at registration (see the \"Cloudflare\" and \"Bot protection during registration\" sections), personal data, in particular your IP address, is transferred to Cloudflare, Inc., headquartered in the USA. This transfer is based on the Standard Contractual Clauses adopted by the European Commission (Art. 46(2)(c) GDPR).\n\nBeyond that, based on the current assessment, personal data is not transferred to recipients outside the European Union or the European Economic Area. Sign-in with a Microsoft account is prepared in the OpenFarmPlanner source code but not currently activated; it will only become part of this privacy policy once activated."
         },
         "mandatoryProvision": {
           "title": "Provision of personal data",

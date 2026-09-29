@@ -13,7 +13,7 @@ User = get_user_model()
 # legal.terms.version for DOCUMENT_TERMS).
 CURRENT_VERSIONS: dict[str, str] = {
     DocumentConsent.DOCUMENT_TERMS: '2026-07-15',
-    DocumentConsent.DOCUMENT_PRIVACY: '2026-08-18',
+    DocumentConsent.DOCUMENT_PRIVACY: '2026-09-29',
     DocumentConsent.DOCUMENT_PUBLIC_LIBRARY: '2026-07-15',
 }
 
