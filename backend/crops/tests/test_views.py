@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APITestCase as DRFAPITestCase
 
@@ -851,6 +853,28 @@ class CropLibraryQueryCountTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data['results']), self.ROW_COUNT)
+
+    def test_crop_species_search_query_count_is_constant(self):
+        """The ranked `q=` search path scores every species but must not add
+        per-row queries: the count stays the same as the row count grows."""
+        def count_queries() -> int:
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Art'})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertGreaterEqual(len(response.data['results']), self.ROW_COUNT)
+            return len(queries)
+
+        count_queries()  # warm per-process caches (permissions, content types)
+        baseline = count_queries()
+        for index in range(self.ROW_COUNT, self.ROW_COUNT * 2):
+            species = CropSpecies.objects.create(
+                name=f'Art {index}', status=CropSpecies.STATUS_PUBLISHED,
+            )
+            CropSpeciesTranslation.objects.create(
+                species=species, language_code='de', common_name=f'Art {index}',
+            )
+
+        self.assertEqual(count_queries(), baseline)
 
     def test_crops_list_query_count(self):
         """Published crops resolve a species name, a description and a
