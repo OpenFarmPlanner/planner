@@ -58,6 +58,8 @@ DISCOURAGED_PUBLIC_SPECIES_NORMALIZED_NAMES = {'bohne', 'bean'}
 # Kulturart" field of the publishing wizard, and by the moderation page's
 # synonym-alias search. See docs/crop-library-architecture.md.
 SPECIES_SEARCH_RESULT_LIMIT = 20
+# Longer queries are truncated: similarity scoring cost grows with query length.
+MAX_SPECIES_SEARCH_QUERY_LENGTH = 100
 # Results ranked purely on similarity (no exact/prefix hit) below this score
 # are dropped as irrelevant noise rather than shown as weak suggestions. Kept
 # fairly strict: a genuine typo of a longer name ("Fleichtomate" for
