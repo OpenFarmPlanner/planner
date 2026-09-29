@@ -173,13 +173,16 @@ function resolveFieldLabel(field: string): string {
   return authFieldLabelFallbacks[field] ?? field;
 }
 
+// Envelope metadata that accompanies an error but is not a per-field validation message.
+const NON_FIELD_ERROR_KEYS = new Set(['code', 'detail', 'message', 'scheduled_deletion_at', 'sender_email', 'retry_after']);
+
 function toUserFriendlyErrorMessage(payload: Record<string, unknown>): string {
   const explicitMessage = typeof payload.message === 'string' ? localizeBackendMessage(payload.message) : '';
   const explicitDetail = typeof payload.detail === 'string' ? localizeBackendMessage(payload.detail) : '';
   const formattedErrors: string[] = [];
 
   for (const [field, value] of Object.entries(payload)) {
-    if (field === 'code' || field === 'scheduled_deletion_at' || field === 'detail' || field === 'message') {
+    if (NON_FIELD_ERROR_KEYS.has(field)) {
       continue;
     }
     const localizedMessages = flattenErrorStrings(value).map((message) => localizeBackendMessage(message));
@@ -257,6 +260,13 @@ export function getMe(): Promise<AuthUser> {
   return request<AuthUser>('/auth/me/', { method: 'GET' });
 }
 
+export interface RegisterResponse {
+  detail: string;
+  /** Set when the account was created but the activation email could not be sent. */
+  code?: string;
+  sender_email?: string;
+}
+
 export async function register(
   email: string,
   password: string,
@@ -268,9 +278,9 @@ export async function register(
   website = '',
   // Cloudflare Turnstile token; empty when the build has no Turnstile site key.
   turnstileToken = '',
-): Promise<{ detail: string }> {
+): Promise<RegisterResponse> {
   await ensureCsrfCookie();
-  return request<{ detail: string }>('/auth/register/', {
+  return request<RegisterResponse>('/auth/register/', {
     method: 'POST',
     headers: csrfHeader(),
     body: JSON.stringify({
@@ -412,9 +422,15 @@ export async function restoreAccount(email: string, password: string): Promise<A
   });
 }
 
-export async function resendActivation(email: string): Promise<{ detail: string }> {
+export interface ResendActivationResponse {
+  detail: string;
+  sender_email?: string;
+  cooldown_seconds?: number;
+}
+
+export async function resendActivation(email: string): Promise<ResendActivationResponse> {
   await ensureCsrfCookie();
-  return request<{ detail: string }>('/auth/resend-activation/', {
+  return request<ResendActivationResponse>('/auth/resend-activation/', {
     method: 'POST',
     headers: csrfHeader(),
     body: JSON.stringify({ email }),

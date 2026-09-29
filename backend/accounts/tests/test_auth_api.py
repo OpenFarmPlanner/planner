@@ -1137,6 +1137,127 @@ class ConsentApiTest(APITestCase):
         self.assertEqual(login_response.data['pending_consents'], [])
 
 
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    FRONTEND_URL='http://localhost:5173',
+    DEFAULT_FROM_EMAIL='OpenFarmPlanner <noreply@example.org>',
+    ACTIVATION_RESEND_COOLDOWN_SECONDS=60,
+    ACTIVATION_RESEND_MAX_PER_HOUR=5,
+)
+class ResendActivationLimitTests(APITestCase):
+    url = '/openfarmplanner/api/auth/resend-activation/'
+
+    def setUp(self) -> None:
+        cache.clear()
+        self.now = 1_000_000.0
+        clock = patch('accounts.activation_resend.time.time', side_effect=lambda: self.now)
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.pending = User.objects.create_user(
+            username='pending_limit',
+            email='pending-limit@example.com',
+            password='safe-password-123',
+            is_active=False,
+        )
+        self.active = User.objects.create_user(
+            username='active_limit',
+            email='active-limit@example.com',
+            password='safe-password-123',
+            is_active=True,
+        )
+        mail.outbox.clear()
+
+    def _resend(self, email: str):
+        return self.client.post(self.url, {'email': email}, format='json')
+
+    def test_success_sends_mail_and_reports_sender_and_cooldown(self) -> None:
+        response = self._resend(self.pending.email)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['sender_email'], 'noreply@example.org')
+        self.assertEqual(response.data['cooldown_seconds'], 60)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.pending.email])
+
+    def test_second_request_within_cooldown_is_rejected_without_sending(self) -> None:
+        self.assertEqual(self._resend(self.pending.email).status_code, status.HTTP_200_OK)
+        self.now += 20
+
+        response = self._resend(self.pending.email.upper())
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(response.data['code'], 'activation_resend_cooldown')
+        self.assertEqual(response.data['retry_after'], 40)
+        self.assertEqual(response['Retry-After'], '40')
+        self.assertEqual(len(mail.outbox), 1)
+
+        self.now += 40
+        self.assertEqual(self._resend(self.pending.email).status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_hourly_limit_blocks_sixth_resend_until_window_passes(self) -> None:
+        for _attempt in range(5):
+            self.assertEqual(self._resend(self.pending.email).status_code, status.HTTP_200_OK)
+            self.now += 61
+
+        response = self._resend(self.pending.email)
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(response.data['code'], 'activation_resend_limit_reached')
+        self.assertEqual(
+            response.data['detail'],
+            'Du hast die maximale Anzahl an Versuchen erreicht. Bitte versuche es später noch einmal.',
+        )
+        self.assertEqual(response.data['retry_after'], 3600 - 5 * 61)
+        self.assertEqual(len(mail.outbox), 5)
+
+        self.now += 3600 - 5 * 61
+        self.assertEqual(self._resend(self.pending.email).status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 6)
+
+    def test_limits_are_per_address(self) -> None:
+        self.assertEqual(self._resend(self.pending.email).status_code, status.HTTP_200_OK)
+
+        self.assertEqual(self._resend('someone-else@example.com').status_code, status.HTTP_200_OK)
+
+    def test_unknown_and_active_addresses_get_identical_responses_and_no_mail(self) -> None:
+        responses = {
+            'pending': self._resend(self.pending.email),
+            'unknown': self._resend('nobody-here@example.com'),
+            'active': self._resend(self.active.email),
+        }
+        self.now += 1
+        repeated = {
+            'pending': self._resend(self.pending.email),
+            'unknown': self._resend('nobody-here@example.com'),
+            'active': self._resend(self.active.email),
+        }
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.pending.email])
+        for group in (responses, repeated):
+            reference = group['pending']
+            for label in ('unknown', 'active'):
+                with self.subTest(label=label):
+                    self.assertEqual(group[label].status_code, reference.status_code)
+                    self.assertEqual(group[label].data, reference.data)
+                    self.assertEqual(
+                        group[label].get('Retry-After'), reference.get('Retry-After'),
+                    )
+        self.assertEqual(repeated['pending'].status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_unactivated_login_reports_sender_address(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/auth/login/',
+            {'email': self.pending.email, 'password': 'safe-password-123'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'account_not_activated')
+        self.assertEqual(response.data['sender_email'], 'noreply@example.org')
+
+
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', FRONTEND_URL='http://localhost:5173')
 class RegistrationAbuseThrottleTests(APITestCase):
     """DRF scoped throttling is disabled in test settings (config/settings_test.py)

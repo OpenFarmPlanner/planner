@@ -123,7 +123,7 @@
   "loginWithDifferentAccount": "Sign in with another account",
   "authHint": "You were invited to project {{project}}. Please sign in with {{email}}.",
   "registerHint": "You were invited to project {{project}}. Register with {{email}} so the invitation can be completed after activation.",
-  "registerSuccessWithInvitation": "{{detail}} After activation, the project invitation will be processed automatically.",
+  "registerInvitationAfterActivation": "After activation, the project invitation will be processed automatically.",
   "acceptPage": {
     "title": "Accept project invitation",
     "accepting": "Accepting invitation…",

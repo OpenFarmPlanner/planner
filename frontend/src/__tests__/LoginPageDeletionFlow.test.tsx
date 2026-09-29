@@ -7,12 +7,14 @@ import { AuthApiError } from '../auth/authApi';
 
 const loginMock = vi.fn();
 const restoreMock = vi.fn();
+const resendActivationMock = vi.fn();
 
 vi.mock('../auth/useAuth', () => ({
   useAuth: () => ({
     user: null,
     login: loginMock,
     restoreAccount: restoreMock,
+    resendActivation: resendActivationMock,
   }),
 }));
 
@@ -40,6 +42,29 @@ describe('LoginPage deletion flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
 
     expect(await screen.findByRole('button', { name: 'Konto wiederherstellen' })).toBeInTheDocument();
+  });
+
+  it('offers the spam hint and activation resend for an unactivated account', async () => {
+    loginMock.mockRejectedValueOnce(new AuthApiError('Das Konto ist noch nicht aktiviert.', {
+      code: 'account_not_activated',
+      status: 403,
+      payload: { code: 'account_not_activated', sender_email: 'info@openfarmplanner.org' },
+    }));
+    resendActivationMock.mockResolvedValueOnce({ detail: 'ok', cooldown_seconds: 60 });
+
+    render(<MemoryRouter><LoginPage /></MemoryRouter>);
+    const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
+    const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: ' Pending@Example.com ' } });
+    fireEvent.change(passwordInput, { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    expect(await screen.findByText(/Die E-Mail kommt von info@openfarmplanner.org/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail erneut senden' }));
+
+    expect(await screen.findByText('Wir haben die E-Mail erneut gesendet.')).toBeInTheDocument();
+    expect(resendActivationMock).toHaveBeenCalledWith('pending@example.com');
+    expect(loginMock).toHaveBeenCalledTimes(1);
   });
 
   it('lets keyboard users toggle password visibility without moving focus', async () => {

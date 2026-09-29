@@ -69,6 +69,12 @@ msgstr ""
 msgid "If the account exists, an email has been sent."
 msgstr "Falls das Konto existiert, wurde eine E-Mail gesendet."
 
+msgid "Maximum number of attempts reached. Please try again later."
+msgstr "Du hast die maximale Anzahl an Versuchen erreicht. Bitte versuche es später noch einmal."
+
+msgid "Please wait before requesting another email."
+msgstr "Bitte warte kurz, bevor du eine weitere E-Mail anforderst."
+
 #: accounts/views.py:46
 msgid "Registration successful. Please check your email to activate your account."
 msgstr "Registrierung erfolgreich. Bitte prüfe deine E-Mails, um dein Konto zu aktivieren."

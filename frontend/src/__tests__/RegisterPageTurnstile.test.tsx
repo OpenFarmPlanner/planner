@@ -6,7 +6,7 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import { AuthApiError } from '../auth/authApi';
 import type { TurnstileApi, TurnstileRenderOptions } from '../auth/turnstile';
 
-const registerMock = vi.fn<(...args: unknown[]) => Promise<string>>();
+const registerMock = vi.fn<(...args: unknown[]) => Promise<{ detail: string }>>();
 const loadTurnstileScriptMock = vi.fn<() => Promise<TurnstileApi>>();
 
 vi.mock('../auth/turnstile', () => ({
@@ -83,7 +83,7 @@ async function fillForm(user: ReturnType<typeof userEvent.setup>) {
 describe('RegisterPage with Turnstile', () => {
   beforeEach(() => {
     registerMock.mockReset();
-    registerMock.mockResolvedValue('Registrierung erfolgreich.');
+    registerMock.mockResolvedValue({ detail: 'Registrierung erfolgreich.' });
     loadTurnstileScriptMock.mockReset();
   });
 
@@ -118,8 +118,10 @@ describe('RegisterPage with Turnstile', () => {
       '',
       'token-123',
     );
-    // Tokens are single-use: a fresh check starts after every attempt.
-    expect(turnstile.api.reset).toHaveBeenCalledWith('widget-1');
+    // A successful registration swaps the form for the confirmation view, so
+    // the widget is removed and its single-use token discarded with it.
+    expect(await screen.findByRole('button', { name: 'auth:activationEmail.resend' })).toBeInTheDocument();
+    expect(turnstile.api.remove).toHaveBeenCalledWith('widget-1');
   }, 20000);
 
   it('blocks submission with a hint while no token is available yet', async () => {

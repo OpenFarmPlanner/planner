@@ -171,6 +171,32 @@ describe('authApi error mapping', () => {
     });
   });
 
+  it('keeps envelope metadata such as sender_email and retry_after out of the error message', async () => {
+    installFetchMock([
+      { ok: true, status: 200, body: { detail: 'ok' } },
+      {
+        ok: false,
+        status: 403,
+        body: { code: 'account_not_activated', detail: 'Das Konto ist noch nicht aktiviert.', sender_email: 'info@example.org' },
+      },
+      { ok: true, status: 200, body: { detail: 'ok' } },
+      {
+        ok: false,
+        status: 429,
+        body: { code: 'activation_resend_cooldown', detail: 'Bitte warte kurz.', retry_after: 42 },
+      },
+    ]);
+
+    await expect(login('pending@example.com', 'secret')).rejects.toMatchObject({
+      message: 'Das Konto ist noch nicht aktiviert.',
+      payload: expect.objectContaining({ sender_email: 'info@example.org' }),
+    });
+    await expect(resendActivation('pending@example.com')).rejects.toMatchObject({
+      message: 'Bitte warte kurz.',
+      retryAfterSeconds: 42,
+    });
+  });
+
   it('does not expose raw HTML error responses', async () => {
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },

@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { RegisterResponse, ResendActivationResponse } from "./authApi";
 import type { AuthUser } from "./types";
 
 export interface AuthContextValue {
@@ -16,10 +17,10 @@ export interface AuthContextValue {
     displayName?: string,
     website?: string,
     turnstileToken?: string,
-  ) => Promise<string>;
+  ) => Promise<RegisterResponse>;
   acceptConsent: (document: string) => Promise<AuthUser>;
   activate: (uid: string, token: string) => Promise<AuthUser>;
-  resendActivation: (email: string) => Promise<string>;
+  resendActivation: (email: string) => Promise<ResendActivationResponse>;
   requestPasswordReset: (email: string) => Promise<string>;
   confirmPasswordReset: (
     uid: string,

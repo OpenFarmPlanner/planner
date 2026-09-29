@@ -238,8 +238,7 @@ export function AuthProvider({
         }
       },
       register: async (email, password, passwordConfirm, displayName = "", website = "", turnstileToken = "") => {
-        const response = await registerRequest(email, password, passwordConfirm, displayName, website, turnstileToken);
-        return response.detail;
+        return registerRequest(email, password, passwordConfirm, displayName, website, turnstileToken);
       },
       acceptConsent: async (document) => {
         const generation = beginAuthMutation();
@@ -257,10 +256,7 @@ export function AuthProvider({
         }
         return me;
       },
-      resendActivation: async (email) => {
-        const response = await resendActivationRequest(email);
-        return response.detail;
-      },
+      resendActivation: (email) => resendActivationRequest(email),
       requestPasswordReset: async (email) => {
         const response = await requestPasswordResetRequest(email);
         return response.detail;

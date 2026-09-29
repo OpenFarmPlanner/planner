@@ -24,6 +24,7 @@ from config.languages import UI_LANGUAGE_AUTO
 from config.responses import api_error_response
 from farm.services.demo_project import resolve_demo_request_language
 
+from .activation_resend import activation_sender_address, register_resend_attempt
 from .consent import record_acceptance
 from .data_export import build_personal_data_export
 from .demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
@@ -209,7 +210,10 @@ class RegisterView(APIView):
                 status.HTTP_201_CREATED,
             )
         detail_message = _registration_success_message()
-        return Response({'detail': detail_message}, status=status.HTTP_201_CREATED)
+        return Response(
+            {'detail': detail_message, 'sender_email': activation_sender_address()},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ActivateView(APIView):
@@ -322,6 +326,7 @@ class LoginView(APIView):
                 code='account_not_activated',
                 detail=_de(_('Account is not activated yet.')),
                 status_code=status.HTTP_403_FORBIDDEN,
+                sender_email=activation_sender_address(),
             )
 
         login(request, user)
@@ -673,6 +678,12 @@ class ResendActivationView(APIView):
         _validate_serializer_in_german(serializer)
         email = _normalize_email(serializer.validated_data['email'])
 
+        # Checked before the account lookup so unknown, active and pending
+        # addresses share the same limits and indistinguishable responses.
+        decision = register_resend_attempt(email)
+        if not decision.allowed:
+            return _resend_limited_response(decision.limit_reached, decision.retry_after_seconds)
+
         user = User.objects.filter(email__iexact=email).first()
         if user is not None and not user.is_active:
             _set_activation_expiry(user)
@@ -688,7 +699,30 @@ class ResendActivationView(APIView):
                     status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-        return Response({'detail': GENERIC_EMAIL_SENT_MESSAGE})
+        return Response({
+            'detail': GENERIC_EMAIL_SENT_MESSAGE,
+            'sender_email': activation_sender_address(),
+            'cooldown_seconds': settings.ACTIVATION_RESEND_COOLDOWN_SECONDS,
+        })
+
+
+def _resend_limited_response(limit_reached: bool, retry_after_seconds: int) -> Response:
+    if limit_reached:
+        response = api_error_response(
+            code='activation_resend_limit_reached',
+            detail=_de(_('Maximum number of attempts reached. Please try again later.')),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after_seconds,
+        )
+    else:
+        response = api_error_response(
+            code='activation_resend_cooldown',
+            detail=_de(_('Please wait before requesting another email.')),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after_seconds,
+        )
+    response['Retry-After'] = str(retry_after_seconds)
+    return response
 
 
 class PasswordResetRequestView(APIView):

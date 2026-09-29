@@ -17,7 +17,7 @@ in a queue.
 - [What the "new" level restricts](#what-the-new-level-restricts)
 - [Moderated crop-library contributions](#moderated-crop-library-contributions)
 - [Provenance flags](#provenance-flags)
-- [Registration hardening](#registration-hardening)
+- [Registration hardening](#registration-hardening) (incl. activation email resend)
 - [Settings reference](#settings-reference)
 - [Known gaps](#known-gaps)
 
@@ -310,6 +310,34 @@ checks above; it does not replace the throttles.
 - **Privacy.** Covered by the "Bot-Schutz bei der Registrierung (Cloudflare
   Turnstile)" section of the privacy policy.
 
+### Activation email resend
+
+`POST /api/auth/resend-activation/` is what the post-registration confirmation
+view and the login page's "account not activated" state call through the shared
+`components/auth/ActivationEmailResendPanel.tsx`. On top of the IP-scoped
+`auth_resend_activation` DRF throttle, `accounts.activation_resend` enforces two
+per-address limits in the cache (keyed on a SHA-256 of the normalized address,
+so no plaintext email lands in the cache):
+
+- a cooldown of `ACTIVATION_RESEND_COOLDOWN_SECONDS` (60) after each accepted
+  request → `429` with code `activation_resend_cooldown`;
+- at most `ACTIVATION_RESEND_MAX_PER_HOUR` (5) accepted requests in a rolling
+  hour → `429` with code `activation_resend_limit_reached`.
+
+Both carry `retry_after` in the body and a `Retry-After` header. A `200`
+carries `sender_email` and `cooldown_seconds`. The limits are checked and
+recorded **before** the account lookup, so an unknown, an already active and a
+pending address get byte-identical responses and share the same limits — the
+endpoint cannot be used to enumerate accounts. Only a pending account actually
+receives an email. The one remaining difference is the pre-existing `503
+email_send_failed` answer when SMTP fails for a pending account.
+
+`sender_email` is the bare address from `DEFAULT_FROM_EMAIL`; the register
+response and the login `account_not_activated` error carry it too, so the
+spam-folder hint names the real sender without a hardcoded address in the
+frontend. Like the per-IP registration cap, these limits live in the default
+cache, which is per-process with the default local-memory backend.
+
 ### The domain throttle is opt-in per view
 
 `EmailDomainRateThrottle` is registered in `DEFAULT_THROTTLE_CLASSES`, so it
@@ -371,6 +399,8 @@ All are read from the environment in `backend/config/settings.py`.
 | `THROTTLE_AUTH_REGISTER` | `5/minute` | Registration attempts per IP |
 | `THROTTLE_AUTH_REGISTER_DOMAIN` | `10/hour` | Registration attempts per email domain |
 | `THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP` | `3/hour` (`100000/hour` in dev/test) | Successful registrations per IP |
+| `ACTIVATION_RESEND_COOLDOWN_SECONDS` | `60` | Wait between activation-email resends per address |
+| `ACTIVATION_RESEND_MAX_PER_HOUR` | `5` | Activation-email resends per address in a rolling hour |
 | `THROTTLE_API_TOKEN_READ` | `2000/hour` | Read ceiling per `ProjectApiToken` |
 | `THROTTLE_API_TOKEN_WRITE` | `300/hour` | Write ceiling per `ProjectApiToken` (not declared as an agent) |
 | `THROTTLE_API_TOKEN_WRITE_DECLARED_AGENT` | `600/hour` | Write ceiling per `ProjectApiToken` declared as an agent |

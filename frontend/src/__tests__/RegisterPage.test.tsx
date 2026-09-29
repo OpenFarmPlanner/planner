@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router';
 import RegisterPage from '../pages/auth/RegisterPage';
 
 const logoutMock = vi.fn(async () => undefined);
-const registerMock = vi.fn(async () => 'Registrierung erfolgreich.');
+const registerMock = vi.fn(async () => ({ detail: 'Registrierung erfolgreich.', sender_email: 'info@openfarmplanner.org' }));
 let authUser: unknown = {
   id: 1,
   email: 'test@example.com',
@@ -52,7 +52,8 @@ vi.mock('../i18n', () => ({
         'auth:register.password': 'Passwort',
         'auth:register.passwordConfirm': 'Passwort bestätigen',
         'auth:register.submit': 'Konto erstellen',
-        'auth:register.resendActivation': 'Aktivierungs-E-Mail erneut senden',
+        'auth:activationEmail.resend': 'E-Mail erneut senden',
+        'auth:activationEmail.wrongAddress': 'Adresse falsch? Neu registrieren',
         'auth:register.hasAccount': 'Bereits ein Konto? Anmelden',
         'auth:register.showPassword': 'Passwort anzeigen',
         'auth:register.hidePassword': 'Passwort ausblenden',
@@ -209,7 +210,7 @@ describe('RegisterPage', () => {
     expect(screen.getByRole('link', { name: 'Datenschutzerklärung' })).toHaveAttribute('href', '/datenschutz');
   });
 
-  it('hides the resend-activation-email action until a registration has succeeded', async () => {
+  it('replaces the form with the confirmation view and returns to it via "Neu registrieren"', async () => {
     authUser = null;
     const user = userEvent.setup();
 
@@ -219,7 +220,7 @@ describe('RegisterPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Aktivierungs-E-Mail erneut senden' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'E-Mail erneut senden' })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/E-Mail/i), 'new@example.com');
     const passwordInputs = screen.getAllByLabelText(/^Passwort/i).filter((el) => el.tagName === 'INPUT');
@@ -227,6 +228,12 @@ describe('RegisterPage', () => {
     await user.type(passwordInputs[1], 'new-safe-password-123');
     await user.click(screen.getByRole('button', { name: 'Konto erstellen' }));
 
-    expect(await screen.findByRole('button', { name: 'Aktivierungs-E-Mail erneut senden' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'E-Mail erneut senden' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Konto erstellen' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Adresse falsch? Neu registrieren' }));
+
+    expect(screen.getByRole('button', { name: 'Konto erstellen' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/E-Mail/i)).toHaveValue('new@example.com');
   }, 20000);
 });
