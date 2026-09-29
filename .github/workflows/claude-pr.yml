@@ -22,11 +22,17 @@ permissions:
 # ignored anyway (Claude's own fix pushes, labels other than the trigger
 # labels) get a unique group so they cannot cancel a review that is still
 # running - Claude's own push would otherwise cancel the job that pushed it.
+# Claude's fix commits are pushed with the checkout's default GITHUB_TOKEN,
+# so GitHub records the actor as `github-actions[bot]` here, not `claude[bot]`
+# (that login only appears on the commits' cosmetic author field and on
+# comments the app posts via its own API). The triage job's `self_push`
+# output re-checks this precisely from the commit itself; this concurrency
+# group only needs to avoid self-cancellation, so the coarser actor check is
+# fine here.
 concurrency:
   group: >-
     claude-pr-${{ github.event.pull_request.number }}${{
-    (github.event.sender.login == 'claude[bot]'
-      || github.event.sender.login == 'github-actions[bot]'
+    (github.event.sender.login == 'github-actions[bot]'
       || (github.event.action == 'labeled'
           && github.event.label.name != 'claude-review'
           && github.event.label.name != 'claude-security'
@@ -38,20 +44,18 @@ jobs:
   triage:
     name: Triage
     # Skip drafts, forks (no secrets, and Claude must not push to a fork),
-    # PRs labeled `skip-claude`, Dependabot PRs (Dependabot runs get no
-    # Actions secrets, and version bumps are covered by Dependency Review),
-    # and events sent by the Claude GitHub App itself (`claude[bot]`, the
-    # login its fix commits are pushed as) or by `github-actions[bot]` (the
-    # sender when those commits are pushed with the workflow token), so a
-    # fix push cannot start a new review loop. claude-code-action would
-    # reject a `github-actions[bot]` event anyway and fail the check. A `labeled` event only counts for the two trigger labels.
+    # PRs labeled `skip-claude`, and Dependabot PRs (Dependabot runs get no
+    # Actions secrets, and version bumps are covered by Dependency Review).
+    # A `labeled` event only counts for the two trigger labels. Whether this
+    # event is one of Claude's own fix pushes is decided below from the
+    # commit itself (see the `self_push` output) rather than here, because
+    # `github.event.sender.login` cannot distinguish it (see the concurrency
+    # comment above).
     if: >-
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'skip-claude') &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.sender.login != 'claude[bot]' &&
-      github.event.sender.login != 'github-actions[bot]' &&
       (github.event.action != 'labeled' ||
         github.event.label.name == 'claude-review' ||
         github.event.label.name == 'claude-security')
@@ -61,6 +65,7 @@ jobs:
       code_review: ${{ steps.decide.outputs.code_review }}
       security_review: ${{ steps.decide.outputs.security_review }}
       self_changed: ${{ steps.decide.outputs.self_changed }}
+      self_push: ${{ steps.decide.outputs.self_push }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -206,6 +211,13 @@ jobs:
 
           # This workflow file (see the self_changed output).
           SELF_WORKFLOW: .github/workflows/claude-pr.yml
+
+          # The identity Claude's own fix commits are authored as (see the
+          # self_push output). `github.event.sender.login` cannot be used for
+          # this: those commits are pushed with the checkout's default
+          # GITHUB_TOKEN, so GitHub always records the push actor as
+          # `github-actions[bot]`, regardless of this commit author field.
+          CLAUDE_BOT_EMAIL: 41898282+claude[bot]@users.noreply.github.com
         run: |
           python3 - <<'PY'
           import json
@@ -351,6 +363,13 @@ jobs:
           # --- Outputs ----------------------------------------------------
           summary = ["## Claude PR triage", ""]
           self_changed = env["SELF_WORKFLOW"] in changed
+
+          head_author = git("log", "-1", "--format=%ae", head).strip()
+          head_subject = git("log", "-1", "--format=%s", head).strip()
+          self_push = (
+              head_author == env["CLAUDE_BOT_EMAIL"]
+              and re.match(r"^claude-(review|security):", head_subject) is not None
+          )
           if self_changed:
               summary += [
                   f"> {env['SELF_WORKFLOW']} is changed in this PR. claude-code-action only runs",
@@ -358,8 +377,15 @@ jobs:
                   "> skipped until this change is merged.",
                   "",
               ]
+          if self_push:
+              summary += [
+                  "> The latest commit is one of Claude's own fix commits. The review jobs are",
+                  "> skipped so a fix push cannot start a new review loop.",
+                  "",
+              ]
           with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"self_changed={'true' if self_changed else 'false'}\n")
+              output.write(f"self_push={'true' if self_push else 'false'}\n")
               for key, found in reasons.items():
                   decision = "true" if found else "false"
                   output.write(f"{key}={decision}\n")
@@ -380,9 +406,12 @@ jobs:
     needs: triage
     # claude-code-action refuses to run from a workflow file that differs
     # from the default branch, so a PR changing this file skips the reviews.
+    # self_push skips Claude's own fix-commit pushes so they cannot start a
+    # new review loop (see the triage job's self_push output).
     if: >-
       needs.triage.outputs.code_review == 'true' &&
-      needs.triage.outputs.self_changed != 'true'
+      needs.triage.outputs.self_changed != 'true' &&
+      needs.triage.outputs.self_push != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -533,6 +562,7 @@ jobs:
       needs.triage.result == 'success' &&
       needs.triage.outputs.security_review == 'true' &&
       needs.triage.outputs.self_changed != 'true' &&
+      needs.triage.outputs.self_push != 'true' &&
       needs.code-review.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 90

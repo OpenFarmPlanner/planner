@@ -386,7 +386,11 @@ Claude runs a code review, a security review, or both; the exact path and
 content patterns live, commented, in the triage step's `env` block.
 
 - **Never runs** for drafts, fork PRs, Dependabot PRs, PRs labeled
-  `skip-claude`, or events sent by `claude[bot]` or `github-actions[bot]` (its own fix pushes).
+  `skip-claude`, or pushes whose latest commit is one of Claude's own fix
+  commits (detected from the commit's author and `claude-review:`/
+  `claude-security:` message prefix, not the GitHub push actor — those
+  commits are pushed with the default `GITHUB_TOKEN`, so GitHub always
+  reports the actor as `github-actions[bot]`).
 - **Code review** when the PR changes ≥ 300 lines or ≥ 15 files (not counting
   auto-generated migrations, lockfiles, snapshots, locale files, `docs/**`,
   `*.md`), touches core domain logic (`crop_inheritance.py`,
