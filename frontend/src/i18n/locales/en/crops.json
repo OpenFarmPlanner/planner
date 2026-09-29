@@ -1271,6 +1271,8 @@
       "columnMine": "My crop",
       "chooseLibrary": "Use library value",
       "chooseMine": "Use my value",
+      "showFullValue": "Show full text",
+      "showLessValue": "Show less",
       "choiceAriaLabel": "Which value applies for \"{{field}}\"?",
       "allLibrary": "All from library",
       "allMine": "All my values",

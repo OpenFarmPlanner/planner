@@ -1,9 +1,60 @@
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { buildDefaultSyncChoices } from '../crops/publicCropSync';
+
+/**
+ * `-webkit-line-clamp` truncation is detected via `scrollHeight` vs.
+ * `clientHeight` (see `PublicCropSyncPanel.tsx`), which jsdom never computes
+ * from layout. Mirrors the mocking approach in `OverflowTooltip.test.tsx`.
+ */
+function mockClampedOverflow(element: HTMLElement, overflowing: boolean): void {
+  Object.defineProperty(element, 'clientHeight', { configurable: true, value: 80 });
+  Object.defineProperty(element, 'scrollHeight', { configurable: true, value: overflowing ? 200 : 80 });
+}
+
+/**
+ * jsdom has no real ResizeObserver, so the component's re-measure path is
+ * otherwise unreachable in tests. This stub records the observed element per
+ * instance and lets a test fire the callback manually after mocking sizes.
+ */
+class TestResizeObserver {
+  static instances: TestResizeObserver[] = [];
+
+  element: Element | null = null;
+
+  private readonly callback: () => void;
+
+  constructor(callback: () => void) {
+    this.callback = callback;
+    TestResizeObserver.instances.push(this);
+  }
+
+  observe(element: Element): void {
+    this.element = element;
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {
+    TestResizeObserver.instances = TestResizeObserver.instances.filter((instance) => instance !== this);
+  }
+
+  trigger(): void {
+    this.callback();
+  }
+}
+
+beforeEach(() => {
+  TestResizeObserver.instances = [];
+  vi.stubGlobal('ResizeObserver', TestResizeObserver);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const CHANGES: PublicCropSyncFieldChange[] = [
   { field: 'growth_duration_days', local_value: 60, public_value: 50, pushable: true },
@@ -83,5 +134,67 @@ describe('PublicCropSyncPanel', () => {
 
     expect(screen.getByText('Keine Abweichungen zum öffentlichen Eintrag.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Alle aus Bibliothek' })).not.toBeInTheDocument();
+  });
+
+  it('places the choice toggle before both compared values in every row', () => {
+    render(<Harness />);
+
+    const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
+    const chooseMineButton = within(row).getByRole('button', { name: 'Meinen Wert übernehmen' });
+    const libraryValue = within(row).getByText('50');
+    const mineValue = within(row).getByText('60');
+
+    expect(chooseMineButton.compareDocumentPosition(libraryValue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chooseMineButton.compareDocumentPosition(mineValue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('renders Markdown values with the shared Markdown renderer, opening links in a new tab', () => {
+    const changes: PublicCropSyncFieldChange[] = [
+      {
+        field: 'notes',
+        local_value: 'Mein Text',
+        public_value: '## Titel\n\n[Quelle](https://example.com)',
+        pushable: true,
+      },
+    ];
+    render(<Harness changes={changes} />);
+
+    const row = screen.getByTestId('public-crop-sync-row-notes');
+    expect(within(row).getByRole('heading', { level: 2, name: 'Titel' })).toBeInTheDocument();
+    const link = within(row).getByRole('link', { name: 'Quelle' });
+    expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('hides the expand toggle when neither compared value is truncated', () => {
+    render(<Harness />);
+
+    const row = screen.getByTestId('public-crop-sync-row-notes');
+    expect(within(row).queryByTestId('public-crop-sync-toggle-notes')).not.toBeInTheDocument();
+  });
+
+  it('shows the expand toggle only once a value is actually truncated, and toggles both columns together', () => {
+    const changes: PublicCropSyncFieldChange[] = [
+      { field: 'notes', local_value: 'Mein sehr langer Text …', public_value: '', pushable: true },
+    ];
+    render(<Harness changes={changes} />);
+
+    const row = screen.getByTestId('public-crop-sync-row-notes');
+    expect(within(row).queryByTestId('public-crop-sync-toggle-notes')).not.toBeInTheDocument();
+
+    const mineContent = within(row).getByTestId('public-crop-sync-value-content-mine-notes');
+    mockClampedOverflow(mineContent, true);
+    const observer = TestResizeObserver.instances.find((instance) => instance.element === mineContent);
+    expect(observer).toBeDefined();
+    act(() => observer?.trigger());
+
+    const toggle = within(row).getByTestId('public-crop-sync-toggle-notes');
+    expect(toggle).toHaveTextContent('Ganzen Text anzeigen');
+
+    fireEvent.click(toggle);
+    expect(within(row).getByTestId('public-crop-sync-toggle-notes')).toHaveTextContent('Weniger anzeigen');
+
+    fireEvent.click(within(row).getByTestId('public-crop-sync-toggle-notes'));
+    expect(within(row).getByTestId('public-crop-sync-toggle-notes')).toHaveTextContent('Ganzen Text anzeigen');
   });
 });
