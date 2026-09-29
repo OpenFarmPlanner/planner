@@ -45,7 +45,7 @@ describe('LoginPage deletion flow', () => {
   });
 
   it('offers the spam hint and activation resend for an unactivated account', async () => {
-    loginMock.mockRejectedValueOnce(new AuthApiError('Das Konto ist noch nicht aktiviert.', {
+    loginMock.mockRejectedValueOnce(new AuthApiError('Account is not activated yet.', {
       code: 'account_not_activated',
       status: 403,
       payload: { code: 'account_not_activated', sender_email: 'info@openfarmplanner.org' },
@@ -59,6 +59,7 @@ describe('LoginPage deletion flow', () => {
     fireEvent.change(passwordInput, { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
 
+    expect(await screen.findByText('Das Konto ist noch nicht aktiviert.')).toBeInTheDocument();
     expect(await screen.findByText(/Die E-Mail kommt von info@openfarmplanner.org/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'E-Mail erneut senden' }));
 

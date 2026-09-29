@@ -70,7 +70,7 @@ export default function LoginPage() {
       } else if (err instanceof AuthApiError && err.code === 'account_not_activated') {
         const senderEmail = err.payload?.sender_email;
         setUnactivatedAccount({ email: normalizedEmail, senderEmail: typeof senderEmail === 'string' ? senderEmail : null });
-        setError(err.message);
+        setError(t('auth:login.accountNotActivated'));
       } else {
         setError(err instanceof Error ? err.message : t('auth:login.failed'));
       }
