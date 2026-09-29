@@ -40,6 +40,25 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #707 (Turnstile on registration)
+
+**Scope:** `git diff origin/main...HEAD` of `claude/sweet-darwin-vkesx2`:
+`accounts/turnstile.py`, the `RegisterView` gate, `accounts/checks.py`,
+`TURNSTILE_*` settings, and the frontend widget/loader. Independently
+re-derived the points of the entry below.
+
+**Findings:** No new issues.
+
+- `CROSS-CONFIRMED` — client IP comes from `REMOTE_ADDR` (not headers); the
+  secret is only sent in the POST body and never logged; the token is type-
+  and length-checked before any network call; every failure yields 400/503,
+  not 500; the gate runs before the serializer, so no email enumeration
+  without passing it. Honeypot and IP throttle still run first.
+- `CROSS-CONFIRMED` (OPEN) — no app-wide CSP restricts script origins for the
+  third-party Turnstile script; pre-existing gap, deferred to a CSP rollout.
+
+---
+
 ## 2026-09-29 — Claude — Cloudflare Turnstile on registration (`claude/sweet-darwin-vkesx2` vs `main`)
 
 **Scope:** Never previously reviewed (new code). Introduces Cloudflare
