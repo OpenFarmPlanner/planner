@@ -13,13 +13,13 @@ gates to run locally, see the "Testing Rules" section of
 | Job | What it runs | Test step | Whole job |
 | --- | --- | --- | --- |
 | `frontend-tests (1-3)` | `vitest run --shard=N/3` | 1m43s-2m36s | 1m58s-2m47s |
-| `backend-tests` | `pytest` (xdist, with coverage) | 10m12s | 10m52s |
+| `backend-tests` | `pytest` (xdist, with coverage) | 3m14s | 3m58s |
 | `quality` | ruff, radon, ESLint, madge | 38s | 1m18s |
 
-Measured on run 36112871261 (25 Sep 2026), i.e. *before* the backend
-changes described under "Backend" below, which took the same suite from
-508s to ~200s locally. Re-measure `backend-tests` on CI before relying on a
-new number here.
+Frontend and `quality` from run 36112871261 (25 Sep 2026). `backend-tests`
+from PR #703's first CI run (29 Sep 2026), which introduced the changes
+described under "Backend" below; the same job took 10m12s / 10m52s on the
+25 Sep run.
 
 `.github/workflows/e2e.yml` runs the Playwright suite against a production
 build on pull requests, split across three shards of its own.
@@ -268,9 +268,8 @@ would have bought little:
 Both failure modes have shown up in this pipeline before: the `quality` job
 ran the identical backend suite a second time (see the next section), and
 the frontend shards were merged back because a second runner shortened a
-job that was not the critical path. With the backend test step expected
-at around 4 minutes on CI after these changes, below the ~5 minute E2E
-workflow, a split would again shorten a job that no longer holds the
+job that was not the critical path. With the backend test step measured
+at 3m14s on CI after these changes, below the ~5 minute E2E workflow, a split would again shorten a job that no longer holds the
 pipeline up. Re-measure on CI before revisiting it. If it comes back, the
 class-scoped migration setup above is the cheaper win.
 
