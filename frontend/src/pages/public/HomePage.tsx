@@ -16,6 +16,7 @@ import type { SyntheticEvent } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { useTranslation } from '../../i18n';
 import LegalLinks from '../../components/legal/LegalLinks';
+import { computeBaseURL } from '../../api/httpClient';
 import HeroImage from '../../components/HeroImage';
 import { publicAssetUrl } from '../../utils/publicAssetUrl';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
@@ -24,6 +25,8 @@ import AppIcon from '../../components/layout/AppIcon';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
+
+const API_DOCS_URL = `${computeBaseURL(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL, import.meta.env.BASE_URL)}/docs/`;
 
 const PRODUCT_TOUR_ITEMS = [
   {
@@ -575,13 +578,19 @@ export default function HomePage() {
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={{ xs: 1.25, sm: 3 }}
+            useFlexGap
             sx={{ alignItems: { xs: 'flex-start', sm: 'center' },
-        justifyContent: "space-between", }}
+        justifyContent: "space-between", flexWrap: 'wrap', rowGap: 1.25 }}
           >
-            <LegalLinks />
-            <Link href={`mailto:${t('footer.contactEmail')}`} underline="hover" color="text.secondary" sx={{ fontSize: '0.92rem' }}>
-              {t('footer.contactLabel', { email: t('footer.contactEmail') })}
-            </Link>
+            <LegalLinks sx={{ flexShrink: 0 }} />
+            <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.25 }}>
+              <Link href={API_DOCS_URL} underline="hover" color="text.secondary" sx={{ fontSize: '0.92rem' }}>
+                {t('footer.apiDocs')}
+              </Link>
+              <Link href={`mailto:${t('footer.contactEmail')}`} underline="hover" color="text.secondary" sx={{ fontSize: '0.92rem' }}>
+                {t('footer.contactLabel', { email: t('footer.contactEmail') })}
+              </Link>
+            </Stack>
           </Stack>
         </Container>
       </Box>
