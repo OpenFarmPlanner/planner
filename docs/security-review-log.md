@@ -40,6 +40,18 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #712 (re-review after merges)
+
+**Scope:** `git diff origin/main...HEAD` after the merge commits following
+`a78c7495`; no further changes under `backend/crops/` since the prior entry.
+
+**Findings:** No new issues. The prior entry's `FIXED` (70fa53c2) query-length
+cap still holds (`views.py` truncates `q` before search). Search still runs
+over `get_queryset()`, so visibility scoping is unchanged; the SQLite Python
+fallback scans only the bounded species catalogue and is not used on PostgreSQL.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #712 (fuzzy species search)
 
 **Scope:** `git diff origin/main...HEAD` of `feat/crop-library-species-search-fuzzy`:
