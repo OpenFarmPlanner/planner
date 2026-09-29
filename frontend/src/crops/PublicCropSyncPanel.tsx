@@ -126,7 +126,7 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
 
   if (!isRichText) {
     return (
-      <Typography component="dd" variant="body2" sx={{ m: 0, overflowWrap: 'anywhere' }}>
+      <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
         {formatPublicCropValue(field, value, t)}
       </Typography>
     );
@@ -135,7 +135,7 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
   const text = value === null || value === undefined || value === '' ? '' : String(value);
 
   return (
-    <Box component="dd" sx={{ m: 0, position: 'relative' }}>
+    <Box sx={{ position: 'relative' }}>
       <Box
         ref={setMeasureElement}
         data-testid={`public-crop-sync-value-content-${side}-${field}`}
@@ -177,33 +177,35 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
   return (
     <Box sx={ROW_SX} data-testid={`public-crop-sync-row-${change.field}`}>
       <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>{label}</Typography>
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        color="primary"
-        fullWidth
-        value={choice}
-        aria-label={t('library.sync.choiceAriaLabel', { field: label })}
-        sx={segmentedToggleButtonGroupSx}
-        onChange={(_, value: PublicCropSyncChoice | null) => {
-          if (value !== null) onChoiceChange(value);
-        }}
-      >
-        <ToggleButton value="library" disabled={disabled} sx={segmentedToggleButtonSx}>
-          {t('library.sync.chooseLibrary')}
-        </ToggleButton>
-        {change.pushable ? mineButton : (
-          <DisabledActionTooltip
-            fullWidth
-            title={t(change.field === 'name'
-              ? 'library.sync.notPushableName'
-              : 'library.sync.notPushable')}
-          >
-            {mineButton}
-          </DisabledActionTooltip>
-        )}
-      </ToggleButtonGroup>
-      <Box sx={VALUE_COLUMNS_SX}>
+      <Box component="dd" sx={{ m: 0 }}>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          color="primary"
+          fullWidth
+          value={choice}
+          aria-label={t('library.sync.choiceAriaLabel', { field: label })}
+          sx={segmentedToggleButtonGroupSx}
+          onChange={(_, value: PublicCropSyncChoice | null) => {
+            if (value !== null) onChoiceChange(value);
+          }}
+        >
+          <ToggleButton value="library" disabled={disabled} sx={segmentedToggleButtonSx}>
+            {t('library.sync.chooseLibrary')}
+          </ToggleButton>
+          {change.pushable ? mineButton : (
+            <DisabledActionTooltip
+              fullWidth
+              title={t(change.field === 'name'
+                ? 'library.sync.notPushableName'
+                : 'library.sync.notPushable')}
+            >
+              {mineButton}
+            </DisabledActionTooltip>
+          )}
+        </ToggleButtonGroup>
+      </Box>
+      <Box component="dd" sx={{ ...VALUE_COLUMNS_SX, m: 0 }}>
         <SyncValueColumn
           field={change.field}
           side="library"
@@ -224,14 +226,15 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
         />
       </Box>
       {showExpandToggle ? (
-        <Button
-          size="small"
-          onClick={() => setExpanded((previous) => !previous)}
-          sx={{ alignSelf: 'flex-start' }}
-          data-testid={`public-crop-sync-toggle-${change.field}`}
-        >
-          {expanded ? t('library.sync.showLessValue') : t('library.sync.showFullValue')}
-        </Button>
+        <Box component="dd" sx={{ m: 0 }}>
+          <Button
+            size="small"
+            onClick={() => setExpanded((previous) => !previous)}
+            data-testid={`public-crop-sync-toggle-${change.field}`}
+          >
+            {expanded ? t('library.sync.showLessValue') : t('library.sync.showFullValue')}
+          </Button>
+        </Box>
       ) : null}
     </Box>
   );
