@@ -229,6 +229,37 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
                 self.assertIn(name, german_names)
                 self.assertNotIn(name.casefold(), all_synonyms)
 
+    def test_smooth_and_curly_endive_are_aliases_of_endivie(self):
+        """Eskariol and Frisée differ only on the variety level."""
+        german_names = {
+            get_crop_species_seed_name(entry, 'de').casefold()
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+        endive_synonyms = get_crop_species_seed_synonyms('endive')
+
+        for name in ('Eskariol', 'Escariol', 'Frisée', 'Frisee', 'Endiviensalat'):
+            with self.subTest(name=name):
+                self.assertIn(name, endive_synonyms)
+                self.assertNotIn(name.casefold(), german_names)
+        for name in ('Endivie glatt', 'Endivie krause', 'Glatte Endivie', 'Krause Endivie'):
+            with self.subTest(name=name):
+                self.assertNotIn(name.casefold(), german_names)
+
+    def test_chicory_and_radicchio_stay_separate_from_endive(self):
+        """Forced Chicorée and Radicchio have their own cultivation logic."""
+        german_names = {
+            get_crop_species_seed_name(entry, 'de')
+            for entry in CROP_SPECIES_SEED_DATA
+        }
+        endive_synonyms = {
+            synonym.casefold() for synonym in get_crop_species_seed_synonyms('endive')
+        }
+
+        for name in ('Chicorée', 'Radicchio'):
+            with self.subTest(name=name):
+                self.assertIn(name, german_names)
+                self.assertNotIn(name.casefold(), endive_synonyms)
+
     def test_swede_is_not_aliased_onto_kohlrabi(self):
         """Kohlrübe is the swede, a different crop the library does not seed."""
         self.assertEqual(get_crop_species_seed_synonyms('kohlrabi'), ())

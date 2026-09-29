@@ -272,6 +272,12 @@ def get_crop_species_seed_name(entry: CropSpeciesSeedEntry, language_code: str =
 # instead of harvested once as a whole plant, and Zuckererbse stays separate
 # from Erbse because it is harvested and eaten pod and all.
 #
+# The reverse also holds: smooth (Eskariol) and curly (Frisée) endive are one
+# species (Cichorium endivia) with the same plant part, single head harvest,
+# spacing, and yield, so they are aliases of Endivie and the difference lives on
+# the variety level. Chicorée (forced Cichorium intybus) and Radicchio are not
+# part of that group and stay separate species.
+#
 # Deliberately ambiguous terms are mapped onto *several* species so the UI can
 # offer all of them instead of silently picking one:
 #   - "Peperoni" is the sweet pepper in CH, the hot chili in DE/AT, and the
@@ -305,7 +311,9 @@ CROP_SPECIES_SYNONYM_SEED_DATA: dict[str, dict[str, tuple[str, ...]]] = {
     'currant': {'de': ('Johannisbeere',)},
     'daikon': {'de': ('Winterrettich', 'Radi')},
     'elderberry': {'de': ('Holler', 'Fliederbeere')},
-    'endive': {'de': ('Winterendivie', 'Escariol')},
+    'endive': {
+        'de': ('Winterendivie', 'Escariol', 'Eskariol', 'Frisée', 'Frisee', 'Endiviensalat'),
+    },
     'french_bean': {'de': ('Fisole', 'Fisolen')},
     'garden_orach': {'de': ('Melde',)},
     'gooseberry': {'de': ('Agrasel',)},
