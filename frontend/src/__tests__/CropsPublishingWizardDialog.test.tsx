@@ -101,6 +101,12 @@ const findSettledOptions = async (expectedCount: number) => {
   return screen.getAllByRole('option');
 };
 
+// Nothing is auto-selected any more (not even an exact name match) — every
+// test that publishes now has to pick the species option explicitly first.
+const selectSpeciesOption = async (name: string): Promise<void> => {
+  fireEvent.click(await screen.findByRole('option', { name }));
+};
+
 const GENERAL_CROP: Crop = { ...CROP, variety: '' };
 const VARIETY_ROMA: Crop = { ...CROP, id: 2, variety: 'Roma' };
 const VARIETY_OCHSENHERZ: Crop = { ...CROP, id: 3, variety: 'Ochsenherz' };
@@ -553,6 +559,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
     await screen.findByLabelText(/Offizielle Kulturart/i);
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -603,6 +610,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop, { onLinkPublicCrop });
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       // Disabled while the warning is unresolved, with a tooltip explaining why.
       const blockedButton = await screen.findByRole('button', { name: 'Jetzt veröffentlichen' });
@@ -645,6 +653,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop, { varieties: [sorte] });
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       fireEvent.click(await findEnabledPublishButton());
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
@@ -659,6 +668,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop);
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       fireEvent.click(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
@@ -677,6 +687,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     await screen.findByLabelText(/Offizielle Kulturart/i);
     expect(screen.queryByLabelText('Vorhandene Sorte')).not.toBeInTheDocument();
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -822,6 +833,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
     await screen.findByLabelText(/Offizielle Kulturart/i);
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -849,6 +861,8 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
       expect(screen.getByText('Es werden die allgemeinen Daten dieser Kulturart veröffentlicht. Zusätzlich ausgewählte Sorten werden mitveröffentlicht.')).toBeInTheDocument();
+      // The Sorten-matching lookup only runs once a species is selected.
+      await selectSpeciesOption('Tomate');
 
       const romaCheckbox = screen.getByRole('checkbox', { name: /^Roma/ });
       const ochsenherzCheckbox = screen.getByRole('checkbox', { name: /^Ochsenherz/ });
@@ -871,6 +885,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       fireEvent.click(screen.getByRole('checkbox', { name: /^Ochsenherz/ }));
       expect(screen.getByRole('checkbox', { name: /^Ochsenherz/ })).not.toBeChecked();
 
@@ -893,6 +908,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       expect(await screen.findByText('bereits vorhanden – wird verknüpft')).toBeInTheDocument();
       // Only the conflicting Sorte carries the hint.
       expect(screen.getAllByText('bereits vorhanden – wird verknüpft')).toHaveLength(1);
@@ -912,6 +928,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       expect(await screen.findByText(/Abgleich mit der Kulturbibliothek fehlgeschlagen/)).toBeInTheDocument();
 
       // A failed lookup must not block publishing — the backend's own

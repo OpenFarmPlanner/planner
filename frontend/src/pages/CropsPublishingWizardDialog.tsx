@@ -205,10 +205,9 @@ export function CropsPublishingWizardDialog({
       setSelectedSpecies(null);
       setProposedSpeciesOverride(null);
       setSpeciesInputValue(crop?.name ?? '');
-      // Autofocusing shows the results immediately: the field's
-      // `openOnFocus` (see CropSpeciesPicker) opens the dropdown as soon as
-      // it's focused, for whatever `speciesInputValue` already holds.
-      speciesInputRef.current?.focus();
+      // The field autofocuses itself (`autoFocus` + `openOnFocus` in
+      // CropSpeciesPicker), which shows its results immediately for
+      // whatever `speciesInputValue` already holds.
       // Same idea for the variety field: pre-fill with the local variety's
       // own name. If a matching public entry is found once the search
       // results load (see the publicCropOptions effect), it's also

@@ -269,6 +269,12 @@ export function CropSpeciesPicker({
         <TextField
           {...params}
           inputRef={inputRef}
+          // Server-searched mode (the publishing wizard) wants results
+          // visible the moment the dialog opens, with no extra click —
+          // `autoFocus` plus `openOnFocus` above gets there without an
+          // imperative `.focus()` call racing the dialog's own mount/open
+          // transition.
+          autoFocus={serverSearched}
           label={label ?? t('library.speciesPicker.label')}
           required={required}
           error={Boolean(errorText)}
