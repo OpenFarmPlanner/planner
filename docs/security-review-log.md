@@ -40,6 +40,23 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Second automated security review of PR #713 (after SRI fix)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`551d60c6`: docs views and templates, settings, URLs, `extend_schema` annotations.
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — Missing-SRI finding of the earlier entries is fixed
+  (`551d60c6`); templates carry `integrity` and `crossorigin`.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` remain
+  (deferred, depends on `ops` static serving), unchanged.
+- No new findings: docs views use no authentication classes, `{{ settings|safe }}`
+  renders server-side settings only, the schema URL is escaped, annotation-only
+  changes leave querysets, permissions and serializers untouched.
+
+---
+
 ## 2026-09-29 — Claude — Follow-up on PR #713 CDN finding
 
 **Scope:** the `OPEN` finding of the entry below (Redoc/Swagger UI assets from
