@@ -309,7 +309,8 @@
         "title": "Planting plans",
         "create": "Add planting plan",
         "edit": "Edit planting plan",
-        "delete": "Delete planting plan"
+        "delete": "Delete planting plan",
+        "search": "Focus planting plan search"
       },
       "calendar": {
         "title": "Planting calendar",

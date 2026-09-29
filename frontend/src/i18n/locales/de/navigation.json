@@ -309,7 +309,8 @@
         "title": "Anbaupläne",
         "create": "Anbauplan hinzufügen",
         "edit": "Anbauplan bearbeiten",
-        "delete": "Anbauplan löschen"
+        "delete": "Anbauplan löschen",
+        "search": "Anbauplansuche fokussieren"
       },
       "calendar": {
         "title": "Anbaukalender",

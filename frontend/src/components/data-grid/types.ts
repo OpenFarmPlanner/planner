@@ -143,4 +143,27 @@ export interface EditableDataGridProps<T extends EditableRow> {
    * `useColumnVisibility`.
    */
   onColumnVisibilityModelChange?: (model: GridColumnVisibilityModel) => void;
+  /**
+   * A page-owned filter that replaces MUI's built-in filter model, so the
+   * page's own search/filter state is the only filter state. See
+   * `ExternalRowFilter`.
+   */
+  externalFilter?: ExternalRowFilter<T>;
+}
+
+/**
+ * Hands filtering to the page. The grid then ignores MUI's (and any stored)
+ * filter model, and the column menu's "Filter" entry calls
+ * `onOpenFilterPanel` instead of opening MUI's filter panel.
+ */
+export interface ExternalRowFilter<T extends EditableRow> {
+  /**
+   * Rows for which this returns false are hidden. Unsaved new rows and rows
+   * in edit mode always stay visible, so an edit never makes its own row
+   * vanish. `undefined` while no filter is active.
+   */
+  isRowVisible?: (row: T) => boolean;
+  onOpenFilterPanel: () => void;
+  /** Rows whose notes cell is marked as a search hit. */
+  highlightedNoteRowIds?: ReadonlySet<GridRowId>;
 }

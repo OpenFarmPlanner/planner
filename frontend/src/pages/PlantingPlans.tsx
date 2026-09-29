@@ -7,7 +7,7 @@
  * @returns The Planting Plans page component
  */
 
-import { useCallback, useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useCallback, useState, useEffect, useId, useMemo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { isTypingInEditableElement } from "../hooks/useKeyboardShortcuts";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type {
@@ -30,6 +30,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import NotesIcon from "@mui/icons-material/Notes";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import { useTranslation } from "../i18n";
 import {
@@ -72,6 +73,8 @@ import {
   formatDateAsGerman,
   FullCellTooltip,
   FULL_CELL_TOOLTIP_CELL_CLASS,
+  stripMarkdown,
+  type ExternalRowFilter,
 } from "../components/data-grid";
 import { CALCULATED_COLUMN_CELL_CLASS } from "../components/data-grid/calculatedColumns";
 import { DateEditCell } from "../components/data-grid/DateEditCell";
@@ -97,7 +100,19 @@ import {
 } from "./requirementFlow";
 import { AreaAssignmentDialog } from "../components/planting-plans/AreaAssignmentDialog";
 import EmptyStateCard from "../components/project/EmptyStateCard";
-import { formatCropDisplayName } from "../crops/cropDisplay";
+import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
+import { usePlantingPlanSearch } from "./usePlantingPlanSearch";
+import type { PlantingPlanSearchRecordInput } from "./plantingPlanSearch";
+import { SearchHighlightContext } from "../search/SearchHighlightContext";
+import { SearchHighlightedText } from "../search/SearchHighlightedText";
+import { buildMatchExcerpt } from "../search/searchText";
+import { PlantingPlanSearchMatchContext } from "../components/planting-plans/search/plantingPlanSearchMatchContext";
+import { PlantingPlanCropLabel } from "../components/planting-plans/search/PlantingPlanCropLabel";
+import { PlantingPlanSearchToolbar } from "../components/planting-plans/search/PlantingPlanSearchToolbar";
+import { PlantingPlanMobileSearchBar } from "../components/planting-plans/search/PlantingPlanMobileSearchBar";
+import { PlantingPlanMobileListHeader } from "../components/planting-plans/search/PlantingPlanMobileListHeader";
+import { PlantingPlanFilterSheet } from "../components/planting-plans/search/PlantingPlanFilterSheet";
+import { PlantingPlanSearchEmptyState } from "../components/planting-plans/search/PlantingPlanSearchEmptyState";
 import { getEffectiveCropValue, resolveSpacingEditCropId } from "../crops/varietyValueSource";
 
 import { useAreaValidationDialog, type AreaValidationDialogState } from "./useAreaValidationDialog";
@@ -160,7 +175,7 @@ function PlantingPlans() {
     },
     [seasonBounds],
   );
-  const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
@@ -192,6 +207,10 @@ function PlantingPlans() {
     getCultivationTypeOptionsForRow,
     dynamicWidths,
   } = usePlantingPlanHierarchy(shouldShowProjectRequiredState);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const filterSheetId = useId();
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [areaNotice, setAreaNotice] = useState<{
     message: string;
     severity: "info" | "warning";
@@ -292,11 +311,15 @@ function PlantingPlans() {
   useEffect(() => {
     if (isMobile) {
       document.body.classList.add("hide-version-footer");
+      // The search row sticks under the app bar, so the app bar has to stick too.
+      document.body.classList.add("sticky-app-bar");
     } else {
       document.body.classList.remove("hide-version-footer");
+      document.body.classList.remove("sticky-app-bar");
     }
     return () => {
       document.body.classList.remove("hide-version-footer");
+      document.body.classList.remove("sticky-app-bar");
     };
   }, [isMobile]);
 
@@ -463,6 +486,17 @@ function PlantingPlans() {
   const commands = useMemo<CommandSpec[]>(
     () => [
       {
+        id: "plans.focusSearch",
+        label: t("plantingPlans:commands.focusSearch"),
+        group: 'navigation',
+        keywords: keywordList(t, "plantingPlans:commands.keywords.search"),
+        shortcutHint: "/",
+        keys: { key: "/" },
+        contextTags: ["plans"],
+        isEnabled: () => searchInputRef.current !== null,
+        action: () => searchInputRef.current?.focus(),
+      },
+      {
         id: "plans.edit",
         label: t("plantingPlans:commands.edit"),
         group: 'navigation',
@@ -544,6 +578,13 @@ function PlantingPlans() {
           options: cropOptions,
           placeholder: t("plantingPlans:placeholders.selectCrop"),
         }),
+        renderCell: (params) => (
+          <PlantingPlanCropLabel
+            planId={Number(params.id)}
+            text={String(params.formattedValue ?? "")}
+            truncate
+          />
+        ),
         valueSetter: (value, row) => {
           const nextRow = row as PlantingPlanRow;
           const numericValue =
@@ -588,7 +629,7 @@ function PlantingPlans() {
         renderCell: (params) => {
           const formattedValue =
             typeof params.formattedValue === "string" ? params.formattedValue : "";
-          return formattedValue;
+          return <SearchHighlightedText text={formattedValue} />;
         },
         renderEditCell: (params) => {
           const row = params.row as PlantingPlanRow;
@@ -902,6 +943,60 @@ function PlantingPlans() {
     const option = cultivationTypeOptions.find((item) => item.value === row.cultivation_type);
     return option?.label ?? "";
   };
+
+  const cropById = useMemo(() => new Map(crops.map((crop) => [crop.id, crop])), [crops]);
+  const toSearchRecordInput = useCallback((row: PlantingPlanRow): PlantingPlanSearchRecordInput => {
+    const linkedCrop = typeof row.crop === "number" ? cropById.get(row.crop) : undefined;
+    const bedId = resolveBedCellValue(row.bed, row);
+    const linkedBed = bedById.get(bedId);
+    const linkedField = linkedBed ? fieldById.get(linkedBed.field) : undefined;
+    const linkedLocation = linkedField ? locationById.get(linkedField.location) : undefined;
+    const cropLabel = formatCropDisplayName({
+      name: linkedCrop?.name,
+      crop_name: row.crop_name,
+      crop_display_name: row.crop_display_name ?? linkedCrop?.crop_display_name,
+      variety: linkedCrop?.variety,
+      crop_variety: row.crop_variety,
+    }) || (cropOptions.find((option) => option.value === row.crop)?.label ?? "");
+    return {
+      id: row.id,
+      cropLabel,
+      cropName: getCropDisplayName({
+        name: linkedCrop?.name,
+        crop_name: row.crop_name,
+        crop_display_name: row.crop_display_name ?? linkedCrop?.crop_display_name,
+      }),
+      cropSynonyms: linkedCrop?.crop_species_search_names ?? [],
+      cultivationType: row.cultivation_type ?? "",
+      cultivationTypeLabel: cultivationTypeOptions.find((item) => item.value === row.cultivation_type)?.label ?? "",
+      locationId: linkedLocation?.id ?? row.location_id ?? null,
+      locationName: linkedLocation?.name ?? toOptionalString(row.location_name) ?? "",
+      fieldId: linkedField?.id ?? row.field_id ?? null,
+      fieldName: linkedBed?.field_name ?? linkedField?.name ?? toOptionalString(row.field_name) ?? "",
+      bedName: linkedBed?.name ?? toOptionalString(row.bed_name) ?? "",
+      notesText: stripMarkdown(row.notes ?? ""),
+      plantingDate: toIsoDateString(row.planting_date),
+      harvestDate: toIsoDateString(row.harvest_date),
+    };
+  }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById]);
+  const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
+  const search = usePlantingPlanSearch({
+    rows: persistedRows,
+    toRecordInput: toSearchRecordInput,
+    projectId: activeProjectId ?? null,
+  });
+  // The column menu closes itself on click; open the panel once it is gone
+  // so the menu's focus restore does not fight the panel for focus.
+  const openFilterPanel = useCallback((): void => {
+    window.setTimeout(() => setIsFilterPanelOpen(true), 0);
+  }, []);
+  const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
+    isRowVisible: search.isRowVisible,
+    onOpenFilterPanel: openFilterPanel,
+    highlightedNoteRowIds: search.noteMatchIds,
+  }), [openFilterPanel, search.isRowVisible, search.noteMatchIds]);
+  const hasDraftRows = mobileRows.some((row) => row.isNew);
+  const showDesktopSearchEmptyState = search.isActive && search.shownCount === 0 && !hasDraftRows;
 
   const getPlantsCountLabel = (row: PlantingPlanRow): string => (
     typeof row.plants_count === "number" && !Number.isNaN(row.plants_count)
@@ -1490,6 +1585,8 @@ function PlantingPlans() {
   }
 
   return (
+    <SearchHighlightContext.Provider value={search.terms}>
+    <PlantingPlanSearchMatchContext.Provider value={search.matchById}>
     <PageContainer variant="workspacePage">
 
       <AlertSnackbar
@@ -1549,12 +1646,29 @@ function PlantingPlans() {
 
         {isMobile && hasPlans ? (
           <Box sx={{ pb: 10 }}>
+            <PlantingPlanMobileSearchBar
+              search={search}
+              searchInputRef={searchInputRef}
+              isFilterSheetOpen={isFilterPanelOpen}
+              onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
+              filterSheetId={filterSheetId}
+            />
+            <PlantingPlanMobileListHeader
+              search={search}
+              onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
+            />
             <MobileCardList
-              items={getVisibleMobileRows(mobileRows)}
+              items={search.sortedRows}
               expandedIds={expandedCardIds}
               onToggleExpanded={toggleCardExpanded}
-              renderPrimary={(item) => getCropLabel(item)}
-              renderSecondary={(item) => `${formatDateForDisplay(item.planting_date)} · ${getBedLabelForRow(item)}`}
+              renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
+              renderSecondary={(item) => (
+                <>
+                  {formatDateForDisplay(item.planting_date)}
+                  {" · "}
+                  <SearchHighlightedText text={getBedLabelForRow(item)} />
+                </>
+              )}
               renderHeaderAction={(item) => (
                 <AppTooltip title={t("common:actions.actions")}>
                   <IconButton
@@ -1574,8 +1688,8 @@ function PlantingPlans() {
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> {t(`plantingPlans:cultivationTypes.${item.cultivation_type === "direct_sowing" ? "directSowing" : "preCultivation"}`)}</Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> {getBedLabelForRow(item)}</Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={t(`plantingPlans:cultivationTypes.${item.cultivation_type === "direct_sowing" ? "directSowing" : "preCultivation"}`)} /></Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.plantingDate")}:</strong> {formatDateForDisplay(item.planting_date)}</Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestStartDate")}:</strong> {formatDateForDisplay(item.harvest_date)}</Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestEndDate")}:</strong> {formatDateForDisplay(item.harvest_end_date)}</Typography>
@@ -1598,9 +1712,25 @@ function PlantingPlans() {
                   </Button>
                 </Stack>
               )}
+              renderFooter={(item) => (search.noteMatchIds.has(item.id) ? (
+                <Box
+                  data-testid="planting-plan-notes-match"
+                  sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, pt: 0.75, borderTop: "1px solid", borderColor: "divider" }}
+                >
+                  <NotesIcon
+                    fontSize="small"
+                    color="action"
+                    titleAccess={t("plantingPlans:search.notesMatchAria")}
+                    sx={{ mt: 0.125, flexShrink: 0 }}
+                  />
+                  <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                    <SearchHighlightedText text={buildMatchExcerpt(stripMarkdown(item.notes ?? ""), search.terms)} />
+                  </Typography>
+                </Box>
+              ) : null)}
               detailsShowLabel={t("plantingPlans:mobile.showDetails")}
               detailsHideLabel={t("plantingPlans:mobile.hideDetails")}
-              emptyState={(
+              emptyState={search.isActive ? <PlantingPlanSearchEmptyState search={search} /> : (
                 <Box sx={{ p: 2, border: "1px dashed", borderColor: "divider", borderRadius: 2 }}>
                   <Stack spacing={1.5}>
                     <Typography variant="subtitle1">{t("plantingPlans:mobile.emptyTitle")}</Typography>
@@ -1630,6 +1760,23 @@ function PlantingPlans() {
           variant={isMobile ? "fullWorkspace" : "contentFit"}
           sx={isMobile ? { position: 'fixed', top: '-9999px', left: 0, width: '100vw', height: 1, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden' } : undefined}
         >
+          {!isMobile && hasPlans ? (
+            <PlantingPlanSearchToolbar
+              search={search}
+              searchInputRef={searchInputRef}
+              filterButtonRef={filterButtonRef}
+              isFilterPanelOpen={isFilterPanelOpen}
+              onFilterPanelOpenChange={setIsFilterPanelOpen}
+            />
+          ) : null}
+          {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
+          {/* Collapsed rather than unmounted while nothing matches, so the grid
+              keeps its rows and scroll state, and still sizes the card: the
+              toolbar does not jump when the last hit disappears. */}
+          <Box
+            aria-hidden={!isMobile && showDesktopSearchEmptyState ? true : undefined}
+            sx={!isMobile && showDesktopSearchEmptyState ? { height: 0, overflow: 'hidden', visibility: 'hidden' } : undefined}
+          >
           <EditableDataGrid<PlantingPlanRow>
             surfaceSizing={isMobile ? "fullWorkspace" : "contentFit"}
             scrollMode="continuous"
@@ -1936,6 +2083,7 @@ function PlantingPlans() {
           persistSortInUrl={true}
           columnVisibilityModel={columnVisibilityModel}
           onColumnVisibilityModelChange={setColumnVisibilityModel}
+          externalFilter={gridExternalFilter}
             notes={{
               fields: [
                 {
@@ -1948,6 +2096,7 @@ function PlantingPlans() {
               ],
             }}
           />
+          </Box>
         </PageSurface>}
 
       </Box>
@@ -2003,7 +2152,17 @@ function PlantingPlans() {
         focusAttachments={mobileNotesEditor.focusAttachments}
         focusRequestId={mobileNotesEditor.focusRequestId}
       />
+      {isMobile ? (
+        <PlantingPlanFilterSheet
+          id={filterSheetId}
+          open={isFilterPanelOpen}
+          onClose={() => setIsFilterPanelOpen(false)}
+          search={search}
+        />
+      ) : null}
     </PageContainer>
+    </PlantingPlanSearchMatchContext.Provider>
+    </SearchHighlightContext.Provider>
   );
 }
 

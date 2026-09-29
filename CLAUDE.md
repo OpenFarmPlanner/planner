@@ -202,6 +202,11 @@ Deploy scripts, cron/scheduling config, and infra are **not** in this repo — t
 - Empty states should guide users toward the next action. Prefer contextual
   actions over disabled controls.
 - Avoid layout shifts during state changes.
+- Search and filtering follow the binding rules in
+  [`docs/search.md`](docs/search.md) (normalization, AND/OR, searched fields,
+  synonyms); a backend or app-wide search must implement the same rules. Page
+  search sits on the page, never in the topbar, which is reserved for the
+  app-wide search.
 - Detail-page primary actions must be labeled buttons with consistent size,
   spacing, and icons; reserve overflow menus for secondary or rarely used
   actions.

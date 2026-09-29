@@ -51,7 +51,8 @@ import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useNavigationBlocker } from '../../hooks/autosave';
 import { usePersistentSortModel } from '../../hooks/usePersistentSortModel';
 import { useTranslation } from '../../i18n';
-import { NotesCell } from './NotesCell';
+import { ExternalFilterColumnMenu, HighlightableNotesCell } from './ExternalFilterColumnMenu';
+import { ExternalFilterContext } from './externalFilterContext';
 import { NotesDrawer } from './NotesDrawer';
 import {
   DeleteUndoSnackbar,
@@ -168,6 +169,8 @@ type DataGridKeyboardEvent = (KeyboardEvent | EditCellKeyboardEvent) & {
   defaultMuiPrevented?: boolean;
 };
 
+const EXTERNAL_FILTER_EMPTY_MODEL: GridFilterModel = { items: [] };
+
 const wrapNativeKeyboardEvent = (event: globalThis.KeyboardEvent): DataGridKeyboardEvent => ({
   altKey: event.altKey,
   ctrlKey: event.ctrlKey,
@@ -224,6 +227,7 @@ export function EditableDataGrid<T extends EditableRow>({
   scrollMode = 'autoHeight',
   columnVisibilityModel,
   onColumnVisibilityModelChange,
+  externalFilter,
 }: EditableDataGridProps<T>) {
   const gridApiRef = useGridApiRef();
   const resolvedSurfaceSizing = surfaceSizing ?? 'contentFit';
@@ -276,10 +280,33 @@ export function EditableDataGrid<T extends EditableRow>({
     allowedFields: columns.map((column) => column.field),
     persistInUrl: persistSortInUrl,
   });
-  const rowsForGrid = useMemo(
+  const orderedRows = useMemo(
     () => orderRowsByStableIds(rows as T[], stableRowOrder),
     [rows, stableRowOrder],
   );
+  const isExternallyVisible = externalFilter?.isRowVisible;
+  // Rows being edited stay visible even when they fail the filter, so an
+  // edit never makes its own row vanish. Only the ids of such rows feed the
+  // memo below: entering edit mode on an already visible row then leaves the
+  // array identity alone instead of handing MUI "new" rows mid-edit.
+  const editingHiddenRowKey = useMemo(() => {
+    if (!isExternallyVisible) {
+      return '';
+    }
+    return orderedRows
+      .filter((row) => rowModesModel[row.id]?.mode === GridRowModes.Edit && !isExternallyVisible(row))
+      .map((row) => String(row.id))
+      .join(',');
+  }, [isExternallyVisible, orderedRows, rowModesModel]);
+  const rowsForGrid = useMemo(() => {
+    if (!isExternallyVisible) {
+      return orderedRows;
+    }
+    const pinnedRowIds = new Set(editingHiddenRowKey ? editingHiddenRowKey.split(',') : []);
+    return orderedRows.filter((row) => (
+      row.isNew || pinnedRowIds.has(String(row.id)) || isExternallyVisible(row)
+    ));
+  }, [editingHiddenRowKey, isExternallyVisible, orderedRows]);
   // The hook balances this cap down so the last internal page is never a stub
   // the grid would shrink itself down to.
   const scrollDrivenRowWindow = useScrollDrivenRowWindow(
@@ -2059,9 +2086,26 @@ export function EditableDataGrid<T extends EditableRow>({
     t,
   ]);
 
+  const hasExternalFilter = Boolean(externalFilter);
   const gridSlots = useMemo(
-    () => (shouldRenderGridFooter ? { footer: CustomFooter } : undefined),
-    [CustomFooter, shouldRenderGridFooter],
+    () => {
+      if (!shouldRenderGridFooter && !hasExternalFilter) {
+        return undefined;
+      }
+      return {
+        ...(shouldRenderGridFooter ? { footer: CustomFooter } : {}),
+        ...(hasExternalFilter ? { columnMenu: ExternalFilterColumnMenu } : {}),
+      };
+    },
+    [CustomFooter, hasExternalFilter, shouldRenderGridFooter],
+  );
+  const externalFilterOpenPanel = externalFilter?.onOpenFilterPanel;
+  const externalFilterNoteRowIds = externalFilter?.highlightedNoteRowIds;
+  const externalFilterContextValue = useMemo(
+    () => (externalFilterOpenPanel
+      ? { onOpenFilterPanel: externalFilterOpenPanel, highlightedNoteRowIds: externalFilterNoteRowIds }
+      : null),
+    [externalFilterNoteRowIds, externalFilterOpenPanel],
   );
 
   // MUI keeps every grid prop in one root-props object handed to all its
@@ -2199,7 +2243,8 @@ export function EditableDataGrid<T extends EditableRow>({
           const isPreviewOpen = notesPreview.state?.rowId === params.id && notesPreview.state?.field === col.field;
 
           return (
-            <NotesCell
+            <HighlightableNotesCell
+              rowId={params.id}
               hasValue={hasValue}
               excerpt={excerpt}
               rawValue={value}
@@ -2601,6 +2646,7 @@ export function EditableDataGrid<T extends EditableRow>({
               },
             }}
           >
+            <ExternalFilterContext.Provider value={externalFilterContextValue}>
             <EditCellNavigationContext.Provider value={handleEditCellTabNavigation}>
               <SelectEditCellContext.Provider value={selectEditCellContextValue}>
               <DialogEditCellContext.Provider value={dialogEditCellContextValue}>
@@ -2634,8 +2680,8 @@ export function EditableDataGrid<T extends EditableRow>({
           sortModel={sortModel}
           onSortModelChange={handleSortModelChange}
           sortingMode="server"
-          filterModel={filterModel}
-          onFilterModelChange={handleFilterModelChange}
+          filterModel={hasExternalFilter ? EXTERNAL_FILTER_EMPTY_MODEL : filterModel}
+          onFilterModelChange={hasExternalFilter ? undefined : handleFilterModelChange}
           rowSelectionModel={gridRowSelectionModel}
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
@@ -2839,6 +2885,7 @@ export function EditableDataGrid<T extends EditableRow>({
               </DialogEditCellContext.Provider>
               </SelectEditCellContext.Provider>
             </EditCellNavigationContext.Provider>
+            </ExternalFilterContext.Provider>
           </Box>
           </Box>
         </Box>

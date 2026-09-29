@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { OverflowTooltip } from '../OverflowTooltip';
+import { SearchHighlightedText } from '../../search/SearchHighlightedText';
 
 interface CompactAreaCellProps {
   label: string;
@@ -126,7 +127,7 @@ export function CompactAreaCell({
             color: label ? 'text.primary' : 'text.disabled',
           }}
         >
-          {displayText}
+          {label ? <SearchHighlightedText text={label} /> : displayText}
         </Typography>
       </Box>
     </OverflowTooltip>

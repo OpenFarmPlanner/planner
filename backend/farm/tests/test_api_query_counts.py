@@ -96,6 +96,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
             CropSpeciesTranslation.objects.create(
                 species=species, language_code='de', common_name=f'Art {index}',
+                synonyms=[f'Synonym {index}'], regional_names={'austria': f'Regional {index}'},
             )
             CropSpeciesTranslation.objects.create(
                 species=species, language_code='en', common_name=f'Species {index}',
@@ -185,6 +186,23 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assert_list_query_count(
             '/openfarmplanner/api/crops/', 13, expected_rows=ROW_COUNT * 2,
         )
+
+    def test_crops_list_carries_species_search_names(self):
+        """Page search resolves crop synonyms from `crop_species_search_names`;
+        the names come from the prefetched species translations, so the list
+        query count above stays flat."""
+        response = self.client.get('/openfarmplanner/api/crops/')
+        self.assertEqual(response.status_code, 200)
+        rows_by_id = {row['id']: row for row in response.data['results']}
+        for index, crop in enumerate(self.crops):
+            names = rows_by_id[crop.id]['crop_species_search_names']
+            self.assertIn(f'Synonym {index}', names)
+            self.assertIn(f'Regional {index}', names)
+            self.assertIn(f'Species {index}', names)
+        unlinked = [row for row in response.data['results'] if row['crop_species'] is None]
+        self.assertTrue(unlinked)
+        for row in unlinked:
+            self.assertEqual(row['crop_species_search_names'], [])
 
     def test_crops_list_query_count_is_flat_for_unpublished_links(self):
         """Withdrawn/removed linked entries add the link description

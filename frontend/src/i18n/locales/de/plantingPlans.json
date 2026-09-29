@@ -164,8 +164,70 @@
     "delete": "Anbauplan löschen (Entf)",
     "keywords": {
       "edit": "anbauplan, bearbeiten",
-      "delete": "anbauplan, löschen"
-    }
+      "delete": "anbauplan, löschen",
+      "search": "anbauplan, suchen, suche, filter"
+    },
+    "focusSearch": "Anbauplansuche fokussieren (/)"
   },
-  "loadingPlans": "Anbaupläne werden geladen…"
+  "loadingPlans": "Anbaupläne werden geladen…",
+  "search": {
+    "placeholderDesktop": "Anbaupläne durchsuchen",
+    "placeholderMobile": "Suchen",
+    "ariaLabel": "Anbaupläne durchsuchen",
+    "clear": "Suche löschen",
+    "shortcutHintAria": "Taste / fokussiert die Suche",
+    "filterButton": "Filter",
+    "filterButtonActiveAria_one": "Filter, {{count}} Filter aktiv",
+    "filterButtonActiveAria_other": "Filter, {{count}} Filter aktiv",
+    "panelTitle": "Filter",
+    "sheetTitle": "Filter und Sortierung",
+    "fields": {
+      "sort": "Sortierung",
+      "location": "Standort",
+      "field": "Parzelle",
+      "cultivationType": "Anbauart",
+      "crop": "Kultur",
+      "plantingPeriod": "Pflanzzeitraum"
+    },
+    "monthFrom": "Von",
+    "monthTo": "Bis",
+    "monthRangeSeparator": "bis",
+    "fieldHint": "Tipp: Wähle zuerst einen Standort, dann siehst du nur dessen Parzellen.",
+    "sortOptions": {
+      "plantingDateAsc": "Pflanzdatum, aufsteigend",
+      "plantingDateDesc": "Pflanzdatum, absteigend",
+      "cropAsc": "Kultur, A bis Z",
+      "harvestStartAsc": "Erntebeginn, aufsteigend"
+    },
+    "count_one": "{{count}} Anbauplan",
+    "count_other": "{{count}} Anbaupläne",
+    "filteredCountDesktop": "{{shown}} von {{total}} Anbauplänen",
+    "filteredCountMobile": "{{shown}} von {{total}}",
+    "reset": "Zurücksetzen",
+    "matches_one": "{{count}} Treffer",
+    "matches_other": "{{count}} Treffer",
+    "showResults_one": "{{count}} Anbauplan anzeigen",
+    "showResults_other": "{{count}} Anbaupläne anzeigen",
+    "chip": "{{filter}}: {{values}}",
+    "chipPlantingPeriodLabel": "Pflanzdatum",
+    "chipPlantingPeriod": {
+      "range": "Pflanzdatum: {{from}} bis {{to}}",
+      "from": "Pflanzdatum: ab {{from}}",
+      "to": "Pflanzdatum: bis {{to}}"
+    },
+    "removeChip": "Filter {{filter}} entfernen",
+    "resetAll": "Alle zurücksetzen",
+    "activeFiltersAria": "Aktive Filter",
+    "synonymHint": "Synonym: {{name}}",
+    "notesMatchAria": "Treffer in den Notizen",
+    "empty": {
+      "titleWithQuery": "Keine Anbaupläne gefunden für „{{query}}“",
+      "title": "Keine Anbaupläne gefunden",
+      "hintWithFilters_one": "Ohne die aktiven Filter gäbe es {{count}} Treffer.",
+      "hintWithFilters_other": "Ohne die aktiven Filter gäbe es {{count}} Treffer.",
+      "hint": "Prüfe die Schreibweise oder suche nach Kultur, Sorte oder Beet.",
+      "clearSearch": "Suche löschen",
+      "resetFilters": "Filter zurücksetzen"
+    }
+  }
 }

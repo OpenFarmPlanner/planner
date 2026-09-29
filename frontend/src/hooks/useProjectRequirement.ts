@@ -7,6 +7,8 @@ export interface ProjectRequirementState {
   isAuthLoading: boolean;
   hasAnyProjects: boolean;
   hasActiveProject: boolean;
+  /** The active project's id, or null without one. */
+  activeProjectId: number | null;
   shouldShowProjectRequiredState: boolean;
   missingProjectReason: MissingProjectReason | null;
 }
@@ -27,6 +29,7 @@ export function useProjectRequirement(): ProjectRequirementState {
       isAuthLoading: isLoading,
       hasAnyProjects,
       hasActiveProject,
+      activeProjectId: hasActiveProject ? activeProjectId : null,
       shouldShowProjectRequiredState,
       missingProjectReason,
     };

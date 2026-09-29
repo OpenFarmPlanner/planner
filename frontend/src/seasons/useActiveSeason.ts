@@ -6,6 +6,7 @@ import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
 import { createTransientId } from '../utils/transientId';
 import { DELETE_UNDO_DURATION_MS } from '../components/data-grid';
+import { stashSeasonSwitchState } from './seasonSwitchState';
 import {
   clearStoredActiveSeasonId,
   getStoredActiveSeasonId,
@@ -106,6 +107,7 @@ export function useActiveSeason() {
       return;
     }
     setStoredActiveSeasonId(activeProjectId, seasonId);
+    stashSeasonSwitchState(activeProjectId);
     window.location.reload();
   }, [activeProjectId]);
 

@@ -157,6 +157,8 @@ export interface Crop {
   description_language_code?: string | null;
   /** Every stored linked species name, keyed by language code. */
   crop_species_translations?: Record<string, string>;
+  /** Every linked species name (translations, synonyms, regional names) — page search matches crops under these. */
+  crop_species_search_names?: string[];
   variety?: string;
   seed_supplier?: string;
   supplier?: Supplier | null;
