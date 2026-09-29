@@ -1271,6 +1271,8 @@
       "columnMine": "Meine Kultur",
       "chooseLibrary": "Aus Bibliothek übernehmen",
       "chooseMine": "Meinen Wert übernehmen",
+      "showFullValue": "Ganzen Text anzeigen",
+      "showLessValue": "Weniger anzeigen",
       "choiceAriaLabel": "Welcher Wert gilt für „{{field}}“?",
       "allLibrary": "Alle aus Bibliothek",
       "allMine": "Alle meine Werte",
