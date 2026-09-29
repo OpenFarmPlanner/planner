@@ -40,6 +40,23 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #712 (fuzzy species search)
+
+**Scope:** `git diff origin/main...HEAD` of `feat/crop-library-species-search-fuzzy`:
+`crops/services.py` search, `CropSpeciesViewSet.list`, migration 0017 (pg_trgm),
+frontend species picker.
+
+**Findings:**
+
+- `FIXED` (70fa53c2) — unbounded `q` length fed into similarity scoring; now
+  truncated to 100 characters.
+- No other issues: queryset scoping and moderator/status visibility are
+  unchanged (search runs over `get_queryset()`), the endpoint stays
+  `IsAuthenticated`, no raw SQL (ORM Func/Exists only, values parameterized),
+  migration DDL uses fixed identifiers, no unsafe React APIs.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #707 (Turnstile on registration)
 
 **Scope:** `git diff origin/main...HEAD` of `claude/sweet-darwin-vkesx2`:
