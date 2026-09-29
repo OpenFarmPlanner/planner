@@ -26,6 +26,7 @@ concurrency:
   group: >-
     claude-pr-${{ github.event.pull_request.number }}${{
     (github.event.sender.login == 'claude[bot]'
+      || github.event.sender.login == 'github-actions[bot]'
       || (github.event.action == 'labeled'
           && github.event.label.name != 'claude-review'
           && github.event.label.name != 'claude-security'
@@ -40,14 +41,17 @@ jobs:
     # PRs labeled `skip-claude`, Dependabot PRs (Dependabot runs get no
     # Actions secrets, and version bumps are covered by Dependency Review),
     # and events sent by the Claude GitHub App itself (`claude[bot]`, the
-    # login its fix commits are pushed as) so a fix push cannot start a new
-    # review loop. A `labeled` event only counts for the two trigger labels.
+    # login its fix commits are pushed as) or by `github-actions[bot]` (the
+    # sender when those commits are pushed with the workflow token), so a
+    # fix push cannot start a new review loop. claude-code-action would
+    # reject a `github-actions[bot]` event anyway and fail the check. A `labeled` event only counts for the two trigger labels.
     if: >-
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'skip-claude') &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.sender.login != 'claude[bot]' &&
+      github.event.sender.login != 'github-actions[bot]' &&
       (github.event.action != 'labeled' ||
         github.event.label.name == 'claude-review' ||
         github.event.label.name == 'claude-security')
