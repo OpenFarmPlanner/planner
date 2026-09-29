@@ -40,6 +40,29 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #713 (published OpenAPI reference)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference`:
+drf-spectacular schema/Redoc/Swagger views, the token-reachable endpoint
+filter, `SPECTACULAR_SETTINGS`, and the `extend_schema` annotations.
+
+**Findings:**
+
+- `OPEN` — Redoc and Swagger UI load JavaScript/CSS from `cdn.jsdelivr.net`
+  (`SWAGGER_UI_DIST`, `REDOC_DIST`) without Subresource Integrity, on the
+  application origin. A compromised or tampered CDN asset would run with the
+  visitor's session on that origin, and every visitor's IP reaches a third
+  party. Not fixed here: computing SRI hashes or vendoring the bundles needs
+  network access that the review job does not have. Follow-up: vendor the
+  pinned bundles (or add `integrity` attributes via template overrides) and
+  update `docs/api.md`.
+- No issue: the schema only lists operations declared in `api_token_actions`
+  (mirrors `ApiTokenAccessPermission`), legacy aliases are excluded, docs
+  views are anonymous read-only with no authentication classes, and Swagger
+  "Try it out" omits credentials and CSRF so the session cookie is never used.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #710 (re-review, login message localization)
 
 **Scope:** `git diff origin/main...HEAD` including commit `40929471`
