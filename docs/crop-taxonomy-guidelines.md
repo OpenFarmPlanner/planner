@@ -59,8 +59,18 @@ Differences in fruit size, colour, ripening time, or growth habit **within the
 same use form and harvest logic** belong on the variety level, not the
 crop-species level.
 
-Example: `Cherrytomate`, `Fleischtomate` and `San Marzano` are all varieties of
-`Tomate`, not crop species of their own.
+Examples:
+
+- `Cherrytomate`, `Fleischtomate` and `San Marzano` are all varieties of
+  `Tomate`, not crop species of their own.
+- Smooth endive (`Eskariol`/`Escariol`) and curly endive (`Frisée`) are the
+  same botanical species (*Cichorium endivia*) with the same plant part, a
+  single head harvest, and very similar spacing, nutrient demand, and yield.
+  They are one crop species, `Endivie`; `Eskariol`, `Escariol`, `Frisée` and
+  `Endiviensalat` are search aliases of it, and smooth vs. curly is a variety
+  attribute. `Chicorée` (forced *Cichorium intybus*) and `Radicchio` are *not*
+  part of this group — different cultivation and harvest logic — and stay
+  species of their own.
 
 ## Rule of thumb
 
@@ -117,7 +127,8 @@ Rules:
   migration in `backend/crops/migrations/` that syncs it —
   `0014_crop_species_search_aliases.py` for synonyms and
   `0015_crop_species_regional_display_names.py` for regional names are the
-  current patterns. Both merge into what is stored instead of overwriting it, so
+  current patterns; `0016_endive_search_aliases.py` shows a targeted follow-up
+  that adds aliases to a single species. Both merge into what is stored instead of overwriting it, so
   an alias curated outside the seed list survives.
 - Renaming the canonical name of a species that is already published needs a
   migration that renames — or merges — the existing row, so published crops
