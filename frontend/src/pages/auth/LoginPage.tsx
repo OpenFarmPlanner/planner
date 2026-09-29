@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/useAuth';
 import { AuthApiError } from '../../auth/authApi';
 import { getAuthenticatedAppDestination } from '../../auth/authDestination';
 import { useTranslation } from '../../i18n';
+import ActivationEmailResendPanel from '../../components/auth/ActivationEmailResendPanel';
 import SocialLoginButtons from '../../components/auth/SocialLoginButtons';
 import SocialLoginLegalNotice from '../../components/auth/SocialLoginLegalNotice';
 import { AuthPasswordField } from './AuthPasswordField';
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pendingDeletionAt, setPendingDeletionAt] = useState<string | null>(null);
+  const [unactivatedAccount, setUnactivatedAccount] = useState<{ email: string; senderEmail: string | null } | null>(null);
   const [pendingInvitation, setPendingInvitation] = useState<InvitationPublicStatus | null>(null);
   const nextPath = getNextFromSearch(location.search);
   const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
@@ -53,9 +55,11 @@ export default function LoginPage() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setUnactivatedAccount(null);
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      const me = await login(email.trim().toLowerCase(), password);
+      const me = await login(normalizedEmail, password);
       const target = getAuthenticatedAppDestination(me);
       const destination = nextPath ?? (from?.pathname ? `${from.pathname}${from.search ?? ''}` : target);
       navigate(destination, { replace: true });
@@ -63,6 +67,10 @@ export default function LoginPage() {
       if (err instanceof AuthApiError && err.code === 'account_pending_deletion') {
         setPendingDeletionAt(err.scheduledDeletionAt ?? null);
         setError(err.message);
+      } else if (err instanceof AuthApiError && err.code === 'account_not_activated') {
+        const senderEmail = err.payload?.sender_email;
+        setUnactivatedAccount({ email: normalizedEmail, senderEmail: typeof senderEmail === 'string' ? senderEmail : null });
+        setError(t('auth:login.accountNotActivated'));
       } else {
         setError(err instanceof Error ? err.message : t('auth:login.failed'));
       }
@@ -98,6 +106,9 @@ export default function LoginPage() {
             </Alert>
           ) : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
+          {unactivatedAccount ? (
+            <ActivationEmailResendPanel email={unactivatedAccount.email} senderEmail={unactivatedAccount.senderEmail} />
+          ) : null}
           {pendingDeletionAt ? (
             <Alert severity="warning">
               {t('auth:login.pendingDeletion', { date: new Date(pendingDeletionAt).toLocaleString('de-DE') })}

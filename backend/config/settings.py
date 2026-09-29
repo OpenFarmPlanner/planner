@@ -534,6 +534,13 @@ if not DEBUG:
 # attempt, not only ones that created an account).
 THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP = _registration_success_ip_rate(DJANGO_ENV)
 
+# Per-address limits for resending the activation email, enforced in
+# accounts/activation_resend.py regardless of whether the address has an account.
+ACTIVATION_RESEND_COOLDOWN_SECONDS = int(
+    _env_str('ACTIVATION_RESEND_COOLDOWN_SECONDS', '60') or '60'
+)
+ACTIVATION_RESEND_MAX_PER_HOUR = int(_env_str('ACTIVATION_RESEND_MAX_PER_HOUR', '5') or '5')
+
 # Cloudflare Turnstile bot check on registration — see accounts/turnstile.py and
 # docs/account-trust-levels.md. Enforced only when the secret key is set; each
 # deployment (staging, production) has its own site/secret key pair, and the
