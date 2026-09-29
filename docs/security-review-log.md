@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Endive search aliases (PR #706, `claude/cool-allen-68smme` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff against `main`: seed data
+synonyms, data migration `crops/0016_endive_search_aliases.py`, its tests and
+`docs/crop-taxonomy-guidelines.md`.
+
+**Findings:** None at any confidence level.
+
+- The migration uses only hard-coded strings and the ORM (no raw SQL, no user
+  input) and is reversible; no endpoints, permissions or data flows changed.
+
+---
+
 ## 2026-09-29 — Claude — Privacy policy: Cloudflare and Turnstile (PR #704, `claude/serene-keller-hci9oz` vs `main`)
 
 **Scope:** Never previously reviewed. Full diff against `main`: privacy policy
