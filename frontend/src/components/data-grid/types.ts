@@ -123,6 +123,11 @@ export interface EditableDataGridProps<T extends EditableRow> {
    */
   isNewRowEmpty?: (row: T) => boolean;
   isSaveErrorHandled?: (error: unknown) => boolean;
+  /**
+   * Optional action (e.g. a link to fix the cause) shown inside the save
+   * error alert for a rejected save of `row`.
+   */
+  getSaveErrorAction?: (error: unknown, row: T) => ReactNode;
   surfaceSizing?: 'contentFit' | 'fullWorkspace' | 'compact';
   paginationPageSizeOptions?: number[];
   initialPageSize?: number;

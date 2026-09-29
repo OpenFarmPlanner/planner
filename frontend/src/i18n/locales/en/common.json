@@ -153,7 +153,7 @@
     "invalidNumberExample": "Please enter a valid number, e.g. 3.9",
     "areaInputPositive": "The value must be greater than 0.",
     "areaInputPlantsCropRequired": "Select a crop to calculate the area from the plant count.",
-    "areaInputPlantsSpacingMissing": "This crop is missing valid plant spacing. The area cannot be calculated from the plant count.",
+    "areaInputPlantsSpacingMissing": "This crop is missing its plant or row spacing, so we cannot calculate the area from the plant count.",
     "bedAreaExceeded": "The area entered exceeds the maximum area available on this bed.",
     "availableArea": "Remaining area available"
   },

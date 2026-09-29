@@ -284,6 +284,16 @@ means "cancel" while every other exit reason falls through to
 inline errors intact. For planting plans specifically, incomplete rows may be
 saved as drafts as long as either a crop or a bed is selected.
 
+A page can attach a fix-it action to the grid's save error alert through
+`getSaveErrorAction(error, row)`. The action is shown only while that exact
+message is on screen, and any later error or a successful save drops it.
+Planting plans use this for the missing-spacing rejection: the alert gets a
+"Kultur bearbeiten" link (`CropSpacingEditAction`). The mobile form dialog
+renders the same component, so both breakpoints offer the same fix. The link
+opens the general Kultur when a Sorte inherits its spacing, and opens the
+Sorte only when its own stored spacing overrides the Kultur with an unusable
+value (`resolveSpacingEditCropId`).
+
 ## Custom edit cells
 
 MUI's stock edit cells didn't fit a few OpenFarmPlanner-specific needs:

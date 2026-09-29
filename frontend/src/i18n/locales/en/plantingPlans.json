@@ -68,7 +68,8 @@
   "errors": {
     "load": "Failed to load planting plans",
     "save": "Failed to save planting plan",
-    "delete": "Failed to delete planting plan"
+    "delete": "Failed to delete planting plan",
+    "editCropSpacing": "Edit crop"
   },
   "messages": {
     "deleted": "Planting plan deleted",

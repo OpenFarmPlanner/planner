@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractApiErrorMessage, isAuthenticationExpiredError } from '../api/errors';
+import { extractApiErrorMessage, isAreaInputSpacingMissingError, isAuthenticationExpiredError } from '../api/errors';
+import i18n from '../i18n/config';
 
 const fallbackMessage = 'Ein Fehler ist aufgetreten';
 
@@ -241,8 +242,8 @@ describe('extractApiErrorMessage', () => {
 
   it('localizes planting plan area input validation errors', () => {
     const t = createT({
-      'validation.areaInputPositive': 'Der Wert muss größer als 0 sein.',
-      'validation.areaInputPlantsSpacingMissing': 'Für diese Kultur fehlen gültige Pflanzabstände. Die Fläche kann nicht aus der Pflanzenanzahl berechnet werden.',
+      'common:validation.areaInputPositive': 'Der Wert muss größer als 0 sein.',
+      'common:validation.areaInputPlantsSpacingMissing': 'Für diese Kultur fehlen gültige Pflanzabstände. Die Fläche kann nicht aus der Pflanzenanzahl berechnet werden.',
       'common:errorFieldLabels.area_input_value': 'Fläche',
       'common:errorFieldLabels.area_input_unit': 'Flächeneingabe',
     });
@@ -259,5 +260,35 @@ describe('extractApiErrorMessage', () => {
     ].join('\n'));
   });
 
+  it('localizes the missing-spacing error with a page-namespace t (planting plans)', () => {
+    // Regression: the planting-plans page resolves keys in its own namespace,
+    // which left this message in English on the mobile dialog.
+    const t = i18n.getFixedT('de', ['plantingPlans', 'common']) as (key: string) => string;
+    const error = createAxiosError(400, {
+      area_input_unit: ['Crop spacing data is missing or invalid. Cannot calculate area from plant count.'],
+    });
 
+    expect(extractApiErrorMessage(error, t, fallbackMessage)).toBe(
+      'Flächeneingabe: Für diese Kultur fehlen Pflanz- oder Reihenabstand. '
+      + 'Wir können die Fläche daher nicht aus der Pflanzenanzahl berechnen.',
+    );
+  });
+
+
+});
+
+describe('isAreaInputSpacingMissingError', () => {
+  it('detects the backend missing-spacing rejection', () => {
+    const error = createAxiosError(400, {
+      area_input_unit: ['Crop spacing data is missing or invalid. Cannot calculate area from plant count.'],
+    });
+    expect(isAreaInputSpacingMissingError(error)).toBe(true);
+  });
+
+  it('ignores other area input errors and non-axios errors', () => {
+    expect(isAreaInputSpacingMissingError(createAxiosError(400, {
+      area_input_unit: ['Crop must be selected to input area as plant count.'],
+    }))).toBe(false);
+    expect(isAreaInputSpacingMissingError(new Error('boom'))).toBe(false);
+  });
 });

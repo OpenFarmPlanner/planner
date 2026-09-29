@@ -217,6 +217,7 @@ export function EditableDataGrid<T extends EditableRow>({
   onBeforeSaveRow,
   isNewRowEmpty = isEmptyNewDraftRow,
   isSaveErrorHandled,
+  getSaveErrorAction,
   surfaceSizing,
   paginationPageSizeOptions,
   initialPageSize = 25,
@@ -237,6 +238,9 @@ export function EditableDataGrid<T extends EditableRow>({
   const [stableRowOrder, setStableRowOrder] = useState<GridRowId[]>([]);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [error, setError] = useState<string>('');
+  // Tied to the message it was created for, so any later error (or clearing
+  // the error) drops the action without touching every setError call site.
+  const [saveErrorAction, setSaveErrorAction] = useState<{ message: string; action: ReactNode } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [dataFetched, setDataFetched] = useState<boolean>(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -1220,6 +1224,7 @@ export function EditableDataGrid<T extends EditableRow>({
       // Extract user-friendly error message
       const errorMessage = extractApiErrorMessage(err, t, saveErrorMessage);
       setError(errorMessage);
+      setSaveErrorAction({ message: errorMessage, action: getSaveErrorAction?.(err, rowAfterSaveGate) ?? null });
       console.error('Error saving data:', err);
       throw new Error(errorMessage, { cause: err });
     }
@@ -1227,6 +1232,7 @@ export function EditableDataGrid<T extends EditableRow>({
     api,
     clearSavedRowInteractionState,
     getRowValidationErrors,
+    getSaveErrorAction,
     isSaveErrorHandled,
     mapToApiData,
     mapToRow,
@@ -2510,7 +2516,15 @@ export function EditableDataGrid<T extends EditableRow>({
 
   return (
     <>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={saveErrorAction?.message === error ? saveErrorAction.action : undefined}
+        >
+          {error}
+        </Alert>
+      )}
       {showContextMenuHint ? (
         <ContextMenuHint
           variant="desktop"

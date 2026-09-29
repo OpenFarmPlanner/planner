@@ -7,7 +7,7 @@
  * @returns The Planting Plans page component
  */
 
-import { useCallback, useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { isTypingInEditableElement } from "../hooks/useKeyboardShortcuts";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type {
@@ -50,7 +50,7 @@ import {
   type PlantingPlan,
 } from "../api/api";
 import type { CultivationType } from "../api/types";
-import { extractApiErrorMessage } from "../api/errors";
+import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
 import {
   formatLocalizedNumberForInput,
   parseLocalizedNumber,
@@ -98,11 +98,12 @@ import {
 import { AreaAssignmentDialog } from "../components/planting-plans/AreaAssignmentDialog";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName } from "../crops/cropDisplay";
-import { getEffectiveCropValue } from "../crops/varietyValueSource";
+import { getEffectiveCropValue, resolveSpacingEditCropId } from "../crops/varietyValueSource";
 
 import { useAreaValidationDialog, type AreaValidationDialogState } from "./useAreaValidationDialog";
 import { AreaValidationDialog } from "../components/planting-plans/AreaValidationDialog";
 import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFormDialog";
+import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import {
   areRowsSemanticallyEqual,
@@ -217,6 +218,7 @@ function PlantingPlans() {
     () => createEmptyMobileCreateForm(),
   );
   const [mobileCreateError, setMobileCreateError] = useState("");
+  const [mobileCreateErrorAction, setMobileCreateErrorAction] = useState<{ message: string; action: ReactNode } | null>(null);
   const [mobileEditId, setMobileEditId] = useState<number | null>(null);
   const [mobileLastEditedField, setMobileLastEditedField] = useState<
     "area_m2" | "plants_count" | null
@@ -242,6 +244,28 @@ function PlantingPlans() {
     },
     onError: setMobileCreateError,
   });
+
+  // Desktop grid and mobile dialog share this so both offer the same fix
+  // when a plant-count area cannot be derived for lack of crop spacing.
+  const getCropSpacingErrorAction = useCallback((error: unknown, cropId: unknown): ReactNode => {
+    if (!isAreaInputSpacingMissingError(error)) {
+      return null;
+    }
+    const crop = crops.find((item) => item.id === Number(cropId));
+    const targetCropId = crop ? resolveSpacingEditCropId(crop) : undefined;
+    return targetCropId ? <CropSpacingEditAction cropId={targetCropId} /> : null;
+  }, [crops]);
+
+  const getGridSaveErrorAction = useCallback(
+    (error: unknown, row: PlantingPlanRow): ReactNode => getCropSpacingErrorAction(error, row.crop),
+    [getCropSpacingErrorAction],
+  );
+
+  const showMobileSaveError = (error: unknown): void => {
+    const message = extractApiErrorMessage(error, t, t("plantingPlans:errors.save"));
+    setMobileCreateError(message);
+    setMobileCreateErrorAction({ message, action: getCropSpacingErrorAction(error, mobileCreateForm.crop) });
+  };
 
   const replacePlantingPlanSearchParams = useCallback((nextParams: URLSearchParams): void => {
     const browserPathname = window.location.pathname;
@@ -1256,9 +1280,7 @@ function PlantingPlans() {
       closeMobileCreateDialog();
       await gridCommandApiRef.current?.reload();
     } catch (error) {
-      setMobileCreateError(
-        extractApiErrorMessage(error, t, t("plantingPlans:errors.save")),
-      );
+      showMobileSaveError(error);
     }
   };
 
@@ -1399,9 +1421,7 @@ function PlantingPlans() {
       closeMobileCreateDialog();
       await gridCommandApiRef.current?.reload();
     } catch (error) {
-      setMobileCreateError(
-        extractApiErrorMessage(error, t, t("plantingPlans:errors.save")),
-      );
+      showMobileSaveError(error);
     }
   };
   const hasFields = fields.length > 0;
@@ -1643,7 +1663,8 @@ function PlantingPlans() {
               note_attachment_count: 0,
               isNew: true,
             })}
-            isNewRowEmpty={isEmptyNewPlantingPlanRow}
+          getSaveErrorAction={getGridSaveErrorAction}
+          isNewRowEmpty={isEmptyNewPlantingPlanRow}
           initialRow={
             !isMobile && (initialSelection.cropId || initialSelection.bedId)
               ? {
@@ -1937,6 +1958,9 @@ function PlantingPlans() {
         form={mobileCreateForm}
         setForm={setMobileCreateForm}
         error={mobileCreateError}
+        errorAction={
+          mobileCreateErrorAction?.message === mobileCreateError ? mobileCreateErrorAction.action : undefined
+        }
         cropOptions={cropOptions}
         bedOptions={bedOptions}
         cultivationTypeOptions={cultivationTypeOptions}
