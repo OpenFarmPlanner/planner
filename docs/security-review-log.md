@@ -40,6 +40,22 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #710 (activation resend)
+
+**Scope:** `git diff origin/main...HEAD` of `claude/dreamy-bardeen-ecmz1b`:
+`accounts/activation_resend.py`, `ResendActivationView` limits, `sender_email`
+in register/login responses, and the frontend resend panel.
+
+**Findings:** No new issues.
+
+- The per-address limit runs before the account lookup and keys on a hash of
+  the normalized address, so unknown, active and pending addresses get
+  identical responses (no enumeration). The IP throttle scope stays in place.
+- `sender_email` is public deployment config, not user data. The frontend
+  renders it as plain text (no `dangerouslySetInnerHTML`, no unescaped URLs).
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #707 (Turnstile on registration)
 
 **Scope:** `git diff origin/main...HEAD` of `claude/sweet-darwin-vkesx2`:
