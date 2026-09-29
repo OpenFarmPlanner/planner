@@ -167,7 +167,7 @@ describe('PrivacyPolicyPage', () => {
   it('uses a concrete revision date instead of a generic month/year stamp', () => {
     renderPrivacyPolicyPage();
 
-    expect(screen.getByText(/Stand: 18\. August 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Stand: 29\. September 2026/)).toBeInTheDocument();
   });
 
   it('describes Google sign-in as an active recipient without claiming Microsoft is active', () => {
@@ -181,6 +181,19 @@ describe('PrivacyPolicyPage', () => {
     expect(screen.getByText(/unter dem EU-U\.S\. Data Privacy Framework \(DPF\) zertifiziert/)).toBeInTheDocument();
     expect(screen.getByText(/Angemessenheitsbeschluss nach Art\. 45 DSGVO/)).toBeInTheDocument();
     expect(screen.getByText(/Anmeldung mit Microsoft-Konto ist im Quellcode von OpenFarmPlanner vorbereitet, aber derzeit nicht aktiviert/)).toBeInTheDocument();
+  });
+
+  it('describes Cloudflare and Turnstile under legitimate interest with an SCC-based US transfer', () => {
+    renderPrivacyPolicyPage();
+
+    expect(screen.getByRole('heading', { name: /Cloudflare \(DNS, CDN und Sicherheit\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Bot-Schutz bei der Registrierung \(Cloudflare Turnstile\)/ })).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare als Reverse Proxy vor unseren Server bei Uberspace/)).toBeInTheDocument();
+    expect(screen.getByText(/klassische Bilderrätsel sind dafür nicht nötig/)).toBeInTheDocument();
+    expect(screen.getByText(/ist keine gesonderte Einwilligung erforderlich/)).toBeInTheDocument();
+    expect(screen.getAllByText(/https:\/\/www\.cloudflare\.com\/privacypolicy\//)).toHaveLength(2);
+    expect(screen.getByText(/an die Cloudflare, Inc\. mit Sitz in den USA übermittelt/)).toBeInTheDocument();
+    expect(screen.getByText(/Standardvertragsklauseln \(Art\. 46 Abs\. 2 lit\. c DSGVO\)/)).toBeInTheDocument();
   });
 
   it('no longer lists the supplier name among publicly published crop data', () => {

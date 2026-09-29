@@ -40,6 +40,21 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Privacy policy: Cloudflare and Turnstile (PR #704, `claude/serene-keller-hci9oz` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff against `main`: privacy policy
+text (de/en `home.json`), the two new sections in `PrivacyPolicyPage.tsx`, the
+privacy consent version bump in `backend/accounts/consent.py`, and the test.
+
+**Findings:** None at any confidence level.
+
+- Content is static i18n text rendered through the existing section renderer;
+  no new unsafe React APIs, no new endpoints, permissions, or data flows.
+- The consent version bump (`2026-09-29`) matches the policy "Stand" date and
+  only forces re-acceptance; it opens no auth bypass.
+
+---
+
 ## 2026-09-29 — Claude — Backend test-suite speedup (PR #703, `claude/serene-tesla-u1ag0v` vs `main`)
 
 **Scope:** Never previously reviewed. Full diff against `main`:
