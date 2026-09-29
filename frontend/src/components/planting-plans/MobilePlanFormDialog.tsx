@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useRef } from "react";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import {
@@ -45,6 +45,8 @@ interface MobilePlanFormDialogProps {
   form: MobileCreateFormState;
   setForm: Dispatch<SetStateAction<MobileCreateFormState>>;
   error: string;
+  /** Optional fix-it action shown inside the error alert. */
+  errorAction?: ReactNode;
   cropOptions: SearchableSelectOption[];
   bedOptions: SearchableSelectOption[];
   cultivationTypeOptions: CultivationTypeSelectOption[];
@@ -70,6 +72,7 @@ export function MobilePlanFormDialog({
   form,
   setForm,
   error,
+  errorAction,
   cropOptions,
   bedOptions,
   cultivationTypeOptions,
@@ -105,7 +108,21 @@ export function MobilePlanFormDialog({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {error ? <Alert severity="error">{error}</Alert> : null}
+          {error ? (
+            <Alert
+              severity="error"
+              action={errorAction}
+              // The dialog is too narrow for the action beside the message,
+              // so it gets its own line below the text.
+              sx={{
+                flexWrap: "wrap",
+                "& .MuiAlert-message": { flex: "1 1 0", minWidth: 0 },
+                "& .MuiAlert-action": { flexBasis: "100%", justifyContent: "flex-end", pt: 0, mr: 0 },
+              }}
+            >
+              {error}
+            </Alert>
+          ) : null}
           <FormControl sx={wideFieldSx}>
             <InputLabel>{t("plantingPlans:columns.crop")}</InputLabel>
             <Select

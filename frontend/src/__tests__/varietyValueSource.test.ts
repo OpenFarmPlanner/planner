@@ -5,6 +5,7 @@ import {
   getEffectiveCropValue,
   getVarietyOwnValueSource,
   isEmptyCropValue,
+  resolveSpacingEditCropId,
   stripValuesMatchingBaseline,
 } from '../crops/varietyValueSource';
 import type { Crop } from '../api/types';
@@ -153,5 +154,19 @@ describe('stripValuesMatchingBaseline', () => {
 
     const result = stripValuesMatchingBaseline(draft, baseline, emptyValueFor);
     expect(result.thousand_kernel_weight_g).toBe(3.2);
+  });
+});
+
+describe('resolveSpacingEditCropId', () => {
+  it('returns the crop itself when it has no general Kultur', () => {
+    expect(resolveSpacingEditCropId({ id: 5, general_crop: null })).toBe(5);
+  });
+
+  it('points a Sorte that inherits spacing to its general Kultur', () => {
+    expect(resolveSpacingEditCropId({ id: 7, general_crop: 3, row_spacing_cm: 30 })).toBe(3);
+  });
+
+  it('keeps a Sorte whose own spacing overrides the Kultur with an unusable value', () => {
+    expect(resolveSpacingEditCropId({ id: 7, general_crop: 3, distance_within_row_cm: 0 })).toBe(7);
   });
 });

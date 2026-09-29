@@ -153,7 +153,7 @@
     "invalidNumberExample": "Bitte gib einen gültigen Zahlenwert ein, z. B. 3,9",
     "areaInputPositive": "Der Wert muss größer als 0 sein.",
     "areaInputPlantsCropRequired": "Bitte wähle eine Kultur aus, um die Fläche aus der Pflanzenanzahl zu berechnen.",
-    "areaInputPlantsSpacingMissing": "Für diese Kultur fehlen gültige Pflanzabstände. Die Fläche kann nicht aus der Pflanzenanzahl berechnet werden.",
+    "areaInputPlantsSpacingMissing": "Für diese Kultur fehlen Pflanz- oder Reihenabstand. Wir können die Fläche daher nicht aus der Pflanzenanzahl berechnen.",
     "bedAreaExceeded": "Die eingetragene Fläche überschreitet die maximal verfügbare Fläche dieses Beets.",
     "availableArea": "Verfügbare Restfläche"
   },

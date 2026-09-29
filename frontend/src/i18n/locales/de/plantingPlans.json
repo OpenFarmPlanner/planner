@@ -68,7 +68,8 @@
   "errors": {
     "load": "Fehler beim Laden der Anbaupläne",
     "save": "Fehler beim Speichern des Anbauplans",
-    "delete": "Fehler beim Löschen des Anbauplans"
+    "delete": "Fehler beim Löschen des Anbauplans",
+    "editCropSpacing": "Kultur bearbeiten"
   },
   "messages": {
     "deleted": "Anbauplan gelöscht",
