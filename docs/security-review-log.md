@@ -55,6 +55,75 @@ privacy consent version bump in `backend/accounts/consent.py`, and the test.
 
 ---
 
+## 2026-09-29 — Claude — Backend test-suite speedup (PR #703, `claude/serene-tesla-u1ag0v` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff against `main`:
+`backend/config/settings_test.py` (MD5 password hasher), `backend/pyproject.toml`
+(coverage `core = "sysmon"`), `backend/pytest.ini` (`--dist loadscope`) and
+`docs/testing-and-ci.md`.
+
+**Findings:** None at any confidence level.
+
+- The weak `MD5PasswordHasher` is set only in `config.settings_test`, which no
+  Dockerfile, workflow or deploy path references as a settings module;
+  production keeps the default hasher from `settings.py`.
+- The remaining changes affect test scheduling and coverage measurement only.
+
+---
+
+## 2026-09-28 — Claude — Invitation email-mismatch message (PR #701, `fix/invitation-email-mismatch-message` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff of this PR against `main`: the
+new `InvitationFlowError.context` kwarg and its `**exc.context` spread into
+`api_error_response` (`backend/farm/projects/views.py`), the `email_masked`
+context added to the `email_mismatch` error raised from `accept_invitation`
+(`backend/farm/services/project_invitations.py`), the corresponding test
+assertions, the updated German/English `email_mismatch` copy, and the new
+"sign in with another account" logout-and-redirect button on
+`InvitationAcceptPage.tsx`.
+
+**Findings:** None at any confidence level.
+
+- The new `email_masked` field returned on the 403 `email_mismatch` response
+  from `AcceptProjectInvitationByTokenView`/`AcceptPendingProjectInvitationView`
+  is not a new disclosure: `PublicProjectInvitationView.get`
+  (`permission_classes = [permissions.AllowAny]`) already returns the same
+  `mask_email(invitation.email_normalized)` value via `build_public_status`
+  to anyone who merely knows the invitation token, authenticated or not
+  (`backend/farm/services/project_invitations.py:212-233`). The accept path
+  additionally requires `IsAuthenticated` and the `invitation_accept` throttle
+  scope, so it is strictly narrower than the existing public status endpoint.
+- `InvitationFlowError.context` is a generic `**context: Any` bag spread into
+  the JSON body via `api_error_response(..., **exc.context)`, but only one
+  call site in the whole codebase (`accept_invitation`'s email-mismatch raise)
+  ever populates it, with a single pre-masked string value. No other
+  `InvitationFlowError(...)` call passes context, so nothing sensitive (raw
+  email, token, stack data) can reach a client through this new plumbing.
+- The invitation-token and full-email exclusion from log output
+  (`_mask_token`, and the existing `assertNotIn(invitation.email, ...)`
+  regression test) is unchanged and still holds; only the already-public
+  masked email is added to the response body, never to logs.
+- Frontend renders `email_masked`/the current user's own email through
+  `t('result.email_mismatch', {...})` into a plain MUI `Alert`, i.e. React
+  text content, not `dangerouslySetInnerHTML` — no injection vector even if
+  either interpolated value were attacker-influenced.
+- The new "sign in with another account" button reuses the existing
+  `logout()` (`frontend/src/auth/authApi.ts`) and the existing
+  `buildInvitationAcceptPath`/`sanitizeNextPath` pair
+  (`frontend/src/pages/invitationAcceptance.ts`) to build the `next` redirect
+  target. `sanitizeNextPath` still requires a same-origin path (`startsWith
+  '/'` and rejects `'//'`), and `buildInvitationAcceptPath` only ever embeds
+  the URL-encoded invitation token, so no open-redirect was introduced.
+- No new model fields/migrations, no new writable serializer field, no
+  `.raw`/`.extra`/`cursor.execute`, no change to permission classes on any
+  invitation view (`AcceptProjectInvitationByTokenView` and friends remain
+  `IsAuthenticated`; `PublicProjectInvitationView` remains the only `AllowAny`
+  one and is unchanged by this PR).
+
+No fixes were needed as a result of this review.
+
+---
+
 ## 2026-09-28 — Claude — Engagement dashboard exclusions (PR #698, `feat/engagement-dashboard-exclusions` vs `main`)
 
 **Scope:** Never previously reviewed. Full diff of this PR against `main`:

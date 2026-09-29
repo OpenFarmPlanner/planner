@@ -1,6 +1,6 @@
 [project]
 name = "OpenFarmPlanner-backend"
-version = "1.64.0"
+version = "1.64.1"
 description = "OpenFarmPlanner - Django REST API backend for managing farm operations"
 authors = [
     {name = "OpenFarmPlanner Team", email = "info@OpenFarmPlanner.com"},
@@ -63,6 +63,15 @@ createsuperuser = "python manage.py createsuperuser"
 shell = "python manage.py shell"
 collectstatic = "python manage.py collectstatic --noinput"
 compilemessages = "python manage.py compilemessages --settings=config.settings_test --ignore=.venv"
+
+[tool.coverage.run]
+# sys.monitoring instead of the default C tracer. On Python 3.12 it measures
+# line coverage only, which is all the suite collects (no --cov-branch), and it
+# produced the identical per-file report at roughly a third less runtime; the
+# migration tests, which spend their time in Django's migration machinery, gain
+# the most. Coverage falls back to the default core, with a warning, wherever
+# sysmon is unusable (e.g. if branch coverage is switched on before 3.14).
+core = "sysmon"
 
 [tool.ruff]
 line-length = 100

@@ -12,9 +12,14 @@ gates to run locally, see the "Testing Rules" section of
 
 | Job | What it runs | Test step | Whole job |
 | --- | --- | --- | --- |
-| `frontend-tests` | `vitest run` | 3m54s-5m06s | 5m23s-9m13s |
-| `backend-tests` | `pytest` (xdist, with coverage) | 4m41s-7m29s | 5m48s-8m04s |
-| `quality` | ruff, radon, ESLint, madge | 36s | 2m00s-6m11s |
+| `frontend-tests (1-3)` | `vitest run --shard=N/3` | 1m43s-2m36s | 1m58s-2m47s |
+| `backend-tests` | `pytest` (xdist, with coverage) | 3m14s | 3m58s |
+| `quality` | ruff, radon, ESLint, madge | 38s | 1m18s |
+
+Frontend and `quality` from run 36112871261 (25 Sep 2026). `backend-tests`
+from PR #703's first CI run (29 Sep 2026), which introduced the changes
+described under "Backend" below; the same job took 10m12s / 10m52s on the
+25 Sep run.
 
 `.github/workflows/e2e.yml` runs the Playwright suite against a production
 build on pull requests, split across three shards of its own.
@@ -37,10 +42,17 @@ step* is the steadiest thing in the table. The gap is `npm ci` on a
 node_modules cache miss — 5m03s and 3m22s in the two bad rows. A
 `frontend-tests` job that looks like the pipeline's bottleneck is
 therefore almost always an install problem, not a test problem: read the
-step times before optimising the suite. What the pipeline actually waits
-for is the backend test step, ~7 minutes in three runs out of four.
+step times before optimising the suite. What the pipeline actually waited
+for was the backend test step: ~7 minutes in three runs out of four then,
+10 minutes by late September 2026, until the changes under "Backend" below.
 
-## Frontend: one job, parallel within it
+## Frontend: sharded, parallel within each shard
+
+Since September 2026 this job is a three-shard matrix again (`ci.yml`, and
+the entry in `refactoring-log.md`). The rest of this section records why it
+was briefly merged back while `backend-tests` was the critical path, and
+the measurements behind that; the sharding mechanics it describes still
+apply.
 
 What makes this suite fast is **`fileParallelism` in
 `frontend/vite.config.ts`**. Vitest runs test files across a pool of
@@ -121,17 +133,72 @@ Two things measured and rejected:
 
 ## Backend: one job, parallel workers
 
-`backend/pytest.ini` runs the suite with `-n auto --dist loadfile`
-(pytest-xdist), which took a local run from 701s to 233s with the same
-1164 passing tests and the same combined coverage. `settings_test` uses an
-in-memory SQLite database and pytest-django gives each worker its own, so
-the workers do not share state.
+`backend/pytest.ini` runs the suite with `-n auto --dist loadscope`
+(pytest-xdist). `settings_test` uses an in-memory SQLite database and
+pytest-django gives each worker its own, so the workers do not share state.
+Each worker runs its tests one after another; two tests never run on one
+database at the same time.
 
-`--dist loadfile` (rather than the default `load`) is required, not a
-preference: it keeps every test in a file on the same worker. The
-migration tests migrate the schema backwards to a specific node and
-forwards again around each test, so two of them interleaving on one
-database would fight over the schema.
+Three settings make the suite fast, and all three have to stay in place.
+Measured on a 4-core box (CI's `ubuntu-latest` also runs 4 workers), full
+suite, 1741 passing tests every time:
+
+| configuration | wall | summed test time |
+| --- | --- | --- |
+| before: `loadfile`, PBKDF2, C tracer | 508s | 1530s |
+| + MD5 hasher in `settings_test` | 401s | 1010s |
+| + `--dist loadscope` | 314s | — |
+| + coverage `core = "sysmon"` | **198s-218s** | 671s |
+| (`--dist worksteal` instead of `loadscope`) | 205s | — |
+
+The same suite took 608s of pytest time (a 10m12s test step) on CI just
+before these changes.
+
+**Test password hasher.** Django's default PBKDF2 hasher runs 1,000,000
+iterations per hash, and the suite hashes on every `create_user()`,
+`set_password()` and password login. `settings_test` sets
+`PASSWORD_HASHERS` to MD5, as Django's testing docs recommend. On its own
+it took the five slowest API test files (`test_projects_api`,
+`test_auth_api`, `test_public_crops_api`, `test_engagement_dashboard`,
+`test_agent_api_tokens`) from 323s to 37s serially. Production keeps the
+default hasher; `settings_test` is only used by pytest and by
+`compilemessages`.
+
+**`--dist loadscope`, not `loadfile`.** `loadfile` pinned every file to one
+worker. `crops/tests/test_migrations_translations.py` holds six migration
+test classes that together took 339s, so that one file set the length of
+the whole run no matter how many workers there were. `loadscope` keeps each
+class together (for plain test functions, each module) but lets the classes
+of a file spread out. Keeping classes together matters for Django's
+`setUpTestData` and for any class-level migration setup (see below).
+`worksteal`, which splits classes up, measured no faster.
+
+An earlier version of this section called `loadfile` *required*, arguing
+that migration tests on one database would fight over the schema. They
+cannot: each worker has its own database and runs its tests one after
+another, and every migration test migrates forward to the leaf nodes again
+in its teardown.
+
+**Coverage on `sys.monitoring`.** `[tool.coverage.run] core = "sysmon"` in
+`backend/pyproject.toml` replaces coverage's default C tracer. On Python
+3.12 it measures line coverage only, which is all the suite collects (no
+`--cov-branch`), and the per-file report came out identical: same
+statements, same missing line numbers, 95% total. The migration tests,
+which spend their time in Django's migration machinery, gain the most:
+creating one worker's test database took 24.7s under the C tracer, 16.0s
+under sysmon and 14.5s with no coverage at all. If sysmon ever becomes
+unusable, for example because branch coverage is switched on before Python
+3.14, coverage falls back to the default core with a warning instead of
+failing.
+
+Switching to `loadscope` changed which tests share a worker, and the
+coverage report moved by eight lines: `find_demo_crop_species()`'s
+fallback in `farm/services/demo_project.py` only runs when the seeded crop
+species are missing. They go missing when an earlier `transaction=True`
+test on the same worker flushes the database, since the flush also removes
+the data migrations' seed rows. That order dependence predates this change:
+a test must not rely on the seeded catalogue being either present or
+absent.
 
 The backend job compiles application translations before pytest. The shared
 `pdm run compilemessages` command includes `--ignore=.venv` because PDM creates
@@ -144,18 +211,67 @@ that needs readable, non-interleaved output want.
 
 ### The migration tests are the expensive ones
 
-`farm/tests/test_migrations_*.py` and
-`crops/tests/test_migrations_translations.py` are 41 tests — 3.5% of the
-suite — and took 261s of the 701s serial run, about 37%. Each test's
-`setup_method` replays the migration graph down to `migrate_from` and back
-up to `migrate_to`, and `teardown_method` migrates forward to the leaf
-again, so a class with four test methods pays for four full cycles.
+`farm/tests/test_migrations_*.py`, `farm/tests/test_discussion_migration.py`
+and `crops/tests/test_migrations_*.py` are 55 tests, 3% of the suite, and
+557s of the 671s summed test time: 83%, now that the hasher no longer
+hides them. Each test's `setup_method` migrates backwards from the leaf
+nodes to `migrate_from` and forwards to `migrate_to`, and
+`teardown_method` migrates forward to the leaf nodes again. A class with
+seven test methods pays for seven full cycles. Most of that time is
+Django re-rendering model states (`StateApps.render`), not SQL.
 
-xdist absorbs most of that cost by spreading the files across workers. If
-they become the bottleneck again, the fix is to make the setup class-scoped
-so a class pays for one cycle instead of one per test — which requires
-checking that the tests in each class do not depend on a freshly migrated
-database.
+The largest classes, from the final run above:
+
+| class | tests | summed |
+| --- | --- | --- |
+| `TestPublicCropTranslationBackfill` | 7 | 136s |
+| `TestConsolidateSupplierTkgMigration` | 4 | 108s |
+| `TestCropSpeciesTranslationBackfill` | 7 | 67s |
+| `TestSupplierDataBackfillMigration` | 2 | 58s |
+| `TestRelinkGeneralPublicCropsMigration` | 3 | 54s |
+
+**The next lever, not yet done:** one migration cycle per class instead of
+one per test. That means a class-scoped fixture that migrates, seeds and
+migrates forward once, tests marked plain `django_db` so each one's writes
+roll back, and a flush once the class is done, as `transaction=True` does
+today after every test. By the table above it would take the summed
+migration time from ~557s to roughly 200s, and the local wall time from
+~200s to an estimated 110-120s. Two constraints shape it:
+
+- Tests that migrate *inside* the test body
+  (`test_migration_is_reversible`, and the two `test_reverse_*` tests)
+  cannot run inside the rolled-back transaction: SQLite's schema editor
+  refuses to run in an atomic block while foreign-key checks are on. They
+  keep a per-test cycle in a class of their own.
+- The migrate/seed/migrate boilerplate is currently copied into all 14
+  files. A shared helper should replace it, rather than a fifteenth copy.
+
+It touches every migration test file and deserves its own change, with
+its own before/after measurement.
+
+### Why not split the backend into two CI jobs
+
+A second runner is the obvious lever, and before the changes above it
+would have bought little:
+
+- **Every job pays the fixed costs again.** Setup, `pdm install`,
+  gettext, the deploy check and `compilemessages` take ~40s per job. Each
+  xdist worker then builds its test database by running all ~180
+  migrations (~16s), before running a single test.
+- **Coverage fragments.** Each job would report the coverage of only its
+  own half. A true total needs both jobs to upload their `.coverage` data
+  and a third job to combine them.
+- **It did not address the actual bottleneck.** Under `loadfile` one
+  339-second file bounded every worker. Two jobs would each have been
+  bounded by whichever half that file landed in.
+
+Both failure modes have shown up in this pipeline before: the `quality` job
+ran the identical backend suite a second time (see the next section), and
+the frontend shards were merged back because a second runner shortened a
+job that was not the critical path. With the backend test step measured
+at 3m14s on CI after these changes, below the ~5 minute E2E workflow, a split would again shorten a job that no longer holds the
+pipeline up. Re-measure on CI before revisiting it. If it comes back, the
+class-scoped migration setup above is the cheaper win.
 
 ## Why `quality` does not run the backend suite
 
@@ -302,11 +418,19 @@ the config pins comes from the runner image, which is the fast path
 
 - Keep new frontend files under `src/**/*.{test,spec}.{ts,tsx}` — that is
   what the `include` glob and the coverage config match on.
-- Watch the frontend job's runtime against the backend job's. It is a
-  single job with about two minutes of headroom; past that, re-shard it
-  (see above) rather than letting it become the critical path.
+- Watch each CI job's test step against the others'. A job only matters
+  while it is the critical path; split or shard the one that is (see
+  above), not the one that is merely long.
 - Prefer extending an existing test file, but not past the point where it
-  dominates a run. A file that is minutes long is a scheduling problem for
-  whichever worker or e2e shard it lands on, since a file never splits.
+  dominates a run. A frontend file never splits across workers or e2e
+  shards, and a backend test class never splits across xdist workers, so
+  a class or file that takes minutes is a scheduling problem for whichever
+  worker it lands on.
 - Backend tests that manipulate migrations belong in a `test_migrations_*`
-  file, so `--dist loadfile` keeps them isolated on one worker.
+  file, and must migrate forward to the leaf nodes again in their teardown,
+  so the next test on that worker starts from the current schema. Keep
+  state that several tests share inside one class: `--dist loadscope`
+  keeps a class on one worker, but not a module.
+- A backend test that needs the production password hasher, for example
+  to check hash upgrades, overrides `PASSWORD_HASHERS` in that test only.
+  Everything else runs on the fast test hasher (see above).
