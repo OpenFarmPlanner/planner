@@ -663,8 +663,8 @@ SPECTACULAR_SETTINGS = {
     'AUTHENTICATION_WHITELIST': ['farm.agent_api.authentication.ProjectApiTokenAuthentication'],
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+    # Versions must match the SRI hashes in farm/agent_api/schema_views.py.
     'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0',
-    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0/favicon-32x32.png',
     'REDOC_DIST': 'https://cdn.jsdelivr.net/npm/redoc@2.5.4',
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,

@@ -1,0 +1,19 @@
+{% comment %}
+Replaces drf-spectacular's redoc.html (see PublicRedocView): loads the pinned
+bundle with Subresource Integrity and drops the Google Fonts stylesheet, so
+viewing the reference contacts no third party besides the pinned CDN file.
+{% endcomment %}<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ title|default:"Redoc" }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body { margin: 0; padding: 0; }
+    </style>
+  </head>
+  <body>
+    <redoc spec-url="{{ schema_url }}"></redoc>
+    <script src="{{ redoc_standalone }}" integrity="{{ integrity.redoc_standalone }}" crossorigin="anonymous"></script>
+  </body>
+</html>

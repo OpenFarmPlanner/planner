@@ -40,6 +40,32 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Follow-up on PR #713 CDN finding
+
+**Scope:** the `OPEN` finding of the entry below (Redoc/Swagger UI assets from
+`cdn.jsdelivr.net` without Subresource Integrity), fixed on
+`feature/api-openapi-reference` in the commit after `1cfc4ec`.
+
+**Findings:**
+
+- `FIXED` — Missing SRI on the docs pages. `PublicRedocView` and
+  `PublicSwaggerView` now render their own templates
+  (`farm/templates/farm/api_docs/`) that load every CDN asset with a `sha384`
+  `integrity` attribute and `crossorigin="anonymous"`; the hashes live next to
+  the pinned versions in `farm/agent_api/schema_views.py`, and
+  `test_public_api_schema.py` fails if an external tag lacks them or the
+  pinned versions drift. Verified in Chromium: the pinned files render, a
+  one-byte-modified file is refused and neither UI loads. The Redoc page no
+  longer requests Google Fonts, and the unused Swagger favicon link was
+  dropped.
+- `OPEN` — Visitor IPs still reach third parties: `cdn.jsdelivr.net` for the
+  pinned bundles, and `cdn.redoc.ly`, from which the Redoc bundle itself loads
+  its footer logo image (not a script). Vendoring the bundles through
+  `collectstatic` would remove both but depends on static-file serving in the
+  `ops` repo, which was not reviewed here.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #713 (published OpenAPI reference)
 
 **Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference`:

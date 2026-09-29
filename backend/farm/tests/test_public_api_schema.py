@@ -1,5 +1,6 @@
 """Tests for the published drf-spectacular reference (/api/schema/, /api/docs/)."""
 
+import re
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,6 +11,7 @@ from django.core.management import call_command
 from drf_spectacular.generators import SchemaGenerator
 from rest_framework.test import APIClient, APITestCase
 
+from farm.agent_api.schema_views import REDOC_DIST_VERSION, SWAGGER_UI_DIST_VERSION
 from farm.models import API_TOKEN_PREFIX, Project, ProjectApiToken, ProjectMembership
 
 User = get_user_model()
@@ -172,6 +174,23 @@ class PublicDocsAccessTests(APITestCase):
         self.assertNotIn('X-CSRFToken', body)
         self.assertNotIn('csrfmiddlewaretoken', body)
         self.assertNotIn('localStorage', body)
+
+    def test_cdn_assets_carry_subresource_integrity(self):
+        for url in ('/api/docs/', '/api/docs/swagger/'):
+            body = self.client.get(url).content.decode()
+            external_tags = re.findall(r'<(?:script|link)[^>]+(?:src|href)="https://[^>]*>', body)
+
+            self.assertTrue(external_tags, url)
+            for tag in external_tags:
+                self.assertRegex(tag, r'integrity="sha384-[A-Za-z0-9+/=]{64}"', tag)
+                self.assertIn('crossorigin="anonymous"', tag)
+            self.assertNotIn('fonts.googleapis.com', body)
+
+    def test_pinned_cdn_versions_match_the_integrity_hashes(self):
+        spectacular = settings.SPECTACULAR_SETTINGS
+
+        self.assertTrue(spectacular['SWAGGER_UI_DIST'].endswith(f'@{SWAGGER_UI_DIST_VERSION}'))
+        self.assertTrue(spectacular['REDOC_DIST'].endswith(f'@{REDOC_DIST_VERSION}'))
 
     def test_api_guide_file_exists(self):
         self.assertTrue(Path(settings.API_GUIDE_PATH).is_file())

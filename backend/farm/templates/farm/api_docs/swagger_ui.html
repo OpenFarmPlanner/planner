@@ -1,0 +1,26 @@
+{% comment %}
+Replaces drf-spectacular's swagger_ui.html (see PublicSwaggerView): the pinned
+CDN assets carry Subresource Integrity. The favicon is left out because it is
+not covered by SRI and would be a request for no functional benefit.
+{% endcomment %}<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ title|default:"Swagger" }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ swagger_ui_css }}" integrity="{{ integrity.swagger_ui_css }}" crossorigin="anonymous">
+    <style>
+      html { box-sizing: border-box; overflow-y: scroll; }
+      *, *:after, *:before { box-sizing: inherit; }
+      body { background: #fafafa; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="{{ swagger_ui_bundle }}" integrity="{{ integrity.swagger_ui_bundle }}" crossorigin="anonymous"></script>
+    <script src="{{ swagger_ui_standalone }}" integrity="{{ integrity.swagger_ui_standalone }}" crossorigin="anonymous"></script>
+    <script>
+    {% include template_name_js %}
+    </script>
+  </body>
+</html>
