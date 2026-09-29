@@ -40,6 +40,21 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #714 (planting-plan page search)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`: read-only
+`crop_species_search_names` on `CropSerializer`, and the client-side search,
+filter and highlight code.
+
+**Findings:** No issues. The new serializer field is read-only and exposes
+only global reference species names (already exposed via
+`crop_species_translations`), adds no writable fields and no new queryset. The
+highlight component renders through React text nodes, with no
+`dangerouslySetInnerHTML`. Search and filtering run in the browser on
+already-scoped data.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #710 (re-review, login message localization)
 
 **Scope:** `git diff origin/main...HEAD` including commit `40929471`
