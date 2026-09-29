@@ -163,3 +163,24 @@ export function getVarietyOwnValueSource(
   const cropValue = speciesCrop[field];
   return areCropValuesEqual(ownValue, cropValue) ? null : 'ownValue';
 }
+
+const SPACING_FIELDS = ['row_spacing_cm', 'distance_within_row_cm'] as const;
+
+/**
+ * The crop whose edit view fixes missing plant spacing for `crop`. A Sorte
+ * that leaves spacing empty inherits it live from its general Kultur, so the
+ * value belongs there; only a Sorte that stores an unusable spacing of its own
+ * (which overrides the Kultur) has to be fixed on the Sorte itself.
+ */
+export function resolveSpacingEditCropId(
+  crop: Pick<Crop, 'id' | 'general_crop' | typeof SPACING_FIELDS[number]>,
+): number | undefined {
+  if (!crop.general_crop) {
+    return crop.id;
+  }
+  const hasInvalidOwnSpacing = SPACING_FIELDS.some((field) => {
+    const value = crop[field];
+    return !isEmptyCropValue(value) && !(typeof value === 'number' && value > 0);
+  });
+  return hasInvalidOwnSpacing ? crop.id : crop.general_crop;
+}

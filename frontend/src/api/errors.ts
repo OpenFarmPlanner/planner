@@ -50,6 +50,9 @@ function translatedOrFallback(t: TFunction, key: string, fallback: string): stri
 }
 
 
+const AREA_INPUT_SPACING_MISSING_MESSAGE =
+  'crop spacing data is missing or invalid. cannot calculate area from plant count.';
+
 const backendMessageMap: Record<string, string> = {
   'this field is required.': 'validation.required',
   'a crop with this name already exists.': 'validation.cropNameUnique',
@@ -73,9 +76,11 @@ const backendMessageMap: Record<string, string> = {
   'crop does not belong to the active project.': 'errors.cropProjectMismatch',
   'this crop species already exists or has already been proposed.': 'library.publishWizard.speciesAlreadyExists',
   'please enter a valid numeric value, e.g. 3.9.': 'validation.invalidNumberExample',
-  'area input value must be greater than 0.': 'validation.areaInputPositive',
-  'crop must be selected to input area as plant count.': 'validation.areaInputPlantsCropRequired',
-  'crop spacing data is missing or invalid. cannot calculate area from plant count.': 'validation.areaInputPlantsSpacingMissing',
+  // Namespaced explicitly: callers resolve `t` in their page namespace, which
+  // does not carry these planting-plan area keys.
+  'area input value must be greater than 0.': 'common:validation.areaInputPositive',
+  'crop must be selected to input area as plant count.': 'common:validation.areaInputPlantsCropRequired',
+  [AREA_INPUT_SPACING_MISSING_MESSAGE]: 'common:validation.areaInputPlantsSpacingMissing',
 };
 
 const authenticationExpiredDetails = new Set([
@@ -216,6 +221,27 @@ export function extractApiErrorMessage(
 
   // Fallback to generic error message
   return translatedOrFallback(t, 'errors.generic', fallbackMessage);
+}
+
+
+/**
+ * Whether a planting-plan save was rejected because the selected crop has no
+ * usable spacing, so the area cannot be derived from a plant count.
+ */
+export function isAreaInputSpacingMissingError(error: unknown): boolean {
+  if (!axios.isAxiosError(error) || error.response?.status !== 400) {
+    return false;
+  }
+  const data: unknown = error.response.data;
+  if (!data || typeof data !== 'object' || !('area_input_unit' in data)) {
+    return false;
+  }
+  const messages = data.area_input_unit;
+  const list = Array.isArray(messages) ? messages : [messages];
+  return list.some((message) => (
+    typeof message === 'string'
+    && message.trim().toLowerCase() === AREA_INPUT_SPACING_MISSING_MESSAGE
+  ));
 }
 
 
