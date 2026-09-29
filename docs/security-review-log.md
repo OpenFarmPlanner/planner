@@ -40,6 +40,22 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Backend test-suite speedup (PR #703, `claude/serene-tesla-u1ag0v` vs `main`)
+
+**Scope:** Never previously reviewed. Full diff against `main`:
+`backend/config/settings_test.py` (MD5 password hasher), `backend/pyproject.toml`
+(coverage `core = "sysmon"`), `backend/pytest.ini` (`--dist loadscope`) and
+`docs/testing-and-ci.md`.
+
+**Findings:** None at any confidence level.
+
+- The weak `MD5PasswordHasher` is set only in `config.settings_test`, which no
+  Dockerfile, workflow or deploy path references as a settings module;
+  production keeps the default hasher from `settings.py`.
+- The remaining changes affect test scheduling and coverage measurement only.
+
+---
+
 ## 2026-09-28 — Claude — Engagement dashboard exclusions (PR #698, `feat/engagement-dashboard-exclusions` vs `main`)
 
 **Scope:** Never previously reviewed. Full diff of this PR against `main`:
