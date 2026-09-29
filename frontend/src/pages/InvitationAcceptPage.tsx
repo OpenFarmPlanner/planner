@@ -19,9 +19,10 @@ export default function InvitationAcceptPage() {
   const { t } = useTranslation("projectInvitations");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isLoading, switchActiveProject, refreshUser } = useAuth();
+  const { user, isLoading, switchActiveProject, refreshUser, logout } = useAuth();
   const [status, setStatus] = useState<AcceptStatus>("loading");
   const [message, setMessage] = useState<string>("");
+  const [emailMismatch, setEmailMismatch] = useState<boolean>(false);
   const processedTokenRef = useRef<string | null>(null);
   const terminalSuccessRef = useRef<boolean>(false);
 
@@ -71,6 +72,7 @@ export default function InvitationAcceptPage() {
       }
       processedTokenRef.current = token;
       setStatus("loading");
+      setEmailMismatch(false);
       setMessage(t("acceptPage.accepting"));
 
       try {
@@ -103,9 +105,25 @@ export default function InvitationAcceptPage() {
           "[InvitationAcceptPage] invitation acceptance failed",
           acceptError,
         );
-        const code =
-          (acceptError as { response?: { data?: { code?: string } } })?.response
-            ?.data?.code ?? "invalid_token";
+        const errorData = (
+          acceptError as {
+            response?: { data?: { code?: string; email_masked?: string } };
+          }
+        )?.response?.data;
+        const code = errorData?.code ?? "invalid_token";
+        if (code === "email_mismatch") {
+          clearInvitationRedirectStorage();
+          setStatus("error");
+          setEmailMismatch(true);
+          setMessage(
+            t("result.email_mismatch", {
+              invitedEmail: errorData?.email_masked ?? "",
+              currentEmail: user?.email ?? "",
+            }),
+          );
+          return;
+        }
+
         if (code === "already_member") {
           clearInvitationRedirectStorage();
           console.info("[InvitationAcceptPage] invitation already satisfied", {
@@ -198,6 +216,22 @@ export default function InvitationAcceptPage() {
           <Alert severity="success">{message}</Alert>
         ) : null}
         {status === "error" ? <Alert severity="error">{message}</Alert> : null}
+        {emailMismatch ? (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              void (async () => {
+                await logout();
+                navigate(
+                  `/login?next=${encodeURIComponent(buildInvitationAcceptPath(token ?? ""))}`,
+                  { replace: true },
+                );
+              })();
+            }}
+          >
+            {t("loginWithDifferentAccount")}
+          </Button>
+        ) : null}
         <Button
           variant="outlined"
           onClick={() => navigate("/app/fields-beds", { replace: true })}

@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 def _invitation_error_response(exc: InvitationFlowError) -> Response:
     """Build a consistent error response for invitation domain errors."""
     status_code = status.HTTP_403_FORBIDDEN if exc.code == 'email_mismatch' else status.HTTP_400_BAD_REQUEST
-    return api_error_response(code=exc.code, detail=exc.message, status_code=status_code)
+    return api_error_response(code=exc.code, detail=exc.message, status_code=status_code, **exc.context)
 
 
 def agent_login_consume_view(request, token: str):  # noqa: ANN001

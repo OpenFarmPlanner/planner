@@ -98,7 +98,7 @@
     "already_member": "Du bist bereits Mitglied dieses Projekts.",
     "revoked": "Diese Einladung wurde widerrufen.",
     "expired": "Diese Einladung ist abgelaufen.",
-    "email_mismatch": "Diese Einladung ist für eine andere E-Mail-Adresse bestimmt.",
+    "email_mismatch": "Diese Einladung ist für {{invitedEmail}} bestimmt, du bist aber als {{currentEmail}} eingeloggt.",
     "invalid_token": "Ungültiger Einladungslink."
   },
   "error": {

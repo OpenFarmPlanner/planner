@@ -98,7 +98,7 @@
     "already_member": "You are already a member of this project.",
     "revoked": "This invitation has been revoked.",
     "expired": "This invitation has expired.",
-    "email_mismatch": "This invitation is intended for another email address.",
+    "email_mismatch": "This invitation is intended for {{invitedEmail}}, but you are signed in as {{currentEmail}}.",
     "invalid_token": "Invalid invitation link."
   },
   "error": {
