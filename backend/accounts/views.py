@@ -72,6 +72,7 @@ from .services import (
 from .services import (
     record_verified_email as _record_verified_email,
 )
+from .turnstile import TurnstileOutcome, turnstile_enabled, verify_turnstile_token
 
 User = get_user_model()
 ACCOUNT_DELETION_GRACE_DAYS = 14
@@ -105,6 +106,10 @@ EMAIL_CHANGE_CONFIRMATION_SUCCESS_MESSAGE = _de('Deine E-Mail-Adresse wurde erfo
 EMAIL_CHANGE_INVALID_LINK_MESSAGE = _de('Der Bestätigungslink ist ungültig oder abgelaufen.')
 PASSWORD_UPDATED_MESSAGE = _de('Dein Passwort wurde erfolgreich geändert.')
 PROFILE_UPDATED_MESSAGE = _de('Dein Profil wurde erfolgreich gespeichert.')
+TURNSTILE_FAILED_MESSAGE = 'Die Sicherheitsprüfung ist fehlgeschlagen oder abgelaufen. Bitte versuche es erneut.'
+TURNSTILE_UNAVAILABLE_MESSAGE = (
+    'Die Sicherheitsprüfung ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten erneut.'
+)
 
 
 def _email_send_failed_response(message: str, status_code: int) -> Response:
@@ -134,6 +139,27 @@ def _registration_success_message() -> str:
     return REGISTRATION_LOCAL_EMAIL_MESSAGE if _uses_local_non_delivery_email_backend() else REGISTRATION_EMAIL_SENT_MESSAGE
 
 
+def _turnstile_error_response(request: Request, client_ip: str | None) -> Response | None:
+    """Verify the registration's Turnstile token; None means it may proceed."""
+    if not turnstile_enabled():
+        return None
+    raw_token = request.data.get('turnstile_token', '') if isinstance(request.data, Mapping) else ''
+    outcome = verify_turnstile_token(raw_token if isinstance(raw_token, str) else '', client_ip)
+    if outcome is TurnstileOutcome.PASSED:
+        return None
+    if outcome is TurnstileOutcome.UNAVAILABLE:
+        return api_error_response(
+            code='turnstile_unavailable',
+            detail=TURNSTILE_UNAVAILABLE_MESSAGE,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return api_error_response(
+        code='turnstile_failed',
+        detail=TURNSTILE_FAILED_MESSAGE,
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class CsrfTokenView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -160,6 +186,10 @@ class RegisterView(APIView):
         client_ip = request.META.get('REMOTE_ADDR')
         if client_ip and registration_ip_limit_exceeded(client_ip):
             raise Throttled()
+
+        turnstile_error = _turnstile_error_response(request, client_ip)
+        if turnstile_error is not None:
+            return turnstile_error
 
         serializer = RegisterSerializer(data=request.data)
         _validate_serializer_in_german(serializer)

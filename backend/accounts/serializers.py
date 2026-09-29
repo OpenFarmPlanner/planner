@@ -210,6 +210,9 @@ class RegisterSerializer(serializers.Serializer):
     # A filled value marks the submission as automated; RegisterView discards
     # it silently instead of surfacing this as a validation error.
     website = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    # Cloudflare Turnstile token; RegisterView verifies it before this
+    # serializer runs, and only when Turnstile is configured.
+    turnstile_token = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def validate_email(self, value: str) -> str:
         normalized = normalize_email_lower(value)

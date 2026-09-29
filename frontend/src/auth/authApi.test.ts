@@ -483,14 +483,22 @@ describe('auth endpoints', () => {
     },
   );
 
-  it('sends an empty display name and honeypot field by default rather than omitting them', async () => {
+  it('sends an empty display name, honeypot field and Turnstile token by default rather than omitting them', async () => {
     const fetchMock = installOkFetch();
 
     await register('a@b.de', 'pw', 'pw');
 
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      email: 'a@b.de', password: 'pw', password_confirm: 'pw', display_name: '', website: '',
+      email: 'a@b.de', password: 'pw', password_confirm: 'pw', display_name: '', website: '', turnstile_token: '',
     });
+  });
+
+  it('forwards the Turnstile token as turnstile_token', async () => {
+    const fetchMock = installOkFetch();
+
+    await register('a@b.de', 'pw', 'pw', '', '', 'token-123');
+
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ turnstile_token: 'token-123' });
   });
 
   it('forwards a non-empty honeypot value untouched', async () => {

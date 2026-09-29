@@ -10,6 +10,11 @@ from .settings import *  # noqa: F403, F401
 
 ADMIN_NOTIFICATION_EMAIL = ''
 
+# Never call Cloudflare from the test suite, even if a local .env sets a key;
+# Turnstile tests enable it explicitly with override_settings and a mock.
+TURNSTILE_SITE_KEY = ''
+TURNSTILE_SECRET_KEY = ''
+
 # Override database to use SQLite for tests
 DATABASES = {
     'default': {

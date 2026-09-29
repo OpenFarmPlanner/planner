@@ -45,7 +45,8 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Account Trust Levels](./account-trust-levels.md)** — the anti-abuse
   `new`/`established` split: how an account is promoted, the narrowed write
   throttle, which crop-library contributions get queued for moderation
-  instead of applying live, and the registration hardening layers.
+  instead of applying live, and the registration hardening layers
+  (including the Cloudflare Turnstile bot check).
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.

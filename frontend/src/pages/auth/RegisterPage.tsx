@@ -3,14 +3,24 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import { projectAPI, type InvitationPublicStatus } from '../../api/api';
+import { AuthApiError } from '../../auth/authApi';
+import { resolveTurnstileSiteKey } from '../../auth/turnstile';
 import { useAuth } from '../../auth/useAuth';
 import AccountCreationLegalNotice from '../../components/auth/AccountCreationLegalNotice';
 import SocialLoginButtons from '../../components/auth/SocialLoginButtons';
+import TurnstileWidget from '../../components/auth/TurnstileWidget';
 import { AuthPasswordField } from './AuthPasswordField';
 import { useTranslation } from '../../i18n';
 import { getNextFromSearch, getTokenFromNextPath, storeInvitationRedirect } from '../invitationAcceptance';
 import AuthPageShell from './AuthPageShell';
 import { authFormSx, authPrimaryButtonSx, authSecondaryButtonSx, authTextButtonSx, authTextFieldSx } from './authPageStyles';
+
+const TURNSTILE_SITE_KEY = resolveTurnstileSiteKey();
+
+const TURNSTILE_ERROR_MESSAGE_KEYS: Record<string, string> = {
+  turnstile_failed: 'auth:register.turnstile.rejected',
+  turnstile_unavailable: 'auth:register.turnstile.unavailable',
+};
 
 export default function RegisterPage() {
   const { user, register, resendActivation, logout } = useAuth();
@@ -23,6 +33,8 @@ export default function RegisterPage() {
   const [website, setWebsite] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -66,19 +78,40 @@ export default function RegisterPage() {
       setError(t('auth:register.passwordMismatch'));
       return;
     }
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setError(t('auth:register.turnstile.pending'));
+      return;
+    }
 
     setSubmitting(true);
     try {
       if (nextPath) {
         storeInvitationRedirect(nextPath, getTokenFromNextPath(nextPath));
       }
-      const message = await register(email.trim().toLowerCase(), password, passwordConfirm, displayName.trim(), website);
+      const message = await register(
+        email.trim().toLowerCase(),
+        password,
+        passwordConfirm,
+        displayName.trim(),
+        website,
+        turnstileToken ?? '',
+      );
       setSuccess(pendingInvitation ? t('projectInvitations:registerSuccessWithInvitation', { detail: message }) : message);
       setRegistrationSucceeded(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth:register.failed'));
+      const turnstileMessageKey = err instanceof AuthApiError && err.code ? TURNSTILE_ERROR_MESSAGE_KEYS[err.code] : undefined;
+      if (turnstileMessageKey) {
+        setError(t(turnstileMessageKey));
+      } else {
+        setError(err instanceof Error ? err.message : t('auth:register.failed'));
+      }
     } finally {
       setSubmitting(false);
+      // The backend consumes a Turnstile token on every attempt, so any
+      // further submit needs a fresh one.
+      if (TURNSTILE_SITE_KEY) {
+        setTurnstileResetSignal((current) => current + 1);
+      }
     }
   };
 
@@ -193,6 +226,13 @@ export default function RegisterPage() {
             disabled={isLoggedIn}
             autoComplete="new-password"
           />
+          {TURNSTILE_SITE_KEY && !isLoggedIn ? (
+            <TurnstileWidget
+              siteKey={TURNSTILE_SITE_KEY}
+              onTokenChange={setTurnstileToken}
+              resetSignal={turnstileResetSignal}
+            />
+          ) : null}
           <Button type="submit" variant="contained" size="large" disabled={submitting || isLoggedIn} fullWidth sx={authPrimaryButtonSx}>
             {submitting ? t('auth:register.submitting') : t('auth:register.submit')}
           </Button>

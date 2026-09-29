@@ -267,6 +267,16 @@ checked, whether mobile stayed unchanged or was intentionally changed, how
 responsive regressions were avoided for shared components, and which relevant
 tests, screenshots, or manual checks were performed.
 
+## Registration Bot Protection
+- Cloudflare Turnstile is active on the registration form only (not login or
+  other forms), on top of the honeypot and registration throttles. Details:
+  [`docs/account-trust-levels.md`](docs/account-trust-levels.md#cloudflare-turnstile).
+- Backend `.env`: `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` (the check is
+  enforced only when the secret is set). Frontend build:
+  `VITE_TURNSTILE_SITE_KEY`, which must match the backend's site key.
+- Staging (`staging.openfarmplanner.org`) and production use separate
+  Turnstile widgets with separate key pairs. Roll changes out on staging first.
+
 ## Backend Rules
 - Backend packages are managed with PDM. Use `pdm` commands and do not introduce `pip install`, `requirements.txt`, or `setup.py`.
 - For local query profiling, install the dev group (`pdm install -dG dev`) and

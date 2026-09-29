@@ -191,7 +191,9 @@ describe('RegisterPage', () => {
 
     await user.click(submitButton);
 
-    expect(registerMock).toHaveBeenCalledWith('new@example.com', 'new-safe-password-123', 'new-safe-password-123', '', '');
+    expect(registerMock).toHaveBeenCalledWith('new@example.com', 'new-safe-password-123', 'new-safe-password-123', '', '', '');
+    // Builds without VITE_TURNSTILE_SITE_KEY render no Turnstile widget.
+    expect(screen.queryByTestId('turnstile-widget')).not.toBeInTheDocument();
   }, 20000);
 
   it('shows a shared legal notice linking to the terms and the privacy policy', () => {
