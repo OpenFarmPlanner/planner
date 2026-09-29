@@ -74,7 +74,7 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        query = (request.query_params.get('q') or '').strip()
+        query = (request.query_params.get('q') or '').strip()[:services.MAX_SPECIES_SEARCH_QUERY_LENGTH]
         if not query:
             return super().list(request, *args, **kwargs)
         # Typo-tolerant ranked search (exact > prefix > similarity) replaces
