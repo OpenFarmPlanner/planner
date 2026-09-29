@@ -266,6 +266,8 @@ export async function register(
   // that autofill every form field. Forwarded as-is to the backend, which
   // discards the submission silently when it is non-empty.
   website = '',
+  // Cloudflare Turnstile token; empty when the build has no Turnstile site key.
+  turnstileToken = '',
 ): Promise<{ detail: string }> {
   await ensureCsrfCookie();
   return request<{ detail: string }>('/auth/register/', {
@@ -277,6 +279,7 @@ export async function register(
       password_confirm: passwordConfirm,
       display_name: displayName,
       website,
+      turnstile_token: turnstileToken,
     }),
   });
 }

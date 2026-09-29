@@ -264,6 +264,51 @@ Layered deliberately, so no single check is load-bearing:
   instead (effectively unlimited in `development`/`test`, 3/hour otherwise).
 - **Per-email-domain throttle.** `EmailDomainRateThrottle` bounds an attacker
   who rotates IPs but reuses one throwaway-domain family.
+- **Cloudflare Turnstile.** See [below](#cloudflare-turnstile).
+
+### Cloudflare Turnstile
+
+An invisible, behavior-based bot check on the registration form only (not
+login, password reset, or any other form). It adds a layer on top of the
+checks above; it does not replace the throttles.
+
+- **Frontend.** `components/auth/TurnstileWidget.tsx` loads Cloudflare's
+  script on demand (`auth/turnstile.ts`) and renders the widget in
+  `interaction-only` mode just above the submit button, so nothing is visible
+  unless Cloudflare asks for an interaction. The token goes out as
+  `turnstile_token` with the other registration fields. Turnstile itself
+  retries failed checks and refreshes expired tokens; the widget additionally
+  retries a failed script load (3 attempts, 10 s apart), shows a warning while
+  a check is failing, and `RegisterPage` resets the widget after every submit
+  attempt because the backend consumes each token once.
+- **Backend.** `RegisterView` calls `accounts.turnstile.verify_turnstile_token`
+  after the honeypot and per-IP cap and *before* the serializer, so a bot
+  cannot use the form to probe for existing email addresses without passing
+  the check. It posts the secret, the token, and the client IP (`REMOTE_ADDR`,
+  after `TrustedProxyRemoteAddrMiddleware`) to Cloudflare's `siteverify` API.
+  - missing, oversized, or rejected token → `400` with code `turnstile_failed`;
+  - Cloudflare unreachable, timeout, non-JSON answer, or a server-side error
+    code (`internal-error`, `invalid-input-secret`, `missing-input-secret`) →
+    `503` with code `turnstile_unavailable`. Both are mapped to German/English
+    messages in the frontend; neither creates an account.
+  - Every rejection logs one `WARNING` on the `accounts.turnstile` logger
+    (`Rejected registration: Turnstile verification failed (reason=…,
+    error_codes=…)`), with no token, IP, or email in it, so the rejection
+    rate can be counted from the logs. Unavailability logs at `ERROR`.
+- **Enabled per deployment.** The backend enforces the check only when
+  `TURNSTILE_SECRET_KEY` is set, and the frontend renders the widget only when
+  it was built with `VITE_TURNSTILE_SITE_KEY`. Local development, the test
+  suite (`settings_test.py` forces both keys empty), and E2E run without it.
+  Staging and production each have their own Turnstile widget (one per
+  hostname) and therefore their own key pair: the backend `.env` of each gets
+  that widget's `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`, and the frontend
+  build for the same deployment gets the matching `VITE_TURNSTILE_SITE_KEY`.
+  A secret without a site key (or the reverse) raises the Django system-check
+  warning `accounts.W001`/`accounts.W002`. Roll out on staging first: a
+  backend that enforces the check while its frontend was built without the
+  site key rejects every registration with `turnstile_failed`.
+- **Privacy.** Covered by the "Bot-Schutz bei der Registrierung (Cloudflare
+  Turnstile)" section of the privacy policy.
 
 ### The domain throttle is opt-in per view
 
@@ -332,6 +377,9 @@ All are read from the environment in `backend/config/settings.py`.
 | `PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER` | `20` | Cap on one account's standing moderation-queue backlog |
 | `TRUSTED_PROXY_CIDRS` | *(empty)* | CIDR ranges of reverse proxies allowed to report the real client IP |
 | `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Header read for the real client IP, once the peer is trusted |
+| `TURNSTILE_SITE_KEY` | *(empty)* | This deployment's Turnstile widget key; must match the frontend's `VITE_TURNSTILE_SITE_KEY` |
+| `TURNSTILE_SECRET_KEY` | *(empty)* | Turnstile secret; when set, registration requires a verified token |
+| `TURNSTILE_VERIFY_TIMEOUT_SECONDS` | `5` | Timeout for the `siteverify` call before answering `turnstile_unavailable` |
 
 The E2E backend raises the trust/registration rates in
 `frontend/playwright.config.ts` alongside the auth rates already raised

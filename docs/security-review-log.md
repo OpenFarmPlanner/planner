@@ -40,6 +40,75 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #707 (Turnstile on registration)
+
+**Scope:** `git diff origin/main...HEAD` of `claude/sweet-darwin-vkesx2`:
+`accounts/turnstile.py`, the `RegisterView` gate, `accounts/checks.py`,
+`TURNSTILE_*` settings, and the frontend widget/loader. Independently
+re-derived the points of the entry below.
+
+**Findings:** No new issues.
+
+- `CROSS-CONFIRMED` — client IP comes from `REMOTE_ADDR` (not headers); the
+  secret is only sent in the POST body and never logged; the token is type-
+  and length-checked before any network call; every failure yields 400/503,
+  not 500; the gate runs before the serializer, so no email enumeration
+  without passing it. Honeypot and IP throttle still run first.
+- `CROSS-CONFIRMED` (OPEN) — no app-wide CSP restricts script origins for the
+  third-party Turnstile script; pre-existing gap, deferred to a CSP rollout.
+
+---
+
+## 2026-09-29 — Claude — Cloudflare Turnstile on registration (`claude/sweet-darwin-vkesx2` vs `main`)
+
+**Scope:** Never previously reviewed (new code). Introduces Cloudflare
+Turnstile as an additional bot-protection layer on the registration form:
+`backend/accounts/turnstile.py`, the `RegisterView` gate in
+`backend/accounts/views.py`, `backend/accounts/checks.py`, the `TURNSTILE_*`
+settings, and the frontend widget (`frontend/src/auth/turnstile.ts`,
+`frontend/src/components/auth/TurnstileWidget.tsx`, `RegisterPage.tsx`). It
+complements, and does not replace, the honeypot, disposable-domain list, and
+registration throttles described in `docs/account-trust-levels.md`. Login and
+other forms are out of scope and unchanged.
+
+**Measuring it:** every rejected verification logs one `WARNING` on the
+`accounts.turnstile` logger — `Rejected registration: Turnstile verification
+failed (reason=…, error_codes=…)` — without token, IP, email, or secret, so
+later reviews can count how often the layer fires. Cloudflare being
+unreachable logs at `ERROR` instead and is not counted as a rejection.
+
+**Findings:**
+
+- **No blocking findings.** The secret is sent only in the POST body to
+  Cloudflare and never logged (a `requests` exception message carries the URL,
+  not the body); tokens are length-capped and type-checked before any network
+  call; the client IP is taken from `REMOTE_ADDR` after
+  `TrustedProxyRemoteAddrMiddleware`, so it cannot be spoofed via headers; the
+  check runs before the serializer, so the form cannot be used to probe for
+  registered email addresses without passing it; siteverify runs with a
+  timeout and every failure mode yields a 400/503 JSON response, never a 500.
+- `WONTFIX` — **Fails closed when Cloudflare is unreachable.** Registration
+  returns `503 turnstile_unavailable` while siteverify is down. Deliberate:
+  failing open would turn any outage into a bypass window; social login
+  remains available as a registration path during such an outage.
+- `WONTFIX` — **`hostname`/`action` from the siteverify response are not
+  checked.** Each deployment has its own widget whose allowed hostnames
+  Cloudflare enforces, and a token only validates against the matching
+  secret, so a staging token cannot be replayed against production. Revisit
+  if one widget is ever shared between several hostnames or forms.
+- `OPEN` — **Third-party script without a CSP.** The register page loads
+  `challenges.cloudflare.com/turnstile/v0/api.js` (on demand, only there). The
+  app has no Content-Security-Policy that would restrict script origins at
+  all; that is a pre-existing, app-wide gap, not introduced here, and should
+  be handled together with a CSP rollout.
+- **Not verified live from this session:** the sandbox blocks outbound
+  requests to `challenges.cloudflare.com`, so the siteverify call is covered
+  by mocked tests only. The staging rollout on `staging.openfarmplanner.org`
+  with the staging key pair is the first end-to-end check and must happen
+  before production keys are configured.
+
+---
+
 ## 2026-09-29 — Claude — Endive search aliases (PR #706, `claude/cool-allen-68smme` vs `main`)
 
 **Scope:** Never previously reviewed. Full diff against `main`: seed data

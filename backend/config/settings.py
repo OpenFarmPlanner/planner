@@ -534,6 +534,14 @@ if not DEBUG:
 # attempt, not only ones that created an account).
 THROTTLE_AUTH_REGISTER_SUCCESS_PER_IP = _registration_success_ip_rate(DJANGO_ENV)
 
+# Cloudflare Turnstile bot check on registration — see accounts/turnstile.py and
+# docs/account-trust-levels.md. Enforced only when the secret key is set; each
+# deployment (staging, production) has its own site/secret key pair, and the
+# frontend build needs the matching VITE_TURNSTILE_SITE_KEY.
+TURNSTILE_SITE_KEY = _env_str('TURNSTILE_SITE_KEY')
+TURNSTILE_SECRET_KEY = _env_str('TURNSTILE_SECRET_KEY')
+TURNSTILE_VERIFY_TIMEOUT_SECONDS = float(_env_str('TURNSTILE_VERIFY_TIMEOUT_SECONDS', '5') or '5')
+
 # Account trust-level promotion thresholds — see accounts/trust.py and
 # docs/account-trust-levels.md.
 TRUST_ESTABLISHED_MIN_AGE_DAYS = int(_env_str('TRUST_ESTABLISHED_MIN_AGE_DAYS', '7'))
