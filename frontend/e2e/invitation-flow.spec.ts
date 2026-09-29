@@ -52,6 +52,11 @@ async function removeInviteeMembership(
   await invokeE2EAction(request, 'remove_member', { scenario_id: scenarioId });
 }
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  return `${local[0]}***@${domain}`;
+}
+
 async function loginViaUi(page: Page, email: string, password: string): Promise<void> {
   await page.getByLabel('E-Mail').fill(email);
   // getByLabel('Passwort') also matches the MUI show/hide password toggle button
@@ -110,7 +115,9 @@ test.describe('project invitation flow', () => {
     await loginViaUi(page, fixture.outsider.email, fixture.outsider.password);
 
     await expect(
-      page.getByText('Diese Einladung ist für eine andere E-Mail-Adresse bestimmt.'),
+      page.getByText(
+        `Diese Einladung ist für ${maskEmail(fixture.invitee.email)} bestimmt, du bist aber als ${fixture.outsider.email} eingeloggt.`,
+      ),
     ).toBeVisible();
   });
 
