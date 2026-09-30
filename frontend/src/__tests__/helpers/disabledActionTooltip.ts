@@ -1,6 +1,8 @@
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
 import { expect } from 'vitest';
+
+const TOOLTIP_ENTER_DELAY_MS = 100;
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -29,5 +31,8 @@ export const tooltipOf = async (user: User, control: HTMLElement): Promise<HTMLE
 export const expectNoTooltip = async (user: User, control: HTMLElement): Promise<void> => {
   const wrapper = control.parentElement as HTMLElement;
   await user.hover(wrapper);
-  await waitFor(() => expect(wrapper).not.toHaveAttribute('aria-describedby'));
+  // MUI opens tooltips after a 100 ms enter delay; asserting immediately would pass vacuously.
+  await new Promise((resolve) => setTimeout(resolve, TOOLTIP_ENTER_DELAY_MS * 2));
+  expect(wrapper).not.toHaveAttribute('aria-describedby');
+  expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 };
