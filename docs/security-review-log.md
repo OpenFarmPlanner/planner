@@ -40,6 +40,22 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Third automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`20262015`; changes since `551d60c6` are only the merge of `main` (1.68.0,
+crop species search), which is outside this PR's scope.
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix (`551d60c6`) still in place; docs views are
+  unauthenticated by design and expose only the public schema.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
 ## 2026-09-29 — Claude — Second automated security review of PR #713 (after SRI fix)
 
 **Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
