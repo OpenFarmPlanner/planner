@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { VIEWPORTS } from './utils';
+import { setupUserWithoutProjects, VIEWPORTS } from './utils';
 
 const PASSWORD = 'e2e-safe-password-123';
 
@@ -88,4 +88,60 @@ test('login with an unconfirmed account offers the spam hint and resend', async 
   await page.getByRole('button', { name: 'E-Mail erneut senden' }).click();
   await expect(page.getByText('Wir haben die E-Mail erneut gesendet.')).toBeVisible();
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test('logged-in notice keeps both actions fully visible without horizontal scrolling', async ({ page, request }, testInfo) => {
+  const user = await setupUserWithoutProjects(request, `register-logged-in-${testInfo.workerIndex}`);
+  await page.goto('/login');
+  await page.getByRole('textbox', { name: 'E-Mail' }).fill(user.email);
+  await page.locator('input[type="password"]').fill(user.password);
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page).toHaveURL(/\/app\//);
+  await page.goto('/register');
+
+  const primary = page.getByRole('button', { name: 'Abmelden & neuen Account erstellen' });
+  const secondary = page.getByRole('button', { name: 'Zur App zurückkehren' });
+
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect(primary).toBeVisible();
+    await expect(secondary).toBeVisible();
+
+    const layout = await primary.evaluate((primaryButton) => {
+      const secondaryButton = primaryButton.nextElementSibling as HTMLElement;
+      const message = primaryButton.closest('.MuiAlert-message') as HTMLElement;
+      const notice = primaryButton.closest('.MuiAlert-root') as HTMLElement;
+      const card = notice.parentElement?.closest('.MuiPaper-root') as HTMLElement;
+      const text = message.querySelector('.MuiTypography-root') as HTMLElement;
+      const box = (element: Element) => element.getBoundingClientRect();
+      const overflows = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
+      return {
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        cardOverflows: overflows(card),
+        messageOverflows: overflows(message),
+        labelsClipped: overflows(primaryButton) || overflows(secondaryButton),
+        textLeft: box(text).left,
+        messageRight: box(message).right,
+        primary: box(primaryButton).toJSON() as DOMRect,
+        secondary: box(secondaryButton).toJSON() as DOMRect,
+      };
+    });
+    const at = `at ${viewport.key}`;
+
+    expect(layout.pageOverflow, `page overflow ${at}`).toBeLessThanOrEqual(0);
+    expect(layout.cardOverflows, `card overflow ${at}`).toBe(false);
+    expect(layout.messageOverflows, `notice overflow ${at}`).toBe(false);
+    expect(layout.labelsClipped, `clipped label ${at}`).toBe(false);
+    expect(layout.primary.left, `buttons aligned with the text ${at}`).toBeCloseTo(layout.textLeft, 0);
+    expect(layout.secondary.right, `buttons inside the notice ${at}`).toBeLessThanOrEqual(layout.messageRight + 0.5);
+
+    if (layout.primary.top === layout.secondary.top) {
+      expect(layout.secondary.left, `side-by-side buttons ${at}`).toBeGreaterThan(layout.primary.right);
+    } else {
+      expect(layout.secondary.top, `primary action on top ${at}`).toBeGreaterThan(layout.primary.bottom);
+      expect(layout.secondary.left, `stacked buttons share the left edge ${at}`).toBeCloseTo(layout.primary.left, 0);
+      expect(layout.primary.width, `stacked buttons fill the notice ${at}`).toBeCloseTo(layout.messageRight - layout.textLeft, 0);
+      expect(layout.secondary.width, `stacked buttons fill the notice ${at}`).toBeCloseTo(layout.primary.width, 0);
+    }
+  }
 });
