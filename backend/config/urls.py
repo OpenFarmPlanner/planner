@@ -18,6 +18,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from farm.agent_api.schema_views import PublicRedocView, PublicSchemaView, PublicSwaggerView
 from farm.projects.views import agent_login_consume_view
 
 def _with_prefix(path_suffix: str) -> str:
@@ -28,6 +29,20 @@ def _with_prefix(path_suffix: str) -> str:
 
 urlpatterns = [
     path(_with_prefix('admin/'), admin.site.urls),
+    # Published API reference (docs/api.md). Registered before the `api/`
+    # include so no router route can shadow these fixed paths. Deliberately
+    # not mirrored under the legacy prefix below.
+    path(_with_prefix('api/schema/'), PublicSchemaView.as_view(), name='api-schema'),
+    path(
+        _with_prefix('api/docs/'),
+        PublicRedocView.as_view(url_name='api-schema'),
+        name='api-docs',
+    ),
+    path(
+        _with_prefix('api/docs/swagger/'),
+        PublicSwaggerView.as_view(url_name='api-schema'),
+        name='api-docs-swagger',
+    ),
     # Registered exactly once, unlike the legacy-prefixed duplicates below:
     # the OAuth redirect URIs are reversed from these names and must resolve
     # to the single path registered with Google/Microsoft.

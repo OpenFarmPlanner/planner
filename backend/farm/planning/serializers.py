@@ -161,7 +161,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by']
     
-    def get_plants_count(self, obj):
+    def get_plants_count(self, obj: PlantingPlan) -> int | None:
         """Compute plant count from area and the crop's effective spacing."""
         if not obj.area_usage_sqm or not obj.crop:
             return None

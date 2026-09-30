@@ -434,3 +434,12 @@ the config pins comes from the runner image, which is the fast path
 - A backend test that needs the production password hasher, for example
   to check hash upgrades, overrides `PASSWORD_HASHERS` in that test only.
   Everything else runs on the fast test hasher (see above).
+- The published OpenAPI reference is gated by
+  `farm/tests/test_public_api_schema.py`, which runs in the normal backend
+  job: it calls `manage.py spectacular --fail-on-warn --validate`, so any
+  drf-spectacular warning (an unresolvable `SerializerMethodField`, an
+  `APIView` without a serializer) fails CI for operations in the published
+  (token-reachable) surface. It also pins that surface, so opting a view into
+  `api_token_actions` means updating `EXPECTED_OPERATIONS` there. Reproduce
+  locally with
+  `DJANGO_SETTINGS_MODULE=config.settings_test pdm run python manage.py spectacular --fail-on-warn --validate --file /dev/null`.

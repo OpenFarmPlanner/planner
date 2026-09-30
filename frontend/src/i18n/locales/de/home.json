@@ -103,6 +103,7 @@
     "imprint": "Impressum",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
+    "apiDocs": "API für Entwickler",
     "contactLabel": "Kontakt: {{email}}",
     "contactEmail": "info@openfarmplanner.org"
   },
