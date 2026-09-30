@@ -25,7 +25,7 @@ dependencies = [
 ]
 requires-python = ">=3.12"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "AGPL-3.0-or-later"}
 
 [tool.pdm]
 distribution = false
