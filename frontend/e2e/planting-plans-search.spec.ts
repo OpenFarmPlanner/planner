@@ -47,9 +47,9 @@ for (const viewport of VIEWPORTS) {
         await expect(results(page).getByRole('button', { name: /Notiz/ })).toBeVisible();
       }
 
-      await searchBox(page).fill('reihe 2');
-      await expect(results(page)).toHaveCount(1);
-      await expect(results(page).locator('mark').first()).toHaveText('reihe');
+      await searchBox(page).fill('tomatenreihe');
+      await expect(results(page)).toHaveCount(2);
+      await expect(results(page).locator('mark').first()).toHaveText('Tomatenreihe');
 
       await searchBox(page).press('Escape');
       await expect(searchBox(page)).toHaveValue('');
@@ -85,6 +85,39 @@ for (const viewport of VIEWPORTS) {
 
       await page.getByRole('button', { name: 'Filter Standort entfernen' }).click();
       await expect(page.getByText('Standort: Acker am Bach')).toHaveCount(0);
+      await expect(results(page)).toHaveCount(total);
+    });
+
+    test('finds plans by date and filters by harvest start', async ({ page }) => {
+      const total = await results(page).count();
+
+      // Tomatenreihe 1 is planted on 25 April 2026 in the demo project.
+      await searchBox(page).fill('25.4.2026');
+      await expect(results(page)).toHaveCount(1);
+      await expect(results(page).first()).toContainText('Tomate');
+      await expect(results(page).locator('mark').first()).toHaveText('25.4.2026');
+      await searchBox(page).fill('25.04.');
+      await expect(results(page)).toHaveCount(1);
+      await searchBox(page).press('Escape');
+      await expect(results(page)).toHaveCount(total);
+
+      await page.getByRole('button', { name: 'Filter', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: viewport.isMobile ? 'Filter und Sortierung' : 'Filter' });
+      await dialog.getByRole('group', { name: 'Erntebeginn' }).getByRole('combobox').first().click();
+      await page.getByRole('option', { name: 'Juli' }).click();
+      if (viewport.isMobile) {
+        await dialog.getByRole('button', { name: /Anbaupl(an|äne) anzeigen$/ }).click();
+      } else {
+        await page.keyboard.press('Escape');
+      }
+      await expect(dialog).toBeHidden();
+
+      await expect(page.getByText('Erntebeginn: ab Jul')).toBeVisible();
+      const filteredCount = await results(page).count();
+      expect(filteredCount).toBeGreaterThan(0);
+      expect(filteredCount).toBeLessThan(total);
+
+      await page.getByRole('button', { name: 'Filter Erntebeginn entfernen' }).click();
       await expect(results(page)).toHaveCount(total);
     });
 

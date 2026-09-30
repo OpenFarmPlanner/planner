@@ -3,7 +3,12 @@ import type { SxProps, Theme } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 
 import { useTranslation } from '../../../i18n';
-import type { FilterOption, PlantingPlanFilterGroup } from '../../../pages/plantingPlanSearch';
+import {
+  DATE_FILTER_FIELDS,
+  type DateFilterField,
+  type FilterOption,
+  type PlantingPlanFilterGroup,
+} from '../../../pages/plantingPlanSearch';
 import type { PlantingPlanSearchControls } from '../../../pages/usePlantingPlanSearch';
 import { MONTH_KEYS } from './months';
 
@@ -19,23 +24,27 @@ const joinLabels = <T extends string | number>(options: readonly FilterOption<T>
     .filter((label): label is string => Boolean(label))
     .join(', ');
 
+const isDateFilterField = (group: PlantingPlanFilterGroup): group is DateFilterField =>
+  (DATE_FILTER_FIELDS as readonly string[]).includes(group);
+
 function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterChip[] {
   const { t } = useTranslation(['plantingPlans', 'common']);
   const { filters, options } = search;
   const monthLabel = (month: number): string => t(`common:monthsShort.${MONTH_KEYS[month - 1]}`);
 
   return search.activeFilterGroups.map((group) => {
-    if (group === 'plantingPeriod') {
-      const { plantingMonthFrom: from, plantingMonthTo: to } = filters;
+    if (isDateFilterField(group)) {
+      const { from, to } = filters.monthRanges[group];
+      const filterLabel = t(`plantingPlans:search.chipDateLabels.${group}`);
       let label: string;
       if (from !== null && to !== null) {
-        label = t('plantingPlans:search.chipPlantingPeriod.range', { from: monthLabel(from), to: monthLabel(to) });
+        label = t('plantingPlans:search.chipMonthRange.range', { filter: filterLabel, from: monthLabel(from), to: monthLabel(to) });
       } else if (from !== null) {
-        label = t('plantingPlans:search.chipPlantingPeriod.from', { from: monthLabel(from) });
+        label = t('plantingPlans:search.chipMonthRange.from', { filter: filterLabel, from: monthLabel(from) });
       } else {
-        label = t('plantingPlans:search.chipPlantingPeriod.to', { to: monthLabel(to as number) });
+        label = t('plantingPlans:search.chipMonthRange.to', { filter: filterLabel, to: monthLabel(to as number) });
       }
-      return { group, filterLabel: t('plantingPlans:search.chipPlantingPeriodLabel'), label };
+      return { group, filterLabel, label };
     }
     const byGroup = {
       location: { key: 'location', values: joinLabels(options.locations, filters.locationIds) },

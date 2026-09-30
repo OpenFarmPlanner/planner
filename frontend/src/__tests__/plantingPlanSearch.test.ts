@@ -7,9 +7,12 @@ import {
   createPlantingPlanSearchRecord,
   derivePlantingPlanFilterOptions,
   getActivePlantingPlanFilterGroups,
+  buildDateSearchTexts,
   isMonthInPeriod,
   matchPlantingPlan,
   withLocationSelection,
+  withMonthRange,
+  type DateFilterField,
   type PlantingPlanFilters,
   type PlantingPlanSearchRecord,
   type PlantingPlanSearchRecordInput,
@@ -38,6 +41,7 @@ const makeRecord = (overrides: Partial<PlantingPlanSearchRecordInput> & { id: nu
     notesText: '',
     plantingDate: '2026-04-15',
     harvestDate: '2026-07-01',
+    harvestEndDate: '2026-08-15',
     ...overrides,
   });
 
@@ -55,6 +59,7 @@ const beet = makeRecord({
   notesText: 'Mit Vlies abdecken',
   plantingDate: '2026-05-02',
   harvestDate: '2026-08-10',
+  harvestEndDate: '2026-09-20',
 });
 const carrot = makeRecord({
   id: 3,
@@ -71,8 +76,15 @@ const carrot = makeRecord({
   notesText: 'Früh säen',
   plantingDate: '2026-03-20',
   harvestDate: null,
+  harvestEndDate: null,
 });
-const undated = makeRecord({ id: 4, cropLabel: 'Tomate (Rondo)', plantingDate: null, harvestDate: null });
+const undated = makeRecord({
+  id: 4,
+  cropLabel: 'Tomate (Rondo)',
+  plantingDate: null,
+  harvestDate: null,
+  harvestEndDate: null,
+});
 const all = [tomato, beet, carrot, undated];
 
 const search = (query: string, filters: PlantingPlanFilters = EMPTY_PLANTING_PLAN_FILTERS): number[] => {
@@ -82,6 +94,9 @@ const search = (query: string, filters: PlantingPlanFilters = EMPTY_PLANTING_PLA
 
 const filtered = (filters: Partial<PlantingPlanFilters>): number[] =>
   search('', { ...EMPTY_PLANTING_PLAN_FILTERS, ...filters });
+
+const filteredByMonths = (field: DateFilterField, from: number | null, to: number | null): number[] =>
+  search('', withMonthRange(EMPTY_PLANTING_PLAN_FILTERS, field, { from, to }));
 
 describe('planting plan search', () => {
   it('ignores case, diacritics and ß vs ss', () => {
@@ -109,9 +124,18 @@ describe('planting plan search', () => {
     expect(search('beet 3')).toEqual([3]);
   });
 
-  it('does not search dates or numbers of dates', () => {
-    expect(search('2026')).toEqual([]);
-    expect(search('04-15')).toEqual([]);
+  it('searches planting, harvest start and harvest end dates in d.M.yyyy, dd.MM.yyyy and ISO form', () => {
+    expect(search('15.4.2026')).toEqual([1]);
+    expect(search('15.04.')).toEqual([1]);
+    expect(search('2026-04-15')).toEqual([1]);
+    expect(search('10.8')).toEqual([2]);
+    expect(search('20.09.2026')).toEqual([2]);
+    expect(search('2026')).toEqual([1, 2, 3]);
+  });
+
+  it('combines a date term with other terms', () => {
+    expect(search('tomate 1.7.')).toEqual([1]);
+    expect(search('karotte 1.7.')).toEqual([]);
   });
 
   it('finds a crop through a species synonym and reports it', () => {
@@ -160,9 +184,25 @@ describe('planting plan filters', () => {
   });
 
   it('filters by the planting period and drops plans without a planting date', () => {
-    expect(filtered({ plantingMonthFrom: 4, plantingMonthTo: 5 })).toEqual([1, 2]);
-    expect(filtered({ plantingMonthFrom: 5 })).toEqual([2]);
-    expect(filtered({ plantingMonthTo: 3 })).toEqual([3]);
+    expect(filteredByMonths('plantingDate', 4, 5)).toEqual([1, 2]);
+    expect(filteredByMonths('plantingDate', 5, null)).toEqual([2]);
+    expect(filteredByMonths('plantingDate', null, 3)).toEqual([3]);
+  });
+
+  it('filters by harvest start and harvest end months', () => {
+    expect(filteredByMonths('harvestStartDate', 7, 7)).toEqual([1]);
+    expect(filteredByMonths('harvestStartDate', 8, null)).toEqual([2]);
+    expect(filteredByMonths('harvestEndDate', 9, null)).toEqual([2]);
+    expect(filteredByMonths('harvestEndDate', null, 8)).toEqual([1]);
+  });
+
+  it('ANDs several month ranges', () => {
+    const filters = withMonthRange(
+      withMonthRange(EMPTY_PLANTING_PLAN_FILTERS, 'plantingDate', { from: 4, to: 5 }),
+      'harvestStartDate',
+      { from: 8, to: null },
+    );
+    expect(search('', filters)).toEqual([2]);
   });
 
   it('wraps a planting period across the year end', () => {
@@ -176,12 +216,17 @@ describe('planting plan filters', () => {
       ...EMPTY_PLANTING_PLAN_FILTERS,
       locationIds: [HOFGARTEN],
       cropKeys: ['tomate'],
-      plantingMonthTo: 6,
+      monthRanges: {
+        ...EMPTY_PLANTING_PLAN_FILTERS.monthRanges,
+        plantingDate: { from: null, to: 6 },
+        harvestEndDate: { from: 9, to: 10 },
+      },
     };
-    expect(getActivePlantingPlanFilterGroups(filters)).toEqual(['location', 'crop', 'plantingPeriod']);
-    expect(getActivePlantingPlanFilterGroups(clearPlantingPlanFilterGroup(filters, 'plantingPeriod'))).toEqual([
+    expect(getActivePlantingPlanFilterGroups(filters)).toEqual(['location', 'crop', 'plantingDate', 'harvestEndDate']);
+    expect(getActivePlantingPlanFilterGroups(clearPlantingPlanFilterGroup(filters, 'plantingDate'))).toEqual([
       'location',
       'crop',
+      'harvestEndDate',
     ]);
   });
 });
@@ -249,5 +294,16 @@ describe('planting plan sorting', () => {
 
   it('sorts by harvest start ascending with missing harvest dates last', () => {
     expect(sorted('harvestStartAsc')).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('buildDateSearchTexts', () => {
+  it('builds the displayed, zero-padded and ISO forms', () => {
+    expect(buildDateSearchTexts('2026-02-08')).toEqual(['8.2.2026', '08.02.2026', '2026-02-08']);
+  });
+
+  it('returns nothing for a missing or malformed date', () => {
+    expect(buildDateSearchTexts(null)).toEqual([]);
+    expect(buildDateSearchTexts('soon')).toEqual([]);
   });
 });

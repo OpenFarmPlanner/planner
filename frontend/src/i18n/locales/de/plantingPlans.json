@@ -187,7 +187,9 @@
       "field": "Parzelle",
       "cultivationType": "Anbauart",
       "crop": "Kultur",
-      "plantingPeriod": "Pflanzzeitraum"
+      "plantingDate": "Pflanzzeitraum",
+      "harvestStartDate": "Erntebeginn",
+      "harvestEndDate": "Ernteende"
     },
     "monthFrom": "Von",
     "monthTo": "Bis",
@@ -209,11 +211,15 @@
     "showResults_one": "{{count}} Anbauplan anzeigen",
     "showResults_other": "{{count}} Anbaupläne anzeigen",
     "chip": "{{filter}}: {{values}}",
-    "chipPlantingPeriodLabel": "Pflanzdatum",
-    "chipPlantingPeriod": {
-      "range": "Pflanzdatum: {{from}} bis {{to}}",
-      "from": "Pflanzdatum: ab {{from}}",
-      "to": "Pflanzdatum: bis {{to}}"
+    "chipDateLabels": {
+      "plantingDate": "Pflanzdatum",
+      "harvestStartDate": "Erntebeginn",
+      "harvestEndDate": "Ernteende"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: {{from}} bis {{to}}",
+      "from": "{{filter}}: ab {{from}}",
+      "to": "{{filter}}: bis {{to}}"
     },
     "removeChip": "Filter {{filter}} entfernen",
     "resetAll": "Alle zurücksetzen",

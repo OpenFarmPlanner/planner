@@ -562,7 +562,7 @@ function PlantingPlans() {
       );
     }
 
-    return <Box component="span">{formatDateForDisplay(value)}</Box>;
+    return <Box component="span"><SearchHighlightedText text={formatDateForDisplay(value)} /></Box>;
   }, [crops, formatDateForDisplay, t]);
 
   const columns: GridColDef[] = useMemo(
@@ -717,6 +717,9 @@ function PlantingPlans() {
         type: "date",
         editable: true,
         valueGetter: (value) => toGridDateValue(value),
+        renderCell: (params) => (
+          <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+        ),
         renderEditCell: (params) => (
           <DateEditCell
             {...params}
@@ -977,6 +980,7 @@ function PlantingPlans() {
       notesText: stripMarkdown(row.notes ?? ""),
       plantingDate: toIsoDateString(row.planting_date),
       harvestDate: toIsoDateString(row.harvest_date),
+      harvestEndDate: toIsoDateString(row.harvest_end_date),
     };
   }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById]);
   const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
@@ -1664,7 +1668,7 @@ function PlantingPlans() {
               renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
               renderSecondary={(item) => (
                 <>
-                  {formatDateForDisplay(item.planting_date)}
+                  <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} />
                   {" · "}
                   <SearchHighlightedText text={getBedLabelForRow(item)} />
                 </>
@@ -1690,9 +1694,9 @@ function PlantingPlans() {
                 <Stack spacing={0.75}>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={t(`plantingPlans:cultivationTypes.${item.cultivation_type === "direct_sowing" ? "directSowing" : "preCultivation"}`)} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.plantingDate")}:</strong> {formatDateForDisplay(item.planting_date)}</Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestStartDate")}:</strong> {formatDateForDisplay(item.harvest_date)}</Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestEndDate")}:</strong> {formatDateForDisplay(item.harvest_end_date)}</Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.plantingDate")}:</strong> <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} /></Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestStartDate")}:</strong> <SearchHighlightedText text={formatDateForDisplay(item.harvest_date)} /></Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.harvestEndDate")}:</strong> <SearchHighlightedText text={formatDateForDisplay(item.harvest_end_date)} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.plantsCount")}:</strong> {typeof item.plants_count === "number" ? `≈ ${Math.round(item.plants_count)}` : "—"}</Typography>
                   <Typography variant="body2"><strong>{t("common:fields.notes")}:</strong> {item.notes?.trim() ? item.notes : "—"}</Typography>

@@ -45,9 +45,14 @@ For a planting plan, the searched texts are:
 - Anbauart (the localized label, e.g. "Direktsaat")
 - Standort, Parzelle, Beet (names)
 - Notizen (markdown stripped to plain text)
+- Pflanzdatum, Erntebeginn and Ernteende, each in three forms: the displayed
+  `d.M.yyyy` ("18.2.2026"), zero-padded `dd.MM.yyyy` ("18.02.2026") and ISO
+  `yyyy-MM-dd` ("2026-02-18"). Any part matches like any other text, so "18.2.",
+  "18.02." and "2026-02" all find 18 February 2026, and "2026" finds every
+  dated plan of that year.
 
-**Not searched:** dates and numbers (planting/harvest dates, area, plant
-count). "2026" or "04-15" therefore find nothing.
+**Not searched:** other numbers (area, plant count), including the area shown
+in the Beet label.
 
 ## Synonyms
 
@@ -66,15 +71,18 @@ the visible crop name is not reported as a synonym hit.
 ## Filters
 
 - Filters: **Standort, Parzelle, Anbauart, Kultur** (each multi-select) and
-  **Pflanzzeitraum** (month from / month to).
+  **Pflanzzeitraum, Erntebeginn, Ernteende** (each month from / month to).
 - Values selected **within** one filter combine with **OR**; different
   filters combine with **AND**; search and filters combine with **AND**.
 - The **Kultur** filter groups by the Kultur name, so it covers every Sorte
   of that Kultur.
-- **Pflanzzeitraum** matches the planting month. Only "from" means that month
-  or later, only "to" means that month or earlier; a range whose "from" is
-  after its "to" wraps across the year end (Nov–Feb). Plans without a planting
-  date never match an active period filter.
+- **Pflanzzeitraum, Erntebeginn, Ernteende** match the month of the planting
+  date, harvest start and harvest end respectively. Only "from" means that
+  month or later, only "to" means that month or earlier; a range whose "from"
+  is after its "to" wraps across the year end (Nov–Feb). A plan without that
+  date (e.g. no harvest start because the crop has no growth duration) never
+  matches an active range on it. The three ranges combine with AND like all
+  filters.
 - Options are **derived from the records being searched** (the plans of the
   active season), so a filter never offers a value that matches nothing.
 - **Parzelle depends on Standort:** with Standorte selected, only their

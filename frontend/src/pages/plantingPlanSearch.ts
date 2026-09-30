@@ -18,15 +18,26 @@ export type PlantingPlanSortKey = (typeof PLANTING_PLAN_SORT_KEYS)[number];
 /** Matches the desktop grid's default sort (planting date, ascending). */
 export const DEFAULT_PLANTING_PLAN_SORT: PlantingPlanSortKey = 'plantingDateAsc';
 
+/** The plan dates that can be filtered by month. */
+export const DATE_FILTER_FIELDS = ['plantingDate', 'harvestStartDate', 'harvestEndDate'] as const;
+
+export type DateFilterField = (typeof DATE_FILTER_FIELDS)[number];
+
+/** Months 1–12; `null` leaves that end of the range open. */
+export interface MonthRange {
+  from: number | null;
+  to: number | null;
+}
+
+const OPEN_MONTH_RANGE: MonthRange = { from: null, to: null };
+
 export interface PlantingPlanFilters {
   locationIds: number[];
   fieldIds: number[];
   cultivationTypes: string[];
   /** Normalized Kultur names, so every Sorte of a Kultur is covered. */
   cropKeys: string[];
-  /** 1–12; `null` leaves that end of the planting period open. */
-  plantingMonthFrom: number | null;
-  plantingMonthTo: number | null;
+  monthRanges: Record<DateFilterField, MonthRange>;
 }
 
 export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
@@ -34,11 +45,24 @@ export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
   fieldIds: [],
   cultivationTypes: [],
   cropKeys: [],
-  plantingMonthFrom: null,
-  plantingMonthTo: null,
+  monthRanges: {
+    plantingDate: OPEN_MONTH_RANGE,
+    harvestStartDate: OPEN_MONTH_RANGE,
+    harvestEndDate: OPEN_MONTH_RANGE,
+  },
 };
 
-export type PlantingPlanFilterGroup = 'location' | 'field' | 'cultivationType' | 'crop' | 'plantingPeriod';
+export type PlantingPlanFilterGroup = 'location' | 'field' | 'cultivationType' | 'crop' | DateFilterField;
+
+export const isMonthRangeActive = (range: MonthRange): boolean => range.from !== null || range.to !== null;
+
+export function withMonthRange(
+  filters: PlantingPlanFilters,
+  field: DateFilterField,
+  range: MonthRange,
+): PlantingPlanFilters {
+  return { ...filters, monthRanges: { ...filters.monthRanges, [field]: range } };
+}
 
 /** The display texts and filter keys of one plan, resolved by the page. */
 export interface PlantingPlanSearchRecordInput {
@@ -61,6 +85,7 @@ export interface PlantingPlanSearchRecordInput {
   /** ISO `YYYY-MM-DD` or null. */
   plantingDate: string | null;
   harvestDate: string | null;
+  harvestEndDate: string | null;
 }
 
 export interface PlantingPlanSearchRecord extends PlantingPlanSearchRecordInput {
@@ -75,6 +100,24 @@ export interface PlantingPlanMatch {
   /** The species name a query term only matched through, if any. */
   synonym: string | null;
   notesMatched: boolean;
+}
+
+/**
+ * The forms a date can be searched in: the displayed `d.M.yyyy`, the
+ * zero-padded `dd.MM.yyyy` and ISO `yyyy-MM-dd`, so "18.2.", "18.02." and
+ * "2026-02" all find 18 February 2026.
+ */
+export function buildDateSearchTexts(isoDate: string | null): string[] {
+  const match = isoDate ? /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate) : null;
+  if (!match) {
+    return [];
+  }
+  const [, year, month, day] = match;
+  return [
+    `${Number(day)}.${Number(month)}.${year}`,
+    `${day}.${month}.${year}`,
+    `${year}-${month}-${day}`,
+  ];
 }
 
 const NO_MATCH: PlantingPlanMatch = { matches: false, synonym: null, notesMatched: false };
@@ -103,6 +146,9 @@ export function createPlantingPlanSearchRecord(input: PlantingPlanSearchRecordIn
       input.locationName,
       input.fieldName,
       input.bedName,
+      ...buildDateSearchTexts(input.plantingDate),
+      ...buildDateSearchTexts(input.harvestDate),
+      ...buildDateSearchTexts(input.harvestEndDate),
     ]
       .filter((text) => text.length > 0)
       .map(normalizeSearchText),
@@ -111,7 +157,7 @@ export function createPlantingPlanSearchRecord(input: PlantingPlanSearchRecordIn
   };
 }
 
-const getPlantingMonth = (isoDate: string | null): number | null => {
+const getMonth = (isoDate: string | null): number | null => {
   const month = isoDate ? Number(isoDate.slice(5, 7)) : NaN;
   return Number.isInteger(month) && month >= 1 && month <= 12 ? month : null;
 };
@@ -130,6 +176,20 @@ export function isMonthInPeriod(month: number, from: number | null, to: number |
   return true;
 }
 
+const DATE_FIELD_TO_RECORD_KEY = {
+  plantingDate: 'plantingDate',
+  harvestStartDate: 'harvestDate',
+  harvestEndDate: 'harvestEndDate',
+} as const satisfies Record<DateFilterField, keyof PlantingPlanSearchRecordInput>;
+
+const matchesMonthRange = (isoDate: string | null, range: MonthRange): boolean => {
+  if (!isMonthRangeActive(range)) {
+    return true;
+  }
+  const month = getMonth(isoDate);
+  return month !== null && isMonthInPeriod(month, range.from, range.to);
+};
+
 const includesIfSelected = <T,>(selected: readonly T[], value: T | null): boolean =>
   selected.length === 0 || (value !== null && selected.includes(value));
 
@@ -139,13 +199,9 @@ export function matchesPlantingPlanFilters(record: PlantingPlanSearchRecord, fil
   if (!includesIfSelected(filters.fieldIds, record.fieldId)) return false;
   if (!includesIfSelected(filters.cultivationTypes, record.cultivationType || null)) return false;
   if (!includesIfSelected(filters.cropKeys, record.cropKey || null)) return false;
-  if (filters.plantingMonthFrom !== null || filters.plantingMonthTo !== null) {
-    const month = getPlantingMonth(record.plantingDate);
-    if (month === null || !isMonthInPeriod(month, filters.plantingMonthFrom, filters.plantingMonthTo)) {
-      return false;
-    }
-  }
-  return true;
+  return DATE_FILTER_FIELDS.every((field) => (
+    matchesMonthRange(record[DATE_FIELD_TO_RECORD_KEY[field]], filters.monthRanges[field])
+  ));
 }
 
 /**
@@ -188,7 +244,9 @@ export function getActivePlantingPlanFilterGroups(filters: PlantingPlanFilters):
   if (filters.fieldIds.length > 0) groups.push('field');
   if (filters.cultivationTypes.length > 0) groups.push('cultivationType');
   if (filters.cropKeys.length > 0) groups.push('crop');
-  if (filters.plantingMonthFrom !== null || filters.plantingMonthTo !== null) groups.push('plantingPeriod');
+  for (const field of DATE_FILTER_FIELDS) {
+    if (isMonthRangeActive(filters.monthRanges[field])) groups.push(field);
+  }
   return groups;
 }
 
@@ -205,8 +263,8 @@ export function clearPlantingPlanFilterGroup(
       return { ...filters, cultivationTypes: [] };
     case 'crop':
       return { ...filters, cropKeys: [] };
-    case 'plantingPeriod':
-      return { ...filters, plantingMonthFrom: null, plantingMonthTo: null };
+    default:
+      return withMonthRange(filters, group, OPEN_MONTH_RANGE);
   }
 }
 

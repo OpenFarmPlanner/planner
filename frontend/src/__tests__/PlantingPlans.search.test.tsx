@@ -121,6 +121,18 @@ describe("PlantingPlans page search", () => {
     expect(screen.queryByTestId("row-20")).not.toBeInTheDocument();
   });
 
+  it("finds plans by a planting or harvest date", async () => {
+    await renderPage();
+
+    typeSearch("10.5.2026");
+    await waitFor(() => expect(screen.queryByTestId("row-10")).not.toBeInTheDocument());
+    expect(screen.getByTestId("row-20")).toBeInTheDocument();
+
+    typeSearch("01.05.");
+    await waitFor(() => expect(screen.queryByTestId("row-20")).not.toBeInTheDocument());
+    expect(screen.getByTestId("row-10")).toBeInTheDocument();
+  });
+
   it("shows the empty state and clears the search from it", async () => {
     await renderPage();
 
@@ -199,8 +211,11 @@ describe("PlantingPlans page search", () => {
           fieldIds: [],
           cultivationTypes: [],
           cropKeys: [],
-          plantingMonthFrom: null,
-          plantingMonthTo: null,
+          monthRanges: {
+            plantingDate: { from: null, to: null },
+            harvestStartDate: { from: null, to: null },
+            harvestEndDate: { from: null, to: null },
+          },
         },
       },
     }));

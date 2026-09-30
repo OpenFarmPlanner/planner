@@ -5,8 +5,11 @@ import CheckIcon from '@mui/icons-material/Check';
 
 import { useTranslation } from '../../../i18n';
 import {
+  DATE_FILTER_FIELDS,
   PLANTING_PLAN_SORT_KEYS,
+  withMonthRange,
   type FilterOption,
+  type MonthRange,
   type PlantingPlanSortKey,
 } from '../../../pages/plantingPlanSearch';
 import type { PlantingPlanSearchControls } from '../../../pages/usePlantingPlanSearch';
@@ -72,20 +75,72 @@ function ChipGroup<T extends string | number>({ label, options, selected, onChan
   );
 }
 
+interface MonthRangeFieldProps {
+  label: string;
+  range: MonthRange;
+  onChange: (range: MonthRange) => void;
+}
+
+/** A month-from / month-to pair for one plan date (planting, harvest start, harvest end). */
+function MonthRangeField({ label, range, onChange }: MonthRangeFieldProps) {
+  const { t } = useTranslation(['plantingPlans', 'common']);
+  const labelId = useId();
+  const toMonth = (value: unknown): number | null => (typeof value === 'number' ? value : null);
+  const renderMonth = (placeholder: string) => (value: number | '') => (value === '' ? (
+    <Box component="span" sx={{ color: 'text.secondary' }}>{placeholder}</Box>
+  ) : t(`common:months.${MONTH_KEYS[value - 1]}`));
+  const monthItems = MONTH_KEYS.map((key, index) => (
+    <MenuItem key={key} value={index + 1}>{t(`common:months.${key}`)}</MenuItem>
+  ));
+  const fromPlaceholder = t('plantingPlans:search.monthFrom');
+  const toPlaceholder = t('plantingPlans:search.monthTo');
+
+  return (
+    <Box role="group" aria-labelledby={labelId}>
+      <Typography id={labelId} variant="body2" component="div" sx={fieldLabelSx}>
+        {label}
+      </Typography>
+      <Stack direction="row" useFlexGap spacing={1} sx={{ alignItems: 'center' }}>
+        <TypeaheadSelect<number | ''>
+          size="small"
+          displayEmpty
+          value={range.from ?? ''}
+          onChange={(event) => onChange({ ...range, from: toMonth(event.target.value) })}
+          renderValue={renderMonth(fromPlaceholder)}
+          labelId={labelId}
+          sx={{ flex: '1 1 0', minWidth: 0 }}
+        >
+          <MenuItem value="">{fromPlaceholder}</MenuItem>
+          {monthItems}
+        </TypeaheadSelect>
+        <Typography variant="body2" color="text.secondary">
+          {t('plantingPlans:search.monthRangeSeparator')}
+        </Typography>
+        <TypeaheadSelect<number | ''>
+          size="small"
+          displayEmpty
+          value={range.to ?? ''}
+          onChange={(event) => onChange({ ...range, to: toMonth(event.target.value) })}
+          renderValue={renderMonth(toPlaceholder)}
+          labelId={labelId}
+          sx={{ flex: '1 1 0', minWidth: 0 }}
+        >
+          <MenuItem value="">{toPlaceholder}</MenuItem>
+          {monthItems}
+        </TypeaheadSelect>
+      </Stack>
+    </Box>
+  );
+}
+
 /**
  * Every filter field of the planting-plan search, shared by the desktop
  * filter popover and the mobile bottom sheet. Filters apply immediately.
  */
 export function PlantingPlanFilterFields({ search, showSort = false }: PlantingPlanFilterFieldsProps) {
   const { t } = useTranslation(['plantingPlans', 'common']);
-  const periodLabelId = useId();
   const sortLabelId = useId();
   const { filters, options, setFilters, setLocationIds } = search;
-
-  const monthItems = MONTH_KEYS.map((key, index) => (
-    <MenuItem key={key} value={index + 1}>{t(`common:months.${key}`)}</MenuItem>
-  ));
-  const toMonth = (value: unknown): number | null => (typeof value === 'number' ? value : null);
 
   return (
     <Stack spacing={2.5}>
@@ -132,44 +187,14 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
         selected={filters.cropKeys}
         onChange={(cropKeys) => setFilters({ ...filters, cropKeys })}
       />
-      <Box role="group" aria-labelledby={periodLabelId}>
-        <Typography id={periodLabelId} variant="body2" component="div" sx={fieldLabelSx}>
-          {t('plantingPlans:search.fields.plantingPeriod')}
-        </Typography>
-        <Stack direction="row" useFlexGap spacing={1} sx={{ alignItems: 'center' }}>
-          <TypeaheadSelect<number | ''>
-            size="small"
-            displayEmpty
-            value={filters.plantingMonthFrom ?? ''}
-            onChange={(event) => setFilters({ ...filters, plantingMonthFrom: toMonth(event.target.value) })}
-            renderValue={(value) => (value === '' ? (
-              <Box component="span" sx={{ color: 'text.secondary' }}>{t('plantingPlans:search.monthFrom')}</Box>
-            ) : t(`common:months.${MONTH_KEYS[value - 1]}`))}
-            labelId={periodLabelId}
-            sx={{ flex: '1 1 0', minWidth: 0 }}
-          >
-            <MenuItem value="">{t('plantingPlans:search.monthFrom')}</MenuItem>
-            {monthItems}
-          </TypeaheadSelect>
-          <Typography variant="body2" color="text.secondary">
-            {t('plantingPlans:search.monthRangeSeparator')}
-          </Typography>
-          <TypeaheadSelect<number | ''>
-            size="small"
-            displayEmpty
-            value={filters.plantingMonthTo ?? ''}
-            onChange={(event) => setFilters({ ...filters, plantingMonthTo: toMonth(event.target.value) })}
-            renderValue={(value) => (value === '' ? (
-              <Box component="span" sx={{ color: 'text.secondary' }}>{t('plantingPlans:search.monthTo')}</Box>
-            ) : t(`common:months.${MONTH_KEYS[value - 1]}`))}
-            labelId={periodLabelId}
-            sx={{ flex: '1 1 0', minWidth: 0 }}
-          >
-            <MenuItem value="">{t('plantingPlans:search.monthTo')}</MenuItem>
-            {monthItems}
-          </TypeaheadSelect>
-        </Stack>
-      </Box>
+      {DATE_FILTER_FIELDS.map((field) => (
+        <MonthRangeField
+          key={field}
+          label={t(`plantingPlans:search.fields.${field}`)}
+          range={filters.monthRanges[field]}
+          onChange={(range) => setFilters(withMonthRange(filters, field, range))}
+        />
+      ))}
     </Stack>
   );
 }

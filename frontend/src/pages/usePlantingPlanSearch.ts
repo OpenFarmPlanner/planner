@@ -9,6 +9,7 @@ import {
 import {
   DEFAULT_PLANTING_PLAN_SORT,
   EMPTY_PLANTING_PLAN_FILTERS,
+  DATE_FILTER_FIELDS,
   PLANTING_PLAN_SORT_KEYS,
   clearPlantingPlanFilterGroup,
   comparePlantingPlanRecords,
@@ -57,12 +58,28 @@ const isStringArray = (value: unknown): value is string[] =>
 const isMonthOrNull = (value: unknown): value is number | null =>
   value === null || (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 12);
 
+const parseMonthRanges = (value: unknown): PlantingPlanFilters['monthRanges'] | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const ranges = { ...EMPTY_PLANTING_PLAN_FILTERS.monthRanges };
+  for (const field of DATE_FILTER_FIELDS) {
+    const range = (value as Record<string, unknown>)[field] as Record<string, unknown> | undefined;
+    if (!range || !isMonthOrNull(range.from) || !isMonthOrNull(range.to)) {
+      return null;
+    }
+    ranges[field] = { from: range.from, to: range.to };
+  }
+  return ranges;
+};
+
 const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
   if (!value || typeof value !== 'object') {
     return null;
   }
   const { query, filters, sortKey } = value as Record<string, unknown>;
   const filterRecord = (filters ?? {}) as Record<string, unknown>;
+  const monthRanges = parseMonthRanges(filterRecord.monthRanges);
   if (
     typeof query !== 'string'
     || !PLANTING_PLAN_SORT_KEYS.includes(sortKey as PlantingPlanSortKey)
@@ -70,8 +87,7 @@ const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
     || !isNumberArray(filterRecord.fieldIds)
     || !isStringArray(filterRecord.cultivationTypes)
     || !isStringArray(filterRecord.cropKeys)
-    || !isMonthOrNull(filterRecord.plantingMonthFrom)
-    || !isMonthOrNull(filterRecord.plantingMonthTo)
+    || !monthRanges
   ) {
     return null;
   }
@@ -83,8 +99,7 @@ const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
       fieldIds: filterRecord.fieldIds,
       cultivationTypes: filterRecord.cultivationTypes,
       cropKeys: filterRecord.cropKeys,
-      plantingMonthFrom: filterRecord.plantingMonthFrom,
-      plantingMonthTo: filterRecord.plantingMonthTo,
+      monthRanges,
     },
   };
 };

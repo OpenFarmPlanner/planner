@@ -187,7 +187,9 @@
       "field": "Plot",
       "cultivationType": "Cultivation type",
       "crop": "Crop",
-      "plantingPeriod": "Planting period"
+      "plantingDate": "Planting period",
+      "harvestStartDate": "Harvest start",
+      "harvestEndDate": "Harvest end"
     },
     "monthFrom": "From",
     "monthTo": "To",
@@ -209,11 +211,15 @@
     "showResults_one": "Show {{count}} planting plan",
     "showResults_other": "Show {{count}} planting plans",
     "chip": "{{filter}}: {{values}}",
-    "chipPlantingPeriodLabel": "Planting date",
-    "chipPlantingPeriod": {
-      "range": "Planting date: {{from}} to {{to}}",
-      "from": "Planting date: from {{from}}",
-      "to": "Planting date: until {{to}}"
+    "chipDateLabels": {
+      "plantingDate": "Planting date",
+      "harvestStartDate": "Harvest start",
+      "harvestEndDate": "Harvest end"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: {{from}} to {{to}}",
+      "from": "{{filter}}: from {{from}}",
+      "to": "{{filter}}: until {{to}}"
     },
     "removeChip": "Remove filter {{filter}}",
     "resetAll": "Reset all",
