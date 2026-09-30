@@ -55,6 +55,17 @@ describe('AccountSettingsApiTokensCard', () => {
     revokeMock.mockReset();
   });
 
+  it('links to the API documentation in a new tab', async () => {
+    listMock.mockResolvedValue({ data: [] });
+
+    render(<AccountSettingsApiTokensCard />);
+
+    const docsLink = await screen.findByRole('link', { name: 'API-Dokumentation öffnen' });
+    expect(docsLink.getAttribute('href')).toMatch(/\/api\/docs\/$/);
+    expect(docsLink).toHaveAttribute('target', '_blank');
+    expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   it('lists existing tokens with their project, scope, and status', async () => {
     const user = userEvent.setup();
     listMock.mockResolvedValue({ data: [token({ scope: 'write' })] });

@@ -16,7 +16,7 @@ import type { SyntheticEvent } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { useTranslation } from '../../i18n';
 import LegalLinks from '../../components/legal/LegalLinks';
-import { computeBaseURL } from '../../api/httpClient';
+import { API_DOCS_URL } from '../../api/apiDocsUrl';
 import HeroImage from '../../components/HeroImage';
 import { publicAssetUrl } from '../../utils/publicAssetUrl';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
@@ -25,8 +25,6 @@ import AppIcon from '../../components/layout/AppIcon';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
-
-const API_DOCS_URL = `${computeBaseURL(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL, import.meta.env.BASE_URL)}/docs/`;
 
 const PRODUCT_TOUR_ITEMS = [
   {

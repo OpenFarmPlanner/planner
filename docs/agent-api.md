@@ -147,7 +147,8 @@ summary.
 
 ## Getting a token
 
-In the app: **Account settings → API tokens for external tools**. Choose a name,
+In the app: **Account settings → API tokens for external tools** (the card also
+links to the generated API reference at `/api/docs/`). Choose a name,
 the project, `read`, `write`, or `delete`, and optionally an expiry date (at
 most one year out). The plaintext is shown once, in a dialog, with an explicit
 note that it cannot be retrieved again.
