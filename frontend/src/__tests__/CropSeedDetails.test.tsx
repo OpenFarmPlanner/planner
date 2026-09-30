@@ -117,11 +117,41 @@ describe('CropSeedDetails', () => {
       expect(screen.queryByText('Menge', { selector: 'p' })).not.toBeInTheDocument();
     });
 
+    it('keeps three decimals in the table as well', () => {
+      renderDetails({
+        activeCultivationTypes: ['pre_cultivation', 'direct_sowing'],
+        seedRateRows: [
+          row({ method: 'pre_cultivation', value: 0.125, unit: 'seeds_per_lfm' }),
+          row({ method: 'direct_sowing', value: 3, unit: 'g_per_m2' }),
+        ],
+      });
+
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(within(rows[0]).getByRole('cell', { name: '0,125' })).toBeInTheDocument();
+    });
+
     it('shows neither when there are no rates at all', () => {
       renderDetails({ activeCultivationTypes: ['direct_sowing'], seedRateRows: [] });
 
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
       expect(screen.queryByText('Menge')).not.toBeInTheDocument();
+    });
+
+    it('shows the first rate when a one-method crop carries several', () => {
+      // `hasSingleSeedRate` only asks that one method is active, so the rows
+      // can still outnumber it -- a crop whose method was narrowed after the
+      // rates were entered. The row shown has to be the first, or the value
+      // belongs to a method the crop is no longer grown by.
+      renderDetails({
+        activeCultivationTypes: ['direct_sowing'],
+        seedRateRows: [
+          row({ method: 'direct_sowing', value: 2.5, unit: 'g_per_m2' }),
+          row({ method: 'pre_cultivation', value: 9, unit: 'seeds_per_plant' }),
+        ],
+      });
+
+      expect(valueFor('Menge')).toHaveTextContent('2,5 g / m²');
+      expect(screen.queryByText(/9 Korn \/ Pflanze/)).not.toBeInTheDocument();
     });
 
     it('formats a seed rate to three decimals, not two', () => {
@@ -186,6 +216,19 @@ describe('CropSeedDetails', () => {
       const rows = screen.getAllByRole('row').slice(1);
       expect(within(rows[0]).getByRole('cell', { name: '5 %' })).toBeInTheDocument();
       expect(within(rows[1]).getByRole('cell', { name: '-' })).toBeInTheDocument();
+    });
+
+    it('keeps a margin of zero in the table too', () => {
+      renderDetails({
+        activeCultivationTypes: ['pre_cultivation', 'direct_sowing'],
+        seedRateRows: [
+          row({ method: 'pre_cultivation', safety: 0 }),
+          row({ method: 'direct_sowing', safety: 10 }),
+        ],
+      });
+
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(within(rows[0]).getByRole('cell', { name: '0 %' })).toBeInTheDocument();
     });
 
     it('stands alone when the crop has a margin but no rates', () => {
