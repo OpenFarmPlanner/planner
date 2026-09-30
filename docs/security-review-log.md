@@ -40,6 +40,22 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Fifth automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` at `2c835996`; new since the previous
+entry is the API docs link in the API token settings card (constant URL from
+`apiDocsUrl.ts`, `target="_blank"` with `rel="noopener noreferrer"`, i18n only).
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix and unauthenticated public-schema docs views
+  unchanged from the previous entry.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
 ## 2026-09-30 — Claude — Fourth automated security review of PR #713
 
 **Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
