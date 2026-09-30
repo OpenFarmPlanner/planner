@@ -1,4 +1,5 @@
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Trans } from 'react-i18next';
@@ -18,6 +19,20 @@ import AuthPageShell from './AuthPageShell';
 import { authFormSx, authPrimaryButtonSx, authSecondaryButtonSx, authTextButtonSx, authTextFieldSx } from './authPageStyles';
 
 const TURNSTILE_SITE_KEY = resolveTurnstileSiteKey();
+
+// The container shrink-wraps its buttons: when both fit it is exactly one row
+// wide, so they keep their natural width; otherwise it takes the full width,
+// the buttons wrap onto their own lines and `flex-grow` stretches each one.
+const loggedInActionsSx: SxProps<Theme> = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 1.25,
+  width: 'fit-content',
+  maxWidth: '100%',
+};
+
+const loggedInPrimaryActionSx: SxProps<Theme> = { ...authPrimaryButtonSx, flex: '1 1 auto', whiteSpace: 'normal' };
+const loggedInSecondaryActionSx: SxProps<Theme> = { ...authSecondaryButtonSx, flex: '1 1 auto', whiteSpace: 'normal' };
 
 const TURNSTILE_ERROR_MESSAGE_KEYS: Record<string, string> = {
   turnstile_failed: 'auth:register.turnstile.rejected',
@@ -153,14 +168,14 @@ export default function RegisterPage() {
                   <Typography variant="body2">
                     {t('auth:register.loggedInHint', { user: currentUserLabel })}
                   </Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
-                    <Button type="button" variant="contained" size="large" onClick={() => void handleLogoutAndCreate()} sx={authPrimaryButtonSx}>
+                  <Box sx={loggedInActionsSx}>
+                    <Button type="button" variant="contained" size="large" onClick={() => void handleLogoutAndCreate()} sx={loggedInPrimaryActionSx}>
                       {t('auth:register.logoutAndCreate')}
                     </Button>
-                    <Button type="button" variant="outlined" size="large" onClick={() => navigate('/app')} sx={authSecondaryButtonSx}>
+                    <Button type="button" variant="outlined" size="large" onClick={() => navigate('/app')} sx={loggedInSecondaryActionSx}>
                       {t('auth:register.backToApp')}
                     </Button>
-                  </Stack>
+                  </Box>
                 </Stack>
               </Alert>
             ) : null}
