@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Automated security review of PR #714 (fourth pass)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
+the previous entry: the harvest-date filter and date-search commit `146bbdbf`
+(client-side search/filter code, i18n, docs).
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): earlier PR
+#714 entries still hold. The new code filters already-scoped data in the
+browser; no raw SQL, unsafe HTML, `new RegExp` on user input, browser storage
+or workflow changes, and no backend changes.
+
+---
+
 ## 2026-09-30 — Claude — Automated security review of PR #714 (third pass)
 
 **Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
