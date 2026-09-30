@@ -187,6 +187,67 @@ describe('RegisterPage with Turnstile', () => {
     expect(turnstile.api.reset).toHaveBeenCalledWith('widget-1');
   }, 20000);
 
+  it.each([
+    ['error-callback' as const, 'a failed challenge'],
+    ['expired-callback' as const, 'an expired token'],
+    ['timeout-callback' as const, 'a timed-out token'],
+  ])('drops the token on %s, so %s is never submitted', async (callbackName) => {
+    const turnstile = createTurnstileApi();
+    loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+    act(() => turnstile.renderOptions().callback?.('token-123'));
+    await fillForm(user);
+
+    // Turnstile tokens are single-use and each of these three means the one
+    // in hand is no longer good for anything. Submitting it anyway would
+    // send the backend a token it must reject -- the notice alone is not the
+    // point, dropping the token is.
+    act(() => (turnstile.renderOptions()[callbackName] as (code?: string) => void)?.('300010'));
+    await user.click(screen.getByRole('button', { name: 'Konto erstellen' }));
+
+    expect(registerMock).not.toHaveBeenCalled();
+    expect(screen.getByText('auth:register.turnstile.pending')).toBeInTheDocument();
+  }, 20000);
+
+  it('keeps the invisible widget out of the form until a challenge appears', async () => {
+    const turnstile = createTurnstileApi();
+    loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+    renderPage();
+    await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+    // `display: contents` so the empty container adds neither a row nor the
+    // form Stack's spacing while the check passes in the background.
+    const container = screen.getByTestId('turnstile-widget');
+    expect(container).toHaveStyle({ display: 'contents' });
+
+    act(() => turnstile.renderOptions()['before-interactive-callback']?.());
+
+    // Once Cloudflare actually asks for an interaction it needs its own row.
+    expect(container).toHaveStyle({ display: 'block' });
+
+    act(() => turnstile.renderOptions()['after-interactive-callback']?.());
+
+    expect(container).toHaveStyle({ display: 'contents' });
+  }, 20000);
+
+  it('renders the widget in the active theme', async () => {
+    const turnstile = createTurnstileApi();
+    loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+    renderPage();
+    await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+    // Asserts that a theme is passed at all -- dropping the option would
+    // leave Cloudflare to pick one. It cannot tell `themeMode` from a
+    // hardcoded 'light': the app ships a single light theme with no dark
+    // mode, so the two are the same value today. The widget reads
+    // `palette.mode` for the dark mode the app does not have yet, and only
+    // introducing one could make that distinction observable.
+    expect(turnstile.renderOptions().theme).toBe('light');
+  }, 20000);
+
   it('retries loading the script automatically after a load failure', async () => {
     vi.useFakeTimers();
     const turnstile = createTurnstileApi();
