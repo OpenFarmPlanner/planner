@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CropsPublishingWizardDialog } from '../pages/CropsPublishingWizardDialog';
 import type { Crop, PublicCrop } from '../api/types';
+
+// The species field now searches the (mocked) server on every keystroke with
+// a real 250ms debounce (see `useCropSpeciesSearch`) instead of filtering an
+// already-loaded list — `findBy*`/`findAllBy*`'s default 1s timeout can be
+// too tight for that plus `userEvent.type`'s own per-keystroke delay.
+configure({ asyncUtilTimeout: 3000 });
 
 const {
   cropSpeciesListMock,
@@ -85,6 +91,22 @@ const findEnabledPublishButton = async (name = 'Jetzt veröffentlichen') => {
   return button;
 };
 
+// The species field now searches the (mocked) server, so its dropdown can
+// briefly show only the "propose as new species" entry before the debounced
+// search results arrive. `findAllByRole('option')` resolves the moment
+// *any* option exists, so it can race ahead of that — this waits for the
+// expected final option count first.
+const findSettledOptions = async (expectedCount: number) => {
+  await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(expectedCount));
+  return screen.getAllByRole('option');
+};
+
+// Nothing is auto-selected any more (not even an exact name match) — every
+// test that publishes now has to pick the species option explicitly first.
+const selectSpeciesOption = async (name: string): Promise<void> => {
+  fireEvent.click(await screen.findByRole('option', { name }));
+};
+
 const GENERAL_CROP: Crop = { ...CROP, variety: '' };
 const VARIETY_ROMA: Crop = { ...CROP, id: 2, variety: 'Roma' };
 const VARIETY_OCHSENHERZ: Crop = { ...CROP, id: 3, variety: 'Ochsenherz' };
@@ -161,20 +183,20 @@ describe('CropsPublishingWizardDialog', () => {
   });
 
   it('keeps showing the proposed name after picking it while an existing species was already selected', async () => {
-    // Regression test: the crop's name ("Tomate") matches an existing
-    // species in the default beforeEach mock, so the Autocomplete's
-    // `selectedSpecies` (its controlled `value`) starts out as that real
-    // CropSpecies, not null. Retyping a different name and picking "propose
-    // as new species" clears `selectedSpecies` to null, which is a genuine
-    // value change — unlike the case where nothing was ever selected — and
-    // is what triggers MUI's internal input-value reset. The field must
-    // still show the proposed name afterward, not go blank.
+    // Regression test: once a real CropSpecies is selected (the Autocomplete's
+    // controlled `value`), retyping a different name and picking "propose as
+    // new species" clears that selection to null, which is a genuine value
+    // change — unlike the case where nothing was ever selected — and is what
+    // triggers MUI's internal input-value reset. The field must still show
+    // the proposed name afterward, not go blank.
     renderWizard();
 
     const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
     await waitFor(() => expect(speciesInput).toHaveValue('Tomate'));
-
     const user = userEvent.setup();
+    fireEvent.click(await screen.findByRole('option', { name: 'Tomate' }));
+    expect(await screen.findByDisplayValue('Tomate')).toBeInTheDocument();
+
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Ackerbohne test');
 
@@ -251,13 +273,23 @@ describe('CropsPublishingWizardDialog', () => {
     // what the user types/sees (e.g. canonical "Pumpkin", German
     // display_name "Kürbis"). The picker must match on display_name, or a
     // species that already exists looks missing and users are wrongly
-    // steered into proposing a duplicate that the backend then rejects.
+    // steered into proposing a duplicate that the backend then rejects. The
+    // result list shows the UI-language name ("Kürbis") without a redundant
+    // parenthetical, since that's exactly what was searched for — not the
+    // canonical `name` ("Pumpkin").
     cropSpeciesListMock.mockResolvedValue({
       data: {
         count: 1,
         next: null,
         previous: null,
-        results: [{ id: 9, name: 'Pumpkin', display_name: 'Kürbis', status: 'published' }],
+        results: [{
+          id: 9,
+          name: 'Pumpkin',
+          display_name: 'Kürbis',
+          display_language_code: 'de',
+          status: 'published',
+          translations: [{ language_code: 'de', common_name: 'Kürbis', synonyms: [], regional_names: {} }],
+        }],
       },
     });
 
@@ -268,7 +300,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Kürbis');
 
-    expect(await screen.findByRole('option', { name: 'Pumpkin (Kürbis)' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Kürbis' })).toBeInTheDocument();
   });
 
   it('keeps the proposal entry alongside partial species matches', async () => {
@@ -278,8 +310,22 @@ describe('CropsPublishingWizardDialog', () => {
         next: null,
         previous: null,
         results: [
-          { id: 9, name: 'Pumpkin', display_name: 'Kürbis', status: 'published' },
-          { id: 10, name: 'Butternut squash', display_name: 'Kürbis Butternut', status: 'published' },
+          {
+            id: 9,
+            name: 'Pumpkin',
+            display_name: 'Kürbis',
+            display_language_code: 'de',
+            status: 'published',
+            translations: [{ language_code: 'de', common_name: 'Kürbis', synonyms: [], regional_names: {} }],
+          },
+          {
+            id: 10,
+            name: 'Butternut squash',
+            display_name: 'Kürbis Butternut',
+            display_language_code: 'de',
+            status: 'published',
+            translations: [{ language_code: 'de', common_name: 'Kürbis Butternut', synonyms: [], regional_names: {} }],
+          },
         ],
       },
     });
@@ -291,10 +337,10 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Kürb');
 
-    const options = await screen.findAllByRole('option');
+    const options = await findSettledOptions(3);
     expect(options.map((option) => option.textContent)).toEqual([
-      'Pumpkin (Kürbis)',
-      'Butternut squash (Kürbis Butternut)',
+      'Kürbis',
+      'Kürbis Butternut',
       '„Kürb“ als neue Kulturart vorschlagen',
     ]);
   });
@@ -319,7 +365,14 @@ describe('CropsPublishingWizardDialog', () => {
         count: 1,
         next: null,
         previous: null,
-        results: [{ id: 9, name: 'Pumpkin', display_name: 'Kürbis', status: 'published' }],
+        results: [{
+          id: 9,
+          name: 'Pumpkin',
+          display_name: 'Kürbis',
+          display_language_code: 'de',
+          status: 'published',
+          translations: [{ language_code: 'de', common_name: 'Kürbis', synonyms: [], regional_names: {} }],
+        }],
       },
     });
 
@@ -330,7 +383,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'kürbis');
 
-    expect(await screen.findByRole('option', { name: 'Pumpkin (Kürbis)' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Kürbis' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
@@ -401,7 +454,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Peperoni');
 
-    const options = await screen.findAllByRole('option');
+    const options = await findSettledOptions(3);
     expect(options.map((option) => option.textContent)).toEqual([
       'Paprika (Peperoni)',
       'Chili (Peperoni)',
@@ -438,7 +491,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradei');
 
-    const options = await screen.findAllByRole('option');
+    const options = await findSettledOptions(2);
     expect(options.map((option) => option.textContent)).toEqual([
       'Tomate (Paradeis)',
       '„Paradei“ als neue Kulturart vorschlagen',
@@ -506,6 +559,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
     await screen.findByLabelText(/Offizielle Kulturart/i);
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -556,6 +610,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop, { onLinkPublicCrop });
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       // Disabled while the warning is unresolved, with a tooltip explaining why.
       const blockedButton = await screen.findByRole('button', { name: 'Jetzt veröffentlichen' });
@@ -598,6 +653,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop, { varieties: [sorte] });
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       fireEvent.click(await findEnabledPublishButton());
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
@@ -612,6 +668,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       renderWizard(cropLevelCrop);
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
 
       fireEvent.click(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
@@ -630,6 +687,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     await screen.findByLabelText(/Offizielle Kulturart/i);
     expect(screen.queryByLabelText('Vorhandene Sorte')).not.toBeInTheDocument();
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -775,6 +833,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
     await screen.findByLabelText(/Offizielle Kulturart/i);
+    await selectSpeciesOption('Tomate');
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
@@ -802,6 +861,8 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
       expect(screen.getByText('Es werden die allgemeinen Daten dieser Kulturart veröffentlicht. Zusätzlich ausgewählte Sorten werden mitveröffentlicht.')).toBeInTheDocument();
+      // The Sorten-matching lookup only runs once a species is selected.
+      await selectSpeciesOption('Tomate');
 
       const romaCheckbox = screen.getByRole('checkbox', { name: /^Roma/ });
       const ochsenherzCheckbox = screen.getByRole('checkbox', { name: /^Ochsenherz/ });
@@ -824,6 +885,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       fireEvent.click(screen.getByRole('checkbox', { name: /^Ochsenherz/ }));
       expect(screen.getByRole('checkbox', { name: /^Ochsenherz/ })).not.toBeChecked();
 
@@ -846,6 +908,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       expect(await screen.findByText('bereits vorhanden – wird verknüpft')).toBeInTheDocument();
       // Only the conflicting Sorte carries the hint.
       expect(screen.getAllByText('bereits vorhanden – wird verknüpft')).toHaveLength(1);
@@ -865,6 +928,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
+      await selectSpeciesOption('Tomate');
       expect(await screen.findByText(/Abgleich mit der Kulturbibliothek fehlgeschlagen/)).toBeInTheDocument();
 
       // A failed lookup must not block publishing — the backend's own

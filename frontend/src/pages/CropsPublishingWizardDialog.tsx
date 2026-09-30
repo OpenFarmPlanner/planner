@@ -38,10 +38,9 @@ import {
   type PublishVarietySelection,
 } from '../crops/publishVarieties';
 import { CropSpeciesPicker } from '../crops/CropSpeciesPicker';
-import { useCropSpeciesOptions } from '../crops/useCropSpeciesOptions';
+import { useCropSpeciesSearch } from '../crops/useCropSpeciesSearch';
 import {
   getCropSpeciesOptionLabel,
-  getCropSpeciesSearchNames,
   normalizeCropSpeciesSearchValue,
 } from '../crops/cropSpeciesMatching';
 
@@ -109,21 +108,6 @@ const getDefaultLanguageCode = (): string => {
   return LANGUAGE_CODES.includes(language as (typeof LANGUAGE_CODES)[number]) ? language : 'de';
 };
 
-const findInitialSpecies = (items: CropSpecies[], crop: Crop | undefined): CropSpecies | null => {
-  const cropSpeciesId = crop?.crop_species ?? null;
-  if (cropSpeciesId) {
-    return items.find((item) => item.id === cropSpeciesId) ?? null;
-  }
-
-  const normalizedCropName = normalizeCropSpeciesSearchValue(crop?.name);
-  if (!normalizedCropName) {
-    return null;
-  }
-  return items.find((item) => (
-    getCropSpeciesSearchNames(item).some((name) => normalizeCropSpeciesSearchValue(name) === normalizedCropName)
-  )) ?? null;
-};
-
 const getPublicCropOptionLabel = (option: PublicCrop): string => {
   const name = option.display_name || option.crop_species_name || option.name;
   return option.variety ? `${name} · ${option.variety}` : name;
@@ -183,9 +167,6 @@ export function CropsPublishingWizardDialog({
   const [linkConfirmSubmitting, setLinkConfirmSubmitting] = useState(false);
   const speciesInputRef = useRef<HTMLInputElement | null>(null);
   const languageInputRef = useRef<HTMLInputElement | null>(null);
-  // The initial species guess is applied once per opening: re-running it after
-  // `addSpecies` would overwrite a species the user just proposed.
-  const initialSpeciesAppliedRef = useRef(false);
   const [syncSubmitting, setSyncSubmitting] = useState(false);
   const ownedPublicCropId = crop?.owned_public_crop_id ?? null;
   // A crop connected to an entry (its own, or one it was imported from or
@@ -194,11 +175,21 @@ export function CropsPublishingWizardDialog({
   const linkedPublicCropId = ownedPublicCropId ?? crop?.source_public_crop ?? null;
   const isSyncFlow = Boolean(linkedPublicCropId);
   const {
-    species,
+    results: speciesSearchResults,
     loading: speciesLoading,
-    loaded: speciesLoaded,
-    addSpecies,
-  } = useCropSpeciesOptions(open && !isSyncFlow);
+  } = useCropSpeciesSearch(speciesInputValue, open && !isSyncFlow);
+  // A species the user just proposed is `status=proposed`, so a non-moderator's
+  // own search never finds it again (the search endpoint only surfaces
+  // published species to non-moderators) — this keeps it selectable for the
+  // rest of this publish attempt anyway, mirroring the old full-list picker's
+  // `addSpecies`. Reset whenever the dialog reopens.
+  const [proposedSpeciesOverride, setProposedSpeciesOverride] = useState<CropSpecies | null>(null);
+  const species = useMemo(() => {
+    if (!proposedSpeciesOverride) return speciesSearchResults;
+    return speciesSearchResults.some((item) => item.id === proposedSpeciesOverride.id)
+      ? speciesSearchResults
+      : [proposedSpeciesOverride, ...speciesSearchResults];
+  }, [proposedSpeciesOverride, speciesSearchResults]);
   const isCropLevelPublish = !crop?.variety?.trim();
   const publishableVarieties = useMemo(() => getPublishableVarieties(varieties), [varieties]);
 
@@ -208,9 +199,15 @@ export function CropsPublishingWizardDialog({
       setAcceptedLicense(false);
       setShowLicenseConfirmation(false);
       // Prefilled with the local crop's own name so the field never starts
-      // empty — the user can still overwrite it if no official species
-      // matches, or if they want to propose a different one.
+      // empty and its results show right away — but nothing is auto-selected
+      // from them (not even "propose as new species"): the user always picks
+      // deliberately, and "Jetzt veröffentlichen" stays disabled until they do.
+      setSelectedSpecies(null);
+      setProposedSpeciesOverride(null);
       setSpeciesInputValue(crop?.name ?? '');
+      // The field autofocuses itself (`autoFocus` + `openOnFocus` in
+      // CropSpeciesPicker), which shows its results immediately for
+      // whatever `speciesInputValue` already holds.
       // Same idea for the variety field: pre-fill with the local variety's
       // own name. If a matching public entry is found once the search
       // results load (see the publicCropOptions effect), it's also
@@ -319,18 +316,6 @@ export function CropsPublishingWizardDialog({
     };
   }, [crop?.variety, isSyncFlow, isCropLevelPublish, open, publishableVarieties.length, selectedSpecies]);
 
-  useEffect(() => {
-    if (!open) {
-      initialSpeciesAppliedRef.current = false;
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !speciesLoaded || initialSpeciesAppliedRef.current) return;
-    initialSpeciesAppliedRef.current = true;
-    setSelectedSpecies(findInitialSpecies(species, crop));
-  }, [crop, open, species, speciesLoaded]);
-
   const missingRequiredFields = validationResult?.missing_required_fields ?? EMPTY_REQUIRED_FIELDS;
   const duplicates = validationResult?.duplicates ?? EMPTY_DUPLICATES;
   const licenseAccepted = termsAlreadyAccepted || acceptedLicense;
@@ -415,7 +400,7 @@ export function CropsPublishingWizardDialog({
       // backend accepts `proposed` species as a publish target (see
       // resolve_publishing_crop_species), and the variety becomes fully
       // official automatically once the species is approved.
-      addSpecies(created);
+      setProposedSpeciesOverride(created);
       setSelectedSpecies(created);
       setSpeciesInputValue(getCropSpeciesOptionLabel(created));
       setSelectedPublicCrop(null);
@@ -429,7 +414,7 @@ export function CropsPublishingWizardDialog({
     } finally {
       setProposingSpecies(false);
     }
-  }, [addSpecies, originalLanguageCode, resetValidationResult, t]);
+  }, [originalLanguageCode, resetValidationResult, t]);
 
   // Shared with the link-confirmation flow's "back to warning" path, which
   // re-runs this after a rejected link so a withdrawn candidate disappears.
@@ -848,6 +833,7 @@ export function CropsPublishingWizardDialog({
               errorText={proposeSpeciesError}
               inputRef={speciesInputRef}
               required
+              serverSearched
             />
 
             {varietySelectionBox}
