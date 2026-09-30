@@ -119,10 +119,15 @@ export function AuthProvider({
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     const requestGeneration = authGenerationRef.current;
     try {
-      const me = await getMe();
+      const response = await getMe();
       if (requestGeneration !== authGenerationRef.current) {
         return null;
       }
+      if (!response.authenticated) {
+        clearAuthenticatedUser();
+        return null;
+      }
+      const me = response;
       if (me.is_guest_demo && String(me.guest_demo_session_id) !== window.sessionStorage.getItem(GUEST_DEMO_SESSION_KEY)) {
         // The session cookie now belongs to a guest demo this tab didn't start
         // (sessionStorage, unlike the cookie, isn't shared across tabs — e.g. a

@@ -397,13 +397,14 @@ class AuthApiTest(APITestCase):
 
         me_response = self.client.get('/openfarmplanner/api/auth/me/')
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(me_response.data['authenticated'])
 
         logout_response = self.client.post('/openfarmplanner/api/auth/logout/', {}, format='json')
         self.assertEqual(logout_response.status_code, status.HTTP_200_OK)
 
         me_after_logout = self.client.get('/openfarmplanner/api/auth/me/')
-        self.assertEqual(me_after_logout.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(me_after_logout.data['code'], 'authentication_required')
+        self.assertEqual(me_after_logout.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_after_logout.data, {'authenticated': False})
 
     def test_password_reset_request_and_confirm(self) -> None:
         reset_request = self.client.post('/openfarmplanner/api/auth/password-reset/', {'email': self.user.email}, format='json')
