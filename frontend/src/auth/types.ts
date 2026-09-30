@@ -38,6 +38,16 @@ export interface AuthUser {
   ui_language?: string;
 }
 
+export interface AuthenticatedMeResponse extends AuthUser {
+  authenticated: true;
+}
+
+export interface AnonymousMeResponse {
+  authenticated: false;
+}
+
+export type MeResponse = AuthenticatedMeResponse | AnonymousMeResponse;
+
 export interface ProjectSwitchResponse {
   detail: string;
   project_id: number;

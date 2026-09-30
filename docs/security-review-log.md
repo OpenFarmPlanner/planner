@@ -40,6 +40,18 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Automated security review of PR #716
+
+**Scope:** `git diff origin/main...HEAD` of `feat/auth-me-always-200`: `MeView`
+now returns `200 {"authenticated": false}` for anonymous callers instead of 401,
+plus the matching frontend handling.
+
+**Findings:** No issues. The endpoint was already `AllowAny` and the anonymous
+body carries no data; authenticated responses expose the same `UserSerializer`
+fields plus a boolean. No new write path, no tenancy or token impact.
+
+---
+
 ## 2026-09-30 — Claude — Automated security review of PR #714 (fifth pass)
 
 **Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
