@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Automated security review of PR #714 (re-review)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`, including
+the merge of `origin/main`.
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): the
+2026-09-29 PR #714 entry still holds. `crop_species_search_names` is read-only
+and limited to global species names, there is no unsafe HTML rendering, and the
+search state is not persisted to `localStorage` or the URL. No workflow files
+changed.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #714 (planting-plan page search)
 
 **Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`: read-only
