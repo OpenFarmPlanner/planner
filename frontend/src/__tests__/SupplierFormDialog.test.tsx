@@ -359,7 +359,29 @@ describe('SupplierFormDialog', () => {
       expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeDisabled();
     });
 
-    it('ignores a second submit', async () => {
+    it('ignores a second submit that arrives before the first has rendered', async () => {
+      const user = userEvent.setup();
+      pendingSave();
+      renderDialog();
+
+      await user.type(nameField(), 'Reinsaat');
+      const form = nameField().closest('form') as HTMLFormElement;
+
+      // Both submits inside one act, so React batches them and the second
+      // handler still sees `isSaving` as false. That is the whole reason for
+      // the ref beside the state: waiting for the re-render first would let
+      // `canSave` do the blocking and leave the ref unexercised. Two Enter
+      // presses in the name field are exactly this, and the failure is a
+      // supplier created twice.
+      await act(async () => {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      });
+
+      expect(mocks.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a submit once the save has rendered as in flight', async () => {
       const user = userEvent.setup();
       pendingSave();
       renderDialog();
@@ -367,9 +389,8 @@ describe('SupplierFormDialog', () => {
       await saveWith(user, { name: 'Reinsaat' });
       await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
 
-      // The button is disabled, so submit the form directly -- an Enter press
-      // in a text field does the same thing, and creating the supplier twice
-      // is the failure this guard exists for.
+      // The other half of the guard: by now the disabled state is rendered,
+      // and a submit reaching the form anyway is refused too.
       fireEvent.submit(nameField().closest('form') as HTMLFormElement);
 
       expect(mocks.create).toHaveBeenCalledTimes(1);
