@@ -10,8 +10,10 @@ import {
 
 import type { CropSpecies } from '../api/types';
 import { useTranslation } from '../i18n';
+import i18n from '../i18n/config';
 import {
   getCropSpeciesOptionLabel,
+  getCropSpeciesResultLabel,
   getCropSpeciesSearchNames,
   hasStrongCropSpeciesIdentityMatch,
   isCropSpeciesSearchMatch,
@@ -77,6 +79,18 @@ export interface CropSpeciesPickerProps {
   label?: string;
   required?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
+  /**
+   * True when `species` is already a ranked, server-searched result set
+   * (see `useCropSpeciesSearch`) rather than the full catalogue loaded once
+   * for client-side filtering. In that mode the picker trusts the given
+   * order/set as-is instead of re-filtering it locally, and labels each
+   * option with `getCropSpeciesResultLabel` (UI-language canonical name,
+   * synonym parenthetical only when that's what matched) instead of
+   * `getCropSpeciesOptionLabel`. Used by the publishing wizard's "Offizielle
+   * Kulturart" field; the moderators' relink dialog keeps the default
+   * client-filtered full-list mode.
+   */
+  serverSearched?: boolean;
 }
 
 /**
@@ -99,6 +113,7 @@ export function CropSpeciesPicker({
   label,
   required = false,
   inputRef,
+  serverSearched = false,
 }: CropSpeciesPickerProps) {
   const { t } = useTranslation(['crops', 'common']);
   const highlightedOptionRef = useRef<SpeciesPickerOption | null>(null);
@@ -136,27 +151,37 @@ export function CropSpeciesPicker({
         !isProposeSpeciesOption(option) && !isProposeSpeciesOption(optionValue) && option.id === optionValue.id
       )}
       getOptionDisabled={(option) => isProposeSpeciesOption(option) && proposing}
+      // Server-searched mode wants results visible the moment the field is
+      // focused (the publishing wizard autofocuses it on open, prefilled
+      // with the crop's own name) rather than only once the user types —
+      // uncontrolled, so it doesn't fight MUI's own open/close timing the
+      // way a controlled `open` prop toggled from mount did.
+      openOnFocus={serverSearched}
       filterOptions={(options, params) => {
-        const baseFiltered = filterSpeciesOptions(options, params);
         const proposeName = params.inputValue.trim();
-        const filteredIds = new Set(
-          baseFiltered
-            .filter((option): option is CropSpecies => !isProposeSpeciesOption(option))
-            .map((option) => option.id),
-        );
-        const fuzzyMatches = proposeName
-          ? options.filter((option): option is CropSpecies => (
-            !isProposeSpeciesOption(option)
-            && !filteredIds.has(option.id)
-            && isCropSpeciesSearchMatch(proposeName, getCropSpeciesSearchNames(option))
-          ))
-          : [];
-        const filtered = [...baseFiltered, ...fuzzyMatches];
+        const knownOptions = options.filter((option): option is CropSpecies => !isProposeSpeciesOption(option));
+        // Server-searched mode: `options` is already the ranked result set
+        // for this query (see `useCropSpeciesSearch`) — re-running the
+        // client-side substring/fuzzy filter here would drop fuzzy hits
+        // that don't literally contain the typed text.
+        const filtered = serverSearched ? knownOptions : (() => {
+          const baseFiltered = filterSpeciesOptions(options, params);
+          const filteredIds = new Set(
+            baseFiltered
+              .filter((option): option is CropSpecies => !isProposeSpeciesOption(option))
+              .map((option) => option.id),
+          );
+          const fuzzyMatches = proposeName
+            ? knownOptions.filter((option) => (
+              !filteredIds.has(option.id)
+              && isCropSpeciesSearchMatch(proposeName, getCropSpeciesSearchNames(option))
+            ))
+            : [];
+          return [...baseFiltered, ...fuzzyMatches];
+        })();
         const hasStrongExistingSpeciesMatch = hasStrongCropSpeciesIdentityMatch(
           proposeName,
-          options
-            .filter((option): option is CropSpecies => !isProposeSpeciesOption(option))
-            .map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
+          knownOptions.map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
         );
         if (!proposeName || loading || hasStrongExistingSpeciesMatch) {
           return filtered;
@@ -185,7 +210,9 @@ export function CropSpeciesPicker({
             </Box>
           );
         }
-        const label = getCropSpeciesOptionLabel(option, inputValue);
+        const label = serverSearched
+          ? getCropSpeciesResultLabel(option, inputValue, i18n.resolvedLanguage ?? i18n.language).label
+          : getCropSpeciesOptionLabel(option, inputValue);
         return (
           <li {...optionProps} key={key}>
             {option.status === 'proposed'
@@ -242,10 +269,22 @@ export function CropSpeciesPicker({
         <TextField
           {...params}
           inputRef={inputRef}
+          // Server-searched mode (the publishing wizard) wants results
+          // visible the moment the dialog opens, with no extra click —
+          // `autoFocus` plus `openOnFocus` above gets there without an
+          // imperative `.focus()` call racing the dialog's own mount/open
+          // transition.
+          autoFocus={serverSearched}
           label={label ?? t('library.speciesPicker.label')}
           required={required}
           error={Boolean(errorText)}
-          helperText={errorText || undefined}
+          // Makes it unmistakable, right where the name is edited, that no
+          // existing library entry is linked and a typo here would create a
+          // wrong proposal — the name stays directly correctable in the
+          // field itself, with no extra dialog step.
+          helperText={errorText || (proposalName
+            ? t('library.speciesPicker.proposingHelp', { name: proposalName })
+            : undefined)}
           slotProps={{
             ...params.slotProps,
 
