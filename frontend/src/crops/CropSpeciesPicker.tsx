@@ -262,9 +262,11 @@ export function CropSpeciesPicker({
           reportProposalName(null);
         }
       }}
-      noOptionsText={loading
-        ? <Typography variant="body2" color="text.secondary">{t('common:loading')}</Typography>
-        : t('library.speciesPicker.noOptions')}
+      // MUI only falls back to `noOptionsText` once `loading` is false; while
+      // it is true it renders `loadingText`, whose default is an
+      // untranslated "Loading…". The German string has to go there.
+      loadingText={<Typography variant="body2" color="text.secondary">{t('common:messages.loading')}</Typography>}
+      noOptionsText={t('library.speciesPicker.noOptions')}
       renderInput={(params) => (
         <TextField
           {...params}

@@ -84,15 +84,6 @@ afterEach(() => {
  * decisions -- when it offers to propose a new species, and the handshake
  * with the owning dialog that keeps a proposal from being lost or filed by
  * accident.
- *
- * One thing is recorded rather than pinned, because it is a bug rather than
- * a behaviour worth locking in: the loading branch of `noOptionsText` never
- * reaches the screen. MUI renders `loadingText` while `loading` is true and
- * only falls back to `noOptionsText` afterwards, so the German
- * `common:loading` string wired into `noOptionsText` is dead and the field
- * shows MUI's untranslated English default instead. Asserting the English
- * string here would pin the bug, so the tests assert only that the
- * "nothing found" message stays away while loading.
  */
 describe('CropSpeciesPicker', () => {
   describe('picking an existing species', () => {
@@ -484,15 +475,28 @@ describe('CropSpeciesPicker', () => {
       expect(screen.queryByText(/Neue Kulturart wird vorgeschlagen/)).not.toBeInTheDocument();
     });
 
+    it('says it is loading, in the user\u2019s language', async () => {
+      const user = userEvent.setup();
+      setup({ loading: true, species: [] });
+
+      await user.click(field());
+
+      // The German string has to sit on `loadingText`: MUI only falls back
+      // to `noOptionsText` once `loading` is false, so a loading branch
+      // wired into that prop never renders and its own English default
+      // leaks into the German UI instead.
+      expect(await screen.findByText('Lädt...')).toBeInTheDocument();
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+
     it('does not claim there is nothing while the list is still loading', async () => {
       const user = userEvent.setup();
       setup({ loading: true, species: [] });
 
       await user.click(field());
 
-      // "No species found" would be wrong while the list is on its way. What
-      // is shown instead is MUI's own loading text -- see the note above
-      // about the German string never reaching the screen.
+      // "No species found" is a conclusion; it must not be drawn before the
+      // list has arrived.
       expect(screen.queryByText('Keine passende offizielle Kulturart gefunden.'))
         .not.toBeInTheDocument();
     });
