@@ -40,6 +40,23 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Fourth automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`dc3e7bd6`; new since the previous entry is only the transitive frontend
+lockfile bump (brace-expansion, fast-uri, markdown-it patch versions, same
+registry, integrity hashes updated).
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix and unauthenticated public-schema docs views
+  unchanged from the previous entry.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
 ## 2026-09-30 — Claude — Third automated security review of PR #713
 
 **Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
