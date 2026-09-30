@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Automated security review of PR #717
+
+**Scope:** `git diff origin/main...HEAD` of `claude/sweet-mccarthy-jq9xnr`:
+`backend/farm/services/engagement_dashboard.py` (demo projects excluded from
+all engagement breakdowns), its tests and README. The service backs the
+superuser-only admin dashboard and only aggregates counts; the change adds
+`exclude(project_id__in=...)` filters on ORM querysets with integer id sets.
+
+**Findings:** No issues. No new data exposed, no raw SQL, no permission or
+tenancy changes, no personal data added to output.
+
+---
+
 ## 2026-09-30 — Claude — Automated security review of PR #716
 
 **Scope:** `git diff origin/main...HEAD` of `feat/auth-me-always-200`: `MeView`
