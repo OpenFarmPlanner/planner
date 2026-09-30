@@ -486,10 +486,10 @@ def _build_layout_usage(projects: list[ProjectEngagement]) -> LayoutUsage:
     )
 
 
-def _build_season_usage(total_projects: int) -> SeasonUsage:
+def _build_season_usage(total_projects: int, excluded_ids: set[int]) -> SeasonUsage:
     """Measure how many seasons projects keep and how many define a pattern."""
-    season_count = Season.objects.count()
-    pattern_count = SeasonPattern.objects.count()
+    season_count = Season.objects.exclude(project_id__in=excluded_ids).count()
+    pattern_count = SeasonPattern.objects.exclude(project_id__in=excluded_ids).count()
     return SeasonUsage(
         average_seasons_per_project=(
             round(season_count / total_projects, 1) if total_projects else 0.0
@@ -498,31 +498,41 @@ def _build_season_usage(total_projects: int) -> SeasonUsage:
     )
 
 
-def _average_distinct_crops(total_projects: int) -> float:
+def _average_distinct_crops(total_projects: int, excluded_ids: set[int]) -> float:
     """Return the mean number of distinct crop names per project."""
     if total_projects == 0:
         return 0.0
-    per_project = Crop.objects.values('project_id').annotate(
+    per_project = Crop.objects.exclude(project_id__in=excluded_ids).values(
+        'project_id',
+    ).annotate(
         distinct_names=Count('name', distinct=True),
     )
     distinct_total = sum(entry['distinct_names'] for entry in per_project)
     return round(distinct_total / total_projects, 1)
 
 
-def _build_task_usage() -> TaskUsage:
-    """Return created and completed task totals across all projects."""
-    totals = Task.objects.aggregate(
+def _build_task_usage(excluded_ids: set[int]) -> TaskUsage:
+    """Return created and completed task totals across the analysed projects."""
+    totals = Task.objects.exclude(project_id__in=excluded_ids).aggregate(
         created=Count('pk'),
         completed=Count('pk', filter=Q(status='completed')),
     )
     return TaskUsage(created=totals['created'], completed=totals['completed'])
 
 
-def _build_crop_library(rows: dict[int, ProjectEngagement]) -> CropLibraryEngagement:
-    """Measure contribution to and consumption of the public crop library."""
+def _build_crop_library(
+    rows: dict[int, ProjectEngagement],
+    excluded_ids: set[int],
+) -> CropLibraryEngagement:
+    """Measure contribution to and consumption of the public crop library.
+
+    Project-owned numbers (contributions, crop origins, pending updates) skip
+    `excluded_ids`; discussion and revision totals belong to the shared
+    library itself and are never scoped to a project.
+    """
     published = PublicCrop.objects.filter(
         status=PublicCrop.STATUS_PUBLISHED,
-    ).values('source_project_id').annotate(total=Count('pk')).order_by('-total')
+    ).exclude(source_project_id__in=excluded_ids).values('source_project_id').annotate(total=Count('pk')).order_by('-total')
     contributions: list[PublicCropContribution] = []
     for entry in published:
         contributor = rows.get(entry['source_project_id'])
@@ -533,14 +543,15 @@ def _build_crop_library(rows: dict[int, ProjectEngagement]) -> CropLibraryEngage
             ),
         )
 
-    crop_origins = Crop.objects.aggregate(
+    project_crops = Crop.objects.exclude(project_id__in=excluded_ids)
+    crop_origins = project_crops.aggregate(
         imported=Count('pk', filter=Q(derived_from_public_crop__isnull=False)),
         self_entered=Count('pk', filter=Q(derived_from_public_crop__isnull=True)),
     )
     # Version-level approximation of `has_pending_public_crop_update`: the
     # per-field comparison that helper runs cannot be expressed in SQL, so this
     # can include a bump that changed nothing the copy cares about.
-    pending_updates = Crop.objects.filter(
+    pending_updates = project_crops.filter(
         source_public_crop__status=PublicCrop.STATUS_PUBLISHED,
     ).filter(
         Q(source_public_version__isnull=True)
@@ -577,16 +588,12 @@ def _projects_where_user_is_sole_member(user_id: int) -> set[int]:
     return sole_member_project_ids & current_user_project_ids
 
 
-def _excluded_project_ids(current_user_id: int | None) -> set[int]:
-    """Return ids of projects hidden by default: demo templates and projects
-    where `current_user_id` is the sole member (own scratch/test projects)."""
-    demo_ids = set(
+def _demo_project_ids() -> set[int]:
+    """Return ids of demo/template projects, identified by their description marker."""
+    return set(
         Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
         .values_list('pk', flat=True),
     )
-    if current_user_id is None:
-        return demo_ids
-    return demo_ids | _projects_where_user_is_sole_member(current_user_id)
 
 
 def build_engagement_dashboard(
@@ -600,9 +607,11 @@ def build_engagement_dashboard(
     By default (`include_hidden=False`), demo/template projects and projects
     where `current_user_id` is the sole member are hidden from the "Projekte"
     table and from the top-line project and user counts, so the dashboard
-    reflects real external usage. Every other breakdown (data richness,
-    feature adoption, growth, crop library, ...) always covers every project,
-    unaffected by this default-only filter.
+    reflects real external usage. Demo projects are also left out of every
+    other breakdown (data richness, feature adoption, growth, crop library,
+    ...), since their seeded sample data says nothing about real usage; the
+    superuser's own projects stay in those breakdowns. `include_hidden=True`
+    lifts both exclusions everywhere.
     """
     current_time = now or timezone.now()
     cutoff_7_days = current_time - timedelta(days=7)
@@ -611,13 +620,20 @@ def build_engagement_dashboard(
     all_rows = _collect_project_rows(cutoff_7_days, cutoff_30_days)
     _add_membership_and_feedback(all_rows, cutoff_30_days)
 
-    excluded_ids = _excluded_project_ids(current_user_id)
+    demo_ids = _demo_project_ids()
+    excluded_ids = set(demo_ids)
+    if current_user_id is not None:
+        excluded_ids |= _projects_where_user_is_sole_member(current_user_id)
     hidden_projects_count = sum(1 for pk in all_rows if pk in excluded_ids)
-    visible_rows = (
-        all_rows
-        if include_hidden
-        else {pk: row for pk, row in all_rows.items() if pk not in excluded_ids}
-    )
+
+    def _without(ids: set[int]) -> dict[int, ProjectEngagement]:
+        if include_hidden:
+            return all_rows
+        return {pk: row for pk, row in all_rows.items() if pk not in ids}
+
+    visible_rows = _without(excluded_ids)
+    analysed_rows = _without(demo_ids)
+    analysis_excluded_ids = set() if include_hidden else demo_ids
 
     def _by_recency(rows: dict[int, ProjectEngagement]) -> list[ProjectEngagement]:
         return sorted(
@@ -627,21 +643,18 @@ def build_engagement_dashboard(
         )
 
     projects = _by_recency(visible_rows)
-    all_projects = _by_recency(all_rows)
+    analysed_projects = _by_recency(analysed_rows)
     total_projects = len(projects)
-    all_total_projects = len(all_projects)
-    active_projects = [row for row in all_projects if row.status == STATUS_ACTIVE]
+    analysed_total_projects = len(analysed_projects)
+    active_projects = [row for row in analysed_projects if row.status == STATUS_ACTIVE]
     user_model = get_user_model()
     user_qs = user_model.objects.all()
     if not include_hidden and current_user_id is not None:
         user_qs = user_qs.exclude(pk=current_user_id)
-    template_projects = Project.objects.filter(
-        description__in=DEMO_PROJECT_DESCRIPTIONS,
-    ).count()
 
     return EngagementDashboard(
         projects=projects,
-        projects_by_data=sorted(all_projects, key=lambda row: row.data_total, reverse=True),
+        projects_by_data=sorted(analysed_projects, key=lambda row: row.data_total, reverse=True),
         active_projects=active_projects,
         active_project_averages=_average_counts(active_projects),
         total_projects=total_projects,
@@ -653,14 +666,16 @@ def build_engagement_dashboard(
         ),
         total_users=user_qs.count(),
         users_logged_in_30_days=user_qs.filter(last_login__gte=cutoff_30_days).count(),
-        adoption=_build_adoption(all_projects),
-        monthly_growth=_build_monthly_growth(all_projects),
-        season_usage=_build_season_usage(all_total_projects),
-        layout_usage=_build_layout_usage(all_projects),
-        average_distinct_crops_per_project=_average_distinct_crops(all_total_projects),
-        task_usage=_build_task_usage(),
-        projects_from_template=Share(count=template_projects, total=all_total_projects),
-        crop_library=_build_crop_library(all_rows),
+        adoption=_build_adoption(analysed_projects),
+        monthly_growth=_build_monthly_growth(analysed_projects),
+        season_usage=_build_season_usage(analysed_total_projects, analysis_excluded_ids),
+        layout_usage=_build_layout_usage(analysed_projects),
+        average_distinct_crops_per_project=_average_distinct_crops(
+            analysed_total_projects, analysis_excluded_ids,
+        ),
+        task_usage=_build_task_usage(analysis_excluded_ids),
+        projects_from_template=Share(count=len(demo_ids), total=len(all_rows)),
+        crop_library=_build_crop_library(all_rows, analysis_excluded_ids),
         hidden_projects_count=hidden_projects_count,
         show_all=include_hidden,
     )

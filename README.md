@@ -43,9 +43,14 @@ sole member (their own scratch/test projects), and demo/template projects,
 identified by the template's own project description (never by project name,
 since either can be renamed). The banner above the table names how many
 projects are hidden and links to an unfiltered view (`?show_all=1`) that also
-adds the superuser back into the registered-user totals; every other
-breakdown below (data richness, feature adoption, growth, crop library, ...)
-always covers every project regardless of this filter.
+adds the superuser back into the registered-user totals. Demo/template
+projects are also left out of every other breakdown below (data richness,
+active-project detail, feature adoption, growth, seasons/layouts/crops/tasks,
+crop library), because their seeded sample data says nothing about real
+usage; the superuser's own projects stay in those breakdowns. The
+`?show_all=1` view includes demo projects there again. Only "Projekte aus
+Demo-Vorlage" and the Demo-Nutzung block below still count demo projects by
+design.
 
 A **Demo-Nutzung** block, placed between the Gesamtübersicht and the
 "Projekte" table, reports how often the demo is used and whether it leads to
