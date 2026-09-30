@@ -28,7 +28,7 @@ const baseUser: AuthUser = {
   guest_demo_session_id: null,
 };
 
-const getMeMock = vi.hoisted(() => vi.fn(async () => baseUser));
+const getMeMock = vi.hoisted(() => vi.fn(async () => ({ authenticated: true as const, ...baseUser })));
 const logoutMock = vi.hoisted(() => vi.fn(async () => undefined));
 const startGuestDemoMock = vi.hoisted(() => vi.fn(async () => ({
   ...baseUser,
@@ -101,7 +101,7 @@ describe('AuthProvider cross-tab project sync', () => {
     sessionStorage.clear();
     getMeMock.mockClear();
     startGuestDemoMock.mockClear();
-    getMeMock.mockResolvedValue(baseUser);
+    getMeMock.mockResolvedValue({ authenticated: true, ...baseUser });
     startGuestDemoMock.mockResolvedValue({
       ...baseUser,
       id: 2,
@@ -252,6 +252,7 @@ describe('AuthProvider cross-tab project sync', () => {
     await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));
 
     getMeMock.mockResolvedValueOnce({
+      authenticated: true,
       ...baseUser,
       id: 2,
       is_guest_demo: true,
@@ -262,5 +263,14 @@ describe('AuthProvider cross-tab project sync', () => {
 
     expect(getMeMock).toHaveBeenCalledTimes(2);
     expect(logoutMock).not.toHaveBeenCalled();
+  });
+
+  it('treats an { authenticated: false } response as logged out, not an error', async () => {
+    getMeMock.mockResolvedValueOnce({ authenticated: false });
+
+    render(<AuthProvider><ActiveProjectProbe /></AuthProvider>);
+
+    await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('none'));
+    expect(localStorage.getItem('activeProjectId')).toBeNull();
   });
 });

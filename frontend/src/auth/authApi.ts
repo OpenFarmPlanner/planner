@@ -1,4 +1,4 @@
-import type { AccountActionResponse, AccountDeleteResponse, AuthUser, ProjectSwitchResponse } from './types';
+import type { AccountActionResponse, AccountDeleteResponse, AuthUser, MeResponse, ProjectSwitchResponse } from './types';
 import i18n from '../i18n';
 import { computeBaseURL } from '../api/httpClient';
 import { readCookie } from '../utils/cookies';
@@ -256,8 +256,8 @@ export function csrfHeader(): Record<string, string> {
   return { 'X-CSRFToken': readCookie('csrftoken') ?? '' };
 }
 
-export function getMe(): Promise<AuthUser> {
-  return request<AuthUser>('/auth/me/', { method: 'GET' });
+export function getMe(): Promise<MeResponse> {
+  return request<MeResponse>('/auth/me/', { method: 'GET' });
 }
 
 export interface RegisterResponse {

@@ -360,9 +360,9 @@ Everything outside the tests now adds up to well under a minute, so the
 job is ~85% test execution — which is where the remaining work is.
 
 The tests are the majority, and inside them the per-test cost is roughly
-4-8 seconds of which a UI sign-in is a large part — the log shows an
-`Unauthorized: /api/auth/me/` followed by a login before almost every
-test. Shard 1 spends 4m11s on 33 tests, i.e. 7.6s each.
+4-8 seconds of which a UI sign-in is a large part — the log shows a
+`GET /api/auth/me/` followed by a login before almost every test. Shard 1
+spends 4m11s on 33 tests, i.e. 7.6s each.
 
 Reusing an authenticated `storageState` across the specs in a scenario,
 instead of signing in per test, is the next real lever — and, given the

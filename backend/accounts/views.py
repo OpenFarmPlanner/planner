@@ -344,12 +344,13 @@ class MeView(APIView):
 
     def get(self, request: Request) -> Response:
         if not request.user.is_authenticated:
-            return api_error_response(
-                code='authentication_required',
-                detail=_de(_('Authentication credentials were not provided.')),
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
-        return Response(UserSerializer(request.user).data)
+            # 200 rather than 401: this is a routine "is anyone logged in?"
+            # probe every page load makes, not a failed request for
+            # protected data, and a non-2xx response here shows up as a
+            # spurious error in the browser console/network log on every
+            # anonymous visit.
+            return Response({'authenticated': False})
+        return Response({'authenticated': True, **UserSerializer(request.user).data})
 
 
 class ConsentAcceptView(APIView):
