@@ -13,20 +13,39 @@ export type PublicCropSyncChoice = 'library' | 'mine';
 export type PublicCropSyncChoices = Record<string, PublicCropSyncChoice>;
 
 /**
+ * Where the sync is opened from. `link` is the confirmation of linking a
+ * private crop to an existing entry: the two sides have no shared history, so
+ * a value on both sides is a genuine choice. `update` is "Bibliothek
+ * aktualisieren", which is only offered while the copy is on the entry's
+ * current version, so every difference there is a local edit the user wants
+ * to contribute.
+ */
+export type PublicCropSyncMode = 'link' | 'update';
+
+/**
  * The preselection for one field: only the library has a value -> take it;
  * only the local crop has one -> push it; both set and different -> the
- * library's value. A field the user may not push (the fixed Kulturart name,
- * a Sorte rename on someone else's entry) always starts on the library side.
+ * library's value when linking, the local value when updating the library.
+ * A field the user may not push (the fixed Kulturart name, a Sorte rename on
+ * someone else's entry) always starts on the library side.
  */
-export function getDefaultSyncChoice(change: PublicCropSyncFieldChange): PublicCropSyncChoice {
+export function getDefaultSyncChoice(
+  change: PublicCropSyncFieldChange,
+  mode: PublicCropSyncMode = 'link',
+): PublicCropSyncChoice {
   if (!change.pushable) return 'library';
   const hasPublicValue = !isEmptyPublicValue(change.public_value);
   const hasLocalValue = !isEmptyPublicValue(change.local_value);
-  return hasLocalValue && !hasPublicValue ? 'mine' : 'library';
+  if (!hasLocalValue) return 'library';
+  if (!hasPublicValue) return 'mine';
+  return mode === 'update' ? 'mine' : 'library';
 }
 
-export function buildDefaultSyncChoices(changes: readonly PublicCropSyncFieldChange[]): PublicCropSyncChoices {
-  return Object.fromEntries(changes.map((change) => [change.field, getDefaultSyncChoice(change)]));
+export function buildDefaultSyncChoices(
+  changes: readonly PublicCropSyncFieldChange[],
+  mode: PublicCropSyncMode = 'link',
+): PublicCropSyncChoices {
+  return Object.fromEntries(changes.map((change) => [change.field, getDefaultSyncChoice(change, mode)]));
 }
 
 /** "Alle aus Bibliothek" / "Alle meine Werte" — fields that cannot be pushed stay on the library side. */
@@ -50,11 +69,12 @@ export interface PublicCropSyncSelection {
 export function splitSyncChoices(
   changes: readonly PublicCropSyncFieldChange[],
   choices: PublicCropSyncChoices,
+  mode: PublicCropSyncMode = 'link',
 ): PublicCropSyncSelection {
   const pullFields: string[] = [];
   const pushFields: string[] = [];
   changes.forEach((change) => {
-    const choice = choices[change.field] ?? getDefaultSyncChoice(change);
+    const choice = choices[change.field] ?? getDefaultSyncChoice(change, mode);
     if (choice === 'mine' && change.pushable) {
       pushFields.push(change.field);
     } else {

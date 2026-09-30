@@ -31,6 +31,7 @@ import i18n from '../i18n/config';
 import { getLanguageDisplayName } from '../i18n/languages';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from '../crops/usePublicCropSyncPreview';
+import type { PublicCropSyncMode } from '../crops/publicCropSync';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import {
   buildPublishVarietyCandidates,
@@ -248,10 +249,12 @@ export function CropsPublishingWizardDialog({
     };
   }, [linkedPublicCropId, open]);
 
+  const syncMode: PublicCropSyncMode = isSyncFlow ? 'update' : 'link';
   const syncPreview = usePublicCropSyncPreview(
     crop?.id,
     isSyncFlow ? linkedPublicCropId : selectedPublicCrop?.id,
     open && (isSyncFlow || (showLinkConfirmation && Boolean(selectedPublicCrop))),
+    syncMode,
   );
 
   useEffect(() => {
@@ -633,6 +636,7 @@ export function CropsPublishingWizardDialog({
       changes={syncPreview.preview?.changes ?? null}
       choices={syncPreview.choices}
       onChoicesChange={syncPreview.setChoices}
+      mode={syncMode}
       requiresModeration={Boolean(syncPreview.preview?.requires_moderation)}
       loadError={syncPreview.loadError}
       disabled={linkConfirmSubmitting || syncSubmitting || publishing}
