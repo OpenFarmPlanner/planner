@@ -20,7 +20,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db.models import Q, QuerySet
+from django.db import connection
+from django.db.models import (
+    Case,
+    Exists,
+    F,
+    FloatField,
+    Func,
+    IntegerField,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, Greatest
 
 from farm.models import PublicCrop
 from farm.utils import normalize_text
@@ -38,6 +53,27 @@ SEARCH_ALIASES = {
 }
 
 DISCOURAGED_PUBLIC_SPECIES_NORMALIZED_NAMES = {'bohne', 'bean'}
+
+# Ranked search over official crop species — used by the "Offizielle
+# Kulturart" field of the publishing wizard, and by the moderation page's
+# synonym-alias search. See docs/crop-library-architecture.md.
+SPECIES_SEARCH_RESULT_LIMIT = 20
+# Longer queries are truncated: similarity scoring cost grows with query length.
+MAX_SPECIES_SEARCH_QUERY_LENGTH = 100
+# Results ranked purely on similarity (no exact/prefix hit) below this score
+# are dropped as irrelevant noise rather than shown as weak suggestions. Kept
+# fairly strict: a genuine typo of a longer name ("Fleichtomate" for
+# "Fleischtomate") still scores well above it, while short queries stay
+# gated by `MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH` below instead of a lower
+# threshold, since a 3-4 letter query can coincidentally resemble many
+# unrelated names.
+MIN_SPECIES_SEARCH_SIMILARITY = 0.5
+# Below this normalized query length, only exact/prefix (alias-aware
+# substring) matches are offered — pure similarity ranking is too noisy on
+# a handful of characters (e.g. "tom" resembling "Topinambur").
+MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH = 4
+SPECIES_SEARCH_RANK_EXACT = 2
+SPECIES_SEARCH_RANK_PREFIX = 1
 
 
 def build_crop_search_terms(value: str) -> set[str]:
@@ -84,25 +120,6 @@ def build_public_crop_search_query(value: str, *, include_variety: bool = True) 
     return query
 
 
-def build_species_search_query(value: str) -> Q:
-    """Build a search query for official crop species and translations."""
-    query = Q()
-    stripped_value = value.strip()
-    if stripped_value:
-        query |= (
-            Q(name__icontains=stripped_value)
-            | Q(scientific_name__icontains=stripped_value)
-            | Q(translations__common_name__icontains=stripped_value)
-        )
-    for term in build_crop_search_terms(value):
-        query |= (
-            Q(name_normalized__icontains=term)
-            | Q(translations__common_name_normalized__icontains=term)
-            | Q(translations__search_text_normalized__icontains=term)
-        )
-    return query
-
-
 def build_exact_species_identity_query(normalized_name: str) -> Q:
     """Exact species identity match across canonical names, translations, and aliases."""
     return (
@@ -110,6 +127,156 @@ def build_exact_species_identity_query(normalized_name: str) -> Q:
         | Q(translations__common_name_normalized=normalized_name)
         | Q(translations__search_text_normalized__icontains=f'\n{normalized_name}\n')
     )
+
+
+class _WordSimilarity(Func):
+    """PostgreSQL ``word_similarity()`` (from the ``pg_trgm`` extension).
+
+    Unlike plain trigram ``similarity()``, this scores a short query against
+    the best-matching *substring* of a longer text — exactly what's needed
+    here since a species' ``search_text_normalized`` concatenates several
+    names (common name, synonyms, regional names) into one field. Requires
+    the ``pg_trgm`` extension (enabled by migration ``0017``); the matching
+    GIN indexes on ``name_normalized`` / ``search_text_normalized`` make it
+    fast but are not required for correctness.
+    """
+
+    function = 'word_similarity'
+    arity = 2
+    output_field = FloatField()
+
+
+def _score_crop_species(value: str, queryset: QuerySet[CropSpecies]) -> list[tuple[CropSpecies, int, float]]:
+    """Rank ``queryset`` against ``value`` by name/translation/synonym match.
+
+    Returns unsorted ``(species, rank, similarity)`` triples, ``rank`` being
+    `SPECIES_SEARCH_RANK_EXACT` / `_PREFIX` / 0 (fuzzy-only). "Prefix" here
+    also covers the existing alias/plural-aware substring match (regional
+    names, "beans" -> "bean", "Paradeiser" -> "Tomate", ...) via
+    `build_crop_search_terms` — unchanged from the previous plain-icontains
+    search, so a real alias hit always outranks a merely similar-looking
+    name. `search_crop_species` applies the minimum-similarity cutoff for
+    the rank-0 rows.
+    """
+    normalized = normalize_text(value) or ''
+    if not normalized:
+        return []
+    search_terms = build_crop_search_terms(value)
+    base = queryset.prefetch_related('translations')
+    if connection.vendor == 'postgresql':
+        return _score_crop_species_postgres(base, normalized, search_terms)
+    return _score_crop_species_fallback(base, normalized, search_terms)
+
+
+def _score_crop_species_postgres(
+    base: QuerySet[CropSpecies], normalized: str, search_terms: set[str],
+) -> list[tuple[CropSpecies, int, float]]:
+    from .models import CropSpeciesTranslation
+
+    translation_similarity = Subquery(
+        CropSpeciesTranslation.objects
+        .filter(species=OuterRef('pk'))
+        .annotate(sim=_WordSimilarity(Value(normalized), F('search_text_normalized')))
+        .order_by('-sim')
+        .values('sim')[:1],
+        output_field=FloatField(),
+    )
+    # `Exists()` correlated subqueries, not a join on `translations__…` —
+    # joining here would multiply a species row per translation, and
+    # `.distinct()` cannot safely dedupe rows that carry a differing `rank`
+    # annotation depending on which joined translation happened to match.
+    translation_exact = Exists(
+        CropSpeciesTranslation.objects.filter(
+            species=OuterRef('pk'), search_text_normalized__icontains=f'\n{normalized}\n',
+        ),
+    )
+    substring_query = Q(name_normalized__icontains=normalized) | Q(scientific_name__icontains=normalized)
+    translation_substring_query = Q(search_text_normalized__icontains=normalized)
+    for term in search_terms:
+        substring_query |= Q(name_normalized__icontains=term)
+        translation_substring_query |= Q(search_text_normalized__icontains=term)
+    translation_substring = Exists(
+        CropSpeciesTranslation.objects.filter(Q(species=OuterRef('pk')) & translation_substring_query),
+    )
+    annotated = base.annotate(
+        name_similarity=_WordSimilarity(Value(normalized), F('name_normalized')),
+        translation_similarity=Coalesce(translation_similarity, Value(0.0)),
+        has_translation_exact=translation_exact,
+        has_translation_substring=translation_substring,
+    ).annotate(
+        similarity=Greatest('name_similarity', 'translation_similarity'),
+        rank=Case(
+            When(Q(name_normalized=normalized) | Q(has_translation_exact=True), then=Value(SPECIES_SEARCH_RANK_EXACT)),
+            When(
+                substring_query | Q(has_translation_substring=True),
+                then=Value(SPECIES_SEARCH_RANK_PREFIX),
+            ),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+    )
+    return [(species, species.rank, float(species.similarity)) for species in annotated]
+
+
+def _score_crop_species_fallback(
+    base: QuerySet[CropSpecies], normalized: str, search_terms: set[str],
+) -> list[tuple[CropSpecies, int, float]]:
+    """Functionally equivalent scoring for backends without ``pg_trgm`` (SQLite in tests/dev).
+
+    Same rank/similarity contract as the PostgreSQL path, computed in Python
+    with :func:`difflib.SequenceMatcher` per candidate name instead of
+    `word_similarity()`. The species list this runs over is bounded (the
+    official species catalogue), so scoring it in Python per request is
+    cheap enough that this never needs its own index.
+    """
+    from difflib import SequenceMatcher
+
+    scored: list[tuple[CropSpecies, int, float]] = []
+    for species in base:
+        terms = [species.name_normalized]
+        for translation in species.translations.all():
+            terms.extend(term for term in translation.search_text_normalized.split('\n') if term)
+        if not terms:
+            continue
+        exact = any(term == normalized for term in terms)
+        substring = not exact and (
+            any(
+                needle in term
+                for term in terms
+                for needle in (normalized, *search_terms)
+            )
+            or normalized in (species.scientific_name or '').lower()
+        )
+        similarity = max(SequenceMatcher(None, normalized, term).ratio() for term in terms)
+        rank = SPECIES_SEARCH_RANK_EXACT if exact else SPECIES_SEARCH_RANK_PREFIX if substring else 0
+        scored.append((species, rank, similarity))
+    return scored
+
+
+def search_crop_species(
+    value: str, *, queryset: QuerySet[CropSpecies] | None = None, limit: int = SPECIES_SEARCH_RESULT_LIMIT,
+) -> list[CropSpecies]:
+    """Typo-tolerant search over official species names, synonyms, and translations.
+
+    Ranked exact matches first, then prefix matches, then by similarity;
+    results with neither an exact/prefix hit nor at least
+    `MIN_SPECIES_SEARCH_SIMILARITY` are dropped as irrelevant. Backs the
+    publishing wizard's "Offizielle Kulturart" field and the moderation
+    page's synonym-alias search (both via `CropSpeciesViewSet.list`'s ``q``
+    param).
+    """
+    from .models import CropSpecies
+
+    base = queryset if queryset is not None else CropSpecies.objects.filter(status=CropSpecies.STATUS_PUBLISHED)
+    scored = _score_crop_species(value, base)
+    normalized_length = len(normalize_text(value) or '')
+    fuzzy_allowed = normalized_length >= MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH
+    filtered = [
+        item for item in scored
+        if item[1] > 0 or (fuzzy_allowed and item[2] >= MIN_SPECIES_SEARCH_SIMILARITY)
+    ]
+    filtered.sort(key=lambda item: (-item[1], -item[2], item[0].name))
+    return [species for species, _rank, _similarity in filtered[:limit]]
 
 
 def is_discouraged_public_species(species: CropSpecies) -> bool:

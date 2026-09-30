@@ -106,6 +106,35 @@ filter, `SPECTACULAR_SETTINGS`, and the `extend_schema` annotations.
 
 ---
 
+## 2026-09-29 — Claude — Automated security review of PR #712 (re-review after merges)
+
+**Scope:** `git diff origin/main...HEAD` after the merge commits following
+`a78c7495`; no further changes under `backend/crops/` since the prior entry.
+
+**Findings:** No new issues. The prior entry's `FIXED` (70fa53c2) query-length
+cap still holds (`views.py` truncates `q` before search). Search still runs
+over `get_queryset()`, so visibility scoping is unchanged; the SQLite Python
+fallback scans only the bounded species catalogue and is not used on PostgreSQL.
+
+---
+
+## 2026-09-29 — Claude — Automated security review of PR #712 (fuzzy species search)
+
+**Scope:** `git diff origin/main...HEAD` of `feat/crop-library-species-search-fuzzy`:
+`crops/services.py` search, `CropSpeciesViewSet.list`, migration 0017 (pg_trgm),
+frontend species picker.
+
+**Findings:**
+
+- `FIXED` (70fa53c2) — unbounded `q` length fed into similarity scoring; now
+  truncated to 100 characters.
+- No other issues: queryset scoping and moderator/status visibility are
+  unchanged (search runs over `get_queryset()`), the endpoint stays
+  `IsAuthenticated`, no raw SQL (ORM Func/Exists only, values parameterized),
+  migration DDL uses fixed identifiers, no unsafe React APIs.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #710 (re-review, login message localization)
 
 **Scope:** `git diff origin/main...HEAD` including commit `40929471`

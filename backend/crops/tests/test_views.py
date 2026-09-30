@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APITestCase as DRFAPITestCase
 
@@ -194,6 +196,45 @@ class CropViewSetTest(DRFAPITestCase):
             item for item in response.data['results'] if item['name'] == 'Kartoffel'
         )
         self.assertIn('Erdapfel', potato['search_names'])
+
+    def test_species_search_tolerates_a_typo(self):
+        """A single-letter typo in a longer name still finds it via fuzzy similarity."""
+        self.client.force_authenticate(user=self.user)
+        typo_target = CropSpecies.objects.create(name='Fleischtomate', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=typo_target, language_code='de', common_name='Fleischtomate')
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Fleichtomate'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [item['name'] for item in response.data['results']]
+        self.assertIn('Fleischtomate', names)
+
+    def test_species_search_orders_exact_then_prefix_then_similarity(self):
+        self.client.force_authenticate(user=self.user)
+        exact = CropSpecies.objects.create(name='Zwiebeltest', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=exact, language_code='de', common_name='Zwiebeltest')
+        prefix = CropSpecies.objects.create(name='Zwiebeltestsorte', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=prefix, language_code='de', common_name='Zwiebeltestsorte')
+        # Not a substring/prefix of the query (extra "s"), only similar to it.
+        similar = CropSpecies.objects.create(name='Zwiebeltesst', status=CropSpecies.STATUS_PUBLISHED)
+        CropSpeciesTranslation.objects.create(species=similar, language_code='de', common_name='Zwiebeltesst')
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Zwiebeltest'})
+
+        # Exact, then prefix, then fuzzy-similarity matches — a real but
+        # unrelated species ("Zwiebel") may still rank behind them by
+        # similarity alone (it's not part of this test's scoped assertion).
+        names = [item['name'] for item in response.data['results']]
+        self.assertEqual(names[:3], ['Zwiebeltest', 'Zwiebeltestsorte', 'Zwiebeltesst'])
+
+    def test_species_search_drops_low_similarity_unrelated_results(self):
+        """A minimum-similarity cutoff keeps irrelevant noise out of the results."""
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Xyzzyquuxfnord'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'], [])
 
     def test_species_search_uses_concrete_green_manure_species(self):
         self.client.force_authenticate(user=self.user)
@@ -812,6 +853,28 @@ class CropLibraryQueryCountTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data['results']), self.ROW_COUNT)
+
+    def test_crop_species_search_query_count_is_constant(self):
+        """The ranked `q=` search path scores every species but must not add
+        per-row queries: the count stays the same as the row count grows."""
+        def count_queries() -> int:
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get('/openfarmplanner/api/crop-species/', {'q': 'Art'})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertGreaterEqual(len(response.data['results']), self.ROW_COUNT)
+            return len(queries)
+
+        count_queries()  # warm per-process caches (permissions, content types)
+        baseline = count_queries()
+        for index in range(self.ROW_COUNT, self.ROW_COUNT * 2):
+            species = CropSpecies.objects.create(
+                name=f'Art {index}', status=CropSpecies.STATUS_PUBLISHED,
+            )
+            CropSpeciesTranslation.objects.create(
+                species=species, language_code='de', common_name=f'Art {index}',
+            )
+
+        self.assertEqual(count_queries(), baseline)
 
     def test_crops_list_query_count(self):
         """Published crops resolve a species name, a description and a
