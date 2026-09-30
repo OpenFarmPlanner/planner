@@ -99,6 +99,12 @@ afterEach(() => {
  * what is covered here is the state machine around them.
  *
  * The binding rules are in docs/search.md.
+ *
+ * One thing is deliberately left unpinned. The debounce callback reads
+ * `previous.query` from the state updater rather than the `query` the effect
+ * closed over, which is defensive only: `query` is a dependency of that
+ * effect, so a changed query always tears down the pending timer and arms a
+ * new one with the current value. No fixture can make the two disagree.
  */
 describe('usePlantingPlanSearch', () => {
   describe('the debounce', () => {
@@ -171,15 +177,47 @@ describe('usePlantingPlanSearch', () => {
       expect(result.current.terms).toEqual(['tomate']);
     });
 
-    it('drops a pending filter when the hook goes away', async () => {
+    it('drops a pending filter when the hook goes away', () => {
       const { result, unmount } = setup();
 
       act(() => result.current.setQuery('tomate'));
+      expect(vi.getTimerCount()).toBe(1);
+
       unmount();
 
-      // Nothing should be left to fire into an unmounted hook.
-      await advance(PLANTING_PLAN_SEARCH_DEBOUNCE_MS * 2);
+      // Checked before advancing, not after: letting the clock run would
+      // fire the timer and leave a count of zero either way, so the
+      // assertion would hold whether or not the effect cleans up.
       expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('schedules nothing while the text and the filtering agree', async () => {
+      const { result } = setup();
+
+      act(() => result.current.setQuery('tomate'));
+      await advance(PLANTING_PLAN_SEARCH_DEBOUNCE_MS);
+      expect(result.current.terms).toEqual(['tomate']);
+
+      // Nothing is pending once the query has been applied. Without the
+      // equality guard the hook would keep arming a timer on every render to
+      // re-apply a query that is already in force.
+      expect(vi.getTimerCount()).toBe(0);
+
+      act(() => result.current.setQuery('tomate'));
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('replaces the pending timer rather than adding to it', () => {
+      const { result } = setup();
+
+      act(() => result.current.setQuery('to'));
+      act(() => result.current.setQuery('tom'));
+      act(() => result.current.setQuery('toma'));
+
+      // One wait at a time, restarted -- three stacked timers would each
+      // fire and filter three times for one word.
+      expect(vi.getTimerCount()).toBe(1);
     });
   });
 
