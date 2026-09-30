@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupplierFormDialog } from '../components/suppliers/SupplierFormDialog';
 import type { Supplier } from '../api/types';
+import { tooltipOf } from './helpers/disabledActionTooltip';
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -327,9 +328,7 @@ describe('SupplierFormDialog', () => {
       const user = userEvent.setup();
       renderDialog();
 
-      await user.hover(submitButton().parentElement as HTMLElement);
-
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      expect(await tooltipOf(user, submitButton())).toHaveTextContent(
         'Bitte alle Pflichtfelder ausfüllen.',
       );
     });
@@ -417,9 +416,11 @@ describe('SupplierFormDialog', () => {
       await saveWith(user, { name: 'Reinsaat' });
       await waitFor(() => expect(submitButton()).toBeDisabled());
 
-      await user.hover(screen.getByRole('button', { name: 'Abbrechen' }).parentElement as HTMLElement);
-
-      expect(await screen.findByRole('tooltip')).toHaveTextContent('Aktion wird gerade verarbeitet.');
+      const cancel = screen.getByRole('button', { name: 'Abbrechen' });
+      expect(await tooltipOf(user, cancel)).toHaveTextContent('Aktion wird gerade verarbeitet.');
+      expect(await tooltipOf(user, submitButton())).toHaveTextContent(
+        'Aktion wird gerade verarbeitet.',
+      );
     });
   });
 
