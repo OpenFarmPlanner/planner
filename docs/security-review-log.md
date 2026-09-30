@@ -40,6 +40,73 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Automated security review of PR #714 (fifth pass)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
+the previous entry: merge of `origin/main` (release 1.69.0 / PR #713, reviewed
+in its own entries). Re-checked the PR's only backend change, the read-only
+`crop_species_search_names` serializer field (species names already exposed via
+`crop_species_translations`).
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): earlier PR
+#714 entries still hold.
+
+---
+
+## 2026-09-30 — Claude — Automated security review of PR #714 (fourth pass)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
+the previous entry: the harvest-date filter and date-search commit `146bbdbf`
+(client-side search/filter code, i18n, docs).
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): earlier PR
+#714 entries still hold. The new code filters already-scoped data in the
+browser; no raw SQL, unsafe HTML, `new RegExp` on user input, browser storage
+or workflow changes, and no backend changes.
+
+---
+
+## 2026-09-30 — Claude — Automated security review of PR #714 (third pass)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`; new since
+the previous entry: `8b105db2` (transitive npm dependency bumps in
+`frontend/package-lock.json`).
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): the earlier
+PR #714 entries still hold. The lockfile change only updates transitive
+packages to clear `npm audit` advisories. No raw SQL, unsafe HTML, browser
+storage or workflow changes in the diff.
+
+---
+
+## 2026-09-30 — Claude — Automated security review of PR #714 (re-review)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`, including
+the merge of `origin/main`.
+
+**Findings:** No issues. CROSS-CONFIRMED (same tool, re-derived): the
+2026-09-29 PR #714 entry still holds. `crop_species_search_names` is read-only
+and limited to global species names, there is no unsafe HTML rendering, and the
+search state is not persisted to `localStorage` or the URL. No workflow files
+changed.
+
+---
+
+## 2026-09-29 — Claude — Automated security review of PR #714 (planting-plan page search)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/anbauplan-suche`: read-only
+`crop_species_search_names` on `CropSerializer`, and the client-side search,
+filter and highlight code.
+
+**Findings:** No issues. The new serializer field is read-only and exposes
+only global reference species names (already exposed via
+`crop_species_translations`), adds no writable fields and no new queryset. The
+highlight component renders through React text nodes, with no
+`dangerouslySetInnerHTML`. Search and filtering run in the browser on
+already-scoped data.
+
+---
+
 ## 2026-09-30 — Claude — Fifth automated security review of PR #713
 
 **Scope:** `git diff origin/main...HEAD` at `2c835996`; new since the previous

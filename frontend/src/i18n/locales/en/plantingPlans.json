@@ -164,8 +164,76 @@
     "delete": "Delete planting plan (Del)",
     "keywords": {
       "edit": "planting plan, edit",
-      "delete": "planting plan, delete"
-    }
+      "delete": "planting plan, delete",
+      "search": "planting plan, search, find, filter"
+    },
+    "focusSearch": "Focus planting plan search (/)"
   },
-  "loadingPlans": "Loading planting plans…"
+  "loadingPlans": "Loading planting plans…",
+  "search": {
+    "placeholderDesktop": "Search planting plans",
+    "placeholderMobile": "Search",
+    "ariaLabel": "Search planting plans",
+    "clear": "Clear search",
+    "shortcutHintAria": "Press / to focus the search",
+    "filterButton": "Filter",
+    "filterButtonActiveAria_one": "Filter, {{count}} filter active",
+    "filterButtonActiveAria_other": "Filter, {{count}} filters active",
+    "panelTitle": "Filter",
+    "sheetTitle": "Filter and sort",
+    "fields": {
+      "sort": "Sort by",
+      "location": "Location",
+      "field": "Plot",
+      "cultivationType": "Cultivation type",
+      "crop": "Crop",
+      "plantingDate": "Planting period",
+      "harvestStartDate": "Harvest start",
+      "harvestEndDate": "Harvest end"
+    },
+    "monthFrom": "From",
+    "monthTo": "To",
+    "monthRangeSeparator": "to",
+    "fieldHint": "Tip: choose a location first to see only its plots.",
+    "sortOptions": {
+      "plantingDateAsc": "Planting date, ascending",
+      "plantingDateDesc": "Planting date, descending",
+      "cropAsc": "Crop, A to Z",
+      "harvestStartAsc": "Harvest start, ascending"
+    },
+    "count_one": "{{count}} planting plan",
+    "count_other": "{{count}} planting plans",
+    "filteredCountDesktop": "{{shown}} of {{total}} planting plans",
+    "filteredCountMobile": "{{shown}} of {{total}}",
+    "reset": "Reset",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches",
+    "showResults_one": "Show {{count}} planting plan",
+    "showResults_other": "Show {{count}} planting plans",
+    "chip": "{{filter}}: {{values}}",
+    "chipDateLabels": {
+      "plantingDate": "Planting date",
+      "harvestStartDate": "Harvest start",
+      "harvestEndDate": "Harvest end"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: {{from}} to {{to}}",
+      "from": "{{filter}}: from {{from}}",
+      "to": "{{filter}}: until {{to}}"
+    },
+    "removeChip": "Remove filter {{filter}}",
+    "resetAll": "Reset all",
+    "activeFiltersAria": "Active filters",
+    "synonymHint": "Synonym: {{name}}",
+    "notesMatchAria": "Match in the notes",
+    "empty": {
+      "titleWithQuery": "No planting plans found for “{{query}}”",
+      "title": "No planting plans found",
+      "hintWithFilters_one": "Without the active filters there would be {{count}} match.",
+      "hintWithFilters_other": "Without the active filters there would be {{count}} matches.",
+      "hint": "Check the spelling or search for a crop, variety or bed.",
+      "clearSearch": "Clear search",
+      "resetFilters": "Reset filters"
+    }
+  }
 }

@@ -14,6 +14,8 @@ interface MobileCardListProps<T extends MobileCardListItem> {
   renderDetails: (item: T) => React.ReactNode;
   renderHeaderAction?: (item: T) => React.ReactNode;
   renderActions?: (item: T) => React.ReactNode;
+  /** Always-visible line at the bottom of the card, below the collapsible details. */
+  renderFooter?: (item: T) => React.ReactNode;
   emptyState?: React.ReactNode;
   detailsShowLabel: string;
   detailsHideLabel: string;
@@ -28,6 +30,7 @@ export function MobileCardList<T extends MobileCardListItem>({
   renderDetails,
   renderHeaderAction,
   renderActions,
+  renderFooter,
   emptyState,
   detailsShowLabel,
   detailsHideLabel,
@@ -115,6 +118,7 @@ export function MobileCardList<T extends MobileCardListItem>({
                     ) : null}
                   </Box>
                 </Collapse>
+                {renderFooter ? renderFooter(item) : null}
               </Stack>
             </CardContent>
           </Card>

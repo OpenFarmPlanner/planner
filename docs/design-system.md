@@ -10,7 +10,7 @@ re-decided per change.
 | **`frontend/src/theme.ts`** | decisions that apply to a component *type*: palette, radii, typography weights, and the `components` overrides for Button, Dialog, Alert, Tooltip, DataGrid, focus rings |
 | **`sx` on a component** | one instance: spacing, layout, a local colour pulled from the theme |
 | **a `*Styles.ts` module** | an `sx` object reused by more than one component |
-| **`frontend/src/index.css`** | global element base styles only — currently 69 lines |
+| **`frontend/src/index.css`** | global element base styles only — currently 70 lines |
 
 **Do not add a `.css` file for a component.** If a style feels like it needs
 one, it almost always belongs in `theme.ts` (because it is a decision about a
@@ -106,7 +106,13 @@ Only two `.css` files are left in the app, and both are deliberate:
 **`src/index.css`** — non-theme global element base styles: the root font
 rendering settings, the body reset, the `overflow-x` clamp (whose comment explains a
 non-obvious interaction with MUI's modal scroll lock — read it before touching
-it), link decoration, and `h1`. Global colours, link states, and the minimum
+it), link decoration, and `h1`. The `overflow-x: hidden` clamp on `#root` (and on
+RootLayout's outer wrapper) makes both scroll containers, which disables
+`position: sticky` inside them — so the app bar's `position="sticky"` does not
+actually stick. A page that needs a sticky app bar sets the
+`sticky-app-bar` body class, which swaps the clamp to `overflow-x: clip`
+(same clipping, no scroll container); today only the planting-plan page does,
+on mobile, for its sticky search row. Global colours, link states, and the minimum
 body width live in `MuiCssBaseline` so they can consume theme tokens.
 
 **`src/pages/GanttChart.css`** — overrides for the vendored Gantt library in

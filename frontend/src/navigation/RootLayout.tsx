@@ -789,7 +789,7 @@ function RootLayout() {
   }
 
   return (
-    <Box sx={{ display: 'flex', width: '100%', maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh', bgcolor: 'surface.appBackground', position: 'relative', isolation: 'isolate' }}>
+    <Box sx={{ display: 'flex', width: '100%', maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh', bgcolor: 'surface.appBackground', position: 'relative', isolation: 'isolate', 'body.sticky-app-bar &': { overflowX: 'clip' } }}>
       {isDesktopUp ? (
         <Box
           component="aside"

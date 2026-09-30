@@ -69,9 +69,17 @@ declare module '@mui/material/styles' {
     yearBoundary: string;
   }
 
+  interface SearchHighlightPalette {
+    /** Background of a `<mark>`ed search hit. */
+    background: string;
+    /** Dotted underline of a crop name found through a synonym. */
+    underline: string;
+  }
+
   interface Palette {
     surface: SurfacePalette;
     chart: ChartPalette;
+    searchHighlight: SearchHighlightPalette;
     navigation: {
       inactiveText: string;
       inactiveIcon: string;
@@ -94,6 +102,7 @@ declare module '@mui/material/styles' {
   interface PaletteOptions {
     surface?: SurfacePalette;
     chart?: ChartPalette;
+    searchHighlight?: SearchHighlightPalette;
     navigation?: {
       inactiveText: string;
       inactiveIcon: string;
@@ -165,6 +174,10 @@ const theme = createTheme({
     surface: surfaceColors,
     chart: {
       yearBoundary: '#94a3b8',
+    },
+    searchHighlight: {
+      background: '#fff176',
+      underline: '#c49000',
     },
     navigation: {
       inactiveText: '#000000',

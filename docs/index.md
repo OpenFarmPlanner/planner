@@ -25,6 +25,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Hint Test Project](./hint-test-project.md)** — reproducible developer
   fixture for hints, warnings, empty states, incomplete calculations, and
   related manual QA paths.
+- **[Search and Filter Rules](./search.md)** — the binding normalization,
+  AND/OR, searched-field, synonym and filter rules of the planting-plan page
+  search, which a later app-wide (backend) search must follow too, and why
+  page search stays out of the topbar.
 - **[Keyboard Navigation Architecture](./keyboard-architecture.md)** — the
   focus-region model and the shortcut/command system.
 - **[Design System](./design-system.md)** — where a style belongs (theme vs.

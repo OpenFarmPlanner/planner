@@ -89,6 +89,7 @@ const PAGE_SHORTCUT_HELP_GROUPS: PageShortcutHelpGroup[] = [
     titleKey: 'commandPalette.allPageShortcuts.plans.title',
     entries: [
       { labelKey: 'commandPalette.allPageShortcuts.plans.create', shortcutHint: CREATE_SHORTCUT_HINT },
+      { labelKey: 'commandPalette.allPageShortcuts.plans.search', shortcutHint: '/' },
       { labelKey: 'commandPalette.allPageShortcuts.plans.edit', shortcutHint: 'Alt+E' },
       { labelKey: 'commandPalette.allPageShortcuts.plans.delete', shortcutHint: 'Entf' },
     ],

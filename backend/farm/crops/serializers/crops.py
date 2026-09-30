@@ -137,6 +137,14 @@ class CropSerializer(serializers.ModelSerializer):
     crop_display_language_code = serializers.SerializerMethodField(read_only=True)
     description_language_code = serializers.SerializerMethodField(read_only=True)
     crop_species_translations = serializers.SerializerMethodField(read_only=True)
+    crop_species_search_names = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Every name of the linked crop species (canonical, scientific, translations, '
+            'synonyms, regional names) used by page search to find a crop under another '
+            'name, e.g. "Paradeiser" for Tomate. Empty when no species is linked.'
+        ),
+    )
     variety = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -382,6 +390,12 @@ class CropSerializer(serializers.ModelSerializer):
         if species is None:
             return {}
         return species.translations_by_language()
+
+    def get_crop_species_search_names(self, obj: Crop) -> list[str]:
+        species = self._get_crop_species(obj)
+        if species is None:
+            return []
+        return species.search_names()
 
     def _general_crop_index(self, obj: Crop) -> dict[int, Crop]:
         """The active project's general Kulturen, built once per request.

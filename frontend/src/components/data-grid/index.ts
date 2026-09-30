@@ -15,6 +15,7 @@ export type {
   EditableDataGridCommandApi,
   EditableDataGridClipboardColumn,
   DeleteUndoOptions,
+  ExternalRowFilter,
 } from './types';
 export { NotesCell } from './NotesCell';
 export { NotesDrawer } from './NotesDrawer';

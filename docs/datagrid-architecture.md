@@ -731,6 +731,28 @@ feature at all** today — this was an explicit scope cut when the feature
 was migrated to the native panel elsewhere, not an oversight to "fix" as a
 drive-by change.
 
+## Page-owned filtering (`externalFilter`)
+
+A page that owns its search and filter state (today: Anbaupläne, see
+[search.md](./search.md)) passes `externalFilter` to `EditableDataGrid`
+instead of relying on MUI's filter model. There must never be two filter
+states — one visible, one hidden in MUI — so with `externalFilter` set:
+
+- MUI's `filterModel` is pinned to an empty model and a filter model stored in
+  the URL/`sessionStorage` by `usePersistentSortModel` is ignored.
+- `isRowVisible(row)` filters `rowsForGrid`, so windowing, keyboard
+  navigation and "Copy table" all see the same rows. Unsaved new rows and rows
+  in edit mode always stay visible, so an edit never makes its own row vanish
+  (a saved row that no longer matches drops out afterwards).
+- The column menu's "Filter" entry (`ExternalFilterColumnMenu.tsx`) calls
+  `onOpenFilterPanel` instead of opening MUI's filter panel.
+- `highlightedNoteRowIds` marks those rows' notes icons as search hits.
+
+The callbacks reach the column menu and notes cells through
+`ExternalFilterContext`, not through column props, so a new query never
+rebuilds the column definitions or `slots`. Cell text highlighting works the
+same way: cells read the active terms from `SearchHighlightContext`.
+
 ## Row history / versioning — not a grid feature
 
 Crop version history (backed by the generic `EntityRevision` model, see

@@ -47,6 +47,18 @@ body,
   overflow-x: hidden;
 }
 
+/*
+ * `overflow-x: hidden` turns #root into a scroll container, which silently
+ * disables every `position: sticky` inside it — including the app bar. Pages
+ * that need the app bar to actually stick (the planting-plan search row on
+ * mobile) set this body class; `clip` keeps the horizontal clamp without
+ * creating a scroll container. RootLayout's outer wrapper follows the same
+ * class. See docs/search.md.
+ */
+body.sticky-app-bar #root {
+  overflow-x: clip;
+}
+
 a {
   font-weight: 500;
   text-decoration: inherit;

@@ -28,7 +28,16 @@ export interface NotesCellProps {
   onPreviewOpen?: (anchorEl: HTMLElement, mode: NotesPreviewOpenMode) => void;
   /** Request that the shared preview popover close (may be debounced by the caller). */
   onPreviewClose?: () => void;
+  /** Marks the notes icon as a page-search hit (yellow background). */
+  highlighted?: boolean;
 }
+
+const highlightedNotesIconSx = {
+  display: 'inline-flex',
+  borderRadius: 1,
+  p: 0.25,
+  bgcolor: 'searchHighlight.background',
+} as const;
 
 export function NotesCell({
   hasValue,
@@ -42,6 +51,7 @@ export function NotesCell({
   isPreviewOpen = false,
   onPreviewOpen,
   onPreviewClose,
+  highlighted = false,
 }: NotesCellProps) {
   const { t } = useTranslation('common');
   const compactTriggerRef = useRef<HTMLDivElement | null>(null);
@@ -156,7 +166,11 @@ export function NotesCell({
           },
         }}
       >
-        {hasValue ? <NotesIcon fontSize="small" color="action" /> : null}
+        {hasValue ? (
+          <Box component="span" sx={highlighted ? highlightedNotesIconSx : { display: 'inline-flex' }}>
+            <NotesIcon fontSize="small" color="action" />
+          </Box>
+        ) : null}
         {hasAttachments ? <PhotoLibraryIcon fontSize="small" color="action" /> : null}
         {!hasValue && !hasAttachments ? (
           <Typography variant="body2" color="text.disabled" aria-hidden>
@@ -225,7 +239,7 @@ export function NotesCell({
               onOpen();
             }
           }}
-          sx={{ p: 0.5 }}
+          sx={{ p: 0.5, ...(highlighted ? { bgcolor: 'searchHighlight.background' } : {}) }}
         >
           {hasValue ? (
             <NotesIcon fontSize="small" color="primary" />
