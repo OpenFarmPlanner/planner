@@ -29,6 +29,18 @@ describe('getDefaultSyncChoice', () => {
 
   it('prefers the library value when both are set and differ', () => {
     expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50 }))).toBe('library');
+    expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50 }), 'link')).toBe('library');
+  });
+
+  it('prefers the local value when both are set and differ while updating the library', () => {
+    expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50 }), 'update')).toBe('mine');
+  });
+
+  it('keeps the one-sided rules while updating the library', () => {
+    expect(getDefaultSyncChoice(change({ local_value: null, public_value: 50 }), 'update')).toBe('library');
+    expect(getDefaultSyncChoice(change({ local_value: 60, public_value: null }), 'update')).toBe('mine');
+    expect(getDefaultSyncChoice(change({ field: 'name', local_value: 'Tomate', public_value: 'Tomato', pushable: false }), 'update'))
+      .toBe('library');
   });
 
   it('never preselects pushing a field that cannot be pushed', () => {
@@ -47,6 +59,14 @@ describe('sync quick actions and split', () => {
   it('preselects every field by the rules', () => {
     expect(buildDefaultSyncChoices(changes)).toEqual({
       growth_duration_days: 'library',
+      notes: 'mine',
+      name: 'library',
+    });
+  });
+
+  it('preselects the local side for values set on both sides while updating the library', () => {
+    expect(buildDefaultSyncChoices(changes, 'update')).toEqual({
+      growth_duration_days: 'mine',
       notes: 'mine',
       name: 'library',
     });

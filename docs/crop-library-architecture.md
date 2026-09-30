@@ -1270,14 +1270,28 @@ submitting anything.
 here and in the "Mit Kulturbibliothek abgleichen" dialog below. It loads the
 differences from `GET /api/crops/<id>/public-sync/` (which also answers for a
 not-yet-linked candidate, comparing as if the link had set the entry's
-species) and shows one row per differing field: label, "Bibliothek" value,
-"Meine Kultur" value, and a two-way choice "Aus Bibliothek übernehmen" /
-"Meinen Wert übernehmen". Preselection (`crops/publicCropSync.ts`): only the
+species) and shows one row per differing field: the label, then the
+"Bibliothek" and "Meine Kultur" values side by side, and the values *are* the
+choice. Clicking a value selects that side; the chosen one gets a thin primary
+border, a light primary tint and a check mark, the other stays plain in
+secondary text. This replaced a full-width segmented toggle per row ("Aus
+Bibliothek übernehmen" / "Meinen Wert übernehmen"), which repeated the column
+headings in every row and, with one filled green bar per field, drew more
+attention than the values themselves. Each side is a visually hidden native
+radio (row = `radiogroup`, accessible names are the former toggle labels), so
+focus, arrow keys and screen readers behave like any radio group; a click on a
+link inside a Markdown value opens the link without switching sides.
+Preselection (`crops/publicCropSync.ts`, `PublicCropSyncMode`): only the
 library has a value -> library; only the local crop has one -> mine; both set
-and different -> library; a field the user may not push (`name`, a foreign
-`variety`) always starts on, and stays on, the library side with a tooltip on
-the disabled option. "Alle aus Bibliothek" / "Alle meine Werte" set every row
-at once, and a live summary below counts both directions with i18n plurals
+and different -> library when linking (`link`: the two sides share no
+history, so it is a genuine choice) but mine in "Bibliothek aktualisieren"
+(`update`: that flow is only offered while the copy is on the entry's current
+version (the pull case 2 wins otherwise), so every difference is a local edit
+the user came to contribute, and a library default would discard it on a
+quick confirm). A field the user may not push (`name`, a foreign `variety`)
+always starts on, and stays on, the library side with a tooltip on the
+disabled option. "Alle aus Bibliothek" / "Alle meine Werte" sit as text
+buttons under the column headings and set every row at once, and a live summary below counts both directions with i18n plurals
 ("… werden in deine Kultur übernommen, … werden in der Kulturbibliothek
 aktualisiert.", a part is dropped when its count is 0; for a moderated
 contributor the push part reads "… werden zur Prüfung eingereicht"). Without

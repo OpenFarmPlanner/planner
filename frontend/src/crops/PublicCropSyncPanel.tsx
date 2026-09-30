@@ -1,24 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import type { TFunction } from 'i18next';
 import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { RichTextViewer } from '../components/data-grid/RichTextViewer';
-import {
-  segmentedToggleButtonGroupSx,
-  segmentedToggleButtonSx,
-} from '../components/buttons/segmentedControlStyles';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import {
   formatPublicCropValue,
@@ -30,6 +26,7 @@ import {
   splitSyncChoices,
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
+  type PublicCropSyncMode,
 } from './publicCropSync';
 
 interface PublicCropSyncPanelProps {
@@ -37,6 +34,8 @@ interface PublicCropSyncPanelProps {
   changes: PublicCropSyncFieldChange[] | null;
   choices: PublicCropSyncChoices;
   onChoicesChange: (choices: PublicCropSyncChoices) => void;
+  /** Decides the preselection of a field missing from `choices`; see `publicCropSync.ts`. */
+  mode?: PublicCropSyncMode;
   /** The user's library contributions are queued for moderation. */
   requiresModeration: boolean;
   loadError?: string;
@@ -52,9 +51,9 @@ const COLLAPSED_LINE_CLAMP = 4;
 const ROW_SX = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 0.75,
-  px: 2,
-  py: 1.5,
+  gap: 0.5,
+  px: 1,
+  py: 1,
   borderTop: '1px solid',
   borderColor: 'divider',
 } as const;
@@ -73,15 +72,12 @@ const CLAMPED_VALUE_SX = {
   overflow: 'hidden',
 } as const;
 
-const FADE_OVERLAY_SX = {
-  position: 'absolute',
-  left: 0,
-  right: 0,
-  bottom: 0,
-  height: '1.75rem',
-  pointerEvents: 'none',
-  background: (theme: Theme) =>
-    `linear-gradient(to bottom, ${alpha(theme.palette.background.paper, 0)} 0%, ${theme.palette.background.paper} 90%)`,
+/**
+ * Fades the last clamped line out. A mask rather than a paper-coloured
+ * overlay, so the fade also works on the tinted background of a chosen value.
+ */
+const FADED_VALUE_SX = {
+  maskImage: 'linear-gradient(to bottom, black 60%, transparent)',
 } as const;
 
 interface SyncValueColumnProps {
@@ -139,11 +135,158 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
       <Box
         ref={setMeasureElement}
         data-testid={`public-crop-sync-value-content-${side}-${field}`}
-        sx={expanded ? undefined : CLAMPED_VALUE_SX}
+        sx={expanded ? undefined : { ...CLAMPED_VALUE_SX, ...(isTruncated ? FADED_VALUE_SX : {}) }}
       >
         <RichTextViewer value={text} emptyLabel={t('library.publishWizard.comparison.empty')} />
       </Box>
-      {!expanded && isTruncated ? <Box aria-hidden sx={FADE_OVERLAY_SX} /> : null}
+    </Box>
+  );
+}
+
+const OPTION_SX = {
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 0.75,
+  minWidth: 0,
+  px: 1,
+  py: 0.75,
+  border: '1px solid',
+  borderColor: 'transparent',
+  borderRadius: 1,
+  cursor: 'pointer',
+  color: 'text.secondary',
+  transition: (theme: Theme) => theme.transitions.create(['background-color', 'border-color']),
+  '&:hover': { bgcolor: 'action.hover' },
+  '&:has(input:focus-visible)': {
+    outline: '2px solid',
+    outlineColor: 'primary.main',
+    outlineOffset: 1,
+  },
+  '&[data-selected="true"]': {
+    color: 'text.primary',
+    borderColor: 'primary.main',
+    bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
+  },
+  '&[data-disabled="true"]': {
+    cursor: 'default',
+    '&:hover': { bgcolor: 'transparent' },
+  },
+} as const;
+
+/** Hides the native radio visually while keeping it focusable and announced. */
+const VISUALLY_HIDDEN_STYLE = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  border: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+} as const;
+
+/** Keeps the value aligned whether or not the check mark is shown. */
+const CHECK_SLOT_SX = {
+  display: 'inline-flex',
+  flexShrink: 0,
+  width: '1rem',
+  mt: 0.25,
+  color: 'primary.main',
+} as const;
+
+/** Mirrors `OPTION_SX` spacing so a heading lines up with the values below it. */
+const COLUMN_HEADING_SX = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 0.75,
+  minWidth: 0,
+  px: 1,
+  border: '1px solid',
+  borderColor: 'transparent',
+} as const;
+
+const COLUMN_HEADING_CONTENT_SX = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  minWidth: 0,
+} as const;
+
+interface SyncColumnHeadingProps {
+  label: string;
+  actionLabel: string;
+  disabled: boolean;
+  onAction: () => void;
+}
+
+function SyncColumnHeading({ label, actionLabel, disabled, onAction }: SyncColumnHeadingProps) {
+  return (
+    <Box sx={COLUMN_HEADING_SX}>
+      <Box component="span" aria-hidden sx={CHECK_SLOT_SX} />
+      <Box sx={COLUMN_HEADING_CONTENT_SX}>
+        <Typography variant="caption" color="text.secondary">{label}</Typography>
+        <Button
+          size="small"
+          variant="text"
+          disabled={disabled}
+          sx={{ minWidth: 0, px: 0, py: 0, textAlign: 'left' }}
+          onClick={onAction}
+        >
+          {actionLabel}
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+interface SyncOptionProps {
+  name: string;
+  value: PublicCropSyncChoice;
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onSelect: () => void;
+  children: ReactNode;
+}
+
+/**
+ * One side of a diff row: the value itself is the choice. A visually hidden
+ * native radio carries focus, keyboard (arrow keys within the row) and the
+ * accessible name; the surrounding box only adds the larger click target.
+ * Clicks on links inside a Markdown value open the link without switching
+ * sides.
+ */
+function SyncOption({ name, value, checked, disabled, label, onSelect, children }: SyncOptionProps) {
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (disabled || checked) return;
+    if (event.target instanceof Element && event.target.closest('a, input, button')) return;
+    onSelect();
+  };
+
+  return (
+    <Box
+      sx={OPTION_SX}
+      data-selected={checked}
+      data-disabled={disabled}
+      data-testid={`public-crop-sync-option-${value}-${name}`}
+      onClick={handleClick}
+    >
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        onChange={onSelect}
+        style={VISUALLY_HIDDEN_STYLE}
+      />
+      <Box component="span" aria-hidden sx={CHECK_SLOT_SX}>
+        {checked ? <CheckCircleIcon sx={{ fontSize: '1rem' }} /> : null}
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>{children}</Box>
     </Box>
   );
 }
@@ -164,66 +307,72 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
   const [mineTruncated, setMineTruncated] = useState(false);
   const showExpandToggle = isRichText && (libraryTruncated || mineTruncated);
 
-  const mineButton = (
-    <ToggleButton
+  const radioId = useId();
+  const radioName = `public-crop-sync-${change.field}-${radioId}`;
+  const libraryValue = (
+    <SyncValueColumn
+      field={change.field}
+      side="library"
+      value={change.public_value}
+      isRichText={isRichText}
+      expanded={expanded}
+      onTruncatedChange={setLibraryTruncated}
+      t={t}
+    />
+  );
+  const mineValue = (
+    <SyncValueColumn
+      field={change.field}
+      side="mine"
+      value={change.local_value}
+      isRichText={isRichText}
+      expanded={expanded}
+      onTruncatedChange={setMineTruncated}
+      t={t}
+    />
+  );
+  const mineOption = (
+    <SyncOption
+      name={radioName}
       value="mine"
+      checked={choice === 'mine'}
       disabled={disabled || !change.pushable}
-      sx={segmentedToggleButtonSx}
+      label={t('library.sync.chooseMine')}
+      onSelect={() => onChoiceChange('mine')}
     >
-      {t('library.sync.chooseMine')}
-    </ToggleButton>
+      {mineValue}
+    </SyncOption>
   );
 
   return (
     <Box sx={ROW_SX} data-testid={`public-crop-sync-row-${change.field}`}>
       <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>{label}</Typography>
-      <Box component="dd" sx={{ m: 0 }}>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          color="primary"
-          fullWidth
-          value={choice}
-          aria-label={t('library.sync.choiceAriaLabel', { field: label })}
-          sx={segmentedToggleButtonGroupSx}
-          onChange={(_, value: PublicCropSyncChoice | null) => {
-            if (value !== null) onChoiceChange(value);
-          }}
+      <Box
+        component="dd"
+        role="radiogroup"
+        aria-label={t('library.sync.choiceAriaLabel', { field: label })}
+        sx={{ ...VALUE_COLUMNS_SX, m: 0 }}
+      >
+        <SyncOption
+          name={radioName}
+          value="library"
+          checked={choice === 'library'}
+          disabled={disabled}
+          label={t('library.sync.chooseLibrary')}
+          onSelect={() => onChoiceChange('library')}
         >
-          <ToggleButton value="library" disabled={disabled} sx={segmentedToggleButtonSx}>
-            {t('library.sync.chooseLibrary')}
-          </ToggleButton>
-          {change.pushable ? mineButton : (
-            <DisabledActionTooltip
-              fullWidth
-              title={t(change.field === 'name'
-                ? 'library.sync.notPushableName'
-                : 'library.sync.notPushable')}
-            >
-              {mineButton}
-            </DisabledActionTooltip>
-          )}
-        </ToggleButtonGroup>
-      </Box>
-      <Box component="dd" sx={{ ...VALUE_COLUMNS_SX, m: 0 }}>
-        <SyncValueColumn
-          field={change.field}
-          side="library"
-          value={change.public_value}
-          isRichText={isRichText}
-          expanded={expanded}
-          onTruncatedChange={setLibraryTruncated}
-          t={t}
-        />
-        <SyncValueColumn
-          field={change.field}
-          side="mine"
-          value={change.local_value}
-          isRichText={isRichText}
-          expanded={expanded}
-          onTruncatedChange={setMineTruncated}
-          t={t}
-        />
+          {libraryValue}
+        </SyncOption>
+        {change.pushable ? mineOption : (
+          <DisabledActionTooltip
+            fullWidth
+            title={t(change.field === 'name'
+              ? 'library.sync.notPushableName'
+              : 'library.sync.notPushable')}
+          >
+            {mineOption}
+          </DisabledActionTooltip>
+        )}
       </Box>
       {showExpandToggle ? (
         <Box component="dd" sx={{ m: 0 }}>
@@ -243,13 +392,14 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
 /**
  * Field-by-field sync between a crop and a public library entry, shared by
  * the link confirmation and the "Bibliothek aktualisieren" flow of the
- * publishing wizard. Every differing field gets one row with both values and
- * a two-way choice; see `publicCropSync.ts` for the preselection rules.
+ * publishing wizard. Every differing field gets one row whose two values are
+ * the choice itself; see `publicCropSync.ts` for the preselection rules.
  */
 export function PublicCropSyncPanel({
   changes,
   choices,
   onChoicesChange,
+  mode = 'link',
   requiresModeration,
   loadError,
   disabled = false,
@@ -271,7 +421,7 @@ export function PublicCropSyncPanel({
     return <Alert severity="info">{t('library.sync.noChanges')}</Alert>;
   }
 
-  const { pullFields, pushFields } = splitSyncChoices(changes, choices);
+  const { pullFields, pushFields } = splitSyncChoices(changes, choices, mode);
   const setChoice = (field: string, choice: PublicCropSyncChoice) => {
     onChoicesChange({ ...choices, [field]: choice });
   };
@@ -287,39 +437,30 @@ export function PublicCropSyncPanel({
 
   return (
     <Stack spacing={1}>
-      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={disabled}
-          onClick={() => onChoicesChange(buildUniformSyncChoices(changes, 'library'))}
-        >
-          {t('library.sync.allLibrary')}
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={disabled}
-          onClick={() => onChoicesChange(buildUniformSyncChoices(changes, 'mine'))}
-        >
-          {t('library.sync.allMine')}
-        </Button>
-      </Stack>
-
       <Box
         aria-label={t('library.sync.ariaLabel')}
         sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
       >
-        <Box sx={{ ...VALUE_COLUMNS_SX, px: 2, py: 1, bgcolor: 'action.hover' }}>
-          <Typography variant="caption" color="text.secondary">{t('library.sync.columnLibrary')}</Typography>
-          <Typography variant="caption" color="text.secondary">{t('library.sync.columnMine')}</Typography>
+        <Box sx={{ ...VALUE_COLUMNS_SX, px: 1, py: 0.75, bgcolor: 'action.hover' }}>
+          <SyncColumnHeading
+            label={t('library.sync.columnLibrary')}
+            actionLabel={t('library.sync.allLibrary')}
+            disabled={disabled}
+            onAction={() => onChoicesChange(buildUniformSyncChoices(changes, 'library'))}
+          />
+          <SyncColumnHeading
+            label={t('library.sync.columnMine')}
+            actionLabel={t('library.sync.allMine')}
+            disabled={disabled}
+            onAction={() => onChoicesChange(buildUniformSyncChoices(changes, 'mine'))}
+          />
         </Box>
         <Box component="dl" sx={{ m: 0 }}>
           {changes.map((change) => (
             <SyncFieldRow
               key={change.field}
               change={change}
-              choice={choices[change.field] ?? getDefaultSyncChoice(change)}
+              choice={choices[change.field] ?? getDefaultSyncChoice(change, mode)}
               disabled={disabled}
               t={t}
               onChoiceChange={(choice) => setChoice(change.field, choice)}

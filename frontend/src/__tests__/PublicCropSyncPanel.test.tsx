@@ -96,11 +96,47 @@ describe('PublicCropSyncPanel', () => {
     render(<Harness />);
 
     const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
-    fireEvent.click(within(row).getByRole('button', { name: 'Meinen Wert übernehmen' }));
+    fireEvent.click(within(row).getByRole('radio', { name: 'Meinen Wert übernehmen' }));
 
     expect(summary()).toHaveTextContent(
       '1 Wert wird in deine Kultur übernommen, 2 Werte werden in der Kulturbibliothek aktualisiert.',
     );
+  });
+
+  it('selects a side by clicking its value and marks only that side as chosen', () => {
+    render(<Harness />);
+
+    const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
+    expect(within(row).getByRole('radiogroup', { name: 'Welcher Wert gilt für „Wachstumszeit (Tage)“?' }))
+      .toBeInTheDocument();
+    expect(within(row).getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
+
+    fireEvent.click(within(row).getByText('60'));
+
+    expect(within(row).getByRole('radio', { name: 'Meinen Wert übernehmen' })).toBeChecked();
+    expect(within(row).getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).not.toBeChecked();
+    expect(within(row).getByTestId(/^public-crop-sync-option-mine-/)).toHaveAttribute('data-selected', 'true');
+    expect(summary()).toHaveTextContent(
+      '1 Wert wird in deine Kultur übernommen, 2 Werte werden in der Kulturbibliothek aktualisiert.',
+    );
+  });
+
+  it('prefers the local value for a field set on both sides when updating the library', () => {
+    function UpdateHarness() {
+      const [choices, setChoices] = useState(() => buildDefaultSyncChoices(CHANGES, 'update'));
+      return (
+        <PublicCropSyncPanel
+          changes={CHANGES}
+          choices={choices}
+          onChoicesChange={setChoices}
+          mode="update"
+          requiresModeration={false}
+        />
+      );
+    }
+    render(<UpdateHarness />);
+
+    expect(summary()).toHaveTextContent('3 Werte werden in der Kulturbibliothek aktualisiert.');
   });
 
   it('hides the part of the summary whose count is zero after a quick action', () => {
@@ -124,7 +160,9 @@ describe('PublicCropSyncPanel', () => {
     render(<Harness changes={[{ field: 'name', local_value: 'Tomate', public_value: 'Tomato', pushable: false }]} />);
 
     const row = screen.getByTestId('public-crop-sync-row-name');
-    expect(within(row).getByRole('button', { name: 'Meinen Wert übernehmen' })).toBeDisabled();
+    expect(within(row).getByRole('radio', { name: 'Meinen Wert übernehmen' })).toBeDisabled();
+    fireEvent.click(within(row).getByText('Tomate'));
+    expect(within(row).getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Alle meine Werte' }));
     expect(summary()).toHaveTextContent('1 Wert wird in deine Kultur übernommen.');
   });
@@ -136,16 +174,16 @@ describe('PublicCropSyncPanel', () => {
     expect(screen.queryByRole('button', { name: 'Alle aus Bibliothek' })).not.toBeInTheDocument();
   });
 
-  it('places the choice toggle before both compared values in every row', () => {
-    render(<Harness />);
+  it('opens a link inside a Markdown value without switching sides', () => {
+    const changes: PublicCropSyncFieldChange[] = [
+      { field: 'notes', local_value: 'Mein Text', public_value: '[Quelle](https://example.com)', pushable: true },
+    ];
+    render(<Harness changes={changes} />);
 
-    const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
-    const chooseMineButton = within(row).getByRole('button', { name: 'Meinen Wert übernehmen' });
-    const libraryValue = within(row).getByText('50');
-    const mineValue = within(row).getByText('60');
-
-    expect(chooseMineButton.compareDocumentPosition(libraryValue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(chooseMineButton.compareDocumentPosition(mineValue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const row = screen.getByTestId('public-crop-sync-row-notes');
+    fireEvent.click(within(row).getByRole('radio', { name: 'Meinen Wert übernehmen' }));
+    fireEvent.click(within(row).getByRole('link', { name: 'Quelle' }));
+    expect(within(row).getByRole('radio', { name: 'Meinen Wert übernehmen' })).toBeChecked();
   });
 
   it('renders Markdown values with the shared Markdown renderer, opening links in a new tab', () => {
