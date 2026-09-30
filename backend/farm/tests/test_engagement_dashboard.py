@@ -64,7 +64,7 @@ class EngagementDashboardTests(TestCase):
         recent_time = timezone.now() - timedelta(days=2)
         Location.objects.filter(pk=self.location.pk).update(updated_at=recent_time)
 
-        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 16):
+        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 15):
             dashboard = build_engagement_dashboard()
 
         projects_by_slug = {row.project.slug: row for row in dashboard.projects}
@@ -948,15 +948,72 @@ class EngagementDashboardExclusionTests(TestCase):
         self.assertEqual(dashboard.total_users, 2)
         self.assertEqual(dashboard.users_logged_in_30_days, 1)
 
-    def test_other_breakdowns_are_not_scoped_by_the_default_exclusion(self) -> None:
-        """Only the "Projekte" table and the Gesamtübersicht numbers are
-        filtered by default; every other breakdown keeps covering all
-        projects, since the task only scoped the exclusion to those two."""
+    def test_own_projects_stay_in_the_other_breakdowns(self) -> None:
+        """The superuser's own projects are only hidden from the "Projekte"
+        table and the Gesamtübersicht; the breakdowns below keep them."""
         dashboard = self._dashboard(current_user_id=self.superuser.pk)
 
         slugs = {row.project.slug for row in dashboard.projects_by_data}
         self.assertIn('exclusion-own-solo', slugs)
-        self.assertIn('exclusion-demo', slugs)
+
+    def test_demo_projects_are_left_out_of_every_breakdown(self) -> None:
+        self._seed_demo_project_data()
+
+        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+
+        self.assertNotIn(
+            'exclusion-demo', {row.project.slug for row in dashboard.projects_by_data},
+        )
+        self.assertNotIn(
+            'exclusion-demo', {row.project.slug for row in dashboard.active_projects},
+        )
+        self.assertEqual(dashboard.adoption.tasks, Share(count=0, total=3))
+        self.assertEqual(sum(month.new_projects for month in dashboard.monthly_growth), 3)
+        self.assertEqual(dashboard.season_usage.average_seasons_per_project, 0.0)
+        self.assertEqual(dashboard.season_usage.projects_with_pattern.count, 0)
+        self.assertEqual(dashboard.layout_usage.projects_with_any_layout.total, 3)
+        self.assertEqual(dashboard.average_distinct_crops_per_project, 0.0)
+        self.assertEqual(dashboard.task_usage.created, 0)
+        self.assertEqual(dashboard.crop_library.published_entries, 0)
+        self.assertEqual(dashboard.crop_library.self_entered_crops, 0)
+
+    def test_the_demo_template_share_still_counts_every_project(self) -> None:
+        share = self._dashboard(current_user_id=self.superuser.pk).projects_from_template
+
+        self.assertEqual(share, Share(count=1, total=4))
+
+    def test_include_hidden_brings_demo_projects_back_into_the_breakdowns(self) -> None:
+        self._seed_demo_project_data()
+
+        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+
+        self.assertIn(
+            'exclusion-demo', {row.project.slug for row in dashboard.projects_by_data},
+        )
+        self.assertIn(
+            'exclusion-demo', {row.project.slug for row in dashboard.active_projects},
+        )
+        self.assertEqual(dashboard.adoption.tasks, Share(count=1, total=4))
+        self.assertEqual(dashboard.season_usage.projects_with_pattern.count, 1)
+        self.assertEqual(dashboard.average_distinct_crops_per_project, 0.2)
+        self.assertEqual(dashboard.task_usage.created, 1)
+        self.assertEqual(dashboard.crop_library.published_entries, 1)
+        self.assertEqual(dashboard.crop_library.self_entered_crops, 1)
+
+    def _seed_demo_project_data(self) -> None:
+        Task.objects.create(title='Demo-Aufgabe', project=self.demo_project)
+        Crop.objects.create(name='Demo-Tomate', project=self.demo_project)
+        Season.objects.create(
+            project=self.demo_project,
+            start_date=timezone.datetime(2026, 1, 1).date(),
+            end_date=timezone.datetime(2026, 12, 31).date(),
+        )
+        SeasonPattern.objects.create(project=self.demo_project, start_day=1, start_month=3)
+        PublicCrop.objects.create(
+            name='Demo-Eintrag',
+            status=PublicCrop.STATUS_PUBLISHED,
+            source_project=self.demo_project,
+        )
 
 
 class EngagementDashboardShowAllViewTests(TestCase):
