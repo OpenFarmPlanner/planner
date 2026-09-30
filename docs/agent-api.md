@@ -116,6 +116,8 @@ Reachable endpoints (everything else returns 403 for tokens):
 | `POST /api/crops/`, `PATCH`/`PUT /api/crops/{id}/` | ❌ | ✅ | ✅ |
 | `DELETE /api/crops/{id}/`, `POST /api/crops/{id}/undelete/` | ❌ | ❌ | ✅ |
 | `GET /api/crops/duplicate-check/`, `GET /api/crops/{id}/history/` | ✅ | ✅ | ✅ |
+| `GET /api/crops/{id}/delete-preview/`, `GET /api/crops/seed-rate-constraints/` | ✅ | ✅ | ✅ |
+| `POST /api/crops/{id}/publish-public/`, `PUT`/`PATCH /api/public-crops/{id}/` (always moderated) | ❌ | ✅ | ✅ |
 | `POST /api/crop-imports/preview/` | ❌ | ✅ | ✅ |
 | `GET /api/crop-imports/{draft_id}/` | ✅ | ✅ | ✅ |
 | `POST /api/crop-imports/{draft_id}/apply/` | ❌ | ✅ | ✅ |
@@ -135,11 +137,18 @@ Explicitly **not** reachable with any token, in this version:
 - public crop-library moderation
 
 Opting a new endpoint in is a deliberate one-line change: add
-`api_token_actions = {...}` to the view.
+`api_token_actions = {...}` to the view. It also **publishes** the operation in
+the generated reference at `/api/schema/` / `/api/docs/` (see
+[api.md](./api.md)), whose preprocessing hook keeps exactly the token-reachable
+operations; `farm/tests/test_public_api_schema.py` pins that list, so the test
+has to be updated in the same change. The published reference is the
+authoritative list of token-reachable operations; the table above is a
+summary.
 
 ## Getting a token
 
-In the app: **Account settings → API tokens for external tools**. Choose a name,
+In the app: **Account settings → API tokens for external tools** (the card also
+links to the generated API reference at `/api/docs/`). Choose a name,
 the project, `read`, `write`, or `delete`, and optionally an expiry date (at
 most one year out). The plaintext is shown once, in a dialog, with an explicit
 note that it cannot be retrieved again.
@@ -251,6 +260,11 @@ If a token is wrong, expired, or revoked, the API answers `401` with
 or scope is not, it answers `403` with a `detail` explaining which rule applied.
 
 ## Machine-readable schema
+
+Two schemas exist. The general, drf-spectacular-generated reference at
+`/api/schema/` (Redoc at `/api/docs/`, Swagger UI at `/api/docs/swagger/`) is
+public and covers every token-reachable operation — see [api.md](./api.md).
+The agent-specific document below stays the precise contract for crop data.
 
 `GET /api/agent/openapi.json` returns an OpenAPI 3.1 document covering exactly
 the endpoints listed above. It is **generated** from

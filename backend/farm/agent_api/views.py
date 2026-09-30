@@ -12,6 +12,8 @@ from datetime import timedelta
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +25,12 @@ from farm.services.crop_import import analyze_import_payload
 from farm.services.crop_import.apply import ImportExecutionError, apply_import_draft
 
 from .permissions import get_request_api_token
+from .schema_serializers import (
+    AgentContextSerializer,
+    ApiErrorSerializer,
+    CropImportApplyResultSerializer,
+    CropImportDraftSerializer,
+)
 from .serializers import (
     CropImportApplyRequestSerializer,
     CropImportPreviewRequestSerializer,
@@ -91,6 +99,10 @@ class CropImportPreviewView(ProjectScopedMixin, APIView):
 
     api_token_actions = {'post'}
 
+    @extend_schema(
+        request=CropImportPreviewRequestSerializer,
+        responses={200: CropImportDraftSerializer},
+    )
     def post(self, request):
         """Analyze the payload and return the preview plus a draft id."""
         serializer = CropImportPreviewRequestSerializer(data=request.data)
@@ -117,6 +129,7 @@ class CropImportDraftView(ProjectScopedMixin, APIView):
 
     api_token_actions = {'get'}
 
+    @extend_schema(responses={200: CropImportDraftSerializer})
     def get(self, request, draft_id):
         """Return the stored draft for the active project."""
         draft = get_object_or_404(
@@ -132,6 +145,19 @@ class CropImportApplyView(ProjectScopedMixin, APIView):
 
     api_token_actions = {'post'}
 
+    @extend_schema(
+        request=CropImportApplyRequestSerializer,
+        responses={
+            200: CropImportApplyResultSerializer,
+            400: OpenApiResponse(
+                ApiErrorSerializer,
+                description=(
+                    'Draft not executable (unconfirmed, checksum mismatch, expired, '
+                    'blocked rows) or rolled back (`execution_failed`).'
+                ),
+            ),
+        },
+    )
     def post(self, request, draft_id):
         """Apply the draft transactionally after verifying the confirmation."""
         serializer = CropImportApplyRequestSerializer(data=request.data)
@@ -166,6 +192,7 @@ class AgentContextView(APIView):
 
     api_token_actions = {'get'}
 
+    @extend_schema(responses={200: AgentContextSerializer, 403: ApiErrorSerializer})
     def get(self, request):
         """Return non-secret context for the project-bound token."""
         token = get_request_api_token(request)
@@ -208,6 +235,9 @@ class AgentOpenApiSchemaView(APIView):
 
     api_token_actions = {'get'}
 
+    @extend_schema(
+        responses={200: OpenApiResponse(OpenApiTypes.OBJECT, description='OpenAPI 3.1 document.')},
+    )
     def get(self, request):
         """Return the generated OpenAPI document."""
         from .openapi import build_openapi_document

@@ -40,6 +40,121 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-09-30 — Claude — Fifth automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` at `2c835996`; new since the previous
+entry is the API docs link in the API token settings card (constant URL from
+`apiDocsUrl.ts`, `target="_blank"` with `rel="noopener noreferrer"`, i18n only).
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix and unauthenticated public-schema docs views
+  unchanged from the previous entry.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
+## 2026-09-30 — Claude — Fourth automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`dc3e7bd6`; new since the previous entry is only the transitive frontend
+lockfile bump (brace-expansion, fast-uri, markdown-it patch versions, same
+registry, integrity hashes updated).
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix and unauthenticated public-schema docs views
+  unchanged from the previous entry.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
+## 2026-09-30 — Claude — Third automated security review of PR #713
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`20262015`; changes since `551d60c6` are only the merge of `main` (1.68.0,
+crop species search), which is outside this PR's scope.
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — SRI fix (`551d60c6`) still in place; docs views are
+  unauthenticated by design and expose only the public schema.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` (deferred,
+  depends on `ops` static serving), unchanged.
+- No new findings.
+
+---
+
+## 2026-09-29 — Claude — Second automated security review of PR #713 (after SRI fix)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference` at
+`551d60c6`: docs views and templates, settings, URLs, `extend_schema` annotations.
+
+**Findings:**
+
+- `CROSS-CONFIRMED` — Missing-SRI finding of the earlier entries is fixed
+  (`551d60c6`); templates carry `integrity` and `crossorigin`.
+- `OPEN` — Third-party requests to `cdn.jsdelivr.net`/`cdn.redoc.ly` remain
+  (deferred, depends on `ops` static serving), unchanged.
+- No new findings: docs views use no authentication classes, `{{ settings|safe }}`
+  renders server-side settings only, the schema URL is escaped, annotation-only
+  changes leave querysets, permissions and serializers untouched.
+
+---
+
+## 2026-09-29 — Claude — Follow-up on PR #713 CDN finding
+
+**Scope:** the `OPEN` finding of the entry below (Redoc/Swagger UI assets from
+`cdn.jsdelivr.net` without Subresource Integrity), fixed on
+`feature/api-openapi-reference` in the commit after `1cfc4ec`.
+
+**Findings:**
+
+- `FIXED` — Missing SRI on the docs pages. `PublicRedocView` and
+  `PublicSwaggerView` now render their own templates
+  (`farm/templates/farm/api_docs/`) that load every CDN asset with a `sha384`
+  `integrity` attribute and `crossorigin="anonymous"`; the hashes live next to
+  the pinned versions in `farm/agent_api/schema_views.py`, and
+  `test_public_api_schema.py` fails if an external tag lacks them or the
+  pinned versions drift. Verified in Chromium: the pinned files render, a
+  one-byte-modified file is refused and neither UI loads. The Redoc page no
+  longer requests Google Fonts, and the unused Swagger favicon link was
+  dropped.
+- `OPEN` — Visitor IPs still reach third parties: `cdn.jsdelivr.net` for the
+  pinned bundles, and `cdn.redoc.ly`, from which the Redoc bundle itself loads
+  its footer logo image (not a script). Vendoring the bundles through
+  `collectstatic` would remove both but depends on static-file serving in the
+  `ops` repo, which was not reviewed here.
+
+---
+
+## 2026-09-29 — Claude — Automated security review of PR #713 (published OpenAPI reference)
+
+**Scope:** `git diff origin/main...HEAD` of `feature/api-openapi-reference`:
+drf-spectacular schema/Redoc/Swagger views, the token-reachable endpoint
+filter, `SPECTACULAR_SETTINGS`, and the `extend_schema` annotations.
+
+**Findings:**
+
+- `OPEN` — Redoc and Swagger UI load JavaScript/CSS from `cdn.jsdelivr.net`
+  (`SWAGGER_UI_DIST`, `REDOC_DIST`) without Subresource Integrity, on the
+  application origin. A compromised or tampered CDN asset would run with the
+  visitor's session on that origin, and every visitor's IP reaches a third
+  party. Not fixed here: computing SRI hashes or vendoring the bundles needs
+  network access that the review job does not have. Follow-up: vendor the
+  pinned bundles (or add `integrity` attributes via template overrides) and
+  update `docs/api.md`.
+- No issue: the schema only lists operations declared in `api_token_actions`
+  (mirrors `ApiTokenAccessPermission`), legacy aliases are excluded, docs
+  views are anonymous read-only with no authentication classes, and Swagger
+  "Try it out" omits credentials and CSRF so the session cookie is never used.
+
+---
+
 ## 2026-09-29 — Claude — Automated security review of PR #712 (re-review after merges)
 
 **Scope:** `git diff origin/main...HEAD` after the merge commits following

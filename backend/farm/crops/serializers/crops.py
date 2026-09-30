@@ -5,6 +5,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
@@ -76,6 +77,13 @@ from .suppliers import (
 _UNRESOLVED = object()
 
 
+class MediaFileReferenceSerializer(serializers.Serializer):
+    """Shape of ``CropSerializer.get_image_file`` (documents the schema only)."""
+
+    id = serializers.IntegerField()
+    storage_path = serializers.CharField()
+
+
 class CropNameConflict(APIException):
     status_code = 409
     default_code = 'crop_name_conflict'
@@ -88,7 +96,7 @@ class CropNameConflict(APIException):
 
 # The inheritable model fields whose API name differs from the model field name
 # (distances are stored in meters and exposed in centimeters).
-_INHERITABLE_API_FIELD_NAMES = {
+INHERITABLE_API_FIELD_NAMES = {
     'distance_within_row_m': 'distance_within_row_cm',
     'row_spacing_m': 'row_spacing_cm',
     'sowing_depth_m': 'sowing_depth_cm',
@@ -306,7 +314,8 @@ class CropSerializer(serializers.ModelSerializer):
     can_republish_public_crop = serializers.SerializerMethodField()
     unlink_public_crop_blocked_reason = serializers.SerializerMethodField()
 
-    def get_image_file(self, obj):
+    @extend_schema_field(MediaFileReferenceSerializer(allow_null=True))
+    def get_image_file(self, obj: Crop) -> dict[str, Any] | None:
         if not obj.image_file_id:
             return None
         return {
@@ -314,7 +323,8 @@ class CropSerializer(serializers.ModelSerializer):
             'storage_path': obj.image_file.storage_path,
         }
 
-    def get_supplier_data(self, obj):
+    @extend_schema_field(CropSupplierDataSerializer(many=True))
+    def get_supplier_data(self, obj: Crop) -> list[dict[str, Any]]:
         rows = obj.supplier_data.all()
         return CropSupplierDataSerializer(rows, many=True).data
 
@@ -406,7 +416,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     def _api_representation(self, model_field: str, value: Any) -> Any:
         """Render a raw model value the way this serializer renders the own value."""
-        api_field = _INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
+        api_field = INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
         if value is None:
             return None
         representation = self.fields[api_field].to_representation(value)
@@ -420,7 +430,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     def get_inherited_fields(self, obj: Crop) -> list[str]:
         return [
-            _INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
+            INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
             for model_field in CROP_INHERITABLE_FIELDS
             if model_field in self._inherited_values(obj)
         ]
@@ -430,7 +440,7 @@ class CropSerializer(serializers.ModelSerializer):
             return {}
         effective = build_effective_crop_values(obj, self._general_crop_index(obj))
         return {
-            _INHERITABLE_API_FIELD_NAMES.get(model_field, model_field): self._api_representation(
+            INHERITABLE_API_FIELD_NAMES.get(model_field, model_field): self._api_representation(
                 model_field, value,
             )
             for model_field, value in effective.items()

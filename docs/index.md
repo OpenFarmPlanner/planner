@@ -38,6 +38,11 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Social Login](./social-login.md)** — Google/Microsoft sign-in via
   django-allauth: the OAuth flow, the account-linking rules, and the
   Google/Microsoft setup steps.
+- **[API Guide](./api.md)** — the public API contract for external token
+  users: authentication, context headers, error codes, pagination, library
+  write rules, rate limits and versioning. Rendered on top of the generated
+  reference at `/api/docs/`; the published schema is filtered to the API-token
+  allowlist (`farm/agent_api/schema.py`).
 - **[External Tool API Tokens](./agent-api.md)** — project-bound API tokens for
   external tools, scripts, and coding agents: the security model, the available
   permissions, the crop validation and plausibility rules, and the two-step

@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Link,
   MenuItem,
   Stack,
   TextField,
@@ -26,6 +27,7 @@ import { DataGrid, type GridColDef, type GridSortModel } from '@mui/x-data-grid'
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { apiTokenAPI } from '../api/api';
+import { API_DOCS_URL } from '../api/apiDocsUrl';
 import type { ApiToken, ApiTokenCreated, ApiTokenScope } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useAuth } from '../auth/useAuth';
@@ -308,6 +310,12 @@ export default function AccountSettingsApiTokensCard() {
   return (
     <SettingsCard title={t('apiTokens.title')} description={t('apiTokens.description')} collapsible defaultExpanded>
       <Stack spacing={2}>
+        <Typography variant="body2" color="text.secondary">
+          {t('apiTokens.docsHint')}{' '}
+          <Link href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
+            {t('apiTokens.docsLink')}
+          </Link>
+        </Typography>
         <SectionAlerts message={message} error={listError} />
 
         {!hasProjects ? <Alert severity="info">{t('apiTokens.noProjects')}</Alert> : null}

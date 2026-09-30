@@ -5,12 +5,14 @@ from datetime import date
 
 from django.db.models import Count
 from django.utils.dateparse import parse_date
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from config.languages import resolve_request_language
 from config.responses import api_error_response
+from farm.agent_api.schema import SEASON_HEADER_PARAMETER
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
 from farm.models import Bed, EntityRevision, PlantingPlan, Season, Task
@@ -91,6 +93,7 @@ class YieldCalendarListView(generics.GenericAPIView):
         return Response(build_yield_calendar(active_project, iso_year, language_code, season_id=season_id))
 
 
+@extend_schema_view(list=extend_schema(parameters=[SEASON_HEADER_PARAMETER]))
 class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
     """ViewSet for PlantingPlan model providing CRUD operations.
     
