@@ -40,6 +40,16 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #734 (re-review after merge 477f38ed)
+
+**Scope:** `git diff origin/main...HEAD` after merging `origin/main` (brings in
+PR #735, already logged below) into the branch.
+
+**Findings:** No issues. The merge adds no new code beyond the previously
+reviewed `AuthContext` change and the session middleware change.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #734 (re-review after 43cc95ef)
 
 **Scope:** commit `43cc95ef`: `config.session_middleware.ConcurrentLoginSafeSessionMiddleware`
