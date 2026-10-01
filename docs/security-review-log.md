@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #734
+
+**Scope:** `git diff origin/main...HEAD` of
+`claude/auth-refresh-keep-user-on-transient-errors`: `AuthContext` refresh now
+clears the signed-in user only on 401/403, not on network/5xx/unreadable
+responses (frontend only, plus tests and docs).
+
+**Findings:** No issues. The change affects only client-side UI state; the
+server still enforces authentication on every request, so a retained stale
+user grants no access. 401/403 still clear the user and the stored project.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #732 (re-review after a1b08e78)
 
 **Scope:** `git diff origin/main...HEAD` including the later commit `a1b08e78`
