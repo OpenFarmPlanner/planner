@@ -18,7 +18,8 @@ doc's "deliberately deferred" section.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 from django.db import connection
 from django.db.models import (
@@ -74,6 +75,14 @@ MIN_SPECIES_SEARCH_SIMILARITY = 0.5
 MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH = 4
 SPECIES_SEARCH_RANK_EXACT = 2
 SPECIES_SEARCH_RANK_PREFIX = 1
+
+SpeciesMatchSource = Literal['name', 'synonym', 'botanical', 'fuzzy']
+# Result order of `search_crop_species`: a hit on the displayed official name
+# always beats one that only came from an alias, which in turn beats a
+# scientific-name hit and a merely similar-looking name.
+SPECIES_MATCH_SOURCE_ORDER: tuple[SpeciesMatchSource, ...] = (
+    'name', 'synonym', 'botanical', 'fuzzy',
+)
 
 
 def build_crop_search_terms(value: str) -> set[str]:
@@ -253,30 +262,115 @@ def _score_crop_species_fallback(
     return scored
 
 
+@dataclass(frozen=True)
+class CropSpeciesSearchHit:
+    """One ranked species search result plus why it matched the query.
+
+    ``match_source`` is ``name`` (the displayed official name),
+    ``synonym`` (any other name of the species: synonym, regional name,
+    another language's common name or the canonical name when it is not
+    the displayed one — ``matched_synonym`` names it), ``botanical`` (the
+    scientific name) or ``fuzzy`` (similarity only).
+    """
+
+    species: CropSpecies
+    match_source: SpeciesMatchSource
+    matched_synonym: str = ''
+
+
+def official_species_name(
+    species: CropSpecies, language_code: str | None, region: str | None = None,
+) -> str:
+    """The name a search result is listed under in ``language_code``.
+
+    The plain common name in that language — not a regional override, so a
+    result reads the same for every region — falling back to
+    ``localized_name`` when the species has no such translation. Mirrors the
+    frontend's ``getCropSpeciesResultLabel``.
+    """
+    base_language = (language_code or '').split('-')[0].lower()
+    for translation in species.translations.all():
+        if translation.language_code == base_language and translation.common_name:
+            return translation.common_name
+    return species.localized_name(language_code, region)[0]
+
+
+def _classify_species_match(
+    species: CropSpecies, normalized: str, search_terms: set[str], official_name: str,
+) -> tuple[SpeciesMatchSource, str, bool]:
+    """``(source, matched_synonym, exact)`` for a species that had a substring hit.
+
+    The literal query is checked before its alias/plural/token variants, so
+    "Paradeiser" reports the synonym the user typed rather than the
+    "Tomate" it also expands to.
+    """
+    official_key = normalize_text(official_name) or ''
+    scientific_key = normalize_text(species.scientific_name) or ''
+    synonyms = [
+        (name, key)
+        for name in species.search_names()
+        if (key := normalize_text(name) or '') and key not in {official_key, scientific_key}
+    ]
+    if official_key == normalized:
+        return 'name', '', True
+    exact_synonym = next((name for name, key in synonyms if key == normalized), None)
+    if exact_synonym is not None:
+        return 'synonym', exact_synonym, True
+    for needles in ((normalized,), tuple(search_terms)):
+        if any(needle in official_key for needle in needles):
+            return 'name', '', False
+        matched = next(
+            (name for name, key in synonyms if any(needle in key for needle in needles)), None,
+        )
+        if matched is not None:
+            return 'synonym', matched, False
+    if scientific_key and normalized in scientific_key:
+        return 'botanical', '', scientific_key == normalized
+    return 'fuzzy', '', False
+
+
 def search_crop_species(
-    value: str, *, queryset: QuerySet[CropSpecies] | None = None, limit: int = SPECIES_SEARCH_RESULT_LIMIT,
-) -> list[CropSpecies]:
+    value: str,
+    *,
+    queryset: QuerySet[CropSpecies] | None = None,
+    limit: int = SPECIES_SEARCH_RESULT_LIMIT,
+    language_code: str | None = None,
+    region: str | None = None,
+) -> list[CropSpeciesSearchHit]:
     """Typo-tolerant search over official species names, synonyms, and translations.
 
-    Ranked exact matches first, then prefix matches, then by similarity;
-    results with neither an exact/prefix hit nor at least
-    `MIN_SPECIES_SEARCH_SIMILARITY` are dropped as irrelevant. Backs the
-    publishing wizard's "Offizielle Kulturart" field and the moderation
-    page's synonym-alias search (both via `CropSpeciesViewSet.list`'s ``q``
-    param).
+    Results are grouped by match source (see `SPECIES_MATCH_SOURCE_ORDER`):
+    hits on the official name in ``language_code`` first, then synonym hits,
+    then scientific-name hits, then similarity-only hits; within a group
+    exact matches lead, then higher similarity. Results with neither a
+    substring hit nor at least `MIN_SPECIES_SEARCH_SIMILARITY` are dropped as
+    irrelevant. Backs the publishing wizard's "Offizielle Kulturart" field
+    and the moderation page's synonym-alias search (both via
+    `CropSpeciesViewSet.list`'s ``q`` param).
     """
     from .models import CropSpecies
 
     base = queryset if queryset is not None else CropSpecies.objects.filter(status=CropSpecies.STATUS_PUBLISHED)
     scored = _score_crop_species(value, base)
-    normalized_length = len(normalize_text(value) or '')
-    fuzzy_allowed = normalized_length >= MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH
-    filtered = [
-        item for item in scored
-        if item[1] > 0 or (fuzzy_allowed and item[2] >= MIN_SPECIES_SEARCH_SIMILARITY)
-    ]
-    filtered.sort(key=lambda item: (-item[1], -item[2], item[0].name))
-    return [species for species, _rank, _similarity in filtered[:limit]]
+    normalized = normalize_text(value) or ''
+    search_terms = build_crop_search_terms(value)
+    fuzzy_allowed = len(normalized) >= MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH
+    ranked: list[tuple[tuple[int, int, float, str], CropSpeciesSearchHit]] = []
+    for species, rank, similarity in scored:
+        if rank > 0:
+            official_name = official_species_name(species, language_code, region)
+            source, synonym, exact = _classify_species_match(
+                species, normalized, search_terms, official_name,
+            )
+        elif fuzzy_allowed and similarity >= MIN_SPECIES_SEARCH_SIMILARITY:
+            source, synonym, exact = 'fuzzy', '', False
+        else:
+            continue
+        source_index = SPECIES_MATCH_SOURCE_ORDER.index(source)
+        sort_key = (source_index, 0 if exact else 1, -similarity, species.name)
+        ranked.append((sort_key, CropSpeciesSearchHit(species, source, synonym)))
+    ranked.sort(key=lambda item: item[0])
+    return [hit for _key, hit in ranked[:limit]]
 
 
 def is_discouraged_public_species(species: CropSpecies) -> bool:

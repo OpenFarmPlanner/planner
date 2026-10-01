@@ -416,7 +416,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradeiser');
 
-    expect(await screen.findByRole('option', { name: 'Tomate (Paradeiser)' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Tomate Synonym: Paradeiser' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Paradeiser.*als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
@@ -456,9 +456,9 @@ describe('CropsPublishingWizardDialog', () => {
 
     const options = await findSettledOptions(3);
     expect(options.map((option) => option.textContent)).toEqual([
-      'Paprika (Peperoni)',
-      'Chili (Peperoni)',
-      'Pfefferoni (Peperoni)',
+      'Paprika Synonym: Peperoni',
+      'Chili Synonym: Peperoni',
+      'Pfefferoni Synonym: Peperoni',
     ]);
   });
 
@@ -493,9 +493,37 @@ describe('CropsPublishingWizardDialog', () => {
 
     const options = await findSettledOptions(2);
     expect(options.map((option) => option.textContent)).toEqual([
-      'Tomate (Paradeis)',
+      'Tomate Synonym: Paradeis',
       '„Paradei“ als neue Kulturart vorschlagen',
     ]);
+  });
+
+  it('explains a synonym hit and confirms the official name it is published under', async () => {
+    cropSpeciesListMock.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [{
+          id: 21,
+          name: 'Lauch',
+          display_name: 'Lauch',
+          scientific_name: 'Allium ampeloprasum',
+          status: 'published',
+          search_names: ['Lauch', 'Porree', 'Allium ampeloprasum'],
+          translations: [{ language_code: 'de', common_name: 'Lauch', synonyms: ['Porree'], regional_names: {} }],
+          search_match: { source: 'synonym', synonym: 'Porree' },
+        }],
+      },
+    });
+
+    renderWizard({ ...CROP, name: 'Porree', variety: '' });
+
+    const option = await screen.findByRole('option', { name: 'Lauch Synonym: Porree · Allium ampeloprasum' });
+    expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
+    fireEvent.click(option);
+
+    expect(await screen.findByText('Deine Kultur „Porree“ wird als „Lauch“ veröffentlicht.')).toBeInTheDocument();
   });
 
   it('shows an inline error when proposing a species fails', async () => {

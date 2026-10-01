@@ -3,7 +3,6 @@ import {
   Autocomplete,
   Box,
   CircularProgress,
-  createFilterOptions,
   TextField,
   Typography,
 } from '@mui/material';
@@ -11,12 +10,16 @@ import {
 import type { CropSpecies } from '../api/types';
 import { useTranslation } from '../i18n';
 import i18n from '../i18n/config';
+import { CropSpeciesOptionContent } from './CropSpeciesOptionContent';
 import {
+  CROP_SPECIES_MATCH_SOURCE_ORDER,
+  getCropSpeciesCanonicalName,
   getCropSpeciesOptionLabel,
   getCropSpeciesResultLabel,
+  getCropSpeciesSearchMatch,
   getCropSpeciesSearchNames,
   hasStrongCropSpeciesIdentityMatch,
-  isCropSpeciesSearchMatch,
+  normalizeCropSpeciesSearchValue,
 } from './cropSpeciesMatching';
 
 /**
@@ -24,7 +27,7 @@ import {
  * crop species. It is appended to the species dropdown as the last entry
  * only when the typed value does not match any official species name,
  * synonym, or regional name. Matches must be explicit instead of silent:
- * if an alias made the canonical species appear, the option label includes it.
+ * every option says why it matched (`CropSpeciesOptionContent`).
  *
  * Picking it does not talk to the server. It puts the picker into
  * "propose a new species" mode and reports the name through
@@ -44,20 +47,25 @@ const isProposeSpeciesOption = (option: SpeciesPickerOption): option is ProposeS
   'proposeName' in option
 );
 
-const getCropSpeciesSearchText = (option: SpeciesPickerOption): string => {
-  if (isProposeSpeciesOption(option)) {
-    return option.proposeName;
-  }
-  return getCropSpeciesSearchNames(option).join(' ');
-};
-
 const getSpeciesPickerOptionLabel = (option: SpeciesPickerOption): string => (
   isProposeSpeciesOption(option) ? option.proposeName : getCropSpeciesOptionLabel(option)
 );
 
-const filterSpeciesOptions = createFilterOptions<SpeciesPickerOption>({
-  stringify: getCropSpeciesSearchText,
-});
+/** Options matching `searchValue`, ordered official name → synonym → botanical → similar name. */
+const rankSpeciesOptions = (
+  options: CropSpecies[],
+  searchValue: string,
+  getOfficialName: (option: CropSpecies) => string,
+): CropSpecies[] => {
+  if (!searchValue) return options;
+  return options
+    .flatMap((option) => {
+      const match = getCropSpeciesSearchMatch(option, searchValue, getOfficialName(option));
+      return match ? [{ option, order: CROP_SPECIES_MATCH_SOURCE_ORDER.indexOf(match.source) }] : [];
+    })
+    .sort((left, right) => left.order - right.order)
+    .map((item) => item.option);
+};
 
 export interface CropSpeciesPickerProps {
   /** Every selectable official species, already loaded (see `useCropSpeciesOptions`). */
@@ -75,6 +83,11 @@ export interface CropSpeciesPickerProps {
   onProposalNameChange: (name: string | null) => void;
   /** True while a proposal is being filed; keeps the option from firing twice. */
   proposing?: boolean;
+  /**
+   * The user's own crop name. When the selected species is listed under a
+   * different name, the helper text confirms which name gets published.
+   */
+  localCropName?: string;
   errorText?: string;
   label?: string;
   required?: boolean;
@@ -83,12 +96,12 @@ export interface CropSpeciesPickerProps {
    * True when `species` is already a ranked, server-searched result set
    * (see `useCropSpeciesSearch`) rather than the full catalogue loaded once
    * for client-side filtering. In that mode the picker trusts the given
-   * order/set as-is instead of re-filtering it locally, and labels each
-   * option with `getCropSpeciesResultLabel` (UI-language canonical name,
-   * synonym parenthetical only when that's what matched) instead of
-   * `getCropSpeciesOptionLabel`. Used by the publishing wizard's "Offizielle
-   * Kulturart" field; the moderators' relink dialog keeps the default
-   * client-filtered full-list mode.
+   * order/set as-is instead of re-filtering it locally, lists each option
+   * under `getCropSpeciesResultLabel` (UI-language canonical name) instead of
+   * the canonical `name`, and explains the match with the server's
+   * `search_match`. Used by the publishing wizard's "Offizielle Kulturart"
+   * field; the moderators' relink dialog keeps the default client-filtered
+   * full-list mode.
    */
   serverSearched?: boolean;
 }
@@ -109,6 +122,7 @@ export function CropSpeciesPicker({
   proposalName,
   onProposalNameChange,
   proposing = false,
+  localCropName,
   errorText,
   label,
   required = false,
@@ -130,6 +144,19 @@ export function CropSpeciesPicker({
     proposalNameRef.current = name;
     onProposalNameChange(name);
   }, [onProposalNameChange]);
+
+  const uiLanguage = i18n.resolvedLanguage ?? i18n.language;
+  const getOfficialName = useCallback((option: CropSpecies): string => (
+    serverSearched
+      ? getCropSpeciesResultLabel(option, uiLanguage).label
+      : getCropSpeciesCanonicalName(option)
+  ), [serverSearched, uiLanguage]);
+
+  const selectedOfficialName = value ? getOfficialName(value) : '';
+  const publishAsHelp = selectedOfficialName && localCropName?.trim()
+    && normalizeCropSpeciesSearchValue(selectedOfficialName) !== normalizeCropSpeciesSearchValue(localCropName)
+    ? t('library.speciesPicker.publishAsHelp', { localName: localCropName.trim(), officialName: selectedOfficialName })
+    : undefined;
 
   const canUseProposalName = useCallback((name: string): boolean => {
     const trimmedName = name.trim();
@@ -164,21 +191,9 @@ export function CropSpeciesPicker({
         // for this query (see `useCropSpeciesSearch`) — re-running the
         // client-side substring/fuzzy filter here would drop fuzzy hits
         // that don't literally contain the typed text.
-        const filtered = serverSearched ? knownOptions : (() => {
-          const baseFiltered = filterSpeciesOptions(options, params);
-          const filteredIds = new Set(
-            baseFiltered
-              .filter((option): option is CropSpecies => !isProposeSpeciesOption(option))
-              .map((option) => option.id),
-          );
-          const fuzzyMatches = proposeName
-            ? knownOptions.filter((option) => (
-              !filteredIds.has(option.id)
-              && isCropSpeciesSearchMatch(proposeName, getCropSpeciesSearchNames(option))
-            ))
-            : [];
-          return [...baseFiltered, ...fuzzyMatches];
-        })();
+        const filtered: SpeciesPickerOption[] = serverSearched
+          ? knownOptions
+          : rankSpeciesOptions(knownOptions, proposeName, getOfficialName);
         const hasStrongExistingSpeciesMatch = hasStrongCropSpeciesIdentityMatch(
           proposeName,
           knownOptions.map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
@@ -210,14 +225,20 @@ export function CropSpeciesPicker({
             </Box>
           );
         }
-        const label = serverSearched
-          ? getCropSpeciesResultLabel(option, inputValue, i18n.resolvedLanguage ?? i18n.language).label
-          : getCropSpeciesOptionLabel(option, inputValue);
+        const officialName = getOfficialName(option);
+        // A species prepended outside the search (the wizard's own fresh
+        // proposal) has no server `search_match`; classify it locally.
+        const match = (serverSearched ? option.search_match : null)
+          ?? getCropSpeciesSearchMatch(option, inputValue, officialName);
         return (
           <li {...optionProps} key={key}>
-            {option.status === 'proposed'
-              ? t('library.speciesPicker.pendingOptionSuffix', { name: label })
-              : label}
+            <CropSpeciesOptionContent
+              officialName={officialName}
+              scientificName={option.scientific_name}
+              match={match}
+              query={inputValue}
+              pending={option.status === 'proposed'}
+            />
           </li>
         );
       }}
@@ -286,7 +307,7 @@ export function CropSpeciesPicker({
           // field itself, with no extra dialog step.
           helperText={errorText || (proposalName
             ? t('library.speciesPicker.proposingHelp', { name: proposalName })
-            : undefined)}
+            : publishAsHelp)}
           slotProps={{
             ...params.slotProps,
 

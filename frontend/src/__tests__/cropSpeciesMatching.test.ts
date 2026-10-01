@@ -2,6 +2,8 @@ import {
   findMatchedCropSpeciesAlias,
   formatCropSpeciesMatchLabel,
   getCropSpeciesCanonicalName,
+  getCropSpeciesResultLabel,
+  getCropSpeciesSearchMatch,
   getCropSpeciesSearchNames,
   getPublicCropSpeciesSearchNames,
   hasStrongCropSpeciesIdentityMatch,
@@ -202,5 +204,68 @@ describe('formatCropSpeciesMatchLabel', () => {
   it('shows the canonical name alone when nothing else matched', () => {
     expect(formatCropSpeciesMatchLabel('Daucus carota', null)).toBe('Daucus carota');
     expect(formatCropSpeciesMatchLabel('Daucus carota', undefined)).toBe('Daucus carota');
+  });
+});
+
+describe('getCropSpeciesResultLabel', () => {
+  const leek: CropSpecies = {
+    id: 1,
+    name: 'Lauch',
+    status: 'published',
+    display_name: 'Lauch',
+    display_language_code: 'de',
+    translations: [
+      { language_code: 'de', common_name: 'Lauch', synonyms: ['Porree'] },
+      { language_code: 'en', common_name: 'Leek' },
+    ],
+  };
+
+  it('is the UI-language common name, never with the matched synonym appended', () => {
+    expect(getCropSpeciesResultLabel(leek, 'de-AT')).toEqual({ label: 'Lauch', usedFallbackLanguage: false });
+    expect(getCropSpeciesResultLabel(leek, 'en')).toEqual({ label: 'Leek', usedFallbackLanguage: false });
+  });
+
+  it('marks a name that only exists in another language', () => {
+    expect(getCropSpeciesResultLabel(leek, 'fr')).toEqual({ label: 'Lauch · DE', usedFallbackLanguage: true });
+  });
+});
+
+describe('getCropSpeciesSearchMatch', () => {
+  const leek: CropSpecies = {
+    id: 1,
+    name: 'Lauch',
+    scientific_name: 'Allium ampeloprasum',
+    status: 'published',
+    search_names: ['Lauch', 'Porree', 'Breitlauch', 'Leek', 'Allium ampeloprasum'],
+  };
+
+  it('reports a hit on the official name, case- and accent-insensitively', () => {
+    expect(getCropSpeciesSearchMatch(leek, 'lau', 'Lauch')).toEqual({ source: 'name', synonym: '' });
+    expect(getCropSpeciesSearchMatch({ ...leek, search_names: ['Möhre'] }, 'mohre', 'Möhre'))
+      .toEqual({ source: 'name', synonym: '' });
+  });
+
+  it('prefers the official name over a synonym that also contains the input', () => {
+    // "Breitlauch" contains "lauch" too, but the official name is the reason.
+    expect(getCropSpeciesSearchMatch(leek, 'Lauch', 'Lauch')).toEqual({ source: 'name', synonym: '' });
+  });
+
+  it('names the synonym that matched, preferring an exact one', () => {
+    expect(getCropSpeciesSearchMatch(leek, 'Porr', 'Lauch')).toEqual({ source: 'synonym', synonym: 'Porree' });
+    expect(getCropSpeciesSearchMatch(leek, 'leek', 'Lauch')).toEqual({ source: 'synonym', synonym: 'Leek' });
+  });
+
+  it('counts the canonical name as a synonym when it is not the listed name', () => {
+    expect(getCropSpeciesSearchMatch(leek, 'Lauch', 'Leek')).toEqual({ source: 'synonym', synonym: 'Lauch' });
+  });
+
+  it('reports a scientific-name hit as botanical', () => {
+    expect(getCropSpeciesSearchMatch(leek, 'allium', 'Lauch')).toEqual({ source: 'botanical', synonym: '' });
+  });
+
+  it('falls back to fuzzy for a near miss and null for no match', () => {
+    expect(getCropSpeciesSearchMatch(leek, 'Lauck', 'Lauch')).toEqual({ source: 'fuzzy', synonym: '' });
+    expect(getCropSpeciesSearchMatch(leek, 'Tomate', 'Lauch')).toBeNull();
+    expect(getCropSpeciesSearchMatch(leek, '  ', 'Lauch')).toBeNull();
   });
 });

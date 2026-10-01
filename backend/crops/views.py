@@ -33,6 +33,8 @@ from .serializers import (
     CropSpeciesSerializer,
     CropSpeciesTranslationSerializer,
     PublicLibraryModeratorRequestSerializer,
+    get_request_language,
+    get_request_region,
 )
 
 
@@ -88,9 +90,21 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
         except ValueError:
             requested_limit = services.SPECIES_SEARCH_RESULT_LIMIT
         limit = max(1, min(requested_limit, services.SPECIES_SEARCH_RESULT_LIMIT))
-        results = services.search_crop_species(query, queryset=self.get_queryset(), limit=limit)
-        serializer = self.get_serializer(results, many=True)
-        return Response({'count': len(results), 'next': None, 'previous': None, 'results': serializer.data})
+        context = self.get_serializer_context()
+        hits = services.search_crop_species(
+            query,
+            queryset=self.get_queryset(),
+            limit=limit,
+            language_code=get_request_language(context),
+            region=get_request_region(context),
+        )
+        context['search_matches'] = {hit.species.pk: hit for hit in hits}
+        serializer = self.get_serializer_class()(
+            [hit.species for hit in hits], many=True, context=context,
+        )
+        return Response(
+            {'count': len(hits), 'next': None, 'previous': None, 'results': serializer.data},
+        )
 
     def create(self, request, *args, **kwargs):
         if is_active_guest_demo_user(request.user):

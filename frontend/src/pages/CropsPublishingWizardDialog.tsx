@@ -830,6 +830,7 @@ export function CropsPublishingWizardDialog({
               proposalName={pendingSpeciesProposalName}
               onProposalNameChange={handleSpeciesProposalNameChange}
               proposing={proposingSpecies}
+              localCropName={crop?.name}
               errorText={proposeSpeciesError}
               inputRef={speciesInputRef}
               required

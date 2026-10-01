@@ -1237,7 +1237,10 @@
       "proposeInline": "Suggest \"{{name}}\" as a new crop species",
       "noOptions": "No matching official crop species found.",
       "pendingOptionSuffix": "{{name}} · Proposal under review",
-      "proposingHelp": "New crop species will be proposed: {{name}}"
+      "proposingHelp": "New crop species will be proposed: {{name}}",
+      "matchSynonym": "Synonym: <synonym>{{synonym}}</synonym>",
+      "matchFuzzy": "Similar name",
+      "publishAsHelp": "Your crop \"{{localName}}\" will be published as \"{{officialName}}\"."
     },
     "relinkSpecies": {
       "action": "Correct crop species",

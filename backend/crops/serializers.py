@@ -8,6 +8,7 @@ deliberate cost of keeping that direction correct until `PublicCrop`
 itself moves into this app.
 """
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from config.languages import (
@@ -19,6 +20,7 @@ from config.languages import (
 from farm.crops.serializers.public import get_public_user_label
 from farm.models import PublicCrop
 
+from . import services
 from .models import (
     SUPPORTED_REGIONAL_NAME_KEYS,
     CropSpecies,
@@ -148,6 +150,19 @@ class CropSpeciesTranslationSerializer(serializers.ModelSerializer):
         return cleaned
 
 
+class CropSpeciesSearchMatchSerializer(serializers.Serializer):
+    """Why a ``?q=`` search result matched — see `services.CropSpeciesSearchHit`."""
+
+    source = serializers.ChoiceField(choices=services.SPECIES_MATCH_SOURCE_ORDER)
+    synonym = serializers.CharField(
+        allow_blank=True,
+        help_text=(
+            'The synonym, regional or other-language name that matched; '
+            'empty unless source is "synonym".'
+        ),
+    )
+
+
 class CropSpeciesSerializer(serializers.ModelSerializer):
     """Official species that project crops may link to before publication.
 
@@ -163,6 +178,7 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
     display_language_code = serializers.SerializerMethodField()
     search_names = serializers.SerializerMethodField()
+    search_match = serializers.SerializerMethodField()
 
     class Meta:
         model = CropSpecies
@@ -182,6 +198,7 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
             'display_name',
             'display_language_code',
             'search_names',
+            'search_match',
         ]
         read_only_fields = [
             'id',
@@ -194,6 +211,7 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
             'display_name',
             'display_language_code',
             'search_names',
+            'search_match',
         ]
 
     def get_display_name(self, obj: CropSpecies) -> str:
@@ -215,6 +233,14 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
 
     def get_search_names(self, obj: CropSpecies) -> list[str]:
         return obj.search_names()
+
+    @extend_schema_field(CropSpeciesSearchMatchSerializer(allow_null=True))
+    def get_search_match(self, obj: CropSpecies) -> dict[str, str] | None:
+        """How this row matched the list's ``q`` search; null outside a search."""
+        hit = self.context.get('search_matches', {}).get(obj.pk)
+        if hit is None:
+            return None
+        return {'source': hit.match_source, 'synonym': hit.matched_synonym}
 
     def create(self, validated_data: dict) -> CropSpecies:
         translations = validated_data.pop('translations', [])
