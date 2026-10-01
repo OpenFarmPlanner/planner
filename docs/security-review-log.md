@@ -40,6 +40,16 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #732 (re-review after a1b08e78)
+
+**Scope:** `git diff origin/main...HEAD` including the later commit `a1b08e78`
+(publish dialog search race fix, frontend only).
+
+**Findings:** No issues. `a1b08e78` changes only client-side search state; the
+backend `search_match` field remains read-only on an unchanged queryset.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #732
 
 **Scope:** `git diff origin/main...HEAD` of `claude/wizardly-fermat-iwhm5j`:
