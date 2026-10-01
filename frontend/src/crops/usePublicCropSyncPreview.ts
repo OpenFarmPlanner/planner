@@ -6,7 +6,6 @@ import {
   buildDefaultSyncChoices,
   splitSyncChoices,
   type PublicCropSyncChoices,
-  type PublicCropSyncMode,
   type PublicCropSyncSelection,
 } from './publicCropSync';
 
@@ -22,14 +21,13 @@ export interface PublicCropSyncPreviewState {
 
 /**
  * Loads the field-by-field differences between `cropId` and `publicCropId`
- * and keeps the user's per-field choices, starting from the preselection for
- * `mode`.
+ * and keeps the user's per-field choices, starting from the default
+ * preselection.
  */
 export function usePublicCropSyncPreview(
   cropId: number | undefined,
   publicCropId: number | null | undefined,
   enabled: boolean,
-  mode: PublicCropSyncMode,
 ): PublicCropSyncPreviewState {
   const { t } = useTranslation('crops');
   const [preview, setPreview] = useState<CropPublicSyncPreview | null>(null);
@@ -49,7 +47,7 @@ export function usePublicCropSyncPreview(
       .then((response) => {
         if (cancelled) return;
         setPreview(response.data);
-        setChoices(buildDefaultSyncChoices(response.data.changes, mode));
+        setChoices(buildDefaultSyncChoices(response.data.changes));
       })
       .catch(() => {
         if (!cancelled) setLoadError(t('library.sync.loadError'));
@@ -57,7 +55,7 @@ export function usePublicCropSyncPreview(
     return () => {
       cancelled = true;
     };
-  }, [cropId, enabled, mode, publicCropId, reloadToken, t]);
+  }, [cropId, enabled, publicCropId, reloadToken, t]);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
@@ -65,7 +63,7 @@ export function usePublicCropSyncPreview(
     preview,
     choices,
     setChoices,
-    selection: splitSyncChoices(preview?.changes ?? [], choices, mode),
+    selection: splitSyncChoices(preview?.changes ?? [], choices),
     loadError,
     reload,
   };

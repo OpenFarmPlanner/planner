@@ -121,24 +121,6 @@ describe('PublicCropSyncPanel', () => {
     );
   });
 
-  it('prefers the local value for a field set on both sides when updating the library', () => {
-    function UpdateHarness() {
-      const [choices, setChoices] = useState(() => buildDefaultSyncChoices(CHANGES, 'update'));
-      return (
-        <PublicCropSyncPanel
-          changes={CHANGES}
-          choices={choices}
-          onChoicesChange={setChoices}
-          mode="update"
-          requiresModeration={false}
-        />
-      );
-    }
-    render(<UpdateHarness />);
-
-    expect(summary()).toHaveTextContent('3 Werte werden in der Kulturbibliothek aktualisiert.');
-  });
-
   it('hides the part of the summary whose count is zero after a quick action', () => {
     render(<Harness />);
 

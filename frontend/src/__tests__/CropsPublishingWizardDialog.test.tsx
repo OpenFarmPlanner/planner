@@ -762,7 +762,7 @@ describe('CropsPublishingWizardDialog', () => {
       })));
     });
 
-    it('asks for the license before pushing values, preselecting every local value', async () => {
+    it('asks for the license before pushing values, preselecting the one-sided local value', async () => {
       const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
       renderWizard(ownedGeneralCrop, { onSyncPublicCrop, termsAlreadyAccepted: false });
 
@@ -777,8 +777,8 @@ describe('CropsPublishingWizardDialog', () => {
 
       await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
         acceptedPublicLibraryTerms: true,
-        pullFields: [],
-        pushFields: ['thousand_kernel_weight_g', 'harvest_duration_days'],
+        pullFields: ['thousand_kernel_weight_g'],
+        pushFields: ['harvest_duration_days'],
       })));
     });
 
