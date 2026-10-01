@@ -80,6 +80,12 @@ function mergeProjectSelection(
   };
 }
 
+/** Whether a failed auth request means the server rejected the session (see `AuthApiError.status`). */
+const isSessionRejection = (error: unknown): boolean => {
+  const status = (error as { status?: unknown } | null)?.status;
+  return status === 401 || status === 403;
+};
+
 export function AuthProvider({
   children,
 }: {
@@ -139,8 +145,11 @@ export function AuthProvider({
       }
       applyAuthenticatedUser(me);
       return me;
-    } catch {
-      if (requestGeneration === authGenerationRef.current) {
+    } catch (error) {
+      // Only the server rejecting the session logs the user out. A network
+      // error, a 5xx or an unreadable response says nothing about the session
+      // and must not send a signed-in user to the login page.
+      if (requestGeneration === authGenerationRef.current && isSessionRejection(error)) {
         clearAuthenticatedUser();
       }
       return null;
