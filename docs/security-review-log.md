@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #736
+
+**Scope:** `git diff origin/main...HEAD` of
+`claude/bulk-mark-notifications-read-p07j0m`: `POST /notifications/read-all/`,
+`mark_all_notifications_read`, and the realtime invalidation broadcast.
+
+**Findings:** No issues. The endpoint requires `IsAuthenticated`, updates only
+`recipient=request.user` rows (no client-supplied IDs or filters, so no IDOR),
+and the broadcast goes only to the caller's own `user.<id>.notifications`
+group and carries no personal data.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #734 (re-review after merge 477f38ed)
 
 **Scope:** `git diff origin/main...HEAD` after merging `origin/main` (brings in
