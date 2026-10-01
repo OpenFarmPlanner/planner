@@ -80,7 +80,8 @@ def _expected(
 
 # Cell key -> (owner of the entry, entry status, entry version, crop state, expectation).
 # owner: 'self' (the crop's user), 'other' (the publisher account) or None (no link).
-# state: 'aligned', 'local_changes', 'library_ahead', 'library_ahead_rejected', 'proposal'.
+# state: 'aligned', 'local_changes', 'baseline_withheld', 'library_ahead',
+# 'library_ahead_rejected', 'proposal'.
 CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     'unlinked': (None, '', '', _expected(status=None, blocked=None, can_unlink=False)),
     'own_published_aligned': (
@@ -90,6 +91,14 @@ CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     'own_published_local_changes': (
         'self', 'published', 'local_changes',
         _expected(status='published', blocked=None, can_unlink=False),
+    ),
+    # A general Kultur linked to the species-level entry its Sorte's publish
+    # created: the values differ and were never in common, so no baseline.
+    'own_published_baseline_withheld': (
+        'self', 'published', 'baseline_withheld',
+        _expected(
+            status='published', blocked='update_pending', can_unlink=False, update_available=True,
+        ),
     ),
     'own_withdrawn': (
         'self', 'withdrawn', 'aligned',
@@ -184,8 +193,10 @@ def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: User, user: U
         'growth_duration_days': BASE_DURATION_DAYS, 'harvest_duration_days': 14,
         'is_modified_from_source': False,
     }
-    if state in {'local_changes', 'proposal'}:
+    if state in {'local_changes', 'proposal', 'baseline_withheld'}:
         updates.update(growth_duration_days=BASE_DURATION_DAYS + 7, is_modified_from_source=True)
+    if state == 'baseline_withheld':
+        updates['source_public_version'] = None
     if state in {'library_ahead', 'library_ahead_rejected'}:
         PublicCrop.objects.filter(pk=entry.pk).update(
             version=2, growth_duration_days=LIBRARY_DURATION_DAYS,

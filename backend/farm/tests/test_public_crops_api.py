@@ -33,6 +33,10 @@ from farm.models import (
     SeedPackage,
 )
 from farm.services.crop_inheritance import get_general_crop
+from farm.services.public_crops import (
+    has_pending_public_crop_update,
+    link_project_crop_to_public_reference,
+)
 from farm.tests.api_base import User
 from notifications.models import Notification
 
@@ -741,19 +745,171 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(variety_entry.crop_family, 'Curated')
         self.assertEqual(variety_entry.nutrient_demand, 'medium')
 
-    def test_general_kultur_published_through_a_sorte_offers_a_library_update(self):
-        """The menu state the frontend derives must match a directly published Kultur."""
+    def test_general_kultur_published_through_a_sorte_offers_the_pull_for_differing_values(self):
+        """The entry carries the Sorte's values, which the Kultur never had.
+
+        Linking records no baseline then, so the differences surface as a pull
+        ("Kultur aktualisieren") instead of a push of values nobody edited.
+        """
         general_kultur = self._create_general_kultur()
         self.publish_current_crop()
 
+        general_kultur.refresh_from_db()
+        general_public_crop = PublicCrop.objects.get(variety='')
+        self.assertEqual(general_kultur.source_public_crop, general_public_crop)
+        self.assertIsNone(general_kultur.source_public_version)
+        self.assertEqual(general_kultur.origin_type, Crop.ORIGIN_MANUAL)
+        self.assertEqual(general_kultur.growth_duration_days, 60)
+        self.assertTrue(has_pending_public_crop_update(general_kultur))
+
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
         general_row = rows[general_kultur.id]
-        general_public_crop = PublicCrop.objects.get(variety='')
         self.assertEqual(general_row['owned_public_crop_id'], general_public_crop.id)
         self.assertEqual(general_row['owned_public_crop_role'], 'contributor')
-        # The entry carries the Sorte's values, so the Kultur still has
-        # something of its own to contribute and the action stays enabled.
-        self.assertIsNone(general_row['public_publish_blocked_reason'])
+        self.assertEqual(general_row['public_publish_blocked_reason'], 'update_pending')
+        self.assertTrue(general_row['public_update_available'])
+        # Pushing values the entry never had is not offered before the pull.
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{general_kultur.id}/publish-public/',
+            {
+                'accepted_public_library_terms': True,
+                'crop_species_id': self.species.id,
+                'original_language_code': 'en',
+                'publish_as_general': True,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        general_public_crop.refresh_from_db()
+        self.assertEqual(general_public_crop.growth_duration_days, 50)
+
+    def test_general_kultur_matching_the_created_entry_gets_the_baseline(self):
+        general_kultur = self._create_general_kultur(
+            growth_duration_days=self.crop.growth_duration_days,
+            harvest_duration_days=self.crop.harvest_duration_days,
+            notes=self.crop.notes,
+        )
+        self.publish_current_crop()
+
+        general_kultur.refresh_from_db()
+        general_public_crop = PublicCrop.objects.get(variety='')
+        self.assertEqual(general_kultur.source_public_crop, general_public_crop)
+        self.assertEqual(general_kultur.source_public_version, general_public_crop.version)
+        self.assertFalse(has_pending_public_crop_update(general_kultur))
+
+    def test_publishing_a_sorte_never_links_the_general_kultur_to_a_foreign_entry(self):
+        publisher = User.objects.create_user(
+            username='other-publisher', email='other@example.com', password='testpass',
+        )
+        foreign_general = PublicCrop.objects.create(
+            name='Lettuce',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=publisher,
+            growth_duration_days=99,
+            harvest_duration_days=99,
+        )
+        general_kultur = self._create_general_kultur()
+        before = Crop.objects.filter(pk=general_kultur.pk).values().get()
+
+        response = self.publish_current_crop()
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Crop.objects.filter(pk=general_kultur.pk).values().get(), before)
+        foreign_general.refresh_from_db()
+        self.assertEqual(foreign_general.version, 1)
+        self.assertEqual(foreign_general.growth_duration_days, 99)
+
+    def test_publishing_a_sorte_keeps_an_existing_general_kultur_link(self):
+        publisher = User.objects.create_user(
+            username='other-publisher', email='other@example.com', password='testpass',
+        )
+        linked_entry = PublicCrop.objects.create(
+            name='Lettuce',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=publisher,
+            growth_duration_days=99,
+            harvest_duration_days=99,
+            version=3,
+        )
+        general_kultur = self._create_general_kultur()
+        link_project_crop_to_public_reference(
+            crop=general_kultur, public_crop=linked_entry, pull_fields=[],
+        )
+        # A general entry this user owns through the Kultur exists as well; the
+        # Sorte publish must still not move the existing link over to it.
+        PublicCrop.objects.create(
+            name='Lettuce',
+            variety='',
+            status=PublicCrop.STATUS_WITHDRAWN,
+            crop_species=self.species,
+            created_by=self.user,
+            source_project_crop=general_kultur,
+        )
+        before = Crop.objects.filter(pk=general_kultur.pk).values().get()
+
+        response = self.publish_current_crop()
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Crop.objects.filter(pk=general_kultur.pk).values().get(), before)
+        self.assertEqual(before['source_public_crop_id'], linked_entry.id)
+        self.assertEqual(before['source_public_version'], 3)
+
+    def test_republishing_a_sorte_links_the_general_kultur_to_its_own_entry(self):
+        """An entry the Kultur already owns is linked on a later Sorte publish."""
+        general_kultur = self._create_general_kultur(
+            growth_duration_days=self.crop.growth_duration_days,
+            harvest_duration_days=self.crop.harvest_duration_days,
+            notes=self.crop.notes,
+        )
+        self.publish_current_crop()
+        Crop.objects.filter(pk=general_kultur.pk).update(
+            source_public_crop=None, source_public_version=None,
+        )
+
+        self.crop.notes = 'Changed Sorte notes'
+        self.crop.save()
+        response = self.publish_current_crop()
+
+        self.assertEqual(response.data['operation'], 'updated')
+        general_kultur.refresh_from_db()
+        general_public_crop = PublicCrop.objects.get(variety='')
+        self.assertEqual(general_kultur.source_public_crop, general_public_crop)
+        self.assertEqual(general_kultur.source_public_version, general_public_crop.version)
+
+    def test_published_crop_stays_in_sync_on_create_update_and_republish(self):
+        """The published row itself is always baselined: its values are the entry's."""
+        self._create_general_kultur()
+
+        def assert_in_sync(expected_operation: str) -> None:
+            response = self.publish_current_crop()
+            self.assertEqual(response.data['operation'], expected_operation)
+            self.crop.refresh_from_db()
+            entry = PublicCrop.objects.get(variety='Bijella')
+            self.assertEqual(self.crop.source_public_crop, entry)
+            self.assertEqual(self.crop.source_public_version, entry.version)
+            self.assertFalse(has_pending_public_crop_update(self.crop))
+            row = next(
+                row for row in self.client.get('/openfarmplanner/api/crops/').data['results']
+                if row['id'] == self.crop.id
+            )
+            self.assertEqual(row['public_publish_blocked_reason'], 'no_local_changes')
+
+        assert_in_sync('created')
+
+        self.crop.growth_duration_days = 55
+        self.crop.save()
+        assert_in_sync('updated')
+
+        entry = PublicCrop.objects.get(variety='Bijella')
+        PublicCrop.objects.filter(pk=entry.pk).update(status=PublicCrop.STATUS_WITHDRAWN)
+        self.crop.notes = 'Changed while withdrawn'
+        self.crop.save()
+        assert_in_sync('updated')
+        self.assertEqual(PublicCrop.objects.get(pk=entry.pk).status, PublicCrop.STATUS_PUBLISHED)
 
     def test_general_kultur_published_through_a_sorte_reports_no_local_changes(self):
         """With identical values there is nothing to contribute, exactly as for a Sorte."""
@@ -790,9 +946,16 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(rows[self.crop.id]['public_publish_blocked_reason'], 'no_local_changes')
 
     def test_publishing_the_general_kultur_updates_the_entry_created_by_the_sorte(self):
-        general_kultur = self._create_general_kultur()
+        general_kultur = self._create_general_kultur(
+            growth_duration_days=self.crop.growth_duration_days,
+            harvest_duration_days=self.crop.harvest_duration_days,
+            notes=self.crop.notes,
+        )
         self.publish_current_crop()
         general_public_crop = PublicCrop.objects.get(variety='')
+        general_kultur.refresh_from_db()
+        general_kultur.growth_duration_days = 60
+        general_kultur.save()
 
         response = self.client.post(
             f'/openfarmplanner/api/crops/{general_kultur.id}/publish-public/',
