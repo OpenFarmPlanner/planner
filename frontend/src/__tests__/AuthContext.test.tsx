@@ -265,6 +265,35 @@ describe('AuthProvider cross-tab project sync', () => {
     expect(logoutMock).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['a network error', Object.assign(new Error('Die Anfrage konnte nicht gesendet werden.'), { isNetworkError: true })],
+    ['a server error', Object.assign(new Error('Anfrage fehlgeschlagen.'), { status: 502 })],
+    ['an unreadable response', Object.assign(new Error('Unlesbar'), { status: 200, code: 'unexpected_response' })],
+  ])('keeps the signed-in user when a refresh fails with %s', async (_label, error) => {
+    // A failed probe says nothing about the session; clearing the user here
+    // sent signed-in users to the login page on a single network hiccup.
+    render(<AuthProvider><GuestDemoStartProbe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));
+
+    getMeMock.mockRejectedValueOnce(error);
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() => expect(getMeMock).toHaveBeenCalledTimes(2));
+
+    expect(screen.getByTestId('active-project-id')).toHaveTextContent('1');
+    expect(localStorage.getItem('activeProjectId')).toBe('1');
+  });
+
+  it.each([401, 403])('clears the user when a refresh is rejected with %s', async (status) => {
+    render(<AuthProvider><GuestDemoStartProbe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));
+
+    getMeMock.mockRejectedValueOnce(Object.assign(new Error('Nicht angemeldet.'), { status }));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('none'));
+    expect(localStorage.getItem('activeProjectId')).toBeNull();
+  });
+
   it('treats an { authenticated: false } response as logged out, not an error', async () => {
     getMeMock.mockResolvedValueOnce({ authenticated: false });
 

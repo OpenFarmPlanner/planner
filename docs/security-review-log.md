@@ -40,6 +40,42 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #734 (re-review after merge 477f38ed)
+
+**Scope:** `git diff origin/main...HEAD` after merging `origin/main` (brings in
+PR #735, already logged below) into the branch.
+
+**Findings:** No issues. The merge adds no new code beyond the previously
+reviewed `AuthContext` change and the session middleware change.
+
+---
+
+## 2026-10-01 — Claude — Automated security review of PR #734 (re-review after 43cc95ef)
+
+**Scope:** commit `43cc95ef`: `config.session_middleware.ConcurrentLoginSafeSessionMiddleware`
+replaces Django's `SessionMiddleware`; it no longer deletes the session cookie
+when a request's session key no longer exists.
+
+**Findings:** No issues. Logout still deletes the cookie (`flush()` marks the
+session modified, covered by a test). A retained stale or attacker-supplied key
+maps to no server-side session, is ignored, and login rotates the key, so no
+session fixation. `Vary: Cookie` is still set, so no cache-poisoning risk.
+
+---
+
+## 2026-10-01 — Claude — Automated security review of PR #734
+
+**Scope:** `git diff origin/main...HEAD` of
+`claude/auth-refresh-keep-user-on-transient-errors`: `AuthContext` refresh now
+clears the signed-in user only on 401/403, not on network/5xx/unreadable
+responses (frontend only, plus tests and docs).
+
+**Findings:** No issues. The change affects only client-side UI state; the
+server still enforces authentication on every request, so a retained stale
+user grants no access. 401/403 still clear the user and the stored project.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #735
 
 **Scope:** `git diff origin/main...HEAD` of `claude/session-cookie-concurrent-login`:

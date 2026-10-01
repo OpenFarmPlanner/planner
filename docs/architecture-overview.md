@@ -283,7 +283,10 @@ a new one.
   `<ProtectedRoute />` to `/login`. The event carries the request's start
   timestamp so a slow request that started *before* a successful
   re-authentication cannot log the user back out — don't "simplify" that
-  timestamp away.
+  timestamp away. `AuthContext.refreshUser` (the `/auth/me/` probe) follows
+  the same rule: only `{ authenticated: false }` or a 401/403 clears the user.
+  A network error, a 5xx or an unreadable response keeps the signed-in user,
+  since it says nothing about the session.
 - **A stale request must not end a newer login.** Logging in rotates the
   session key and deletes the old session. Django's `SessionMiddleware`
   deletes the cookie on any response whose request's session came back
