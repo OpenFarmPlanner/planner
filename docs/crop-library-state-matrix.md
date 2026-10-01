@@ -40,7 +40,7 @@ tool, not part of the CI suite). Behaviour itself is described in
 | Private crop kind | general Kultur · Sorte with own values · Sorte inheriting from its Kultur |
 | Link kind | not linked · own published entry (`origin_type` stays manual) · imported foreign entry · linked through "Mit diesem Eintrag verknüpfen" (foreign or own) |
 | Entry state | published · withdrawn · removed · restored · reverted to an older version · species relinked (with/without variety change) · species rejected · parked relink request |
-| Version state | aligned · library ahead · library ahead but rejected · local changes · local and library changed · local changes after a rejection |
+| Version state | aligned · linked without baseline · library ahead · library ahead but rejected · local changes · local and library changed · local changes after a rejection |
 | Actor | established account · `new` trust account · API token (queued proposal) · project member without edit rights |
 | Actions | publish · link · sync (all pull / all push / mixed) · pull · reject update · unlink · re-link · relink species · remove · restore · revert · withdraw · rename variety · delete crop |
 
@@ -54,6 +54,7 @@ columns are what the crop serializer must report.
 | `unlinked` | – | – | `null` | no | button "In Bibliothek teilen" |
 | `own_published_aligned` | own, published | aligned | `no_local_changes` | no (`crop_link_owned`) | chip "Aktuell" |
 | `own_published_local_changes` | own, published | local changes | `null` | no | button "Bibliothek aktualisieren" |
+| `own_published_baseline_withheld` | own, published | linked without baseline (general Kultur whose values differ from the entry its Sorte's publish created) | `update_pending`, `public_update_available` | no | button "Kultur aktualisieren" |
 | `own_withdrawn` | own, withdrawn | aligned | `entry_withdrawn`, `can_republish_public_crop` | **yes** | button "Wieder veröffentlichen" |
 | `own_removed` | own, removed | aligned | `entry_removed` | **yes** | chip "Eintrag entfernt" |
 | `foreign_published_aligned` | foreign, published | aligned | `no_local_changes` | yes | chip "Aktuell" |

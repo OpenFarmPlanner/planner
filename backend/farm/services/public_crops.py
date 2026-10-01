@@ -1246,8 +1246,13 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     return any(local[field] != remote[field] for field in fields)
 
 
-def link_local_crop_to_owned_public_entry(local_crop: Crop, entry: PublicCrop) -> None:
-    """Record ``entry`` as ``local_crop``'s library baseline after a publish/push.
+def link_local_crop_to_owned_public_entry(
+    local_crop: Crop,
+    entry: PublicCrop,
+    *,
+    is_published_row: bool = True,
+) -> None:
+    """Record ``entry`` as ``local_crop``'s library link after a publish/push.
 
     Mirrors an import link (``source_public_crop`` / ``source_public_version``)
     so the pull flow — update notice, diff dialog, reject — works for a crop the
@@ -1255,37 +1260,82 @@ def link_local_crop_to_owned_public_entry(local_crop: Crop, entry: PublicCrop) -
     sets ``origin_type='imported'``: the row stays the user's own and the
     "Importiert" chip must not appear. A queryset ``update`` keeps
     ``Crop.save``'s divergence pass and revision recording out of it.
+
+    ``is_published_row`` is true for the row whose values were just written
+    into ``entry``: they are the entry's values by definition, so the entry's
+    version is always its baseline. Any other row (the general Kultur linked
+    alongside a Sorte publish) only gets the baseline when its values match
+    the entry. Otherwise the link is recorded without one, the same rule as
+    :func:`link_project_crop_to_public_reference` without ``pull_fields``, so
+    :func:`has_pending_public_crop_update` offers the pull instead of reading
+    values the row never had in common with the entry as local changes.
     """
     is_modified = _owned_entry_is_locally_modified(local_crop, entry)
+    baseline = entry.version if is_published_row or not is_modified else None
     Crop.objects.filter(pk=local_crop.pk).update(
         source_public_crop=entry,
-        source_public_version=entry.version,
+        source_public_version=baseline,
         is_modified_from_source=is_modified,
         rejected_public_version=None,
     )
     local_crop.source_public_crop = entry
-    local_crop.source_public_version = entry.version
+    local_crop.source_public_version = baseline
     local_crop.is_modified_from_source = is_modified
     local_crop.rejected_public_version = None
+
+
+def _owned_general_entry_for_link(
+    *,
+    general_crop: Crop,
+    created_general_entry: PublicCrop | None,
+    user: User | None,
+) -> PublicCrop | None:
+    """The species-level entry a Sorte publish may link the general Kultur to.
+
+    Only the entry :func:`ensure_general_public_crop` created in this same
+    publish, or one that already belongs to this general Kultur and this user.
+    Any other general entry of the species — above all another contributor's —
+    is never linked implicitly; the user can still link it explicitly through
+    "Mit diesem Eintrag verknüpfen".
+    """
+    if created_general_entry is not None:
+        return created_general_entry
+    if user is None:
+        return None
+    return PublicCrop.objects.filter(
+        source_project_crop=general_crop,
+        created_by=user,
+        crop_species_id=general_crop.crop_species_id,
+        variety_normalized='',
+        status=PublicCrop.STATUS_PUBLISHED,
+    ).order_by('-updated_at', '-id').first()
 
 
 def _link_owned_entry_to_project_rows(
     *,
     crop: Crop,
     entry: PublicCrop,
-    crop_species: CropSpecies,
     publish_as_general: bool,
+    user: User | None,
+    created_general_entry: PublicCrop | None = None,
 ) -> None:
     """Link the local rows that own ``entry`` to it: the published crop, and —
-    for a variety publish — its general Kultur against the species-level entry,
-    so a later library change to either surfaces as a pull on the right row."""
+    for a variety publish — its general Kultur against the species-level entry
+    it owns, so a later library change to either surfaces as a pull on the
+    right row. A general Kultur that already has a library link keeps it."""
     link_local_crop_to_owned_public_entry(crop, entry)
     if publish_as_general or not (crop.variety or '').strip():
         return
     general_crop = get_general_crop(crop)
-    general_entry = find_general_public_crop(crop_species)
-    if general_crop is not None and general_entry is not None and general_crop.pk != crop.pk:
-        link_local_crop_to_owned_public_entry(general_crop, general_entry)
+    if general_crop is None or general_crop.pk == crop.pk or general_crop.source_public_crop_id:
+        return
+    general_entry = _owned_general_entry_for_link(
+        general_crop=general_crop,
+        created_general_entry=created_general_entry,
+        user=user,
+    )
+    if general_entry is not None:
+        link_local_crop_to_owned_public_entry(general_crop, general_entry, is_published_row=False)
 
 
 def detect_public_crop_duplicates(
@@ -2239,8 +2289,8 @@ def publish_crop_to_public_library(
         _link_owned_entry_to_project_rows(
             crop=crop,
             entry=updated_public_crop,
-            crop_species=check_result.crop_species,
             publish_as_general=publish_as_general,
+            user=user,
         )
         non_target_duplicates = [item for item in duplicates if item.id != update_target.id]
         return updated_public_crop, non_target_duplicates, 'updated'
@@ -2255,6 +2305,7 @@ def publish_crop_to_public_library(
             },
         )
     _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
+    created_general_entry: PublicCrop | None = None
     if not publish_as_general and not require_moderation:
         # Publishing a variety always needs a species-level entry for the crop
         # to hang off; create it from this crop's own values if the
@@ -2266,7 +2317,7 @@ def publish_crop_to_public_library(
         # values live under the species name while the variety they came with
         # is still waiting for review. `approve_new_publish_proposal` creates
         # it on approval instead.
-        ensure_general_public_crop(
+        created_general_entry = ensure_general_public_crop(
             crop_species=check_result.crop_species,
             crop=crop,
             original_language_code=check_result.original_language_code,
@@ -2313,8 +2364,9 @@ def publish_crop_to_public_library(
     _link_owned_entry_to_project_rows(
         crop=crop,
         entry=public_crop,
-        crop_species=check_result.crop_species,
         publish_as_general=publish_as_general,
+        user=user,
+        created_general_entry=created_general_entry,
     )
     return public_crop, duplicates, 'created'
 
@@ -2334,8 +2386,9 @@ def approve_new_publish_proposal(
     that — including the species-level entry a variety hangs off, which the
     publish path deliberately skips while the contribution is only queued.
     """
+    created_general_entry: PublicCrop | None = None
     if not publish_as_general and source_crop is not None and public_crop.crop_species is not None:
-        ensure_general_public_crop(
+        created_general_entry = ensure_general_public_crop(
             crop_species=public_crop.crop_species,
             crop=source_crop,
             original_language_code=public_crop.original_language_code,
@@ -2352,8 +2405,9 @@ def approve_new_publish_proposal(
         _link_owned_entry_to_project_rows(
             crop=source_crop,
             entry=public_crop,
-            crop_species=public_crop.crop_species,
             publish_as_general=publish_as_general,
+            user=public_crop.created_by,
+            created_general_entry=created_general_entry,
         )
     return public_crop
 

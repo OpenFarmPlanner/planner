@@ -173,15 +173,37 @@ The public Crop Library follows an open-data model:
   not want a standing "Bibliothek aktualisieren" action.
 - This link is recorded on **publish**, not only on import.
   `publish_crop_to_public_library` calls `link_local_crop_to_owned_public_entry`
-  for the published crop (and, on a variety publish, links the project's
-  general Kultur to the auto-created species-level entry), setting
-  `source_public_crop` / `source_public_version` without ever flipping
-  `origin_type` to `imported` — the row stays the user's own and the
-  "Importiert" chip must not appear. `_apply_public_crop_update` therefore
-  also pops `origin_type` from the pull payload. Migration
+  for the published crop, setting `source_public_crop` /
+  `source_public_version` without ever flipping `origin_type` to `imported` —
+  the row stays the user's own and the "Importiert" chip must not appear.
+  `_apply_public_crop_update` therefore also pops `origin_type` from the pull
+  payload. The published (or pushed) row always gets the entry's version as
+  its baseline, on create, update and republish alike: its values are the
+  entry's values by definition. On a variety publish the project's general
+  Kultur is linked to the species-level entry as well, but only when it has
+  no library link yet and the entry is its own — the one
+  `ensure_general_public_crop()` created in this same publish, or one whose
+  `source_project_crop` is that Kultur and whose `created_by` is the
+  publishing user. Every other general entry of the species, above all
+  another contributor's, is never linked implicitly (the user can still link
+  it with "Mit diesem Eintrag verknüpfen"), and an existing link is never
+  overwritten. The general Kultur only gets the baseline when its values
+  match the entry; otherwise the link is recorded without one — the same
+  rule as a link without `pull_fields` — so `public_update_available` offers
+  the pull for values the Kultur never had in common with the entry instead
+  of reading them as local changes to push. Migration
   `0103_link_published_crops_to_owned_entries` backfills the link for
   entries published before this change (skipping rows already linked or
   imported), taking the entry's current `version` as the new baseline.
+  Migration `0110_repair_implicit_general_kultur_links` repairs what the
+  earlier unconditional general-Kultur link and 0103 left behind: it removes
+  a non-imported general Kultur's link to a general entry whose
+  `source_project_crop` is another row, and clears the baseline of a general
+  Kultur linked to its own general entry when stored data proves the values
+  never matched since the link (baseline is the entry's current version, the
+  values differ, and the row has neither an `updated_at` nor a history
+  revision after that version was created). Anything it cannot decide from
+  stored data stays unchanged.
 - **One control carries all of this.** The crop detail badge row has a single
   `CropLibraryActionButton` (next to the "Importiert" badge) whose label,
   colour, enabled state and target follow the context — it replaced the header
@@ -1226,6 +1248,15 @@ duplicate check. Without a general Kultur in the project there is
 no other row to own the entry, so it stays linked to the Sorte. Migration
 `0093_relink_general_public_crops` re-points entries created before this.
 
+`ensure_general_public_crop()` returns the entry it created, and the publish
+passes exactly that entry on to the general Kultur's sync link (§0, "This
+link is recorded on publish") instead of looking the species' general entry
+up again — a lookup would find whichever published general entry is newest,
+including another contributor's. Because the entry's values come from the
+Sorte, a general Kultur whose own values differ is linked without a baseline
+and is offered the pull ("Kultur aktualisieren"), never a push of values it
+never had.
+
 `publish_as_general=True` remains supported by the backend (and by `publishPreview`/`publishPublic` in
 `api/api.ts`) for backward compatibility, but the wizard no longer sends it.
 
@@ -1288,7 +1319,12 @@ history, so it is a genuine choice) but mine in "Bibliothek aktualisieren"
 (`update`: that flow is only offered while the copy is on the entry's current
 version (the pull case 2 wins otherwise), so every difference is a local edit
 the user came to contribute, and a library default would discard it on a
-quick confirm). A field the user may not push (`name`, a foreign `variety`)
+quick confirm). Update mode therefore relies on the baseline being valid —
+set only where the copy's values were the entry's at link time. Whenever a
+link is recorded for values that differ from the entry (a link without
+`pull_fields`, or the general Kultur linked alongside a Sorte publish to the
+entry created from the Sorte's values), the baseline is withheld, the pull
+case 2 opens instead, and the library values are what that dialog applies. A field the user may not push (`name`, a foreign `variety`)
 always starts on, and stays on, the library side with a tooltip on the
 disabled option. "Alle aus Bibliothek" / "Alle meine Werte" sit as text
 buttons under the column headings and set every row at once, and a live summary below counts both directions with i18n plurals
