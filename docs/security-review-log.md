@@ -40,6 +40,18 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #732
+
+**Scope:** `git diff origin/main...HEAD` of `claude/wizardly-fermat-iwhm5j`:
+`CropSpeciesViewSet.list` `?q=` search now returns a read-only `search_match`
+field (why a species matched), plus frontend rendering of it.
+
+**Findings:** No issues. The queryset and permissions are unchanged, the new
+field is read-only and derived from names already exposed via `search_names`,
+and there is no raw SQL, no unsafe React API and no new personal data.
+
+---
+
 ## 2026-09-30 — Claude — Automated security review of PR #717
 
 **Scope:** `git diff origin/main...HEAD` of `claude/sweet-mccarthy-jq9xnr`:
