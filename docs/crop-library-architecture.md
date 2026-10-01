@@ -511,6 +511,19 @@ Once a species is selected whose official name differs from the user's crop
 name, the field's helper text confirms it: "Deine Kultur „Porree“ wird als
 „Lauch“ veröffentlicht."
 
+The publishing wizard's result list only ever shows the results of the query
+that is in the field. `useCropSpeciesSearch` returns no results and `loading`
+until the current query has settled, instead of keeping the previous query's
+list: that stale list, swapped for the fresh one while the user was clicking,
+moved another option under the pointer and the click selected nothing (the
+field kept the typed text, the publish button stayed disabled). For the same
+reason the wizard searches for what the user *types* only
+(`speciesSearchQuery`, fed by the picker's `'input'`/`'clear'` changes):
+picking an option writes its canonical `name` into the field, and searching
+for that would replace the list the user just picked from. Every opening of
+the wizard starts from the crop's own name in the field with nothing selected
+— a pick is never carried over from an earlier opening.
+
 The match source comes from the search itself. `GET /api/crop-species/?q=…`
 (`crops.services.search_crop_species`) returns every result with a
 `search_match` object — `null` on the plain, unsearched list:

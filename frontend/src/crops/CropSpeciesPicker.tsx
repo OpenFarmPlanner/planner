@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import {
   Autocomplete,
+  type AutocompleteInputChangeReason,
   Box,
   CircularProgress,
   TextField,
@@ -74,7 +75,12 @@ export interface CropSpeciesPickerProps {
   value: CropSpecies | null;
   onChange: (species: CropSpecies | null) => void;
   inputValue: string;
-  onInputValueChange: (value: string) => void;
+  /**
+   * `reason` is MUI's: only `'input'` and `'clear'` are the user editing the
+   * text — `'selectOption'`/`'reset'`/`'blur'` write a picked option's label
+   * back. Undefined when the picker restores or commits a name itself.
+   */
+  onInputValueChange: (value: string, reason?: AutocompleteInputChangeReason) => void;
   /**
    * The typed name while the user picked "propose as a new species", or null.
    * Owned by the caller so the same state can drive its submit button.
@@ -278,7 +284,7 @@ export function CropSpeciesPicker({
           onInputValueChange(pendingProposalName);
           return;
         }
-        onInputValueChange(nextValue);
+        onInputValueChange(nextValue, reason);
         if (reason !== 'reset') {
           reportProposalName(null);
         }

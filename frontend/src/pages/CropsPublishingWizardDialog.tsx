@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Autocomplete,
+  type AutocompleteInputChangeReason,
   Box,
   Button,
   Checkbox,
@@ -141,6 +142,10 @@ export function CropsPublishingWizardDialog({
   const [validationLoading, setValidationLoading] = useState(false);
   const [showLicenseConfirmation, setShowLicenseConfirmation] = useState(false);
   const [speciesInputValue, setSpeciesInputValue] = useState('');
+  // What the species field searches for. Follows the user's typing only:
+  // picking an option writes its label into the field, and searching for
+  // that label would replace the list the user just picked from.
+  const [speciesSearchQuery, setSpeciesSearchQuery] = useState('');
   const [existingVarietyInputValue, setExistingVarietyInputValue] = useState('');
   const [proposedSpeciesName, setProposedSpeciesName] = useState<string | null>(null);
   // Set while the user picked "propose this as a new species" but nothing has
@@ -177,7 +182,7 @@ export function CropsPublishingWizardDialog({
   const {
     results: speciesSearchResults,
     loading: speciesLoading,
-  } = useCropSpeciesSearch(speciesInputValue, open && !isSyncFlow);
+  } = useCropSpeciesSearch(speciesSearchQuery, open && !isSyncFlow);
   // A species the user just proposed is `status=proposed`, so a non-moderator's
   // own search never finds it again (the search endpoint only surfaces
   // published species to non-moderators) — this keeps it selectable for the
@@ -202,9 +207,12 @@ export function CropsPublishingWizardDialog({
       // empty and its results show right away — but nothing is auto-selected
       // from them (not even "propose as new species"): the user always picks
       // deliberately, and "Jetzt veröffentlichen" stays disabled until they do.
+      // Every opening starts this way; a pick from an earlier opening is
+      // deliberately not carried over.
       setSelectedSpecies(null);
       setProposedSpeciesOverride(null);
       setSpeciesInputValue(crop?.name ?? '');
+      setSpeciesSearchQuery(crop?.name ?? '');
       // The field autofocuses itself (`autoFocus` + `openOnFocus` in
       // CropSpeciesPicker), which shows its results immediately for
       // whatever `speciesInputValue` already holds.
@@ -382,9 +390,12 @@ export function CropsPublishingWizardDialog({
     resetValidationResult();
   }, [resetValidationResult]);
 
-  const handleSpeciesInputChange = useCallback((value: string) => {
+  const handleSpeciesInputChange = useCallback((value: string, reason?: AutocompleteInputChangeReason) => {
     setProposeSpeciesError('');
     setSpeciesInputValue(value);
+    if (reason === 'input' || reason === 'clear') {
+      setSpeciesSearchQuery(value);
+    }
   }, []);
 
   const handleProposeSpecies = useCallback(async (name: string): Promise<CropSpecies | null> => {
