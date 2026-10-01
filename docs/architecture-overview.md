@@ -287,6 +287,16 @@ a new one.
   the same rule: only `{ authenticated: false }` or a 401/403 clears the user.
   A network error, a 5xx or an unreadable response keeps the signed-in user,
   since it says nothing about the session.
+- **A stale request must not end a newer login.** Logging in rotates the
+  session key and deletes the old session. Django's `SessionMiddleware`
+  deletes the cookie on any response whose request's session came back
+  empty, so an anonymous request sent just before the login but handled
+  after it used to delete the browser's *new* session cookie and silently
+  sign the user out. `config.session_middleware.ConcurrentLoginSafeSessionMiddleware`
+  replaces it and leaves the cookie alone in that case; a logout still
+  flushes the session and deletes the cookie. Covered by
+  `config/tests/test_session_middleware.py` and the late-anonymous-request
+  case in `frontend/e2e/invitation-flow.spec.ts`.
 - **Role gating on the frontend is one page, not a system.**
   `ProjectSettingsPage.tsx`'s `isProjectAdmin` (`activeMembership?.role ===
   'admin'`) is the only role conditional in the app; it hides project

@@ -254,7 +254,9 @@ MIDDLEWARE = [
     'config.middleware.TrustedProxyRemoteAddrMiddleware',
     *(['debug_toolbar.middleware.DebugToolbarMiddleware'] if DEBUG_TOOLBAR_ENABLED else []),
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Django's SessionMiddleware, except that a request whose session vanished
+    # (rotated by a concurrent login) does not delete the browser's cookie.
+    'config.session_middleware.ConcurrentLoginSafeSessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

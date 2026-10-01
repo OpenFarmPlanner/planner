@@ -79,6 +79,40 @@ test.describe('project invitation flow', () => {
     await expect(page.getByText(fixture.projectName)).toBeVisible();
   });
 
+  test('keeps the new login when an anonymous request sent before it is answered after it', async ({ page, request }, testInfo) => {
+    // Regression: logging in rotates the session. An anonymous request that
+    // left the browser before the login but was handled after it used to come
+    // back deleting the session cookie — the *new* one — so every request
+    // after accepting the invitation failed with 403 and the user landed on
+    // /login (an intermittent CI failure of the test above).
+    const scenarioId = `invite-late-anonymous-${testInfo.workerIndex}`;
+    const fixture = await setupInviteFixture(request, scenarioId);
+    const loginAnswered = page.waitForResponse((response) => response.url().includes('/api/auth/login/'));
+    const invitationAccepted = page.waitForResponse((response) => /\/api\/project-invitations\/[^/]+\/accept\/$/.test(new URL(response.url()).pathname));
+    let heldOnce = false;
+    await page.route('**/api/project-invitations/pending/', async (route) => {
+      if (heldOnce) {
+        await route.continue();
+        return;
+      }
+      heldOnce = true;
+      const anonymousCookies = (await page.context().cookies())
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join('; ');
+      await loginAnswered;
+      const lateResponse = await route.fetch({ headers: { ...route.request().headers(), cookie: anonymousCookies } });
+      await invitationAccepted;
+      await route.fulfill({ response: lateResponse });
+    });
+
+    await page.goto(fixture.inviteUrl);
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await loginViaUi(page, fixture.invitee.email, fixture.invitee.password);
+
+    await expect(page).toHaveURL(/\/app\/fields-beds/);
+    await expect(page.getByText(fixture.projectName)).toBeVisible();
+  });
+
   test('rejects a second use of the same invitation link with a clear error state', async ({ page, request }, testInfo) => {
     const scenarioId = `invite-reuse-${testInfo.workerIndex}`;
     const fixture = await setupInviteFixture(request, scenarioId);
