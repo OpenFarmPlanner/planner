@@ -26,7 +26,6 @@ import {
   splitSyncChoices,
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
-  type PublicCropSyncMode,
 } from './publicCropSync';
 
 interface PublicCropSyncPanelProps {
@@ -34,8 +33,6 @@ interface PublicCropSyncPanelProps {
   changes: PublicCropSyncFieldChange[] | null;
   choices: PublicCropSyncChoices;
   onChoicesChange: (choices: PublicCropSyncChoices) => void;
-  /** Decides the preselection of a field missing from `choices`; see `publicCropSync.ts`. */
-  mode?: PublicCropSyncMode;
   /** The user's library contributions are queued for moderation. */
   requiresModeration: boolean;
   loadError?: string;
@@ -399,7 +396,6 @@ export function PublicCropSyncPanel({
   changes,
   choices,
   onChoicesChange,
-  mode = 'link',
   requiresModeration,
   loadError,
   disabled = false,
@@ -421,7 +417,7 @@ export function PublicCropSyncPanel({
     return <Alert severity="info">{t('library.sync.noChanges')}</Alert>;
   }
 
-  const { pullFields, pushFields } = splitSyncChoices(changes, choices, mode);
+  const { pullFields, pushFields } = splitSyncChoices(changes, choices);
   const setChoice = (field: string, choice: PublicCropSyncChoice) => {
     onChoicesChange({ ...choices, [field]: choice });
   };
@@ -460,7 +456,7 @@ export function PublicCropSyncPanel({
             <SyncFieldRow
               key={change.field}
               change={change}
-              choice={choices[change.field] ?? getDefaultSyncChoice(change, mode)}
+              choice={choices[change.field] ?? getDefaultSyncChoice(change)}
               disabled={disabled}
               t={t}
               onChoiceChange={(choice) => setChoice(change.field, choice)}
