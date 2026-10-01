@@ -8,8 +8,11 @@ def user_notifications_group(user_id: int) -> str:
     return f'user.{user_id}.notifications'
 
 
-def broadcast_notification_update(recipient_id: int, notification_id: int) -> None:
-    """Publish a lightweight notification invalidation for one signed-in user."""
+def broadcast_notification_update(recipient_id: int, notification_id: int | None) -> None:
+    """Publish a lightweight notification invalidation for one signed-in user.
+
+    ``notification_id`` is ``None`` for a bulk change that touched several rows.
+    """
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
@@ -22,7 +25,7 @@ def broadcast_notification_update(recipient_id: int, notification_id: int) -> No
     )
 
 
-def schedule_notification_update(recipient_id: int, notification_id: int) -> None:
+def schedule_notification_update(recipient_id: int, notification_id: int | None) -> None:
     transaction.on_commit(
         lambda: broadcast_notification_update(recipient_id, notification_id)
     )

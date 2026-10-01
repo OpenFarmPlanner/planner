@@ -5,15 +5,18 @@ import { useEffect } from 'react';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { useNotifications, type NotificationsController } from '../notifications/useNotifications';
 import type { AppNotification } from '../api/types';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
 const {
   notificationListMock,
   notificationMarkReadMock,
+  notificationMarkAllReadMock,
   navigateMock,
   webSocketSubscriptions,
 } = vi.hoisted(() => ({
   notificationListMock: vi.fn(),
   notificationMarkReadMock: vi.fn(),
+  notificationMarkAllReadMock: vi.fn(),
   navigateMock: vi.fn(),
   webSocketSubscriptions: [] as Array<{
     onEvent: (event: { type: string; [key: string]: unknown }) => void;
@@ -28,6 +31,7 @@ vi.mock('../api/api', async () => {
     notificationAPI: {
       list: notificationListMock,
       markRead: notificationMarkReadMock,
+      markAllRead: notificationMarkAllReadMock,
     },
   };
 });
@@ -75,9 +79,11 @@ describe('NotificationBell', () => {
   beforeEach(() => {
     notificationListMock.mockReset();
     notificationMarkReadMock.mockReset();
+    notificationMarkAllReadMock.mockReset();
     navigateMock.mockReset();
     webSocketSubscriptions.length = 0;
     notificationMarkReadMock.mockResolvedValue({ data: notification({ is_read: true }) });
+    notificationMarkAllReadMock.mockResolvedValue({ data: { marked_read: 1 } });
     notificationListMock.mockResolvedValue({
       data: { count: 1, next: null, previous: null, results: [notification()], unread_count: 1 },
     });
@@ -210,5 +216,100 @@ describe('NotificationBell', () => {
 
     await waitFor(() => expect(notificationListMock).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole('button', { name: /Benachrichtigungen \(1 ungelesen\)/i })).toBeInTheDocument();
+  });
+
+  describe('mark all as read', () => {
+    const KUERBIS = 'Dein Vorschlag für die Kulturart „Kürbis“ wurde angenommen.';
+    const ROTE_BETE = 'Dein Vorschlag für die Kulturart „Rote Bete“ wurde angenommen.';
+
+    const twoUnread = () => ({
+      data: {
+        count: 2,
+        next: null,
+        previous: null,
+        results: [notification(), notification({ id: 2, context: { name: 'Rote Bete' } })],
+        unread_count: 2,
+      },
+    });
+
+    it('is visible but disabled with an explanatory tooltip when nothing is unread', async () => {
+      notificationListMock.mockResolvedValue({
+        data: { count: 0, next: null, previous: null, results: [], unread_count: 0 },
+      });
+
+      renderBell();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Benachrichtigungen' }));
+      const action = await screen.findByRole('menuitem', { name: 'Alle als gelesen markieren' });
+
+      expect(action).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.mouseOver(action.parentElement as HTMLElement);
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Keine ungelesenen Benachrichtigungen');
+    });
+
+    it('marks everything read in one request, clears the badge and keeps the dropdown open', async () => {
+      notificationListMock.mockResolvedValue(twoUnread());
+
+      renderBell();
+
+      fireEvent.click(await screen.findByRole('button', { name: /2 ungelesen/i }));
+      expect(await screen.findByText(KUERBIS)).toHaveStyle({ fontWeight: 600 });
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Alle als gelesen markieren' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Benachrichtigungen', hidden: true })).toBeInTheDocument());
+      expect(notificationMarkAllReadMock).toHaveBeenCalledTimes(1);
+      expect(notificationMarkReadMock).not.toHaveBeenCalled();
+      // Still open, with both rows switched to the read style in place.
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+      expect(screen.getByText(KUERBIS)).toHaveStyle({ fontWeight: 400 });
+      expect(screen.getByText(ROTE_BETE)).toHaveStyle({ fontWeight: 400 });
+      expect(screen.getByRole('menuitem', { name: 'Alle als gelesen markieren' })).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('keeps the read rows in place when the resulting invalidation reloads the list', async () => {
+      // Mount and dropdown open both load; the invalidation after the bulk
+      // update finds nothing unread any more.
+      notificationListMock.mockResolvedValueOnce(twoUnread()).mockResolvedValueOnce(twoUnread()).mockResolvedValue({
+        data: { count: 0, next: null, previous: null, results: [], unread_count: 0 },
+      });
+
+      renderBell();
+
+      fireEvent.click(await screen.findByRole('button', { name: /2 ungelesen/i }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Alle als gelesen markieren' }));
+      await waitFor(() => expect(screen.getByText(KUERBIS)).toHaveStyle({ fontWeight: 400 }));
+
+      act(() => webSocketSubscriptions.at(-1)?.onEvent({ type: 'notifications.updated', notification_id: null }));
+
+      await waitFor(() => expect(notificationListMock).toHaveBeenCalledTimes(3));
+      expect(screen.getByText(KUERBIS)).toBeInTheDocument();
+      expect(screen.getByText(ROTE_BETE)).toBeInTheDocument();
+      expect(screen.queryByText('Keine neuen Benachrichtigungen')).not.toBeInTheDocument();
+    });
+
+    it('reports a failure and leaves badge and rows untouched', async () => {
+      notificationListMock.mockResolvedValue(twoUnread());
+      notificationMarkAllReadMock.mockRejectedValue(new Error('network'));
+      const snackbars: GlobalSnackbarDetail[] = [];
+      const listener = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+      window.addEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+
+      try {
+        renderBell();
+
+        fireEvent.click(await screen.findByRole('button', { name: /2 ungelesen/i }));
+        fireEvent.click(await screen.findByRole('menuitem', { name: 'Alle als gelesen markieren' }));
+
+        await waitFor(() => expect(snackbars).toEqual([{
+          message: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
+          severity: 'error',
+        }]));
+        expect(screen.getByRole('button', { name: /2 ungelesen/i, hidden: true })).toBeInTheDocument();
+        expect(screen.getByText(KUERBIS)).toHaveStyle({ fontWeight: 600 });
+        expect(screen.getByRole('menuitem', { name: 'Alle als gelesen markieren' })).not.toHaveAttribute('aria-disabled');
+      } finally {
+        window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+      }
+    });
   });
 });

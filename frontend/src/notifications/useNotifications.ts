@@ -3,6 +3,9 @@
  *
  * Fetched once on mount, whenever the dropdown is opened, and when the
  * authenticated user's WebSocket stream reports that notifications changed.
+ * Rows marked read locally survive a background reload until the dropdown is
+ * opened again, so a bulk "mark all as read" restyles the open list instead of
+ * emptying it the moment the resulting invalidation arrives.
  *
  * The unread filter is applied by the backend, not here: picking the unread
  * rows out of one page of the full history would show an empty dropdown next
@@ -14,25 +17,63 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { notificationAPI } from '../api/api';
 import type { AppNotification } from '../api/types';
+import { useTranslation } from '../i18n';
 import { useWebSocket, type WebSocketEvent } from '../realtime/useWebSocket';
+import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { getNotificationLink } from './notificationDisplay';
 
 /** How many unread rows the dropdown loads; the badge always counts them all. */
 export const NOTIFICATION_DROPDOWN_PAGE_SIZE = 20;
 
 export interface NotificationsController {
-  /** The loaded page of unread notifications, newest first. */
-  notifications: AppNotification[];
   /**
-   * The rows the dropdowns render: `notifications` minus the ones marked read
-   * since the last load, so a clicked row disappears without a refetch.
+   * The loaded page of unread notifications, newest first, plus the ones
+   * marked read since the dropdown was last opened (with `is_read: true`).
    */
+  notifications: AppNotification[];
+  /** `notifications` minus the ones marked read since the last load. */
   unreadNotifications: AppNotification[];
   unreadCount: number;
   isLoading: boolean;
   hasError: boolean;
+  /** Background refresh; keeps rows already marked read in place. */
   reload: () => void;
+  /** Fresh start for a dropdown being opened: drops read rows, then reloads. */
+  refresh: () => void;
   markRead: (notification: AppNotification) => void;
+  /**
+   * Marks everything the badge counts as read in one request. Resolves to
+   * whether it succeeded; on failure nothing local has changed.
+   */
+  markAllRead: () => Promise<boolean>;
+  isMarkingAllRead: boolean;
+  /**
+   * Bumped after every successful `markAllRead`, so a separately loaded list
+   * (the history page) can restyle its rows too.
+   */
+  allReadVersion: number;
+}
+
+const asRead = (notification: AppNotification): AppNotification => (
+  notification.is_read ? notification : { ...notification, is_read: true }
+);
+
+/**
+ * The freshly loaded unread rows plus every row this controller already marked
+ * read and the backend therefore no longer returns, still newest first.
+ */
+function mergeKeepingLocallyRead(
+  loaded: AppNotification[],
+  previous: AppNotification[],
+): AppNotification[] {
+  const loadedIds = new Set(loaded.map((notification) => notification.id));
+  const keptRead = previous.filter((notification) => notification.is_read && !loadedIds.has(notification.id));
+  if (keptRead.length === 0) {
+    return loaded;
+  }
+  return [...loaded, ...keptRead].sort((left, right) => (
+    right.created_at.localeCompare(left.created_at) || right.id - left.id
+  ));
 }
 
 export function useNotifications(enabled: boolean): NotificationsController {
@@ -41,6 +82,8 @@ export function useNotifications(enabled: boolean): NotificationsController {
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [allReadVersion, setAllReadVersion] = useState(0);
   // Ids whose mark-read request is in flight or done, so the same notification
   // reached through a second, independently loaded copy is a no-op.
   const markedReadIdsRef = useRef<Set<number>>(new Set());
@@ -48,6 +91,11 @@ export function useNotifications(enabled: boolean): NotificationsController {
   const reload = useCallback((): void => {
     setReloadToken((token) => token + 1);
   }, []);
+
+  const refresh = useCallback((): void => {
+    setNotifications((previous) => previous.filter((notification) => !notification.is_read));
+    reload();
+  }, [reload]);
 
   const handleNotificationEvent = useCallback((event: WebSocketEvent): void => {
     if (event.type === 'notifications.updated') {
@@ -74,7 +122,7 @@ export function useNotifications(enabled: boolean): NotificationsController {
     notificationAPI.list({ is_read: false, page_size: NOTIFICATION_DROPDOWN_PAGE_SIZE })
       .then((response) => {
         if (cancelled) return;
-        setNotifications(response.data.results);
+        setNotifications((previous) => mergeKeepingLocallyRead(response.data.results, previous));
         setUnreadCount(response.data.unread_count);
         setHasError(false);
       })
@@ -104,12 +152,29 @@ export function useNotifications(enabled: boolean): NotificationsController {
     // only means the row reappears as unread on the next load, and is then
     // retryable again.
     setNotifications((previous) => previous.map(
-      (entry) => (entry.id === notification.id ? { ...entry, is_read: true } : entry),
+      (entry) => (entry.id === notification.id ? asRead(entry) : entry),
     ));
     setUnreadCount((count) => Math.max(0, count - 1));
     void notificationAPI.markRead(notification.id).catch(() => {
       markedReadIdsRef.current.delete(notification.id);
     });
+  }, []);
+
+  // Not optimistic, unlike `markRead`: a failure has to leave every row and
+  // the badge exactly as they were rather than roll back a partial guess.
+  const markAllRead = useCallback(async (): Promise<boolean> => {
+    setIsMarkingAllRead(true);
+    try {
+      await notificationAPI.markAllRead();
+    } catch {
+      return false;
+    } finally {
+      setIsMarkingAllRead(false);
+    }
+    setNotifications((previous) => previous.map(asRead));
+    setUnreadCount(0);
+    setAllReadVersion((version) => version + 1);
+    return true;
   }, []);
 
   const unreadNotifications = useMemo(
@@ -122,8 +187,32 @@ export function useNotifications(enabled: boolean): NotificationsController {
   // memoize off the controller instead of re-deriving on every RootLayout
   // render.
   return useMemo(
-    () => ({ notifications, unreadNotifications, unreadCount, isLoading, hasError, reload, markRead }),
-    [notifications, unreadNotifications, unreadCount, isLoading, hasError, reload, markRead],
+    () => ({
+      notifications,
+      unreadNotifications,
+      unreadCount,
+      isLoading,
+      hasError,
+      reload,
+      refresh,
+      markRead,
+      markAllRead,
+      isMarkingAllRead,
+      allReadVersion,
+    }),
+    [
+      notifications,
+      unreadNotifications,
+      unreadCount,
+      isLoading,
+      hasError,
+      reload,
+      refresh,
+      markRead,
+      markAllRead,
+      isMarkingAllRead,
+      allReadVersion,
+    ],
   );
 }
 
@@ -151,4 +240,27 @@ export function useNotificationSelection(
       void navigate(link);
     }
   }, [markRead, navigate]);
+}
+
+/**
+ * The "Alle als gelesen markieren" action shared by the bell dropdown and the
+ * history page: one bulk request, and the standard error snackbar if it fails.
+ */
+export function useMarkAllNotificationsRead(
+  controller: NotificationsController | null,
+): () => Promise<boolean> {
+  const { t } = useTranslation('notifications');
+  const controllerMarkAllRead = controller?.markAllRead ?? null;
+
+  return useCallback(async (): Promise<boolean> => {
+    // Without the topbar's controller there is no badge to keep in sync; the
+    // rows themselves still have to be marked read.
+    const succeeded = controllerMarkAllRead
+      ? await controllerMarkAllRead()
+      : await notificationAPI.markAllRead().then(() => true, () => false);
+    if (!succeeded) {
+      showGlobalSnackbar({ message: t('markAllRead.error'), severity: 'error' });
+    }
+    return succeeded;
+  }, [controllerMarkAllRead, t]);
 }

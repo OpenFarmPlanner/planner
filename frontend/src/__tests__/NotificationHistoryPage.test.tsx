@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
+import { useEffect } from 'react';
 import NotificationHistoryPage from '../notifications/pages/NotificationHistoryPage';
-import { useNotifications } from '../notifications/useNotifications';
+import { useNotifications, type NotificationsController } from '../notifications/useNotifications';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import type { AppNotification } from '../api/types';
 
-const { notificationListMock, notificationMarkReadMock, navigateMock } = vi.hoisted(() => ({
+const {
+  notificationListMock,
+  notificationMarkReadMock,
+  notificationMarkAllReadMock,
+  navigateMock,
+} = vi.hoisted(() => ({
   notificationListMock: vi.fn(),
   notificationMarkReadMock: vi.fn(),
+  notificationMarkAllReadMock: vi.fn(),
   navigateMock: vi.fn(),
 }));
 
@@ -16,7 +23,11 @@ vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
     ...actual,
-    notificationAPI: { list: notificationListMock, markRead: notificationMarkReadMock },
+    notificationAPI: {
+      list: notificationListMock,
+      markRead: notificationMarkReadMock,
+      markAllRead: notificationMarkAllReadMock,
+    },
   };
 });
 
@@ -42,8 +53,11 @@ const page = (results: AppNotification[], count = results.length, unreadCount = 
 });
 
 /** Mirrors RootLayout: the topbar owns the controller and passes it down the outlet. */
+let layoutController: NotificationsController | null = null;
+
 function LayoutHarness() {
   const notifications = useNotifications(true);
+  useEffect(() => { layoutController = notifications; }, [notifications]);
   return <Outlet context={{
     setTopbarContextActions: () => {},
     setTopbarTitleActions: () => {},
@@ -74,8 +88,10 @@ describe('NotificationHistoryPage', () => {
   beforeEach(() => {
     notificationListMock.mockReset();
     notificationMarkReadMock.mockReset();
+    notificationMarkAllReadMock.mockReset();
     navigateMock.mockReset();
     notificationMarkReadMock.mockResolvedValue({ data: notification({ is_read: true }) });
+    notificationMarkAllReadMock.mockResolvedValue({ data: { marked_read: 1 } });
   });
 
   it('lists read and unread notifications with an unread count subtitle', async () => {
@@ -179,5 +195,47 @@ describe('NotificationHistoryPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Seite 2' }));
 
     await waitFor(() => expect(notificationListMock).toHaveBeenCalledWith({ page: 2, page_size: 20 }));
+  });
+
+  it('marks everything read from the page header in one request', async () => {
+    notificationListMock.mockResolvedValue(page([
+      notification(),
+      notification({ id: 2, context: { name: 'Rote Bete' }, is_read: true }),
+    ], 2, 1));
+
+    renderPage();
+
+    const kuerbis = await screen.findByText('Dein Vorschlag für die Kulturart „Kürbis“ wurde angenommen.');
+    expect(kuerbis).toHaveStyle({ fontWeight: 600 });
+    fireEvent.click(await screen.findByRole('button', { name: 'Alle als gelesen markieren' }));
+
+    await waitFor(() => expect(screen.queryByText(/ungelesen/)).not.toBeInTheDocument());
+    expect(notificationMarkAllReadMock).toHaveBeenCalledTimes(1);
+    expect(notificationMarkReadMock).not.toHaveBeenCalled();
+    expect(kuerbis).toHaveStyle({ fontWeight: 400 });
+    expect(screen.getByRole('button', { name: 'Alle als gelesen markieren' })).toBeDisabled();
+  });
+
+  it('disables the action when the badge counts nothing unread', async () => {
+    notificationListMock.mockResolvedValue(page([notification({ is_read: true })], 1, 0));
+
+    renderPage();
+
+    await screen.findByText('Dein Vorschlag für die Kulturart „Kürbis“ wurde angenommen.');
+    expect(screen.getByRole('button', { name: 'Alle als gelesen markieren' })).toBeDisabled();
+  });
+
+  it('follows a "mark all as read" taken from the bell dropdown', async () => {
+    notificationListMock.mockResolvedValue(page([notification()], 1, 1));
+
+    renderPage();
+
+    const kuerbis = await screen.findByText('Dein Vorschlag für die Kulturart „Kürbis“ wurde angenommen.');
+    expect(kuerbis).toHaveStyle({ fontWeight: 600 });
+
+    await act(async () => { await layoutController?.markAllRead(); });
+
+    expect(kuerbis).toHaveStyle({ fontWeight: 400 });
+    expect(screen.queryByText(/ungelesen/)).not.toBeInTheDocument();
   });
 });

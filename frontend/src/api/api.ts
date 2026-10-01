@@ -192,6 +192,8 @@ export const notificationAPI = {
   list: (params?: { page?: number; page_size?: number; is_read?: boolean }) =>
     http.get<NotificationListResponse>('/notifications/', { params }),
   markRead: (id: number) => http.post<AppNotification>(`/notifications/${id}/read/`),
+  /** One request for every unread row of the account — exactly what the badge counts. */
+  markAllRead: () => http.post<{ marked_read: number }>('/notifications/read-all/'),
 };
 
 export const cropSpeciesAPI = {

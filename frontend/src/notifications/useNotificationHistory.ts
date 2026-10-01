@@ -25,15 +25,23 @@ export interface NotificationHistory {
   goToPage: (page: number) => void;
   /** Reflects a row the user just opened, without refetching the page. */
   applyRead: (notification: AppNotification) => void;
+  /** Reflects a successful "mark all as read", without refetching the page. */
+  applyAllRead: () => void;
 }
 
-export function useNotificationHistory(): NotificationHistory {
+/**
+ * @param allReadVersion - The topbar controller's counter of successful
+ *   "mark all as read" calls; a change restyles every loaded row as read, so
+ *   the action taken from the bell dropdown shows on this page too.
+ */
+export function useNotificationHistory(allReadVersion = 0): NotificationHistory {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [appliedAllReadVersion, setAppliedAllReadVersion] = useState(allReadVersion);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +79,20 @@ export function useNotificationHistory(): NotificationHistory {
     setUnreadCount((count) => Math.max(0, count - 1));
   }, []);
 
+  const applyAllRead = useCallback((): void => {
+    setNotifications((previous) => previous.map(
+      (entry) => (entry.is_read ? entry : { ...entry, is_read: true }),
+    ));
+    setUnreadCount(0);
+  }, []);
+
+  // Adjusted during render rather than in an effect (React's pattern for
+  // state that follows a prop), so the rows never paint unread in between.
+  if (allReadVersion !== appliedAllReadVersion) {
+    setAppliedAllReadVersion(allReadVersion);
+    applyAllRead();
+  }
+
   return {
     notifications,
     unreadCount,
@@ -81,5 +103,6 @@ export function useNotificationHistory(): NotificationHistory {
     hasError,
     goToPage: setPage,
     applyRead,
+    applyAllRead,
   };
 }

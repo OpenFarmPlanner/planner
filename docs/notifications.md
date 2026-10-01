@@ -40,7 +40,7 @@ apply.
 | `message` | English fallback (admin/API only). |
 | `context` | JSON interpolation values, e.g. `{"name": "Kürbis"}`. |
 | `target_type` / `target_id` | Loose reference to the affected object. Deliberately not a `GenericForeignKey`: the target may be gone by the time it is read, and a dangling row should degrade to "no link", not to a broken query. |
-| `is_read` | Per-notification, set only by an explicit click. |
+| `is_read` | Set only by an explicit action: clicking one notification, or "Alle als gelesen markieren". |
 | `created_at` | Ordering key (newest first). |
 
 Routes are resolved on the frontend, not stored: the backend has no business
@@ -48,7 +48,7 @@ knowing what `/app/crop-library?cropId=…` means.
 
 ## API
 
-`/api/notifications/` — list plus mark-read, both strictly scoped to
+`/api/notifications/` — list plus mark-read, all strictly scoped to
 `request.user`. There is **no create endpoint**; notifications are produced
 server-side through `notifications.services.create_notification`.
 
@@ -59,6 +59,14 @@ server-side through `notifications.services.create_notification`.
   badge never disagrees with the list it sits on.
 - `POST /api/notifications/<id>/read/` — marks exactly one as read. Someone
   else's id 404s (it is filtered out of the queryset, not merely rejected).
+- `POST /api/notifications/read-all/` — marks every unread notification of the
+  caller as read in a single `UPDATE` and returns `{"marked_read": <n>}`. Its
+  scope is exactly what `unread_count` counts (own rows, `is_read=false`, an
+  `is_read` query parameter is ignored), so the badge is zero afterwards.
+  Idempotent: a repeat finds nothing and returns `0`. The logic lives in
+  `notifications.services.mark_all_notifications_read`; because a queryset
+  `update()` fires no `post_save`, that service sends the WebSocket
+  invalidation itself — once, and only when something changed.
 
 ## Producers
 
@@ -170,12 +178,26 @@ boundary.
   after `notifications.updated` WebSocket invalidations. While the socket is
   unavailable it falls back to the shared low-frequency polling behaviour. It
   asks the backend for **unread** rows only (see below). Mark-read is applied
-  optimistically so the badge reacts immediately.
+  optimistically so the badge reacts immediately. "Mark all as read" is
+  deliberately *not* optimistic: the rows and the badge change only after the
+  request succeeded, so a failure (standard error snackbar) leaves the previous
+  state exactly as it was instead of rolling back a partial guess.
 - `NotificationItemContent.tsx` — the message + relative time of one row,
   shared by all three surfaces so unread emphasis and timestamp formatting
-  cannot drift apart. `showUnreadDot` is off in the dropdowns (every row there
-  is unread, so a dot per row says nothing) and on in the history list, which
-  mixes both states.
+  cannot drift apart. Unread rows are bold; `showUnreadDot` adds a
+  `primary.main` dot on the left (reserved but transparent once read, so the
+  text never shifts). It is on in the bell dropdown and the history list, which
+  can both show read and unread rows side by side, and off in the compact
+  "Mehr" menu, whose rows carry an icon in that slot and only list unread ones.
+- `MarkAllNotificationsReadButton.tsx` — "Alle als gelesen markieren", in the
+  bell dropdown's title row and in the history page header, both wired through
+  `useMarkAllNotificationsRead`. It stays visible when nothing is unread —
+  disabled, with the tooltip "Keine ungelesenen Benachrichtigungen" — so the
+  header does not reflow. Inside the bell it is a `MenuItem`, not a `Button`:
+  MUI's menu only gives registered items arrow-key focus and closes itself on
+  Tab, so a plain button there would be unreachable from the keyboard. The
+  compact "Mehr" menu does not carry it; on mobile the action is on the
+  history page that menu links to.
 - `pages/NotificationHistoryPage.tsx` + `useNotificationHistory.ts` — the full
   archive at `/app/notifications`, read and unread alike, paged 20 at a time
   through the same list endpoint. The page is account-scoped, so it is listed
@@ -194,6 +216,14 @@ replaced by a plain "keine neuen Benachrichtigungen" hint rather than an alarm
 or an empty section). That is what keeps the dropdown short enough to stay a
 glance instead of a page.
 
+**Rows read while the dropdown is open stay in it.** After "Alle als gelesen
+markieren" the bell's rows switch to the read style in place and the menu
+stays open. The controller keeps rows it marked read across a background
+reload (the WebSocket invalidation the bulk update itself triggers would
+otherwise empty the list under the user's pointer) and drops them only when the
+dropdown is opened again (`refresh`), so the next open is the "what is new"
+list again.
+
 **Marking read has one owner.** The history page holds its own paginated list
 but does *not* call the mark-read endpoint itself: it reuses
 `useNotificationSelection` with the topbar's controller, handed down through
@@ -203,15 +233,19 @@ id — the row may be on a page the controller never loaded, and only the row
 itself knows whether it was still unread. Since that copy can be *stale* (the
 history page fetched it before the same row was read in the dropdown), the
 controller also remembers the ids it already handled: replaying one is a
-no-op, never a second badge decrement or a second POST. The outlet context is
-optional like everywhere else in the app; without it the page marks rows read
-directly, and only the badge — which then does not exist — is missed.
+no-op, never a second badge decrement or a second POST. The same holds for "mark all as read": the controller
+does the request and bumps `allReadVersion`, which `useNotificationHistory`
+follows, so the action taken in the bell restyles the history page too. The
+outlet context is optional like everywhere else in the app; without it the
+page marks rows read directly, and only the badge — which then does not
+exist — is missed.
 
 Two further behaviours are load-bearing and easy to "fix" wrongly:
 
 - **Opening the dropdown marks nothing as read.** Only clicking one entry
-  does — on the history page exactly as in the dropdowns. A bulk "seen" on
-  open would silently bury a decision the user glanced past.
+  does — on the history page exactly as in the dropdowns — or the explicit
+  "Alle als gelesen markieren" action. An implicit bulk "seen" on open would
+  silently bury a decision the user glanced past.
 - **`GlobalMenu` renders its `Menu` as `variant="menu"`.** MUI's default
   (`selectedMenu`) hands the initial focus to the *selected* item — the active
   language, far down the list — and focusing it scrolls the menu there, so the

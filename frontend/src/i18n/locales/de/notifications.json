@@ -17,6 +17,11 @@
     "nextPageAriaLabel": "Nächste Seite",
     "previousPageAriaLabel": "Vorherige Seite"
   },
+  "markAllRead": {
+    "label": "Alle als gelesen markieren",
+    "nothingUnread": "Keine ungelesenen Benachrichtigungen",
+    "error": "Benachrichtigungen konnten nicht als gelesen markiert werden."
+  },
   "messages": {
     "crop_species_proposal_accepted": "Dein Vorschlag für die Kulturart „{{name}}“ wurde angenommen.",
     "crop_species_proposal_rejected": "Dein Vorschlag für die Kulturart „{{name}}“ wurde abgelehnt.",
