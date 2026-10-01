@@ -43,6 +43,12 @@ const DIFF_ROW_SX = {
   py: 1,
   borderTop: '1px solid',
   borderColor: 'divider',
+  // Grid items default to min-width: auto, which lets long unbroken text
+  // overflow its column instead of wrapping; min-width: 0 forces it to wrap.
+  '& > *': {
+    minWidth: 0,
+    overflowWrap: 'break-word',
+  },
 } as const;
 
 export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDialogProps) {
