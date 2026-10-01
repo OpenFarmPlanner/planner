@@ -22,7 +22,11 @@ described under "Backend" below; the same job took 10m12s / 10m52s on the
 25 Sep run.
 
 `.github/workflows/e2e.yml` runs the Playwright suite against a production
-build on pull requests, split across three shards of its own.
+build on pull requests, split across three shards of its own. Failed tests
+keep a Playwright trace (`trace: 'retain-on-failure'`); a failing shard
+uploads it with its `playwright-report-shard-N` artifact. Open it with
+`npx playwright show-trace <trace.zip>` to see every request, cookie and
+response of the failed test before calling a failure flaky.
 
 All jobs run concurrently, so the pipeline is as long as its slowest job.
 

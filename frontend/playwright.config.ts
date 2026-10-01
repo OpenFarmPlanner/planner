@@ -25,7 +25,10 @@ export default defineConfig({
     // German assertion would time out. Setting it here keeps the real detection
     // path under test rather than bypassing it.
     locale: 'de-DE',
-    trace: 'off',
+    // An intermittent CI failure is only diagnosable from what the browser
+    // saw (requests, cookies, responses). Traces are written for failed tests
+    // only, into test-results/, which e2e.yml uploads when a shard fails.
+    trace: 'retain-on-failure',
     video: 'off',
   },
   webServer: [
