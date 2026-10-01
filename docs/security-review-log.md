@@ -40,6 +40,20 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-01 — Claude — Automated security review of PR #735
+
+**Scope:** `git diff origin/main...HEAD` of `claude/session-cookie-concurrent-login`:
+`ConcurrentLoginSafeSessionMiddleware` replaces Django's `SessionMiddleware`
+and no longer deletes the session cookie for an untouched, empty session.
+
+**Findings:** No issues. Logout (`flush()`) marks the session modified and still
+deletes the cookie; session writes still set the cookie with the unchanged
+HttpOnly/Secure/SameSite settings. A stale key stays in the browser but resolves
+to no session, so it grants nothing. `Vary: Cookie` is preserved. No auth,
+tenancy or settings exposure changes.
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #732 (re-review after a1b08e78)
 
 **Scope:** `git diff origin/main...HEAD` including the later commit `a1b08e78`
