@@ -1,4 +1,10 @@
-import type { CropSpecies, PublicCrop } from '../api/types';
+import type {
+  CropSpecies,
+  CropSpeciesMatchSource,
+  CropSpeciesSearchMatch,
+  PublicCrop,
+} from '../api/types';
+import { normalizeSearchText } from '../search/searchText';
 
 export const normalizeCropSpeciesSearchValue = (value: string | undefined | null): string => (
   (value || '').split(/\s+/).filter(Boolean).join(' ').toLocaleLowerCase('de')
@@ -170,22 +176,21 @@ export interface CropSpeciesResultLabel {
 }
 
 /**
- * Label for one hit in the "Offizielle Kulturart" results list.
+ * Official name of one hit in the "Offizielle Kulturart" results list.
  *
- * Primarily shows the canonical name in the current UI language (for German,
- * the canonical bundesdeutsche `common_name` — not a regional AT/CH
- * override, unlike `display_name`/`localized_name` elsewhere in the app,
- * since a search result should read the same regardless of the viewer's
- * region). A parenthetical is appended only when the hit actually came from
- * a synonym/regional alias that differs from that displayed name (e.g.
- * "Zuckerhut (Fleischkraut)"). When the species has no translation at all in
+ * The canonical name in the current UI language (for German, the canonical
+ * bundesdeutsche `common_name` — not a regional AT/CH override, unlike
+ * `display_name`/`localized_name` elsewhere in the app, since a search result
+ * should read the same regardless of the viewer's region). Never carries the
+ * matched alias: why a hit matched is shown separately (see
+ * `getCropSpeciesSearchMatch`). When the species has no translation at all in
  * the UI language, falls back to `display_name` with its source language
  * appended ("Beefsteak tomato · EN") so a foreign-language hit is never
- * passed off as a UI-language one.
+ * passed off as a UI-language one. Mirrors the backend's
+ * `crops.services.official_species_name`.
  */
 export const getCropSpeciesResultLabel = (
   option: CropSpecies,
-  searchValue: string,
   uiLanguageCode: string,
 ): CropSpeciesResultLabel => {
   const baseLanguage = (uiLanguageCode || '').split('-')[0];
@@ -193,13 +198,7 @@ export const getCropSpeciesResultLabel = (
     (item) => item.language_code === baseLanguage && item.common_name,
   );
   if (translation) {
-    const matchedAlias = findMatchedCropSpeciesAlias(
-      searchValue, translation.common_name, getCropSpeciesSearchNames(option),
-    );
-    return {
-      label: formatCropSpeciesMatchLabel(translation.common_name, matchedAlias),
-      usedFallbackLanguage: false,
-    };
+    return { label: translation.common_name, usedFallbackLanguage: false };
   }
   const fallbackName = option.display_name || getCropSpeciesCanonicalName(option);
   const fallbackLanguageCode = (option.display_language_code || '').toUpperCase();
@@ -207,6 +206,42 @@ export const getCropSpeciesResultLabel = (
     label: fallbackLanguageCode ? `${fallbackName} · ${fallbackLanguageCode}` : fallbackName,
     usedFallbackLanguage: true,
   };
+};
+
+/** Result order of the species search: official name, synonym, botanical name, similar name. */
+export const CROP_SPECIES_MATCH_SOURCE_ORDER: readonly CropSpeciesMatchSource[] = [
+  'name', 'synonym', 'botanical', 'fuzzy',
+];
+
+/**
+ * Why `option` matches `searchValue`, with `officialName` being the name the
+ * option is listed under; null when it does not match at all.
+ *
+ * Client-side counterpart of the server search's `search_match` (see
+ * `crops.services.search_crop_species`), for the picker's client-filtered
+ * mode. A hit on the official name wins over a synonym hit, which wins over a
+ * scientific-name hit; a merely similar-looking name is `fuzzy`.
+ */
+export const getCropSpeciesSearchMatch = (
+  option: CropSpecies,
+  searchValue: string,
+  officialName: string,
+): CropSpeciesSearchMatch | null => {
+  const query = normalizeSearchText(normalizeCropSpeciesSearchValue(searchValue));
+  if (!query) return null;
+  const officialKey = normalizeSearchText(officialName);
+  const scientificKey = normalizeSearchText(option.scientific_name ?? '');
+  if (officialKey.includes(query)) return { source: 'name', synonym: '' };
+
+  const searchNames = getCropSpeciesSearchNames(option);
+  const synonyms = searchNames
+    .map((name) => ({ name, key: normalizeSearchText(name) }))
+    .filter(({ key }) => key && key !== officialKey && key !== scientificKey);
+  const synonym = synonyms.find(({ key }) => key === query) ?? synonyms.find(({ key }) => key.includes(query));
+  if (synonym) return { source: 'synonym', synonym: synonym.name };
+  if (scientificKey.includes(query)) return { source: 'botanical', synonym: '' };
+  if (isCropSpeciesSearchMatch(searchValue, searchNames)) return { source: 'fuzzy', synonym: '' };
+  return null;
 };
 
 /**

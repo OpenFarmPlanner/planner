@@ -1237,7 +1237,10 @@
       "proposeInline": "„{{name}}“ als neue Kulturart vorschlagen",
       "noOptions": "Keine passende offizielle Kulturart gefunden.",
       "pendingOptionSuffix": "{{name}} · Vorschlag in Prüfung",
-      "proposingHelp": "Neue Kulturart wird vorgeschlagen: {{name}}"
+      "proposingHelp": "Neue Kulturart wird vorgeschlagen: {{name}}",
+      "matchSynonym": "Synonym: <synonym>{{synonym}}</synonym>",
+      "matchFuzzy": "Ähnlicher Name",
+      "publishAsHelp": "Deine Kultur „{{localName}}“ wird als „{{officialName}}“ veröffentlicht."
     },
     "relinkSpecies": {
       "action": "Kulturart korrigieren",

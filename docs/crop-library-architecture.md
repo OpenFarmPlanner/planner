@@ -489,9 +489,61 @@ Ambiguous terms are aliases of *every* candidate rather than being forced onto
 one: `Peperoni` maps to Paprika, Chili and Pfefferoni, `Fisole(n)` to Busch-,
 Stangen- and Grüne Bohne. The picker then offers all of them, and because an
 alias hit counts as a strong identity match, the "als neue Kulturart
-vorschlagen" entry disappears (`hasStrongCropSpeciesIdentityMatch`) and each
-option is labelled with the alias that made it appear — "Kartoffel (Erdapfel)"
-(`formatCropSpeciesMatchLabel`).
+vorschlagen" entry disappears (`hasStrongCropSpeciesIdentityMatch`).
+
+**Why a species search result matched.** Users who named their crop by a synonym have to recognise the official species
+as the same one, or they propose a duplicate. So the "Offizielle Kulturart"
+picker (`CropSpeciesPicker`) never glues the alias onto the name — an earlier
+"Lauch (Porree)" label read as if the parenthetical were part of the official
+name. Each option instead has two lines (`CropSpeciesOptionContent`):
+
+- **Primary:** the official name only, in the UI language
+  (`getCropSpeciesResultLabel`; the backend's `official_species_name`).
+- **Secondary** (caption, secondary text colour), by match source:
+  `Synonym: Porree`, `Ähnlicher Name`, or nothing for a name hit — followed by
+  the botanical name in italics after ` · `, or the botanical name alone.
+- The typed text is bold where it matched: in the name for a name hit, in the
+  synonym for a synonym hit, in the botanical name for a scientific-name hit,
+  nowhere for a fuzzy hit. Both lines are plain option text, so they are part
+  of the option's accessible name.
+
+Once a species is selected whose official name differs from the user's crop
+name, the field's helper text confirms it: "Deine Kultur „Porree“ wird als
+„Lauch“ veröffentlicht."
+
+The publishing wizard's result list only ever shows the results of the query
+that is in the field. `useCropSpeciesSearch` returns no results and `loading`
+until the current query has settled, instead of keeping the previous query's
+list: that stale list, swapped for the fresh one while the user was clicking,
+moved another option under the pointer and the click selected nothing (the
+field kept the typed text, the publish button stayed disabled). For the same
+reason the wizard searches for what the user *types* only
+(`speciesSearchQuery`, fed by the picker's `'input'`/`'clear'` changes):
+picking an option writes its canonical `name` into the field, and searching
+for that would replace the list the user just picked from. Every opening of
+the wizard starts from the crop's own name in the field with nothing selected
+— a pick is never carried over from an earlier opening.
+
+The match source comes from the search itself. `GET /api/crop-species/?q=…`
+(`crops.services.search_crop_species`) returns every result with a
+`search_match` object — `null` on the plain, unsearched list:
+
+| `source` | Meaning | `synonym` |
+|---|---|---|
+| `name` | Query is (part of) the official name in the request language | `''` |
+| `synonym` | Query is (part of) another name: synonym, regional name, another language's common name, or the canonical `name` when it is not the displayed one | the name that matched |
+| `botanical` | Query is part of `scientific_name` | `''` |
+| `fuzzy` | Similarity only (`"Porr"` → `Portulak`) | `''` |
+
+Results are ordered by that source — name, synonym, botanical, fuzzy — and
+within a group exact matches first, then by similarity. An exact synonym hit
+therefore ranks below a partial hit on an official name: the name is what the
+user recognises. The literal query is checked before its alias/plural/token
+variants (`build_crop_search_terms`), so `Paradeiser` reports the synonym the
+user typed rather than the `Tomate` it also expands to. The moderators'
+"Kulturart korrigieren" dialog filters the full catalogue client-side instead;
+`getCropSpeciesSearchMatch` applies the same rules there, and also covers a
+species the wizard prepends outside the search (the user's own fresh proposal).
 
 Private project crops are intentionally independent from that public master
 data. `Crop.crop_species` stays nullable and the "Add crop" dialog never

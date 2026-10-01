@@ -227,6 +227,111 @@ class CropViewSetTest(DRFAPITestCase):
         names = [item['name'] for item in response.data['results']]
         self.assertEqual(names[:3], ['Zwiebeltest', 'Zwiebeltestsorte', 'Zwiebeltesst'])
 
+    @staticmethod
+    def _search_matches(response, species_ids: set[int]) -> list[tuple[str, dict | None]]:
+        return [
+            (item['name'], item['search_match'])
+            for item in response.data['results']
+            if item['id'] in species_ids
+        ]
+
+    def test_species_search_ranks_name_then_synonym_then_fuzzy_and_reports_why(self):
+        self.client.force_authenticate(user=self.user)
+        created: dict[str, CropSpecies] = {}
+        for name, synonyms in (
+            ('Zaunrübe', []),
+            ('Zaunrübenkraut', []),
+            ('Gichtrübe', ['Zaunrübe']),
+            ('Zaunrüde', []),
+        ):
+            species = CropSpecies.objects.create(name=name, status=CropSpecies.STATUS_PUBLISHED)
+            CropSpeciesTranslation.objects.create(
+                species=species, language_code='de', common_name=name, synonyms=synonyms,
+            )
+            created[name] = species
+
+        response = self.client.get(
+            '/openfarmplanner/api/crop-species/', {'q': 'Zaunrübe', 'language': 'de'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # An exact synonym hit still ranks behind a partial hit on an official
+        # name: the name is what users recognise, the synonym only explains.
+        self.assertEqual(
+            self._search_matches(response, {species.id for species in created.values()}),
+            [
+                ('Zaunrübe', {'source': 'name', 'synonym': ''}),
+                ('Zaunrübenkraut', {'source': 'name', 'synonym': ''}),
+                ('Gichtrübe', {'source': 'synonym', 'synonym': 'Zaunrübe'}),
+                ('Zaunrüde', {'source': 'fuzzy', 'synonym': ''}),
+            ],
+        )
+
+    def test_species_search_reports_the_synonym_behind_a_partial_query(self):
+        """"Porr" finds Lauch through its synonym "Porree", ahead of the merely
+        similar "Portulak" — the case the publishing wizard must explain."""
+        self.client.force_authenticate(user=self.user)
+        leek = CropSpecies.objects.get(translations__common_name='Lauch')
+        purslane = CropSpecies.objects.get(translations__common_name='Portulak')
+
+        response = self.client.get(
+            '/openfarmplanner/api/crop-species/', {'q': 'Porr', 'language': 'de'},
+        )
+
+        self.assertEqual(
+            self._search_matches(response, {leek.id, purslane.id}),
+            [
+                (leek.name, {'source': 'synonym', 'synonym': 'Porree'}),
+                (purslane.name, {'source': 'fuzzy', 'synonym': ''}),
+            ],
+        )
+
+    def test_species_search_match_follows_the_request_language(self):
+        """The official name is the one in the UI language; another
+        language's common name counts as a synonym."""
+        self.client.force_authenticate(user=self.user)
+        leek = CropSpecies.objects.get(translations__common_name='Lauch')
+
+        url = '/openfarmplanner/api/crop-species/'
+        english = self.client.get(url, {'q': 'Leek', 'language': 'en'})
+        german = self.client.get(url, {'q': 'Leek', 'language': 'de'})
+
+        self.assertEqual(
+            self._search_matches(english, {leek.id}),
+            [(leek.name, {'source': 'name', 'synonym': ''})],
+        )
+        self.assertEqual(
+            self._search_matches(german, {leek.id}),
+            [(leek.name, {'source': 'synonym', 'synonym': 'Leek'})],
+        )
+
+    def test_species_search_reports_a_scientific_name_hit(self):
+        self.client.force_authenticate(user=self.user)
+        species = CropSpecies.objects.create(
+            name='Testlauch', scientific_name='Allium testum', status=CropSpecies.STATUS_PUBLISHED,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=species, language_code='de', common_name='Testlauch',
+        )
+
+        response = self.client.get(
+            '/openfarmplanner/api/crop-species/', {'q': 'testum', 'language': 'de'},
+        )
+
+        self.assertEqual(
+            self._search_matches(response, {species.id}),
+            [('Testlauch', {'source': 'botanical', 'synonym': ''})],
+        )
+
+    def test_species_list_without_query_has_no_search_match(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/openfarmplanner/api/crop-species/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['results'])
+        self.assertTrue(all(item['search_match'] is None for item in response.data['results']))
+
     def test_species_search_drops_low_similarity_unrelated_results(self):
         """A minimum-similarity cutoff keeps irrelevant noise out of the results."""
         self.client.force_authenticate(user=self.user)

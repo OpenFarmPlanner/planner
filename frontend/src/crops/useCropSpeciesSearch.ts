@@ -7,7 +7,9 @@ const SEARCH_DEBOUNCE_MS = 250;
 const SEARCH_PAGE_SIZE = 20;
 
 export interface CropSpeciesSearchResult {
+  /** Results for exactly the current query; empty while that query is still pending. */
   results: CropSpecies[];
+  /** True from the moment the query changes until its results (or failure) arrive. */
   loading: boolean;
   /**
    * True once a search for the current query has settled (success, failure,
@@ -17,10 +19,15 @@ export interface CropSpeciesSearchResult {
   settled: boolean;
 }
 
+interface SettledSearch {
+  query: string;
+  results: CropSpecies[];
+}
+
 /**
  * Debounced, typo-tolerant server search for the "Offizielle Kulturart"
- * field (`CropSpeciesViewSet.list`'s ranked ``q`` search — exact match,
- * then prefix/alias, then similarity; see `crops.services.search_crop_species`
+ * field (`CropSpeciesViewSet.list`'s ranked ``q`` search — official name,
+ * then synonym, then similarity; see `crops.services.search_crop_species`
  * and docs/crop-library-architecture.md).
  *
  * Unlike `useCropSpeciesOptions` (which loads the whole species catalogue
@@ -28,41 +35,30 @@ export interface CropSpeciesSearchResult {
  * korrigieren" relink dialog), this fetches only the current query's top
  * matches — the publishing wizard's species field is the one place that
  * needs server-ranked fuzzy results instead of a fixed local list.
+ *
+ * Results of a previous query are never returned for the current one: a
+ * stale list, swapped for the fresh one while the user is clicking an
+ * option, moved a different option under the pointer and the click selected
+ * nothing. Until the current query has settled the hook reports `loading`
+ * with no results instead.
  */
 export function useCropSpeciesSearch(query: string, enabled: boolean): CropSpeciesSearchResult {
-  const [results, setResults] = useState<CropSpecies[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [settled, setSettled] = useState(false);
+  const [settledSearch, setSettledSearch] = useState<SettledSearch | null>(null);
+  const trimmedQuery = query.trim();
+  const active = enabled && Boolean(trimmedQuery);
 
   useEffect(() => {
-    const trimmedQuery = query.trim();
-    if (!enabled || !trimmedQuery) {
-      queueMicrotask(() => {
-        setResults([]);
-        setSettled(true);
-        setLoading(false);
-      });
-      return undefined;
-    }
+    if (!active) return undefined;
 
-    queueMicrotask(() => setSettled(false));
     let cancelled = false;
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => {
-      setLoading(true);
       cropSpeciesAPI.list({ q: trimmedQuery, page_size: SEARCH_PAGE_SIZE }, abortController.signal)
         .then((response) => {
-          if (cancelled) return;
-          setResults(response.data.results);
-          setSettled(true);
+          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: response.data.results });
         })
         .catch(() => {
-          if (cancelled || abortController.signal.aborted) return;
-          setResults([]);
-          setSettled(true);
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: [] });
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -71,7 +67,15 @@ export function useCropSpeciesSearch(query: string, enabled: boolean): CropSpeci
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [enabled, query]);
+  }, [active, trimmedQuery]);
 
-  return { results, loading, settled };
+  if (!active) {
+    return { results: [], loading: false, settled: true };
+  }
+  const settled = settledSearch?.query === trimmedQuery;
+  return {
+    results: settled ? settledSearch.results : [],
+    loading: !settled,
+    settled,
+  };
 }

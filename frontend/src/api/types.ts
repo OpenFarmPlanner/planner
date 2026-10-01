@@ -635,6 +635,15 @@ export interface CropSpeciesTranslation {
   regional_names?: Record<string, string>;
 }
 
+/** Why a species matched a `?q=` search: see `crops.services.CropSpeciesSearchHit`. */
+export type CropSpeciesMatchSource = 'name' | 'synonym' | 'botanical' | 'fuzzy';
+
+export interface CropSpeciesSearchMatch {
+  source: CropSpeciesMatchSource;
+  /** The synonym, regional or other-language name that matched; '' unless `source` is 'synonym'. */
+  synonym: string;
+}
+
 export interface CropSpecies {
   id: number;
   name: string;
@@ -646,6 +655,8 @@ export interface CropSpecies {
   translations?: CropSpeciesTranslation[];
   /** Canonical name, translations, synonyms, and regional names used for Kulturart matching. */
   search_names?: string[];
+  /** Only set on `?q=` search results; null on plain list/detail responses. */
+  search_match?: CropSpeciesSearchMatch | null;
   status: 'published' | 'proposed' | 'rejected';
   proposed_by_label?: string;
   reviewed_by_label?: string;

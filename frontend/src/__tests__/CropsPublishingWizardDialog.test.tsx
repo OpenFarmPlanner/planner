@@ -416,7 +416,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradeiser');
 
-    expect(await screen.findByRole('option', { name: 'Tomate (Paradeiser)' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Tomate Synonym: Paradeiser' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Paradeiser.*als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
@@ -456,9 +456,9 @@ describe('CropsPublishingWizardDialog', () => {
 
     const options = await findSettledOptions(3);
     expect(options.map((option) => option.textContent)).toEqual([
-      'Paprika (Peperoni)',
-      'Chili (Peperoni)',
-      'Pfefferoni (Peperoni)',
+      'Paprika Synonym: Peperoni',
+      'Chili Synonym: Peperoni',
+      'Pfefferoni Synonym: Peperoni',
     ]);
   });
 
@@ -493,9 +493,159 @@ describe('CropsPublishingWizardDialog', () => {
 
     const options = await findSettledOptions(2);
     expect(options.map((option) => option.textContent)).toEqual([
-      'Tomate (Paradeis)',
+      'Tomate Synonym: Paradeis',
       '„Paradei“ als neue Kulturart vorschlagen',
     ]);
+  });
+
+  it('explains a synonym hit and confirms the official name it is published under', async () => {
+    cropSpeciesListMock.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [{
+          id: 21,
+          name: 'Lauch',
+          display_name: 'Lauch',
+          scientific_name: 'Allium ampeloprasum',
+          status: 'published',
+          search_names: ['Lauch', 'Porree', 'Allium ampeloprasum'],
+          translations: [{ language_code: 'de', common_name: 'Lauch', synonyms: ['Porree'], regional_names: {} }],
+          search_match: { source: 'synonym', synonym: 'Porree' },
+        }],
+      },
+    });
+
+    renderWizard({ ...CROP, name: 'Porree', variety: '' });
+
+    const option = await screen.findByRole('option', { name: 'Lauch Synonym: Porree · Allium ampeloprasum' });
+    expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
+    fireEvent.click(option);
+
+    expect(await screen.findByText('Deine Kultur „Porree“ wird als „Lauch“ veröffentlicht.')).toBeInTheDocument();
+  });
+
+  describe('picking an official species after typing', () => {
+    const SUGAR_PEA_CROP: Crop = { ...CROP, name: 'Zuckererbse', variety: '' };
+    const speciesHit = (
+      id: number,
+      name: string,
+      searchMatch: { source: 'name' | 'synonym' | 'fuzzy'; synonym: string },
+    ) => ({
+      id,
+      name,
+      display_name: name,
+      status: 'published',
+      search_names: [name, searchMatch.synonym].filter(Boolean),
+      translations: [{ language_code: 'de', common_name: name, synonyms: searchMatch.synonym ? [searchMatch.synonym] : [] }],
+      search_match: searchMatch,
+    });
+    const page = (results: unknown[]) => ({ data: { count: results.length, next: null, previous: null, results } });
+    const resultsByQuery: Record<string, unknown[]> = {
+      Zuckererbse: [
+        speciesHit(31, 'Zuckererbse', { source: 'name', synonym: '' }),
+        speciesHit(32, 'Futtererbse', { source: 'fuzzy', synonym: '' }),
+      ],
+      zuck: [
+        speciesHit(33, 'Zuckerhut', { source: 'name', synonym: '' }),
+        speciesHit(31, 'Zuckererbse', { source: 'synonym', synonym: 'Zuckerschote' }),
+      ],
+    };
+    const searchedQueries = () => cropSpeciesListMock.mock.calls.map(([params]) => params.q);
+    const renderOpenable = (open: boolean) => (
+      <MemoryRouter>
+        <CropsPublishingWizardDialog
+          open={open}
+          crop={SUGAR_PEA_CROP}
+          termsAlreadyAccepted
+          publishing={false}
+          onClose={vi.fn()}
+          onPublish={vi.fn()}
+          onLinkPublicCrop={vi.fn().mockResolvedValue(true)}
+          onSyncPublicCrop={vi.fn().mockResolvedValue(true)}
+        />
+      </MemoryRouter>
+    );
+
+    beforeEach(() => {
+      cropSpeciesListMock.mockImplementation((params: { q: string }) => (
+        Promise.resolve(page(resultsByQuery[params.q] ?? []))
+      ));
+    });
+
+    it('applies the option on the first click and keeps the list it was picked from', async () => {
+      // Regression: the click used to land on nothing, leaving the typed text
+      // in the field and the publish button disabled.
+      render(renderOpenable(true));
+      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const user = userEvent.setup();
+      await user.clear(speciesInput);
+      await user.type(speciesInput, 'zuck');
+
+      const option = await screen.findByRole('option', { name: 'Zuckererbse Synonym: Zuckerschote' });
+      const searchesBeforePick = searchedQueries().length;
+      fireEvent.click(option);
+
+      expect(speciesInput).toHaveValue('Zuckererbse');
+      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled();
+      // Writing the picked label into the field is not a new search: one
+      // would replace the options the user just picked from.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(searchedQueries()).toHaveLength(searchesBeforePick);
+      expect(searchedQueries().at(-1)).toBe('zuck');
+      expect(speciesInput).toHaveValue('Zuckererbse');
+    });
+
+    it('never offers the previous query\'s results while the current one is pending', async () => {
+      // A stale list swapped for the fresh one mid-click moved another option
+      // under the pointer, so the click selected nothing.
+      let resolvePending: (value: unknown) => void = () => undefined;
+      cropSpeciesListMock.mockImplementation((params: { q: string }) => (
+        params.q === 'zuck'
+          ? new Promise((resolve) => { resolvePending = resolve; })
+          : Promise.resolve(page(resultsByQuery[params.q] ?? []))
+      ));
+      render(renderOpenable(true));
+      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      expect(await screen.findByRole('option', { name: /^Futtererbse/ })).toBeInTheDocument();
+      const user = userEvent.setup();
+      // Typing over the selected prefill, as users do: the field never goes
+      // empty in between, which would clear the old list by itself.
+      await user.tripleClick(speciesInput);
+      await user.keyboard('zuck');
+
+      await waitFor(() => expect(searchedQueries()).toContain('zuck'));
+      expect(screen.queryByRole('option', { name: /^Futtererbse/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: /als neue Kulturart vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.getByText('Lädt...')).toBeInTheDocument();
+
+      resolvePending(page(resultsByQuery.zuck));
+      expect(await screen.findByRole('option', { name: 'Zuckererbse Synonym: Zuckerschote' })).toBeInTheDocument();
+    });
+
+    it('starts from the crop name again when reopened, without a stale selection', async () => {
+      const view = render(renderOpenable(true));
+      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const user = userEvent.setup();
+      await user.clear(speciesInput);
+      await user.type(speciesInput, 'zuck');
+      fireEvent.click(await screen.findByRole('option', { name: 'Zuckererbse Synonym: Zuckerschote' }));
+      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled();
+
+      view.rerender(renderOpenable(false));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      view.rerender(renderOpenable(true));
+
+      const reopenedInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      await waitFor(() => expect(reopenedInput).toHaveValue('Zuckererbse'));
+      // The prefilled crop name is not a pick: nothing is selected, so the
+      // field and the publish button agree.
+      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
+      expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
+      const options = await findSettledOptions(2);
+      expect(options.map((option) => option.textContent)).toEqual(['Zuckererbse', 'Futtererbse Ähnlicher Name']);
+    });
   });
 
   it('shows an inline error when proposing a species fails', async () => {

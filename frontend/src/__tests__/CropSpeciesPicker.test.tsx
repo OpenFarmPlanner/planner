@@ -53,6 +53,7 @@ function Harness({ overrides, spies }: {
         spies.onProposalNameChange(name);
       }}
       proposing={overrides.proposing}
+      localCropName={overrides.localCropName}
       errorText={overrides.errorText}
       label={overrides.label}
       required={overrides.required}
@@ -116,9 +117,76 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Paradeiser');
 
-      // The alias is what made the option appear, so it is named rather
-      // than silently resolving to the canonical species.
-      expect(await screen.findByRole('option', { name: 'Tomate (Paradeiser)' })).toBeInTheDocument();
+      // The alias is what made the option appear, so it is named on its own
+      // line rather than silently resolving to the canonical species — and
+      // never glued to the official name as if it were part of it.
+      const option = await screen.findByRole('option', { name: 'Tomate Synonym: Paradeiser' });
+      expect(option).toBeInTheDocument();
+      expect(within(option).getByText('Paradeiser', { selector: 'strong' })).toBeInTheDocument();
+      expect(screen.queryByText(/Tomate \(Paradeiser\)/)).not.toBeInTheDocument();
+    });
+
+    it('lists official-name hits before synonym hits before similar names', async () => {
+      const user = userEvent.setup();
+      setup({
+        species: [
+          species({ id: 10, name: 'Porrie', search_names: ['Porrie'] }),
+          species({ id: 11, name: 'Lauch', search_names: ['Lauch', 'Porree'], scientific_name: 'Allium ampeloprasum' }),
+          species({ id: 12, name: 'Porreblatt', search_names: ['Porreblatt'] }),
+        ],
+      });
+
+      await user.type(field(), 'Porre');
+
+      const options = await within(listbox()).findAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        'Porreblatt',
+        'Lauch Synonym: Porree · Allium ampeloprasum',
+        'Porrie Ähnlicher Name',
+      ]);
+      // The typed part is bold where it matched: in the official name for a
+      // name hit, in the synonym for a synonym hit, nowhere for a fuzzy hit.
+      expect(within(options[0]).getByText('Porre', { selector: 'strong' })).toBeInTheDocument();
+      expect(within(options[1]).getByText('Porre', { selector: 'strong' })).toBeInTheDocument();
+      expect(within(options[1]).getByText('Allium ampeloprasum', { selector: 'em' })).toBeInTheDocument();
+      expect(options[2].querySelector('strong')).toBeNull();
+    });
+
+    it('shows the botanical name alone for a plain name hit', async () => {
+      const user = userEvent.setup();
+      setup({ species: [species({ scientific_name: 'Solanum lycopersicum' })] });
+
+      await user.type(field(), 'Tom');
+
+      expect(await screen.findByRole('option', { name: 'Tomate Solanum lycopersicum' })).toBeInTheDocument();
+    });
+
+    it('explains server-searched hits with the search match the server reported', async () => {
+      const user = userEvent.setup();
+      const leek = species({
+        id: 11,
+        name: 'Lauch',
+        search_names: ['Lauch', 'Porree'],
+        translations: [{ language_code: 'de', common_name: 'Lauch', synonyms: ['Porree'] }],
+        search_match: { source: 'synonym', synonym: 'Porree' },
+      });
+      const purslane = species({
+        id: 10,
+        name: 'Portulak',
+        search_names: ['Portulak'],
+        translations: [{ language_code: 'de', common_name: 'Portulak' }],
+        search_match: { source: 'fuzzy', synonym: '' },
+      });
+      setup({ species: [leek, purslane], serverSearched: true });
+
+      await user.type(field(), 'Porr');
+
+      const options = await within(listbox()).findAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        'Lauch Synonym: Porree',
+        'Portulak Ähnlicher Name',
+        '„Porr“ als neue Kulturart vorschlagen',
+      ]);
     });
 
     it('marks a species that is still awaiting review', async () => {
@@ -175,7 +243,7 @@ describe('CropSpeciesPicker', () => {
       // A regional name is still that species; the match is strong even
       // though the canonical name differs.
       await waitFor(() =>
-        expect(screen.getByRole('option', { name: 'Karotte (Möhre)' })).toBeInTheDocument(),
+        expect(screen.getByRole('option', { name: 'Karotte Synonym: Möhre' })).toBeInTheDocument(),
       );
       expect(screen.queryByRole('option', { name: /vorschlagen/ })).not.toBeInTheDocument();
     });
@@ -464,6 +532,24 @@ describe('CropSpeciesPicker', () => {
 
       expect(screen.getByText('Bitte eine Kulturart wählen.')).toBeInTheDocument();
       expect(field()).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('confirms under which official name a differently named crop is published', async () => {
+      const user = userEvent.setup();
+      const leek = species({ id: 11, name: 'Lauch', search_names: ['Lauch', 'Porree'] });
+      setup({ species: [leek], localCropName: 'Porree' });
+
+      expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
+      await user.type(field(), 'Porr');
+      await user.click(await screen.findByRole('option', { name: /^Lauch/ }));
+
+      expect(screen.getByText('Deine Kultur „Porree“ wird als „Lauch“ veröffentlicht.')).toBeInTheDocument();
+    });
+
+    it('adds no confirmation when the crop already carries the official name', () => {
+      setup({ value: TOMATO, inputValue: 'Tomate', localCropName: 'tomate ' });
+
+      expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
     });
 
     it('lets an error displace the proposal note', () => {
