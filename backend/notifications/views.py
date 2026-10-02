@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from .models import Notification
 from .serializers import NotificationSerializer
+from .services import mark_all_notifications_read
 
 _BOOLEAN_QUERY_VALUES = {'true': True, 'false': False, '1': True, '0': False}
 
@@ -66,3 +67,13 @@ class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             notification.is_read = True
             notification.save(update_fields=['is_read'])
         return Response(self.get_serializer(notification).data)
+
+    @action(detail=False, methods=['post'], url_path='read-all')
+    def mark_all_read(self, request: Request) -> Response:
+        """Mark every unread notification of the caller as read, in one request.
+
+        The scope is the unread badge's, never the list filter's: an ``is_read``
+        parameter left on the URL is ignored, so the badge is always zero after.
+        """
+        marked_read = mark_all_notifications_read(request.user)
+        return Response({'marked_read': marked_read})

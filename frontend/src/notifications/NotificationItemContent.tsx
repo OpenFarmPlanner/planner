@@ -9,9 +9,10 @@ import type { AppNotification } from '../api/types';
 interface NotificationItemContentProps {
   notification: AppNotification;
   /**
-   * Whether to reserve and paint the unread dot. The dropdowns list unread
-   * entries only, where a dot on every row carries no information; the history
-   * page mixes both states and needs it.
+   * Whether to reserve and paint the unread dot. On in the bell dropdown and
+   * on the history page, which can both show read and unread rows side by
+   * side; off in the compact "Mehr" menu, whose rows already carry an icon in
+   * that slot and only ever list unread entries.
    */
   showUnreadDot?: boolean;
 }

@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase as DRFAPITestCase
 
 from notifications.models import Notification
-from notifications.services import create_notification
+from notifications.services import create_notification, mark_all_notifications_read
 
 User = get_user_model()
 
@@ -119,6 +119,65 @@ class NotificationViewSetTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         notification.refresh_from_db()
         self.assertFalse(notification.is_read)
+
+    def test_mark_all_read_requires_authentication(self):
+        notification = self._create(self.user)
+
+        response = self.client.post('/openfarmplanner/api/notifications/read-all/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        notification.refresh_from_db()
+        self.assertFalse(notification.is_read)
+
+    def test_mark_all_read_affects_only_own_unread_notifications(self):
+        first = self._create(self.user, name='First')
+        second = self._create(self.user, name='Second')
+        self._create(self.user, name='Already read', is_read=True)
+        foreign = self._create(self.other_user, name='Not mine')
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post('/openfarmplanner/api/notifications/read-all/')
+        list_response = self.client.get('/openfarmplanner/api/notifications/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'marked_read': 2})
+        first.refresh_from_db()
+        second.refresh_from_db()
+        foreign.refresh_from_db()
+        self.assertTrue(first.is_read)
+        self.assertTrue(second.is_read)
+        self.assertFalse(foreign.is_read)
+        self.assertEqual(list_response.data['unread_count'], 0)
+
+    def test_mark_all_read_is_idempotent(self):
+        self._create(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        first_response = self.client.post('/openfarmplanner/api/notifications/read-all/')
+        second_response = self.client.post('/openfarmplanner/api/notifications/read-all/')
+
+        self.assertEqual(first_response.data, {'marked_read': 1})
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.data, {'marked_read': 0})
+        self.assertFalse(Notification.objects.filter(recipient=self.user, is_read=False).exists())
+
+    def test_mark_all_read_ignores_an_is_read_filter_on_the_url(self):
+        self._create(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post('/openfarmplanner/api/notifications/read-all/?is_read=true')
+
+        self.assertEqual(response.data, {'marked_read': 1})
+        self.assertFalse(Notification.objects.filter(recipient=self.user, is_read=False).exists())
+
+    def test_mark_all_read_is_one_update_regardless_of_row_count(self):
+        for index in range(5):
+            self._create(self.user, name=f'Unread {index}')
+
+        with self.assertNumQueries(1):
+            marked_read = mark_all_notifications_read(self.user)
+
+        self.assertEqual(marked_read, 5)
 
     def test_notifications_cannot_be_created_through_the_api(self):
         self.client.force_authenticate(user=self.user)

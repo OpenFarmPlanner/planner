@@ -7,9 +7,10 @@ import PageHeader from '../../components/layout/PageHeader';
 import EmptyStateCard from '../../components/project/EmptyStateCard';
 import { useTranslation } from '../../i18n';
 import type { RootLayoutOutletContext } from '../../navigation/topbarTypes';
+import { MarkAllNotificationsReadButton } from '../MarkAllNotificationsReadButton';
 import { NotificationItemContent } from '../NotificationItemContent';
 import { useNotificationHistory } from '../useNotificationHistory';
-import { useNotificationSelection } from '../useNotifications';
+import { useMarkAllNotificationsRead, useNotificationSelection } from '../useNotifications';
 import type { AppNotification } from '../../api/types';
 
 /**
@@ -29,8 +30,18 @@ export default function NotificationHistoryPage(): ReactElement {
   // rows read on its own if it is ever rendered outside the layout.
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const controller = outletContext?.notifications ?? null;
-  const history = useNotificationHistory();
+  const history = useNotificationHistory(controller?.allReadVersion);
   const selectNotification = useNotificationSelection(controller);
+  const markAllRead = useMarkAllNotificationsRead(controller);
+  // The badge's count decides whether there is anything left to mark — the
+  // action covers exactly what the badge counts, not just this page's rows.
+  const unreadCount = controller?.unreadCount ?? history.unreadCount;
+
+  const handleMarkAllRead = async (): Promise<void> => {
+    if (await markAllRead()) {
+      history.applyAllRead();
+    }
+  };
 
   const handleSelect = (notification: AppNotification): void => {
     history.applyRead(notification);
@@ -85,6 +96,13 @@ export default function NotificationHistoryPage(): ReactElement {
           description={history.unreadCount > 0
             ? t('history.unreadSubtitle', { unread: history.unreadCount })
             : undefined}
+          actions={(
+            <MarkAllNotificationsReadButton
+              unreadCount={unreadCount}
+              isPending={controller?.isMarkingAllRead ?? false}
+              onClick={() => { void handleMarkAllRead(); }}
+            />
+          )}
         />
       </Box>
 

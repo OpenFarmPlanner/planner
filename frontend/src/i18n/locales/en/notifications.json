@@ -17,6 +17,11 @@
     "nextPageAriaLabel": "Next page",
     "previousPageAriaLabel": "Previous page"
   },
+  "markAllRead": {
+    "label": "Mark all as read",
+    "nothingUnread": "No unread notifications",
+    "error": "Notifications could not be marked as read."
+  },
   "messages": {
     "crop_species_proposal_accepted": "Your proposal for the crop species \"{{name}}\" was accepted.",
     "crop_species_proposal_rejected": "Your proposal for the crop species \"{{name}}\" was rejected.",

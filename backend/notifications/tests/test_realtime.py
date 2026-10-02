@@ -5,7 +5,7 @@ from django.test import Client, TransactionTestCase
 
 from config.asgi import application
 from notifications.models import Notification
-from notifications.services import create_notification
+from notifications.services import create_notification, mark_all_notifications_read
 
 User = get_user_model()
 
@@ -48,6 +48,28 @@ class NotificationWebSocketTests(TransactionTestCase):
             'type': 'notifications.updated',
             'notification_id': notification.id,
         })
+        await communicator.disconnect()
+
+    def test_mark_all_read_sends_one_bulk_update_and_none_when_nothing_changed(self) -> None:
+        async_to_sync(self._assert_bulk_update)()
+
+    async def _assert_bulk_update(self) -> None:
+        for name in ('First', 'Second'):
+            await sync_to_async(create_notification)(
+                recipient=self.user,
+                notification_type=Notification.TYPE_CROP_SPECIES_PROPOSAL_ACCEPTED,
+                message=name,
+            )
+        communicator = self._communicator(authenticated=True)
+        self.assertTrue((await communicator.connect())[0])
+
+        await sync_to_async(mark_all_notifications_read)(self.user)
+        event = await communicator.receive_json_from()
+        self.assertEqual(event, {'type': 'notifications.updated', 'notification_id': None})
+        self.assertTrue(await communicator.receive_nothing(timeout=0.1))
+
+        await sync_to_async(mark_all_notifications_read)(self.user)
+        self.assertTrue(await communicator.receive_nothing(timeout=0.1))
         await communicator.disconnect()
 
     def test_unauthenticated_connection_is_rejected(self) -> None:

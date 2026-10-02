@@ -14,10 +14,15 @@ import {
 import { AppTooltip } from '../components/AppTooltip';
 import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
 import { useTranslation } from '../i18n';
+import { MarkAllNotificationsReadButton } from './MarkAllNotificationsReadButton';
 import { NOTIFICATION_HISTORY_ROUTE } from './notificationDisplay';
 import { NotificationItemContent } from './NotificationItemContent';
-import { NOTIFICATION_DROPDOWN_ROW_SX, NOTIFICATION_HINT_SX } from './notificationStyles';
-import { useNotificationSelection, type NotificationsController } from './useNotifications';
+import { NOTIFICATION_DROPDOWN_ROW_SX, NOTIFICATION_HINT_SX, NOTIFICATION_MENU_HEADER_SX } from './notificationStyles';
+import {
+  useMarkAllNotificationsRead,
+  useNotificationSelection,
+  type NotificationsController,
+} from './useNotifications';
 import { TOPBAR_BADGE_SX } from '../navigation/topbarMenuStyles';
 import type { AppNotification } from '../api/types';
 
@@ -36,22 +41,26 @@ interface NotificationBellProps {
  * `useNotificationMenuItems`.
  *
  * The list shows **unread** entries only: it is the "what is new" surface, and
- * everything else lives one click away on the history page it links to.
+ * everything else lives one click away on the history page it links to. Rows
+ * read while the menu is open (through "Alle als gelesen markieren") stay in
+ * place in the read style until the next open.
  *
  * Opening the menu deliberately marks nothing as read — only clicking a single
- * entry does, which then navigates to the object the notification is about.
+ * entry does (which then navigates to the object the notification is about),
+ * or the explicit "mark all" action in the header.
  */
 export function NotificationBell({ controller, buttonSize }: NotificationBellProps) {
   const { t } = useTranslation('notifications');
   const [anchorElement, setAnchorElement] = useState<null | HTMLElement>(null);
   const isOpen = Boolean(anchorElement);
-  const { unreadNotifications, unreadCount, isLoading, hasError, reload } = controller;
+  const { notifications, unreadCount, isLoading, hasError, refresh, isMarkingAllRead } = controller;
   const selectNotification = useNotificationSelection(controller);
+  const markAllRead = useMarkAllNotificationsRead(controller);
   const navigate = useNavigate();
 
   const handleOpen = (event: MouseEvent<HTMLElement>): void => {
     setAnchorElement(event.currentTarget);
-    reload();
+    refresh();
   };
 
   const handleSelect = (notification: AppNotification): void => {
@@ -99,11 +108,17 @@ export function NotificationBell({ controller, buttonSize }: NotificationBellPro
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ paper: { sx: { mt: 0.5, width: { xs: 280, sm: 360 }, maxWidth: '100vw' } } }}
       >
-        <Typography variant="subtitle2" sx={{ px: 2, py: 1 }}>
-          {t('bell.title')}
-        </Typography>
+        <Box sx={NOTIFICATION_MENU_HEADER_SX}>
+          <Typography variant="subtitle2">{t('bell.title')}</Typography>
+          <MarkAllNotificationsReadButton
+            inMenu
+            unreadCount={unreadCount}
+            isPending={isMarkingAllRead}
+            onClick={() => { void markAllRead(); }}
+          />
+        </Box>
         <Divider />
-        {isLoading && unreadNotifications.length === 0 ? (
+        {isLoading && notifications.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
             <CircularProgress size={20} />
           </Box>
@@ -113,18 +128,18 @@ export function NotificationBell({ controller, buttonSize }: NotificationBellPro
             {t('bell.loadError')}
           </Typography>
         ) : null}
-        {!isLoading && !hasError && unreadNotifications.length === 0 ? (
+        {!isLoading && !hasError && notifications.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={NOTIFICATION_HINT_SX}>
             {t('bell.noUnread')}
           </Typography>
         ) : null}
-        {unreadNotifications.map((notification) => (
+        {notifications.map((notification) => (
           <ListItemButton
             key={notification.id}
             onClick={() => handleSelect(notification)}
             sx={NOTIFICATION_DROPDOWN_ROW_SX}
           >
-            <NotificationItemContent notification={notification} />
+            <NotificationItemContent notification={notification} showUnreadDot />
           </ListItemButton>
         ))}
         <Divider />

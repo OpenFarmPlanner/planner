@@ -52,6 +52,9 @@ Notification changes produce:
 }
 ```
 
+A bulk "mark all as read" sends the same event once, with
+`"notification_id": null`, because it touched several rows at once.
+
 Clients may send `{"type":"ping"}` and receive `{"type":"pong"}`. The
 frontend sends this heartbeat every 30 seconds while connected.
 
