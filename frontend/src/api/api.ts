@@ -3,6 +3,9 @@ import type {
   ApiToken,
   ApiTokenCreatePayload,
   ApiTokenCreated,
+  CropLibraryToken,
+  CropLibraryTokenCreatePayload,
+  CropLibraryTokenCreated,
   AppNotification,
   NotificationListResponse,
   Crop,
@@ -581,10 +584,25 @@ export const apiTokenAPI = {
   revoke: (id: number) => http.delete<ApiToken>(`/api-tokens/${id}/`),
 };
 
+/**
+ * Platform-scoped crop-species API token, superuser-only — see
+ * docs/crop-library-api-tokens.md. A separate credential and endpoint from
+ * `apiTokenAPI` above: not project-bound, and only reaches `/crop-species/`.
+ */
+export const cropLibraryTokenAPI = {
+  list: () => http.get<CropLibraryToken[]>('/crop-library-tokens/'),
+  create: (payload: CropLibraryTokenCreatePayload) =>
+    http.post<CropLibraryTokenCreated>('/crop-library-tokens/', payload),
+  revoke: (id: number) => http.delete<CropLibraryToken>(`/crop-library-tokens/${id}/`),
+};
+
 export type {
   ApiToken,
   ApiTokenCreatePayload,
   ApiTokenCreated,
+  CropLibraryToken,
+  CropLibraryTokenCreatePayload,
+  CropLibraryTokenCreated,
   Crop,
   Location,
   Field,

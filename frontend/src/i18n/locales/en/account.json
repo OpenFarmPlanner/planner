@@ -161,5 +161,53 @@
       "usageHint": "Use it as an HTTP header: Authorization: Bearer <token>",
       "confirm": "I have stored the token"
     }
+  },
+  "cropLibraryToken": {
+    "title": "Crop library API token",
+    "description": "Superusers only: this token acts platform-wide and can write official crop species, synonyms, and regional names. It is not project-bound and separate from the API tokens above.",
+    "docsLink": "Open documentation",
+    "loading": "Loading token…",
+    "empty": "No crop library token has been created yet.",
+    "revoked": "The token \"{{name}}\" has been revoked and no longer works.",
+    "inactiveToggle": "Show expired and revoked tokens ({{count}})",
+    "scopes": {
+      "read": "Read",
+      "write": "Read and write"
+    },
+    "scopeHelp": {
+      "read": "May read official crop species, including pending proposals.",
+      "write": "May additionally propose and edit crop species (including synonyms and regional names). Approving, rejecting, and deleting stay blocked."
+    },
+    "columns": {
+      "name": "Name",
+      "scope": "Rights",
+      "created": "Created",
+      "expires": "Expires",
+      "lastUsed": "Last used",
+      "action": "Action"
+    },
+    "meta": {
+      "prefix": "Token",
+      "never": "no expiry date",
+      "neverUsed": "never"
+    },
+    "actions": {
+      "create": "Create token",
+      "revoke": "Revoke"
+    },
+    "form": {
+      "name": "Name",
+      "scope": "Rights",
+      "expiresAt": "Expiry date (optional)",
+      "expiresAtHelper": "Leave empty for a token with no expiry date. At most one year in the future."
+    },
+    "created": {
+      "title": "Your new crop library token",
+      "warning": "Copy the token now. It is shown this one time and cannot be retrieved again.",
+      "description": "Store the token like a password. Never commit it to a repository. If you lose it, revoke it here and create a new one.",
+      "tokenLabel": "Token",
+      "usageHint": "Use it as an HTTP header: Authorization: Bearer <token>",
+      "confirm": "I have stored the token"
+    }
   }
 }

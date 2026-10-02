@@ -161,5 +161,53 @@
       "usageHint": "Verwendung als HTTP-Header: Authorization: Bearer <token>",
       "confirm": "Ich habe das Token gespeichert"
     }
+  },
+  "cropLibraryToken": {
+    "title": "API-Token für die Kulturbibliothek",
+    "description": "Nur für Superuser: Dieses Token wirkt plattformweit und kann offizielle Kulturarten, Synonyme und regionale Namen schreiben. Es ist projektunabhängig und getrennt von den API-Tokens oben.",
+    "docsLink": "Dokumentation öffnen",
+    "loading": "Token wird geladen…",
+    "empty": "Es wurde noch kein Kulturbibliothek-Token erstellt.",
+    "revoked": "Das Token „{{name}}“ wurde widerrufen und funktioniert nicht mehr.",
+    "inactiveToggle": "Abgelaufene und widerrufene Tokens anzeigen ({{count}})",
+    "scopes": {
+      "read": "Lesen",
+      "write": "Lesen und schreiben"
+    },
+    "scopeHelp": {
+      "read": "Darf offizielle Kulturarten lesen, auch ausstehende Vorschläge.",
+      "write": "Darf zusätzlich Kulturarten vorschlagen und bearbeiten (inkl. Synonyme und regionale Namen). Freigeben, ablehnen und löschen bleiben gesperrt."
+    },
+    "columns": {
+      "name": "Name",
+      "scope": "Rechte",
+      "created": "Erstellt",
+      "expires": "Läuft ab",
+      "lastUsed": "Zuletzt verwendet",
+      "action": "Aktion"
+    },
+    "meta": {
+      "prefix": "Token",
+      "never": "kein Ablaufdatum",
+      "neverUsed": "nie"
+    },
+    "actions": {
+      "create": "Token erstellen",
+      "revoke": "Widerrufen"
+    },
+    "form": {
+      "name": "Name",
+      "scope": "Berechtigungen",
+      "expiresAt": "Ablaufdatum (optional)",
+      "expiresAtHelper": "Leer lassen für ein Token ohne Ablaufdatum. Höchstens ein Jahr in der Zukunft."
+    },
+    "created": {
+      "title": "Dein neues Kulturbibliothek-Token",
+      "warning": "Kopiere das Token jetzt. Es wird nur dieses eine Mal angezeigt und kann danach nicht erneut abgerufen werden.",
+      "description": "Bewahre das Token wie ein Passwort auf. Lege es niemals in einem Repository ab. Wenn du es verlierst, widerrufe es hier und erstelle ein neues.",
+      "tokenLabel": "Token",
+      "usageHint": "Verwendung als HTTP-Header: Authorization: Bearer <token>",
+      "confirm": "Ich habe das Token gespeichert"
+    }
   }
 }

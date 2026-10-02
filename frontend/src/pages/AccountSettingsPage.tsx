@@ -41,6 +41,7 @@ import {
 } from './accountSettingsCards';
 import { AccountSettingsSocialMethods } from './accountSettingsSocialCard';
 import AccountSettingsApiTokensCard from './accountSettingsApiTokensCard';
+import AccountSettingsCropLibraryTokenCard from './accountSettingsCropLibraryTokenCard';
 import { AccountLanguageSelect } from '../i18n/LanguageSwitcher';
 
 export default function AccountSettingsPage() {
@@ -447,6 +448,7 @@ export default function AccountSettingsPage() {
         </SettingsCard>
 
         <AccountSettingsApiTokensCard />
+        <AccountSettingsCropLibraryTokenCard />
 
         <SettingsCard title={t('sections.language')} description={t('language.description')} collapsible>
           <AccountLanguageSelect />

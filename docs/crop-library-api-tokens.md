@@ -19,7 +19,7 @@ exists instead:
 | Bound to | one user, one project | one user only |
 | Reaches | project data (`/api/crops/`, …) | `/api/crop-species/` only |
 | Scopes | `read` / `write` / `delete` | `read` / `write` |
-| Created by | any project member, for themselves | a platform admin, for themselves |
+| Created by | any project member, for themselves | a superuser, for themselves |
 | Header prefix | `ofp_pat_` | `ofp_clt_` |
 
 The two are deliberately kept independent end to end — separate models,
@@ -71,11 +71,19 @@ this token's surface, and doesn't need to be: it fits the existing
 
 ## Getting a token
 
-Session-authenticated only, and restricted to platform admins
-(`is_staff`/`is_superuser`): there is no dedicated frontend page yet (see
-"Known limitations" below). An admin creates one from their own
-authenticated session, e.g. with the browser dev tools or `curl` carrying
-the session cookie and CSRF token:
+Session-authenticated only, and restricted to **superusers** — deliberately
+stricter than the `is_staff`-or-`is_superuser` shape
+`is_public_library_admin`/`is_public_library_moderator` use elsewhere in the
+crop library, because this token is platform-wide, not scoped to library
+moderation.
+
+In the app: **Account settings → Crop library API token** (visible only to
+superusers). Choose a name, `read` or `write`, and optionally an expiry date.
+The plaintext is shown once, in a dialog, exactly like `ProjectApiToken`'s
+card.
+
+Without the UI (e.g. scripting token creation), the same endpoint works from
+an authenticated session with `curl`:
 
 ```bash
 curl -sS -X POST "$OFP_API/crop-library-tokens/" \
@@ -87,7 +95,7 @@ curl -sS -X POST "$OFP_API/crop-library-tokens/" \
 
 The plaintext token is returned exactly once, in the response body — it is
 not stored and cannot be retrieved again. Tokens are always bound to the
-creating admin; there is no "create for another user" option.
+creating superuser; there is no "create for another user" option.
 
 ```bash
 curl -sS "$OFP_API/crop-library-tokens/" -b "$SESSION_COOKIE"
@@ -124,10 +132,6 @@ If the token is valid but the endpoint, action, or scope is not, it answers
 
 ## Known limitations
 
-- **No dedicated frontend UI yet.** Token self-service exists only as the
-  DRF endpoint at `/api/crop-library-tokens/`; there is no account-settings
-  card for it (unlike `ProjectApiToken`). Follow-up work, not blocking the
-  API itself.
 - **Not published in the general `/api/schema/` reference.** That schema is
   filtered to the `ProjectApiToken` allowlist (`api_token_actions`) by
   construction — see `farm/agent_api/schema.py`. This token uses its own,
@@ -152,3 +156,4 @@ If the token is valid but the endpoint, action, or scope is not, it answers
 | `backend/crops/agent_api/views.py`, `backend/crops/agent_api/serializers.py` | token self-service |
 | `backend/crops/token_urls.py` | mounts the self-service viewset |
 | `backend/crops/views.py::CropSpeciesViewSet` | the one opted-in view (`crop_library_token_actions`) |
+| `frontend/src/pages/accountSettingsCropLibraryTokenCard.tsx` | superuser-only token management UI |

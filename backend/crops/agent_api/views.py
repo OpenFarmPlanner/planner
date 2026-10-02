@@ -4,9 +4,11 @@ Session-only by design, same reasoning as
 `farm.agent_api.views.ProjectApiTokenViewSet`: none of these actions declare
 `crop_library_token_actions`, so a crop-library token cannot mint, list, or
 revoke tokens — managing the credential stays a human, session-authenticated
-action. Creation is further restricted to platform admins
-(`is_public_library_admin`), since the token lets its holder act as whichever
-user it is bound to against the crop-taxonomy moderation endpoints.
+action. Creation is further restricted to superusers only — deliberately
+stricter than `crops.permissions.is_public_library_admin` (which also admits
+plain `is_staff`), because this token authenticates as whichever user it is
+bound to against the crop-taxonomy moderation endpoints: a platform-wide
+credential, not a per-library-moderation one.
 """
 
 from __future__ import annotations
@@ -17,7 +19,6 @@ from rest_framework.response import Response
 
 from config.responses import api_error_response
 from crops.models import CropLibraryApiToken
-from crops.permissions import is_public_library_admin
 
 from .serializers import CropLibraryApiTokenCreateSerializer, CropLibraryApiTokenSerializer
 
@@ -40,14 +41,14 @@ class CropLibraryApiTokenViewSet(viewsets.ViewSet):
     def create(self, request):
         """Create a token bound to the caller and return its plaintext value once.
 
-        Restricted to platform admins: the token authenticates as whichever
-        user it is bound to, so only admins may mint one, and only for
+        Restricted to superusers: the token authenticates as whichever user
+        it is bound to, so only a superuser may mint one, and only for
         themselves — there is no "bind to another user" option.
         """
-        if not is_public_library_admin(request.user):
+        if not request.user.is_superuser:
             return api_error_response(
-                code='admin_required',
-                detail='Platform admin privileges are required to create a crop library API token.',
+                code='superuser_required',
+                detail='Superuser privileges are required to create a crop library API token.',
                 status_code=status.HTTP_403_FORBIDDEN,
             )
         serializer = CropLibraryApiTokenCreateSerializer(data=request.data)
