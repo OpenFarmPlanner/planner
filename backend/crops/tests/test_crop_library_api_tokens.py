@@ -26,7 +26,7 @@ class CropLibraryApiTokenTestBase(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
             username='library-admin', email='admin@example.com', password='pw',
-            is_active=True, is_staff=True,
+            is_active=True, is_staff=True, is_superuser=True,
         )
         self.moderator = User.objects.create_user(
             username='library-moderator', email='moderator@example.com', password='pw',
@@ -214,12 +214,26 @@ class CropLibraryApiTokenSurfaceTests(CropLibraryApiTokenTestBase):
 
 
 class CropLibraryApiTokenSelfServiceTests(CropLibraryApiTokenTestBase):
-    """Token management itself stays session-only and admin-gated."""
+    """Token management itself stays session-only and superuser-gated."""
 
-    def test_creation_requires_platform_admin(self):
+    def test_creation_requires_superuser(self):
         self.client.force_authenticate(user=self.moderator)
         response = self.client.post(TOKEN_URL, {'name': 'Moderator token'})
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(CropLibraryApiToken.objects.exists())
+
+    def test_creation_rejects_staff_without_superuser(self):
+        """Deliberately stricter than `is_public_library_moderator`'s is_staff-or-superuser: this
+        credential is platform-wide, not scoped to library moderation, so plain staff isn't enough.
+        """
+        staff_only = User.objects.create_user(
+            username='staff-only', email='staff-only@example.com', password='pw',
+            is_active=True, is_staff=True, is_superuser=False,
+        )
+        self.client.force_authenticate(user=staff_only)
+        response = self.client.post(TOKEN_URL, {'name': 'Staff token'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'superuser_required')
         self.assertFalse(CropLibraryApiToken.objects.exists())
 
     def test_admin_can_create_a_token_bound_to_themselves(self):

@@ -1115,6 +1115,41 @@ export interface ApiTokenCreatePayload {
 }
 
 /**
+ * Scope for the platform-scoped crop library token — see
+ * docs/crop-library-api-tokens.md. Narrower than `ApiTokenScope`: no
+ * `delete`, since species deletion stays UI/session-only.
+ */
+export type CropLibraryTokenScope = 'read' | 'write';
+
+/**
+ * A platform-scoped crop-species API token, bound to its creating superuser
+ * only (never a project). Superuser-only to create — see
+ * docs/crop-library-api-tokens.md.
+ */
+export interface CropLibraryToken {
+  id: number;
+  name: string;
+  scope: CropLibraryTokenScope;
+  token_prefix: string;
+  status: ApiTokenStatus;
+  created_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+/** Creation response — the only place the plaintext token is ever available. */
+export interface CropLibraryTokenCreated extends CropLibraryToken {
+  token: string;
+}
+
+export interface CropLibraryTokenCreatePayload {
+  name: string;
+  scope: CropLibraryTokenScope;
+  expires_at?: string | null;
+}
+
+/**
  * One in-app notification. The backend keeps `message` in English for
  * admin/API consumers; the UI renders `notification_type` + `context` through
  * i18n instead, so the same row reads in whatever language the user picked.

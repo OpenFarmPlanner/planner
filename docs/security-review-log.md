@@ -38,6 +38,14 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #742 (crop library token UI)
+
+**Scope:** `git diff origin/main...HEAD` (superuser-only token creation, account-settings token card, API client).
+
+**Findings:** No issues. Creation is tightened from admin/staff to `is_superuser` (backend-enforced, regression test for staff-only). The token remains session-only and bound to `request.user`. The frontend shows the plaintext only from the create response, with no browser storage, logging, or unsafe HTML APIs; the external link uses `rel="noopener noreferrer"`.
+
+---
+
 ## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 67420367)
 
 **Scope:** `git diff origin/main...HEAD` including the rename commit
