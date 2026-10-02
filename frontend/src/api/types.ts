@@ -689,6 +689,14 @@ export interface PublicLibraryModeratorRequestMine {
   request: PublicLibraryModeratorRequest | null;
 }
 
+/** Why `PublishPublicCropPreview.can_publish` is false; one entry per blocker. */
+export type PublishBlockingReason =
+  | 'missing_crop_species'
+  | 'crop_species_unavailable'
+  | 'missing_original_language'
+  | 'missing_required_fields'
+  | 'duplicates';
+
 export interface PublishPublicCropPreview {
   crop_species: Pick<CropSpecies, 'id' | 'name'> | null;
   original_language_code: string;
@@ -696,6 +704,8 @@ export interface PublishPublicCropPreview {
   missing_required_fields: Array<{ field: string; label_key: string }>;
   duplicates: PublicCropDuplicateCandidate[];
   can_publish: boolean;
+  /** Empty exactly when `can_publish` is true. */
+  blocking_reasons: PublishBlockingReason[];
   general_crop_notice: GeneralCropNotice | null;
 }
 

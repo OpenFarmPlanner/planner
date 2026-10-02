@@ -38,6 +38,19 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #741
+
+**Scope:** `git diff origin/main...HEAD` (publish blocking reasons in
+`services/public_crops.py`, the publishing-check view, republish dialog,
+error envelope handling in `frontend/src/api/errors.ts`).
+
+**Findings:** No issues. `blocking_reasons` are static machine-readable
+codes derived from data the caller could already see; the publish gate is
+logically equivalent to the previous check, and no new endpoints, queryset
+scoping, unsafe React APIs or personal-data logging were introduced.
+
+---
+
 ## 2026-10-02 — Claude — Automated security review of PR #742 (crop library token UI)
 
 **Scope:** `git diff origin/main...HEAD` (superuser-only token creation, account-settings token card, API client).

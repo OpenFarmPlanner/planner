@@ -72,7 +72,7 @@ Rules that cut across cells:
   push and pull state. `public-sync` (GET/POST) and `publish-public` answer 409
   `public_crop_link_unavailable` with `reason`. Unlink is always allowed here,
   including for the user's own entry.
-- **Republish**: the contributor's own withdrawn entry gets a "Wieder veröffentlichen" button (one confirmation, `publish-public`); foreign withdrawn and removed entries never do.
+- **Republish**: the contributor's own withdrawn entry gets a "Wieder veröffentlichen" button (one confirmation, `publish-public`; the confirmation requires "Offizielle Kulturart" when the crop's species is missing or rejected); foreign withdrawn and removed entries never do.
 - **Restore** puts a still-linked crop back to its normal state (values are
   untouched); a crop unlinked meanwhile stays unlinked.
 - **Rejected proposal**: when a moderated edit proposal is rejected the

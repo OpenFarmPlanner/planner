@@ -11,6 +11,7 @@ import { dedupePublicCrops } from './publicCropUtils';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 import { publishSelectedVarieties, type PublishVarietySelection } from '../crops/publishVarieties';
+import { describePublishChecksFailure, extractPublishChecks } from '../crops/publishChecks';
 
 interface UsePublicCropLibraryConfig {
   shouldShowProjectRequiredState: boolean;
@@ -378,6 +379,11 @@ export function usePublicCropLibrary({
         } else {
           showSnackbar(t('library.publishDuplicateError'), 'info');
         }
+        return false;
+      }
+      const publishChecks = extractPublishChecks(error);
+      if (publishChecks) {
+        showSnackbar(describePublishChecksFailure(publishChecks, t), 'error');
         return false;
       }
       console.error('Error publishing crop:', error);
