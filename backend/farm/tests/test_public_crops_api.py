@@ -202,9 +202,79 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['can_publish'])
+        self.assertEqual(response.data['blocking_reasons'], [])
         self.assertEqual(response.data['crop_species']['name'], 'Lettuce')
         self.assertEqual(response.data['original_language_code'], 'en')
         self.assertEqual(response.data['missing_required_fields'], [])
+
+    def test_publish_preview_names_a_missing_crop_species_and_language(self):
+        self.crop.crop_species = None
+        self.crop.save()
+
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.crop.id}/publish-public/preview/',
+            {'original_language_code': 'xx'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['can_publish'])
+        self.assertEqual(
+            response.data['blocking_reasons'],
+            ['missing_crop_species', 'missing_original_language'],
+        )
+
+    def test_publish_preview_names_duplicates_as_blocking_reason(self):
+        other_crop = Crop.objects.create(
+            name='Lettuce', variety='Bijella', crop_species=self.species, project=self.project,
+        )
+        PublicCrop.objects.create(
+            name='Lettuce',
+            variety='Bijella',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.user,
+            source_project=self.project,
+            source_project_crop=other_crop,
+        )
+
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.crop.id}/publish-public/preview/',
+            {'crop_species_id': self.species.id, 'original_language_code': 'en'},
+        )
+
+        self.assertFalse(response.data['can_publish'])
+        self.assertEqual(response.data['blocking_reasons'], ['duplicates'])
+
+    def test_republish_withdrawn_entry_whose_species_was_rejected_names_the_reason(self):
+        """Regression: the 400 used to say can_publish=false with every check empty.
+
+        Rejecting a species withdraws its entries and leaves the crop's FK on the
+        rejected row, so a republish without an explicit species resolved none.
+        """
+        public_crop = PublicCrop.objects.create(
+            name='Lettuce',
+            variety='Bijella',
+            status=PublicCrop.STATUS_WITHDRAWN,
+            crop_species=self.species,
+            original_language_code='en',
+            created_by=self.user,
+            source_project=self.project,
+            source_project_crop=self.crop,
+        )
+        Crop.objects.filter(pk=self.crop.pk).update(source_public_crop=public_crop)
+        CropSpecies.objects.filter(pk=self.species.pk).update(status=CropSpecies.STATUS_REJECTED)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.crop.id}/publish-public/',
+            {'accepted_public_library_terms': True, 'original_language_code': 'en'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'public_crop_publishing_checks_failed')
+        self.assertFalse(response.data['checks']['can_publish'])
+        self.assertIsNone(response.data['checks']['crop_species'])
+        self.assertEqual(response.data['checks']['blocking_reasons'], ['crop_species_unavailable'])
 
     def test_publish_allows_a_freshly_proposed_crop_species(self):
         proposed_species = CropSpecies.objects.create(
@@ -260,6 +330,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'public_crop_publishing_checks_failed')
+        self.assertEqual(response.data['checks']['blocking_reasons'], ['crop_species_unavailable'])
         self.assertEqual(PublicCrop.objects.count(), 0)
 
     def test_publish_preview_blocks_missing_required_public_fields(self):
@@ -273,6 +344,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['can_publish'])
+        self.assertEqual(response.data['blocking_reasons'], ['missing_required_fields'])
         self.assertEqual(response.data['missing_required_fields'][0]['field'], 'variety')
 
     def test_publish_as_general_crop_allows_empty_public_variety(self):
