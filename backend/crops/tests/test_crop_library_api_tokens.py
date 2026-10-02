@@ -13,7 +13,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from crops.models import CROP_LIBRARY_API_TOKEN_PREFIX, CropLibraryApiToken, CropSpecies
+from crops.models import CROP_LIBRARY_TOKEN_PREFIX, CropLibraryApiToken, CropSpecies
 from crops.permissions import grant_public_library_moderator_access
 
 User = get_user_model()
@@ -55,13 +55,13 @@ class CropLibraryApiTokenStorageTests(CropLibraryApiTokenTestBase):
     def test_token_is_stored_only_as_hash(self):
         token, raw_token = self.issue_token()
 
-        self.assertTrue(raw_token.startswith(CROP_LIBRARY_API_TOKEN_PREFIX))
+        self.assertTrue(raw_token.startswith(CROP_LIBRARY_TOKEN_PREFIX))
         self.assertNotEqual(token.token_hash, raw_token)
         self.assertEqual(token.token_hash, CropLibraryApiToken.hash_token(raw_token))
 
         stored = CropLibraryApiToken.objects.filter(pk=token.pk).values().first()
         self.assertNotIn(raw_token, str(stored))
-        secret_part = raw_token[len(CROP_LIBRARY_API_TOKEN_PREFIX):]
+        secret_part = raw_token[len(CROP_LIBRARY_TOKEN_PREFIX):]
         self.assertNotIn(secret_part, str(stored))
 
     def test_scope_is_restricted_to_read_and_write(self):
@@ -96,7 +96,7 @@ class CropLibraryApiTokenAuthenticationTests(CropLibraryApiTokenTestBase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_garbage_token_is_rejected(self):
-        client = self.bearer_client(f'{CROP_LIBRARY_API_TOKEN_PREFIX}not-a-real-token')
+        client = self.bearer_client(f'{CROP_LIBRARY_TOKEN_PREFIX}not-a-real-token')
         response = client.get(CROP_SPECIES_URL)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -227,7 +227,7 @@ class CropLibraryApiTokenSelfServiceTests(CropLibraryApiTokenTestBase):
         response = self.client.post(TOKEN_URL, {'name': 'Sync token', 'scope': 'write'})
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data['token'].startswith(CROP_LIBRARY_API_TOKEN_PREFIX))
+        self.assertTrue(response.data['token'].startswith(CROP_LIBRARY_TOKEN_PREFIX))
         token = CropLibraryApiToken.objects.get(pk=response.data['id'])
         self.assertEqual(token.user, self.admin)
 

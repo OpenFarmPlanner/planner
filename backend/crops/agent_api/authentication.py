@@ -15,7 +15,7 @@ from __future__ import annotations
 from django.utils.translation import gettext_lazy as _
 from rest_framework import authentication, exceptions
 
-from crops.models import CROP_LIBRARY_API_TOKEN_PREFIX, CropLibraryApiToken
+from crops.models import CROP_LIBRARY_TOKEN_PREFIX, CropLibraryApiToken
 
 AUTH_HEADER_KEYWORD = 'bearer'
 
@@ -33,7 +33,7 @@ def header_carries_crop_library_token(raw_header: str) -> bool:
     parts = (raw_header or '').split()
     if not parts or parts[0].lower() != AUTH_HEADER_KEYWORD:
         return False
-    return any(part.startswith(CROP_LIBRARY_API_TOKEN_PREFIX) for part in parts[1:])
+    return any(part.startswith(CROP_LIBRARY_TOKEN_PREFIX) for part in parts[1:])
 
 
 class CropLibraryApiTokenAuthentication(authentication.BaseAuthentication):
@@ -93,6 +93,6 @@ class CropLibraryApiTokenAuthentication(authentication.BaseAuthentication):
         # A bearer credential without our prefix belongs to some other
         # scheme (or `ProjectApiToken`) — return None rather than failing so
         # the remaining authenticators get a turn.
-        if not raw_token.startswith(CROP_LIBRARY_API_TOKEN_PREFIX):
+        if not raw_token.startswith(CROP_LIBRARY_TOKEN_PREFIX):
             return None
         return raw_token

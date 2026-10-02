@@ -337,14 +337,14 @@ class PublicLibraryModeratorRequest(models.Model):
 # `farm.models.agent_api.API_TOKEN_PREFIX` (`ofp_pat_`) so the two credential
 # types are never confused at a glance, in logs, or by the detection helpers
 # that key off a literal prefix — see `crops.agent_api.authentication`.
-CROP_LIBRARY_API_TOKEN_PREFIX = 'ofp_clt_'
+CROP_LIBRARY_TOKEN_PREFIX = 'ofp_clt_'
 
 # Same reasoning as `ProjectApiToken.API_TOKEN_ENTROPY_BYTES`: the input is
 # uniformly random `secrets.token_urlsafe` output, so a plain SHA-256 digest
 # needs no salt or stretching to be safe against brute force.
-CROP_LIBRARY_API_TOKEN_ENTROPY_BYTES = 32
+CROP_LIBRARY_TOKEN_ENTROPY_BYTES = 32
 
-CROP_LIBRARY_API_TOKEN_DISPLAY_PREFIX_LENGTH = 8
+CROP_LIBRARY_TOKEN_DISPLAY_PREFIX_LENGTH = 8
 
 
 class CropLibraryApiToken(models.Model):
@@ -407,14 +407,13 @@ class CropLibraryApiToken(models.Model):
         low-entropy candidate space to enumerate and no benefit from
         stretching — a plain, unsalted digest is the right tool here.
         """
-        digest = hashlib.sha256(raw_token.encode('utf-8'))  # lgtm[py/weak-sensitive-data-hashing]
-        return digest.hexdigest()
+        return hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
 
     @classmethod
     def generate_raw_token(cls) -> str:
         """Return a fresh, prefixed, high-entropy plaintext token."""
-        random_part = secrets.token_urlsafe(CROP_LIBRARY_API_TOKEN_ENTROPY_BYTES)
-        return f'{CROP_LIBRARY_API_TOKEN_PREFIX}{random_part}'
+        random_part = secrets.token_urlsafe(CROP_LIBRARY_TOKEN_ENTROPY_BYTES)
+        return f'{CROP_LIBRARY_TOKEN_PREFIX}{random_part}'
 
     @classmethod
     def create_token(
@@ -438,13 +437,13 @@ class CropLibraryApiToken(models.Model):
             raise ValueError(f'Unsupported crop library API token scope: {scope!r}')
 
         raw_token = cls.generate_raw_token()
-        random_part = raw_token[len(CROP_LIBRARY_API_TOKEN_PREFIX):]
+        random_part = raw_token[len(CROP_LIBRARY_TOKEN_PREFIX):]
         token = cls.objects.create(
             user=user,
             name=name,
             scope=scope,
             token_hash=cls.hash_token(raw_token),
-            token_prefix=random_part[:CROP_LIBRARY_API_TOKEN_DISPLAY_PREFIX_LENGTH],
+            token_prefix=random_part[:CROP_LIBRARY_TOKEN_DISPLAY_PREFIX_LENGTH],
             expires_at=expires_at,
         )
         return token, raw_token
