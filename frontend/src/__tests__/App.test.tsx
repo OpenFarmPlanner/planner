@@ -1160,7 +1160,9 @@ describe('App', () => {
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
     await screen.findByText('Anbauflächen');
-    expect(window.location.pathname).toBe('/app/dashboard');
+    // The redirect is part of the routed page, which RootLayout only mounts
+    // once the project's season load has settled.
+    await waitFor(() => expect(window.location.pathname).toBe('/app/dashboard'));
   });
 
   it('redirects unknown top-level routes to home', async () => {

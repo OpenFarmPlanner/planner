@@ -219,6 +219,69 @@ describe('useActiveSeason — active season resolution', () => {
   });
 });
 
+describe('useActiveSeason — holding pages back until the season is known', () => {
+  it('stores the season id before it stops resolving, so no page fetches without X-Season-Id', async () => {
+    // RootLayout mounts the page in the same commit the flag turns false; the
+    // page's effects run before any effect of this hook, so the id must already
+    // be in storage by then.
+    const storedWhileSettled: (string | null)[] = [];
+    const { result } = renderHook(() => {
+      const state = useActiveSeason();
+      if (!state.isResolvingActiveSeason) {
+        storedWhileSettled.push(window.localStorage.getItem('activeSeasonId:1'));
+      }
+      return state;
+    });
+
+    expect(result.current.isResolvingActiveSeason).toBe(true);
+    await waitFor(() => expect(result.current.isResolvingActiveSeason).toBe(false));
+    expect(storedWhileSettled.length).toBeGreaterThan(0);
+    expect(storedWhileSettled.every((value) => value === '3')).toBe(true);
+  });
+
+  it('does not hold the page back when a season id is already stored', () => {
+    window.localStorage.setItem('activeSeasonId:1', '2');
+    const { result } = renderHook(() => useActiveSeason());
+
+    expect(result.current.isResolvingActiveSeason).toBe(false);
+  });
+
+  it('stops resolving when the project has no seasons, so the no-season state can show', async () => {
+    listMock.mockResolvedValue({ data: { results: [] } });
+    const { result } = renderHook(() => useActiveSeason());
+
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.isResolvingActiveSeason).toBe(false);
+  });
+
+  it('stops resolving after a failed load rather than leaving the page blank', async () => {
+    listMock.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useActiveSeason());
+
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.isResolvingActiveSeason).toBe(false);
+  });
+
+  it('keeps the mounted page through an in-place project switch, which reloads the app anyway', async () => {
+    window.localStorage.setItem('activeSeasonId:1', '3');
+    const { result, rerender } = renderHook(() => useActiveSeason());
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    activeProjectIdRef.current = 2;
+    rerender();
+
+    expect(window.localStorage.getItem('activeSeasonId:2')).toBeNull();
+    expect(result.current.isResolvingActiveSeason).toBe(false);
+  });
+
+  it('never resolves without an active project', () => {
+    activeProjectIdRef.current = null;
+    const { result } = renderHook(() => useActiveSeason());
+
+    expect(result.current.isResolvingActiveSeason).toBe(false);
+  });
+});
+
 describe('useActiveSeason — mutations', () => {
   it('switching a season stores the id and reloads rather than re-fetching in place', async () => {
     // Every planting-plan-backed page holds season-scoped state, so the switch
