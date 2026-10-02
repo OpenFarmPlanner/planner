@@ -11,7 +11,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useTranslation } from '../i18n';
-import { formatCropDisplayName } from '../crops/cropDisplay';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
@@ -47,6 +46,7 @@ import { CropsImportStartDialog } from './CropsImportStartDialog';
 import { CropsExportDialog } from './CropsExportDialog';
 import { CropsPublishingWizardDialog } from './CropsPublishingWizardDialog';
 import { UnlinkPublicCropDialog } from '../crops/UnlinkPublicCropDialog';
+import { RepublishPublicCropDialog } from '../crops/RepublishPublicCropDialog';
 import { CropsHistoryDialog } from './CropsHistoryDialog';
 import { AlertSnackbar } from '../components/feedback/AlertSnackbar';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
@@ -365,21 +365,29 @@ function Crops() {
     }
   }, [selectedCrop?.can_republish_public_crop]);
 
-  const handleConfirmRepublish = useCallback(() => {
+  // Keep the entry's own original language rather than guessing from the
+  // current UI language, which could retag e.g. an entry published in `en`
+  // while the contributor is now browsing in `de`.
+  const republishLanguageCode = normalizeLanguageTag(selectedCrop?.source_public_crop_original_language)
+    ?? normalizeLanguageTag(i18n.language)
+    ?? FALLBACK_LANGUAGE;
+  const republishAsGeneral = !(selectedCrop?.variety ?? '').trim();
+
+  const handleConfirmRepublish = useCallback(({ cropSpeciesId }: { cropSpeciesId?: number }) => {
     setRepublishOpen(false);
     if (!selectedCrop) return;
-    // Keep the entry's own original language rather than guessing from the
-    // current UI language, which could retag e.g. an entry published in `en`
-    // while the contributor is now browsing in `de`.
-    const originalLanguageCode = normalizeLanguageTag(selectedCrop.source_public_crop_original_language)
-      ?? normalizeLanguageTag(i18n.language)
-      ?? FALLBACK_LANGUAGE;
     void handlePublishCurrentCrop(Boolean(user?.public_library_terms_accepted), {
-      cropSpeciesId: selectedCrop.crop_species ?? undefined,
-      originalLanguageCode,
-      publishAsGeneral: !(selectedCrop.variety ?? '').trim(),
+      cropSpeciesId: cropSpeciesId ?? selectedCrop.crop_species ?? undefined,
+      originalLanguageCode: republishLanguageCode,
+      publishAsGeneral: republishAsGeneral,
     });
-  }, [handlePublishCurrentCrop, i18n.language, selectedCrop, user?.public_library_terms_accepted]);
+  }, [
+    handlePublishCurrentCrop,
+    republishAsGeneral,
+    republishLanguageCode,
+    selectedCrop,
+    user?.public_library_terms_accepted,
+  ]);
 
   const handlePublishingWizardPublish = useCallback((data: {
     acceptedPublicLibraryTerms: boolean;
@@ -898,17 +906,13 @@ function Crops() {
         onConfirm={() => void handleConfirmUnlink()}
       />
 
-      <ConfirmationDialog
+      <RepublishPublicCropDialog
         open={republishOpen}
-        title={t('library.republish.title')}
-        message={t('library.republish.message', { name: selectedCrop ? formatCropDisplayName(selectedCrop) : '' })}
-        cancelLabel={t('common:actions.cancel')}
-        confirmLabel={t('library.republish.confirm')}
+        crop={selectedCrop ?? undefined}
+        originalLanguageCode={republishLanguageCode}
+        publishAsGeneral={republishAsGeneral}
         onCancel={() => setRepublishOpen(false)}
         onConfirm={handleConfirmRepublish}
-        actionsSx={{ px: 3, pb: 2.5, pt: 1 }}
-        cancelButtonProps={{ variant: 'outlined' }}
-        confirmButtonProps={{ variant: 'contained', color: 'primary' }}
       />
 
       <CropsPublishingWizardDialog

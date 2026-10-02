@@ -123,6 +123,18 @@ class MissingRequiredField:
     label_key: str
 
 
+# Machine-readable reasons why `PublishingCheckResult.can_publish` is false.
+# Every path that blocks publishing must add one of these, so a client never
+# receives `can_publish: false` without being told why.
+PUBLISH_BLOCKER_MISSING_CROP_SPECIES = 'missing_crop_species'
+# A species was requested or is linked, but it is not a usable publish target
+# (rejected by moderation, or the requested ID does not exist).
+PUBLISH_BLOCKER_CROP_SPECIES_UNAVAILABLE = 'crop_species_unavailable'
+PUBLISH_BLOCKER_MISSING_ORIGINAL_LANGUAGE = 'missing_original_language'
+PUBLISH_BLOCKER_MISSING_REQUIRED_FIELDS = 'missing_required_fields'
+PUBLISH_BLOCKER_DUPLICATES = 'duplicates'
+
+
 @dataclass(frozen=True)
 class PublishingCheckResult:
     crop_species: CropSpecies | None
@@ -130,8 +142,12 @@ class PublishingCheckResult:
     available_language_codes: list[str]
     missing_required_fields: list[MissingRequiredField]
     duplicates: list[DuplicateCandidate]
-    can_publish: bool
+    blocking_reasons: list[str]
     general_crop_notice: GeneralCropNotice | None = None
+
+    @property
+    def can_publish(self) -> bool:
+        return not self.blocking_reasons
 
 
 @dataclass(frozen=True)
@@ -1432,7 +1448,14 @@ def build_publishing_check_result(
     if update_target:
         duplicates = [item for item in duplicates if item.id != update_target.id]
     missing_required_fields = get_public_required_field_gaps(crop, require_variety=not publish_as_general)
-    can_publish = bool(crop_species and language_code and not missing_required_fields and not duplicates)
+    blocking_reasons = _publishing_blocking_reasons(
+        crop=crop,
+        crop_species_id=crop_species_id,
+        crop_species=crop_species,
+        language_code=language_code,
+        missing_required_fields=missing_required_fields,
+        duplicates=duplicates,
+    )
     general_crop_notice = (
         build_general_crop_notice(crop_species) if crop_species and not publish_as_general else None
     )
@@ -1442,9 +1465,39 @@ def build_publishing_check_result(
         available_language_codes=available_language_codes,
         missing_required_fields=missing_required_fields,
         duplicates=duplicates,
-        can_publish=can_publish,
+        blocking_reasons=blocking_reasons,
         general_crop_notice=general_crop_notice,
     )
+
+
+def _publishing_blocking_reasons(
+    *,
+    crop: Crop,
+    crop_species_id: int | None,
+    crop_species: CropSpecies | None,
+    language_code: str,
+    missing_required_fields: list[MissingRequiredField],
+    duplicates: list[DuplicateCandidate],
+) -> list[str]:
+    """Every reason the publish is blocked, in the order the UI should name them.
+
+    Duplicates are only detected once a species is known, so a missing species
+    never hides behind an empty duplicate list: it is always reported itself.
+    """
+    reasons: list[str] = []
+    if crop_species is None:
+        requested_or_linked = crop_species_id or crop.crop_species_id
+        reasons.append(
+            PUBLISH_BLOCKER_CROP_SPECIES_UNAVAILABLE if requested_or_linked
+            else PUBLISH_BLOCKER_MISSING_CROP_SPECIES,
+        )
+    if not language_code:
+        reasons.append(PUBLISH_BLOCKER_MISSING_ORIGINAL_LANGUAGE)
+    if missing_required_fields:
+        reasons.append(PUBLISH_BLOCKER_MISSING_REQUIRED_FIELDS)
+    if duplicates:
+        reasons.append(PUBLISH_BLOCKER_DUPLICATES)
+    return reasons
 
 
 GENERAL_CROP_STALE_THRESHOLD_DAYS = 730  # ~24 months
@@ -2250,7 +2303,9 @@ def publish_crop_to_public_library(
         user=user,
         publish_as_general=publish_as_general,
     )
-    if not check_result.crop_species or not check_result.original_language_code or check_result.missing_required_fields:
+    # Duplicates are reported separately (DuplicatePublicCropError, or an
+    # update of the caller's own entry), so only the other blockers fail here.
+    if any(reason != PUBLISH_BLOCKER_DUPLICATES for reason in check_result.blocking_reasons):
         raise PublicCropPublishingValidationError(check_result=check_result)
 
     public_variety = _resolve_public_variety(publish_as_general)

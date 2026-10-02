@@ -1002,6 +1002,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             ],
             'duplicates': self._serialize_duplicates(result.duplicates),
             'can_publish': result.can_publish,
+            'blocking_reasons': result.blocking_reasons,
             'general_crop_notice': (
                 {
                     'public_crop_id': result.general_crop_notice.public_crop_id,

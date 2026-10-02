@@ -1180,6 +1180,11 @@
         "variety": "Sorte",
         "growth_duration_days": "Kulturdauer",
         "harvest_duration_days": "Erntedauer"
+      },
+      "blockingReasons": {
+        "missingCropSpecies": "Bitte wähle eine offizielle Kulturart aus.",
+        "cropSpeciesUnavailable": "Die zugeordnete Kulturart ist in der Kulturbibliothek nicht mehr verfügbar. Bitte wähle eine offizielle Kulturart aus.",
+        "missingOriginalLanguage": "Bitte wähle die Originalsprache aus."
       }
     },
     "filters": {
@@ -1322,7 +1327,9 @@
     "republish": {
       "title": "Wieder veröffentlichen?",
       "message": "„{{name}}“ wird mit den aktuellen Werten dieser Kultur wieder in der Kulturbibliothek veröffentlicht.",
-      "confirm": "Wieder veröffentlichen"
+      "confirm": "Wieder veröffentlichen",
+      "speciesRequired": "Dieser Kultur ist keine offizielle Kulturart zugeordnet, die veröffentlicht werden kann. Bitte wähle eine aus.",
+      "checkError": "Die Veröffentlichung konnte nicht geprüft werden. Bitte versuche es erneut."
     }
   },
   "commands": {

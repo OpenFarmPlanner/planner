@@ -35,18 +35,29 @@ const FALLBACK_LABEL_FIELDS = [
   'non_field_errors',
 ] as const;
 
+/**
+ * The translation of `key`, or undefined when it is missing or names a
+ * section rather than a string.
+ *
+ * Backend field names are looked up as bare keys, and one like `detail` can
+ * collide with a whole section of the caller's namespace. `returnObjects`
+ * makes i18next hand back that section instead of its "returned an object
+ * instead of string" warning text, so the collision is recognised and skipped.
+ */
+function translateLabel(t: TFunction, key: string): string | undefined {
+  const translated: unknown = t(key, { returnObjects: true });
+  return typeof translated === 'string' && translated && translated !== key ? translated : undefined;
+}
+
 function fieldLabelFallback(t: TFunction, field: string): string | undefined {
   if (!(FALLBACK_LABEL_FIELDS as readonly string[]).includes(field)) {
     return undefined;
   }
-  const key = `common:errorFieldLabels.${field}`;
-  const translated = t(key);
-  return translated === key ? undefined : translated;
+  return translateLabel(t, `common:errorFieldLabels.${field}`);
 }
 
 function translatedOrFallback(t: TFunction, key: string, fallback: string): string {
-  const translated = t(key);
-  return translated === key ? fallback : translated;
+  return translateLabel(t, key) ?? fallback;
 }
 
 
@@ -121,6 +132,33 @@ function formatServiceError(detail: string, t: TFunction, fallbackMessage: strin
 }
 
 /**
+ * The `{code, detail, ...context}` envelope of `api_error_response`, or DRF's
+ * own `{detail}`. Neither is a per-field validation error: its keys are not
+ * form fields, and `detail` is English developer text, not UI copy.
+ */
+function isErrorEnvelope(data: object): data is { code?: unknown; detail?: unknown } {
+  return (
+    ('code' in data && typeof data.code === 'string')
+    || (Object.keys(data).length === 1 && 'detail' in data && typeof data.detail === 'string')
+  );
+}
+
+function localizeErrorEnvelope(
+  data: { code?: unknown; detail?: unknown },
+  t: TFunction,
+  fallbackMessage: string,
+): string {
+  for (const candidate of [data.code, data.detail]) {
+    if (typeof candidate !== 'string') continue;
+    const key = backendMessageMap[candidate.trim().toLowerCase()];
+    if (key) {
+      return translatedOrFallback(t, key, fallbackMessage);
+    }
+  }
+  return fallbackMessage;
+}
+
+/**
  * Extract user-friendly error message from Axios error response.
  *
  * Handles Django REST Framework validation errors (400 status) and converts
@@ -180,23 +218,20 @@ export function extractApiErrorMessage(
 
     // Check if it's a 400 validation error
     if (status === 400) {
+      if (data && typeof data === 'object' && isErrorEnvelope(data)) {
+        return localizeErrorEnvelope(data, t, fallbackMessage);
+      }
       // If data is an object with error fields
       if (data && typeof data === 'object') {
         const errors: string[] = [];
 
         // Extract field names dynamically from i18n
         Object.entries(data).forEach(([field, value]) => {
-          // Try different i18n keys, fallback to field name
-          let fieldName = t(`fields.${field}`);
-          if (fieldName === `fields.${field}`) {
-            fieldName = t(`columns.${field}`);
-          }
-          if (fieldName === `columns.${field}`) {
-            fieldName = t(field);
-          }
-          if (!fieldName || fieldName === field) {
-            fieldName = fieldLabelFallback(t, field) ?? field;
-          }
+          const fieldName = translateLabel(t, `fields.${field}`)
+            ?? translateLabel(t, `columns.${field}`)
+            ?? translateLabel(t, field)
+            ?? fieldLabelFallback(t, field)
+            ?? field;
           if (Array.isArray(value)) {
             value.forEach((msg: unknown) => {
               if (typeof msg === 'string') {

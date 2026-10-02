@@ -177,6 +177,56 @@ describe('extractApiErrorMessage', () => {
 
 
 
+  it('never renders the api_error_response envelope as field errors', () => {
+    // Regression: `detail` was looked up as a bare key and resolved to a
+    // namespace section, so i18next's "key 'detail (de)' returned an object
+    // instead of string" warning text reached the snackbar.
+    const t = (key: string, options?: Record<string, unknown>) => {
+      if (key === 'detail' || key === 'code' || key === 'checks') {
+        return (options?.returnObjects ? { title: 'Details' } : `key '${key} (de)' returned an object instead of string.`) as string;
+      }
+      return key;
+    };
+    const error = createAxiosError(400, {
+      code: 'public_crop_publishing_checks_failed',
+      detail: 'Public crop publishing checks failed.',
+      checks: { can_publish: false, blocking_reasons: ['missing_crop_species'] },
+    });
+
+    const result = extractApiErrorMessage(error, t, fallbackMessage);
+
+    expect(result).toBe(fallbackMessage);
+  });
+
+  it('localizes a known code of the api_error_response envelope', () => {
+    const t = createT({
+      'errors.supplierDataDuplicate': 'Für diesen Lieferanten sind bereits Daten für diese Kultur vorhanden.',
+    });
+    const error = createAxiosError(400, {
+      code: 'supplier_data_duplicate',
+      detail: 'Supplier data for this crop already exists.',
+    });
+
+    expect(extractApiErrorMessage(error, t, fallbackMessage))
+      .toBe('Für diesen Lieferanten sind bereits Daten für diese Kultur vorhanden.');
+  });
+
+  it('does not show a bare DRF detail as a field error', () => {
+    const error = createAxiosError(400, { detail: 'JSON parse error - Expecting value' });
+
+    expect(extractApiErrorMessage(error, createT({}), fallbackMessage)).toBe(fallbackMessage);
+  });
+
+  it('skips a field label key that resolves to a translation section', () => {
+    const t = (key: string, options?: Record<string, unknown>) => {
+      if (key !== 'library') return key;
+      return (options?.returnObjects ? { title: 'Bibliothek' } : "key 'library (de)' returned an object instead of string.") as string;
+    };
+    const error = createAxiosError(400, { library: ['Ist ungültig'] });
+
+    expect(extractApiErrorMessage(error, t, fallbackMessage)).toBe('library: Ist ungültig');
+  });
+
   it('returns fallback when 400 object has no string or array messages', () => {
     const t = createT({});
     const error = createAxiosError(400, {

@@ -110,7 +110,7 @@ Branch on `code`, never on `detail`. Messages may be reworded; codes are stable
 | `execution_failed` | 400 | crop import apply | A row failed to save; the whole import was rolled back. |
 | `crop_name_required` | 400 | `publish-public` | The crop has no name. |
 | `public_library_terms_required` | 400 | `publish-public` | Send `accepted_public_library_terms: true` once. |
-| `public_crop_publishing_checks_failed` | 400 | `publish-public` | Data-quality checks failed; see `checks`. |
+| `public_crop_publishing_checks_failed` | 400 | `publish-public` | Data-quality checks failed; `checks.blocking_reasons` names every failed check (`missing_crop_species`, `crop_species_unavailable`, `missing_original_language`, `missing_required_fields`, `duplicates`). |
 | `duplicate_public_crop` | 409 | `publish-public` | A similar library entry exists; see `duplicates`. |
 | `public_crop_update_blocked` | 409 | `publish-public` | The library entry has a newer version this crop has not taken over. |
 | `public_crop_link_unavailable` | 409 | `publish-public` | The linked entry was withdrawn or removed; see `reason`. |
