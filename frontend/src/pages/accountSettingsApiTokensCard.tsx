@@ -311,7 +311,6 @@ export default function AccountSettingsApiTokensCard() {
     <SettingsCard title={t('apiTokens.title')} description={t('apiTokens.description')} collapsible defaultExpanded>
       <Stack spacing={2}>
         <Typography variant="body2" color="text.secondary">
-          {t('apiTokens.docsHint')}{' '}
           <Link href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
             {t('apiTokens.docsLink')}
           </Link>
