@@ -28,12 +28,28 @@ export interface PendingSeasonDeletion {
   restoreAsActive: boolean;
 }
 
+/**
+ * Points the stored id at the season that resolves as active (the stored one
+ * while it still exists, otherwise the newest), so the `X-Season-Id` header
+ * that httpClient reads from localStorage is in place before any page fetches
+ * planting plans. Written synchronously while loading rather than from an
+ * effect: the routed page's effects run before this hook's would.
+ */
+function persistResolvedActiveSeasonId(projectId: number, seasons: readonly Season[]): void {
+  const storedId = getStoredActiveSeasonId(projectId);
+  if (seasons.length > 0 && !seasons.some((season) => season.id === storedId)) {
+    setStoredActiveSeasonId(projectId, seasons[0].id);
+  }
+}
+
 export function useActiveSeason() {
   const { t } = useTranslation(['navigation', 'common']);
   const { activeProjectId } = useAuth();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  /** A season load for a project has settled (successfully or not). */
+  const [hasSettledProjectLoad, setHasSettledProjectLoad] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dueSuggestion, setDueSuggestion] = useState<SeasonDueSuggestion | null>(null);
   const [seasonCreationOptions, setSeasonCreationOptions] = useState<SeasonCreationOptions | null>(null);
@@ -54,17 +70,15 @@ export function useActiveSeason() {
     return stored ?? seasons[0];
   }, [seasons, activeSeasonId]);
 
-  // Keep the persisted id pointing at whatever season is actually active, so
-  // the `X-Season-Id` request header (read straight from localStorage in
-  // httpClient) never goes missing while the project has seasons — otherwise
-  // planting-plan endpoints silently fall back to returning every season's
-  // data. Covers a stored id that was cleared (active season deleted) or has
-  // gone stale.
-  useEffect(() => {
-    if (activeProjectId && activeSeason && activeSeason.id !== activeSeasonId) {
-      setStoredActiveSeasonId(activeProjectId, activeSeason.id);
-    }
-  }, [activeProjectId, activeSeason, activeSeasonId]);
+  // Until the first season load settles, a missing stored id means no
+  // `X-Season-Id` header yet, so a planting-plan request now would return every
+  // season's data. RootLayout holds the routed page back while this is true.
+  // Only the first load counts: an in-place project switch is followed by a
+  // full reload anyway, and unmounting the page before it would drop the
+  // page's unsaved-changes guards.
+  const isResolvingActiveSeason = activeProjectId !== null
+    && activeSeasonId === null
+    && !hasSettledProjectLoad;
 
   const reload = useCallback(async () => {
     if (!activeProjectId) {
@@ -83,12 +97,15 @@ export function useActiveSeason() {
         seasonAPI.dueSuggestion(),
         seasonAPI.creationOptions(),
       ]);
-      setSeasons(seasonsResponse.data.results);
+      const loadedSeasons = seasonsResponse.data.results;
+      persistResolvedActiveSeasonId(activeProjectId, loadedSeasons);
+      setSeasons(loadedSeasons);
       setDueSuggestion(dueResponse.data);
       setSeasonCreationOptions(creationOptionsResponse.data);
     } catch (loadError) {
       setError(extractApiErrorMessage(loadError, t, t('navigation:seasonSwitcher.loadError')));
     } finally {
+      setHasSettledProjectLoad(true);
       setLoaded(true);
       setLoading(false);
     }
@@ -270,6 +287,7 @@ export function useActiveSeason() {
     activeSeason,
     loading,
     loaded,
+    isResolvingActiveSeason,
     error,
     dueSuggestion,
     seasonCreationOptions,

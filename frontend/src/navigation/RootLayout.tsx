@@ -1980,7 +1980,9 @@ function RootLayout() {
           minWidth: 0,
         }}
       >
-        <Outlet context={{
+        {/* A page mounted before the active season is known would load planting
+            plans without `X-Season-Id`, i.e. every season's, and keep them. */}
+        {activeSeason.isResolvingActiveSeason && !isProjectIndependentRoute(location.pathname) ? null : <Outlet context={{
           setTopbarContextActions,
           setTopbarTitleActions,
           activeSeasonYear,
@@ -1991,7 +1993,7 @@ function RootLayout() {
           requestSeasonCreation,
           reloadActiveSeason: () => { void activeSeason.reload(); },
           notifications,
-        } satisfies RootLayoutOutletContext} />
+        } satisfies RootLayoutOutletContext} />}
       </Box>
       </Box>
 

@@ -65,9 +65,10 @@ mounted page keeps showing the deleted season's (or, with the header now
 absent, *every* season's) planting plans. The pending deletion is stashed in
 `sessionStorage` (`pendingSeasonDeletionStorage`) so the undo snackbar
 survives that reload; undoing an active-season deletion restores the season
-and switches back to it. A `useEffect` also writes the resolved active-season
-id back to `localStorage` whenever it falls back (stored id missing or stale),
-so the `X-Season-Id` header is never dropped while the project has seasons.
+and switches back to it. Whenever the active season falls back (stored id
+missing or stale), `useActiveSeason.reload` writes the resolved id back to
+`localStorage` synchronously, as soon as the season list arrives, so the
+`X-Season-Id` header is never dropped while the project has seasons.
 
 ## Season-scoping of planting plans
 
@@ -143,6 +144,25 @@ description), one level down:
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project
 convenience that defaults to the newest season when unset or stale.
+
+Because the header comes from `localStorage`, a browser that has no stored id
+for the project yet (first visit, new device, cleared storage, a deep link)
+cannot scope anything until the season list has loaded. A page mounted earlier
+would fetch its planting plans unscoped, i.e. every season's, and keep them:
+the planting-plans grid loads only once, on mount. `useActiveSeason` therefore
+reports `isResolvingActiveSeason` (a project is active, no id is stored, and
+the app's first season load has not settled yet), and `RootLayout` renders
+nothing in place of the routed page while it is set. This applies on
+project-scoped routes only, the same empty fallback the lazy route chunks use.
+The flag clears once the load settles, including when it fails or the project
+has no seasons, so the error and "no season" states still render. A visitor
+with a stored id is never held back. Neither is the page during an in-place
+project switch: that switch ends in a full reload anyway, and unmounting the
+page first would drop its unsaved-changes guards. The id is written inside
+`reload` rather than from an effect because the routed page's effects would
+run before the hook's in the commit that mounts it.
+`e2e/planting-plans-season-scope.spec.ts` pins this by delaying the season
+endpoints on a first visit.
 
 ## Year-boundary marker on season-spanning axes
 

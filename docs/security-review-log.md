@@ -38,6 +38,14 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #744 (hold pages until active season is known)
+
+**Scope:** `git diff origin/main...HEAD` (`useActiveSeason`, `RootLayout`, tests, docs).
+
+**Findings:** No issues. Frontend-only change to request ordering: the stored season id is written before pages fetch, and the routed page is withheld while it resolves. No new data flows, storage keys, unsafe HTML APIs or auth changes; server-side season/project scoping is unchanged.
+
+---
+
 ## 2026-10-02 — Claude — Automated security review of PR #741
 
 **Scope:** `git diff origin/main...HEAD` (publish blocking reasons in
