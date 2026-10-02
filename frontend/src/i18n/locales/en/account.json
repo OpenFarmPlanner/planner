@@ -101,8 +101,7 @@
   },
   "apiTokens": {
     "title": "API tokens for external tools",
-    "description": "Personal tokens let external tools such as Codex or Claude Code use the OpenFarmPlanner API on your behalf. Every token is permanently bound to one project and cannot reach any other — not even projects you are a member of. Tokens can never change project members, invitations, or account settings.",
-    "docsHint": "Which endpoints a token can reach and how to use it:",
+    "description": "Each token applies to one project only and can never change members, invitations, or account settings.",
     "docsLink": "Open the API documentation",
     "loading": "Loading tokens…",
     "empty": "You have not created any API tokens yet.",

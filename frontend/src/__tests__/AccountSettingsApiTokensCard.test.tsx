@@ -55,6 +55,20 @@ describe('AccountSettingsApiTokensCard', () => {
     revokeMock.mockReset();
   });
 
+  it('shows the short scope intro without a lead-in before the docs link', async () => {
+    listMock.mockResolvedValue({ data: [] });
+
+    render(<AccountSettingsApiTokensCard />);
+
+    expect(
+      await screen.findByText(
+        'Jedes Token gilt nur für ein Projekt und kann keine Mitglieder, Einladungen oder Kontoeinstellungen ändern.',
+      ),
+    ).toBeInTheDocument();
+    const docsLink = await screen.findByRole('link', { name: 'API-Dokumentation öffnen' });
+    expect(docsLink.parentElement).toHaveTextContent(/^API-Dokumentation öffnen$/);
+  });
+
   it('links to the API documentation in a new tab', async () => {
     listMock.mockResolvedValue({ data: [] });
 
