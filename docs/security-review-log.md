@@ -40,6 +40,19 @@ entry by entry; a review may of course cite their output.
 
 ---
 
+## 2026-10-02 — Claude — Automated security review of PR #736 (re-review after 21ab1123)
+
+**Scope:** `git diff origin/main...HEAD` including the styling-only commit
+`21ab1123` added since the previous entry.
+
+**Findings:** No issues. The earlier review of PR #736 was independently
+re-derived and still holds: `read-all` is `IsAuthenticated`, scoped to
+`recipient=request.user`, takes no client-supplied IDs, and the broadcast goes
+only to the caller's own group without personal data. CROSS-CONFIRMED (own
+prior entry, 2026-10-01).
+
+---
+
 ## 2026-10-01 — Claude — Automated security review of PR #736
 
 **Scope:** `git diff origin/main...HEAD` of
