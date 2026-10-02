@@ -38,6 +38,21 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 9f692098)
+
+**Scope:** `git diff origin/main...HEAD` including the CodeQL suppression
+commit `9f692098`.
+
+**Findings:** No issues. The earlier entry for PR #740 was independently
+re-derived and still holds: both token surfaces are deny-by-default
+(middleware and permission class, separately keyed), the token viewset is
+session-only and filtered by `user=request.user`, minting is admin-only and
+self-bound, per-request moderator checks still apply to the token's user, and
+`approve`/`reject`/`destroy` are not allowlisted. The unsalted SHA-256 is
+justified by 256-bit random input. CROSS-CONFIRMED (own prior entry, 2026-10-02).
+
+---
+
 ## 2026-10-02 — Claude — PR #740 (platform-scoped crop library API token)
 
 Scope: `git diff origin/main...HEAD` on `feat/crop-library-api-tokens`:
