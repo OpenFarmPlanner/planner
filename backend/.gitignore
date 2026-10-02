@@ -40,6 +40,7 @@ db.sqlite3-journal
 Thumbs.db
 
 .coverage
+.coverage.*
 
 # Enrichment trace outputs
 trace_runs/
