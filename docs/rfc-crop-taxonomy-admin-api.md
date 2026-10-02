@@ -1,10 +1,10 @@
 # RFC: Admin-scoped API for crop taxonomy (species, synonyms, suggestion list)
 
-**Status:** proposal — exploration only, not yet implemented. No code,
-migrations, or permission changes have been made. This document is the
+**Status:** design decided (2026-10-02), not yet implemented. No code,
+migrations, or permission changes have been made. This document was the
 output of the "explore first, then plan" step requested before touching
-auth/permissions or the DB schema; implementation needs explicit sign-off
-after review.
+auth/permissions or the DB schema; §6 records the decisions made on review.
+Implementation still needs its own explicit go-ahead.
 
 ## 1. Motivation
 
@@ -90,7 +90,7 @@ user may do," which is broader than this use case needs.
 
 ## 4. Design options
 
-### Option A (recommended): new platform-scoped bearer token, reusing existing view logic unchanged
+### Option A (decided): new platform-scoped bearer token, reusing existing view logic unchanged
 
 Add a new token type that authenticates a request as a specific user with
 no project binding, then let the **existing** `is_public_library_moderator`/
@@ -101,9 +101,9 @@ only a new authentication path.
 - **New model** `PlatformApiToken` (name mirrors `ProjectApiToken`'s shape
   minus the project FK): `user` FK, `token_hash`, `token_prefix` (distinct
   prefix, e.g. `ofp_plat_`, so it's never confused with `ofp_pat_` at a
-  glance or in logs), `scope` (`read`/`write` — `delete` scope only matters
-  if we also want token-driven species deletion, which is rare and
-  reviewable separately), `expires_at`, `revoked_at`. Created only by an
+  glance or in logs), `scope` (`read`/`write` only — no `delete` scope,
+  since species deletion stays session-only per §6), `expires_at`,
+  `revoked_at`. Created only by an
   existing platform admin (`is_public_library_admin`), from a new, small
   session-only self-service UI or Django admin — mirroring how
   `ProjectApiToken` creation itself is session-only and excluded from the
@@ -117,10 +117,12 @@ only a new authentication path.
   role but keyed off the new token's own header prefix, so this stays
   independent of the existing `ProjectApiToken` surface and can't
   accidentally widen it. Views opt in explicitly (`platform_token_actions`
-  or similar), starting with exactly: `CropSpeciesViewSet` (list, retrieve,
-  create, update, partial_update, approve, reject — destroy stays
-  session-only pending a decision, see §6), and a new endpoint for
-  `Crop.crop_species` linking (§5).
+  or similar), scoped to exactly: `CropSpeciesViewSet` `list`, `retrieve`,
+  `create`, `update`, `partial_update`. **`approve`, `reject`, and `destroy`
+  stay session/moderator-only** — decided in §6, not token-reachable in the
+  first version. A platform token can therefore propose and edit species
+  (incl. synonyms/regional names), but publishing a proposal or deleting a
+  species stays a human review step.
 - **Permission check stays exactly `is_public_library_moderator`/
   `is_public_library_admin`.** The important property: a platform token only
   works as well as the user it's bound to — mint one for a non-moderator
@@ -173,41 +175,45 @@ wizard flow. Needs its own small design pass:
   `CropsPublishingWizardDialog.tsx`'s actual validation before reuse).
   This part does not need Option A/B at all.
   
-## 6. Open questions for review
+## 6. Decisions (reviewed 2026-10-02)
 
-1. Does "admin-scoped" mean reusing the existing `is_public_library_admin`/
-   `moderator` shape (current recommendation), or is a broader,
-   library-independent platform-admin role wanted? Today the codebase
-   conflates "crop-library moderator" with "is_staff" — a genuinely
-   separate concept would be new design, not reuse.
-2. Should a platform token be allowed to call `approve`/`reject` (i.e.
-   full moderation, not just edits to already-published species), or should
-   proposal review stay human-only even for automation? This changes the
-   allowlist in §4 but not the token model.
-3. Should `destroy` (deleting a species) ever be token-reachable? Given
-   `docs/agent-api.md`'s existing stance that deletion is the narrowest,
-   most deliberately restricted scope for `ProjectApiToken`, the default
-   recommendation is **no** for the first version — species deletion stays
-   session/moderator-only, token can read/create/update only.
-4. `Crop.crop_species` write (§5) touches the publish-wizard's existing
-   validation and `PublicCrop` relink logic
+1. **Role scope: reuse the existing moderator shape.** The platform token
+   does not introduce a new admin-role concept. It authenticates a specific
+   user with no project binding; authorization stays exactly
+   `is_public_library_moderator()`/`is_public_library_admin()`, unchanged.
+   A token only works as well as the moderator account it's bound to.
+2. **`approve`/`reject` stay session-only.** A platform token can propose
+   and edit species (incl. synonyms/regional names) but cannot publish a
+   proposal or reject one — that review step stays human, even for
+   automated syncs. Reflected in the allowlist in §4.
+3. **`destroy` stays session-only.** Species deletion is not token-reachable
+   in the first version, consistent with `docs/agent-api.md`'s existing
+   stance that deletion is `ProjectApiToken`'s narrowest, most deliberately
+   restricted scope. The new `PlatformApiToken` therefore only ever needs a
+   `read`/`write` scope, no `delete`.
+4. **`Crop.crop_species` linking (§5) is explicitly deferred**, reviewed
+   separately from this token design. It already fits the existing
+   `ProjectApiToken` surface (project-scoped, `write` scope) rather than the
+   new platform token, so the two pieces of work don't block each other —
+   but it still needs its own look at the publish-wizard's validation and
+   `PublicCrop` relink logic
    (`crops.services.apply_public_crop_species_relinks_for_approved_species`)
-   — needs its own focused look at that code path before locking the
-   design, not assumed here.
-5. Migration/rollout: a new `PlatformApiToken` model needs a migration in
-   `backend/farm` (or wherever it lands) and a creation UI; neither written
-   here.
-6. Backward compatibility: none of this changes any existing
-   `ProjectApiToken` behavior, endpoint, or schema — it's additive. The
-   generated `/api/agent/openapi.json` and `/api/schema/` references would
-   gain new operations once endpoints opt in, same as any other
-   `api_token_actions` addition (`farm/tests/test_public_api_schema.py`
-   needs updating in the same change per `docs/agent-api.md`).
+   before implementation.
+5. **Migration/rollout** (not yet written): a new `PlatformApiToken` model
+   needs its own migration and a small session-only creation UI (mirroring
+   `ProjectApiToken`'s account-settings card), to be scoped when
+   implementation is greenlit.
+6. **Backward compatibility confirmed additive.** None of this changes any
+   existing `ProjectApiToken` behavior, endpoint, or schema. The generated
+   `/api/agent/openapi.json` and `/api/schema/` references gain new
+   operations once `CropSpeciesViewSet` opts the platform token in, same as
+   any other surface addition; `farm/tests/test_public_api_schema.py` needs
+   updating in the same change per `docs/agent-api.md`.
 
 ## 7. What this RFC deliberately does not cover
 
 - Read-only SSH/DB access to the production server for `crop-data` research
   — out of scope, belongs in the `ops` repo per the original ask.
 - Any actual implementation — endpoints, migrations, or permission classes.
-  This document exists to get sign-off on Option A vs. B and the open
-  questions in §6 before any of that is written.
+  The design in §4/§6 is decided; implementation itself still needs its own
+  go-ahead before any of it is written.
