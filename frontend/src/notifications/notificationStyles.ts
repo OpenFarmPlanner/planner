@@ -29,12 +29,22 @@ export const NOTIFICATION_MENU_HEADER_SX: SxProps<Theme> = {
   py: 0.5,
 };
 
-/** "Mark all as read" as a compact text action inside the dropdown's title row. */
+/**
+ * "Mark all as read" as a compact text action inside the dropdown's title row.
+ * Coloured and weighted like the text `Button` that carries the same action on
+ * the history page (`MuiButton` in theme.ts), so it reads as clickable at rest;
+ * only the size stays `body2` to keep the title row on one line. Disabled, it
+ * keeps the plain text colour, dimmed by `MenuItem`'s own disabled opacity.
+ */
 export const NOTIFICATION_MENU_HEADER_ACTION_SX: SxProps<Theme> = {
   minHeight: 0,
   px: 1,
   py: 0.5,
   borderRadius: 1,
+  typography: 'body2',
+  fontWeight: 600,
+  color: 'primary.main',
+  '&.Mui-disabled': { color: 'text.primary' },
 };
 
 /** The subtle "nothing new" hint that replaces the list when all is read. */

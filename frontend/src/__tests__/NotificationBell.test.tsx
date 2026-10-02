@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { createTheme } from '@mui/material/styles';
 import { useEffect } from 'react';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { useNotifications, type NotificationsController } from '../notifications/useNotifications';
@@ -243,6 +244,7 @@ describe('NotificationBell', () => {
       const action = await screen.findByRole('menuitem', { name: 'Alle als gelesen markieren' });
 
       expect(action).toHaveAttribute('aria-disabled', 'true');
+      expect(action).toHaveStyle({ color: createTheme().palette.text.primary });
       fireEvent.mouseOver(action.parentElement as HTMLElement);
       expect(await screen.findByRole('tooltip')).toHaveTextContent('Keine ungelesenen Benachrichtigungen');
     });
@@ -254,7 +256,11 @@ describe('NotificationBell', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: /2 ungelesen/i }));
       expect(await screen.findByText(KUERBIS)).toHaveStyle({ fontWeight: 600 });
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Alle als gelesen markieren' }));
+      // Reads as an action at rest, in the primary colour of the history
+      // page's button, not only once hovered.
+      const action = screen.getByRole('menuitem', { name: 'Alle als gelesen markieren' });
+      expect(action).toHaveStyle({ color: createTheme().palette.primary.main });
+      fireEvent.click(action);
 
       await waitFor(() => expect(screen.getByRole('button', { name: 'Benachrichtigungen', hidden: true })).toBeInTheDocument());
       expect(notificationMarkAllReadMock).toHaveBeenCalledTimes(1);

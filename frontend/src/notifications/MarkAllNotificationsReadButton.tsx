@@ -1,4 +1,4 @@
-import { Box, Button, MenuItem, Typography } from '@mui/material';
+import { Box, Button, MenuItem } from '@mui/material';
 import type { ReactElement } from 'react';
 import { AppTooltip } from '../components/AppTooltip';
 import { useTranslation } from '../i18n';
@@ -39,7 +39,7 @@ export function MarkAllNotificationsReadButton({
       <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
         {inMenu ? (
           <MenuItem component="div" disabled={disabled} onClick={onClick} sx={NOTIFICATION_MENU_HEADER_ACTION_SX}>
-            <Typography variant="body2" color="primary.main">{label}</Typography>
+            {label}
           </MenuItem>
         ) : (
           <Button size="small" variant="text" disabled={disabled} onClick={onClick}>
