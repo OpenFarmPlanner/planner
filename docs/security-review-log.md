@@ -38,6 +38,52 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 67420367)
+
+**Scope:** `git diff origin/main...HEAD` including the rename commit
+`67420367` (token prefix constant, no behavior change).
+
+**Findings:** No issues. Prior entries for PR #740 re-derived and still hold:
+deny-by-default on both the middleware and the permission class, token
+self-service session-only and scoped to `request.user`, generic auth failure
+messages, no `approve`/`reject`/`destroy` for tokens. CROSS-CONFIRMED (own
+prior entries, 2026-10-02).
+
+---
+
+## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 9f692098)
+
+**Scope:** `git diff origin/main...HEAD` including the CodeQL suppression
+commit `9f692098`.
+
+**Findings:** No issues. The earlier entry for PR #740 was independently
+re-derived and still holds: both token surfaces are deny-by-default
+(middleware and permission class, separately keyed), the token viewset is
+session-only and filtered by `user=request.user`, minting is admin-only and
+self-bound, per-request moderator checks still apply to the token's user, and
+`approve`/`reject`/`destroy` are not allowlisted. The unsalted SHA-256 is
+justified by 256-bit random input. CROSS-CONFIRMED (own prior entry, 2026-10-02).
+
+---
+
+## 2026-10-02 — Claude — PR #740 (platform-scoped crop library API token)
+
+Scope: `git diff origin/main...HEAD` on `feat/crop-library-api-tokens`:
+`crops.CropLibraryApiToken`, `crops/agent_api/*` (authentication, surface
+middleware, permission, throttling, self-service viewset), settings/URL
+wiring, `CropSpeciesViewSet` allowlist, exception-handler 401 upgrade.
+
+Reviewed: token hashing and one-time plaintext, generic auth failure
+messages, revoked/expired/inactive-user rejection, deny-by-default surface
+(middleware and permission class, both keyed on `crop_library_token_actions`),
+token self-service being session-only and filtered by `user=request.user`
+(no IDOR), admin-only minting bound to the caller, read-only serializer
+fields, bounded expiry, per-request moderator checks still applied to the
+token's user, `approve`/`reject`/`destroy` excluded, throttle scopes,
+legacy-prefix URL duplication.
+
+- No findings. Nothing to fix.
+
 ---
 
 ## 2026-10-02 — Claude — Automated security review of PR #736 (re-review after 21ab1123)

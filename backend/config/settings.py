@@ -266,6 +266,9 @@ MIDDLEWARE = [
     # Refuses API-token requests aimed at views that never opted into the agent
     # API, independently of each view's own permission_classes.
     'farm.agent_api.middleware.ApiTokenSurfaceMiddleware',
+    # Same role, independently keyed, for the platform-scoped crop-library
+    # token — see docs/rfc-crop-taxonomy-admin-api.md.
+    'crops.agent_api.middleware.CropLibraryTokenSurfaceMiddleware',
     # Required by django-allauth; must run after AuthenticationMiddleware.
     'allauth.account.middleware.AccountMiddleware',
 ]
@@ -576,6 +579,11 @@ REST_FRAMEWORK = {
         # header — see docs/agent-api.md.
         'rest_framework.authentication.SessionAuthentication',
         'farm.agent_api.authentication.ProjectApiTokenAuthentication',
+        # Platform-scoped, user-bound token for the crop taxonomy API — see
+        # docs/rfc-crop-taxonomy-admin-api.md. Independent of
+        # ProjectApiToken: a distinct header prefix (`ofp_clt_`), no project
+        # binding, no delete scope.
+        'crops.agent_api.authentication.CropLibraryApiTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -583,6 +591,9 @@ REST_FRAMEWORK = {
         # unless it declares `api_token_actions`. Session requests pass through
         # this check unchanged.
         'farm.agent_api.permissions.ApiTokenAccessPermission',
+        # Same role for the crop-library token, keyed off
+        # `crop_library_token_actions` instead.
+        'crops.agent_api.permissions.CropLibraryTokenAccessPermission',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
@@ -599,6 +610,8 @@ REST_FRAMEWORK = {
         'farm.agent_api.throttling.ApiTokenReadRateThrottle',
         'farm.agent_api.throttling.ApiTokenWriteRateThrottle',
         'farm.agent_api.throttling.ApiTokenWriteDeclaredAgentRateThrottle',
+        'crops.agent_api.throttling.CropLibraryTokenReadRateThrottle',
+        'crops.agent_api.throttling.CropLibraryTokenWriteRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'auth_login': _env_str('THROTTLE_AUTH_LOGIN', '10/minute'),
@@ -620,6 +633,8 @@ REST_FRAMEWORK = {
         'api_token_read': _env_str('THROTTLE_API_TOKEN_READ', '2000/hour'),
         'api_token_write': _env_str('THROTTLE_API_TOKEN_WRITE', '300/hour'),
         'api_token_write_declared_agent': _env_str('THROTTLE_API_TOKEN_WRITE_DECLARED_AGENT', '600/hour'),
+        'crop_library_token_read': _env_str('THROTTLE_CROP_LIBRARY_TOKEN_READ', '2000/hour'),
+        'crop_library_token_write': _env_str('THROTTLE_CROP_LIBRARY_TOKEN_WRITE', '300/hour'),
     },
     'EXCEPTION_HANDLER': 'config.exceptions.api_exception_handler',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.OpenFarmPlannerPageNumberPagination',
