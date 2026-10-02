@@ -38,6 +38,19 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 67420367)
+
+**Scope:** `git diff origin/main...HEAD` including the rename commit
+`67420367` (token prefix constant, no behavior change).
+
+**Findings:** No issues. Prior entries for PR #740 re-derived and still hold:
+deny-by-default on both the middleware and the permission class, token
+self-service session-only and scoped to `request.user`, generic auth failure
+messages, no `approve`/`reject`/`destroy` for tokens. CROSS-CONFIRMED (own
+prior entries, 2026-10-02).
+
+---
+
 ## 2026-10-02 — Claude — Automated security review of PR #740 (re-review after 9f692098)
 
 **Scope:** `git diff origin/main...HEAD` including the CodeQL suppression
