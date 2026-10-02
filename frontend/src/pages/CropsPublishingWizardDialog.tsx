@@ -25,7 +25,13 @@ import {
 import { Link as RouterLink } from 'react-router';
 import { AppTooltip } from '../components/AppTooltip';
 import { cropSpeciesAPI, cropAPI, publicCropAPI, type Crop } from '../api/api';
-import type { CropSpecies, PublicCrop, PublicCropDuplicateCandidate, PublishPublicCropPreview } from '../api/types';
+import type {
+  CropSpecies,
+  PublicCrop,
+  PublicCropDuplicateCandidate,
+  PublishBlockingReason,
+  PublishPublicCropPreview,
+} from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import i18n from '../i18n/config';
@@ -39,6 +45,7 @@ import {
   type PublishVarietySelection,
 } from '../crops/publishVarieties';
 import { CropSpeciesPicker } from '../crops/CropSpeciesPicker';
+import { describePublishBlockingReasons } from '../crops/publishChecks';
 import { useCropSpeciesSearch } from '../crops/useCropSpeciesSearch';
 import {
   getCropSpeciesOptionLabel,
@@ -103,6 +110,7 @@ const LANGUAGE_CODES = ['de', 'en'] as const;
 const EMPTY_REQUIRED_FIELDS: PublishPublicCropPreview['missing_required_fields'] = [];
 const EMPTY_DUPLICATES: PublishPublicCropPreview['duplicates'] = [];
 const EMPTY_VARIETIES: Crop[] = [];
+const DETAILED_BLOCKING_REASONS: ReadonlySet<PublishBlockingReason> = new Set(['missing_required_fields', 'duplicates']);
 
 const getDefaultLanguageCode = (): string => {
   const language = (i18n.language || 'de').split('-')[0];
@@ -331,6 +339,17 @@ export function CropsPublishingWizardDialog({
   const isBlockedByValidation = !selectedPublicCrop
     && validationResult !== null
     && !validationResult.can_publish;
+  // Missing fields and duplicates have their own detailed alerts below; any
+  // other reason (e.g. a species rejected meanwhile) still has to be named.
+  const otherBlockingMessages = useMemo(() => (
+    isBlockedByValidation && validationResult
+      ? describePublishBlockingReasons(
+        validationResult,
+        t,
+        (validationResult.blocking_reasons ?? []).filter((reason) => !DETAILED_BLOCKING_REASONS.has(reason)),
+      )
+      : []
+  ), [isBlockedByValidation, t, validationResult]);
   const existingVarietyOptions = publicCropOptions.filter((option) => (option.variety || '').trim());
   const varietyCandidates = useMemo(
     () => buildPublishVarietyCandidates(publishableVarieties, publicCropOptions),
@@ -950,6 +969,10 @@ export function CropsPublishingWizardDialog({
               </Link>
             </Alert>
           ) : null}
+
+          {otherBlockingMessages.map((message) => (
+            <Alert key={message} severity="warning">{message}</Alert>
+          ))}
 
           {hasVisibleValidationIssues ? (
             <Stack spacing={1}>

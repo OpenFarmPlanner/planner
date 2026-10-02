@@ -225,7 +225,14 @@ The public Crop Library follows an open-data model:
      `can_republish_withdrawn_entry()` predicate the publish guard uses): there
      the chip is replaced by the button "Wieder veröffentlichen", which asks for
      one confirmation and calls `publish-public` (the single push path), bringing
-     the entry back as published. It keeps the entry's own original language
+     the entry back as published. The confirmation (`RepublishPublicCropDialog`)
+     first runs `publish-public/preview/` without a species: when its
+     `blocking_reasons` contain `missing_crop_species` or
+     `crop_species_unavailable` (the crop has no species, or its species was
+     rejected meanwhile — rejecting a species also withdraws its entries, see
+     `remove_public_crops_for_rejected_species`), the dialog shows the required
+     "Offizielle Kulturart" picker and keeps the confirm button disabled until a
+     species is chosen or proposed. It keeps the entry's own original language
      (`source_public_crop_original_language`) rather than the UI's current
      language, which could otherwise retag an entry published in one language
      while the contributor now browses in another. A removed entry is a
@@ -1177,6 +1184,18 @@ step when the user attempts publication, then shows only actionable problems:
   through `resolve_crop_field`); and
 - no published public duplicate for the same `CropSpecies` + normalized
   variety.
+
+`can_publish` is derived from `blocking_reasons`, a list of machine-readable
+codes with one entry per failed check: `missing_crop_species`,
+`crop_species_unavailable` (a species was requested or is linked but is
+rejected or unknown), `missing_original_language`, `missing_required_fields`
+and `duplicates`. `can_publish` is false exactly when the list is non-empty, so
+no rejection is ever unexplained — duplicates are only detected once a species
+is known, which is why a missing species has its own code instead of showing
+up as an empty duplicate list. The same `checks` object travels in the 400
+`public_crop_publishing_checks_failed` response; the frontend turns the codes
+into German sentences in `crops/publishChecks.ts` and never displays the
+English `detail`.
 
 The species `Autocomplete` offers the proposal inline in the dropdown instead
 of as a separate always-visible link: a sentinel option

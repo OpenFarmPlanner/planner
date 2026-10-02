@@ -1180,6 +1180,11 @@
         "variety": "Variety",
         "growth_duration_days": "Growth duration",
         "harvest_duration_days": "Harvest duration"
+      },
+      "blockingReasons": {
+        "missingCropSpecies": "Please select an official crop species.",
+        "cropSpeciesUnavailable": "The assigned crop species is no longer available in the crop library. Please select an official crop species.",
+        "missingOriginalLanguage": "Please select the original language."
       }
     },
     "filters": {
@@ -1322,7 +1327,9 @@
     "republish": {
       "title": "Publish again?",
       "message": "“{{name}}” will be published in the crop library again with this crop's current values.",
-      "confirm": "Publish again"
+      "confirm": "Publish again",
+      "speciesRequired": "This crop has no official crop species that can be published. Please select one.",
+      "checkError": "Publishing could not be checked. Please try again."
     }
   },
   "commands": {

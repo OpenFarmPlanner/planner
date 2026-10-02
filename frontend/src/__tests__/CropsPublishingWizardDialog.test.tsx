@@ -268,6 +268,32 @@ describe('CropsPublishingWizardDialog', () => {
     expect(screen.queryByText(/Dein Vorschlag für die neue Kulturart „sdfsd“ wurde zur Prüfung eingereicht/)).not.toBeInTheDocument();
   });
 
+  it('names a blocking reason that has no detailed alert of its own', async () => {
+    // A species can be rejected between search and publish; the preview then
+    // blocks with no missing fields and no duplicates, which used to leave the
+    // user with a disabled button and no explanation.
+    publishPreviewMock.mockResolvedValue({
+      data: {
+        crop_species: null,
+        original_language_code: 'de',
+        available_language_codes: ['de'],
+        missing_required_fields: [],
+        duplicates: [],
+        can_publish: false,
+        blocking_reasons: ['crop_species_unavailable'],
+        general_crop_notice: null,
+      },
+    });
+
+    renderWizard();
+
+    await selectSpeciesOption('Tomate');
+    fireEvent.click(await findEnabledPublishButton());
+
+    expect(await screen.findByText(/Die zugeordnete Kulturart ist in der Kulturbibliothek nicht mehr verfügbar/))
+      .toBeInTheDocument();
+  });
+
   it('matches an existing species by its localized display name, not just the canonical name', async () => {
     // Regression test: canonical `name` may be in a different language than
     // what the user types/sees (e.g. canonical "Pumpkin", German
