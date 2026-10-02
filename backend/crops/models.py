@@ -399,8 +399,16 @@ class CropLibraryApiToken(models.Model):
 
     @staticmethod
     def hash_token(raw_token: str) -> str:
-        """Return the SHA-256 digest used as the stored token representation."""
-        return hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        """Return the SHA-256 digest used as the stored token representation.
+
+        Same reasoning as `ProjectApiToken.hash_token` (see
+        docs/agent-api.md's "Storage" section): unlike a password, the input
+        is 256 bits of `secrets.token_urlsafe` output, so there is no
+        low-entropy candidate space to enumerate and no benefit from
+        stretching — a plain, unsalted digest is the right tool here.
+        """
+        digest = hashlib.sha256(raw_token.encode('utf-8'))  # lgtm[py/weak-sensitive-data-hashing]
+        return digest.hexdigest()
 
     @classmethod
     def generate_raw_token(cls) -> str:
