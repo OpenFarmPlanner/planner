@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import secrets
 from typing import Any
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 SUPPORTED_REGIONAL_NAME_KEYS = {'austria', 'switzerland'}
 
@@ -328,3 +331,153 @@ class PublicLibraryModeratorRequest(models.Model):
 
     def __str__(self) -> str:
         return f'{self.user_id}: {self.status}'
+
+
+# Prefix on every issued crop-library token. Deliberately distinct from
+# `farm.models.agent_api.API_TOKEN_PREFIX` (`ofp_pat_`) so the two credential
+# types are never confused at a glance, in logs, or by the detection helpers
+# that key off a literal prefix — see `crops.agent_api.authentication`.
+CROP_LIBRARY_API_TOKEN_PREFIX = 'ofp_clt_'
+
+# Same reasoning as `ProjectApiToken.API_TOKEN_ENTROPY_BYTES`: the input is
+# uniformly random `secrets.token_urlsafe` output, so a plain SHA-256 digest
+# needs no salt or stretching to be safe against brute force.
+CROP_LIBRARY_API_TOKEN_ENTROPY_BYTES = 32
+
+CROP_LIBRARY_API_TOKEN_DISPLAY_PREFIX_LENGTH = 8
+
+
+class CropLibraryApiToken(models.Model):
+    """A personal, platform-scoped bearer token for the crop taxonomy API.
+
+    Unlike `farm.models.ProjectApiToken`, this token is bound to a user only,
+    never to a project — `CropSpecies` is global library data, not project
+    data. Authorization is not carried on the token at all: every request
+    still goes through `is_public_library_moderator(request.user)` /
+    `is_public_library_admin(request.user)` exactly as a session request
+    would, so the token is only ever as powerful as the account it is bound
+    to. See docs/rfc-crop-taxonomy-admin-api.md for the design rationale.
+
+    `destroy`/`approve`/`reject` are deliberately never reachable with this
+    token (see `crops.views.CropSpeciesViewSet.crop_library_token_actions`),
+    so the token only ever needs a `read`/`write` scope — no `delete`.
+    """
+
+    SCOPE_READ = 'read'
+    SCOPE_WRITE = 'write'
+    SCOPE_CHOICES = [
+        (SCOPE_READ, 'Read only'),
+        (SCOPE_WRITE, 'Read and write'),
+    ]
+    SCOPE_VALUES = {SCOPE_READ, SCOPE_WRITE}
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='crop_library_api_tokens',
+    )
+    name = models.CharField(max_length=120, help_text='Human-readable label chosen by the owner')
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default=SCOPE_READ)
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True, editable=False)
+    token_prefix = models.CharField(
+        max_length=16,
+        editable=False,
+        help_text='Non-secret leading characters used to identify the token in listings',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Crop library API token'
+        verbose_name_plural = 'Crop library API tokens'
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.token_prefix}…)'
+
+    @staticmethod
+    def hash_token(raw_token: str) -> str:
+        """Return the SHA-256 digest used as the stored token representation."""
+        return hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def generate_raw_token(cls) -> str:
+        """Return a fresh, prefixed, high-entropy plaintext token."""
+        random_part = secrets.token_urlsafe(CROP_LIBRARY_API_TOKEN_ENTROPY_BYTES)
+        return f'{CROP_LIBRARY_API_TOKEN_PREFIX}{random_part}'
+
+    @classmethod
+    def create_token(
+        cls,
+        *,
+        user,
+        name: str,
+        scope: str = SCOPE_READ,
+        expires_at=None,
+    ) -> tuple[CropLibraryApiToken, str]:
+        """Create a token and return it together with its one-time plaintext.
+
+        :param user: Owner the token is bound to. The caller is responsible
+            for having verified this user is a platform admin before calling.
+        :param name: Human-readable label.
+        :param scope: Either ``read`` or ``write``.
+        :param expires_at: Optional expiry timestamp.
+        :return: Tuple of persisted token and its plaintext value.
+        """
+        if scope not in cls.SCOPE_VALUES:
+            raise ValueError(f'Unsupported crop library API token scope: {scope!r}')
+
+        raw_token = cls.generate_raw_token()
+        random_part = raw_token[len(CROP_LIBRARY_API_TOKEN_PREFIX):]
+        token = cls.objects.create(
+            user=user,
+            name=name,
+            scope=scope,
+            token_hash=cls.hash_token(raw_token),
+            token_prefix=random_part[:CROP_LIBRARY_API_TOKEN_DISPLAY_PREFIX_LENGTH],
+            expires_at=expires_at,
+        )
+        return token, raw_token
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at is not None and timezone.now() >= self.expires_at
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+    @property
+    def is_active(self) -> bool:
+        return not self.is_revoked and not self.is_expired
+
+    @property
+    def status(self) -> str:
+        if self.is_revoked:
+            return 'revoked'
+        if self.is_expired:
+            return 'expired'
+        return 'active'
+
+    def can_write(self) -> bool:
+        return self.scope == self.SCOPE_WRITE
+
+    def revoke(self) -> None:
+        if self.revoked_at is None:
+            self.revoked_at = timezone.now()
+            self.save(update_fields=['revoked_at'])
+
+    def touch_last_used(self, *, now=None, min_interval_seconds: int = 60) -> None:
+        """Record usage, coalesced to at most one write per minute — see
+        `ProjectApiToken.touch_last_used` for the identical rationale.
+        """
+        moment = now or timezone.now()
+        if (
+            self.last_used_at is not None
+            and (moment - self.last_used_at).total_seconds() < min_interval_seconds
+        ):
+            return
+        self.last_used_at = moment
+        type(self).objects.filter(pk=self.pk).update(last_used_at=moment)

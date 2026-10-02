@@ -22,6 +22,7 @@ from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_
 from config.languages import REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
 
 from . import services
+from .agent_api.permissions import CropLibraryTokenAccessPermission
 from .models import CropSpecies, PublicLibraryModeratorRequest
 from .permissions import (
     grant_public_library_moderator_access,
@@ -51,7 +52,15 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
     """Official crop species list plus lightweight user proposals."""
 
     serializer_class = CropSpeciesSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CropLibraryTokenAccessPermission]
+    # Deny-by-default allowlist for `CropLibraryApiToken` (see
+    # crops.agent_api and docs/rfc-crop-taxonomy-admin-api.md). A token can
+    # list/read, propose, and edit species — including synonyms and
+    # regional names via the nested `translations` field — but `approve`,
+    # `reject`, and `destroy` stay session/moderator-only by deliberate
+    # decision, same as a token can never finish its own crop-library
+    # moderation review.
+    crop_library_token_actions = {'list', 'retrieve', 'create', 'update', 'partial_update'}
 
     def get_queryset(self):
         queryset = CropSpecies.objects.select_related(

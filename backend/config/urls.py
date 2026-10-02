@@ -56,6 +56,7 @@ urlpatterns = [
     # `farm.Crop` rows (formerly `/api/cultures/`).
     path(_with_prefix('api/crop-library/'), include('crops.urls')),
     path(_with_prefix('api/crop-species/'), include('crops.species_urls')),
+    path(_with_prefix('api/crop-library-tokens/'), include('crops.token_urls')),
     path(_with_prefix('api/public-library/'), include('crops.moderation_urls')),
     path(_with_prefix('api/notifications/'), include('notifications.urls')),
     path(_with_prefix('agent-login/<str:token>/'), agent_login_consume_view, name='agent-login-consume'),
@@ -68,6 +69,7 @@ if getattr(settings, 'URL_PREFIX', '').strip('/') != legacy_prefix:
         path(f'{legacy_prefix}/api/', include('farm.urls')),
         path(f'{legacy_prefix}/api/crop-library/', include('crops.urls')),
         path(f'{legacy_prefix}/api/crop-species/', include('crops.species_urls')),
+        path(f'{legacy_prefix}/api/crop-library-tokens/', include('crops.token_urls')),
         path(f'{legacy_prefix}/api/public-library/', include('crops.moderation_urls')),
         path(f'{legacy_prefix}/api/notifications/', include('notifications.urls')),
         path(f'{legacy_prefix}/agent-login/<str:token>/', agent_login_consume_view, name='agent-login-consume-legacy'),

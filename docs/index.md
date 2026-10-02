@@ -51,6 +51,11 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   external tools, scripts, and coding agents: the security model, the available
   permissions, the crop validation and plausibility rules, and the two-step
   preview/apply import flow.
+- **[Crop Library API Tokens](./crop-library-api-tokens.md)** — the separate,
+  platform-scoped bearer token that lets a platform admin's own moderator
+  account propose and edit official crop species, synonyms, and regional
+  names without a browser session. Not project-bound, and not the same
+  credential as the one above.
 - **[Account Trust Levels](./account-trust-levels.md)** — the anti-abuse
   `new`/`established` split: how an account is promoted, the narrowed write
   throttle, which crop-library contributions get queued for moderation
