@@ -64,7 +64,11 @@ describe('AccountSettingsCropLibraryTokenCard', () => {
     render(<AccountSettingsCropLibraryTokenCard />);
 
     const docsLink = await screen.findByRole('link', { name: 'Dokumentation öffnen' });
-    expect(docsLink.getAttribute('href')).toMatch(/\/api\/docs\/$/);
+    // Deliberately not the generic /api/docs/ reference: the crop-library
+    // token's endpoints are excluded from that generated schema.
+    expect(docsLink.getAttribute('href')).toBe(
+      'https://github.com/OpenFarmPlanner/planner/blob/main/docs/crop-library-api-tokens.md',
+    );
     expect(docsLink).toHaveAttribute('target', '_blank');
     expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
