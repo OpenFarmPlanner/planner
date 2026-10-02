@@ -38,6 +38,24 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-02 — Claude — PR #740 (platform-scoped crop library API token)
+
+Scope: `git diff origin/main...HEAD` on `feat/crop-library-api-tokens`:
+`crops.CropLibraryApiToken`, `crops/agent_api/*` (authentication, surface
+middleware, permission, throttling, self-service viewset), settings/URL
+wiring, `CropSpeciesViewSet` allowlist, exception-handler 401 upgrade.
+
+Reviewed: token hashing and one-time plaintext, generic auth failure
+messages, revoked/expired/inactive-user rejection, deny-by-default surface
+(middleware and permission class, both keyed on `crop_library_token_actions`),
+token self-service being session-only and filtered by `user=request.user`
+(no IDOR), admin-only minting bound to the caller, read-only serializer
+fields, bounded expiry, per-request moderator checks still applied to the
+token's user, `approve`/`reject`/`destroy` excluded, throttle scopes,
+legacy-prefix URL duplication.
+
+- No findings. Nothing to fix.
+
 ---
 
 ## 2026-10-02 — Claude — Automated security review of PR #736 (re-review after 21ab1123)
