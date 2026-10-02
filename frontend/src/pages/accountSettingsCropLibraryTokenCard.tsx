@@ -28,7 +28,7 @@ import { DataGrid, type GridColDef, type GridSortModel } from '@mui/x-data-grid'
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cropLibraryTokenAPI } from '../api/api';
-import { API_DOCS_URL } from '../api/apiDocsUrl';
+import { CROP_LIBRARY_TOKEN_DOCS_URL } from '../api/apiDocsUrl';
 import type { CropLibraryToken, CropLibraryTokenCreated, CropLibraryTokenScope } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useAuth } from '../auth/useAuth';
@@ -308,7 +308,7 @@ export default function AccountSettingsCropLibraryTokenCard() {
     >
       <Stack spacing={2}>
         <Typography variant="body2" color="text.secondary">
-          <Link href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
+          <Link href={CROP_LIBRARY_TOKEN_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
             {t('cropLibraryToken.docsLink')}
           </Link>
         </Typography>
