@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.guest_demo import create_guest_demo_session
-from accounts.models import GuestDemoSession
+from accounts.models import GuestDemoSession, GuestDemoUsageDay
 from accounts.views import GuestDemoStartView, LoginView
 from farm.models import Crop, Project, ProjectInvitation
 from farm.services.demo_project import DEMO_PROJECT_NAME_EN
@@ -237,6 +237,47 @@ class GuestDemoApiTests(TestCase):
 
         call_command('cleanup_guest_demo_sessions')
         self.assertFalse(GuestDemoSession.objects.filter(id=demo_session.id).exists())
+
+    def test_start_books_an_anonymous_daily_usage_counter(self) -> None:
+        self.client.post('/openfarmplanner/api/auth/guest-demo/start/', {}, format='json')
+        self.client.post('/openfarmplanner/api/auth/guest-demo/start/', {}, format='json')
+
+        usage_day = GuestDemoUsageDay.objects.get(date=timezone.localdate())
+        self.assertEqual(usage_day.started, 2)
+        self.assertEqual(usage_day.used, 0)
+
+    def test_a_guest_change_is_booked_as_used_when_the_session_ends(self) -> None:
+        """The counter must survive the guest's deletion: the revisions that
+        show the guest edited something are deleted with the project."""
+        start_response = self.client.post(
+            '/openfarmplanner/api/auth/guest-demo/start/', {}, format='json',
+        )
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(start_response.data['resolved_project_id'])
+        create_response = self.client.post(
+            '/openfarmplanner/api/locations/', {'name': 'Gast-Standort'}, format='json',
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+
+        self.client.post('/openfarmplanner/api/auth/guest-demo/end/', {}, format='json')
+
+        self.assertFalse(GuestDemoSession.objects.exists())
+        usage_day = GuestDemoUsageDay.objects.get(date=timezone.localdate())
+        self.assertEqual(usage_day.started, 1)
+        self.assertEqual(usage_day.used, 1)
+
+    def test_an_untouched_guest_demo_is_not_booked_as_used_on_cleanup(self) -> None:
+        """Seeding records crop revisions of its own; those must not count."""
+        demo_session = create_guest_demo_session()
+        GuestDemoSession.objects.filter(pk=demo_session.pk).update(
+            expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        from django.core.management import call_command
+
+        call_command('cleanup_guest_demo_sessions')
+        usage_day = GuestDemoUsageDay.objects.get(date=timezone.localdate())
+        self.assertEqual(usage_day.started, 1)
+        self.assertEqual(usage_day.used, 0)
 
     @override_settings(
         REST_FRAMEWORK=throttled_rest_framework_settings(

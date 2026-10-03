@@ -14,9 +14,10 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, F, Max, Min, Model, Q
+from django.db.models import Count, F, Max, Min, Model, Q, Sum
 from django.utils import timezone
 
+from accounts.models import GuestDemoSession, GuestDemoUsageDay
 from farm.models import (
     Bed,
     BedLayout,
@@ -39,7 +40,7 @@ from farm.models import (
     Supplier,
     Task,
 )
-from farm.services.demo_project import DEMO_PROJECT_DESCRIPTIONS
+from farm.services.demo_project import DEMO_PROJECT_DESCRIPTIONS, demo_project_used_filter
 
 ENGAGEMENT_MODELS = (
     Supplier,
@@ -87,8 +88,15 @@ class Share:
 
 @dataclass(frozen=True)
 class DemoUsagePeriod:
-    """Demo-project creation, usage, and conversion to real usage in one time window."""
+    """Demo usage and conversion to real usage in one time window.
 
+    `guest_*` counts the public, anonymous guest demo; `created`, `used`, and
+    `converted_to_own_project` count demo projects loaded into a regular
+    account (onboarding or the project switcher).
+    """
+
+    guest_started: int
+    guest_used: int
     created: int
     used: int
     converted_to_own_project: Share
@@ -681,28 +689,53 @@ def build_engagement_dashboard(
     )
 
 
+def _guest_demo_usage(cutoff: datetime | None) -> tuple[int, int]:
+    """Return (started, used) public guest demos for one window.
+
+    Guest sessions are deleted with their project after the retention window,
+    so finished sessions are read from the anonymous daily counters. A live
+    session is already counted as started there, but its "used" state is only
+    booked on deletion, so it is read from its project's revisions instead.
+    """
+    counter_days = GuestDemoUsageDay.objects.all()
+    live_sessions = GuestDemoSession.objects.all()
+    if cutoff is not None:
+        counter_days = counter_days.filter(date__gte=timezone.localdate(cutoff))
+        live_sessions = live_sessions.filter(created_at__gte=cutoff)
+    totals = counter_days.aggregate(started=Sum('started'), used=Sum('used'))
+    live_used = live_sessions.filter(demo_project_used_filter('project__')).distinct().count()
+    return totals['started'] or 0, (totals['used'] or 0) + live_used
+
+
 def _demo_usage_period(
     cutoff: datetime | None,
     *,
     current_user_id: int | None,
     excluded_project_ids: set[int],
 ) -> DemoUsagePeriod:
-    """Aggregate demo-project creation, usage, and conversion for one window.
+    """Aggregate guest-demo and account demo-project usage for one window.
 
-    "Used" means the project has at least one `EntityRevision` row. Demo
-    seeding (`populate_demo_project` and its callers) writes objects with the
-    plain ORM and never calls `record_entity_revision`, so a revision on a
-    demo project can only come from a real user action through the API — no
-    extra marker is needed to tell seed data from user activity.
+    "Used" means the project has at least one `EntityRevision` written after
+    seeding finished (`Project.demo_seeded_at`). Seeding itself records a
+    "created" revision per crop through `Crop.save()`, so "has a revision"
+    alone would mark every demo project as used.
+
+    Guest demo projects are left out of the account demo-project counts: they
+    are reported separately, and their temporary users can neither create
+    projects nor outlive the session, so they could never convert.
     """
-    demo_projects = Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
+    guest_started, guest_used = _guest_demo_usage(cutoff)
+    demo_projects = Project.objects.filter(
+        description__in=DEMO_PROJECT_DESCRIPTIONS,
+        guest_demo_session__isnull=True,
+    )
     if cutoff is not None:
         demo_projects = demo_projects.filter(created_at__gte=cutoff)
     if excluded_project_ids:
         demo_projects = demo_projects.exclude(pk__in=excluded_project_ids)
 
     created = demo_projects.count()
-    used = demo_projects.filter(entity_revisions__isnull=False).distinct().count()
+    used = demo_projects.filter(demo_project_used_filter()).distinct().count()
 
     demo_first_seen = dict(
         ProjectMembership.objects.filter(project__in=demo_projects)
@@ -728,6 +761,8 @@ def _demo_usage_period(
         )
 
     return DemoUsagePeriod(
+        guest_started=guest_started,
+        guest_used=guest_used,
         created=created,
         used=used,
         converted_to_own_project=Share(count=converted, total=len(demo_first_seen)),

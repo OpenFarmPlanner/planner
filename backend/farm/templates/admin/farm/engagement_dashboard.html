@@ -45,13 +45,25 @@
       </tr></thead>
       <tbody>
         <tr>
-          <th>{% translate "Demo-Projekte angelegt" %}</th>
+          <th>{% translate "Gast-Demo gestartet (öffentlicher Link)" %}</th>
+          <td>{{ demo_usage.last_7_days.guest_started }}</td>
+          <td>{{ demo_usage.last_30_days.guest_started }}</td>
+          <td>{{ demo_usage.all_time.guest_started }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Gast-Demo genutzt" %}</th>
+          <td>{{ demo_usage.last_7_days.guest_used }}</td>
+          <td>{{ demo_usage.last_30_days.guest_used }}</td>
+          <td>{{ demo_usage.all_time.guest_used }}</td>
+        </tr>
+        <tr>
+          <th>{% translate "Demo-Projekt im eigenen Konto angelegt" %}</th>
           <td>{{ demo_usage.last_7_days.created }}</td>
           <td>{{ demo_usage.last_30_days.created }}</td>
           <td>{{ demo_usage.all_time.created }}</td>
         </tr>
         <tr>
-          <th>{% translate "Demo-Projekte genutzt" %}</th>
+          <th>{% translate "Demo-Projekt im eigenen Konto genutzt" %}</th>
           <td>{{ demo_usage.last_7_days.used }}</td>
           <td>{{ demo_usage.last_30_days.used }}</td>
           <td>{{ demo_usage.all_time.used }}</td>
@@ -65,6 +77,7 @@
       </tbody>
     </table>
     <p class="help">{% translate "„Genutzt“ zählt Demo-Projekte mit mindestens einer Änderung durch die Nutzerin oder den Nutzer nach der Anlage; von der Demo-Vorlage selbst angelegte Daten zählen nicht mit." %}</p>
+    <p class="help">{% translate "Die Gast-Demo wird über den öffentlichen Demo-Link ohne Konto gestartet und nach Sitzungsende gelöscht; sie wird nur als anonyme Tagessumme gezählt, eine spätere Registrierung lässt sich ihr daher nicht zuordnen. „Eigenes Projekt danach angelegt“ bezieht sich nur auf Demo-Projekte im eigenen Konto. Gast-Demos vor Einführung dieser Zählung sind nicht erfasst." %}</p>
   </div>
 
   <div class="module">
