@@ -1,80 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PlantingPlanActiveFilterChips } from '../components/planting-plans/search/PlantingPlanActiveFilterChips';
+import type { PlantingPlanFilters } from '../pages/plantingPlanSearch';
 import {
-  EMPTY_PLANTING_PLAN_FILTERS,
-  type PlantingPlanFilterGroup,
-  type PlantingPlanFilterOptions,
-  type PlantingPlanFilters,
-} from '../pages/plantingPlanSearch';
-import type { PlantingPlanSearchControls } from '../pages/usePlantingPlanSearch';
-
-const options: PlantingPlanFilterOptions = {
-  locations: [
-    { value: 10, label: 'Hof' },
-    { value: 20, label: 'Garten' },
-  ],
-  fields: [
-    { value: 100, label: 'Parzelle A', locationId: 10 },
-    { value: 200, label: 'Parzelle B', locationId: 20 },
-  ],
-  cultivationTypes: [
-    { value: 'direct_sowing', label: 'Direktsaat' },
-    { value: 'pre_cultivation', label: 'Pflanzung' },
-  ],
-  crops: [
-    { value: 'Karotte', label: 'Karotte' },
-    { value: 'Tomate', label: 'Tomate' },
-  ],
-};
-
-const activeGroups = (filters: PlantingPlanFilters): PlantingPlanFilterGroup[] => {
-  const groups: PlantingPlanFilterGroup[] = [];
-  if (filters.locationIds.length) groups.push('location');
-  if (filters.fieldIds.length) groups.push('field');
-  if (filters.cultivationTypes.length) groups.push('cultivationType');
-  if (filters.cropKeys.length) groups.push('crop');
-  for (const field of ['plantingDate', 'harvestStartDate', 'harvestEndDate'] as const) {
-    const range = filters.monthRanges[field];
-    if (range.from !== null || range.to !== null) groups.push(field);
-  }
-  return groups;
-};
-
-const controls = (
-  filters: PlantingPlanFilters,
-  overrides: Partial<PlantingPlanSearchControls> = {},
-): PlantingPlanSearchControls => ({
-  query: '',
-  setQuery: vi.fn(),
-  clearSearch: vi.fn(),
-  terms: [],
-  filters,
-  setFilters: vi.fn(),
-  setLocationIds: vi.fn(),
-  clearFilterGroup: vi.fn(),
-  resetFilters: vi.fn(),
-  sortKey: 'plantingDateAsc',
-  setSortKey: vi.fn(),
-  activeFilterGroups: activeGroups(filters),
-  hasSearch: false,
-  hasFilters: activeGroups(filters).length > 0,
-  isActive: activeGroups(filters).length > 0,
-  options,
-  matchById: new Map(),
-  noteMatchIds: new Set(),
-  totalCount: 0,
-  shownCount: 0,
-  searchOnlyCount: 0,
-  ...overrides,
-});
-
-const withFilters = (partial: Partial<PlantingPlanFilters> = {}): PlantingPlanFilters => ({
-  ...EMPTY_PLANTING_PLAN_FILTERS,
-  ...partial,
-  monthRanges: { ...EMPTY_PLANTING_PLAN_FILTERS.monthRanges, ...(partial.monthRanges ?? {}) },
-});
+  plantingPlanFilters as withFilters,
+  plantingPlanSearchControls as controls,
+} from './helpers/plantingPlanSearchControls';
 
 const renderChips = (
   filters: PlantingPlanFilters,
