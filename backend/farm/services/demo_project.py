@@ -7,6 +7,8 @@ from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import F, Q
+from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 
@@ -227,6 +229,19 @@ def reset_project_demo_data(project: Project) -> None:
     BatchOperation.objects.filter(project=project).delete()
 
 
+def demo_project_used_filter(prefix: str = '') -> Q:
+    """Match demo projects with at least one change made after seeding.
+
+    Seeding records revisions of its own (`Crop.save()` writes one per crop),
+    so only revisions after `demo_seeded_at` count. A project without that
+    marker counts any revision. Pass `prefix` (e.g. `'project__'`) to filter a
+    related model; combine with `.distinct()` when counting.
+    """
+    return Q(**{f'{prefix}entity_revisions__created_at__gt': F(f'{prefix}demo_seeded_at')}) | Q(
+        **{f'{prefix}demo_seeded_at__isnull': True, f'{prefix}entity_revisions__isnull': False},
+    )
+
+
 def is_demo_project_description(description: str | None) -> bool:
     """Return whether a project description marks one of the demo templates."""
     return (description or '') in DEMO_PROJECT_DESCRIPTIONS
@@ -284,6 +299,8 @@ def populate_demo_project(project: Project, *, owner: Any | None = None, languag
         crops = _create_crops(project, suppliers, language_code=language)
         _create_planting_plans(project, crops, beds, owner, language_code=language)
         assign_unassigned_planting_plans(project, owner=owner)
+        project.demo_seeded_at = timezone.now()
+        Project.objects.filter(pk=project.pk).update(demo_seeded_at=project.demo_seeded_at)
 
 
 def populate_public_demo_library_from_project(project: Project, *, owner: Any | None = None, language_code: str | None = None) -> None:

@@ -49,6 +49,15 @@ class Project(TimestampedModel):
     region = models.CharField(max_length=20, choices=REGION_CHOICES, default=REGION_GERMANY)
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    demo_seeded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            'When the demo template finished filling this project; empty for projects '
+            'not created from the demo template. Seeding records revisions of its own, '
+            'so only revisions after this point are user changes.'
+        ),
+    )
 
     class Meta:
         ordering = ['name']

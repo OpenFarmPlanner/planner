@@ -77,6 +77,11 @@ erDiagram
   `cleanup_deleted_projects` command once they have been in the trash for
   more than 30 days. Manual permanent deletion uses the same database cascade
   as the cleanup command.
+- **`Project.demo_seeded_at`** marks when the demo template finished filling
+  a project (empty for every other project). Seeding records crop revisions
+  of its own, so the engagement dashboard only counts revisions after this
+  point as user changes. Projects created before the field were backfilled
+  from their seed revisions.
 - **Unclear / needs check**: the invariant "a project always has at least
   one admin" is enforced only in `ProjectMembersView` view logic, not at the
   database level.
