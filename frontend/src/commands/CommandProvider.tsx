@@ -270,12 +270,50 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const timerId = window.setTimeout(() => {
+    let timerId: number;
+    let cancelled = false;
+    let consecutiveClearChecks = 0;
+    // Require two consecutive clear checks (1s apart) before showing, not
+    // just one: a dialog that closes as *part of* the very click the user is
+    // making (e.g. a "close and navigate" button) is momentarily absent from
+    // the DOM while that click/navigation is still settling - showing right
+    // in that gap lands the Snackbar on screen at the worst possible moment.
+    const REQUIRED_CONSECUTIVE_CLEAR_CHECKS = 2;
+    const POLL_INTERVAL_MS = 1000;
+
+    const tryShowHint = () => {
+      // The Snackbar renders above any open MUI Dialog/Popover (it has a
+      // higher z-index), so firing on a fixed timer can land the hint right
+      // on top of whatever modal action bar the user happens to be clicking
+      // at that moment - a real click-blocking bug, not just a visual
+      // nuisance (it's how a crop-library E2E test ended up hanging on a
+      // dialog button it could no longer hit). Wait for the page to be free
+      // of open dialogs for a sustained moment before showing it, instead of
+      // a fixed one-shot delay.
+      if (document.querySelector('[role="dialog"]')) {
+        consecutiveClearChecks = 0;
+        timerId = window.setTimeout(tryShowHint, POLL_INTERVAL_MS);
+        return;
+      }
+      consecutiveClearChecks += 1;
+      if (consecutiveClearChecks < REQUIRED_CONSECUTIVE_CLEAR_CHECKS) {
+        timerId = window.setTimeout(tryShowHint, POLL_INTERVAL_MS);
+        return;
+      }
       setHintOpen(true);
       localStorage.setItem(SHORTCUT_HINT_KEY, '1');
+    };
+
+    timerId = window.setTimeout(() => {
+      if (!cancelled) {
+        tryShowHint();
+      }
     }, 1800);
 
-    return () => window.clearTimeout(timerId);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
   }, [currentContextTags]);
 
   const openPalette = useCallback(() => {
