@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-05 — Claude — Automated security review of PR #754 (Aussaattermin column)
+
+**Scope:** `git diff origin/main...HEAD` (planting plan sowing-date column, DataGrid columns panel, mobile plan dialog, locale files, docs).
+
+**Findings:** No issues. The only backend change is a validation message wording in `PlantingPlanSerializer`; no queryset, permission, field or model changes. The frontend changes are client-side date derivation and UI with no unsafe HTML APIs, new storage keys or new data flows.
+
 ## 2026-10-05 — Claude — Automated security review of PR #753 (explain guest-demo restrictions)
 
 **Scope:** `git diff origin/main...HEAD` (`useGuestDemoGuard`, `GuestDemoNotice`, error mapping for `guest_demo_restricted`, affected pages, i18n, docs).

@@ -7,6 +7,22 @@ const fields: Field[] = [{ id: 10, name: 'Parzelle A', location: 1 }];
 const beds: Bed[] = [{ id: 100, name: 'Beet 1', field: 10 }];
 
 describe('deriveLocationTasks', () => {
+  it('keeps an unspecified cultivation type as a planting task', () => {
+    const crops: Crop[] = [{ id: 5, name: 'Karotte', growth_duration_days: 60 }];
+    const plans: PlantingPlan[] = [{ id: 99, crop: 5, bed: 100, planting_date: '2026-04-12' }];
+
+    const tasks = deriveLocationTasks({
+      locations,
+      fields,
+      beds,
+      plantingPlans: plans,
+      crops,
+      today: new Date('2026-04-01'),
+    });
+
+    expect(tasks[1][0].type).toBe('planting');
+  });
+
   it('derives sowing and harvest tasks for direct sowing plans', () => {
     const crops: Crop[] = [
       { id: 5, name: 'Karotte', cultivation_types: ['direct_sowing'], growth_duration_days: 60 },

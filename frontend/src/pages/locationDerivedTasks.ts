@@ -24,6 +24,20 @@ const getPlanCropDisplayName = (plan: PlantingPlan): string | undefined => (
   plan.crop_display_name || plan.crop_name || undefined
 );
 
+const DIRECT_SOWING = 'direct_sowing';
+const PRE_CULTIVATION = 'pre_cultivation';
+
+const isDirectSowingPlan = (plan: PlantingPlan, crop?: Crop): boolean => {
+  const planType = plan.cultivation_type || plan.crop_cultivation_type;
+  if (planType === DIRECT_SOWING) return true;
+  if (planType === PRE_CULTIVATION) return false;
+
+  const supported = plan.crop_cultivation_types
+    ?? getEffectiveCropValue(crop, 'cultivation_types')
+    ?? [];
+  return supported.includes(DIRECT_SOWING) && !supported.includes(PRE_CULTIVATION);
+};
+
 export function deriveLocationTasks({
   locations,
   fields,
@@ -67,7 +81,7 @@ export function deriveLocationTasks({
     const crop = cropById.get(plan.crop);
     const cropName = getPlanCropDisplayName(plan) || (crop ? getCropDisplayName(crop) : undefined);
     const schedule = getPlanSowingSchedule(plan, crop);
-    const baseTaskType: DerivedTaskType = schedule?.isPreCultivation ? 'planting' : 'sowing';
+    const baseTaskType: DerivedTaskType = isDirectSowingPlan(plan, crop) ? 'sowing' : 'planting';
 
     pushTask({
       type: baseTaskType,
