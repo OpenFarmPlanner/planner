@@ -1088,7 +1088,7 @@
           "cultivation_types": "Anbauarten",
           "growth_duration_days": "Wachstumszeit (Tage)",
           "harvest_duration_days": "Erntedauer (Tage)",
-          "propagation_duration_days": "Vorkulturdauer (Tage)",
+          "propagation_duration_days": "Anzuchtdauer (Tage)",
           "harvest_method": "Ertragseinheit",
           "expected_yield": "Erwarteter Ertrag",
           "distance_within_row_m": "Pflanzabstand (m)",
