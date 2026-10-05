@@ -24,6 +24,8 @@ import {
   updatePublicDisplayName,
 } from '../auth/authApi';
 import { useAuth } from '../auth/useAuth';
+import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
+import { GuestDemoNotice } from '../components/GuestDemoNotice';
 import { useTranslation } from '../i18n';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { enableDevOnboardingPreview } from '../projects/devOnboardingPreview';
@@ -46,6 +48,7 @@ import { AccountLanguageSelect } from '../i18n/LanguageSwitcher';
 
 export default function AccountSettingsPage() {
   const { user, requestAccountDeletion, refreshUser } = useAuth();
+  const { blockInGuestDemo } = useGuestDemoGuard();
   const { t } = useTranslation('account');
   const navigate = useNavigate();
 
@@ -124,6 +127,14 @@ export default function AccountSettingsPage() {
 
   useNavigationBlocker(hasUnsavedChanges, t('unsavedChangesWarning'));
 
+  // The guest demo has no real account: every account change is rejected by
+  // the backend, so the explanation comes before the form instead of after it.
+  const openEditor = (editor: NonNullable<typeof activeEditor>): void => {
+    if (!blockInGuestDemo()) {
+      setActiveEditor(editor);
+    }
+  };
+
   const closeDisplayNameEditor = (): void => {
     setActiveEditor(null);
     setDisplayName(user?.display_name ?? '');
@@ -169,8 +180,11 @@ export default function AccountSettingsPage() {
       },
     );
 
-  const handleModeratorRequestSubmit = (): Promise<void> =>
-    moderatorRequestSection.submit(
+  const handleModeratorRequestSubmit = async (): Promise<void> => {
+    if (blockInGuestDemo()) {
+      return;
+    }
+    await moderatorRequestSection.submit(
       async () => {
         await publicLibraryModeratorRequestAPI.create(moderatorMotivation.trim());
         return { detail: t('moderatorRequest.success') };
@@ -180,6 +194,7 @@ export default function AccountSettingsPage() {
         setModeratorRequestStatus('pending');
       },
     );
+  };
 
   const handleEmailChangeRequest = (): Promise<void> =>
     emailSection.submit(() => requestEmailChange(newEmail, emailPassword), closeEmailEditor);
@@ -187,8 +202,11 @@ export default function AccountSettingsPage() {
   const handlePasswordChange = (): Promise<void> =>
     passwordSection.submit(() => changePassword(currentPassword, newPassword, repeatPassword), closePasswordEditor);
 
-  const handleDataExport = (): Promise<void> =>
-    dataExportSection.submit(async () => {
+  const handleDataExport = async (): Promise<void> => {
+    if (blockInGuestDemo()) {
+      return;
+    }
+    await dataExportSection.submit(async () => {
       const payload = await getAccountDataExport();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -201,6 +219,7 @@ export default function AccountSettingsPage() {
       URL.revokeObjectURL(url);
       return { detail: t('dataExport.success') };
     });
+  };
 
   const handleResetHints = (): void => {
     localStorage.removeItem('ofp.shortcutHintSeen');
@@ -231,6 +250,7 @@ export default function AccountSettingsPage() {
   return (
     <Box sx={{ p: 3, width: '100%', boxSizing: 'border-box' }}>
       <Stack spacing={3}>
+        <GuestDemoNotice messageKey="accountSettingsNotice" />
         <SettingsCard title={t('sections.profile')} collapsible defaultExpanded>
           <Stack spacing={2}>
             <Typography>
@@ -242,7 +262,7 @@ export default function AccountSettingsPage() {
             <SectionAlerts message={profileSection.message} error={profileSection.error} />
             <Box>
               {activeEditor !== 'displayName' ? (
-                <Button variant="outlined" onClick={() => setActiveEditor('displayName')} sx={actionButtonSx}>
+                <Button variant="outlined" onClick={() => openEditor('displayName')} sx={actionButtonSx}>
                   {t('actions.editDisplayName')}
                 </Button>
               ) : null}
@@ -278,7 +298,7 @@ export default function AccountSettingsPage() {
             <SectionAlerts message={publicProfileSection.message} error={publicProfileSection.error} />
             <Box>
               {activeEditor !== 'publicDisplayName' ? (
-                <Button variant="outlined" onClick={() => setActiveEditor('publicDisplayName')} sx={actionButtonSx}>
+                <Button variant="outlined" onClick={() => openEditor('publicDisplayName')} sx={actionButtonSx}>
                   {user?.public_display_name
                     ? t('publicProfile.actions.editPublicDisplayName')
                     : t('publicProfile.actions.setPublicDisplayName')}
@@ -359,7 +379,7 @@ export default function AccountSettingsPage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
                 variant={activeEditor === 'email' ? 'contained' : 'outlined'}
-                onClick={() => setActiveEditor('email')}
+                onClick={() => openEditor('email')}
                 sx={actionButtonSx}
               >
                 {t('security.changeEmailTitle')}
@@ -367,7 +387,7 @@ export default function AccountSettingsPage() {
               {hasPassword ? (
                 <Button
                   variant={activeEditor === 'password' ? 'contained' : 'outlined'}
-                  onClick={() => setActiveEditor('password')}
+                  onClick={() => openEditor('password')}
                   sx={actionButtonSx}
                 >
                   {t('security.changePasswordTitle')}
@@ -484,7 +504,7 @@ export default function AccountSettingsPage() {
           title={t('sections.account')}
           description={`${t('deleteDescription')} ${t('restoreDescription')}`}
         >
-          <Button color="error" variant="outlined" onClick={() => setDeleteDialogOpen(true)}>
+          <Button color="error" variant="outlined" onClick={() => { if (!blockInGuestDemo()) setDeleteDialogOpen(true); }}>
             {t('deleteButton')}
           </Button>
         </SettingsCard>

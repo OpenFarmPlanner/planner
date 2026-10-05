@@ -197,6 +197,24 @@ describe('authApi error mapping', () => {
     });
   });
 
+  it('explains a guest-demo restriction in the UI language instead of the English detail', async () => {
+    await i18n.changeLanguage('de');
+    installFetchMock([
+      { ok: true, status: 200, body: { detail: 'ok' } },
+      {
+        ok: false,
+        status: 403,
+        body: { code: 'guest_demo_restricted', detail: 'This action is not available in the public demo.' },
+      },
+    ]);
+
+    await expect(updateProfile('Demo')).rejects.toMatchObject({
+      message: 'In der Demo nicht verfügbar. Mit einem kostenlosen Konto kannst du diese Funktion nutzen.',
+      code: 'guest_demo_restricted',
+      status: 403,
+    });
+  });
+
   it('does not expose raw HTML error responses', async () => {
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },

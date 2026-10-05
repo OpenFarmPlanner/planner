@@ -180,6 +180,18 @@
     "demoCreatedHint": "This project contains sample data. You can edit everything freely or delete the project at any time.",
     "demoCreateError": "Demo project could not be created. Please try again."
   },
+  "guestDemo": {
+    "restricted": "Not available in the demo. Create a free account to use this feature.",
+    "cropLibraryNotice": "You are using the demo: you can browse the public crop library and import crops into your demo project. Editing or translating entries, restoring earlier versions and writing discussion posts require a free account.",
+    "cropLibraryEdit": "The public crop library cannot be edited in the demo.",
+    "cropLibraryDiscussion": "In the demo you can read discussions, but you cannot write posts.",
+    "publishCrop": "In the demo you cannot publish crops to the public crop library or send changes to it. You can still apply updates from the library.",
+    "unlinkPublicCrop": "In the demo the link to the public crop library cannot be removed.",
+    "accountSettingsNotice": "You are using the demo without an account, so profile, email address, password, moderator requests, data export and account deletion are not available. Demo data is deleted automatically after 8 hours at the latest.",
+    "createProject": "You cannot create additional projects in the demo.",
+    "inviteMembers": "You cannot invite people to the project in the demo.",
+    "noteAttachments": "Photos cannot be uploaded to notes in the demo."
+  },
   "runtime": {
     "applicationUpdatedFallback": "The application could not be updated automatically. Please reload the page.",
     "routeErrorFallback": "The page could not be restored automatically. Please reload the page.",

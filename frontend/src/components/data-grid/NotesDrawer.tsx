@@ -31,6 +31,7 @@ import { ConfirmationDialog } from '../feedback/ConfirmationDialog';
 import { invalidateNoteAttachmentsCache } from './noteAttachmentsCache';
 import { markdownComponents } from './markdownComponents';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
+import { useGuestDemoGuard } from '../../auth/useGuestDemoGuard';
 
 export interface NotesDrawerProps {
   open: boolean;
@@ -91,6 +92,7 @@ async function renderProcessedFile(file: File, cropRect?: CropRect): Promise<Fil
 
 export function NotesDrawer({ open, title, value, onChange, onSave, onClose, hasUnsavedChanges = false, loading = false, noteId, focusAttachments = false, focusRequestId = 0 }: NotesDrawerProps) {
   const { t } = useTranslation('common');
+  const { blockInGuestDemo } = useGuestDemoGuard();
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
@@ -197,6 +199,9 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
   }, []);
 
   const handleTakePhotoClick = async (): Promise<void> => {
+    if (blockInGuestDemo('noteAttachments')) {
+      return;
+    }
     // Touch devices already get the native camera app via the file input's
     // `capture` attribute below — a better experience than a custom in-page
     // stream. Desktop browsers ignore that attribute and just show a file
@@ -460,7 +465,17 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
                     }}
                   />
                 </Button>
-                <Button variant="outlined" component="label" sx={{ flex: 1, minHeight: 40 }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  sx={{ flex: 1, minHeight: 40 }}
+                  onClick={(event) => {
+                    // A label opens its file picker natively; stop that before the user picks a photo.
+                    if (blockInGuestDemo('noteAttachments')) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
                   {t('notesDrawer.selectFromGallery')}
                   <input
                     type="file"

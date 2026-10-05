@@ -9,6 +9,7 @@ import { CommandProvider } from '../commands/CommandProvider';
 import { FocusManagerProvider } from '../focus/FocusManager';
 import i18n from '../i18n/config';
 import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
+import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
 import type { TopbarContextAction } from '../navigation/topbarTypes';
 
 const publicCropApiMocks = vi.hoisted(() => ({
@@ -238,20 +239,24 @@ function TestAppShell() {
 }
 
 function renderPage(initialEntries: string[] = ['/app/crop-library']): ReturnType<typeof render> {
+  // `useAuth` is mocked above; the guest-demo guard reads the context itself.
+  const authValue = { user: authMocks.user } as unknown as AuthContextValue;
   return render(
-    <FocusManagerProvider>
-      <CommandProvider>
-        <MemoryRouter initialEntries={initialEntries}>
-          <Routes>
-            <Route path="/app" element={<TestAppShell />}>
-              <Route path="crop-library" element={<PublicCropLibraryPage />} />
-              <Route path="public-library-moderation" element={<h1>Moderation</h1>} />
-              <Route path="dashboard" element={<h1>Hauptseite</h1>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </CommandProvider>
-    </FocusManagerProvider>,
+    <AuthContext.Provider value={authValue}>
+      <FocusManagerProvider>
+        <CommandProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            <Routes>
+              <Route path="/app" element={<TestAppShell />}>
+                <Route path="crop-library" element={<PublicCropLibraryPage />} />
+                <Route path="public-library-moderation" element={<h1>Moderation</h1>} />
+                <Route path="dashboard" element={<h1>Hauptseite</h1>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </CommandProvider>
+      </FocusManagerProvider>
+    </AuthContext.Provider>,
   );
 }
 
@@ -282,6 +287,7 @@ describe('PublicCropLibraryPage', () => {
     authMocks.user.is_public_library_moderator = false;
     authMocks.user.is_staff = false;
     authMocks.user.is_superuser = false;
+    authMocks.user.is_guest_demo = false;
     mockDesktopViewport();
     window.localStorage.clear();
     window.history.replaceState({ page: 'crop-library-test' }, '', '/app/crop-library?cropId=1');
@@ -752,6 +758,32 @@ describe('PublicCropLibraryPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Neue Diskussion' }));
     expect(screen.getByRole('textbox', { name: 'Titel' })).toHaveFocus();
     expect(screen.getByRole('textbox', { name: 'Kommentar' })).toBeInTheDocument();
+  });
+
+  it('explains in the guest demo that the library can be browsed and imported but not edited', async () => {
+    authMocks.user.is_guest_demo = true;
+    renderPage(['/app/crop-library?cropId=1']);
+
+    await screen.findByRole('heading', { level: 2, name: 'Tomate' });
+    const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
+
+    expect(screen.getByTestId('guest-demo-notice')).toHaveTextContent(
+      'Du nutzt die Demo: Die öffentliche Kulturbibliothek kannst du durchsuchen und Kulturen in dein Demo-Projekt übernehmen.',
+    );
+    expect(within(cropDetailHeader).getByRole('button', { name: 'Bearbeiten' })).toBeDisabled();
+    expect(within(cropDetailHeader).getByRole('button', { name: 'In Projekt importieren' })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Diskussionen' }));
+    expect(await screen.findByText('In der Demo kannst du Diskussionen lesen, aber keine Beiträge schreiben.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Neue Diskussion' })).toBeDisabled();
+  });
+
+  it('shows no guest-demo notice to a registered user', async () => {
+    renderPage(['/app/crop-library?cropId=1']);
+
+    await screen.findByRole('heading', { level: 2, name: 'Tomate' });
+    expect(screen.queryByTestId('guest-demo-notice')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('public-crop-detail-header')).getByRole('button', { name: 'Bearbeiten' })).toBeEnabled();
   });
 
   it('shows discussion topics as an interactive activity-sorted overview', async () => {
