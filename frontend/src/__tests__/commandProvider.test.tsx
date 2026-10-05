@@ -107,7 +107,7 @@ describe('CommandProvider', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3000);
     });
     expect(localStorage.getItem('ofp.shortcutHintSeen')).toBe('1');
 
@@ -118,7 +118,59 @@ describe('CommandProvider', () => {
     );
 
     act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(localStorage.getItem('ofp.shortcutHintSeen')).toBe('1');
+
+    vi.useRealTimers();
+  });
+
+  it('defers the one-time shortcut hint while a dialog is open, instead of overlapping its buttons', () => {
+    // Regression test: the hint used to fire on a fixed timer regardless of
+    // what was on screen, and its Snackbar renders above any open MUI
+    // Dialog - so it could land right on top of a dialog's action buttons
+    // and block clicks on them (this is how a crop-library E2E test ended
+    // up hanging on a dialog button it could no longer hit).
+    vi.useFakeTimers();
+    localStorage.removeItem('ofp.shortcutHintSeen');
+
+    function FeaturePageFixture({ dialogOpen }: { dialogOpen: boolean }): React.ReactElement {
+      useCommandContextTag('crops');
+      return (
+        <div>
+          feature page
+          {dialogOpen ? <div role="dialog" aria-modal="true">a dialog is open</div> : null}
+        </div>
+      );
+    }
+
+    const { rerender } = render(
+      <FocusManagerProvider><CommandProvider>
+        <FeaturePageFixture dialogOpen />
+      </CommandProvider></FocusManagerProvider>,
+    );
+
+    act(() => {
       vi.advanceTimersByTime(2000);
+    });
+    expect(localStorage.getItem('ofp.shortcutHintSeen')).toBeNull();
+    expect(screen.queryByText(/Command Palette/)).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(localStorage.getItem('ofp.shortcutHintSeen')).toBeNull();
+
+    // Once the dialog closes and stays closed, the hint still shows - this
+    // guards against a fix that waits forever instead of just deferring.
+    rerender(
+      <FocusManagerProvider><CommandProvider>
+        <FeaturePageFixture dialogOpen={false} />
+      </CommandProvider></FocusManagerProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
     });
     expect(localStorage.getItem('ofp.shortcutHintSeen')).toBe('1');
 
