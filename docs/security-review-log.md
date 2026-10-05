@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-05 — Claude — Re-review of PR #754 after `claude-review:` commits
+
+**Scope:** `git diff origin/main...HEAD` including the code-review fix commits (derived location tasks, Date-tolerant sowing schedule).
+
+**Findings:** No issues. Backend change is still only a validation message wording; the follow-up commits are client-side date logic with no unsafe HTML APIs, storage keys or new data flows. The earlier entry for this PR holds (CROSS-CONFIRMED by this re-review).
+
 ## 2026-10-05 — Claude — Automated security review of PR #754 (Aussaattermin column)
 
 **Scope:** `git diff origin/main...HEAD` (planting plan sowing-date column, DataGrid columns panel, mobile plan dialog, locale files, docs).
