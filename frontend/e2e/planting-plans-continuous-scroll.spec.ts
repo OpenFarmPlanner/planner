@@ -169,7 +169,9 @@ test.describe('planting plans continuous scroll', () => {
     expect(layout.hasVisibleMuiHorizontalScrollbar).toBe(false);
     expect(layout.notesHeaderWidth).toBeGreaterThanOrEqual(56);
     expect(layout.notesHeaderWidth).toBeLessThanOrEqual(90);
-    expect(layout.gridWidth).toBeLessThan(1400);
+    // The Aussaattermin column added a fixed 142px, so the bound here moved
+    // up from the table's previous content width accordingly.
+    expect(layout.gridWidth).toBeLessThan(1550);
     expect(layout.gridLeft).toBeGreaterThan(350);
 
     // On a wide screen the table is narrower than its (centered) container,

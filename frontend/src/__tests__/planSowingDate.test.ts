@@ -37,6 +37,20 @@ describe('getPlanSowingSchedule', () => {
     });
   });
 
+  it('tolerates planting_date still being a Date object, as a DataGrid row mid-edit can hold', () => {
+    const plan = {
+      crop: 1,
+      planting_date: new Date('2026-05-01T00:00:00Z'),
+      cultivation_type: 'pre_cultivation',
+    } as unknown as PlantingPlan;
+    const schedule = getPlanSowingSchedule(plan, anzuchtCrop);
+    expect(schedule).toEqual({
+      isPreCultivation: true,
+      propagationDurationDays: 28,
+      sowingDate: '2026-04-03',
+    });
+  });
+
   it('equates sowing date and planting date for direct sowing', () => {
     const plan: PlantingPlan = { crop: 2, planting_date: '2026-05-01', cultivation_type: 'direct_sowing' };
     const schedule = getPlanSowingSchedule(plan, directCrop);

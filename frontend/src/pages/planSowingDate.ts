@@ -15,6 +15,24 @@ type PlanPropagationFields = PlanCultivationFields
 
 type PlanScheduleFields = PlanPropagationFields & Pick<PlantingPlan, 'planting_date'>;
 
+/**
+ * `planting_date` is typed as an ISO string, but a DataGrid row mid-edit can
+ * briefly hold the `Date` object its own `type: 'date'` column works with
+ * instead (the same hazard `toIsoDateString`/`toGridDateValue` exist for in
+ * `components/data-grid/dateEditCellUtils.ts`) — this re-derives a column
+ * for every row on each render, including rows not currently being edited,
+ * so it has to tolerate that rather than only the grid's own date column.
+ */
+function normalizePlantingDate(value: PlantingPlan['planting_date'] | Date): string | null {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return formatIsoDate(value);
+  }
+  return value;
+}
+
 export interface PlanSowingSchedule {
   isPreCultivation: boolean;
   /** Effective propagation duration in days, or null when not resolvable. */
@@ -85,13 +103,14 @@ export function getPlanSowingSchedule(
   plan: PlanScheduleFields,
   crop: Crop | undefined,
 ): PlanSowingSchedule | null {
-  if (!plan.planting_date) {
+  const plantingDateIso = normalizePlantingDate(plan.planting_date);
+  if (!plantingDateIso) {
     return null;
   }
 
   const isPreCultivation = resolveIsPreCultivation(plan, crop);
   if (!isPreCultivation) {
-    return { isPreCultivation: false, propagationDurationDays: null, sowingDate: plan.planting_date };
+    return { isPreCultivation: false, propagationDurationDays: null, sowingDate: plantingDateIso };
   }
 
   const propagationDurationDays = resolvePropagationDurationDays(plan, crop);
@@ -99,7 +118,7 @@ export function getPlanSowingSchedule(
     return { isPreCultivation: true, propagationDurationDays: null, sowingDate: null };
   }
 
-  const plantingDate = parseIsoDate(plan.planting_date);
+  const plantingDate = parseIsoDate(plantingDateIso);
   if (!plantingDate) {
     return { isPreCultivation: true, propagationDurationDays, sowingDate: null };
   }
