@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { updatePublicDisplayName } from '../auth/authApi';
 import AccountSettingsPage from '../pages/AccountSettingsPage';
 import { DEV_ONBOARDING_PREVIEW_STORAGE_KEY } from '../projects/devOnboardingPreview';
+import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
 const authState = {
   user: {
@@ -175,6 +177,31 @@ describe('AccountSettingsPage', () => {
 
     expect(moderatorRequestApiMocks.create).toHaveBeenCalledWith('Ich kenne mich mit Kulturarten aus.');
     expect(await screen.findByText('Deine Anfrage wird geprüft.')).toBeInTheDocument();
+  });
+
+  it('explains the guest-demo limits and keeps account changes from opening', async () => {
+    const snackbars: GlobalSnackbarDetail[] = [];
+    const listener = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+    const guestAuth = { user: { ...authState.user, is_guest_demo: true } } as unknown as AuthContextValue;
+    render(
+      <AuthContext.Provider value={guestAuth}>
+        <MemoryRouter><AccountSettingsPage /></MemoryRouter>
+      </AuthContext.Provider>,
+    );
+
+    expect(screen.getByTestId('guest-demo-notice')).toHaveTextContent('Du nutzt die Demo ohne Konto.');
+    fireEvent.click(screen.getByRole('button', { name: 'Anzeigename ändern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Konto löschen' }));
+    window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+
+    expect(screen.queryByRole('textbox', { name: 'Anzeigename' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Konto zur Löschung vormerken' })).not.toBeInTheDocument();
+    expect(snackbars).toHaveLength(2);
+    expect(snackbars[0]).toEqual({
+      message: 'In der Demo nicht verfügbar. Mit einem kostenlosen Konto kannst du diese Funktion nutzen.',
+      severity: 'info',
+    });
   });
 
   it('saves the public display name with Enter', async () => {

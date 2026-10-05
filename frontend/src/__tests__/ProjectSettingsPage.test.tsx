@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import ProjectSettingsPage from '../pages/ProjectSettingsPage';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
+import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
 
 const inviteMock = vi.fn(async () => ({ data: { code: 'invitation_sent', mail_sent: true } }));
 const listMock = vi.fn(async () => ({ data: [] }));
@@ -156,6 +157,21 @@ describe('ProjectSettingsPage', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       'Du kannst dich hier nicht selbst aus dem Projekt entfernen.',
     );
+  });
+
+  it('explains in the guest demo that invitations are unavailable instead of sending one', async () => {
+    const guestAuth = { user: { ...authState.user, is_guest_demo: true } } as unknown as AuthContextValue;
+    render(
+      <AuthContext.Provider value={guestAuth}>
+        <MemoryRouter><ProjectSettingsPage /></MemoryRouter>
+      </AuthContext.Provider>,
+    );
+    await waitFor(() => expect(listMembersMock).toHaveBeenCalledWith(1));
+
+    expect(screen.getByTestId('guest-demo-notice')).toHaveTextContent('In der Demo kannst du keine Personen in das Projekt einladen.');
+    expect(screen.getByLabelText('E-Mail')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Einladung senden' })).toBeDisabled();
+    expect(inviteMock).not.toHaveBeenCalled();
   });
 
   it('shows a neutral no-access state for invitations when the user is not an admin', async () => {

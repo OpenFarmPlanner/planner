@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractApiErrorMessage, isAreaInputSpacingMissingError, isAuthenticationExpiredError } from '../api/errors';
+import {
+  extractApiErrorMessage,
+  isAreaInputSpacingMissingError,
+  isAuthenticationExpiredError,
+  isGuestDemoRestrictedError,
+} from '../api/errors';
 import i18n from '../i18n/config';
 
 const fallbackMessage = 'Ein Fehler ist aufgetreten';
@@ -324,7 +329,25 @@ describe('extractApiErrorMessage', () => {
     );
   });
 
+  it('explains a guest-demo restriction instead of a generic error or the English detail', () => {
+    const t = i18n.getFixedT('de', ['crops', 'common']) as (key: string) => string;
+    const error = createAxiosError(403, {
+      code: 'guest_demo_restricted',
+      detail: 'This action is not available in the public demo.',
+    });
 
+    expect(extractApiErrorMessage(error, t, fallbackMessage)).toBe(
+      'In der Demo nicht verfügbar. Mit einem kostenlosen Konto kannst du diese Funktion nutzen.',
+    );
+  });
+});
+
+describe('isGuestDemoRestrictedError', () => {
+  it('matches only the guest-demo rejection code', () => {
+    expect(isGuestDemoRestrictedError(createAxiosError(403, { code: 'guest_demo_restricted', detail: 'x' }))).toBe(true);
+    expect(isGuestDemoRestrictedError(createAxiosError(403, { code: 'admin_required', detail: 'x' }))).toBe(false);
+    expect(isGuestDemoRestrictedError(new Error('guest_demo_restricted'))).toBe(false);
+  });
 });
 
 describe('isAreaInputSpacingMissingError', () => {

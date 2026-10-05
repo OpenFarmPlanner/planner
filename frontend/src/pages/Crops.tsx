@@ -38,6 +38,7 @@ import {
 import { type HistoryScope } from './cropsHistoryUtils';
 import { useSelectedCropSync } from './useSelectedCropSync';
 import { useAuth } from '../auth/useAuth';
+import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
 import { usePublicCropLibrary } from './usePublicCropLibrary';
 import { useCropDelete } from './useCropDelete';
 import { useCropImportExport } from './useCropImportExport';
@@ -88,6 +89,7 @@ function Crops() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { blockInGuestDemo } = useGuestDemoGuard();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
@@ -357,13 +359,24 @@ function Crops() {
   // wizard would open its field-by-field sync, which needs a published entry.
   const [republishOpen, setRepublishOpen] = useState(false);
 
+  // Publishing, republishing and pushing changes all write to the shared
+  // library, which the guest demo cannot; pulling an update stays available.
   const handleRequestPublishCrop = useCallback(() => {
+    if (blockInGuestDemo('publishCrop')) {
+      return;
+    }
     if (selectedCrop?.can_republish_public_crop) {
       setRepublishOpen(true);
     } else {
       setPublishWizardOpen(true);
     }
-  }, [selectedCrop?.can_republish_public_crop]);
+  }, [blockInGuestDemo, selectedCrop?.can_republish_public_crop]);
+
+  const handleRequestUnlinkPublicCrop = useCallback((crop: Crop) => {
+    if (!blockInGuestDemo('unlinkPublicCrop')) {
+      setUnlinkCrop(crop);
+    }
+  }, [blockInGuestDemo]);
 
   // Keep the entry's own original language rather than guessing from the
   // current UI language, which could retag e.g. an entry published in `en`
@@ -839,7 +852,7 @@ function Crops() {
             void fetchCrops();
           }}
           onDeleteCrop={handleDelete}
-          onUnlinkPublicCrop={setUnlinkCrop}
+          onUnlinkPublicCrop={handleRequestUnlinkPublicCrop}
           canCreatePlan={canCreatePlantingPlan}
           createPlanDisabledTooltip={createPlanDisabledTooltip}
           isPublishingCrop={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}

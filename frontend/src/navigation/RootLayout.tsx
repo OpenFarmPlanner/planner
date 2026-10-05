@@ -61,6 +61,7 @@ import { useDeletedProjectsCount } from './useDeletedProjectsCount';
 import { useProjectHistory } from './useProjectHistory';
 import { CreateProjectDialog } from './CreateProjectDialog';
 import { useAuth } from '../auth/useAuth';
+import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
 import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation/topbarTypes';
 import AppLogo from '../components/layout/AppLogo';
 import { AlertSnackbar } from '../components/feedback/AlertSnackbar';
@@ -197,6 +198,7 @@ function RootLayout() {
   const isVeryNarrowMobile = useMediaQuery('(max-width:360px)');
   const isPhonePortrait = useMediaQuery(`${theme.breakpoints.down('sm')} and (orientation: portrait)`);
   const { user, endGuestDemo, logout, activeProjectId, switchActiveProject } = useAuth();
+  const { blockInGuestDemo } = useGuestDemoGuard();
   const fallbackHistoryActorLabel = user?.display_label || user?.display_name || user?.email || undefined;
   const { activeCreateActions, openPalette, runPrimaryCreateAction, openShortcutsHelp } = useCommandContext();
   // One controller for both entry points — the full topbar's bell and, on
@@ -395,9 +397,12 @@ function RootLayout() {
 
   const handleOpenCreateProject = useCallback((): void => {
     setProjectMenuAnchor(null);
+    if (blockInGuestDemo('createProject')) {
+      return;
+    }
     setNewProjectName('');
     setIsCreateProjectOpen(true);
-  }, []);
+  }, [blockInGuestDemo]);
 
   useEffect(() => {
     const handleCreateProjectRequest = (): void => {
@@ -585,6 +590,9 @@ function RootLayout() {
       return;
     }
     handleProjectMenuClose();
+    if (blockInGuestDemo('createProject')) {
+      return;
+    }
     setIsCreatingDemoProject(true);
     try {
       await createDemoProjectAndSwitch(switchActiveProject);
@@ -596,7 +604,7 @@ function RootLayout() {
     } finally {
       setIsCreatingDemoProject(false);
     }
-  }, [handleProjectMenuClose, isCreatingDemoProject, navigate, showSnackbar, switchActiveProject, tCommon]);
+  }, [blockInGuestDemo, handleProjectMenuClose, isCreatingDemoProject, navigate, showSnackbar, switchActiveProject, tCommon]);
 
   const handleSwitchProject = useCallback(async (projectId: number): Promise<void> => {
     setMobileProjectSwitcherOpen(false);

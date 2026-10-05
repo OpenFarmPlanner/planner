@@ -55,6 +55,8 @@ import type {
   PublicCropSpeciesRelinkResponse,
 } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
+import { useGuestDemoGuard } from '../../auth/useGuestDemoGuard';
+import { GuestDemoNotice } from '../../components/GuestDemoNotice';
 import PageContainer from '../../components/layout/PageContainer';
 import { DetailPageActions } from '../../components/layout/DetailPageActions';
 import { useTranslation } from '../../i18n';
@@ -140,6 +142,7 @@ import {
 type PublicCropLoadStatus = 'loading' | 'success' | 'error';
 export default function PublicCropLibraryPage() {
   const { user } = useAuth();
+  const { isGuestDemo, restrictionMessage, blockInGuestDemo } = useGuestDemoGuard();
   const { t, i18n } = useTranslation('crops');
   const language = i18n.resolvedLanguage ?? i18n.language;
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
@@ -241,7 +244,9 @@ export default function PublicCropLibraryPage() {
       resizeObserver?.disconnect();
     };
   }, [useCompactLibraryLayout, loadError, isCropLoading]);
-  const canEditPublicCrop = Boolean(user);
+  // The guest demo may read and import, but every write to the shared library is rejected.
+  const canEditPublicCrop = Boolean(user) && !isGuestDemo;
+  const guestDemoEditReason = isGuestDemo ? restrictionMessage('cropLibraryEdit') : undefined;
   const canModeratePublicLibrary = Boolean(user?.is_public_library_moderator || user?.is_staff || user?.is_superuser);
   const canManageModeratorRequests = Boolean(user?.is_staff || user?.is_superuser);
   const [pendingModerationCount, setPendingModerationCount] = useState(0);
@@ -514,6 +519,7 @@ export default function PublicCropLibraryPage() {
   }, [isSpeciesView, selectedCrop, selectedSpeciesCrop]);
   const showVarietyValueLegend = Boolean(!isSpeciesView && selectedCrop?.variety && selectedSpeciesCrop);
   const isSelectedSpeciesPending = isCropSpeciesPending(selectedCrop);
+  const isDiscussionWritingDisabled = isSelectedSpeciesPending || isGuestDemo;
   // The backend answers what a re-import would do (same comparison the import
   // endpoint runs before it reports 'unchanged'), so the update action can be
   // disabled up front rather than explaining the no-op in a snackbar after the
@@ -1001,11 +1007,11 @@ export default function PublicCropLibraryPage() {
   }, [importConflict, performImport]);
 
   const openEditDialog = useCallback((): void => {
-    if (!selectedCrop) {
+    if (!selectedCrop || blockInGuestDemo('cropLibraryEdit')) {
       return;
     }
     setEditDialogOpen(true);
-  }, [selectedCrop]);
+  }, [blockInGuestDemo, selectedCrop]);
 
   const closeEditDialog = (): void => {
     setEditDialogOpen(false);
@@ -1435,6 +1441,8 @@ export default function PublicCropLibraryPage() {
           label: t('library.page.edit.open'),
           icon: <EditOutlinedIcon fontSize="small" />,
           onClick: openEditDialog,
+          disabled: Boolean(guestDemoEditReason),
+          tooltip: guestDemoEditReason,
         },
         {
           label: importingId
@@ -1461,6 +1469,7 @@ export default function PublicCropLibraryPage() {
       ]}
     />
   ) : null), [
+    guestDemoEditReason,
     handleImport,
     importingId,
     isSelectedCropUpToDate,
@@ -1474,6 +1483,7 @@ export default function PublicCropLibraryPage() {
     <PageContainer variant="xwide">
       <Box sx={{ width: '100%' }}>
         <Stack spacing={2}>
+          <GuestDemoNotice messageKey="cropLibraryNotice" />
           {loadError ? <Alert severity="error">{loadError}</Alert> : null}
 
           <Box
@@ -1993,6 +2003,7 @@ export default function PublicCropLibraryPage() {
                               revertingVersion={revertingVersion}
                               t={t}
                               onDiscuss={startDiscussionForVersion}
+                              writeDisabledReason={guestDemoEditReason}
                             />
                           ))}
                         </Stack>
@@ -2007,6 +2018,7 @@ export default function PublicCropLibraryPage() {
                       {isSelectedSpeciesPending ? (
                         <Alert severity="info">{t('library.badges.speciesPendingTooltip')}</Alert>
                       ) : null}
+                      <GuestDemoNotice messageKey="cropLibraryDiscussion" />
                       {collaborationStatus === 'loading' ? <CircularProgress size={24} /> : null}
                       {collaborationStatus === 'error' ? <Alert severity="error">{t('library.page.collaborationLoadError')}</Alert> : null}
                       {selectedTopicId === null ? (
@@ -2018,7 +2030,7 @@ export default function PublicCropLibraryPage() {
                               startIcon={<AddOutlinedIcon />}
                               sx={{ alignSelf: 'flex-start' }}
                               onClick={openNewTopicForm}
-                              disabled={isSelectedSpeciesPending}
+                              disabled={isDiscussionWritingDisabled}
                             >
                               {t('library.page.discussion.newTopic')}
                             </Button>
@@ -2052,7 +2064,7 @@ export default function PublicCropLibraryPage() {
                                 startIcon={<AddOutlinedIcon />}
                                 sx={{ justifySelf: 'flex-start' }}
                                 onClick={openNewTopicForm}
-                                disabled={isSelectedSpeciesPending}
+                                disabled={isDiscussionWritingDisabled}
                               >
                                 {t('library.page.discussion.newTopic')}
                               </Button>
@@ -2141,7 +2153,7 @@ export default function PublicCropLibraryPage() {
                                   editingCommentId={editingCommentId}
                                   commentActionMenu={commentActionMenu}
                                   submittingComment={submittingComment}
-                                  writingDisabled={isSelectedSpeciesPending}
+                                  writingDisabled={isDiscussionWritingDisabled}
                                   commentBody={commentBody}
                                   t={t}
                                   onReply={startReply}
@@ -2163,7 +2175,7 @@ export default function PublicCropLibraryPage() {
                           {replyTo === null && editingCommentId === null && commentsStatus !== 'loading' && commentsStatus !== 'error' && selectedTopic ? (
                             <CommentForm
                               body={commentBody}
-                              disabled={submittingComment || isSelectedSpeciesPending}
+                              disabled={submittingComment || isDiscussionWritingDisabled}
                               label={t('library.page.discussion.commentLabel')}
                               submitLabel={t('library.page.discussion.submit')}
                               t={t}

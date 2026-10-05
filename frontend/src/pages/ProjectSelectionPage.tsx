@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { projectAPI, type ProjectPayload } from '../api/api';
 import { useAuth } from '../auth/useAuth';
+import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
 import { useTranslation } from '../i18n';
 import { createDemoProjectAndSwitch } from '../projects/demoProjectFlow';
 import { clearDevOnboardingPreview, isDevOnboardingPreviewEnabled } from '../projects/devOnboardingPreview';
@@ -28,6 +29,7 @@ const isDevQuickDeleteEnabled = import.meta.env.DEV;
 
 export default function ProjectSelectionPage() {
   const { user, switchActiveProject, refreshUser } = useAuth();
+  const { blockInGuestDemo } = useGuestDemoGuard();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation(['navigation', 'common', 'projectInvitations']);
@@ -100,7 +102,7 @@ export default function ProjectSelectionPage() {
   };
 
   const createDemoProject = async (): Promise<void> => {
-    if (isCreatingDemoProject) {
+    if (isCreatingDemoProject || blockInGuestDemo('createProject')) {
       return;
     }
     setIsCreatingDemoProject(true);
