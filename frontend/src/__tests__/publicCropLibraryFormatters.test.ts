@@ -400,16 +400,15 @@ describe('getCultivationTypesLabel', () => {
     expect(getCultivationTypesLabel(crop(), t, '—')).toBe('—');
   });
 
-  it('spells pre_cultivation differently here than the publish wizard does', () => {
+  it('spells pre_cultivation the same here as the publish wizard does', () => {
     // The detail page resolves `library.page.fields.cultivationTypes.preCultivation`
-    // ("Pflanzung"); the publishing wizard's comparison resolves
-    // `library.publishWizard.comparison.values.pre_cultivation` ("Vorkultur")
-    // for the same stored enum value. Two German words for one thing,
-    // depending on the surface. Pinned so the difference is visible.
+    // and the publishing wizard's comparison resolves
+    // `library.publishWizard.comparison.values.pre_cultivation` for the same
+    // stored enum value. Pinned so both surfaces keep using one German term.
     expect(getCultivationTypesLabel(
       crop({ cultivation_types: ['pre_cultivation'] } as never), t, '—',
     )).toBe('Pflanzung');
-    expect(formatPublicCropValue('cultivation_types', ['pre_cultivation'], t)).toBe('Vorkultur');
+    expect(formatPublicCropValue('cultivation_types', ['pre_cultivation'], t)).toBe('Pflanzung');
   });
 
   it('falls back rather than rendering an empty join for unlabelled values', () => {

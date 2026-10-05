@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject, resetE2EScenario } from './utils';
+import { apiRequest, loginWithDeterministicProject, resetE2EScenario, waitForPageStable } from './utils';
 
 type CropSpecies = {
   id: number;
@@ -58,10 +58,19 @@ test('public crop library supports quick import, direct edit, versions, discussi
     const publicCrop = await publishUniquePublicCrop(page);
 
     await page.goto('/app/crops');
+    await waitForPageStable(page);
     // The library entry point lives inside the topbar's Import/Export menu
-    // rather than being its own button.
-    await page.getByRole('button', { name: 'Import/Export' }).click();
-    await page.getByRole('menuitem', { name: 'Aus Bibliothek importieren' }).click();
+    // rather than being its own button. A click that lands while the crops
+    // page is still settling can leave the menu closed, so reopen it until
+    // the library entry shows up instead of waiting on a menu that never opens.
+    const libraryMenuItem = page.getByRole('menuitem', { name: 'Aus Bibliothek importieren' });
+    await expect(async () => {
+      if (!(await libraryMenuItem.isVisible())) {
+        await page.getByRole('button', { name: 'Import/Export' }).click();
+      }
+      await expect(libraryMenuItem).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
+    await libraryMenuItem.click();
     const importDialog = page.getByRole('dialog', { name: 'Aus Kulturbibliothek importieren' });
     await expect(importDialog).toBeVisible();
     await importDialog.getByLabel('Öffentliche Kulturen durchsuchen').fill(publicCrop.variety);
