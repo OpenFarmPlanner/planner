@@ -44,6 +44,13 @@ async function publishUniquePublicCrop(page: Page): Promise<PublishResponse['pub
 }
 
 test('public crop library supports quick import, direct edit, versions, discussion, and mobile layout', async ({ page, request }) => {
+  // Covers import, library browsing, a reload, a discussion thread, an edit,
+  // version restore, and a full mobile-viewport re-check in one scenario —
+  // comfortably over the default 60s budget on a loaded CI runner, so it
+  // gets the same explicit extension as the other outlier in this suite
+  // (landing-screenshots.spec.ts).
+  test.setTimeout(120_000);
+
   const scenarioId = `public-crop-library-${Date.now()}`;
 
   try {
