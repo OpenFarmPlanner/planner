@@ -38,6 +38,14 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-05 — Claude — Automated security review of PR #753 (explain guest-demo restrictions)
+
+**Scope:** `git diff origin/main...HEAD` (`useGuestDemoGuard`, `GuestDemoNotice`, error mapping for `guest_demo_restricted`, affected pages, i18n, docs).
+
+**Findings:** No issues. Frontend-only UX change: the guard hides nothing security-relevant and only explains restrictions, while enforcement stays in the backend. Messages are rendered as React text (no unsafe HTML APIs), no new storage keys, data flows or auth changes.
+
+---
+
 ## 2026-10-03 — Claude — Automated security review of PR #749 (guest demo usage stats)
 
 **Scope:** `git diff origin/main...HEAD` (`GuestDemoUsageDay`, `Project.demo_seeded_at`, guest demo create/delete counters, engagement dashboard, migrations).
