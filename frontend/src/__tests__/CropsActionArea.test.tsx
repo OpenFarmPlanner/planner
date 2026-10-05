@@ -6,6 +6,8 @@ import type { AxiosError } from 'axios';
 import Crops from '../pages/Crops';
 import { CommandProvider } from '../commands/CommandProvider';
 import { FocusManagerProvider } from '../focus/FocusManager';
+import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
 const {
   detailLoadingHistory,
@@ -388,6 +390,34 @@ describe('Crops action area', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
     expect(publishPublicMock).not.toHaveBeenCalled();
+  });
+
+  it('explains in the guest demo that publishing is unavailable instead of opening the wizard', async () => {
+    const snackbars: GlobalSnackbarDetail[] = [];
+    const listener = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+    const guestAuth = { user: { ...authUser, is_guest_demo: true } } as unknown as AuthContextValue;
+    render(
+      <AuthContext.Provider value={guestAuth}>
+        <MemoryRouter initialEntries={['/crops']}>
+          <Routes>
+            <Route
+              path="/crops"
+              element={<FocusManagerProvider><CommandProvider><Crops /></CommandProvider></FocusManagerProvider>}
+            />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Veröffentlichen' }));
+    window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(snackbars).toEqual([{
+      message: expect.stringContaining('In der Demo kannst du keine Kulturen in der öffentlichen Kulturbibliothek veröffentlichen'),
+      severity: 'info',
+    }]);
   });
 
   it('still runs the publishing wizard after the current public-library terms were already accepted', async () => {

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { projectAPI, type ProjectInvitationPayload, type ProjectMemberPayload, type ProjectRegion } from '../api/api';
 import { useAuth } from '../auth/useAuth';
+import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
+import { GuestDemoNotice } from '../components/GuestDemoNotice';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
@@ -24,6 +26,7 @@ export default function ProjectSettingsPage() {
   const { hash } = useLocation();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const { user, refreshUser, activeProjectId } = useAuth();
+  const { isGuestDemo, restrictionMessage } = useGuestDemoGuard();
   const resolvedActiveProjectId = activeProjectId ?? Number(window.localStorage.getItem('activeProjectId'));
   const activeMembership = useMemo(
     () => (user?.memberships ?? []).find((membership) => membership.project_id === resolvedActiveProjectId),
@@ -48,6 +51,8 @@ export default function ProjectSettingsPage() {
 
   const isProjectAdmin = activeMembership?.role === 'admin';
   const canManageMembers = isProjectAdmin;
+  // The guest demo's backend rejects invitations; its project is single-person and temporary.
+  const canInvite = canManageMembers && !isGuestDemo;
   const normalizedProjectName = projectNameDraft.trim();
   const hasProjectNameChanges = normalizedProjectName !== (activeMembership?.project_name ?? '');
   const activeProjectRegion = activeMembership?.project_region ?? 'germany';
@@ -433,6 +438,7 @@ export default function ProjectSettingsPage() {
             {!canManageMembers ? (
               <Alert severity="info" sx={{ mb: 2 }}>{t('memberManagementNoAccess')}</Alert>
             ) : null}
+            <GuestDemoNotice messageKey="inviteMembers" sx={{ mb: 2 }} />
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
@@ -443,10 +449,10 @@ export default function ProjectSettingsPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                disabled={!canManageMembers}
+                disabled={!canInvite}
                 sx={{ width: { xs: '100%', sm: 300 }, maxWidth: '100%', flex: '0 0 auto' }}
               />
-              <FormControl disabled={!canManageMembers} sx={compactFieldSx}>
+              <FormControl disabled={!canInvite} sx={compactFieldSx}>
                 <InputLabel id="project-invite-role-label">{t('roleLabel')}</InputLabel>
                 <Select
                   fullWidth
@@ -462,14 +468,16 @@ export default function ProjectSettingsPage() {
               <DisabledActionTooltip
                 title={!canManageMembers
                   ? t('projectMembers.invite.noPermission')
-                  : !email.trim()
-                    ? t('common:disabledReasons.requiredFields')
-                    : ''}
+                  : isGuestDemo
+                    ? restrictionMessage('inviteMembers')
+                    : !email.trim()
+                      ? t('common:disabledReasons.requiredFields')
+                      : ''}
               >
                 <Button
                   variant="contained"
                   onClick={() => void handleInvite()}
-                  disabled={!canManageMembers || !email.trim()}
+                  disabled={!canInvite || !email.trim()}
                   sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
                 >
                   {t('sendInvite')}

@@ -89,8 +89,24 @@ Risk controls:
 - Guest users cannot create additional projects, send project invitations,
   accept invitations into real projects, change account email/password,
   request account deletion/export, create public profiles, upload media,
-  publish to the public crop library, write public-library discussions or
+  publish to, edit, revert or unlink from the public crop library (pushing a
+  crop's changes to its entry included), write public-library discussions or
   change proposals, create crop-species proposals, or request moderator access.
+  The backend rejects these with `403` and code `guest_demo_restricted`
+  (`accounts/demo_access.py`).
+- The frontend explains these limits instead of surfacing a generic error.
+  `useGuestDemoGuard` (`frontend/src/auth/`) is the single entry point:
+  actions stay visible so the demo shows what the app can do, and triggering
+  one shows an info snackbar (`blockInGuestDemo`). Pages that are mostly
+  read-only for guests also show a `GuestDemoNotice` info box: the public crop
+  library (edit/translate/revert disabled, discussion read-only), account
+  settings, and the invitation card in project settings. Publishing, pushing
+  to and unlinking from the library on the crops page, creating projects and
+  uploading note photos are gated by the snackbar; importing from and pulling
+  updates out of the library stay available. As a fallback,
+  `extractApiErrorMessage` and the auth client map `guest_demo_restricted` to
+  the same localized message (`common:guestDemo.restricted`). A new
+  backend restriction should get a matching frontend gate.
 - Demo-created users use `example.invalid` email addresses and unusable
   passwords.
 - Data growth is bounded by the start throttle, the 8-hour retention window,

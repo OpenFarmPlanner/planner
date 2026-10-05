@@ -14,6 +14,8 @@ export interface VersionCardProps {
   revertingVersion: number | null;
   t: (key: string, options?: Record<string, unknown>) => string;
   onDiscuss: (revision: PublicCropRevision) => void;
+  /** Why reverting and discussing are unavailable (e.g. the guest demo); enables both when absent. */
+  writeDisabledReason?: string;
 }
 
 export function VersionCard({
@@ -25,6 +27,7 @@ export function VersionCard({
   revertingVersion,
   t,
   onDiscuss,
+  writeDisabledReason,
 }: VersionCardProps) {
   const isCurrentVersion = revision.version === currentVersion;
   const changedFields = revision.changed_fields ?? [];
@@ -77,20 +80,28 @@ export function VersionCard({
       )}
       {!isCurrentVersion ? (
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <DisabledActionTooltip title={revertingVersion !== null ? t('common:disabledReasons.busy') : ''}>
+          <DisabledActionTooltip title={writeDisabledReason ?? (revertingVersion !== null ? t('common:disabledReasons.busy') : '')}>
             <Button
               size="small"
               variant="outlined"
               startIcon={<RestoreOutlinedIcon />}
-              disabled={revertingVersion !== null}
+              disabled={revertingVersion !== null || Boolean(writeDisabledReason)}
               onClick={() => void onRevert(revision.version)}
             >
               {revertingVersion === revision.version ? t('library.page.versions.reverting') : t('library.page.versions.revert')}
             </Button>
           </DisabledActionTooltip>
-          <Button size="small" variant="text" startIcon={<ForumOutlinedIcon />} onClick={() => onDiscuss(revision)}>
-            {t('library.page.versions.discuss')}
-          </Button>
+          <DisabledActionTooltip title={writeDisabledReason ?? ''}>
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<ForumOutlinedIcon />}
+              disabled={Boolean(writeDisabledReason)}
+              onClick={() => onDiscuss(revision)}
+            >
+              {t('library.page.versions.discuss')}
+            </Button>
+          </DisabledActionTooltip>
         </Stack>
       ) : null}
     </Box>

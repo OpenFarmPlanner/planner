@@ -94,6 +94,12 @@ const backendMessageMap: Record<string, string> = {
   [AREA_INPUT_SPACING_MISSING_MESSAGE]: 'common:validation.areaInputPlantsSpacingMissing',
 };
 
+/**
+ * Code of the backend's `guest_demo_forbidden_response`: the anonymous guest
+ * demo tried a side effect it is not allowed (see `accounts/demo_access.py`).
+ */
+export const GUEST_DEMO_RESTRICTED_CODE = 'guest_demo_restricted';
+
 const authenticationExpiredDetails = new Set([
   'authentication credentials were not provided.',
   'not authenticated',
@@ -186,6 +192,10 @@ export function extractApiErrorMessage(
         'errors.sessionExpired',
         'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
       );
+    }
+
+    if (isGuestDemoRestrictedError(error)) {
+      return translatedOrFallback(t, 'common:guestDemo.restricted', fallbackMessage);
     }
 
     if (typeof data === 'string') {
@@ -292,6 +302,15 @@ export function extractApiErrorCode(error: unknown): string | undefined {
   }
   const data = error.response?.data as { code?: string } | undefined;
   return data?.code;
+}
+
+/**
+ * Whether the backend rejected the request because the anonymous guest demo
+ * may not perform it. Its `detail` is English developer text, so callers that
+ * show their own fixed error message should show the demo explanation instead.
+ */
+export function isGuestDemoRestrictedError(error: unknown): boolean {
+  return extractApiErrorCode(error) === GUEST_DEMO_RESTRICTED_CODE;
 }
 
 /**

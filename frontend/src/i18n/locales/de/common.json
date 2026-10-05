@@ -180,6 +180,18 @@
     "demoCreatedHint": "Dieses Projekt enthält Beispieldaten. Du kannst alles frei bearbeiten oder das Projekt jederzeit löschen.",
     "demoCreateError": "Demo-Projekt konnte nicht erstellt werden. Bitte versuche es erneut."
   },
+  "guestDemo": {
+    "restricted": "In der Demo nicht verfügbar. Mit einem kostenlosen Konto kannst du diese Funktion nutzen.",
+    "cropLibraryNotice": "Du nutzt die Demo: Die öffentliche Kulturbibliothek kannst du durchsuchen und Kulturen in dein Demo-Projekt übernehmen. Einträge bearbeiten, übersetzen, frühere Versionen wiederherstellen und Diskussionsbeiträge schreiben ist nur mit einem kostenlosen Konto möglich.",
+    "cropLibraryEdit": "Die öffentliche Kulturbibliothek kann in der Demo nicht bearbeitet werden.",
+    "cropLibraryDiscussion": "In der Demo kannst du Diskussionen lesen, aber keine Beiträge schreiben.",
+    "publishCrop": "In der Demo kannst du keine Kulturen in der öffentlichen Kulturbibliothek veröffentlichen und keine Änderungen dorthin übertragen. Aktualisierungen aus der Bibliothek kannst du weiterhin übernehmen.",
+    "unlinkPublicCrop": "In der Demo kann die Verknüpfung mit der öffentlichen Kulturbibliothek nicht aufgehoben werden.",
+    "accountSettingsNotice": "Du nutzt die Demo ohne Konto. Profil, E-Mail-Adresse, Passwort, Moderationsanfragen, Datenexport und Kontolöschung sind deshalb nicht verfügbar. Die Demo-Daten werden spätestens nach 8 Stunden automatisch gelöscht.",
+    "createProject": "In der Demo kannst du keine weiteren Projekte anlegen.",
+    "inviteMembers": "In der Demo kannst du keine Personen in das Projekt einladen.",
+    "noteAttachments": "In der Demo können keine Fotos zu Notizen hochgeladen werden."
+  },
   "runtime": {
     "applicationUpdatedFallback": "Die Anwendung konnte nicht automatisch aktualisiert werden. Bitte lade die Seite neu.",
     "routeErrorFallback": "Die Seite konnte nicht automatisch wiederhergestellt werden. Bitte lade die Seite neu.",

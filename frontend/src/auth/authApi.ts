@@ -1,6 +1,7 @@
 import type { AccountActionResponse, AccountDeleteResponse, AuthUser, MeResponse, ProjectSwitchResponse } from './types';
 import i18n from '../i18n';
 import { computeBaseURL } from '../api/httpClient';
+import { GUEST_DEMO_RESTRICTED_CODE } from '../api/errors';
 import { readCookie } from '../utils/cookies';
 
 const API_BASE = computeBaseURL(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL, import.meta.env.BASE_URL);
@@ -80,8 +81,10 @@ function extractError(response: Response, raw: string): AuthApiError {
   const looksLikeHtml = /^\s*<!doctype html/i.test(raw) || /^\s*<html/i.test(raw) || /<body[\s>]/i.test(raw);
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const detail = toUserFriendlyErrorMessage(parsed);
     const code = typeof parsed.code === 'string' ? parsed.code : undefined;
+    const detail = code === GUEST_DEMO_RESTRICTED_CODE
+      ? translateOrFallback('common:guestDemo.restricted', fallbackMessage)
+      : toUserFriendlyErrorMessage(parsed);
     const scheduledDeletionAt = typeof parsed.scheduled_deletion_at === 'string' ? parsed.scheduled_deletion_at : undefined;
     return new AuthApiError(detail || fallbackMessage, {
       code,
