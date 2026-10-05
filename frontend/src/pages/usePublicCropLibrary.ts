@@ -89,7 +89,12 @@ export function usePublicCropLibrary({
       const response = await publicCropAPI.importToProject(publicCrop.id);
       const importedCrop = response.data.crop;
       await onImportSuccess(importedCrop);
-      setPublicLibraryOpen(false);
+      // Deliberately doesn't close the dialog (unlike a plain "select and
+      // done" flow) — staying open lets the user import several crops from
+      // the library in one sitting instead of reopening it each time. A
+      // prior refactor silently reintroduced a close-on-import call here;
+      // restored per the original intent (see git history) and the E2E
+      // coverage in e2e/public-crop-library.spec.ts.
       if (response.data.operation === 'unchanged') {
         showSnackbar(t('library.importUnchanged', { name }), 'info');
       } else if (response.data.operation === 'updated') {

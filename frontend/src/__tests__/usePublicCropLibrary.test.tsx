@@ -1,16 +1,24 @@
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { usePublicCropLibrary } from '../pages/usePublicCropLibrary';
 import type { Crop } from '../api/types';
 
-const { publishPublicMock, linkPublicCropMock, publicSyncMock, unlinkPublicCropMock, refreshUserMock } = vi.hoisted(() => ({
+const {
+  publishPublicMock,
+  linkPublicCropMock,
+  publicSyncMock,
+  unlinkPublicCropMock,
+  refreshUserMock,
+  importToProjectMock,
+} = vi.hoisted(() => ({
   publishPublicMock: vi.fn(),
   linkPublicCropMock: vi.fn(),
   publicSyncMock: vi.fn(),
   unlinkPublicCropMock: vi.fn(),
   refreshUserMock: vi.fn(),
+  importToProjectMock: vi.fn(),
 }));
 
 vi.mock('../api/api', async () => {
@@ -23,6 +31,10 @@ vi.mock('../api/api', async () => {
       linkPublicCrop: linkPublicCropMock,
       publicSync: publicSyncMock,
       unlinkPublicCrop: unlinkPublicCropMock,
+    },
+    publicCropAPI: {
+      ...actual.publicCropAPI,
+      importToProject: importToProjectMock,
     },
   };
 });
@@ -209,5 +221,34 @@ describe('usePublicCropLibrary unlink', () => {
 
     expect(unlinkPublicCropMock).toHaveBeenCalledWith(1);
     expect(showSnackbar).toHaveBeenCalledWith('Verknüpfung aufgehoben.', 'success');
+  });
+});
+
+describe('usePublicCropLibrary import', () => {
+  it('keeps the dialog open after a successful import, so several crops can be imported in one sitting', async () => {
+    // Regression test: a prior refactor accidentally reintroduced a
+    // setPublicLibraryOpen(false) call here, silently closing the dialog on
+    // every import despite the deliberate "stay open" behavior this hook
+    // documents - see e2e/public-crop-library.spec.ts for the user-facing
+    // symptom that surfaced it (a dialog button becoming unclickable mid
+    // close-transition).
+    importToProjectMock.mockReset();
+    importToProjectMock.mockResolvedValue({
+      data: { crop: { id: 1, name: 'Tomate', variety: '' }, operation: 'unchanged' },
+    });
+    const showSnackbar = vi.fn();
+    const { result } = renderLibraryHook(showSnackbar);
+
+    act(() => {
+      result.current.setPublicLibraryOpen(true);
+    });
+    expect(result.current.publicLibraryOpen).toBe(true);
+
+    await act(async () => {
+      await result.current.handleImportPublicCrop({ id: 42, name: 'Tomate', variety: '' } as never);
+    });
+
+    expect(importToProjectMock).toHaveBeenCalledWith(42);
+    expect(result.current.publicLibraryOpen).toBe(true);
   });
 });
