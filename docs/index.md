@@ -22,6 +22,9 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   actions, notes/markdown cells, copy/paste, column visibility.
 - **[Demo Project Template](./demo-project.md)** — the reusable realistic
   demo dataset used by first-project onboarding and landing screenshots.
+- **[SEO & Search-Engine Indexing](./seo-and-indexing.md)** — robots.txt/
+  sitemap generation, build-time prerendering of the public pages, and what
+  keeps the landing page's hero image fast (LCP).
 - **[Hint Test Project](./hint-test-project.md)** — reproducible developer
   fixture for hints, warnings, empty states, incomplete calculations, and
   related manual QA paths.

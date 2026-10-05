@@ -13,6 +13,16 @@ import { RouterProvider } from 'react-router/dom';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import ProtectedRoute from './auth/ProtectedRoute';
 import RootLayout from './navigation/RootLayout';
+// Not lazy, unlike the other public/app routes below: `/` is build-time
+// prerendered (frontend/build/prerender.ts) to static HTML that already
+// contains the hero image, painted and downloading before any JS runs. A
+// lazy chunk here would force a `Suspense fallback={null}` boundary that
+// wipes that prerendered DOM back to nothing the instant the client bundle
+// mounts, and only repaints once this chunk round-trips — which is what
+// actually caused the slow landing-page LCP, not missing preload/discovery.
+// See docs/seo-and-indexing.md. Cost: ~12 KB (~4 KB gzip) folded into the
+// main chunk, which loads before anything else regardless.
+import HomePage from './pages/public/HomePage';
 export type { RootLayoutOutletContext, TopbarContextAction } from './navigation/topbarTypes';
 import { buildInvitationAcceptPath } from './pages/invitationAcceptance';
 import { resolveRouterBasename } from './routerBasename';
@@ -26,7 +36,6 @@ import {
 } from './runtime/chunkLoadErrors';
 
 
-const HomePage = React.lazy(() => import('./pages/public/HomePage'));
 const DemoPage = React.lazy(() => import('./pages/public/DemoPage'));
 const ImprintPage = React.lazy(() => import('./pages/public/ImprintPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./pages/public/PrivacyPolicyPage'));
@@ -176,7 +185,7 @@ function createAppRouter(basename: string) {
       children: [
         {
           index: true,
-          element: withLazyFallback(<HomePage />),
+          element: <HomePage />,
         },
         {
           path: 'demo',

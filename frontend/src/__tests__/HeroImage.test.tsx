@@ -13,6 +13,18 @@ describe('HeroImage', () => {
     expect(img).toHaveAttribute('height');
   });
 
+  it('offers responsive widths down to 640w so mobile does not fall back to the full 1920w file', () => {
+    render(<HeroImage alt="A field" />);
+
+    const img = screen.getByRole('img', { name: 'A field' });
+    const srcSet = img.getAttribute('srcset') ?? '';
+    expect(srcSet).toContain('640w');
+    expect(srcSet).toContain('960w');
+    expect(srcSet).toContain('1280w');
+    expect(srcSet).toContain('1920w');
+    expect(img).toHaveAttribute('sizes', '100vw');
+  });
+
   it('starts transparent and fades in once the image has loaded', () => {
     render(<HeroImage alt="A field" />);
 

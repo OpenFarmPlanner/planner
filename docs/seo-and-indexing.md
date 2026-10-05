@@ -126,6 +126,75 @@ Production must serve the generated files with distinct cache policies:
 - There is no service worker in the frontend build, so stale startup behavior
   should be debugged through the browser/proxy/static-host cache layers.
 
+## Landing-page LCP: the hero image
+
+The hero image (`/landing/hero-field.webp`, rendered by
+[`HeroImage.tsx`](../frontend/src/components/HeroImage.tsx)) is the Largest
+Contentful Paint element on `/`, and the three things that keep it fast are
+spread across three different layers:
+
+1. **`HomePage` is not lazy.** Every other public/app route in
+   [`App.tsx`](../frontend/src/App.tsx) is `React.lazy()`-loaded behind a
+   `Suspense fallback={null}` boundary — but `/` is build-time prerendered
+   (see above) to static HTML that already contains the hero `<img>`,
+   painted and downloading before any JS runs. `main.tsx` mounts with
+   `createRoot(...).render(...)` (no hydration), so a lazy `HomePage` would
+   wipe that prerendered DOM to nothing the instant the client bundle
+   executes, and only repaint once the separate `HomePage` chunk round-trips.
+   Measured locally (production build, `vite preview`, Lighthouse mobile
+   preset, no added network/CPU throttling so the comparison isolates this
+   specific change): LCP dropped from 1138 ms to 562 ms, and the LCP
+   "element render delay" sub-part from 1022 ms to 459 ms. This is a
+   known-but-unfixed latent issue on the other three prerendered routes
+   (`/impressum`, `/datenschutz`, `/nutzungsbedingungen`) too — they still
+   lazy-load and so still show a blank frame until their chunk loads; left
+   alone deliberately since they aren't an LCP-critical route, but worth the
+   same fix if one of them ever becomes one.
+2. **A `/`-only `<link rel=preload>`.** `applyHeadTags` in
+   [`prerenderSeo.ts`](../frontend/build/prerenderSeo.ts) adds a
+   `fetchpriority="high"` preload with `imagesrcset`/`imagesizes` that must
+   mirror `HeroImage.tsx`'s `src`/`srcSet`/`sizes` exactly — gated on
+   `route.path === '/'` so it only lands in `dist/index.html`, never in
+   `app-shell.html` (the SPA fallback for `/app/*` and auth routes) or the
+   other prerendered routes, and never causes a double-fetch.
+3. **Four responsive widths, not two.** `hero-field-640.webp` (~45 KB) and
+   `hero-field-1280.webp` (~181 KB) were added alongside the existing
+   `hero-field-960.webp` (~101 KB) and `hero-field.webp` (1920w, ~372 KB) —
+   all WebP, quality ~75 (verified by re-encoding the existing files at that
+   quality and comparing byte sizes: they already were ~75). The gap between
+   960w and 1920w previously forced some phone/DPR combinations straight to
+   the full 1920w file. Regenerate with:
+   ```bash
+   cd frontend/public/landing
+   magick hero-field.webp -resize 640x  -quality 75 hero-field-640.webp
+   magick hero-field.webp -resize 1280x -quality 75 hero-field-1280.webp
+   ```
+   Keep `HeroImage.tsx`'s `HERO_IMAGE_SRC_SET` and `prerenderSeo.ts`'s
+   `imagesrcset` in sync — both must list the same four widths.
+
+**Caching gap (not yet applied — lives in the `ops` repo):**
+`ops/deploy/lib/htaccess.sh` currently serves all unhashed static assets
+(`png|jpe?g|webp|svg|ico|woff2?|ttf`), including the hero variants, with
+`Cache-Control: public, max-age=86400` — fine for correctness, but not the
+1-year immutable caching a repeat visit could get. This only affects *repeat*
+visits, not a cold Lighthouse run, since it's a caching header. To close it,
+add a dedicated rule for the hero variants specifically (matched *before* the
+generic static-asset rule, the same way the hashed-asset rule already
+overrides it) in `render_spa_htaccess()`:
+```apache
+# Hero-field WebP variants are hand-versioned, not content-hashed - bump the
+# filename (hero-field-v2.webp, ...) whenever the visual content changes, the
+# same way Vite's content hash keeps the immutable rule below it safe.
+<FilesMatch "landing/hero-field(-[0-9]+)?\.webp\$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+```
+placed above the existing generic `<FilesMatch "\.(png|jpe?g|webp|...)\$">`
+block. Whoever changes the hero image's visual content must rename the file
+(matching the existing hashed-JS/CSS convention of "a content change always
+produces a new filename") rather than overwriting `hero-field.webp` in place,
+or returning visitors would keep the stale cached image for up to a year.
+
 **Local verification caveat:** `vite preview`'s static file server only
 resolves a route's prerendered `index.html` for a *trailing-slash* request
 (`/impressum/`), the same way production Apache 301-redirects `/impressum` to
