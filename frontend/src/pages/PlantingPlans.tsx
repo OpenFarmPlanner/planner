@@ -343,6 +343,14 @@ function PlantingPlans() {
 
   // Track which field was last edited (for determining API payload)
   const lastEditedFieldRef = useRef<"area_m2" | "plants_count" | null>(null);
+  // Same idea for the Aussaattermin/Pflanztermin pair: only planting_date is
+  // persisted, so mapToApiData recomputes it from sowing_date itself rather
+  // than trusting the grid's own row assembly for the edited field — MUI's
+  // internal row-edit-state replay doesn't reliably keep a derived sibling
+  // field in sync when both columns carry their own preProcessEditCellProps
+  // (confirmed via trace: the sibling revalidation pass it triggers on every
+  // keystroke re-asserts a stale snapshot of the other field's value).
+  const lastEditedDateFieldRef = useRef<"sowing_date" | "planting_date" | null>(null);
   const {
     areaValidationDialog,
     setAreaValidationDialog,
@@ -745,15 +753,6 @@ function PlantingPlans() {
           </AppTooltip>
         ),
         valueGetter: (_value, row) => toGridDateValue(getRowSowingSchedule(row as PlantingPlanRow)?.sowingDate ?? null),
-        valueSetter: (value, row) => {
-          const nextRow = row as PlantingPlanRow;
-          const isoValue = toIsoDateString(value);
-          if (!isoValue) {
-            return nextRow;
-          }
-          const crop = crops.find((item) => item.id === nextRow.crop);
-          return { ...nextRow, planting_date: getPlantingDateFromSowingDate(isoValue, nextRow, crop) };
-        },
         isCellEditable: (params: GridCellParams<PlantingPlanRow>) =>
           getRowSowingSchedule(params.row)?.sowingDate != null,
         cellClassName: (params) => (getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate
@@ -775,6 +774,9 @@ function PlantingPlans() {
         renderEditCell: (params) => <DateEditCell {...params} />,
         preProcessEditCellProps: (params) => {
           const row = params.row as PlantingPlanRow;
+          if (params.hasChanged) {
+            lastEditedDateFieldRef.current = "sowing_date";
+          }
           const isoValue = toIsoDateString(params.props.value);
           if (!isoValue) {
             return { ...params.props, error: true };
@@ -824,6 +826,9 @@ function PlantingPlans() {
           />
         ),
         preProcessEditCellProps: (params) => {
+          if (params.hasChanged) {
+            lastEditedDateFieldRef.current = "planting_date";
+          }
           const isoValue = toIsoDateString(params.props.value);
           const hasError =
             !params.props.value || !isPlantingDateWithinSeason(isoValue);
@@ -2001,7 +2006,7 @@ function PlantingPlans() {
           mapToApiData={async (row) => {
             // Bed and planting date may still be unset — the row can be
             // saved as a draft, so send null rather than blocking on them.
-            const plantingDate = toIsoDateString(row.planting_date);
+            let plantingDate = toIsoDateString(row.planting_date);
 
             // Ensure crop and bed are numeric IDs, not label strings
             // DataGrid singleSelect can sometimes provide the label instead of value
@@ -2021,6 +2026,22 @@ function PlantingPlans() {
               // Not selected yet — allowed as long as a bed is chosen instead.
               cropId = null;
             }
+
+            // Aussaattermin isn't a persisted field, so editing it never
+            // reliably ends up in row.planting_date by the time this runs —
+            // MUI's row-edit commit doesn't keep a derived sibling field in
+            // sync here (see lastEditedDateFieldRef above). Recompute it
+            // from row.sowing_date instead, the same way the area/plants
+            // pair below picks its payload from lastEditedFieldRef rather
+            // than trusting the grid's own row assembly.
+            if (lastEditedDateFieldRef.current === "sowing_date") {
+              const sowingDateIso = toIsoDateString(row.sowing_date);
+              if (sowingDateIso) {
+                const crop = crops.find((item) => item.id === row.crop);
+                plantingDate = getPlantingDateFromSowingDate(sowingDateIso, row, crop);
+              }
+            }
+            lastEditedDateFieldRef.current = null;
 
             if (typeof row.bed === "number" && row.bed !== 0) {
               bedId = row.bed;
