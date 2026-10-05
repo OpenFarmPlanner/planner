@@ -262,3 +262,31 @@ class GuestDemoSession(models.Model):
 
     def __str__(self) -> str:
         return f'Guest demo session {self.pk}'
+
+
+class GuestDemoUsageDay(models.Model):
+    """Anonymous daily counters for public guest demos.
+
+    Guest sessions are deleted together with their user and project after the
+    retention window, so these counters are the only lasting record that a
+    guest demo happened. They hold no reference to a user or project.
+    """
+
+    date = models.DateField(unique=True)
+    started = models.PositiveIntegerField(
+        default=0,
+        help_text='Guest demo sessions started on this day.',
+    )
+    used = models.PositiveIntegerField(
+        default=0,
+        help_text=(
+            'Guest demo sessions started on this day that had at least one user change '
+            'when they were deleted.'
+        ),
+    )
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self) -> str:
+        return f'Guest demo usage {self.date}'

@@ -54,25 +54,39 @@ design.
 
 A **Demo-Nutzung** block, placed between the Gesamtübersicht and the
 "Projekte" table, reports how often the demo is used and whether it leads to
-real usage, for the last 7 days, the last 30 days, and all-time:
+real usage, for the last 7 days, the last 30 days, and all-time. It separates
+the two ways into the demo:
 
-- **Demo-Projekte angelegt:** demo projects created in the window.
-- **Demo-Projekte genutzt:** of those, how many have at least one
-  `EntityRevision` — i.e. were created or changed through the app by a real
-  user after creation. Demo seeding writes its objects with the plain ORM and
-  never records a revision, so a revision on a demo project can only come
-  from an actual user action; no separate seed/user marker was needed.
-- **Eigenes Projekt danach angelegt:** how many of the users who created a
-  demo project in the window later created or joined a project of their own
-  (a `ProjectMembership` on a non-demo project, dated after the demo project
-  was created), shown as a count and as a percentage of that window's
-  distinct demo users.
+- **Gast-Demo gestartet (öffentlicher Link):** public guest demos started
+  from the landing page or `/demo` without an account. Guest sessions are
+  deleted together with their temporary user and project after 8 hours, so
+  they are counted in `GuestDemoUsageDay`, an anonymous per-day counter
+  without any reference to a user, project, IP address, or session — the same
+  aggregate level as the rest of this dashboard. Guest demos deleted before
+  this counter existed are not recoverable and are missing from the totals.
+- **Gast-Demo genutzt:** of those, how many had at least one change by the
+  guest. This is booked to the counter of the session's start day when the
+  session is deleted; live sessions are read from their project's revisions.
+- **Demo-Projekt im eigenen Konto angelegt:** demo projects loaded into a
+  regular account (first-project onboarding or the project switcher), created
+  in the window. Guest demo projects are not included.
+- **Demo-Projekt im eigenen Konto genutzt:** of those, how many have at
+  least one `EntityRevision` written after the demo template finished seeding
+  (`Project.demo_seeded_at`). Seeding itself records a "created" revision per
+  crop through `Crop.save()`, so "has any revision" would count every demo
+  project as used.
+- **Eigenes Projekt danach angelegt:** how many of the users who loaded a
+  demo project into their account in the window later created or joined a
+  project of their own (a `ProjectMembership` on a non-demo project, dated
+  after the demo project was created), shown as a count and as a percentage
+  of that window's distinct demo users. Guest demos cannot be linked to a
+  later registration, so they are not part of this metric.
 
 This block applies the same superuser exclusion as the rest of the dashboard:
 a demo project where the logged-in superuser is the sole member is left out
-of "angelegt"/"genutzt", and the superuser is never counted as a demo user
-for the conversion metric, even when sharing a demo project with someone
-else. Like the "Projekte" table and the Gesamtübersicht totals, the
+of the account demo-project rows, and the superuser is never counted as a
+demo user for the conversion metric, even when sharing a demo project with
+someone else. Like the "Projekte" table and the Gesamtübersicht totals, the
 `?show_all=1` toggle lifts this exclusion here too, so it also surfaces the
 superuser's own demo activity.
 

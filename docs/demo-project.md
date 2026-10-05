@@ -60,6 +60,12 @@ workspace per visitor:
   schedules it every 30 minutes.
 - The frontend stores the guest session id in `sessionStorage`. A new browser
   session starts a fresh workspace instead of reusing old demo data.
+- Because a guest workspace is deleted without a trace, every start and, on
+  deletion, whether the guest changed anything is booked to
+  `GuestDemoUsageDay`, an anonymous per-day counter read by the admin
+  engagement dashboard (see the README section "Aggregated Usage Insight and
+  Privacy"). All deletions go through `delete_guest_demo_session`, which books
+  the counter before the project's revisions are gone.
 
 Alternatives considered:
 
@@ -110,6 +116,10 @@ from the project switcher remains a separate action.
 The onboarding screen itself stays focused on starting a project. Deleted
 projects are restored or permanently deleted through the project switcher's
 trash entry, which opens the existing project trash view.
+
+`populate_demo_project` sets `Project.demo_seeded_at` when it has finished.
+Seeding records a "created" revision per crop through `Crop.save()`; the
+marker lets usage statistics tell those apart from later user changes.
 
 To adjust the template, update the specs in `demo_project.py` and extend the
 focused backend tests in `backend/farm/tests/test_demo_project.py`. The project

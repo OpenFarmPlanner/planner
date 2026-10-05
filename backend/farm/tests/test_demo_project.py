@@ -166,6 +166,25 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 20)
         self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 17)
 
+    def test_seeding_marks_when_it_finished_after_its_own_revisions(self) -> None:
+        """The dashboard tells seed revisions from user changes by this marker."""
+        from farm.models import EntityRevision
+
+        user = User.objects.create_user(
+            username='seeded', email='seeded@example.com', password='pass12345', is_active=True,
+        )
+
+        project = create_personal_demo_project(user=user).project
+
+        project.refresh_from_db()
+        self.assertIsNotNone(project.demo_seeded_at)
+        self.assertTrue(EntityRevision.objects.filter(project=project).exists())
+        self.assertFalse(
+            EntityRevision.objects.filter(
+                project=project, created_at__gt=project.demo_seeded_at,
+            ).exists()
+        )
+
     def test_create_personal_demo_project_can_create_english_template(self) -> None:
         user = User.objects.create_user(username='english', email='english@example.com', password='pass12345', is_active=True)
 

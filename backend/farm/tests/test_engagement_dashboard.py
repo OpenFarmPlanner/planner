@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.models import GuestDemoSession, GuestDemoUsageDay
 from farm.models import (
     Bed,
     BedLayout,
@@ -29,7 +30,7 @@ from farm.models import (
     Supplier,
     Task,
 )
-from farm.services.demo_project import DEMO_PROJECT_DESCRIPTION
+from farm.services.demo_project import DEMO_PROJECT_DESCRIPTION, create_personal_demo_project
 from farm.services.engagement_dashboard import (
     ENGAGEMENT_MODELS,
     PROJECT_SORT_FIELDS,
@@ -1164,6 +1165,34 @@ class DemoUsageSummaryTests(TestCase):
         self.assertEqual(summary.last_7_days.used, 0)
         self.assertEqual(summary.all_time.used, 0)
 
+    def test_a_freshly_loaded_demo_project_is_not_used(self) -> None:
+        """Regression: seeding writes a "created" revision per crop through
+        `Crop.save()`, which used to mark every demo project as used."""
+        user = get_user_model().objects.create_user(
+            username='du-real-seed', password='test-password',
+        )
+        project = create_personal_demo_project(user=user).project
+        self.assertTrue(EntityRevision.objects.filter(project=project).exists())
+
+        summary = build_demo_usage_summary()
+
+        self.assertEqual(summary.last_7_days.created, 1)
+        self.assertEqual(summary.last_7_days.used, 0)
+
+    def test_a_change_after_seeding_marks_a_loaded_demo_project_as_used(self) -> None:
+        user = get_user_model().objects.create_user(
+            username='du-real-seed-used', password='test-password',
+        )
+        project = create_personal_demo_project(user=user).project
+        EntityRevision.objects.create(
+            project=project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = build_demo_usage_summary()
+
+        self.assertEqual(summary.last_7_days.used, 1)
+
     def test_a_real_entity_revision_marks_the_project_as_used(self) -> None:
         project, _user = self._demo_project(days_ago=1, slug='du-used')
         EntityRevision.objects.create(
@@ -1270,6 +1299,65 @@ class DemoUsageSummaryTests(TestCase):
 
         self.assertEqual(summary.last_7_days.created, 1)
 
+    def _guest_demo_session(self, *, days_ago: float, slug: str):
+        project, user = self._demo_project(days_ago=days_ago, slug=slug)
+        demo_session = GuestDemoSession.objects.create(
+            user=user, project=project, expires_at=self.now + timedelta(hours=8),
+        )
+        GuestDemoSession.objects.filter(pk=demo_session.pk).update(
+            created_at=self.now - timedelta(days=days_ago),
+        )
+        return project
+
+    def test_finished_guest_demos_are_read_from_the_daily_counters(self) -> None:
+        """Guest sessions are deleted after a few hours, so the anonymous daily
+        counters are the only record of them."""
+        GuestDemoUsageDay.objects.create(
+            date=timezone.localdate(self.now - timedelta(days=2)), started=3, used=1,
+        )
+        GuestDemoUsageDay.objects.create(
+            date=timezone.localdate(self.now - timedelta(days=20)), started=5, used=2,
+        )
+        GuestDemoUsageDay.objects.create(
+            date=timezone.localdate(self.now - timedelta(days=100)), started=7, used=4,
+        )
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.guest_started, 3)
+        self.assertEqual(summary.last_7_days.guest_used, 1)
+        self.assertEqual(summary.last_30_days.guest_started, 8)
+        self.assertEqual(summary.last_30_days.guest_used, 3)
+        self.assertEqual(summary.all_time.guest_started, 15)
+        self.assertEqual(summary.all_time.guest_used, 7)
+
+    def test_a_live_guest_demo_with_changes_counts_as_used_before_it_is_deleted(self) -> None:
+        """A live session's start is already in the counter, but its "used"
+        state is only booked on deletion — until then it comes from its
+        project's revisions, without double counting the start."""
+        GuestDemoUsageDay.objects.create(
+            date=timezone.localdate(self.now - timedelta(days=1)), started=2,
+        )
+        used_project = self._guest_demo_session(days_ago=1, slug='du-guest-used')
+        self._guest_demo_session(days_ago=1, slug='du-guest-untouched')
+        EntityRevision.objects.create(
+            project=used_project, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.guest_started, 2)
+        self.assertEqual(summary.last_7_days.guest_used, 1)
+
+    def test_guest_demo_projects_are_not_counted_as_account_demo_projects(self) -> None:
+        self._guest_demo_session(days_ago=1, slug='du-guest-only')
+
+        summary = self._summary()
+
+        self.assertEqual(summary.last_7_days.created, 0)
+        self.assertEqual(summary.last_7_days.converted_to_own_project.total, 0)
+
     def test_the_view_renders_the_demo_usage_block(self) -> None:
         self._demo_project(days_ago=1, slug='du-view')
         self.client.force_login(self.superuser)
@@ -1277,14 +1365,18 @@ class DemoUsageSummaryTests(TestCase):
         response = self.client.get(reverse('admin:farm_project_engagement'))
 
         self.assertContains(response, 'Demo-Nutzung')
-        self.assertContains(response, 'Demo-Projekte angelegt')
-        self.assertContains(response, 'Demo-Projekte genutzt')
+        self.assertContains(response, 'Gast-Demo gestartet (öffentlicher Link)')
+        self.assertContains(response, 'Gast-Demo genutzt')
+        self.assertContains(response, 'Demo-Projekt im eigenen Konto angelegt')
+        self.assertContains(response, 'Demo-Projekt im eigenen Konto genutzt')
         self.assertContains(response, 'Eigenes Projekt danach angelegt')
 
     @staticmethod
-    def _demo_usage_table_html(response) -> str:
+    def _account_demo_rows_html(response) -> str:
+        """The account demo-project rows of the "Demo-Nutzung" table; the
+        guest-demo rows above them are unaffected by `show_all`."""
         content = response.content.decode()
-        start = content.index('<caption>Demo-Nutzung</caption>')
+        start = content.index('Demo-Projekt im eigenen Konto angelegt')
         end = content.index('</table>', start)
         return content[start:end]
 
@@ -1310,7 +1402,7 @@ class DemoUsageSummaryTests(TestCase):
             reverse('admin:farm_project_engagement'), {'show_all': '1'},
         )
 
-        default_table = self._demo_usage_table_html(default_response)
-        show_all_table = self._demo_usage_table_html(show_all_response)
+        default_table = self._account_demo_rows_html(default_response)
+        show_all_table = self._account_demo_rows_html(show_all_response)
         self.assertIn('<td>0</td>', default_table)
         self.assertNotIn('<td>0</td>', show_all_table)

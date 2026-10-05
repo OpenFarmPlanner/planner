@@ -38,6 +38,14 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-03 — Claude — Automated security review of PR #749 (guest demo usage stats)
+
+**Scope:** `git diff origin/main...HEAD` (`GuestDemoUsageDay`, `Project.demo_seeded_at`, guest demo create/delete counters, engagement dashboard, migrations).
+
+**Findings:** No issues. The new counter model holds only anonymous per-day totals with no user, project, IP or session reference (GDPR-neutral); it is not exposed through any API or serializer. `demo_seeded_at` is not in any Project serializer field list. The counter updates use `F()` expressions, with no raw SQL. The dashboard stays behind the existing admin view.
+
+---
+
 ## 2026-10-02 — Claude — Automated security review of PR #744 (hold pages until active season is known)
 
 **Scope:** `git diff origin/main...HEAD` (`useActiveSeason`, `RootLayout`, tests, docs).
