@@ -73,6 +73,22 @@ describe('applyHeadTags', () => {
     expect(html).toContain('href="https://openfarmplanner.org/"');
   });
 
+  it('preloads the hero image with imagesrcset/imagesizes on the landing page only', () => {
+    const homeRoute = PUBLIC_INDEXABLE_ROUTES.find((route) => route.path === '/')!;
+    const html = applyHeadTags(sampleCapturedHtml(), homeRoute, env);
+
+    expect(html).toContain('<link rel="preload" as="image" href="/landing/hero-field.webp"');
+    expect(html).toContain('imagesrcset="/landing/hero-field-640.webp 640w, /landing/hero-field-960.webp 960w, /landing/hero-field-1280.webp 1280w, /landing/hero-field.webp 1920w"');
+    expect(html).toContain('imagesizes="100vw"');
+    expect(html).toContain('fetchpriority="high"');
+  });
+
+  it('does not preload the hero image on non-landing routes', () => {
+    const html = applyHeadTags(sampleCapturedHtml(), impressumRoute, env);
+
+    expect(html).not.toContain('rel="preload"');
+  });
+
   it('removes local preview preload hints captured from Vite preview', () => {
     const html = applyHeadTags(
       [

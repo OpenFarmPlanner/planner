@@ -92,6 +92,9 @@ export function applyHeadTags(html: string, route: PublicRoute, env: SeoEnv): st
     description: route.description,
     path: route.path,
   });
+  if (route.path === '/') {
+    tags.push(buildHeroImagePreloadTag());
+  }
   for (const tagHtml of tags) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = tagHtml;
@@ -102,4 +105,24 @@ export function applyHeadTags(html: string, route: PublicRoute, env: SeoEnv): st
   }
 
   return dom.serialize();
+}
+
+/**
+ * High-priority preload for the landing page's LCP element, scoped to `/`
+ * only (never injected into `app-shell.html`, the SPA fallback for `/app/*`
+ * and auth routes, since those never render the hero image). Values must
+ * mirror HeroImage.tsx's `src`/`srcSet`/`sizes` exactly so the browser never
+ * fetches the image twice — see docs/seo-and-indexing.md.
+ */
+function buildHeroImagePreloadTag(): string {
+  const imagesrcset = [
+    '/landing/hero-field-640.webp 640w',
+    '/landing/hero-field-960.webp 960w',
+    '/landing/hero-field-1280.webp 1280w',
+    '/landing/hero-field.webp 1920w',
+  ].join(', ');
+  return (
+    '<link rel="preload" as="image" href="/landing/hero-field.webp" ' +
+    `imagesrcset="${imagesrcset}" imagesizes="100vw" fetchpriority="high" />`
+  );
 }

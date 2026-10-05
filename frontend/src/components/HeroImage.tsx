@@ -18,8 +18,14 @@ const HERO_IMAGE_WIDTH = 1920;
 const HERO_IMAGE_HEIGHT = 616;
 
 const HERO_IMAGE_SRC = publicAssetUrl('/landing/hero-field.webp');
+// Midpoints between 960w and 1920w so a typical mobile viewport (~1000-1300
+// physical px after DPR) doesn't have to fall back to the full 1920w/372 KB
+// file — see docs/seo-and-indexing.md. Keep this list in sync with the
+// `/`-only preload tag in frontend/build/prerenderSeo.ts.
 const HERO_IMAGE_SRC_SET = [
+  `${publicAssetUrl('/landing/hero-field-640.webp')} 640w`,
   `${publicAssetUrl('/landing/hero-field-960.webp')} 960w`,
+  `${publicAssetUrl('/landing/hero-field-1280.webp')} 1280w`,
   `${HERO_IMAGE_SRC} 1920w`,
 ].join(', ');
 

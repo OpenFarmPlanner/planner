@@ -202,6 +202,16 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Datenschutzerklärung' })).toBeInTheDocument();
   });
 
+  it('renders the home page content on the very first synchronous pass, not behind a lazy Suspense fallback', () => {
+    // Regression guard for the landing-page LCP fix: `/` must never render
+    // as a blank Suspense fallback, since that would wipe the build-time
+    // prerendered hero image out of the DOM until a lazy chunk round-trips.
+    // See docs/seo-and-indexing.md.
+    render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
+
+    expect(screen.getByText('OpenFarmPlanner')).toBeInTheDocument();
+  });
+
   it('switches the public landing page product tour screenshot by tab', async () => {
     const user = userEvent.setup();
 
