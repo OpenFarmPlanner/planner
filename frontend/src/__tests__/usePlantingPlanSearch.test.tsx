@@ -29,6 +29,7 @@ const plan = (overrides: Partial<Row> = {}): Row => ({
   bedName: 'Beet 1',
   notesText: '',
   plantingDate: '2026-03-01',
+  sowingDate: null,
   harvestDate: '2026-06-01',
   harvestEndDate: '2026-07-01',
   ...overrides,

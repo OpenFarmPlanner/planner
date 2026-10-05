@@ -480,7 +480,7 @@ export function getHorizontalKeyboardNavigationTarget(
  * `scrollToIndexes` throws on `visibleColumns[colIndex].computedWidth`. That
  * throw propagated out of the Tab handler and aborted keyboard navigation
  * outright — e.g. on the planting plans grid below the `lg` breakpoint, where
- * both harvest-date columns are hidden by default, Tab out of "Pflanzdatum"
+ * both harvest-date columns are hidden by default, Tab out of "Pflanztermin"
  * reached "Fläche" and then stopped short of "Pflanzen".
  */
 export function getVisibleColumnIndex<Row extends GridValidRowModel>(

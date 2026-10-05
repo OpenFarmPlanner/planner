@@ -54,6 +54,16 @@ interface MobilePlanFormDialogProps {
   /** Shown under the planting-date field to signal the active season's range. */
   plantingDateHelperText?: string;
   getPlantsPerSqm: (cropId: string) => number | null;
+  /**
+   * Whether the Aussaattermin field can be computed at all for the form's
+   * current crop/cultivation_type (false only for Anzucht without a
+   * resolvable propagation duration — not simply an empty planting date).
+   */
+  isSowingDateDisabled: (form: MobileCreateFormState) => boolean;
+  /** Recomputes the Aussaattermin text from the form's current planting date. */
+  getSowingDateFromPlantingDate: (form: MobileCreateFormState) => string;
+  /** Recomputes the planting date text from the form's current Aussaattermin. */
+  getPlantingDateFromSowingDate: (form: MobileCreateFormState) => string;
   /** Called when the user edits one of the two linked area/plants inputs. */
   onLinkedFieldEdited: (field: "area_m2" | "plants_count") => void;
   onClose: () => void;
@@ -79,16 +89,36 @@ export function MobilePlanFormDialog({
   numberLocale,
   plantingDateHelperText,
   getPlantsPerSqm,
+  isSowingDateDisabled,
+  getSowingDateFromPlantingDate,
+  getPlantingDateFromSowingDate,
   onLinkedFieldEdited,
   onClose,
   onSubmit,
 }: MobilePlanFormDialogProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
   const plantingDatePickerRef = useRef<HTMLInputElement | null>(null);
+  const sowingDatePickerRef = useRef<HTMLInputElement | null>(null);
 
   const pickerValue = toIsoDateString(parseGermanDateText(form.planting_date)) ?? "";
   const openPlantingDatePicker = (): void => {
     const pickerInput = plantingDatePickerRef.current;
+    if (!pickerInput) {
+      return;
+    }
+
+    if (typeof pickerInput.showPicker === "function") {
+      pickerInput.showPicker();
+      return;
+    }
+
+    pickerInput.click();
+  };
+
+  const sowingDateDisabled = isSowingDateDisabled(form);
+  const sowingPickerValue = toIsoDateString(parseGermanDateText(form.sowing_date)) ?? "";
+  const openSowingDatePicker = (): void => {
+    const pickerInput = sowingDatePickerRef.current;
     if (!pickerInput) {
       return;
     }
@@ -130,7 +160,10 @@ export function MobilePlanFormDialog({
               value={form.crop}
               label={t("plantingPlans:columns.crop")}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, crop: String(event.target.value) }))
+                setForm((previous) => {
+                  const next = { ...previous, crop: String(event.target.value) };
+                  return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
+                })
               }
             >
               {cropOptions.map((option) => (
@@ -160,7 +193,10 @@ export function MobilePlanFormDialog({
               value={form.cultivation_type}
               label={t("plantingPlans:columns.cultivationType")}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, cultivation_type: event.target.value as CultivationType }))
+                setForm((previous) => {
+                  const next = { ...previous, cultivation_type: event.target.value as CultivationType };
+                  return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
+                })
               }
             >
               {cultivationTypeOptions.map((option) => (
@@ -171,11 +207,69 @@ export function MobilePlanFormDialog({
           <Box sx={formRowSx}>
             <TextField
               type="text"
+              label={t("plantingPlans:columns.sowingDate")}
+              placeholder={t('common:dateFormatPlaceholder')}
+              value={form.sowing_date}
+              disabled={sowingDateDisabled}
+              onChange={(event) =>
+                setForm((previous) => {
+                  const next = { ...previous, sowing_date: event.target.value };
+                  return { ...next, planting_date: getPlantingDateFromSowingDate(next) };
+                })
+              }
+              helperText={sowingDateDisabled ? t("plantingPlans:tooltips.missingPropagationDuration") : undefined}
+              sx={compactFieldSx}
+              slotProps={{
+                htmlInput: { inputMode: "numeric" },
+                inputLabel: { shrink: true },
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={t("plantingPlans:dateEditor.openCalendar")}
+                        size="medium"
+                        sx={{ width: 44, height: 44 }}
+                        onClick={openSowingDatePicker}
+                        disabled={sowingDateDisabled}
+                      >
+                        <CalendarTodayIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <input
+              ref={sowingDatePickerRef}
+              type="date"
+              aria-hidden="true"
+              tabIndex={-1}
+              value={sowingPickerValue}
+              onChange={(event) => {
+                const nextValue = event.target.value ? new Date(`${event.target.value}T00:00:00`) : null;
+                setForm((previous) => {
+                  const next = { ...previous, sowing_date: formatDateAsGerman(nextValue) };
+                  return { ...next, planting_date: getPlantingDateFromSowingDate(next) };
+                });
+              }}
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                opacity: 0,
+                pointerEvents: "none",
+              }}
+            />
+            <TextField
+              type="text"
               label={t("plantingPlans:columns.plantingDate")}
               placeholder={t('common:dateFormatPlaceholder')}
               value={form.planting_date}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, planting_date: event.target.value }))
+                setForm((previous) => {
+                  const next = { ...previous, planting_date: event.target.value };
+                  return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
+                })
               }
               helperText={plantingDateHelperText}
               sx={compactFieldSx}
@@ -206,10 +300,10 @@ export function MobilePlanFormDialog({
               value={pickerValue}
               onChange={(event) => {
                 const nextValue = event.target.value ? new Date(`${event.target.value}T00:00:00`) : null;
-                setForm((previous) => ({
-                  ...previous,
-                  planting_date: formatDateAsGerman(nextValue),
-                }));
+                setForm((previous) => {
+                  const next = { ...previous, planting_date: formatDateAsGerman(nextValue) };
+                  return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
+                });
               }}
               style={{
                 position: "absolute",

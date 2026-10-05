@@ -36,7 +36,7 @@
   },
   "tooltip": {
     "crop": "Kultur",
-    "plantingDate": "Pflanzdatum",
+    "plantingDate": "Pflanztermin",
     "harvestDate": "Erntedatum",
     "firstHarvest": "Erste Ernte",
     "lastHarvest": "Letzte Ernte",

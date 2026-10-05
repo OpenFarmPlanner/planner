@@ -196,7 +196,7 @@ describe('scrollCellIntoView', () => {
   // scrolls to the wrong column and throws once it runs past the visible
   // count. Passing that index used to abort Tab navigation for good (below
   // the `lg` breakpoint the planting plans grid hides both harvest-date
-  // columns, so Tab out of "Pflanzdatum" reached "Fläche" and then stopped
+  // columns, so Tab out of "Pflanztermin" reached "Fläche" and then stopped
   // short of "Pflanzen").
   const createApiWithHiddenColumns = () => {
     const visibleColumns = [

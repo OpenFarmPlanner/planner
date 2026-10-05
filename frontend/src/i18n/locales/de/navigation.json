@@ -69,8 +69,8 @@
       "save": "Speichern",
       "error": "Der Zeitraum konnte nicht geändert werden.",
       "unknownCrop": "Unbekannte Kultur",
-      "plantingConflictIntro": "Diese Anbaupläne liegen mit ihrem Pflanzdatum außerhalb des neuen Zeitraums. Passe sie zuerst an oder verschiebe sie, bevor du den Zeitraum änderst:",
-      "plantingConflictItem": "{{crop}} – Pflanzdatum {{date}}",
+      "plantingConflictIntro": "Diese Anbaupläne liegen mit ihrem Pflanztermin außerhalb des neuen Zeitraums. Passe sie zuerst an oder verschiebe sie, bevor du den Zeitraum änderst:",
+      "plantingConflictItem": "{{crop}} – Pflanztermin {{date}}",
       "overlapConflictIntro": "Der neue Zeitraum überschneidet sich mit einer anderen Saison:",
       "overlapConflictItem": "Saison {{label}}: {{period}}"
     },

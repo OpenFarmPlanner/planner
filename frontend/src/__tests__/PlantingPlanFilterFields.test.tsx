@@ -138,8 +138,8 @@ describe('PlantingPlanFilterFields', () => {
       await user.click(screen.getByRole('combobox', { name: 'Sortierung' }));
 
       [
-        'Pflanzdatum, aufsteigend',
-        'Pflanzdatum, absteigend',
+        'Pflanztermin, aufsteigend',
+        'Pflanztermin, absteigend',
         'Kultur, A bis Z',
         'Erntebeginn, aufsteigend',
       ].forEach((label) => {

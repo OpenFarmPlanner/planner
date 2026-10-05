@@ -2,6 +2,7 @@ import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
 import { getCropDisplayName } from '../crops/cropDisplay';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
+import { getPlanSowingSchedule } from './planSowingDate';
 
 export type DerivedTaskType =
   | 'sowing'
@@ -19,26 +20,9 @@ export interface DerivedLocationTask {
   fieldName?: string;
 }
 
-const DIRECT_SOWING = 'direct_sowing';
-const PRE_CULTIVATION = 'pre_cultivation';
-
 const getPlanCropDisplayName = (plan: PlantingPlan): string | undefined => (
   plan.crop_display_name || plan.crop_name || undefined
 );
-
-const isDirectSowingPlan = (plan: PlantingPlan, crop?: Crop): boolean => {
-  const planType = plan.cultivation_type || plan.crop_cultivation_type;
-  if (planType === DIRECT_SOWING) return true;
-  if (planType === PRE_CULTIVATION) return false;
-
-  const supported = plan.crop_cultivation_types
-    ?? getEffectiveCropValue(crop, 'cultivation_types')
-    ?? [];
-  if (supported.includes(DIRECT_SOWING) && !supported.includes(PRE_CULTIVATION)) {
-    return true;
-  }
-  return false;
-};
 
 export function deriveLocationTasks({
   locations,
@@ -82,8 +66,8 @@ export function deriveLocationTasks({
     if (!plantingDate) return;
     const crop = cropById.get(plan.crop);
     const cropName = getPlanCropDisplayName(plan) || (crop ? getCropDisplayName(crop) : undefined);
-    const direct = isDirectSowingPlan(plan, crop);
-    const baseTaskType: DerivedTaskType = direct ? 'sowing' : 'planting';
+    const schedule = getPlanSowingSchedule(plan, crop);
+    const baseTaskType: DerivedTaskType = schedule?.isPreCultivation ? 'planting' : 'sowing';
 
     pushTask({
       type: baseTaskType,
@@ -95,13 +79,10 @@ export function deriveLocationTasks({
       fieldName: field.name,
     });
 
-    const propagationDuration = plan.crop_propagation_duration_days
-      ?? getEffectiveCropValue(crop, 'propagation_duration_days')
-      ?? null;
-    if (propagationDuration && propagationDuration > 0) {
+    if (schedule?.isPreCultivation && schedule.sowingDate) {
       pushTask({
         type: 'propagationStart',
-        date: formatIsoDate(addUtcDays(plantingDate, -propagationDuration)),
+        date: schedule.sowingDate,
         locationId: field.location,
         planId: plan.id,
         cropName,

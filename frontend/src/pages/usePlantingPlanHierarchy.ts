@@ -245,6 +245,7 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
         110,
         150,
       ),
+      sowingDate: DATE_COLUMN_WIDTH,
       plantingDate: DATE_COLUMN_WIDTH,
       harvestDate: DATE_COLUMN_WIDTH,
       harvestEndDate: DATE_COLUMN_WIDTH,

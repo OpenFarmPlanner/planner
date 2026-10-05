@@ -45,11 +45,14 @@ For a planting plan, the searched texts are:
 - Anbauart (the localized label, e.g. "Direktsaat")
 - Standort, Parzelle, Beet (names)
 - Notizen (markdown stripped to plain text)
-- Pflanzdatum, Erntebeginn and Ernteende, each in three forms: the displayed
-  `d.M.yyyy` ("18.2.2026"), zero-padded `dd.MM.yyyy` ("18.02.2026") and ISO
-  `yyyy-MM-dd` ("2026-02-18"). Any part matches like any other text, so "18.2.",
-  "18.02." and "2026-02" all find 18 February 2026, and "2026" finds every
-  dated plan of that year.
+- Pflanztermin, Aussaattermin, Erntebeginn and Ernteende, each in three
+  forms: the displayed `d.M.yyyy` ("18.2.2026"), zero-padded `dd.MM.yyyy`
+  ("18.02.2026") and ISO `yyyy-MM-dd` ("2026-02-18"). Any part matches like
+  any other text, so "18.2.", "18.02." and "2026-02" all find 18 February
+  2026, and "2026" finds every dated plan of that year. Aussaattermin is
+  derived (Pflanztermin minus the crop's propagation duration), so it isn't
+  searched for a plan where it isn't computable (direct sowing re-uses
+  Pflanztermin itself; see [DataGrid Architecture](./datagrid-architecture.md#coupled-field-pairs)).
 
 **Not searched:** other numbers (area, plant count), including the area shown
 in the Beet label.

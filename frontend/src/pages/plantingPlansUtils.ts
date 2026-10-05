@@ -125,6 +125,8 @@ export interface MobileCreateFormState {
   crop: string;
   bed: string;
   cultivation_type: CultivationType | "";
+  /** Derived from `planting_date`; German-formatted, like `planting_date`. */
+  sowing_date: string;
   planting_date: string;
   area_m2: string;
   plants_count: string;
@@ -314,6 +316,7 @@ export const createEmptyMobileCreateForm = (): MobileCreateFormState => ({
   crop: "",
   bed: "",
   cultivation_type: "",
+  sowing_date: "",
   planting_date: "",
   area_m2: "",
   plants_count: "",
