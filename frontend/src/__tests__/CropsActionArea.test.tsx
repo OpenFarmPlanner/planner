@@ -535,7 +535,7 @@ describe('Crops action area', () => {
     expect(publicCropListMock).not.toHaveBeenCalled();
   });
 
-  it('closes the import dialog and selects the imported crop after a successful library import', async () => {
+  it('keeps the import dialog open and selects the imported crop after a successful library import', async () => {
     const initialCrop = { id: 1, name: 'Tomate', variety: 'Roma', crop_species: 1, cultivation_type: 'pre_cultivation', growth_duration_days: 1, harvest_duration_days: 1 };
     const importedCrop = { id: 42, name: 'Salat', variety: 'Maikönig', growth_duration_days: 45, harvest_duration_days: 10 };
     listMock
@@ -579,8 +579,11 @@ describe('Crops action area', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'In Projekt importieren' }));
 
     await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77));
+    // Deliberately stays open so several crops can be imported from the
+    // library in one sitting instead of reopening it each time - see
+    // usePublicCropLibrary.ts's handleImportPublicCrop.
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).not.toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();
     });
     expect(screen.getByTestId('selected-crop-id')).toHaveTextContent('42');
     expect(screen.getByTestId('crop-row-42')).toHaveTextContent('Salat');
