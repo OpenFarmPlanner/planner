@@ -167,6 +167,18 @@ describe('FieldsBedsPage', () => {
     promptSpy.mockRestore();
   });
 
+  it('shows a load error instead of the missing-location empty state when the hierarchy fetch fails', async () => {
+    locationListMock.mockRejectedValue(new Error('Request failed with status code 400'));
+    fieldListMock.mockRejectedValue(new Error('Request failed with status code 400'));
+    bedListMock.mockRejectedValue(new Error('Request failed with status code 400'));
+
+    renderPage();
+
+    expect(await screen.findByText('Fehler beim Laden der Daten')).toBeInTheDocument();
+    expect(screen.queryByText('Standort fehlt')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Standort hinzufügen' })).not.toBeInTheDocument();
+  });
+
   it('shows onboarding empty-state when no area hierarchy exists', async () => {
     locationListMock.mockResolvedValue({ data: { results: [] } });
     fieldListMock.mockResolvedValue({ data: { results: [] } });
