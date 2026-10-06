@@ -73,6 +73,7 @@ export default function FieldsBedsPage() {
   const {
     loading: isAreaDataLoading,
     hasLoaded: hasAreaDataLoaded,
+    error: areaDataError,
     locations,
     setLocations,
     fields,
@@ -242,7 +243,7 @@ export default function FieldsBedsPage() {
   const effectivePendingHierarchyDeletionCount = shouldShowProjectRequiredState
     ? 0
     : pendingHierarchyDeletionCount;
-  const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !hasLocations;
+  const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !areaDataError && !hasLocations;
   const shouldShowMissingFieldsState = hasLocations && !hasFields && !hasUnsavedFields && createFieldRequest <= 0;
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
@@ -405,6 +406,11 @@ export default function FieldsBedsPage() {
         {globalActionSuccess ? (
           <Alert severity="success" sx={{ mb: 2 }} onClose={() => setGlobalActionSuccess('')}>
             {globalActionSuccess}
+          </Alert>
+        ) : null}
+        {!shouldShowProjectRequiredState && areaDataError ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {areaDataError}
           </Alert>
         ) : null}
         {shouldShowProjectRequiredState && missingProjectReason ? (
