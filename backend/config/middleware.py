@@ -26,12 +26,47 @@ the deploy runbook in the `ops` repo for how to populate it.
 from __future__ import annotations
 
 import ipaddress
+import zoneinfo
 from typing import TYPE_CHECKING, Callable
 
 from django.conf import settings
+from django.urls import Resolver404, resolve
+from django.utils import timezone
 
 if TYPE_CHECKING:
     from django.http import HttpRequest, HttpResponse
+
+
+class AdminTimezoneMiddleware:
+    """Displays Django admin times in `ADMIN_TIME_ZONE` instead of the UTC storage timezone.
+
+    `TIME_ZONE` stays UTC so stored timestamps and API responses are
+    unambiguous; Django's admin otherwise renders datetimes in that same
+    storage timezone, which reads two hours off for anyone in Central
+    European time.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+        self._zone = zoneinfo.ZoneInfo(settings.ADMIN_TIME_ZONE)
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if not self._is_admin_request(request):
+            return self.get_response(request)
+
+        timezone.activate(self._zone)
+        try:
+            return self.get_response(request)
+        finally:
+            timezone.deactivate()
+
+    @staticmethod
+    def _is_admin_request(request: HttpRequest) -> bool:
+        try:
+            match = resolve(request.path_info)
+        except Resolver404:
+            return False
+        return match.app_name == 'admin'
 
 
 class TrustedProxyRemoteAddrMiddleware:

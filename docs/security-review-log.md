@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-06 — Claude — Automated security review of PR #758 (admin timezone display)
+
+**Scope:** `git diff origin/main...HEAD` (`AdminTimezoneMiddleware`, `ADMIN_TIME_ZONE` setting, tests).
+
+**Findings:** No issues. The middleware only activates a display timezone for requests that resolve to the admin app and always deactivates it in `finally`, so it cannot leak across requests or affect API timestamps. It adds no data flows, auth changes or user-controlled input (the zone comes from the environment setting).
+
 ## 2026-10-06 — Claude — Third re-review of PR #754 (test-only follow-up)
 
 **Scope:** `git diff origin/main...HEAD`, including commit `10971127` (sowing-date coupling test update).
