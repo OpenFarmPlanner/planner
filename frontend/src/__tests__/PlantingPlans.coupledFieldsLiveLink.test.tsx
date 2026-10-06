@@ -277,8 +277,8 @@ describe("PlantingPlans coupled-field live link", () => {
       await user.keyboard("{Escape}");
 
       await waitFor(() => expect(document.querySelector(".MuiDataGrid-row--editing")).not.toBeInTheDocument());
-      expect(cellOf("planting_date")?.textContent).toBe("1.5.2026");
-      expect(cellOf("sowing_date")?.textContent).toBe("11.4.2026");
+      expect(cellOf("planting_date")?.textContent).toBe(new Date(2026, 4, 1).toLocaleDateString());
+      expect(cellOf("sowing_date")?.textContent).toBe(new Date(2026, 3, 11).toLocaleDateString());
     });
   });
 });
