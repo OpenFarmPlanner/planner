@@ -142,7 +142,7 @@ import {
   type PlantingPlanRow,
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
-import { dataGridHeaderLabelSx } from "../components/data-grid/styles";
+import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
 
 
 /**

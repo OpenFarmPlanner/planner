@@ -8,6 +8,7 @@ import {
 import type { GridColDef, GridFilterOperator, GridRowId, GridSortModel } from '@mui/x-data-grid';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import { DateEditCell } from './DateEditCell';
+import { dataGridHeaderLabelSx } from './dataGridHeaderLabelSx';
 import type { EditableDataGridClipboardColumn, EditableRow } from './types';
 
 export const isUnsavedDraftRow = (row: EditableRow): boolean =>
@@ -113,7 +114,12 @@ const applyDefaultHeaderOverflowTooltip = (column: GridColDef): GridColDef => {
   const headerName = column.headerName ?? column.field;
   return {
     ...column,
-    renderHeader: () => <TruncatedTextWithTooltip text={headerName} sx={{ width: '100%' }} />,
+    // This replaces MUI's own `.MuiDataGrid-columnHeaderTitle` element (where
+    // the theme's `MuiDataGrid.columnHeaderTitle` fontWeight override
+    // normally applies) with a plain Box, so that bold weight has to be
+    // re-applied here explicitly to keep every default header visually
+    // consistent with a column that supplies its own `renderHeader`.
+    renderHeader: () => <TruncatedTextWithTooltip text={headerName} sx={{ width: '100%', ...dataGridHeaderLabelSx }} />,
   };
 };
 

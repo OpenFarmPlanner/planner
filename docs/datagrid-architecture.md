@@ -333,15 +333,45 @@ tint across each half's own header cell — never the cells below — using
 (7% light / 10% dark), the same "tint the header, not the body" pattern the
 calculated harvest columns use with grey
 (`CALCULATED_COLUMN_HEADER_CLASS`/`CALCULATED_COLUMN_CELL_CLASS`). Each half's
-tint is inset by `theme.spacing(1)` on its own *outer* edge (away from its
-partner) via an absolutely-positioned `::after` with `pointerEvents: 'none'`
-(so it never blocks the header's sort/menu affordances), and reaches the full
-column boundary on its *inner* edge, so the two halves' tints meet with no
-seam between them while a small gap still separates the pair from its
-neighbours and from a different coupled pair. The header's bold label text is
-untouched by this. If either column of a pair is hidden (the page's own
-`columnVisibilityModel`), `getCoupledFieldHeaderClassName` drops the `start`/
-`end` class on the remaining one, so a lone visible half shows no tint.
+tint leaves a `theme.spacing(1)` gap on its own *outer* edge (away from its
+partner) and reaches the full column boundary on its *inner* edge, so the two
+halves' tints meet with no seam between them while a small gap still
+separates the pair from its neighbours and from a different coupled pair.
+
+This is a plain `backgroundImage` hard-edge `linear-gradient`
+(`getCoupledFieldHeaderTintBackground`), not an absolutely-positioned
+pseudo-element — that was the first implementation, and it visibly
+destabilized MUI's column auto-sizing: the `ResizeObserver` that measures
+header content picked up the extra generated box and the header (and the
+toolbar's "Spalten" button, sharing the same layout pass) jittered by a pixel
+on every render. A gradient is a paint-only background layer with no box of
+its own, so it can't feed back into that measurement; `theme.direction`
+decides which physical side the gradient's gap lands on, matching what
+`insetInlineStart`/`insetInlineEnd` would have picked. The header's bold
+label text is untouched by this. If either column of a pair is hidden (the
+page's own `columnVisibilityModel`), `getCoupledFieldHeaderClassName` drops
+the `start`/`end` class on the remaining one, so a lone visible half shows no
+tint.
+
+### Default header labels stay bold too
+
+`dataGridUtils.tsx`'s `applyDefaultHeaderOverflowTooltip` (part of
+`prepareDataGridColumn`, applied to every column in `EditableDataGrid`)
+replaces MUI's own `.MuiDataGrid-columnHeaderTitle` element — where the
+theme's `MuiDataGrid.columnHeaderTitle` bold override normally applies —
+with a plain `TruncatedTextWithTooltip` for any column that doesn't supply
+its own `renderHeader`. That swap has to re-apply the bold weight itself
+(`dataGridHeaderLabelSx`, `components/data-grid/dataGridHeaderLabelSx.ts`) or
+that column's header silently renders at normal weight while its neighbours
+with a custom `renderHeader` stay bold — this is what made Anbaupläne's
+"Kultur (Sorte)"/"Anbauart"/"Standort | Parzelle | Beet"/"Notizen" headers
+look lighter than "Aussaattermin"/"Pflanztermin"/"Fläche"/"Pflanzen" before
+it was fixed. `calculatedColumns.tsx`'s `getCalculatedColumnProps` and
+`hierarchy/HierarchyColumns.tsx`'s own custom headers import the same
+constant rather than redefining `{ fontWeight: 600 }` locally — it lives in
+its own tiny module, not `styles.ts`, specifically so `calculatedColumns.tsx`
+and `dataGridUtils.tsx` (which `styles.ts` itself imports class names from)
+can use it without a circular import.
 
 ### Live-carrying the partner value while editing
 

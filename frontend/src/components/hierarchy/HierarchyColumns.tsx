@@ -31,7 +31,7 @@ import { getPlainExcerpt } from '../data-grid/markdown';
 import { CALCULATED_COLUMN_CELL_CLASS, getCalculatedColumnProps } from '../data-grid/calculatedColumns';
 import { HierarchyLevelButtons } from './HierarchyLevelToggle';
 import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/FullCellTooltip';
-import { dataGridHeaderLabelSx } from '../data-grid/styles';
+import { dataGridHeaderLabelSx } from '../data-grid/dataGridHeaderLabelSx';
 
 export interface HierarchyColumnWidths {
   name: number;

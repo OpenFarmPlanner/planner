@@ -26,6 +26,22 @@ const getCoupledFieldHeaderTint = (theme: Theme): string => alpha(
   theme.palette.primary.main,
   theme.palette.mode === 'dark' ? COUPLED_FIELD_HEADER_TINT_ALPHA_DARK : COUPLED_FIELD_HEADER_TINT_ALPHA_LIGHT,
 );
+
+/**
+ * A hard-edge two-stop gradient standing in for "tint the header except for
+ * a small gap on this half's own outer edge" — see the usage site for why
+ * this is a `backgroundImage` and not an inset pseudo-element. `theme.direction`
+ * decides the physical side `start`/`end` resolve to, matching what
+ * `insetInlineStart`/`insetInlineEnd` would have picked for the gap.
+ */
+const getCoupledFieldHeaderTintBackground = (theme: Theme, position: 'start' | 'end'): string => {
+  const tint = getCoupledFieldHeaderTint(theme);
+  const gap = theme.spacing(1);
+  const direction = theme.direction === 'rtl' ? 'to left' : 'to right';
+  return position === 'start'
+    ? `linear-gradient(${direction}, transparent 0, transparent ${gap}, ${tint} ${gap}, ${tint} 100%)`
+    : `linear-gradient(${direction}, ${tint} 0, ${tint} calc(100% - ${gap}), transparent calc(100% - ${gap}), transparent 100%)`;
+};
 const EDITING_ROW_CELL_SELECTOR = [
   '& .ofp-row-editing .MuiDataGrid-cell',
   '& .ofp-row-editing:hover .MuiDataGrid-cell',
@@ -102,31 +118,19 @@ export const dataGridSx = {
   // (CALCULATED_COLUMN_HEADER_CLASS), just with the primary colour instead of
   // grey. A gap on each half's outer edge keeps neighbouring columns/pairs
   // visually separate; the two halves' inner edges reach the column boundary
-  // so the tint reads as one continuous patch spanning both headers.
-  // `pointerEvents: 'none'` keeps the overlay from intercepting clicks on the
-  // header's own sort/menu affordances.
-  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}, & .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}`]: {
-    position: 'relative',
+  // so the tint reads as one continuous patch spanning both headers. This is
+  // a plain `backgroundImage` hard-edge gradient rather than an absolutely
+  // positioned pseudo-element on purpose: MUI's column auto-sizing measures
+  // header content via `ResizeObserver`, and an extra generated box in the
+  // header was visibly destabilizing that measurement (the header and the
+  // toolbar's "Spalten" button jittered by a pixel on every render). A
+  // background is a paint-only layer with no box of its own, so it can't
+  // feed back into that observer.
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}`]: {
+    backgroundImage: (theme: Theme) => getCoupledFieldHeaderTintBackground(theme, 'start'),
   },
-  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}::after`]: {
-    content: '""',
-    position: 'absolute',
-    insetInlineStart: (theme: Theme) => theme.spacing(1),
-    insetInlineEnd: 0,
-    top: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    backgroundColor: (theme: Theme) => getCoupledFieldHeaderTint(theme),
-  },
-  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}::after`]: {
-    content: '""',
-    position: 'absolute',
-    insetInlineStart: 0,
-    insetInlineEnd: (theme: Theme) => theme.spacing(1),
-    top: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    backgroundColor: (theme: Theme) => getCoupledFieldHeaderTint(theme),
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}`]: {
+    backgroundImage: (theme: Theme) => getCoupledFieldHeaderTintBackground(theme, 'end'),
   },
   '& .MuiDataGrid-row': {
     minHeight: 44,
@@ -339,9 +343,3 @@ export const deleteIconButtonSx = {
     backgroundColor: (theme: Theme) => alpha(theme.palette.error.main, 0.08),
   },
 };
-
-/**
- * The bold label inside a custom `renderHeader`, matching what the DataGrid
- * renders for a plain `headerName`.
- */
-export const dataGridHeaderLabelSx = { fontWeight: 600 };
