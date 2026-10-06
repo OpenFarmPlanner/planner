@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-06 — Claude — Automated security review of PR #760 (X-Project-Id 400 retry)
+
+**Scope:** `git diff origin/main...HEAD` (`httpClient.ts` response interceptor, `isMissingProjectHeaderError`, tests).
+
+**Findings:** No issues. The retry is client-side only, happens once per request (guarded by a flag), and only on the backend's pre-processing 400 for a missing/invalid project header, so no non-idempotent request is replayed after side effects. The header is re-read from `localStorage` by the request interceptor, so tenant scoping stays enforced by the backend; nothing is cached or logged, and no unsafe HTML APIs or new data flows are added.
+
 ## 2026-10-06 — Claude — Automated security review of PR #758 (admin timezone display)
 
 **Scope:** `git diff origin/main...HEAD` (`AdminTimezoneMiddleware`, `ADMIN_TIME_ZONE` setting, tests).

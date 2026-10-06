@@ -338,3 +338,25 @@ export function isAuthenticationExpiredError(error: unknown): boolean {
   }
   return isAuthenticationExpiredDetail(getResponseDetail(axiosError.response?.data));
 }
+
+/**
+ * Detects the backend rejecting a request for lacking (or mismatching) the
+ * `X-Project-Id` header that scopes it to a project — see
+ * `farm/project_context.py` `get_active_project_or_400`. httpClient attaches
+ * that header from `localStorage` fresh on every request, so this is
+ * transient whenever it races a concurrent change to that value (e.g. another
+ * browser tab for the same origin starting or ending its own session —
+ * `localStorage` and the session cookie are both shared across tabs) rather
+ * than a real permission problem; httpClient retries once on this shape.
+ */
+export function isMissingProjectHeaderError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+  const axiosError = error as AxiosError;
+  if (axiosError.response?.status !== 400) {
+    return false;
+  }
+  const data = axiosError.response.data as { project?: unknown } | undefined;
+  return typeof data?.project === 'string' && data.project.includes('X-Project-Id header');
+}

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import i18n from 'i18next';
-import { isAuthenticationExpiredError } from './errors';
+import { isAuthenticationExpiredError, isMissingProjectHeaderError } from './errors';
 import { createAuthenticationExpiredEvent } from '../auth/authEvents';
 import { FALLBACK_LANGUAGE } from '../i18n/languages';
 import { normalizeBasePath } from '../utils/basePath';
@@ -141,15 +141,40 @@ httpClient.interceptors.request.use((config) => {
   return config;
 });
 
+interface RetriableRequestConfig extends InternalAxiosRequestConfig {
+  _retriedMissingProjectHeader?: boolean;
+}
+
 httpClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (isAuthenticationExpiredError(error) && typeof window !== 'undefined') {
       const startedAt = error.config
         ? requestStartedAt.get(error.config as InternalAxiosRequestConfig)
         : undefined;
       window.dispatchEvent(createAuthenticationExpiredEvent(startedAt ?? Date.now()));
     }
+
+    // See isMissingProjectHeaderError: this specific 400 is transient
+    // whenever it races a concurrent change to the shared `activeProjectId`
+    // localStorage value (e.g. another browser tab for this origin starting
+    // or ending its own session). Retry once, after a short delay to let
+    // that concurrent write land, but only while localStorage currently has
+    // a project id to retry with — otherwise this genuinely has none and the
+    // retry would just fail the same way.
+    const config = error.config as RetriableRequestConfig | undefined;
+    if (
+      config
+      && !config._retriedMissingProjectHeader
+      && isMissingProjectHeaderError(error)
+      && typeof window !== 'undefined'
+      && window.localStorage.getItem('activeProjectId')
+    ) {
+      config._retriedMissingProjectHeader = true;
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+      return httpClient(config);
+    }
+
     return Promise.reject(error);
   },
 );

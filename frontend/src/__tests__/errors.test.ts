@@ -4,6 +4,7 @@ import {
   isAreaInputSpacingMissingError,
   isAuthenticationExpiredError,
   isGuestDemoRestrictedError,
+  isMissingProjectHeaderError,
 } from '../api/errors';
 import i18n from '../i18n/config';
 
@@ -347,6 +348,19 @@ describe('isGuestDemoRestrictedError', () => {
     expect(isGuestDemoRestrictedError(createAxiosError(403, { code: 'guest_demo_restricted', detail: 'x' }))).toBe(true);
     expect(isGuestDemoRestrictedError(createAxiosError(403, { code: 'admin_required', detail: 'x' }))).toBe(false);
     expect(isGuestDemoRestrictedError(new Error('guest_demo_restricted'))).toBe(false);
+  });
+});
+
+describe('isMissingProjectHeaderError', () => {
+  it('matches the backend missing/invalid X-Project-Id rejection', () => {
+    expect(isMissingProjectHeaderError(createAxiosError(400, { project: 'Missing X-Project-Id header.' }))).toBe(true);
+    expect(isMissingProjectHeaderError(createAxiosError(400, { project: 'Invalid X-Project-Id header.' }))).toBe(true);
+  });
+
+  it('does not match unrelated 400s or other statuses', () => {
+    expect(isMissingProjectHeaderError(createAxiosError(400, { name: ['This field is required.'] }))).toBe(false);
+    expect(isMissingProjectHeaderError(createAxiosError(403, { project: 'Missing X-Project-Id header.' }))).toBe(false);
+    expect(isMissingProjectHeaderError(new Error('Missing X-Project-Id header.'))).toBe(false);
   });
 });
 
