@@ -250,6 +250,7 @@ describe('AuthProvider cross-tab project sync', () => {
 
     render(<AuthProvider><GuestDemoStartProbe /></AuthProvider>);
     await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));
+    expect(localStorage.getItem('activeProjectId')).toBe('1');
 
     getMeMock.mockResolvedValueOnce({
       authenticated: true,
@@ -263,6 +264,11 @@ describe('AuthProvider cross-tab project sync', () => {
 
     expect(getMeMock).toHaveBeenCalledTimes(2);
     expect(logoutMock).not.toHaveBeenCalled();
+    // The shared `activeProjectId` localStorage key is what every open tab's
+    // httpClient reads fresh per request — this tab's own stale-session
+    // cleanup must not touch it, or it breaks the other, perfectly valid
+    // tab that actually owns project 1.
+    expect(localStorage.getItem('activeProjectId')).toBe('1');
   });
 
   it.each([
