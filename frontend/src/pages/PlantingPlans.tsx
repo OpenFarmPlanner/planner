@@ -152,6 +152,18 @@ import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLab
 /** Columns whose editor is a dialog the cell opens on a single click. */
 const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
 
+/**
+ * Hoisted so `useColumnVisibility` gets a referentially stable array: an
+ * inline literal here would recreate `defaultHiddenFieldsOnSmallScreen` on
+ * every render, which (since that hook's `defaultModel` depends on it)
+ * handed back a new `columnVisibilityModel` object every render whenever the
+ * user has no saved visibility choice yet. The `columns` useMemo below reads
+ * that model to tint/untint coupled headers, so that instability recomputed
+ * the entire column array (and the grid's column layout with it) on every
+ * render — visible as the header/toolbar jitter this constant fixes.
+ */
+const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
+
 function PlantingPlans() {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
@@ -185,7 +197,7 @@ function PlantingPlans() {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "plantingPlans",
-    defaultHiddenFieldsOnSmallScreen: ["harvest_date", "harvest_end_date"],
+    defaultHiddenFieldsOnSmallScreen: DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN,
     isSmallScreen,
   });
   const [searchParams] = useSearchParams();
@@ -599,6 +611,16 @@ function PlantingPlans() {
     return <Box component="span"><SearchHighlightedText text={formatDateForDisplay(value)} /></Box>;
   }, [crops, formatDateForDisplay, t]);
 
+  // Read as primitive booleans, not the `columnVisibilityModel` object
+  // itself, in the columns useMemo's dependency array below: the model's
+  // reference can change without these actual flags changing (see
+  // DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN's comment), and depending on the
+  // object directly would recompute every column on every render.
+  const isSowingDatePartnerVisible = columnVisibilityModel.planting_date !== false;
+  const isPlantingDatePartnerVisible = columnVisibilityModel.sowing_date !== false;
+  const isAreaPartnerVisible = columnVisibilityModel.plants_count !== false;
+  const isPlantsPartnerVisible = columnVisibilityModel.area_m2 !== false;
+
   const columns: GridColDef[] = useMemo(
     () => [
       {
@@ -751,7 +773,7 @@ function PlantingPlans() {
         maxWidth: dynamicWidths.sowingDate,
         type: "date",
         editable: true,
-        headerClassName: getCoupledFieldHeaderClassName("start", columnVisibilityModel.planting_date !== false),
+        headerClassName: getCoupledFieldHeaderClassName("start", isSowingDatePartnerVisible),
         renderHeader: () => (
           <AppTooltip
             title={(
@@ -816,7 +838,7 @@ function PlantingPlans() {
         maxWidth: dynamicWidths.plantingDate,
         type: "date",
         editable: true,
-        headerClassName: getCoupledFieldHeaderClassName("end", columnVisibilityModel.sowing_date !== false),
+        headerClassName: getCoupledFieldHeaderClassName("end", isPlantingDatePartnerVisible),
         renderHeader: () => (
           <AppTooltip
             title={(
@@ -953,7 +975,7 @@ function PlantingPlans() {
           return "";
         },
         cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
-        headerClassName: getCoupledFieldHeaderClassName("start", columnVisibilityModel.plants_count !== false),
+        headerClassName: getCoupledFieldHeaderClassName("start", isAreaPartnerVisible),
       },
       {
         field: "plants_count",
@@ -995,7 +1017,7 @@ function PlantingPlans() {
           return "—";
         },
         cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
-        headerClassName: getCoupledFieldHeaderClassName("end", columnVisibilityModel.area_m2 !== false),
+        headerClassName: getCoupledFieldHeaderClassName("end", isPlantsPartnerVisible),
       },
       {
         field: "notes",
@@ -1028,7 +1050,10 @@ function PlantingPlans() {
       numberLocale,
       seasonBounds,
       isPlantingDateWithinSeason,
-      columnVisibilityModel,
+      isSowingDatePartnerVisible,
+      isPlantingDatePartnerVisible,
+      isAreaPartnerVisible,
+      isPlantsPartnerVisible,
       linkedPartnerHighlight,
       t,
     ],

@@ -581,6 +581,32 @@ describe("PlantingPlans save-time area validation", () => {
     });
   });
 
+  it("keeps the columns array referentially stable across an unrelated re-render", async () => {
+    // Regression guard: the columns useMemo reads columnVisibilityModel to
+    // decide the coupled-header tint. useColumnVisibility's defaultModel is
+    // itself a useMemo over defaultHiddenFieldsOnSmallScreen — an inline
+    // array literal there would be a fresh reference every render, handing
+    // back a new (but equal) columnVisibilityModel every render and, through
+    // it, a brand new columns array (and a full DataGrid column relayout)
+    // on every unrelated re-render. Opening the filter panel is a
+    // representative unrelated state update that happens often during
+    // normal use — the search toolbar (and its Filter button) only renders
+    // once there is at least one row, hence the non-empty plan here.
+    apiMocks.planList.mockResolvedValue({
+      data: { results: [{ id: 9, bed: 101, crop: 2, planting_date: "2026-04-01" }] },
+    });
+    const user = userEvent.setup();
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+
+    const columnsBefore = commandApiSpies.gridProps.mock.calls.at(-1)?.[0]?.columns;
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await screen.findByRole("dialog", { name: "Filter" });
+    const columnsAfter = commandApiSpies.gridProps.mock.calls.at(-1)?.[0]?.columns;
+
+    expect(columnsAfter).toBe(columnsBefore);
+  });
+
   it("marks the sowing date cell non-editable with a dash and tooltip when the crop has no propagation duration", async () => {
     apiMocks.cropList.mockResolvedValue({
       data: {
