@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-05 — Claude — Second re-review of PR #754 (sowing-date edit persistence fix)
+
+**Scope:** `git diff origin/main...HEAD` including commit `9bc3a351` (row-edit persistence of Aussaattermin in the planting plans grid).
+
+**Findings:** No issues. The new commit is client-side DataGrid edit-state logic; backend is unchanged (validation message wording only). No unsafe HTML APIs, new storage keys or data flows. Earlier PR #754 entries CROSS-CONFIRMED.
+
 ## 2026-10-05 — Claude — Re-review of PR #754 after `claude-review:` commits
 
 **Scope:** `git diff origin/main...HEAD` including the code-review fix commits (derived location tasks, Date-tolerant sowing schedule).
