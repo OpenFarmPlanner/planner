@@ -228,6 +228,30 @@ export async function waitForPageStable(page: Page, readyPattern?: RegExp): Prom
   await expect(page.locator('main, [role="main"]').first()).toBeVisible();
 }
 
+/**
+ * Collects `console.error` and uncaught page errors into the returned array
+ * for the rest of the test to assert against. Filters out "Failed to load
+ * resource" console noise, which duplicates whatever a response-level (4xx/5xx)
+ * check already reports.
+ */
+export function trackConsoleErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() !== 'error') {
+      return;
+    }
+    const text = message.text();
+    if (text.includes('Failed to load resource')) {
+      return;
+    }
+    errors.push(`console.error: ${text}`);
+  });
+  page.on('pageerror', (error) => {
+    errors.push(`pageerror: ${error.message}`);
+  });
+  return errors;
+}
+
 // The data grids render their rows continuously (EditableDataGrid's
 // `scrollMode="continuous"`), so the number of rendered `[role="row"]` elements
 // keeps growing for a moment after the grid's first paint. Tests that snapshot a
