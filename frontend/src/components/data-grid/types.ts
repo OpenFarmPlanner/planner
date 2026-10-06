@@ -1,6 +1,20 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import type { GridColDef, GridColumnVisibilityModel, GridRowId, GridSortModel } from '@mui/x-data-grid';
 
+declare module '@mui/x-data-grid' {
+  interface PanelPropsOverrides {
+    /**
+     * Not part of `GridPanelProps`'s public type, but `GridPanel` forwards
+     * any extra prop it doesn't recognize straight to the underlying Popper
+     * (the `basePopper` slot). Declaring it here lets `slotProps.panel`
+     * override the panel's default `placement="bottom-end"` per grid,
+     * instead of overriding the `basePopper` slot globally (which would also
+     * affect unrelated poppers like column menus).
+     */
+    placement?: 'bottom-start' | 'bottom-end' | 'bottom';
+  }
+}
+
 export interface EditableRow {
   id: number;
   isNew?: boolean;
@@ -153,6 +167,13 @@ export interface EditableDataGridProps<T extends EditableRow> {
    */
   columnsPanelOpen?: boolean;
   onColumnsPanelOpenChange?: (open: boolean) => void;
+  /**
+   * Anchors the columns panel to the toolbar button that opens it (left-
+   * aligned, directly below), instead of MUI's default fallback anchor at
+   * the grid's own top-right corner. Pass the "Columns" button's DOM node,
+   * e.g. via a ref forwarded to `ColumnsPanelButton`.
+   */
+  columnsPanelAnchorEl?: HTMLElement | null;
   /**
    * A page-owned filter that replaces MUI's built-in filter model, so the
    * page's own search/filter state is the only filter state. See
