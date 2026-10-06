@@ -6,6 +6,7 @@
     "field": "Field",
     "bed": "Bed",
     "fieldBed": "Field{{separator}}Bed",
+    "sowingDate": "Sowing date",
     "plantingDate": "Planting date",
     "harvestDate": "Harvest date",
     "harvestStartDate": "Harvest start",
@@ -60,7 +61,12 @@
     "calculatedHarvestEndDate": "Calculated automatically from the harvest start and the culture's harvest duration.",
     "missingGrowthDuration": "Cannot be calculated because this culture has no growth duration.",
     "missingHarvestDuration": "Cannot be calculated because this culture has no harvest duration.",
-    "missingGrowthAndHarvestDuration": "Cannot be calculated because this culture has neither a growth duration nor a harvest duration."
+    "missingGrowthAndHarvestDuration": "Cannot be calculated because this culture has neither a growth duration nor a harvest duration.",
+    "sowingDateTitle": "Sowing date",
+    "sowingDateDescription": "Coupled with the planting date: planting date minus the crop's propagation duration. Changes update the other value automatically. Equal to the planting date for direct sowing.",
+    "plantingDateTitle": "Planting date",
+    "plantingDateDescription": "Coupled with the sowing date. For direct sowing this is also the sowing date. Must lie within the season.",
+    "missingPropagationDuration": "Cannot be calculated because no propagation duration is set for this crop."
   },
   "hints": {
     "plantingDateSeasonRange": "Within the season: {{start}} – {{end}}"
@@ -179,6 +185,7 @@
     "filterButton": "Filter",
     "filterButtonActiveAria_one": "Filter, {{count}} filter active",
     "filterButtonActiveAria_other": "Filter, {{count}} filters active",
+    "columnsButton": "Columns",
     "panelTitle": "Filter",
     "sheetTitle": "Filter and sort",
     "fields": {

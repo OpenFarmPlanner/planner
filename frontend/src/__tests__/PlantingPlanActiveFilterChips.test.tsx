@@ -74,7 +74,7 @@ describe('PlantingPlanActiveFilterChips', () => {
     it('reads as a span when both ends are set', () => {
       renderChips(withFilters({ monthRanges: { plantingDate: { from: 3, to: 5 } } as never }));
 
-      expect(screen.getByText('Pflanzdatum: Mär bis Mai')).toBeInTheDocument();
+      expect(screen.getByText('Pflanztermin: Mär bis Mai')).toBeInTheDocument();
     });
 
     it('reads as open-ended when only the start is set', () => {
@@ -82,13 +82,13 @@ describe('PlantingPlanActiveFilterChips', () => {
       // forms are three different sentences rather than one with gaps.
       renderChips(withFilters({ monthRanges: { plantingDate: { from: 3, to: null } } as never }));
 
-      expect(screen.getByText('Pflanzdatum: ab Mär')).toBeInTheDocument();
+      expect(screen.getByText('Pflanztermin: ab Mär')).toBeInTheDocument();
     });
 
     it('reads as open-started when only the end is set', () => {
       renderChips(withFilters({ monthRanges: { plantingDate: { from: null, to: 5 } } as never }));
 
-      expect(screen.getByText('Pflanzdatum: bis Mai')).toBeInTheDocument();
+      expect(screen.getByText('Pflanztermin: bis Mai')).toBeInTheDocument();
     });
 
     it("uses each date filter's own name", () => {
@@ -100,7 +100,7 @@ describe('PlantingPlanActiveFilterChips', () => {
         } as never,
       }));
 
-      expect(screen.getByText('Pflanzdatum: ab Jan')).toBeInTheDocument();
+      expect(screen.getByText('Pflanztermin: ab Jan')).toBeInTheDocument();
       expect(screen.getByText('Erntebeginn: ab Jun')).toBeInTheDocument();
       expect(screen.getByText('Ernteende: ab Sep')).toBeInTheDocument();
     });
@@ -109,7 +109,7 @@ describe('PlantingPlanActiveFilterChips', () => {
       // From November to February is a legal range by specification.
       renderChips(withFilters({ monthRanges: { plantingDate: { from: 11, to: 2 } } as never }));
 
-      expect(screen.getByText('Pflanzdatum: Nov bis Feb')).toBeInTheDocument();
+      expect(screen.getByText('Pflanztermin: Nov bis Feb')).toBeInTheDocument();
     });
   });
 

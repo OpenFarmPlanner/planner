@@ -84,6 +84,8 @@ export interface PlantingPlanSearchRecordInput {
   notesText: string;
   /** ISO `YYYY-MM-DD` or null. */
   plantingDate: string | null;
+  /** Derived (planting date minus the crop's propagation duration); null if not computable. */
+  sowingDate: string | null;
   harvestDate: string | null;
   harvestEndDate: string | null;
 }
@@ -147,6 +149,7 @@ export function createPlantingPlanSearchRecord(input: PlantingPlanSearchRecordIn
       input.fieldName,
       input.bedName,
       ...buildDateSearchTexts(input.plantingDate),
+      ...buildDateSearchTexts(input.sowingDate),
       ...buildDateSearchTexts(input.harvestDate),
       ...buildDateSearchTexts(input.harvestEndDate),
     ]

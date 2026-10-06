@@ -6,7 +6,8 @@
     "field": "Parzelle",
     "bed": "Beet",
     "fieldBed": "Parzelle{{separator}}Beet",
-    "plantingDate": "Pflanzdatum",
+    "sowingDate": "Aussaattermin",
+    "plantingDate": "Pflanztermin",
     "harvestDate": "Erntedatum",
     "harvestStartDate": "Erntebeginn",
     "harvestEndDate": "Ernteende",
@@ -56,11 +57,16 @@
     "areaInputTitle": "Vom Anbauplan belegte Fläche",
     "areaInputDescription": "Die Fläche des Beets, die durch diesen Anbauplan beansprucht wird. Änderungen an Fläche oder Pflanzenanzahl aktualisieren automatisch den jeweils anderen Wert. Leer oder „max“ verwendet die maximal verfügbare Restfläche.",
     "plantsFromSpacing": "Pflanzenanzahl: Mit genutzter Fläche gekoppelt. Änderungen aktualisieren automatisch den anderen Wert.",
-    "calculatedHarvestStartDate": "Wird automatisch aus Pflanzdatum und Wachstumszeit der Kultur berechnet.",
+    "calculatedHarvestStartDate": "Wird automatisch aus Pflanztermin und Wachstumszeit der Kultur berechnet.",
     "calculatedHarvestEndDate": "Wird automatisch aus Erntebeginn und Erntezeit der Kultur berechnet.",
     "missingGrowthDuration": "Nicht berechenbar, da für diese Kultur keine Wachstumszeit hinterlegt ist.",
     "missingHarvestDuration": "Nicht berechenbar, da für diese Kultur keine Erntezeit hinterlegt ist.",
-    "missingGrowthAndHarvestDuration": "Nicht berechenbar, da für diese Kultur weder eine Wachstumszeit noch eine Erntezeit hinterlegt ist."
+    "missingGrowthAndHarvestDuration": "Nicht berechenbar, da für diese Kultur weder eine Wachstumszeit noch eine Erntezeit hinterlegt ist.",
+    "sowingDateTitle": "Aussaattermin",
+    "sowingDateDescription": "Mit dem Pflanztermin gekoppelt: Pflanztermin minus Anzuchtdauer der Kultur. Änderungen aktualisieren automatisch den anderen Wert. Bei Direktsaat gleich dem Pflanztermin.",
+    "plantingDateTitle": "Pflanztermin",
+    "plantingDateDescription": "Mit dem Aussaattermin gekoppelt. Bei Direktsaat ist das zugleich der Aussaattermin. Muss innerhalb der Saison liegen.",
+    "missingPropagationDuration": "Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist."
   },
   "hints": {
     "plantingDateSeasonRange": "Innerhalb der Saison: {{start}} – {{end}}"
@@ -76,11 +82,11 @@
     "plantingPlanCopied": "Anbauplan kopiert."
   },
   "validation": {
-    "plantingDateRequired": "Pflanzdatum ist ein Pflichtfeld",
+    "plantingDateRequired": "Pflanztermin ist ein Pflichtfeld",
     "cropRequired": "Kultur ist ein Pflichtfeld",
     "bedRequired": "Beet ist ein Pflichtfeld",
     "cultivationTypeRequired": "Anbauart ist ein Pflichtfeld",
-    "plantingDateOutsideSeason": "Pflanzdatum muss innerhalb der Saison liegen ({{start}} – {{end}}).",
+    "plantingDateOutsideSeason": "Pflanztermin muss innerhalb der Saison liegen ({{start}} – {{end}}).",
     "requiredFields": "Folgende Pflichtfelder müssen ausgefüllt werden: {{fields}}",
     "cropOrBedRequired": "Kultur oder Beet ist ein Pflichtfeld",
     "areaExceedsRemaining": "Die angegebene Fläche überschreitet die verfügbare Restfläche dieses Beets.",
@@ -179,6 +185,7 @@
     "filterButton": "Filter",
     "filterButtonActiveAria_one": "Filter, {{count}} Filter aktiv",
     "filterButtonActiveAria_other": "Filter, {{count}} Filter aktiv",
+    "columnsButton": "Spalten",
     "panelTitle": "Filter",
     "sheetTitle": "Filter und Sortierung",
     "fields": {
@@ -196,8 +203,8 @@
     "monthRangeSeparator": "bis",
     "fieldHint": "Tipp: Wähle zuerst einen Standort, dann siehst du nur dessen Parzellen.",
     "sortOptions": {
-      "plantingDateAsc": "Pflanzdatum, aufsteigend",
-      "plantingDateDesc": "Pflanzdatum, absteigend",
+      "plantingDateAsc": "Pflanztermin, aufsteigend",
+      "plantingDateDesc": "Pflanztermin, absteigend",
       "cropAsc": "Kultur, A bis Z",
       "harvestStartAsc": "Erntebeginn, aufsteigend"
     },
@@ -212,7 +219,7 @@
     "showResults_other": "{{count}} Anbaupläne anzeigen",
     "chip": "{{filter}}: {{values}}",
     "chipDateLabels": {
-      "plantingDate": "Pflanzdatum",
+      "plantingDate": "Pflanztermin",
       "harvestStartDate": "Erntebeginn",
       "harvestEndDate": "Ernteende"
     },

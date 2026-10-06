@@ -466,7 +466,7 @@ describe("PlantingPlans save-time area validation", () => {
     const startHeader = render(<>{harvestStartColumn.renderHeader()}</>);
     await userEvent.hover(startHeader.getByText("Erntebeginn"));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Wird automatisch aus Pflanzdatum und Wachstumszeit der Kultur berechnet.",
+      "Wird automatisch aus Pflanztermin und Wachstumszeit der Kultur berechnet.",
     );
     startHeader.unmount();
 
@@ -476,6 +476,95 @@ describe("PlantingPlans save-time area validation", () => {
       "Wird automatisch aus Erntebeginn und Erntezeit der Kultur berechnet.",
     );
     endHeader.unmount();
+  });
+
+  it("couples the sowing date column with the planting date", async () => {
+    apiMocks.cropList.mockResolvedValue({
+      data: {
+        results: [
+          { id: 2, name: "Möhre", plants_per_m2: 10, cultivation_types: ["direct_sowing"] },
+          { id: 5, name: "Tomate", plants_per_m2: 5, cultivation_types: ["pre_cultivation"], propagation_duration_days: 20 },
+        ],
+      },
+    });
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+
+    const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
+    const columns = latestProps?.columns ?? [];
+    const sowingDateColumn = columns.find((column: { field: string }) => column.field === "sowing_date");
+    const plantingDateColumn = columns.find((column: { field: string }) => column.field === "planting_date");
+
+    expect(sowingDateColumn).toBeDefined();
+    expect(plantingDateColumn.headerClassName).toBe("coupled-field-header");
+    expect(sowingDateColumn.headerClassName).toBe("coupled-field-header");
+
+    // sowing_date has no persisted backend field, so editing it doesn't flow
+    // through a colDef valueSetter (MUI's row-edit commit doesn't reliably
+    // keep a derived sibling's own edit-state entry in sync — see
+    // planSowingDate's lastEditedDateFieldRef). Instead, preProcessEditCellProps
+    // records which date field was last touched, and mapToApiData recomputes
+    // planting_date from it — exercise that same path here.
+
+    // Direct sowing: sowing date equals planting date, and is fully editable.
+    const directRow = { id: 1, crop: 2, bed: 101, planting_date: "2026-05-01" };
+    expect(sowingDateColumn.valueGetter(undefined, directRow)).toEqual(new Date("2026-05-01"));
+    expect(sowingDateColumn.isCellEditable({ row: directRow })).toBe(true);
+    sowingDateColumn.preProcessEditCellProps({
+      row: directRow,
+      props: { value: new Date("2026-04-20") },
+      hasChanged: true,
+    });
+    const directPayload = await latestProps?.mapToApiData?.({
+      ...directRow,
+      sowing_date: new Date("2026-04-20"),
+    });
+    expect(directPayload).toEqual(expect.objectContaining({ planting_date: "2026-04-20" }));
+
+    // Anzucht: sowing date is planting date minus the propagation duration,
+    // and editing it shifts the planting date forward by that duration.
+    const anzuchtRow = { id: 2, crop: 5, bed: 101, planting_date: "2026-05-01" };
+    expect(sowingDateColumn.valueGetter(undefined, anzuchtRow)).toEqual(new Date("2026-04-11"));
+    expect(sowingDateColumn.isCellEditable({ row: anzuchtRow })).toBe(true);
+    sowingDateColumn.preProcessEditCellProps({
+      row: anzuchtRow,
+      props: { value: new Date("2026-04-11") },
+      hasChanged: true,
+    });
+    const anzuchtPayload = await latestProps?.mapToApiData?.({
+      ...anzuchtRow,
+      sowing_date: new Date("2026-04-11"),
+    });
+    expect(anzuchtPayload).toEqual(expect.objectContaining({ planting_date: "2026-05-01" }));
+  });
+
+  it("marks the sowing date cell non-editable with a dash and tooltip when the crop has no propagation duration", async () => {
+    apiMocks.cropList.mockResolvedValue({
+      data: {
+        results: [
+          { id: 6, name: "Unbekannt", plants_per_m2: 5, cultivation_types: ["pre_cultivation"] },
+        ],
+      },
+    });
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+
+    const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
+    const columns = latestProps?.columns ?? [];
+    const sowingDateColumn = columns.find((column: { field: string }) => column.field === "sowing_date");
+
+    const row = { id: 3, crop: 6, planting_date: "2026-05-01" };
+    expect(sowingDateColumn.isCellEditable({ row })).toBe(false);
+    expect(sowingDateColumn.cellClassName({ row })).toContain("ofp-cell-full-tooltip");
+
+    const missingCell = render(<>{sowingDateColumn.renderCell({ row, hasFocus: false })}</>);
+    const missingDash = missingCell.getByText("—");
+    expect(missingDash).toBeInTheDocument();
+    const trigger = missingCell.container.querySelector(".ofp-full-cell-tooltip-trigger");
+    expect(trigger).not.toBeNull();
+    await userEvent.hover(trigger as Element);
+    expect(await screen.findByText("Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.")).toBeInTheDocument();
+    missingCell.unmount();
   });
 
   it("renders unavailable calculated harvest dates with a dash and explanatory tooltip", async () => {

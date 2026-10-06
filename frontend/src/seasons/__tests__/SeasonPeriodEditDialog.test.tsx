@@ -72,7 +72,7 @@ describe('SeasonPeriodEditDialog', () => {
     await user.type(start, '2026-06-01');
     await user.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    expect(await screen.findByText(/Tomate – Pflanzdatum/)).toBeInTheDocument();
+    expect(await screen.findByText(/Tomate – Pflanztermin/)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 });

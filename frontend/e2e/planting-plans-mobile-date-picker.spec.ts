@@ -14,8 +14,11 @@ test('mobile planting plan dialog shows a planting-date picker button', async ({
   const dialog = page.getByRole('dialog', { name: 'Anbauplan hinzufügen' });
   await expect(dialog).toBeVisible();
 
-  const dateField = dialog.getByRole('textbox', { name: 'Pflanzdatum' });
-  const pickerButton = dialog.getByRole('button', { name: 'Kalender öffnen' });
+  const dateField = dialog.getByRole('textbox', { name: 'Pflanztermin' });
+  // The dialog now also has an Aussaattermin field with its own calendar
+  // button right before Pflanztermin's, so scope to the planting-date field.
+  const fieldRoot = dateField.locator('xpath=ancestor::div[contains(@class, "MuiFormControl-root")][1]');
+  const pickerButton = fieldRoot.getByRole('button', { name: 'Kalender öffnen' });
   await expect(dateField).toBeVisible();
   await expect(pickerButton).toBeVisible();
 

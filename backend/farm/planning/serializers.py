@@ -230,7 +230,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             f"{season.end_date.strftime('%d.%m.%Y')}"
         )
         raise serializers.ValidationError({
-            'planting_date': f'Pflanzdatum muss innerhalb der Saison liegen ({period}).',
+            'planting_date': f'Pflanztermin muss innerhalb der Saison liegen ({period}).',
         })
 
     def _validate_minimal_identity(self, attrs):

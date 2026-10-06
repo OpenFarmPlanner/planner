@@ -218,7 +218,7 @@ test.describe('planting plans area assignment dialog', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await page.keyboard.press('Tab');
-    await expect.poll(() => focusedField(page)).toBe('planting_date');
+    await expect.poll(() => focusedField(page)).toBe('sowing_date');
     await page.keyboard.press('Shift+Tab');
     await expect(dialog).toBeHidden();
     await openFocusedAreaCellWithEnter(page, 0);
@@ -240,7 +240,7 @@ test.describe('planting plans area assignment dialog', () => {
       await expect(cellAt('bed', rowIndex).getByLabel('Anbaufläche bearbeiten')).toBeFocused();
 
       await page.keyboard.press('Tab');
-      await expect.poll(() => focusedField(page)).toBe('planting_date');
+      await expect.poll(() => focusedField(page)).toBe('sowing_date');
       await page.keyboard.press('Shift+Tab');
       await expect(dialog).toBeHidden();
       await openFocusedAreaCellWithEnter(page, rowIndex);

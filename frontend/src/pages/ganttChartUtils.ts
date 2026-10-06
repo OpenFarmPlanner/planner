@@ -1,9 +1,9 @@
 import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
-import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
+import { formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
-import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { getGanttPhaseColors } from '../utils/colorContrast';
+import { getPlanSowingSchedule } from './planSowingDate';
 
 export interface GanttTask {
   id: string;
@@ -156,32 +156,16 @@ function getPlanPreCultivationDates(
   }
 
   const crop = cropById.get(plan.crop);
-  // Effective values throughout: a Sorte inherits any timing/cultivation field
-  // it does not set from its general Kultur, and the plan row already carries
-  // the same resolved values as a fallback.
-  const propagationDurationDays = getEffectiveCropValue(crop, 'propagation_duration_days')
-    ?? plan.crop_propagation_duration_days
-    ?? undefined;
-  if (!propagationDurationDays || propagationDurationDays <= 0) {
+  const schedule = getPlanSowingSchedule(plan, crop);
+  if (!schedule?.isPreCultivation || !schedule.sowingDate || !schedule.propagationDurationDays) {
     return null;
   }
 
-  const cropCultivationType = getEffectiveCropValue(crop, 'cultivation_type')
-    || plan.crop_cultivation_type || '';
-  const cropCultivationTypes = getEffectiveCropValue(crop, 'cultivation_types')
-    || plan.crop_cultivation_types || [];
-  const isPreCultivation = plan.cultivation_type === 'pre_cultivation'
-    || (!plan.cultivation_type && (
-      cropCultivationType === 'pre_cultivation'
-      || cropCultivationTypes.includes('pre_cultivation')
-    ));
-  if (!isPreCultivation) {
-    return null;
-  }
-
-  const transplantDate = parseDateString(plan.planting_date);
-  const propagationStartDate = addUtcDays(transplantDate, -propagationDurationDays);
-  return { propagationStartDate, transplantDate, propagationDurationDays };
+  return {
+    propagationStartDate: parseDateString(schedule.sowingDate),
+    transplantDate: parseDateString(plan.planting_date),
+    propagationDurationDays: schedule.propagationDurationDays,
+  };
 }
 
 function buildCropById(crops: Crop[]): Map<number, Crop> {

@@ -25,6 +25,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, type KeyboardEvent, 
 import {
   DataGrid,
   GridPagination,
+  GridPreferencePanelsValue,
   GridRowEditStopReasons,
   GridRowModes,
   useGridApiRef,
@@ -227,9 +228,35 @@ export function EditableDataGrid<T extends EditableRow>({
   scrollMode = 'autoHeight',
   columnVisibilityModel,
   onColumnVisibilityModelChange,
+  columnsPanelOpen,
+  onColumnsPanelOpenChange,
   externalFilter,
 }: EditableDataGridProps<T>) {
   const gridApiRef = useGridApiRef();
+
+  useEffect(() => {
+    const api = gridApiRef.current;
+    // columnsPanelOpen is undefined for grids that don't opt into this
+    // feature; the preferences-panel API also isn't attached to apiRef yet
+    // during the very first render, so both are guarded against.
+    if (!api || columnsPanelOpen === undefined) {
+      return;
+    }
+    if (columnsPanelOpen) {
+      api.showPreferences?.(GridPreferencePanelsValue.columns);
+    } else {
+      api.hidePreferences?.();
+    }
+  }, [gridApiRef, columnsPanelOpen]);
+
+  useEffect(() => {
+    const api = gridApiRef.current;
+    if (!api || !onColumnsPanelOpenChange || typeof api.subscribeEvent !== 'function') {
+      return;
+    }
+    return api.subscribeEvent('preferencePanelClose', () => onColumnsPanelOpenChange(false));
+  }, [gridApiRef, onColumnsPanelOpenChange]);
+
   const resolvedSurfaceSizing = surfaceSizing ?? 'contentFit';
   const isContentSizedSurface = resolvedSurfaceSizing === 'contentFit' || resolvedSurfaceSizing === 'compact';
   const shouldUseCompactContainer = resolvedSurfaceSizing === 'compact';
@@ -2685,6 +2712,7 @@ export function EditableDataGrid<T extends EditableRow>({
           rowSelectionModel={gridRowSelectionModel}
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
+          slotProps={{ columnsManagement: { disableResetButton: true } }}
           sx={gridSx}
           getRowClassName={(params) => {
             const rowKey = String(params.id);

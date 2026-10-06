@@ -40,12 +40,13 @@ const makeRecord = (overrides: Partial<PlantingPlanSearchRecordInput> & { id: nu
     bedName: 'Beet 1',
     notesText: '',
     plantingDate: '2026-04-15',
+    sowingDate: null,
     harvestDate: '2026-07-01',
     harvestEndDate: '2026-08-15',
     ...overrides,
   });
 
-const tomato = makeRecord({ id: 1 });
+const tomato = makeRecord({ id: 1, sowingDate: '2026-02-18' });
 const beet = makeRecord({
   id: 2,
   cropLabel: 'Rote Rübe',
@@ -131,6 +132,14 @@ describe('planting plan search', () => {
     expect(search('10.8')).toEqual([2]);
     expect(search('20.09.2026')).toEqual([2]);
     expect(search('2026')).toEqual([1, 2, 3]);
+  });
+
+  it('searches the derived sowing date the same way, when it is computable', () => {
+    expect(search('18.2.2026')).toEqual([1]);
+    expect(search('2026-02-18')).toEqual([1]);
+    // Direct sowing (Rote Rübe, Karotte) has no distinct sowing date in this
+    // fixture set, so this never matches a row via `sowingDate` alone.
+    expect(search('2026-05-02')).toEqual([2]);
   });
 
   it('combines a date term with other terms', () => {

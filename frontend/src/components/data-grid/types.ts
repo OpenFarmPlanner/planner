@@ -144,6 +144,16 @@ export interface EditableDataGridProps<T extends EditableRow> {
    */
   onColumnVisibilityModelChange?: (model: GridColumnVisibilityModel) => void;
   /**
+   * Controls MUI's built-in "manage columns" panel from outside the grid
+   * (e.g. a toolbar "Columns" button), on top of the panel already being
+   * reachable through each column header's own menu. The grid opens/closes
+   * the panel via `apiRef.showPreferences`/`hidePreferences` as this
+   * changes, and calls `onColumnsPanelOpenChange(false)` back when the panel
+   * is dismissed some other way (Escape, click-away).
+   */
+  columnsPanelOpen?: boolean;
+  onColumnsPanelOpenChange?: (open: boolean) => void;
+  /**
    * A page-owned filter that replaces MUI's built-in filter model, so the
    * page's own search/filter state is the only filter state. See
    * `ExternalRowFilter`.

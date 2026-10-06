@@ -261,7 +261,7 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     // Tab keeps walking the row from the cell the dialog was opened from.
     await user.tab();
     await waitFor(() => {
-      expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-planting_date");
+      expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-sowing_date");
     });
 
     await focusCell(cultivationTypeCell(10));
@@ -290,7 +290,7 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     await expectNoDialog();
 
     // Second row, backwards from the following cell.
-    await focusCell(screen.getByTestId("cell-20-planting_date"));
+    await focusCell(screen.getByTestId("cell-20-sowing_date"));
     await user.tab({ shift: true });
     await expectNoDialog();
     await openFocusedBedDialogWithEnter(user, 20);

@@ -6,7 +6,7 @@ const apiBase = `http://127.0.0.1:${backendPort}/api`;
 
 // 1100px keeps the desktop grid but is narrow enough for the responsive column
 // visibility model to hide the two calculated harvest columns that sit right
-// after "Pflanzdatum" — the case where Tab used to die on the date cell
+// after "Pflanztermin" — the case where Tab used to die on the date cell
 // because the hidden columns shifted the index handed to MUI's scrollToIndexes.
 const NARROW_DESKTOP_WIDTH = 1100;
 

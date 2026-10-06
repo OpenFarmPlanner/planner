@@ -5,6 +5,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import { useTranslation } from '../../../i18n';
 import type { PlantingPlanSearchControls } from '../../../pages/usePlantingPlanSearch';
 import { PageSearchField } from '../../../search/PageSearchField';
+import { ColumnsPanelButton } from '../../data-grid/ColumnsPanelButton';
 import { PlantingPlanActiveFilterChips } from './PlantingPlanActiveFilterChips';
 import { PlantingPlanFilterFields } from './PlantingPlanFilterFields';
 import { PlantingPlanSearchCount } from './PlantingPlanSearchCount';
@@ -15,6 +16,9 @@ interface PlantingPlanSearchToolbarProps {
   filterButtonRef: RefObject<HTMLButtonElement | null>;
   isFilterPanelOpen: boolean;
   onFilterPanelOpenChange: (open: boolean) => void;
+  /** Opt-in: only tables that pass both props get a "Columns" button next to Filter. */
+  columnsPanelOpen?: boolean;
+  onColumnsPanelOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -27,6 +31,8 @@ export function PlantingPlanSearchToolbar({
   filterButtonRef,
   isFilterPanelOpen,
   onFilterPanelOpenChange,
+  columnsPanelOpen,
+  onColumnsPanelOpenChange,
 }: PlantingPlanSearchToolbarProps) {
   const { t } = useTranslation('plantingPlans');
   const panelId = useId();
@@ -70,6 +76,13 @@ export function PlantingPlanSearchToolbar({
             {t('search.filterButton')}
           </Button>
         </Badge>
+        {columnsPanelOpen !== undefined && onColumnsPanelOpenChange ? (
+          <ColumnsPanelButton
+            open={columnsPanelOpen}
+            onOpenChange={onColumnsPanelOpenChange}
+            label={t('search.columnsButton')}
+          />
+        ) : null}
         <PlantingPlanSearchCount search={search} variant="desktop" sx={{ ml: 'auto', pl: 1 }} />
       </Box>
       {search.hasFilters ? <PlantingPlanActiveFilterChips search={search} sx={{ mt: 1 }} /> : null}

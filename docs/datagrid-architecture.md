@@ -294,6 +294,31 @@ opens the general Kultur when a Sorte inherits its spacing, and opens the
 Sorte only when its own stored spacing overrides the Kultur with an unusable
 value (`resolveSpacingEditCropId`).
 
+## Coupled field pairs
+
+Two columns can present the same underlying value from two directions,
+marked with `headerClassName: "coupled-field-header"` on both and an
+`AppTooltip` header explaining the relationship:
+
+- **Fläche (`area_m2`) / Pflanzen (`plants_count`)** — both real, persisted
+  fields; which one the user last touched decides which unit
+  (`area_input_unit: "M2" | "PLANTS"`) the backend recomputes the other from
+  (`lastEditedFieldRef` in `PlantingPlans.tsx`, read in `mapToApiData`).
+- **Aussaattermin (`sowing_date`) / Pflanztermin (`planting_date`)** —
+  `sowing_date` is a pure `valueGetter`/`valueSetter` view over the single
+  persisted `planting_date`; editing it writes `planting_date` straight back
+  (`planting_date = sowing_date + propagation duration` for Anzucht, identity
+  for direct sowing), so there's no backend ambiguity to resolve and no
+  `lastEditedFieldRef` involved. The underlying "is this plan Anzucht, and
+  what's its propagation duration/sowing date" logic lives once in
+  `frontend/src/pages/planSowingDate.ts` (`getPlanSowingSchedule`,
+  `getPlantingDateFromSowingDate`, `getPlanPropagationInfo`) and is shared
+  with the Anbaukalender (`ganttChartUtils.ts`) and derived location tasks
+  (`locationDerivedTasks.ts`) — don't re-derive it a third time. The cell is
+  `isCellEditable: false` and renders "—" with `FullCellTooltip` when the
+  crop uses Anzucht but has no effective `propagation_duration_days`, the
+  same pattern the calculated harvest columns use for a missing duration.
+
 ## Custom edit cells
 
 MUI's stock edit cells didn't fit a few OpenFarmPlanner-specific needs:
@@ -363,7 +388,7 @@ that's still true. But cell-level Tab/Arrow/Enter/F2 navigation
   `undefined`) once the index passes the visible column count — and because
   the throw escapes the Tab handler, keyboard navigation stops dead. That was
   the planting plans bug below the `lg` breakpoint, where both harvest-date
-  columns are hidden by default: Tab out of "Pflanzdatum" reached "Fläche"
+  columns are hidden by default: Tab out of "Pflanztermin" reached "Fläche"
   and never arrived at "Pflanzen".
 - While a row is in edit mode, `EditableDataGrid` owns Tab/Shift+Tab
   navigation even when focus is inside a custom editor input. MUI's own
@@ -730,6 +755,23 @@ user's choice always wins regardless of screen size.
 feature at all** today — this was an explicit scope cut when the feature
 was migrated to the native panel elsewhere, not an oversight to "fix" as a
 drive-by change.
+
+A table's toolbar can additionally offer a dedicated "Spalten"/"Columns"
+button (today: Anbaupläne's `PlantingPlanSearchToolbar`, next to "Filter")
+that opens the same native panel from outside the grid. This still isn't a
+bespoke visibility UI — it only drives the real `GridColumnsManagement`
+panel via two new generic `EditableDataGrid` props,
+`columnsPanelOpen`/`onColumnsPanelOpenChange`, which call
+`apiRef.showPreferences`/`hidePreferences(GridPreferencePanelsValue.columns)`
+internally and sync back via the grid's `preferencePanelClose` event (both
+are opt-in: a table that doesn't pass them is unaffected). The shared
+`ColumnsPanelButton` (`frontend/src/components/data-grid/ColumnsPanelButton.tsx`)
+is styled like the Filter button and can be wired into any table's toolbar
+the same way. `slotProps={{ columnsManagement: { disableResetButton: true } }}`
+on the inner `<DataGrid>` hides the panel's Reset button while keeping
+"Show/hide all"; a column can also be exempted from the panel entirely with
+`hideable: false` on its `GridColDef` (used today only for Anbaupläne's
+Kultur (Sorte) column, since the row can't be identified without it).
 
 ## Page-owned filtering (`externalFilter`)
 

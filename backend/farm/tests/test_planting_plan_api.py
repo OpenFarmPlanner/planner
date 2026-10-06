@@ -396,7 +396,7 @@ def test_planting_plan_create_rejects_planting_date_outside_active_season():
     )
 
     assert response.status_code == 400, response.content
-    assert 'Pflanzdatum muss innerhalb der Saison liegen' in str(response.content)
+    assert 'Pflanztermin muss innerhalb der Saison liegen' in str(response.content)
     assert '01.09.2025' in response.json()['planting_date'][0]
 
 

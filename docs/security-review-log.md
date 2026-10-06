@@ -38,6 +38,30 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-06 — Claude — Third re-review of PR #754 (test-only follow-up)
+
+**Scope:** `git diff origin/main...HEAD`, including commit `10971127` (sowing-date coupling test update).
+
+**Findings:** No issues. The only change since the last review is a frontend test file; backend and runtime code are unchanged. Earlier PR #754 entries CROSS-CONFIRMED.
+
+## 2026-10-05 — Claude — Second re-review of PR #754 (sowing-date edit persistence fix)
+
+**Scope:** `git diff origin/main...HEAD` including commit `9bc3a351` (row-edit persistence of Aussaattermin in the planting plans grid).
+
+**Findings:** No issues. The new commit is client-side DataGrid edit-state logic; backend is unchanged (validation message wording only). No unsafe HTML APIs, new storage keys or data flows. Earlier PR #754 entries CROSS-CONFIRMED.
+
+## 2026-10-05 — Claude — Re-review of PR #754 after `claude-review:` commits
+
+**Scope:** `git diff origin/main...HEAD` including the code-review fix commits (derived location tasks, Date-tolerant sowing schedule).
+
+**Findings:** No issues. Backend change is still only a validation message wording; the follow-up commits are client-side date logic with no unsafe HTML APIs, storage keys or new data flows. The earlier entry for this PR holds (CROSS-CONFIRMED by this re-review).
+
+## 2026-10-05 — Claude — Automated security review of PR #754 (Aussaattermin column)
+
+**Scope:** `git diff origin/main...HEAD` (planting plan sowing-date column, DataGrid columns panel, mobile plan dialog, locale files, docs).
+
+**Findings:** No issues. The only backend change is a validation message wording in `PlantingPlanSerializer`; no queryset, permission, field or model changes. The frontend changes are client-side date derivation and UI with no unsafe HTML APIs, new storage keys or new data flows.
+
 ## 2026-10-05 — Claude — Automated security review of PR #753 (explain guest-demo restrictions)
 
 **Scope:** `git diff origin/main...HEAD` (`useGuestDemoGuard`, `GuestDemoNotice`, error mapping for `guest_demo_restricted`, affected pages, i18n, docs).
