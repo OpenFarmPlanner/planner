@@ -85,6 +85,13 @@ const getSegmentFromSelection = (selectionStart: number | null): DateSegment => 
 export interface DateEditCellBoundsProps {
   minDate?: Date | string | null;
   maxDate?: Date | string | null;
+  /**
+   * Fired whenever this cell commits a concrete date: a successfully parsed
+   * typed value, an arrow-key segment adjustment, or a picked calendar date.
+   * Not fired for a partial/unparseable typed value, so a caller that
+   * live-updates a coupled partner field never acts on incomplete input.
+   */
+  onCommitted?: (value: Date | null) => void;
 }
 
 function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBoundsProps) {
@@ -136,7 +143,8 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
       field: params.field,
       value: nextValue,
     });
-  }, [params.api, params.field, params.id]);
+    params.onCommitted?.(nextValue);
+  }, [params.api, params.field, params.id, params.onCommitted]);
 
   const handleTextChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const nextText = event.target.value;
@@ -158,6 +166,7 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
         field: params.field,
         value: parsedDate,
       });
+      params.onCommitted?.(parsedDate);
     }
   };
 

@@ -8,11 +8,40 @@
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { CALCULATED_COLUMN_CELL_CLASS, CALCULATED_COLUMN_HEADER_CLASS } from './calculatedColumns';
+import {
+  COUPLED_FIELD_HEADER_END_CLASS,
+  COUPLED_FIELD_HEADER_START_CLASS,
+} from './coupledFieldHeader';
 
 const EDITING_ROW_BACKGROUND_ALPHA = 0.06;
 const DIRTY_CELL_BACKGROUND_ALPHA = 0.08;
 const FOCUSED_CELL_BACKGROUND_ALPHA = 0.04;
 const FOCUSED_CELL_RING_ALPHA = 0.48;
+const LINKED_HIGHLIGHT_BACKGROUND_ALPHA = 0.1;
+const LINKED_HIGHLIGHT_BORDER_ALPHA = 0.5;
+const COUPLED_FIELD_HEADER_TINT_ALPHA_LIGHT = 0.07;
+const COUPLED_FIELD_HEADER_TINT_ALPHA_DARK = 0.1;
+
+const getCoupledFieldHeaderTint = (theme: Theme): string => alpha(
+  theme.palette.primary.main,
+  theme.palette.mode === 'dark' ? COUPLED_FIELD_HEADER_TINT_ALPHA_DARK : COUPLED_FIELD_HEADER_TINT_ALPHA_LIGHT,
+);
+
+/**
+ * A hard-edge two-stop gradient standing in for "tint the header except for
+ * a small gap on this half's own outer edge" — see the usage site for why
+ * this is a `backgroundImage` and not an inset pseudo-element. `theme.direction`
+ * decides the physical side `start`/`end` resolve to, matching what
+ * `insetInlineStart`/`insetInlineEnd` would have picked for the gap.
+ */
+const getCoupledFieldHeaderTintBackground = (theme: Theme, position: 'start' | 'end'): string => {
+  const tint = getCoupledFieldHeaderTint(theme);
+  const gap = theme.spacing(1);
+  const direction = theme.direction === 'rtl' ? 'to left' : 'to right';
+  return position === 'start'
+    ? `linear-gradient(${direction}, transparent 0, transparent ${gap}, ${tint} ${gap}, ${tint} 100%)`
+    : `linear-gradient(${direction}, ${tint} 0, ${tint} calc(100% - ${gap}), transparent calc(100% - ${gap}), transparent 100%)`;
+};
 const EDITING_ROW_CELL_SELECTOR = [
   '& .ofp-row-editing .MuiDataGrid-cell',
   '& .ofp-row-editing:hover .MuiDataGrid-cell',
@@ -82,6 +111,26 @@ export const dataGridSx = {
   '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
     outline: 'none',
     boxShadow: (theme: Theme) => getDataGridCellFocusRing(theme),
+  },
+  // Coupled-field header pairs (see coupledFieldHeader.ts): a subtle primary
+  // tint across both halves' headers only — the same "tint the header, not
+  // the cells below" pattern as the calculated columns' grey header
+  // (CALCULATED_COLUMN_HEADER_CLASS), just with the primary colour instead of
+  // grey. A gap on each half's outer edge keeps neighbouring columns/pairs
+  // visually separate; the two halves' inner edges reach the column boundary
+  // so the tint reads as one continuous patch spanning both headers. This is
+  // a plain `backgroundImage` hard-edge gradient rather than an absolutely
+  // positioned pseudo-element on purpose: MUI's column auto-sizing measures
+  // header content via `ResizeObserver`, and an extra generated box in the
+  // header was visibly destabilizing that measurement (the header and the
+  // toolbar's "Spalten" button jittered by a pixel on every render). A
+  // background is a paint-only layer with no box of its own, so it can't
+  // feed back into that observer.
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}`]: {
+    backgroundImage: (theme: Theme) => getCoupledFieldHeaderTintBackground(theme, 'start'),
+  },
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}`]: {
+    backgroundImage: (theme: Theme) => getCoupledFieldHeaderTintBackground(theme, 'end'),
   },
   '& .MuiDataGrid-row': {
     minHeight: 44,
@@ -175,6 +224,17 @@ export const dataGridSx = {
   },
   '& .MuiDataGrid-row:hover .ofp-cell-dirty': {
     backgroundColor: (theme: Theme) => getPrimaryOverlay(theme, DIRTY_CELL_BACKGROUND_ALPHA),
+  },
+  // A coupled-field partner cell that was just recomputed live while its
+  // sibling is being edited (see PlantingPlans.tsx's live-link handlers).
+  // `secondary` keeps this clearly distinct from the `primary`-based focus
+  // ring on the cell the user is actually typing into.
+  '& .MuiDataGrid-cell.ofp-cell-linked-highlight': {
+    backgroundColor: (theme: Theme) => alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BACKGROUND_ALPHA),
+    boxShadow: (theme: Theme) => `inset 0 0 0 2px ${alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BORDER_ALPHA)}`,
+  },
+  '& .MuiDataGrid-row:hover .ofp-cell-linked-highlight': {
+    backgroundColor: (theme: Theme) => alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BACKGROUND_ALPHA),
   },
   '& .ofp-row-editing, & .MuiDataGrid-row--editing': {
     backgroundColor: (theme: Theme) => getPrimaryOverlay(theme, EDITING_ROW_BACKGROUND_ALPHA),
@@ -283,9 +343,3 @@ export const deleteIconButtonSx = {
     backgroundColor: (theme: Theme) => alpha(theme.palette.error.main, 0.08),
   },
 };
-
-/**
- * The bold label inside a custom `renderHeader`, matching what the DataGrid
- * renders for a plain `headerName`.
- */
-export const dataGridHeaderLabelSx = { fontWeight: 600 };

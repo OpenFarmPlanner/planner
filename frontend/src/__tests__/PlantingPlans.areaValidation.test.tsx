@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import PlantingPlans from "../pages/PlantingPlans";
 import type { EditableDataGridCommandApi } from "../components/data-grid";
@@ -496,8 +496,8 @@ describe("PlantingPlans save-time area validation", () => {
     const plantingDateColumn = columns.find((column: { field: string }) => column.field === "planting_date");
 
     expect(sowingDateColumn).toBeDefined();
-    expect(plantingDateColumn.headerClassName).toBe("coupled-field-header");
-    expect(sowingDateColumn.headerClassName).toBe("coupled-field-header");
+    expect(sowingDateColumn.headerClassName).toBe("coupled-field-header coupled-field-header-start");
+    expect(plantingDateColumn.headerClassName).toBe("coupled-field-header coupled-field-header-end");
 
     // sowing_date has no persisted backend field, so editing it doesn't flow
     // through a colDef valueSetter (MUI's row-edit commit doesn't reliably
@@ -536,6 +536,75 @@ describe("PlantingPlans save-time area validation", () => {
       sowing_date: new Date("2026-04-11"),
     });
     expect(anzuchtPayload).toEqual(expect.objectContaining({ planting_date: "2026-05-01" }));
+  });
+
+  it("couples the area column with the plants count column", async () => {
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+
+    const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
+    const columns = latestProps?.columns ?? [];
+    const areaColumn = columns.find((column: { field: string }) => column.field === "area_m2");
+    const plantsColumn = columns.find((column: { field: string }) => column.field === "plants_count");
+
+    expect(areaColumn.headerClassName).toBe("coupled-field-header coupled-field-header-start");
+    expect(plantsColumn.headerClassName).toBe("coupled-field-header coupled-field-header-end");
+  });
+
+  describe("coupled-field header line with a hidden partner column", () => {
+    afterEach(() => {
+      window.localStorage.removeItem("tableColumns.plantingPlans");
+    });
+
+    it("drops the line on the planting date header when the sowing date column is hidden", async () => {
+      window.localStorage.setItem("tableColumns.plantingPlans", JSON.stringify({ sowing_date: false }));
+      render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+      await waitForPlansToLoad();
+
+      const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
+      const columns = latestProps?.columns ?? [];
+      const plantingDateColumn = columns.find((column: { field: string }) => column.field === "planting_date");
+
+      expect(plantingDateColumn.headerClassName).toBe("coupled-field-header");
+    });
+
+    it("drops the line on the area header when the plants count column is hidden", async () => {
+      window.localStorage.setItem("tableColumns.plantingPlans", JSON.stringify({ plants_count: false }));
+      render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+      await waitForPlansToLoad();
+
+      const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
+      const columns = latestProps?.columns ?? [];
+      const areaColumn = columns.find((column: { field: string }) => column.field === "area_m2");
+
+      expect(areaColumn.headerClassName).toBe("coupled-field-header");
+    });
+  });
+
+  it("keeps the columns array referentially stable across an unrelated re-render", async () => {
+    // Regression guard: the columns useMemo reads columnVisibilityModel to
+    // decide the coupled-header tint. useColumnVisibility's defaultModel is
+    // itself a useMemo over defaultHiddenFieldsOnSmallScreen — an inline
+    // array literal there would be a fresh reference every render, handing
+    // back a new (but equal) columnVisibilityModel every render and, through
+    // it, a brand new columns array (and a full DataGrid column relayout)
+    // on every unrelated re-render. Opening the filter panel is a
+    // representative unrelated state update that happens often during
+    // normal use — the search toolbar (and its Filter button) only renders
+    // once there is at least one row, hence the non-empty plan here.
+    apiMocks.planList.mockResolvedValue({
+      data: { results: [{ id: 9, bed: 101, crop: 2, planting_date: "2026-04-01" }] },
+    });
+    const user = userEvent.setup();
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+
+    const columnsBefore = commandApiSpies.gridProps.mock.calls.at(-1)?.[0]?.columns;
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await screen.findByRole("dialog", { name: "Filter" });
+    const columnsAfter = commandApiSpies.gridProps.mock.calls.at(-1)?.[0]?.columns;
+
+    expect(columnsAfter).toBe(columnsBefore);
   });
 
   it("marks the sowing date cell non-editable with a dash and tooltip when the crop has no propagation duration", async () => {

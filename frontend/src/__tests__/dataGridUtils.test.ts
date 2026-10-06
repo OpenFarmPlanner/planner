@@ -3,7 +3,7 @@ import { GridRowEditStopReasons, GridRowModes } from '@mui/x-data-grid';
 import type { GridSortModel } from '@mui/x-data-grid';
 import { handleEditableCellClick, handleRowEditStop } from '../components/data-grid/handlers';
 import { getPlainExcerpt, stripMarkdown } from '../components/data-grid/markdown';
-import { buildDefaultClipboardColumns, getSortedRowIds, orderRowsByStableIds } from '../components/data-grid/dataGridUtils';
+import { buildDefaultClipboardColumns, getSortedRowIds, orderRowsByStableIds, prepareDataGridColumn } from '../components/data-grid/dataGridUtils';
 import { formatDateAsGerman, parseGermanDateText, toGridDateValue } from '../components/data-grid/dateEditCellUtils';
 import type { GridColDef } from '@mui/x-data-grid';
 import type { EditableRow } from '../components/data-grid/types';
@@ -219,5 +219,26 @@ describe('formatDateAsGerman', () => {
     expect(formatDateAsGerman(null)).toBe('');
     expect(formatDateAsGerman(undefined)).toBe('');
     expect(formatDateAsGerman(new Date('nope'))).toBe('');
+  });
+});
+
+describe('prepareDataGridColumn', () => {
+  it('keeps a column without its own renderHeader as bold as one that supplies its own', () => {
+    const column = prepareDataGridColumn({ field: 'name', headerName: 'Name' } as GridColDef);
+
+    expect(column.renderHeader).toBeTypeOf('function');
+    const header = column.renderHeader?.({} as never) as { props: { sx?: Record<string, unknown> } };
+    expect(header.props.sx).toMatchObject({ fontWeight: 600 });
+  });
+
+  it('leaves a column with its own renderHeader untouched', () => {
+    const customRenderHeader = () => null;
+    const column = prepareDataGridColumn({
+      field: 'name',
+      headerName: 'Name',
+      renderHeader: customRenderHeader,
+    } as GridColDef);
+
+    expect(column.renderHeader).toBe(customRenderHeader);
   });
 });

@@ -14,6 +14,7 @@ import type {
   GridCellParams,
   GridColDef,
   GridRenderCellParams,
+  GridRenderEditCellParams,
   GridRowId,
   GridValueOptionsParams,
 } from "@mui/x-data-grid";
@@ -78,6 +79,7 @@ import {
   type ExternalRowFilter,
 } from "../components/data-grid";
 import { CALCULATED_COLUMN_CELL_CLASS } from "../components/data-grid/calculatedColumns";
+import { getCoupledFieldHeaderClassName } from "../components/data-grid/coupledFieldHeader";
 import { DateEditCell } from "../components/data-grid/DateEditCell";
 import { formatSeasonDate, resolveSeasonDateLocale } from "../seasons/formatSeasonDate";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
@@ -140,7 +142,7 @@ import {
   type PlantingPlanRow,
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
-import { dataGridHeaderLabelSx } from "../components/data-grid/styles";
+import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
 
 
 /**
@@ -149,6 +151,18 @@ import { dataGridHeaderLabelSx } from "../components/data-grid/styles";
 
 /** Columns whose editor is a dialog the cell opens on a single click. */
 const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
+
+/**
+ * Hoisted so `useColumnVisibility` gets a referentially stable array: an
+ * inline literal here would recreate `defaultHiddenFieldsOnSmallScreen` on
+ * every render, which (since that hook's `defaultModel` depends on it)
+ * handed back a new `columnVisibilityModel` object every render whenever the
+ * user has no saved visibility choice yet. The `columns` useMemo below reads
+ * that model to tint/untint coupled headers, so that instability recomputed
+ * the entire column array (and the grid's column layout with it) on every
+ * render — visible as the header/toolbar jitter this constant fixes.
+ */
+const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
 
 function PlantingPlans() {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
@@ -183,7 +197,7 @@ function PlantingPlans() {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "plantingPlans",
-    defaultHiddenFieldsOnSmallScreen: ["harvest_date", "harvest_end_date"],
+    defaultHiddenFieldsOnSmallScreen: DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN,
     isSmallScreen,
   });
   const [searchParams] = useSearchParams();
@@ -351,6 +365,22 @@ function PlantingPlans() {
   // (confirmed via trace: the sibling revalidation pass it triggers on every
   // keystroke re-asserts a stale snapshot of the other field's value).
   const lastEditedDateFieldRef = useRef<"sowing_date" | "planting_date" | null>(null);
+  // Set for the duration of a programmatic setEditCellValue call that
+  // live-carries a coupled partner field (see applyLinkedAreaPlantsValue /
+  // applyLinkedDateValue below). setEditCellValue re-runs that field's own
+  // preProcessEditCellProps exactly like a real keystroke would, so without
+  // this guard the carried-along update would itself look like the user
+  // edited the partner and incorrectly steal lastEditedFieldRef /
+  // lastEditedDateFieldRef from the field the user actually typed into.
+  const linkedPartnerUpdateInProgressRef = useRef(false);
+  // Which coupled-field cell currently shows the "just carried along live"
+  // highlight (components/data-grid/styles.ts's ofp-cell-linked-highlight).
+  // Cleared on every real edit to a coupled field (see the preProcessEditCellProps
+  // below) and implicitly hidden once the row leaves edit mode, since the
+  // cellClassName checks below also require api.getCellMode === 'edit'.
+  const [linkedPartnerHighlight, setLinkedPartnerHighlight] = useState<
+    { rowId: GridRowId; field: "sowing_date" | "planting_date" | "area_m2" | "plants_count" } | null
+  >(null);
   const {
     areaValidationDialog,
     setAreaValidationDialog,
@@ -581,6 +611,16 @@ function PlantingPlans() {
     return <Box component="span"><SearchHighlightedText text={formatDateForDisplay(value)} /></Box>;
   }, [crops, formatDateForDisplay, t]);
 
+  // Read as primitive booleans, not the `columnVisibilityModel` object
+  // itself, in the columns useMemo's dependency array below: the model's
+  // reference can change without these actual flags changing (see
+  // DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN's comment), and depending on the
+  // object directly would recompute every column on every render.
+  const isSowingDatePartnerVisible = columnVisibilityModel.planting_date !== false;
+  const isPlantingDatePartnerVisible = columnVisibilityModel.sowing_date !== false;
+  const isAreaPartnerVisible = columnVisibilityModel.plants_count !== false;
+  const isPlantsPartnerVisible = columnVisibilityModel.area_m2 !== false;
+
   const columns: GridColDef[] = useMemo(
     () => [
       {
@@ -733,7 +773,7 @@ function PlantingPlans() {
         maxWidth: dynamicWidths.sowingDate,
         type: "date",
         editable: true,
-        headerClassName: "coupled-field-header",
+        headerClassName: getCoupledFieldHeaderClassName("start", isSowingDatePartnerVisible),
         renderHeader: () => (
           <AppTooltip
             title={(
@@ -755,9 +795,10 @@ function PlantingPlans() {
         valueGetter: (_value, row) => toGridDateValue(getRowSowingSchedule(row as PlantingPlanRow)?.sowingDate ?? null),
         isCellEditable: (params: GridCellParams<PlantingPlanRow>) =>
           getRowSowingSchedule(params.row)?.sowingDate != null,
-        cellClassName: (params) => (getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate
-          ? ""
-          : FULL_CELL_TOOLTIP_CELL_CLASS),
+        cellClassName: (params) => [
+          getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate ? "" : FULL_CELL_TOOLTIP_CELL_CLASS,
+          getLinkedPartnerHighlightClassName(params),
+        ].filter(Boolean).join(" "),
         renderCell: (params) => {
           const schedule = getRowSowingSchedule(params.row as PlantingPlanRow);
           if (!schedule?.sowingDate) {
@@ -771,10 +812,12 @@ function PlantingPlans() {
             <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
           );
         },
-        renderEditCell: (params) => <DateEditCell {...params} />,
+        renderEditCell: (params) => (
+          <DateEditCell {...params} onCommitted={(value) => applyLinkedDateValue(params, "sowing_date", value)} />
+        ),
         preProcessEditCellProps: (params) => {
           const row = params.row as PlantingPlanRow;
-          if (params.hasChanged) {
+          if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedDateFieldRef.current = "sowing_date";
           }
           const isoValue = toIsoDateString(params.props.value);
@@ -795,7 +838,7 @@ function PlantingPlans() {
         maxWidth: dynamicWidths.plantingDate,
         type: "date",
         editable: true,
-        headerClassName: "coupled-field-header",
+        headerClassName: getCoupledFieldHeaderClassName("end", isPlantingDatePartnerVisible),
         renderHeader: () => (
           <AppTooltip
             title={(
@@ -815,6 +858,7 @@ function PlantingPlans() {
           </AppTooltip>
         ),
         valueGetter: (value) => toGridDateValue(value),
+        cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
         renderCell: (params) => (
           <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
         ),
@@ -823,10 +867,11 @@ function PlantingPlans() {
             {...params}
             minDate={seasonBounds?.minDate}
             maxDate={seasonBounds?.maxDate}
+            onCommitted={(value) => applyLinkedDateValue(params, "planting_date", value)}
           />
         ),
         preProcessEditCellProps: (params) => {
-          if (params.hasChanged) {
+          if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedDateFieldRef.current = "planting_date";
           }
           const isoValue = toIsoDateString(params.props.value);
@@ -898,7 +943,7 @@ function PlantingPlans() {
           </AppTooltip>
         ),
         preProcessEditCellProps: (params) => {
-          if (params.hasChanged) {
+          if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedFieldRef.current = "area_m2";
           }
           return params.props;
@@ -914,9 +959,10 @@ function PlantingPlans() {
               locale={numberLocale}
               maxKeyword={t("plantingPlans:placeholders.maxKeyword")}
               maxPlaceholder={t("plantingPlans:placeholders.maxKeyword")}
-              onLastEditedFieldChange={() => {
-                lastEditedFieldRef.current = "area_m2";
+              onLastEditedFieldChange={(field, value) => {
+                lastEditedFieldRef.current = field;
                 setAreaNotice(null);
+                void applyLinkedAreaPlantsValue(params, field, value);
               }}
             />
           );
@@ -928,7 +974,8 @@ function PlantingPlans() {
           }
           return "";
         },
-        headerClassName: "coupled-field-header",
+        cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
+        headerClassName: getCoupledFieldHeaderClassName("start", isAreaPartnerVisible),
       },
       {
         field: "plants_count",
@@ -945,7 +992,7 @@ function PlantingPlans() {
           </AppTooltip>
         ),
         preProcessEditCellProps: (params) => {
-          if (params.hasChanged) {
+          if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedFieldRef.current = "plants_count";
             setAreaNotice(null);
           }
@@ -956,9 +1003,10 @@ function PlantingPlans() {
             {...params}
             crops={crops}
             placeholder={t("plantingPlans:placeholders.plantsCount")}
-            onLastEditedFieldChange={() => {
-              lastEditedFieldRef.current = "plants_count";
+            onLastEditedFieldChange={(field, value) => {
+              lastEditedFieldRef.current = field;
               setAreaNotice(null);
+              void applyLinkedAreaPlantsValue(params, field, value);
             }}
           />
         ),
@@ -968,7 +1016,8 @@ function PlantingPlans() {
           }
           return "—";
         },
-        headerClassName: "coupled-field-header",
+        cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
+        headerClassName: getCoupledFieldHeaderClassName("end", isPlantsPartnerVisible),
       },
       {
         field: "notes",
@@ -1001,6 +1050,11 @@ function PlantingPlans() {
       numberLocale,
       seasonBounds,
       isPlantingDateWithinSeason,
+      isSowingDatePartnerVisible,
+      isPlantingDatePartnerVisible,
+      isAreaPartnerVisible,
+      isPlantsPartnerVisible,
+      linkedPartnerHighlight,
       t,
     ],
   );
@@ -1028,6 +1082,123 @@ function PlantingPlans() {
       return null;
     }
     return crop.plants_per_m2;
+  };
+
+  /**
+   * Whether the given cell currently shows the "live-carried coupled
+   * partner" highlight — requires both the state match *and* the cell to
+   * still be in edit mode, so the highlight disappears by itself once the
+   * row is saved or the edit is cancelled, without a separate cleanup effect.
+   */
+  const getLinkedPartnerHighlightClassName = (params: GridCellParams<PlantingPlanRow>): string =>
+    linkedPartnerHighlight !== null
+      && linkedPartnerHighlight.rowId === params.id
+      && linkedPartnerHighlight.field === params.field
+      && params.api.getCellMode(params.id, params.field) === "edit"
+      ? "ofp-cell-linked-highlight"
+      : "";
+
+  /**
+   * Live-carries the Fläche/Pflanzen pair while either is being typed, using
+   * the same plants-per-m² math `buildAreaAndPlantsDraft`/`getDerivedAreaFromRow`
+   * use at save time (see docs/datagrid-architecture.md#coupled-field-pairs).
+   * Skips silently — leaving the partner and the highlight untouched — for
+   * anything not resolvable to a concrete number right now: the "max" keyword
+   * (resolved only at save), an empty/unparsable value, or a crop with no
+   * plant spacing.
+   */
+  const applyLinkedAreaPlantsValue = async (
+    params: GridRenderEditCellParams<PlantingPlanRow>,
+    source: "area_m2" | "plants_count",
+    rawValue: string,
+  ): Promise<void> => {
+    setLinkedPartnerHighlight(null);
+    const row = params.row as PlantingPlanRow;
+    const plantsPerSqm = getPlantsPerSqmForCrop(String(row.crop ?? ""));
+    if (!plantsPerSqm) {
+      return;
+    }
+
+    let partnerField: "area_m2" | "plants_count";
+    let partnerValue: number;
+    if (source === "area_m2") {
+      if (rawValue.trim().toLowerCase() === t("plantingPlans:placeholders.maxKeyword").toLowerCase()) {
+        return;
+      }
+      const numericArea = parseLocalizedNumber(rawValue, numberLocale);
+      if (numericArea === null) {
+        return;
+      }
+      partnerField = "plants_count";
+      partnerValue = buildAreaAndPlantsDraft(row, numericArea).plants_count as number;
+    } else {
+      const numericPlants = parseLocalizedNumber(rawValue, numberLocale);
+      if (numericPlants === null) {
+        return;
+      }
+      partnerField = "area_m2";
+      const derivedArea = getDerivedAreaFromRow({ ...row, plants_count: numericPlants, area_m2: undefined });
+      if (derivedArea === null) {
+        return;
+      }
+      partnerValue = derivedArea;
+    }
+
+    linkedPartnerUpdateInProgressRef.current = true;
+    try {
+      await params.api.setEditCellValue({ id: params.id, field: partnerField, value: partnerValue });
+    } finally {
+      linkedPartnerUpdateInProgressRef.current = false;
+    }
+    setLinkedPartnerHighlight({ rowId: params.id, field: partnerField });
+  };
+
+  /**
+   * Live-carries the Aussaattermin/Pflanztermin pair, using the same
+   * `getPlanSowingSchedule`/`getPlantingDateFromSowingDate` helpers the save
+   * path and the Anbaukalender use (see planSowingDate.ts). Skips silently
+   * for a crop with no resolvable propagation duration — `getPlanSowingSchedule`
+   * then returns a null `sowingDate`, the same condition that already makes
+   * the Aussaattermin cell itself non-editable.
+   */
+  const applyLinkedDateValue = async (
+    params: GridRenderEditCellParams<PlantingPlanRow>,
+    source: "sowing_date" | "planting_date",
+    value: Date | null,
+  ): Promise<void> => {
+    setLinkedPartnerHighlight(null);
+    const isoValue = toIsoDateString(value);
+    if (!isoValue) {
+      return;
+    }
+    const row = params.row as PlantingPlanRow;
+    const crop = crops.find((item) => item.id === row.crop);
+
+    let partnerField: "sowing_date" | "planting_date";
+    let partnerValue: string;
+    if (source === "sowing_date") {
+      partnerField = "planting_date";
+      partnerValue = getPlantingDateFromSowingDate(isoValue, row, crop);
+    } else {
+      const schedule = getPlanSowingSchedule({ ...row, planting_date: isoValue }, crop);
+      if (!schedule?.sowingDate) {
+        return;
+      }
+      partnerField = "sowing_date";
+      partnerValue = schedule.sowingDate;
+    }
+
+    linkedPartnerUpdateInProgressRef.current = true;
+    try {
+      await params.api.setEditCellValue({
+        id: params.id,
+        field: partnerField,
+        value: toGridDateValue(partnerValue),
+      });
+    } finally {
+      linkedPartnerUpdateInProgressRef.current = false;
+    }
+    setLinkedPartnerHighlight({ rowId: params.id, field: partnerField });
   };
 
   /**

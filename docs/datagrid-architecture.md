@@ -296,9 +296,15 @@ value (`resolveSpacingEditCropId`).
 
 ## Coupled field pairs
 
-Two columns can present the same underlying value from two directions,
-marked with `headerClassName: "coupled-field-header"` on both and an
-`AppTooltip` header explaining the relationship:
+Two columns can present the same underlying value from two directions. Both
+get an `AppTooltip` header explaining the relationship, and both carry a
+`headerClassName` built from `components/data-grid/coupledFieldHeader.ts`'s
+`getCoupledFieldHeaderClassName(position, isPartnerColumnVisible)` — `"start"`
+on the first column of the pair, `"end"` on the second, each passed whether
+*the other* column is currently visible via the page's own
+`columnVisibilityModel`. This is a reusable convention, not Anbaupläne-specific:
+any table that wants the same marking for its own coupled pair calls the same
+helper with its own two columns.
 
 - **Fläche (`area_m2`) / Pflanzen (`plants_count`)** — both real, persisted
   fields; which one the user last touched decides which unit
@@ -318,6 +324,111 @@ marked with `headerClassName: "coupled-field-header"` on both and an
   `isCellEditable: false` and renders "—" with `FullCellTooltip` when the
   crop uses Anzucht but has no effective `propagation_duration_days`, the
   same pattern the calculated harvest columns use for a missing duration.
+
+### Marking the pair in the header
+
+`components/data-grid/styles.ts`'s `dataGridSx` paints a subtle primary-colour
+tint across each half's own header cell — never the cells below — using
+`alpha(theme.palette.primary.main, …)` at a different opacity per colour mode
+(7% light / 10% dark), the same "tint the header, not the body" pattern the
+calculated harvest columns use with grey
+(`CALCULATED_COLUMN_HEADER_CLASS`/`CALCULATED_COLUMN_CELL_CLASS`). Each half's
+tint leaves a `theme.spacing(1)` gap on its own *outer* edge (away from its
+partner) and reaches the full column boundary on its *inner* edge, so the two
+halves' tints meet with no seam between them while a small gap still
+separates the pair from its neighbours and from a different coupled pair.
+
+This is a plain `backgroundImage` hard-edge `linear-gradient`
+(`getCoupledFieldHeaderTintBackground`), not an absolutely-positioned
+pseudo-element — that was the first implementation, and it visibly
+destabilized MUI's column auto-sizing: the `ResizeObserver` that measures
+header content picked up the extra generated box and the header (and the
+toolbar's "Spalten" button, sharing the same layout pass) jittered by a pixel
+on every render. A gradient is a paint-only background layer with no box of
+its own, so it can't feed back into that measurement; `theme.direction`
+decides which physical side the gradient's gap lands on, matching what
+`insetInlineStart`/`insetInlineEnd` would have picked. The header's bold
+label text is untouched by this. If either column of a pair is hidden (the
+page's own `columnVisibilityModel`), `getCoupledFieldHeaderClassName` drops
+the `start`/`end` class on the remaining one, so a lone visible half shows no
+tint.
+
+### Default header labels stay bold too
+
+`dataGridUtils.tsx`'s `applyDefaultHeaderOverflowTooltip` (part of
+`prepareDataGridColumn`, applied to every column in `EditableDataGrid`)
+replaces MUI's own `.MuiDataGrid-columnHeaderTitle` element — where the
+theme's `MuiDataGrid.columnHeaderTitle` bold override normally applies —
+with a plain `TruncatedTextWithTooltip` for any column that doesn't supply
+its own `renderHeader`. That swap has to re-apply the bold weight itself
+(`dataGridHeaderLabelSx`, `components/data-grid/dataGridHeaderLabelSx.ts`) or
+that column's header silently renders at normal weight while its neighbours
+with a custom `renderHeader` stay bold — this is what made Anbaupläne's
+"Kultur (Sorte)"/"Anbauart"/"Standort | Parzelle | Beet"/"Notizen" headers
+look lighter than "Aussaattermin"/"Pflanztermin"/"Fläche"/"Pflanzen" before
+it was fixed. `calculatedColumns.tsx`'s `getCalculatedColumnProps` and
+`hierarchy/HierarchyColumns.tsx`'s own custom headers import the same
+constant rather than redefining `{ fontWeight: 600 }` locally — it lives in
+its own tiny module, not `styles.ts`, specifically so `calculatedColumns.tsx`
+and `dataGridUtils.tsx` (which `styles.ts` itself imports class names from)
+can use it without a circular import.
+
+### Live-carrying the partner value while editing
+
+Editing one field of a pair recomputes and writes the other field's edit
+value immediately, using the exact same calculation helpers the save path
+uses (`buildAreaAndPlantsDraft`'s plants-per-m² math for Fläche/Pflanzen;
+`getPlanSowingSchedule`/`getPlantingDateFromSowingDate` for the date pair) —
+there is deliberately no second implementation of either formula.
+`PlantingPlans.tsx`'s `applyLinkedAreaPlantsValue`/`applyLinkedDateValue` call
+`params.api.setEditCellValue` directly on the partner field (not
+`setDraftValues`/row state — `sowing_date` has no real row field to merge
+into, and the area/plants pair doesn't need the extra `setRows`/validation
+work `setDraftValues` does, since `readDraftRow` already reads every
+editable column's live edit value at save time regardless).
+
+Three things make this safe rather than merely functional:
+
+- **Skip silently when nothing is computable.** The "max" keyword (resolved
+  only at save), an empty/unparsable value, a crop with no plant spacing, or
+  — for the date pair — no resolvable propagation duration (the same
+  condition that makes `sowing_date` non-editable in the first place) all
+  leave the partner and the highlight untouched.
+- **`linkedPartnerUpdateInProgressRef` guards `lastEditedFieldRef`/
+  `lastEditedDateFieldRef`.** `setEditCellValue` re-runs the target field's
+  own `preProcessEditCellProps` exactly like a real keystroke would (that's
+  the same MUI replay behaviour the `lastEditedDateFieldRef` comment below
+  already warns about), so without the guard a live-carried update would
+  look like the user edited the partner and steal "which field wins at save"
+  away from the field they're actually typing into. The guard only skips the
+  `lastEditedFieldRef`/`lastEditedDateFieldRef` assignment — season/error
+  validation in `preProcessEditCellProps` still runs unconditionally, so a
+  planting date carried in from the sowing date still gets the season-bounds
+  error marking.
+- **A field's own `setEditCellValue` is awaited *before* calling the
+  live-link callback.** Both are independent async calls against the same
+  per-row edit-state snapshot; kicking off the partner's write while the
+  field's own write is still in flight is a lost-update race (whichever
+  settles last wins and silently reverts the other field written in the
+  meantime). `AreaM2EditCell`/`PlantsCountEditCell`/`DateEditCell` all await
+  their own `setEditCellValue` first and only then call their
+  `onLastEditedFieldChange`/`onCommitted` prop.
+
+The partner cell that was just carried along shows `ofp-cell-linked-highlight`
+(`styles.ts`): a `secondary`-coloured background/border, deliberately a
+different theme colour from the `primary`-based focus ring on the cell the
+user is actually typing into. `PlantingPlans.tsx` tracks this as one
+`{ rowId, field }` value (`linkedPartnerHighlight`), and the `cellClassName`
+also requires `api.getCellMode(id, field) === 'edit'` — so the highlight
+disappears by itself once the row is saved or the edit is cancelled, with no
+separate cleanup effect needed. It's cleared immediately on any further real
+edit to a coupled field (including editing the highlighted cell itself), and
+re-set to whichever field the computation just wrote.
+
+Escape needs no special handling for this pair: `DataGrid.tsx`'s row cancel
+already restores the *entire* row from the snapshot taken when edit mode
+started, which reverts both fields of a pair together since the live-carried
+write only ever touched the in-progress edit session, never the saved row.
 
 ## Custom edit cells
 

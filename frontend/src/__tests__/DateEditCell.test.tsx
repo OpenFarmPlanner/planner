@@ -10,6 +10,7 @@ const renderDateEditCell = (
   editCellNavigation: ComponentProps<typeof EditCellNavigationContext.Provider>['value'] = null,
 ) => {
   const setEditCellValue = vi.fn().mockResolvedValue(true);
+  const onCommitted = vi.fn();
 
   render(
     <EditCellNavigationContext.Provider value={editCellNavigation}>
@@ -20,6 +21,7 @@ const renderDateEditCell = (
           value,
           hasFocus: true,
           api: { setEditCellValue },
+          onCommitted,
         } as unknown as GridRenderEditCellParams)}
       />
     </EditCellNavigationContext.Provider>,
@@ -28,6 +30,7 @@ const renderDateEditCell = (
   return {
     input: screen.getByRole('textbox') as HTMLInputElement,
     setEditCellValue,
+    onCommitted,
   };
 };
 
@@ -70,7 +73,7 @@ describe('DateEditCell', () => {
     ['year', 'ArrowUp', 6, 10, '2027-04-10'],
     ['year', 'ArrowDown', 6, 10, '2025-04-10'],
   ])('changes the %s segment with %s', async (_segment, key, start, end, expectedDate) => {
-    const { input, setEditCellValue } = renderDateEditCell();
+    const { input, setEditCellValue, onCommitted } = renderDateEditCell();
     input.setSelectionRange(start, end);
 
     fireEvent.keyDown(input, { key });
@@ -82,6 +85,7 @@ describe('DateEditCell', () => {
         value: new Date(`${expectedDate}T00:00:00`),
       });
     });
+    expect(onCommitted).toHaveBeenCalledWith(new Date(`${expectedDate}T00:00:00`));
     await expectSelection(input, start, end);
   });
 
@@ -101,7 +105,7 @@ describe('DateEditCell', () => {
   });
 
   it('keeps direct German date typing working', async () => {
-    const { input, setEditCellValue } = renderDateEditCell();
+    const { input, setEditCellValue, onCommitted } = renderDateEditCell();
 
     fireEvent.change(input, { target: { value: '12.05.2026' } });
 
@@ -113,15 +117,17 @@ describe('DateEditCell', () => {
         value: new Date('2026-05-12T00:00:00'),
       });
     });
+    expect(onCommitted).toHaveBeenCalledWith(new Date('2026-05-12T00:00:00'));
   });
 
   it('does not commit invalid directly typed dates', () => {
-    const { input, setEditCellValue } = renderDateEditCell();
+    const { input, setEditCellValue, onCommitted } = renderDateEditCell();
 
     fireEvent.change(input, { target: { value: '32.13.2026' } });
 
     expect(input).toHaveDisplayValue('32.13.2026');
     expect(setEditCellValue).not.toHaveBeenCalled();
+    expect(onCommitted).not.toHaveBeenCalled();
   });
 
   it('delegates Tab navigation to the owning grid', () => {
