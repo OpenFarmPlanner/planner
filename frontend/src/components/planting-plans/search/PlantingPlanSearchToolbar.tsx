@@ -19,6 +19,8 @@ interface PlantingPlanSearchToolbarProps {
   /** Opt-in: only tables that pass both props get a "Columns" button next to Filter. */
   columnsPanelOpen?: boolean;
   onColumnsPanelOpenChange?: (open: boolean) => void;
+  /** Anchors the columns panel to this button; see `columnsPanelAnchorEl` on `EditableDataGrid`. */
+  columnsButtonRef?: Ref<HTMLButtonElement>;
 }
 
 /**
@@ -33,6 +35,7 @@ export function PlantingPlanSearchToolbar({
   onFilterPanelOpenChange,
   columnsPanelOpen,
   onColumnsPanelOpenChange,
+  columnsButtonRef,
 }: PlantingPlanSearchToolbarProps) {
   const { t } = useTranslation('plantingPlans');
   const panelId = useId();
@@ -78,6 +81,7 @@ export function PlantingPlanSearchToolbar({
         </Badge>
         {columnsPanelOpen !== undefined && onColumnsPanelOpenChange ? (
           <ColumnsPanelButton
+            ref={columnsButtonRef}
             open={columnsPanelOpen}
             onOpenChange={onColumnsPanelOpenChange}
             label={t('search.columnsButton')}

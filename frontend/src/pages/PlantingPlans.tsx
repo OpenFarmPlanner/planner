@@ -225,6 +225,9 @@ function PlantingPlans() {
   } = usePlantingPlanHierarchy(shouldShowProjectRequiredState);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  // State (not a ref) because it feeds EditableDataGrid's slotProps during
+  // render, where reading a ref's `.current` is disallowed.
+  const [columnsAnchorEl, setColumnsAnchorEl] = useState<HTMLButtonElement | null>(null);
   const filterSheetId = useId();
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [isColumnsPanelOpen, setIsColumnsPanelOpen] = useState(false);
@@ -2091,6 +2094,7 @@ function PlantingPlans() {
               onFilterPanelOpenChange={setIsFilterPanelOpen}
               columnsPanelOpen={isColumnsPanelOpen}
               onColumnsPanelOpenChange={setIsColumnsPanelOpen}
+              columnsButtonRef={setColumnsAnchorEl}
             />
           ) : null}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
@@ -2425,6 +2429,7 @@ function PlantingPlans() {
           onColumnVisibilityModelChange={setColumnVisibilityModel}
           columnsPanelOpen={isColumnsPanelOpen}
           onColumnsPanelOpenChange={setIsColumnsPanelOpen}
+          columnsPanelAnchorEl={columnsAnchorEl}
           externalFilter={gridExternalFilter}
             notes={{
               fields: [

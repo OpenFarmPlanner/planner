@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
+import { createRef, type Ref } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { PlantingPlanSearchToolbar } from '../components/planting-plans/search/PlantingPlanSearchToolbar';
 import { PlantingPlanSearchCount } from '../components/planting-plans/search/PlantingPlanSearchCount';
@@ -57,7 +57,17 @@ const controls = (overrides: Partial<PlantingPlanSearchControls> = {}): Planting
 
 const renderToolbar = (
   searchOverrides: Partial<PlantingPlanSearchControls> = {},
-  { isFilterPanelOpen = false }: { isFilterPanelOpen?: boolean } = {},
+  {
+    isFilterPanelOpen = false,
+    columnsPanelOpen,
+    onColumnsPanelOpenChange,
+    columnsButtonRef,
+  }: {
+    isFilterPanelOpen?: boolean;
+    columnsPanelOpen?: boolean;
+    onColumnsPanelOpenChange?: (open: boolean) => void;
+    columnsButtonRef?: Ref<HTMLButtonElement>;
+  } = {},
 ) => {
   const search = controls(searchOverrides);
   const onFilterPanelOpenChange = vi.fn();
@@ -69,6 +79,9 @@ const renderToolbar = (
       filterButtonRef={filterButtonRef}
       isFilterPanelOpen={isFilterPanelOpen}
       onFilterPanelOpenChange={onFilterPanelOpenChange}
+      columnsPanelOpen={columnsPanelOpen}
+      onColumnsPanelOpenChange={onColumnsPanelOpenChange}
+      columnsButtonRef={columnsButtonRef}
     />,
   );
   return { ...view, search, onFilterPanelOpenChange };
@@ -179,6 +192,43 @@ describe('PlantingPlanSearchToolbar', () => {
       renderToolbar();
 
       expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
+    });
+  });
+
+  describe('the columns button', () => {
+    it('stays off unless a table opts in with both props', () => {
+      renderToolbar();
+
+      expect(screen.queryByRole('button', { name: 'Spalten' })).not.toBeInTheDocument();
+    });
+
+    it('appears next to Filter once a table opts in', () => {
+      renderToolbar({}, { columnsPanelOpen: false, onColumnsPanelOpenChange: vi.fn() });
+
+      expect(screen.getByRole('button', { name: 'Spalten' })).toBeInTheDocument();
+    });
+
+    it('forwards the anchor ref, so the grid can pin the panel to this button', () => {
+      const columnsButtonRef = createRef<HTMLButtonElement>();
+      renderToolbar(
+        {},
+        { columnsPanelOpen: false, onColumnsPanelOpenChange: vi.fn(), columnsButtonRef },
+      );
+
+      expect(columnsButtonRef.current).toBe(screen.getByRole('button', { name: 'Spalten' }));
+    });
+
+    it('reports its open state and toggles it on click', async () => {
+      const user = userEvent.setup();
+      const onColumnsPanelOpenChange = vi.fn();
+      renderToolbar({}, { columnsPanelOpen: false, onColumnsPanelOpenChange });
+
+      const button = screen.getByRole('button', { name: 'Spalten' });
+      expect(button).toHaveAttribute('aria-expanded', 'false');
+
+      await user.click(button);
+
+      expect(onColumnsPanelOpenChange).toHaveBeenCalledWith(true);
     });
   });
 

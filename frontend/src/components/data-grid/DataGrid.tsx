@@ -230,6 +230,7 @@ export function EditableDataGrid<T extends EditableRow>({
   onColumnVisibilityModelChange,
   columnsPanelOpen,
   onColumnsPanelOpenChange,
+  columnsPanelAnchorEl,
   externalFilter,
 }: EditableDataGridProps<T>) {
   const gridApiRef = useGridApiRef();
@@ -2712,7 +2713,15 @@ export function EditableDataGrid<T extends EditableRow>({
           rowSelectionModel={gridRowSelectionModel}
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
-          slotProps={{ columnsManagement: { disableResetButton: true } }}
+          slotProps={{
+            columnsManagement: { disableResetButton: true },
+            // Anchors the columns panel to its triggering button (left-aligned,
+            // directly below, auto-flipping if it doesn't fit) instead of
+            // GridPanel's fallback anchor at the grid's own top-right corner.
+            ...(columnsPanelAnchorEl
+              ? { panel: { target: columnsPanelAnchorEl, placement: 'bottom-start' as const } }
+              : {}),
+          }}
           sx={gridSx}
           getRowClassName={(params) => {
             const rowKey = String(params.id);
