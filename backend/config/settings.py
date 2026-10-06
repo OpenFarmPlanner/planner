@@ -263,6 +263,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Shows Django admin datetimes in ADMIN_TIME_ZONE instead of storage UTC.
+    'config.middleware.AdminTimezoneMiddleware',
     # Refuses API-token requests aimed at views that never opted into the agent
     # API, independently of each view's own permission_classes.
     'farm.agent_api.middleware.ApiTokenSurfaceMiddleware',
@@ -409,6 +411,11 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+# Storage and API responses stay UTC (TIME_ZONE above); the Django admin
+# displays datetimes in this timezone instead, since its admin users are
+# in Central Europe. See config.middleware.AdminTimezoneMiddleware.
+ADMIN_TIME_ZONE = _env_str('ADMIN_TIME_ZONE', 'Europe/Vienna')
 
 
 # Static files (CSS, JavaScript, Images)
