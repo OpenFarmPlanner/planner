@@ -15,7 +15,7 @@ import { forwardEditCellTabNavigation, useEditCellTabNavigation } from './useEdi
 
 export interface PlantsCountEditCellProps extends GridRenderEditCellParams {
   crops: Crop[];
-  onLastEditedFieldChange: (field: 'plants_count') => void;
+  onLastEditedFieldChange: (field: 'plants_count', value: string) => void;
   placeholder?: string;
 }
 
@@ -38,16 +38,21 @@ export function PlantsCountEditCell(props: PlantsCountEditCellProps) {
 
   useEditCellTabNavigation(inputRef, editCellNavigation, id, field);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const val = e.target.value;
     setInputValue(val);
-    void apiRef.current.setEditCellValue({
+    // Awaited before notifying the caller: a coupled-field live-update
+    // started concurrently with this field's own setEditCellValue can lose
+    // the race and get overwritten by it, since both read/clone the row's
+    // edit-state snapshot independently (see docs/datagrid-architecture.md's
+    // lastEditedDateFieldRef note on the same hazard).
+    await apiRef.current.setEditCellValue({
       id,
       field,
       value: val
     });
 
-    onLastEditedFieldChange('plants_count');
+    onLastEditedFieldChange('plants_count', val);
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>): void => {

@@ -14,7 +14,7 @@ import { useEditCellAutoFocus } from './useEditCellAutoFocus';
 import { forwardEditCellTabNavigation, useEditCellTabNavigation } from './useEditCellTabNavigation';
 
 export interface AreaM2EditCellProps extends GridRenderEditCellParams {
-  onLastEditedFieldChange: (field: 'area_m2') => void;
+  onLastEditedFieldChange: (field: 'area_m2', value: string) => void;
   fallbackValue?: number | null;
   locale: string;
   maxKeyword: string;
@@ -50,12 +50,17 @@ function AreaM2EditCellComponent(props: AreaM2EditCellProps) {
   useEditCellTabNavigation(inputRef, editCellNavigation, id, field);
 
   const applyValue = async (nextValue: string): Promise<void> => {
-    onLastEditedFieldChange('area_m2');
+    // Awaited before notifying the caller: a coupled-field live-update
+    // started concurrently with this field's own setEditCellValue can lose
+    // the race and get overwritten by it, since both read/clone the row's
+    // edit-state snapshot independently (see docs/datagrid-architecture.md's
+    // lastEditedDateFieldRef note on the same hazard).
     await apiRef.current.setEditCellValue({
       id,
       field,
       value: nextValue,
     });
+    onLastEditedFieldChange('area_m2', nextValue);
   };
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {

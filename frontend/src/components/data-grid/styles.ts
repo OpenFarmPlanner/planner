@@ -8,11 +8,24 @@
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { CALCULATED_COLUMN_CELL_CLASS, CALCULATED_COLUMN_HEADER_CLASS } from './calculatedColumns';
+import {
+  COUPLED_FIELD_HEADER_END_CLASS,
+  COUPLED_FIELD_HEADER_START_CLASS,
+} from './coupledFieldHeader';
 
 const EDITING_ROW_BACKGROUND_ALPHA = 0.06;
 const DIRTY_CELL_BACKGROUND_ALPHA = 0.08;
 const FOCUSED_CELL_BACKGROUND_ALPHA = 0.04;
 const FOCUSED_CELL_RING_ALPHA = 0.48;
+const LINKED_HIGHLIGHT_BACKGROUND_ALPHA = 0.1;
+const LINKED_HIGHLIGHT_BORDER_ALPHA = 0.5;
+const COUPLED_FIELD_HEADER_TINT_ALPHA_LIGHT = 0.07;
+const COUPLED_FIELD_HEADER_TINT_ALPHA_DARK = 0.1;
+
+const getCoupledFieldHeaderTint = (theme: Theme): string => alpha(
+  theme.palette.primary.main,
+  theme.palette.mode === 'dark' ? COUPLED_FIELD_HEADER_TINT_ALPHA_DARK : COUPLED_FIELD_HEADER_TINT_ALPHA_LIGHT,
+);
 const EDITING_ROW_CELL_SELECTOR = [
   '& .ofp-row-editing .MuiDataGrid-cell',
   '& .ofp-row-editing:hover .MuiDataGrid-cell',
@@ -82,6 +95,38 @@ export const dataGridSx = {
   '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
     outline: 'none',
     boxShadow: (theme: Theme) => getDataGridCellFocusRing(theme),
+  },
+  // Coupled-field header pairs (see coupledFieldHeader.ts): a subtle primary
+  // tint across both halves' headers only — the same "tint the header, not
+  // the cells below" pattern as the calculated columns' grey header
+  // (CALCULATED_COLUMN_HEADER_CLASS), just with the primary colour instead of
+  // grey. A gap on each half's outer edge keeps neighbouring columns/pairs
+  // visually separate; the two halves' inner edges reach the column boundary
+  // so the tint reads as one continuous patch spanning both headers.
+  // `pointerEvents: 'none'` keeps the overlay from intercepting clicks on the
+  // header's own sort/menu affordances.
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}, & .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}`]: {
+    position: 'relative',
+  },
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_START_CLASS}::after`]: {
+    content: '""',
+    position: 'absolute',
+    insetInlineStart: (theme: Theme) => theme.spacing(1),
+    insetInlineEnd: 0,
+    top: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+    backgroundColor: (theme: Theme) => getCoupledFieldHeaderTint(theme),
+  },
+  [`& .MuiDataGrid-columnHeader.${COUPLED_FIELD_HEADER_END_CLASS}::after`]: {
+    content: '""',
+    position: 'absolute',
+    insetInlineStart: 0,
+    insetInlineEnd: (theme: Theme) => theme.spacing(1),
+    top: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+    backgroundColor: (theme: Theme) => getCoupledFieldHeaderTint(theme),
   },
   '& .MuiDataGrid-row': {
     minHeight: 44,
@@ -175,6 +220,17 @@ export const dataGridSx = {
   },
   '& .MuiDataGrid-row:hover .ofp-cell-dirty': {
     backgroundColor: (theme: Theme) => getPrimaryOverlay(theme, DIRTY_CELL_BACKGROUND_ALPHA),
+  },
+  // A coupled-field partner cell that was just recomputed live while its
+  // sibling is being edited (see PlantingPlans.tsx's live-link handlers).
+  // `secondary` keeps this clearly distinct from the `primary`-based focus
+  // ring on the cell the user is actually typing into.
+  '& .MuiDataGrid-cell.ofp-cell-linked-highlight': {
+    backgroundColor: (theme: Theme) => alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BACKGROUND_ALPHA),
+    boxShadow: (theme: Theme) => `inset 0 0 0 2px ${alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BORDER_ALPHA)}`,
+  },
+  '& .MuiDataGrid-row:hover .ofp-cell-linked-highlight': {
+    backgroundColor: (theme: Theme) => alpha(theme.palette.secondary.main, LINKED_HIGHLIGHT_BACKGROUND_ALPHA),
   },
   '& .ofp-row-editing, & .MuiDataGrid-row--editing': {
     backgroundColor: (theme: Theme) => getPrimaryOverlay(theme, EDITING_ROW_BACKGROUND_ALPHA),
