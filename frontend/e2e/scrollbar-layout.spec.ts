@@ -100,7 +100,10 @@ test.describe('scroll lock does not reshape the page', () => {
   test('keeps the landing page header in place while the language menu is open', async ({ page }) => {
     await page.setViewportSize(VIEWPORT);
     await page.goto('/');
-    const logo = page.getByRole('banner').getByRole('link', { name: 'Zum Seitenanfang' });
+    // CSS rather than a role query: an open Menu marks the whole app root
+    // `aria-hidden`, so role-based locators stop resolving inside it exactly
+    // when this test needs to measure (see the auth-route case above).
+    const logo = page.locator('header a[aria-label="Zum Seitenanfang"]');
     await expect(logo).toHaveText('OpenFarmPlanner');
 
     const before = await box(logo);
