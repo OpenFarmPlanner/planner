@@ -197,7 +197,8 @@ describe('App', () => {
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
     expect(await screen.findByText('OpenFarmPlanner')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Anmelden' })).toBeInTheDocument();
+    // "Anmelden" appears both in the sticky topbar and in the hero actions.
+    expect(screen.getAllByRole('link', { name: 'Anmelden' })).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutzerklärung' })).toBeInTheDocument();
   });
@@ -210,78 +211,6 @@ describe('App', () => {
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
     expect(screen.getByText('OpenFarmPlanner')).toBeInTheDocument();
-  });
-
-  it('switches the public landing page product tour screenshot by tab', async () => {
-    const user = userEvent.setup();
-
-    render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
-
-    expect(await screen.findByRole('tab', { name: 'Flächen' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Flächen',
-      'Kulturen',
-      'Anbaupläne',
-      'Kalender',
-      'Erträge',
-      'Saatgut',
-    ]);
-    expect(screen.getByRole('img', {
-      name: 'Tabellenansicht der Anbauflächen mit Standorten, Parzellen und Beeten',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-areas.webp');
-
-    await user.click(screen.getByRole('tab', { name: 'Saatgut' }));
-
-    expect(screen.getByRole('tab', { name: 'Saatgut' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Saatgutbedarf aus den Plänen ableiten' })).toBeInTheDocument();
-    expect(screen.getByRole('img', {
-      name: 'Saatgutbedarf-Tabelle mit Kulturen, Lieferanten, benötigter Menge und Packungsvorschlägen',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-seed-demand.webp');
-
-    await user.click(screen.getByRole('tab', { name: 'Erträge' }));
-
-    expect(screen.getByRole('tab', { name: 'Erträge' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Erwartete Ernten im Blick behalten' })).toBeInTheDocument();
-    expect(screen.getByRole('img', {
-      name: 'Ertragsübersicht mit erwarteten Erntemengen nach Kalenderwochen und Kulturen',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-yield-overview.webp');
-  });
-
-  it('uses English product tour screenshots when the landing page is displayed in English', async () => {
-    const user = userEvent.setup();
-    await i18n.changeLanguage('en');
-    localStorage.setItem('ui.language', 'en');
-
-    render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
-
-    expect(await screen.findByRole('tab', { name: 'Areas' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Areas',
-      'Crops',
-      'Planting plans',
-      'Calendar',
-      'Yields',
-      'Seeds',
-    ]);
-    expect(screen.getByRole('img', {
-      name: 'Table view of growing areas with locations, fields, and beds',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-areas-en.webp');
-
-    await user.click(screen.getByRole('tab', { name: 'Seeds' }));
-
-    expect(screen.getByRole('tab', { name: 'Seeds' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Derive seed demand from plans' })).toBeInTheDocument();
-    expect(screen.getByRole('img', {
-      name: 'Seed demand table with crops, suppliers, required amount, and package suggestions',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-seed-demand-en.webp');
-
-    await user.click(screen.getByRole('tab', { name: 'Yields' }));
-
-    expect(screen.getByRole('tab', { name: 'Yields' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Keep expected harvests in view' })).toBeInTheDocument();
-    expect(screen.getByRole('img', {
-      name: 'Yield overview with expected harvest quantities by calendar week and crop',
-    })).toHaveAttribute('src', '/landing/screenshots/demo-yield-overview-en.webp');
   });
 
   it('starts the public guest demo from the landing page', async () => {
@@ -348,7 +277,9 @@ describe('App', () => {
     fireEvent.click(button);
 
     expect(authState.startGuestDemo).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('button', { name: /Demo wird gestartet/ })).toBeDisabled();
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
 
     act(() => {
       const demoUser = createGuestDemoUser();
@@ -376,7 +307,11 @@ describe('App', () => {
     expect(await screen.findByText(
       'Die Demo wurde vor Kurzem bereits gestartet. Bitte versuche es in weniger als einer Minute erneut.',
     )).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Demo wieder verfügbar in < 1 Min.' })).toBeDisabled();
+    // The hero CTA and the closing-section CTA share the same demo-start
+    // state, so the rate-limit label shows on both buttons.
+    for (const button of screen.getAllByRole('button', { name: 'Demo wieder verfügbar in < 1 Min.' })) {
+      expect(button).toBeDisabled();
+    }
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Demo ohne Registrierung ansehen' })).not.toBeDisabled();
@@ -397,7 +332,11 @@ describe('App', () => {
     expect(await screen.findByText(
       'Die Demo wurde vor Kurzem bereits gestartet. Bitte versuche es in weniger als einer Minute erneut.',
     )).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Demo wieder verfügbar in < 1 Min.' })).toBeDisabled();
+    // The hero CTA and the closing-section CTA share the same demo-start
+    // state, so the rate-limit label shows on both buttons.
+    for (const button of screen.getAllByRole('button', { name: 'Demo wieder verfügbar in < 1 Min.' })) {
+      expect(button).toBeDisabled();
+    }
   });
 
   it('shows a generic rate-limit message when retry duration is missing or invalid', async () => {
@@ -788,7 +727,8 @@ describe('App', () => {
       expect(window.location.pathname).toBe('/');
     });
     expect(await screen.findByRole('button', { name: 'Demo ohne Registrierung ansehen' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Anmelden' })).toBeInTheDocument();
+    // "Anmelden" appears both in the sticky topbar and in the hero actions.
+    expect(screen.getAllByRole('link', { name: 'Anmelden' })).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Registrieren' })).toBeInTheDocument();
   });
 

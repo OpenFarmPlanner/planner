@@ -21,7 +21,7 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   autosave-on-blur (`useAutosaveDraft`, `useNavigationBlocker`), row
   actions, notes/markdown cells, copy/paste, column visibility.
 - **[Demo Project Template](./demo-project.md)** — the reusable realistic
-  demo dataset used by first-project onboarding and landing screenshots.
+  demo dataset used by first-project onboarding and local demo seeding.
 - **[SEO & Search-Engine Indexing](./seo-and-indexing.md)** — robots.txt/
   sitemap generation, build-time prerendering of the public pages, and what
   keeps the landing page's hero image fast (LCP).

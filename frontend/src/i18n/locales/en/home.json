@@ -1,10 +1,11 @@
 {
   "landing": {
     "title": "OpenFarmPlanner",
-    "betaBadge": "Beta",
     "heroImageAlt": "Vegetable garden beds in front of a wooded mountainside",
     "subtitle": "Open-source crop planning for vegetable production.",
     "description": "Designed specifically for market gardens, community-supported agriculture, and other farms with many crops and small-scale growing areas.",
+    "statusLine": "OpenFarmPlanner is under continuous development. We welcome feedback, ideas, and contributions.",
+    "githubLinkLabel": "Project on GitHub",
     "actions": {
       "openApp": "Sign in",
       "register": "Register",
@@ -50,54 +51,120 @@
     "backToLanding": "Back to home",
     "safetyNote": "The demo does not require registration. Changes are deleted automatically and are not intended for real production data."
   },
-  "statusNote": "OpenFarmPlanner is currently in beta and is being continuously improved.",
-  "statusOpenSource": {
-    "text": "As an open-source project, we welcome feedback, ideas, and contributions.",
-    "linkLabel": "Project on GitHub",
-    "githubUrl": "https://github.com/OpenFarmPlanner/planner"
+  "github": {
+    "url": "https://github.com/OpenFarmPlanner/openfarmplanner"
   },
-  "productTour": {
-    "title": "Season planning at a glance",
-    "description": "A realistic demo project shows how growing areas, crops, schedules, and summaries work together in practice.",
-    "tabsLabel": "Product tour",
-    "items": {
-      "areas": {
-        "tab": "Areas",
-        "title": "Edit areas and beds directly",
-        "description": "Locations, fields, and beds stay visible in a clear hierarchy. Changes happen right in the table – no separate forms or page switches.",
-        "alt": "Table view of growing areas with locations, fields, and beds"
+  "topbar": {
+    "brandAriaLabel": "Back to top",
+    "navAriaLabel": "Main navigation",
+    "menuAriaLabel": "Open menu",
+    "signIn": "Sign in",
+    "nav": {
+      "features": "Features",
+      "cropLibrary": "Crop library",
+      "openSource": "Open source"
+    }
+  },
+  "features": {
+    "eyebrow": "What makes OpenFarmPlanner different",
+    "title": "Edit it like a spreadsheet. But everything is connected.",
+    "description": "You enter fields, crops, and planting plans directly into tables, with no forms and no page changes. Because everything lives in one database, the calendar, seed demand, and yield overview recalculate immediately.",
+    "points": {
+      "typing": "Edit values right in the table and jump from cell to cell with the keyboard",
+      "oneSource": "Update it in one place and it is current everywhere: no more reconciling separate lists",
+      "validation": "Mistakes stand out right away, for example when a bed is overbooked"
+    },
+    "illustration": {
+      "ariaLabel": "Example planting-plan table with crop, bed, planting date, and quantity, below it three linked views, cultivation calendar, sowing, and yields, that recalculate automatically.",
+      "columns": {
+        "crop": "Crop (Variety)",
+        "bed": "Bed",
+        "date": "Planting date",
+        "quantity": "Plants (≈)"
       },
-      "plantingPlans": {
-        "tab": "Planting plans",
-        "title": "Edit planting plans directly",
-        "description": "Sowing, planting, and harvest dates, as well as quantities and crops, can be edited right in the table. Changes show up immediately, making season planning fast.",
-        "alt": "Planting-plan table with crops, areas, dates, and planned quantities"
+      "rows": {
+        "lettuce": { "crop": "Lettuce", "bed": "P1 / B2", "date": "Apr 14", "quantity": "320" },
+        "beans": { "crop": "Bush bean", "bed": "P1 / B3", "date": "May 20", "quantity": "180" },
+        "cucumber": { "crop": "Cucumber", "bed": "Tunnel / B1", "date": "May 02", "quantity": "40" }
       },
-      "calendar": {
-        "tab": "Calendar",
-        "title": "Plan bed occupancy in the calendar",
-        "description": "The cultivation calendar shows which crop occupies each bed and when, making overlaps easy to spot early.",
-        "alt": "Cultivation calendar with occupied beds and colored crop periods"
-      },
-      "seedDemand": {
-        "tab": "Seeds",
-        "title": "Derive seed demand from plans",
-        "description": "Seed amount and package suggestions are calculated from crop parameters, used area, and supplier data.",
-        "alt": "Seed demand table with crops, suppliers, required amount, and package suggestions"
-      },
-      "yieldOverview": {
-        "tab": "Yields",
-        "title": "Keep expected harvests in view",
-        "description": "The yield overview groups planned harvest quantities by period and crop, making peaks and distribution visible early.",
-        "alt": "Yield overview with expected harvest quantities by calendar week and crop"
-      },
-      "crops": {
-        "tab": "Crops",
-        "title": "Maintain crops centrally",
-        "description": "Varieties, cultivation methods, spacing, expected yield, and seed data live in one place and feed the plan.",
-        "alt": "Crops view with several vegetables and varieties in the demo project"
+      "linkedCaption": "Linked views recalculate automatically",
+      "cards": {
+        "calendar": { "title": "Cultivation calendar", "detail": "Bed P1 / B3 from week 21" },
+        "sowing": { "title": "Sowing", "detail": "Sowing date moves with it" },
+        "yield": { "title": "Yields", "detail": "Harvest moves to week 29" }
       }
     }
+  },
+  "cropLibrary": {
+    "eyebrow": "Crop library",
+    "title": "Crop data that grows with the community.",
+    "description": "Take spacing, cultivation duration, and yield values from the open library instead of starting from zero. What you add from your own experience, you can share with one click. That makes the library better with every farm.",
+    "illustration": {
+      "ariaLabel": "Example crop library with three entries: lettuce ready to import, parsnip already up to date with the library, and pickling cucumber with your own experience values to share.",
+      "headerLabel": "Crop library",
+      "entries": {
+        "import": { "name": "Lettuce", "detail": "Spacing 25 x 25 cm, 8 weeks" },
+        "upToDate": { "name": "Parsnip", "detail": "Row spacing 35 cm, 24 weeks" },
+        "publish": { "name": "Pickling cucumber", "detail": "Your own experience values" }
+      }
+    }
+  },
+  "seasonFeatures": {
+    "title": "Everything for your season",
+    "items": {
+      "calendar": {
+        "title": "Cultivation calendar",
+        "description": "See at a glance which crop occupies which bed and when, and spot overlaps early."
+      },
+      "rolloverSeason": {
+        "title": "Roll over to the next season",
+        "description": "Carry proven planting plans forward into the new season in one step, and adjust only what changes."
+      },
+      "seedDemand": {
+        "title": "Calculate seed demand",
+        "description": "Quantity and matching package sizes are derived from plans, crop data, and suppliers."
+      },
+      "yieldDistribution": {
+        "title": "Yield distribution",
+        "description": "Expected harvest quantities by week and crop reveal gaps and peaks before they happen."
+      },
+      "fieldMap": {
+        "title": "Graphical field view",
+        "description": "Arrange beds on your fields the way they actually lie on the ground."
+      },
+      "collaboration": {
+        "title": "Plan together",
+        "description": "Invite your growing team and work on the same up-to-date plan."
+      },
+      "history": {
+        "title": "Version history and trash",
+        "description": "Every change is traceable, and earlier states can be restored."
+      },
+      "importExport": {
+        "title": "Import and export",
+        "description": "Bring your crop data in from spreadsheets and take it with you again at any time."
+      },
+      "installApp": {
+        "title": "Install as an app",
+        "description": "Runs in the browser and can be installed on your phone or tablet like an app."
+      }
+    }
+  },
+  "openSource": {
+    "eyebrow": "Open source",
+    "title": "Your data belongs to you.",
+    "description": "OpenFarmPlanner is free software under the AGPL. No advertising and no reselling of farm data.",
+    "sourceButton": "Source code on GitHub",
+    "boxes": {
+      "agpl": { "title": "AGPL-3.0", "description": "Open source code, transparent for everyone." },
+      "gdpr": { "title": "GDPR", "description": "Hosted in Germany, data minimal." },
+      "api": { "title": "Open API", "description": "For scripts, automation, and AI agents." },
+      "practice": { "title": "From practice", "description": "Developed together with a community-supported farm (GeLaWi) in Carinthia." }
+    }
+  },
+  "closing": {
+    "title": "Try it with your own beds.",
+    "startDemo": "Start demo"
   },
   "footer": {
     "imprint": "Imprint",

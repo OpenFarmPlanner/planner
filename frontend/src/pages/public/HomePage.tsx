@@ -1,4 +1,14 @@
 import GitHubIcon from '@mui/icons-material/GitHub';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import GrassIcon from '@mui/icons-material/Grass';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import MapIcon from '@mui/icons-material/Map';
+import GroupsIcon from '@mui/icons-material/Groups';
+import HistoryIcon from '@mui/icons-material/History';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
+import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 import {
   Alert,
   Box,
@@ -7,109 +17,44 @@ import {
   CircularProgress,
   Link,
   Stack,
-  Tab,
-  Tabs,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
-import type { SyntheticEvent } from 'react';
-import { Link as RouterLink } from 'react-router';
+import { useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { Link as RouterLink, useLocation } from 'react-router';
 import { useTranslation } from '../../i18n';
 import LegalLinks from '../../components/legal/LegalLinks';
 import { API_DOCS_URL } from '../../api/apiDocsUrl';
 import HeroImage from '../../components/HeroImage';
-import { publicAssetUrl } from '../../utils/publicAssetUrl';
-import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
+import PublicTopbar from '../../components/layout/PublicTopbar';
 import { useGuestDemoStart } from './useGuestDemoStart';
-import AppIcon from '../../components/layout/AppIcon';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
+import EditableTableIllustration from './homeIllustrations/EditableTableIllustration';
+import CropLibraryIllustration from './homeIllustrations/CropLibraryIllustration';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 
-const PRODUCT_TOUR_ITEMS = [
-  {
-    key: 'areas',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-areas.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-areas-en.webp'),
-    },
-  },
-  {
-    key: 'crops',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-crops.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-crops-en.webp'),
-    },
-  },
-  {
-    key: 'plantingPlans',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-planting-plans.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-planting-plans-en.webp'),
-    },
-  },
-  {
-    key: 'calendar',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-calendar.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-calendar-en.webp'),
-    },
-  },
-  {
-    key: 'yieldOverview',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-yield-overview.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-yield-overview-en.webp'),
-    },
-  },
-  {
-    key: 'seedDemand',
-    images: {
-      de: publicAssetUrl('/landing/screenshots/demo-seed-demand.webp'),
-      en: publicAssetUrl('/landing/screenshots/demo-seed-demand-en.webp'),
-    },
-  },
-] as const;
-
-type ProductTourKey = (typeof PRODUCT_TOUR_ITEMS)[number]['key'];
-
 // Hero panel text sits on an opaque-leaning white background (see
-// HERO_CARD_SX), so unlike the previous dark-glass version it no longer needs
-// a shadow to stay legible - it's kept subtle purely to soften edges against
-// the photo behind the panel's own edges/corners.
+// HERO_CARD_SX), so unlike a dark-glass version it no longer needs a shadow
+// to stay legible - it's kept subtle purely to soften edges against the
+// photo behind the panel's own edges/corners.
 const HERO_TEXT_SHADOW = (theme: Theme) =>
   `0 1px 2px ${alpha(theme.palette.common.white, 0.4)}`;
 
-// Near-black text tones tuned for AA contrast against the 85%-opacity white
-// panel background across a range of photos behind it, not just the current
-// one - lighter tones (e.g. MUI's default text.secondary at 0.6 alpha) can
-// fall below AA once a lighter/busier photo shows through the blur.
+// Near-black text tones tuned for AA contrast against the white panel
+// background across a range of photos behind it, not just the current one.
 const HERO_TEXT_PRIMARY = (theme: Theme) => alpha(theme.palette.common.black, 0.92);
 const HERO_TEXT_SECONDARY = (theme: Theme) => alpha(theme.palette.common.black, 0.78);
 
-// Single knob for the whole hero panel's text size: every fontSize below is
-// expressed as a base rem value run through heroRem(), and the panel/description
-// max-width scale with it (heroWidth()), so bumping this one number makes
-// everything bigger together without shifting the line-wrap points relative
-// to each other.
 const HERO_FONT_SCALE = 1.1;
-
 const heroRem = (baseRem: number): string => `${+(baseRem * HERO_FONT_SCALE).toFixed(3)}rem`;
 const heroWidth = (basePx: number): number => Math.round(basePx * HERO_FONT_SCALE);
 
-// Shared size for every hero action (Register/Sign in buttons, demo link,
-// GitHub link) so they read as one consistent row of actions.
 const HERO_ACTION_FONT_SIZE = { xs: heroRem(1.05), sm: heroRem(1.1) };
 
-// Single glassmorphism card behind all hero content (heading, description,
-// buttons, beta note, GitHub link) - one clearly-bounded, semi-transparent
-// panel instead of separate backgrounds per line/element, so there's no risk
-// of overlapping panels double-darkening the gaps between them.
-//
-// The background photo itself stays fully sharp - only this panel is blurred
-// and translucent. Browsers without backdrop-filter support (the `@supports`
-// fallback below) get a near-opaque background instead, so text stays legible
-// even without the blur.
+// Single glassmorphism card behind all hero content - one clearly-bounded,
+// semi-transparent panel. A slightly more opaque, lighter-bordered version
+// than the previous one so the panel reads calmer against the photo.
 const HERO_CARD_SX: SxProps<Theme> = {
   position: 'relative' as const,
   zIndex: 1,
@@ -118,62 +63,132 @@ const HERO_CARD_SX: SxProps<Theme> = {
   mx: 'auto',
   px: { xs: 3, sm: 4, md: 4.5 },
   py: { xs: 3, sm: 3.5, md: 4 },
-  borderRadius: { xs: 4, md: 6 },
+  borderRadius: { xs: 5, md: 7 },
   border: '1px solid',
-  borderColor: (theme) => alpha(theme.palette.common.black, 0.5),
-  backgroundColor: (theme) => alpha(theme.palette.common.white, 0.85),
+  borderColor: (theme) => alpha(theme.palette.common.black, 0.35),
+  backgroundColor: (theme) => alpha(theme.palette.common.white, 0.88),
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
-  // Inset highlight/shade on top of the outer border gives the panel a
-  // slight bevel so it reads as a raised glass surface instead of a flat
-  // rectangle, matching the depth the previous dark-glass version had.
-  // The `0 0 0 1px` shadow is a second 1px ring stacked right outside the
-  // `border` above - two crisp lines read as a stronger frame than one
-  // border alone, without needing an extra wrapper element.
-  boxShadow: 10,
+  boxShadow: 18,
   '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))': {
-    backgroundColor: (theme) => alpha(theme.palette.common.white, 0.96),
+    backgroundColor: (theme) => alpha(theme.palette.common.white, 0.97),
   },
 };
 
-// Three-column grid so the logo stays centred in the header: the empty first
-// column and the language-selector column are both `1fr`, so they always claim
-// the same width and the middle column stays centred no matter how long the
-// current language label is ("Deutsch", "English", future languages). The side
-// columns use `minmax(0, ...)` so a wide selector never pushes the row past the
-// container width on small screens.
-const HEADER_SX = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
-  alignItems: 'center',
-  columnGap: { xs: 0.5, sm: 1 },
-  minHeight: 48,
+const SECTION_ANCHOR_SX: SxProps<Theme> = {
+  // Offset so a jump to the anchor doesn't tuck the heading under the sticky
+  // topbar. `scrollMarginTop` isn't one of the properties MUI's sx spacing
+  // transform recognizes, so a bare number would be emitted as unitless
+  // (invalid) CSS and silently dropped - spell it out via theme.spacing().
+  scrollMarginTop: (theme) => theme.spacing(10),
 };
 
-// Centring costs the wordmark the width of the language selector twice (once
-// for the selector itself, once for the mirroring spacer column), so the title
-// only has room for its full size once the viewport is wide enough. The clamps
-// keep the regular size from ~360px (phones) and ~690px (tablets) upwards and
-// scale the heading down below that, so it can never run into the selector.
-const TITLE_SX = {
-  minWidth: 0,
-  fontSize: {
-    xs: 'clamp(0.75rem, calc(11.5vw - 25px), 1rem)',
-    sm: 'clamp(1.6rem, 4.4vw, 1.9rem)',
-    md: '2.5rem',
-  },
-  fontWeight: 600,
-  lineHeight: 1.1,
-  overflowWrap: 'normal',
-};
+interface FeaturePoint {
+  text: string;
+}
+
+function FeatureCheckList({ points }: { points: FeaturePoint[] }) {
+  return (
+    <Stack spacing={1.25}>
+      {points.map((point) => (
+        <Stack key={point.text} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+          <CheckCircleIcon color="primary" fontSize="small" sx={{ mt: 0.3, flexShrink: 0 }} />
+          <Typography sx={{ lineHeight: 1.55 }}>{point.text}</Typography>
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
+
+interface SeasonFeatureCard {
+  icon: ReactNode;
+  title: string;
+  description: string;
+}
+
+function SeasonFeatureCardItem({ icon, title, description }: SeasonFeatureCard) {
+  return (
+    <Stack
+      spacing={1.5}
+      sx={{
+        p: 2.5,
+        height: '100%',
+        borderRadius: 2,
+        border: 1,
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Box
+        sx={{
+          width: 48,
+          height: 48,
+          borderRadius: 2,
+          bgcolor: 'surface.surfaceHoverBackground',
+          color: 'primary.main',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {icon}
+      </Box>
+      <Typography variant="h6" component="h3" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+        {title}
+      </Typography>
+      <Typography color="text.secondary" sx={{ lineHeight: 1.55 }}>
+        {description}
+      </Typography>
+    </Stack>
+  );
+}
+
+interface OpenSourceBox {
+  title: string;
+  description: string;
+  href?: string;
+}
+
+function OpenSourceBoxItem({ title, description, href }: OpenSourceBox) {
+  const content = (
+    <Stack spacing={0.5}>
+      <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+      <Typography variant="body2" sx={{ opacity: 0.85 }}>
+        {description}
+      </Typography>
+    </Stack>
+  );
+
+  const boxSx: SxProps<Theme> = {
+    p: 2,
+    borderRadius: 2,
+    border: 1,
+    borderColor: (theme) => alpha(theme.palette.common.white, 0.25),
+    height: '100%',
+    display: 'block',
+    textDecoration: 'none',
+    color: 'inherit',
+  };
+
+  if (href) {
+    return (
+      <Link href={href} target="_blank" rel="noopener noreferrer" color="inherit" underline="none" sx={boxSx}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <Box sx={boxSx}>{content}</Box>;
+}
 
 /**
- * Public landing page with refined spacing and modern visual hierarchy.
- *
- * @returns Landing page UI.
+ * Public landing page: hero, two headline feature sections, a feature grid,
+ * an open-source section, and a closing demo call-to-action. One scroll
+ * page with anchor links in the sticky topbar.
  */
 export default function HomePage() {
-  const { t, i18n } = useTranslation('home');
+  const { t } = useTranslation('home');
+  const location = useLocation();
   const {
     isStartingDemo,
     demoStartError,
@@ -182,57 +197,98 @@ export default function HomePage() {
     compactRetryTime,
     startDemo,
   } = useGuestDemoStart();
-  const [activeTourKey, setActiveTourKey] = useState<ProductTourKey>('areas');
-  const activeTourItem = PRODUCT_TOUR_ITEMS.find((item) => item.key === activeTourKey) ?? PRODUCT_TOUR_ITEMS[0];
-  const screenshotLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'de').split('-')[0] === 'en' ? 'en' : 'de';
-  const activeTourImage = activeTourItem.images[screenshotLanguage];
 
-  const handleTourChange = (_event: SyntheticEvent, value: ProductTourKey): void => {
-    setActiveTourKey(value);
+  useEffect(() => {
+    document.body.classList.add('sticky-app-bar');
+    return () => {
+      document.body.classList.remove('sticky-app-bar');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+    const id = location.hash.slice(1);
+    const target = document.getElementById(id);
+    target?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    // Only on mount / when arriving with a hash already set (e.g. a deep
+    // link from another route) - in-page anchor clicks scroll themselves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const githubUrl = t('github.url');
+
+  const topbarAnchors = [
+    { id: 'funktionen', label: t('topbar.nav.features') },
+    { id: 'kulturbibliothek', label: t('topbar.nav.cropLibrary') },
+    { id: 'open-source', label: t('topbar.nav.openSource') },
+  ];
+
+  const featurePoints: FeaturePoint[] = [
+    { text: t('features.points.typing') },
+    { text: t('features.points.oneSource') },
+    { text: t('features.points.validation') },
+  ];
+
+  const seasonFeatureIcons: Record<string, ReactNode> = {
+    calendar: <CalendarMonthIcon />,
+    rolloverSeason: <RestartAltIcon />,
+    seedDemand: <GrassIcon />,
+    yieldDistribution: <TrendingUpIcon />,
+    fieldMap: <MapIcon />,
+    collaboration: <GroupsIcon />,
+    history: <HistoryIcon />,
+    importExport: <ImportExportIcon />,
+    installApp: <InstallMobileIcon />,
   };
+  const seasonFeatureKeys = Object.keys(seasonFeatureIcons);
+
+  const openSourceBoxes: (OpenSourceBox & { key: string })[] = [
+    { key: 'agpl', title: t('openSource.boxes.agpl.title'), description: t('openSource.boxes.agpl.description') },
+    { key: 'gdpr', title: t('openSource.boxes.gdpr.title'), description: t('openSource.boxes.gdpr.description') },
+    {
+      key: 'api',
+      title: t('openSource.boxes.api.title'),
+      description: t('openSource.boxes.api.description'),
+      href: API_DOCS_URL,
+    },
+    { key: 'practice', title: t('openSource.boxes.practice.title'), description: t('openSource.boxes.practice.description') },
+  ];
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <Box component="main" sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ width: '100%', pt: { xs: 1.5, md: 2 }, pb: { xs: 2.5, md: 3 } }}>
-          <Box component="header" sx={HEADER_SX}>
-            <Stack
-              direction="row"
-              spacing={{ xs: 0.75, sm: 1.4 }}
-              sx={{ gridColumn: 2, minWidth: 0,
-          alignItems: "center", }}
-            >
-              <AppIcon decorative size={{ xs: 32, sm: 40, md: 48 }} sx={{ opacity: 0.95 }} />
-              <Typography variant="h2" component="h1" sx={TITLE_SX}>
-                {t('landing.title')}
-              </Typography>
-            </Stack>
-            <Box sx={{ gridColumn: 3, justifySelf: 'end' }}>
-              <PublicLanguageSwitcher dense />
-            </Box>
-          </Box>
-        </Container>
+      <PublicTopbar
+        brandLabel={t('landing.title')}
+        brandAriaLabel={t('topbar.brandAriaLabel')}
+        anchors={topbarAnchors}
+        menuAriaLabel={t('topbar.menuAriaLabel')}
+        navAriaLabel={t('topbar.navAriaLabel')}
+        signInLabel={t('topbar.signIn')}
+      />
 
+      <Box component="main" sx={{ flex: 1 }}>
         <Box
+          id="top"
           component="section"
           sx={{
-              position: 'relative',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              px: 2,
-              py: { xs: 4, md: 5 },
-              overflow: 'hidden',
-              bgcolor: 'navigation.tooltipBackground',
+            position: 'relative',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            px: 2,
+            py: { xs: 4, md: 5 },
+            overflow: 'hidden',
+            bgcolor: 'navigation.tooltipBackground',
           }}
         >
           <HeroImage alt={t('landing.heroImageAlt')} />
           <Box sx={HERO_CARD_SX}>
-            <Stack spacing={{ xs: 2, md: 2.2 }} sx={{ alignItems: "center", }} >
+            <Stack spacing={{ xs: 2, md: 2.2 }} sx={{ alignItems: 'center' }}>
               <Typography
-                variant="h6"
+                variant="h1"
                 sx={{
                   fontSize: { xs: heroRem(1.35), sm: heroRem(1.5), md: heroRem(1.7) },
                   fontWeight: 600,
@@ -256,14 +312,11 @@ export default function HomePage() {
                 {t('landing.description')}
               </Typography>
 
-              <Stack spacing={1.15} sx={{ width: '100%', pt: 0.3,
-                alignItems: "center", }}  >
+              <Stack spacing={1.15} sx={{ width: '100%', pt: 0.3, alignItems: 'center' }}>
                 <Stack
                   direction="row"
                   spacing={{ xs: 1, sm: 1.2 }}
-                  sx={{ width: '100%', flexWrap: 'nowrap',
-                alignItems: "center",
-                justifyContent: "center", }}
+                  sx={{ width: '100%', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Button
                     component={RouterLink}
@@ -360,14 +413,12 @@ export default function HomePage() {
                   }}
                 >
                   {isStartingDemo ? (
-                    <Stack component="span" direction="row" spacing={0.8} sx={{ alignItems: "center", }} >
+                    <Stack component="span" direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
                       <CircularProgress color="inherit" size={14} />
                       <span>{t('landing.actions.startingDemo')}</span>
                     </Stack>
                   ) : isDemoRetryBlocked ? (
-                    t('landing.actions.demoAvailableIn', {
-                      time: compactRetryTime,
-                    })
+                    t('landing.actions.demoAvailableIn', { time: compactRetryTime })
                   ) : (
                     t('landing.actions.demoWithoutRegistration')
                   )}
@@ -394,12 +445,7 @@ export default function HomePage() {
                 </Alert>
               ) : null}
 
-              <Stack spacing={0.7} sx={{ pt: { xs: 0.3, md: 0.5 },
-                alignItems: "center",
-                textAlign: "center", }}   >
-                <Typography sx={{ fontSize: { xs: heroRem(1.15), md: heroRem(1.2) }, fontWeight: 500, lineHeight: 1.45, color: HERO_TEXT_PRIMARY, textShadow: HERO_TEXT_SHADOW }}>
-                  {t('statusNote')}
-                </Typography>
+              <Stack spacing={0.7} sx={{ pt: { xs: 0.3, md: 0.5 }, alignItems: 'center', textAlign: 'center' }}>
                 <Typography
                   sx={{
                     fontSize: { xs: heroRem(1), md: heroRem(1.05) },
@@ -409,10 +455,10 @@ export default function HomePage() {
                     textShadow: HERO_TEXT_SHADOW,
                   }}
                 >
-                  {t('statusOpenSource.text')}
+                  {t('landing.statusLine')}
                 </Typography>
                 <Link
-                  href={t('statusOpenSource.githubUrl')}
+                  href={githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="none"
@@ -443,130 +489,232 @@ export default function HomePage() {
                   }}
                 >
                   <GitHubIcon sx={{ fontSize: { xs: '0.95rem', md: '1rem' }, flexShrink: 0 }} />
-                  {t('statusOpenSource.linkLabel')}
+                  {t('landing.githubLinkLabel')}
                 </Link>
               </Stack>
             </Stack>
           </Box>
         </Box>
 
-        <Container maxWidth="xl" sx={{ width: '100%', py: { xs: 5, md: 7 } }}>
-          <Stack spacing={{ xs: 5.5, md: 7 }} sx={{ alignItems: "center", }} >
-            <Box
-              component="section"
-              aria-labelledby="product-tour-title"
-              sx={{ width: '100%' }}
-            >
-              <Stack spacing={{ xs: 2.5, md: 3.5 }}>
-                <Stack spacing={1.25} sx={{ alignItems: "center",
-                  textAlign: "center", }}  >
-                  <Typography
-                    id="product-tour-title"
-                    variant="h4"
-                    component="h2"
-                    sx={{
-                      fontSize: { xs: '1.8rem', md: '2.125rem' },
-                      fontWeight: 600,
-                      lineHeight: 1.18,
-                    }}
-                  >
-                    {t('productTour.title')}
+        <Container maxWidth="xl" sx={{ width: '100%', py: { xs: 6, md: 8 } }}>
+          <Stack spacing={{ xs: 8, md: 11 }}>
+            <Box id="funktionen" component="section" aria-labelledby="features-title" sx={SECTION_ANCHOR_SX}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                  gap: { xs: 4, md: 6 },
+                  alignItems: 'center',
+                }}
+              >
+                <Stack spacing={2}>
+                  <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                    {t('features.eyebrow')}
                   </Typography>
-                  <Typography color="text.secondary" sx={{ maxWidth: 720, lineHeight: 1.6 }}>
-                    {t('productTour.description')}
+                  <Typography id="features-title" variant="h4" component="h2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                    {t('features.title')}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ lineHeight: 1.65 }}>
+                    {t('features.description')}
+                  </Typography>
+                  <FeatureCheckList points={featurePoints} />
+                </Stack>
+                <EditableTableIllustration
+                  ariaLabel={t('features.illustration.ariaLabel')}
+                  columns={{
+                    crop: t('features.illustration.columns.crop'),
+                    bed: t('features.illustration.columns.bed'),
+                    date: t('features.illustration.columns.date'),
+                    quantity: t('features.illustration.columns.quantity'),
+                  }}
+                  rows={[
+                    {
+                      crop: t('features.illustration.rows.lettuce.crop'),
+                      bed: t('features.illustration.rows.lettuce.bed'),
+                      date: t('features.illustration.rows.lettuce.date'),
+                      quantity: t('features.illustration.rows.lettuce.quantity'),
+                    },
+                    {
+                      crop: t('features.illustration.rows.beans.crop'),
+                      bed: t('features.illustration.rows.beans.bed'),
+                      date: t('features.illustration.rows.beans.date'),
+                      quantity: t('features.illustration.rows.beans.quantity'),
+                      editing: true,
+                    },
+                    {
+                      crop: t('features.illustration.rows.cucumber.crop'),
+                      bed: t('features.illustration.rows.cucumber.bed'),
+                      date: t('features.illustration.rows.cucumber.date'),
+                      quantity: t('features.illustration.rows.cucumber.quantity'),
+                    },
+                  ]}
+                  linkedCaption={t('features.illustration.linkedCaption')}
+                  cards={[
+                    {
+                      title: t('features.illustration.cards.calendar.title'),
+                      detail: t('features.illustration.cards.calendar.detail'),
+                    },
+                    {
+                      title: t('features.illustration.cards.sowing.title'),
+                      detail: t('features.illustration.cards.sowing.detail'),
+                    },
+                    {
+                      title: t('features.illustration.cards.yield.title'),
+                      detail: t('features.illustration.cards.yield.detail'),
+                    },
+                  ]}
+                />
+              </Box>
+            </Box>
+
+            <Box id="kulturbibliothek" component="section" aria-labelledby="crop-library-title" sx={SECTION_ANCHOR_SX}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                  gap: { xs: 4, md: 6 },
+                  alignItems: 'center',
+                }}
+              >
+                <Box sx={{ order: { xs: 2, md: 0 } }}>
+                  <CropLibraryIllustration
+                    ariaLabel={t('cropLibrary.illustration.ariaLabel')}
+                    headerLabel={t('cropLibrary.illustration.headerLabel')}
+                    importLabel={t('crops:library.importButton')}
+                    upToDateLabel={t('crops:library.publicUpdate.markerUpToDateLabel')}
+                    publishLabel={t('crops:library.libraryAction.publish')}
+                    entries={{
+                      import: {
+                        name: t('cropLibrary.illustration.entries.import.name'),
+                        detail: t('cropLibrary.illustration.entries.import.detail'),
+                      },
+                      upToDate: {
+                        name: t('cropLibrary.illustration.entries.upToDate.name'),
+                        detail: t('cropLibrary.illustration.entries.upToDate.detail'),
+                      },
+                      publish: {
+                        name: t('cropLibrary.illustration.entries.publish.name'),
+                        detail: t('cropLibrary.illustration.entries.publish.detail'),
+                      },
+                    }}
+                  />
+                </Box>
+                <Stack spacing={2} sx={{ order: { xs: 1, md: 0 } }}>
+                  <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                    {t('cropLibrary.eyebrow')}
+                  </Typography>
+                  <Typography id="crop-library-title" variant="h4" component="h2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                    {t('cropLibrary.title')}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ lineHeight: 1.65 }}>
+                    {t('cropLibrary.description')}
                   </Typography>
                 </Stack>
+              </Box>
+            </Box>
 
-                <Box>
-                  <Tabs
-                    value={activeTourKey}
-                    onChange={handleTourChange}
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    allowScrollButtonsMobile
-                    aria-label={t('productTour.tabsLabel')}
-                    sx={{
-                      minHeight: 44,
-                      borderBottom: 1,
-                      borderColor: 'divider',
-                      '& .MuiTab-root': {
-                        minHeight: 44,
-                        px: { xs: 1.25, sm: 2 },
-                        textTransform: 'none',
-                        fontWeight: 600,
-                      },
-                      '& .MuiTabs-indicator': {
-                        transition: 'none',
-                      },
-                    }}
-                  >
-                    {PRODUCT_TOUR_ITEMS.map((item) => (
-                      <Tab
-                        key={item.key}
-                        label={t(`productTour.items.${item.key}.tab`)}
-                        value={item.key}
-                      />
-                    ))}
-                  </Tabs>
-
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 300px' },
-                      gap: { xs: 2, md: 4 },
-                      alignItems: 'center',
-                      pt: { xs: 2, md: 3 },
-                    }}
-                  >
-                    <Box sx={{ minWidth: 0 }}>
-                      <Box
-                        sx={{
-                          minWidth: 0,
-                          width: '100%',
-                          border: 1,
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          bgcolor: 'background.paper',
-                          boxShadow: (theme) => theme.shadows[2],
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={activeTourImage}
-                          alt={t(`productTour.items.${activeTourItem.key}.alt`)}
-                          loading="eager"
-                          decoding="async"
-                          width={1280}
-                          height={800}
-                          sx={{
-                            display: 'block',
-                            width: '100%',
-                            height: 'auto',
-                          }}
-                        />
-                      </Box>
-                    </Box>
-
-                    <Stack
-                      spacing={1}
-                      sx={{
-                        minWidth: 0,
-                        width: '100%',
-                        alignSelf: { xs: 'start', md: 'center' },
-                      }}
-                    >
-                      <Typography variant="h5" component="h3" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                        {t(`productTour.items.${activeTourItem.key}.title`)}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ lineHeight: 1.65 }}>
-                        {t(`productTour.items.${activeTourItem.key}.description`)}
-                      </Typography>
-                    </Stack>
-                  </Box>
+            <Box component="section" aria-labelledby="season-features-title">
+              <Stack spacing={{ xs: 3, md: 4 }}>
+                <Typography
+                  id="season-features-title"
+                  variant="h4"
+                  component="h2"
+                  sx={{ fontWeight: 600, lineHeight: 1.2, textAlign: 'center' }}
+                >
+                  {t('seasonFeatures.title')}
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+                    gap: 3,
+                  }}
+                >
+                  {seasonFeatureKeys.map((key) => (
+                    <SeasonFeatureCardItem
+                      key={key}
+                      icon={seasonFeatureIcons[key]}
+                      title={t(`seasonFeatures.items.${key}.title`)}
+                      description={t(`seasonFeatures.items.${key}.description`)}
+                    />
+                  ))}
                 </Box>
               </Stack>
             </Box>
+          </Stack>
+        </Container>
+
+        <Box
+          id="open-source"
+          component="section"
+          aria-labelledby="open-source-title"
+          sx={{ ...SECTION_ANCHOR_SX, bgcolor: 'primary.dark', color: 'primary.contrastText', py: { xs: 6, md: 8 } }}
+        >
+          <Container maxWidth="lg">
+            <Stack spacing={3} sx={{ alignItems: { xs: 'flex-start', md: 'center' }, textAlign: { xs: 'left', md: 'center' } }}>
+              <Typography variant="overline" sx={{ fontWeight: 700, opacity: 0.85 }}>
+                {t('openSource.eyebrow')}
+              </Typography>
+              <Typography id="open-source-title" variant="h4" component="h2" sx={{ fontWeight: 600 }}>
+                {t('openSource.title')}
+              </Typography>
+              <Typography sx={{ maxWidth: 640, opacity: 0.9, lineHeight: 1.65 }}>
+                {t('openSource.description')}
+              </Typography>
+              <Button
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="contained"
+                color="inherit"
+                size="large"
+                startIcon={<GitHubIcon />}
+                sx={{ bgcolor: 'common.white', color: 'primary.dark', '&:hover': { bgcolor: 'grey.100', color: 'primary.dark' } }}
+              >
+                {t('openSource.sourceButton')}
+              </Button>
+              <Box
+                sx={{
+                  width: '100%',
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                  gap: 2,
+                  pt: 2,
+                }}
+              >
+                {openSourceBoxes.map((box) => (
+                  <OpenSourceBoxItem key={box.key} title={box.title} description={box.description} href={box.href} />
+                ))}
+              </Box>
+            </Stack>
+          </Container>
+        </Box>
+
+        <Container maxWidth="md" sx={{ width: '100%', py: { xs: 6, md: 8 } }}>
+          <Stack spacing={3} sx={{ alignItems: 'center', textAlign: 'center' }}>
+            <Typography variant="h4" component="h2" sx={{ fontWeight: 600 }}>
+              {t('closing.title')}
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              disabled={isDemoButtonDisabled}
+              onClick={() => {
+                void startDemo();
+              }}
+              sx={{ minHeight: 48, px: 4 }}
+            >
+              {isStartingDemo ? (
+                <Stack component="span" direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                  <CircularProgress color="inherit" size={16} />
+                  <span>{t('landing.actions.startingDemo')}</span>
+                </Stack>
+              ) : isDemoRetryBlocked ? (
+                t('landing.actions.demoAvailableIn', { time: compactRetryTime })
+              ) : (
+                t('closing.startDemo')
+              )}
+            </Button>
           </Stack>
         </Container>
       </Box>
@@ -577,8 +725,7 @@ export default function HomePage() {
             direction={{ xs: 'column', sm: 'row' }}
             spacing={{ xs: 1.25, sm: 3 }}
             useFlexGap
-            sx={{ alignItems: { xs: 'flex-start', sm: 'center' },
-        justifyContent: "space-between", flexWrap: 'wrap', rowGap: 1.25 }}
+            sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 1.25 }}
           >
             <LegalLinks sx={{ flexShrink: 0 }} />
             <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.25 }}>
