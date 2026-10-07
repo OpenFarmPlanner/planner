@@ -11,10 +11,17 @@ export interface PublicTopbarAnchor {
   label: string;
 }
 
+export interface PublicTopbarPageLink {
+  path: string;
+  label: string;
+}
+
 interface PublicTopbarProps {
   brandLabel: string;
   brandAriaLabel: string;
   anchors: PublicTopbarAnchor[];
+  /** A real route link shown after the anchors (e.g. an "About" page), marked aria-current="page" while active. */
+  pageLink: PublicTopbarPageLink;
   menuAriaLabel: string;
   navAriaLabel: string;
   signInLabel: string;
@@ -29,15 +36,17 @@ function scrollToSection(id: string | null): void {
 }
 
 /**
- * Sticky header for the public marketing pages. Anchor links navigate within
- * the current page when already on `/` (smooth scroll + hash update) and
- * fall back to a normal `/#id` navigation otherwise, so they also work as
- * deep links from a future page such as an "About" page.
+ * Sticky header for the public marketing pages (landing page, about page).
+ * Anchor links navigate within the current page when already on `/` (smooth
+ * scroll + hash update) and fall back to a normal `/#id` navigation
+ * otherwise, so they also work as deep links from another page such as
+ * `pageLink`.
  */
 export default function PublicTopbar({
   brandLabel,
   brandAriaLabel,
   anchors,
+  pageLink,
   menuAriaLabel,
   navAriaLabel,
   signInLabel,
@@ -45,6 +54,7 @@ export default function PublicTopbar({
   const location = useLocation();
   const navigate = useNavigate();
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const isPageLinkActive = location.pathname === pageLink.path;
 
   const handleAnchorClick = (event: MouseEvent, id: string | null): void => {
     setMenuAnchorEl(null);
@@ -121,6 +131,21 @@ export default function PublicTopbar({
               {anchor.label}
             </Button>
           ))}
+          <Button
+            component={RouterLink}
+            to={pageLink.path}
+            onClick={() => setMenuAnchorEl(null)}
+            color="inherit"
+            aria-current={isPageLinkActive ? 'page' : undefined}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              ...(isPageLinkActive && { textDecoration: 'underline', textUnderlineOffset: 4 }),
+            }}
+          >
+            {pageLink.label}
+          </Button>
         </Box>
 
         <Box sx={{ flexGrow: { xs: 1, md: 0 } }} />
@@ -165,6 +190,15 @@ export default function PublicTopbar({
               {anchor.label}
             </MenuItem>
           ))}
+          <MenuItem
+            component={RouterLink}
+            to={pageLink.path}
+            onClick={() => setMenuAnchorEl(null)}
+            aria-current={isPageLinkActive ? 'page' : undefined}
+            sx={{ minHeight: 44 }}
+          >
+            {pageLink.label}
+          </MenuItem>
         </Menu>
       </Toolbar>
     </AppBar>

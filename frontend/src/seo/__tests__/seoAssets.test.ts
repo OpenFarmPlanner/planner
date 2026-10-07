@@ -58,6 +58,7 @@ describe('buildSitemapXml', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
       `${SITE}/`,
+      `${SITE}/ueber`,
       `${SITE}/impressum`,
       `${SITE}/datenschutz`,
       `${SITE}/nutzungsbedingungen`,

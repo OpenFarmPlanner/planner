@@ -23,14 +23,16 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Link as RouterLink, useLocation, useNavigationType } from 'react-router';
 import { useTranslation } from '../../i18n';
-import LegalLinks from '../../components/legal/LegalLinks';
 import { API_DOCS_URL } from '../../api/apiDocsUrl';
 import HeroImage from '../../components/HeroImage';
 import PublicTopbar from '../../components/layout/PublicTopbar';
+import PublicFooter from '../../components/layout/PublicFooter';
 import { useGuestDemoStart } from './useGuestDemoStart';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
 import EditableTableIllustration from './homeIllustrations/EditableTableIllustration';
 import CropLibraryIllustration from './homeIllustrations/CropLibraryIllustration';
+import { AREA_LABEL_SEPARATOR } from '../plantingPlansUtils';
+import { formatLocalizedNumber, resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 
@@ -193,7 +195,7 @@ function OpenSourceBoxItem({ title, description, href }: OpenSourceBox) {
  * page with anchor links in the sticky topbar.
  */
 export default function HomePage() {
-  const { t } = useTranslation('home');
+  const { t, i18n } = useTranslation('home');
   const location = useLocation();
   const {
     isStartingDemo,
@@ -238,6 +240,35 @@ export default function HomePage() {
   }, [location.hash, navigationType]);
 
   const githubUrl = t('github.url');
+  const illustrationLocale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
+  const formatIllustrationDate = (isoDate: string): string => new Date(`${isoDate}T00:00:00`).toLocaleDateString(illustrationLocale);
+  const formatIllustrationNumber = (value: number): string => formatLocalizedNumber(value, illustrationLocale);
+  const illustrationFieldBed = (fieldKey: string, bedKey: string): string =>
+    `${t(`features.illustration.rows.${fieldKey}`)}${AREA_LABEL_SEPARATOR}${t(`features.illustration.rows.${bedKey}`)}`;
+  const illustrationRows = [
+    {
+      crop: t('features.illustration.rows.lettuce.crop'),
+      fieldBed: illustrationFieldBed('lettuce.field', 'lettuce.bed'),
+      plantingDate: formatIllustrationDate('2026-03-22'),
+      areaM2: formatIllustrationNumber(8.5),
+      plantsCount: formatIllustrationNumber(95),
+    },
+    {
+      crop: t('features.illustration.rows.tomato.crop'),
+      fieldBed: illustrationFieldBed('tomato.field', 'tomato.bed'),
+      plantingDate: formatIllustrationDate('2026-04-25'),
+      areaM2: formatIllustrationNumber(14),
+      plantsCount: formatIllustrationNumber(35),
+    },
+    {
+      crop: t('features.illustration.rows.cucumber.crop'),
+      fieldBed: illustrationFieldBed('cucumber.field', 'cucumber.bed'),
+      plantingDate: formatIllustrationDate('2026-05-10'),
+      areaM2: formatIllustrationNumber(12),
+      plantsCount: formatIllustrationNumber(38),
+      editing: true,
+    },
+  ];
 
   const topbarAnchors = [
     { id: 'funktionen', label: t('topbar.nav.features') },
@@ -282,6 +313,7 @@ export default function HomePage() {
         brandLabel={t('landing.title')}
         brandAriaLabel={t('topbar.brandAriaLabel')}
         anchors={topbarAnchors}
+        pageLink={{ path: '/ueber', label: t('topbar.nav.about') }}
         menuAriaLabel={t('topbar.menuAriaLabel')}
         navAriaLabel={t('topbar.navAriaLabel')}
         signInLabel={t('topbar.signIn')}
@@ -522,7 +554,7 @@ export default function HomePage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
                   gap: { xs: 4, md: 6 },
                   alignItems: 'center',
                 }}
@@ -542,32 +574,13 @@ export default function HomePage() {
                 <EditableTableIllustration
                   ariaLabel={t('features.illustration.ariaLabel')}
                   columns={{
-                    crop: t('features.illustration.columns.crop'),
-                    bed: t('features.illustration.columns.bed'),
-                    date: t('features.illustration.columns.date'),
-                    quantity: t('features.illustration.columns.quantity'),
+                    crop: t('plantingPlans:columns.crop'),
+                    fieldBed: t('plantingPlans:columns.fieldBed', { separator: AREA_LABEL_SEPARATOR }),
+                    plantingDate: t('plantingPlans:columns.plantingDate'),
+                    areaM2: t('plantingPlans:columns.areaM2'),
+                    plantsCount: t('plantingPlans:columns.plantsCount'),
                   }}
-                  rows={[
-                    {
-                      crop: t('features.illustration.rows.lettuce.crop'),
-                      bed: t('features.illustration.rows.lettuce.bed'),
-                      date: t('features.illustration.rows.lettuce.date'),
-                      quantity: t('features.illustration.rows.lettuce.quantity'),
-                    },
-                    {
-                      crop: t('features.illustration.rows.beans.crop'),
-                      bed: t('features.illustration.rows.beans.bed'),
-                      date: t('features.illustration.rows.beans.date'),
-                      quantity: t('features.illustration.rows.beans.quantity'),
-                      editing: true,
-                    },
-                    {
-                      crop: t('features.illustration.rows.cucumber.crop'),
-                      bed: t('features.illustration.rows.cucumber.bed'),
-                      date: t('features.illustration.rows.cucumber.date'),
-                      quantity: t('features.illustration.rows.cucumber.quantity'),
-                    },
-                  ]}
+                  rows={illustrationRows}
                   linkedCaption={t('features.illustration.linkedCaption')}
                   cards={[
                     {
@@ -591,7 +604,7 @@ export default function HomePage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
                   gap: { xs: 4, md: 6 },
                   alignItems: 'center',
                 }}
@@ -674,7 +687,7 @@ export default function HomePage() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
                 gap: { xs: 4, md: 6 },
                 alignItems: 'start',
               }}
@@ -743,30 +756,14 @@ export default function HomePage() {
                 t('closing.startDemo')
               )}
             </Button>
+            <Link component={RouterLink} to="/ueber" underline="hover" color="text.secondary">
+              {t('closing.aboutLink')}
+            </Link>
           </Stack>
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', py: { xs: 2.5, md: 2.75 }, bgcolor: 'background.paper' }}>
-        <Container maxWidth="md">
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={{ xs: 1.25, sm: 3 }}
-            useFlexGap
-            sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 1.25 }}
-          >
-            <LegalLinks sx={{ flexShrink: 0 }} />
-            <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 1.25 }}>
-              <Link href={API_DOCS_URL} underline="hover" color="text.secondary" sx={{ fontSize: '0.92rem' }}>
-                {t('footer.apiDocs')}
-              </Link>
-              <Link href={`mailto:${t('footer.contactEmail')}`} underline="hover" color="text.secondary" sx={{ fontSize: '0.92rem' }}>
-                {t('footer.contactLabel', { email: t('footer.contactEmail') })}
-              </Link>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
+      <PublicFooter />
     </Box>
   );
 }

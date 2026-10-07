@@ -6,9 +6,10 @@ import AgricultureIcon from '@mui/icons-material/Agriculture';
 
 interface TableRow {
   crop: string;
-  bed: string;
-  date: string;
-  quantity: string;
+  fieldBed: string;
+  plantingDate: string;
+  areaM2: string;
+  plantsCount: string;
   editing?: boolean;
 }
 
@@ -21,10 +22,19 @@ interface LinkedCard {
 interface EditableTableIllustrationProps {
   /** Accessible description for the whole illustration group. */
   ariaLabel: string;
-  columns: { crop: string; bed: string; date: string; quantity: string };
+  columns: { crop: string; fieldBed: string; plantingDate: string; areaM2: string; plantsCount: string };
   rows: TableRow[];
   linkedCaption: string;
   cards: { title: string; detail: string }[];
+}
+
+// Last two columns (area, plant count) are numeric and right-aligned.
+const RIGHT_ALIGNED_COLUMN_INDICES = new Set([3, 4]);
+// The planting-date column, highlighted on the row marked `editing`.
+const EDITABLE_COLUMN_INDEX = 2;
+
+function rowCells(row: TableRow): string[] {
+  return [row.crop, row.fieldBed, row.plantingDate, row.areaM2, row.plantsCount];
 }
 
 /**
@@ -46,6 +56,7 @@ export default function EditableTableIllustration({
     title: card.title,
     detail: card.detail,
   }));
+  const columnLabels = [columns.crop, columns.fieldBed, columns.plantingDate, columns.areaM2, columns.plantsCount];
 
   return (
     <Box role="img" aria-label={ariaLabel} sx={{ width: '100%' }}>
@@ -60,8 +71,8 @@ export default function EditableTableIllustration({
             bgcolor: 'background.paper',
           }}
         >
-          <Box sx={{ minWidth: 420, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            {[columns.crop, columns.bed, columns.date, columns.quantity].map((label) => (
+          <Box sx={{ minWidth: 560, display: 'grid', gridTemplateColumns: '1.3fr 1.3fr 1fr 0.7fr 0.8fr' }}>
+            {columnLabels.map((label, columnIndex) => (
               <Box
                 key={label}
                 sx={{
@@ -70,6 +81,7 @@ export default function EditableTableIllustration({
                   fontWeight: 600,
                   fontSize: '0.8rem',
                   color: 'text.secondary',
+                  textAlign: RIGHT_ALIGNED_COLUMN_INDICES.has(columnIndex) ? 'right' : 'left',
                   borderBottom: 2,
                   borderColor: 'divider',
                 }}
@@ -79,8 +91,8 @@ export default function EditableTableIllustration({
             ))}
             {rows.map((row) => (
               <Box key={row.crop} sx={{ display: 'contents' }}>
-                {[row.crop, row.bed, row.date, row.quantity].map((value, cellIndex) => {
-                  const isEditingCell = row.editing && cellIndex === 2;
+                {rowCells(row).map((value, cellIndex) => {
+                  const isEditingCell = row.editing && cellIndex === EDITABLE_COLUMN_INDEX;
                   return (
                     <Box
                       key={`${row.crop}-${cellIndex}`}
@@ -89,6 +101,7 @@ export default function EditableTableIllustration({
                         py: 1.2,
                         fontSize: '0.85rem',
                         position: 'relative',
+                        textAlign: RIGHT_ALIGNED_COLUMN_INDICES.has(cellIndex) ? 'right' : 'left',
                         bgcolor: isEditingCell ? 'surface.surfaceHoverBackground' : 'transparent',
                         border: isEditingCell ? 2 : 0,
                         borderBottom: isEditingCell ? 2 : 1,

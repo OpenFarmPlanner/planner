@@ -62,7 +62,8 @@
     "nav": {
       "features": "Features",
       "cropLibrary": "Crop library",
-      "openSource": "Open source"
+      "openSource": "Open source",
+      "about": "About OpenFarmPlanner"
     }
   },
   "features": {
@@ -75,23 +76,17 @@
       "validation": "Mistakes stand out right away, for example when a bed is overbooked"
     },
     "illustration": {
-      "ariaLabel": "Example planting-plan table with crop, bed, planting date, and quantity, below it three linked views, cultivation calendar, sowing, and yields, that recalculate automatically.",
-      "columns": {
-        "crop": "Crop (Variety)",
-        "bed": "Bed",
-        "date": "Planting date",
-        "quantity": "Plants (≈)"
-      },
+      "ariaLabel": "Example planting-plan table from the demo project with crop, field and bed, planting date, area, and plant count, below it three linked views, cultivation calendar, sowing, and yields, that recalculate automatically.",
       "rows": {
-        "lettuce": { "crop": "Lettuce", "bed": "P1 / B2", "date": "Apr 14", "quantity": "320" },
-        "beans": { "crop": "Bush bean", "bed": "P1 / B3", "date": "May 20", "quantity": "180" },
-        "cucumber": { "crop": "Cucumber", "bed": "Tunnel / B1", "date": "May 02", "quantity": "40" }
+        "lettuce": { "crop": "Lettuce (Lollo Bionda)", "field": "North Early Beds", "bed": "Lettuce 2" },
+        "tomato": { "crop": "Tomato (Ruthje)", "field": "South Polytunnel", "bed": "Tomato Row 1" },
+        "cucumber": { "crop": "Cucumber (Tanja)", "field": "South Polytunnel", "bed": "Cucumber Row" }
       },
       "linkedCaption": "Linked views recalculate automatically",
       "cards": {
-        "calendar": { "title": "Cultivation calendar", "detail": "Bed P1 / B3 from week 21" },
+        "calendar": { "title": "Cultivation calendar", "detail": "Cucumber Row from week 19" },
         "sowing": { "title": "Sowing", "detail": "Sowing date moves with it" },
-        "yield": { "title": "Yields", "detail": "Harvest moves to week 29" }
+        "yield": { "title": "Yields", "detail": "Harvest start moves with it" }
       }
     }
   },
@@ -164,7 +159,32 @@
   },
   "closing": {
     "title": "Try it out on a sample farm.",
-    "startDemo": "Start demo"
+    "startDemo": "Start demo",
+    "aboutLink": "More about OpenFarmPlanner and who is behind it"
+  },
+  "about": {
+    "eyebrow": "About OpenFarmPlanner",
+    "title": "How OpenFarmPlanner came to be",
+    "intro1": "A while ago, our farmer at <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> asked me to take a look at a piece of software for crop planning. Neither that one nor any of the many others I tried afterward won me over. I often had to read the manual first just to understand how something worked, and entering and changing data was tedious.",
+    "intro2": "As an electrical engineer and computer science student, I started building my own in December 2025 because of that. OpenFarmPlanner is built around tables you can edit like a spreadsheet, and an interface you can understand without a manual.",
+    "photoCaption": "A relaxed afternoon sowing beans at GeLaWi Zwiebelzopf.",
+    "photoAlt": "Martin lies laughing in a field sowing beans, with a polytunnel and mountains in the background",
+    "openSection": {
+      "title": "Open and collaborative",
+      "text": "OpenFarmPlanner is open source. That way it does not depend on a single company, anyone can see how it works, and anyone can help build it."
+    },
+    "freeSection": {
+      "title": "Free to use, funded by donations",
+      "text": "OpenFarmPlanner is free to use. Development and hosting are meant to be funded by voluntary donations. A way to donate is coming soon."
+    },
+    "contributeSection": {
+      "title": "Get involved",
+      "text": "The easiest way to contribute is by sharing your crop data in the crop library. Every shared crop saves other farms the research and makes the library better. Feedback, ideas, or help with development are always welcome:"
+    },
+    "closing": {
+      "name": "Martin Stipsitz, Villach",
+      "zwiebelzopfLink": "Visit GeLaWi Zwiebelzopf"
+    }
   },
   "footer": {
     "imprint": "Imprint",
@@ -411,6 +431,7 @@
   "seo": {
     "titles": {
       "landing": "OpenFarmPlanner – planting planning for vegetable growing",
+      "about": "About OpenFarmPlanner",
       "demo": "Try the demo – OpenFarmPlanner",
       "imprint": "Imprint – OpenFarmPlanner",
       "privacy": "Privacy policy – OpenFarmPlanner",

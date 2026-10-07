@@ -111,6 +111,13 @@ export interface PublicRoute {
 export const PUBLIC_INDEXABLE_ROUTES: readonly PublicRoute[] = [
   { path: '/', changefreq: 'weekly', priority: 1.0 },
   {
+    path: '/ueber',
+    changefreq: 'monthly',
+    priority: 0.5,
+    title: 'Über OpenFarmPlanner',
+    description: 'Wie und warum OpenFarmPlanner entstanden ist: der Open-Source-Ansatz, die Finanzierung über Spenden, und wie du mitmachen kannst.',
+  },
+  {
     path: '/impressum',
     changefreq: 'yearly',
     priority: 0.3,

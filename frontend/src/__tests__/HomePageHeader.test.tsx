@@ -28,6 +28,10 @@ describe('HomePage topbar', () => {
     expect(within(header).getByRole('link', { name: 'Kulturbibliothek' })).toBeInTheDocument();
     expect(within(header).getByRole('link', { name: 'Open Source' })).toBeInTheDocument();
 
+    const aboutLink = within(header).getByRole('link', { name: 'Über OpenFarmPlanner' });
+    expect(aboutLink).toBeInTheDocument();
+    expect(aboutLink).not.toHaveAttribute('aria-current');
+
     expect(within(header).getByRole('button', { name: /Sprache/ })).toBeInTheDocument();
     expect(within(header).getByRole('link', { name: 'Anmelden' })).toBeInTheDocument();
   });
@@ -45,5 +49,15 @@ describe('HomePage topbar', () => {
     expect(within(menu).getByRole('menuitem', { name: 'Funktionen' })).toBeInTheDocument();
     expect(within(menu).getByRole('menuitem', { name: 'Kulturbibliothek' })).toBeInTheDocument();
     expect(within(menu).getByRole('menuitem', { name: 'Open Source' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Über OpenFarmPlanner' })).toBeInTheDocument();
+  });
+});
+
+describe('HomePage closing section', () => {
+  it('links to the about page below the demo call-to-action', () => {
+    renderHomePage();
+
+    const link = screen.getByRole('link', { name: 'Mehr über OpenFarmPlanner und wer dahintersteht' });
+    expect(link).toHaveAttribute('href', '/ueber');
   });
 });
