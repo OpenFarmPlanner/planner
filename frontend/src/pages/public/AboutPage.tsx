@@ -72,10 +72,30 @@ export default function AboutPage() {
             </Typography>
           </Stack>
 
-          {/* Floated so the intro paragraphs wrap around the photo on wider
-              screens, like a magazine layout; stacks above the text on
-              narrow screens instead. The clearfix Box below ends the float
-              before the full-width sections that follow. */}
+          <Typography sx={{ lineHeight: 1.75, mb: 2 }}>
+            <Trans
+              t={t}
+              i18nKey="about.intro1"
+              components={{
+                zwiebelzopf: ZWIEBELZOPF_URL ? (
+                  <Link
+                    href={ZWIEBELZOPF_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    color="primary"
+                  />
+                ) : (
+                  <span />
+                ),
+              }}
+            />
+          </Typography>
+
+          {/* Floated so the following paragraph wraps around the photo on
+              wider screens, like a magazine layout, instead of opening the
+              page with it; stacks between the paragraphs on narrow screens.
+              The clearfix Box below ends the float before the full-width
+              sections that follow. */}
           <Box
             component="figure"
             sx={{
@@ -111,24 +131,6 @@ export default function AboutPage() {
             </Typography>
           </Box>
 
-          <Typography sx={{ lineHeight: 1.75, mb: 2 }}>
-            <Trans
-              t={t}
-              i18nKey="about.intro1"
-              components={{
-                zwiebelzopf: ZWIEBELZOPF_URL ? (
-                  <Link
-                    href={ZWIEBELZOPF_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    color="primary"
-                  />
-                ) : (
-                  <span />
-                ),
-              }}
-            />
-          </Typography>
           <Typography sx={{ lineHeight: 1.75 }}>{t('about.intro2')}</Typography>
 
           <Box sx={{ clear: 'both' }} />
