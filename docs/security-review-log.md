@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-07 — Claude — Automated security review of PR #764 (landing page and /ueber about page)
+
+**Scope:** `git diff origin/main...HEAD` (public HomePage/AboutPage, PublicTopbar/Footer, SEO config, `AuthContext` probe-skip list, e2e/docs).
+
+**Findings:** No issues. The change is frontend-only: no backend, workflow or dependency changes. External links use constant or i18n-sourced hrefs with `rel="noopener noreferrer"`, there is no `dangerouslySetInnerHTML`, and adding `/ueber` to the public no-auth-probe list only skips an unauthenticated session check on a static page; the backend still enforces auth and project scoping.
+
 ## 2026-10-06 — Claude — Automated security review of PR #762 (guest-demo cross-tab project wipe)
 
 **Scope:** `git diff origin/main...HEAD` (`AuthContext.tsx` `clearAuthenticatedUser`, test).
