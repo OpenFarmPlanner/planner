@@ -163,17 +163,18 @@ test.describe('public page prerendering', () => {
     const page = await context.newPage();
     await page.goto('/');
 
-    await expect(page.locator('h1').first()).toHaveText('OpenFarmPlanner');
+    await expect(page.locator('h1').first()).toHaveText('Open-Source-Anbauplaner für den Gemüsebau.');
+    await expect(page.getByRole('banner').getByText('OpenFarmPlanner')).toBeVisible();
     const logo = page.locator('img[src="/favicon.png"]').first();
     await expect(logo).toBeVisible();
-    await expect(logo).toHaveCSS('width', '48px');
+    await expect(logo).toHaveCSS('width', '32px');
     await expect(page.getByRole('link', { name: 'Registrieren' })).toHaveCSS('background-color', 'rgb(37, 111, 42)');
     await context.close();
   });
 
   test('the SPA takes over normally after loading a prerendered page (client nav still works)', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1').first()).toHaveText('OpenFarmPlanner');
+    await expect(page.locator('h1').first()).toHaveText('Open-Source-Anbauplaner für den Gemüsebau.');
     // Client-side nav from the prerendered landing page to another public
     // page should work exactly as on any other SPA route — proves the
     // bundle boots fine on top of the prerendered markup (no interactivity
