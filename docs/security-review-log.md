@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-06 — Claude — Automated security review of PR #762 (guest-demo cross-tab project wipe)
+
+**Scope:** `git diff origin/main...HEAD` (`AuthContext.tsx` `clearAuthenticatedUser`, test).
+
+**Findings:** No issues. The change only skips clearing the shared `activeProjectId` key when a stale guest-demo tab drops its own view; the stale tab's session cleanup still runs, and the backend still enforces project scoping on every request via the session and `X-Project-Id`. No new data flows, secrets, or unsafe APIs.
+
 ## 2026-10-06 — Claude — Automated security review of PR #760 (X-Project-Id 400 retry)
 
 **Scope:** `git diff origin/main...HEAD` (`httpClient.ts` response interceptor, `isMissingProjectHeaderError`, tests).

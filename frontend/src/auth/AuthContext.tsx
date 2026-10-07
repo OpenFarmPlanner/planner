@@ -102,11 +102,20 @@ export function AuthProvider({
     return authGenerationRef.current;
   }, []);
 
-  const clearAuthenticatedUser = useCallback((): void => {
+  const clearAuthenticatedUser = useCallback((options: { preserveSharedProjectId?: boolean } = {}): void => {
     lastAuthenticatedAtRef.current = 0;
     setUser(null);
     setActiveProjectId(null);
-    clearStoredProjectId();
+    // `activeProjectId` is shared `localStorage`, read fresh per request by
+    // httpClient (see httpClient.ts) — every open tab for this origin reads
+    // and writes the same key. Clearing it is correct for an actual logout
+    // (ending the browser's session) or a server-rejected session, but the
+    // stale-guest-session guard below only means *this* tab's own identity
+    // is stale; wiping the shared key would also break any other, perfectly
+    // valid tab's in-flight and future requests.
+    if (!options.preserveSharedProjectId) {
+      clearStoredProjectId();
+    }
     clearGuestDemoSession();
   }, []);
 
@@ -140,7 +149,11 @@ export function AuthProvider({
         // stale tab reloaded after another tab started a fresh demo). Only drop
         // this tab's own view of it; a real server-side logout would end the
         // *shared* session and sign the other, perfectly valid tab out too.
-        clearAuthenticatedUser();
+        // `preserveSharedProjectId` keeps that other tab's `activeProjectId`
+        // intact — without it, this stale tab's own background refresh (e.g.
+        // on window focus) would wipe the shared key and break that other
+        // tab's requests too, even though its session is perfectly valid.
+        clearAuthenticatedUser({ preserveSharedProjectId: true });
         return null;
       }
       applyAuthenticatedUser(me);
