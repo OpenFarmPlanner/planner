@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (illustrations, about-page layout)
+
+**Scope:** `git diff 3e261a6a..HEAD` (i18n strings, AboutPage/HomePage layout, SVG illustrations).
+
+**Findings:** No issues. Presentational changes only; the one external link uses a constant href, and there are no unsafe HTML APIs or new data flows. The previous entry for this PR still holds (unchanged scope).
+
 ## 2026-10-07 — Claude — Automated security review of PR #764 (landing page and /ueber about page)
 
 **Scope:** `git diff origin/main...HEAD` (public HomePage/AboutPage, PublicTopbar/Footer, SEO config, `AuthContext` probe-skip list, e2e/docs).
