@@ -49,4 +49,11 @@ describe('AboutPage', () => {
     const mailLink = screen.getByRole('link', { name: 'info@openfarmplanner.org' });
     expect(mailLink).toHaveAttribute('href', 'mailto:info@openfarmplanner.org');
   });
+
+  it('renders no external link with an empty href while the farm URL is unset', () => {
+    renderAboutPage();
+
+    const emptyHrefLinks = screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '');
+    expect(emptyHrefLinks).toHaveLength(0);
+  });
 });

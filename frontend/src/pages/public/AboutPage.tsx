@@ -7,7 +7,8 @@ import PublicFooter from '../../components/layout/PublicFooter';
 import { publicAssetUrl } from '../../utils/publicAssetUrl';
 
 // TODO: fill in once provided - the real-world farm this links to, not
-// something this repository can guess at.
+// something this repository can guess at. While empty, no link is rendered
+// (an empty href would reload the current page in a new tab).
 const ZWIEBELZOPF_URL = '';
 
 interface TextSectionProps {
@@ -90,13 +91,15 @@ export default function AboutPage() {
                   t={t}
                   i18nKey="about.intro1"
                   components={{
-                    zwiebelzopf: (
+                    zwiebelzopf: ZWIEBELZOPF_URL ? (
                       <Link
                         href={ZWIEBELZOPF_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         color="primary"
                       />
+                    ) : (
+                      <span />
                     ),
                   }}
                 />
@@ -126,15 +129,17 @@ export default function AboutPage() {
                 sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
               >
                 <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
-                <Link
-                  href={ZWIEBELZOPF_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  {t('about.closing.zwiebelzopfLink')}
-                  <OpenInNewIcon fontSize="inherit" />
-                </Link>
+                {ZWIEBELZOPF_URL && (
+                  <Link
+                    href={ZWIEBELZOPF_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    {t('about.closing.zwiebelzopfLink')}
+                    <OpenInNewIcon fontSize="inherit" />
+                  </Link>
+                )}
               </Stack>
             </Stack>
 
