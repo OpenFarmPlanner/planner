@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commit (about-page closing card)
+
+**Scope:** `git diff 68ee993b..HEAD` (AboutPage layout, i18n strings, photo asset, test).
+
+**Findings:** No issues. Presentational change only; the external link uses a constant href with `rel="noopener noreferrer"`, the mailto link comes from an i18n constant, and there are no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
 ## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (illustrations, about-page layout)
 
 **Scope:** `git diff 3e261a6a..HEAD` (i18n strings, AboutPage/HomePage layout, SVG illustrations).
