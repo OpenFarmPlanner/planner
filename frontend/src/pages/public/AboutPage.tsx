@@ -53,131 +53,123 @@ export default function AboutPage() {
       />
 
       <Box component="main" sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ width: '100%', py: { xs: 5, md: 8 } }}>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.4fr) minmax(0, 1fr)' },
-              gap: { xs: 4, md: 6 },
-              alignItems: 'start',
-            }}
-          >
-            <Stack
-              spacing={3}
+        <Container maxWidth="md" sx={{ width: '100%', py: { xs: 5, md: 8 } }}>
+          <Stack spacing={1.5} sx={{ mb: 3 }}>
+            <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+              {t('about.eyebrow')}
+            </Typography>
+            <Typography
+              variant="h3"
+              component="h1"
               sx={{
-                order: { xs: 2, md: 1 },
+                fontWeight: 600,
+                lineHeight: 1.2,
+                fontSize: { xs: '2.1rem', sm: '2.5rem', md: '3rem' },
+                overflowWrap: 'anywhere',
               }}
             >
-              <Stack spacing={1.5}>
-                <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
-                  {t('about.eyebrow')}
-                </Typography>
-                <Typography
-                  variant="h3"
-                  component="h1"
-                  sx={{
-                    fontWeight: 600,
-                    lineHeight: 1.2,
-                    fontSize: { xs: '2.1rem', sm: '2.5rem', md: '3rem' },
-                    overflowWrap: 'anywhere',
-                  }}
-                >
-                  {t('about.title')}
-                </Typography>
-              </Stack>
+              {t('about.title')}
+            </Typography>
+          </Stack>
 
-              <Typography sx={{ lineHeight: 1.75 }}>
-                <Trans
-                  t={t}
-                  i18nKey="about.intro1"
-                  components={{
-                    zwiebelzopf: ZWIEBELZOPF_URL ? (
-                      <Link
-                        href={ZWIEBELZOPF_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        color="primary"
-                      />
-                    ) : (
-                      <span />
-                    ),
-                  }}
-                />
-              </Typography>
-              <Typography sx={{ lineHeight: 1.75 }}>{t('about.intro2')}</Typography>
+          {/* Floated so the intro paragraphs wrap around the photo on wider
+              screens, like a magazine layout; stacks above the text on
+              narrow screens instead. The clearfix Box below ends the float
+              before the full-width sections that follow. */}
+          <Box
+            component="figure"
+            sx={{
+              m: 0,
+              mb: 3,
+              float: { xs: 'none', md: 'right' },
+              width: { xs: '100%', md: 380 },
+              ml: { md: 4 },
+            }}
+          >
+            <Box
+              component="img"
+              src={publicAssetUrl('/landing/about-martin.webp')}
+              alt={t('about.photoAlt')}
+              loading="eager"
+              sx={{
+                display: 'block',
+                width: '100%',
+                height: 'auto',
+                aspectRatio: '4 / 3',
+                objectFit: 'cover',
+                borderRadius: 3,
+                boxShadow: 6,
+              }}
+            />
+            <Typography
+              component="figcaption"
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, textAlign: 'center' }}
+            >
+              {t('about.photoCaption')}
+            </Typography>
+          </Box>
 
-              <TextSection title={t('about.openSection.title')} text={t('about.openSection.text')} />
-              <TextSection title={t('about.freeSection.title')} text={t('about.freeSection.text')} />
-
-              <Stack spacing={1} component="section">
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
-                  {t('about.contributeSection.title')}
-                </Typography>
-                <Typography sx={{ lineHeight: 1.75 }}>
-                  {t('about.contributeSection.text')}{' '}
-                  <Link href={`mailto:${t('footer.contactEmail')}`} color="primary">
-                    {t('footer.contactEmail')}
-                  </Link>
-                </Typography>
-              </Stack>
-
-              <Divider sx={{ my: 1 }} />
-
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={{ xs: 1, sm: 2 }}
-                sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
-              >
-                <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
-                {ZWIEBELZOPF_URL && (
+          <Typography sx={{ lineHeight: 1.75, mb: 2 }}>
+            <Trans
+              t={t}
+              i18nKey="about.intro1"
+              components={{
+                zwiebelzopf: ZWIEBELZOPF_URL ? (
                   <Link
                     href={ZWIEBELZOPF_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                  >
-                    {t('about.closing.zwiebelzopfLink')}
-                    <OpenInNewIcon fontSize="inherit" />
-                  </Link>
-                )}
-              </Stack>
+                    color="primary"
+                  />
+                ) : (
+                  <span />
+                ),
+              }}
+            />
+          </Typography>
+          <Typography sx={{ lineHeight: 1.75 }}>{t('about.intro2')}</Typography>
+
+          <Box sx={{ clear: 'both' }} />
+
+          <Stack spacing={3} sx={{ mt: { xs: 3, md: 4 } }}>
+            <TextSection title={t('about.openSection.title')} text={t('about.openSection.text')} />
+            <TextSection title={t('about.freeSection.title')} text={t('about.freeSection.text')} />
+
+            <Stack spacing={1} component="section">
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
+                {t('about.contributeSection.title')}
+              </Typography>
+              <Typography sx={{ lineHeight: 1.75 }}>
+                {t('about.contributeSection.text')}{' '}
+                <Link href={`mailto:${t('footer.contactEmail')}`} color="primary">
+                  {t('footer.contactEmail')}
+                </Link>
+              </Typography>
             </Stack>
 
-            <Box
-              component="figure"
-              sx={{
-                order: { xs: 1, md: 2 },
-                m: 0,
-                width: '100%',
-                maxWidth: { md: 480 },
-                justifySelf: { md: 'end' },
-              }}
+            <Divider sx={{ my: 1 }} />
+
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={{ xs: 1, sm: 2 }}
+              sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
             >
-              <Box
-                component="img"
-                src={publicAssetUrl('/landing/about-martin.webp')}
-                alt={t('about.photoAlt')}
-                loading="eager"
-                sx={{
-                  display: 'block',
-                  width: '100%',
-                  height: 'auto',
-                  aspectRatio: '4 / 3',
-                  objectFit: 'cover',
-                  borderRadius: 3,
-                  boxShadow: 6,
-                }}
-              />
-              <Typography
-                component="figcaption"
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1, textAlign: 'center' }}
-              >
-                {t('about.photoCaption')}
-              </Typography>
-            </Box>
-          </Box>
+              <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
+              {ZWIEBELZOPF_URL && (
+                <Link
+                  href={ZWIEBELZOPF_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                >
+                  {t('about.closing.zwiebelzopfLink')}
+                  <OpenInNewIcon fontSize="inherit" />
+                </Link>
+              )}
+            </Stack>
+          </Stack>
         </Container>
       </Box>
 
