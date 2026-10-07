@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (Zwiebelzopf link)
+
+**Scope:** `git diff b36f90a6..HEAD` (AboutPage link to zwiebelzopf.at, i18n, test).
+
+**Findings:** No issues. The link uses a constant https href with `target="_blank"` and `rel="noopener noreferrer"`; no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
 ## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commit (about-page closing card)
 
 **Scope:** `git diff 68ee993b..HEAD` (AboutPage layout, i18n strings, photo asset, test).
