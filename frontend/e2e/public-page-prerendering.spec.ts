@@ -164,7 +164,7 @@ test.describe('public page prerendering', () => {
     await page.goto('/');
 
     await expect(page.locator('h1').first()).toHaveText('Open-Source-Anbauplaner für den Gemüsebau.');
-    await expect(page.getByRole('banner').getByText('OpenFarmPlanner')).toBeVisible();
+    await expect(page.getByRole('banner').getByText('OpenFarmPlanner', { exact: true })).toBeVisible();
     const logo = page.locator('img[src="/favicon.png"]').first();
     await expect(logo).toBeVisible();
     await expect(logo).toHaveCSS('width', '32px');
