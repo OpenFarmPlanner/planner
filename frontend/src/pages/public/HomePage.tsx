@@ -228,7 +228,12 @@ export default function HomePage() {
       }
       return;
     }
-    const id = decodeURIComponent(location.hash.slice(1));
+    let id = location.hash.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      // A malformed percent-encoding in a hand-typed URL must not crash the page.
+    }
     document.getElementById(id)?.scrollIntoView({ behavior: 'auto', block: 'start' });
   }, [location.hash, navigationType]);
 
