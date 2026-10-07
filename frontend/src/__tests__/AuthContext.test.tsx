@@ -186,6 +186,15 @@ describe('AuthProvider cross-tab project sync', () => {
     expect(getMeMock).not.toHaveBeenCalled();
   });
 
+  it('does not probe the auth session on the public about page', async () => {
+    window.history.pushState({}, '', '/ueber');
+
+    render(<AuthProvider><LoadingProbe /></AuthProvider>);
+
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+    expect(getMeMock).not.toHaveBeenCalled();
+  });
+
   it('clears stale auth state when the shared API client reports an expired session', async () => {
     render(<AuthProvider><ActiveProjectProbe /></AuthProvider>);
     await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));

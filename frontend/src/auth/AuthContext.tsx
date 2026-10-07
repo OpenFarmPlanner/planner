@@ -26,6 +26,7 @@ import { AuthContext, type AuthContextValue } from "./authContextShared";
 const GUEST_DEMO_SESSION_KEY = 'guestDemoSessionId';
 const PUBLIC_PATHS_WITHOUT_AUTH_PROBE = new Set([
   '/',
+  '/ueber',
   '/impressum',
   '/datenschutz',
   '/nutzungsbedingungen',
