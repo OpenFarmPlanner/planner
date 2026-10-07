@@ -168,6 +168,14 @@ function OpenSourceBoxItem({ title, description, href }: OpenSourceBox) {
     display: 'block',
     textDecoration: 'none',
     color: 'inherit',
+    // The theme's global CssBaseline `a:visited` rule (element + pseudo-class)
+    // outranks this component's own class for specificity, so a previously
+    // visited link would otherwise render in the dark primary colour instead
+    // of the inherited white - invisible against this section's dark-green
+    // background.
+    '&:visited': {
+      color: 'inherit',
+    },
   };
 
   if (href) {
