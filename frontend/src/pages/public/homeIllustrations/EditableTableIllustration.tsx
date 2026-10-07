@@ -88,12 +88,11 @@ export default function EditableTableIllustration({
                         px: 1.5,
                         py: 1.2,
                         fontSize: '0.85rem',
-                        borderBottom: 1,
-                        borderColor: 'divider',
                         position: 'relative',
                         bgcolor: isEditingCell ? 'surface.surfaceHoverBackground' : 'transparent',
                         border: isEditingCell ? 2 : 0,
-                        borderColor: isEditingCell ? 'primary.main' : 'transparent',
+                        borderBottom: isEditingCell ? 2 : 1,
+                        borderColor: isEditingCell ? 'primary.main' : 'divider',
                         boxSizing: 'border-box',
                       }}
                     >
