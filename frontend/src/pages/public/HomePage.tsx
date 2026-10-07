@@ -19,9 +19,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router';
+import { Link as RouterLink, useLocation, useNavigationType } from 'react-router';
 import { useTranslation } from '../../i18n';
 import LegalLinks from '../../components/legal/LegalLinks';
 import { API_DOCS_URL } from '../../api/apiDocsUrl';
@@ -213,17 +213,26 @@ export default function HomePage() {
     };
   }, []);
 
+  const navigationType = useNavigationType();
+  const isFirstHashEffect = useRef(true);
+
   useEffect(() => {
-    if (!location.hash) {
+    // Scroll on arrival (deep link) and on browser back/forward between
+    // anchors; in-page anchor clicks (PUSH) scroll themselves.
+    const isArrival = isFirstHashEffect.current;
+    isFirstHashEffect.current = false;
+    if (!isArrival && navigationType !== 'POP') {
       return;
     }
-    const id = location.hash.slice(1);
-    const target = document.getElementById(id);
-    target?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    // Only on mount / when arriving with a hash already set (e.g. a deep
-    // link from another route) - in-page anchor clicks scroll themselves.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!location.hash) {
+      if (!isArrival) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+      return;
+    }
+    const id = decodeURIComponent(location.hash.slice(1));
+    document.getElementById(id)?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [location.hash, navigationType]);
 
   const githubUrl = t('github.url');
 
