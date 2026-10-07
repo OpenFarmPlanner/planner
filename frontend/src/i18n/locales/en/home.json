@@ -169,8 +169,8 @@
     "title": "How OpenFarmPlanner came to be",
     "intro1": "A while ago, our farmer at <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> asked me to take a look at a piece of software for crop planning. Neither that one nor any of the many others I tried afterward won me over. I often had to read the manual first just to understand how something worked, and entering and changing data was tedious.",
     "intro2": "As an electrical engineer and computer science student, I started building my own in December 2025 because of that. OpenFarmPlanner is built around tables you can edit like a spreadsheet, and an interface you can understand without a manual.",
-    "photoCaption": "A relaxed afternoon sowing beans at GeLaWi Zwiebelzopf.",
-    "photoAlt": "Martin lies laughing in a field sowing beans, with a polytunnel and mountains in the background",
+    "photoCaption": "A relaxed afternoon sowing beans at <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf>.",
+    "photoAlt": "Martin lies laughing in a field sowing beans",
     "openSection": {
       "title": "Open and collaborative",
       "text": "OpenFarmPlanner is open source. That way it does not depend on a single company, anyone can see how it works, and anyone can help build it."
@@ -184,8 +184,7 @@
       "text": "The easiest way to contribute is by sharing your crop data in the crop library. Every shared crop saves other farms the research and makes the library better. Feedback, ideas, or help with development are always welcome:"
     },
     "closing": {
-      "name": "Martin Stipsitz, Villach",
-      "zwiebelzopfLink": "Visit GeLaWi Zwiebelzopf"
+      "name": "Martin Stipsitz, Villach"
     }
   },
   "footer": {
