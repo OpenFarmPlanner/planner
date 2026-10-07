@@ -1,154 +1,206 @@
-import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import { Box, Chip, Stack, Typography } from '@mui/material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
-import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import GrassIcon from '@mui/icons-material/Grass';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import type { SxProps, Theme } from '@mui/material/styles';
 
-interface CropLibraryIllustrationEntry {
-  name: string;
-  detail: string;
+type ArrowDirection = 'up' | 'down';
+type ArrowColor = 'primary' | 'info';
+
+interface FlowArrowSpec {
+  direction: ArrowDirection;
+  dashed: boolean;
+  color: ArrowColor;
+  label: string;
 }
 
 interface CropLibraryIllustrationProps {
   /** Accessible description for the whole illustration group. */
   ariaLabel: string;
-  headerLabel: string;
-  importLabel: string;
-  upToDateLabel: string;
-  publishLabel: string;
-  entries: {
-    import: CropLibraryIllustrationEntry;
-    upToDate: CropLibraryIllustrationEntry;
-    publish: CropLibraryIllustrationEntry;
+  libraryTitle: string;
+  librarySubtitle: string;
+  arrows: {
+    share: string;
+    shareUpdate: string;
+    import: string;
+    pullUpdate: string;
   };
+  yourCropsTitle: string;
+  cropChips: string[];
 }
 
-interface EntryCardProps {
-  entry: CropLibraryIllustrationEntry;
-  dashed?: boolean;
-  action: React.ReactNode;
-}
+const ARROW_LINE_HEIGHT = 32;
 
-function EntryCard({ entry, dashed, action }: EntryCardProps) {
+function FlowArrow({ direction, dashed, color, label }: FlowArrowSpec) {
+  const Icon = direction === 'up' ? KeyboardArrowUpIcon : KeyboardArrowDownIcon;
+  const lineColor = `${color}.main` as const;
+  const labelColor = `${color}.dark` as const;
+
   return (
-    <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      spacing={1}
-      sx={{
-        alignItems: { xs: 'flex-start', sm: 'center' },
-        justifyContent: 'space-between',
-        p: 1.5,
-        borderRadius: 2,
-        bgcolor: 'background.paper',
-        border: dashed ? 2 : 1,
-        borderStyle: dashed ? 'dashed' : 'solid',
-        borderColor: dashed ? 'primary.light' : 'divider',
-      }}
-    >
-      <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 600 }}>{entry.name}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {entry.detail}
-        </Typography>
-      </Stack>
-      <Box sx={{ flexShrink: 0 }}>{action}</Box>
+    <Stack spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+      {direction === 'up' ? <Icon sx={{ color: lineColor }} /> : null}
+      <Box
+        sx={{
+          width: 0,
+          height: ARROW_LINE_HEIGHT,
+          borderLeft: 2,
+          borderStyle: dashed ? 'dashed' : 'solid',
+          borderColor: lineColor,
+        }}
+      />
+      {direction === 'down' ? <Icon sx={{ color: lineColor }} /> : null}
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          lineHeight: 1.2,
+          textAlign: 'center',
+          color: labelColor,
+        }}
+      >
+        {label}
+      </Typography>
     </Stack>
   );
 }
 
 /**
- * Drawn illustration (not a screenshot) of the crop library: three example
- * library entries rendered with the same MUI controls, variants, colours and
- * icons as the real crop-library import button and `CropLibraryActionButton`
- * states, but inert (not focusable, not clickable) since this is purely
- * decorative content.
+ * Drawn illustration (not a screenshot) of how crop data flows both ways
+ * between a project and the shared crop library: sharing a crop or an
+ * improvement up, importing a crop or pulling an update down. Purely
+ * decorative and inert.
  */
 export default function CropLibraryIllustration({
   ariaLabel,
-  headerLabel,
-  importLabel,
-  upToDateLabel,
-  publishLabel,
-  entries,
+  libraryTitle,
+  librarySubtitle,
+  arrows,
+  yourCropsTitle,
+  cropChips,
 }: CropLibraryIllustrationProps) {
+  const arrowSpecs: FlowArrowSpec[] = [
+    { direction: 'up', dashed: false, color: 'primary', label: arrows.share },
+    { direction: 'up', dashed: true, color: 'primary', label: arrows.shareUpdate },
+    { direction: 'down', dashed: false, color: 'info', label: arrows.import },
+    { direction: 'down', dashed: true, color: 'info', label: arrows.pullUpdate },
+  ];
+
+  const libraryCardSx: SxProps<Theme> = {
+    position: 'relative',
+    p: 2,
+    borderRadius: 2,
+    bgcolor: 'background.paper',
+    border: 2,
+    borderColor: 'primary.main',
+  };
+
   return (
     <Box role="img" aria-label={ariaLabel} sx={{ width: '100%' }}>
       <Stack
         aria-hidden
-        spacing={2}
+        spacing={2.5}
         sx={{
           width: '100%',
-          maxWidth: 480,
+          maxWidth: 500,
           mx: 'auto',
           p: 2.5,
           borderRadius: 4,
           bgcolor: 'surface.surfaceHoverBackground',
         }}
       >
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+        <Box sx={{ position: 'relative' }}>
+          {/* Two slightly offset light-green layers peeking out behind the card, to read as a stack of many library entries. */}
           <Box
             sx={{
-              width: 32,
-              height: 32,
-              borderRadius: 1,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              width: '100%',
+              height: '100%',
+              borderRadius: 2,
+              bgcolor: 'surface.surfaceHoverBackground',
+              border: 1,
+              borderColor: 'primary.light',
             }}
-          >
-            <MenuBookIcon fontSize="small" />
-          </Box>
-          <Typography sx={{ fontWeight: 700 }}>{headerLabel}</Typography>
-        </Stack>
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 5,
+              left: 5,
+              width: '100%',
+              height: '100%',
+              borderRadius: 2,
+              bgcolor: 'surface.surfaceHoverBackground',
+              border: 1,
+              borderColor: 'primary.light',
+            }}
+          />
+          <Stack direction="row" spacing={1.5} sx={libraryCardSx}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <MenuBookIcon />
+            </Box>
+            <Stack spacing={0}>
+              <Typography sx={{ fontWeight: 700 }}>{libraryTitle}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {librarySubtitle}
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
 
-        <Stack spacing={1.25}>
-          <EntryCard
-            entry={entries.import}
-            action={
-              <Button
-                variant="contained"
-                size="small"
-                tabIndex={-1}
-                startIcon={<DownloadOutlinedIcon fontSize="small" />}
-                sx={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
-              >
-                {importLabel}
-              </Button>
-            }
-          />
-          <EntryCard
-            entry={entries.upToDate}
-            action={
-              <Chip
-                size="small"
-                variant="outlined"
-                color="info"
-                icon={<SyncOutlinedIcon fontSize="small" />}
-                label={upToDateLabel}
-                tabIndex={-1}
-                sx={{ pointerEvents: 'none' }}
-              />
-            }
-          />
-          <EntryCard
-            entry={entries.publish}
-            dashed
-            action={
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                tabIndex={-1}
-                startIcon={<ArrowUpwardIcon fontSize="small" />}
-                sx={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
-              >
-                {publishLabel}
-              </Button>
-            }
-          />
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+          {arrowSpecs.map((arrow) => (
+            <FlowArrow key={arrow.label} {...arrow} />
+          ))}
+        </Box>
+
+        <Stack
+          spacing={1.25}
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: 1,
+                bgcolor: 'surface.surfaceHoverBackground',
+                color: 'primary.main',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <GrassIcon fontSize="small" />
+            </Box>
+            <Typography sx={{ fontWeight: 700 }}>{yourCropsTitle}</Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            {cropChips.map((chip) => (
+              <Chip key={chip} label={chip} size="small" variant="outlined" />
+            ))}
+          </Stack>
         </Stack>
       </Stack>
     </Box>

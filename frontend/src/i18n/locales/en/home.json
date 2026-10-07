@@ -95,13 +95,16 @@
     "title": "Crop data that grows with the community.",
     "description": "Take spacing, cultivation duration, and yield values from the open library instead of starting from zero. What you add from your own experience, you can share with one click. That makes the library better with every farm.",
     "illustration": {
-      "ariaLabel": "Example crop library with three entries: lettuce ready to import, parsnip already up to date with the library, and pickling cucumber with your own experience values to share.",
-      "headerLabel": "Crop library",
-      "entries": {
-        "import": { "name": "Lettuce", "detail": "Spacing 25 x 25 cm, 8 weeks" },
-        "upToDate": { "name": "Parsnip", "detail": "Row spacing 35 cm, 24 weeks" },
-        "publish": { "name": "Pickling cucumber", "detail": "Your own experience values" }
-      }
+      "ariaLabel": "Diagram showing crop data flowing both ways between a project and the crop library: sharing a crop, sharing an improvement, importing a crop, and pulling an update.",
+      "libraryTitle": "Crop library",
+      "librarySubtitle": "Maintained together by many farms",
+      "arrows": {
+        "share": "Share a crop",
+        "shareUpdate": "Share an improvement",
+        "import": "Import a crop",
+        "pullUpdate": "Pull an update"
+      },
+      "yourCropsTitle": "Your crops"
     }
   },
   "seasonFeatures": {

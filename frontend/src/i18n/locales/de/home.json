@@ -95,13 +95,16 @@
     "title": "Kulturdaten, die mit der Community wachsen.",
     "description": "Übernimm Abstände, Kulturdauer und Ertragswerte aus der offenen Bibliothek, statt bei null anzufangen. Was du an eigenen Erfahrungen ergänzt, kannst du mit einem Klick teilen. So wird die Bibliothek mit jedem Betrieb besser.",
     "illustration": {
-      "ariaLabel": "Beispielhafte Kulturbibliothek mit drei Einträgen: Kopfsalat zum Importieren, Pastinake aktuell mit der Bibliothek verknüpft und Einlegegurke mit eigenen Erfahrungswerten zum Teilen.",
-      "headerLabel": "Kulturbibliothek",
-      "entries": {
-        "import": { "name": "Kopfsalat", "detail": "Abstand 25 x 25 cm, 8 Wochen" },
-        "upToDate": { "name": "Pastinake", "detail": "Reihenabstand 35 cm, 24 Wochen" },
-        "publish": { "name": "Einlegegurke", "detail": "Deine Erfahrungswerte" }
-      }
+      "ariaLabel": "Schema, das zeigt, wie Kulturdaten in beide Richtungen zwischen dem eigenen Projekt und der Kulturbibliothek fließen: Kultur teilen, Verbesserung teilen, Kultur importieren und Aktualisierung übernehmen.",
+      "libraryTitle": "Kulturbibliothek",
+      "librarySubtitle": "Gemeinsam gepflegt von vielen Betrieben",
+      "arrows": {
+        "share": "Kultur teilen",
+        "shareUpdate": "Verbesserung teilen",
+        "import": "Kultur importieren",
+        "pullUpdate": "Aktualisierung übernehmen"
+      },
+      "yourCropsTitle": "Deine Kulturen"
     }
   },
   "seasonFeatures": {

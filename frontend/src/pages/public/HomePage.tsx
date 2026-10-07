@@ -612,24 +612,20 @@ export default function HomePage() {
                 <Box sx={{ order: { xs: 2, md: 0 } }}>
                   <CropLibraryIllustration
                     ariaLabel={t('cropLibrary.illustration.ariaLabel')}
-                    headerLabel={t('cropLibrary.illustration.headerLabel')}
-                    importLabel={t('crops:library.importButton')}
-                    upToDateLabel={t('crops:library.publicUpdate.markerUpToDateLabel')}
-                    publishLabel={t('crops:library.libraryAction.publish')}
-                    entries={{
-                      import: {
-                        name: t('cropLibrary.illustration.entries.import.name'),
-                        detail: t('cropLibrary.illustration.entries.import.detail'),
-                      },
-                      upToDate: {
-                        name: t('cropLibrary.illustration.entries.upToDate.name'),
-                        detail: t('cropLibrary.illustration.entries.upToDate.detail'),
-                      },
-                      publish: {
-                        name: t('cropLibrary.illustration.entries.publish.name'),
-                        detail: t('cropLibrary.illustration.entries.publish.detail'),
-                      },
+                    libraryTitle={t('cropLibrary.illustration.libraryTitle')}
+                    librarySubtitle={t('cropLibrary.illustration.librarySubtitle')}
+                    arrows={{
+                      share: t('cropLibrary.illustration.arrows.share'),
+                      shareUpdate: t('cropLibrary.illustration.arrows.shareUpdate'),
+                      import: t('cropLibrary.illustration.arrows.import'),
+                      pullUpdate: t('cropLibrary.illustration.arrows.pullUpdate'),
                     }}
+                    yourCropsTitle={t('cropLibrary.illustration.yourCropsTitle')}
+                    cropChips={[
+                      t('features.illustration.rows.lettuce.crop'),
+                      t('features.illustration.rows.tomato.crop'),
+                      t('features.illustration.rows.cucumber.crop'),
+                    ]}
                   />
                 </Box>
                 <Stack spacing={2} sx={{ order: { xs: 1, md: 0 } }}>
