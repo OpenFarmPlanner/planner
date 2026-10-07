@@ -149,7 +149,7 @@ export default function AboutPage() {
                 order: { xs: 1, md: 2 },
                 m: 0,
                 width: '100%',
-                maxWidth: { md: 420 },
+                maxWidth: { md: 480 },
                 justifySelf: { md: 'end' },
               }}
             >
@@ -157,13 +157,12 @@ export default function AboutPage() {
                 component="img"
                 src={publicAssetUrl('/landing/about-martin.webp')}
                 alt={t('about.photoAlt')}
-                width={800}
-                height={1000}
                 loading="eager"
                 sx={{
                   display: 'block',
                   width: '100%',
-                  aspectRatio: '4 / 5',
+                  height: 'auto',
+                  aspectRatio: '4 / 3',
                   objectFit: 'cover',
                   borderRadius: 3,
                   boxShadow: 6,
