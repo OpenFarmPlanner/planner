@@ -151,11 +151,9 @@ interface OpenSourceBox {
 
 function OpenSourceBoxItem({ title, description, href }: OpenSourceBox) {
   const content = (
-    <Stack spacing={0.5}>
+    <Stack spacing={0.5} sx={{ textAlign: 'left' }}>
       <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
-      <Typography variant="body2" sx={{ opacity: 0.85 }}>
-        {description}
-      </Typography>
+      <Typography variant="body2">{description}</Typography>
     </Stack>
   );
 
@@ -665,45 +663,53 @@ export default function HomePage() {
           id="open-source"
           component="section"
           aria-labelledby="open-source-title"
-          sx={{ ...SECTION_ANCHOR_SX, bgcolor: 'primary.dark', color: 'primary.contrastText', py: { xs: 6, md: 8 } }}
+          sx={{ ...SECTION_ANCHOR_SX, bgcolor: 'brandDark.background', color: 'brandDark.text', py: { xs: 6, md: 8 } }}
         >
           <Container maxWidth="lg">
-            <Stack spacing={3} sx={{ alignItems: { xs: 'flex-start', md: 'center' }, textAlign: { xs: 'left', md: 'center' } }}>
-              <Typography variant="overline" sx={{ fontWeight: 700, opacity: 0.85 }}>
-                {t('openSource.eyebrow')}
-              </Typography>
-              <Typography id="open-source-title" variant="h4" component="h2" sx={{ fontWeight: 600 }}>
-                {t('openSource.title')}
-              </Typography>
-              <Typography sx={{ maxWidth: 640, opacity: 0.9, lineHeight: 1.65 }}>
-                {t('openSource.description')}
-              </Typography>
-              <Button
-                href={githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="contained"
-                color="inherit"
-                size="large"
-                startIcon={<GitHubIcon />}
-                sx={{ bgcolor: 'common.white', color: 'primary.dark', '&:hover': { bgcolor: 'grey.100', color: 'primary.dark' } }}
-              >
-                {t('openSource.sourceButton')}
-              </Button>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                gap: { xs: 4, md: 6 },
+                alignItems: 'start',
+              }}
+            >
+              <Stack spacing={2.5} sx={{ alignItems: 'flex-start', textAlign: 'left' }}>
+                <Typography variant="overline" sx={{ fontWeight: 700, color: 'brandDark.eyebrow' }}>
+                  {t('openSource.eyebrow')}
+                </Typography>
+                <Typography id="open-source-title" variant="h4" component="h2" sx={{ fontWeight: 600, color: 'common.white' }}>
+                  {t('openSource.title')}
+                </Typography>
+                <Typography sx={{ maxWidth: 480, lineHeight: 1.65 }}>
+                  {t('openSource.description')}
+                </Typography>
+                <Button
+                  href={githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="contained"
+                  color="inherit"
+                  size="large"
+                  startIcon={<GitHubIcon />}
+                  sx={{ bgcolor: 'common.white', color: 'primary.dark', '&:hover': { bgcolor: 'grey.100', color: 'primary.dark' } }}
+                >
+                  {t('openSource.sourceButton')}
+                </Button>
+              </Stack>
+
               <Box
                 sx={{
-                  width: '100%',
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                   gap: 2,
-                  pt: 2,
                 }}
               >
                 {openSourceBoxes.map((box) => (
                   <OpenSourceBoxItem key={box.key} title={box.title} description={box.description} href={box.href} />
                 ))}
               </Box>
-            </Stack>
+            </Box>
           </Container>
         </Box>
 

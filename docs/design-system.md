@@ -60,10 +60,13 @@ sx={{ bgcolor: 'surface.surfaceHoverBackground', color: 'primary.dark' }}
 ```
 
 `theme.ts` defines, beyond MUI's own palette, a `surface` group (app, sidebar,
-topbar, content and surface backgrounds, borders) and a `navigation` group
-(inactive/hover/active text, icon, background and border for nav items). Read
-it before introducing a colour — there is very likely already a token for what
-you need.
+topbar, content and surface backgrounds, borders), a `navigation` group
+(inactive/hover/active text, icon, background and border for nav items), and a
+`brandDark` group (background, eyebrow and body-text tones for a dark
+forest-green marketing section set apart from the app chrome, e.g. the public
+landing page's Open Source section; AA-checked against `brandDark.background`
+— headings on it use plain white instead). Read it before introducing a
+colour — there is very likely already a token for what you need.
 
 **Breakpoints** are MUI's defaults: `sm` 600, `md` 900, `lg` 1200, `xl` 1536.
 Use the responsive object form (`px: { xs: 0, sm: 2 }`) or
