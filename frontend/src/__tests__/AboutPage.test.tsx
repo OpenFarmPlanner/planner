@@ -52,10 +52,17 @@ describe('AboutPage', () => {
     expect(mailLink).toHaveAttribute('href', 'mailto:info@openfarmplanner.org');
   });
 
-  it('renders no external link with an empty href while the farm URL is unset', () => {
+  it('links to the GeLaWi Zwiebelzopf farm in a new tab', () => {
     renderAboutPage();
 
-    const emptyHrefLinks = screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '');
-    expect(emptyHrefLinks).toHaveLength(0);
+    const links = screen.getAllByRole('link', { name: 'GeLaWi Zwiebelzopf' });
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', 'https://zwiebelzopf.at');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+
+    expect(screen.getByRole('link', { name: 'Zur GeLaWi Zwiebelzopf' })).toHaveAttribute('href', 'https://zwiebelzopf.at');
   });
 });

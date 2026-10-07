@@ -6,10 +6,8 @@ import PublicTopbar from '../../components/layout/PublicTopbar';
 import PublicFooter from '../../components/layout/PublicFooter';
 import { publicAssetUrl } from '../../utils/publicAssetUrl';
 
-// TODO: fill in once provided - the real-world farm this links to, not
-// something this repository can guess at. While empty, no link is rendered
-// (an empty href would reload the current page in a new tab).
-const ZWIEBELZOPF_URL = '';
+/** The GeLaWi Zwiebelzopf community-supported farm this page links to. */
+const ZWIEBELZOPF_URL = 'https://zwiebelzopf.at';
 
 const READING_COLUMN_WIDTH = 720;
 
