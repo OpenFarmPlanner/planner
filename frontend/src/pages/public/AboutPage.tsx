@@ -64,7 +64,7 @@ export default function AboutPage() {
               sx={{
                 fontWeight: 600,
                 lineHeight: 1.2,
-                fontSize: { xs: '2.1rem', sm: '2.5rem', md: '3rem' },
+                fontSize: { xs: '1.8rem', sm: '2.25rem', md: '2.5rem' },
                 overflowWrap: 'anywhere',
               }}
             >
