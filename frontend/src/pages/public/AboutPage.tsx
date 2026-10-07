@@ -1,4 +1,5 @@
-import { Box, Container, Link, Stack, Typography } from '@mui/material';
+import { Box, Container, Divider, Link, Stack, Typography } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { Trans } from 'react-i18next';
 import { useTranslation } from '../../i18n';
 import PublicTopbar from '../../components/layout/PublicTopbar';
@@ -108,17 +109,32 @@ export default function AboutPage() {
               </Stack>
             </Stack>
 
+            <Divider sx={{ mt: 4, mb: 2 }} />
+
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={{ xs: 1, sm: 2 }}
+              sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
+            >
+              <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
+              {ZWIEBELZOPF_URL && (
+                <Link
+                  href={ZWIEBELZOPF_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                >
+                  {t('about.closing.zwiebelzopfLink')}
+                  <OpenInNewIcon fontSize="inherit" />
+                </Link>
+              )}
+            </Stack>
+
             <Box
               component="figure"
               sx={{
                 m: 0,
                 mt: { xs: 5, md: 7 },
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 3,
-                boxShadow: 3,
-                overflow: 'hidden',
-                bgcolor: 'background.paper',
               }}
             >
               <Box
@@ -132,23 +148,18 @@ export default function AboutPage() {
                   height: 'auto',
                   aspectRatio: '3 / 2',
                   objectFit: 'cover',
+                  borderRadius: 3,
+                  boxShadow: 6,
                 }}
               />
-              <Stack
+              <Typography
                 component="figcaption"
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={{ xs: 0.5, sm: 2 }}
-                sx={{
-                  justifyContent: 'space-between',
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  p: 2,
-                }}
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1.5, textAlign: 'center' }}
               >
-                <Typography sx={{ fontWeight: 700, flexShrink: 0 }}>{t('about.closing.name')}</Typography>
-                <Typography color="text.secondary" sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-                  <Trans t={t} i18nKey="about.photoCaption" components={{ zwiebelzopf: <ZwiebelzopfLink /> }} />
-                </Typography>
-              </Stack>
+                {t('about.photoCaption')}
+              </Typography>
             </Box>
           </Box>
         </Container>

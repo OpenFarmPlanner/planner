@@ -37,16 +37,16 @@ describe('AboutPage', () => {
     expect(within(header).getByRole('link', { name: 'Open Source' })).toHaveAttribute('href', '/#open-source');
   });
 
-  it('renders the closing photo card as a figure/figcaption with the name and caption', () => {
+  it('ends the text with a signature, then the photo as a figure/figcaption', () => {
     renderAboutPage();
+
+    expect(screen.getByText('Martin Stipsitz, Villach')).toBeInTheDocument();
 
     const figure = screen.getByRole('figure');
     const image = within(figure).getByRole('img', { name: 'Martin liegt lachend auf einem Acker und sät Bohnen' });
     expect(image).toHaveAttribute('src', expect.stringContaining('about-martin.webp'));
     expect(image).toHaveAttribute('loading', 'lazy');
-
-    expect(within(figure).getByText('Martin Stipsitz, Villach')).toBeInTheDocument();
-    expect(figure.textContent).toContain('Entspanntes Bohnensäen bei der GeLaWi Zwiebelzopf.');
+    expect(within(figure).getByText('Der Entwickler beim entspannten Bohnensäen in der GeLaWi Zwiebelzopf.')).toBeInTheDocument();
 
     const mailLink = screen.getByRole('link', { name: 'info@openfarmplanner.org' });
     expect(mailLink).toHaveAttribute('href', 'mailto:info@openfarmplanner.org');

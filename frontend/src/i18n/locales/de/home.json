@@ -169,11 +169,11 @@
     "title": "Wie OpenFarmPlanner entstanden ist",
     "intro1": "Vor einiger Zeit hat mich unsere Bäuerin von der <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> gefragt, ob ich mir eine Software für die Anbauplanung ansehen könnte. Überzeugt hat mich weder diese noch eine der vielen anderen, die ich danach ausprobiert habe. Oft musste ich erst die Anleitung lesen, um überhaupt zu verstehen, wie etwas funktioniert, und das Eintragen und Ändern von Daten war mühsam.",
     "intro2": "Als Elektrotechniker und Informatikstudent habe ich im Dezember 2025 deshalb begonnen, selbst eine zu entwickeln. OpenFarmPlanner setzt auf Tabellen, die sich bearbeiten lassen wie in Excel, und auf eine Oberfläche, die man ohne Handbuch versteht.",
-    "photoCaption": "Entspanntes Bohnensäen bei der <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf>.",
+    "photoCaption": "Der Entwickler beim entspannten Bohnensäen in der GeLaWi Zwiebelzopf.",
     "photoAlt": "Martin liegt lachend auf einem Acker und sät Bohnen",
     "openSection": {
       "title": "Offen und gemeinschaftlich",
-      "text": "OpenFarmPlanner ist Open Source. So hängt es nicht von einer einzelnen Firma ab, jeder kann nachvollziehen, wie es funktioniert, und mitentwickeln."
+      "text": "OpenFarmPlanner ist Open Source, und das aus mehreren Gründen. Der Quellcode bleibt dauerhaft erhalten und kann weitergeführt werden, auch unabhängig von mir. Jeder kann nachvollziehen, was mit den Daten passiert. Ideen und Verbesserungen aus der Praxis fließen direkt ein, und wer möchte, kann selbst mitentwickeln. Und schließlich passt es einfach zur Idee der gemeinschaftsgetragenen Landwirtschaft: etwas gemeinsam tragen und miteinander teilen."
     },
     "freeSection": {
       "title": "Kostenlos, über Spenden finanziert",
@@ -184,7 +184,8 @@
       "text": "Am einfachsten trägst du bei, indem du deine Kulturdaten in der Kulturbibliothek teilst. Jede geteilte Kultur erspart anderen Betrieben die Recherche und macht die Bibliothek besser. Auch Feedback, Ideen oder Hilfe bei der Entwicklung sind jederzeit willkommen:"
     },
     "closing": {
-      "name": "Martin Stipsitz, Villach"
+      "name": "Martin Stipsitz, Villach",
+      "zwiebelzopfLink": "Zur GeLaWi Zwiebelzopf"
     }
   },
   "footer": {
