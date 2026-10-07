@@ -76,16 +76,15 @@
       "validation": "Mistakes stand out right away, for example when a bed is overbooked"
     },
     "illustration": {
-      "ariaLabel": "Example planting-plan table from the demo project with crop, field and bed, planting date, area, and plant count, below it three linked views, cultivation calendar, sowing, and yields, that recalculate automatically.",
+      "ariaLabel": "Example planting-plan table from the demo project with crop, field and bed, sowing date, planting date, and area. The cucumber row shows how changing the planting date automatically shifts the sowing date with it. Below it two linked views, cultivation calendar and yields, that also recalculate automatically.",
       "rows": {
         "lettuce": { "crop": "Lettuce (Lollo Bionda)", "field": "North Early Beds", "bed": "Lettuce 2" },
-        "tomato": { "crop": "Tomato (Ruthje)", "field": "South Polytunnel", "bed": "Tomato Row 1" },
-        "cucumber": { "crop": "Cucumber (Tanja)", "field": "South Polytunnel", "bed": "Cucumber Row" }
+        "tomato": { "crop": "Tomato (Roma)", "field": "South Polytunnel", "bed": "Tomato Row 1" },
+        "cucumber": { "crop": "Cucumber (Arola)", "field": "South Polytunnel", "bed": "Cucumber Row" }
       },
       "linkedCaption": "Linked views recalculate automatically",
       "cards": {
         "calendar": { "title": "Cultivation calendar", "detail": "Cucumber Row from week 19" },
-        "sowing": { "title": "Sowing", "detail": "Sowing date moves with it" },
         "yield": { "title": "Yields", "detail": "Harvest start moves with it" }
       }
     }

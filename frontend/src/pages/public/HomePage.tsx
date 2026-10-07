@@ -249,24 +249,25 @@ export default function HomePage() {
     {
       crop: t('features.illustration.rows.lettuce.crop'),
       fieldBed: illustrationFieldBed('lettuce.field', 'lettuce.bed'),
+      sowingDate: formatIllustrationDate('2026-02-26'),
       plantingDate: formatIllustrationDate('2026-03-22'),
       areaM2: formatIllustrationNumber(8.5),
-      plantsCount: formatIllustrationNumber(95),
     },
     {
       crop: t('features.illustration.rows.tomato.crop'),
       fieldBed: illustrationFieldBed('tomato.field', 'tomato.bed'),
+      sowingDate: formatIllustrationDate('2026-03-11'),
       plantingDate: formatIllustrationDate('2026-04-25'),
       areaM2: formatIllustrationNumber(14),
-      plantsCount: formatIllustrationNumber(35),
     },
     {
       crop: t('features.illustration.rows.cucumber.crop'),
       fieldBed: illustrationFieldBed('cucumber.field', 'cucumber.bed'),
+      sowingDate: formatIllustrationDate('2026-04-12'),
       plantingDate: formatIllustrationDate('2026-05-10'),
       areaM2: formatIllustrationNumber(12),
-      plantsCount: formatIllustrationNumber(38),
       editing: true,
+      autoUpdated: true,
     },
   ];
 
@@ -576,9 +577,9 @@ export default function HomePage() {
                   columns={{
                     crop: t('plantingPlans:columns.crop'),
                     fieldBed: t('plantingPlans:columns.fieldBed', { separator: AREA_LABEL_SEPARATOR }),
+                    sowingDate: t('plantingPlans:columns.sowingDate'),
                     plantingDate: t('plantingPlans:columns.plantingDate'),
                     areaM2: t('plantingPlans:columns.areaM2'),
-                    plantsCount: t('plantingPlans:columns.plantsCount'),
                   }}
                   rows={illustrationRows}
                   linkedCaption={t('features.illustration.linkedCaption')}
@@ -586,10 +587,6 @@ export default function HomePage() {
                     {
                       title: t('features.illustration.cards.calendar.title'),
                       detail: t('features.illustration.cards.calendar.detail'),
-                    },
-                    {
-                      title: t('features.illustration.cards.sowing.title'),
-                      detail: t('features.illustration.cards.sowing.detail'),
                     },
                     {
                       title: t('features.illustration.cards.yield.title'),

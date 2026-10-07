@@ -1,16 +1,18 @@
 import { Box, Stack, Typography } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import GrassIcon from '@mui/icons-material/Grass';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 
 interface TableRow {
   crop: string;
   fieldBed: string;
+  sowingDate: string;
   plantingDate: string;
   areaM2: string;
-  plantsCount: string;
+  /** Highlights the planting-date cell as the one currently being edited. */
   editing?: boolean;
+  /** Highlights the sowing-date cell as automatically recalculated from the edit. */
+  autoUpdated?: boolean;
 }
 
 interface LinkedCard {
@@ -22,19 +24,21 @@ interface LinkedCard {
 interface EditableTableIllustrationProps {
   /** Accessible description for the whole illustration group. */
   ariaLabel: string;
-  columns: { crop: string; fieldBed: string; plantingDate: string; areaM2: string; plantsCount: string };
+  columns: { crop: string; fieldBed: string; sowingDate: string; plantingDate: string; areaM2: string };
   rows: TableRow[];
   linkedCaption: string;
   cards: { title: string; detail: string }[];
 }
 
-// Last two columns (area, plant count) are numeric and right-aligned.
-const RIGHT_ALIGNED_COLUMN_INDICES = new Set([3, 4]);
+// Area (last column) is numeric and right-aligned.
+const RIGHT_ALIGNED_COLUMN_INDICES = new Set([4]);
 // The planting-date column, highlighted on the row marked `editing`.
-const EDITABLE_COLUMN_INDEX = 2;
+const EDITABLE_COLUMN_INDEX = 3;
+// The sowing-date column, highlighted on the row marked `autoUpdated`.
+const AUTO_UPDATED_COLUMN_INDEX = 2;
 
 function rowCells(row: TableRow): string[] {
-  return [row.crop, row.fieldBed, row.plantingDate, row.areaM2, row.plantsCount];
+  return [row.crop, row.fieldBed, row.sowingDate, row.plantingDate, row.areaM2];
 }
 
 /**
@@ -50,13 +54,13 @@ export default function EditableTableIllustration({
   linkedCaption,
   cards,
 }: EditableTableIllustrationProps) {
-  const cardIcons = [<CalendarMonthIcon key="calendar" />, <GrassIcon key="sowing" />, <AgricultureIcon key="yield" />];
+  const cardIcons = [<CalendarMonthIcon key="calendar" />, <AgricultureIcon key="yield" />];
   const linkedCards: LinkedCard[] = cards.map((card, index) => ({
     icon: cardIcons[index],
     title: card.title,
     detail: card.detail,
   }));
-  const columnLabels = [columns.crop, columns.fieldBed, columns.plantingDate, columns.areaM2, columns.plantsCount];
+  const columnLabels = [columns.crop, columns.fieldBed, columns.sowingDate, columns.plantingDate, columns.areaM2];
 
   return (
     <Box role="img" aria-label={ariaLabel} sx={{ width: '100%' }}>
@@ -71,7 +75,7 @@ export default function EditableTableIllustration({
             bgcolor: 'background.paper',
           }}
         >
-          <Box sx={{ minWidth: 560, display: 'grid', gridTemplateColumns: '1.3fr 1.3fr 1fr 0.7fr 0.8fr' }}>
+          <Box sx={{ minWidth: 620, display: 'grid', gridTemplateColumns: '1.3fr 1.3fr 1fr 1fr 0.7fr' }}>
             {columnLabels.map((label, columnIndex) => (
               <Box
                 key={label}
@@ -93,6 +97,7 @@ export default function EditableTableIllustration({
               <Box key={row.crop} sx={{ display: 'contents' }}>
                 {rowCells(row).map((value, cellIndex) => {
                   const isEditingCell = row.editing && cellIndex === EDITABLE_COLUMN_INDEX;
+                  const isAutoUpdatedCell = row.autoUpdated && cellIndex === AUTO_UPDATED_COLUMN_INDEX;
                   return (
                     <Box
                       key={`${row.crop}-${cellIndex}`}
@@ -102,7 +107,9 @@ export default function EditableTableIllustration({
                         fontSize: '0.85rem',
                         position: 'relative',
                         textAlign: RIGHT_ALIGNED_COLUMN_INDICES.has(cellIndex) ? 'right' : 'left',
-                        bgcolor: isEditingCell ? 'surface.surfaceHoverBackground' : 'transparent',
+                        fontWeight: isAutoUpdatedCell ? 700 : 400,
+                        color: isAutoUpdatedCell ? 'primary.main' : 'text.primary',
+                        bgcolor: isEditingCell || isAutoUpdatedCell ? 'surface.surfaceHoverBackground' : 'transparent',
                         border: isEditingCell ? 2 : 0,
                         borderBottom: isEditingCell ? 2 : 1,
                         borderColor: isEditingCell ? 'primary.main' : 'divider',

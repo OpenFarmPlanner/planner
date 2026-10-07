@@ -76,16 +76,15 @@
       "validation": "Fehler fallen sofort auf, zum Beispiel wenn ein Beet überbelegt ist"
     },
     "illustration": {
-      "ariaLabel": "Beispielhafte Anbauplan-Tabelle aus dem Demo-Projekt mit Kultur, Parzelle und Beet, Pflanztermin, Fläche und Pflanzenzahl, darunter drei verknüpfte Ansichten: Anbaukalender, Aussaat und Erträge, die automatisch mitrechnen.",
+      "ariaLabel": "Beispielhafte Anbauplan-Tabelle aus dem Demo-Projekt mit Kultur, Parzelle und Beet, Aussaattermin, Pflanztermin und Fläche. Die Gurken-Zeile zeigt, wie ein geänderter Pflanztermin den Aussaattermin automatisch mitverschiebt. Darunter zwei verknüpfte Ansichten: Anbaukalender und Erträge, die ebenfalls automatisch mitrechnen.",
       "rows": {
         "lettuce": { "crop": "Salat (Lollo Bionda)", "field": "Frühbeete Nord", "bed": "Salat 2" },
-        "tomato": { "crop": "Tomate (Ruthje)", "field": "Folientunnel Süd", "bed": "Tomatenreihe 1" },
-        "cucumber": { "crop": "Gurke (Tanja)", "field": "Folientunnel Süd", "bed": "Gurkenreihe" }
+        "tomato": { "crop": "Tomate (Roma)", "field": "Folientunnel Süd", "bed": "Tomatenreihe 1" },
+        "cucumber": { "crop": "Gurke (Arola)", "field": "Folientunnel Süd", "bed": "Gurkenreihe" }
       },
       "linkedCaption": "Verknüpfte Ansichten rechnen automatisch mit",
       "cards": {
         "calendar": { "title": "Anbaukalender", "detail": "Gurkenreihe ab KW 19" },
-        "sowing": { "title": "Aussaat", "detail": "Aussaattermin rückt mit" },
         "yield": { "title": "Erträge", "detail": "Erntebeginn rückt mit" }
       }
     }
