@@ -13,6 +13,7 @@ Indexable public pages (also the sitemap entries):
 | Path                   | Purpose                        |
 | ---------------------- | ------------------------------ |
 | `/`                    | Public landing page            |
+| `/ueber`               | About page                     |
 | `/impressum`           | Imprint (legal)                |
 | `/datenschutz`         | Privacy policy (legal)         |
 | `/nutzungsbedingungen` | Terms of service (legal)       |
