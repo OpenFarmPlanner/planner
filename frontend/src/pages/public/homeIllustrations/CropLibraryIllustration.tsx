@@ -1,8 +1,6 @@
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import GrassIcon from '@mui/icons-material/Grass';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import type { SxProps, Theme } from '@mui/material/styles';
 
 type ArrowDirection = 'up' | 'down';
@@ -30,26 +28,45 @@ interface CropLibraryIllustrationProps {
   cropChips: string[];
 }
 
-const ARROW_LINE_HEIGHT = 32;
+// Shared geometry for the arrow SVG: a straight shaft with a filled
+// triangular head, drawn in a tall, narrow viewBox so it reads clearly at
+// a small size. The head sits at y=0 for "up" and is flipped for "down".
+const ARROW_VIEWBOX_WIDTH = 24;
+const ARROW_VIEWBOX_HEIGHT = 56;
+const ARROW_HEAD_WIDTH = 16;
+const ARROW_HEAD_HEIGHT = 14;
+const ARROW_SHAFT_X = ARROW_VIEWBOX_WIDTH / 2;
 
 function FlowArrow({ direction, dashed, color, label }: FlowArrowSpec) {
-  const Icon = direction === 'up' ? KeyboardArrowUpIcon : KeyboardArrowDownIcon;
-  const lineColor = `${color}.main` as const;
+  const flip = direction === 'down';
   const labelColor = `${color}.dark` as const;
 
   return (
-    <Stack spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
-      {direction === 'up' ? <Icon sx={{ color: lineColor }} /> : null}
+    <Stack spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
       <Box
-        sx={{
-          width: 0,
-          height: ARROW_LINE_HEIGHT,
-          borderLeft: 2,
-          borderStyle: dashed ? 'dashed' : 'solid',
-          borderColor: lineColor,
-        }}
-      />
-      {direction === 'down' ? <Icon sx={{ color: lineColor }} /> : null}
+        component="svg"
+        viewBox={`0 0 ${ARROW_VIEWBOX_WIDTH} ${ARROW_VIEWBOX_HEIGHT}`}
+        width={ARROW_VIEWBOX_WIDTH}
+        height={ARROW_VIEWBOX_HEIGHT}
+        sx={{ color: `${color}.main`, flexShrink: 0 }}
+      >
+        <g transform={flip ? `rotate(180 ${ARROW_SHAFT_X} ${ARROW_VIEWBOX_HEIGHT / 2})` : undefined}>
+          <line
+            x1={ARROW_SHAFT_X}
+            y1={ARROW_HEAD_HEIGHT - 1}
+            x2={ARROW_SHAFT_X}
+            y2={ARROW_VIEWBOX_HEIGHT}
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeDasharray={dashed ? '6 6' : undefined}
+          />
+          <path
+            d={`M ${ARROW_SHAFT_X} 0 L ${ARROW_SHAFT_X + ARROW_HEAD_WIDTH / 2} ${ARROW_HEAD_HEIGHT} L ${ARROW_SHAFT_X - ARROW_HEAD_WIDTH / 2} ${ARROW_HEAD_HEIGHT} Z`}
+            fill="currentColor"
+          />
+        </g>
+      </Box>
       <Typography
         variant="caption"
         sx={{
