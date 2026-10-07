@@ -334,9 +334,8 @@ balances badly. Measured test-step times:
 The third shard bought 34 seconds for a whole extra runner, because the
 expensive specs cluster: shard 1 holds the login-heavy `fields-beds-*`,
 `gantt-*` and `invitation-flow` files and runs 1.8x as long as either of
-the others. Note also which way this falls — the shard holding both
-screenshot specs (`landing-screenshots`, `responsive-layouts`) is among
-the *fast* ones.
+the others. Note also which way this falls — the shard holding the
+screenshot spec (`responsive-layouts`) is among the *fast* ones.
 
 Adding shards is therefore close to exhausted as a lever: a fourth would
 split one of the already-fast shards and leave shard 1's 4m11s standing.
