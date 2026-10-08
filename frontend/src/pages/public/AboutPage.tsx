@@ -1,5 +1,4 @@
 import { Box, Container, Divider, Link, Stack, Typography } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { Trans } from 'react-i18next';
 import { useTranslation } from '../../i18n';
 import PublicTopbar from '../../components/layout/PublicTopbar';
@@ -109,24 +108,7 @@ export default function AboutPage() {
 
             <Divider sx={{ mt: 4, mb: 2 }} />
 
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={{ xs: 1, sm: 2 }}
-              sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
-            >
-              <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
-              {ZWIEBELZOPF_URL && (
-                <Link
-                  href={ZWIEBELZOPF_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  {t('about.closing.zwiebelzopfLink')}
-                  <OpenInNewIcon fontSize="inherit" />
-                </Link>
-              )}
-            </Stack>
+            <Typography sx={{ fontWeight: 700 }}>{t('about.closing.name')}</Typography>
 
             <Box
               component="figure"
