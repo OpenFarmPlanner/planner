@@ -4,8 +4,7 @@
     "heroImageAlt": "Vegetable garden beds in front of a wooded mountainside",
     "subtitle": "Open-source crop planning for vegetable production.",
     "description": "Designed specifically for market gardens, community-supported agriculture, and other farms with many crops and small-scale growing areas.",
-    "statusLine": "OpenFarmPlanner is under continuous development. We welcome feedback, ideas, and contributions.",
-    "githubLinkLabel": "Project on GitHub",
+    "statusLine": "Free to use, funded by donations.",
     "actions": {
       "openApp": "Sign in",
       "register": "Register",

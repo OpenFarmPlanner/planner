@@ -510,40 +510,6 @@ export default function HomePage() {
                 >
                   {t('landing.statusLine')}
                 </Typography>
-                <Link
-                  href={githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  underline="none"
-                  color="primary"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 0.55,
-                    px: 1.1,
-                    py: 0.5,
-                    mt: 0.3,
-                    borderRadius: 1,
-                    border: 2,
-                    borderColor: 'primary.main',
-                    bgcolor: 'surface.surfaceBackground',
-                    cursor: 'pointer',
-                    fontSize: { xs: heroRem(1.02), md: heroRem(1.08) },
-                    fontWeight: 600,
-                    lineHeight: 1.4,
-                    boxShadow: (theme) => theme.shadows[1],
-                    transition: 'color 180ms ease, border-color 180ms ease, background-color 180ms ease',
-                    '&:hover': {
-                      color: 'primary.dark',
-                      borderColor: 'primary.dark',
-                      bgcolor: 'surface.surfaceBackground',
-                    },
-                  }}
-                >
-                  <GitHubIcon sx={{ fontSize: { xs: '0.95rem', md: '1rem' }, flexShrink: 0 }} />
-                  {t('landing.githubLinkLabel')}
-                </Link>
               </Stack>
             </Stack>
           </Box>
