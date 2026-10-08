@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { AppBar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import type { SxProps, Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
+import type { SystemStyleObject } from '@mui/system';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import AppIcon from './AppIcon';
@@ -13,7 +14,7 @@ import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 // medium weight, and a rounded primary-tinted treatment for hover/focus so
 // the active link can reuse the exact same look permanently instead of a
 // separate underline style.
-const navLinkSx: SxProps<Theme> = {
+const navLinkSx: SystemStyleObject<Theme> = {
   textTransform: 'none',
   fontWeight: 500,
   fontSize: '0.9375rem',
@@ -34,12 +35,12 @@ const navLinkSx: SxProps<Theme> = {
   },
 };
 
-const navLinkActiveSx: SxProps<Theme> = {
+const navLinkActiveSx: SystemStyleObject<Theme> = {
   color: 'primary.main',
   backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
 };
 
-const navMenuItemSx: SxProps<Theme> = {
+const navMenuItemSx: SystemStyleObject<Theme> = {
   minHeight: 44,
   borderRadius: 1,
   mx: 0.5,
@@ -54,7 +55,7 @@ const navMenuItemSx: SxProps<Theme> = {
   },
 };
 
-const navMenuItemActiveSx: SxProps<Theme> = {
+const navMenuItemActiveSx: SystemStyleObject<Theme> = {
   color: 'primary.main',
   backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
 };
