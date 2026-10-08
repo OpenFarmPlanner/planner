@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (hero text, GitHub button removal)
+
+**Scope:** `git diff f11f5e1d..HEAD` (HomePage hero status line/description, AboutPage ZwiebelzopfLink cleanup, i18n, tests).
+
+**Findings:** No issues. Presentational and i18n changes only; the external link keeps a constant https href with `rel="noopener noreferrer"`, and there are no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
 ## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (Zwiebelzopf link)
 
 **Scope:** `git diff b36f90a6..HEAD` (AboutPage link to zwiebelzopf.at, i18n, test).
