@@ -109,7 +109,13 @@ export interface PublicRoute {
  * via `build/prerender.ts`, into build-time prerendered HTML.
  */
 export const PUBLIC_INDEXABLE_ROUTES: readonly PublicRoute[] = [
-  { path: '/', changefreq: 'weekly', priority: 1.0 },
+  {
+    path: '/',
+    changefreq: 'weekly',
+    priority: 1.0,
+    title: 'OpenFarmPlanner – Anbauplanung für den Gemüsebau',
+    description: 'OpenFarmPlanner: Open-Source-Anbauplaner für den Gemüsebau. Flächen, Kulturen und Anbaupläne direkt in Tabellen bearbeiten, mit offener Kulturbibliothek.',
+  },
   {
     path: '/ueber',
     changefreq: 'monthly',

@@ -17,7 +17,7 @@ import {
   type PublicRoute,
   type SeoEnv,
 } from '../src/seo/seoConfig.ts';
-import { buildHeadTags } from '../src/seo/seoAssets.ts';
+import { buildHeadTags, buildSoftwareApplicationJsonLd } from '../src/seo/seoAssets.ts';
 
 export { PUBLIC_INDEXABLE_ROUTES, SITE_LANGUAGE };
 export type { PublicRoute };
@@ -94,6 +94,7 @@ export function applyHeadTags(html: string, route: PublicRoute, env: SeoEnv): st
   });
   if (route.path === '/') {
     tags.push(buildHeroImagePreloadTag());
+    tags.push(buildSoftwareApplicationJsonLd({ siteUrl, description: route.description ?? '' }));
   }
   for (const tagHtml of tags) {
     const wrapper = document.createElement('div');

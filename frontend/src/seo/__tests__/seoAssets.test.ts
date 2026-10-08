@@ -3,6 +3,7 @@ import {
   buildHeadTags,
   buildRobotsTxt,
   buildSitemapXml,
+  buildSoftwareApplicationJsonLd,
 } from '../seoAssets';
 import {
   NON_INDEXABLE_PATH_PREFIXES,
@@ -108,5 +109,23 @@ describe('buildHeadTags', () => {
     expect(tags).toContain('&amp;');
     expect(tags).toContain('&quot;');
     expect(tags).not.toContain('"quoted"');
+  });
+});
+
+describe('buildSoftwareApplicationJsonLd', () => {
+  it('emits a valid SoftwareApplication JSON-LD script tag', () => {
+    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'Open-source crop planning.' });
+
+    expect(tag).toMatch(/^<script type="application\/ld\+json">.*<\/script>$/);
+
+    const json = JSON.parse(tag.replace(/^<script type="application\/ld\+json">/, '').replace(/<\/script>$/, ''));
+    expect(json).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'OpenFarmPlanner',
+      url: `${SITE}/`,
+      description: 'Open-source crop planning.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+    });
   });
 });
