@@ -27,12 +27,10 @@ function TextSection({ title, text }: TextSectionProps) {
 }
 
 function ZwiebelzopfLink({ children }: { children?: React.ReactNode }) {
-  return ZWIEBELZOPF_URL ? (
+  return (
     <Link href={ZWIEBELZOPF_URL} target="_blank" rel="noopener noreferrer" color="primary">
       {children}
     </Link>
-  ) : (
-    <span>{children}</span>
   );
 }
 
