@@ -152,7 +152,7 @@
     "description": "OpenFarmPlanner is free software under the AGPL. No advertising and no reselling of farm data.",
     "sourceButton": "Source code on GitHub",
     "boxes": {
-      "agpl": { "title": "AGPL-3.0", "description": "Open source code, transparent for everyone." },
+      "agpl": { "title": "AGPL-3.0", "description": "Open source code, open for public review." },
       "gdpr": { "title": "GDPR", "description": "Hosted in Germany, data minimal." },
       "api": { "title": "Documented API", "description": "With your own access token for scripts, automation, and AI agents." },
       "practice": { "title": "From practice", "description": "Developed together with a community-supported farm (GeLaWi) in Carinthia." }
@@ -172,7 +172,7 @@
     "photoAlt": "Martin lies laughing in a field sowing beans",
     "openSection": {
       "title": "Open and collaborative",
-      "text": "OpenFarmPlanner is open source for several reasons. The source code stays around for good and can be carried forward even without me. Anyone can see what happens with the data. Ideas and improvements from real-world use flow straight back in, and anyone who wants to can help build it. And finally, it simply fits the idea behind community-supported agriculture: carrying something together and sharing it with each other."
+      "text": "OpenFarmPlanner is open source for several reasons. The source code stays around for good and can be carried forward even without me. How the data is handled is open for anyone to check. Feature requests and bugs can be discussed openly, and anyone who wants to can contribute improvements themselves. And finally, it simply fits the idea behind community-supported agriculture: carrying something together and sharing it with each other."
     },
     "freeSection": {
       "title": "Free to use, funded by donations",
