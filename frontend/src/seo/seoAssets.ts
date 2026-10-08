@@ -189,5 +189,6 @@ export function buildSoftwareApplicationJsonLd({ siteUrl, description }: Softwar
     license: 'https://www.gnu.org/licenses/agpl-3.0.html',
   };
 
-  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return `<script type="application/ld+json">${json}</script>`;
 }

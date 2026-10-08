@@ -128,4 +128,12 @@ describe('buildSoftwareApplicationJsonLd', () => {
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
     });
   });
+
+  it('escapes markup characters so a description cannot close the script tag', () => {
+    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'x</script><b>' });
+
+    expect(tag.match(/<\/script>/g)).toHaveLength(1);
+    const body = tag.replace(/^<script type="application\/ld\+json">/, '').replace(/<\/script>$/, '');
+    expect(JSON.parse(body).description).toBe('x</script><b>');
+  });
 });
