@@ -168,7 +168,7 @@
     "title": "How OpenFarmPlanner came to be",
     "intro1": "A while ago, our farmer at <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> asked me to take a look at a piece of software for crop planning. Neither that one nor any of the many others I tried afterward won me over. I often had to read the manual first just to understand how something worked, and entering and changing data was tedious.",
     "intro2": "As an electrical engineer and computer science student, I started building my own in December 2025 because of that. OpenFarmPlanner is built around tables you can edit like a spreadsheet, and an interface you can understand without a manual.",
-    "photoCaption": "The developer taking it easy while sowing beans at GeLaWi Zwiebelzopf.",
+    "photoCaption": "The developer relaxed while sowing beans at GeLaWi Zwiebelzopf.",
     "photoAlt": "Martin lies laughing in a field sowing beans",
     "openSection": {
       "title": "Open and collaborative",

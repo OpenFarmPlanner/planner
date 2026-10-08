@@ -46,7 +46,7 @@ describe('AboutPage', () => {
     const image = within(figure).getByRole('img', { name: 'Martin liegt lachend auf einem Acker und sät Bohnen' });
     expect(image).toHaveAttribute('src', expect.stringContaining('about-martin.webp'));
     expect(image).toHaveAttribute('loading', 'lazy');
-    expect(within(figure).getByText('Der Entwickler beim entspannten Bohnensäen in der GeLaWi Zwiebelzopf.')).toBeInTheDocument();
+    expect(within(figure).getByText('Der Entwickler sät entspannt Bohnen bei der GeLaWi Zwiebelzopf.')).toBeInTheDocument();
 
     const mailLink = screen.getByRole('link', { name: 'info@openfarmplanner.org' });
     expect(mailLink).toHaveAttribute('href', 'mailto:info@openfarmplanner.org');
