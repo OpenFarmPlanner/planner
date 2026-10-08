@@ -1,10 +1,63 @@
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { AppBar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import AppIcon from './AppIcon';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
+
+// Shared look for the anchor/page nav links: a dark resting colour (not the
+// brand green, which read as too heavy for every-link-is-emphasised) with a
+// medium weight, and a rounded primary-tinted treatment for hover/focus so
+// the active link can reuse the exact same look permanently instead of a
+// separate underline style.
+const navLinkSx: SxProps<Theme> = {
+  textTransform: 'none',
+  fontWeight: 500,
+  fontSize: '0.9375rem',
+  whiteSpace: 'nowrap',
+  color: 'text.primary',
+  minHeight: 44,
+  borderRadius: 2,
+  px: 1.25,
+  '&:hover': {
+    color: 'primary.main',
+    backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+  },
+  '&.Mui-focusVisible': {
+    color: 'primary.main',
+    backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+    outline: (theme) => `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: 2,
+  },
+};
+
+const navLinkActiveSx: SxProps<Theme> = {
+  color: 'primary.main',
+  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+};
+
+const navMenuItemSx: SxProps<Theme> = {
+  minHeight: 44,
+  borderRadius: 1,
+  mx: 0.5,
+  color: 'text.primary',
+  '&:hover': {
+    color: 'primary.main',
+    backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+  },
+  '&.Mui-focusVisible': {
+    color: 'primary.main',
+    backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+  },
+};
+
+const navMenuItemActiveSx: SxProps<Theme> = {
+  color: 'primary.main',
+  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+};
 
 export interface PublicTopbarAnchor {
   id: string;
@@ -114,7 +167,8 @@ export default function PublicTopbar({
           aria-label={navAriaLabel}
           sx={{
             display: { xs: 'none', md: 'flex' },
-            gap: 1,
+            alignItems: 'center',
+            gap: 0.5,
             flexGrow: 1,
             minWidth: 0,
           }}
@@ -126,7 +180,7 @@ export default function PublicTopbar({
               to={{ pathname: '/', hash: `#${anchor.id}` }}
               onClick={(event) => handleAnchorClick(event, anchor.id)}
               color="inherit"
-              sx={{ textTransform: 'none', fontWeight: 500, whiteSpace: 'nowrap' }}
+              sx={navLinkSx}
             >
               {anchor.label}
             </Button>
@@ -137,12 +191,7 @@ export default function PublicTopbar({
             onClick={() => setMenuAnchorEl(null)}
             color="inherit"
             aria-current={isPageLinkActive ? 'page' : undefined}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              ...(isPageLinkActive && { textDecoration: 'underline', textUnderlineOffset: 4 }),
-            }}
+            sx={[navLinkSx, isPageLinkActive ? navLinkActiveSx : false]}
           >
             {pageLink.label}
           </Button>
@@ -185,7 +234,7 @@ export default function PublicTopbar({
               component={RouterLink}
               to={{ pathname: '/', hash: `#${anchor.id}` }}
               onClick={(event) => handleAnchorClick(event, anchor.id)}
-              sx={{ minHeight: 44 }}
+              sx={navMenuItemSx}
             >
               {anchor.label}
             </MenuItem>
@@ -195,7 +244,7 @@ export default function PublicTopbar({
             to={pageLink.path}
             onClick={() => setMenuAnchorEl(null)}
             aria-current={isPageLinkActive ? 'page' : undefined}
-            sx={{ minHeight: 44 }}
+            sx={[navMenuItemSx, isPageLinkActive ? navMenuItemActiveSx : false]}
           >
             {pageLink.label}
           </MenuItem>
