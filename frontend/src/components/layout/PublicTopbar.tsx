@@ -23,6 +23,14 @@ const navLinkSx: SystemStyleObject<Theme> = {
   minHeight: 44,
   borderRadius: 2,
   px: 1.25,
+  // The theme's global CssBaseline `a:visited` rule (element + pseudo-class)
+  // outranks this component's own class for specificity, so a visited nav
+  // link (these all point to in-page hashes or /ueber, easy to "visit" just
+  // by clicking around) would otherwise render in the dark primary colour
+  // instead of black at rest.
+  '&:visited': {
+    color: 'common.black',
+  },
   '&:hover': {
     color: 'primary.main',
     backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
@@ -45,6 +53,9 @@ const navMenuItemSx: SystemStyleObject<Theme> = {
   borderRadius: 1,
   mx: 0.5,
   color: 'common.black',
+  '&:visited': {
+    color: 'common.black',
+  },
   '&:hover': {
     color: 'primary.main',
     backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
