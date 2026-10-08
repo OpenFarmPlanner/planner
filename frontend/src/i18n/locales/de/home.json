@@ -154,7 +154,7 @@
     "boxes": {
       "agpl": { "title": "AGPL-3.0", "description": "Offener Quellcode, für alle nachvollziehbar." },
       "gdpr": { "title": "DSGVO", "description": "Gehostet in Deutschland, datensparsam." },
-      "api": { "title": "Offene API", "description": "Für Skripte, Automatisierung und KI-Agenten." },
+      "api": { "title": "Dokumentierte API", "description": "Mit eigenem Zugangsschlüssel für Skripte, Automatisierung und KI-Agenten." },
       "practice": { "title": "Aus der Praxis", "description": "Entwickelt mit einer GeLaWi in Kärnten." }
     }
   },

@@ -154,7 +154,7 @@
     "boxes": {
       "agpl": { "title": "AGPL-3.0", "description": "Open source code, transparent for everyone." },
       "gdpr": { "title": "GDPR", "description": "Hosted in Germany, data minimal." },
-      "api": { "title": "Open API", "description": "For scripts, automation, and AI agents." },
+      "api": { "title": "Documented API", "description": "With your own access token for scripts, automation, and AI agents." },
       "practice": { "title": "From practice", "description": "Developed together with a community-supported farm (GeLaWi) in Carinthia." }
     }
   },
