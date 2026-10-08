@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commit (open-source copy rewording)
+
+**Scope:** `git diff a67355dc..HEAD` (de/en `home.json` AGPL description text).
+
+**Findings:** No issues. Plain-text i18n string changes only; no links, HTML, or data flows. Earlier entries for this PR still hold.
+
 ## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (landing-page SEO and JSON-LD)
 
 **Scope:** `git diff 4d8782ec..HEAD` (landing page title/description, `buildSoftwareApplicationJsonLd`, prerender head tags, API box wording).
