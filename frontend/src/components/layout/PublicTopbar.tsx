@@ -9,17 +9,17 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import AppIcon from './AppIcon';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 
-// Shared look for the anchor/page nav links: a dark resting colour (not the
-// brand green, which read as too heavy for every-link-is-emphasised) with a
-// medium weight, and a rounded primary-tinted treatment for hover/focus so
-// the active link can reuse the exact same look permanently instead of a
+// Shared look for the anchor/page nav links: plain black at rest (the brand
+// green read as too heavy for every-link-is-emphasised) with a medium
+// weight, and a rounded primary-tinted treatment for hover/focus so the
+// active link can reuse the exact same look permanently instead of a
 // separate underline style.
 const navLinkSx: SystemStyleObject<Theme> = {
   textTransform: 'none',
   fontWeight: 500,
   fontSize: '0.9375rem',
   whiteSpace: 'nowrap',
-  color: 'text.primary',
+  color: 'common.black',
   minHeight: 44,
   borderRadius: 2,
   px: 1.25,
@@ -44,7 +44,7 @@ const navMenuItemSx: SystemStyleObject<Theme> = {
   minHeight: 44,
   borderRadius: 1,
   mx: 0.5,
-  color: 'text.primary',
+  color: 'common.black',
   '&:hover': {
     color: 'primary.main',
     backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
@@ -192,7 +192,7 @@ export default function PublicTopbar({
             onClick={() => setMenuAnchorEl(null)}
             color="inherit"
             aria-current={isPageLinkActive ? 'page' : undefined}
-            sx={[navLinkSx, isPageLinkActive ? navLinkActiveSx : false]}
+            sx={isPageLinkActive ? { ...navLinkSx, ...navLinkActiveSx } : navLinkSx}
           >
             {pageLink.label}
           </Button>
@@ -245,7 +245,7 @@ export default function PublicTopbar({
             to={pageLink.path}
             onClick={() => setMenuAnchorEl(null)}
             aria-current={isPageLinkActive ? 'page' : undefined}
-            sx={[navMenuItemSx, isPageLinkActive ? navMenuItemActiveSx : false]}
+            sx={isPageLinkActive ? { ...navMenuItemSx, ...navMenuItemActiveSx } : navMenuItemSx}
           >
             {pageLink.label}
           </MenuItem>
