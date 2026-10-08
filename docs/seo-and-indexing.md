@@ -13,6 +13,7 @@ Indexable public pages (also the sitemap entries):
 | Path                   | Purpose                        |
 | ---------------------- | ------------------------------ |
 | `/`                    | Public landing page            |
+| `/ueber`               | About page                     |
 | `/impressum`           | Imprint (legal)                |
 | `/datenschutz`         | Privacy policy (legal)         |
 | `/nutzungsbedingungen` | Terms of service (legal)       |
@@ -80,7 +81,12 @@ always runs right after `vite build`):
    the route-specific values from `seoConfig.ts`/`seoAssets.ts` — the same
    source `RouteSeo` and `seoPlugin` already use, via the pure helper
    [`frontend/build/prerenderSeo.ts`](../frontend/build/prerenderSeo.ts) — so
-   build-time and runtime tags never disagree or duplicate;
+   build-time and runtime tags never disagree or duplicate. The landing page
+   (`/` only, same gating as the hero image preload below) additionally gets a
+   `SoftwareApplication` JSON-LD `<script type="application/ld+json">` tag
+   (`buildSoftwareApplicationJsonLd` in `seoAssets.ts`) for rich-result
+   eligibility. Every claim in it (free to use, AGPL-3.0) must stay true to
+   the visible page — update it in the same change if that ever changes;
 5. writes the result as a real file per route: `dist/index.html`,
    `dist/impressum/index.html`, `dist/datenschutz/index.html`,
    `dist/nutzungsbedingungen/index.html`;
@@ -230,6 +236,7 @@ VITE_PUBLIC_SITE_URL=https://openfarmplanner.org npm run build
 cat dist/robots.txt
 cat dist/sitemap.xml
 grep -E 'canonical|robots|og:|twitter:' dist/index.html
+grep -E '<title>|name="description"|application/ld\+json' dist/index.html
 ```
 
 Or serve the production build and check over HTTP (no external service needed):

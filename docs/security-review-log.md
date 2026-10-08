@@ -38,6 +38,66 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (about nav link rename, wordmark colour, visited link colour)
+
+**Scope:** `git diff 416d6cc0..HEAD` (`PublicTopbar.tsx` styling, de/en `home.json` label, test updates).
+
+**Findings:** No issues. Styling and plain-text i18n changes only; no new links, unsafe HTML APIs, or data flows. Earlier entries for this PR still hold.
+
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commit (topbar nav link colour)
+
+**Scope:** `git diff 37cf2af3..HEAD` (`PublicTopbar.tsx` resting link colour and `sx` merge).
+
+**Findings:** No issues. Styling-only change; no new links, unsafe HTML APIs, or data flows. Earlier entries for this PR still hold.
+
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (PublicTopbar restyle and typing fix)
+
+**Scope:** `git diff 3c5abe54..HEAD` (`PublicTopbar.tsx` nav link styling, `sx` typing fix).
+
+**Findings:** No issues. Styling-only changes; no new links, unsafe HTML APIs, or data flows. Earlier entries for this PR still hold.
+
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commit (open-source copy rewording)
+
+**Scope:** `git diff a67355dc..HEAD` (de/en `home.json` AGPL description text).
+
+**Findings:** No issues. Plain-text i18n string changes only; no links, HTML, or data flows. Earlier entries for this PR still hold.
+
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (landing-page SEO and JSON-LD)
+
+**Scope:** `git diff 4d8782ec..HEAD` (landing page title/description, `buildSoftwareApplicationJsonLd`, prerender head tags, API box wording).
+
+**Findings:** No issues. The JSON-LD is built with `JSON.stringify` from build-time constants and `<` is escaped to `<`, so it cannot close the script tag (covered by a test); no new runtime data flows or unsafe HTML APIs. Earlier entries for this PR still hold.
+
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (hero text, GitHub button removal)
+
+**Scope:** `git diff f11f5e1d..HEAD` (HomePage hero status line/description, AboutPage ZwiebelzopfLink cleanup, i18n, tests).
+
+**Findings:** No issues. Presentational and i18n changes only; the external link keeps a constant https href with `rel="noopener noreferrer"`, and there are no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (Zwiebelzopf link)
+
+**Scope:** `git diff b36f90a6..HEAD` (AboutPage link to zwiebelzopf.at, i18n, test).
+
+**Findings:** No issues. The link uses a constant https href with `target="_blank"` and `rel="noopener noreferrer"`; no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commit (about-page closing card)
+
+**Scope:** `git diff 68ee993b..HEAD` (AboutPage layout, i18n strings, photo asset, test).
+
+**Findings:** No issues. Presentational change only; the external link uses a constant href with `rel="noopener noreferrer"`, the mailto link comes from an i18n constant, and there are no unsafe HTML APIs or new data flows. Earlier entries for this PR still hold.
+
+## 2026-10-07 — Claude — Automated security review of PR #764, follow-up commits (illustrations, about-page layout)
+
+**Scope:** `git diff 3e261a6a..HEAD` (i18n strings, AboutPage/HomePage layout, SVG illustrations).
+
+**Findings:** No issues. Presentational changes only; the one external link uses a constant href, and there are no unsafe HTML APIs or new data flows. The previous entry for this PR still holds (unchanged scope).
+
+## 2026-10-07 — Claude — Automated security review of PR #764 (landing page and /ueber about page)
+
+**Scope:** `git diff origin/main...HEAD` (public HomePage/AboutPage, PublicTopbar/Footer, SEO config, `AuthContext` probe-skip list, e2e/docs).
+
+**Findings:** No issues. The change is frontend-only: no backend, workflow or dependency changes. External links use constant or i18n-sourced hrefs with `rel="noopener noreferrer"`, there is no `dangerouslySetInnerHTML`, and adding `/ueber` to the public no-auth-probe list only skips an unauthenticated session check on a static page; the backend still enforces auth and project scoping.
+
 ## 2026-10-06 — Claude — Automated security review of PR #762 (guest-demo cross-tab project wipe)
 
 **Scope:** `git diff origin/main...HEAD` (`AuthContext.tsx` `clearAuthenticatedUser`, test).

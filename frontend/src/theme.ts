@@ -69,6 +69,15 @@ declare module '@mui/material/styles' {
     yearBoundary: string;
   }
 
+  interface BrandDarkPalette {
+    /** Dark forest-green background for marketing sections set apart from the app chrome (e.g. the public landing page's Open Source section). */
+    background: string;
+    /** Light, soft green for an eyebrow/overline label on `background`. */
+    eyebrow: string;
+    /** Slightly dampened light tone for body text on `background` (AA against it; headings use plain white instead). */
+    text: string;
+  }
+
   interface SearchHighlightPalette {
     /** Background of a `<mark>`ed search hit. */
     background: string;
@@ -80,6 +89,7 @@ declare module '@mui/material/styles' {
     surface: SurfacePalette;
     chart: ChartPalette;
     searchHighlight: SearchHighlightPalette;
+    brandDark: BrandDarkPalette;
     navigation: {
       inactiveText: string;
       inactiveIcon: string;
@@ -103,6 +113,7 @@ declare module '@mui/material/styles' {
     surface?: SurfacePalette;
     chart?: ChartPalette;
     searchHighlight?: SearchHighlightPalette;
+    brandDark?: BrandDarkPalette;
     navigation?: {
       inactiveText: string;
       inactiveIcon: string;
@@ -174,6 +185,11 @@ const theme = createTheme({
     surface: surfaceColors,
     chart: {
       yearBoundary: '#94a3b8',
+    },
+    brandDark: {
+      background: '#1f3a22',
+      eyebrow: '#a9d39b',
+      text: '#d7e4d2',
     },
     searchHighlight: {
       background: '#fff176',

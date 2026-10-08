@@ -35,6 +35,7 @@ import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
  */
 const ROUTE_TITLE_KEYS: Record<string, string> = {
   '/': 'seo.titles.landing',
+  '/ueber': 'seo.titles.about',
   '/demo': 'seo.titles.demo',
   '/impressum': 'seo.titles.imprint',
   '/datenschutz': 'seo.titles.privacy',

@@ -8,8 +8,8 @@ The service has two persistent-data entry points:
 - `create_personal_demo_project(user=...)` creates one normal, editable
   project for the authenticated user and is used by first-project onboarding
   and the project switcher's explicit "load demo project" action.
-- `create_or_reset_demo_project(...)` recreates the local screenshot/demo
-  fixture used by the management command and landing-page screenshot workflow.
+- `create_or_reset_demo_project(...)` recreates the local demo fixture used by
+  the `seed_demo_project` management command.
 
 The template currently creates the `Solawi Sonnenacker` / `Sunny Acre CSA`
 project with two locations, four fields, twelve beds, three suppliers, twenty
@@ -144,11 +144,6 @@ frontend onboarding choice is covered in
 `frontend/src/__tests__/ProjectSelectionPage.test.tsx` and
 `frontend/e2e/onboarding-demo-project.spec.ts`.
 
-Landing-page screenshots are generated from this same template in German and
-English. They currently cover areas, crop library, planting plans, calendar
-planning, yield overview, and seed demand. The German assets keep the historic
-`demo-*.webp` filenames; the English equivalents use `demo-*-en.webp`.
-
 Local checks:
 
 ```bash
@@ -158,7 +153,6 @@ pdm run test farm/tests/test_demo_project.py farm/tests/test_projects_api.py
 cd ../frontend
 npx vitest run src/__tests__/ProjectSelectionPage.test.tsx
 npx playwright test e2e/onboarding-demo-project.spec.ts
-GENERATE_LANDING_SCREENSHOTS=1 npx playwright test e2e/landing-screenshots.spec.ts
 ```
 
 For the standalone local demo user/project used outside onboarding:

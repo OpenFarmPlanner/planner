@@ -159,3 +159,36 @@ export function buildHeadTags(options: HeadTagsOptions): string[] {
 
   return tags;
 }
+
+export interface SoftwareApplicationJsonLdOptions {
+  siteUrl: string;
+  description: string;
+}
+
+/**
+ * JSON-LD `SoftwareApplication` structured data for the landing page only
+ * (see `build/prerenderSeo.ts`, gated the same way as the hero image
+ * preload). Every claim here must stay true to what the page itself states
+ * (free to use, AGPL-3.0, no account required for the demo) - search
+ * engines penalize structured data that disagrees with the visible page.
+ */
+export function buildSoftwareApplicationJsonLd({ siteUrl, description }: SoftwareApplicationJsonLdOptions): string {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'OpenFarmPlanner',
+    url: `${siteUrl}/`,
+    description,
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Any (web-based)',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'EUR',
+    },
+    license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+  };
+
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return `<script type="application/ld+json">${json}</script>`;
+}

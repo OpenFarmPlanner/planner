@@ -65,12 +65,25 @@ describe('applyHeadTags', () => {
     expect(html).toContain('content="noindex, nofollow"');
   });
 
-  it('falls back to the site default title/description for the landing page', () => {
+  it('sets the landing page own title/description rather than falling back to the generic default', () => {
     const homeRoute = PUBLIC_INDEXABLE_ROUTES.find((route) => route.path === '/')!;
     const html = applyHeadTags(sampleCapturedHtml(), homeRoute, env);
 
-    expect(html).toContain('<title>OpenFarmPlanner</title>');
+    expect(html).toContain(`<title>${homeRoute.title}</title>`);
+    expect(html).toContain(homeRoute.description!);
     expect(html).toContain('href="https://openfarmplanner.org/"');
+  });
+
+  it('adds SoftwareApplication JSON-LD structured data on the landing page only', () => {
+    const homeRoute = PUBLIC_INDEXABLE_ROUTES.find((route) => route.path === '/')!;
+    const html = applyHeadTags(sampleCapturedHtml(), homeRoute, env);
+
+    expect(html).toContain('<script type="application/ld+json">');
+    expect(html).toContain('"@type":"SoftwareApplication"');
+    expect(html).toContain(homeRoute.description!);
+
+    const impressumHtml = applyHeadTags(sampleCapturedHtml(), impressumRoute, env);
+    expect(impressumHtml).not.toContain('application/ld+json');
   });
 
   it('preloads the hero image with imagesrcset/imagesizes on the landing page only', () => {
@@ -127,11 +140,8 @@ describe('assertNoLoopbackUrls', () => {
 });
 
 describe('PUBLIC_INDEXABLE_ROUTES prerender coverage', () => {
-  it('gives every non-root public route its own title and description', () => {
+  it('gives every public route, including the landing page, its own title and description', () => {
     for (const route of PUBLIC_INDEXABLE_ROUTES) {
-      if (route.path === '/') {
-        continue;
-      }
       expect(route.title, `${route.path} should define a title`).toBeTruthy();
       expect(route.description, `${route.path} should define a description`).toBeTruthy();
     }

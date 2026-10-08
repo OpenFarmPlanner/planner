@@ -3,6 +3,7 @@ import {
   buildHeadTags,
   buildRobotsTxt,
   buildSitemapXml,
+  buildSoftwareApplicationJsonLd,
 } from '../seoAssets';
 import {
   NON_INDEXABLE_PATH_PREFIXES,
@@ -58,6 +59,7 @@ describe('buildSitemapXml', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
       `${SITE}/`,
+      `${SITE}/ueber`,
       `${SITE}/impressum`,
       `${SITE}/datenschutz`,
       `${SITE}/nutzungsbedingungen`,
@@ -107,5 +109,31 @@ describe('buildHeadTags', () => {
     expect(tags).toContain('&amp;');
     expect(tags).toContain('&quot;');
     expect(tags).not.toContain('"quoted"');
+  });
+});
+
+describe('buildSoftwareApplicationJsonLd', () => {
+  it('emits a valid SoftwareApplication JSON-LD script tag', () => {
+    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'Open-source crop planning.' });
+
+    expect(tag).toMatch(/^<script type="application\/ld\+json">.*<\/script>$/);
+
+    const json = JSON.parse(tag.replace(/^<script type="application\/ld\+json">/, '').replace(/<\/script>$/, ''));
+    expect(json).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'OpenFarmPlanner',
+      url: `${SITE}/`,
+      description: 'Open-source crop planning.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+    });
+  });
+
+  it('escapes markup characters so a description cannot close the script tag', () => {
+    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'x</script><b>' });
+
+    expect(tag.match(/<\/script>/g)).toHaveLength(1);
+    const body = tag.replace(/^<script type="application\/ld\+json">/, '').replace(/<\/script>$/, '');
+    expect(JSON.parse(body).description).toBe('x</script><b>');
   });
 });

@@ -1,10 +1,10 @@
 {
   "landing": {
     "title": "OpenFarmPlanner",
-    "betaBadge": "Beta",
     "heroImageAlt": "Gemüsebeete vor einem bewaldeten Berghang",
     "subtitle": "Open-Source-Anbauplaner für den Gemüsebau.",
-    "description": "Speziell entwickelt für Marktgärtnereien, Solidarische Landwirtschaft und andere Betriebe mit vielen Kulturen und kleinteiligen Anbauflächen.",
+    "description": "Speziell entwickelt für Marktgärtnereien, Solidarische Landwirtschaft und andere Betriebe mit vielen verschiedenen Kulturen.",
+    "statusLine": "Kostenlos nutzbar, soll über freiwillige Spenden finanziert werden.",
     "actions": {
       "openApp": "Anmelden",
       "register": "Registrieren",
@@ -50,53 +50,140 @@
     "backToLanding": "Zur Startseite",
     "safetyNote": "Die Demo benötigt keine Registrierung. Änderungen werden automatisch wieder gelöscht und sind nicht für echte Produktivdaten gedacht."
   },
-  "statusNote": "OpenFarmPlanner befindet sich aktuell in der Beta-Phase und wird laufend weiterentwickelt.",
-  "statusOpenSource": {
-    "text": "Als Open-Source-Projekt freuen wir uns über Feedback, Ideen und Mitentwicklung.",
-    "linkLabel": "Projekt auf GitHub",
-    "githubUrl": "https://github.com/OpenFarmPlanner/planner"
+  "github": {
+    "url": "https://github.com/OpenFarmPlanner/openfarmplanner"
   },
-  "productTour": {
-    "title": "Saisonplanung im Überblick",
-    "description": "Ein Demo-Projekt zeigt, wie Anbauflächen, Kulturen, Termine und Auswertungen in der Praxis zusammenspielen.",
-    "tabsLabel": "Produktführung",
+  "topbar": {
+    "brandAriaLabel": "Zum Seitenanfang",
+    "navAriaLabel": "Hauptnavigation",
+    "menuAriaLabel": "Menü öffnen",
+    "signIn": "Anmelden",
+    "nav": {
+      "features": "Funktionen",
+      "cropLibrary": "Kulturbibliothek",
+      "openSource": "Open Source",
+      "about": "Über das Projekt"
+    }
+  },
+  "features": {
+    "eyebrow": "Was OpenFarmPlanner besonders macht",
+    "title": "Bearbeiten wie in Excel. Aber alles hängt zusammen.",
+    "description": "Du trägst Flächen, Kulturen und Anbaupläne direkt in Tabellen ein, ohne Formulare und Seitenwechsel. Weil alles in einer Datenbank verknüpft ist, rechnen Kalender, Saatgutbedarf und Ertragsübersicht sofort mit.",
+    "points": {
+      "typing": "Werte direkt in der Tabelle ändern und mit der Tastatur von Zelle zu Zelle springen",
+      "oneSource": "Einmal ändern, überall aktuell: kein Abgleichen mehrerer Listen",
+      "validation": "Fehler fallen sofort auf, zum Beispiel wenn ein Beet überbelegt ist"
+    },
+    "illustration": {
+      "ariaLabel": "Beispielhafte Anbauplan-Tabelle aus dem Demo-Projekt mit Kultur, Parzelle und Beet, Aussaattermin, Pflanztermin und Fläche. Die Gurken-Zeile zeigt, wie ein geänderter Pflanztermin den Aussaattermin automatisch mitverschiebt. Darunter zwei verknüpfte Ansichten: Anbaukalender und Erträge, die ebenfalls automatisch mitrechnen.",
+      "rows": {
+        "lettuce": { "crop": "Salat (Lollo Bionda)", "field": "Frühbeete Nord", "bed": "Salat 2" },
+        "tomato": { "crop": "Tomate (Roma)", "field": "Folientunnel Süd", "bed": "Tomatenreihe 1" },
+        "cucumber": { "crop": "Gurke (Arola)", "field": "Folientunnel Süd", "bed": "Gurkenreihe" }
+      },
+      "linkedCaption": "Verknüpfte Ansichten rechnen automatisch mit",
+      "cards": {
+        "calendar": { "title": "Anbaukalender", "detail": "Gurkenreihe ab KW 19" },
+        "yield": { "title": "Erträge", "detail": "Erntebeginn rückt mit" }
+      }
+    }
+  },
+  "cropLibrary": {
+    "eyebrow": "Kulturbibliothek",
+    "title": "Kulturdaten, die mit der Community wachsen.",
+    "description": "Übernimm Abstände, Kulturdauer und Ertragswerte aus der offenen Bibliothek, statt bei null anzufangen. Was du an eigenen Erfahrungen ergänzt, kannst du mit einem Klick teilen. So wird die Bibliothek mit jedem Betrieb besser.",
+    "illustration": {
+      "ariaLabel": "Schema, das zeigt, wie Kulturdaten in beide Richtungen zwischen dem eigenen Projekt und der Kulturbibliothek fließen: Kultur teilen, Verbesserung teilen, Kultur importieren und Aktualisierung übernehmen.",
+      "libraryTitle": "Kulturbibliothek",
+      "librarySubtitle": "Gemeinsam gepflegt von vielen Betrieben",
+      "arrows": {
+        "share": "Kultur teilen",
+        "shareUpdate": "Verbesserung teilen",
+        "import": "Kultur importieren",
+        "pullUpdate": "Aktualisierung übernehmen"
+      },
+      "yourCropsTitle": "Deine Kulturen"
+    }
+  },
+  "seasonFeatures": {
+    "title": "Alles für deine Saison",
     "items": {
-      "areas": {
-        "tab": "Flächen",
-        "title": "Flächen und Beete direkt bearbeiten",
-        "description": "Standorte, Parzellen und Beete bleiben in einer klaren Hierarchie sichtbar. Änderungen erfolgen direkt in der Tabelle – ohne separate Formulare oder Seitenwechsel.",
-        "alt": "Tabellenansicht der Anbauflächen mit Standorten, Parzellen und Beeten"
-      },
-      "plantingPlans": {
-        "tab": "Anbaupläne",
-        "title": "Anbaupläne direkt bearbeiten",
-        "description": "Aussaat-, Pflanz- und Erntetermine sowie Mengen und Kulturen lassen sich direkt in der Tabelle bearbeiten. Änderungen sind sofort sichtbar und ermöglichen eine schnelle Saisonplanung.",
-        "alt": "Anbauplan-Tabelle mit Kulturen, Flächen, Terminen und geplanten Mengen"
-      },
       "calendar": {
-        "tab": "Kalender",
-        "title": "Belegung im Kalender planen",
-        "description": "Der Anbaukalender zeigt, wann welche Kultur auf welchem Beet steht, und macht Überschneidungen früh erkennbar.",
-        "alt": "Anbaukalender mit belegten Beeten und farbigen Kulturzeiträumen"
+        "title": "Anbaukalender",
+        "description": "Sieh auf einen Blick, wann welche Kultur auf welchem Beet steht, und erkenne Überschneidungen früh."
+      },
+      "rolloverSeason": {
+        "title": "Nächste Saison übernehmen",
+        "description": "Übertrage bewährte Anbaupläne mit einem Schritt in die neue Saison und passe nur an, was sich ändert."
       },
       "seedDemand": {
-        "tab": "Saatgut",
-        "title": "Saatgutbedarf aus den Plänen ableiten",
-        "description": "Saatgutmenge und passende Packungsgrößen werden aus Kulturparametern, Flächennutzung und Lieferantendaten berechnet.",
-        "alt": "Saatgutbedarf-Tabelle mit Kulturen, Lieferanten, benötigter Menge und Packungsvorschlägen"
+        "title": "Saatgutbedarf berechnen",
+        "description": "Menge und passende Packungsgrößen werden aus Plänen, Kulturdaten und Lieferanten abgeleitet."
       },
-      "yieldOverview": {
-        "tab": "Erträge",
-        "title": "Erwartete Ernten im Blick behalten",
-        "description": "Die Ertragsübersicht bündelt geplante Erntemengen nach Zeitraum und Kultur, damit Arbeitsspitzen und Verteilung früh sichtbar werden.",
-        "alt": "Ertragsübersicht mit erwarteten Erntemengen nach Kalenderwochen und Kulturen"
+      "yieldDistribution": {
+        "title": "Ertragsverteilung",
+        "description": "Erwartete Erntemengen pro Woche und Kultur zeigen Lücken und Spitzen, bevor sie auftreten."
       },
-      "crops": {
-        "tab": "Kulturen",
-        "title": "Kulturen zentral pflegen",
-        "description": "Sorten, Anbauarten, Abstände, Ernteerwartung und Saatgutdaten liegen an einem Ort und speisen die Planung.",
-        "alt": "Kulturen-Ansicht mit mehreren Gemüsearten und Sorten im Demo-Projekt"
+      "fieldMap": {
+        "title": "Grafische Flächenansicht",
+        "description": "Ordne Beete auf deinen Parzellen so an, wie sie im Gelände liegen."
+      },
+      "collaboration": {
+        "title": "Gemeinsam planen",
+        "description": "Lade dein Anbauteam ein und arbeitet alle am selben aktuellen Plan."
+      },
+      "history": {
+        "title": "Versionsverlauf und Papierkorb",
+        "description": "Jede Änderung ist nachvollziehbar, frühere Stände lassen sich wiederherstellen."
+      },
+      "importExport": {
+        "title": "Import und Export",
+        "description": "Bring deine Kulturdaten aus Tabellen mit und nimm sie jederzeit wieder mit."
+      },
+      "installApp": {
+        "title": "Als App installieren",
+        "description": "Läuft im Browser und lässt sich am Handy oder Tablet wie eine App installieren."
       }
+    }
+  },
+  "openSource": {
+    "eyebrow": "Open Source",
+    "title": "Deine Daten gehören dir.",
+    "description": "OpenFarmPlanner ist freie Software unter der AGPL. Keine Werbung und kein Weiterverkauf von Betriebsdaten.",
+    "sourceButton": "Quellcode auf GitHub",
+    "boxes": {
+      "agpl": { "title": "AGPL-3.0", "description": "Offener Quellcode, öffentlich überprüfbar." },
+      "gdpr": { "title": "DSGVO", "description": "Gehostet in Deutschland, datensparsam." },
+      "api": { "title": "Dokumentierte API", "description": "Mit eigenem Zugangsschlüssel für Skripte, Automatisierung und KI-Agenten." },
+      "practice": { "title": "Aus der Praxis", "description": "Entwickelt mit einer GeLaWi in Kärnten." }
+    }
+  },
+  "closing": {
+    "title": "Probier es an einem Beispielbetrieb aus.",
+    "startDemo": "Demo starten",
+    "aboutLink": "Mehr über OpenFarmPlanner und wer dahintersteht"
+  },
+  "about": {
+    "eyebrow": "Über das Projekt",
+    "title": "Wie OpenFarmPlanner entstanden ist",
+    "intro1": "Vor einiger Zeit hat mich unsere Bäuerin von der <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> gefragt, ob ich mir eine Software für die Anbauplanung ansehen könnte. Überzeugt hat mich weder diese noch eine der vielen anderen, die ich danach ausprobiert habe. Oft musste ich erst die Anleitung lesen, um überhaupt zu verstehen, wie etwas funktioniert, und das Eintragen und Ändern von Daten war mühsam.",
+    "intro2": "Als Elektrotechniker und Informatikstudent habe ich im Dezember 2025 deshalb begonnen, selbst eine zu entwickeln. OpenFarmPlanner setzt auf Tabellen, die sich bearbeiten lassen wie in Excel, und auf eine Oberfläche, die man ohne Handbuch versteht.",
+    "photoCaption": "Der Entwickler sät entspannt Bohnen bei der GeLaWi Zwiebelzopf.",
+    "photoAlt": "Martin liegt lachend auf einem Acker und sät Bohnen",
+    "openSection": {
+      "title": "Offen und gemeinschaftlich",
+      "text": "OpenFarmPlanner ist Open Source, und das aus mehreren Gründen. Der Quellcode bleibt dauerhaft erhalten und kann weitergeführt werden, auch unabhängig von mir. Wie mit den Daten umgegangen wird, ist öffentlich überprüfbar. Wünsche und Fehler können offen besprochen werden, und wer möchte, kann Verbesserungen selbst einbringen. Und schließlich passt es einfach zur Idee der gemeinschaftsgetragenen Landwirtschaft: etwas gemeinsam tragen und miteinander teilen."
+    },
+    "freeSection": {
+      "title": "Kostenlos, über Spenden finanziert",
+      "text": "OpenFarmPlanner ist kostenlos nutzbar. Entwicklung und Betrieb sollen über freiwillige Spenden finanziert werden. Eine Möglichkeit zu spenden folgt."
+    },
+    "contributeSection": {
+      "title": "Mitmachen",
+      "text": "Am einfachsten trägst du bei, indem du deine Kulturdaten in der Kulturbibliothek teilst. Jede geteilte Kultur erspart anderen Betrieben die Recherche und macht die Bibliothek besser. Auch Feedback, Ideen oder Hilfe bei der Entwicklung sind jederzeit willkommen:"
+    },
+    "closing": {
+      "name": "Martin Stipsitz, Villach"
     }
   },
   "footer": {
@@ -344,6 +431,7 @@
   "seo": {
     "titles": {
       "landing": "OpenFarmPlanner – Anbauplanung für den Gemüsebau",
+      "about": "Über OpenFarmPlanner",
       "demo": "Demo ausprobieren – OpenFarmPlanner",
       "imprint": "Impressum – OpenFarmPlanner",
       "privacy": "Datenschutzerklärung – OpenFarmPlanner",

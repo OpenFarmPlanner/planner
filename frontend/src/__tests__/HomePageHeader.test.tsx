@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import HomePage from '../pages/public/HomePage';
@@ -15,41 +16,48 @@ function renderHomePage() {
   );
 }
 
-describe('HomePage header', () => {
-  it('keeps the logo and the language selector in one row, logo first', () => {
+describe('HomePage topbar', () => {
+  it('renders a sticky header with the brand link, anchor nav, language switcher and sign-in button', () => {
     renderHomePage();
 
-    const logo = screen.getByRole('heading', { level: 1 });
-    const languageButton = screen.getByRole('button', { name: /Sprache/ });
-    const header = logo.closest('header');
+    const header = screen.getByRole('banner');
+    const brandLink = within(header).getByRole('link', { name: 'Zum Seitenanfang' });
+    expect(brandLink).toHaveTextContent('OpenFarmPlanner');
 
-    expect(header).not.toBeNull();
-    expect(header?.contains(languageButton)).toBe(true);
-    // One row means one grid row: the header holds exactly the logo group and
-    // the language selector.
-    expect(header?.children.length).toBe(2);
-    expect(logo.compareDocumentPosition(languageButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(header).getByRole('link', { name: 'Funktionen' })).toBeInTheDocument();
+    expect(within(header).getByRole('link', { name: 'Kulturbibliothek' })).toBeInTheDocument();
+    expect(within(header).getByRole('link', { name: 'Open Source' })).toBeInTheDocument();
+
+    const aboutLink = within(header).getByRole('link', { name: 'Über das Projekt' });
+    expect(aboutLink).toBeInTheDocument();
+    expect(aboutLink).not.toHaveAttribute('aria-current');
+
+    expect(within(header).getByRole('button', { name: /Sprache/ })).toBeInTheDocument();
+    expect(within(header).getByRole('link', { name: 'Anmelden' })).toBeInTheDocument();
   });
 
-  it('centers the logo with two mirrored side columns so the selector cannot shift it', () => {
+  it('moves the anchor links behind a labelled menu button', async () => {
+    const user = userEvent.setup();
     renderHomePage();
 
-    const logo = screen.getByRole('heading', { level: 1 });
-    const languageButton = screen.getByRole('button', { name: /Sprache/ });
-    const header = logo.closest('header') as HTMLElement;
-    const headerStyle = window.getComputedStyle(header);
+    const header = screen.getByRole('banner');
+    const menuButton = within(header).getByRole('button', { name: 'Menü öffnen' });
 
-    expect(headerStyle.display).toBe('grid');
-    // The empty first column and the selector's column share the same track
-    // size, so the middle column stays centred whatever the language label is.
-    const columns = headerStyle.gridTemplateColumns.split(' auto ');
-    expect(columns).toHaveLength(2);
-    expect(columns[0]).toBe(columns[1]);
+    await user.click(menuButton);
 
-    // The logo sits in the centre column, the selector in the trailing one.
-    const logoGroup = logo.parentElement as HTMLElement;
-    expect(window.getComputedStyle(logoGroup).gridColumn).toBe('2');
-    const selectorCell = languageButton.parentElement as HTMLElement;
-    expect(window.getComputedStyle(selectorCell).gridColumn).toBe('3');
+    const menu = screen.getByRole('menu', { name: 'Hauptnavigation' });
+    expect(within(menu).getByRole('menuitem', { name: 'Funktionen' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Kulturbibliothek' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Open Source' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Über das Projekt' })).toBeInTheDocument();
+  });
+});
+
+describe('HomePage closing section', () => {
+  it('links to the about page below the demo call-to-action', () => {
+    renderHomePage();
+
+    const link = screen.getByRole('link', { name: 'Mehr über OpenFarmPlanner und wer dahintersteht' });
+    expect(link).toHaveAttribute('href', '/ueber');
   });
 });

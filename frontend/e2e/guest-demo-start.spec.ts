@@ -36,7 +36,8 @@ test('returns guest demo sessions to the public landing page when leaving the de
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('button', { name: 'Demo ohne Registrierung ansehen' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Anmelden' })).toBeVisible();
+  // "Anmelden" appears both in the sticky topbar and in the hero actions.
+  await expect(page.getByRole('link', { name: 'Anmelden' })).toHaveCount(2);
   await expect(page.getByRole('link', { name: 'Registrieren' })).toBeVisible();
 });
 
