@@ -22,7 +22,7 @@ describe('AboutPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Wie OpenFarmPlanner entstanden ist' })).toBeInTheDocument();
 
     const header = screen.getByRole('banner');
-    const aboutLink = within(header).getByRole('link', { name: 'Über OpenFarmPlanner' });
+    const aboutLink = within(header).getByRole('link', { name: 'Über das Projekt' });
     expect(aboutLink).toHaveAttribute('aria-current', 'page');
 
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();

@@ -62,7 +62,7 @@
       "features": "Funktionen",
       "cropLibrary": "Kulturbibliothek",
       "openSource": "Open Source",
-      "about": "Über OpenFarmPlanner"
+      "about": "Über das Projekt"
     }
   },
   "features": {
@@ -164,7 +164,7 @@
     "aboutLink": "Mehr über OpenFarmPlanner und wer dahintersteht"
   },
   "about": {
-    "eyebrow": "Über OpenFarmPlanner",
+    "eyebrow": "Über das Projekt",
     "title": "Wie OpenFarmPlanner entstanden ist",
     "intro1": "Vor einiger Zeit hat mich unsere Bäuerin von der <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> gefragt, ob ich mir eine Software für die Anbauplanung ansehen könnte. Überzeugt hat mich weder diese noch eine der vielen anderen, die ich danach ausprobiert habe. Oft musste ich erst die Anleitung lesen, um überhaupt zu verstehen, wie etwas funktioniert, und das Eintragen und Ändern von Daten war mühsam.",
     "intro2": "Als Elektrotechniker und Informatikstudent habe ich im Dezember 2025 deshalb begonnen, selbst eine zu entwickeln. OpenFarmPlanner setzt auf Tabellen, die sich bearbeiten lassen wie in Excel, und auf eine Oberfläche, die man ohne Handbuch versteht.",

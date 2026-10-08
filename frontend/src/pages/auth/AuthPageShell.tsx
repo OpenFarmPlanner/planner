@@ -73,6 +73,7 @@ export default function AuthPageShell({ title, subtitle, children, legalLinksDen
                   fontSize: { xs: '1.9rem', md: '2.5rem' },
                   fontWeight: 600,
                   lineHeight: 1.1,
+                  color: 'text.primary',
                 }}
               >
                 {t('appName')}

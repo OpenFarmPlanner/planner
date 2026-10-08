@@ -28,7 +28,7 @@ describe('HomePage topbar', () => {
     expect(within(header).getByRole('link', { name: 'Kulturbibliothek' })).toBeInTheDocument();
     expect(within(header).getByRole('link', { name: 'Open Source' })).toBeInTheDocument();
 
-    const aboutLink = within(header).getByRole('link', { name: 'Über OpenFarmPlanner' });
+    const aboutLink = within(header).getByRole('link', { name: 'Über das Projekt' });
     expect(aboutLink).toBeInTheDocument();
     expect(aboutLink).not.toHaveAttribute('aria-current');
 
@@ -49,7 +49,7 @@ describe('HomePage topbar', () => {
     expect(within(menu).getByRole('menuitem', { name: 'Funktionen' })).toBeInTheDocument();
     expect(within(menu).getByRole('menuitem', { name: 'Kulturbibliothek' })).toBeInTheDocument();
     expect(within(menu).getByRole('menuitem', { name: 'Open Source' })).toBeInTheDocument();
-    expect(within(menu).getByRole('menuitem', { name: 'Über OpenFarmPlanner' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Über das Projekt' })).toBeInTheDocument();
   });
 });
 

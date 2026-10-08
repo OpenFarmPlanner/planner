@@ -168,6 +168,7 @@ export default function PublicTopbar({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              color: 'text.primary',
             }}
           >
             {brandLabel}
