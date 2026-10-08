@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (landing-page SEO and JSON-LD)
+
+**Scope:** `git diff 4d8782ec..HEAD` (landing page title/description, `buildSoftwareApplicationJsonLd`, prerender head tags, API box wording).
+
+**Findings:** No issues. The JSON-LD is built with `JSON.stringify` from build-time constants and `<` is escaped to `<`, so it cannot close the script tag (covered by a test); no new runtime data flows or unsafe HTML APIs. Earlier entries for this PR still hold.
+
 ## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (hero text, GitHub button removal)
 
 **Scope:** `git diff f11f5e1d..HEAD` (HomePage hero status line/description, AboutPage ZwiebelzopfLink cleanup, i18n, tests).
