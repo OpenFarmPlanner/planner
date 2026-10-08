@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commit (topbar nav link colour)
+
+**Scope:** `git diff 37cf2af3..HEAD` (`PublicTopbar.tsx` resting link colour and `sx` merge).
+
+**Findings:** No issues. Styling-only change; no new links, unsafe HTML APIs, or data flows. Earlier entries for this PR still hold.
+
 ## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (PublicTopbar restyle and typing fix)
 
 **Scope:** `git diff 3c5abe54..HEAD` (`PublicTopbar.tsx` nav link styling, `sx` typing fix).
