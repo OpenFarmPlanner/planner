@@ -2,6 +2,7 @@ import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogCont
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
+import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
@@ -20,6 +21,7 @@ import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation
 import { type SxProps, type Theme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import { useHierarchyData } from '../components/hierarchy/hooks/useHierarchyData';
+import { useIsMobileHierarchyLayout } from '../components/hierarchy/hooks/useIsMobileHierarchyLayout';
 import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUtils';
 import { keywordList } from '../commands/keywordList';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
@@ -68,6 +70,11 @@ export default function FieldsBedsPage() {
   const [addLocationDialogOpen, setAddLocationDialogOpen] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
   const isTouchDevice = useMediaQuery('(pointer: coarse)');
+  // Below `sm`, or in short-viewport phone landscape, the hierarchy grid is
+  // replaced by a touch-friendly indented list + bottom sheet (see
+  // docs/datagrid-architecture.md, "Mobile layout (< sm)"); the DataGrid in
+  // FieldsBedsHierarchy is never mounted there.
+  const isMobileHierarchyLayout = useIsMobileHierarchyLayout();
   const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
   const hierarchyData = useHierarchyData(!shouldShowProjectRequiredState);
   const {
@@ -457,14 +464,24 @@ export default function FieldsBedsPage() {
           />
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && effectiveViewMode !== 'graphical' ? (
-          <FieldsBedsHierarchy
-            showTitle={false}
-            createFieldRequest={createFieldRequest}
-            onCreateFieldRequestHandled={() => setCreateFieldRequest(0)}
-            hierarchyData={hierarchyData}
-            onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
-            suppressContextMenuHint={shouldShowMissingBedsHint}
-          />
+          isMobileHierarchyLayout ? (
+            <FieldsBedsHierarchyMobile
+              showTitle={false}
+              createFieldRequest={createFieldRequest}
+              onCreateFieldRequestHandled={() => setCreateFieldRequest(0)}
+              hierarchyData={hierarchyData}
+              onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
+            />
+          ) : (
+            <FieldsBedsHierarchy
+              showTitle={false}
+              createFieldRequest={createFieldRequest}
+              onCreateFieldRequestHandled={() => setCreateFieldRequest(0)}
+              hierarchyData={hierarchyData}
+              onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
+              suppressContextMenuHint={shouldShowMissingBedsHint}
+            />
+          )
         ) : null}
       </PageContainer>
       </Box>

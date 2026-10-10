@@ -628,6 +628,65 @@ first persists the current row draft with the note value, then closes the
 drawer. Users should never need to click outside the grid to make a new row
 exist before saving its notes.
 
+## Mobile layout (< sm)
+
+Below the MUI `sm` breakpoint (600px), or below a 500px viewport height,
+`FieldsBedsPage.tsx` switches which component it renders for the
+`effectiveViewMode !== 'graphical'` branch: the shared
+`components/hierarchy/hooks/useIsMobileHierarchyLayout.ts` hook (`useTheme()`
++ `useMediaQuery(theme.breakpoints.down('sm'))` OR'd with a `max-height`
+media query) picks between `FieldsBedsHierarchy.tsx` (the `<DataGrid>`
+described above) and `FieldsBedsHierarchyMobile.tsx`. **The DataGrid is never
+mounted below that width/height** — there is no lazy/deferred mount, the two
+components are simply alternatives rendered by the same `? :` in
+`FieldsBedsPage.tsx`. The height leg of the check exists for phones in
+landscape: wider than `sm`, so a width-only check would render the DataGrid,
+but too short for its header/row chrome, which otherwise clips the notes
+column and leaves no room once the on-screen keyboard opens. In that
+orientation the list keeps its normal row design but is capped to
+`theme.breakpoints.values.sm` and centered, so rows don't stretch across the
+full landscape width.
+
+The mobile page reuses the same data layer as desktop:
+
+- `useExpandedState('fieldsBedsHierarchy')` — the identical storage key, so
+  expand/collapse state survives a resize across the breakpoint.
+- `usePersistentSortModel({ tableKey: 'fieldsBedsHierarchy', ... })` — same
+  table key, so a sort choice made on one layout is honored on the other.
+- `buildHierarchyIndex`/`buildHierarchyRowsFromIndex` from
+  `components/hierarchy/utils/hierarchyUtils.ts` (via
+  `components/hierarchy/hooks/useMobileHierarchyRows.ts`, which adds a
+  `childCount` per row for the list's secondary line).
+
+New components, all under `components/hierarchy/mobile/` unless noted:
+
+- `HierarchyMobileList.tsx` — a flat, indentation-aware list (not a card
+  list like `components/mobile/MobileCardList.tsx` — the interaction model
+  differs: the chevron only toggles children, tapping the row body always
+  opens the edit sheet).
+- `HierarchyEditSheet.tsx` — a `SwipeableDrawer` bottom sheet for
+  viewing/editing a Standort/Parzelle/Beet, or creating a new Parzelle/Beet.
+  Its "⋮" menu reuses `CustomContextMenu`/`ContextMenuActionItem` anchored to
+  the button (`anchorEl`, not mouse position).
+- `hierarchyMobileFormatting.ts` — builds the list's secondary line.
+- `../hooks/useMobileHierarchyRowOperations.tsx` — mobile's equivalent of
+  desktop's `useBedOperations`/`useHierarchyDelete` wiring and
+  `getHierarchyRowActions`, with "add field"/"add bed" opening the create
+  sheet instead of a DataGrid draft row.
+- `../hooks/useMobileHierarchyRows.ts` — see above.
+- `pages/FieldsBedsHierarchyMobile.tsx` — the page-level component, analogous
+  to `FieldsBedsHierarchy.tsx`.
+
+**`components/hierarchy/utils/hierarchyRowSave.ts`'s
+`validateAndSaveHierarchyRow` is a deliberate duplicate** of the
+`"bed"`/`"field"`/`"location"` validation+save branches in
+`components/hierarchy/hooks/useHierarchyRowUpdate.ts`'s `processRowUpdate`
+(minus the two DataGrid-draft-specific branches, which don't apply to a sheet
+that only saves on explicit "Speichern"). The two are not expected to stay in
+sync automatically — **a change to one file's validation or save rules must
+be mirrored in the other by hand**, or desktop and mobile will silently
+accept/reject different input for the same row type.
+
 ## Delete with undo — app-wide semantics
 
 Every "Löschen" flow that shows a `DeleteUndoSnackbar` follows the same

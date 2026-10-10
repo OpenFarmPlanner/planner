@@ -130,5 +130,33 @@
       "edit": "edit",
       "delete": "delete"
     }
+  },
+  "mobile": {
+    "expand": "Expand: {{name}}",
+    "collapse": "Collapse: {{name}}",
+    "hasNotes": "Note present",
+    "secondary": {
+      "field_zero": "No fields",
+      "field_one": "{{count}} field",
+      "field_other": "{{count}} fields",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · no dimensions"
+    },
+    "sheet": {
+      "topLevel": "Top level",
+      "editTitle": "Edit {{type}}",
+      "createTitle": "Add {{type}}",
+      "locationNoDimensions": "Sites have no dimensions of their own.",
+      "calculatedArea": "Area (calculated)",
+      "discardTitle": "Discard changes?",
+      "discardMessage": "You have unsaved changes. Discard them or keep editing?",
+      "discardKeep": "Keep editing",
+      "discardConfirm": "Discard"
+    },
+    "typeLabel": {
+      "location": "Site",
+      "field": "Field",
+      "bed": "Bed"
+    }
   }
 }
