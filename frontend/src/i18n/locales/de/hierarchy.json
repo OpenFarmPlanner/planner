@@ -130,5 +130,33 @@
       "edit": "bearbeiten",
       "delete": "löschen"
     }
+  },
+  "mobile": {
+    "expand": "Aufklappen: {{name}}",
+    "collapse": "Einklappen: {{name}}",
+    "hasNotes": "Notiz vorhanden",
+    "secondary": {
+      "field_zero": "Keine Parzellen",
+      "field_one": "{{count}} Parzelle",
+      "field_other": "{{count}} Parzellen",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · keine Maße"
+    },
+    "sheet": {
+      "topLevel": "Oberste Ebene",
+      "editTitle": "{{type}} bearbeiten",
+      "createTitle": "{{type}} hinzufügen",
+      "locationNoDimensions": "Standorte haben keine eigenen Maße.",
+      "calculatedArea": "Fläche (berechnet)",
+      "discardTitle": "Änderungen verwerfen?",
+      "discardMessage": "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen oder weiter bearbeiten?",
+      "discardKeep": "Weiter bearbeiten",
+      "discardConfirm": "Verwerfen"
+    },
+    "typeLabel": {
+      "location": "Standort",
+      "field": "Parzelle",
+      "bed": "Beet"
+    }
   }
 }
