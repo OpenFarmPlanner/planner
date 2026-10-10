@@ -73,12 +73,15 @@ export default function NavListItem({
 
   if (disabled) {
     return (
-      // `inline-block` so the span shrink-wraps to the button's actual
-      // rendered size — `block` would stretch it to the full-width list row,
-      // anchoring the tooltip far to the right of the icon/label instead of
-      // right next to them.
+      // `width: fit-content` shrink-wraps the span to the button's actual
+      // rendered size (plain `block` would stretch it to the full-width list
+      // row, anchoring the tooltip far to the right of the icon/label instead
+      // of right next to them) while keeping `display: block` so the item
+      // still starts its own line — `inline-block` would let short-labeled
+      // items (e.g. "Fields", "Crops") sit side by side instead of stacking
+      // like the enabled items do.
       <AppTooltip title={disabledTooltip} placement={enabledTooltipPlacement}>
-        <span style={{ display: 'inline-block' }}>{button}</span>
+        <span style={{ display: 'block', width: 'fit-content' }}>{button}</span>
       </AppTooltip>
     );
   }
