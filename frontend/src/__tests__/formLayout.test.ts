@@ -34,6 +34,19 @@ describe('form layout widths', () => {
     expect(sx).not.toHaveProperty('minHeight');
   });
 
+  it.each([
+    ['compact', compactFieldSx],
+    ['small', smallFieldSx],
+    ['medium', mediumFieldSx],
+    ['wide', wideFieldSx],
+    ['mediumStacked', mediumStackedFieldSx],
+    ['wideSingleColumn', wideSingleColumnFieldSx],
+    ['wideStacked', wideStackedFieldSx],
+    ['fullWidth', fullWidthFieldSx],
+  ])('lets the %s field input stretch instead of shrink-wrapping to the browser\'s intrinsic input width', (_name, sx) => {
+    expect(sx).not.toHaveProperty('alignItems');
+  });
+
   it('keeps prose fields full width and allows compact rows to wrap', () => {
     expect(fullWidthFieldSx.width).toBe('100%');
     expect(formRowSx.flexWrap).toBe('wrap');

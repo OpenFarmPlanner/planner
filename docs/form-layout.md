@@ -19,6 +19,16 @@ Use `formRowSx` to place related compact fields beside each other. It wraps
 automatically and aligns fields at the top so validation and helper text do
 not disturb neighboring controls.
 
+The width roles are applied to the field's own `FormControl`, which is a
+column flexbox, and deliberately set no `alignItems`. A non-default value
+there (e.g. `flex-start`) stops the outlined input from stretching: it then
+shrink-wraps to the native `<input>`'s intrinsic width, which differs per
+browser engine and font (Chromium, Firefox and WebKit all differ, and a
+`type="number"` input with a `max` collapses to a few characters). That made
+the "Kultur bearbeiten" form look different in every browser, most visibly
+in Firefox on mobile. The cross-browser layout suite
+(`frontend/e2e-cross-browser/crop-form.spec.ts`) guards against it.
+
 ### Stacked variants
 
 `compactFieldSx` … `wideFieldSx` set a `flex` shorthand, which sizes the
