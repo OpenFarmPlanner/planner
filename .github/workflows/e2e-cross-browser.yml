@@ -1,0 +1,59 @@
+name: E2E cross-browser (Docker)
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-cross-browser-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cross-browser:
+    # Layout assertions and per-browser screenshot regression for Chromium,
+    # Firefox and WebKit, desktop and mobile (playwright.cross-browser.config.ts).
+    # The suite runs inside the official Playwright image pinned to the
+    # installed @playwright/test version (e2e-cross-browser/run-in-docker.sh),
+    # the same environment the screenshot baselines were recorded in, so a
+    # diff here is a rendering change, not a runner difference. One job per
+    # browser project; each starts its own backend and SQLite database.
+    name: cross-browser (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - desktop-chromium
+          - desktop-firefox
+          - desktop-webkit
+          - mobile-chromium
+          - mobile-webkit
+          - mobile-firefox
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node (LTS)
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Run cross-browser suite in the Playwright Docker image
+        working-directory: frontend
+        run: e2e-cross-browser/run-in-docker.sh --project=${{ matrix.project }}
+
+      - name: Upload Playwright report and screenshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-cross-browser-${{ matrix.project }}
+          # test-results/ holds the actual/expected/diff images of every
+          # failed toHaveScreenshot plus the trace of every failed test.
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
