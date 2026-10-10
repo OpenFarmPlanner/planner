@@ -331,7 +331,11 @@ curl -sSI https://openfarmplanner.org/ | grep -i 'x-robots-tag'
   most consistent with an `X-Robots-Tag: noindex` header (or a `robots.txt`
   `Disallow: /`) introduced at the proxy, e.g. during a beta/demo phase. Verify
   with the `curl` header checks above and remove any such directive in the ops
-  configuration.
+  configuration. The `www`→apex redirect is implemented as a production-only
+  `.htaccess` rule in the `ops` repo (`WWW_REDIRECT_HOST` in
+  `deploy/environments/production.env`, rendered by `deploy/lib/htaccess.sh`;
+  see `ops/README.md`'s "Host canonicalization" section) — this repo only
+  configures the canonical domain the redirect points at.
 - **Google Search Console only:** submitting/pinging the sitemap, requesting
   re-indexing, and reviewing the "Page indexing" / "Removals" reports and any
   manual actions. These cannot be inspected from the codebase.
