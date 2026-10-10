@@ -208,13 +208,6 @@ function FieldsBedsHierarchyMobile({
     return [];
   }, [sheetState, locations, fields]);
 
-  const rowActions = useMemo(() => {
-    if (sheetState?.mode === "edit") {
-      return getHierarchyRowActions(sheetState.row, openCreateSheet);
-    }
-    return [];
-  }, [sheetState, getHierarchyRowActions, openCreateSheet]);
-
   const createContext: HierarchyEditSheetCreateContext | undefined =
     sheetState?.mode === "create"
       ? {
@@ -235,6 +228,26 @@ function FieldsBedsHierarchyMobile({
       onCreateFieldRequestHandled?.();
     }
   }, [onCreateFieldRequestHandled]);
+
+  // Deleting the row being edited must also close its sheet, otherwise the
+  // sheet stays open on a row that no longer exists and "Speichern" would
+  // update a deleted record.
+  const rowActions = useMemo(() => {
+    if (sheetState?.mode !== "edit") {
+      return [];
+    }
+    return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
+      action.group === "destructive"
+        ? {
+            ...action,
+            onClick: () => {
+              handleSheetClose();
+              action.onClick();
+            },
+          }
+        : action,
+    );
+  }, [sheetState, getHierarchyRowActions, openCreateSheet, handleSheetClose]);
 
   const handleSaved = useCallback((): void => {
     setError("");
