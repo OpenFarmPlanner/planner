@@ -114,10 +114,13 @@ is committed. Use `rediss://` when the Redis service requires TLS.
 
 ## Uberspace deployment
 
-Staging and production infrastructure lives in the sibling
-`ops` repository. Those environments run
-`config.asgi:application` under Daphne and configure Redis through
-`CHANNEL_REDIS_URL`; the Uberspace web backend forwards `/ws` to the same ASGI
-process as the HTTP API. Application changes in this repository should keep
-the endpoint paths and Redis URL setting above stable unless the matching ops
-configuration is updated in the same release.
+Staging and production run normal HTTP and WebSockets as two separate
+processes, not one shared ASGI process: Gunicorn (WSGI) serves `/api`,
+`/admin`, and agent login, while Daphne serves `/ws` from
+`config.asgi:application`. The Uberspace web backend routes each path to its
+own process accordingly. Redis is configured through `CHANNEL_REDIS_URL`.
+Host-level details (ports, Supervisor program names, Redis setup) live in the
+sibling `ops` repository and are not duplicated here. Application changes in
+this repository should keep the endpoint paths and `CHANNEL_REDIS_URL`
+setting above stable unless the matching ops configuration is updated in the
+same release.
