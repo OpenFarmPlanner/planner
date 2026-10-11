@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-11 — Claude — Automated security review of PR #769 (cross-browser Playwright suite)
+
+**Scope:** `git diff origin/main...HEAD`: new `e2e-cross-browser.yml` workflow, Docker runner scripts, cross-browser specs and fixtures, shared `playwright.webservers.ts`, `.gitignore` changes.
+
+**Findings:** No issues. The workflow has `contents: read` only, triggers on `pull_request` (not `pull_request_target`), and interpolates only the static matrix value into `run:`. The e2e backend settings (test token, raised throttles) were moved unchanged from `playwright.config.ts` and apply to the local test server only. The container downloads a pinned uv release over HTTPS without a checksum; this is test tooling with no secrets and is noted as an observation, not a finding.
+
 ## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (about nav link rename, wordmark colour, visited link colour)
 
 **Scope:** `git diff 416d6cc0..HEAD` (`PublicTopbar.tsx` styling, de/en `home.json` label, test updates).
