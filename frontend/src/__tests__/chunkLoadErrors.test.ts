@@ -3,10 +3,12 @@ import {
   clearRouteLoadRetry,
   isDynamicImportLoadError,
   markDynamicImportRecoverySpent,
+  recoverUnlessPageIsUnloading,
   reloadPage,
   routeLoadRetryIsAvailable,
   shouldAutomaticallyReloadForChunkError,
   shouldAutomaticallyReloadForRouteLoadError,
+  watchPageUnload,
 } from '../runtime/chunkLoadErrors';
 import { unregisterServiceWorkers } from '../pwa/registerServiceWorker';
 
@@ -205,5 +207,60 @@ describe('reloadPage', () => {
     reloadPage();
 
     await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1));
+  });
+});
+
+// Firefox and WebKit reject a pending lazy-route import when the user leaves
+// the page; reloading then would cancel the navigation the user started.
+describe('chunk-error recovery while the page unloads', () => {
+  let stopWatching: () => void;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    stopWatching = watchPageUnload();
+  });
+
+  afterEach(() => {
+    window.dispatchEvent(new Event('pageshow'));
+    stopWatching();
+    vi.useRealTimers();
+  });
+
+  it('recovers immediately when the page is not being left', () => {
+    const recovery = vi.fn();
+
+    recoverUnlessPageIsUnloading(recovery);
+
+    expect(recovery).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds the recovery back once the page starts unloading', () => {
+    const recovery = vi.fn();
+    window.dispatchEvent(new Event('beforeunload'));
+
+    recoverUnlessPageIsUnloading(recovery);
+    vi.advanceTimersByTime(9_000);
+
+    expect(recovery).not.toHaveBeenCalled();
+  });
+
+  it('still recovers if the page is still there after the unload window, e.g. a cancelled leave prompt', () => {
+    const recovery = vi.fn();
+    window.dispatchEvent(new Event('beforeunload'));
+
+    recoverUnlessPageIsUnloading(recovery);
+    vi.advanceTimersByTime(10_000);
+
+    expect(recovery).toHaveBeenCalledTimes(1);
+  });
+
+  it('recovers immediately again once the page is shown again', () => {
+    const recovery = vi.fn();
+    window.dispatchEvent(new Event('beforeunload'));
+    window.dispatchEvent(new Event('pageshow'));
+
+    recoverUnlessPageIsUnloading(recovery);
+
+    expect(recovery).toHaveBeenCalledTimes(1);
   });
 });

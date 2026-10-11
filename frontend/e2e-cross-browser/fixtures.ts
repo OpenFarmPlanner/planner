@@ -10,31 +10,11 @@ export const FIXED_NOW = new Date('2026-05-15T10:00:00+02:00');
 // Sub-pixel rounding differs between engines; anything larger is a real overflow.
 export const LAYOUT_TOLERANCE_PX = 1;
 
-// Mirrors CHUNK_RELOAD_STORAGE_KEY in src/runtime/chunkLoadErrors.ts.
-const CHUNK_RELOAD_STORAGE_KEY = 'openFarmPlanner.lastChunkReloadAt';
-
-export const test = base.extend<{ fixedClock: void; suppressChunkErrorReload: boolean }>({
+export const test = base.extend<{ fixedClock: void }>({
   fixedClock: [async ({ page }, provide) => {
     await page.clock.setFixedTime(FIXED_NOW);
     await provide();
   }, { auto: true }],
-  // Known issue (docs/testing-and-ci.md, "Known cross-browser issues"): in
-  // Firefox and WebKit, leaving a page while a lazy route chunk is still
-  // loading rejects that import, and the app's chunk-error recovery reloads
-  // the page being left, aborting the navigation. That would make any
-  // page.goto() flaky in those engines, so every test except the one that
-  // reproduces the issue (known-issues.spec.ts) starts with the app's
-  // one-shot automatic reload already spent. With the clock fixed, the
-  // stored timestamp stays inside the recovery's 60-second window.
-  suppressChunkErrorReload: [true, { option: true }],
-  page: async ({ page, suppressChunkErrorReload }, provide) => {
-    if (suppressChunkErrorReload) {
-      await page.addInitScript((key) => {
-        window.sessionStorage.setItem(key, String(Date.now()));
-      }, CHUNK_RELOAD_STORAGE_KEY);
-    }
-    await provide(page);
-  },
 });
 
 export { expect };

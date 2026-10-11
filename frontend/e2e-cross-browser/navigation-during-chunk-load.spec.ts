@@ -1,11 +1,12 @@
 import { expect, isMobileProject, loginToDemoProject, test } from './fixtures';
 
-// Reproduces a known cross-browser bug instead of working around it. This
-// test is expected to fail in the engines that have the bug until the app is
-// fixed; see docs/testing-and-ci.md, "Known cross-browser issues".
-test.describe('known issue: leaving a page while a route chunk loads', () => {
+// Regression test: Firefox and WebKit reject a lazy-route import that is
+// still loading when the user leaves the page, and the app's stale-deploy
+// recovery used to reload the page being left, cancelling the navigation
+// (src/runtime/chunkLoadErrors.ts, recoverUnlessPageIsUnloading).
+test.describe('leaving a page while a route chunk loads', () => {
   // A service worker would serve the chunk from its precache, out of reach of page.route().
-  test.use({ suppressChunkErrorReload: false, serviceWorkers: 'block' });
+  test.use({ serviceWorkers: 'block' });
 
   test('a full navigation is not cancelled by the chunk-error reload', async ({ page }, testInfo) => {
     await loginToDemoProject(page, testInfo);

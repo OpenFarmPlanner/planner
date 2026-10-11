@@ -51,6 +51,43 @@ function getCurrentRouteKey(): string {
   return `${window.location.pathname}${window.location.search}`;
 }
 
+// Leaving the page (a bookmark, a typed URL, a link to another site) makes
+// Firefox and WebKit cancel the in-flight requests of the page being left,
+// which rejects a pending lazy-route import with the same error a stale deploy
+// produces. Reloading in response would cancel the navigation the user just
+// started. So a failure that arrives after `beforeunload` is held back: if the
+// page really is going away, it dies with the document; if it is still here
+// once the window has passed (e.g. a leave prompt was cancelled), the normal
+// recovery runs after all.
+const PAGE_UNLOAD_SETTLE_MS = 10_000;
+let pageUnloadPendingUntil = 0;
+
+/** Starts tracking `beforeunload`; returns the cleanup. Mounted once by the app shell. */
+export function watchPageUnload(): () => void {
+  const markUnloadStarted = (): void => {
+    pageUnloadPendingUntil = performance.now() + PAGE_UNLOAD_SETTLE_MS;
+  };
+  const markPageShown = (): void => {
+    pageUnloadPendingUntil = 0;
+  };
+  window.addEventListener('beforeunload', markUnloadStarted);
+  window.addEventListener('pageshow', markPageShown);
+  return () => {
+    window.removeEventListener('beforeunload', markUnloadStarted);
+    window.removeEventListener('pageshow', markPageShown);
+  };
+}
+
+/** Runs the chunk-error `recovery` now, or once a page unload in progress has had time to complete. */
+export function recoverUnlessPageIsUnloading(recovery: () => void): void {
+  const remainingMs = pageUnloadPendingUntil - performance.now();
+  if (remainingMs <= 0) {
+    recovery();
+    return;
+  }
+  window.setTimeout(recovery, remainingMs);
+}
+
 export function isDynamicImportLoadError(error: unknown): boolean {
   const errorText = getErrorText(error);
   return DYNAMIC_IMPORT_ERROR_PATTERNS.some((pattern) => errorText.includes(pattern));
