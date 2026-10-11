@@ -412,6 +412,10 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Overrides the `en` locale's US date formats with European ones
+# (dd.mm.yyyy, 24-hour) for the Django admin; see config/formats/en/formats.py.
+FORMAT_MODULE_PATH = ['config.formats']
+
 # Storage and API responses stay UTC (TIME_ZONE above); the Django admin
 # displays datetimes in this timezone instead, since its admin users are
 # in Central Europe. See config.middleware.AdminTimezoneMiddleware.
