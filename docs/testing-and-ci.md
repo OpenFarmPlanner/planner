@@ -513,19 +513,22 @@ before committing it. A failing screenshot uploads `*-actual.png`,
 uploads `playwright-report/` and `test-results/` (traces and screenshot
 diffs) as `playwright-cross-browser-<project>`.
 
-### Known cross-browser issues
+### Cross-browser issues found and fixed
 
-Issues the suite surfaced that are deliberately not worked around in the
-tests. A failing test for one of these is the intended signal:
+Issues the suite surfaced, each fixed in the app and guarded by a test.
+A new engine-specific bug gets a failing test here first, not a workaround
+in the fixtures.
 
-| Issue | Engines | Where | Suspected cause | Covered by |
-| --- | --- | --- | --- | --- |
-| A full navigation (bookmark, typed URL, `page.goto`) started while a lazy route chunk is still loading is cancelled: the page being left reloads instead. | Firefox (always), WebKit (mobile always, desktop 2 of 3 runs); never Chromium | any `/app/*` page | Leaving the page makes these engines reject the in-flight `import()` ("error loading dynamically imported module" / "Importing a module script failed"). The global handler in `src/App.tsx` (`unhandledrejection`/`vite:preloadError`) passes it to `reloadOnceForDynamicImportError` (`src/runtime/chunkLoadErrors.ts`), which treats it as a stale-deploy chunk and calls `window.location.reload()` on the departing page. | `known-issues.spec.ts` (fails in Firefox/WebKit by design). All other specs pre-spend the one-shot reload budget (`suppressChunkErrorReload` in `fixtures.ts`) so this bug does not make them flaky. |
-| `type="number"` fields in the Kultur form show the decimal separator differently: WebKit renders `0,5` under `de-AT`, Chromium and Firefox render `0.5`, while the rest of the UI formats numbers with a comma. | WebKit vs. Chromium/Firefox | Kultur/Sorte bearbeiten | Native number inputs are localized by the engine, not by the app's number formatting. | Visible in the per-browser baselines; no assertion. |
+| Issue | Engines | Fix | Guarded by |
+| --- | --- | --- | --- |
+| Form fields shrink-wrapped to the engine's intrinsic `<input>` width, so the Kultur form looked different in every browser (worst in Firefox on mobile). | all, visibly different per engine | The field-width roles no longer set `alignItems` (see [form-layout.md](./form-layout.md)). | `crop-form.spec.ts`, `formLayout.test.ts` |
+| A full navigation (bookmark, typed URL) started while a lazy route chunk was still loading was cancelled: the page being left reloaded instead. Leaving the page makes these engines reject the in-flight `import()`, and the stale-deploy recovery treated that as a missing chunk. | Firefox, WebKit; never Chromium | `recoverUnlessPageIsUnloading` (`src/runtime/chunkLoadErrors.ts`) holds the recovery back after `beforeunload`; it still runs if the page stays (e.g. a cancelled leave prompt). | `navigation-during-chunk-load.spec.ts`, `chunkLoadErrors.test.ts`, `RouteErrorBoundary.test.tsx` |
+| Decimal fields showed the engine's own number formatting: `0,5` in WebKit, `0.5` in Chromium/Firefox, while the rest of the UI uses a comma. | WebKit vs. Chromium/Firefox | Decimal fields use `LocalizedDecimalField` (see [form-layout.md](./form-layout.md)). | `crop-form.spec.ts`, `LocalizedDecimalField.test.tsx` |
+| At phone width the "Fruchtfolge-Eigenschaften" info icon drifted to the right edge and the variety legend dropped its description onto a line of its own. | all, at about 393 px and below | The icon is tied to the heading's last word; the legend is one flowing sentence. | `crop-form.spec.ts` |
 
 Not issues, but emulation limits that show up in the `mobile-firefox`
-baselines: native number spinners and desktop scrollbars (Firefox has no
-mobile emulation, see above).
+baselines: native number spinners on integer fields and desktop scrollbars
+(Firefox has no mobile emulation, see above).
 
 ## Adding tests
 
