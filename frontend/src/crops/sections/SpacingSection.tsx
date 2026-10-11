@@ -6,6 +6,7 @@ import { Box, Typography, TextField } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { fieldRowSx, smallFieldSx } from './styles.tsx';
+import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
@@ -54,16 +55,14 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
           />
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
-          <TextField
+          <LocalizedDecimalField
             sx={mergeVarietyFieldSx(smallFieldSx, sowingDepthVariety?.sx)}
-            type="number"
             label={t('form.sowingDepthCm')}
             placeholder={t('form.sowingDepthCmPlaceholder')}
-            value={formData.sowing_depth_cm ?? ''}
-            onChange={e => onChange('sowing_depth_cm', e.target.value ? parseFloat(e.target.value) : undefined)}
+            value={formData.sowing_depth_cm}
+            onValueChange={(value) => onChange('sowing_depth_cm', value ?? undefined)}
             error={Boolean(errors.sowing_depth_cm)}
             helperText={errors.sowing_depth_cm}
-            slotProps={{ htmlInput: { min: 0, step: 0.1, inputMode: 'decimal' } }}
           />
         </VarietyFieldTooltip>
       </Box>

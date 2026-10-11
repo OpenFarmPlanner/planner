@@ -47,6 +47,17 @@ Authentication and similar identity forms are capped by their page shell
 (`AuthPageShell` plus `pages/auth/authPageStyles.ts`), not by a form-layout
 role.
 
+## Decimal fields
+
+Fields that hold decimal values (amounts, depths, percentages, weights) use
+`LocalizedDecimalField` (`frontend/src/components/inputs/`), not a
+`TextField` with `type="number"`. A native number input is formatted by the
+browser engine: WebKit shows `0,5` under German, Chromium and Firefox `0.5`,
+and neither matches the comma the rest of the UI uses. The component shows
+the UI language's separator, accepts both `,` and `.` while typing and
+reports a number (or `null` when cleared). Whole-number fields (days, years,
+centimetre spacings) may stay `type="number"`.
+
 ## Exceptions
 
 DataGrid cell editors must fill their cell and therefore do not use these
