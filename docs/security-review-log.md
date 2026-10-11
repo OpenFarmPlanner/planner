@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-11 — Claude — Automated security review of PR #769, merge of main (1.82.0)
+
+**Scope:** `git diff 4b47fdfc..HEAD`: merge of `origin/main` into the PR branch. The only changes are PR #770 (admin date formats) and the 1.82.0 version bump, both already covered by the #770 entry below.
+
+**Findings:** No issues. No new PR-specific changes since the previous #769 entries, which still hold.
+
 ## 2026-10-11 — Claude — Automated security review of PR #770 (admin European date formats)
 
 **Scope:** `git diff origin/main...HEAD` (`config/formats/en/formats.py`, `FORMAT_MODULE_PATH` in `settings.py`, date-format test).
