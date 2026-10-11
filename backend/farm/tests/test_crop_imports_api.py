@@ -192,6 +192,23 @@ class CropImportAPITest(DRFAPITestCase):
         # Verify crop was created
         self.assertTrue(Crop.objects.filter(name_normalized='cucumber').exists())
 
+    def test_import_apply_maps_a_family_name_and_rejects_an_unknown_one(self):
+        data = {
+            'items': [
+                {'name': 'Gurke', 'crop_family': 'Kürbisgewächse'},
+                {'name': 'Apfel', 'crop_family': 'Rosengewächse'},
+            ],
+            'confirm_updates': False,
+        }
+
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', data, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 1)
+        self.assertEqual(Crop.objects.get(name_normalized='gurke').crop_family_id, 'Cucurbitaceae')
+        self.assertEqual(response.data['errors'][0]['index'], 1)
+        self.assertIn('crop_family', response.data['errors'][0]['error'])
+
     def test_import_apply_skip_update_without_confirmation(self):
         """Test apply endpoint skips updates without confirmation."""
         data = {

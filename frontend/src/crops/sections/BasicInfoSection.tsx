@@ -1,12 +1,13 @@
 /**
  * BasicInfoSection: Name, Variety, Crop Family, Nutrient Demand
  */
-import type { ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel, MenuItem, Typography } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
 import { fieldRowSx, mediumFieldSx, smallFieldSx } from './styles.tsx';
-import type { Crop } from '../../api/types';
+import type { Crop, PlantFamily } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { AppTooltip } from '../../components/AppTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
@@ -14,6 +15,8 @@ import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
 import type { PublicCropSpeciesOption } from '../publicCropNameSuggestions';
+import { CropSpeciesOptionContent } from '../CropSpeciesOptionContent';
+import { usePlantFamilies } from '../plantFamilies';
 
 interface BasicInfoSectionProps {
   formData: Partial<Crop>;
@@ -81,6 +84,16 @@ const identityFieldSx = {
   minWidth: 0,
 } as const;
 
+/** A family key the list does not (yet) contain, shown as its botanical name. */
+function unlistedPlantFamily(botanicalName: string): PlantFamily {
+  return {
+    botanical_name: botanicalName,
+    display_name: botanicalName,
+    translations: {},
+    default_rotation_break_years: null,
+  };
+}
+
 export function BasicInfoSection({
   formData,
   errors,
@@ -125,6 +138,27 @@ export function BasicInfoSection({
     : null;
   const firstVarietyAutocomplete = firstVarietyOptions && onFirstVarietyCommit
     ? { options: firstVarietyOptions, onCommit: onFirstVarietyCommit }
+    : null;
+  const plantFamilies = usePlantFamilies();
+  const getPlantFamilyLabel = useCallback(
+    (family: PlantFamily) => plantFamilies.getName(family.botanical_name),
+    [plantFamilies],
+  );
+  const plantFamilyFilter = useMemo(() => createFilterOptions<PlantFamily>({
+    stringify: (family) => `${plantFamilies.getName(family.botanical_name)} ${family.botanical_name}`,
+  }), [plantFamilies]);
+  const selectedFamily = formData.crop_family
+    ? plantFamilies.getFamily(formData.crop_family) ?? unlistedPlantFamily(formData.crop_family)
+    : null;
+  const legacyCropFamily = !formData.crop_family ? formData.legacy_crop_family?.trim() : '';
+  const familyDefaultBreakYears = formData.rotation_break_years === null || formData.rotation_break_years === undefined
+    ? plantFamilies.getDefaultBreakYears(formData.crop_family)
+    : null;
+  const rotationBreakDefaultHint = familyDefaultBreakYears !== null
+    ? t('form.rotationBreakYearsFamilyDefault', {
+      family: plantFamilies.getName(formData.crop_family),
+      count: familyDefaultBreakYears,
+    })
     : null;
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
@@ -375,15 +409,37 @@ export function BasicInfoSection({
           </Box>
         ) : null}
       </Box>
-      <Box sx={{ ...fieldRowSx, alignItems: 'flex-end' }}>
+      <Box sx={fieldRowSx}>
         <VarietyFieldTooltip tooltipTitle={cropFamilyVariety?.tooltipTitle}>
-          <TextField
+          <Autocomplete<PlantFamily, false, false, false>
             sx={mergeVarietyFieldSx(mediumFieldSx, cropFamilyVariety?.sx)}
-            label={t('form.cropFamily')}
-            placeholder={t('form.cropFamilyPlaceholder')}
-            value={formData.crop_family}
-            onChange={e => onChange('crop_family', e.target.value)}
+            options={plantFamilies.families}
+            value={selectedFamily}
+            onChange={(_, family) => onChange('crop_family', family?.botanical_name ?? null)}
+            getOptionLabel={getPlantFamilyLabel}
+            isOptionEqualToValue={(option, value) => option.botanical_name === value.botanical_name}
+            filterOptions={plantFamilyFilter}
+            noOptionsText={t('form.cropFamilyNoOptions')}
+            loading={!plantFamilies.loaded}
             disabled={speciesInvariantFieldsReadOnly}
+            renderOption={({ key, ...optionProps }, family) => (
+              <li key={key} {...optionProps}>
+                <CropSpeciesOptionContent
+                  officialName={plantFamilies.getName(family.botanical_name)}
+                  scientificName={family.botanical_name}
+                  match={null}
+                  query=""
+                />
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t('form.cropFamily')}
+                placeholder={t('form.cropFamilyPlaceholder')}
+                helperText={legacyCropFamily ? t('form.cropFamilyLegacyHint', { value: legacyCropFamily }) : undefined}
+              />
+            )}
           />
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={nutrientDemandVariety?.tooltipTitle}>
@@ -413,7 +469,19 @@ export function BasicInfoSection({
             label={t('form.rotationBreakYears')}
             value={formData.rotation_break_years ?? ''}
             onChange={e => onChange('rotation_break_years', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-            slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }}
+            placeholder={familyDefaultBreakYears !== null ? String(familyDefaultBreakYears) : undefined}
+            helperText={(
+              <>
+                {rotationBreakDefaultHint ? (
+                  <Box component="span" sx={{ display: 'block' }}>{rotationBreakDefaultHint}</Box>
+                ) : null}
+                {t('form.rotationBreakYearsHelper')}
+              </>
+            )}
+            slotProps={{
+              htmlInput: { min: 0, inputMode: 'numeric' },
+              inputLabel: familyDefaultBreakYears !== null ? { shrink: true } : undefined,
+            }}
             disabled={speciesInvariantFieldsReadOnly}
           />
         </VarietyFieldTooltip>

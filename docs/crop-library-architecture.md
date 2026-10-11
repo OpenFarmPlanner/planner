@@ -23,6 +23,7 @@ two disagree about what exists, this file wins.
 | Moderation surfaces: species proposals, moderator-access requests, restoring removed entries (`/app/public-library-moderation`) | **implemented** |
 | Moderator crop-species correction of a published entry ("Kulturart korrigieren", §9) | **implemented** |
 | Full library workspace at `/app/crop-library` (browse, import, discuss, edit, versions) | **implemented** |
+| Curated global plant-family list (`PlantFamily`) referenced by `crop_family` on project and public crops | **implemented** — see "Plant families" below |
 | `PublicCropChangeProposal` review workflow | **implemented** — queues contributions from new accounts and API tokens, reviewed in the contributions queue on the moderation page (see [account-trust-levels.md](./account-trust-levels.md)) |
 | `/api/crop-library/` as the *only* library surface; frontend switched off `/api/public-crops/` | **not done** — see §5 |
 | Unauthenticated public `/crops` route | **not done** — see §5 |
@@ -457,9 +458,9 @@ rejecting it keeps an auditable rejected proposal.
 `CropSpecies` also carries optional reference metadata for the official
 suggestion list: `scientific_name`, botanical `family`, and a list of broad
 `categories` such as `vegetable`. These fields belong to the moderated species
-identity. They are not copied into every variety row; project crop-family values
-are filled from the species metadata only when a general project crop has no
-user-entered `crop_family` yet.
+identity. They are not copied into every variety row. `CropSpecies.family` is
+still free text (a botanical name), not a reference to the plant-family list
+below; the crop's own `crop_family` reference is what rotation reads.
 
 Crop species display names are language- and region-aware at the API boundary.
 The canonical German translation is standard Germany terminology; Austria and
@@ -774,7 +775,9 @@ planning calculations and the UI resolve it identically:
 - Nothing is copied onto the Sorte. Clearing a field removes the override, and
   the Sorte follows later edits of the general Kultur automatically.
 - The three species-invariant fields (`CROP_SPECIES_INVARIANT_FIELDS`:
-  `crop_family`, `nutrient_demand`, `rotation_break_years`) go further: on a
+  `crop_family`, `nutrient_demand`, `rotation_break_years`; `crop_family` is a
+  reference to the plant-family list, unset = `NULL`, see "Plant families"
+  below) go further: on a
   linked Sorte they are **not overridable at all**. They describe the crop
   species, so `resolve_crop_field` / `build_effective_crop_values` return the
   general Kultur's value whenever that inheritance source exists and ignore any
@@ -894,6 +897,106 @@ marking genuine per-Sorte values only. On save, anything still matching the
 baseline is cleared again (`stripValuesMatchingBaseline`, the same mechanism the
 add-variety prefill uses), so displaying an inherited value never freezes it as
 an override, and clearing a field simply removes the override.
+
+### Plant families (Pflanzenfamilien)
+
+`crop_family` on `Crop` and `PublicCrop` is a foreign key to
+`crops.PlantFamily`, a curated, **global** list (no project FK) shared by
+private crops and the public library. The botanical name is the primary key,
+so the stored reference *is* the stable name (`"Brassicaceae"`). Display
+names live in `PlantFamilyTranslation` (one row per language, same pattern as
+`CropSpeciesTranslation`; `PlantFamily.localized_name()` uses the standard
+fallback chain). The list is seeded by migration `crops.0019_plant_family`
+from `backend/crops/plant_families.py` and is **not user-editable**: changes
+go through the Django admin only, where the botanical name is read-only once
+created because every crop references it.
+
+| Botanical name | German name | `default_rotation_break_years` |
+|---|---|---|
+| Brassicaceae | Kreuzblütler | 4 |
+| Solanaceae | Nachtschattengewächse | 3 |
+| Apiaceae | Doldenblütler | 3 |
+| Amaryllidaceae | Lauchgewächse | 3 |
+| Fabaceae | Hülsenfrüchtler | 3 |
+| Amaranthaceae | Fuchsschwanzgewächse | 3 |
+| Cucurbitaceae | Kürbisgewächse | 2 |
+| Asteraceae | Korbblütler | 2 |
+| Poaceae | Süßgräser | – |
+| Lamiaceae | Lippenblütler | – |
+| Caprifoliaceae | Geißblattgewächse (Feldsalat) | – |
+| Boraginaceae | Raublattgewächse | – |
+| Polygonaceae | Knöterichgewächse | – |
+| Malvaceae | Malvengewächse | – |
+| Montiaceae | Quellkrautgewächse | – |
+| Tropaeolaceae | Kapuzinerkressengewächse | – |
+
+**The default breaks are initial reference values, not verified data.** They
+still have to be checked against LfL Bayern and Bio Austria through the
+`crop-data` workflow (see [rfc-crop-taxonomy-admin-api.md](./rfc-crop-taxonomy-admin-api.md))
+before a rotation check relies on them. `NULL` means "no default".
+
+**Definition of `rotation_break_years`** (same on `Crop.rotation_break_years`
+and `PlantFamily.default_rotation_break_years`): the number of **calendar
+years without this plant family on the same bed in between**. A family grown
+last in year *Y* may be grown again from year *Y + break + 1*. A source that
+says "only every 4 years" therefore means a break of **3**. The **effective
+break** of a crop is its own (effective, i.e. Kultur-resolved for a linked
+Sorte) `rotation_break_years`, otherwise its family's default, otherwise none
+— `resolve_effective_rotation_break_years()` in `crop_inheritance.py`,
+mirrored by `resolveEffectiveRotationBreakYears()` in
+`frontend/src/crops/plantFamilies.ts`, and exposed read-only as
+`CropSerializer.effective_rotation_break_years`. Nothing checks a rotation yet;
+this is the foundation for the Fruchtfolge feature.
+
+**API.** `crop_family` is read and written as the botanical name
+(`PlantFamilyField`: case/whitespace-insensitive, `""`/`null` clear it, any
+other unknown value is a `400` naming `/api/plant-families/`). Responses add
+`crop_family_display_name` (the row's own family in the request language).
+`GET /api/plant-families/` lists every family with `display_name`,
+`translations` and `default_rotation_break_years`; it is read-only,
+unpaginated, and on both API-token allowlists. The crop serializers load the
+list once per response (`get_plant_families_by_key`), so the list endpoints
+pay two constant queries for it. Imports are more lenient than the plain API:
+the agent import (`crop_import/analysis.py`) and the crops-page spreadsheet
+import map German/English names and synonyms ("Kreuzblütler", "Cruciferae")
+to the botanical name with the same rule as the data migration.
+
+**Generic copy/compare code.** Publishing, pulling, syncing, revisions and the
+inheritance service move field values around by name. They read and write
+`crop_family` through `get_crop_field_value()` / `set_crop_field_value()` /
+`crop_model_kwargs()` (`farm/models/crops.py`), which use the raw key
+(`crop_family_id`), so payloads, diffs and snapshots keep a plain string
+under the field name `crop_family` and no `PlantFamily` row is loaded.
+`Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS` names it by its attname, like the
+other foreign keys there.
+
+**Migration of the old free text** (`farm.0112_crop_family_plant_family_reference`):
+
+- The old text column is renamed to `legacy_crop_family` (read-only,
+  `editable=False`, shown read-only in the crop admin and returned read-only
+  by the crop API) so nothing is lost. It is temporary and can be dropped in a later release once
+  the unmapped values below are resolved.
+- `resolve_plant_family_key()` (`crops/plant_families.py`) maps the text:
+  botanical names, German and English display names, common variants and
+  historical synonyms ("Kreuzblütengewächse", "Kohlgewächse", "Leguminosen",
+  "Schmetterlingsblütler", "Gänsefußgewächse", "Zwiebelgewächse",
+  "Alliaceae", "Umbelliferae", "Compositae", "Valerianaceae", …), compared
+  case-, whitespace- and umlaut-insensitively. A compound value
+  ("Kreuzblütler (Brassicaceae)") maps only when every part names the same
+  family. Ambiguous names ("Liliengewächse", which covered onions *and*
+  asparagus) are deliberately not mapped.
+- Private and public crops (soft-deleted ones included) go through the **same**
+  rule, so an imported copy and its library entry end up on the same family
+  and the 4-case update model sees no spurious `crop_family` difference.
+- Unmapped values leave the reference empty and are printed with the affected
+  row ids. The form shows the old text as a hint ("Bisheriger Freitext …")
+  until a family is chosen.
+- Pending public edit proposals are re-keyed the same way (approval
+  re-validates them); an unmappable family is dropped from the proposal.
+- Old data written before the switch is mapped on the way back in as well:
+  restoring an old `PublicCropRevision` or a crop history entry
+  (`coerce_plant_family_key()`), and persisted crop-page filters holding free
+  text are dropped (`isBotanicalFamilyKey`).
 
 ## 1. The current situation (before this pass)
 

@@ -14,11 +14,17 @@ import { areCropValuesEqual, isEmptyCropValue } from './varietyValueSource';
 
 type TranslateFn = (key: string) => string;
 
+/** Lookups a cell formatter may need beyond translations. */
+export interface ComparisonFormatContext {
+  /** Localized name for a plant-family key (see `usePlantFamilies`). */
+  getPlantFamilyName?: (botanicalName: string | null | undefined) => string;
+}
+
 export interface CropComparisonField {
   id: string;
   keys: (keyof Crop)[];
   labelKey: string;
-  format: (crop: Crop, t: TranslateFn, locale: string) => string;
+  format: (crop: Crop, t: TranslateFn, locale: string, context: ComparisonFormatContext) => string;
   /**
    * Overrides the default "effective value per key" resolution (variety's
    * own value for each of `keys`, falling back to the crop's) for fields
@@ -54,7 +60,9 @@ export const CROP_COMPARISON_FIELDS: CropComparisonField[] = [
     id: 'cropFamily',
     keys: ['crop_family'],
     labelKey: 'form.cropFamily',
-    format: (crop) => crop.crop_family || '',
+    format: (crop, _t, _locale, context) => (
+      context.getPlantFamilyName?.(crop.crop_family) ?? crop.crop_family ?? ''
+    ),
   },
   {
     id: 'nutrientDemand',
@@ -256,6 +264,7 @@ export function getComparisonCellValue(
   field: CropComparisonField,
   t: TranslateFn,
   locale: string,
+  context: ComparisonFormatContext = {},
 ): string {
   const effective = resolveFieldValues(field, variety, cropCrop);
   const hasAnyValue = Object.values(effective).some((value) => !isEmptyCropValue(value));
@@ -264,5 +273,5 @@ export function getComparisonCellValue(
     return EMPTY_CELL_VALUE;
   }
 
-  return field.format({ ...variety, ...effective } as Crop, t, locale);
+  return field.format({ ...variety, ...effective } as Crop, t, locale, context);
 }

@@ -781,31 +781,31 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         variety entry never carries them, and the species-level entry takes them
         from the project's general Kultur, not from the Sorte."""
         general_kultur = self._create_general_kultur(
-            crop_family='Asteraceae', nutrient_demand='high',
+            crop_family_id='Asteraceae', nutrient_demand='high',
         )
         # A stale value on the Sorte itself must be ignored on publish.
-        Crop.objects.filter(pk=self.crop.pk).update(crop_family='Wrong', nutrient_demand='low')
+        Crop.objects.filter(pk=self.crop.pk).update(crop_family_id='Poaceae', nutrient_demand='low')
 
         response = self.publish_current_crop()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         variety_entry = PublicCrop.objects.get(variety='Bijella')
-        self.assertEqual(variety_entry.crop_family, '')
+        self.assertIsNone(variety_entry.crop_family_id)
         self.assertEqual(variety_entry.nutrient_demand, '')
 
         general_entry = PublicCrop.objects.get(variety='')
         self.assertEqual(general_entry.source_project_crop, general_kultur)
-        self.assertEqual(general_entry.crop_family, 'Asteraceae')
+        self.assertEqual(general_entry.crop_family_id, 'Asteraceae')
         self.assertEqual(general_entry.nutrient_demand, 'high')
 
     def test_updating_a_sorte_entry_does_not_wipe_a_curated_species_invariant_value(self):
         """The project-side update omits these fields, so a value curated on the
         public variety entry survives."""
-        self._create_general_kultur(crop_family='Asteraceae')
+        self._create_general_kultur(crop_family_id='Asteraceae')
         self.publish_current_crop()
         variety_entry = PublicCrop.objects.get(variety='Bijella')
         PublicCrop.objects.filter(pk=variety_entry.pk).update(
-            crop_family='Curated', nutrient_demand='medium',
+            crop_family_id='Lamiaceae', nutrient_demand='medium',
         )
 
         self.crop.notes = 'Local edit to trigger an update'
@@ -814,7 +814,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(response.data['operation'], 'updated')
 
         variety_entry.refresh_from_db()
-        self.assertEqual(variety_entry.crop_family, 'Curated')
+        self.assertEqual(variety_entry.crop_family_id, 'Lamiaceae')
         self.assertEqual(variety_entry.nutrient_demand, 'medium')
 
     def test_general_kultur_published_through_a_sorte_offers_the_pull_for_differing_values(self):
@@ -1437,7 +1437,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             status='published',
             created_by=self.user,
             crop_species=bean_species,
-            crop_family='Fabaceae',
+            crop_family_id='Fabaceae',
             growth_duration_days=110,
         )
         variety_public_crop = PublicCrop.objects.create(
@@ -1446,7 +1446,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             status='published',
             created_by=self.user,
             crop_species=bean_species,
-            crop_family='Fabaceae',
+            crop_family_id='Fabaceae',
             growth_duration_days=110,
         )
 
@@ -1454,7 +1454,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         general = Crop.objects.get(project=self.project, crop_species=bean_species, variety='')
-        self.assertEqual(general.crop_family, 'Fabaceae')
+        self.assertEqual(general.crop_family_id, 'Fabaceae')
         self.assertEqual(general.growth_duration_days, 110)
         self.assertEqual(general.origin_type, Crop.ORIGIN_IMPORTED)
 
@@ -1462,14 +1462,14 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         bean_species = CropSpecies.objects.create(name='Bean')
         PublicCrop.objects.create(
             name='Bean', variety='', status='published', created_by=self.user,
-            crop_species=bean_species, crop_family='Fabaceae',
+            crop_species=bean_species, crop_family_id='Fabaceae',
         )
         variety_public_crop = PublicCrop.objects.create(
             name='Bean', variety='Canadian Wonder', status='published', created_by=self.user,
-            crop_species=bean_species, crop_family='Fabaceae',
+            crop_species=bean_species, crop_family_id='Fabaceae',
         )
         existing_general = Crop.objects.create(
-            name='Bean', variety='', crop_species=bean_species, crop_family='Custom', project=self.project,
+            name='Bean', variety='', crop_species=bean_species, crop_family_id='Malvaceae', project=self.project,
         )
 
         response = self.client.post(f'/openfarmplanner/api/public-crops/{variety_public_crop.id}/import/', {}, format='json')
@@ -1477,7 +1477,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Crop.objects.filter(project=self.project, crop_species=bean_species, variety='').count(), 1)
         existing_general.refresh_from_db()
-        self.assertEqual(existing_general.crop_family, 'Custom')
+        self.assertEqual(existing_general.crop_family_id, 'Malvaceae')
 
     def test_public_crop_list_shows_no_import_status_when_not_yet_imported(self):
         PublicCrop.objects.create(
@@ -2907,6 +2907,55 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(revisions.count(), 3)
         self.assertEqual(revisions.last().action, PublicCropRevision.ACTION_RESTORED)
         self.assertEqual(revisions.last().restored_from_version, 1)
+
+    def test_revert_maps_the_free_text_family_of_an_old_version(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.user,
+            notes='v1', version=1,
+        )
+        self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'base_version': 1, 'notes': 'v2'},
+            format='json',
+        )
+        # Versions saved before the plant-family list stored free text.
+        old_revision = PublicCropRevision.objects.get(public_crop=public_crop, version=1)
+        old_revision.snapshot = {**old_revision.snapshot, 'crop_family': 'Nachtschattengewächse'}
+        old_revision.save(update_fields=['snapshot'])
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/revert/',
+            {'version': 1, 'base_version': 2},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        public_crop.refresh_from_db()
+        self.assertEqual(public_crop.crop_family_id, 'Solanaceae')
+        self.assertEqual(response.data['crop_family'], 'Solanaceae')
+
+    def test_direct_edit_writes_crop_family_as_botanical_name(self):
+        public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='', status='published', created_by=self.user, version=1,
+        )
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/?language=de',
+            {'base_version': 1, 'crop_family': 'Solanaceae'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['crop_family'], 'Solanaceae')
+        self.assertEqual(response.data['crop_family_display_name'], 'Nachtschattengewächse')
+        revision = PublicCropRevision.objects.get(public_crop=public_crop, version=2)
+        self.assertEqual(revision.snapshot['crop_family'], 'Solanaceae')
+
+        rejected = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/',
+            {'base_version': 2, 'crop_family': 'Nachtschatten'},
+            format='json',
+        )
+        self.assertEqual(rejected.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Unknown plant family', str(rejected.data['crop_family'][0]))
 
     def test_non_admin_cannot_restore_a_different_variety_identity(self):
         public_crop = PublicCrop.objects.create(

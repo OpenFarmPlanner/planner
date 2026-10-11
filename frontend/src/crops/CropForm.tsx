@@ -148,7 +148,7 @@ const SUPPLIER_SECTION_GAP = 1.75;
 const EMPTY_CROP: Partial<Crop> = {
   name: '',
   variety: '',
-  crop_family: '',
+  crop_family: null,
   nutrient_demand: '',
   cultivation_type: 'pre_cultivation',
   cultivation_types: ['pre_cultivation'],
@@ -219,7 +219,7 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   source_public_version: publicCrop.version,
   origin_type: 'imported',
   is_modified_from_source: false,
-  crop_family: publicCrop.crop_family ?? '',
+  crop_family: publicCrop.crop_family ?? null,
   nutrient_demand: publicCrop.nutrient_demand ?? '',
   cultivation_type: publicCrop.cultivation_type || 'pre_cultivation',
   cultivation_types: publicCrop.cultivation_types?.length ? publicCrop.cultivation_types : ['pre_cultivation'],

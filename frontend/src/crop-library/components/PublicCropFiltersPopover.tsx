@@ -5,6 +5,7 @@ import { FilterNumberField } from '../../components/filters/FilterNumberField';
 import { FilterPopoverShell } from '../../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../../components/filters/FilterSelectField';
 import type { PublicCropFilterOptions, PublicCropFilterState } from '../publicCropFilters';
+import { buildPlantFamilyFilterOptions, usePlantFamilies } from '../../crops/plantFamilies';
 
 interface PublicCropFiltersPopoverProps {
   anchorEl: HTMLElement | null;
@@ -33,7 +34,8 @@ export function PublicCropFiltersPopover({
   options,
   onReset,
 }: PublicCropFiltersPopoverProps): ReactElement {
-  const { t } = useTranslation('crops');
+  const { t, i18n } = useTranslation('crops');
+  const plantFamilies = usePlantFamilies();
 
   const nutrientLabel = (value: string): string => {
     if (value === 'low') return t('filters.nutrientLow');
@@ -58,8 +60,8 @@ export function PublicCropFiltersPopover({
         sx={FULL_WIDTH_ROW}
       >
         <MenuItem value="">{t('filters.all')}</MenuItem>
-        {options.cropFamilyOptions.map((family) => (
-          <MenuItem key={family} value={family}>{family}</MenuItem>
+        {buildPlantFamilyFilterOptions(options.cropFamilyOptions, plantFamilies, i18n?.resolvedLanguage).map((family) => (
+          <MenuItem key={family.value} value={family.value}>{family.label}</MenuItem>
         ))}
       </FilterSelectField>
       <FilterSelectField

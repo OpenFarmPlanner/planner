@@ -15,6 +15,7 @@ from farm.services.crop_inheritance import (
     get_general_crop,
     is_unset_crop_value,
     resolve_crop_field,
+    resolve_effective_rotation_break_years,
 )
 
 
@@ -41,7 +42,7 @@ class CropInheritanceTest(TestCase):
             row_spacing_m=0.3,
             distance_within_row_m=0.05,
             sowing_depth_m=0.02,
-            crop_family='Apiaceae',
+            crop_family_id='Apiaceae',
             nutrient_demand='medium',
             rotation_break_years=4,
             thousand_kernel_weight_g=Decimal('1.20'),
@@ -118,7 +119,7 @@ class CropInheritanceTest(TestCase):
         entirely, the effective value is always the general Kultur's.
         """
         variety = self._variety(
-            crop_family='Stale family',
+            crop_family_id='Solanaceae',
             nutrient_demand='high',
             rotation_break_years=9,
         )
@@ -137,11 +138,11 @@ class CropInheritanceTest(TestCase):
 
     def test_species_invariant_field_is_empty_when_the_kultur_has_none(self):
         """A raw Sorte value is never the fallback for a species-invariant field."""
-        self.general.crop_family = ''
+        self.general.crop_family_id = None
         self.general.nutrient_demand = ''
         self.general.rotation_break_years = None
         self.general.save(update_fields=['crop_family', 'nutrient_demand', 'rotation_break_years'])
-        variety = self._variety(crop_family='Stale family', rotation_break_years=9)
+        variety = self._variety(crop_family_id='Solanaceae', rotation_break_years=9)
         self.assertIsNone(resolve_crop_field(variety, 'crop_family'))
         self.assertIsNone(resolve_crop_field(variety, 'rotation_break_years'))
         effective = build_effective_crop_values(variety)
@@ -152,9 +153,9 @@ class CropInheritanceTest(TestCase):
     def test_free_text_variety_keeps_its_own_species_invariant_values(self):
         """No ``crop_species`` -> nothing to inherit from -> the raw values stand."""
         variety = self._variety(
-            crop_species=None, crop_family='Own family', rotation_break_years=2,
+            crop_species=None, crop_family_id='Fabaceae', rotation_break_years=2,
         )
-        self.assertEqual(resolve_crop_field(variety, 'crop_family'), 'Own family')
+        self.assertEqual(resolve_crop_field(variety, 'crop_family'), 'Fabaceae')
         self.assertEqual(resolve_crop_field(variety, 'rotation_break_years'), 2)
 
     def test_zero_is_an_own_value_and_does_not_inherit(self):
@@ -210,13 +211,13 @@ class CropInheritanceTest(TestCase):
 
     def test_clear_species_invariant_overrides_resets_a_linked_variety(self):
         variety = self._variety(
-            crop_family='Dead family', nutrient_demand='high', rotation_break_years=9,
+            crop_family_id='Poaceae', nutrient_demand='high', rotation_break_years=9,
             harvest_duration_days=7,
         )
         reset = clear_species_invariant_overrides(variety)
         self.assertEqual(set(reset), {'crop_family', 'nutrient_demand', 'rotation_break_years'})
         variety.refresh_from_db()
-        self.assertEqual(variety.crop_family, '')
+        self.assertIsNone(variety.crop_family_id)
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
         # non-invariant own values are untouched
@@ -228,16 +229,16 @@ class CropInheritanceTest(TestCase):
             self.assertEqual(clear_species_invariant_overrides(variety), [])
 
     def test_clear_species_invariant_overrides_skips_free_text_varieties(self):
-        variety = self._variety(crop_species=None, crop_family='Own family', rotation_break_years=2)
+        variety = self._variety(crop_species=None, crop_family_id='Fabaceae', rotation_break_years=2)
         self.assertEqual(clear_species_invariant_overrides(variety), [])
         variety.refresh_from_db()
-        self.assertEqual(variety.crop_family, 'Own family')
+        self.assertEqual(variety.crop_family_id, 'Fabaceae')
 
     def test_linked_orphan_keeps_its_only_species_invariant_values(self):
         orphan_species = CropSpecies.objects.create(name='Daucus carota subsp. sativus')
         orphan = self._variety(
             crop_species=orphan_species,
-            crop_family='Apiaceae',
+            crop_family_id='Apiaceae',
             nutrient_demand='medium',
             rotation_break_years=3,
         )
@@ -246,7 +247,7 @@ class CropInheritanceTest(TestCase):
         self.assertEqual(build_effective_crop_values(orphan)['crop_family'], 'Apiaceae')
         self.assertEqual(clear_species_invariant_overrides(orphan), [])
         orphan.refresh_from_db()
-        self.assertEqual(orphan.crop_family, 'Apiaceae')
+        self.assertEqual(orphan.crop_family_id, 'Apiaceae')
 
     def test_lookup_is_cached_on_the_instance(self):
         variety = self._variety()
@@ -254,3 +255,48 @@ class CropInheritanceTest(TestCase):
             get_general_crop(variety)
         with self.assertNumQueries(0):
             get_general_crop(variety)
+
+
+class EffectiveRotationBreakTest(TestCase):
+    """Own rotation_break_years, else the family default, else none."""
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Rotation Project', slug='rotation-project')
+        self.species = CropSpecies.objects.create(name='Brassica oleracea')
+
+    def _crop(self, **kwargs) -> Crop:
+        return Crop.objects.create(project=self.project, name='Kohl', **kwargs)
+
+    def test_own_value_wins_over_the_family_default(self):
+        crop = self._crop(crop_family_id='Brassicaceae', rotation_break_years=6)
+        self.assertEqual(resolve_effective_rotation_break_years(crop), 6)
+
+    def test_zero_is_an_own_value(self):
+        crop = self._crop(crop_family_id='Brassicaceae', rotation_break_years=0)
+        self.assertEqual(resolve_effective_rotation_break_years(crop), 0)
+
+    def test_family_default_fills_a_missing_own_value(self):
+        crop = self._crop(crop_family_id='Brassicaceae')
+        self.assertEqual(resolve_effective_rotation_break_years(crop), 4)
+
+    def test_family_without_default_and_no_family_resolve_to_none(self):
+        grass = self._crop(crop_family_id='Poaceae')
+        self.assertIsNone(resolve_effective_rotation_break_years(grass))
+        no_family = Crop.objects.create(project=self.project, name='Ohne Familie')
+        self.assertIsNone(resolve_effective_rotation_break_years(no_family))
+
+    def test_linked_sorte_uses_the_family_and_break_of_its_general_kultur(self):
+        self._crop(crop_species=self.species, variety='', crop_family_id='Solanaceae')
+        sorte = self._crop(
+            crop_species=self.species, variety='Rotkohl',
+            crop_family_id='Fabaceae', rotation_break_years=9,
+        )
+        self.assertEqual(resolve_effective_rotation_break_years(sorte), 3)
+
+    def test_passed_defaults_avoid_loading_the_family_list(self):
+        crop = self._crop(crop_family_id='Brassicaceae')
+        with self.assertNumQueries(0):
+            self.assertEqual(
+                resolve_effective_rotation_break_years(crop, family_default_breaks={'Brassicaceae': 5}),
+                5,
+            )

@@ -13,7 +13,7 @@ and therefore always resolve to their own values.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -21,7 +21,12 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from farm.models import Crop
-from farm.models.crops import compute_plants_per_m2
+from farm.models.crops import (
+    compute_plants_per_m2,
+    crop_model_kwargs,
+    get_crop_field_value,
+    set_crop_field_value,
+)
 
 # Crop fields a Sorte inherits from its general Kultur. Kept in sync with the
 # frontend's `VARIETY_INHERITABLE_FIELDS` (frontend/src/crops/varietyValueSource.ts),
@@ -32,7 +37,9 @@ from farm.models.crops import compute_plants_per_m2
 #   subset of the row's own `cultivation_types`, so inheriting it independently
 #   could produce a combination the model itself rejects.
 #
-# Names are model field names; distances are the SI (meter) fields.
+# Names are model field names; distances are the SI (meter) fields. Values are
+# read and written through get_crop_field_value()/set_crop_field_value(), so
+# ``crop_family`` resolves to its botanical-name key, never to a PlantFamily row.
 CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
     'crop_family',
     'nutrient_demand',
@@ -66,10 +73,10 @@ CROP_SPECIES_INVARIANT_FIELDS: tuple[str, ...] = (
 )
 
 # The stored "no value" for each field in CROP_SPECIES_INVARIANT_FIELDS.
-# ``crop_family`` and ``nutrient_demand`` are non-nullable ``CharField``s, so
-# their empty state is the blank string, not ``NULL``.
+# ``nutrient_demand`` is a non-nullable ``CharField``, so its empty state is the
+# blank string; the ``crop_family`` reference is ``NULL``.
 SPECIES_INVARIANT_UNSET_VALUES: dict[str, Any] = {
-    'crop_family': '',
+    'crop_family': None,
     'nutrient_demand': '',
     'rotation_break_years': None,
 }
@@ -170,24 +177,24 @@ def ensure_general_crop_for_variety(
         if name_taken_by_other_species:
             return None
         defaults: dict[str, Any] = {
-            field: getattr(variety, field)
+            field: get_crop_field_value(variety, field)
             for field in fields_to_copy
-            if not is_unset_crop_value(getattr(variety, field))
+            if not is_unset_crop_value(get_crop_field_value(variety, field))
         }
         return Crop.objects.create(
             project_id=variety.project_id,
             crop_species_id=variety.crop_species_id,
             name=variety.name,
             variety='',
-            **defaults,
+            **crop_model_kwargs(defaults),
         )
 
     changed_fields: list[str] = []
     for field in fields_to_copy:
-        general_value = getattr(general, field)
-        variety_value = getattr(variety, field)
+        general_value = get_crop_field_value(general, field)
+        variety_value = get_crop_field_value(variety, field)
         if is_unset_crop_value(general_value) and not is_unset_crop_value(variety_value):
-            setattr(general, field, variety_value)
+            set_crop_field_value(general, field, variety_value)
             changed_fields.append(field)
     if changed_fields:
         general.save(update_fields=changed_fields)
@@ -222,15 +229,15 @@ def clear_species_invariant_overrides(
     reset: dict[str, Any] = {
         field: unset_value
         for field, unset_value in selected.items()
-        if not is_unset_crop_value(getattr(crop, field))
+        if not is_unset_crop_value(get_crop_field_value(crop, field))
     }
     if not reset:
         return []
     if get_general_crop(crop) is None:
         return []
-    Crop.objects.filter(pk=crop.pk).update(updated_at=timezone.now(), **reset)
+    Crop.objects.filter(pk=crop.pk).update(updated_at=timezone.now(), **crop_model_kwargs(reset))
     for field, unset_value in reset.items():
-        setattr(crop, field, unset_value)
+        set_crop_field_value(crop, field, unset_value)
     return list(reset)
 
 
@@ -264,11 +271,11 @@ def promote_species_invariant_values(
     changed_fields = [
         field
         for field in fields
-        if not is_unset_crop_value(getattr(variety, field))
-        and is_unset_crop_value(getattr(general, field))
+        if not is_unset_crop_value(get_crop_field_value(variety, field))
+        and is_unset_crop_value(get_crop_field_value(general, field))
     ]
     for field in changed_fields:
-        setattr(general, field, getattr(variety, field))
+        set_crop_field_value(general, field, get_crop_field_value(variety, field))
     if changed_fields:
         general.save(update_fields=changed_fields)
     clear_species_invariant_overrides(variety, fields=fields)
@@ -446,7 +453,7 @@ def resolve_crop_field(
     """
     if crop is None:
         return None
-    own_value = getattr(crop, field)
+    own_value = get_crop_field_value(crop, field)
     if field not in CROP_INHERITABLE_FIELDS:
         return own_value
     force_inherit = forces_species_invariant_inheritance(crop, field)
@@ -455,7 +462,7 @@ def resolve_crop_field(
     general_crop = get_general_crop(crop, index)
     if general_crop is None:
         return own_value
-    general_value = getattr(general_crop, field)
+    general_value = get_crop_field_value(general_crop, field)
     if force_inherit:
         return None if is_unset_crop_value(general_value) else general_value
     return own_value if is_unset_crop_value(general_value) else general_value
@@ -478,9 +485,9 @@ def build_inherited_crop_values(
     inherited: dict[str, Any] = {}
     for field in CROP_INHERITABLE_FIELDS:
         force_inherit = forces_species_invariant_inheritance(crop, field)
-        if not force_inherit and not is_unset_crop_value(getattr(crop, field)):
+        if not force_inherit and not is_unset_crop_value(get_crop_field_value(crop, field)):
             continue
-        general_value = getattr(general_crop, field)
+        general_value = get_crop_field_value(general_crop, field)
         if is_unset_crop_value(general_value):
             continue
         inherited[field] = general_value
@@ -511,3 +518,33 @@ def resolve_plants_per_m2(
         resolve_crop_field(crop, 'row_spacing_m', index),
         resolve_crop_field(crop, 'distance_within_row_m', index),
     )
+
+
+def resolve_effective_rotation_break_years(
+    crop: Crop | None,
+    index: GeneralCropIndex | None = None,
+    family_default_breaks: Mapping[str, int | None] | None = None,
+) -> int | None:
+    """The rotation break a crop rotation check must use for this crop.
+
+    ``rotation_break_years`` counts the calendar years *without* this plant
+    family on the same bed in between: a family grown last in year ``Y`` may
+    be grown again from year ``Y + break + 1``. The effective break is the
+    crop's own (effective) value, otherwise its family's
+    ``default_rotation_break_years``, otherwise ``None``.
+
+    Pass ``family_default_breaks`` (see
+    :func:`crops.plant_families.load_plant_family_default_breaks`) when
+    resolving many crops at once; without it the defaults are loaded per call.
+    """
+    own_break = resolve_crop_field(crop, 'rotation_break_years', index)
+    if own_break is not None:
+        return own_break
+    family_key = resolve_crop_field(crop, 'crop_family', index)
+    if not family_key:
+        return None
+    if family_default_breaks is None:
+        from crops.plant_families import load_plant_family_default_breaks
+
+        family_default_breaks = load_plant_family_default_breaks()
+    return family_default_breaks.get(family_key)

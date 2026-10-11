@@ -7,6 +7,7 @@ spreadsheet the user uploaded and reports, or applies, one outcome per row.
 
 from typing import Any
 
+from crops.plant_families import coerce_plant_family_key
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
 from farm.utils import normalize_supplier_name, normalize_text
@@ -32,6 +33,17 @@ _COMPARABLE_FIELDS = [
 
 def _is_importable_row(crop_data: Any) -> bool:
     return isinstance(crop_data, dict) and bool(crop_data.get('name'))
+
+
+def _normalize_crop_family(crop_data: dict) -> None:
+    """Map a family name or synonym in the sheet ("Kreuzblütler") to its botanical name.
+
+    A value that names no listed family is left as it is, so the serializer
+    reports it as an unknown plant family instead of the import dropping it.
+    """
+    raw_family = crop_data.get('crop_family')
+    if isinstance(raw_family, str) and raw_family.strip():
+        crop_data['crop_family'] = coerce_plant_family_key(raw_family) or raw_family
 
 
 def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
@@ -157,6 +169,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             continue
 
         try:
+            _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data)
 
             if matching_crop:
@@ -196,6 +209,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
             continue
 
         try:
+            _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
             if supplier:
                 crop_data['supplier'] = supplier.id

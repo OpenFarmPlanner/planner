@@ -167,6 +167,23 @@ Kultur of the same species. Nothing is copied:
   stored on the Kultur when it fills a gap there and rejected when it
   contradicts it.
 
+## Plant families
+
+`crop_family` is the **botanical name** of a family from the curated list at
+`GET /api/plant-families/` (e.g. `"Brassicaceae"`); the list returns each
+family's `display_name` in the request language, its `translations` and its
+`default_rotation_break_years`. Matching on write ignores case and surrounding
+whitespace; `""` or `null` clears the family; any other name is rejected with
+`400` and a message naming the list endpoint. Crop responses also carry
+`crop_family_display_name` and the read-only `effective_rotation_break_years`.
+
+`rotation_break_years` counts the calendar years **without** the family on the
+same bed in between: a family grown last in year Y may return from year
+Y + break + 1, so "every 4 years" is a break of 3. The effective break is the
+crop's own value, otherwise its family's default, otherwise `null`. The crop
+import (`/api/crop-imports/preview/`) also accepts common German/English names
+and synonyms such as `"Kreuzblütler"` and converts them.
+
 Each affected field is marked accordingly in the reference.
 
 ## Duplicate rule

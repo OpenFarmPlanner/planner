@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import TableSurface from '../components/layout/TableSurface';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 import { getComparisonCellValue, getVaryingComparisonFields } from './varietyComparisonFields';
+import { usePlantFamilies } from './plantFamilies';
 
 interface VarietyRow {
   crop: Crop;
@@ -54,6 +56,11 @@ export function VarietiesComparisonTable({
   onSelect,
 }: VarietiesComparisonTableProps) {
   const { t, i18n } = useTranslation('crops');
+  const plantFamilies = usePlantFamilies();
+  const comparisonFormatContext = useMemo(
+    () => ({ getPlantFamilyName: plantFamilies.getName }),
+    [plantFamilies],
+  );
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
 
   // With exactly one variety there's no other variety to compare against,
@@ -126,7 +133,7 @@ export function VarietiesComparisonTable({
                 ) : (
                   varyingFields.map((field) => (
                     <TableCell key={field.id}>
-                      {getComparisonCellValue(crop, cropCrop, field, t, locale)}
+                      {getComparisonCellValue(crop, cropCrop, field, t, locale, comparisonFormatContext)}
                     </TableCell>
                   ))
                 )}

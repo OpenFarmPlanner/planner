@@ -184,13 +184,21 @@ erDiagram
 ## 5. Public crop library
 
 These are the shared, cross-project records behind the public Crop Library.
-None of them has a `project` FK. `CropSpecies` and `CropSpeciesTranslation`
-live in the `crops` app (`backend/crops/models.py`); everything else lives in
+None of them has a `project` FK. `CropSpecies`, `CropSpeciesTranslation`,
+`PlantFamily` and `PlantFamilyTranslation` live in the `crops` app
+(`backend/crops/models.py`); everything else lives in
 `backend/farm/models/crops.py` alongside `PublicCrop` itself.
+
+`PlantFamily` is the curated, admin-only plant-family list keyed by botanical
+name; both `Crop.crop_family` and `PublicCrop.crop_family` reference it (see
+[crop-library-architecture.md](./crop-library-architecture.md#plant-families-pflanzenfamilien)).
 
 ```mermaid
 erDiagram
     CropSpecies ||--o{ CropSpeciesTranslation : "localized common names"
+    PlantFamily ||--o{ PlantFamilyTranslation : "localized family names"
+    PlantFamily ||--o{ Crop : "crop_family (nullable)"
+    PlantFamily ||--o{ PublicCrop : "crop_family (nullable)"
     CropSpecies ||--o{ PublicCrop : "official species of (nullable)"
     CropSpecies ||--o{ Crop : "optional private species link (nullable)"
     PublicCrop ||--o{ PublicCropTranslation : "localized description"

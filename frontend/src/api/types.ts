@@ -170,9 +170,17 @@ export interface Crop {
   image_file_id?: number | null;
   notes?: string;
 
-  crop_family?: string;
+  /** Botanical name of a plant family from `/plant-families/` (e.g. "Brassicaceae"); null when unset. */
+  crop_family?: string | null;
+  /** Localized name of the row's own `crop_family` (read-only). */
+  crop_family_display_name?: string | null;
+  /** Read-only free text from before the plant-family list; kept until a later release. */
+  legacy_crop_family?: string;
   nutrient_demand?: 'low' | 'medium' | 'high' | '';
+  /** Calendar years without this plant family on the same bed in between. */
   rotation_break_years?: number | null;
+  /** Own effective break, else the family default, else null (read-only). */
+  effective_rotation_break_years?: number | null;
   cultivation_type?: CultivationType | '';
   cultivation_types?: CultivationType[];
   
@@ -304,7 +312,9 @@ export interface PublicCrop {
   /** Every stored public description, keyed by language code. */
   translations?: Record<string, string>;
   original_language_code?: string;
-  crop_family?: string;
+  /** Botanical name of a plant family; null when unset. */
+  crop_family?: string | null;
+  crop_family_display_name?: string | null;
   nutrient_demand?: 'low' | 'medium' | 'high' | '';
   cultivation_type?: CultivationType | '';
   cultivation_types?: CultivationType[];
@@ -642,6 +652,18 @@ export interface CropSpeciesSearchMatch {
   source: CropSpeciesMatchSource;
   /** The synonym, regional or other-language name that matched; '' unless `source` is 'synonym'. */
   synonym: string;
+}
+
+/** One entry of the curated, global plant-family list (`/plant-families/`). */
+export interface PlantFamily {
+  /** Stable key, e.g. "Brassicaceae". */
+  botanical_name: string;
+  /** Name in the request language. */
+  display_name: string;
+  /** Display name per language code. */
+  translations: Record<string, string>;
+  /** Default rotation break in calendar years; null means no default. */
+  default_rotation_break_years: number | null;
 }
 
 export interface CropSpecies {

@@ -35,6 +35,7 @@ import { stripCitationMarkers } from '../../components/data-grid/markdown';
 import { markdownComponents } from '../../components/data-grid/markdownComponents';
 import { useOverlayHistory } from '../../hooks/useOverlayHistory';
 import { PublicCropHierarchyList } from '../../crops/PublicCropHierarchyList';
+import { usePlantFamilies } from '../../crops/plantFamilies';
 import { getPublicCropTitle } from '../publicCropDisplay';
 import { PublicCropFiltersPopover } from './PublicCropFiltersPopover';
 import {
@@ -153,6 +154,7 @@ export function PublicCropLibraryDialog({
   onImport,
 }: PublicCropLibraryDialogProps) {
   const { t, i18n } = useTranslation('crops');
+  const plantFamilies = usePlantFamilies();
   const language = i18n.resolvedLanguage ?? i18n.language;
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -220,10 +222,11 @@ export function PublicCropLibraryDialog({
       entry.variety || '',
       entry.crop_species_name || '',
       entry.crop_family || '',
+      plantFamilies.getName(entry.crop_family),
     ].join(' ').toLowerCase();
     const matchesQuery = normalizedQuery.length === 0 || label.includes(normalizedQuery);
     return matchesQuery && matchesPublicCropFilters(entry, filters);
-  }), [crops, filters, language, normalizedQuery, t]);
+  }), [crops, filters, language, normalizedQuery, plantFamilies, t]);
 
   useEffect(() => {
     if (loading || (initialSelectedId && selectedId === initialSelectedId && crops.length === 0)) {

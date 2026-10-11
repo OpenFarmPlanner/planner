@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from crops.plant_families import coerce_plant_family_key
 from farm.models import Crop, EntityRevision, PlantingPlan, Project, PublicCrop, Task
 
 from .records import (
@@ -159,6 +160,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                     continue
                 # Snapshots may carry fields the model has since dropped — keep
                 # only what still exists rather than crashing on an unknown kwarg.
+                snapshot = _with_legacy_crop_family(model, snapshot)
                 row_data = {key: value for key, value in snapshot.items() if key in allowed_fields}
                 for field in external_fk_fields:
                     if (
@@ -198,7 +200,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     """
     restorable_fields = {
         field.name for field in Crop._meta.fields
-        if field.name not in {'id', 'created_at', 'updated_at'}
+        if field.name not in {'id', 'created_at', 'updated_at', 'crop_family'}
     }
     # Snapshots store foreign keys under their `_id` attname. The library link
     # is restored too (so undoing an unlink works), but only while the entry
@@ -215,11 +217,37 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
                 setattr(crop, key, value)
             elif key in link_attnames and (value is None or value in existing_public_ids):
                 setattr(crop, key, value)
+        _restore_crop_family_from_snapshot(crop, revision.snapshot)
         crop.deleted_at = None
         crop._history_action = EntityRevision.ACTION_RESTORED
         crop.save()
 
     return crop
+
+
+def _with_legacy_crop_family(model: type, snapshot: dict) -> dict:
+    """A crop snapshot from before migration 0112 with its family text mapped to a key.
+
+    Those snapshots hold the free text under ``crop_family``, which is no
+    longer a column; without this the family would be dropped on restore.
+    """
+    if model is not Crop or 'crop_family_id' in snapshot or 'crop_family' not in snapshot:
+        return snapshot
+    return {**snapshot, 'crop_family_id': coerce_plant_family_key(snapshot['crop_family'])}
+
+
+def _restore_crop_family_from_snapshot(crop: Crop, snapshot: dict) -> None:
+    """Restore the plant-family reference a crop snapshot recorded.
+
+    Current snapshots store the botanical-name key under ``crop_family_id``;
+    snapshots taken before migration 0112 hold the old free text under
+    ``crop_family``, which is mapped with the same rule the migration used.
+    A key that no longer names a stored family is cleared, not restored.
+    """
+    if 'crop_family_id' in snapshot:
+        crop.crop_family_id = coerce_plant_family_key(snapshot['crop_family_id'])
+    elif 'crop_family' in snapshot:
+        crop.crop_family_id = coerce_plant_family_key(snapshot['crop_family'])
 
 
 def _latest_revision_per_object(project: Project, entity_type: str, since) -> list[EntityRevision]:
@@ -270,6 +298,7 @@ def _recreate_rows_deleted_since(
             or model.objects.filter(pk=revision.object_id).exists()
         ):
             continue
+        snapshot = _with_legacy_crop_family(model, snapshot)
         row_data = {key: value for key, value in snapshot.items() if key in allowed_fields}
         recreated.append(model(**build_row_data(row_data)))
 
@@ -429,6 +458,7 @@ def _record_cascade_deletions(project: Project, instances: list, batch, user_nam
 
 def _row_data_from_snapshot(model, snapshot: dict, project: Project) -> dict:
     concrete = {field.attname for field in model._meta.concrete_fields}
+    snapshot = _with_legacy_crop_family(model, snapshot)
     row = {key: value for key, value in snapshot.items() if key in concrete}
     row['project_id'] = project.id
     if 'deleted_at' in concrete:

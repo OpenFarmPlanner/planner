@@ -340,6 +340,21 @@ class EnumAndTextValidationTests(ImportAnalysisTestCase):
             {error['code'] for error in self.field_of(preview, 0, 'nutrient_demand')['errors']},
         )
 
+    def test_crop_family_name_or_synonym_is_converted_to_the_botanical_name(self):
+        for raw, expected_confidence in (('Brassicaceae', CONFIDENCE_EXACT), ('Kreuzblütler', CONFIDENCE_CONVERTED)):
+            preview = self.analyze({'name': 'Kohl', 'crop_family': raw})
+            entry = self.field_of(preview, 0, 'crop_family')
+            self.assertEqual(entry['api_value'], 'Brassicaceae')
+            self.assertEqual(entry['confidence'], expected_confidence)
+            self.assertEqual(entry['errors'], [])
+
+    def test_unknown_crop_family_is_rejected(self):
+        preview = self.analyze({'name': 'Apfel', 'crop_family': 'Rosengewächse'})
+        self.assertIn(
+            'enum_unknown',
+            {error['code'] for error in self.field_of(preview, 0, 'crop_family')['errors']},
+        )
+
     def test_invalid_display_color_is_rejected(self):
         preview = self.analyze({'name': 'Salat', 'display_color': 'green'})
         self.assertIn(

@@ -56,6 +56,7 @@ urlpatterns = [
     # `farm.Crop` rows (formerly `/api/cultures/`).
     path(_with_prefix('api/crop-library/'), include('crops.urls')),
     path(_with_prefix('api/crop-species/'), include('crops.species_urls')),
+    path(_with_prefix('api/plant-families/'), include('crops.plant_family_urls')),
     path(_with_prefix('api/crop-library-tokens/'), include('crops.token_urls')),
     path(_with_prefix('api/public-library/'), include('crops.moderation_urls')),
     path(_with_prefix('api/notifications/'), include('notifications.urls')),
@@ -69,6 +70,7 @@ if getattr(settings, 'URL_PREFIX', '').strip('/') != legacy_prefix:
         path(f'{legacy_prefix}/api/', include('farm.urls')),
         path(f'{legacy_prefix}/api/crop-library/', include('crops.urls')),
         path(f'{legacy_prefix}/api/crop-species/', include('crops.species_urls')),
+        path(f'{legacy_prefix}/api/plant-families/', include('crops.plant_family_urls')),
         path(f'{legacy_prefix}/api/crop-library-tokens/', include('crops.token_urls')),
         path(f'{legacy_prefix}/api/public-library/', include('crops.moderation_urls')),
         path(f'{legacy_prefix}/api/notifications/', include('notifications.urls')),

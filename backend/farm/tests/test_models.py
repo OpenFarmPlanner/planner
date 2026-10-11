@@ -250,7 +250,7 @@ class CropModelTest(TestCase):
             name="Broccoli",
             variety="Calabrese",
             notes="Great for winter growing",
-            crop_family="Brassicaceae",
+            crop_family_id="Brassicaceae",
             nutrient_demand="high",
             rotation_break_years=4,
             cultivation_type="pre_cultivation",
@@ -265,7 +265,7 @@ class CropModelTest(TestCase):
             project=self.project,
         )
         self.assertEqual(crop.name, "Broccoli")
-        self.assertEqual(crop.crop_family, "Brassicaceae")
+        self.assertEqual(crop.crop_family_id, "Brassicaceae")
         self.assertEqual(crop.nutrient_demand, "high")
         self.assertEqual(crop.rotation_break_years, 4)
         self.assertEqual(crop.cultivation_type, "pre_cultivation")

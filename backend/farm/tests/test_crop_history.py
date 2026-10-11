@@ -53,6 +53,49 @@ class CropHistoryTests(TestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.name, 'Carrot')
 
+    def test_restore_brings_back_the_plant_family(self):
+        Crop.objects.filter(pk=self.crop.pk).update(crop_family_id='Apiaceae')
+        self.crop.refresh_from_db()
+        self.crop.name = 'With family'
+        self.crop.save()
+        revision_id = self.client.get(f'/openfarmplanner/api/crops/{self.crop.id}/history/').json()[0]['history_id']
+        self.crop.crop_family_id = 'Fabaceae'
+        self.crop.save()
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.crop.id}/restore/',
+            data={'history_id': revision_id},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.crop_family_id, 'Apiaceae')
+
+    def test_restore_maps_the_free_text_family_of_a_pre_plant_family_snapshot(self):
+        revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=self.crop.id,
+        ).latest('created_at')
+        snapshot = dict(revision.snapshot)
+        snapshot.pop('crop_family_id', None)
+        snapshot.pop('legacy_crop_family', None)
+        snapshot['crop_family'] = 'Doldenblütler'
+        revision.snapshot = snapshot
+        revision.save(update_fields=['snapshot'])
+        self.crop.name = 'Changed'
+        self.crop.save()
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.crop.id}/restore/',
+            data={'history_id': revision.id},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.name, 'Carrot')
+        self.assertEqual(self.crop.crop_family_id, 'Apiaceae')
+
     def test_restore_cannot_access_another_projects_crop(self):
         other_project = Project.objects.create(name='Other Project', slug='other-project')
         other_crop = Crop.objects.create(

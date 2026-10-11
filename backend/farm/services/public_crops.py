@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
+from crops.plant_families import coerce_plant_family_key
 from crops.permissions import (
     is_public_library_admin,
     is_public_library_moderator,
@@ -37,6 +38,13 @@ from farm.models import (
     PublicCropStatusEvent,
     PublicCropTranslation,
     format_crop_display_name,
+)
+from farm.models.crops import (
+    PLANT_FAMILY_REFERENCE_FIELDS,
+    crop_field_attname,
+    crop_model_kwargs,
+    get_crop_field_value,
+    set_crop_field_value,
 )
 
 # The local Kultur/Sorte grouping is a farm-app concern this module deliberately
@@ -55,6 +63,12 @@ from farm.services.crop_inheritance import (
 )
 
 User = get_user_model()
+
+# Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS names a plant-family reference by its
+# attname; payloads built here key it by the field name.
+_PAYLOAD_FIELD_BY_ATTNAME = {
+    crop_field_attname(field): field for field in PLANT_FAMILY_REFERENCE_FIELDS
+}
 
 CROP_COPY_FIELDS = [
     'name',
@@ -302,7 +316,7 @@ class PublicCropRevisionNotFoundError(Exception):
 
 
 def _copy_fields(instance: Any) -> dict[str, Any]:
-    payload = {field: getattr(instance, field) for field in CROP_COPY_FIELDS}
+    payload = {field: get_crop_field_value(instance, field) for field in CROP_COPY_FIELDS}
     payload['cultivation_types'] = list(payload.get('cultivation_types') or [])
     payload['seed_rate_by_cultivation'] = payload.get('seed_rate_by_cultivation') or None
     return payload
@@ -336,7 +350,7 @@ def _json_safe(value: Any) -> Any:
 
 def build_public_crop_snapshot(public_crop: PublicCrop) -> dict[str, Any]:
     snapshot = {
-        field: _json_safe(getattr(public_crop, field))
+        field: _json_safe(get_crop_field_value(public_crop, field))
         for field in PUBLIC_CROP_EDITABLE_FIELDS
     }
     snapshot['crop_species'] = public_crop.crop_species_id
@@ -487,7 +501,7 @@ def update_public_crop_directly(
         for field, value in data.items():
             if previous_snapshot.get(field) == _json_safe(value):
                 continue
-            setattr(locked, field, value)
+            set_crop_field_value(locked, field, value)
             changed_field_names.append(field)
         if not changed_field_names:
             return locked
@@ -541,9 +555,12 @@ def restore_public_crop_version(
         update_fields = []
         for field in PUBLIC_CROP_EDITABLE_FIELDS:
             value = revision.snapshot.get(field)
+            if field in PLANT_FAMILY_REFERENCE_FIELDS:
+                # Versions saved before the plant-family list hold free text.
+                value = coerce_plant_family_key(value)
             if previous_snapshot.get(field) == value:
                 continue
-            setattr(locked, field, value)
+            set_crop_field_value(locked, field, value)
             update_fields.append(field)
         if not update_fields:
             return locked
@@ -629,7 +646,7 @@ def build_public_crop_payload(
     if is_general_entry:
         general_source = source_crop or get_general_crop(crop) or crop
         for field in PUBLIC_SPECIES_INVARIANT_FIELDS:
-            payload[field] = getattr(general_source, field)
+            payload[field] = get_crop_field_value(general_source, field)
     elif crop.crop_species_id:
         # A species-linked variety entry does not own these fields: leave them
         # out of the payload so a create falls back to the blank default and an
@@ -848,7 +865,8 @@ def link_project_crop_to_public_reference(
         if pull_fields is not None:
             _pull_public_crop_fields(crop=crop, public_crop=public_crop, fields=pull_fields)
         is_modified = any(
-            getattr(crop, field) != source_payload.get(field) for field in tracked_fields
+            getattr(crop, field) != source_payload.get(_PAYLOAD_FIELD_BY_ATTNAME.get(field, field))
+            for field in tracked_fields
         )
         crop.source_public_crop = public_crop
         # Computed after crop_species is reassigned above, so this sees the same
@@ -1139,7 +1157,7 @@ def _pull_public_crop_fields(
     effective = _resolved_copy_fields(crop)
     written = [field for field in fields if effective[field] != remote[field]]
     for field in written:
-        setattr(crop, field, remote[field])
+        set_crop_field_value(crop, field, remote[field])
     return written
 
 
@@ -1561,11 +1579,11 @@ def ensure_general_public_crop(
         version=1,
         crop_species=crop_species,
         original_language_code=original_language_code,
-        **build_public_crop_payload(
+        **crop_model_kwargs(build_public_crop_payload(
             crop,
             public_variety='',
             source_crop=get_general_crop(crop),
-        ),
+        )),
     )
     sync_original_language_translation(public_crop)
     _record_public_crop_status_event(
@@ -1703,7 +1721,7 @@ def _update_public_crop_from_project_crop(
     payload = build_public_crop_payload(crop, public_variety=public_variety)
     payload.pop('published_at', None)
     for field, value in payload.items():
-        setattr(public_crop, field, value)
+        set_crop_field_value(public_crop, field, value)
     public_crop.version = max(public_crop.version, 1) + 1
     if public_crop.status == PublicCrop.STATUS_WITHDRAWN:
         public_crop.status = PublicCrop.STATUS_PUBLISHED
@@ -2392,7 +2410,7 @@ def publish_crop_to_public_library(
             version=1,
             crop_species=check_result.crop_species,
             original_language_code=check_result.original_language_code,
-            **build_public_crop_payload(crop, public_variety=public_variety),
+            **crop_model_kwargs(build_public_crop_payload(crop, public_variety=public_variety)),
         )
         return draft_public_crop, duplicates, 'pending_moderation'
 
@@ -2402,7 +2420,7 @@ def publish_crop_to_public_library(
         version=1,
         crop_species=check_result.crop_species,
         original_language_code=check_result.original_language_code,
-        **build_public_crop_payload(crop, public_variety=public_variety),
+        **crop_model_kwargs(build_public_crop_payload(crop, public_variety=public_variety)),
     )
     sync_original_language_translation(public_crop)
     _record_public_crop_status_event(
@@ -2657,7 +2675,7 @@ def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, uniqu
             variety=payload.get('variety') or '',
             project=project,
         )
-    crop = Crop.objects.create(project=project, **payload)
+    crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
     for package in public_crop.seed_packages or []:
         crop.seed_packages.create(
             project=project,
@@ -2711,7 +2729,7 @@ def _apply_public_crop_update(*, crop: Crop, public_crop: PublicCrop) -> Crop:
     payload.pop('origin_type', None)
     payload.pop('derived_from_public_crop', None)
     for field, value in payload.items():
-        setattr(crop, field, value)
+        set_crop_field_value(crop, field, value)
     crop.save()
     # Crop._flag_source_divergence() runs inside save() and, seeing the tracked
     # fields differ from the pre-update row, may have just flipped this back to True —

@@ -26,7 +26,7 @@ const stored = (): PersistedCropFilters | null => {
 
 const FULL_FILTERS: PersistedCropFilters = {
   searchQuery: 'möhre',
-  selectedFamilyFilter: 'Doldenblütler',
+  selectedFamilyFilter: 'Apiaceae',
   selectedCultivationFilter: 'direct_sowing',
   selectedNutrientFilter: 'low',
   selectedSupplierFilter: '4',
@@ -67,6 +67,16 @@ describe('usePersistedCropFilters — reading what was stored', () => {
 
     expect(result.current.filters).toEqual(FULL_FILTERS);
     expect(window.sessionStorage.getItem(LEGACY_CROP_FILTERS_STORAGE_KEY)).toBeNull();
+  });
+
+  it('drops a family filter stored as free text before the plant-family list', () => {
+    // Such a value is no botanical key and would otherwise hide every crop.
+    window.sessionStorage.setItem(
+      CROP_FILTERS_STORAGE_KEY,
+      JSON.stringify({ ...FULL_FILTERS, selectedFamilyFilter: 'Doldenblütler' }),
+    );
+
+    expect(setup().result.current.filters).toEqual({ ...FULL_FILTERS, selectedFamilyFilter: '' });
   });
 
   it('prefers the current key when both are present', () => {

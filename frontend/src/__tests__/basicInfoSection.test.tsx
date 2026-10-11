@@ -1,8 +1,44 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BasicInfoSection } from '../crops/sections/BasicInfoSection';
+import type { PlantFamily } from '../api/types';
 
-const t = ((key: string) => key) as never;
+const PLANT_FAMILIES: PlantFamily[] = [
+  {
+    botanical_name: 'Apiaceae',
+    display_name: 'Doldenblütler',
+    translations: { de: 'Doldenblütler', en: 'Doldenblütler' },
+    default_rotation_break_years: 3,
+  },
+  {
+    botanical_name: 'Asteraceae',
+    display_name: 'Korbblütler',
+    translations: { de: 'Korbblütler', en: 'Korbblütler' },
+    default_rotation_break_years: 2,
+  },
+  {
+    botanical_name: 'Poaceae',
+    display_name: 'Süßgräser',
+    translations: { de: 'Süßgräser', en: 'Süßgräser' },
+    default_rotation_break_years: null,
+  },
+];
+
+vi.mock('../api/api', () => ({
+  plantFamilyAPI: { list: vi.fn(() => Promise.resolve({ data: PLANT_FAMILIES })) },
+}));
+
+// When `t` returns the key, a rendered helper text can be told apart by the
+// key and its interpolation values.
+const t = ((key: string, options?: Record<string, unknown>) => (
+  options ? `${key}:${JSON.stringify(options)}` : key
+)) as never;
+
+/** The nutrient-demand select; the plant-family Autocomplete is a combobox too. */
+const nutrientCombobox = (): HTMLElement => (
+  screen.getAllByRole('combobox').find((element) => element.tagName !== 'INPUT') as HTMLElement
+);
 
 const linkedVarietyForm = {
   name: 'Karotte',
@@ -43,11 +79,91 @@ describe('BasicInfoSection', () => {
 
     fireEvent.change(screen.getByPlaceholderText('form.namePlaceholder'), { target: { value: 'Möhre' } });
     fireEvent.change(screen.getByPlaceholderText('form.varietyPlaceholder'), { target: { value: 'Paris' } });
-    fireEvent.change(screen.getByPlaceholderText('form.cropFamilyPlaceholder'), { target: { value: 'Asteraceae' } });
 
     expect(onChange).toHaveBeenCalledWith('name', 'Möhre');
     expect(onChange).toHaveBeenCalledWith('variety', 'Paris');
+  });
+
+  it('selects the plant family from the list and stores its botanical name', async () => {
+    const onChange = vi.fn();
+
+    render(
+      <BasicInfoSection
+        formData={{ crop_family: 'Apiaceae' }}
+        errors={{}}
+        onChange={onChange}
+        t={t}
+      />
+    );
+
+    const familyInput = screen.getByPlaceholderText('form.cropFamilyPlaceholder');
+    expect(await screen.findByDisplayValue('Doldenblütler')).toBe(familyInput);
+
+    const user = userEvent.setup();
+    await user.clear(familyInput);
+    // Searchable by the botanical name as well as by the display name.
+    await user.type(familyInput, 'aster');
+    const option = await screen.findByRole('option', { name: /Korbblütler/ });
+    // The botanical name is the secondary text of each option.
+    expect(within(option).getByText('Asteraceae')).toBeInTheDocument();
+    await user.click(option);
+
     expect(onChange).toHaveBeenCalledWith('crop_family', 'Asteraceae');
+  });
+
+  it('shows the family default and the break definition for a crop without its own break', async () => {
+    render(
+      <BasicInfoSection
+        formData={{ crop_family: 'Apiaceae', rotation_break_years: null }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+
+    expect(await screen.findByText(
+      'form.rotationBreakYearsFamilyDefault:{"family":"Doldenblütler","count":3}',
+    )).toBeInTheDocument();
+    expect(screen.getByLabelText('form.rotationBreakYears')).toHaveAttribute('placeholder', '3');
+    expect(screen.getByText('form.rotationBreakYearsHelper')).toBeInTheDocument();
+  });
+
+  it('omits the family default once the crop has its own break or the family has none', async () => {
+    const { rerender } = render(
+      <BasicInfoSection
+        formData={{ crop_family: 'Apiaceae', rotation_break_years: 5 }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+    await screen.findByDisplayValue('Doldenblütler');
+    expect(screen.queryByText(/form\.rotationBreakYearsFamilyDefault/)).not.toBeInTheDocument();
+
+    rerender(
+      <BasicInfoSection
+        formData={{ crop_family: 'Poaceae', rotation_break_years: null }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+    await screen.findByDisplayValue('Süßgräser');
+    expect(screen.queryByText(/form\.rotationBreakYearsFamilyDefault/)).not.toBeInTheDocument();
+    expect(screen.getByText('form.rotationBreakYearsHelper')).toBeInTheDocument();
+  });
+
+  it('points at the old free text when a migrated crop has no family yet', () => {
+    render(
+      <BasicInfoSection
+        formData={{ crop_family: null, legacy_crop_family: 'Liliengewächse' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+
+    expect(screen.getByText('form.cropFamilyLegacyHint:{"value":"Liliengewächse"}')).toBeInTheDocument();
   });
 
   it('updates nutrient demand via select', () => {
@@ -62,8 +178,7 @@ describe('BasicInfoSection', () => {
       />
     );
 
-    const nutrientCombobox = screen.getByRole('combobox');
-    fireEvent.mouseDown(nutrientCombobox);
+    fireEvent.mouseDown(nutrientCombobox());
     fireEvent.click(screen.getByRole('option', { name: 'form.nutrientDemandHigh' }));
 
     expect(onChange).toHaveBeenCalledWith('nutrient_demand', 'high');
@@ -104,11 +219,11 @@ describe('BasicInfoSection', () => {
     expect(screen.getByText('form.sectionCropRotation')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('form.cropFamilyPlaceholder')).toBeEnabled();
     expect(screen.getByLabelText('form.rotationBreakYears')).toBeEnabled();
-    expect(screen.getByRole('combobox')).not.toHaveAttribute('aria-disabled', 'true');
+    expect(nutrientCombobox()).not.toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByLabelText('form.cropRotationInheritedTooltip')).not.toBeInTheDocument();
   });
 
-  it('renders the crop-rotation fields read-only with an info icon for a linked Sorte', () => {
+  it('renders the crop-rotation fields read-only with an info icon for a linked Sorte', async () => {
     const onChange = vi.fn();
 
     render(
@@ -123,9 +238,9 @@ describe('BasicInfoSection', () => {
 
     const cropFamilyInput = screen.getByPlaceholderText('form.cropFamilyPlaceholder');
     expect(cropFamilyInput).toBeDisabled();
-    expect(cropFamilyInput).toHaveValue('Apiaceae');
+    expect(await screen.findByDisplayValue('Doldenblütler')).toBe(cropFamilyInput);
     expect(screen.getByLabelText('form.rotationBreakYears')).toBeDisabled();
-    expect(screen.getByRole('combobox')).toHaveAttribute('aria-disabled', 'true');
+    expect(nutrientCombobox()).toHaveAttribute('aria-disabled', 'true');
 
     const infoIcon = screen.getByLabelText('form.cropRotationInheritedTooltip');
     expect(infoIcon).toHaveAttribute('tabindex', '0');

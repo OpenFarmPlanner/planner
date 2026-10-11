@@ -11,6 +11,11 @@ from rest_framework.exceptions import APIException
 
 from config.languages import DEFAULT_LANGUAGE_CODE, resolve_request_language
 from crops.models import CropSpecies
+from crops.plant_family_serializers import (
+    PlantFamilyField,
+    plant_family_default_breaks,
+    plant_family_display_name,
+)
 from crops.permissions import is_public_library_moderator
 from farm.common.serializer_fields import (
     CentimetersField,
@@ -28,6 +33,11 @@ from farm.models import (
     Supplier,
     format_crop_display_name,
     is_supplier_domain,
+)
+from farm.models.crops import (
+    PLANT_FAMILY_REFERENCE_FIELDS,
+    crop_field_attname,
+    get_crop_field_value,
 )
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
@@ -47,6 +57,7 @@ from farm.services.crop_inheritance import (
     get_general_crop,
     is_unset_crop_value,
     promote_species_invariant_values,
+    resolve_effective_rotation_break_years,
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
@@ -151,6 +162,23 @@ class CropSerializer(serializers.ModelSerializer):
         allow_null=True,
         default='',
         help_text='Crop variety; blank or null for species-level general data'
+    )
+    crop_family = PlantFamilyField()
+    crop_family_display_name = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Name of this row\'s own crop_family in the request language, or null. '
+            'Like crop_family itself it is the stored value; a linked Sorte resolves '
+            'its family through effective_values.'
+        ),
+    )
+    effective_rotation_break_years = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Rotation break a rotation check uses: the effective rotation_break_years, '
+            'otherwise the default of the effective crop_family, otherwise null. Counts '
+            'calendar years without the family on the same bed in between.'
+        ),
     )
     distance_within_row_cm = CentimetersField(
         source='distance_within_row_m',
@@ -437,6 +465,16 @@ class CropSerializer(serializers.ModelSerializer):
         if api_field in _SEED_RATE_UNIT_FIELDS:
             return _normalized_seed_rate_unit_representation(representation)
         return representation
+
+    def get_crop_family_display_name(self, obj: Crop) -> str | None:
+        return plant_family_display_name(self.context, obj.crop_family_id)
+
+    def get_effective_rotation_break_years(self, obj: Crop) -> int | None:
+        return resolve_effective_rotation_break_years(
+            obj,
+            self._general_crop_index(obj),
+            plant_family_default_breaks(self.context),
+        )
 
     def get_general_crop(self, obj: Crop) -> int | None:
         general_crop = self._resolve_general_crop(obj)
@@ -1052,8 +1090,9 @@ class CropSerializer(serializers.ModelSerializer):
 
         promotable: list[str] = []
         for field in written:
-            general_value = None if general is None else getattr(general, field)
-            if general is None or is_unset_crop_value(general_value) or general_value == attrs[field]:
+            general_value = None if general is None else get_crop_field_value(general, field)
+            sent_value = getattr(attrs[field], 'pk', attrs[field])
+            if general is None or is_unset_crop_value(general_value) or general_value == sent_value:
                 promotable.append(field)
             else:
                 errors[field] = (
@@ -1571,6 +1610,10 @@ class CropSerializer(serializers.ModelSerializer):
                 for field_name in model_field_names:
                     if field_name in attrs:
                         temp_attrs[field_name] = attrs[field_name]
+                    elif field_name in PLANT_FAMILY_REFERENCE_FIELDS:
+                        # The raw key is enough for clean(); no need to load the row.
+                        attname = crop_field_attname(field_name)
+                        temp_attrs[attname] = getattr(self.instance, attname)
                     elif hasattr(self.instance, field_name):
                         temp_attrs[field_name] = getattr(self.instance, field_name)
                 temp_instance = Crop(**temp_attrs)

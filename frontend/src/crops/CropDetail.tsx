@@ -112,6 +112,7 @@ import {
   getSowingMonths,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
+import { usePlantFamilies } from './plantFamilies';
 
 
 export function CropDetail({
@@ -138,6 +139,7 @@ export function CropDetail({
 }: CropDetailProps) {
   const { t, i18n } = useTranslation('crops');
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
+  const plantFamilies = usePlantFamilies();
   const locale = resolveLocaleFromLanguage(currentLanguage);
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
@@ -223,9 +225,9 @@ const detailSectionGridSx = {
   const familyOptions = useMemo(
     () => Array.from(new Set(
       crops
-        .map((crop) => crop.crop_family?.trim())
+        .map((crop) => getEffectiveCropValue(crop, 'crop_family'))
         .filter((entry): entry is string => Boolean(entry))
-    )).sort((left, right) => left.localeCompare(right, 'de')),
+    )),
     [crops]
   );
 
@@ -1080,7 +1082,7 @@ const detailSectionGridSx = {
                       {t('form.cropFamily')}
                     </Typography>
                     <Typography variant="body1" sx={getOwnValueSx('crop_family')}>
-                      {getCropValue('crop_family', selectedCrop.crop_family)}
+                      {plantFamilies.getName(getCropValue('crop_family', selectedCrop.crop_family))}
                     </Typography>
                   </Box>
                 )}
