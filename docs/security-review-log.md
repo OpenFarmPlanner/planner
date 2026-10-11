@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-11 — Claude — Automated security review of PR #769, follow-up commits (cross-browser fixes)
+
+**Scope:** `git diff origin/main...HEAD` after the cross-browser issue fixes: `chunkLoadErrors.ts` unload handling, `App.tsx`, `RouteErrorBoundary.tsx`, `LocalizedDecimalField`, crop form sections, `VarietyValueLegend`, docs.
+
+**Findings:** No issues. The unload handling only delays an existing reload recovery with a timer; no new navigation targets, unsafe HTML APIs, storage keys or data flows. The decimal field is a client-side input component. The earlier entry for this PR still holds.
+
 ## 2026-10-11 — Claude — Automated security review of PR #769 (cross-browser Playwright suite)
 
 **Scope:** `git diff origin/main...HEAD`: new `e2e-cross-browser.yml` workflow, Docker runner scripts, cross-browser specs and fixtures, shared `playwright.webservers.ts`, `.gitignore` changes.
