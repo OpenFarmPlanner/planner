@@ -5,19 +5,22 @@ export const formRowSx = {
   alignItems: 'flex-start',
 } as const;
 
+// The roles below land on the field's own FormControl, a column flexbox. They
+// must not set `alignItems`: anything but the default `stretch` makes the
+// outlined input shrink-wrap to the native <input>'s intrinsic width, which
+// differs per browser engine and font (and collapses for number inputs with a
+// `max`), instead of filling the role width.
 const responsiveFieldWidth = (desktopWidth: number) => ({
   width: { xs: '100%', sm: desktopWidth },
   maxWidth: { xs: '100%', sm: desktopWidth },
   flex: { xs: '1 1 100%', sm: `0 1 ${desktopWidth}px` },
   minWidth: 0,
-  alignItems: 'flex-start',
 } as const);
 
 const stackedFieldWidth = (desktopWidth: number) => ({
   width: { xs: '100%', sm: desktopWidth },
   maxWidth: '100%',
   minWidth: 0,
-  alignItems: 'flex-start',
 } as const);
 
 /** Numbers, dates, versions, priorities, and other short values. */
@@ -55,5 +58,4 @@ export const fullWidthFieldSx = {
   maxWidth: '100%',
   minWidth: 0,
   flex: '1 1 100%',
-  alignItems: 'flex-start',
 } as const;

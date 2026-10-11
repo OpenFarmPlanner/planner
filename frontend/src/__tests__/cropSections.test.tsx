@@ -319,11 +319,15 @@ describe('crop form UI sections', () => {
     );
 
     const yieldInput = screen.getByLabelText('Erwarteter Ertrag (kg)');
-    expect(yieldInput).toHaveValue(3.5);
+    // Shown with the UI language's decimal separator in every browser, not
+    // the engine's native number formatting.
+    expect(yieldInput).toHaveValue('3,5');
     expect(yieldInput).toHaveAttribute('inputmode', 'decimal');
 
     fireEvent.change(yieldInput, { target: { value: '4.25' } });
     expect(onChange).toHaveBeenCalledWith('expected_yield', 4.25);
+    fireEvent.change(yieldInput, { target: { value: '4,75' } });
+    expect(onChange).toHaveBeenCalledWith('expected_yield', 4.75);
 
     fireEvent.change(yieldInput, { target: { value: '' } });
     expect(onChange).toHaveBeenCalledWith('expected_yield', undefined);

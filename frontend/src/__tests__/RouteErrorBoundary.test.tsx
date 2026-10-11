@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RouteErrorBoundary from '../components/runtime/RouteErrorBoundary';
+import { watchPageUnload } from '../runtime/chunkLoadErrors';
 
 const reloadPage = vi.hoisted(() => vi.fn());
 
@@ -46,6 +47,20 @@ describe('RouteErrorBoundary', () => {
 
     await vi.waitFor(() => expect(reloadPage).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole('button', { name: 'Seite neu laden' })).not.toBeInTheDocument();
+  });
+
+  it('does not reload a page the user is leaving', async () => {
+    const stopWatching = watchPageUnload();
+    try {
+      window.dispatchEvent(new Event('beforeunload'));
+      renderBoundary(new TypeError('Failed to fetch dynamically imported module: /src/crop-library/pages/PublicCropLibraryPage.tsx'));
+
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
+      expect(reloadPage).not.toHaveBeenCalled();
+    } finally {
+      window.dispatchEvent(new Event('pageshow'));
+      stopWatching();
+    }
   });
 
   it('offers a manual reload once the automatic retry is used up, without an interim blank state', async () => {

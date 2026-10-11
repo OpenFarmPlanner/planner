@@ -63,3 +63,18 @@ Notes:
 - Route coverage: dashboard, standorte, anbauflaechen, kulturen, anbauplaene, anbaukalender, ertragsuebersicht, saatgutbedarf, lieferanten.
 - Helpers are in `e2e/utils.ts` for deterministic login, viewport presets, and stable-page waiting.
 
+
+## Cross-browser suite
+
+Chromium, Firefox and WebKit (desktop and mobile) layout assertions and
+per-browser screenshots live in `e2e-cross-browser/` with their own config,
+`playwright.cross-browser.config.ts`. They run only inside the official
+Playwright Docker image:
+
+```bash
+cd frontend
+npm run test:e2e:cross-browser   # run
+npm run test:e2e:update          # re-record baselines, then review them
+```
+
+See "Cross-browser suite" in `docs/testing-and-ci.md`.

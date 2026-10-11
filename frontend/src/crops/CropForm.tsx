@@ -47,6 +47,7 @@ import { validateCrop } from './validation';
 import { normalizeSeedRateUnit } from './enumNormalization';
 import { buildCropIdentityKey, normalizeCropIdentityValue } from './cropIdentity';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
+import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import { BasicInfoSection } from './sections/BasicInfoSection';
 import { TimingSection } from './sections/TimingSection';
 import { HarvestSection } from './sections/HarvestSection';
@@ -1451,13 +1452,12 @@ export function CropForm({
                               key={`pkg-${supplierIndex}-${packageIndex}`}
                               sx={{ ...formRowSx, gap: 1, alignItems: 'center' }}
                             >
-                              <TextField
+                              <LocalizedDecimalField
                                 label={t('form.seedAmountLabel')}
-                                type="number"
                                 value={pkg.size_value}
-                                onChange={(event) => updatePackageRow(supplierIndex, packageIndex, { size_value: Number(event.target.value) || 0 })}
+                                onValueChange={(value) => updatePackageRow(supplierIndex, packageIndex, { size_value: value ?? 0 })}
                                 sx={compactFieldSx}
-                                slotProps={{ htmlInput: { inputMode: pkg.size_unit === 'seeds' ? 'numeric' : 'decimal' } }}
+                                inputMode={pkg.size_unit === 'seeds' ? 'numeric' : 'decimal'}
                               />
                               <Select
                                 value={pkg.size_unit}

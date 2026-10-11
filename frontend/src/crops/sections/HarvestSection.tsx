@@ -2,11 +2,12 @@
  * HarvestSection: yield unit and expected yield
  * @remarks Presentational, no internal state
  */
-import { Box, Typography, FormControl, InputLabel, MenuItem, TextField } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { fieldRowSx, smallFieldSx } from './styles.tsx';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
+import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
@@ -46,16 +47,14 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
           </FormControl>
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={expectedYieldVariety?.tooltipTitle}>
-          <TextField
+          <LocalizedDecimalField
             sx={mergeVarietyFieldSx(smallFieldSx, expectedYieldVariety?.sx)}
-            type="number"
             label={t('form.expectedYieldWithUnit', { defaultValue: `${t('form.expectedYield')} (${t('form.expectedYieldUnit')})` })}
             placeholder={t('form.expectedYieldPlaceholder')}
-            value={formData.expected_yield ?? ''}
-            onChange={e => onChange('expected_yield', e.target.value ? parseFloat(e.target.value) : undefined)}
+            value={formData.expected_yield}
+            onValueChange={(value) => onChange('expected_yield', value ?? undefined)}
             error={Boolean(errors.expected_yield)}
             helperText={errors.expected_yield}
-            slotProps={{ htmlInput: { min: 0, step: 0.01, inputMode: 'decimal' } }}
           />
         </VarietyFieldTooltip>
       </Box>

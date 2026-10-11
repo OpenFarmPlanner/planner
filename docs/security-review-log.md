@@ -38,11 +38,29 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-11 — Claude — Automated security review of PR #769, merge of main (1.82.0)
+
+**Scope:** `git diff 4b47fdfc..HEAD`: merge of `origin/main` into the PR branch. The only changes are PR #770 (admin date formats) and the 1.82.0 version bump, both already covered by the #770 entry below.
+
+**Findings:** No issues. No new PR-specific changes since the previous #769 entries, which still hold.
+
 ## 2026-10-11 — Claude — Automated security review of PR #770 (admin European date formats)
 
 **Scope:** `git diff origin/main...HEAD` (`config/formats/en/formats.py`, `FORMAT_MODULE_PATH` in `settings.py`, date-format test).
 
 **Findings:** No issues. Display and input format strings only; no auth, tenancy, serializer, or data-flow changes, and DRF's ISO 8601 output is unaffected.
+
+## 2026-10-11 — Claude — Automated security review of PR #769, follow-up commits (cross-browser fixes)
+
+**Scope:** `git diff origin/main...HEAD` after the cross-browser issue fixes: `chunkLoadErrors.ts` unload handling, `App.tsx`, `RouteErrorBoundary.tsx`, `LocalizedDecimalField`, crop form sections, `VarietyValueLegend`, docs.
+
+**Findings:** No issues. The unload handling only delays an existing reload recovery with a timer; no new navigation targets, unsafe HTML APIs, storage keys or data flows. The decimal field is a client-side input component. The earlier entry for this PR still holds.
+
+## 2026-10-11 — Claude — Automated security review of PR #769 (cross-browser Playwright suite)
+
+**Scope:** `git diff origin/main...HEAD`: new `e2e-cross-browser.yml` workflow, Docker runner scripts, cross-browser specs and fixtures, shared `playwright.webservers.ts`, `.gitignore` changes.
+
+**Findings:** No issues. The workflow has `contents: read` only, triggers on `pull_request` (not `pull_request_target`), and interpolates only the static matrix value into `run:`. The e2e backend settings (test token, raised throttles) were moved unchanged from `playwright.config.ts` and apply to the local test server only. The container downloads a pinned uv release over HTTPS without a checksum; this is test tooling with no secrets and is noted as an observation, not a finding.
 
 ## 2026-10-08 — Claude — Automated security review of PR #764, follow-up commits (about nav link rename, wordmark colour, visited link colour)
 

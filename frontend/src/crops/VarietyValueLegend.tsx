@@ -6,23 +6,18 @@ interface VarietyValueLegendProps {
   description: string;
 }
 
+/**
+ * One flowing sentence ("<sample> = description") rather than two flex items,
+ * so on narrow screens it wraps word by word instead of dropping the whole
+ * description onto a line of its own.
+ */
 export function VarietyValueLegend({ sampleLabel, description }: VarietyValueLegendProps) {
   return (
-    <Box
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 0.5,
-        flexWrap: 'wrap',
-        color: 'text.secondary',
-      }}
-    >
-      <Typography variant="body2" color="text.secondary" component="span" sx={varietySpecificValueHighlightSx}>
+    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+      <Box component="span" sx={varietySpecificValueHighlightSx}>
         {sampleLabel}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        = {description}
-      </Typography>
-    </Box>
+      </Box>
+      {` = ${description}`}
+    </Typography>
   );
 }

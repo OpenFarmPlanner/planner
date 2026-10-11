@@ -417,6 +417,119 @@ on save, because `~/.cache/ms-playwright` is never written — the Chrome
 the config pins comes from the runner image, which is the fast path
 `scripts/ci/install-playwright-chrome.sh` documents. Both steps are gone.
 
+## Cross-browser suite (Chromium, Firefox, WebKit in Docker)
+
+`frontend/playwright.cross-browser.config.ts` runs `frontend/e2e-cross-browser/`
+in three engines, on desktop and on phones: layout assertions (overflow,
+bounding boxes, dates) plus a screenshot per key view. It is a separate
+suite from `playwright.config.ts`, which stays the Chrome-channel suite
+with its own baselines. **Chrome remains the manual reference browser.** No
+screenshot is ever compared across browsers: the default
+`snapshotPathTemplate` includes the project name, so every project keeps its
+own baselines under `e2e-cross-browser/<spec>-snapshots/`.
+
+| Project | Engine | Device |
+| --- | --- | --- |
+| `desktop-chromium` | Chromium (bundled, not the Chrome channel) | Desktop Chrome, 1280x720 |
+| `desktop-firefox` | Firefox | Desktop Firefox, 1280x720 |
+| `desktop-webkit` | WebKit | Desktop Safari, 1280x720 |
+| `mobile-chromium` | Chromium | Pixel 7, 412x839, touch, `isMobile` |
+| `mobile-webkit` | WebKit | iPhone 15, 393x659, touch, `isMobile` |
+| `mobile-firefox` | Firefox | approximated phone, 393x851 (see below) |
+
+**mobile-firefox is an approximation.** Playwright cannot emulate mobile
+Firefox: `isMobile` is supported only by Chromium and WebKit. The project
+therefore uses desktop Firefox with a phone-sized viewport (393x851),
+`hasTouch: true`, `deviceScaleFactor: 2` and a Firefox for Android user
+agent. Unlike a real phone it ignores `<meta name="viewport">`, keeps
+desktop media features (`pointer: fine`, `hover: hover`), shows desktop
+scrollbars and number-input spinners, and has no font inflation. It catches
+Gecko layout differences at phone width, not Firefox for Android itself.
+
+### Determinism
+
+- **Docker only.** Screenshots are rendered and compared inside the official
+  `mcr.microsoft.com/playwright:v<version>-noble` image, where `<version>` is
+  read from the installed `@playwright/test` in `package-lock.json`, so fonts
+  and system libraries are identical locally and in CI. Never record
+  baselines on the host.
+- **Time:** an auto fixture (`e2e-cross-browser/fixtures.ts`) pins
+  `Date.now()` to 15 May 2026 10:00 Vienna time with `page.clock.setFixedTime`.
+  That is mid-season in the demo project's 2026 season. Timers keep running.
+- **Locale and time zone:** `de-AT` and `Europe/Vienna` for every project.
+- **Data:** every test seeds its own demo project through the E2E fixture
+  endpoint (`setup_demo`, scenario id per project and test). Its dates are
+  absolute, so server time does not matter.
+- **Masks:** `dynamicContentMasks()` masks the notification bell. Mask any new
+  timestamp, user name or counter the same way rather than raising the
+  tolerance.
+- **Defaults:** `toHaveScreenshot` uses `animations: 'disabled'`,
+  `caret: 'hide'` and `maxDiffPixelRatio: 0.01`. Tests move the pointer
+  to 0,0 before a capture so no hover tooltip is recorded.
+
+### Running it
+
+```bash
+cd frontend
+npm run test:e2e:cross-browser                    # all six projects
+npm run test:e2e:cross-browser -- --project=mobile-firefox crop-form
+npm run test:e2e:update                           # re-record baselines (Docker)
+npm run test:e2e:all                              # Chrome suite, then this one
+```
+
+All of these call `e2e-cross-browser/run-in-docker.sh`, which is equivalent to
+
+```bash
+docker run --rm --init --ipc=host \
+  -v "$PWD/..:/work" \
+  -v openfarmplanner-e2e-node-modules:/work/frontend/node_modules \
+  -v openfarmplanner-e2e-cache:/cache \
+  -w /work/frontend \
+  mcr.microsoft.com/playwright:v1.63.0-noble \
+  bash e2e-cross-browser/docker-entrypoint.sh [playwright args]
+```
+
+The entrypoint installs a pinned `uv` (the image has Python but no uv),
+runs `npm ci` when the lockfile changed, builds the bundle with
+`tsc -b && vite build`, and runs the suite. The build skips the `postbuild`
+prerender, which needs the Google Chrome channel the image lacks. The backend
+and the browsers run inside the container's own network, so a dev server on
+the host's 8000/4173 is never reused. `E2E_SKIP_BUILD=1` reuses the last
+`dist/`. `E2E_DOCKER_ARGS` adds `docker run` arguments, e.g. proxy variables
+and a CA bundle behind a TLS-intercepting proxy. Results land in
+`frontend/test-results/` and `frontend/playwright-report/`.
+
+### Baselines
+
+Baselines follow the "Playwright Screenshot Tests" rules in `CLAUDE.md`:
+never update them automatically, and review every new or changed image
+before committing it. A failing screenshot uploads `*-actual.png`,
+`*-expected.png` and `*-diff.png` in `test-results/`.
+
+### CI
+
+`.github/workflows/e2e-cross-browser.yml` runs the suite on pull requests to
+`main`, one job per project, via the same `run-in-docker.sh`. A failing job
+uploads `playwright-report/` and `test-results/` (traces and screenshot
+diffs) as `playwright-cross-browser-<project>`.
+
+### Cross-browser issues found and fixed
+
+Issues the suite surfaced, each fixed in the app and guarded by a test.
+A new engine-specific bug gets a failing test here first, not a workaround
+in the fixtures.
+
+| Issue | Engines | Fix | Guarded by |
+| --- | --- | --- | --- |
+| Form fields shrink-wrapped to the engine's intrinsic `<input>` width, so the Kultur form looked different in every browser (worst in Firefox on mobile). | all, visibly different per engine | The field-width roles no longer set `alignItems` (see [form-layout.md](./form-layout.md)). | `crop-form.spec.ts`, `formLayout.test.ts` |
+| A full navigation (bookmark, typed URL) started while a lazy route chunk was still loading was cancelled: the page being left reloaded instead. Leaving the page makes these engines reject the in-flight `import()`, and the stale-deploy recovery treated that as a missing chunk. | Firefox, WebKit; never Chromium | `recoverUnlessPageIsUnloading` (`src/runtime/chunkLoadErrors.ts`) holds the recovery back after `beforeunload`; it still runs if the page stays (e.g. a cancelled leave prompt). | `navigation-during-chunk-load.spec.ts`, `chunkLoadErrors.test.ts`, `RouteErrorBoundary.test.tsx` |
+| Decimal fields showed the engine's own number formatting: `0,5` in WebKit, `0.5` in Chromium/Firefox, while the rest of the UI uses a comma. | WebKit vs. Chromium/Firefox | Decimal fields use `LocalizedDecimalField` (see [form-layout.md](./form-layout.md)). | `crop-form.spec.ts`, `LocalizedDecimalField.test.tsx` |
+| At phone width the "Fruchtfolge-Eigenschaften" info icon drifted to the right edge and the variety legend dropped its description onto a line of its own. | all, at about 393 px and below | The icon is tied to the heading's last word; the legend is one flowing sentence. | `crop-form.spec.ts` |
+
+Not issues, but emulation limits that show up in the `mobile-firefox`
+baselines: native number spinners on integer fields and desktop scrollbars
+(Firefox has no mobile emulation, see above).
+
 ## Adding tests
 
 - Keep new frontend files under `src/**/*.{test,spec}.{ts,tsx}` — that is

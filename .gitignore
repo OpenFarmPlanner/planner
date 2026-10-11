@@ -58,3 +58,6 @@ reports/
 
 # Node.js (e.g. accidentally created at repo root)
 node_modules/
+
+# Playwright HTML report
+frontend/playwright-report/

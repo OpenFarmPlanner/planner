@@ -3,6 +3,7 @@ import { useLocation, useRouteError } from 'react-router';
 import RuntimeErrorState from './RuntimeErrorState';
 import {
   isDynamicImportLoadError,
+  recoverUnlessPageIsUnloading,
   reloadPage,
   routeLoadRetryIsAvailable,
   shouldAutomaticallyReloadForRouteLoadError,
@@ -30,12 +31,14 @@ export default function RouteErrorBoundary() {
     }
 
     hasClaimedRetryRef.current = true;
-    if (shouldAutomaticallyReloadForRouteLoadError(routeKey)) {
-      reloadPage();
-      return;
-    }
+    recoverUnlessPageIsUnloading(() => {
+      if (shouldAutomaticallyReloadForRouteLoadError(routeKey)) {
+        reloadPage();
+        return;
+      }
 
-    setIsReloading(false);
+      setIsReloading(false);
+    });
   }, [isApplicationUpdateError, routeKey]);
 
   if (isReloading) {

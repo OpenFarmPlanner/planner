@@ -32,7 +32,9 @@ import RouteErrorBoundary from './components/runtime/RouteErrorBoundary';
 import {
   clearRouteLoadRetry,
   isDynamicImportLoadError,
+  recoverUnlessPageIsUnloading,
   reloadOnceForDynamicImportError,
+  watchPageUnload,
 } from './runtime/chunkLoadErrors';
 
 
@@ -117,10 +119,14 @@ function GlobalRuntimeErrorHandler({ children }: GlobalRuntimeErrorHandlerProps)
       return;
     }
 
-    if (!reloadOnceForDynamicImportError(error)) {
-      setHasApplicationUpdateError(true);
-    }
+    recoverUnlessPageIsUnloading(() => {
+      if (!reloadOnceForDynamicImportError(error)) {
+        setHasApplicationUpdateError(true);
+      }
+    });
   }, []);
+
+  useEffect(() => watchPageUnload(), []);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {

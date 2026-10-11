@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Box, Typography, TextField, FormControl, InputLabel, MenuItem } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
 import type { Crop, SeedRateUnit, SeedRateUnitConstraints } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { compactFieldSx, fieldRowSx, mediumFieldSx, smallFieldSx } from './styles.tsx';
 import { DropdownAwareTooltip } from '../../components/DropdownAwareTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
+import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
 import { getSeedRateValueInputProps } from '../seedRateConstraints';
@@ -74,12 +75,11 @@ function SeedRateBlock({
       <Typography variant="subtitle1" sx={{ mt: 2 }}>{title}</Typography>
       <Box sx={fieldRowSx}>
         <DropdownAwareTooltip title={rateVariety?.tooltipTitle ?? t('form.seedRateHelp')} arrow>
-          <TextField
+          <LocalizedDecimalField
             sx={mergeVarietyFieldSx(compactFieldSx, rateVariety?.sx)}
-            type="number"
             label={t('form.seedAmountLabel')}
-            value={formData[valueField] ?? ''}
-            onChange={(e) => onChange(valueField, e.target.value ? parseFloat(e.target.value) : null)}
+            value={formData[valueField]}
+            onValueChange={(value) => onChange(valueField, value)}
             error={Boolean(errors[valueField])}
             helperText={errors[valueField]}
             slotProps={{ htmlInput: valueInputProps }}
@@ -121,15 +121,13 @@ function SeedRateBlock({
 
         {showSeedSafetyMargin && (
           <DropdownAwareTooltip title={safetyVariety?.tooltipTitle ?? t('form.sowingCalculationSafetyPercentHelp')} arrow>
-            <TextField
+            <LocalizedDecimalField
               sx={mergeVarietyFieldSx(mediumFieldSx, safetyVariety?.sx)}
-              type="number"
               label={t('form.sowingCalculationSafetyPercentLabel')}
-              value={formData[safetyField] ?? ''}
-              onChange={(e) => onChange(safetyField, e.target.value ? parseFloat(e.target.value) : null)}
+              value={formData[safetyField]}
+              onValueChange={(value) => onChange(safetyField, value)}
               error={Boolean(errors[safetyField])}
               helperText={errors[safetyField]}
-              slotProps={{ htmlInput: { min: 0, max: 100, step: 1, inputMode: 'decimal' } }}
             />
           </DropdownAwareTooltip>
         )}
@@ -151,19 +149,6 @@ export function SeedingSection({
   const showsDirect = cultivationTypes.includes('direct_sowing');
   const showsPreCultivation = cultivationTypes.includes('pre_cultivation');
   const thousandKernelWeightVariety = getFieldTooltipProps?.('thousand_kernel_weight_g', t('form.thousandKernelWeightHelp'));
-  const handleThousandKernelWeightChange = (rawValue: string): void => {
-    const normalized = rawValue.trim().replace(',', '.');
-    if (!normalized) {
-      onChange('thousand_kernel_weight_g', undefined);
-      return;
-    }
-    const parsed = Number(normalized);
-    if (!Number.isFinite(parsed)) {
-      onChange('thousand_kernel_weight_g', undefined);
-      return;
-    }
-    onChange('thousand_kernel_weight_g', parsed);
-  };
 
   return (
     <>
@@ -203,16 +188,13 @@ export function SeedingSection({
 
       <Box sx={fieldRowSx}>
         <DropdownAwareTooltip title={thousandKernelWeightVariety?.tooltipTitle ?? t('form.thousandKernelWeightHelp')} arrow>
-          <TextField
+          <LocalizedDecimalField
             sx={mergeVarietyFieldSx(smallFieldSx, thousandKernelWeightVariety?.sx)}
-            type="text"
-            inputMode="decimal"
             label={t('form.thousandKernelWeightLabel')}
-            value={formData.thousand_kernel_weight_g ?? ''}
-            onChange={(event) => handleThousandKernelWeightChange(event.target.value)}
+            value={formData.thousand_kernel_weight_g}
+            onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}
             error={Boolean(errors.thousand_kernel_weight_g)}
             helperText={errors.thousand_kernel_weight_g}
-            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           />
         </DropdownAwareTooltip>
       </Box>
