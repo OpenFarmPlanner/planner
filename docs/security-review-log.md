@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-11 — Claude — Automated security review of PR #770 (admin European date formats)
+
+**Scope:** `git diff origin/main...HEAD` (`config/formats/en/formats.py`, `FORMAT_MODULE_PATH` in `settings.py`, date-format test).
+
+**Findings:** No issues. Display and input format strings only; no auth, tenancy, serializer, or data-flow changes, and DRF's ISO 8601 output is unaffected.
+
 ## 2026-10-11 — Claude — Automated security review of PR #769, follow-up commits (cross-browser fixes)
 
 **Scope:** `git diff origin/main...HEAD` after the cross-browser issue fixes: `chunkLoadErrors.ts` unload handling, `App.tsx`, `RouteErrorBoundary.tsx`, `LocalizedDecimalField`, crop form sections, `VarietyValueLegend`, docs.
