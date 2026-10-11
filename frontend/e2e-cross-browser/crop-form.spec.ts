@@ -107,6 +107,48 @@ for (const target of TARGETS) {
       expect(overflowing, 'elements wider than the dialog').toEqual([]);
     });
 
+    test('shows decimals and the section heading the same way in every browser', async ({ page }) => {
+      const dialog = await openTarget(page, target);
+
+      // Decimal fields use the UI language's separator, not the engine's
+      // native number formatting (WebKit used to show "0,5", the others "0.5").
+      await expect(dialog.getByLabel('Saattiefe (cm)')).toHaveValue('0,5');
+
+      if (target.variety) {
+        // The rotation info icon stays beside the heading's last line instead
+        // of drifting to the right edge when the heading wraps on a phone.
+        const heading = dialog.getByRole('heading', { name: 'Fruchtfolge-Eigenschaften' });
+        const icon = dialog.getByLabel('Gilt für die gesamte Kultur, änderbar nur dort.');
+        const iconBox = await icon.boundingBox();
+        expect(iconBox).not.toBeNull();
+        const lastLine = await heading.evaluate((element) => {
+          const lines = Array.from(element.getClientRects());
+          const last = lines[lines.length - 1];
+          return { right: last.right, top: last.top, bottom: last.bottom };
+        });
+        const iconCenterY = iconBox!.y + iconBox!.height / 2;
+        expect(iconCenterY, 'info icon is not on the heading\'s last line').toBeGreaterThanOrEqual(lastLine.top);
+        expect(iconCenterY, 'info icon is not on the heading\'s last line').toBeLessThanOrEqual(lastLine.bottom);
+        expect(iconBox!.x - lastLine.right, 'info icon is detached from the heading').toBeLessThanOrEqual(12);
+
+        // The legend reads as one sentence: its description starts on the
+        // same line as the highlighted sample instead of below it.
+        const legendStartsOnOneLine = await dialog.getByText('Markierte Werte', { exact: true }).evaluate((sample) => {
+          const description = sample.nextSibling;
+          if (!description) {
+            return false;
+          }
+          const range = document.createRange();
+          range.setStart(description, 0);
+          range.setEnd(description, 3);
+          const descriptionTop = range.getBoundingClientRect().top;
+          const sampleBox = sample.getBoundingClientRect();
+          return descriptionTop >= sampleBox.top - 2 && descriptionTop <= sampleBox.bottom;
+        });
+        expect(legendStartsOnOneLine, 'legend description dropped below the sample').toBe(true);
+      }
+    });
+
     test('dialog fits the viewport and save/cancel stay reachable', async ({ page }) => {
       const dialog = await openTarget(page, target);
       await expectWithinViewport(page, dialog, 'dialog');

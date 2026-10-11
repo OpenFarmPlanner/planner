@@ -344,25 +344,35 @@ export function BasicInfoSection({
         <Box sx={fieldRowSx}>{firstVarietySourceHint}</Box>
       ) : null}
       {identityHint}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 2 }}>
-        <Typography variant="h6">{t('form.sectionCropRotation')}</Typography>
+      {/* The heading is inline and the info icon follows it in an unbreakable
+          span (a line may otherwise break before an inline-flex box despite the
+          no-break space): on a narrow phone the heading wraps at its hyphen and
+          the icon stays beside the last word instead of drifting to the right
+          edge or onto a line of its own. The icon stays outside the heading's
+          accessible name. */}
+      <Box sx={{ mt: 2, typography: 'h6' }}>
+        <Typography variant="h6" sx={{ display: 'inline' }}>{t('form.sectionCropRotation')}</Typography>
         {speciesInvariantFieldsReadOnly ? (
-          <AppTooltip title={t('form.cropRotationInheritedTooltip')}>
-            <Box
-              component="span"
-              tabIndex={0}
-              aria-label={t('form.cropRotationInheritedTooltip')}
-              sx={{
-                display: 'inline-flex',
-                color: 'text.secondary',
-                cursor: 'help',
-                borderRadius: '50%',
-                '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
-              }}
-            >
-              <InfoOutlinedIcon fontSize="small" />
-            </Box>
-          </AppTooltip>
+          <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+            {'\u00A0'}
+            <AppTooltip title={t('form.cropRotationInheritedTooltip')}>
+              <Box
+                component="span"
+                tabIndex={0}
+                aria-label={t('form.cropRotationInheritedTooltip')}
+                sx={{
+                  display: 'inline-flex',
+                  verticalAlign: 'middle',
+                  color: 'text.secondary',
+                  cursor: 'help',
+                  borderRadius: '50%',
+                  '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
+                }}
+              >
+                <InfoOutlinedIcon fontSize="small" />
+              </Box>
+            </AppTooltip>
+          </Box>
         ) : null}
       </Box>
       <Box sx={{ ...fieldRowSx, alignItems: 'flex-end' }}>
