@@ -575,7 +575,6 @@ function AreaAssignmentDialogComponent({
                       input={rotationInput}
                       bedLabel={draftBed?.name ?? ''}
                       cultureLabel={rotation.cultureLabel}
-                      onShowSuggestions={() => setIsSuggestionsOpen(true)}
                     />
                     <Link
                       component="button"

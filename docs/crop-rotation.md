@@ -135,9 +135,11 @@ harmless and is reset on the next move.
   desktop, below it on mobile; the top five, "Alle … Beete anzeigen", and
   "Übernehmen" sets the bed in the form.
 - **"Anbaufläche ändern"** (`AreaAssignmentDialog`, the desktop bed-assignment
-  flow) shows the same check and suggestions once the row has a crop and a
-  planting date. It has no accept checkbox, because the dialog only writes the
-  bed; accepting goes through the planting-plan dialog.
+  flow) shows the same check below the selects once the row has a crop and a
+  planting date. The dialog stays compact; "Passende Beete anzeigen" opens the
+  suggestions beside the selects and only then widens it. It has no accept
+  checkbox, because the dialog only writes the bed; accepting goes through the
+  planting-plan dialog.
 - **Table**: the narrow sortable "FF" column (tooltip "Fruchtfolge") shows one
   icon per status, different in shape and not only colour — warning triangle
   (conflict), triangle with check (accepted), info circle (hint), question
