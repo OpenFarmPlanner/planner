@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent
 import {
   Box,
   Button,
+  Link,
   Dialog,
   DialogActions,
   DialogContent,
@@ -169,6 +170,7 @@ function AreaAssignmentDialogComponent({
   const focusAdvanceTimeoutsRef = useRef<number[]>([]);
   const [triggerFocusRequest, setTriggerFocusRequest] = useState(0);
   const [draft, setDraft] = useState<AssignmentState>({ locationId: null, fieldId: null, bedId: bedId ?? null });
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
 
   // Derived once per (locations, fields, beds) identity and shared by every
   // growing-area cell in the grid — see getAreaHierarchyIndex.
@@ -275,6 +277,8 @@ function AreaAssignmentDialogComponent({
   }, [bedsWithLocation]);
 
   const hasRotationContext = Boolean(rotation?.cropId && rotation.plantingDate) && bedsWithLocation.length > 0;
+  // The dialog stays compact; only the opt-in suggestions widen it.
+  const showSuggestions = hasRotationContext && isSuggestionsOpen;
   const rotationInput = {
     cropId: rotation?.cropId ?? null,
     bedId: activeDraft.bedId,
@@ -437,6 +441,7 @@ function AreaAssignmentDialogComponent({
 
     isOpenRef.current = true;
     setDraft(getOpeningDraft());
+    setIsSuggestionsOpen(false);
     setIsOpen(true);
   }, [getOpeningDraft]);
 
@@ -457,13 +462,15 @@ function AreaAssignmentDialogComponent({
         open={isOpen}
         onClose={handleCancel}
         fullWidth
-        maxWidth={hasRotationContext ? 'md' : 'xs'}
+        maxWidth={showSuggestions ? 'md' : 'xs'}
       >
+        {/* A flex column, so DialogContent scrolls and the actions stay in
+            view however tall the rotation check makes the content. */}
         <Box
           component="form"
           ref={formRef}
           onSubmit={handleFormSubmit}
-          sx={{ minWidth: 0 }}
+          sx={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}
         >
           <DialogTitle>{t('areaAssignment.title')}</DialogTitle>
           <DialogContent>
@@ -475,7 +482,7 @@ function AreaAssignmentDialogComponent({
                 gap: 3,
                 gridTemplateColumns: {
                   xs: 'minmax(0, 1fr)',
-                  md: hasRotationContext ? 'minmax(0, 2fr) minmax(0, 3fr)' : 'minmax(0, 1fr)',
+                  md: showSuggestions ? 'minmax(0, 2fr) minmax(0, 3fr)' : 'minmax(0, 1fr)',
                 },
                 alignItems: 'start',
               }}
@@ -563,15 +570,30 @@ function AreaAssignmentDialogComponent({
                   ) : null}
                 </FormControl>
                 {hasRotationContext && rotation ? (
-                  <RotationCheckPanel
-                    input={rotationInput}
-                    bedLabel={draftBed?.name ?? ''}
-                    cultureLabel={rotation.cultureLabel}
-                  />
+                  <>
+                    <RotationCheckPanel
+                      input={rotationInput}
+                      bedLabel={draftBed?.name ?? ''}
+                      cultureLabel={rotation.cultureLabel}
+                      onShowSuggestions={() => setIsSuggestionsOpen(true)}
+                    />
+                    <Link
+                      component="button"
+                      type="button"
+                      variant="body2"
+                      aria-expanded={isSuggestionsOpen}
+                      onClick={() => setIsSuggestionsOpen((value) => !value)}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      {isSuggestionsOpen
+                        ? t('rotation.suggestions.hide')
+                        : t('rotation.suggestions.show')}
+                    </Link>
+                  </>
                 ) : null}
               </Stack>
             </Box>
-            {hasRotationContext && rotation ? (
+            {showSuggestions && rotation ? (
               <Box sx={{ pt: { xs: 0, md: 1 }, minWidth: 0 }}>
                 <BedSuggestionsPanel
                   input={rotationInput}
