@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-12 — Claude — Automated security review of PR #772, follow-up commit (single bed suggestions toggle)
+
+**Scope:** `git diff 76cef232..HEAD`: `AreaAssignmentDialog.tsx` (duplicate toggle removed) and `docs/crop-rotation.md`.
+
+**Findings:** No issues. A UI-only removal and a docs update; no new data flows or unsafe APIs. The earlier entries for this PR still hold.
+
 ## 2026-10-12 — Claude — Automated security review of PR #772, follow-up commits (query-count test, compact area dialog)
 
 **Scope:** `git diff ffe835f3..HEAD`: bed-suggestions query-count test and `AreaAssignmentDialog.tsx` layout.
