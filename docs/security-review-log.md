@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-12 — Claude — Automated security review of PR #773, follow-up commits (screenshot baselines)
+
+**Scope:** `git diff 7790ecf9..HEAD`: re-recorded cross-browser baseline images only.
+
+**Findings:** No issues. Binary test artifacts only; the earlier entry for this PR still holds.
+
 ## 2026-10-12 — Claude — Automated security review of PR #773 (demo project rotation showcase)
 
 **Scope:** `git diff origin/main...HEAD`: `demo_project.py` seed data, `e2e_views.py` `demo_year` parameter, tests, docs and E2E specs.
