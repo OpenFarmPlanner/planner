@@ -4,13 +4,14 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 from accounts.models import AccountTrustProfile
 from accounts.trust import resolve_trust_level
 from crops.models import CropSpecies
 from farm.e2e_views import TEST_EMAIL_DOMAIN, E2EInvitationFixtureView, E2E_PUBLIC_CROP_VARIETY_PREFIXES
-from farm.models import Crop, Project, PublicCrop
+from farm.models import Crop, Project, PublicCrop, Season
 
 User = get_user_model()
 
@@ -88,6 +89,19 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
                 AccountTrustProfile.TRUST_ESTABLISHED,
                 f'{role} fixture user should not be treated as a brand-new signup',
             )
+
+    def test_demo_setup_seeds_the_requested_demo_year(self) -> None:
+        self.view._setup(SimpleNamespace(data={'demo_year': 2026}), self.scenario, demo_project=True)
+
+        project = Project.objects.get(slug=self.scenario)
+        self.assertEqual(
+            sorted(Season.objects.filter(project=project).values_list('start_date__year', flat=True)),
+            [2024, 2025, 2026],
+        )
+
+    def test_demo_setup_rejects_a_non_numeric_demo_year(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.view._setup(SimpleNamespace(data={'demo_year': 'soon'}), self.scenario, demo_project=True)
 
     def test_empty_user_setup_grants_established_trust(self) -> None:
         self.view._setup_empty_user(self.scenario)

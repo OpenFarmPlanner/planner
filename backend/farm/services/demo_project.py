@@ -308,8 +308,18 @@ def get_demo_project_description(language_code: str | None, *, screenshot: bool 
     return descriptions[language]
 
 
-def populate_demo_project(project: Project, *, owner: Any | None = None, language_code: str | None = None) -> None:
-    """Create a compact, realistic demo farm for screenshots and local demos."""
+def populate_demo_project(
+    project: Project,
+    *,
+    owner: Any | None = None,
+    language_code: str | None = None,
+    current_year: int | None = None,
+) -> None:
+    """Create a compact, realistic demo farm for screenshots and local demos.
+
+    ``current_year`` defaults to today's year; time-pinned E2E suites pass a
+    fixed year so their screenshots do not change at the turn of the year.
+    """
     language = resolve_demo_language(language_code)
     with transaction.atomic():
         reset_project_demo_data(project)
@@ -318,7 +328,14 @@ def populate_demo_project(project: Project, *, owner: Any | None = None, languag
         locations, fields, beds = _create_area_hierarchy(project, language_code=language)
         _create_layouts(project, fields, beds)
         crops = _create_crops(project, suppliers, language_code=language)
-        _create_planting_plans(project, crops, beds, owner, language_code=language)
+        _create_planting_plans(
+            project,
+            crops,
+            beds,
+            owner,
+            language_code=language,
+            current_year=current_year or demo_current_year(),
+        )
         assign_unassigned_planting_plans(project, owner=owner)
         project.demo_seeded_at = timezone.now()
         Project.objects.filter(pk=project.pk).update(demo_seeded_at=project.demo_seeded_at)
@@ -1139,13 +1156,14 @@ def _create_planting_plans(
     owner: Any | None,
     *,
     language_code: str,
+    current_year: int,
 ) -> None:
     plan_notes = DEMO_TEXT[language_code]['plan_notes']
     # Seasons are relative to today, so the history always stays inside the
     # rotation check window. The previous two seasons rotate the families
     # across the beds so the current season's plans mostly check "ok"; the
     # few exceptions are the deliberate teaching cases marked below.
-    current = demo_current_year()
+    current = current_year
     two_back = current - 2
     last = current - 1
     plan_specs = [

@@ -18,7 +18,9 @@ thirty-six planting plans split across three seasons — twelve each in the
 current season and the two seasons before it — so the season switcher has more
 than one season to demonstrate. The season years are derived from today's date
 (`demo_current_year()`), never hardcoded, so the history stays inside the
-crop rotation check window in every year. Each plan's season is assigned during
+crop rotation check window in every year. `populate_demo_project` takes an
+optional `current_year` for time-pinned suites; the E2E fixture endpoint
+exposes it as `demo_year` (used by the cross-browser suite). Each plan's season is assigned during
 fixture creation, so demo data never relies on the ordinary planting-plan API
 accepting season-less creates. The crop rows deliberately include
 selectable species entries plus varieties with different shared and own values

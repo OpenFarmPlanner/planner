@@ -29,7 +29,7 @@ export function scenarioId(testInfo: TestInfo): string {
 }
 
 /**
- * Logs in as the admin of a freshly seeded demo project (two seasons, crops
+ * Logs in as the admin of a freshly seeded demo project (three seasons, crops
  * with varieties, planting plans) and waits until the app has finished
  * bootstrapping: project and season resolved and persisted, no requests in
  * flight.
@@ -38,6 +38,9 @@ export async function loginToDemoProject(page: Page, testInfo: TestInfo): Promis
   await loginWithDeterministicProject(page, page.request, scenarioId(testInfo), {
     demoProject: true,
     loginAsAdmin: true,
+    // The demo seeds its seasons relative to the server date; pin them to the
+    // browser's fixed clock so screenshots stay stable across years.
+    demoYear: FIXED_NOW.getFullYear(),
   });
   await page.waitForURL(/\/app\/dashboard/);
   await expect.poll(() => page.evaluate(
