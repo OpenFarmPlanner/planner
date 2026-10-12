@@ -46,6 +46,7 @@ nav:
       - Crop Library Architecture: crop-library-architecture.md
       - Crop Library State Matrix: crop-library-state-matrix.md
       - Crop Taxonomy Guidelines: crop-taxonomy-guidelines.md
+      - Crop Rotation (Fruchtfolge): crop-rotation.md
       - Seed Demand Calculation: seed-demand-calculation.md
       - Versioning and History: versioning-and-history.md
       - Large-Dataset Rendering: large-dataset-rendering.md

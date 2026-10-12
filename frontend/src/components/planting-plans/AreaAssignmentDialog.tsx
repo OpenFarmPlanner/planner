@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent
 import {
   Box,
   Button,
+  Link,
   Dialog,
   DialogActions,
   DialogContent,
@@ -29,6 +30,17 @@ import { TypeaheadSelect as Select } from '../inputs/TypeaheadSelect';
 import { fullWidthFieldSx } from '../forms/formLayout';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
+import { BedSuggestionsPanel } from './rotation/BedSuggestionsPanel';
+import { RotationCheckPanel } from './rotation/RotationCheckPanel';
+
+/** What the crop rotation check needs to know about the plan being assigned. */
+export interface AreaAssignmentRotationContext {
+  cropId: number | null;
+  /** ISO date (YYYY-MM-DD). */
+  plantingDate: string | null;
+  planId: number | null;
+  cultureLabel: string;
+}
 
 interface AreaAssignmentDialogProps {
   bedId: number | null;
@@ -47,6 +59,8 @@ interface AreaAssignmentDialogProps {
    */
   rowId?: GridRowId;
   field?: string;
+  /** Enables the rotation check and bed suggestions once crop and date are known. */
+  rotation?: AreaAssignmentRotationContext;
 }
 
 interface AssignmentState {
@@ -147,6 +161,7 @@ function AreaAssignmentDialogComponent({
   hasFocus = false,
   rowId,
   field,
+  rotation,
 }: AreaAssignmentDialogProps) {
   const { t } = useTranslation('plantingPlans');
   const [isOpen, setIsOpen] = useState(false);
@@ -155,6 +170,7 @@ function AreaAssignmentDialogComponent({
   const focusAdvanceTimeoutsRef = useRef<number[]>([]);
   const [triggerFocusRequest, setTriggerFocusRequest] = useState(0);
   const [draft, setDraft] = useState<AssignmentState>({ locationId: null, fieldId: null, bedId: bedId ?? null });
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
 
   // Derived once per (locations, fields, beds) identity and shared by every
   // growing-area cell in the grid — see getAreaHierarchyIndex.
@@ -255,6 +271,21 @@ function AreaAssignmentDialogComponent({
       : `${item.name} (${formatAreaM2(areaSqm, locale)})`;
     return label;
   };
+
+  const handleSuggestedBed = useCallback((suggestedBedId: number): void => {
+    setDraft(normalizeState(suggestedBedId, bedsWithLocation));
+  }, [bedsWithLocation]);
+
+  const hasRotationContext = Boolean(rotation?.cropId && rotation.plantingDate) && bedsWithLocation.length > 0;
+  // The dialog stays compact; only the opt-in suggestions widen it.
+  const showSuggestions = hasRotationContext && isSuggestionsOpen;
+  const rotationInput = {
+    cropId: rotation?.cropId ?? null,
+    bedId: activeDraft.bedId,
+    plantingDate: rotation?.plantingDate ?? null,
+    planId: rotation?.planId ?? null,
+  };
+  const draftBed = bedsWithLocation.find((item) => item.id === activeDraft.bedId);
 
   const isFieldSelectDisabled = !activeDraft.locationId || selectableFields.length === 0;
   const isBedSelectDisabled = !activeDraft.fieldId || selectableBeds.length === 0;
@@ -410,6 +441,7 @@ function AreaAssignmentDialogComponent({
 
     isOpenRef.current = true;
     setDraft(getOpeningDraft());
+    setIsSuggestionsOpen(false);
     setIsOpen(true);
   }, [getOpeningDraft]);
 
@@ -430,16 +462,31 @@ function AreaAssignmentDialogComponent({
         open={isOpen}
         onClose={handleCancel}
         fullWidth
-        maxWidth="xs"
+        maxWidth={showSuggestions ? 'md' : 'xs'}
       >
+        {/* A flex column, so DialogContent scrolls and the actions stay in
+            view however tall the rotation check makes the content. */}
         <Box
           component="form"
           ref={formRef}
           onSubmit={handleFormSubmit}
-          sx={{ minWidth: 0 }}
+          sx={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}
         >
           <DialogTitle>{t('areaAssignment.title')}</DialogTitle>
           <DialogContent>
+            {/* With a crop and date known, the rotation suggestions sit next
+                to the hierarchy selects on desktop and below them on mobile. */}
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 3,
+                gridTemplateColumns: {
+                  xs: 'minmax(0, 1fr)',
+                  md: showSuggestions ? 'minmax(0, 2fr) minmax(0, 3fr)' : 'minmax(0, 1fr)',
+                },
+                alignItems: 'start',
+              }}
+            >
             <Box sx={{ pt: 1, minWidth: 0 }}>
               {bedsWithLocation.length === 0 ? (
                 <EmptyStateCard
@@ -522,7 +569,38 @@ function AreaAssignmentDialogComponent({
                     </FormHelperText>
                   ) : null}
                 </FormControl>
+                {hasRotationContext && rotation ? (
+                  <>
+                    <RotationCheckPanel
+                      input={rotationInput}
+                      bedLabel={draftBed?.name ?? ''}
+                      cultureLabel={rotation.cultureLabel}
+                    />
+                    <Link
+                      component="button"
+                      type="button"
+                      variant="body2"
+                      aria-expanded={isSuggestionsOpen}
+                      onClick={() => setIsSuggestionsOpen((value) => !value)}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      {isSuggestionsOpen
+                        ? t('rotation.suggestions.hide')
+                        : t('rotation.suggestions.show')}
+                    </Link>
+                  </>
+                ) : null}
               </Stack>
+            </Box>
+            {showSuggestions && rotation ? (
+              <Box sx={{ pt: { xs: 0, md: 1 }, minWidth: 0 }}>
+                <BedSuggestionsPanel
+                  input={rotationInput}
+                  cultureLabel={rotation.cultureLabel}
+                  onApplyBed={handleSuggestedBed}
+                />
+              </Box>
+            ) : null}
             </Box>
           </DialogContent>
           <DialogActions>
@@ -549,4 +627,8 @@ export const AreaAssignmentDialog = memo(AreaAssignmentDialogComponent, (previou
   && previous.memoKey === next.memoKey
   && previous.rowId === next.rowId
   && previous.field === next.field
+  && previous.rotation?.cropId === next.rotation?.cropId
+  && previous.rotation?.plantingDate === next.rotation?.plantingDate
+  && previous.rotation?.planId === next.rotation?.planId
+  && previous.rotation?.cultureLabel === next.rotation?.cultureLabel
 ));

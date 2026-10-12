@@ -14,7 +14,8 @@
     "areaM2": "Fläche (m²)",
     "plantsCount": "Pflanzen (≈)",
     "notes": "Notizen",
-    "cultivationType": "Anbauart"
+    "cultivationType": "Anbauart",
+    "rotation": "Fruchtfolge"
   },
   "labels": {
     "coupled": "gekoppelt"
@@ -241,6 +242,105 @@
       "hint": "Prüfe die Schreibweise oder suche nach Kultur, Sorte oder Beet.",
       "clearSearch": "Suche löschen",
       "resetFilters": "Filter zurücksetzen"
+    }
+  },
+  "rotation": {
+    "columnHeader": "FF",
+    "columnTooltip": "Fruchtfolge",
+    "iconAria": "Fruchtfolge: {{status}}",
+    "openPlan": "Klicken, um den Anbauplan zu öffnen.",
+    "status": {
+      "conflict": "Konflikt",
+      "accepted": "Konflikt akzeptiert",
+      "hint": "Hinweis",
+      "info": "Nicht prüfbar",
+      "ok": "Passt"
+    },
+    "checking": "Fruchtfolge wird geprüft …",
+    "checkError": "Die Fruchtfolge konnte gerade nicht geprüft werden. Gespeichert werden kann trotzdem.",
+    "conflict": {
+      "title": "Fruchtfolge: {{family}} zu früh auf diesem Beet",
+      "textCrop_one": "Auf {{bed}} stand {{year}} {{previousCulture}} ({{family}}). Bei {{culture}} ist {{count}} Jahr Anbaupause hinterlegt, also frühestens wieder {{earliestYear}}.",
+      "textCrop_other": "Auf {{bed}} stand {{year}} {{previousCulture}} ({{family}}). Bei {{culture}} sind {{count}} Jahre Anbaupause hinterlegt, also frühestens wieder {{earliestYear}}.",
+      "textFamily_one": "Auf {{bed}} stand {{year}} {{previousCulture}} ({{family}}). Für {{family}} ist standardmäßig {{count}} Jahr Anbaupause hinterlegt, also frühestens wieder {{earliestYear}}.",
+      "textFamily_other": "Auf {{bed}} stand {{year}} {{previousCulture}} ({{family}}). Für {{family}} sind standardmäßig {{count}} Jahre Anbaupause hinterlegt, also frühestens wieder {{earliestYear}}.",
+      "showSuggestions": "Passende Beete anzeigen",
+      "showBedHistory": "Belegung von {{bed}} ansehen",
+      "hideBedHistory": "Belegung von {{bed}} ausblenden",
+      "changeBreak": "Anbaupause bei {{culture}} ändern",
+      "setBreak": "Anbaupause bei {{culture}} festlegen",
+      "acceptLabel": "Bewusst so planen (Konflikt akzeptieren)",
+      "saveNote": "Gespeichert werden kann trotzdem. Akzeptierte Konflikte bleiben in der Tabelle als solche markiert."
+    },
+    "accepted": {
+      "title": "{{family}} zu früh, bewusst akzeptiert",
+      "text": "{{previousCulture}} {{year}} auf diesem Beet. Akzeptiert von {{user}} am {{date}}.",
+      "textWithoutUser": "{{previousCulture}} {{year}} auf diesem Beet. Akzeptiert am {{date}}.",
+      "revoke": "Akzeptieren zurücknehmen"
+    },
+    "hint": {
+      "title": "Starkzehrer nach Starkzehrer",
+      "text": "{{year}} stand hier {{previousCulture}}. Plane ausreichend Kompost oder eine Gründüngung dazwischen ein."
+    },
+    "info": {
+      "title": "Fruchtfolge nicht prüfbar",
+      "noFamily": "Bei {{culture}} ist keine Pflanzenfamilie hinterlegt. Ohne Familie können wir keine Anbaupause prüfen.",
+      "addFamily": "Familie bei {{culture}} ergänzen",
+      "noBreak": "Für {{family}} und bei {{culture}} ist keine Anbaupause hinterlegt. Ohne Anbaupause können wir die Fruchtfolge nicht prüfen.",
+      "noHistory": "Für dieses Beet ist keine Belegung aus Vorjahren erfasst.",
+      "incomplete": "Wähle Kultur, Beet und Pflanztermin, damit wir die Fruchtfolge prüfen können."
+    },
+    "ok": {
+      "lastFamily": "Fruchtfolge passt: letzte {{family}} {{year}}, Vorkultur {{previousCulture}}.",
+      "lastFamilyWithoutPrevious": "Fruchtfolge passt: letzte {{family}} {{year}}.",
+      "noFamilyOnBed": "Fruchtfolge passt: keine {{family}} auf diesem Beet erfasst.",
+      "title": "Fruchtfolge passt"
+    },
+    "bedHistory": {
+      "title": "Belegung von {{bed}}",
+      "empty": "Für dieses Beet ist keine Belegung erfasst.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Passende Beete für {{culture}}",
+      "subtitle": "Sortiert nach Anbaupause, Nährstofffolge und Jahren seit der letzten gleichen Familie. Nur Beete, die zum Pflanztermin frei sind.",
+      "categories": {
+        "good": "Passt gut",
+        "fits": "Passt",
+        "hint": "Hinweis",
+        "no_data": "Keine Daten",
+        "conflict": "Konflikt"
+      },
+      "apply": "Übernehmen",
+      "applyAria": "{{bed}} übernehmen",
+      "current": "aktuell gewählt",
+      "showAll": "Alle {{count}} Beete anzeigen",
+      "showLess": "Weniger Beete anzeigen",
+      "empty": "Zum Pflanztermin ist kein Beet frei. Prüfe den Pflanztermin oder lege ein weiteres Beet an.",
+      "loading": "Beete werden geprüft …",
+      "error": "Beetvorschläge konnten nicht geladen werden.",
+      "needsInput": "Wähle Kultur und Pflanztermin, dann zeigen wir dir passende Beete.",
+      "show": "Passende Beete anzeigen",
+      "hide": "Vorschläge ausblenden",
+      "reasons": {
+        "neverOnBed": "Keine {{family}} auf diesem Beet erfasst.",
+        "lastFamily_one": "Letzte {{family}} {{year}}, vor {{count}} Jahr.",
+        "lastFamily_other": "Letzte {{family}} {{year}}, vor {{count}} Jahren.",
+        "soilImproverBefore": "Vorkultur {{previousCulture}} hinterlässt Stickstoff für {{culture}}.",
+        "hint": "{{year}} stand hier {{previousCulture}}, ebenfalls ein Starkzehrer.",
+        "noHistory": "Keine Belegung aus Vorjahren erfasst.",
+        "noFamily": "Bei {{culture}} ist keine Pflanzenfamilie hinterlegt.",
+        "noBreak": "Für {{family}} ist keine Anbaupause hinterlegt.",
+        "conflict": "{{year}} stand hier {{previousCulture}} ({{family}}), frühestens wieder {{earliestYear}}."
+      }
+    },
+    "filters": {
+      "label": "Fruchtfolge filtern",
+      "all": "Alle ({{count}})",
+      "conflicts": "Konflikte ({{count}})",
+      "accepted": "Akzeptiert ({{count}})",
+      "info": "Nicht prüfbar ({{count}})"
     }
   }
 }

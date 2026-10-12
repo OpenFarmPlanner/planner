@@ -945,8 +945,8 @@ Sorte) `rotation_break_years`, otherwise its family's default, otherwise none
 — `resolve_effective_rotation_break_years()` in `crop_inheritance.py`,
 mirrored by `resolveEffectiveRotationBreakYears()` in
 `frontend/src/crops/plantFamilies.ts`, and exposed read-only as
-`CropSerializer.effective_rotation_break_years`. Nothing checks a rotation yet;
-this is the foundation for the Fruchtfolge feature.
+`CropSerializer.effective_rotation_break_years`. The bed-level rotation check
+that uses these values is described in [crop-rotation.md](./crop-rotation.md).
 
 **API.** `crop_family` is read and written as the botanical name
 (`PlantFamilyField`: case/whitespace-insensitive, `""`/`null` clear it, any

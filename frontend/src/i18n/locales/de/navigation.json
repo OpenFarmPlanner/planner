@@ -134,7 +134,37 @@
       "summary_other": "→ {{count}} Anbaupläne aus Saison {{source}} werden zu Saison {{target}} hinzugefügt (danach: {{total}} insgesamt).",
       "confirm": "Übernehmen",
       "error": "Daten konnten nicht übernommen werden.",
-      "confirmDisabledTooltip": "Bitte zuerst eine Quellsaison auswählen."
+      "confirmDisabledTooltip": "Bitte zuerst eine Quellsaison auswählen.",
+      "rotation": {
+        "checking": "Fruchtfolge in der Zielsaison wird geprüft …",
+        "checkError": "Die Fruchtfolge konnte nicht geprüft werden. Übernommen werden kann trotzdem.",
+        "summary_one": "1 Anbauplan aus Saison {{source}} wird auf dieselben Beete übernommen.",
+        "summary_other": "{{count}} Anbaupläne aus Saison {{source}} werden auf dieselben Beete übernommen.",
+        "warningConflicts": "{{conflicts}} davon verletzen die Fruchtfolge, weil dieselbe Familie im Folgejahr wieder auf demselben Beet stehen würde.",
+        "warningConflictsAndHints": "{{conflicts}} davon verletzen die Fruchtfolge, weil dieselbe Familie im Folgejahr wieder auf demselben Beet stehen würde. {{hints}} weitere haben einen Hinweis zur Nährstofffolge.",
+        "hintsOnly": "{{hints}} davon haben einen Hinweis zur Nährstofffolge.",
+        "showAll": "Alle {{conflicts}} Konflikte anzeigen",
+        "showAllItems": "Alle {{count}} Einträge anzeigen",
+        "showLess": "Weniger anzeigen",
+        "item": "{{culture}} · {{bed}}",
+        "reasonConflict": "{{family}} zuletzt {{year}}, frühestens wieder {{earliestYear}}",
+        "reasonHint": "Starkzehrer nach {{previousCulture}} ({{year}})",
+        "modeLabel": "Was soll mit den {{conflicts}} Konflikten passieren?",
+        "modes": {
+          "without_bed": {
+            "label": "Ohne Beet übernehmen",
+            "description": "Die {{conflicts}} Anbaupläne werden als offene Zuweisungen angelegt und du wählst das Beet danach mit Vorschlägen."
+          },
+          "keep": {
+            "label": "Trotzdem auf dieselben Beete übernehmen",
+            "description": "Die Konflikte bleiben in der Tabelle markiert."
+          },
+          "skip": {
+            "label": "Nicht übernehmen",
+            "description": "Nur die {{ok}} konfliktfreien Anbaupläne werden übernommen."
+          }
+        }
+      }
     }
   },
   "seasonSetup": {

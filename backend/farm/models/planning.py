@@ -77,6 +77,22 @@ class PlantingPlan(TimestampedModel):
         on_delete=models.SET_NULL,
         related_name='updated_planting_plans',
     )
+    rotation_conflict_accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='accepted_rotation_conflict_planting_plans',
+        help_text='User who consciously accepted a crop rotation conflict for this plan.',
+    )
+    rotation_conflict_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            'When a crop rotation conflict was consciously accepted. Cleared automatically '
+            'when the crop, bed or dates change, so the plan is checked again.'
+        ),
+    )
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='planting_plans')
     season = models.ForeignKey(
         Season,
@@ -86,6 +102,15 @@ class PlantingPlan(TimestampedModel):
         blank=True,
         help_text="Season this planting plan is scheduled in. Nullable only until a project's first season setup runs.",
     )
+
+    # Changing any of these moves the plan in the crop rotation, so a
+    # previously accepted rotation conflict no longer describes it.
+    ROTATION_RELEVANT_FIELDS = ('crop_id', 'bed_id', 'planting_date', 'harvest_date', 'harvest_end_date')
+
+    @property
+    def rotation_conflict_accepted(self) -> bool:
+        """Whether a crop rotation conflict was consciously accepted for this plan."""
+        return self.rotation_conflict_accepted_at is not None
 
     def _effective_crop_days(
         self,
@@ -152,7 +177,8 @@ class PlantingPlan(TimestampedModel):
         """Save the plan and auto-calculate harvest dates if needed."""
         # Detect if planting_date or crop has changed.
         should_recalculate = False
-        
+        prev: PlantingPlan | None = None
+
         if self.pk:
             # Existing instance - check if planting_date or crop changed.
             try:
@@ -165,11 +191,39 @@ class PlantingPlan(TimestampedModel):
         else:
             # New instance - always calculate.
             should_recalculate = True
-        
+
         if should_recalculate and self.planting_date and self.crop:
             self.recalculate_harvest_dates()
-        
+
+        if prev is not None:
+            self._reset_rotation_acceptance_if_moved(prev, kwargs)
+
         super().save(*args, **kwargs)
+
+    def _reset_rotation_acceptance_if_moved(self, prev: 'PlantingPlan', save_kwargs: dict[str, Any]) -> None:
+        """Drop a stored rotation-conflict acceptance once the plan moved.
+
+        An acceptance granted in this very save (a new timestamp) is kept, so
+        a user can change the bed and accept the resulting conflict at once.
+        """
+        if prev.rotation_conflict_accepted_at is None:
+            return
+        if self.rotation_conflict_accepted_at != prev.rotation_conflict_accepted_at:
+            return
+        moved = any(
+            getattr(prev, field) != getattr(self, field)
+            for field in self.ROTATION_RELEVANT_FIELDS
+        )
+        if not moved:
+            return
+        self.rotation_conflict_accepted_at = None
+        self.rotation_conflict_accepted_by = None
+        update_fields = save_kwargs.get('update_fields')
+        if update_fields is not None:
+            save_kwargs['update_fields'] = set(update_fields) | {
+                'rotation_conflict_accepted_at',
+                'rotation_conflict_accepted_by',
+            }
 
     def recalculate_harvest_dates(self) -> None:
         """Calculate stored harvest dates from the crop's effective timing.

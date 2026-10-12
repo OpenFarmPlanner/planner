@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { seasonAPI } from '../api/api';
-import type { Season, SeasonCreationOptions, SeasonDueSuggestion } from '../api/types';
+import type { Season, SeasonCopyRotationMode, SeasonCreationOptions, SeasonDueSuggestion } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
@@ -161,8 +161,14 @@ export function useActiveSeason() {
     await reload();
   }, [reload]);
 
-  const copyDataInto = useCallback(async (targetSeasonId: number, sourceSeasonId: number) => {
-    const response = await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId);
+  const copyDataInto = useCallback(async (
+    targetSeasonId: number,
+    sourceSeasonId: number,
+    rotationConflicts?: SeasonCopyRotationMode,
+  ) => {
+    const response = rotationConflicts
+      ? await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId, rotationConflicts)
+      : await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId);
     await reload();
     return response.data;
   }, [reload]);

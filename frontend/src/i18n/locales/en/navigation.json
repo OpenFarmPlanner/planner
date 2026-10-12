@@ -134,7 +134,37 @@
       "summary_other": "→ {{count}} planting plans from season {{source}} will be added to season {{target}} (total afterwards: {{total}}).",
       "confirm": "Copy",
       "error": "Data could not be copied.",
-      "confirmDisabledTooltip": "Select a source season first."
+      "confirmDisabledTooltip": "Select a source season first.",
+      "rotation": {
+        "checking": "Checking the crop rotation in the target season …",
+        "checkError": "The crop rotation could not be checked. You can still copy.",
+        "summary_one": "1 planting plan from season {{source}} will be copied onto the same beds.",
+        "summary_other": "{{count}} planting plans from season {{source}} will be copied onto the same beds.",
+        "warningConflicts": "{{conflicts}} of them break the crop rotation because the same family would be on the same bed again the following year.",
+        "warningConflictsAndHints": "{{conflicts}} of them break the crop rotation because the same family would be on the same bed again the following year. {{hints}} more have a nutrient-sequence hint.",
+        "hintsOnly": "{{hints}} of them have a nutrient-sequence hint.",
+        "showAll": "Show all {{conflicts}} conflicts",
+        "showAllItems": "Show all {{count}} entries",
+        "showLess": "Show less",
+        "item": "{{culture}} · {{bed}}",
+        "reasonConflict": "{{family}} last in {{year}}, earliest again in {{earliestYear}}",
+        "reasonHint": "Heavy feeder after {{previousCulture}} ({{year}})",
+        "modeLabel": "What should happen to the {{conflicts}} conflicts?",
+        "modes": {
+          "without_bed": {
+            "label": "Copy without a bed",
+            "description": "The {{conflicts}} planting plans are created as open assignments and you choose the bed afterwards with suggestions."
+          },
+          "keep": {
+            "label": "Copy onto the same beds anyway",
+            "description": "The conflicts stay marked in the table."
+          },
+          "skip": {
+            "label": "Do not copy",
+            "description": "Only the {{ok}} conflict-free planting plans are copied."
+          }
+        }
+      }
     }
   },
   "seasonSetup": {

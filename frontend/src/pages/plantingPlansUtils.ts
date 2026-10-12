@@ -375,7 +375,12 @@ export const areRowsSemanticallyEqual = (
       previousRow.cultivation_type === nextRow.cultivation_type &&
       previousRow.planting_date === nextRow.planting_date &&
       previousRow.harvest_date === nextRow.harvest_date &&
-      previousRow.harvest_end_date === nextRow.harvest_end_date
+      previousRow.harvest_end_date === nextRow.harvest_end_date &&
+      // The rotation check is recomputed server-side on every save (also of
+      // other plans on the bed), so a reload can change only these.
+      previousRow.rotation_status === nextRow.rotation_status &&
+      previousRow.rotation_conflict_accepted_at === nextRow.rotation_conflict_accepted_at &&
+      JSON.stringify(previousRow.rotation_findings) === JSON.stringify(nextRow.rotation_findings)
     );
   });
 };

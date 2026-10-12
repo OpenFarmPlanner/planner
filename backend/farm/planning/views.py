@@ -15,8 +15,9 @@ from config.responses import api_error_response
 from farm.agent_api.schema import SEASON_HEADER_PARAMETER
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
-from farm.models import Bed, EntityRevision, PlantingPlan, Season, Task
+from farm.models import Bed, Crop, EntityRevision, PlantingPlan, Season, Task
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
+from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 from farm.services_area import calculate_remaining_bed_area
 
@@ -59,6 +60,47 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
         'bed_id': bed_id,
         'start_date': start_date,
         'end_date': end_date,
+        'exclude_plan_id': exclude_plan_id,
+    }, None
+
+
+def _parse_optional_int(value: str | None, name: str) -> tuple[int | None, str | None]:
+    if not value:
+        return None, None
+    try:
+        return int(value), None
+    except ValueError:
+        return None, f'{name} must be an integer.'
+
+
+def _parse_rotation_params(query_params) -> tuple[dict | None, str | None]:
+    """Parse the crop/date parameters shared by the rotation endpoints.
+
+    ``crop_id`` and ``planting_date`` are required; ``end_date`` falls back to
+    the crop's effective harvest end, ``bed_id`` and ``exclude_plan_id`` are
+    optional.
+    """
+    crop_id, error = _parse_optional_int(query_params.get('crop_id'), 'crop_id')
+    if error:
+        return None, error
+    planting_date = parse_date(query_params.get('planting_date') or '')
+    if crop_id is None or planting_date is None:
+        return None, 'crop_id and planting_date (YYYY-MM-DD) are required.'
+    end_date_param = query_params.get('end_date')
+    end_date = parse_date(end_date_param) if end_date_param else None
+    if end_date_param and end_date is None:
+        return None, 'end_date must use YYYY-MM-DD format.'
+    bed_id, error = _parse_optional_int(query_params.get('bed_id'), 'bed_id')
+    if error:
+        return None, error
+    exclude_plan_id, error = _parse_optional_int(query_params.get('exclude_plan_id'), 'exclude_plan_id')
+    if error:
+        return None, error
+    return {
+        'crop_id': crop_id,
+        'planting_date': planting_date,
+        'end_date': end_date,
+        'bed_id': bed_id,
         'exclude_plan_id': exclude_plan_id,
     }, None
 
@@ -112,7 +154,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     api_token_actions = {'list', 'retrieve'}
     queryset = (
         PlantingPlan.objects
-        .select_related('crop', 'crop__crop_species', 'crop__project', 'bed', 'created_by', 'updated_by')
+        .select_related(
+            'crop', 'crop__crop_species', 'crop__project', 'bed', 'created_by', 'updated_by',
+            'rotation_conflict_accepted_by',
+        )
         .prefetch_related('crop__crop_species__translations')
         .annotate(note_attachment_count=Count('attachments'))
         .order_by('-planting_date')
@@ -185,6 +230,77 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             'start_date': params['start_date'].isoformat(),
             'end_date': params['end_date'].isoformat(),
         })
+
+
+    def _rotation_request_context(self, request) -> tuple[dict, Crop, RotationService] | Response:
+        """Validated rotation parameters, the crop, and a service for the project."""
+        active_project = request.active_project
+        params, error_detail = _parse_rotation_params(request.query_params)
+        if error_detail:
+            return api_error_response(code='invalid_rotation_parameters', detail=error_detail, status_code=status.HTTP_400_BAD_REQUEST)
+        crop = (
+            Crop.objects
+            .filter(pk=params['crop_id'], project=active_project)
+            .select_related('crop_species')
+            .prefetch_related('crop_species__translations')
+            .first()
+        )
+        if crop is None:
+            return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
+        service = RotationService(
+            active_project.pk,
+            language_code=resolve_request_language(request),
+            region=getattr(active_project, 'region', '') or '',
+        )
+        if params['end_date'] is None:
+            draft = PlantingPlan(crop=crop, planting_date=params['planting_date'], project=active_project)
+            harvest_start, harvest_end = draft.calculate_effective_harvest_dates(service.general_crop_index)
+            params['end_date'] = harvest_end or harvest_start
+        return params, crop, service
+
+    @action(detail=False, methods=['get'], url_path='rotation-check')
+    def rotation_check(self, request):
+        """Crop rotation check for an unsaved crop/bed/date combination.
+
+        Used by the planting-plan dialog before saving; the same rules produce
+        ``rotation_status`` on saved plans. Returns the bed's recorded history
+        too, for "Belegung ansehen".
+        """
+        context = self._rotation_request_context(request)
+        if isinstance(context, Response):
+            return context
+        params, crop, service = context
+        if params['bed_id'] is None:
+            return api_error_response(code='invalid_rotation_parameters', detail='bed_id is required.', status_code=status.HTTP_400_BAD_REQUEST)
+        if not Bed.objects.filter(pk=params['bed_id'], project=request.active_project).exists():
+            return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
+        candidate = service.occupancy(
+            crop=crop,
+            bed_id=params['bed_id'],
+            start=params['planting_date'],
+            end=params['end_date'],
+            plan_id=params['exclude_plan_id'],
+        )
+        return Response({
+            **service.check(candidate).as_dict(),
+            'bed_history': service.bed_history(params['bed_id'], exclude_plan_id=params['exclude_plan_id']),
+        })
+
+    @action(detail=False, methods=['get'], url_path='bed-suggestions')
+    def bed_suggestions(self, request):
+        """Beds free for the crop and period, ranked by crop rotation fit."""
+        context = self._rotation_request_context(request)
+        if isinstance(context, Response):
+            return context
+        params, crop, service = context
+        results = suggest_beds(
+            service,
+            crop=crop,
+            start=params['planting_date'],
+            end=params['end_date'],
+            exclude_plan_id=params['exclude_plan_id'],
+        )
+        return Response({'count': len(results), 'results': results})
 
 
 class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):

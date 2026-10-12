@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areRowsSemanticallyEqual,
   getAllowedCultivationTypesForCrop,
   isEmptyNewPlantingPlanRow,
   type PlantingPlanRow,
@@ -74,5 +75,28 @@ describe('isEmptyNewPlantingPlanRow', () => {
     expect(isEmptyNewPlantingPlanRow({ ...emptyRow, notes: 'Needs shade' })).toBe(false);
     expect(isEmptyNewPlantingPlanRow({ ...emptyRow, area_m2: 2.5 })).toBe(false);
     expect(isEmptyNewPlantingPlanRow({ ...emptyRow, area_m2: 'max' as never })).toBe(false);
+  });
+});
+
+describe('areRowsSemanticallyEqual', () => {
+  const row: PlantingPlanRow = {
+    id: 1,
+    crop: 2,
+    bed: 3,
+    planting_date: '2026-04-01',
+    rotation_status: 'conflict',
+    rotation_findings: [],
+  };
+
+  it('treats a changed rotation status as a change, so filters and counts refresh', () => {
+    expect(areRowsSemanticallyEqual([row], [{ ...row }])).toBe(true);
+    expect(areRowsSemanticallyEqual([row], [{ ...row, rotation_status: 'accepted' }])).toBe(false);
+    expect(areRowsSemanticallyEqual([row], [{ ...row, rotation_findings: [{ kind: 'no_family' }] as never }])).toBe(false);
+  });
+
+  it('compares rotation findings by value, not by array identity', () => {
+    const withFindings = { ...row, rotation_findings: [{ kind: 'ok', year: 2025 }] as never };
+    const reloaded = { ...row, rotation_findings: [{ kind: 'ok', year: 2025 }] as never };
+    expect(areRowsSemanticallyEqual([withFindings], [reloaded])).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import {
   Alert,
@@ -13,6 +13,7 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  Link,
   MenuItem,
   Stack,
   TextField,
@@ -34,9 +35,19 @@ import {
   compactFieldSx,
   formRowSx,
   fullWidthFieldSx,
-  smallFieldSx,
-  wideFieldSx,
+  smallStackedFieldSx,
+  wideSingleColumnFieldSx,
 } from "../forms/formLayout";
+import { BedSuggestionsPanel } from "./rotation/BedSuggestionsPanel";
+import { RotationCheckPanel, type RotationAcceptanceControls } from "./rotation/RotationCheckPanel";
+
+export interface MobilePlanRotationProps {
+  /** The edited plan, excluded from its own bed history; null when creating. */
+  planId: number | null;
+  cultureLabel: string;
+  bedLabel: string;
+  acceptance: RotationAcceptanceControls;
+}
 
 interface MobilePlanFormDialogProps {
   open: boolean;
@@ -66,6 +77,8 @@ interface MobilePlanFormDialogProps {
   getPlantingDateFromSowingDate: (form: MobileCreateFormState) => string;
   /** Called when the user edits one of the two linked area/plants inputs. */
   onLinkedFieldEdited: (field: "area_m2" | "plants_count") => void;
+  /** Crop rotation check and bed suggestions; omitted, the dialog shows neither. */
+  rotation?: MobilePlanRotationProps;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -93,12 +106,30 @@ export function MobilePlanFormDialog({
   getSowingDateFromPlantingDate,
   getPlantingDateFromSowingDate,
   onLinkedFieldEdited,
+  rotation,
   onClose,
   onSubmit,
 }: MobilePlanFormDialogProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
   const plantingDatePickerRef = useRef<HTMLInputElement | null>(null);
   const sowingDatePickerRef = useRef<HTMLInputElement | null>(null);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  // Every opening starts with the suggestions closed (state adjusted during
+  // render rather than in an effect, so there is no flash of the old state).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setIsSuggestionsOpen(false);
+    }
+  }
+  const rotationInput = {
+    cropId: Number(form.crop) || null,
+    bedId: Number(form.bed) || null,
+    plantingDate: toIsoDateString(parseGermanDateText(form.planting_date)),
+    planId: rotation?.planId ?? null,
+  };
+  const showSuggestions = Boolean(rotation) && isSuggestionsOpen;
 
   const pickerValue = toIsoDateString(parseGermanDateText(form.planting_date)) ?? "";
   const openPlantingDatePicker = (): void => {
@@ -132,12 +163,22 @@ export function MobilePlanFormDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth={showSuggestions ? "md" : "sm"}>
       <DialogTitle>
         {isEdit ? t("plantingPlans:mobile.editTitle") : t("plantingPlans:mobile.createTitle")}
       </DialogTitle>
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        {/* Bed suggestions sit beside the form on desktop and below it on
+            mobile, so choosing a bed never hides the form it fills in. */}
+        <Box
+          sx={{
+            display: "grid",
+            gap: 3,
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: showSuggestions ? "minmax(0, 3fr) minmax(0, 2fr)" : "minmax(0, 1fr)" },
+            alignItems: "start",
+          }}
+        >
+        <Stack spacing={2} sx={{ mt: 1, minWidth: 0 }}>
           {error ? (
             <Alert
               severity="error"
@@ -153,7 +194,7 @@ export function MobilePlanFormDialog({
               {error}
             </Alert>
           ) : null}
-          <FormControl sx={wideFieldSx}>
+          <FormControl sx={wideSingleColumnFieldSx}>
             <InputLabel>{t("plantingPlans:columns.crop")}</InputLabel>
             <Select
               fullWidth
@@ -171,7 +212,7 @@ export function MobilePlanFormDialog({
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={wideFieldSx}>
+          <FormControl sx={wideSingleColumnFieldSx}>
             <InputLabel>{t("plantingPlans:columns.bed")}</InputLabel>
             <Select
               fullWidth
@@ -185,8 +226,22 @@ export function MobilePlanFormDialog({
                 <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
               ))}
             </Select>
+            {rotation ? (
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                aria-expanded={isSuggestionsOpen}
+                onClick={() => setIsSuggestionsOpen((value) => !value)}
+                sx={{ alignSelf: "flex-start", mt: 0.5 }}
+              >
+                {isSuggestionsOpen
+                  ? t("plantingPlans:rotation.suggestions.hide")
+                  : t("plantingPlans:rotation.suggestions.show")}
+              </Link>
+            ) : null}
           </FormControl>
-          <FormControl sx={smallFieldSx}>
+          <FormControl sx={smallStackedFieldSx}>
             <InputLabel>{t("plantingPlans:columns.cultivationType")}</InputLabel>
             <Select
               fullWidth
@@ -368,6 +423,15 @@ export function MobilePlanFormDialog({
               sx={compactFieldSx}
             />
           </Box>
+          {rotation ? (
+            <RotationCheckPanel
+              input={rotationInput}
+              bedLabel={rotation.bedLabel}
+              cultureLabel={rotation.cultureLabel}
+              acceptance={rotation.acceptance}
+              onShowSuggestions={() => setIsSuggestionsOpen(true)}
+            />
+          ) : null}
           <TextField
             label={t("common:fields.notes")}
             multiline
@@ -379,6 +443,16 @@ export function MobilePlanFormDialog({
             sx={fullWidthFieldSx}
           />
         </Stack>
+        {showSuggestions && rotation ? (
+          <Box sx={{ mt: 1 }}>
+            <BedSuggestionsPanel
+              input={rotationInput}
+              cultureLabel={rotation.cultureLabel}
+              onApplyBed={(bedId) => setForm((previous) => ({ ...previous, bed: String(bedId) }))}
+            />
+          </Box>
+        ) : null}
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t("common:actions.cancel")}</Button>

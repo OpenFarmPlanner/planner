@@ -208,11 +208,64 @@ def whole_year_offset_into_period(reference: date, start_date: date, end_date: d
     return offset_years
 
 
+def build_planting_plan_copies(
+    *,
+    source_season: Season,
+    target_season: Season,
+    restrict_to_target_period: bool = True,
+) -> tuple[list[tuple[PlantingPlan, PlantingPlan]], int]:
+    """Unsaved copies of `source_season`'s plans, shifted into `target_season`.
+
+    Returns `(source, copy)` pairs plus the number of skipped plans. The copy
+    shares the source's crop and bed instances, so checking the copies (e.g.
+    for crop rotation) needs no further queries. See `copy_planting_plans`
+    for the date-shift and range rules.
+    """
+    fallback_offset = (target_season.start_date.year - source_season.start_date.year) * 12
+
+    def month_offset_for(planting_date: date | None) -> int:
+        if planting_date is None:
+            return fallback_offset
+        return 12 * whole_year_offset_into_period(
+            planting_date, target_season.start_date, target_season.end_date,
+        )
+
+    source_plans = (
+        PlantingPlan.objects
+        .filter(season=source_season)
+        .select_related('crop', 'crop__crop_species', 'bed')
+        .prefetch_related('crop__crop_species__translations')
+        .order_by('pk')
+    )
+    pairs: list[tuple[PlantingPlan, PlantingPlan]] = []
+    skipped_count = 0
+    for plan in source_plans:
+        fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
+        month_offset = month_offset_for(fields['planting_date'])
+        for date_field in PLANTING_PLAN_SHIFTED_DATE_FIELDS:
+            value = fields[date_field]
+            fields[date_field] = None if value is None else add_months(value, month_offset)
+        if restrict_to_target_period and not planting_date_fits_period(
+            fields['planting_date'], target_season.start_date, target_season.end_date,
+        ):
+            skipped_count += 1
+            continue
+        copy = PlantingPlan(project=target_season.project, season=target_season, **fields)
+        if plan.crop_id is not None:
+            copy.crop = plan.crop
+        if plan.bed_id is not None:
+            copy.bed = plan.bed
+        pairs.append((plan, copy))
+    return pairs, skipped_count
+
+
 def copy_planting_plans(
     *,
     source_season: Season,
     target_season: Season,
     restrict_to_target_period: bool = True,
+    rotation_conflicts: str = 'keep',
+    language_code: str = 'de',
 ) -> tuple[list[PlantingPlan], int]:
     """Copy planting plans from `source_season` into `target_season`, additively.
 
@@ -230,35 +283,38 @@ def copy_planting_plans(
     season's period — relevant for short transition seasons, where a source
     month may not be covered at all. Harvest dates are never range-checked.
 
+    `rotation_conflicts` decides what happens to copies that would break the
+    crop rotation on their bed (see `farm.services.crop_rotation`): `keep`
+    copies them onto the same bed (the conflict stays visible), `without_bed`
+    copies them as open assignments without a bed, and `skip` leaves them out.
+    Plans left out this way are not counted in the returned skipped count.
+
     Existing planting plans already in `target_season` are left untouched —
     this only ever appends copies of the source season's plans. Returns
     `(created_plans, skipped_count)` so the caller can record revisions and
     report how many plans were left out.
     """
-    fallback_offset = (target_season.start_date.year - source_season.start_date.year) * 12
-
-    def month_offset_for(planting_date: date | None) -> int:
-        if planting_date is None:
-            return fallback_offset
-        return 12 * whole_year_offset_into_period(
-            planting_date, target_season.start_date, target_season.end_date,
+    pairs, skipped_count = build_planting_plan_copies(
+        source_season=source_season,
+        target_season=target_season,
+        restrict_to_target_period=restrict_to_target_period,
+    )
+    new_plans = [copy for _, copy in pairs]
+    if rotation_conflicts != 'keep' and pairs:
+        from farm.services.crop_rotation import (
+            COPY_CONFLICTS_WITHOUT_BED,
+            RotationService,
+            check_season_copies,
         )
 
-    source_plans = PlantingPlan.objects.filter(season=source_season)
-    new_plans = []
-    skipped_count = 0
-    for plan in source_plans:
-        fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
-        month_offset = month_offset_for(fields['planting_date'])
-        for date_field in PLANTING_PLAN_SHIFTED_DATE_FIELDS:
-            value = fields[date_field]
-            fields[date_field] = None if value is None else add_months(value, month_offset)
-        if restrict_to_target_period and not planting_date_fits_period(
-            fields['planting_date'], target_season.start_date, target_season.end_date,
-        ):
-            skipped_count += 1
-            continue
-        new_plans.append(PlantingPlan(project=target_season.project, season=target_season, **fields))
+        service = RotationService(target_season.project_id, language_code=language_code)
+        new_plans = []
+        for (_, copy), result in zip(pairs, check_season_copies(service, pairs), strict=True):
+            if not result.is_conflict:
+                new_plans.append(copy)
+            elif rotation_conflicts == COPY_CONFLICTS_WITHOUT_BED:
+                copy.bed = None
+                new_plans.append(copy)
     return PlantingPlan.objects.bulk_create(new_plans), skipped_count
 
 
