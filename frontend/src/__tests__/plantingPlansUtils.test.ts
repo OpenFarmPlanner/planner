@@ -91,6 +91,12 @@ describe('areRowsSemanticallyEqual', () => {
   it('treats a changed rotation status as a change, so filters and counts refresh', () => {
     expect(areRowsSemanticallyEqual([row], [{ ...row }])).toBe(true);
     expect(areRowsSemanticallyEqual([row], [{ ...row, rotation_status: 'accepted' }])).toBe(false);
-    expect(areRowsSemanticallyEqual([row], [{ ...row, rotation_findings: [] }])).toBe(false);
+    expect(areRowsSemanticallyEqual([row], [{ ...row, rotation_findings: [{ kind: 'no_family' }] as never }])).toBe(false);
+  });
+
+  it('compares rotation findings by value, not by array identity', () => {
+    const withFindings = { ...row, rotation_findings: [{ kind: 'ok', year: 2025 }] as never };
+    const reloaded = { ...row, rotation_findings: [{ kind: 'ok', year: 2025 }] as never };
+    expect(areRowsSemanticallyEqual([withFindings], [reloaded])).toBe(true);
   });
 });

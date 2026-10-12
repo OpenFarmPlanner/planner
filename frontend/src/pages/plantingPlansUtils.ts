@@ -380,7 +380,7 @@ export const areRowsSemanticallyEqual = (
       // other plans on the bed), so a reload can change only these.
       previousRow.rotation_status === nextRow.rotation_status &&
       previousRow.rotation_conflict_accepted_at === nextRow.rotation_conflict_accepted_at &&
-      previousRow.rotation_findings === nextRow.rotation_findings
+      JSON.stringify(previousRow.rotation_findings) === JSON.stringify(nextRow.rotation_findings)
     );
   });
 };
