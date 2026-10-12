@@ -298,6 +298,20 @@ tests, screenshots, or manual checks were performed.
 - Use SI units internally for physical measurements stored in the database, and convert units only at system boundaries such as serializers, forms, or API layers.
 - Document physical units in model `help_text`, docstrings, or API/schema descriptions where units are not obvious.
 
+## Crop Data Rules
+- `crop_family` (on `Crop` and `PublicCrop`) references the curated, global
+  plant-family list `crops.PlantFamily` by botanical name. The list is seeded
+  by migration and edited in the Django admin only; never reintroduce free text.
+  It stays a species-invariant field (Kultur-level, locked on linked Sorten).
+- `rotation_break_years` is the number of calendar years **without** that plant
+  family on the same bed in between: a family grown last in year Y may be grown
+  again from year Y + break + 1 ("every 4 years" = a break of 3). The effective
+  break is the crop's own value, otherwise the family's
+  `default_rotation_break_years`, otherwise none.
+- The seeded family defaults are initial reference values still to be verified
+  against LfL Bayern / Bio Austria via the crop-data workflow. Details:
+  [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).
+
 ## Git and PR Workflow
 - This repository should use the SSH GitHub remote:
   `git@github.com:OpenFarmPlanner/planner.git`

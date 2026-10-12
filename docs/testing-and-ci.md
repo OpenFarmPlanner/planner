@@ -202,7 +202,11 @@ species are missing. They go missing when an earlier `transaction=True`
 test on the same worker flushes the database, since the flush also removes
 the data migrations' seed rows. That order dependence predates this change:
 a test must not rely on the seeded catalogue being either present or
-absent.
+absent. The plant-family list is the exception, because crops reference it by
+foreign key: `backend/conftest.py` re-seeds it before every test class when a
+flush removed it, and a transactional test that needs it between its own
+tests calls `ensure_seeded_plant_families()` itself (see
+`test_migrations_crop_family_plant_family_reference.py`).
 
 The backend job compiles application translations before pytest. The shared
 `pdm run compilemessages` command includes `--ignore=.venv` because PDM creates

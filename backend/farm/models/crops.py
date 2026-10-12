@@ -29,6 +29,50 @@ from .history import EntityRevision
 from .projects import Project
 
 
+# Temporary, read-only copy of the free text ``crop_family`` held before it
+# became a reference to the curated plant-family list (migration 0112). Kept so
+# no value is lost; remove it in a later release once unmapped values are fixed.
+LEGACY_CROP_FAMILY_HELP_TEXT = (
+    'Deprecated: original free-text crop family before the switch to the curated '
+    'plant-family list. Read-only; to be removed in a later release.'
+)
+
+# Crop/PublicCrop fields that reference a PlantFamily. Generic copy, compare and
+# snapshot code reads and writes them through their raw key (the botanical
+# name, ``<field>_id``) so the value stays a plain string and no related row is
+# loaded; see crop_field_attname().
+PLANT_FAMILY_REFERENCE_FIELDS = frozenset({'crop_family'})
+
+
+def crop_field_attname(field: str) -> str:
+    """The attribute holding ``field``'s raw value on a Crop or PublicCrop."""
+    return f'{field}_id' if field in PLANT_FAMILY_REFERENCE_FIELDS else field
+
+
+def get_crop_field_value(instance: Any, field: str) -> Any:
+    """Raw value of a crop field; a plant family comes back as its botanical name."""
+    return getattr(instance, crop_field_attname(field))
+
+
+def set_crop_field_value(instance: Any, field: str, value: Any) -> None:
+    """Assign a raw crop-field value; a plant family accepts its botanical name or row."""
+    if field in PLANT_FAMILY_REFERENCE_FIELDS:
+        value = getattr(value, 'pk', value) or None
+    setattr(instance, crop_field_attname(field), value)
+
+
+def crop_model_kwargs(values: dict[str, Any]) -> dict[str, Any]:
+    """``values`` keyed for a model constructor/``create()``/``update()`` call."""
+    return {
+        crop_field_attname(field): (
+            getattr(value, 'pk', value) or None
+            if field in PLANT_FAMILY_REFERENCE_FIELDS
+            else value
+        )
+        for field, value in values.items()
+    }
+
+
 class Supplier(TimestampedModel):
     """A seed supplier or manufacturer."""
 
@@ -340,10 +384,19 @@ class Crop(TimestampedModel):
     )
     
     # Manual planning fields.
-    crop_family = models.CharField(
+    crop_family = models.ForeignKey(
+        'crops.PlantFamily',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='crops',
+        help_text="Plant family for rotation planning, referenced by its botanical name",
+    )
+    legacy_crop_family = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Crop family for rotation planning",
+        editable=False,
+        help_text=LEGACY_CROP_FAMILY_HELP_TEXT,
     )
     nutrient_demand = models.CharField(
         max_length=20,
@@ -635,7 +688,7 @@ class Crop(TimestampedModel):
 
     # Fields whose change marks an imported crop as diverged from its source.
     _SOURCE_DIVERGENCE_TRACKED_FIELDS = {
-        'name', 'variety', 'notes', 'crop_family', 'nutrient_demand', 'cultivation_types',
+        'name', 'variety', 'notes', 'crop_family_id', 'nutrient_demand', 'cultivation_types',
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'seed_rate_value', 'seed_rate_unit', 'seed_rate_by_cultivation',
@@ -996,7 +1049,19 @@ class PublicCrop(TimestampedModel):
     published_at = models.DateTimeField(null=True, blank=True)
     name_normalized = models.CharField(max_length=200, db_index=True, editable=False)
     variety_normalized = models.CharField(max_length=200, blank=True, db_index=True, editable=False)
-    crop_family = models.CharField(max_length=200, blank=True)
+    crop_family = models.ForeignKey(
+        'crops.PlantFamily',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='public_crops',
+    )
+    legacy_crop_family = models.CharField(
+        max_length=200,
+        blank=True,
+        editable=False,
+        help_text=LEGACY_CROP_FAMILY_HELP_TEXT,
+    )
     nutrient_demand = models.CharField(max_length=20, choices=Crop.NUTRIENT_DEMAND_CHOICES, blank=True)
     cultivation_types = models.JSONField(default=list, blank=True)
     cultivation_type = models.CharField(max_length=30, choices=Crop.CULTIVATION_TYPE_CHOICES, blank=True)

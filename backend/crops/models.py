@@ -286,6 +286,87 @@ class CropSpeciesTranslation(models.Model):
         return f'{self.language_code}: {self.common_name}'
 
 
+class PlantFamily(models.Model):
+    """One entry of the curated, global plant-family list used for crop rotation.
+
+    Not project-scoped and not user-editable: the list is seeded by migration
+    from :mod:`crops.plant_families` and maintained in the Django admin only.
+    The botanical name is the primary key, so every crop that references a
+    family stores that stable name (e.g. ``"Brassicaceae"``) as its key.
+    Display names live in :class:`PlantFamilyTranslation`.
+    """
+
+    botanical_name = models.CharField(max_length=100, primary_key=True)
+    default_rotation_break_years = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text=(
+            'Default rotation break in calendar years: the number of years without this '
+            'family on the same bed in between. A family grown last in year Y may be grown '
+            'again from year Y + break + 1. Empty means no default.'
+        ),
+    )
+
+    class Meta:
+        ordering = ['botanical_name']
+        verbose_name = 'Plant family'
+        verbose_name_plural = 'Plant families'
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.botanical_name = ' '.join((self.botanical_name or '').split())
+        super().save(*args, **kwargs)
+
+    def localized_name(self, language_code: str | None) -> tuple[str, str]:
+        """Best available display name plus the language it came from.
+
+        Same fallback chain as :meth:`CropSpecies.localized_name`; the
+        botanical name stands in (with language ``''``) when no translation
+        exists. Uses ``self.translations.all()`` so a prefetch is reused.
+        """
+        from config.languages import resolve_translation
+
+        values_by_language = {
+            translation.language_code: translation.name
+            for translation in self.translations.all()
+            if translation.name
+        }
+        return resolve_translation(values_by_language, language_code, fallback=self.botanical_name)
+
+    def __str__(self) -> str:
+        return self.botanical_name
+
+
+class PlantFamilyTranslation(models.Model):
+    """The display name of one plant family in one language."""
+
+    family = models.ForeignKey(
+        PlantFamily,
+        on_delete=models.CASCADE,
+        related_name='translations',
+    )
+    language_code = models.CharField(max_length=10)
+    name = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['language_code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['family', 'language_code'],
+                name='unique_plant_family_translation_per_language',
+            ),
+        ]
+        verbose_name = 'Plant family translation'
+        verbose_name_plural = 'Plant family translations'
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.language_code = (self.language_code or '').strip().lower()
+        self.name = ' '.join((self.name or '').split())
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f'{self.language_code}: {self.name}'
+
+
 class PublicLibraryModeratorRequest(models.Model):
     """Request from a user who wants to help moderate the public crop library."""
 

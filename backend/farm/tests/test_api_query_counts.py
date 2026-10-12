@@ -48,6 +48,7 @@ User = get_user_model()
 # Three is enough for an N+1 to change the total, and small enough that a
 # failure message stays readable.
 ROW_COUNT = 3
+PLANT_FAMILY_KEYS = ('Brassicaceae', 'Solanaceae', 'Apiaceae')
 
 # DRF's configured page size. The crop species catalogue is seeded by a data
 # migration, so that one list serves a full page instead of the fixture rows.
@@ -110,7 +111,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 self.crops.append(crop)
             crop.crop_species = species
             crop.supplier = self.suppliers[index]
-            crop.save(update_fields=['crop_species', 'supplier'])
+            # A different plant family per row: `crop_family_display_name`
+            # and `effective_rotation_break_years` must not look one up per row.
+            crop.crop_family_id = PLANT_FAMILY_KEYS[index]
+            crop.save(update_fields=['crop_species', 'supplier', 'crop_family'])
 
             CropSupplierData.objects.create(
                 crop=crop, supplier=self.suppliers[index], project=self.project,
@@ -132,7 +136,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             public_crop = PublicCrop.objects.create(
                 name=f'Public crop {index}', variety='Sorte',
                 status=PublicCrop.STATUS_PUBLISHED, crop_species=species, created_by=self.user,
-                original_language_code='en',
+                original_language_code='en', crop_family_id=PLANT_FAMILY_KEYS[index],
             )
             self.public_crops.append(public_crop)
             # An imported copy so the serializer's `project_import_status` has
@@ -180,11 +184,13 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         `description_language_code` (which reads the linked public entry's
         `original_language_code`) are all per-row data that the viewset
         resolves for the whole page. So is `public_change_proposal_pending`:
-        one lookup of the user's pending edit proposals per page."""
+        one lookup of the user's pending edit proposals per page. The plant
+        family names and default breaks come from the family list, loaded once
+        (two queries: families and their translations)."""
         # Each crop created above also has an imported sibling row, so the
         # project holds twice ROW_COUNT crops.
         self.assert_list_query_count(
-            '/openfarmplanner/api/crops/', 13, expected_rows=ROW_COUNT * 2,
+            '/openfarmplanner/api/crops/', 15, expected_rows=ROW_COUNT * 2,
         )
 
     def test_crops_list_carries_species_search_names(self):
@@ -214,7 +220,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 status=PublicCrop.STATUS_REMOVED if index % 2 else PublicCrop.STATUS_WITHDRAWN,
             )
 
-        with self.assertNumQueries(13):
+        with self.assertNumQueries(15):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         linked = [row for row in response.data['results'] if row['source_public_crop']]
@@ -244,7 +250,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 proposed_by=self.user,
             )
 
-        with self.assertNumQueries(13):
+        with self.assertNumQueries(15):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -301,8 +307,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         The last query is the general-crop index `project_import_status.
         is_up_to_date` compares through: one per page, not one per imported
         copy, and only when a copy is actually behind its library entry (which
-        every copy in this fixture is)."""
-        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 9)
+        every copy in this fixture is). `crop_family_display_name` adds the
+        plant-family list once per page (families plus translations)."""
+        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 11)
 
     def test_projects_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/projects/', 4, expected_rows=1)
@@ -342,7 +349,8 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     def test_crop_library_list_query_count(self):
         """The public crop library list serves published entries with their
         species translations resolved for the whole page."""
-        self.assert_list_query_count('/openfarmplanner/api/crop-library/', 8)
+        # +2: the plant-family list behind `crop_family_display_name`, once per page.
+        self.assert_list_query_count('/openfarmplanner/api/crop-library/', 10)
 
     def test_moderator_requests_list_query_count(self):
         """Each request resolves the requesting and reviewing user plus both

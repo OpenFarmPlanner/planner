@@ -926,7 +926,7 @@ describe('CropForm', () => {
     const [savedCrop] = onSave.mock.calls[0] as [Crop];
     expect(savedCrop.crop_species).toBe(7);
     expect(savedCrop.source_public_crop).toBeFalsy();
-    expect(savedCrop.crop_family).toBe('');
+    expect(savedCrop.crop_family).toBeNull();
     expect(screen.queryByText('form.publicCropSourceHint')).not.toBeInTheDocument();
   });
 

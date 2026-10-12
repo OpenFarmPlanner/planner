@@ -12,6 +12,7 @@ from config.languages import (
 )
 from crops.models import CropSpecies
 from crops.permissions import is_public_library_moderator
+from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
 from farm.models import (
     PublicCrop,
@@ -93,6 +94,10 @@ class PublicCropSerializer(serializers.ModelSerializer):
     """
 
     created_by_label = serializers.SerializerMethodField()
+    crop_family = PlantFamilyField(read_only=True)
+    crop_family_display_name = serializers.SerializerMethodField(
+        help_text='Name of crop_family in the request language, or null.',
+    )
     crop_species_name = serializers.SerializerMethodField()
     crop_species_canonical_name = serializers.CharField(
         source='crop_species.name',
@@ -154,6 +159,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'translations',
             'original_language_code',
             'crop_family',
+            'crop_family_display_name',
             'nutrient_demand',
             'cultivation_types',
             'cultivation_type',
@@ -231,6 +237,9 @@ class PublicCropSerializer(serializers.ModelSerializer):
     def get_seed_rate_pre_cultivation_unit(self, obj: PublicCrop) -> str | None:
         entry = self._seed_rate_for_method(obj, 'pre_cultivation')
         return entry.get('unit') if entry else None
+
+    def get_crop_family_display_name(self, obj: PublicCrop) -> str | None:
+        return plant_family_display_name(self.context, obj.crop_family_id)
 
     def get_created_by_label(self, obj: PublicCrop) -> str:
         return obj.created_by_label
@@ -344,13 +353,13 @@ class PublicCropSerializer(serializers.ModelSerializer):
 class PublicCropUpdateSerializer(serializers.ModelSerializer):
     base_version = serializers.IntegerField(required=False, min_value=1, write_only=True)
     seed_packages = PublicCropSeedPackageSerializer(many=True, required=False)
+    crop_family = PlantFamilyField()
 
     class Meta:
         model = PublicCrop
         fields = [*PUBLIC_CROP_EDITABLE_FIELDS, 'base_version']
         extra_kwargs = {
             'notes': {'required': False, 'allow_blank': True},
-            'crop_family': {'required': False, 'allow_blank': True},
             'nutrient_demand': {'required': False, 'allow_blank': True},
             'cultivation_type': {'required': False, 'allow_blank': True},
             'harvest_method': {'required': False, 'allow_blank': True},
@@ -367,6 +376,10 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'non_field_errors': [f"Unsupported public crop fields: {', '.join(unknown_fields)}"],
             })
+        if 'crop_family' in attrs:
+            # The edit service compares and snapshots plain values, so hand it
+            # the botanical-name key rather than the PlantFamily row.
+            attrs['crop_family'] = getattr(attrs['crop_family'], 'pk', None)
         return attrs
 
 
@@ -647,6 +660,8 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         typed_serializer = PublicCropUpdateSerializer(data=value, partial=True)
         typed_serializer.is_valid(raise_exception=True)
         cleaned = dict(value)
+        if 'crop_family' in typed_serializer.validated_data:
+            cleaned['crop_family'] = typed_serializer.validated_data['crop_family']
         if 'seed_packages' in typed_serializer.validated_data:
             cleaned['seed_packages'] = PublicCropSeedPackageSerializer(
                 typed_serializer.validated_data['seed_packages'],

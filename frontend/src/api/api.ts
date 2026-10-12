@@ -40,6 +40,7 @@ import type {
   PublicCropTranslations,
   CropSpecies,
   CropSpeciesTranslation,
+  PlantFamily,
   PublicLibraryModeratorRequest,
   PublicLibraryModeratorRequestMine,
   PublishPublicCropPreview,
@@ -217,6 +218,11 @@ export const cropSpeciesAPI = {
   // has to become a second crop species.
   updateTranslations: (id: number, translations: CropSpeciesTranslation[]) =>
     http.patch<CropSpecies>(`/crop-species/${id}/`, { translations }),
+};
+
+export const plantFamilyAPI = {
+  /** The curated global plant-family list; small, unpaginated, read-only. */
+  list: () => http.get<PlantFamily[]>('/plant-families/'),
 };
 
 export const publicLibraryModeratorRequestAPI = {

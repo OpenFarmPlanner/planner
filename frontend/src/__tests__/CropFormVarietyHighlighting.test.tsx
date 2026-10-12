@@ -28,6 +28,14 @@ vi.mock('../api/api', async () => {
       ...actual.publicCropAPI,
       list: publicCropListMock,
     },
+    plantFamilyAPI: {
+      list: vi.fn().mockResolvedValue({
+        data: [
+          { botanical_name: 'Apiaceae', display_name: 'Carrot family', translations: { en: 'Carrot family' }, default_rotation_break_years: 3 },
+          { botanical_name: 'Asteraceae', display_name: 'Daisy family', translations: { en: 'Daisy family' }, default_rotation_break_years: 2 },
+        ],
+      }),
+    },
     supplierAPI: {
       list: supplierListMock,
     },
@@ -38,7 +46,7 @@ const SPECIES_CROP: Crop = {
   id: 1,
   name: 'Karotte',
   variety: '',
-  crop_family: 'Doldenblütler',
+  crop_family: 'Apiaceae',
   nutrient_demand: 'medium',
   row_spacing_cm: 30,
 };
@@ -51,7 +59,7 @@ const LINKED_SPECIES_CROP: Crop = {
   name: 'Pastinake',
   variety: '',
   crop_species: 7,
-  crop_family: 'Doldenblütler',
+  crop_family: 'Apiaceae',
   nutrient_demand: 'medium',
   row_spacing_cm: 30,
 };
@@ -64,7 +72,7 @@ const INHERITING_VARIETY_CROP: Crop = {
   general_crop: LINKED_SPECIES_CROP.id,
   inherited_fields: ['crop_family', 'nutrient_demand', 'row_spacing_cm'],
   effective_values: {
-    crop_family: 'Doldenblütler',
+    crop_family: 'Apiaceae',
     nutrient_demand: 'medium',
     row_spacing_cm: 30,
   },
@@ -74,7 +82,7 @@ const VARIETY_CROP: Crop = {
   id: 2,
   name: 'Karotte',
   variety: 'Nantaise',
-  crop_family: 'Sonderfamilie',
+  crop_family: 'Asteraceae',
   nutrient_demand: 'medium',
   row_spacing_cm: 40,
 };
@@ -115,7 +123,9 @@ describe('CropForm variety override highlighting', () => {
     // Reset DropdownAwareTooltip's suppression state: mounting the dialog
     // auto-focuses the (combobox-like) name field, which otherwise keeps
     // every tooltip suppressed for the rest of the test.
-    await user.click(cropFamilyField);
+    // Clicking the family field would open its option list, which keeps the
+    // tooltips suppressed too, so a plain number field does the reset.
+    await user.click(rowSpacingField);
 
     await user.hover(cropFamilyField);
     expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.ownValueFieldTooltip');
@@ -202,7 +212,7 @@ describe('CropForm variety override highlighting', () => {
     await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
 
     const cropFamilyField = screen.getByLabelText('form.cropFamily');
-    expect(cropFamilyField).toHaveValue('Doldenblütler');
+    await waitFor(() => expect(cropFamilyField).toHaveValue('Carrot family'));
     expect(cropFamilyField).toBeDisabled();
     expect(screen.getByLabelText('form.rotationBreakYears')).toBeDisabled();
     expect(screen.getByLabelText('form.cropRotationInheritedTooltip')).toBeInTheDocument();
@@ -232,7 +242,7 @@ describe('CropForm variety override highlighting', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toEqual(expect.objectContaining({
       propagation_duration_days: 14,
-      crop_family: '',
+      crop_family: null,
       nutrient_demand: '',
       row_spacing_cm: undefined,
     }));

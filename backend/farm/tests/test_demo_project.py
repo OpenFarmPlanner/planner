@@ -194,7 +194,7 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(result.project.name, DEMO_PROJECT_NAME_EN)
         self.assertTrue(Location.objects.filter(project=result.project, name='Farm Garden').exists())
         self.assertTrue(Bed.objects.filter(project=result.project, name='Tomato Row 1').exists())
-        self.assertTrue(Crop.objects.filter(project=result.project, name='Carrot', crop_family='Carrot family').exists())
+        self.assertTrue(Crop.objects.filter(project=result.project, name='Carrot', crop_family_id='Apiaceae').exists())
         self.assertTrue(PlantingPlan.objects.filter(project=result.project, notes='Early succession for the first CSA box.').exists())
         self.assertFalse(Crop.objects.filter(project=result.project, name='Karotte').exists())
 

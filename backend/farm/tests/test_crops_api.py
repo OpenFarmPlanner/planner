@@ -2,9 +2,11 @@
 
 from datetime import date
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 
-from crops.models import CropSpecies
+from crops.models import CropSpecies, PlantFamily
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -43,6 +45,7 @@ class CropApiTest(ProjectApiTestCase):
         # prefetch_related applied on the class-level `queryset`, causing one extra
         # query per crop for `supplier`, `image_file`, `source_public_crop`,
         # `seed_packages`, and the owned-public-crop lookup.
+        families = ['Brassicaceae', 'Solanaceae', 'Apiaceae', 'Fabaceae', 'Poaceae']
         for index in range(5):
             Crop.objects.create(
                 name=f'Extra Crop {index}',
@@ -50,11 +53,14 @@ class CropApiTest(ProjectApiTestCase):
                 harvest_duration_days=2,
                 project=self.project,
                 supplier=self.supplier,
+                crop_family_id=families[index],
             )
 
         # One of the queries resolves the project's general Kulturen for the
-        # whole page (see CropSerializer._general_crop_index).
-        with self.assertNumQueries(9):
+        # whole page (see CropSerializer._general_crop_index); two more load
+        # the plant-family list with its translations once for the page
+        # (crop_family_display_name, effective_rotation_break_years).
+        with self.assertNumQueries(11):
             response = self.client.get('/openfarmplanner/api/crops/')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 6)
@@ -208,7 +214,7 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNone(general.row_spacing_m)
         self.assertIsNone(general.seed_rate_direct_value)
         self.assertIsNone(general.seed_rate_direct_unit)
-        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
 
@@ -247,13 +253,13 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(general.row_spacing_m, 0.5)
         self.assertEqual(general.seed_rate_direct_value, 12)
         self.assertEqual(general.seed_rate_direct_unit, 'seeds_per_lfm')
-        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
         # The values landed on the Kultur, not on the Sorte: the Sorte keeps
         # none of the three species-invariant fields itself.
         variety = Crop.objects.get(id=response.data['id'])
-        self.assertEqual(variety.crop_family, '')
+        self.assertIsNone(variety.crop_family_id)
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
 
@@ -265,7 +271,7 @@ class CropApiTest(ProjectApiTestCase):
             project=self.project,
             crop_species=species,
             growth_duration_days=80,
-            crop_family='Solanaceae',
+            crop_family_id='Solanaceae',
             rotation_break_years=6,
         )
 
@@ -286,11 +292,11 @@ class CropApiTest(ProjectApiTestCase):
         general.refresh_from_db()
         # The Kultur keeps every value it already had; only its gaps are filled.
         self.assertEqual(general.growth_duration_days, 80)
-        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 6)
         variety = Crop.objects.get(id=response.data['id'])
-        self.assertEqual(variety.crop_family, '')
+        self.assertIsNone(variety.crop_family_id)
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
 
@@ -303,7 +309,7 @@ class CropApiTest(ProjectApiTestCase):
             variety='',
             project=self.project,
             crop_species=species,
-            crop_family='Solanaceae',
+            crop_family_id='Solanaceae',
             rotation_break_years=6,
         )
 
@@ -313,7 +319,7 @@ class CropApiTest(ProjectApiTestCase):
                 'name': 'Tomato',
                 'variety': 'Matina',
                 'crop_species': species.id,
-                'crop_family': 'Nightshade',
+                'crop_family': 'Fabaceae',
                 'nutrient_demand': 'high',
                 'rotation_break_years': 4,
                 'copy_values_to_crop': True,
@@ -327,7 +333,7 @@ class CropApiTest(ProjectApiTestCase):
         # The gap-filling value alone is not an error; the request still fails.
         self.assertNotIn('nutrient_demand', response.data)
         general.refresh_from_db()
-        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, '')
         self.assertEqual(general.rotation_break_years, 6)
         self.assertFalse(Crop.objects.filter(project=self.project, variety='Matina').exists())
@@ -428,7 +434,7 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         general.refresh_from_db()
         self.assertIsNone(general.growth_duration_days)
-        self.assertEqual(general.crop_family, 'Solanaceae')
+        self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
 
@@ -791,14 +797,91 @@ class CropApiTest(ProjectApiTestCase):
             'growth_duration_days': 8,
             'harvest_duration_days': 3,
             'harvest_method': 'per_plant',
-            'crop_family': 'Updated Family',
+            'crop_family': 'Fabaceae',
             'nutrient_demand': 'medium',
             'project': self.project.id,
         }
         response = self.client.put(f'/openfarmplanner/api/crops/{self.crop.id}/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Updated Crop')
-        self.assertEqual(response.data['crop_family'], 'Updated Family')
+        self.assertEqual(response.data['crop_family'], 'Fabaceae')
+
+    def test_crop_family_is_written_as_botanical_name_and_read_with_its_display_name(self):
+        url = f'/openfarmplanner/api/crops/{self.crop.id}/?language=de'
+        response = self.client.patch(url, {'crop_family': ' brassicaceae '}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['crop_family'], 'Brassicaceae')
+        self.assertEqual(response.data['crop_family_display_name'], 'Kreuzblütler')
+        self.assertEqual(response.data['effective_rotation_break_years'], 4)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.crop_family_id, 'Brassicaceae')
+
+        english = self.client.get(f'/openfarmplanner/api/crops/{self.crop.id}/?language=en')
+        self.assertEqual(english.data['crop_family_display_name'], 'Cabbage family')
+
+    def test_own_rotation_break_overrides_the_family_default(self):
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.crop.id}/',
+            {'crop_family': 'Brassicaceae', 'rotation_break_years': 2},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['effective_rotation_break_years'], 2)
+
+    def test_unknown_crop_family_is_rejected_with_a_clear_error(self):
+        for value in ('Kreuzblütler', 'Rosaceae'):
+            response = self.client.patch(
+                f'/openfarmplanner/api/crops/{self.crop.id}/', {'crop_family': value}, format='json',
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            message = str(response.data['crop_family'][0])
+            self.assertIn(f'Unknown plant family "{value}"', message)
+            self.assertIn('/api/plant-families/', message)
+
+    def test_blank_crop_family_clears_the_reference(self):
+        Crop.objects.filter(pk=self.crop.pk).update(crop_family_id='Apiaceae')
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.crop.id}/', {'crop_family': ''}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIsNone(response.data['crop_family'])
+        self.assertIsNone(response.data['crop_family_display_name'])
+        self.crop.refresh_from_db()
+        self.assertIsNone(self.crop.crop_family_id)
+
+    def test_plant_family_list_returns_localized_names_and_default_breaks(self):
+        response = self.client.get('/openfarmplanner/api/plant-families/?language=de')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        families = {item['botanical_name']: item for item in response.data}
+        self.assertEqual(len(families), 16)
+        self.assertEqual(families['Brassicaceae']['display_name'], 'Kreuzblütler')
+        self.assertEqual(families['Brassicaceae']['default_rotation_break_years'], 4)
+        self.assertEqual(families['Brassicaceae']['translations']['en'], 'Cabbage family')
+        self.assertIsNone(families['Poaceae']['default_rotation_break_years'])
+        self.assertEqual(
+            families['Caprifoliaceae']['display_name'], 'Geißblattgewächse (Feldsalat)',
+        )
+
+    def test_plant_family_list_query_count_does_not_scale_with_family_count(self):
+        with CaptureQueriesContext(connection) as first_queries:
+            first = self.client.get('/openfarmplanner/api/plant-families/')
+        PlantFamily.objects.create(botanical_name='Rosaceae')
+        PlantFamily.objects.create(botanical_name='Juglandaceae')
+        with CaptureQueriesContext(connection) as second_queries:
+            second = self.client.get('/openfarmplanner/api/plant-families/')
+        self.assertEqual(len(second.data), len(first.data) + 2)
+        # Families plus one prefetch for their translations, whatever the count.
+        for queries in (first_queries, second_queries):
+            family_queries = [q for q in queries if 'crops_plantfamily' in q['sql']]
+            self.assertEqual(len(family_queries), 2)
+
+    def test_plant_family_list_is_read_only(self):
+        response = self.client.post(
+            '/openfarmplanner/api/plant-families/', {'botanical_name': 'Rosaceae'}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_crop_update_persists_thousand_kernel_weight_on_crop(self):
         data = {
@@ -1193,7 +1276,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             harvest_duration_days=21,
             row_spacing_m=0.3,
             distance_within_row_m=0.05,
-            crop_family='Apiaceae',
+            crop_family_id='Apiaceae',
             seed_rate_direct_value=2.0,
             seed_rate_direct_unit='g/m²',
         )
@@ -1281,7 +1364,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
 
         response = self.client.patch(
             f'/openfarmplanner/api/crops/{self.sorte.id}/',
-            {'crop_family': 'Wrong', 'nutrient_demand': 'high', 'rotation_break_years': 9},
+            {'crop_family': 'Poaceae', 'nutrient_demand': 'high', 'rotation_break_years': 9},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -1289,7 +1372,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             self.assertIn(field, response.data)
 
         self.sorte.refresh_from_db()
-        self.assertEqual(self.sorte.crop_family, '')
+        self.assertIsNone(self.sorte.crop_family_id)
         self.assertEqual(self.sorte.nutrient_demand, '')
         self.assertIsNone(self.sorte.rotation_break_years)
 
@@ -1301,7 +1384,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             self.assertIn(field, row['inherited_fields'])
 
     def test_unrelated_update_does_not_silently_clear_legacy_invariant_values(self):
-        Crop.objects.filter(pk=self.sorte.pk).update(crop_family='Legacy')
+        Crop.objects.filter(pk=self.sorte.pk).update(crop_family_id='Lamiaceae')
 
         response = self.client.patch(
             f'/openfarmplanner/api/crops/{self.sorte.id}/',
@@ -1311,26 +1394,26 @@ class CropInheritanceApiTest(ProjectApiTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.sorte.refresh_from_db()
-        self.assertEqual(self.sorte.crop_family, 'Legacy')
+        self.assertEqual(self.sorte.crop_family_id, 'Lamiaceae')
 
     def test_linked_orphan_preserves_and_can_edit_its_only_invariant_value(self):
         orphan_species = CropSpecies.objects.create(name='Pastinaca sativa')
         orphan = Crop.objects.create(
             name='Pastinake', variety='Halblange', project=self.project,
-            crop_species=orphan_species, crop_family='Apiaceae',
+            crop_species=orphan_species, crop_family_id='Apiaceae',
         )
 
         response = self.client.patch(
             f'/openfarmplanner/api/crops/{orphan.id}/',
-            {'crop_family': 'Apiaceae updated'},
+            {'crop_family': 'Asteraceae'},
             format='json',
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         orphan.refresh_from_db()
-        self.assertEqual(orphan.crop_family, 'Apiaceae updated')
+        self.assertEqual(orphan.crop_family_id, 'Asteraceae')
         row = self._row(orphan)
-        self.assertEqual(row['crop_family'], 'Apiaceae updated')
+        self.assertEqual(row['crop_family'], 'Asteraceae')
         self.assertEqual(row['effective_values'], {})
         self.assertFalse(Crop.objects.filter(
             project=self.project, crop_species=orphan_species, variety_normalized__isnull=True,
@@ -1340,10 +1423,10 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         """A value written straight to the column (pre-rule, or by a migration
         that has not run yet) is still ignored when resolving."""
         Crop.objects.filter(pk=self.sorte.pk).update(
-            crop_family='Legacy', rotation_break_years=7,
+            crop_family_id='Lamiaceae', rotation_break_years=7,
         )
         row = self._row(self.sorte)
-        self.assertEqual(row['crop_family'], 'Legacy')  # raw field is untouched
+        self.assertEqual(row['crop_family'], 'Lamiaceae')  # raw field is untouched
         self.assertEqual(row['effective_values']['crop_family'], 'Apiaceae')
         self.assertIn('crop_family', row['inherited_fields'])
 
@@ -1358,7 +1441,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         free_text.refresh_from_db()
-        self.assertEqual(free_text.crop_family, 'Apiaceae')
+        self.assertEqual(free_text.crop_family_id, 'Apiaceae')
         self.assertEqual(free_text.rotation_break_years, 2)
 
     def test_general_kultur_can_still_edit_species_invariant_fields(self):
@@ -1373,7 +1456,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         general.refresh_from_db()
-        self.assertEqual(general.crop_family, 'Apiaceae')
+        self.assertEqual(general.crop_family_id, 'Apiaceae')
         self.assertEqual(general.rotation_break_years, 5)
 
     def test_inheritance_payload_costs_one_query_for_a_whole_list_page(self):
@@ -1382,7 +1465,8 @@ class CropInheritanceApiTest(ProjectApiTestCase):
                 name='Karotte', variety=f'Sorte {index}',
                 project=self.project, crop_species=self.species,
             )
-        with self.assertNumQueries(11):
+        # +2 for the plant-family list, loaded once per page.
+        with self.assertNumQueries(13):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         inherited_rows = [

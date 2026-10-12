@@ -7,6 +7,7 @@ import {
   LEGACY_CROP_FILTERS_STORAGE_KEY,
   type PersistedCropFilters,
 } from './cropDetailFormatters';
+import { isBotanicalFamilyKey } from './plantFamilies';
 
 /** Every filter cleared — the state a fresh session and the reset buttons use. */
 export const EMPTY_CROP_FILTERS: PersistedCropFilters = {
@@ -36,7 +37,8 @@ function readStoredFilters(supplierIdFromQuery: string): PersistedCropFilters {
     const parsed = JSON.parse(raw) as PersistedCropFilters;
     return {
       searchQuery: parsed.searchQuery ?? '',
-      selectedFamilyFilter: parsed.selectedFamilyFilter ?? '',
+      // A filter stored before the plant-family list held free text, not a key.
+      selectedFamilyFilter: isBotanicalFamilyKey(parsed.selectedFamilyFilter) ? parsed.selectedFamilyFilter : '',
       selectedCultivationFilter: parsed.selectedCultivationFilter ?? '',
       selectedNutrientFilter: parsed.selectedNutrientFilter ?? '',
       selectedSupplierFilter: supplierIdFromQuery || parsed.selectedSupplierFilter || '',

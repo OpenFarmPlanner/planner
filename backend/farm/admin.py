@@ -273,6 +273,8 @@ class CropAdmin(admin.ModelAdmin):
         'seed_rate_unit', 'seeding_requirement_type',
         'project__name', 'project__slug'
     ]
+    # Temporary copy of the pre-plant-family free text (see migration 0112).
+    readonly_fields = ['legacy_crop_family']
 
 
 @admin.register(ProjectRevision)

@@ -3,6 +3,7 @@ import { MenuItem } from '@mui/material';
 
 import { useTranslation } from '../i18n';
 import type { PersistedCropFilters } from './cropDetailFormatters';
+import { buildPlantFamilyFilterOptions, usePlantFamilies } from './plantFamilies';
 import { FilterNumberField } from '../components/filters/FilterNumberField';
 import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../components/filters/FilterSelectField';
@@ -17,6 +18,7 @@ interface CropFiltersPopoverProps {
     key: K,
     value: PersistedCropFilters[K],
   ) => void;
+  /** Botanical names of the plant families present in the list. */
   familyOptions: string[];
   supplierOptions: Array<{ id: string; name: string }>;
   monthOptions: Array<{ value: number; label: string }>;
@@ -39,7 +41,8 @@ export function CropFiltersPopover({
   monthOptions,
   onReset,
 }: CropFiltersPopoverProps): ReactElement {
-  const { t } = useTranslation('crops');
+  const { t, i18n } = useTranslation('crops');
+  const plantFamilies = usePlantFamilies();
 
   return (
     <FilterPopoverShell
@@ -57,8 +60,8 @@ export function CropFiltersPopover({
         sx={FULL_WIDTH_ROW}
       >
         <MenuItem value="">{t('filters.all')}</MenuItem>
-        {familyOptions.map((family) => (
-          <MenuItem key={family} value={family}>{family}</MenuItem>
+        {buildPlantFamilyFilterOptions(familyOptions, plantFamilies, i18n?.resolvedLanguage).map((family) => (
+          <MenuItem key={family.value} value={family.value}>{family.label}</MenuItem>
         ))}
       </FilterSelectField>
       <FilterSelectField

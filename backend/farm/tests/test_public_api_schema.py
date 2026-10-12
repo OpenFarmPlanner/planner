@@ -46,6 +46,8 @@ EXPECTED_OPERATIONS = {
     ('/api/locations/{id}/', 'get'),
     ('/api/planting-plans/', 'get'),
     ('/api/planting-plans/{id}/', 'get'),
+    ('/api/plant-families/', 'get'),
+    ('/api/plant-families/{id}/', 'get'),
     ('/api/public-crops/{id}/', 'put'),
     ('/api/public-crops/{id}/', 'patch'),
     ('/api/seed-packages/', 'get'),

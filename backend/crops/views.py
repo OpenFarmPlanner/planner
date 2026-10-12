@@ -23,7 +23,8 @@ from config.languages import REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
 
 from . import services
 from .agent_api.permissions import CropLibraryTokenAccessPermission
-from .models import CropSpecies, PublicLibraryModeratorRequest
+from .models import CropSpecies, PlantFamily, PublicLibraryModeratorRequest
+from .plant_family_serializers import PlantFamilySerializer
 from .permissions import (
     grant_public_library_moderator_access,
     is_public_library_admin,
@@ -443,3 +444,20 @@ class CropViewSet(viewsets.ReadOnlyModelViewSet):
                 'variety': crop.variety,
             },
         })
+
+
+class PlantFamilyViewSet(viewsets.ReadOnlyModelViewSet):
+    """The curated, global plant-family list (read-only; maintained in the Django admin).
+
+    Not project-scoped and unpaginated: the list is small and every crop form
+    needs all of it. ``display_name`` follows the request language.
+    """
+
+    serializer_class = PlantFamilySerializer
+    pagination_class = None
+    lookup_value_regex = '[^/]+'
+    api_token_actions = {'list', 'retrieve'}
+    crop_library_token_actions = {'list', 'retrieve'}
+
+    def get_queryset(self):
+        return PlantFamily.objects.prefetch_related('translations')

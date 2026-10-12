@@ -112,6 +112,7 @@ import { ThreadCommentBranch } from '../components/publicCropLibrary/DiscussionC
 import { PublicCropMobileSelectorDialog } from '../components/publicCropLibrary/PublicCropMobileSelectorDialog';
 import { ImportConflictDialog } from '../components/publicCropLibrary/ImportConflictDialog';
 import { PublicCropSpeciesRelinkDialog } from '../components/PublicCropSpeciesRelinkDialog';
+import { usePlantFamilies } from '../../crops/plantFamilies';
 import { PublicCropTranslationDialog } from '../components/PublicCropTranslationDialog';
 import {
   PUBLIC_CROP_TAB_BY_INDEX,
@@ -144,6 +145,7 @@ export default function PublicCropLibraryPage() {
   const { user } = useAuth();
   const { isGuestDemo, restrictionMessage, blockInGuestDemo } = useGuestDemoGuard();
   const { t, i18n } = useTranslation('crops');
+  const plantFamilies = usePlantFamilies();
   const language = i18n.resolvedLanguage ?? i18n.language;
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
@@ -1845,7 +1847,7 @@ export default function PublicCropLibraryPage() {
                           {!isSpeciesView ? (
                             <DetailRow label={t('library.page.fields.variety')} value={selectedCrop.variety || t('library.page.notSpecified')} />
                           ) : null}
-                          <DetailRow label={t('library.page.fields.cropFamily')} value={getPublicFieldValue('crop_family', selectedCrop.crop_family) || t('library.page.notSpecified')} source={getPublicFieldSource('crop_family')} />
+                          <DetailRow label={t('library.page.fields.cropFamily')} value={plantFamilies.getName(getPublicFieldValue('crop_family', selectedCrop.crop_family)) || t('library.page.notSpecified')} source={getPublicFieldSource('crop_family')} />
                           <DetailRow
                             label={t('library.page.fields.nutrientDemand')}
                             value={getNutrientDemandLabel(getPublicFieldValue('nutrient_demand', selectedCrop.nutrient_demand), t, t('library.page.notSpecified'))}

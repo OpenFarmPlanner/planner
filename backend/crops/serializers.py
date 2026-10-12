@@ -21,6 +21,7 @@ from farm.crops.serializers.public import get_public_user_label
 from farm.models import PublicCrop
 
 from . import services
+from .plant_family_serializers import PlantFamilyField, plant_family_display_name
 from .models import (
     SUPPORTED_REGIONAL_NAME_KEYS,
     CropSpecies,
@@ -445,6 +446,8 @@ class CropSerializer(serializers.ModelSerializer):
     """
 
     created_by_label = serializers.SerializerMethodField()
+    crop_family = PlantFamilyField(read_only=True)
+    crop_family_display_name = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
     display_language_code = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
@@ -472,6 +475,7 @@ class CropSerializer(serializers.ModelSerializer):
             'crop_species_status',
             'original_language_code',
             'crop_family',
+            'crop_family_display_name',
             'nutrient_demand',
             'cultivation_types',
             'cultivation_type',
@@ -513,6 +517,9 @@ class CropSerializer(serializers.ModelSerializer):
 
     def get_created_by_label(self, obj: PublicCrop) -> str:
         return obj.created_by_label
+
+    def get_crop_family_display_name(self, obj: PublicCrop) -> str | None:
+        return plant_family_display_name(self.context, obj.crop_family_id)
 
     def get_display_name(self, obj: PublicCrop) -> str:
         return obj.display_name(

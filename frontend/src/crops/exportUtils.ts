@@ -67,7 +67,7 @@ export const toPortableCrop = (crop: Crop): PortableCrop => {
     supplierName: crop.supplier?.name ?? crop.seed_supplier ?? '',
     seed_supplier: crop.seed_supplier,
     notes: crop.notes,
-    crop_family: crop.crop_family,
+    crop_family: crop.crop_family ?? undefined,
     nutrient_demand: crop.nutrient_demand,
     cultivation_type: crop.cultivation_type,
     growth_duration_days: crop.growth_duration_days,

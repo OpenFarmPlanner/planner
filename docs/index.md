@@ -117,12 +117,12 @@ these as green field.
 
 | Planned feature | Current state in the code |
 |---|---|
-| **Fruchtfolge / crop rotation** — rotation planning and rotation rules at Parzelle (`Field`) level | Nothing. The only related data is `Crop.crop_family` (`help_text`: "Crop family for rotation planning"), `Crop.nutrient_demand`, and `Crop.rotation_break_years` (recommended years before growing the same crop family again). All three are plain informational fields today, grouped under a "Fruchtfolge-Eigenschaften"/"Crop Rotation Properties" section on the crop detail page: no rotation model, no history-of-use per field, no validation, no UI beyond that display/edit. |
+| **Fruchtfolge / crop rotation** — rotation planning and rotation rules at Parzelle (`Field`) level | Only the data foundation. `Crop.crop_family` references the curated global plant-family list (`crops.PlantFamily`, with a default rotation break per family), and `Crop.rotation_break_years` plus the family default resolve to an effective break (`resolve_effective_rotation_break_years`); see [crop-library-architecture.md](./crop-library-architecture.md#plant-families-pflanzenfamilien) for the list and the break definition. `Crop.nutrient_demand` is a plain label. No rotation model, no history-of-use per field, no validation, no UI beyond display/edit in the "Fruchtfolge-Eigenschaften" section. |
 
 One consequence worth stating explicitly, because it is easy to mis-assume:
 
-- **`crop_family` being present is not rotation support.** It is a label on a
-  crop; nothing reads it to check or suggest a rotation.
+- **`crop_family` being present is not rotation support.** It is a reference
+  on a crop; nothing reads it yet to check or suggest a rotation.
 
 Seasons were in this table until they were implemented — see
 [seasons-architecture.md](./seasons-architecture.md) now instead.

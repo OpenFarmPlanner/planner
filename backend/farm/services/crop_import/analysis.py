@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from crops.plant_families import coerce_plant_family_key
 from farm.enum_normalization import normalize_choice_value
 from farm.models import Crop
 
@@ -151,10 +152,27 @@ def _analyze_string(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any) ->
     analysis.api_value = text
 
 
+def _analyze_plant_family(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any) -> None:
+    """Map a family name or synonym onto the botanical name of a listed plant family."""
+    canonical = coerce_plant_family_key(str(raw_value).strip())
+    if canonical is None:
+        analysis.errors.append(
+            _issue('enum_unknown', f'Allowed: {", ".join(spec.enum_values or ())}.')
+        )
+        analysis.confidence = CONFIDENCE_INVALID
+        return
+    analysis.api_value = canonical
+    analysis.confidence = CONFIDENCE_EXACT if str(raw_value).strip() == canonical else 'converted'
+
+
 def _analyze_enum(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any) -> None:
     """Normalize an enum value to the project's canonical vocabulary."""
     if raw_value is None or str(raw_value).strip() == '':
         analysis.api_value = None
+        return
+
+    if spec.name == 'crop_family':
+        _analyze_plant_family(spec, analysis, raw_value)
         return
 
     if spec.name.endswith('_unit'):

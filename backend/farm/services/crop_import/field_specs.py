@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from crops.plant_families import PLANT_FAMILY_BOTANICAL_NAMES
 from farm.models import Crop
 from farm.seed_units import (
     SEED_RATE_UNIT_G_PER_LFM,
@@ -241,10 +242,14 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
     ),
     FieldSpec(
         name='crop_family',
-        kind=KIND_STRING,
-        description='Botanical family used for rotation planning.',
+        kind=KIND_ENUM,
+        description=(
+            'Plant family used for rotation planning, as its botanical name '
+            '(see /api/plant-families/). Common German/English names and older '
+            'botanical synonyms (e.g. "Kreuzblütler", "Cruciferae") are converted.'
+        ),
         example='Brassicaceae',
-        max_length=200,
+        enum_values=PLANT_FAMILY_BOTANICAL_NAMES,
         input_aliases={'crop_family': None},
     ),
     FieldSpec(
