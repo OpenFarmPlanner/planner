@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-12 — Claude — Automated security review of PR #772 (crop rotation check, bed suggestions, season copy)
+
+**Scope:** `git diff origin/main...HEAD`: rotation endpoints (`rotation-check`, `bed-suggestions`, `copy-preview`), `RotationService`, season copy `rotation_conflicts`, acceptance fields and migration 0113, frontend panels.
+
+**Findings:** No issues. Crop, bed and season lookups are scoped to the active project; occupancy queries filter by `project_id`; the bed-free-area query only takes bed IDs from project-scoped beds. `exclude_plan_id` only narrows results. The acceptance who/when fields are read-only and stamped server-side from `request.user`. `rotation_conflicts` is a `ChoiceField`. No raw SQL, unsafe HTML APIs or personal-data logging.
+
 ## 2026-10-11 — Claude — Automated security review of PR #769, merge of main (1.82.0)
 
 **Scope:** `git diff 4b47fdfc..HEAD`: merge of `origin/main` into the PR branch. The only changes are PR #770 (admin date formats) and the 1.82.0 version bump, both already covered by the #770 entry below.
