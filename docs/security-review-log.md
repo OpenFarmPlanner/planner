@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-12 — Claude — Automated security review of PR #772, follow-up commits (query-count test, compact area dialog)
+
+**Scope:** `git diff ffe835f3..HEAD`: bed-suggestions query-count test and `AreaAssignmentDialog.tsx` layout.
+
+**Findings:** No issues. Test-only and layout changes; no new endpoints, data flows or unsafe APIs. The earlier entry for this PR still holds.
+
 ## 2026-10-12 — Claude — Automated security review of PR #772 (crop rotation check, bed suggestions, season copy)
 
 **Scope:** `git diff origin/main...HEAD`: rotation endpoints (`rotation-check`, `bed-suggestions`, `copy-preview`), `RotationService`, season copy `rotation_conflicts`, acceptance fields and migration 0113, frontend panels.
