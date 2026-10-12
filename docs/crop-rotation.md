@@ -169,6 +169,13 @@ The API default stays `keep`, so existing callers (the "Daten aus Saison X
 exactly as before. That creation path does not show the rotation summary yet,
 because the target season does not exist before the copy — a follow-up.
 
+## Demo project
+
+The demo project's seed data shows every status on purpose (mostly "passt",
+one lettuce-after-lettuce conflict, one accepted tomato-after-tomato conflict
+in the polytunnel, one new bed without history); see
+[demo-project.md](./demo-project.md#crop-rotation-story).
+
 ## Known limits / follow-ups
 
 - No crop species is tagged `green_manure` yet; tagging species (or adding an

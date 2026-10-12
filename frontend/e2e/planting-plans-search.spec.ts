@@ -91,11 +91,12 @@ for (const viewport of VIEWPORTS) {
     test('finds plans by date and filters by harvest start', async ({ page }) => {
       const total = await results(page).count();
 
-      // Tomatenreihe 1 is planted on 25 April 2026 in the demo project.
-      await searchBox(page).fill('25.4.2026');
+      // Tomatenreihe 1 is planted on 25 April of the current season in the demo project.
+      const tomatoPlantingDate = `25.4.${new Date().getFullYear()}`;
+      await searchBox(page).fill(tomatoPlantingDate);
       await expect(results(page)).toHaveCount(1);
       await expect(results(page).first()).toContainText('Tomate');
-      await expect(results(page).locator('mark').first()).toHaveText('25.4.2026');
+      await expect(results(page).locator('mark').first()).toHaveText(tomatoPlantingDate);
       await searchBox(page).fill('25.04.');
       await expect(results(page)).toHaveCount(1);
       await searchBox(page).press('Escape');
