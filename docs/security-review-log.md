@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-12 — Claude — Automated security review of PR #773 (demo project rotation showcase)
+
+**Scope:** `git diff origin/main...HEAD`: `demo_project.py` seed data, `e2e_views.py` `demo_year` parameter, tests, docs and E2E specs.
+
+**Findings:** No issues. The new `demo_year` input of the token-gated E2E fixture endpoint is parsed as an integer (invalid values give a validation error) and only shifts seeded dates. Accepted-conflict stamps are set server-side from the seeding owner. No new endpoints, raw SQL, unsafe HTML APIs or personal-data flows.
+
 ## 2026-10-12 — Claude — Automated security review of PR #772, follow-up commit (single bed suggestions toggle)
 
 **Scope:** `git diff 76cef232..HEAD`: `AreaAssignmentDialog.tsx` (duplicate toggle removed) and `docs/crop-rotation.md`.
