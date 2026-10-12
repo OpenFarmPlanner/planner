@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -12,24 +12,70 @@ import {
   Select,
   Typography,
 } from '@mui/material';
-import type { Season } from '../api/types';
+import { seasonAPI } from '../api/api';
+import type { Season, SeasonCopyPreview, SeasonCopyRotationMode } from '../api/types';
 import { useTranslation } from '../i18n';
 import { extractApiErrorMessage } from '../api/errors';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
+import { SeasonCopyRotationSummary } from './SeasonCopyRotationSummary';
 
 interface SeasonCopyDataDialogProps {
   open: boolean;
   targetSeason: Season | null;
   seasons: Season[];
   onClose: () => void;
-  onConfirm: (targetSeasonId: number, sourceSeasonId: number) => Promise<{ copied_count: number; target_planting_plan_count: number }>;
+  onConfirm: (
+    targetSeasonId: number,
+    sourceSeasonId: number,
+    rotationConflicts?: SeasonCopyRotationMode,
+  ) => Promise<{ copied_count: number; target_planting_plan_count: number }>;
 }
+
+interface PreviewState {
+  key: string;
+  data: SeasonCopyPreview | null;
+}
+
+const DEFAULT_ROTATION_MODE: SeasonCopyRotationMode = 'without_bed';
 
 export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onConfirm }: SeasonCopyDataDialogProps) {
   const { t } = useTranslation(['navigation', 'common']);
   const [sourceSeasonId, setSourceSeasonId] = useState<number | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState | null>(null);
+  const [rotationMode, setRotationMode] = useState<SeasonCopyRotationMode>(DEFAULT_ROTATION_MODE);
+  const targetSeasonId = targetSeason?.id ?? null;
+  const previewKey = open && targetSeasonId !== null && sourceSeasonId !== ''
+    ? `${targetSeasonId}:${sourceSeasonId}`
+    : null;
+
+  // The rotation check of the copy against the target season. A failed check
+  // never blocks the copy; the section is simply left out.
+  useEffect(() => {
+    if (!previewKey || targetSeasonId === null || sourceSeasonId === '') {
+      return undefined;
+    }
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => seasonAPI.copyPreview(targetSeasonId, sourceSeasonId))
+      .then((response) => {
+        if (!cancelled) {
+          setPreviewState({ key: previewKey, data: response.data });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreviewState({ key: previewKey, data: null });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewKey, sourceSeasonId, targetSeasonId]);
+
+  const preview = previewState && previewState.key === previewKey ? previewState.data : null;
+  const hasRotationFindings = Boolean(preview && (preview.conflict_count > 0 || preview.hint_count > 0));
 
   const sourceOptions = useMemo(
     () => seasons.filter((season) => season.id !== targetSeason?.id),
@@ -41,6 +87,7 @@ export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onC
   const handleClose = () => {
     setSourceSeasonId('');
     setError(null);
+    setRotationMode(DEFAULT_ROTATION_MODE);
     onClose();
   };
 
@@ -51,7 +98,11 @@ export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onC
     setSubmitting(true);
     setError(null);
     try {
-      await onConfirm(targetSeason.id, sourceSeasonId);
+      if (preview && preview.conflict_count > 0) {
+        await onConfirm(targetSeason.id, sourceSeasonId, rotationMode);
+      } else {
+        await onConfirm(targetSeason.id, sourceSeasonId);
+      }
       handleClose();
     } catch (confirmError) {
       setError(extractApiErrorMessage(confirmError, t, t('navigation:seasonSwitcher.copyDialog.error')));
@@ -101,6 +152,10 @@ export function SeasonCopyDataDialog({ open, targetSeason, seasons, onClose, onC
               total: sourceSeason.planting_plan_count + targetSeason.planting_plan_count,
             })}
           </Typography>
+        ) : null}
+
+        {preview && hasRotationFindings ? (
+          <SeasonCopyRotationSummary preview={preview} mode={rotationMode} onModeChange={setRotationMode} />
         ) : null}
 
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}

@@ -29,6 +29,17 @@ import { TypeaheadSelect as Select } from '../inputs/TypeaheadSelect';
 import { fullWidthFieldSx } from '../forms/formLayout';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
+import { BedSuggestionsPanel } from './rotation/BedSuggestionsPanel';
+import { RotationCheckPanel } from './rotation/RotationCheckPanel';
+
+/** What the crop rotation check needs to know about the plan being assigned. */
+export interface AreaAssignmentRotationContext {
+  cropId: number | null;
+  /** ISO date (YYYY-MM-DD). */
+  plantingDate: string | null;
+  planId: number | null;
+  cultureLabel: string;
+}
 
 interface AreaAssignmentDialogProps {
   bedId: number | null;
@@ -47,6 +58,8 @@ interface AreaAssignmentDialogProps {
    */
   rowId?: GridRowId;
   field?: string;
+  /** Enables the rotation check and bed suggestions once crop and date are known. */
+  rotation?: AreaAssignmentRotationContext;
 }
 
 interface AssignmentState {
@@ -147,6 +160,7 @@ function AreaAssignmentDialogComponent({
   hasFocus = false,
   rowId,
   field,
+  rotation,
 }: AreaAssignmentDialogProps) {
   const { t } = useTranslation('plantingPlans');
   const [isOpen, setIsOpen] = useState(false);
@@ -255,6 +269,19 @@ function AreaAssignmentDialogComponent({
       : `${item.name} (${formatAreaM2(areaSqm, locale)})`;
     return label;
   };
+
+  const handleSuggestedBed = useCallback((suggestedBedId: number): void => {
+    setDraft(normalizeState(suggestedBedId, bedsWithLocation));
+  }, [bedsWithLocation]);
+
+  const hasRotationContext = Boolean(rotation?.cropId && rotation.plantingDate) && bedsWithLocation.length > 0;
+  const rotationInput = {
+    cropId: rotation?.cropId ?? null,
+    bedId: activeDraft.bedId,
+    plantingDate: rotation?.plantingDate ?? null,
+    planId: rotation?.planId ?? null,
+  };
+  const draftBed = bedsWithLocation.find((item) => item.id === activeDraft.bedId);
 
   const isFieldSelectDisabled = !activeDraft.locationId || selectableFields.length === 0;
   const isBedSelectDisabled = !activeDraft.fieldId || selectableBeds.length === 0;
@@ -430,7 +457,7 @@ function AreaAssignmentDialogComponent({
         open={isOpen}
         onClose={handleCancel}
         fullWidth
-        maxWidth="xs"
+        maxWidth={hasRotationContext ? 'md' : 'xs'}
       >
         <Box
           component="form"
@@ -440,6 +467,19 @@ function AreaAssignmentDialogComponent({
         >
           <DialogTitle>{t('areaAssignment.title')}</DialogTitle>
           <DialogContent>
+            {/* With a crop and date known, the rotation suggestions sit next
+                to the hierarchy selects on desktop and below them on mobile. */}
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 3,
+                gridTemplateColumns: {
+                  xs: 'minmax(0, 1fr)',
+                  md: hasRotationContext ? 'minmax(0, 2fr) minmax(0, 3fr)' : 'minmax(0, 1fr)',
+                },
+                alignItems: 'start',
+              }}
+            >
             <Box sx={{ pt: 1, minWidth: 0 }}>
               {bedsWithLocation.length === 0 ? (
                 <EmptyStateCard
@@ -522,7 +562,24 @@ function AreaAssignmentDialogComponent({
                     </FormHelperText>
                   ) : null}
                 </FormControl>
+                {hasRotationContext && rotation ? (
+                  <RotationCheckPanel
+                    input={rotationInput}
+                    bedLabel={draftBed?.name ?? ''}
+                    cultureLabel={rotation.cultureLabel}
+                  />
+                ) : null}
               </Stack>
+            </Box>
+            {hasRotationContext && rotation ? (
+              <Box sx={{ pt: { xs: 0, md: 1 }, minWidth: 0 }}>
+                <BedSuggestionsPanel
+                  input={rotationInput}
+                  cultureLabel={rotation.cultureLabel}
+                  onApplyBed={handleSuggestedBed}
+                />
+              </Box>
+            ) : null}
             </Box>
           </DialogContent>
           <DialogActions>
@@ -549,4 +606,8 @@ export const AreaAssignmentDialog = memo(AreaAssignmentDialogComponent, (previou
   && previous.memoKey === next.memoKey
   && previous.rowId === next.rowId
   && previous.field === next.field
+  && previous.rotation?.cropId === next.rotation?.cropId
+  && previous.rotation?.plantingDate === next.rotation?.plantingDate
+  && previous.rotation?.planId === next.rotation?.planId
+  && previous.rotation?.cultureLabel === next.rotation?.cultureLabel
 ));

@@ -224,6 +224,13 @@ single reusable action, not a per-entry-point special case:
   component for the second entry point; it shows a warning (not error)
   `Alert` when the target already has planting plans, since the copy adds to
   them rather than replacing them.
+- Crop rotation: once a source is chosen, the dialog loads
+  `GET /seasons/{id}/copy-preview/` and, when a copy would break the rotation
+  on its bed (or gets a nutrient hint), shows a summary and lets the user copy
+  the conflicting plans without a bed, onto the same beds anyway, or not at
+  all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
+  are built once by `build_planting_plan_copies`, shared by the preview and
+  the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
 
 ## First-run setup (migrating pre-existing projects)
 

@@ -888,8 +888,111 @@ export interface PlantingPlan {
   area_input_unit?: 'M2' | 'PLANTS';
   notes?: string;
   note_attachment_count?: number;
+  // Read-only crop rotation check (see docs/crop-rotation.md).
+  rotation_status?: RotationStatus;
+  rotation_findings?: RotationFinding[];
+  // Writable flag; true records the current user and time on the server.
+  rotation_conflict_accepted?: boolean;
+  rotation_conflict_accepted_at?: string | null;
+  rotation_conflict_accepted_by_user?: RotationAcceptedByUser | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export type RotationStatus = 'conflict' | 'accepted' | 'hint' | 'info' | 'ok';
+
+export type RotationFindingKind =
+  | 'family_conflict'
+  | 'nutrient_hint'
+  | 'no_family'
+  | 'no_break'
+  | 'no_history'
+  | 'incomplete'
+  | 'ok';
+
+export interface RotationFinding {
+  kind: RotationFindingKind;
+  crop_label: string | null;
+  family_key: string | null;
+  family_name: string | null;
+  previous_plan_id: number | null;
+  previous_crop_label: string | null;
+  previous_family_name: string | null;
+  year: number | null;
+  break_years: number | null;
+  earliest_year: number | null;
+  break_source: 'crop' | 'family_default' | null;
+  settings_crop_id: number | null;
+  settings_crop_label: string | null;
+}
+
+export interface RotationAcceptedByUser {
+  id: number;
+  email: string;
+  display_name: string;
+  display_label: string;
+}
+
+export interface RotationBedHistoryEntry {
+  plan_id: number | null;
+  crop_label: string;
+  family_name: string | null;
+  first_year: number;
+  last_year: number;
+}
+
+export interface RotationCheckResponse {
+  status: RotationStatus;
+  findings: RotationFinding[];
+  bed_history: RotationBedHistoryEntry[];
+}
+
+export type BedSuggestionCategory = 'good' | 'fits' | 'hint' | 'no_data' | 'conflict';
+
+export interface BedSuggestion {
+  bed_id: number;
+  bed_name: string;
+  field_name: string;
+  location_name: string;
+  category: BedSuggestionCategory;
+  status: RotationStatus;
+  findings: RotationFinding[];
+  years_since_family: number | null;
+  previous_is_soil_improver: boolean;
+}
+
+export interface BedSuggestionsResponse {
+  count: number;
+  results: BedSuggestion[];
+}
+
+export interface RotationQueryParams {
+  crop_id: number;
+  planting_date: string;
+  end_date?: string;
+  bed_id?: number;
+  exclude_plan_id?: number;
+}
+
+export type SeasonCopyRotationMode = 'keep' | 'without_bed' | 'skip';
+
+export interface SeasonCopyPreviewItem {
+  source_plan_id: number;
+  crop_label: string;
+  bed_id: number | null;
+  bed_name: string;
+  status: RotationStatus;
+  findings: RotationFinding[];
+}
+
+export interface SeasonCopyPreview {
+  total: number;
+  conflict_count: number;
+  hint_count: number;
+  conflict_free_count: number;
+  skipped_count: number;
+  source_season_label: string;
+  items: SeasonCopyPreviewItem[];
 }
 
 

@@ -39,6 +39,7 @@ plain width/maxWidth variants instead:
 
 | Role | Equivalent of |
 |---|---|
+| `smallStackedFieldSx` | `smallFieldSx` (224 px) |
 | `mediumStackedFieldSx` | `mediumFieldSx` (300 px) |
 | `wideSingleColumnFieldSx` | `wideFieldSx` (400 px) |
 | `wideStackedFieldSx` | wide multiline fields (460 px) |

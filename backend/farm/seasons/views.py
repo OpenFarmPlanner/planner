@@ -11,6 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.languages import resolve_request_language
 from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import (
@@ -22,8 +23,10 @@ from farm.history import (
 from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern
 from farm.project_context import get_active_project_or_400
+from farm.services.crop_rotation import RotationService, preview_season_copy
 from farm.services.seasons import (
     analyze_period_transition,
+    build_planting_plan_copies,
     build_season_creation_options,
     compute_custom_season_period,
     compute_first_future_pattern_period,
@@ -160,23 +163,55 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 )
         return Response(SeasonSerializer(season).data)
 
+    def _resolve_copy_source(self, target_season: Season, source_season_id: object) -> Season | Response:
+        """The copy's source season, or the error response to return instead."""
+        try:
+            source_pk = int(source_season_id)
+        except (TypeError, ValueError):
+            return api_error_response(code='invalid_source_season_id', detail='source_season_id must be an integer.', status_code=status.HTTP_400_BAD_REQUEST)
+        source_season = Season.objects.filter(project=self.request.active_project, pk=source_pk).first()
+        if source_season is None:
+            return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
+        if source_season.pk == target_season.pk:
+            return api_error_response(code='same_source_and_target_season', detail='Source and target season must be different.', status_code=status.HTTP_400_BAD_REQUEST)
+        return source_season
+
+    @action(detail=True, methods=['get'], url_path='copy-preview')
+    def copy_preview(self, request, pk=None):
+        """Crop rotation check of a copy from ``?source_season_id=`` into this season."""
+        target_season = self.get_object()
+        source_season = self._resolve_copy_source(target_season, request.query_params.get('source_season_id'))
+        if isinstance(source_season, Response):
+            return source_season
+        pairs, skipped_count = build_planting_plan_copies(
+            source_season=source_season, target_season=target_season,
+        )
+        service = RotationService(
+            target_season.project_id,
+            language_code=resolve_request_language(request),
+            region=getattr(self.request.active_project, 'region', '') or '',
+        )
+        return Response({
+            **preview_season_copy(service, pairs),
+            'skipped_count': skipped_count,
+            'source_season_label': source_season.label,
+        })
+
     @action(detail=True, methods=['post'], url_path='copy-from')
     def copy_from(self, request, pk=None):
         target_season = self.get_object()
         serializer = SeasonCopyFromSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        source_season = Season.objects.filter(
-            project=self.request.active_project,
-            pk=serializer.validated_data['source_season_id'],
-        ).first()
-        if source_season is None:
-            return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
-        if source_season.pk == target_season.pk:
-            return api_error_response(code='same_source_and_target_season', detail='Source and target season must be different.', status_code=status.HTTP_400_BAD_REQUEST)
+        source_season = self._resolve_copy_source(target_season, serializer.validated_data['source_season_id'])
+        if isinstance(source_season, Response):
+            return source_season
 
         with transaction.atomic():
             created_plans, skipped_count = copy_planting_plans(
-                source_season=source_season, target_season=target_season,
+                source_season=source_season,
+                target_season=target_season,
+                rotation_conflicts=serializer.validated_data['rotation_conflicts'],
+                language_code=resolve_request_language(request),
             )
             if created_plans:
                 # Copied plans are new rows — record a `created` revision per

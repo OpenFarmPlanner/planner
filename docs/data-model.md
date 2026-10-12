@@ -167,6 +167,10 @@ erDiagram
 - **`PlantingPlan`** is the central operational record: one crop, on one
   bed, with a planting date and computed harvest date(s). It drives the
   Gantt/occupancy calendar, the seed demand view, and the yield overview.
+  Its crop rotation status is computed on read from the bed's other plans;
+  only a consciously accepted conflict is stored on the plan
+  (`rotation_conflict_accepted_by`/`_at`) — see
+  [crop-rotation.md](./crop-rotation.md).
 - **`Season`**/**`SeasonPattern`** scope planting plans into successive
   ~12-month periods; the crop library and bed/field structure stay
   season-independent. `PlantingPlan.season` is nullable only until a

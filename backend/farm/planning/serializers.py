@@ -1,8 +1,10 @@
 """DRF serializers for the planning domain (planting plans and tasks)."""
 
 from datetime import date
+from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework import serializers
 
 from config.languages import DEFAULT_LANGUAGE_CODE, resolve_request_language
@@ -19,6 +21,7 @@ from farm.services.crop_inheritance import (
     resolve_crop_field,
     resolve_plants_per_m2,
 )
+from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 
 
@@ -44,6 +47,18 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     note_attachment_count = serializers.IntegerField(read_only=True)
     created_by_user = AuditUserSerializer(source='created_by', read_only=True)
     updated_by_user = AuditUserSerializer(source='updated_by', read_only=True)
+    rotation_status = serializers.SerializerMethodField(read_only=True)
+    rotation_findings = serializers.SerializerMethodField(read_only=True)
+    rotation_conflict_accepted = serializers.BooleanField(
+        required=False,
+        help_text=(
+            'Whether a crop rotation conflict is consciously accepted. Writing true records '
+            'the current user and time; it is reset automatically when crop, bed or dates change.'
+        ),
+    )
+    rotation_conflict_accepted_by_user = AuditUserSerializer(
+        source='rotation_conflict_accepted_by', read_only=True, allow_null=True,
+    )
     
     # Write-only fields for area input
     area_input_value = serializers.DecimalField(
@@ -92,6 +107,28 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_crop_cultivation_types(self, obj: PlantingPlan) -> list[str] | None:
         return self._effective_crop_value(obj, 'cultivation_types')
+
+    def _rotation_result(self, obj: PlantingPlan) -> RotationResult:
+        """The plan's rotation check, from one project-wide service per request."""
+        services = self.context.setdefault('_rotation_service_by_project', {})
+        if obj.project_id not in services:
+            services[obj.project_id] = RotationService(
+                obj.project_id,
+                language_code=self._request_language(),
+                region=self._request_region(),
+                general_crop_index=self._general_crop_index(obj),
+            )
+        results = self.context.setdefault('_rotation_result_by_plan', {})
+        cache_key = obj.pk or id(obj)
+        if cache_key not in results:
+            results[cache_key] = services[obj.project_id].check_plan(obj)
+        return results[cache_key]
+
+    def get_rotation_status(self, obj: PlantingPlan) -> str:
+        return self._rotation_result(obj).status
+
+    def get_rotation_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
+        return [finding.as_dict() for finding in self._rotation_result(obj).findings]
 
     def _request_language(self) -> str:
         request = self.context.get('request')
@@ -159,7 +196,10 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlantingPlan
         fields = '__all__'
-        read_only_fields = ['project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by']
+        read_only_fields = [
+            'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
+            'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
+        ]
     
     def get_plants_count(self, obj: PlantingPlan) -> int | None:
         """Compute plant count from area and the crop's effective spacing."""
@@ -176,8 +216,36 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
         self._apply_area_input_conversion(attrs)
+        self._apply_rotation_acceptance(attrs)
         self._run_model_clean(attrs)
         return attrs
+
+    def _moves_plan(self, attrs) -> bool:
+        """Whether this write changes the plan's crop, bed or dates."""
+        return any(
+            name in attrs and attrs[name] != getattr(self.instance, name)
+            for name in ('crop', 'bed', 'planting_date')
+        )
+
+    def _apply_rotation_acceptance(self, attrs) -> None:
+        """Turn the ``rotation_conflict_accepted`` flag into who/when fields.
+
+        Accepting always stamps a fresh time, so accepting while moving the plan
+        in the same request survives the model's reset-on-move rule.
+        """
+        accepted = attrs.pop('rotation_conflict_accepted', None)
+        if accepted is None:
+            return
+        if not accepted:
+            attrs['rotation_conflict_accepted_at'] = None
+            attrs['rotation_conflict_accepted_by'] = None
+            return
+        if self.instance is not None and self.instance.rotation_conflict_accepted and not self._moves_plan(attrs):
+            return
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        attrs['rotation_conflict_accepted_at'] = timezone.now()
+        attrs['rotation_conflict_accepted_by'] = user if user is not None and user.is_authenticated else None
 
     def _resolve_target_season(self, attrs) -> Season | None:
         """The season the plan will end up in, mirroring PlantingPlanViewSet.

@@ -62,8 +62,13 @@ import type {
   SeasonCreateTransitionResponse,
   SeasonDueSuggestion,
   SeasonCopyFromResponse,
+  SeasonCopyPreview,
+  SeasonCopyRotationMode,
   SeasonSetupStatus,
   SeasonSetupApplyResponse,
+  RotationCheckResponse,
+  RotationQueryParams,
+  BedSuggestionsResponse,
 } from './types';
 
 export async function fetchAllPaginated<T>(
@@ -342,6 +347,10 @@ export const plantingPlanAPI = {
   delete: (id: number) => http.delete(`/planting-plans/${id}/`),
   remainingArea: (params: { bed_id: number; start_date: string; end_date: string; exclude_plan_id?: number }) =>
     http.get<RemainingAreaResponse>('/planting-plans/remaining-area/', { params }),
+  rotationCheck: (params: RotationQueryParams & { bed_id: number }) =>
+    http.get<RotationCheckResponse>('/planting-plans/rotation-check/', { params }),
+  bedSuggestions: (params: RotationQueryParams) =>
+    http.get<BedSuggestionsResponse>('/planting-plans/bed-suggestions/', { params }),
 };
 
 
@@ -354,8 +363,15 @@ export const seasonAPI = {
     http.patch<Season>(`/seasons/${id}/`, data),
   delete: (id: number) => http.delete(`/seasons/${id}/`),
   undelete: (id: number) => http.post<Season>(`/seasons/${id}/undelete/`, {}),
-  copyFrom: (targetId: number, sourceSeasonId: number) =>
-    http.post<SeasonCopyFromResponse>(`/seasons/${targetId}/copy-from/`, { source_season_id: sourceSeasonId }),
+  copyFrom: (targetId: number, sourceSeasonId: number, rotationConflicts?: SeasonCopyRotationMode) =>
+    http.post<SeasonCopyFromResponse>(`/seasons/${targetId}/copy-from/`, {
+      source_season_id: sourceSeasonId,
+      ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
+    }),
+  copyPreview: (targetId: number, sourceSeasonId: number) =>
+    http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
+      params: { source_season_id: sourceSeasonId },
+    }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
   creationOptions: (params?: { manual_start_date?: string }) =>
     http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),

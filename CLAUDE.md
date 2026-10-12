@@ -308,6 +308,10 @@ tests, screenshots, or manual checks were performed.
   again from year Y + break + 1 ("every 4 years" = a break of 3). The effective
   break is the crop's own value, otherwise the family's
   `default_rotation_break_years`, otherwise none.
+- The rotation check itself (bed scope, year occupancy, stricter break wins,
+  the `conflict`/`accepted`/`hint`/`info`/`ok` statuses) lives in one service,
+  `farm/services/crop_rotation.py`; never re-implement a rule in a view or the
+  frontend. Details: [`docs/crop-rotation.md`](docs/crop-rotation.md).
 - The seeded family defaults are initial reference values still to be verified
   against LfL Bayern / Bio Austria via the crop-data workflow. Details:
   [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).

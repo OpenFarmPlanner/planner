@@ -89,6 +89,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[International Public Crop Library Data Model](./public-crop-library-data-model.md)** — the
   language-independent species/variety architecture, translation
   strategy, attribute inheritance, and incremental migration plan.
+- **[Crop Rotation (Fruchtfolge)](./crop-rotation.md)** — the bed-level
+  rotation check: the definition of the break, year occupancy, why the
+  stricter break wins, the `conflict`/`accepted`/`hint`/`info`/`ok` statuses,
+  accepting a conflict, bed suggestions, and the check when copying a season.
 - **[Seed Demand Calculation](./seed-demand-calculation.md)** — how
   required seed amounts and package suggestions are computed, with worked
   examples.
@@ -117,15 +121,11 @@ these as green field.
 
 | Planned feature | Current state in the code |
 |---|---|
-| **Fruchtfolge / crop rotation** — rotation planning and rotation rules at Parzelle (`Field`) level | Only the data foundation. `Crop.crop_family` references the curated global plant-family list (`crops.PlantFamily`, with a default rotation break per family), and `Crop.rotation_break_years` plus the family default resolve to an effective break (`resolve_effective_rotation_break_years`); see [crop-library-architecture.md](./crop-library-architecture.md#plant-families-pflanzenfamilien) for the list and the break definition. `Crop.nutrient_demand` is a plain label. No rotation model, no history-of-use per field, no validation, no UI beyond display/edit in the "Fruchtfolge-Eigenschaften" section. |
+| **Fruchtfolge at Parzelle (`Field`) level** — rotation planning across a whole Parzelle rather than per bed | Nothing. The implemented rotation check works per bed only — see [crop-rotation.md](./crop-rotation.md). |
 
-One consequence worth stating explicitly, because it is easy to mis-assume:
-
-- **`crop_family` being present is not rotation support.** It is a reference
-  on a crop; nothing reads it yet to check or suggest a rotation.
-
-Seasons were in this table until they were implemented — see
-[seasons-architecture.md](./seasons-architecture.md) now instead.
+Seasons and the bed-level crop rotation check were in this table until they
+were implemented — see [seasons-architecture.md](./seasons-architecture.md)
+and [crop-rotation.md](./crop-rotation.md) now instead.
 
 Partially built features live with their own docs instead of here — the public
 Crop Library is the main one, and

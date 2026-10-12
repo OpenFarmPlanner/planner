@@ -16,6 +16,7 @@ constant query (a new prefetch) is normally fine; a count that grows with
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from crops.permissions import grant_public_library_moderator_access
 from crops.models import (
@@ -291,8 +292,25 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     def test_planting_plans_list_query_count(self):
         """Crop, species translations, bed and both audit users per row, plus
         one page-wide lookup of the general Kulturen the plans' Sorten inherit
-        their timing from."""
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 7)
+        their timing from, plus the page-wide crop rotation check: the plant
+        families and their translations, and the project's bed history with
+        its species translations (farm/services/crop_rotation.py)."""
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 11)
+
+    def test_planting_plans_list_query_count_with_rotation_findings(self):
+        """Conflicts and accepted conflicts (with their accepting user) on every
+        bed must cost the same queries as plans without findings."""
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2027, 4, 1),
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+                rotation_conflict_accepted_by=self.user if index % 2 else None,
+                rotation_conflict_accepted_at=timezone.now() if index % 2 else None,
+            )
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/planting-plans/', 11, expected_rows=2 * ROW_COUNT,
+        )
 
     def test_tasks_list_query_count(self):
         """`planting_plan_name` renders `PlantingPlan.__str__`, which reads the

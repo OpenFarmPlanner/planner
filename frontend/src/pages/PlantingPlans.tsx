@@ -124,6 +124,22 @@ import { AreaValidationDialog } from "../components/planting-plans/AreaValidatio
 import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFormDialog";
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
+import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
+import { RotationQuickFilters } from "../components/planting-plans/rotation/RotationQuickFilters";
+import {
+  compareRotationStatus,
+  getPrimaryFinding,
+  getRotationCopy,
+} from "../components/planting-plans/rotation/rotationCopy";
+import {
+  countRotationQuickFilters,
+  matchesRotationQuickFilter,
+  type RotationQuickFilter,
+} from "../components/planting-plans/rotation/rotationQuickFilters";
+import {
+  buildRotationKey,
+  useRotationAcceptanceDraft,
+} from "../components/planting-plans/rotation/useRotationAcceptanceDraft";
 import {
   areRowsSemanticallyEqual,
   buildMobileCreateForm,
@@ -265,6 +281,11 @@ function PlantingPlans() {
   const [mobileActionMenuAnchor, setMobileActionMenuAnchor] = useState<HTMLElement | null>(null);
   const [mobileActionMenuRow, setMobileActionMenuRow] = useState<PlantingPlanRow | null>(null);
   const mobilePrefillHandledRef = useRef(false);
+  const {
+    resetFromPlan: resetRotationAcceptance,
+    getControls: getRotationAcceptanceControls,
+    getPayload: getRotationAcceptancePayload,
+  } = useRotationAcceptanceDraft();
   const createIntentHandledRef = useRef(false);
   const planIdParamProcessedRef = useRef(false);
   const openMobileEditDialogRef = useRef<((row: PlantingPlanRow) => void) | null>(null);
@@ -763,7 +784,70 @@ function PlantingPlans() {
               field={params.field}
               memoKey={`${String(params.id)}:${params.field}`}
               onApply={(nextBedId) => applyBedSelection(params.id, row, nextBedId)}
+              rotation={{
+                cropId: typeof row.crop === "number" && row.crop > 0 ? row.crop : null,
+                plantingDate: toIsoDateString(row.planting_date),
+                planId: row.isNew ? null : row.id,
+                cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
+              }}
             />
+          );
+        },
+      },
+      {
+        field: "rotation_status",
+        headerName: t("plantingPlans:columns.rotation"),
+        flex: 0,
+        width: 56,
+        minWidth: 48,
+        maxWidth: 64,
+        align: "center",
+        headerAlign: "center",
+        editable: false,
+        renderHeader: () => (
+          <AppTooltip title={t("plantingPlans:rotation.columnTooltip")}>
+            <Box component="span" sx={dataGridHeaderLabelSx}>
+              {t("plantingPlans:rotation.columnHeader")}
+            </Box>
+          </AppTooltip>
+        ),
+        valueGetter: (_value, row) => (row as PlantingPlanRow).rotation_status ?? null,
+        sortComparator: (first, second) => compareRotationStatus(first ?? undefined, second ?? undefined),
+        renderCell: (params) => {
+          const row = params.row as PlantingPlanRow;
+          const status = row.rotation_status;
+          if (!status || row.isNew) {
+            return null;
+          }
+          const copy = getRotationCopy(status, getPrimaryFinding(row.rotation_findings), t, {
+            bedLabel: row.bed_name || getBedLabelForRow(row),
+            cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
+          });
+          return (
+            <AppTooltip
+              title={(
+                <Box component="span" sx={{ display: "block" }}>
+                  <Box component="span" sx={{ display: "block", fontWeight: 600 }}>{copy.title}</Box>
+                  {copy.text ? <Box component="span" sx={{ display: "block" }}>{copy.text}</Box> : null}
+                  <Box component="span" sx={{ display: "block", mt: 0.5 }}>{t("plantingPlans:rotation.openPlan")}</Box>
+                </Box>
+              )}
+            >
+              <IconButton
+                size="small"
+                aria-label={t("plantingPlans:rotation.iconAria", {
+                  status: t(`plantingPlans:rotation.status.${status}`),
+                })}
+                data-testid="rotation-status-button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openMobileEditDialogRef.current?.(row);
+                }}
+                onDoubleClick={(event) => event.stopPropagation()}
+              >
+                <RotationStatusIcon status={status} fontSize="small" />
+              </IconButton>
+            </AppTooltip>
           );
         },
       },
@@ -1304,11 +1388,33 @@ function PlantingPlans() {
   const openFilterPanel = useCallback((): void => {
     window.setTimeout(() => setIsFilterPanelOpen(true), 0);
   }, []);
+  // Rotation quick filters live in memory only, deliberately not persisted.
+  const [rotationFilter, setRotationFilter] = useState<RotationQuickFilter>("all");
+  const rotationFilterCounts = useMemo(() => {
+    const searchVisible = search.isRowVisible;
+    const rows = searchVisible ? persistedRows.filter(searchVisible) : persistedRows;
+    return countRotationQuickFilters(rows.map((row) => row.rotation_status));
+  }, [persistedRows, search.isRowVisible]);
+  const isRowVisible = useMemo(() => {
+    const searchVisible = search.isRowVisible;
+    if (rotationFilter === "all") {
+      return searchVisible;
+    }
+    return (row: PlantingPlanRow): boolean => (
+      (searchVisible ? searchVisible(row) : true)
+      && (Boolean(row.isNew) || matchesRotationQuickFilter(row.rotation_status, rotationFilter))
+    );
+  }, [rotationFilter, search.isRowVisible]);
+  const mobileListRows = useMemo(() => (
+    rotationFilter === "all"
+      ? search.sortedRows
+      : search.sortedRows.filter((row) => matchesRotationQuickFilter(row.rotation_status, rotationFilter))
+  ), [rotationFilter, search.sortedRows]);
   const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
-    isRowVisible: search.isRowVisible,
+    isRowVisible,
     onOpenFilterPanel: openFilterPanel,
     highlightedNoteRowIds: search.noteMatchIds,
-  }), [openFilterPanel, search.isRowVisible, search.noteMatchIds]);
+  }), [isRowVisible, openFilterPanel, search.noteMatchIds]);
   const hasDraftRows = mobileRows.some((row) => row.isNew);
   const showDesktopSearchEmptyState = search.isActive && search.shownCount === 0 && !hasDraftRows;
 
@@ -1427,8 +1533,9 @@ function PlantingPlans() {
     setMobileEditId(null);
     setMobileCreateForm(buildMobileCreateForm(prefill));
     setMobileLastEditedField(null);
+    resetRotationAcceptance(null, "");
     setIsMobileCreateOpen(true);
-  }, []);
+  }, [resetRotationAcceptance]);
 
   const closeMobileCreateDialog = (): void => {
     setIsMobileCreateOpen(false);
@@ -1610,6 +1717,12 @@ function PlantingPlans() {
     setAreaValidationDialog(null);
   };
 
+  const mobileRotationKey = buildRotationKey(
+    mobileCreateForm.crop,
+    mobileCreateForm.bed,
+    mobileCreateForm.planting_date,
+  );
+
   const validateMobileForm = (): boolean => {
     if (!mobileCreateForm.crop || !mobileCreateForm.bed || !mobileCreateForm.planting_date) {
       setMobileCreateError(t("plantingPlans:validation.requiredFields", {
@@ -1691,6 +1804,7 @@ function PlantingPlans() {
         cultivation_type: mobileCreateForm.cultivation_type,
         notes: mobileCreateForm.notes || "",
         ...areaPayload,
+        ...getRotationAcceptancePayload(mobileRotationKey),
       } as PlantingPlan);
       closeMobileCreateDialog();
       await gridCommandApiRef.current?.reload();
@@ -1703,6 +1817,10 @@ function PlantingPlans() {
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(row.id);
+    resetRotationAcceptance(
+      row,
+      buildRotationKey(String(row.crop ?? ""), String(row.bed ?? ""), formatDateAsGerman(row.planting_date)),
+    );
     setMobileCreateForm({
       crop: String(row.crop ?? ""),
       bed: String(row.bed ?? ""),
@@ -1781,6 +1899,7 @@ function PlantingPlans() {
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(null);
+    resetRotationAcceptance(null, "");
     setMobileCreateForm({
       crop: String(row.crop ?? ""),
       bed: String(row.bed ?? ""),
@@ -1834,6 +1953,7 @@ function PlantingPlans() {
         cultivation_type: mobileCreateForm.cultivation_type,
         notes: mobileCreateForm.notes || "",
         ...areaPayload,
+        ...getRotationAcceptancePayload(mobileRotationKey),
       } as PlantingPlan);
       closeMobileCreateDialog();
       await gridCommandApiRef.current?.reload();
@@ -1979,8 +2099,14 @@ function PlantingPlans() {
               search={search}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
             />
+            <RotationQuickFilters
+              value={rotationFilter}
+              counts={rotationFilterCounts}
+              onChange={setRotationFilter}
+              sx={{ mb: 1.5, px: 1 }}
+            />
             <MobileCardList
-              items={search.sortedRows}
+              items={mobileListRows}
               expandedIds={expandedCardIds}
               onToggleExpanded={toggleCardExpanded}
               renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
@@ -1989,6 +2115,14 @@ function PlantingPlans() {
                   <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} />
                   {" · "}
                   <SearchHighlightedText text={getBedLabelForRow(item)} />
+                  {item.rotation_status === "conflict" || item.rotation_status === "accepted" || item.rotation_status === "hint" ? (
+                    <RotationStatusIcon
+                      status={item.rotation_status}
+                      fontSize="inherit"
+                      titleAccess={t(`plantingPlans:rotation.status.${item.rotation_status}`)}
+                      sx={{ ml: 0.5, verticalAlign: "middle" }}
+                    />
+                  ) : null}
                 </>
               )}
               renderHeaderAction={(item) => (
@@ -2095,6 +2229,14 @@ function PlantingPlans() {
               columnsPanelOpen={isColumnsPanelOpen}
               onColumnsPanelOpenChange={setIsColumnsPanelOpen}
               columnsButtonRef={setColumnsAnchorEl}
+            />
+          ) : null}
+          {!isMobile && hasPlans ? (
+            <RotationQuickFilters
+              value={rotationFilter}
+              counts={rotationFilterCounts}
+              onChange={setRotationFilter}
+              sx={{ mb: 1 }}
             />
           ) : null}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
@@ -2474,6 +2616,12 @@ function PlantingPlans() {
         getSowingDateFromPlantingDate={getMobileSowingDateFromPlantingDate}
         getPlantingDateFromSowingDate={getMobilePlantingDateFromSowingDate}
         onLinkedFieldEdited={handleMobileLinkedFieldEdited}
+        rotation={{
+          planId: mobileEditId,
+          cultureLabel: cropOptions.find((option) => String(option.value) === mobileCreateForm.crop)?.label ?? "",
+          bedLabel: bedById.get(Number(mobileCreateForm.bed))?.name ?? "",
+          acceptance: getRotationAcceptanceControls(mobileRotationKey),
+        }}
         onClose={closeMobileCreateDialog}
         onSubmit={() => void (mobileEditId ? handleMobileUpdate() : handleMobileCreate())}
       />

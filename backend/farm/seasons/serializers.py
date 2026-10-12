@@ -3,6 +3,7 @@
 from rest_framework import serializers
 
 from farm.models import PlantingPlan, Season, SeasonPattern
+from farm.services.crop_rotation import COPY_CONFLICT_MODES, COPY_CONFLICTS_KEEP
 
 
 class SeasonSerializer(serializers.ModelSerializer):
@@ -164,3 +165,12 @@ class SeasonPatternSerializer(serializers.ModelSerializer):
 
 class SeasonCopyFromSerializer(serializers.Serializer):
     source_season_id = serializers.IntegerField()
+    rotation_conflicts = serializers.ChoiceField(
+        choices=COPY_CONFLICT_MODES,
+        default=COPY_CONFLICTS_KEEP,
+        help_text=(
+            'What to do with copies that would break the crop rotation on their bed: '
+            '"keep" (same bed, conflict stays marked), "without_bed" (copied without a bed) '
+            'or "skip" (not copied).'
+        ),
+    )

@@ -14,7 +14,8 @@
     "areaM2": "Area (m²)",
     "plantsCount": "Plants (≈)",
     "notes": "Notes",
-    "cultivationType": "Cultivation type"
+    "cultivationType": "Cultivation type",
+    "rotation": "Crop rotation"
   },
   "labels": {
     "coupled": "coupled"
@@ -241,6 +242,105 @@
       "hint": "Check the spelling or search for a crop, variety or bed.",
       "clearSearch": "Clear search",
       "resetFilters": "Reset filters"
+    }
+  },
+  "rotation": {
+    "columnHeader": "CR",
+    "columnTooltip": "Crop rotation",
+    "iconAria": "Crop rotation: {{status}}",
+    "openPlan": "Click to open the planting plan.",
+    "status": {
+      "conflict": "Conflict",
+      "accepted": "Conflict accepted",
+      "hint": "Hint",
+      "info": "Cannot be checked",
+      "ok": "Fits"
+    },
+    "checking": "Checking crop rotation …",
+    "checkError": "The crop rotation could not be checked right now. You can still save.",
+    "conflict": {
+      "title": "Crop rotation: {{family}} too soon on this bed",
+      "textCrop_one": "{{previousCulture}} ({{family}}) grew on {{bed}} in {{year}}. {{culture}} has a rotation break of {{count}} year, so the earliest year is {{earliestYear}}.",
+      "textCrop_other": "{{previousCulture}} ({{family}}) grew on {{bed}} in {{year}}. {{culture}} has a rotation break of {{count}} years, so the earliest year is {{earliestYear}}.",
+      "textFamily_one": "{{previousCulture}} ({{family}}) grew on {{bed}} in {{year}}. {{family}} has a default rotation break of {{count}} year, so the earliest year is {{earliestYear}}.",
+      "textFamily_other": "{{previousCulture}} ({{family}}) grew on {{bed}} in {{year}}. {{family}} has a default rotation break of {{count}} years, so the earliest year is {{earliestYear}}.",
+      "showSuggestions": "Show suitable beds",
+      "showBedHistory": "View history of {{bed}}",
+      "hideBedHistory": "Hide history of {{bed}}",
+      "changeBreak": "Change rotation break of {{culture}}",
+      "setBreak": "Set rotation break for {{culture}}",
+      "acceptLabel": "Plan it like this on purpose (accept the conflict)",
+      "saveNote": "You can still save. Accepted conflicts stay marked as such in the table."
+    },
+    "accepted": {
+      "title": "{{family}} too soon, accepted on purpose",
+      "text": "{{previousCulture}} in {{year}} on this bed. Accepted by {{user}} on {{date}}.",
+      "textWithoutUser": "{{previousCulture}} in {{year}} on this bed. Accepted on {{date}}.",
+      "revoke": "Withdraw acceptance"
+    },
+    "hint": {
+      "title": "Heavy feeder after heavy feeder",
+      "text": "{{previousCulture}} grew here in {{year}}. Plan enough compost or a green manure in between."
+    },
+    "info": {
+      "title": "Crop rotation cannot be checked",
+      "noFamily": "{{culture}} has no plant family. Without a family we cannot check a rotation break.",
+      "addFamily": "Add a family to {{culture}}",
+      "noBreak": "Neither {{family}} nor {{culture}} has a rotation break. Without a break we cannot check the crop rotation.",
+      "noHistory": "No planting history from previous years is recorded for this bed.",
+      "incomplete": "Choose a crop, bed and planting date so we can check the crop rotation."
+    },
+    "ok": {
+      "lastFamily": "Crop rotation fits: last {{family}} in {{year}}, previous crop {{previousCulture}}.",
+      "lastFamilyWithoutPrevious": "Crop rotation fits: last {{family}} in {{year}}.",
+      "noFamilyOnBed": "Crop rotation fits: no {{family}} recorded on this bed.",
+      "title": "Crop rotation fits"
+    },
+    "bedHistory": {
+      "title": "History of {{bed}}",
+      "empty": "No planting history is recorded for this bed.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Suitable beds for {{culture}}",
+      "subtitle": "Sorted by rotation break, nutrient sequence and years since the same family. Only beds that are free at the planting date.",
+      "categories": {
+        "good": "Fits well",
+        "fits": "Fits",
+        "hint": "Hint",
+        "no_data": "No data",
+        "conflict": "Conflict"
+      },
+      "apply": "Apply",
+      "applyAria": "Apply {{bed}}",
+      "current": "currently selected",
+      "showAll": "Show all {{count}} beds",
+      "showLess": "Show fewer beds",
+      "empty": "No bed is free at the planting date. Check the planting date or add another bed.",
+      "loading": "Checking beds …",
+      "error": "Bed suggestions could not be loaded.",
+      "needsInput": "Choose a crop and planting date, then we show you suitable beds.",
+      "show": "Show suitable beds",
+      "hide": "Hide suggestions",
+      "reasons": {
+        "neverOnBed": "No {{family}} recorded on this bed.",
+        "lastFamily_one": "Last {{family}} in {{year}}, {{count}} year ago.",
+        "lastFamily_other": "Last {{family}} in {{year}}, {{count}} years ago.",
+        "soilImproverBefore": "Previous crop {{previousCulture}} leaves nitrogen for {{culture}}.",
+        "hint": "{{previousCulture}} grew here in {{year}}, also a heavy feeder.",
+        "noHistory": "No planting history from previous years recorded.",
+        "noFamily": "{{culture}} has no plant family.",
+        "noBreak": "{{family}} has no rotation break.",
+        "conflict": "{{previousCulture}} ({{family}}) grew here in {{year}}, earliest again in {{earliestYear}}."
+      }
+    },
+    "filters": {
+      "label": "Filter by crop rotation",
+      "all": "All ({{count}})",
+      "conflicts": "Conflicts ({{count}})",
+      "accepted": "Accepted ({{count}})",
+      "info": "Cannot be checked ({{count}})"
     }
   }
 }

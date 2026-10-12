@@ -29,6 +29,9 @@ export const compactFieldSx = responsiveFieldWidth(180);
 /** Short option sets such as status, units, and cultivation methods. */
 export const smallFieldSx = responsiveFieldWidth(224);
 
+/** Column-stacked variant of `smallFieldSx` without a flex-basis height. */
+export const smallStackedFieldSx = stackedFieldWidth(224);
+
 /** Families, suppliers, coordinates, and other moderately long values. */
 export const mediumFieldSx = responsiveFieldWidth(300);
 
