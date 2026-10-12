@@ -67,7 +67,7 @@ export function SeasonCopyRotationSummary({ preview, mode, onModeChange }: Seaso
           source: preview.source_season_label,
         })}
       </Typography>
-      <Alert severity={conflicts > 0 ? 'warning' : 'info'} sx={{ mb: 1, boxShadow: 'none' }}>
+      <Alert role="status" severity={conflicts > 0 ? 'warning' : 'info'} sx={{ mb: 1, boxShadow: 'none' }}>
         {conflicts > 0
           ? t(hints > 0
             ? 'seasonSwitcher.copyDialog.rotation.warningConflictsAndHints'

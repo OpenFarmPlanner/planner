@@ -100,7 +100,9 @@ function CropSettingsLink({ finding, label }: { finding: RotationFinding; label:
  * Alert for a conflict (with links and the accept checkbox), an outlined one
  * for an accepted conflict, an info Alert for a nutrient hint, a neutral one
  * when the check is not possible, and a one-line success note otherwise.
- * Never blocks saving.
+ * Never blocks saving, so the Alerts use `role="status"`: the check re-runs
+ * while the form is edited and is announced politely, and `role="alert"`
+ * stays reserved for the form's real errors.
  */
 export function RotationCheckPanel({
   input,
@@ -142,6 +144,7 @@ export function RotationCheckPanel({
     const values = { previousCulture: finding.previous_crop_label ?? '', year: finding.year, date };
     return (
       <Alert
+        role="status"
         severity="warning"
         variant="outlined"
         icon={<RotationStatusIcon status="accepted" fontSize="inherit" />}
@@ -167,7 +170,7 @@ export function RotationCheckPanel({
       : t('rotation.conflict.setBreak', { culture: finding.settings_crop_label ?? cultureLabel });
     return (
       <Box data-testid="rotation-check-conflict">
-        <Alert severity="warning" sx={inlineAlertSx}>
+        <Alert role="status" severity="warning" sx={inlineAlertSx}>
           <AlertTitle>{t('rotation.conflict.title', { family: finding.family_name ?? '' })}</AlertTitle>
           {getConflictText(finding, t, context)}
           <Box sx={linkRowSx}>
@@ -215,7 +218,7 @@ export function RotationCheckPanel({
 
   if (data.status === 'hint') {
     return (
-      <Alert severity="info" sx={inlineAlertSx} data-testid="rotation-check-hint">
+      <Alert role="status" severity="info" sx={inlineAlertSx} data-testid="rotation-check-hint">
         <AlertTitle>{t('rotation.hint.title')}</AlertTitle>
         {t('rotation.hint.text', { year: finding.year, previousCulture: finding.previous_crop_label ?? '' })}
       </Alert>
@@ -225,7 +228,7 @@ export function RotationCheckPanel({
   if (data.status === 'info') {
     const showFamilyLink = finding.kind === 'no_family' || finding.kind === 'no_break';
     return (
-      <Alert severity="info" variant="outlined" icon={<HelpOutlineIcon fontSize="inherit" />} sx={neutralAlertSx} data-testid="rotation-check-info">
+      <Alert role="status" severity="info" variant="outlined" icon={<HelpOutlineIcon fontSize="inherit" />} sx={neutralAlertSx} data-testid="rotation-check-info">
         <AlertTitle>{t('rotation.info.title')}</AlertTitle>
         {getInfoText(finding, t, context)}
         {showFamilyLink ? (
