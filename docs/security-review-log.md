@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-13 — Claude — Automated security review of PR #774 (crop rotation in the growing-area cell and dialog)
+
+**Scope:** `git diff origin/main...HEAD`: `planning/views.py` (`remaining-area`, `bed-suggestions`), `services/bed_capacity.py`, `services/crop_rotation.py`, demo project seed, frontend dialog/cell, tests and docs.
+
+**Findings:** No issues. Beds are looked up with the active project filter, `crop_id` and `exclude_plan_id` are validated against the active project, and the capacity query only receives bed IDs from project-scoped beds, so no cross-project data is reachable. The new `area_sqm`, `crop_id` and `end_date` query parameters are parsed and validated (finite, non-negative decimal; integers; dates). No raw SQL, unsafe HTML APIs, secrets or personal-data flows; the endpoints stay read-only.
+
 ## 2026-10-12 — Claude — Automated security review of PR #773, follow-up commits (screenshot baselines)
 
 **Scope:** `git diff 7790ecf9..HEAD`: re-recorded cross-browser baseline images only.
