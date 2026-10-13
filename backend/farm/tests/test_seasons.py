@@ -1111,7 +1111,7 @@ class SeededProjectSeasonTest(ProjectApiTestCase):
         current_year = demo_current_year()
         self.assertEqual(seasons, {
             (date(year, 1, 1), date(year, 12, 31))
-            for year in (current_year - 2, current_year - 1, current_year)
+            for year in range(current_year - 3, current_year + 1)
         })
         self._assert_no_setup_needed()
 
@@ -1119,7 +1119,7 @@ class SeededProjectSeasonTest(ProjectApiTestCase):
         populate_demo_project(self.project, owner=self.user)
         populate_demo_project(self.project, owner=self.user)
 
-        self.assertEqual(Season.objects.filter(project=self.project).count(), 3)
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 4)
         self._assert_no_setup_needed()
 
     def test_hint_test_project_plans_are_assigned_to_a_season(self):

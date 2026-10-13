@@ -101,7 +101,10 @@ import {
   getTranslatedProjectSetupAction,
   getTranslatedProjectSetupActions,
 } from "./requirementFlow";
-import { AreaAssignmentDialog } from "../components/planting-plans/AreaAssignmentDialog";
+import {
+  AreaAssignmentDialog,
+  type AreaAssignmentApplyDetails,
+} from "../components/planting-plans/AreaAssignmentDialog";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
 import { usePlantingPlanSearch } from "./usePlantingPlanSearch";
@@ -127,11 +130,6 @@ import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanAc
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { RotationQuickFilters } from "../components/planting-plans/rotation/RotationQuickFilters";
 import {
-  compareRotationStatus,
-  getPrimaryFinding,
-  getRotationCopy,
-} from "../components/planting-plans/rotation/rotationCopy";
-import {
   countRotationQuickFilters,
   matchesRotationQuickFilter,
   type RotationQuickFilter,
@@ -146,12 +144,13 @@ import {
   createEmptyMobileCreateForm,
   BED_COLUMN_MAX_WIDTH,
   CROP_COLUMN_MAX_WIDTH,
+  getPlanOccupancyEndIso,
+  toPlanIsoDate,
   getVisibleMobileRows,
   isAutoAreaRequest,
   normalizeSelectionAfterBedChange,
   resolveBedCellValue,
   toAreaNumericValue,
-  toDateKey,
   toOptionalNumber,
   toOptionalString,
   type MobileCreateFormState,
@@ -253,6 +252,9 @@ function PlantingPlans() {
   } | null>(null);
   const urlParamProcessedRef = useRef<boolean>(false);
   const gridCommandApiRef = useRef<EditableDataGridCommandApi | null>(null);
+  // Rotation acceptances chosen in "Anbaufläche ändern", sent with the row's
+  // next save only (an acceptance holds for the bed it was given for).
+  const pendingRotationAcceptanceRef = useRef<Map<string, boolean>>(new Map());
   const plantingPlanGridAPI = useMemo<DataGridAPI<PlantingPlanRow>>(() => ({
     ...plantingPlanAPI,
     list: async () => {
@@ -464,10 +466,23 @@ function PlantingPlans() {
    * live here instead.
    */
   const applyBedSelection = useCallback(
-    async (rowId: GridRowId, row: PlantingPlanRow, nextBedId: number): Promise<void> => {
+    async (
+      rowId: GridRowId,
+      row: PlantingPlanRow,
+      nextBedId: number,
+      details?: AreaAssignmentApplyDetails,
+    ): Promise<void> => {
       const selectedBed = bedById.get(nextBedId);
       const shouldAutofillArea = Boolean(row.isNew)
         && (row.area_m2 === undefined || row.area_m2 === null);
+      // A new row takes the area that is still free in its period, so the
+      // save check never rejects a bed the dialog offered; with nothing free,
+      // the area stays empty.
+      const freeArea = details?.freeAreaSqm ?? null;
+      const autofillArea = freeArea !== null ? freeArea : selectedBed?.area_sqm;
+      if (details?.rotationConflictAccepted !== undefined) {
+        pendingRotationAcceptanceRef.current.set(String(rowId), details.rotationConflictAccepted);
+      }
       // Only the hierarchy fields the selection actually changes are written
       // back. `normalizeSelectionAfterBedChange` returns a whole row, and
       // handing that to the grid would push every other field of a
@@ -485,8 +500,8 @@ function PlantingPlans() {
         location_id,
         field_id,
         bed,
-        ...(shouldAutofillArea && selectedBed?.area_sqm !== undefined
-          ? { area_m2: selectedBed.area_sqm }
+        ...(shouldAutofillArea && autofillArea !== undefined && autofillArea !== null && autofillArea > 0
+          ? { area_m2: autofillArea }
           : {}),
       });
     },
@@ -783,71 +798,19 @@ function PlantingPlans() {
               rowId={params.id}
               field={params.field}
               memoKey={`${String(params.id)}:${params.field}`}
-              onApply={(nextBedId) => applyBedSelection(params.id, row, nextBedId)}
+              onApply={(nextBedId, details) => applyBedSelection(params.id, row, nextBedId, details)}
               rotation={{
                 cropId: typeof row.crop === "number" && row.crop > 0 ? row.crop : null,
-                plantingDate: toIsoDateString(row.planting_date),
+                plantingDate: toPlanIsoDate(row.planting_date),
+                endDate: getPlanOccupancyEndIso(row),
+                areaSqm: toAreaNumericValue(row.area_m2 ?? row.area_usage_sqm, numberLocale),
                 planId: row.isNew ? null : row.id,
                 cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
+                status: row.isNew ? null : row.rotation_status ?? null,
+                findings: row.rotation_findings ?? null,
+                acceptance: row.isNew ? null : row,
               }}
             />
-          );
-        },
-      },
-      {
-        field: "rotation_status",
-        headerName: t("plantingPlans:columns.rotation"),
-        flex: 0,
-        width: 56,
-        minWidth: 48,
-        maxWidth: 64,
-        align: "center",
-        headerAlign: "center",
-        editable: false,
-        renderHeader: () => (
-          <AppTooltip title={t("plantingPlans:rotation.columnTooltip")}>
-            <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:rotation.columnHeader")}
-            </Box>
-          </AppTooltip>
-        ),
-        valueGetter: (_value, row) => (row as PlantingPlanRow).rotation_status ?? null,
-        sortComparator: (first, second) => compareRotationStatus(first ?? undefined, second ?? undefined),
-        renderCell: (params) => {
-          const row = params.row as PlantingPlanRow;
-          const status = row.rotation_status;
-          if (!status || row.isNew) {
-            return null;
-          }
-          const copy = getRotationCopy(status, getPrimaryFinding(row.rotation_findings), t, {
-            bedLabel: row.bed_name || getBedLabelForRow(row),
-            cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
-          });
-          return (
-            <AppTooltip
-              title={(
-                <Box component="span" sx={{ display: "block" }}>
-                  <Box component="span" sx={{ display: "block", fontWeight: 600 }}>{copy.title}</Box>
-                  {copy.text ? <Box component="span" sx={{ display: "block" }}>{copy.text}</Box> : null}
-                  <Box component="span" sx={{ display: "block", mt: 0.5 }}>{t("plantingPlans:rotation.openPlan")}</Box>
-                </Box>
-              )}
-            >
-              <IconButton
-                size="small"
-                aria-label={t("plantingPlans:rotation.iconAria", {
-                  status: t(`plantingPlans:rotation.status.${status}`),
-                })}
-                data-testid="rotation-status-button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openMobileEditDialogRef.current?.(row);
-                }}
-                onDoubleClick={(event) => event.stopPropagation()}
-              >
-                <RotationStatusIcon status={status} fontSize="small" />
-              </IconButton>
-            </AppTooltip>
           );
         },
       },
@@ -1630,42 +1593,50 @@ function PlantingPlans() {
     return null;
   };
 
-  const isSamePlanRow = (rowA: PlantingPlanRow, rowB: PlantingPlanRow): boolean =>
-    rowA === rowB || (typeof rowA.id === "number" && typeof rowB.id === "number" && rowA.id === rowB.id);
-
-  const datesOverlap = (rowA: PlantingPlanRow, rowB: PlantingPlanRow): boolean => {
-    const startA = toDateKey(rowA.planting_date);
-    const startB = toDateKey(rowB.planting_date);
-    if (startA === null || startB === null) {
-      return false;
-    }
-    const endA = toDateKey(rowA.harvest_end_date) ?? toDateKey(rowA.harvest_date) ?? Number.MAX_SAFE_INTEGER;
-    const endB = toDateKey(rowB.harvest_end_date) ?? toDateKey(rowB.harvest_date) ?? Number.MAX_SAFE_INTEGER;
-    return startA <= endB && startB <= endA;
-  };
-
-  const getCapacityForRow = (row: PlantingPlanRow): {
+  /**
+   * The bed's capacity in the row's period, from the backend's shared
+   * capacity rule (farm/services/bed_capacity.py) — the same rule the bed
+   * options of "Anbaufläche ändern" use, so a bed offered there is never
+   * rejected here. Null skips the check (no bed, no bed area, or the check
+   * failed: a failed check never blocks a save).
+   */
+  const fetchCapacityForRow = async (row: PlantingPlanRow): Promise<{
     bedArea: number;
     occupiedArea: number;
     availableArea: number;
-  } | null => {
+  } | null> => {
     const rowBedId = getPlanBedId(row);
     if (rowBedId === null) {
       return null;
     }
-    const selectedBed = bedById.get(rowBedId);
-    const bedArea = toNumericValue(selectedBed?.area_sqm);
-    if (bedArea === null) {
+    const plantingDate = toPlanIsoDate(row.planting_date);
+    if (!plantingDate) {
+      // Without a period only the bed's own size limits the area.
+      const bedArea = toNumericValue(bedById.get(rowBedId)?.area_sqm);
+      return bedArea === null ? null : { bedArea, occupiedArea: 0, availableArea: bedArea };
+    }
+    const endDate = getPlanOccupancyEndIso(row);
+    const cropId = typeof row.crop === "number" && row.crop > 0 ? row.crop : null;
+    try {
+      const { data } = await plantingPlanAPI.remainingArea({
+        bed_id: rowBedId,
+        start_date: plantingDate,
+        ...(endDate ? { end_date: endDate } : {}),
+        ...(cropId ? { crop_id: cropId } : {}),
+        ...(!row.isNew && typeof row.id === "number" ? { exclude_plan_id: row.id } : {}),
+      });
+      if (!data.has_bed_area) {
+        return null;
+      }
+      return {
+        bedArea: data.bed_area_sqm,
+        occupiedArea: data.overlapping_used_area_sqm,
+        availableArea: data.remaining_area_sqm,
+      };
+    } catch (error) {
+      console.error("Error checking the remaining bed area:", error);
       return null;
     }
-    const occupiedArea = mobileRows
-      .filter((item) => getPlanBedId(item) === rowBedId && !isSamePlanRow(item, row) && datesOverlap(item, row))
-      .reduce((total, item) => total + Math.max(0, toAreaNumericValue(item.area_m2 ?? item.area_usage_sqm, numberLocale) ?? 0), 0);
-    return {
-      bedArea,
-      occupiedArea,
-      availableArea: Math.max(0, bedArea - occupiedArea),
-    };
   };
 
   const buildAreaAndPlantsDraft = (
@@ -1684,10 +1655,10 @@ function PlantingPlans() {
     };
   };
 
-  const buildAvailableAreaDraft = (
+  const buildAvailableAreaDraft = async (
     row: PlantingPlanRow,
-  ): Pick<PlantingPlanRow, "area_m2" | "plants_count"> | null => {
-    const capacity = getCapacityForRow(row);
+  ): Promise<Pick<PlantingPlanRow, "area_m2" | "plants_count"> | null> => {
+    const capacity = await fetchCapacityForRow(row);
     if (!capacity || capacity.availableArea <= 0) {
       return null;
     }
@@ -2380,11 +2351,16 @@ function PlantingPlans() {
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",
             };
+            const pendingAcceptance = pendingRotationAcceptanceRef.current.get(String(row.id));
+            if (pendingAcceptance !== undefined) {
+              apiData.rotation_conflict_accepted = pendingAcceptance;
+              pendingRotationAcceptanceRef.current.delete(String(row.id));
+            }
 
             // Determine which field to send based on last edit
             const source = lastEditedFieldRef.current || "area_m2";
             const autoAreaDraft = source === "area_m2" && isAutoAreaRequest(row.area_m2, t("plantingPlans:placeholders.maxKeyword"))
-              ? buildAvailableAreaDraft(row)
+              ? await buildAvailableAreaDraft(row)
               : null;
             const areaInputValue = autoAreaDraft?.area_m2 ?? toAreaNumericValue(row.area_m2, numberLocale);
             const plantsInputValue = autoAreaDraft?.plants_count ?? toAreaNumericValue(row.plants_count, numberLocale);
@@ -2442,17 +2418,23 @@ function PlantingPlans() {
             }
             return errors;
           }}
-          onBeforeSaveRow={(row) => {
+          onBeforeSaveRow={async (row) => {
             if (areaValidationDialogRef.current || suppressAreaValidationSaveRef.current) {
               return false;
             }
-            const capacity = getCapacityForRow(row);
+            const requestedAreaBeforeCheck = getRequestedAreaForValidation(row);
+            const maxKeywordBeforeCheck = t("plantingPlans:placeholders.maxKeyword");
+            if (requestedAreaBeforeCheck === null && !isAutoAreaRequest(row.area_m2, maxKeywordBeforeCheck)) {
+              // No area to check: skip the request entirely.
+              return true;
+            }
+            const capacity = await fetchCapacityForRow(row);
             if (!capacity) {
               return true;
             }
             const maxKeyword = t("plantingPlans:placeholders.maxKeyword");
             if (isAutoAreaRequest(row.area_m2, maxKeyword)) {
-              const availableAreaDraft = buildAvailableAreaDraft(row);
+              const availableAreaDraft = await buildAvailableAreaDraft(row);
               if (availableAreaDraft) {
                 setAreaNotice({
                   severity: "info",

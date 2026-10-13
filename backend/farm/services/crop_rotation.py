@@ -28,10 +28,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Q, Sum
-from django.db.models.functions import Coalesce
-
 from farm.models import Bed, Crop, PlantingPlan
+from farm.services.bed_capacity import BedCapacity, calculate_bed_capacities
 from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
@@ -68,13 +66,6 @@ CATEGORY_FITS = 'fits'
 CATEGORY_HINT = 'hint'
 CATEGORY_NO_DATA = 'no_data'
 CATEGORY_CONFLICT = 'conflict'
-SUGGESTION_CATEGORY_ORDER = (
-    CATEGORY_GOOD,
-    CATEGORY_FITS,
-    CATEGORY_HINT,
-    CATEGORY_NO_DATA,
-    CATEGORY_CONFLICT,
-)
 
 COPY_CONFLICTS_KEEP = 'keep'
 COPY_CONFLICTS_WITHOUT_BED = 'without_bed'
@@ -129,6 +120,7 @@ class RotationFinding:
     family_name: str | None = None
     previous_plan_id: int | None = None
     previous_crop_label: str | None = None
+    previous_family_key: str | None = None
     previous_family_name: str | None = None
     year: int | None = None
     break_years: int | None = None
@@ -145,6 +137,7 @@ class RotationFinding:
             'family_name': self.family_name,
             'previous_plan_id': self.previous_plan_id,
             'previous_crop_label': self.previous_crop_label,
+            'previous_family_key': self.previous_family_key,
             'previous_family_name': self.previous_family_name,
             'year': self.year,
             'break_years': self.break_years,
@@ -207,6 +200,7 @@ def _conflict_finding(
         family_name=candidate.crop.family_name,
         previous_plan_id=other.plan_id,
         previous_crop_label=other.crop.label,
+        previous_family_key=other.crop.family_key,
         previous_family_name=other.crop.family_name,
         year=other.last_year,
         break_years=break_years,
@@ -248,6 +242,7 @@ def _nutrient_hint(
             family_name=candidate.crop.family_name,
             previous_plan_id=occupancy.plan_id,
             previous_crop_label=occupancy.crop.label,
+            previous_family_key=occupancy.crop.family_key,
             previous_family_name=occupancy.crop.family_name,
             year=occupancy.last_year,
         )
@@ -358,6 +353,7 @@ def evaluate_rotation(
         family_name=crop.family_name,
         previous_plan_id=previous[0].plan_id if previous else None,
         previous_crop_label=previous[0].crop.label if previous else None,
+        previous_family_key=previous[0].crop.family_key if previous else None,
         previous_family_name=previous[0].crop.family_name if previous else None,
         year=latest_same_family.last_year if latest_same_family is not None else None,
         break_years=crop.break_years,
@@ -407,6 +403,7 @@ class RotationService:
         self._families: dict[str, tuple[str, int | None]] | None = None
         self._crops: dict[int, RotationCrop] = {}
         self._occupancies_by_bed: dict[int, list[RotationOccupancy]] | None = None
+        self._occupancies_by_plan_id: dict[int, RotationOccupancy] | None = None
 
     @property
     def general_crop_index(self) -> GeneralCropIndex:
@@ -522,6 +519,17 @@ class RotationService:
             self._occupancies_by_bed = dict(by_bed)
         return self._occupancies_by_bed
 
+    def plan_occupancy_by_id(self, plan_id: int) -> RotationOccupancy | None:
+        """A saved plan's occupancy from the loaded bed history, if it has one."""
+        if self._occupancies_by_plan_id is None:
+            self._occupancies_by_plan_id = {
+                occupancy.plan_id: occupancy
+                for occupancies in self._load_occupancies().values()
+                for occupancy in occupancies
+                if occupancy.plan_id is not None
+            }
+        return self._occupancies_by_plan_id.get(plan_id)
+
     def bed_occupancies(self, bed_id: int) -> list[RotationOccupancy]:
         return self._load_occupancies().get(bed_id, [])
 
@@ -564,6 +572,7 @@ class RotationService:
             {
                 'plan_id': occupancy.plan_id,
                 'crop_label': occupancy.crop.label,
+                'family_key': occupancy.crop.family_key,
                 'family_name': occupancy.crop.family_name,
                 'first_year': occupancy.first_year,
                 'last_year': occupancy.last_year,
@@ -572,41 +581,11 @@ class RotationService:
         ]
 
 
-def _free_bed_ids(
-    beds: Sequence[Bed],
-    *,
-    start: date,
-    end: date,
-    exclude_plan_id: int | None,
-) -> set[int]:
-    """Beds with room left in ``[start, end]``, using the remaining-area rule.
-
-    Same overlap semantics as :func:`farm.services_area.calculate_remaining_bed_area`,
-    aggregated for every bed in one query. A bed without an area counts as free
-    only while nothing overlaps.
-    """
-    overlapping = PlantingPlan.objects.filter(
-        bed_id__in=[bed.pk for bed in beds],
-        planting_date__lte=end,
-    ).filter(
-        Q(harvest_end_date__gte=start)
-        | Q(harvest_end_date__isnull=True, planting_date__gte=start),
-    )
-    if exclude_plan_id is not None:
-        overlapping = overlapping.exclude(pk=exclude_plan_id)
-    usage = {
-        row['bed_id']: row['used']
-        for row in overlapping.values('bed_id').annotate(
-            used=Coalesce(Sum('area_usage_sqm'), Decimal('0.00')),
-        )
-    }
-    free: set[int] = set()
-    for bed in beds:
-        if bed.pk not in usage:
-            free.add(bed.pk)
-        elif bed.area_sqm is not None and usage[bed.pk] < bed.area_sqm:
-            free.add(bed.pk)
-    return free
+# Bed options are ordered by these groups first: fitting rotation, nutrient
+# hint, not checkable, rotation conflict, and last the beds without enough
+# free area in the period (shown, but not selectable).
+OPTION_GROUP_ORDER = (STATUS_OK, STATUS_HINT, STATUS_INFO, STATUS_CONFLICT)
+OPTION_GROUP_INSUFFICIENT_AREA = len(OPTION_GROUP_ORDER)
 
 
 def _suggestion_category(result: RotationResult, crop: RotationCrop) -> str:
@@ -628,6 +607,33 @@ def _suggestion_category(result: RotationResult, crop: RotationCrop) -> str:
     return CATEGORY_GOOD if legume_plus or well_rested else CATEGORY_FITS
 
 
+def _capacity_payload(
+    service: RotationService,
+    capacity: BedCapacity,
+    needed_area_sqm: Decimal | None,
+) -> dict[str, Any]:
+    blocker = capacity.last_ending_plan()
+    blocker_occupancy = (
+        service.plan_occupancy_by_id(blocker.plan_id) if blocker is not None else None
+    )
+    free = capacity.free_area_sqm
+    return {
+        'bed_area_sqm': float(capacity.bed_area_sqm) if capacity.bed_area_sqm is not None else None,
+        'used_area_sqm': float(capacity.used_area_sqm),
+        'free_area_sqm': float(free) if free is not None else None,
+        'has_enough_area': capacity.has_room_for(needed_area_sqm),
+        'is_partially_occupied': capacity.is_partially_occupied,
+        'blocking_plan': (
+            {
+                'plan_id': blocker.plan_id,
+                'crop_label': blocker_occupancy.crop.label if blocker_occupancy is not None else '',
+                'end_date': blocker.end.isoformat(),
+            }
+            if blocker is not None else None
+        ),
+    }
+
+
 def suggest_beds(
     service: RotationService,
     *,
@@ -635,8 +641,17 @@ def suggest_beds(
     start: date,
     end: date | None,
     exclude_plan_id: int | None = None,
+    needed_area_sqm: Decimal | None = None,
 ) -> list[dict[str, Any]]:
-    """Free beds for ``crop`` in ``[start, end]``, best rotation fit first."""
+    """Every bed of the project for ``crop`` in ``[start, end]``, best fit first.
+
+    Each row carries the rotation result and the bed's capacity in the period
+    (:mod:`farm.services.bed_capacity`, the same rule as the save check).
+    Beds without enough free area for ``needed_area_sqm`` come last with
+    ``has_enough_area`` false; without ``needed_area_sqm`` the area is not
+    checked. Within a group, the bed whose last same-family culture is longest
+    ago comes first (never on the bed counts as longest ago).
+    """
     end = end if end is not None and end >= start else start
     beds = list(
         Bed.objects
@@ -644,40 +659,49 @@ def suggest_beds(
         .select_related('field', 'field__location')
         .order_by('field__location__name', 'field__name', 'name', 'pk')
     )
-    free_ids = _free_bed_ids(beds, start=start, end=end, exclude_plan_id=exclude_plan_id)
+    capacities = calculate_bed_capacities(
+        beds, start=start, end=end, exclude_plan_id=exclude_plan_id,
+    )
     rotation_crop = service.rotation_crop(crop)
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     for position, bed in enumerate(beds):
-        if bed.pk not in free_ids:
-            continue
         candidate = RotationOccupancy(
             plan_id=exclude_plan_id, bed_id=bed.pk, start=start, end=end, crop=rotation_crop,
         )
         result = service.check(candidate)
         category = _suggestion_category(result, rotation_crop)
+        capacity_payload = _capacity_payload(service, capacities[bed.pk], needed_area_sqm)
         legume_plus = (
             rotation_crop.nutrient_demand == HIGH_NUTRIENT_DEMAND
             and result.previous_is_soil_improver
         )
         years_since = result.years_since_family
+        group = (
+            OPTION_GROUP_ORDER.index(STATUS_CONFLICT if result.is_conflict else result.status)
+            if capacity_payload['has_enough_area'] else OPTION_GROUP_INSUFFICIENT_AREA
+        )
         sort_key = (
-            SUGGESTION_CATEGORY_ORDER.index(category),
+            group,
             # Never on the bed ranks like "longest ago".
             -(years_since if years_since is not None else 10_000),
             0 if legume_plus else 1,
             position,
         )
-        location = bed.field.location if bed.field_id else None
+        bed_field = bed.field if bed.field_id else None
+        location = bed_field.location if bed_field is not None else None
         rows.append((sort_key, {
             'bed_id': bed.pk,
             'bed_name': bed.name,
-            'field_name': bed.field.name if bed.field_id else '',
+            'field_id': bed_field.pk if bed_field is not None else None,
+            'field_name': bed_field.name if bed_field is not None else '',
+            'location_id': location.pk if location is not None else None,
             'location_name': location.name if location is not None else '',
             'category': category,
             'status': result.status,
             'findings': [finding.as_dict() for finding in result.findings],
             'years_since_family': years_since,
             'previous_is_soil_improver': result.previous_is_soil_improver,
+            **capacity_payload,
         }))
     rows.sort(key=lambda row: row[0])
     return [row for _, row in rows]

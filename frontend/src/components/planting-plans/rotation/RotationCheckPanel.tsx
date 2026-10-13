@@ -17,13 +17,15 @@ import type { RotationBedHistoryEntry, RotationFinding } from '../../../api/type
 import { useTranslation } from '../../../i18n';
 import { RotationStatusIcon } from './RotationStatusIcon';
 import {
-  formatAcceptedDate,
+  formatIsoDate,
   getConflictText,
   getCropSettingsPath,
   getInfoText,
   getOkText,
   getPrimaryFinding,
+  type FamilyNameResolver,
 } from './rotationCopy';
+import { useFamilyNameResolver } from './useFamilyNameResolver';
 import { useRotationCheck, type RotationInput } from './useRotationQueries';
 
 export interface RotationAcceptanceControls {
@@ -55,7 +57,13 @@ const neutralAlertSx = {
 } as const;
 const inlineAlertSx = { boxShadow: 'none' } as const;
 
-function BedHistoryList({ bedLabel, entries }: { bedLabel: string; entries: RotationBedHistoryEntry[] }) {
+interface BedHistoryListProps {
+  bedLabel: string;
+  entries: RotationBedHistoryEntry[];
+  familyName: FamilyNameResolver;
+}
+
+function BedHistoryList({ bedLabel, entries, familyName }: BedHistoryListProps) {
   const { t } = useTranslation('plantingPlans');
   return (
     <Box sx={{ mt: 1 }} data-testid="rotation-bed-history">
@@ -70,10 +78,11 @@ function BedHistoryList({ bedLabel, entries }: { bedLabel: string; entries: Rota
             const years = entry.first_year === entry.last_year
               ? String(entry.first_year)
               : `${entry.first_year}–${entry.last_year}`;
+            const family = familyName(entry.family_key, entry.family_name);
             return (
               <Typography component="li" variant="body2" key={`${entry.plan_id ?? 'new'}-${index}`}>
-                {entry.family_name
-                  ? t('rotation.bedHistory.entryWithFamily', { years, culture: entry.crop_label, family: entry.family_name })
+                {family
+                  ? t('rotation.bedHistory.entryWithFamily', { years, culture: entry.crop_label, family })
                   : t('rotation.bedHistory.entry', { years, culture: entry.crop_label })}
               </Typography>
             );
@@ -111,6 +120,7 @@ export function RotationCheckPanel({
 }: RotationCheckPanelProps) {
   const { t, i18n } = useTranslation('plantingPlans');
   const { data, isLoading, isError } = useRotationCheck(input);
+  const familyName = useFamilyNameResolver();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   if (!input.cropId || !input.bedId || !input.plantingDate) {
@@ -131,14 +141,15 @@ export function RotationCheckPanel({
     );
   }
 
-  const context = { bedLabel, cultureLabel };
+  const context = { bedLabel, cultureLabel, familyName };
   const finding = getPrimaryFinding(data.findings);
   if (!finding) {
     return null;
   }
+  const family = familyName(finding.family_key, finding.family_name);
 
   if (data.status === 'conflict' && acceptance?.accepted && acceptance.persisted) {
-    const date = formatAcceptedDate(acceptance.persisted.acceptedAt, i18n.language);
+    const date = formatIsoDate(acceptance.persisted.acceptedAt, i18n.language);
     const values = { previousCulture: finding.previous_crop_label ?? '', year: finding.year, date };
     return (
       <Alert
@@ -153,7 +164,7 @@ export function RotationCheckPanel({
           </Button>
         )}
       >
-        <AlertTitle>{t('rotation.accepted.title', { family: finding.family_name ?? '' })}</AlertTitle>
+        <AlertTitle>{t('rotation.accepted.title', { family })}</AlertTitle>
         {acceptance.persisted.userLabel
           ? t('rotation.accepted.text', { ...values, user: acceptance.persisted.userLabel })
           : t('rotation.accepted.textWithoutUser', values)}
@@ -168,7 +179,7 @@ export function RotationCheckPanel({
     return (
       <Box data-testid="rotation-check-conflict">
         <Alert severity="warning" sx={inlineAlertSx}>
-          <AlertTitle>{t('rotation.conflict.title', { family: finding.family_name ?? '' })}</AlertTitle>
+          <AlertTitle>{t('rotation.conflict.title', { family })}</AlertTitle>
           {getConflictText(finding, t, context)}
           <Box sx={linkRowSx}>
             {onShowSuggestions ? (
@@ -190,7 +201,7 @@ export function RotationCheckPanel({
             </Link>
             <CropSettingsLink finding={finding} label={breakLinkLabel} />
           </Box>
-          {isHistoryOpen ? <BedHistoryList bedLabel={bedLabel} entries={data.bed_history} /> : null}
+          {isHistoryOpen ? <BedHistoryList bedLabel={bedLabel} entries={data.bed_history} familyName={familyName} /> : null}
           {acceptance ? (
             <FormControlLabel
               sx={{ mt: 0.5 }}
@@ -246,7 +257,7 @@ export function RotationCheckPanel({
     <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }} data-testid="rotation-check-ok">
       <RotationStatusIcon status="ok" fontSize="small" />
       <Typography variant="body2" color="success.dark">
-        {getOkText(finding, t)}
+        {getOkText(finding, t, familyName)}
       </Typography>
     </Stack>
   );

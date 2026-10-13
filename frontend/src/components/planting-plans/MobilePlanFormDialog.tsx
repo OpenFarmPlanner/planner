@@ -29,6 +29,7 @@ import type { SearchableSelectOption } from "../data-grid";
 import { formatDateAsGerman, parseGermanDateText } from "../data-grid/dateEditCellUtils";
 import { toIsoDateString } from "../data-grid/dateEditCellUtils";
 import type { MobileCreateFormState } from "../../pages/plantingPlansUtils";
+import { toAreaNumericValue } from "../../pages/plantingPlansUtils";
 import type { CultivationTypeSelectOption } from "../../pages/usePlantingPlanHierarchy";
 import { TypeaheadSelect as Select } from "../inputs/TypeaheadSelect";
 import {
@@ -128,6 +129,7 @@ export function MobilePlanFormDialog({
     bedId: Number(form.bed) || null,
     plantingDate: toIsoDateString(parseGermanDateText(form.planting_date)),
     planId: rotation?.planId ?? null,
+    areaSqm: toAreaNumericValue(form.area_m2, numberLocale),
   };
   const showSuggestions = Boolean(rotation) && isSuggestionsOpen;
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Box, Typography } from '@mui/material';
 import { OverflowTooltip } from '../OverflowTooltip';
 import { SearchHighlightedText } from '../../search/SearchHighlightedText';
@@ -20,6 +20,8 @@ interface CompactAreaCellProps {
   focusRequest?: number;
   /** Keeps focus where it is while the editor itself is open. */
   suppressFocus?: boolean;
+  /** Rendered at the right end of the cell, outside the trigger (e.g. a status icon button). */
+  endAdornment?: ReactNode;
 }
 
 export function CompactAreaCell({
@@ -30,6 +32,7 @@ export function CompactAreaCell({
   triggerLabel,
   focusRequest = 0,
   suppressFocus = false,
+  endAdornment,
 }: CompactAreaCellProps) {
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const focusRestoreHandlesRef = useRef<{ frames: number[]; timeouts: number[] }>({ frames: [], timeouts: [] });
@@ -81,7 +84,7 @@ export function CompactAreaCell({
     return clearFocusRestore;
   }, [clearFocusRestore, focusRequest, scheduleTriggerFocus, suppressFocus]);
 
-  return (
+  const trigger = (
     <OverflowTooltip title={displayText}>
       <Box
         ref={triggerRef}
@@ -131,5 +134,15 @@ export function CompactAreaCell({
         </Typography>
       </Box>
     </OverflowTooltip>
+  );
+
+  if (!endAdornment) {
+    return trigger;
+  }
+  return (
+    <Box sx={{ width: '100%', minWidth: 0, height: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Box sx={{ flex: '1 1 auto', minWidth: 0, height: '100%', display: 'flex' }}>{trigger}</Box>
+      <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>{endAdornment}</Box>
+    </Box>
   );
 }

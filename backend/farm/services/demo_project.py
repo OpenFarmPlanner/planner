@@ -75,12 +75,18 @@ DEMO_TEXT = {
         'locations': {
             'hofgarten': ('Hofgarten', 'Gesch\u00fctzte Fl\u00e4chen nahe Waschplatz und Jungpflanzenhaus.'),
             'bachacker': ('Acker am Bach', 'Freilandfl\u00e4che f\u00fcr Wurzelgem\u00fcse und Kohlkulturen.'),
+            'lindenhof': (
+                'Pachtacker Lindenhof',
+                'Zugepachtete Fl\u00e4che f\u00fcr Kartoffeln, Kohl, H\u00fclsenfr\u00fcchte und Lauch.',
+            ),
         },
         'fields': {
             'fruehbeete': 'Fr\u00fchbeete Nord',
             'tunnel': 'Folientunnel S\u00fcd',
             'wurzel': 'Wurzelgem\u00fcse',
             'kohl': 'Kohlquartier',
+            'schlag-nord': 'Schlag Nord',
+            'schlag-sued': 'Schlag S\u00fcd',
         },
         'beds': {
             'salat-1': 'Salat 1',
@@ -95,6 +101,14 @@ DEMO_TEXT = {
             'kohlrabi': 'Kohlrabi',
             'zucchini': 'Zucchini',
             'reserve': 'Gr\u00fcnd\u00fcngung Reserve',
+            'kartoffel-1': 'Kartoffeln 1',
+            'kartoffel-2': 'Kartoffeln 2',
+            'brokkoli': 'Brokkoli',
+            'kohlbeet': 'Kohlbeet',
+            'bohnen': 'Bohnen',
+            'lauch': 'Knoblauch & Lauch',
+            'mais': 'Zuckermais',
+            'kuerbis': 'K\u00fcrbisbeet',
         },
         'crops': {
             'karotte': ('Karotte', 'Nantaise 2', 'Apiaceae'),
@@ -105,6 +119,17 @@ DEMO_TEXT = {
             'rote-bete': ('Rote Bete', 'Robuschka', 'Amaranthaceae'),
             'kohlrabi': ('Kohlrabi', 'Azur Star', 'Brassicaceae'),
             'zucchini': ('Zucchini', 'Costata Romanesco', 'Cucurbitaceae'),
+            'kartoffel': ('Kartoffel', '', 'Solanaceae'),
+            'erbse': ('Erbse', '', 'Fabaceae'),
+            'buschbohne': ('Buschbohne', '', 'Fabaceae'),
+            'knoblauch': ('Knoblauch', '', 'Amaryllidaceae'),
+            'lauch': ('Lauch', '', 'Amaryllidaceae'),
+            'brokkoli': ('Brokkoli', '', 'Brassicaceae'),
+            'senf': ('Senf', '', 'Brassicaceae'),
+            'zuckermais': ('Zuckermais', '', 'Poaceae'),
+            'phacelia': ('Phacelia', '', 'Boraginaceae'),
+            # Rosaceae is not in the curated family list yet.
+            'erdbeere': ('Erdbeere', '', None),
         },
         'plan_notes': {
             'salat_frueh': 'Fr\u00fcher Satz f\u00fcr die erste Abo-Kiste.',
@@ -123,12 +148,18 @@ DEMO_TEXT = {
         'locations': {
             'hofgarten': ('Farm Garden', 'Sheltered beds near the wash station and propagation house.'),
             'bachacker': ('Creekside Field', 'Open field for root vegetables and brassicas.'),
+            'lindenhof': (
+                'Linden Farm Lease',
+                'Leased field for potatoes, brassicas, legumes and alliums.',
+            ),
         },
         'fields': {
             'fruehbeete': 'North Early Beds',
             'tunnel': 'South Polytunnel',
             'wurzel': 'Root Vegetables',
             'kohl': 'Brassica Block',
+            'schlag-nord': 'North Plot',
+            'schlag-sued': 'South Plot',
         },
         'beds': {
             'salat-1': 'Lettuce 1',
@@ -143,6 +174,14 @@ DEMO_TEXT = {
             'kohlrabi': 'Kohlrabi',
             'zucchini': 'Zucchini',
             'reserve': 'Green Manure Reserve',
+            'kartoffel-1': 'Potatoes 1',
+            'kartoffel-2': 'Potatoes 2',
+            'brokkoli': 'Broccoli',
+            'kohlbeet': 'Cabbage Bed',
+            'bohnen': 'Beans',
+            'lauch': 'Garlic & Leek',
+            'mais': 'Sweetcorn',
+            'kuerbis': 'Squash Bed',
         },
         'crops': {
             'karotte': ('Carrot', 'Nantaise 2', 'Apiaceae'),
@@ -153,6 +192,16 @@ DEMO_TEXT = {
             'rote-bete': ('Beetroot', 'Robuschka', 'Amaranthaceae'),
             'kohlrabi': ('Kohlrabi', 'Azur Star', 'Brassicaceae'),
             'zucchini': ('Zucchini', 'Costata Romanesco', 'Cucurbitaceae'),
+            'kartoffel': ('Potato', '', 'Solanaceae'),
+            'erbse': ('Pea', '', 'Fabaceae'),
+            'buschbohne': ('Bush bean', '', 'Fabaceae'),
+            'knoblauch': ('Garlic', '', 'Amaryllidaceae'),
+            'lauch': ('Leek', '', 'Amaryllidaceae'),
+            'brokkoli': ('Broccoli', '', 'Brassicaceae'),
+            'senf': ('Mustard', '', 'Brassicaceae'),
+            'zuckermais': ('Sweetcorn', '', 'Poaceae'),
+            'phacelia': ('Phacelia', '', 'Boraginaceae'),
+            'erdbeere': ('Strawberry', '', None),
         },
         'plan_notes': {
             'salat_frueh': 'Early succession for the first CSA box.',
@@ -210,6 +259,8 @@ class CropSpec:
     packaging_sizes: list[dict[str, float | str]] | None = None
     germination_rate: float | None = None
     is_species: bool = False
+    # The culture's own rotation break; None falls back to the family default.
+    rotation_break_years: int | None = None
 
 
 @dataclass(frozen=True)
@@ -554,6 +605,13 @@ def _create_area_hierarchy(
             exposure='flat',
             project=project,
         ),
+        'lindenhof': Location.objects.create(
+            name=text['locations']['lindenhof'][0],
+            description=text['locations']['lindenhof'][1],
+            soil_type='loam',
+            exposure='flat',
+            project=project,
+        ),
     }
 
     field_specs = [
@@ -561,6 +619,8 @@ def _create_area_hierarchy(
         ('tunnel', text['fields']['tunnel'], 'hofgarten', 30.0, 8.0),
         ('wurzel', text['fields']['wurzel'], 'bachacker', 45.0, 6.0),
         ('kohl', text['fields']['kohl'], 'bachacker', 42.0, 6.0),
+        ('schlag-nord', text['fields']['schlag-nord'], 'lindenhof', 48.0, 8.0),
+        ('schlag-sued', text['fields']['schlag-sued'], 'lindenhof', 48.0, 8.0),
     ]
     fields = {
         key: Field.objects.create(
@@ -587,6 +647,14 @@ def _create_area_hierarchy(
         ('kohlrabi', text['beds']['kohlrabi'], 'kohl', 22.0, 0.75),
         ('zucchini', text['beds']['zucchini'], 'kohl', 18.0, 1.20),
         ('reserve', text['beds']['reserve'], 'kohl', 18.0, 1.20),
+        ('kartoffel-1', text['beds']['kartoffel-1'], 'schlag-nord', 20.0, 1.20),
+        ('kartoffel-2', text['beds']['kartoffel-2'], 'schlag-nord', 20.0, 1.20),
+        ('brokkoli', text['beds']['brokkoli'], 'schlag-nord', 20.0, 1.20),
+        ('kohlbeet', text['beds']['kohlbeet'], 'schlag-nord', 20.0, 1.20),
+        ('bohnen', text['beds']['bohnen'], 'schlag-sued', 20.0, 1.20),
+        ('lauch', text['beds']['lauch'], 'schlag-sued', 20.0, 1.20),
+        ('mais', text['beds']['mais'], 'schlag-sued', 20.0, 1.20),
+        ('kuerbis', text['beds']['kuerbis'], 'schlag-sued', 20.0, 1.20),
     ]
     beds = {
         key: Bed.objects.create(
@@ -613,6 +681,8 @@ def _create_layouts(
         'tunnel': (240, 40),
         'wurzel': (40, 40),
         'kohl': (220, 40),
+        'schlag-nord': (40, 40),
+        'schlag-sued': (240, 40),
     }
     for key, field in fields.items():
         x, y = field_positions[key]
@@ -631,6 +701,14 @@ def _create_layouts(
         'kohlrabi': (8, 24),
         'zucchini': (36, 24),
         'reserve': (64, 24),
+        'kartoffel-1': (8, 24),
+        'kartoffel-2': (36, 24),
+        'brokkoli': (64, 24),
+        'kohlbeet': (92, 24),
+        'bohnen': (8, 24),
+        'lauch': (36, 24),
+        'mais': (64, 24),
+        'kuerbis': (92, 24),
     }
     for key, bed in beds.items():
         x, y = bed_positions[key]
@@ -1089,6 +1167,194 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             packaging_sizes=[{'size_value': 10, 'size_unit': 'seeds'}, {'size_value': 50, 'size_unit': 'seeds'}],
             germination_rate=88,
         ),
+        # Field crops of the leased Lindenhof plot. Each one teaches a part of
+        # the crop rotation check (docs/crop-rotation.md, "Demo cases").
+        CropSpec(
+            key='kartoffel',
+            name=crop_text['kartoffel'][0],
+            variety=crop_text['kartoffel'][1],
+            color='#a16207',
+            cultivation_types=['direct_sowing'],
+            growth_days=100,
+            harvest_days=21,
+            propagation_days=None,
+            crop_family=crop_text['kartoffel'][2],
+            nutrient_demand='high',
+            row_spacing_m=0.70,
+            distance_within_row_m=0.35,
+            expected_yield=Decimal('3.00'),
+            harvest_method='per_sqm',
+            sowing_depth_m=0.10,
+            is_species=True,
+            # Stricter than the Solanaceae default (3): potatoes every 5th year.
+            rotation_break_years=4,
+        ),
+        CropSpec(
+            key='erbse',
+            name=crop_text['erbse'][0],
+            variety=crop_text['erbse'][1],
+            color='#65a30d',
+            cultivation_types=['direct_sowing'],
+            growth_days=75,
+            harvest_days=21,
+            propagation_days=None,
+            crop_family=crop_text['erbse'][2],
+            nutrient_demand='low',
+            row_spacing_m=0.40,
+            distance_within_row_m=0.05,
+            expected_yield=Decimal('0.80'),
+            harvest_method='per_sqm',
+            sowing_depth_m=0.04,
+            is_species=True,
+            # Peas are self-intolerant; stricter than the Fabaceae default (3).
+            rotation_break_years=5,
+        ),
+        CropSpec(
+            key='buschbohne',
+            name=crop_text['buschbohne'][0],
+            variety=crop_text['buschbohne'][1],
+            color='#16a34a',
+            cultivation_types=['direct_sowing'],
+            growth_days=60,
+            harvest_days=30,
+            propagation_days=None,
+            crop_family=crop_text['buschbohne'][2],
+            nutrient_demand='low',
+            row_spacing_m=0.40,
+            distance_within_row_m=0.08,
+            expected_yield=Decimal('1.20'),
+            harvest_method='per_sqm',
+            sowing_depth_m=0.03,
+            is_species=True,
+        ),
+        CropSpec(
+            key='knoblauch',
+            name=crop_text['knoblauch'][0],
+            variety=crop_text['knoblauch'][1],
+            color='#d6d3d1',
+            cultivation_types=['direct_sowing'],
+            # Planted in October, harvested the following July.
+            growth_days=255,
+            harvest_days=14,
+            propagation_days=None,
+            crop_family=crop_text['knoblauch'][2],
+            nutrient_demand='medium',
+            row_spacing_m=0.25,
+            distance_within_row_m=0.10,
+            expected_yield=Decimal('0.90'),
+            harvest_method='per_sqm',
+            sowing_depth_m=0.04,
+            is_species=True,
+        ),
+        CropSpec(
+            key='lauch',
+            name=crop_text['lauch'][0],
+            variety=crop_text['lauch'][1],
+            color='#4d7c0f',
+            cultivation_types=['pre_cultivation'],
+            growth_days=100,
+            harvest_days=50,
+            propagation_days=70,
+            crop_family=crop_text['lauch'][2],
+            nutrient_demand='high',
+            row_spacing_m=0.35,
+            distance_within_row_m=0.12,
+            expected_yield=Decimal('3.50'),
+            harvest_method='per_sqm',
+            is_species=True,
+        ),
+        CropSpec(
+            key='brokkoli',
+            name=crop_text['brokkoli'][0],
+            variety=crop_text['brokkoli'][1],
+            color='#166534',
+            cultivation_types=['pre_cultivation'],
+            growth_days=70,
+            harvest_days=14,
+            propagation_days=35,
+            crop_family=crop_text['brokkoli'][2],
+            nutrient_demand='high',
+            row_spacing_m=0.50,
+            distance_within_row_m=0.40,
+            expected_yield=Decimal('1.60'),
+            harvest_method='per_sqm',
+            is_species=True,
+        ),
+        CropSpec(
+            key='senf',
+            name=crop_text['senf'][0],
+            variety=crop_text['senf'][1],
+            color='#facc15',
+            cultivation_types=['direct_sowing'],
+            # Green manure: sown after the main crop, worked in before winter.
+            growth_days=50,
+            harvest_days=None,
+            propagation_days=None,
+            crop_family=crop_text['senf'][2],
+            nutrient_demand='',
+            row_spacing_m=None,
+            distance_within_row_m=None,
+            expected_yield=None,
+            harvest_method='',
+            seed_rate_direct_value=2.0,
+            seed_rate_direct_unit='g_per_m2',
+            is_species=True,
+        ),
+        CropSpec(
+            key='zuckermais',
+            name=crop_text['zuckermais'][0],
+            variety=crop_text['zuckermais'][1],
+            color='#eab308',
+            cultivation_types=['direct_sowing'],
+            growth_days=85,
+            harvest_days=21,
+            propagation_days=None,
+            crop_family=crop_text['zuckermais'][2],
+            nutrient_demand='high',
+            row_spacing_m=0.75,
+            distance_within_row_m=0.30,
+            expected_yield=Decimal('1.40'),
+            harvest_method='per_sqm',
+            sowing_depth_m=0.04,
+            is_species=True,
+        ),
+        CropSpec(
+            key='phacelia',
+            name=crop_text['phacelia'][0],
+            variety=crop_text['phacelia'][1],
+            color='#7c3aed',
+            cultivation_types=['direct_sowing'],
+            growth_days=60,
+            harvest_days=None,
+            propagation_days=None,
+            crop_family=crop_text['phacelia'][2],
+            nutrient_demand='low',
+            row_spacing_m=None,
+            distance_within_row_m=None,
+            expected_yield=None,
+            harvest_method='',
+            seed_rate_direct_value=1.2,
+            seed_rate_direct_unit='g_per_m2',
+            is_species=True,
+        ),
+        CropSpec(
+            key='erdbeere',
+            name=crop_text['erdbeere'][0],
+            variety=crop_text['erdbeere'][1],
+            color='#e11d48',
+            cultivation_types=['pre_cultivation'],
+            # Planted in August, first harvest the following June.
+            growth_days=300,
+            harvest_days=28,
+            propagation_days=None,
+            crop_family=crop_text['erdbeere'][2],
+            nutrient_demand='medium',
+            row_spacing_m=0.60,
+            distance_within_row_m=0.30,
+            expected_yield=Decimal('1.20'),
+            harvest_method='per_sqm',
+            is_species=True,
+        ),
     ]
 
     crops: dict[str, Crop] = {}
@@ -1099,6 +1365,7 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             variety=spec.variety,
             crop_species=find_demo_crop_species(spec.name),
             crop_family_id=spec.crop_family,
+            rotation_break_years=spec.rotation_break_years,
             nutrient_demand=spec.nutrient_demand,
             cultivation_types=spec.cultivation_types,
             cultivation_type=spec.cultivation_types[0] if spec.cultivation_types else '',
@@ -1164,9 +1431,13 @@ def _create_planting_plans(
     # across the beds so the current season's plans mostly check "ok"; the
     # few exceptions are the deliberate teaching cases marked below.
     current = current_year
+    three_back = current - 3
     two_back = current - 2
     last = current - 1
     plan_specs = [
+        # Three seasons back: only the squash bed, so its zucchini can return
+        # this season right after the Cucurbitaceae break.
+        PlanSpec('zucchini', 'kuerbis', 'pre_cultivation', date(three_back, 5, 20), Decimal('16.0'), 16),
         # Two seasons back.
         PlanSpec('mangold', 'salat-1', 'pre_cultivation', date(two_back, 4, 8), Decimal('7.5'), 72),
         PlanSpec('kohlrabi', 'salat-2', 'pre_cultivation', date(two_back, 3, 10), Decimal('8.5'), 110),
@@ -1180,6 +1451,14 @@ def _create_planting_plans(
         PlanSpec('rote-bete', 'kohlrabi', 'direct_sowing', date(two_back, 4, 14), Decimal('15.0')),
         PlanSpec('karotte', 'zucchini', 'direct_sowing', date(two_back, 3, 16), Decimal('16.0')),
         PlanSpec('kohlrabi', 'reserve', 'pre_cultivation', date(two_back, 4, 1), Decimal('14.0'), 180),
+        PlanSpec('kartoffel', 'kartoffel-1', 'direct_sowing', date(two_back, 4, 12), Decimal('20.0')),
+        PlanSpec('karotte', 'kartoffel-2', 'direct_sowing', date(two_back, 3, 18), Decimal('20.0')),
+        PlanSpec('zucchini', 'brokkoli', 'pre_cultivation', date(two_back, 5, 22), Decimal('18.0'), 18),
+        PlanSpec('kartoffel', 'kohlbeet', 'direct_sowing', date(two_back, 4, 14), Decimal('20.0')),
+        PlanSpec('kohlrabi', 'bohnen', 'pre_cultivation', date(two_back, 3, 28), Decimal('16.0'), 200),
+        PlanSpec('salat', 'lauch', 'pre_cultivation', date(two_back, 4, 2), Decimal('12.0'), 130),
+        PlanSpec('kohlrabi', 'mais', 'pre_cultivation', date(two_back, 3, 30), Decimal('16.0'), 200),
+        PlanSpec('karotte', 'kuerbis', 'direct_sowing', date(two_back, 3, 20), Decimal('18.0')),
         # Previous season.
         PlanSpec('kohlrabi', 'salat-1', 'pre_cultivation', date(last, 3, 12), Decimal('8.5'), 110),
         PlanSpec('karotte', 'salat-2', 'direct_sowing', date(last, 3, 15), Decimal('8.0')),
@@ -1195,6 +1474,19 @@ def _create_planting_plans(
         PlanSpec('zucchini', 'kohlrabi', 'pre_cultivation', date(last, 5, 22), Decimal('15.0'), 15),
         PlanSpec('rote-bete', 'zucchini', 'direct_sowing', date(last, 4, 12), Decimal('15.0')),
         PlanSpec('zucchini', 'reserve', 'pre_cultivation', date(last, 5, 24), Decimal('18.0'), 18),
+        PlanSpec('karotte', 'kartoffel-1', 'direct_sowing', date(last, 3, 20), Decimal('20.0')),
+        PlanSpec('zucchini', 'kartoffel-2', 'pre_cultivation', date(last, 5, 20), Decimal('18.0'), 18),
+        PlanSpec('erbse', 'brokkoli', 'direct_sowing', date(last, 3, 25), Decimal('20.0')),
+        PlanSpec('buschbohne', 'kohlbeet', 'direct_sowing', date(last, 5, 5), Decimal('20.0')),
+        # Mustard as green manure after the beans, still a brassica (Brassicaceae).
+        PlanSpec('senf', 'kohlbeet', 'direct_sowing', date(last, 8, 20), Decimal('22.0')),
+        PlanSpec('erbse', 'bohnen', 'direct_sowing', date(last, 3, 20), Decimal('20.0')),
+        PlanSpec('buschbohne', 'lauch', 'direct_sowing', date(last, 5, 8), Decimal('20.0')),
+        # Garlic planted in October and harvested next July: it occupies the
+        # bed in both years.
+        PlanSpec('knoblauch', 'lauch', 'direct_sowing', date(last, 10, 12), Decimal('18.0')),
+        PlanSpec('erbse', 'mais', 'direct_sowing', date(last, 3, 22), Decimal('20.0')),
+        PlanSpec('buschbohne', 'kuerbis', 'direct_sowing', date(last, 5, 6), Decimal('18.0')),
         # Current season.
         # Conflict: lettuce after lettuce on the same bed. Both successions
         # are Asteraceae within the 2-year break, so they flag each other.
@@ -1219,6 +1511,28 @@ def _create_planting_plans(
         PlanSpec('zucchini', 'zucchini', 'pre_cultivation', date(current, 5, 18), Decimal('18.0'), 18),
         # Second half of the lettuce-after-lettuce conflict above.
         PlanSpec('salat', 'salat-1', 'pre_cultivation', date(current, 8, 25), Decimal('8.5'), 95, plan_notes['salat_herbst']),
+        # Lindenhof: one teaching case per bed (docs/crop-rotation.md, "Demo cases").
+        # Conflict from the potato's own 4-year break (potatoes two years ago).
+        PlanSpec('kartoffel', 'kartoffel-1', 'direct_sowing', date(current, 4, 12), Decimal('20.0')),
+        # Hint: heavy feeder (potato) right after a heavy feeder (zucchini).
+        PlanSpec('kartoffel', 'kartoffel-2', 'direct_sowing', date(current, 4, 14), Decimal('20.0')),
+        # Ok, no hint: the peas between zucchini and broccoli break the sequence.
+        PlanSpec('brokkoli', 'brokkoli', 'pre_cultivation', date(current, 4, 20), Decimal('16.0'), 80),
+        # Conflict from last year's mustard green manure (Brassicaceae default).
+        PlanSpec('brokkoli', 'kohlbeet', 'pre_cultivation', date(current, 4, 22), Decimal('16.0'), 80),
+        # Conflict: beans after peas, the peas' stricter 5-year break applies.
+        PlanSpec('buschbohne', 'bohnen', 'direct_sowing', date(current, 5, 10), Decimal('20.0')),
+        # Conflict through the garlic planted last October and harvested in July.
+        PlanSpec('lauch', 'lauch', 'pre_cultivation', date(current, 7, 25), Decimal('8.0'), 190),
+        # Not checkable: Poaceae have no rotation break. Copied into next
+        # season, it follows itself (heavy feeder after heavy feeder).
+        PlanSpec('zuckermais', 'mais', 'direct_sowing', date(current, 5, 15), Decimal('12.0')),
+        # Ok: zucchini again after the 2-year Cucurbitaceae break.
+        PlanSpec('zucchini', 'kuerbis', 'pre_cultivation', date(current, 5, 21), Decimal('16.0'), 16),
+        # Not checkable: Boraginaceae have no rotation break.
+        PlanSpec('phacelia', 'reserve', 'direct_sowing', date(current, 4, 18), Decimal('18.0')),
+        # Not checkable: no plant family recorded for strawberries.
+        PlanSpec('erdbeere', 'reserve', 'pre_cultivation', date(current, 8, 10), Decimal('16.0'), 88),
     ]
 
     author = owner if owner and getattr(owner, 'pk', None) else None

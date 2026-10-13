@@ -11,7 +11,9 @@ import {
 
 import type { BedSuggestion, BedSuggestionCategory } from '../../../api/types';
 import { useTranslation } from '../../../i18n';
+import { getBedsWithRoom } from './bedSuggestionFilters';
 import { getSuggestionReason } from './rotationCopy';
+import { useFamilyNameResolver } from './useFamilyNameResolver';
 import { useBedSuggestions, type RotationInput } from './useRotationQueries';
 
 const VISIBLE_SUGGESTION_COUNT = 5;
@@ -46,8 +48,9 @@ export function BedSuggestionsPanel({ input, cultureLabel, onApplyBed }: BedSugg
   const [showAll, setShowAll] = useState(false);
   const isComplete = Boolean(input.cropId && input.plantingDate);
   const { data, isLoading, isError } = useBedSuggestions(input, isComplete);
+  const familyName = useFamilyNameResolver();
 
-  const results = data?.results ?? [];
+  const results = getBedsWithRoom(data?.results ?? []);
   const visible = showAll ? results : results.slice(0, VISIBLE_SUGGESTION_COUNT);
 
   return (
@@ -109,7 +112,7 @@ export function BedSuggestionsPanel({ input, cultureLabel, onApplyBed }: BedSugg
                     />
                   </Stack>
                   <Typography variant="body2" color="text.secondary">
-                    {getSuggestionReason(suggestion, t, cultureLabel)}
+                    {getSuggestionReason(suggestion, t, familyName, cultureLabel)}
                   </Typography>
                 </Box>
                 {isCurrent ? (

@@ -917,6 +917,8 @@ export interface RotationFinding {
   family_name: string | null;
   previous_plan_id: number | null;
   previous_crop_label: string | null;
+  /** Botanical key of the previous culture's family; render it through the plant-family catalog. */
+  previous_family_key: string | null;
   previous_family_name: string | null;
   year: number | null;
   break_years: number | null;
@@ -936,6 +938,7 @@ export interface RotationAcceptedByUser {
 export interface RotationBedHistoryEntry {
   plan_id: number | null;
   crop_label: string;
+  family_key: string | null;
   family_name: string | null;
   first_year: number;
   last_year: number;
@@ -949,20 +952,47 @@ export interface RotationCheckResponse {
 
 export type BedSuggestionCategory = 'good' | 'fits' | 'hint' | 'no_data' | 'conflict';
 
+/** The plan whose area on a bed is freed last in the checked period. */
+export interface BedBlockingPlan {
+  plan_id: number;
+  crop_label: string;
+  /** ISO date the plan stops occupying the bed. */
+  end_date: string;
+}
+
+/**
+ * One bed for a culture and period: its rotation fit and its free area in the
+ * period (the same capacity rule as the save check, see docs/crop-rotation.md).
+ */
 export interface BedSuggestion {
   bed_id: number;
   bed_name: string;
+  field_id: number | null;
   field_name: string;
+  location_id: number | null;
   location_name: string;
   category: BedSuggestionCategory;
   status: RotationStatus;
   findings: RotationFinding[];
   years_since_family: number | null;
   previous_is_soil_improver: boolean;
+  /** Null when the bed has no area recorded. */
+  bed_area_sqm: number | null;
+  used_area_sqm: number;
+  free_area_sqm: number | null;
+  /** False when the plan's area does not fit; always true without an area. */
+  has_enough_area: boolean;
+  is_partially_occupied: boolean;
+  blocking_plan: BedBlockingPlan | null;
 }
 
 export interface BedSuggestionsResponse {
+  /** Every bed of the project, best fit first; beds without room come last. */
   count: number;
+  available_count: number;
+  /** ISO dates of the checked period. */
+  start_date: string;
+  end_date: string;
   results: BedSuggestion[];
 }
 
@@ -972,6 +1002,8 @@ export interface RotationQueryParams {
   end_date?: string;
   bed_id?: number;
   exclude_plan_id?: number;
+  /** The plan's area in m²; beds that cannot hold it are flagged. */
+  area_sqm?: number;
 }
 
 export type SeasonCopyRotationMode = 'keep' | 'without_bed' | 'skip';
@@ -1128,6 +1160,8 @@ export interface SeasonSetupApplyResponse {
 export interface RemainingAreaResponse {
   bed_id: number;
   bed_area_sqm: number;
+  /** False when the bed has no area recorded; the area check is skipped then. */
+  has_bed_area: boolean;
   overlapping_used_area_sqm: number;
   remaining_area_sqm: number;
   start_date: string;

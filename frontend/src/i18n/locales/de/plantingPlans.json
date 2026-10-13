@@ -14,8 +14,7 @@
     "areaM2": "Fläche (m²)",
     "plantsCount": "Pflanzen (≈)",
     "notes": "Notizen",
-    "cultivationType": "Anbauart",
-    "rotation": "Fruchtfolge"
+    "cultivationType": "Anbauart"
   },
   "labels": {
     "coupled": "gekoppelt"
@@ -245,10 +244,12 @@
     }
   },
   "rotation": {
-    "columnHeader": "FF",
-    "columnTooltip": "Fruchtfolge",
-    "iconAria": "Fruchtfolge: {{status}}",
-    "openPlan": "Klicken, um den Anbauplan zu öffnen.",
+    "iconAria": {
+      "conflict": "Fruchtfolge-Konflikt, Anbaufläche ändern",
+      "accepted": "Fruchtfolge-Konflikt akzeptiert, Anbaufläche ändern",
+      "hint": "Fruchtfolge-Hinweis, Anbaufläche ändern",
+      "info": "Fruchtfolge nicht prüfbar, Anbaufläche ändern"
+    },
     "status": {
       "conflict": "Konflikt",
       "accepted": "Konflikt akzeptiert",
@@ -291,10 +292,12 @@
       "incomplete": "Wähle Kultur, Beet und Pflanztermin, damit wir die Fruchtfolge prüfen können."
     },
     "ok": {
-      "lastFamily": "Fruchtfolge passt: letzte {{family}} {{year}}, Vorkultur {{previousCulture}}.",
-      "lastFamilyWithoutPrevious": "Fruchtfolge passt: letzte {{family}} {{year}}.",
-      "noFamilyOnBed": "Fruchtfolge passt: keine {{family}} auf diesem Beet erfasst.",
-      "title": "Fruchtfolge passt"
+      "text": "Fruchtfolge passt: {{reason}}",
+      "reasons": {
+        "lastFamily": "letzte {{family}} {{year}}, Vorkultur {{previousCulture}}.",
+        "lastFamilyWithoutPrevious": "letzte {{family}} {{year}}.",
+        "noFamilyOnBed": "keine {{family}} auf diesem Beet erfasst."
+      }
     },
     "bedHistory": {
       "title": "Belegung von {{bed}}",
@@ -304,7 +307,8 @@
     },
     "suggestions": {
       "title": "Passende Beete für {{culture}}",
-      "subtitle": "Sortiert nach Anbaupause, Nährstofffolge und Jahren seit der letzten gleichen Familie. Nur Beete, die zum Pflanztermin frei sind.",
+      "periodTitle": "Passende Beete, frei von {{start}} bis {{end}}",
+      "subtitle": "Sortiert nach Anbaupause, Nährstofffolge und Jahren seit der letzten gleichen Familie. Nur Beete mit genug freier Fläche im Zeitraum.",
       "categories": {
         "good": "Passt gut",
         "fits": "Passt",
@@ -316,17 +320,19 @@
       "applyAria": "{{bed}} übernehmen",
       "current": "aktuell gewählt",
       "showAll": "Alle {{count}} Beete anzeigen",
+      "showAllMatching": "Alle {{count}} passenden Beete anzeigen",
       "showLess": "Weniger Beete anzeigen",
       "empty": "Zum Pflanztermin ist kein Beet frei. Prüfe den Pflanztermin oder lege ein weiteres Beet an.",
+      "emptyMatching": "Im Zeitraum hat kein Beet genug freie Fläche ohne Fruchtfolge-Konflikt. Prüfe Pflanztermin und Fläche oder lege ein weiteres Beet an.",
       "loading": "Beete werden geprüft …",
       "error": "Beetvorschläge konnten nicht geladen werden.",
       "needsInput": "Wähle Kultur und Pflanztermin, dann zeigen wir dir passende Beete.",
       "show": "Passende Beete anzeigen",
       "hide": "Vorschläge ausblenden",
       "reasons": {
-        "neverOnBed": "Keine {{family}} auf diesem Beet erfasst.",
-        "lastFamily_one": "Letzte {{family}} {{year}}, vor {{count}} Jahr.",
-        "lastFamily_other": "Letzte {{family}} {{year}}, vor {{count}} Jahren.",
+        "neverOnBed": "Keine {{family}} erfasst",
+        "neverOnBedWithPrevious": "Keine {{family}} erfasst, Vorkultur {{previousCulture}}",
+        "lastFamily": "Letzte {{family}} {{year}}",
         "soilImproverBefore": "Vorkultur {{previousCulture}} hinterlässt Stickstoff für {{culture}}.",
         "hint": "{{year}} stand hier {{previousCulture}}, ebenfalls ein Starkzehrer.",
         "noHistory": "Keine Belegung aus Vorjahren erfasst.",
@@ -334,6 +340,11 @@
         "noBreak": "Für {{family}} ist keine Anbaupause hinterlegt.",
         "conflict": "{{year}} stand hier {{previousCulture}} ({{family}}), frühestens wieder {{earliestYear}}."
       }
+    },
+    "capacity": {
+      "partial": "{{free}} von {{total}} m² frei im Zeitraum",
+      "insufficient": "Nur {{free}} m² frei im Zeitraum ({{blockingCulture}} bis {{date}}), benötigt {{needed}} m²",
+      "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²"
     },
     "filters": {
       "label": "Fruchtfolge filtern",

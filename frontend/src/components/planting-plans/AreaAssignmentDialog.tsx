@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent
 import {
   Box,
   Button,
+  Collapse,
   Link,
   Dialog,
   DialogActions,
@@ -9,14 +10,26 @@ import {
   DialogTitle,
   FormControl,
   FormHelperText,
+  IconButton,
   InputLabel,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
   Stack,
   Typography,
 } from '@mui/material';
 import type { GridRowId } from '@mui/x-data-grid';
 import { useTranslation } from '../../i18n';
-import type { Bed, Field, Location } from '../../api/types';
+import type {
+  Bed,
+  BedSuggestion,
+  Field,
+  Location,
+  PlantingPlan,
+  RotationFinding,
+  RotationStatus,
+} from '../../api/types';
+import { AppTooltip } from '../AppTooltip';
 import { useDialogEditCellOpenRequest } from '../data-grid/DialogEditCellContext';
 import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import EmptyStateCard from '../project/EmptyStateCard';
@@ -30,16 +43,49 @@ import { TypeaheadSelect as Select } from '../inputs/TypeaheadSelect';
 import { fullWidthFieldSx } from '../forms/formLayout';
 import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
-import { BedSuggestionsPanel } from './rotation/BedSuggestionsPanel';
+import { AreaBedSuggestions } from './rotation/AreaBedSuggestions';
+import { getMatchingBeds } from './rotation/bedSuggestionFilters';
 import { RotationCheckPanel } from './rotation/RotationCheckPanel';
+import { RotationStatusIcon } from './rotation/RotationStatusIcon';
+import {
+  getBedCapacityText,
+  getPrimaryFinding,
+  getRotationTitle,
+  getSuggestionReason,
+  isFlaggedRotationStatus,
+} from './rotation/rotationCopy';
+import { useFamilyNameResolver } from './rotation/useFamilyNameResolver';
+import { useRotationAcceptanceDraft } from './rotation/useRotationAcceptanceDraft';
+import { useBedSuggestions } from './rotation/useRotationQueries';
+
+type StoredRotationAcceptance = Pick<
+  PlantingPlan,
+  'rotation_conflict_accepted' | 'rotation_conflict_accepted_at' | 'rotation_conflict_accepted_by_user'
+>;
 
 /** What the crop rotation check needs to know about the plan being assigned. */
 export interface AreaAssignmentRotationContext {
   cropId: number | null;
   /** ISO date (YYYY-MM-DD). */
   plantingDate: string | null;
+  /** ISO date the plan stops occupying its bed; derived from the crop when null. */
+  endDate: string | null;
+  /** The plan's area in m²; null skips the capacity check. */
+  areaSqm: number | null;
   planId: number | null;
   cultureLabel: string;
+  /** The saved plan's rotation status, flagged in the cell; null for drafts. */
+  status: RotationStatus | null;
+  findings: RotationFinding[] | null;
+  acceptance: StoredRotationAcceptance | null;
+}
+
+/** What "Übernehmen" hands back besides the bed. */
+export interface AreaAssignmentApplyDetails {
+  /** Set only when the acceptance changed for the chosen bed. */
+  rotationConflictAccepted?: boolean;
+  /** Free area of the chosen bed in the plan's period (null when unknown). */
+  freeAreaSqm: number | null;
 }
 
 interface AreaAssignmentDialogProps {
@@ -48,7 +94,7 @@ interface AreaAssignmentDialogProps {
   fields: Field[];
   locations: Location[];
   locale: string;
-  onApply: (bedId: number) => Promise<void> | void;
+  onApply: (bedId: number, details: AreaAssignmentApplyDetails) => Promise<void> | void;
   compactLabel: string;
   placeholder?: string;
   hasFocus?: boolean;
@@ -62,6 +108,10 @@ interface AreaAssignmentDialogProps {
   /** Enables the rotation check and bed suggestions once crop and date are known. */
   rotation?: AreaAssignmentRotationContext;
 }
+
+const ACCEPTANCE_KEY_PREFIX = 'bed:';
+const toAcceptanceKey = (bedId: number | null): string => `${ACCEPTANCE_KEY_PREFIX}${bedId ?? ''}`;
+
 
 interface AssignmentState {
   locationId: number | null;
@@ -89,6 +139,20 @@ const selectMenuProps = {
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         },
+      },
+    },
+  },
+} as const;
+
+// Bed options with a rotation status carry a wrapping secondary line.
+const bedOptionMenuProps = {
+  slotProps: {
+    paper: {
+      sx: {
+        maxWidth: { xs: 'calc(100vw - 32px)', sm: 480 },
+        '& .MuiMenuItem-root': { alignItems: 'flex-start', whiteSpace: 'normal' },
+        '& .MuiListItemIcon-root': { minWidth: 32, mt: 0.5 },
+        '& .MuiListItemText-root': { my: 0 },
       },
     },
   },
@@ -163,7 +227,7 @@ function AreaAssignmentDialogComponent({
   field,
   rotation,
 }: AreaAssignmentDialogProps) {
-  const { t } = useTranslation('plantingPlans');
+  const { t, i18n } = useTranslation('plantingPlans');
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -171,6 +235,12 @@ function AreaAssignmentDialogComponent({
   const [triggerFocusRequest, setTriggerFocusRequest] = useState(0);
   const [draft, setDraft] = useState<AssignmentState>({ locationId: null, fieldId: null, bedId: bedId ?? null });
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const familyName = useFamilyNameResolver();
+  const {
+    resetFromPlan: resetAcceptance,
+    getControls: getAcceptanceControls,
+    getPayload: getAcceptancePayload,
+  } = useRotationAcceptanceDraft();
 
   // Derived once per (locations, fields, beds) identity and shared by every
   // growing-area cell in the grid — see getAreaHierarchyIndex.
@@ -272,20 +342,48 @@ function AreaAssignmentDialogComponent({
     return label;
   };
 
-  const handleSuggestedBed = useCallback((suggestedBedId: number): void => {
-    setDraft(normalizeState(suggestedBedId, bedsWithLocation));
+  const handleSuggestedBed = useCallback((suggestion: BedSuggestion): void => {
+    setDraft(normalizeState(suggestion.bed_id, bedsWithLocation));
   }, [bedsWithLocation]);
 
   const hasRotationContext = Boolean(rotation?.cropId && rotation.plantingDate) && bedsWithLocation.length > 0;
-  // The dialog stays compact; only the opt-in suggestions widen it.
-  const showSuggestions = hasRotationContext && isSuggestionsOpen;
   const rotationInput = {
     cropId: rotation?.cropId ?? null,
     bedId: activeDraft.bedId,
     plantingDate: rotation?.plantingDate ?? null,
     planId: rotation?.planId ?? null,
+    endDate: rotation?.endDate ?? null,
+    areaSqm: rotation?.areaSqm ?? null,
   };
   const draftBed = bedsWithLocation.find((item) => item.id === activeDraft.bedId);
+
+  // One batch for every bed of the project: it orders and annotates the bed
+  // options and feeds the suggestions, so both use the save check's rule.
+  const bedOptionsQuery = useBedSuggestions(rotationInput, isOpen && hasRotationContext);
+  const bedOptionResults = bedOptionsQuery.data?.results;
+  const bedOptionById = useMemo(() => new Map(
+    (bedOptionResults ?? []).map((option, rank) => [option.bed_id, { option, rank }]),
+  ), [bedOptionResults]);
+  const matchingBeds = useMemo(() => getMatchingBeds(bedOptionResults ?? []), [bedOptionResults]);
+  const orderedSelectableBeds = useMemo(() => {
+    if (bedOptionById.size === 0) {
+      return selectableBeds;
+    }
+    const rankOf = (item: BedWithHierarchy): number => (
+      (item.id !== undefined ? bedOptionById.get(item.id)?.rank : undefined) ?? Number.MAX_SAFE_INTEGER
+    );
+    return [...selectableBeds].sort((first, second) => rankOf(first) - rankOf(second));
+  }, [bedOptionById, selectableBeds]);
+
+  const getBedOptionSecondary = (option: BedSuggestion): string => {
+    const capacityText = getBedCapacityText(option, rotation?.areaSqm, t, locale, i18n.language);
+    if (!option.has_enough_area) {
+      return capacityText;
+    }
+    return [getSuggestionReason(option, t, familyName, rotation?.cultureLabel ?? ''), capacityText]
+      .filter((part) => part)
+      .join(' · ');
+  };
 
   const isFieldSelectDisabled = !activeDraft.locationId || selectableFields.length === 0;
   const isBedSelectDisabled = !activeDraft.fieldId || selectableBeds.length === 0;
@@ -295,7 +393,13 @@ function AreaAssignmentDialogComponent({
     if (isApplyDisabled || !activeDraft.bedId) {
       return;
     }
-    await onApply(activeDraft.bedId);
+    const acceptancePayload = hasRotationContext ? getAcceptancePayload(toAcceptanceKey(activeDraft.bedId)) : {};
+    await onApply(activeDraft.bedId, {
+      ...(acceptancePayload.rotation_conflict_accepted !== undefined
+        ? { rotationConflictAccepted: acceptancePayload.rotation_conflict_accepted }
+        : {}),
+      freeAreaSqm: bedOptionById.get(activeDraft.bedId)?.option.free_area_sqm ?? null,
+    });
     isOpenRef.current = false;
     setIsOpen(false);
     setTriggerFocusRequest((request) => request + 1);
@@ -434,18 +538,44 @@ function AreaAssignmentDialogComponent({
    * grid's keyboard-entry request can all fire for one and the same entry into
    * the cell, and re-running the body would reset an already edited draft.
    */
+  const savedRotationStatus = rotation?.status ?? null;
+  const storedAcceptance = rotation?.acceptance ?? null;
   const handleOpen = useCallback((): void => {
     if (isOpenRef.current || isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
       return;
     }
 
     isOpenRef.current = true;
-    setDraft(getOpeningDraft());
-    setIsSuggestionsOpen(false);
+    const openingDraft = getOpeningDraft();
+    setDraft(openingDraft);
+    resetAcceptance(storedAcceptance, toAcceptanceKey(openingDraft.bedId));
+    // The suggestions start expanded when the plan's bed has a conflict.
+    setIsSuggestionsOpen(savedRotationStatus === 'conflict');
     setIsOpen(true);
-  }, [getOpeningDraft]);
+  }, [getOpeningDraft, resetAcceptance, savedRotationStatus, storedAcceptance]);
 
   useDialogEditCellOpenRequest(rowId, field, handleOpen);
+
+  const flaggedStatus = isFlaggedRotationStatus(savedRotationStatus ?? undefined) ? savedRotationStatus : null;
+  const statusAdornment = flaggedStatus ? (
+    <AppTooltip title={getRotationTitle(flaggedStatus, getPrimaryFinding(rotation?.findings ?? undefined), t, familyName)}>
+      <IconButton
+        size="small"
+        // The cell itself is the keyboard entry (Enter opens the same dialog),
+        // so the icon stays out of the grid's tab order.
+        tabIndex={-1}
+        aria-label={t(`rotation.iconAria.${flaggedStatus}`)}
+        data-testid="rotation-status-button"
+        onClick={(event) => {
+          event.stopPropagation();
+          handleOpen();
+        }}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        <RotationStatusIcon status={flaggedStatus} fontSize="small" />
+      </IconButton>
+    </AppTooltip>
+  ) : null;
 
   return (
     <>
@@ -457,12 +587,13 @@ function AreaAssignmentDialogComponent({
         focusRequest={triggerFocusRequest}
         onOpen={handleOpen}
         triggerLabel={t('areaAssignment.editButton')}
+        endAdornment={statusAdornment}
       />
       <Dialog
         open={isOpen}
         onClose={handleCancel}
         fullWidth
-        maxWidth={showSuggestions ? 'md' : 'xs'}
+        maxWidth="xs"
       >
         {/* A flex column, so DialogContent scrolls and the actions stay in
             view however tall the rotation check makes the content. */}
@@ -474,19 +605,6 @@ function AreaAssignmentDialogComponent({
         >
           <DialogTitle>{t('areaAssignment.title')}</DialogTitle>
           <DialogContent>
-            {/* With a crop and date known, the rotation suggestions sit next
-                to the hierarchy selects on desktop and below them on mobile. */}
-            <Box
-              sx={{
-                display: 'grid',
-                gap: 3,
-                gridTemplateColumns: {
-                  xs: 'minmax(0, 1fr)',
-                  md: showSuggestions ? 'minmax(0, 2fr) minmax(0, 3fr)' : 'minmax(0, 1fr)',
-                },
-                alignItems: 'start',
-              }}
-            >
             <Box sx={{ pt: 1, minWidth: 0 }}>
               {bedsWithLocation.length === 0 ? (
                 <EmptyStateCard
@@ -551,13 +669,35 @@ function AreaAssignmentDialogComponent({
                     value={activeDraft.bedId ?? ''}
                     label={t('columns.bed')}
                     disabled={isBedSelectDisabled}
-                    MenuProps={selectMenuProps}
+                    MenuProps={bedOptionById.size > 0 ? bedOptionMenuProps : selectMenuProps}
+                    renderValue={(value) => {
+                      const selectedBed = bedsWithLocation.find((item) => item.id === value);
+                      return selectedBed ? renderBedLabel(selectedBed) : '';
+                    }}
                     onChange={(event) => handleBedChange(Number(event.target.value))}
                   >
-                    {selectableBeds.map((item) => {
+                    {orderedSelectableBeds.map((item) => {
                       const label = renderBedLabel(item);
+                      const option = item.id !== undefined ? bedOptionById.get(item.id)?.option : undefined;
+                      if (!option) {
+                        return (
+                          <MenuItem key={item.id} value={item.id} title={label}>{label}</MenuItem>
+                        );
+                      }
                       return (
-                        <MenuItem key={item.id} value={item.id} title={label}>{label}</MenuItem>
+                        <MenuItem
+                          key={item.id}
+                          value={item.id}
+                          title={label}
+                          disabled={!option.has_enough_area}
+                          data-testid="bed-option"
+                          data-rotation-status={option.status}
+                        >
+                          <ListItemIcon>
+                            <RotationStatusIcon status={option.status} fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={label} secondary={getBedOptionSecondary(option) || undefined} />
+                        </MenuItem>
                       );
                     })}
                   </Select>
@@ -575,6 +715,7 @@ function AreaAssignmentDialogComponent({
                       input={rotationInput}
                       bedLabel={draftBed?.name ?? ''}
                       cultureLabel={rotation.cultureLabel}
+                      acceptance={getAcceptanceControls(toAcceptanceKey(activeDraft.bedId))}
                     />
                     <Link
                       component="button"
@@ -588,19 +729,23 @@ function AreaAssignmentDialogComponent({
                         ? t('rotation.suggestions.hide')
                         : t('rotation.suggestions.show')}
                     </Link>
+                    <Collapse in={isSuggestionsOpen} unmountOnExit>
+                      <AreaBedSuggestions
+                        suggestions={matchingBeds}
+                        periodStart={bedOptionsQuery.data?.start_date ?? null}
+                        periodEnd={bedOptionsQuery.data?.end_date ?? null}
+                        selectedBedId={activeDraft.bedId}
+                        isLoading={bedOptionsQuery.isLoading}
+                        isError={bedOptionsQuery.isError}
+                        cultureLabel={rotation.cultureLabel}
+                        numberLocale={locale}
+                        familyName={familyName}
+                        onSelectBed={handleSuggestedBed}
+                      />
+                    </Collapse>
                   </>
                 ) : null}
               </Stack>
-            </Box>
-            {showSuggestions && rotation ? (
-              <Box sx={{ pt: { xs: 0, md: 1 }, minWidth: 0 }}>
-                <BedSuggestionsPanel
-                  input={rotationInput}
-                  cultureLabel={rotation.cultureLabel}
-                  onApplyBed={handleSuggestedBed}
-                />
-              </Box>
-            ) : null}
             </Box>
           </DialogContent>
           <DialogActions>
@@ -629,6 +774,12 @@ export const AreaAssignmentDialog = memo(AreaAssignmentDialogComponent, (previou
   && previous.field === next.field
   && previous.rotation?.cropId === next.rotation?.cropId
   && previous.rotation?.plantingDate === next.rotation?.plantingDate
+  && previous.rotation?.endDate === next.rotation?.endDate
+  && previous.rotation?.areaSqm === next.rotation?.areaSqm
   && previous.rotation?.planId === next.rotation?.planId
   && previous.rotation?.cultureLabel === next.rotation?.cultureLabel
+  && previous.rotation?.status === next.rotation?.status
+  && previous.rotation?.findings === next.rotation?.findings
+  && previous.rotation?.acceptance?.rotation_conflict_accepted === next.rotation?.acceptance?.rotation_conflict_accepted
+  && previous.rotation?.acceptance?.rotation_conflict_accepted_at === next.rotation?.acceptance?.rotation_conflict_accepted_at
 ));

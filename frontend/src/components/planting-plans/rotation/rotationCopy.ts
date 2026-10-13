@@ -5,16 +5,21 @@ import type {
   RotationFinding,
   RotationStatus,
 } from '../../../api/types';
+import { formatLocalizedNumber } from '../../../utils/numberLocalization';
+
+/**
+ * Name of a plant family in the UI language, from its botanical key. Rotation
+ * copy never renders the backend's `family_name` directly (see
+ * `useFamilyNameResolver`); the fallback is only used while the family list
+ * has not loaded.
+ */
+export type FamilyNameResolver = (key: string | null | undefined, fallback?: string | null) => string;
 
 /** Names the UI fills into rotation messages that the finding does not carry. */
 export interface RotationCopyContext {
   bedLabel: string;
   cultureLabel: string;
-}
-
-export interface RotationCopy {
-  title: string;
-  text: string;
+  familyName: FamilyNameResolver;
 }
 
 const STATUS_ORDER: Record<RotationStatus, number> = {
@@ -25,17 +30,28 @@ const STATUS_ORDER: Record<RotationStatus, number> = {
   ok: 4,
 };
 
-/** Severity order used to sort the rotation column (most urgent first). */
+/** Severity order of rotation statuses (most urgent first). */
 export const compareRotationStatus = (
   first: RotationStatus | undefined,
   second: RotationStatus | undefined,
 ): number => (first ? STATUS_ORDER[first] : 5) - (second ? STATUS_ORDER[second] : 5);
+
+/** Statuses the table flags next to the growing area; "ok" stays silent. */
+export const isFlaggedRotationStatus = (
+  status: RotationStatus | undefined,
+): status is Exclude<RotationStatus, 'ok'> => (
+  status === 'conflict' || status === 'accepted' || status === 'hint' || status === 'info'
+);
 
 export const getPrimaryFinding = (
   findings: RotationFinding[] | undefined,
 ): RotationFinding | null => findings?.[0] ?? null;
 
 const fallback = (value: string | null | undefined): string => value ?? '';
+
+const familyOf = (finding: RotationFinding, familyName: FamilyNameResolver): string => (
+  familyName(finding.family_key, finding.family_name)
+);
 
 export function getConflictText(
   finding: RotationFinding,
@@ -49,26 +65,29 @@ export function getConflictText(
     bed: context.bedLabel,
     year: finding.year,
     previousCulture: fallback(finding.previous_crop_label),
-    family: fallback(finding.family_name),
+    family: familyOf(finding, context.familyName),
     culture: fallback(finding.crop_label) || context.cultureLabel,
     count: finding.break_years ?? 0,
     earliestYear: finding.earliest_year,
   });
 }
 
-export function getOkText(finding: RotationFinding, t: TFunction): string {
-  const family = fallback(finding.family_name);
+/** "Fruchtfolge passt: {{reason}}", the one line shown for a fitting bed. */
+export function getOkText(finding: RotationFinding, t: TFunction, familyName: FamilyNameResolver): string {
+  const family = familyOf(finding, familyName);
+  let reason: string;
   if (finding.year === null) {
-    return t('plantingPlans:rotation.ok.noFamilyOnBed', { family });
-  }
-  if (finding.previous_crop_label) {
-    return t('plantingPlans:rotation.ok.lastFamily', {
+    reason = t('plantingPlans:rotation.ok.reasons.noFamilyOnBed', { family });
+  } else if (finding.previous_crop_label) {
+    reason = t('plantingPlans:rotation.ok.reasons.lastFamily', {
       family,
       year: finding.year,
       previousCulture: finding.previous_crop_label,
     });
+  } else {
+    reason = t('plantingPlans:rotation.ok.reasons.lastFamilyWithoutPrevious', { family, year: finding.year });
   }
-  return t('plantingPlans:rotation.ok.lastFamilyWithoutPrevious', { family, year: finding.year });
+  return t('plantingPlans:rotation.ok.text', { reason });
 }
 
 export function getInfoText(
@@ -81,7 +100,7 @@ export function getInfoText(
     case 'no_family':
       return t('plantingPlans:rotation.info.noFamily', { culture });
     case 'no_break':
-      return t('plantingPlans:rotation.info.noBreak', { culture, family: fallback(finding.family_name) });
+      return t('plantingPlans:rotation.info.noBreak', { culture, family: familyOf(finding, context.familyName) });
     case 'no_history':
       return t('plantingPlans:rotation.info.noHistory');
     default:
@@ -89,56 +108,40 @@ export function getInfoText(
   }
 }
 
-/**
- * Title and text of a plan's primary rotation finding, as shown in the table
- * tooltip. The dialog renders the same copy with its links and actions.
- */
-export function getRotationCopy(
+/** The short title of a plan's rotation status, as in the table tooltip. */
+export function getRotationTitle(
   status: RotationStatus,
   finding: RotationFinding | null,
   t: TFunction,
-  context: RotationCopyContext,
-): RotationCopy {
-  if (!finding) {
-    return { title: t(`plantingPlans:rotation.status.${status}`), text: '' };
-  }
-  switch (finding.kind) {
-    case 'family_conflict':
-      return status === 'accepted'
-        ? {
-          title: t('plantingPlans:rotation.accepted.title', { family: fallback(finding.family_name) }),
-          text: getConflictText(finding, t, context),
-        }
-        : {
-          title: t('plantingPlans:rotation.conflict.title', { family: fallback(finding.family_name) }),
-          text: getConflictText(finding, t, context),
-        };
-    case 'nutrient_hint':
-      return {
-        title: t('plantingPlans:rotation.hint.title'),
-        text: t('plantingPlans:rotation.hint.text', {
-          year: finding.year,
-          previousCulture: fallback(finding.previous_crop_label),
-        }),
-      };
-    case 'ok':
-      return { title: t('plantingPlans:rotation.ok.title'), text: getOkText(finding, t) };
+  familyName: FamilyNameResolver,
+): string {
+  const family = finding ? familyOf(finding, familyName) : '';
+  switch (status) {
+    case 'conflict':
+      return t('plantingPlans:rotation.conflict.title', { family });
+    case 'accepted':
+      return t('plantingPlans:rotation.accepted.title', { family });
+    case 'hint':
+      return t('plantingPlans:rotation.hint.title');
+    case 'info':
+      return t('plantingPlans:rotation.info.title');
     default:
-      return { title: t('plantingPlans:rotation.info.title'), text: getInfoText(finding, t, context) };
+      return finding ? getOkText(finding, t, familyName) : t('plantingPlans:rotation.status.ok');
   }
 }
 
-/** The one reason sentence shown next to a bed suggestion. */
+/** The one reason line shown with a suggested bed or a bed option. */
 export function getSuggestionReason(
   suggestion: BedSuggestion,
   t: TFunction,
+  familyName: FamilyNameResolver,
   cultureLabel: string,
 ): string {
   const finding = getPrimaryFinding(suggestion.findings);
   if (!finding) {
     return '';
   }
-  const family = fallback(finding.family_name);
+  const family = familyOf(finding, familyName);
   switch (finding.kind) {
     case 'family_conflict':
       return t('plantingPlans:rotation.suggestions.reasons.conflict', {
@@ -165,29 +168,77 @@ export function getSuggestionReason(
           culture: cultureLabel,
         });
       }
-      if (finding.year === null || suggestion.years_since_family === null) {
-        return t('plantingPlans:rotation.suggestions.reasons.neverOnBed', { family });
+      if (finding.year === null) {
+        return finding.previous_crop_label
+          ? t('plantingPlans:rotation.suggestions.reasons.neverOnBedWithPrevious', {
+            family,
+            previousCulture: finding.previous_crop_label,
+          })
+          : t('plantingPlans:rotation.suggestions.reasons.neverOnBed', { family });
       }
-      return t('plantingPlans:rotation.suggestions.reasons.lastFamily', {
-        family,
-        year: finding.year,
-        count: suggestion.years_since_family,
-      });
+      return t('plantingPlans:rotation.suggestions.reasons.lastFamily', { family, year: finding.year });
     default:
       return '';
   }
 }
 
-export const formatAcceptedDate = (iso: string | null | undefined, language: string): string => {
+/**
+ * Formats an ISO date (or date-time) in the UI language. Date-only values are
+ * read as local calendar dates, so they never shift by a day.
+ */
+export const formatIsoDate = (iso: string | null | undefined, language: string): string => {
   if (!iso) {
     return '';
   }
-  const parsed = new Date(iso);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(iso);
   if (Number.isNaN(parsed.getTime())) {
     return '';
   }
   return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(parsed);
 };
+
+const formatSquareMeters = (value: number, locale: string): string => (
+  formatLocalizedNumber(value, locale, { maximumFractionDigits: 2 })
+);
+
+/**
+ * The capacity part of a bed option's secondary line: the reason a bed cannot
+ * hold the plan, or how much of a partly occupied bed is still free. Empty
+ * for a bed that is free in the whole period.
+ */
+export function getBedCapacityText(
+  suggestion: BedSuggestion,
+  neededAreaSqm: number | null | undefined,
+  t: TFunction,
+  numberLocale: string,
+  language: string,
+): string {
+  const free = suggestion.free_area_sqm;
+  if (!suggestion.has_enough_area && free !== null && neededAreaSqm) {
+    const values = {
+      free: formatSquareMeters(free, numberLocale),
+      needed: formatSquareMeters(neededAreaSqm, numberLocale),
+    };
+    const blocker = suggestion.blocking_plan;
+    return blocker
+      ? t('plantingPlans:rotation.capacity.insufficient', {
+        ...values,
+        blockingCulture: blocker.crop_label,
+        date: formatIsoDate(blocker.end_date, language),
+      })
+      : t('plantingPlans:rotation.capacity.insufficientWithoutBlocker', values);
+  }
+  if (suggestion.is_partially_occupied && free !== null && suggestion.bed_area_sqm !== null) {
+    return t('plantingPlans:rotation.capacity.partial', {
+      free: formatSquareMeters(free, numberLocale),
+      total: formatSquareMeters(suggestion.bed_area_sqm, numberLocale),
+    });
+  }
+  return '';
+}
 
 /** Link to a crop's edit view, where family and rotation break live. */
 export const getCropSettingsPath = (cropId: number): string => `/app/crops?cropId=${cropId}&action=edit`;
