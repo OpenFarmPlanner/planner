@@ -30,7 +30,9 @@ test.describe('Anbaupläne table', () => {
     } else {
       const rows = page.locator('[role="row"][data-id]');
       await expect(rows.first()).toBeVisible();
-      await expect(rows).toHaveCount(CURRENT_SEASON_PLAN_COUNT);
+      // The grid virtualizes rows below the fold, so count through its
+      // aria-rowcount (every plan plus the header row).
+      await expect(page.getByRole('grid')).toHaveAttribute('aria-rowcount', String(CURRENT_SEASON_PLAN_COUNT + 1));
     }
 
     await expectNoHorizontalPageOverflow(page);
