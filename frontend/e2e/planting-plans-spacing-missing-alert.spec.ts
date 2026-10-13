@@ -76,7 +76,7 @@ test.describe('planting plan missing-spacing alert', () => {
     await dialog.getByRole('textbox', { name: 'Pflanzen (≈)' }).fill('40');
     await dialog.getByRole('button', { name: 'Speichern' }).click();
 
-    await expectAlertLinksToGeneralCrop(page, dialog.getByRole('alert'), generalCropId);
+    await expectAlertLinksToGeneralCrop(page, dialog.getByRole('alert').filter({ hasText: SPACING_MESSAGE }), generalCropId);
   });
 
   test('desktop grid shows the localized alert with a crop edit link (1440x900)', async ({ page, request }) => {

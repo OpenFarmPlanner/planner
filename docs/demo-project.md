@@ -13,10 +13,14 @@ The service has two persistent-data entry points:
 
 The template currently creates the `Solawi Sonnenacker` / `Sunny Acre CSA`
 project with two locations, four fields, twelve beds, three suppliers, twenty
-crop-library rows, seed package data for the planned varieties, and seventeen
-planting plans split across two seasons — five in a previous, already-harvested
-2025 season and twelve in the current 2026 season — so the season switcher has
-more than one season to demonstrate. Each plan's season is assigned during
+crop-library rows, seed package data for the planned varieties, and
+thirty-six planting plans split across three seasons — twelve each in the
+current season and the two seasons before it — so the season switcher has more
+than one season to demonstrate. The season years are derived from today's date
+(`demo_current_year()`), never hardcoded, so the history stays inside the
+crop rotation check window in every year. `populate_demo_project` takes an
+optional `current_year` for time-pinned suites; the E2E fixture endpoint
+exposes it as `demo_year` (used by the cross-browser suite). Each plan's season is assigned during
 fixture creation, so demo data never relies on the ordinary planting-plan API
 accepting season-less creates. The crop rows deliberately include
 selectable species entries plus varieties with different shared and own values
@@ -24,10 +28,35 @@ so the species → variety relationship can be reviewed in the UI. All personal
 and guest demo records are project-scoped and owned by the receiving user
 through a regular admin `ProjectMembership`.
 
+### Crop rotation story
+
+The two previous seasons rotate the plant families across the beds so the
+[crop rotation check](./crop-rotation.md) has real history to read, and the
+current season shows every status on purpose:
+
+- **Passt (ok)** — eight of the twelve current plans. Each high-demand crop
+  (tomato, cucumber, zucchini) follows a medium-demand crop, so no nutrient
+  hint appears either.
+- **Konflikt** — the spring and autumn lettuce on "Salat 1": lettuce after
+  lettuce on the same bed within the two-year Asteraceae break. The two plans
+  share a year, so they flag each other (two conflict rows, one case).
+- **Konflikt akzeptiert** — tomato after tomato on "Tomatenreihe 1" in the
+  polytunnel. The acceptance is stamped on the plan and the plan note gives
+  the justification (three tunnel rows cannot hold the three-year Solanaceae
+  break).
+- **Nicht prüfbar** — the carrots on "Karotten 2", a bed newly established
+  this season (see its bed note) with no planting history.
+
+The rotation facts come from the crops' own families and the seeded family
+defaults; the demo never adjusts crop data to look cleaner.
+`test_current_season_showcases_every_rotation_status` in
+`backend/farm/tests/test_demo_project.py` pins this distribution, so a
+template change that breaks the story fails the build.
+
 The demo data exists in German and English. The authenticated API and guest
 demo resolve the language from the request/UI language and create new demo
-projects with matching project, location, field, bed, crop, crop-family, and
-plan-note text. Existing demo projects are user-entered project content after
+projects with matching project, location, field, bed (name and note), crop,
+and plan-note text. Existing demo projects are user-entered project content after
 creation and are not translated in place. Demo crops are linked to
 `CropSpecies` when a matching species exists, so planning read views can show
 localized crop names without rewriting the stored demo records. The management

@@ -11,6 +11,7 @@ from django.db import connection
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -45,6 +46,16 @@ def _scenario_slug(raw_value: str) -> str:
     cleaned = ''.join(ch if ch.isalnum() else '-' for ch in (raw_value or '').strip().lower())
     cleaned = '-'.join(part for part in cleaned.split('-') if part)
     return cleaned or uuid.uuid4().hex[:12]
+
+
+def _optional_demo_year(value: object) -> int | None:
+    """A fixed demo season year for time-pinned suites; ``None`` means today."""
+    if value is None:
+        return None
+    try:
+        return int(str(value))
+    except ValueError as error:
+        raise ValidationError({'demo_year': 'Must be a year.'}) from error
 
 
 def _user_email(scenario: str, role: str) -> str:
@@ -184,7 +195,12 @@ class E2EInvitationFixtureView(APIView):
             grant_public_library_moderator_access(admin)
         ProjectMembership.objects.create(user=admin, project=project, role=ProjectMembership.ROLE_ADMIN)
         if demo_project:
-            populate_demo_project(project, owner=admin, language_code=demo_language)
+            populate_demo_project(
+                project,
+                owner=admin,
+                language_code=demo_language,
+                current_year=_optional_demo_year(request.data.get('demo_year')),
+            )
 
         invitation = ProjectInvitation.objects.create(
             project=project,

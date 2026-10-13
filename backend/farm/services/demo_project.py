@@ -110,6 +110,13 @@ DEMO_TEXT = {
             'salat_frueh': 'Fr\u00fcher Satz f\u00fcr die erste Abo-Kiste.',
             'tomate': 'Stabtomaten nach Jungpflanzenanzucht.',
             'salat_herbst': 'Herbstsatz nach der Sommerpause.',
+            'tomate_akzeptiert': (
+                'Tomate nach Tomate bewusst akzeptiert: Im Tunnel stehen jedes Jahr Tomaten, '
+                'drei Reihen reichen f\u00fcr die Anbaupause nicht. Boden mit reifem Kompost aufgefrischt.'
+            ),
+        },
+        'bed_notes': {
+            'karotte-2': 'Diese Saison neu angelegt, noch keine Vorbelegung erfasst.',
         },
     },
     'en': {
@@ -151,6 +158,13 @@ DEMO_TEXT = {
             'salat_frueh': 'Early succession for the first CSA box.',
             'tomate': 'Stake tomatoes after propagation.',
             'salat_herbst': 'Autumn succession after the summer break.',
+            'tomate_akzeptiert': (
+                'Tomato after tomato accepted on purpose: the tunnel grows tomatoes every year and '
+                'three rows are not enough for the rotation break. Soil refreshed with mature compost.'
+            ),
+        },
+        'bed_notes': {
+            'karotte-2': 'Newly established this season, no previous crops recorded yet.',
         },
     },
 }
@@ -207,6 +221,12 @@ class PlanSpec:
     area_usage_sqm: Decimal
     quantity: int | None = None
     notes: str = ''
+    rotation_conflict_accepted: bool = False
+
+
+def demo_current_year() -> int:
+    """The demo's current season year; earlier seasons are derived from it."""
+    return timezone.localdate().year
 
 
 def reset_project_demo_data(project: Project) -> None:
@@ -288,8 +308,18 @@ def get_demo_project_description(language_code: str | None, *, screenshot: bool 
     return descriptions[language]
 
 
-def populate_demo_project(project: Project, *, owner: Any | None = None, language_code: str | None = None) -> None:
-    """Create a compact, realistic demo farm for screenshots and local demos."""
+def populate_demo_project(
+    project: Project,
+    *,
+    owner: Any | None = None,
+    language_code: str | None = None,
+    current_year: int | None = None,
+) -> None:
+    """Create a compact, realistic demo farm for screenshots and local demos.
+
+    ``current_year`` defaults to today's year; time-pinned E2E suites pass a
+    fixed year so their screenshots do not change at the turn of the year.
+    """
     language = resolve_demo_language(language_code)
     with transaction.atomic():
         reset_project_demo_data(project)
@@ -298,7 +328,14 @@ def populate_demo_project(project: Project, *, owner: Any | None = None, languag
         locations, fields, beds = _create_area_hierarchy(project, language_code=language)
         _create_layouts(project, fields, beds)
         crops = _create_crops(project, suppliers, language_code=language)
-        _create_planting_plans(project, crops, beds, owner, language_code=language)
+        _create_planting_plans(
+            project,
+            crops,
+            beds,
+            owner,
+            language_code=language,
+            current_year=current_year or demo_current_year(),
+        )
         assign_unassigned_planting_plans(project, owner=owner)
         project.demo_seeded_at = timezone.now()
         Project.objects.filter(pk=project.pk).update(demo_seeded_at=project.demo_seeded_at)
@@ -536,6 +573,7 @@ def _create_area_hierarchy(
         for key, name, location_key, length_m, width_m in field_specs
     }
 
+    bed_notes = text['bed_notes']
     bed_specs = [
         ('salat-1', text['beds']['salat-1'], 'fruehbeete', 12.0, 0.75),
         ('salat-2', text['beds']['salat-2'], 'fruehbeete', 12.0, 0.75),
@@ -556,6 +594,7 @@ def _create_area_hierarchy(
             field=fields[field_key],
             length_m=length_m,
             width_m=width_m,
+            notes=bed_notes.get(key, ''),
             project=project,
         )
         for key, name, field_key, length_m, width_m in bed_specs
@@ -1117,37 +1156,74 @@ def _create_planting_plans(
     owner: Any | None,
     *,
     language_code: str,
+    current_year: int,
 ) -> None:
     plan_notes = DEMO_TEXT[language_code]['plan_notes']
+    # Seasons are relative to today, so the history always stays inside the
+    # rotation check window. The previous two seasons rotate the families
+    # across the beds so the current season's plans mostly check "ok"; the
+    # few exceptions are the deliberate teaching cases marked below.
+    current = current_year
+    two_back = current - 2
+    last = current - 1
     plan_specs = [
-        # 2025 season (previous, already harvested) — gives the demo a second
-        # season to switch between, next to the current one below.
-        PlanSpec('salat', 'salat-1', 'pre_cultivation', date(2025, 2, 24), Decimal('8.5'), 95),
-        PlanSpec('tomate', 'tomate-1', 'pre_cultivation', date(2025, 4, 28), Decimal('14.0'), 35),
-        PlanSpec('karotte', 'karotte-1', 'direct_sowing', date(2025, 3, 18), Decimal('16.0')),
-        PlanSpec('kohlrabi', 'kohlrabi', 'pre_cultivation', date(2025, 3, 30), Decimal('14.0'), 180),
-        PlanSpec('zucchini', 'zucchini', 'pre_cultivation', date(2025, 5, 22), Decimal('18.0'), 18),
-        # 2026 season (current)
-        PlanSpec('salat', 'salat-1', 'pre_cultivation', date(2026, 2, 18), Decimal('8.5'), 95, plan_notes['salat_frueh']),
-        PlanSpec('salat', 'salat-2', 'pre_cultivation', date(2026, 3, 22), Decimal('8.5'), 95),
-        PlanSpec('mangold', 'kraeuter', 'pre_cultivation', date(2026, 4, 6), Decimal('7.5'), 72),
-        PlanSpec('tomate', 'tomate-1', 'pre_cultivation', date(2026, 4, 25), Decimal('14.0'), 35, plan_notes['tomate']),
-        PlanSpec('tomate', 'tomate-2', 'pre_cultivation', date(2026, 5, 2), Decimal('14.0'), 35),
-        PlanSpec('gurke', 'gurke', 'pre_cultivation', date(2026, 5, 10), Decimal('12.0'), 38),
-        PlanSpec('karotte', 'karotte-1', 'direct_sowing', date(2026, 3, 12), Decimal('16.0')),
-        PlanSpec('karotte', 'karotte-2', 'direct_sowing', date(2026, 5, 18), Decimal('16.0')),
-        PlanSpec('rote-bete', 'rote-bete', 'direct_sowing', date(2026, 4, 10), Decimal('15.0')),
-        PlanSpec('kohlrabi', 'kohlrabi', 'pre_cultivation', date(2026, 3, 28), Decimal('14.0'), 180),
-        PlanSpec('zucchini', 'zucchini', 'pre_cultivation', date(2026, 5, 18), Decimal('18.0'), 18),
-        PlanSpec('salat', 'salat-1', 'pre_cultivation', date(2026, 8, 25), Decimal('8.5'), 95, plan_notes['salat_herbst']),
+        # Two seasons back.
+        PlanSpec('mangold', 'salat-1', 'pre_cultivation', date(two_back, 4, 8), Decimal('7.5'), 72),
+        PlanSpec('kohlrabi', 'salat-2', 'pre_cultivation', date(two_back, 3, 10), Decimal('8.5'), 110),
+        PlanSpec('karotte', 'kraeuter', 'direct_sowing', date(two_back, 3, 20), Decimal('8.0')),
+        PlanSpec('gurke', 'tomate-1', 'pre_cultivation', date(two_back, 5, 8), Decimal('12.0'), 38),
+        PlanSpec('salat', 'tomate-1', 'pre_cultivation', date(two_back, 9, 2), Decimal('8.5'), 95),
+        PlanSpec('mangold', 'tomate-2', 'pre_cultivation', date(two_back, 4, 2), Decimal('7.5'), 72),
+        PlanSpec('tomate', 'gurke', 'pre_cultivation', date(two_back, 4, 30), Decimal('14.0'), 35),
+        PlanSpec('zucchini', 'karotte-1', 'pre_cultivation', date(two_back, 5, 20), Decimal('18.0'), 18),
+        PlanSpec('kohlrabi', 'rote-bete', 'pre_cultivation', date(two_back, 3, 26), Decimal('14.0'), 180),
+        PlanSpec('rote-bete', 'kohlrabi', 'direct_sowing', date(two_back, 4, 14), Decimal('15.0')),
+        PlanSpec('karotte', 'zucchini', 'direct_sowing', date(two_back, 3, 16), Decimal('16.0')),
+        PlanSpec('kohlrabi', 'reserve', 'pre_cultivation', date(two_back, 4, 1), Decimal('14.0'), 180),
+        # Previous season.
+        PlanSpec('kohlrabi', 'salat-1', 'pre_cultivation', date(last, 3, 12), Decimal('8.5'), 110),
+        PlanSpec('karotte', 'salat-2', 'direct_sowing', date(last, 3, 15), Decimal('8.0')),
+        PlanSpec('salat', 'kraeuter', 'pre_cultivation', date(last, 3, 20), Decimal('8.5'), 95),
+        PlanSpec('tomate', 'tomate-1', 'pre_cultivation', date(last, 4, 28), Decimal('14.0'), 35),
+        PlanSpec('gurke', 'tomate-2', 'pre_cultivation', date(last, 5, 12), Decimal('12.0'), 38),
+        # Autumn lettuce after the cucumbers, so the tomatoes that follow on
+        # this row do not come straight after another heavy feeder.
+        PlanSpec('salat', 'tomate-2', 'pre_cultivation', date(last, 9, 2), Decimal('8.5'), 95),
+        PlanSpec('kohlrabi', 'gurke', 'pre_cultivation', date(last, 3, 3), Decimal('14.0'), 180),
+        PlanSpec('kohlrabi', 'karotte-1', 'pre_cultivation', date(last, 3, 30), Decimal('14.0'), 180),
+        PlanSpec('karotte', 'rote-bete', 'direct_sowing', date(last, 3, 18), Decimal('16.0')),
+        PlanSpec('zucchini', 'kohlrabi', 'pre_cultivation', date(last, 5, 22), Decimal('15.0'), 15),
+        PlanSpec('rote-bete', 'zucchini', 'direct_sowing', date(last, 4, 12), Decimal('15.0')),
+        PlanSpec('zucchini', 'reserve', 'pre_cultivation', date(last, 5, 24), Decimal('18.0'), 18),
+        # Current season.
+        # Conflict: lettuce after lettuce on the same bed. Both successions
+        # are Asteraceae within the 2-year break, so they flag each other.
+        PlanSpec('salat', 'salat-1', 'pre_cultivation', date(current, 2, 18), Decimal('8.5'), 95, plan_notes['salat_frueh']),
+        PlanSpec('salat', 'salat-2', 'pre_cultivation', date(current, 3, 22), Decimal('8.5'), 95),
+        PlanSpec('mangold', 'kraeuter', 'pre_cultivation', date(current, 4, 6), Decimal('7.5'), 72),
+        # Accepted conflict: tomato after tomato in the polytunnel, common
+        # practice there; the note carries the justification.
+        PlanSpec(
+            'tomate', 'tomate-1', 'pre_cultivation', date(current, 4, 25), Decimal('14.0'), 35,
+            f"{plan_notes['tomate']} {plan_notes['tomate_akzeptiert']}",
+            rotation_conflict_accepted=True,
+        ),
+        PlanSpec('tomate', 'tomate-2', 'pre_cultivation', date(current, 5, 2), Decimal('14.0'), 35),
+        PlanSpec('gurke', 'gurke', 'pre_cultivation', date(current, 5, 10), Decimal('12.0'), 38),
+        PlanSpec('karotte', 'karotte-1', 'direct_sowing', date(current, 3, 12), Decimal('16.0')),
+        # Not checkable: "Karotten 2" is newly established this season and
+        # deliberately has no planting history.
+        PlanSpec('karotte', 'karotte-2', 'direct_sowing', date(current, 5, 18), Decimal('16.0')),
+        PlanSpec('rote-bete', 'rote-bete', 'direct_sowing', date(current, 4, 10), Decimal('15.0')),
+        PlanSpec('kohlrabi', 'kohlrabi', 'pre_cultivation', date(current, 3, 28), Decimal('14.0'), 180),
+        PlanSpec('zucchini', 'zucchini', 'pre_cultivation', date(current, 5, 18), Decimal('18.0'), 18),
+        # Second half of the lettuce-after-lettuce conflict above.
+        PlanSpec('salat', 'salat-1', 'pre_cultivation', date(current, 8, 25), Decimal('8.5'), 95, plan_notes['salat_herbst']),
     ]
 
+    author = owner if owner and getattr(owner, 'pk', None) else None
     for spec in plan_specs:
-        season = get_or_create_season_for_date(
-            project,
-            spec.planting_date,
-            created_by=owner if owner and getattr(owner, 'pk', None) else None,
-        )
+        season = get_or_create_season_for_date(project, spec.planting_date, created_by=author)
         PlantingPlan.objects.create(
             crop=crops[spec.crop_key],
             bed=beds[spec.bed_key],
@@ -1156,8 +1232,10 @@ def _create_planting_plans(
             area_usage_sqm=spec.area_usage_sqm,
             quantity=spec.quantity,
             notes=spec.notes,
-            created_by=owner if owner and getattr(owner, 'pk', None) else None,
-            updated_by=owner if owner and getattr(owner, 'pk', None) else None,
+            created_by=author,
+            updated_by=author,
+            rotation_conflict_accepted_by=author if spec.rotation_conflict_accepted else None,
+            rotation_conflict_accepted_at=timezone.now() if spec.rotation_conflict_accepted else None,
             project=project,
             season=season,
         )

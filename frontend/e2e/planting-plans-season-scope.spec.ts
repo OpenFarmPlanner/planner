@@ -43,7 +43,7 @@ test('a first visit without a stored season only loads the active season', async
   for (const planRequest of planRequests) {
     expect(planRequest.headers()['x-season-id'], planRequest.url()).toBeTruthy();
   }
-  // Only the two 2026 tomato rows; the 2025 one belongs to the other season.
+  // Only the current season's two tomato rows; earlier seasons' tomatoes are excluded.
   await page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' }).fill('Paradeiser');
   await expect(cards).toHaveCount(2);
 });

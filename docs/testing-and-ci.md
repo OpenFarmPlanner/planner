@@ -462,8 +462,10 @@ Gecko layout differences at phone width, not Firefox for Android itself.
   That is mid-season in the demo project's 2026 season. Timers keep running.
 - **Locale and time zone:** `de-AT` and `Europe/Vienna` for every project.
 - **Data:** every test seeds its own demo project through the E2E fixture
-  endpoint (`setup_demo`, scenario id per project and test). Its dates are
-  absolute, so server time does not matter.
+  endpoint (`setup_demo`, scenario id per project and test). The demo seeds
+  its seasons relative to today, so `loginToDemoProject` passes
+  `demo_year` (the year of the fixed clock) and the data stays the same
+  whatever the server date.
 - **Masks:** `dynamicContentMasks()` masks the notification bell. Mask any new
   timestamp, user name or counter the same way rather than raising the
   tolerance.

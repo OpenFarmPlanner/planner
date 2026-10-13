@@ -10,6 +10,10 @@ const apiBase = `http://127.0.0.1:${backendPort}/api`;
 // because the hidden columns shifted the index handed to MUI's scrollToIndexes.
 const NARROW_DESKTOP_WIDTH = 1100;
 
+// The demo project seeds its seasons relative to today, so the fixtures plant
+// into the current season rather than a fixed year.
+const CURRENT_SEASON_DATE = `${new Date().getFullYear()}-05-01`;
+
 const focusedField = async (page: Page): Promise<string | null> =>
   page.evaluate(() =>
     document.activeElement?.closest('[role="gridcell"]')?.getAttribute('data-field') ?? null);
@@ -59,7 +63,7 @@ async function createAutocompleteFixture(
     return response.json() as Promise<T>;
   };
 
-  const seasonId = await resolveSeasonId(page, projectId, '2026-05-01');
+  const seasonId = await resolveSeasonId(page, projectId, CURRENT_SEASON_DATE);
   const location = await api<{ id: number }>('/locations/', { name: 'Tastaturhof' });
   const field = await api<{ id: number }>('/fields/', { name: 'Tabfeld', location: location.id });
   const bed = await api<{ id: number }>('/beds/', { name: 'Autocomplete-Beet', field: field.id, area_sqm: 12 });
@@ -83,7 +87,7 @@ async function createAutocompleteFixture(
     crop: initialCrop.id,
     season: seasonId,
     cultivation_type: 'direct_sowing',
-    planting_date: '2026-05-01',
+    planting_date: CURRENT_SEASON_DATE,
     area_usage_sqm: 2,
   });
 
@@ -109,7 +113,7 @@ async function createCultivationTypeFixture(page: Page): Promise<{ planId: numbe
     return response.json() as Promise<T>;
   };
 
-  const seasonId = await resolveSeasonId(page, projectId, '2026-05-01');
+  const seasonId = await resolveSeasonId(page, projectId, CURRENT_SEASON_DATE);
   const location = await api<{ id: number }>('/locations/', { name: 'Anbauart-Enter-Hof' });
   const field = await api<{ id: number }>('/fields/', { name: 'Anbauart-Enter-Feld', location: location.id });
   const bed = await api<{ id: number }>('/beds/', { name: 'Anbauart-Enter-Beet', field: field.id, area_sqm: 12 });
@@ -125,7 +129,7 @@ async function createCultivationTypeFixture(page: Page): Promise<{ planId: numbe
     crop: crop.id,
     season: seasonId,
     cultivation_type: 'direct_sowing',
-    planting_date: '2026-05-01',
+    planting_date: CURRENT_SEASON_DATE,
     area_usage_sqm: 2,
   });
 
@@ -151,7 +155,7 @@ async function createMissingSpacingFixture(page: Page): Promise<{ planId: number
     return response.json() as Promise<T>;
   };
 
-  const seasonId = await resolveSeasonId(page, projectId, '2026-05-01');
+  const seasonId = await resolveSeasonId(page, projectId, CURRENT_SEASON_DATE);
   const location = await api<{ id: number }>('/locations/', { name: 'Pflanzen-Tab-Hof' });
   const field = await api<{ id: number }>('/fields/', { name: 'Pflanzen-Tab-Feld', location: location.id });
   const bed = await api<{ id: number }>('/beds/', { name: 'Pflanzen-Tab-Beet', field: field.id, area_sqm: 12 });
@@ -166,7 +170,7 @@ async function createMissingSpacingFixture(page: Page): Promise<{ planId: number
     crop: crop.id,
     season: seasonId,
     cultivation_type: 'direct_sowing',
-    planting_date: '2026-05-01',
+    planting_date: CURRENT_SEASON_DATE,
     area_usage_sqm: 2,
   });
 
@@ -192,7 +196,7 @@ async function createPlantsAreaLimitFixture(page: Page): Promise<{ planId: numbe
     return response.json() as Promise<T>;
   };
 
-  const seasonId = await resolveSeasonId(page, projectId, '2026-05-01');
+  const seasonId = await resolveSeasonId(page, projectId, CURRENT_SEASON_DATE);
   const location = await api<{ id: number }>('/locations/', { name: 'Pflanzen-Limit-Hof' });
   const field = await api<{ id: number }>('/fields/', { name: 'Pflanzen-Limit-Feld', location: location.id });
   const bed = await api<{ id: number }>('/beds/', { name: 'Pflanzen-Limit-Beet', field: field.id, area_sqm: 7 });
@@ -209,7 +213,7 @@ async function createPlantsAreaLimitFixture(page: Page): Promise<{ planId: numbe
     crop: crop.id,
     season: seasonId,
     cultivation_type: 'direct_sowing',
-    planting_date: '2026-05-01',
+    planting_date: CURRENT_SEASON_DATE,
     area_usage_sqm: 2,
   });
 
