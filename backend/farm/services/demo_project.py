@@ -1521,7 +1521,7 @@ def _create_planting_plans(
         # Conflict from last year's mustard green manure (Brassicaceae default).
         PlanSpec('brokkoli', 'kohlbeet', 'pre_cultivation', date(current, 4, 22), Decimal('16.0'), 80),
         # Conflict: beans after peas, the peas' stricter 5-year break applies.
-        PlanSpec('buschbohne', 'bohnen', 'direct_sowing', date(current, 5, 10), Decimal('20.0')),
+        PlanSpec('buschbohne', 'bohnen', 'direct_sowing', date(current, 5, 12), Decimal('20.0')),
         # Conflict through the garlic planted last October and harvested in July.
         PlanSpec('lauch', 'lauch', 'pre_cultivation', date(current, 7, 25), Decimal('8.0'), 190),
         # Not checkable: Poaceae have no rotation break. Copied into next

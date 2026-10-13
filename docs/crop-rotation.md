@@ -248,7 +248,7 @@ the same cases).
 | Ok with the same family outside the break | Zucchini | Kürbisbeet (Pachtacker Lindenhof) | Passt: zucchini three seasons ago |
 | Conflict whose suggestions include another location | Lauch | Knoblauch & Lauch | "Passende Beete" lists beds in Hofgarten / Acker am Bach |
 | Partly occupied bed with enough room | (dialog of the Lauch row) | Zuckermais | Selectable, "12 von 24 m² frei im Zeitraum" |
-| Bed without enough room | (dialog of the Lauch row) | Bohnen | Disabled, "Nur 4 m² frei im Zeitraum (Buschbohne bis 08.08.<Jahr>), benötigt 8 m²" |
+| Bed without enough room | (dialog of the Lauch row) | Bohnen | Disabled, "Nur 4 m² frei im Zeitraum (Buschbohne bis 10.08.<Jahr>), benötigt 8 m²" |
 | Season copy | copy the current season into the next | — | The copy dialog shows conflicts and a hint (Zuckermais after Zuckermais) |
 
 The seed never overbooks a bed (`test_no_bed_is_overbooked`).

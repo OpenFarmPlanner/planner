@@ -11,8 +11,8 @@ import {
   test,
 } from './fixtures';
 
-// The demo project's 2026 season holds twelve planting plans.
-const CURRENT_SEASON_PLAN_COUNT = 12;
+// The demo project's 2026 season holds twenty-two planting plans.
+const CURRENT_SEASON_PLAN_COUNT = 22;
 
 test.describe('Anbaupläne table', () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -39,8 +39,8 @@ test.describe('Anbaupläne table', () => {
 
   test('keeps the column headers visible while the grid scrolls', async ({ page }, testInfo) => {
     test.skip(isMobileProject(testInfo), 'Phones render plan cards without a grid header.');
-    // All twelve plans fit the desktop viewport; a shorter window makes the
-    // grid's own body scroll.
+    // A shorter window makes sure the
+    // grid's own body scrolls.
     const viewport = page.viewportSize()!;
     await page.setViewportSize({ width: viewport.width, height: 480 });
 

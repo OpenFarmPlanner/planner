@@ -524,7 +524,7 @@ class DemoRotationCasesTests(TestCase):
         self.assertFalse(option['has_enough_area'])
         self.assertEqual(option['free_area_sqm'], 4.0)
         self.assertEqual(option['blocking_plan']['crop_label'], 'Buschbohne')
-        self.assertEqual(option['blocking_plan']['end_date'], f'{self.year}-08-08')
+        self.assertEqual(option['blocking_plan']['end_date'], f'{self.year}-08-10')
 
     def test_copying_the_season_shows_conflicts_and_a_hint(self) -> None:
         source = Season.objects.get(project=self.project, start_date__year=self.year)
