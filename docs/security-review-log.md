@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-14 — Claude — Automated security review of PR #774, follow-up commit (open rotation issues only, filter menu)
+
+**Scope:** `git diff 2e0de6ca..HEAD`: `crop_rotation.py` status for beds without history, frontend rotation filter in the filter menu, docs and tests.
+
+**Findings:** No issues. The backend change only alters a computed status inside the pure rotation service; no new endpoints, queries or parameters. The frontend filter is client-side, in-memory state with no unsafe HTML APIs or new data flows. The earlier entry for this PR still holds.
+
 ## 2026-10-13 — Claude — Automated security review of PR #774 (crop rotation in the growing-area cell and dialog)
 
 **Scope:** `git diff origin/main...HEAD`: `planning/views.py` (`remaining-area`, `bed-suggestions`), `services/bed_capacity.py`, `services/crop_rotation.py`, demo project seed, frontend dialog/cell, tests and docs.
