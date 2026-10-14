@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-14 — Claude — Automated security review of PR #774, follow-up commit (re-recorded baselines)
+
+**Scope:** `git diff 051289a2..HEAD`: re-recorded planting-plans screenshot baselines only.
+
+**Findings:** No issues. Binary test artifacts only; the earlier entries for this PR still hold.
+
 ## 2026-10-14 — Claude — Automated security review of PR #774, follow-up commit (open rotation issues only, filter menu)
 
 **Scope:** `git diff 2e0de6ca..HEAD`: `crop_rotation.py` status for beds without history, frontend rotation filter in the filter menu, docs and tests.
