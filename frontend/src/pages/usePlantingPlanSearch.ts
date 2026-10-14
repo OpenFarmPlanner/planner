@@ -99,6 +99,7 @@ const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
       fieldIds: filterRecord.fieldIds,
       cultivationTypes: filterRecord.cultivationTypes,
       cropKeys: filterRecord.cropKeys,
+      rotationStatuses: [],
       monthRanges,
     },
   };
@@ -186,9 +187,10 @@ export function usePlantingPlanSearch<Row extends SearchRow>({
     }
   }, [projectId]);
 
-  const snapshotRef = useRef<SeasonSwitchSnapshot>({ query, filters, sortKey });
+  // The rotation filter is deliberately left out: it lives in memory only.
+  const snapshotRef = useRef<SeasonSwitchSnapshot>({ query, filters: { ...filters, rotationStatuses: [] }, sortKey });
   useEffect(() => {
-    snapshotRef.current = { query, filters, sortKey };
+    snapshotRef.current = { query, filters: { ...filters, rotationStatuses: [] }, sortKey };
   }, [filters, query, sortKey]);
   useEffect(
     () => registerSeasonSwitchState(SEASON_SWITCH_STATE_KEY, () => snapshotRef.current),

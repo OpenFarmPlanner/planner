@@ -56,6 +56,12 @@ describe('PlantingPlanActiveFilterChips', () => {
     expect(screen.getByText('Kultur: Tomate')).toBeInTheDocument();
   });
 
+  it('shows the crop rotation filter like the others', () => {
+    renderChips(withFilters({ rotationStatuses: ['conflict', 'info'] }));
+
+    expect(screen.getByText('Fruchtfolge: Konflikt, Nicht prüfbar')).toBeInTheDocument();
+  });
+
   it('skips a selected value the options no longer offer', () => {
     // A stale selection can outlive its option, e.g. after the season's
     // plans changed. Printing "undefined" is worse than printing less.

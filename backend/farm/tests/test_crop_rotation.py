@@ -207,13 +207,13 @@ class RotationRuleTest(SimpleTestCase):
         self.assertEqual(result.status, STATUS_INFO)
         self.assertEqual(result.findings[0].kind, KIND_NO_BREAK)
 
-    def test_bed_without_history_in_the_checked_years_is_info(self):
+    def test_bed_without_history_in_the_checked_years_is_ok(self):
         result = evaluate_rotation(
             occupancy(10, CABBAGE, date(2026, 4, 1)),
             [occupancy(1, CARROT, date(2020, 4, 1))],
         )
 
-        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(result.status, STATUS_OK)
         self.assertEqual(result.findings[0].kind, KIND_NO_HISTORY)
 
     def test_heavy_feeder_after_heavy_feeder_is_a_hint(self):

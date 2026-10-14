@@ -337,7 +337,8 @@ def evaluate_rotation(
         for other in others
     )
     if not has_history:
-        result.status = STATUS_INFO
+        # Nothing recorded on the bed in the years that matter: the rotation
+        # fits; the finding only says why there was nothing to compare.
         result.findings.append(RotationFinding(
             kind=KIND_NO_HISTORY,
             crop_label=crop.label,

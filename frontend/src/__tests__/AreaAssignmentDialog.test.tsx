@@ -741,10 +741,31 @@ describe('AreaAssignmentDialog with the crop rotation check', () => {
     expect(await screen.findByText('Fruchtfolge: Nachtschattengewächse zu früh auf diesem Beet')).toBeInTheDocument();
   });
 
-  it('shows no status in the cell when the rotation fits', () => {
-    renderDialog(rotation({ status: 'ok', findings: [finding({ year: 2021 })] }));
+  it('shows no status in the cell when nothing is left to do', () => {
+    for (const status of ['ok', 'accepted', 'hint'] as const) {
+      const { unmount } = render(
+        <MemoryRouter>
+          <AreaAssignmentDialog
+            bedId={101}
+            beds={rotationBeds}
+            fields={fields}
+            locations={locations}
+            locale="de-DE"
+            compactLabel="x"
+            onApply={vi.fn()}
+            rotation={rotation({ status, findings: [finding({ year: 2021 })] })}
+          />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+      unmount();
+    }
+  });
 
-    expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+  it('flags missing culture data in the cell', () => {
+    renderDialog(rotation({ status: 'info', findings: [finding({ kind: 'no_family' })] }));
+
+    expect(screen.getByRole('button', { name: 'Fruchtfolge nicht prüfbar, Anbaufläche ändern' })).toBeInTheDocument();
   });
 
   it('suggests matching beds across locations and fills the selects without saving', async () => {
@@ -821,7 +842,9 @@ describe('AreaAssignmentDialog with the crop rotation check', () => {
       },
     }));
 
-    await user.click(screen.getByRole('button', { name: 'Fruchtfolge-Konflikt akzeptiert, Anbaufläche ändern' }));
+    // Accepted conflicts show no icon in the table, only in the dialog.
+    expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+    await openDialog();
     expect(await screen.findByTestId('rotation-check-accepted')).toHaveTextContent('Akzeptiert von Anna');
     await user.click(screen.getByRole('button', { name: 'Akzeptieren zurücknehmen' }));
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));

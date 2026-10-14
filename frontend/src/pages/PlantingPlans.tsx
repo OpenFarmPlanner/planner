@@ -128,12 +128,7 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
-import { RotationQuickFilters } from "../components/planting-plans/rotation/RotationQuickFilters";
-import {
-  countRotationQuickFilters,
-  matchesRotationQuickFilter,
-  type RotationQuickFilter,
-} from "../components/planting-plans/rotation/rotationQuickFilters";
+import { isFlaggedRotationStatus } from "../components/planting-plans/rotation/rotationCopy";
 import {
   buildRotationKey,
   useRotationAcceptanceDraft,
@@ -1338,6 +1333,7 @@ function PlantingPlans() {
       sowingDate: getRowSowingSchedule(row)?.sowingDate ?? null,
       harvestDate: toIsoDateString(row.harvest_date),
       harvestEndDate: toIsoDateString(row.harvest_end_date),
+      rotationStatus: row.isNew ? null : row.rotation_status ?? null,
     };
   }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule]);
   const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
@@ -1351,28 +1347,8 @@ function PlantingPlans() {
   const openFilterPanel = useCallback((): void => {
     window.setTimeout(() => setIsFilterPanelOpen(true), 0);
   }, []);
-  // Rotation quick filters live in memory only, deliberately not persisted.
-  const [rotationFilter, setRotationFilter] = useState<RotationQuickFilter>("all");
-  const rotationFilterCounts = useMemo(() => {
-    const searchVisible = search.isRowVisible;
-    const rows = searchVisible ? persistedRows.filter(searchVisible) : persistedRows;
-    return countRotationQuickFilters(rows.map((row) => row.rotation_status));
-  }, [persistedRows, search.isRowVisible]);
-  const isRowVisible = useMemo(() => {
-    const searchVisible = search.isRowVisible;
-    if (rotationFilter === "all") {
-      return searchVisible;
-    }
-    return (row: PlantingPlanRow): boolean => (
-      (searchVisible ? searchVisible(row) : true)
-      && (Boolean(row.isNew) || matchesRotationQuickFilter(row.rotation_status, rotationFilter))
-    );
-  }, [rotationFilter, search.isRowVisible]);
-  const mobileListRows = useMemo(() => (
-    rotationFilter === "all"
-      ? search.sortedRows
-      : search.sortedRows.filter((row) => matchesRotationQuickFilter(row.rotation_status, rotationFilter))
-  ), [rotationFilter, search.sortedRows]);
+  const isRowVisible = search.isRowVisible;
+  const mobileListRows = search.sortedRows;
   const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
     isRowVisible,
     onOpenFilterPanel: openFilterPanel,
@@ -2070,12 +2046,6 @@ function PlantingPlans() {
               search={search}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
             />
-            <RotationQuickFilters
-              value={rotationFilter}
-              counts={rotationFilterCounts}
-              onChange={setRotationFilter}
-              sx={{ mb: 1.5, px: 1 }}
-            />
             <MobileCardList
               items={mobileListRows}
               expandedIds={expandedCardIds}
@@ -2086,7 +2056,7 @@ function PlantingPlans() {
                   <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} />
                   {" · "}
                   <SearchHighlightedText text={getBedLabelForRow(item)} />
-                  {item.rotation_status === "conflict" || item.rotation_status === "accepted" || item.rotation_status === "hint" ? (
+                  {isFlaggedRotationStatus(item.rotation_status) ? (
                     <RotationStatusIcon
                       status={item.rotation_status}
                       fontSize="inherit"
@@ -2200,14 +2170,6 @@ function PlantingPlans() {
               columnsPanelOpen={isColumnsPanelOpen}
               onColumnsPanelOpenChange={setIsColumnsPanelOpen}
               columnsButtonRef={setColumnsAnchorEl}
-            />
-          ) : null}
-          {!isMobile && hasPlans ? (
-            <RotationQuickFilters
-              value={rotationFilter}
-              counts={rotationFilterCounts}
-              onChange={setRotationFilter}
-              sx={{ mb: 1 }}
             />
           ) : null}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}

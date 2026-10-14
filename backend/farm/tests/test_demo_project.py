@@ -479,10 +479,10 @@ class DemoRotationCasesTests(TestCase):
                 self.assertEqual(result.status, STATUS_INFO)
                 self.assertEqual(result.findings[0].kind, KIND_NO_BREAK)
 
-    def test_info_for_a_bed_without_history(self) -> None:
+    def test_ok_for_a_bed_without_history(self) -> None:
         result = self.check('Karotte', 'Karotten 2')
 
-        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(result.status, STATUS_OK)
         self.assertEqual(result.findings[0].kind, KIND_NO_HISTORY)
 
     def test_ok_after_a_different_family(self) -> None:

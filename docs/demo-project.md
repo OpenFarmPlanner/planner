@@ -41,7 +41,8 @@ full list, with culture, bed and expected status for a manual check, is the
   the spring and autumn lettuce on "Salat 1" flag each other (two plans of
   the same family in one year), tomato after tomato on "Tomatenreihe 1" is an
   accepted conflict (the plan note gives the justification), "Karotten 2" is
-  newly established this season (see its bed note) and has no history, and
+  newly established this season (see its bed note) and has no history, which
+  checks as "passt", and
   "Gründüngung Reserve" carries Phacelia (a family without a break) and
   strawberries (no plant family recorded yet).
 - **Pachtacker Lindenhof** (leased field, two plots of four beds) holds one

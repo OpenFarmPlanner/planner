@@ -62,12 +62,26 @@ test.describe('planting plan crop rotation in the table', () => {
     await expect(rows(page).getByTestId('rotation-status-button')).toHaveCount(0);
   });
 
-  test('keeps the rotation quick filters', async ({ page }) => {
-    const filters = page.getByTestId('rotation-quick-filters');
-    await filters.getByRole('button', { name: /^Konflikte/ }).click();
+  test('filters by crop rotation status from the filter menu', async ({ page }) => {
+    await expect(page.getByTestId('rotation-quick-filters')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Filter' }).click();
+    const rotationFilter = page.getByRole('group', { name: 'Fruchtfolge' });
+    await rotationFilter.getByRole('button', { name: 'Konflikt' }).click();
+    await page.keyboard.press('Escape');
 
+    await expect(page.getByText('Fruchtfolge: Konflikt')).toBeVisible();
     const count = await rows(page).count();
     expect(count).toBeGreaterThan(0);
     await expect(rows(page).getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' })).toHaveCount(count);
+  });
+
+  test('shows no icon for an accepted conflict, which the filter still finds', async ({ page }) => {
+    await page.getByRole('button', { name: 'Filter' }).click();
+    await page.getByRole('group', { name: 'Fruchtfolge' }).getByRole('button', { name: 'Akzeptiert' }).click();
+    await page.keyboard.press('Escape');
+
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page)).toContainText('Tomatenreihe 1');
+    await expect(rows(page).getByTestId('rotation-status-button')).toHaveCount(0);
   });
 });

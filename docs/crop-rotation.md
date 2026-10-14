@@ -64,17 +64,20 @@ A culture counts as green manure when its crop species carries the
 `green_manure` category (`CropSpecies.categories`); the seeded species list
 does not tag any yet, so today only legumes interrupt the sequence.
 
-**Info — "not checkable".** Deliberately distinct from "passt", so "no warning"
-is never mistaken for "checked and fine":
+**Info — "not checkable".** Only for missing culture data, so "no warning" is
+never mistaken for "checked and fine":
 
 - the culture has no plant family (`no_family`);
 - neither the culture nor its family (nor the other culture) has a break
-  (`no_break`);
-- the bed has no planting plans in the years the check needs to look at —
-  the break window before the plan plus the plan's own years (`no_history`).
+  (`no_break`).
 
 **Ok.** Checked, no conflict, no hint. The finding still carries the last year
-of the family on the bed and the previous culture ("Vorkultur").
+of the family on the bed and the previous culture ("Vorkultur"). A bed with no
+planting plans in the years the check needs to look at (the break window
+before the plan plus the plan's own years) is ok too: nothing recorded there
+can conflict. Its finding has the kind `no_history` and reads "Fruchtfolge
+passt: auf diesem Beet sind keine früheren Anbaupläne erfasst." In the
+suggestions and bed options it ranks like any other ok bed.
 
 Status priority: `conflict` (or `accepted`) > `hint` > `info` > `ok`.
 
@@ -155,16 +158,19 @@ harmless and is reset on the next move.
 
 - **Table**: there is no rotation column. The rotation status sits as a small
   icon button at the right end of the "Standort | Parzelle | Beet" cell, only
-  for `conflict`, `accepted`, `hint` and `info`; an empty cell means "checked
-  and fine". The icons differ in shape, not only colour — warning triangle
-  (conflict), triangle with check (accepted), info circle (hint), question
-  circle (info). The button has an aria-label ("Fruchtfolge-Konflikt,
+  where the user still has something to do: `conflict` (warning triangle)
+  and `info` (question circle, missing culture data). Accepted conflicts and
+  nutrient hints show no icon in the table; they stay visible in
+  "Anbaufläche ändern", and accepted ones can be found through the filter.
+  The button has an aria-label ("Fruchtfolge-Konflikt,
   Anbaufläche ändern") and a tooltip with the finding title only; a click
   opens the same "Anbaufläche ändern" dialog as a click on the cell. It stays
   out of the grid's tab order, since Enter on the cell opens the dialog too.
-  Quick filters "Alle / Konflikte / Akzeptiert / Nicht prüfbar" sit under the
-  search toolbar (and on mobile under the list header); they are kept in
-  memory only. Mobile cards show the icon for conflict, accepted and hint.
+  The "Filter" menu has a "Fruchtfolge" filter (multi-select "Konflikt",
+  "Akzeptiert", "Nicht prüfbar"), shown in the active filter chips like the
+  others and kept in memory only ([search.md](./search.md#filters)). Mobile
+  cards follow the table and show the icon for conflict and not checkable
+  only.
 - **"Anbaufläche ändern"** (`AreaAssignmentDialog`): the Standort → Parzelle →
   Beet cascade, then `RotationCheckPanel` for the selected bed, updated live
   when the bed changes: the warning Alert with the "Bewusst so planen
@@ -238,12 +244,12 @@ the same cases).
 | Conflict, two plans of the same family in one year | Salat (spring and autumn) | Salat 1 (Hofgarten) | Konflikt on both rows |
 | Conflict through a plan crossing the year boundary | Lauch | Knoblauch & Lauch (Pachtacker Lindenhof) | Konflikt: garlic planted last October, harvested this July |
 | Conflict with a green manure of the same family | Brokkoli | Kohlbeet (Pachtacker Lindenhof) | Konflikt: Senf (green manure) last autumn |
-| Accepted conflict | Tomate | Tomatenreihe 1 (Hofgarten) | Konflikt akzeptiert, with the accepting user, date and a note |
-| Hint: heavy feeder after heavy feeder | Kartoffel | Kartoffeln 2 (Pachtacker Lindenhof) | Hinweis: zucchini last season |
+| Accepted conflict | Tomate | Tomatenreihe 1 (Hofgarten) | Konflikt akzeptiert, with the accepting user, date and a note; no table icon, shown in the dialog and under "Fruchtfolge: Akzeptiert" |
+| Hint: heavy feeder after heavy feeder | Kartoffel | Kartoffeln 2 (Pachtacker Lindenhof) | Hinweis: zucchini last season; no table icon, shown in the dialog |
 | No hint because a legume came in between | Brokkoli | Brokkoli (Pachtacker Lindenhof) | Passt: peas between zucchini and broccoli |
-| Info: culture without plant family | Erdbeere | Gründüngung Reserve (Acker am Bach) | Nicht prüfbar: no family |
-| Info: family without any break | Phacelia; Zuckermais | Gründüngung Reserve; Zuckermais (Pachtacker Lindenhof) | Nicht prüfbar: no break |
-| Info: bed without plans in the relevant years | Karotte | Karotten 2 (Acker am Bach) | Nicht prüfbar: no history |
+| Info: culture without plant family | Erdbeere | Gründüngung Reserve (Acker am Bach) | Nicht prüfbar: no family; table icon |
+| Info: family without any break | Phacelia; Zuckermais | Gründüngung Reserve; Zuckermais (Pachtacker Lindenhof) | Nicht prüfbar: no break; table icon |
+| Bed without plans in the relevant years | Karotte | Karotten 2 (Acker am Bach) | Passt: "auf diesem Beet sind keine früheren Anbaupläne erfasst" |
 | Ok with a different family as previous crop | Mangold | Kräuter & Mangold (Hofgarten) | Passt, Vorkultur Salat |
 | Ok with the same family outside the break | Zucchini | Kürbisbeet (Pachtacker Lindenhof) | Passt: zucchini three seasons ago |
 | Conflict whose suggestions include another location | Lauch | Knoblauch & Lauch | "Passende Beete" lists beds in Hofgarten / Acker am Bach |

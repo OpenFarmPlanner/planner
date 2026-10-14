@@ -196,7 +196,8 @@
       "crop": "Crop",
       "plantingDate": "Planting period",
       "harvestStartDate": "Harvest start",
-      "harvestEndDate": "Harvest end"
+      "harvestEndDate": "Harvest end",
+      "rotation": "Crop rotation"
     },
     "monthFrom": "From",
     "monthTo": "To",
@@ -241,13 +242,16 @@
       "hint": "Check the spelling or search for a crop, variety or bed.",
       "clearSearch": "Clear search",
       "resetFilters": "Reset filters"
+    },
+    "rotationOptions": {
+      "conflict": "Conflict",
+      "accepted": "Accepted",
+      "info": "Not checkable"
     }
   },
   "rotation": {
     "iconAria": {
       "conflict": "Crop rotation conflict, change growing area",
-      "accepted": "Crop rotation conflict accepted, change growing area",
-      "hint": "Crop rotation note, change growing area",
       "info": "Crop rotation not checkable, change growing area"
     },
     "status": {
@@ -288,7 +292,6 @@
       "noFamily": "{{culture}} has no plant family. Without a family we cannot check a rotation break.",
       "addFamily": "Add a family to {{culture}}",
       "noBreak": "Neither {{family}} nor {{culture}} has a rotation break. Without a break we cannot check the crop rotation.",
-      "noHistory": "No planting history from previous years is recorded for this bed.",
       "incomplete": "Choose a crop, bed and planting date so we can check the crop rotation."
     },
     "ok": {
@@ -296,7 +299,8 @@
       "reasons": {
         "lastFamily": "last {{family}} in {{year}}, previous crop {{previousCulture}}.",
         "lastFamilyWithoutPrevious": "last {{family}} in {{year}}.",
-        "noFamilyOnBed": "no {{family}} recorded on this bed."
+        "noFamilyOnBed": "no {{family}} recorded on this bed.",
+        "noHistory": "no earlier planting plans recorded on this bed."
       }
     },
     "bedHistory": {
@@ -335,7 +339,7 @@
         "lastFamily": "Last {{family}} in {{year}}",
         "soilImproverBefore": "Previous crop {{previousCulture}} leaves nitrogen for {{culture}}.",
         "hint": "{{previousCulture}} grew here in {{year}}, also a heavy feeder.",
-        "noHistory": "No planting history from previous years recorded.",
+        "noHistory": "No earlier planting plans recorded",
         "noFamily": "{{culture}} has no plant family.",
         "noBreak": "{{family}} has no rotation break.",
         "conflict": "{{previousCulture}} ({{family}}) grew here in {{year}}, earliest again in {{earliestYear}}."
@@ -345,13 +349,6 @@
       "partial": "{{free}} of {{total}} m² free in this period",
       "insufficient": "Only {{free}} m² free in this period ({{blockingCulture}} until {{date}}), {{needed}} m² needed",
       "insufficientWithoutBlocker": "Only {{free}} m² free in this period, {{needed}} m² needed"
-    },
-    "filters": {
-      "label": "Filter by crop rotation",
-      "all": "All ({{count}})",
-      "conflicts": "Conflicts ({{count}})",
-      "accepted": "Accepted ({{count}})",
-      "info": "Cannot be checked ({{count}})"
     }
   }
 }

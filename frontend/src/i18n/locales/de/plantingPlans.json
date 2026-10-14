@@ -196,7 +196,8 @@
       "crop": "Kultur",
       "plantingDate": "Pflanzzeitraum",
       "harvestStartDate": "Erntebeginn",
-      "harvestEndDate": "Ernteende"
+      "harvestEndDate": "Ernteende",
+      "rotation": "Fruchtfolge"
     },
     "monthFrom": "Von",
     "monthTo": "Bis",
@@ -241,13 +242,16 @@
       "hint": "Prüfe die Schreibweise oder suche nach Kultur, Sorte oder Beet.",
       "clearSearch": "Suche löschen",
       "resetFilters": "Filter zurücksetzen"
+    },
+    "rotationOptions": {
+      "conflict": "Konflikt",
+      "accepted": "Akzeptiert",
+      "info": "Nicht prüfbar"
     }
   },
   "rotation": {
     "iconAria": {
       "conflict": "Fruchtfolge-Konflikt, Anbaufläche ändern",
-      "accepted": "Fruchtfolge-Konflikt akzeptiert, Anbaufläche ändern",
-      "hint": "Fruchtfolge-Hinweis, Anbaufläche ändern",
       "info": "Fruchtfolge nicht prüfbar, Anbaufläche ändern"
     },
     "status": {
@@ -288,7 +292,6 @@
       "noFamily": "Bei {{culture}} ist keine Pflanzenfamilie hinterlegt. Ohne Familie können wir keine Anbaupause prüfen.",
       "addFamily": "Familie bei {{culture}} ergänzen",
       "noBreak": "Für {{family}} und bei {{culture}} ist keine Anbaupause hinterlegt. Ohne Anbaupause können wir die Fruchtfolge nicht prüfen.",
-      "noHistory": "Für dieses Beet ist keine Belegung aus Vorjahren erfasst.",
       "incomplete": "Wähle Kultur, Beet und Pflanztermin, damit wir die Fruchtfolge prüfen können."
     },
     "ok": {
@@ -296,7 +299,8 @@
       "reasons": {
         "lastFamily": "letzte {{family}} {{year}}, Vorkultur {{previousCulture}}.",
         "lastFamilyWithoutPrevious": "letzte {{family}} {{year}}.",
-        "noFamilyOnBed": "keine {{family}} auf diesem Beet erfasst."
+        "noFamilyOnBed": "keine {{family}} auf diesem Beet erfasst.",
+        "noHistory": "auf diesem Beet sind keine früheren Anbaupläne erfasst."
       }
     },
     "bedHistory": {
@@ -335,7 +339,7 @@
         "lastFamily": "Letzte {{family}} {{year}}",
         "soilImproverBefore": "Vorkultur {{previousCulture}} hinterlässt Stickstoff für {{culture}}.",
         "hint": "{{year}} stand hier {{previousCulture}}, ebenfalls ein Starkzehrer.",
-        "noHistory": "Keine Belegung aus Vorjahren erfasst.",
+        "noHistory": "Keine früheren Anbaupläne erfasst",
         "noFamily": "Bei {{culture}} ist keine Pflanzenfamilie hinterlegt.",
         "noBreak": "Für {{family}} ist keine Anbaupause hinterlegt.",
         "conflict": "{{year}} stand hier {{previousCulture}} ({{family}}), frühestens wieder {{earliestYear}}."
@@ -345,13 +349,6 @@
       "partial": "{{free}} von {{total}} m² frei im Zeitraum",
       "insufficient": "Nur {{free}} m² frei im Zeitraum ({{blockingCulture}} bis {{date}}), benötigt {{needed}} m²",
       "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²"
-    },
-    "filters": {
-      "label": "Fruchtfolge filtern",
-      "all": "Alle ({{count}})",
-      "conflicts": "Konflikte ({{count}})",
-      "accepted": "Akzeptiert ({{count}})",
-      "info": "Nicht prüfbar ({{count}})"
     }
   }
 }

@@ -36,12 +36,14 @@ export const compareRotationStatus = (
   second: RotationStatus | undefined,
 ): number => (first ? STATUS_ORDER[first] : 5) - (second ? STATUS_ORDER[second] : 5);
 
-/** Statuses the table flags next to the growing area; "ok" stays silent. */
+/**
+ * Statuses the table flags next to the growing area: only what still needs
+ * the user — an open conflict, or culture data that is missing for the check.
+ * Accepted conflicts and nutrient hints show only in "Anbaufläche ändern".
+ */
 export const isFlaggedRotationStatus = (
-  status: RotationStatus | undefined,
-): status is Exclude<RotationStatus, 'ok'> => (
-  status === 'conflict' || status === 'accepted' || status === 'hint' || status === 'info'
-);
+  status: RotationStatus | null | undefined,
+): status is 'conflict' | 'info' => status === 'conflict' || status === 'info';
 
 export const getPrimaryFinding = (
   findings: RotationFinding[] | undefined,
@@ -76,7 +78,9 @@ export function getConflictText(
 export function getOkText(finding: RotationFinding, t: TFunction, familyName: FamilyNameResolver): string {
   const family = familyOf(finding, familyName);
   let reason: string;
-  if (finding.year === null) {
+  if (finding.kind === 'no_history') {
+    reason = t('plantingPlans:rotation.ok.reasons.noHistory');
+  } else if (finding.year === null) {
     reason = t('plantingPlans:rotation.ok.reasons.noFamilyOnBed', { family });
   } else if (finding.previous_crop_label) {
     reason = t('plantingPlans:rotation.ok.reasons.lastFamily', {
@@ -101,8 +105,6 @@ export function getInfoText(
       return t('plantingPlans:rotation.info.noFamily', { culture });
     case 'no_break':
       return t('plantingPlans:rotation.info.noBreak', { culture, family: familyOf(finding, context.familyName) });
-    case 'no_history':
-      return t('plantingPlans:rotation.info.noHistory');
     default:
       return t('plantingPlans:rotation.info.incomplete');
   }

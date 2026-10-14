@@ -7,6 +7,7 @@ import { useTranslation } from '../../../i18n';
 import {
   DATE_FILTER_FIELDS,
   PLANTING_PLAN_SORT_KEYS,
+  ROTATION_FILTER_STATUSES,
   withMonthRange,
   type FilterOption,
   type MonthRange,
@@ -186,6 +187,15 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
         options={options.crops}
         selected={filters.cropKeys}
         onChange={(cropKeys) => setFilters({ ...filters, cropKeys })}
+      />
+      <ChipGroup
+        label={t('plantingPlans:search.fields.rotation')}
+        options={ROTATION_FILTER_STATUSES.map((status) => ({
+          value: status,
+          label: t(`plantingPlans:search.rotationOptions.${status}`),
+        }))}
+        selected={filters.rotationStatuses}
+        onChange={(rotationStatuses) => setFilters({ ...filters, rotationStatuses })}
       />
       {DATE_FILTER_FIELDS.map((field) => (
         <MonthRangeField

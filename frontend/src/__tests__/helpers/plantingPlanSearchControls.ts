@@ -44,6 +44,7 @@ export const activePlantingPlanFilterGroups = (
   if (filters.fieldIds.length) groups.push('field');
   if (filters.cultivationTypes.length) groups.push('cultivationType');
   if (filters.cropKeys.length) groups.push('crop');
+  if (filters.rotationStatuses.length) groups.push('rotation');
   for (const field of ['plantingDate', 'harvestStartDate', 'harvestEndDate'] as const) {
     const range = filters.monthRanges[field];
     if (range.from !== null || range.to !== null) groups.push(field);
