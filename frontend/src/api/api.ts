@@ -345,7 +345,7 @@ export const plantingPlanAPI = {
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/planting-plans/${id}/`),
-  remainingArea: (params: { bed_id: number; start_date: string; end_date: string; exclude_plan_id?: number }) =>
+  remainingArea: (params: { bed_id: number; start_date: string; end_date?: string; crop_id?: number; exclude_plan_id?: number }) =>
     http.get<RemainingAreaResponse>('/planting-plans/remaining-area/', { params }),
   rotationCheck: (params: RotationQueryParams & { bed_id: number }) =>
     http.get<RotationCheckResponse>('/planting-plans/rotation-check/', { params }),

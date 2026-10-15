@@ -183,6 +183,18 @@ describe('PlantingPlanFilterFields', () => {
       );
     });
 
+    it('offers the crop rotation statuses as a filter', async () => {
+      const user = userEvent.setup();
+      const { search } = renderFields(withFilters({ rotationStatuses: ['conflict'] }));
+
+      await user.click(chip('Fruchtfolge', 'Akzeptiert'));
+
+      expect(search.setFilters).toHaveBeenCalledWith(
+        expect.objectContaining({ rotationStatuses: ['conflict', 'accepted'] }),
+      );
+      expect(chip('Fruchtfolge', 'Nicht prüfbar')).toBeInTheDocument();
+    });
+
     it('removes a value that was already selected', async () => {
       const user = userEvent.setup();
       const { search } = renderFields(withFilters({ cropKeys: ['Karotte', 'Tomate'] }));

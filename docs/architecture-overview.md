@@ -101,7 +101,7 @@ docs/                  # This documentation
   and the frontend decides what to render and where to link. See
   [notifications.md](./notifications.md).
 - Views follow a thin-view convention (CLAUDE.md): business logic goes into
-  `backend/farm/services/*.py` (e.g. `services_area.py` for bed-area
+  `backend/farm/services/*.py` (e.g. `bed_capacity.py` for bed-area
   math, `services/seed_packages.py` for the seed-package optimizer,
   `services/public_crops.py` for the publish/import bridge) rather than
   living in view methods.

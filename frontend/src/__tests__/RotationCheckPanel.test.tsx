@@ -154,4 +154,13 @@ describe('RotationCheckPanel', () => {
     expect(await screen.findByText('Fruchtfolge passt: letzte Kreuzblütler 2020, Vorkultur Karotte.')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('treats a bed without earlier plans as fitting', async () => {
+    respond({ status: 'ok', findings: [{ ...conflictFinding, kind: 'no_history', year: null }] });
+
+    renderPanel();
+
+    expect(await screen.findByText('Fruchtfolge passt: auf diesem Beet sind keine früheren Anbaupläne erfasst.')).toBeInTheDocument();
+    expect(screen.queryByTestId('rotation-check-info')).not.toBeInTheDocument();
+  });
 });

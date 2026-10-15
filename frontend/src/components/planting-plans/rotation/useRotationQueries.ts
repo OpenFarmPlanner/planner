@@ -82,36 +82,53 @@ export interface RotationInput {
   /** ISO date (YYYY-MM-DD) or null while the field is empty/invalid. */
   plantingDate: string | null;
   planId: number | null;
+  /**
+   * ISO date the plan stops occupying the bed. Without it the backend derives
+   * the end from the crop's timing, like a saved plan would.
+   */
+  endDate?: string | null;
+  /** The plan's area in m²; without it the bed capacity is not checked. */
+  areaSqm?: number | null;
 }
 
-const buildBaseParams = (input: RotationInput): RotationQueryParams | null => {
-  if (!input.cropId || !input.plantingDate) {
+const buildBaseParams = (
+  cropId: number | null,
+  plantingDate: string | null,
+  planId: number | null,
+  endDate: string | null | undefined,
+): RotationQueryParams | null => {
+  if (!cropId || !plantingDate) {
     return null;
   }
   return {
-    crop_id: input.cropId,
-    planting_date: input.plantingDate,
-    ...(input.planId ? { exclude_plan_id: input.planId } : {}),
+    crop_id: cropId,
+    planting_date: plantingDate,
+    ...(endDate ? { end_date: endDate } : {}),
+    ...(planId ? { exclude_plan_id: planId } : {}),
   };
 };
 
 export function useRotationCheck(input: RotationInput): RotationQueryResult<RotationCheckResponse> {
-  const { cropId, bedId, plantingDate, planId } = input;
+  const { cropId, bedId, plantingDate, planId, endDate } = input;
   const request = useMemo(() => {
-    const base = buildBaseParams({ cropId, bedId, plantingDate, planId });
+    const base = buildBaseParams(cropId, plantingDate, planId, endDate);
     return base && bedId ? { ...base, bed_id: bedId } : null;
-  }, [bedId, cropId, planId, plantingDate]);
+  }, [bedId, cropId, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchRotationCheck);
 }
 
+/**
+ * Every bed of the project for the culture and period, with its rotation fit
+ * and free area — the batch behind the bed options and the suggestions.
+ */
 export function useBedSuggestions(
   input: RotationInput,
   enabled: boolean,
 ): RotationQueryResult<BedSuggestionsResponse> {
-  const { cropId, plantingDate, planId } = input;
-  const request = useMemo(
-    () => (enabled ? buildBaseParams({ cropId, bedId: null, plantingDate, planId }) : null),
-    [cropId, enabled, planId, plantingDate],
-  );
+  const { cropId, plantingDate, planId, endDate, areaSqm } = input;
+  const request = useMemo(() => {
+    const base = enabled ? buildBaseParams(cropId, plantingDate, planId, endDate) : null;
+    return base && areaSqm && areaSqm > 0 ? { ...base, area_sqm: areaSqm } : base;
+  }, [areaSqm, cropId, enabled, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchBedSuggestions);
 }

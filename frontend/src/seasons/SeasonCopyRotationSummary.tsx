@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 
 import type { SeasonCopyPreview, SeasonCopyPreviewItem, SeasonCopyRotationMode } from '../api/types';
+import { useFamilyNameResolver } from '../components/planting-plans/rotation/useFamilyNameResolver';
 import { useTranslation } from '../i18n';
 
 const VISIBLE_ITEM_COUNT = 3;
@@ -26,6 +27,7 @@ interface SeasonCopyRotationSummaryProps {
 
 function useItemReason() {
   const { t } = useTranslation('navigation');
+  const familyName = useFamilyNameResolver();
   return (item: SeasonCopyPreviewItem): string => {
     const finding = item.findings[0];
     if (!finding) {
@@ -33,7 +35,7 @@ function useItemReason() {
     }
     if (item.status === 'conflict') {
       return t('seasonSwitcher.copyDialog.rotation.reasonConflict', {
-        family: finding.family_name ?? '',
+        family: familyName(finding.family_key, finding.family_name),
         year: finding.year,
         earliestYear: finding.earliest_year,
       });

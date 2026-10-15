@@ -207,13 +207,13 @@ class RotationRuleTest(SimpleTestCase):
         self.assertEqual(result.status, STATUS_INFO)
         self.assertEqual(result.findings[0].kind, KIND_NO_BREAK)
 
-    def test_bed_without_history_in_the_checked_years_is_info(self):
+    def test_bed_without_history_in_the_checked_years_is_ok(self):
         result = evaluate_rotation(
             occupancy(10, CABBAGE, date(2026, 4, 1)),
             [occupancy(1, CARROT, date(2020, 4, 1))],
         )
 
-        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(result.status, STATUS_OK)
         self.assertEqual(result.findings[0].kind, KIND_NO_HISTORY)
 
     def test_heavy_feeder_after_heavy_feeder_is_a_hint(self):
@@ -420,23 +420,88 @@ class CropRotationApiTest(ProjectApiTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_bed_suggestions_rank_free_beds_and_skip_occupied_ones(self):
+    def test_bed_suggestions_list_every_bed_with_rotation_and_capacity(self):
         full_bed = Bed.objects.create(name='Belegt', field=self.field, area_sqm=5, project=self.project)
-        self.plan(self.carrot, full_bed, date(2026, 3, 1), self.season_2026)
+        blocker = self.plan(self.carrot, full_bed, date(2026, 3, 1), self.season_2026)
         self.plan(self.kale, self.bed, date(2025, 4, 1), self.season_2025)
         self.plan(self.carrot, self.other_bed, date(2025, 4, 1), self.season_2025)
+
+        response = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', {
+            'crop_id': self.broccoli.id, 'planting_date': '2026-04-01', 'area_sqm': '4',
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 3)
+        self.assertEqual(response.data['available_count'], 2)
+        self.assertEqual(response.data['start_date'], '2026-04-01')
+        bed_ids = [row['bed_id'] for row in response.data['results']]
+        # ok first, then the conflict, then the bed without room.
+        self.assertEqual(bed_ids, [self.other_bed.id, self.bed.id, full_bed.id])
+        by_bed = {row['bed_id']: row for row in response.data['results']}
+        self.assertEqual(by_bed[self.other_bed.id]['category'], 'good')
+        self.assertEqual(by_bed[self.bed.id]['category'], 'conflict')
+        self.assertEqual(by_bed[self.bed.id]['findings'][0]['previous_family_key'], 'Brassicaceae')
+        self.assertEqual(by_bed[self.bed.id]['location_id'], self.location.id)
+        self.assertEqual(by_bed[self.bed.id]['field_id'], self.field.id)
+        full = by_bed[full_bed.id]
+        self.assertFalse(full['has_enough_area'])
+        self.assertEqual(full['free_area_sqm'], 0.0)
+        self.assertEqual(full['bed_area_sqm'], 5.0)
+        self.assertEqual(full['blocking_plan']['plan_id'], blocker.id)
+        self.assertEqual(full['blocking_plan']['crop_label'], 'Karotte')
+        self.assertEqual(full['blocking_plan']['end_date'], blocker.harvest_end_date.isoformat())
+
+    def test_bed_suggestions_skip_the_area_check_without_an_area(self):
+        full_bed = Bed.objects.create(name='Belegt', field=self.field, area_sqm=5, project=self.project)
+        self.plan(self.carrot, full_bed, date(2026, 3, 1), self.season_2026)
 
         response = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', {
             'crop_id': self.broccoli.id, 'planting_date': '2026-04-01',
         })
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['available_count'], response.data['count'])
+
+    def test_bed_suggestions_never_count_the_edited_plan(self):
+        edited = self.plan(self.carrot, self.other_bed, date(2026, 4, 1), self.season_2026)
+
+        response = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', {
+            'crop_id': self.carrot.id, 'planting_date': '2026-04-01', 'area_sqm': '10',
+            'exclude_plan_id': edited.id,
+        })
+
+        row = next(row for row in response.data['results'] if row['bed_id'] == self.other_bed.id)
+        self.assertTrue(row['has_enough_area'])
+        self.assertFalse(row['is_partially_occupied'])
+
+    def test_bed_suggestions_rank_longest_family_break_first(self):
+        third_bed = Bed.objects.create(name='Beet 3', field=self.field, area_sqm=10, project=self.project)
+        self.plan(self.carrot, self.bed, date(2021, 4, 1), self.season_2025)
+        self.plan(self.carrot, self.other_bed, date(2022, 4, 1), self.season_2025)
+        self.plan(self.kale, third_bed, date(2025, 4, 1), self.season_2025)
+
+        response = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', {
+            'crop_id': self.carrot.id, 'planting_date': '2026-04-01',
+        })
+
         bed_ids = [row['bed_id'] for row in response.data['results']]
-        self.assertNotIn(full_bed.id, bed_ids)
-        self.assertEqual(bed_ids[0], self.other_bed.id)
-        self.assertEqual(response.data['results'][0]['category'], 'good')
-        by_bed = {row['bed_id']: row for row in response.data['results']}
-        self.assertEqual(by_bed[self.bed.id]['category'], 'conflict')
+        # Never on the bed (Beet 3) ranks like "longest ago", then 2021, then 2022.
+        self.assertEqual(bed_ids, [third_bed.id, self.bed.id, self.other_bed.id])
+
+    def test_bed_suggestions_validate_the_area(self):
+        response = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', {
+            'crop_id': self.broccoli.id, 'planting_date': '2026-04-01', 'area_sqm': 'x',
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_bed_history_carries_the_family_key(self):
+        self.plan(self.kale, self.bed, date(2025, 4, 1), self.season_2025)
+
+        response = self.client.get('/openfarmplanner/api/planting-plans/rotation-check/', {
+            'crop_id': self.broccoli.id, 'bed_id': self.bed.id, 'planting_date': '2026-04-01',
+        })
+
+        self.assertEqual(response.data['bed_history'][0]['family_key'], 'Brassicaceae')
 
     def test_season_copy_preview_and_conflict_modes(self):
         target = Season.objects.create(

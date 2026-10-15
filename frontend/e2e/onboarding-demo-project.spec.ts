@@ -31,7 +31,7 @@ test.describe('first-project onboarding', () => {
 
     await page.goto('/app/crops');
     await waitForPageStable(page, /Kulturbibliothek/);
-    await expect(page.getByRole('heading', { name: 'Gurke' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Brokkoli' })).toBeVisible();
   });
 
   test('keeps the empty-project path available from onboarding', async ({ page, request }, testInfo) => {

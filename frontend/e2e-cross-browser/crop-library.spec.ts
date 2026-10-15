@@ -11,8 +11,11 @@ import {
 } from './fixtures';
 
 // The project's own crop library ("Kulturen", /app/crops). The demo project
-// has eight crop species; Tomate carries three varieties.
-const DEMO_SPECIES = ['Gurke', 'Karotte', 'Kohlrabi', 'Mangold', 'Rote Rübe', 'Salat', 'Tomate', 'Zucchini'];
+// has eighteen crop species; Tomate carries three varieties.
+const DEMO_SPECIES = [
+  'Brokkoli', 'Buschbohne', 'Erbse', 'Erdbeere', 'Gurke', 'Karotte', 'Kartoffel', 'Knoblauch', 'Kohlrabi',
+  'Lauch', 'Mangold', 'Phacelia', 'Rote Rübe', 'Salat', 'Senf', 'Tomate', 'Zucchini', 'Zuckermais',
+];
 
 test.describe('Kulturen library', () => {
   test.beforeEach(async ({ page }, testInfo) => {

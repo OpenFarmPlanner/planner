@@ -188,6 +188,23 @@ describe('planting plan filters', () => {
     expect(filtered({ locationIds: [BACHACKER], cropKeys: ['tomate'] })).toEqual([]);
   });
 
+  it('filters by crop rotation status and leaves out plans without one', () => {
+    const records = [
+      makeRecord({ id: 11, rotationStatus: 'conflict' }),
+      makeRecord({ id: 12, rotationStatus: 'accepted' }),
+      makeRecord({ id: 13, rotationStatus: 'info' }),
+      makeRecord({ id: 14, rotationStatus: 'ok' }),
+      makeRecord({ id: 15, rotationStatus: null }),
+    ];
+    const ids = (rotationStatuses: PlantingPlanFilters['rotationStatuses']): number[] => records
+      .filter((record) => matchPlantingPlan(record, [], { ...EMPTY_PLANTING_PLAN_FILTERS, rotationStatuses }).matches)
+      .map((record) => record.id);
+
+    expect(ids(['conflict'])).toEqual([11]);
+    expect(ids(['accepted', 'info'])).toEqual([12, 13]);
+    expect(ids([])).toEqual([11, 12, 13, 14, 15]);
+  });
+
   it('ANDs search and filters', () => {
     expect(search('nordfeld', { ...EMPTY_PLANTING_PLAN_FILTERS, locationIds: [BACHACKER] })).toEqual([3]);
   });

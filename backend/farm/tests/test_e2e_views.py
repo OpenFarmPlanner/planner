@@ -96,7 +96,7 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
         project = Project.objects.get(slug=self.scenario)
         self.assertEqual(
             sorted(Season.objects.filter(project=project).values_list('start_date__year', flat=True)),
-            [2024, 2025, 2026],
+            [2023, 2024, 2025, 2026],
         )
 
     def test_demo_setup_rejects_a_non_numeric_demo_year(self) -> None:

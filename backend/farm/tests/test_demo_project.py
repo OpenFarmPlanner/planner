@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import date
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -10,13 +11,23 @@ from django.test import RequestFactory, TestCase
 from accounts.models import UserProjectSettings
 from farm.models import Bed, BedLayout, Crop, FieldLayout, Location, PlantingPlan, Project, ProjectMembership, PublicCrop, Season, Supplier
 from config.languages import resolve_request_language
+from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.crop_rotation import (
+    BREAK_SOURCE_CROP,
+    BREAK_SOURCE_FAMILY,
+    KIND_NO_BREAK,
+    KIND_NO_FAMILY,
+    KIND_NO_HISTORY,
+    KIND_NUTRIENT_HINT,
     STATUS_ACCEPTED,
     STATUS_CONFLICT,
     STATUS_HINT,
     STATUS_INFO,
     STATUS_OK,
+    RotationResult,
     RotationService,
+    preview_season_copy,
+    suggest_beds,
 )
 from farm.services.demo_project import (
     DEMO_PROJECT_DESCRIPTION,
@@ -28,6 +39,7 @@ from farm.services.demo_project import (
     demo_current_year,
     resolve_demo_request_language,
 )
+from farm.services.seasons import build_planting_plan_copies
 
 User = get_user_model()
 
@@ -38,14 +50,14 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(result.project.slug, DEMO_PROJECT_SLUG)
         self.assertTrue(ProjectMembership.objects.filter(user=result.user, project=result.project, role='admin').exists())
-        self.assertEqual(Location.objects.filter(project=result.project).count(), 2)
-        self.assertEqual(Bed.objects.filter(project=result.project).count(), 12)
-        self.assertEqual(Crop.objects.filter(project=result.project).count(), 20)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 36)
+        self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
+        self.assertEqual(Bed.objects.filter(project=result.project).count(), 20)
+        self.assertEqual(Crop.objects.filter(project=result.project).count(), 30)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 65)
         self.assertEqual(Supplier.objects.filter(project=result.project).count(), 3)
-        self.assertEqual(FieldLayout.objects.filter(project=result.project).count(), 4)
-        self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 12)
-        self.assertEqual(Crop.objects.filter(project=result.project, crop_species__isnull=False).count(), 20)
+        self.assertEqual(FieldLayout.objects.filter(project=result.project).count(), 6)
+        self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 20)
+        self.assertEqual(Crop.objects.filter(project=result.project, crop_species__isnull=False).count(), 30)
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='').exists())
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='Moneymaker', harvest_duration_days=65).exists())
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='San Marzano', row_spacing_m=0.90).exists())
@@ -68,7 +80,7 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(second_result.project.id, result.project.id)
         self.assertFalse(Location.objects.filter(project=result.project, name='Temporary Location').exists())
-        self.assertEqual(Location.objects.filter(project=result.project).count(), 2)
+        self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
 
     def test_reset_wipes_stale_history_so_point_in_time_restore_stays_consistent(self) -> None:
         from farm.models import BatchOperation, EntityRevision
@@ -100,12 +112,14 @@ class DemoProjectServiceTests(TestCase):
         seasons = Season.objects.filter(project=result.project).order_by('start_date')
         self.assertEqual(
             list(seasons.values_list('start_date__year', 'end_date__year')),
-            [(year, year) for year in (current_year - 2, current_year - 1, current_year)],
+            [(year, year) for year in range(current_year - 3, current_year + 1)],
         )
         self.assertFalse(PlantingPlan.objects.filter(project=result.project, season__isnull=True).exists())
 
-        for season in seasons:
-            self.assertEqual(PlantingPlan.objects.filter(project=result.project, season=season).count(), 12)
+        self.assertEqual(
+            [PlantingPlan.objects.filter(project=result.project, season=season).count() for season in seasons],
+            [1, 20, 22, 22],
+        )
 
     def test_demo_seasons_follow_the_current_date(self) -> None:
         with patch('farm.services.demo_project.demo_current_year', return_value=2031):
@@ -113,10 +127,10 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(
             sorted(Season.objects.filter(project=result.project).values_list('start_date__year', flat=True)),
-            [2029, 2030, 2031],
+            [2028, 2029, 2030, 2031],
         )
 
-    def test_every_bed_but_the_new_one_has_two_previous_seasons_of_history(self) -> None:
+    def test_only_the_new_bed_has_no_planting_history(self) -> None:
         result = create_or_reset_demo_project()
         current_year = demo_current_year()
 
@@ -129,31 +143,23 @@ class DemoProjectServiceTests(TestCase):
                 self.assertEqual(history_years, set(), bed.name)
                 self.assertTrue(bed.notes)
             else:
-                self.assertEqual(history_years, {current_year - 2, current_year - 1}, bed.name)
+                self.assertIn(current_year - 1, history_years, bed.name)
+                self.assertIn(current_year - 2, history_years, bed.name)
 
-    def test_current_season_showcases_every_rotation_status(self) -> None:
+    def test_rotation_statuses_do_not_depend_on_the_demo_language(self) -> None:
+        statuses = {}
         for language in ('de', 'en'):
-            with self.subTest(language=language):
-                result = create_or_reset_demo_project(language_code=language)
-                plans = list(
-                    PlantingPlan.objects.filter(
-                        project=result.project,
-                        planting_date__year=demo_current_year(),
-                    ).select_related('crop', 'bed')
-                )
-                service = RotationService(result.project.id, language_code=language)
-                statuses = Counter(service.check_plan(plan).status for plan in plans)
+            result = create_or_reset_demo_project(language_code=language)
+            service = RotationService(result.project.id, language_code=language)
+            plans = PlantingPlan.objects.filter(
+                project=result.project, planting_date__year=demo_current_year(),
+            ).select_related('crop', 'bed')
+            statuses[language] = Counter(service.check_plan(plan).status for plan in plans)
 
-                self.assertGreater(statuses[STATUS_OK], len(plans) / 2, statuses)
-                self.assertIn(statuses[STATUS_CONFLICT], (1, 2), statuses)
-                self.assertEqual(statuses[STATUS_ACCEPTED], 1, statuses)
-                self.assertEqual(statuses[STATUS_INFO], 1, statuses)
-                self.assertEqual(statuses[STATUS_HINT], 0, statuses)
-                self.assertEqual(sum(statuses.values()), len(plans))
-
-                accepted = next(plan for plan in plans if plan.rotation_conflict_accepted)
-                self.assertEqual(accepted.rotation_conflict_accepted_by, result.user)
-                self.assertTrue(accepted.notes)
+        self.assertEqual(statuses['de'], statuses['en'])
+        self.assertEqual(
+            set(statuses['de']), {STATUS_OK, STATUS_CONFLICT, STATUS_ACCEPTED, STATUS_HINT, STATUS_INFO},
+        )
 
     def test_demo_project_layout_places_beds_inside_their_fields(self) -> None:
         result = create_or_reset_demo_project()
@@ -163,6 +169,8 @@ class DemoProjectServiceTests(TestCase):
             'Folientunnel S\u00fcd': (240, 40),
             'Wurzelgem\u00fcse': (40, 40),
             'Kohlquartier': (220, 40),
+            'Schlag Nord': (40, 40),
+            'Schlag S\u00fcd': (240, 40),
         }
         expected_positions = {
             'Salat 1': (12, 12),
@@ -177,6 +185,14 @@ class DemoProjectServiceTests(TestCase):
             'Kohlrabi': (8, 24),
             'Zucchini': (36, 24),
             'Gr\u00fcnd\u00fcngung Reserve': (64, 24),
+            'Kartoffeln 1': (8, 24),
+            'Kartoffeln 2': (36, 24),
+            'Brokkoli': (64, 24),
+            'Kohlbeet': (92, 24),
+            'Bohnen': (8, 24),
+            'Knoblauch & Lauch': (36, 24),
+            'Zuckermais': (64, 24),
+            'K\u00fcrbisbeet': (92, 24),
         }
 
         layouts_by_name = {
@@ -204,8 +220,8 @@ class DemoProjectServiceTests(TestCase):
         user = User.objects.get(email='command-demo@example.local')
         self.assertEqual(project.name, 'Solawi Sonnenacker')
         self.assertTrue(ProjectMembership.objects.filter(project=project, user=user, role='admin').exists())
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 36)
-        self.assertEqual(PublicCrop.objects.filter(source_project=project, seed_packages=[]).count(), 20)
+        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 65)
+        self.assertEqual(PublicCrop.objects.filter(source_project=project, seed_packages=[]).count(), 30)
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Roma', row_spacing_m=0.70).exists())
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Moneymaker', row_spacing_m__isnull=True).exists())
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Gurke', variety='Arola', cultivation_types=['pre_cultivation']).exists())
@@ -222,10 +238,10 @@ class DemoProjectServiceTests(TestCase):
         settings_obj = UserProjectSettings.objects.get(user=user)
         self.assertEqual(settings_obj.default_project_id, result.project.id)
         self.assertEqual(settings_obj.last_project_id, result.project.id)
-        self.assertEqual(Location.objects.filter(project=result.project).count(), 2)
-        self.assertEqual(Bed.objects.filter(project=result.project).count(), 12)
-        self.assertEqual(Crop.objects.filter(project=result.project).count(), 20)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 36)
+        self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
+        self.assertEqual(Bed.objects.filter(project=result.project).count(), 20)
+        self.assertEqual(Crop.objects.filter(project=result.project).count(), 30)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 65)
 
     def test_seeding_marks_when_it_finished_after_its_own_revisions(self) -> None:
         """The dashboard tells seed revisions from user changes by this marker."""
@@ -268,7 +284,7 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(second.project.id, first.project.id)
         self.assertFalse(second.created_project)
         self.assertEqual(Project.objects.filter(memberships__user=user, name=DEMO_PROJECT_NAME).count(), 1)
-        self.assertEqual(Location.objects.filter(project=first.project).count(), 2)
+        self.assertEqual(Location.objects.filter(project=first.project).count(), 3)
 
     def test_two_users_receive_separate_demo_projects_and_data(self) -> None:
         first_user = User.objects.create_user(username='first', email='first@example.com', password='pass12345', is_active=True)
@@ -281,8 +297,8 @@ class DemoProjectServiceTests(TestCase):
         self.assertTrue(ProjectMembership.objects.filter(user=first_user, project=first.project, role='admin').exists())
         self.assertTrue(ProjectMembership.objects.filter(user=second_user, project=second.project, role='admin').exists())
         self.assertFalse(ProjectMembership.objects.filter(user=first_user, project=second.project).exists())
-        self.assertEqual(Location.objects.filter(project=first.project).count(), 2)
-        self.assertEqual(Location.objects.filter(project=second.project).count(), 2)
+        self.assertEqual(Location.objects.filter(project=first.project).count(), 3)
+        self.assertEqual(Location.objects.filter(project=second.project).count(), 3)
 
     def test_one_user_can_create_demo_projects_in_both_languages(self) -> None:
         user = User.objects.create_user(username='both', email='both@example.com', password='pass12345', is_active=True)
@@ -336,3 +352,202 @@ class DemoRequestLanguageTests(TestCase):
         request.user = user
 
         self.assertEqual(resolve_demo_request_language(request), 'en')
+
+
+class DemoRotationCasesTests(TestCase):
+    """Every crop rotation and bed capacity case the demo shows on purpose.
+
+    Mirrors the "Demo cases" table in docs/crop-rotation.md, so each row there
+    can be checked by hand in a fresh demo project.
+    """
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.result = create_or_reset_demo_project(language_code='de')
+        cls.project = cls.result.project
+        cls.year = demo_current_year()
+
+    def setUp(self) -> None:
+        self.service = RotationService(self.project.id, language_code='de')
+
+    def plan(self, culture: str, bed: str, *, month: int | None = None) -> PlantingPlan:
+        plans = PlantingPlan.objects.filter(
+            project=self.project, planting_date__year=self.year, crop__name=culture, bed__name=bed,
+        ).select_related('crop', 'bed', 'bed__field__location')
+        if month is not None:
+            plans = plans.filter(planting_date__month=month)
+        return plans.get()
+
+    def check(self, culture: str, bed: str, *, month: int | None = None) -> RotationResult:
+        return self.service.check_plan(self.plan(culture, bed, month=month))
+
+    def bed_options(self, plan: PlantingPlan) -> dict[str, dict]:
+        rows = suggest_beds(
+            self.service,
+            crop=plan.crop,
+            start=plan.planting_date,
+            end=plan.harvest_end_date,
+            exclude_plan_id=plan.pk,
+            needed_area_sqm=plan.area_usage_sqm,
+        )
+        return {row['bed_name']: row for row in rows}
+
+    def test_conflict_from_the_cultures_own_break(self) -> None:
+        result = self.check('Kartoffel', 'Kartoffeln 1')
+
+        self.assertEqual(result.status, STATUS_CONFLICT)
+        finding = result.findings[0]
+        self.assertEqual(finding.break_source, BREAK_SOURCE_CROP)
+        self.assertEqual(finding.crop_label, 'Kartoffel')
+        self.assertEqual(finding.break_years, 4)
+        self.assertEqual(finding.year, self.year - 2)
+
+    def test_conflict_from_the_family_default(self) -> None:
+        result = self.check('Brokkoli', 'Kohlbeet')
+
+        self.assertEqual(result.status, STATUS_CONFLICT)
+        self.assertEqual(result.findings[0].break_source, BREAK_SOURCE_FAMILY)
+        self.assertEqual(result.findings[0].break_years, 4)
+
+    def test_conflict_where_the_previous_cultures_stricter_break_applies(self) -> None:
+        result = self.check('Buschbohne', 'Bohnen')
+
+        self.assertEqual(result.status, STATUS_CONFLICT)
+        finding = result.findings[0]
+        self.assertEqual(finding.previous_crop_label, 'Erbse')
+        self.assertEqual(finding.crop_label, 'Erbse')
+        self.assertEqual(finding.break_years, 5)
+        self.assertEqual(finding.break_source, BREAK_SOURCE_CROP)
+
+    def test_conflict_between_two_plans_in_the_same_year(self) -> None:
+        spring = self.check('Salat', 'Salat 1', month=2)
+        autumn = self.check('Salat', 'Salat 1', month=8)
+
+        for result in (spring, autumn):
+            self.assertEqual(result.status, STATUS_CONFLICT)
+            self.assertEqual(result.findings[0].year, self.year)
+            self.assertEqual(result.findings[0].break_source, BREAK_SOURCE_FAMILY)
+
+    def test_conflict_through_a_plan_crossing_the_year_boundary(self) -> None:
+        result = self.check('Lauch', 'Knoblauch & Lauch')
+
+        self.assertEqual(result.status, STATUS_CONFLICT)
+        finding = result.findings[0]
+        self.assertEqual(finding.previous_crop_label, 'Knoblauch')
+        self.assertEqual(finding.year, self.year)
+        garlic = PlantingPlan.objects.get(pk=finding.previous_plan_id)
+        self.assertEqual(garlic.planting_date.year, self.year - 1)
+        self.assertEqual(garlic.harvest_end_date.year, self.year)
+
+    def test_conflict_with_a_green_manure_of_the_same_family(self) -> None:
+        result = self.check('Brokkoli', 'Kohlbeet')
+
+        self.assertEqual(result.findings[0].previous_crop_label, 'Senf')
+        self.assertEqual(result.findings[0].family_key, 'Brassicaceae')
+
+    def test_accepted_conflict_records_user_and_date(self) -> None:
+        plan = self.plan('Tomate', 'Tomatenreihe 1')
+
+        self.assertEqual(self.service.check_plan(plan).status, STATUS_ACCEPTED)
+        self.assertEqual(plan.rotation_conflict_accepted_by, self.result.user)
+        self.assertIsNotNone(plan.rotation_conflict_accepted_at)
+        self.assertTrue(plan.notes)
+
+    def test_hint_for_a_heavy_feeder_after_a_heavy_feeder(self) -> None:
+        result = self.check('Kartoffel', 'Kartoffeln 2')
+
+        self.assertEqual(result.status, STATUS_HINT)
+        self.assertEqual(result.findings[0].kind, KIND_NUTRIENT_HINT)
+        self.assertEqual(result.findings[0].previous_crop_label, 'Zucchini (Costata Romanesco)')
+
+    def test_no_hint_when_a_legume_came_in_between(self) -> None:
+        result = self.check('Brokkoli', 'Brokkoli')
+
+        self.assertEqual(result.status, STATUS_OK)
+        self.assertEqual(result.findings[0].previous_crop_label, 'Erbse')
+
+    def test_info_for_a_culture_without_a_plant_family(self) -> None:
+        result = self.check('Erdbeere', 'Gründüngung Reserve')
+
+        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(result.findings[0].kind, KIND_NO_FAMILY)
+
+    def test_info_for_a_family_without_a_break(self) -> None:
+        for culture, bed in (('Phacelia', 'Gründüngung Reserve'), ('Zuckermais', 'Zuckermais')):
+            with self.subTest(culture=culture):
+                result = self.check(culture, bed)
+                self.assertEqual(result.status, STATUS_INFO)
+                self.assertEqual(result.findings[0].kind, KIND_NO_BREAK)
+
+    def test_ok_for_a_bed_without_history(self) -> None:
+        result = self.check('Karotte', 'Karotten 2')
+
+        self.assertEqual(result.status, STATUS_OK)
+        self.assertEqual(result.findings[0].kind, KIND_NO_HISTORY)
+
+    def test_ok_after_a_different_family(self) -> None:
+        result = self.check('Mangold', 'Kräuter & Mangold')
+
+        self.assertEqual(result.status, STATUS_OK)
+        finding = result.findings[0]
+        self.assertEqual(finding.previous_crop_label, 'Salat (Lollo Bionda)')
+        self.assertNotEqual(finding.previous_family_key, finding.family_key)
+
+    def test_ok_for_the_same_family_outside_the_break(self) -> None:
+        result = self.check('Zucchini', 'Kürbisbeet')
+
+        self.assertEqual(result.status, STATUS_OK)
+        self.assertEqual(result.findings[0].year, self.year - 3)
+
+    def test_conflict_suggests_beds_in_another_location(self) -> None:
+        plan = self.plan('Lauch', 'Knoblauch & Lauch')
+        location = plan.bed.field.location.name
+
+        matching = [
+            row for row in self.bed_options(plan).values()
+            if row['has_enough_area'] and row['status'] != STATUS_CONFLICT
+        ]
+
+        self.assertTrue(any(row['location_name'] != location for row in matching), matching)
+
+    def test_partially_occupied_bed_with_enough_room_stays_selectable(self) -> None:
+        option = self.bed_options(self.plan('Lauch', 'Knoblauch & Lauch'))['Zuckermais']
+
+        self.assertTrue(option['has_enough_area'])
+        self.assertTrue(option['is_partially_occupied'])
+        self.assertEqual(option['free_area_sqm'], 12.0)
+        self.assertEqual(option['bed_area_sqm'], 24.0)
+
+    def test_bed_without_enough_room_names_the_blocking_plan(self) -> None:
+        option = self.bed_options(self.plan('Lauch', 'Knoblauch & Lauch'))['Bohnen']
+
+        self.assertFalse(option['has_enough_area'])
+        self.assertEqual(option['free_area_sqm'], 4.0)
+        self.assertEqual(option['blocking_plan']['crop_label'], 'Buschbohne')
+        self.assertEqual(option['blocking_plan']['end_date'], f'{self.year}-08-10')
+
+    def test_copying_the_season_shows_conflicts_and_a_hint(self) -> None:
+        source = Season.objects.get(project=self.project, start_date__year=self.year)
+        target = Season.objects.create(
+            project=self.project, start_date=date(self.year + 1, 1, 1), end_date=date(self.year + 1, 12, 31),
+        )
+        pairs, _ = build_planting_plan_copies(source_season=source, target_season=target)
+
+        preview = preview_season_copy(self.service, pairs)
+
+        self.assertGreaterEqual(preview['conflict_count'], 1)
+        self.assertGreaterEqual(preview['hint_count'], 1)
+        hints = [item['crop_label'] for item in preview['items'] if item['status'] == STATUS_HINT]
+        self.assertIn('Zuckermais', hints)
+
+    def test_no_bed_is_overbooked(self) -> None:
+        """Every seeded plan passes the capacity rule of the save check."""
+        for plan in PlantingPlan.objects.filter(project=self.project).select_related('bed'):
+            end = plan.harvest_end_date or plan.harvest_date or plan.planting_date
+            capacity = calculate_bed_capacity(
+                plan.bed, start=plan.planting_date, end=end, exclude_plan_id=plan.pk,
+            )
+            self.assertTrue(
+                capacity.has_room_for(plan.area_usage_sqm),
+                f'{plan} needs {plan.area_usage_sqm} m², {capacity.free_area_sqm} free',
+            )

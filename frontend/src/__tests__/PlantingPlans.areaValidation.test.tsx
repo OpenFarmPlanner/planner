@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   fieldList: vi.fn(),
   bedList: vi.fn(),
   planList: vi.fn(),
+  remainingArea: vi.fn(),
 }));
 
 const commandApiSpies = vi.hoisted(() => ({
@@ -248,9 +249,47 @@ vi.mock("../api/api", async () => {
       ...actual.plantingPlanAPI,
       list: apiMocks.planList,
       listAll: async () => (await apiMocks.planList()).data,
+      remainingArea: apiMocks.remainingArea,
     },
   };
 });
+
+type MockRecord = Record<string, unknown>;
+type RemainingAreaParams = { bed_id: number; start_date: string; end_date?: string; exclude_plan_id?: number };
+
+/**
+ * Stands in for the backend's remaining-area endpoint (farm/services/
+ * bed_capacity.py) over the mocked beds and plans with ISO dates: a plan
+ * occupies its bed from planting date to harvest end, else harvest start,
+ * else its planting date. Reads the mocks' implementations directly, so the
+ * list call counts the tests assert on stay untouched.
+ */
+const emulateRemainingArea = async (params: RemainingAreaParams) => {
+  const beds = ((await apiMocks.bedList.getMockImplementation()?.())?.data.results ?? []) as MockRecord[];
+  const plans = ((await apiMocks.planList.getMockImplementation()?.())?.data.results ?? []) as MockRecord[];
+  const bed = beds.find((item) => item.id === params.bed_id);
+  const bedArea = typeof bed?.area_sqm === "number" ? bed.area_sqm : null;
+  const start = params.start_date;
+  const end = params.end_date ?? params.start_date;
+  const used = plans
+    .filter((plan) => plan.bed === params.bed_id && plan.id !== params.exclude_plan_id)
+    .filter((plan) => {
+      const occupiedUntil = String(plan.harvest_end_date ?? plan.harvest_date ?? plan.planting_date);
+      return String(plan.planting_date) <= end && occupiedUntil >= start;
+    })
+    .reduce((total, plan) => total + Number(plan.area_usage_sqm ?? 0), 0);
+  return {
+    data: {
+      bed_id: params.bed_id,
+      bed_area_sqm: bedArea ?? 0,
+      has_bed_area: bedArea !== null,
+      overlapping_used_area_sqm: used,
+      remaining_area_sqm: Math.max(0, (bedArea ?? 0) - used),
+      start_date: start,
+      end_date: end,
+    },
+  };
+};
 
 describe("PlantingPlans save-time area validation", () => {
   beforeEach(() => {
@@ -261,6 +300,7 @@ describe("PlantingPlans save-time area validation", () => {
     apiMocks.fieldList.mockResolvedValue({ data: { results: [{ id: 11, name: "Parzelle 1", location: 1 }] } });
     apiMocks.bedList.mockResolvedValue({ data: { results: [{ id: 101, name: "Beet A", field: 11, area_sqm: 1 }] } });
     apiMocks.planList.mockResolvedValue({ data: { results: [] } });
+    apiMocks.remainingArea.mockImplementation(emulateRemainingArea);
   });
 
   it("uses contextual row actions instead of permanent action columns", async () => {
@@ -1058,28 +1098,17 @@ describe("PlantingPlans save-time area validation", () => {
     expect(screen.queryByText("Für dieses Beet ist im gewählten Zeitraum keine freie Fläche verfügbar.")).not.toBeInTheDocument();
   });
 
-  it("counts same-bed rows whose German date ranges overlap", async () => {
+  it("asks the backend capacity rule about the row's bed and period", async () => {
     apiMocks.bedList.mockResolvedValue({ data: { results: [{ id: 101, name: "Beet 1", field: 11, area_sqm: 7 }] } });
-    apiMocks.planList.mockResolvedValue({
+    apiMocks.remainingArea.mockResolvedValue({
       data: {
-        results: [
-          {
-            id: 23,
-            bed: 101,
-            crop: 2,
-            planting_date: "2.2.2026",
-            harvest_end_date: "2.6.2026",
-            area_usage_sqm: 3,
-          },
-          {
-            id: 22,
-            bed: 101,
-            crop: 2,
-            planting_date: "20.2.2026",
-            harvest_end_date: "18.9.2026",
-            area_usage_sqm: 1,
-          },
-        ],
+        bed_id: 101,
+        bed_area_sqm: 7,
+        has_bed_area: true,
+        overlapping_used_area_sqm: 3,
+        remaining_area_sqm: 4,
+        start_date: "2026-02-20",
+        end_date: "2026-09-18",
       },
     });
     mockGridRowState.row = {
@@ -1095,60 +1124,53 @@ describe("PlantingPlans save-time area validation", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Zeile speichern" }));
 
     expect(await screen.findByText("Die angegebene Fläche überschreitet die verfügbare Restfläche dieses Beets.")).toBeInTheDocument();
+    expect(apiMocks.remainingArea).toHaveBeenCalledWith({
+      bed_id: 101,
+      start_date: "2026-02-20",
+      end_date: "2026-09-18",
+      crop_id: 2,
+      exclude_plan_id: 22,
+    });
     expect(screen.getByText(areaText("Bereits belegt", "3,00"))).toBeInTheDocument();
     expect(screen.getByText(areaText("Verfügbare Restfläche", "4,00"))).toBeInTheDocument();
   });
 
-  it("shows the corrected remaining-area values for the Majoran overlap scenario", async () => {
-    apiMocks.bedList.mockResolvedValue({ data: { results: [{ id: 101, name: "1", field: 11, area_sqm: 7 }] } });
-    apiMocks.planList.mockResolvedValue({
-      data: {
-        results: [
-          {
-            id: 21,
-            bed: 101,
-            crop: 2,
-            planting_date: "20.9.2026",
-            harvest_end_date: "2.2.2027",
-            area_usage_sqm: 7,
-          },
-          {
-            id: 23,
-            bed: 101,
-            crop: 2,
-            planting_date: "2.2.2026",
-            harvest_end_date: "2.6.2026",
-            area_usage_sqm: 3,
-          },
-          {
-            id: 22,
-            bed: 101,
-            crop: 2,
-            planting_date: "20.2.2026",
-            harvest_end_date: "18.9.2026",
-            area_usage_sqm: 1,
-          },
-        ],
-      },
-    });
+  it("lets the crop timing decide the period when the row's harvest end is stale", async () => {
+    apiMocks.bedList.mockResolvedValue({ data: { results: [{ id: 101, name: "Beet 1", field: 11, area_sqm: 7 }] } });
     mockGridRowState.row = {
       id: 22,
       bed: 101,
       crop: 2,
-      planting_date: "20.2.2026",
-      harvest_end_date: "18.9.2026",
+      planting_date: "2026-08-01",
+      harvest_end_date: "2026-07-01",
       area_m2: "5",
     };
     render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
     await waitForPlansToLoad();
     await userEvent.click(await screen.findByRole("button", { name: "Zeile speichern" }));
 
-    expect(await screen.findByText("Die angegebene Fläche überschreitet die verfügbare Restfläche dieses Beets.")).toBeInTheDocument();
-    expect(screen.getByText(areaText("Beetfläche", "7,00"))).toBeInTheDocument();
-    expect(screen.getByText(areaText("Bereits belegt", "3,00"))).toBeInTheDocument();
-    expect(screen.getByText(areaText("Verfügbare Restfläche", "4,00"))).toBeInTheDocument();
-    expect(screen.getByText(areaText("Übernommen wird", "4,00"))).toBeInTheDocument();
-    expect(commandApiSpies.saveAttemptResult).toHaveBeenLastCalledWith(false);
+    await waitFor(() => {
+      expect(commandApiSpies.saveAttemptResult).toHaveBeenLastCalledWith(true);
+    });
+    expect(apiMocks.remainingArea).toHaveBeenCalledWith({
+      bed_id: 101,
+      start_date: "2026-08-01",
+      crop_id: 2,
+      exclude_plan_id: 22,
+    });
+  });
+
+  it("never blocks a save when the capacity check fails", async () => {
+    apiMocks.remainingArea.mockRejectedValue(new Error("offline"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mockGridRowState.row = { id: 1, bed: 101, crop: 2, planting_date: "2026-04-01", area_m2: "50" };
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+    await userEvent.click(await screen.findByRole("button", { name: "Zeile speichern" }));
+
+    await waitFor(() => {
+      expect(commandApiSpies.saveAttemptResult).toHaveBeenLastCalledWith(true);
+    });
   });
 
   it("allows saving the Majoran row when the requested area fits the corrected remaining area", async () => {

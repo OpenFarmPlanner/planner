@@ -73,8 +73,9 @@ the visible crop name is not reported as a synonym hit.
 
 ## Filters
 
-- Filters: **Standort, Parzelle, Anbauart, Kultur** (each multi-select) and
-  **Pflanzzeitraum, Erntebeginn, Ernteende** (each month from / month to).
+- Filters: **Standort, Parzelle, Anbauart, Kultur, Fruchtfolge** (each
+  multi-select) and **Pflanzzeitraum, Erntebeginn, Ernteende** (each month
+  from / month to).
 - Values selected **within** one filter combine with **OR**; different
   filters combine with **AND**; search and filters combine with **AND**.
 - The **Kultur** filter groups by the Kultur name, so it covers every Sorte
@@ -86,7 +87,13 @@ the visible crop name is not reported as a synonym hit.
   date (e.g. no harvest start because the crop has no growth duration) never
   matches an active range on it. The three ranges combine with AND like all
   filters.
-- Options are **derived from the records being searched** (the plans of the
+- **Fruchtfolge** matches the plan's crop rotation status: "Konflikt",
+  "Akzeptiert" (accepted conflicts, which the table shows no icon for) and
+  "Nicht prüfbar" (missing culture data). Its three options are fixed, not
+  derived, and drafts without a status never match an active selection.
+  Unlike the other filters it is never handed over on a season switch: it
+  stays in memory only. See [crop-rotation.md](./crop-rotation.md#ui).
+- Other options are **derived from the records being searched** (the plans of the
   active season), so a filter never offers a value that matches nothing.
 - **Parzelle depends on Standort:** with Standorte selected, only their
   Parzellen are offered, and deselecting a Standort drops its Parzellen from

@@ -315,10 +315,11 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         )
 
     def test_bed_suggestions_query_count_is_constant_in_bed_count(self):
-        """Ranking free beds checks every bed in memory against one project-wide
-        bed history, so extra beds in new fields must not add queries."""
+        """Ranking beds checks every bed in memory against one project-wide bed
+        history, and their capacity in one query; the blocking plan's culture
+        comes from that history. Extra beds in new fields must not add queries."""
         url = '/openfarmplanner/api/planting-plans/bed-suggestions/'
-        params = {'crop_id': self.crops[0].id, 'planting_date': '2027-04-01'}
+        params = {'crop_id': self.crops[0].id, 'planting_date': '2026-04-01', 'area_sqm': '1000'}
         for index in range(ROW_COUNT):
             PlantingPlan.objects.create(
                 crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 4, 1),
@@ -328,6 +329,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         with CaptureQueriesContext(connection) as before:
             response = self.client.get(url, params)
         self.assertEqual(len(response.data['results']), ROW_COUNT)
+        self.assertTrue(all(row['blocking_plan'] for row in response.data['results']))
 
         for index in range(ROW_COUNT):
             extra_field = Field.objects.create(

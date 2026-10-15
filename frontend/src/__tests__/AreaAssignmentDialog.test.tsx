@@ -1,9 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Bed, Field, Location } from '../api/types';
-import { AreaAssignmentDialog } from '../components/planting-plans/AreaAssignmentDialog';
+import { MemoryRouter } from 'react-router';
+import type { Bed, BedSuggestion, Field, Location, RotationFinding } from '../api/types';
+import {
+  AreaAssignmentDialog,
+  type AreaAssignmentRotationContext,
+} from '../components/planting-plans/AreaAssignmentDialog';
 import { getAreaHierarchyIndex } from '../components/planting-plans/areaHierarchySelection';
+import { resetPlantFamiliesCache } from '../crops/plantFamilies';
+
+const apiMocks = vi.hoisted(() => ({
+  bedSuggestions: vi.fn(),
+  rotationCheck: vi.fn(),
+  plantFamilies: vi.fn(),
+}));
+vi.mock('../api/api', () => ({
+  plantingPlanAPI: { bedSuggestions: apiMocks.bedSuggestions, rotationCheck: apiMocks.rotationCheck },
+  plantFamilyAPI: { list: apiMocks.plantFamilies },
+}));
 
 const locations: Location[] = [
   { id: 1, name: 'Regenbogenland' },
@@ -267,7 +282,7 @@ describe('AreaAssignmentDialog', () => {
     await userEvent.setup().click(screen.getByRole('option', { name: /^6 \(8,00\s+m²\)$/ }));
     await userEvent.setup().click(screen.getByRole('button', { name: 'Übernehmen' }));
 
-    expect(onApply).toHaveBeenCalledWith(102);
+    expect(onApply).toHaveBeenCalledWith(102, { freeAreaSqm: null });
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Anbaufläche ändern' })).not.toBeInTheDocument();
     });
@@ -356,7 +371,7 @@ describe('AreaAssignmentDialog', () => {
     await expectFocusAfterTab(user, applyButton);
     await user.keyboard('{Enter}');
 
-    expect(onApply).toHaveBeenCalledWith(101);
+    expect(onApply).toHaveBeenCalledWith(101, { freeAreaSqm: null });
   });
 
   it('supports reverse tab order with Shift+Tab', async () => {
@@ -576,5 +591,264 @@ describe('AreaAssignmentDialog', () => {
 
     expect(screen.getByRole('combobox', { name: 'Standort' })).toHaveFocus();
     await expectFocusAfterTab(user, screen.getByRole('combobox', { name: 'Parzelle' }));
+  });
+});
+
+describe('AreaAssignmentDialog with the crop rotation check', () => {
+  const rotationBeds: Bed[] = [
+    ...beds,
+    { id: 103, name: '7', field: 11, field_name: '8 Karotte + Zwiebel', area_sqm: 10 },
+    { id: 104, name: '8', field: 11, field_name: '8 Karotte + Zwiebel', area_sqm: 10 },
+  ];
+
+  const finding = (overrides: Partial<RotationFinding> = {}): RotationFinding => ({
+    kind: 'ok',
+    crop_label: 'Tomate',
+    family_key: 'Solanaceae',
+    // Stored English label; the UI shows the family in the UI language.
+    family_name: 'Nightshade family',
+    previous_plan_id: null,
+    previous_crop_label: null,
+    previous_family_key: null,
+    previous_family_name: null,
+    year: null,
+    break_years: 3,
+    earliest_year: null,
+    break_source: 'family_default',
+    settings_crop_id: 1,
+    settings_crop_label: 'Tomate',
+    ...overrides,
+  });
+  const conflictFinding = finding({
+    kind: 'family_conflict',
+    previous_plan_id: 7,
+    previous_crop_label: 'Kartoffel',
+    previous_family_key: 'Solanaceae',
+    year: 2025,
+    earliest_year: 2029,
+  });
+
+  const option = (bedId: number, overrides: Partial<BedSuggestion> = {}): BedSuggestion => {
+    const bed = rotationBeds.find((item) => item.id === bedId) as Bed;
+    const field = fields.find((item) => item.id === bed.field) as Field;
+    const location = locations.find((item) => item.id === field.location) as Location;
+    return {
+      bed_id: bedId,
+      bed_name: bed.name,
+      field_id: field.id ?? null,
+      field_name: field.name,
+      location_id: location.id ?? null,
+      location_name: location.name,
+      category: 'good',
+      status: 'ok',
+      findings: [finding()],
+      years_since_family: null,
+      previous_is_soil_improver: false,
+      bed_area_sqm: Number(bed.area_sqm),
+      used_area_sqm: 0,
+      free_area_sqm: Number(bed.area_sqm),
+      has_enough_area: true,
+      is_partially_occupied: false,
+      blocking_plan: null,
+      ...overrides,
+    };
+  };
+
+  // The backend's order: ok, hint, conflict, then beds without room.
+  const results = [
+    option(201),
+    option(104, { used_area_sqm: 4, free_area_sqm: 6, is_partially_occupied: true }),
+    option(102, {
+      category: 'hint',
+      status: 'hint',
+      findings: [finding({ kind: 'nutrient_hint', previous_crop_label: 'Kohl', year: 2025 })],
+    }),
+    option(101, { category: 'conflict', status: 'conflict', findings: [conflictFinding] }),
+    option(103, {
+      used_area_sqm: 8,
+      free_area_sqm: 2,
+      has_enough_area: false,
+      is_partially_occupied: true,
+      blocking_plan: { plan_id: 9, crop_label: 'Karotte', end_date: '2026-06-15' },
+    }),
+  ];
+
+  const rotation = (overrides: Partial<AreaAssignmentRotationContext> = {}): AreaAssignmentRotationContext => ({
+    cropId: 1,
+    plantingDate: '2026-04-01',
+    endDate: '2026-07-20',
+    areaSqm: 5,
+    planId: 50,
+    cultureLabel: 'Tomate',
+    status: 'conflict',
+    findings: [conflictFinding],
+    acceptance: null,
+    ...overrides,
+  });
+
+  const renderDialog = (context: AreaAssignmentRotationContext, onApply = vi.fn()) => {
+    render(
+      <MemoryRouter>
+      <AreaAssignmentDialog
+        bedId={101}
+        beds={rotationBeds}
+        fields={fields}
+        locations={locations}
+        locale="de-DE"
+        compactLabel="Regenbogenland | 8 Karotte + Zwiebel | 5"
+        onApply={onApply}
+        rotation={context}
+      />
+      </MemoryRouter>,
+    );
+    return onApply;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPlantFamiliesCache();
+    apiMocks.plantFamilies.mockResolvedValue({
+      data: [{
+        botanical_name: 'Solanaceae',
+        display_name: 'Nightshade family',
+        translations: { de: 'Nachtschattengewächse', en: 'Nightshade family' },
+        default_rotation_break_years: 3,
+      }],
+    });
+    apiMocks.bedSuggestions.mockResolvedValue({
+      data: {
+        count: results.length,
+        available_count: 4,
+        start_date: '2026-04-01',
+        end_date: '2026-07-20',
+        results,
+      },
+    });
+    apiMocks.rotationCheck.mockImplementation(async ({ bed_id }: { bed_id: number }) => ({
+      data: bed_id === 101
+        ? { status: 'conflict', findings: [conflictFinding], bed_history: [] }
+        : { status: 'ok', findings: [finding({ year: 2021 })], bed_history: [] },
+    }));
+  });
+
+  it('flags the conflict in the cell and opens the same dialog from the icon', async () => {
+    const user = userEvent.setup();
+    renderDialog(rotation());
+
+    await user.click(screen.getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Anbaufläche ändern' })).toBeInTheDocument();
+    expect(await screen.findByText('Fruchtfolge: Nachtschattengewächse zu früh auf diesem Beet')).toBeInTheDocument();
+  });
+
+  it('shows no status in the cell when nothing is left to do', () => {
+    for (const status of ['ok', 'accepted', 'hint'] as const) {
+      const { unmount } = render(
+        <MemoryRouter>
+          <AreaAssignmentDialog
+            bedId={101}
+            beds={rotationBeds}
+            fields={fields}
+            locations={locations}
+            locale="de-DE"
+            compactLabel="x"
+            onApply={vi.fn()}
+            rotation={rotation({ status, findings: [finding({ year: 2021 })] })}
+          />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it('flags missing culture data in the cell', () => {
+    renderDialog(rotation({ status: 'info', findings: [finding({ kind: 'no_family' })] }));
+
+    expect(screen.getByRole('button', { name: 'Fruchtfolge nicht prüfbar, Anbaufläche ändern' })).toBeInTheDocument();
+  });
+
+  it('suggests matching beds across locations and fills the selects without saving', async () => {
+    const user = userEvent.setup();
+    const onApply = renderDialog(rotation());
+    await openDialog();
+
+    // Expanded by default, because the current bed has a conflict.
+    expect(await screen.findByText('Passende Beete, frei von 01.04.2026 bis 20.07.2026')).toBeInTheDocument();
+    expect(apiMocks.bedSuggestions).toHaveBeenCalledWith({
+      crop_id: 1,
+      planting_date: '2026-04-01',
+      end_date: '2026-07-20',
+      exclude_plan_id: 50,
+      area_sqm: 5,
+    });
+    const rows = await screen.findAllByTestId('bed-suggestion');
+    // Top three of the beds with room and without a conflict.
+    expect(rows.map((row) => row.getAttribute('data-bed-id'))).toEqual(['201', '104', '102']);
+    expect(within(rows[0]).getByText('Sonnengarten | 5 Tomate | 5')).toBeInTheDocument();
+    expect(within(rows[0]).getByText('Keine Nachtschattengewächse erfasst')).toBeInTheDocument();
+
+    await user.click(rows[0]);
+
+    expect(screen.getByRole('combobox', { name: 'Standort' })).toHaveTextContent('Sonnengarten');
+    expect(screen.getByRole('combobox', { name: 'Parzelle' })).toHaveTextContent('5 Tomate');
+    expect(screen.getByRole('combobox', { name: 'Beet' })).toHaveTextContent('5 (12,50 m²)');
+    expect(await screen.findByTestId('rotation-check-ok')).toHaveTextContent(
+      'Fruchtfolge passt: letzte Nachtschattengewächse 2021.',
+    );
+    expect(onApply).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(onApply).toHaveBeenCalledWith(201, { freeAreaSqm: 12.5 });
+  });
+
+  it('orders the bed options and disables beds without enough free area', async () => {
+    renderDialog(rotation({ status: null, findings: null }));
+    await openDialog();
+    await waitFor(() => expect(apiMocks.bedSuggestions).toHaveBeenCalled());
+    // Collapsed without a conflict.
+    expect(screen.queryByTestId('area-bed-suggestions')).not.toBeInTheDocument();
+
+    await openSelect('Beet');
+    const options = await screen.findAllByTestId('bed-option');
+    expect(options.map((item) => item.getAttribute('data-value'))).toEqual(['104', '101', '103']);
+    expect(options[0]).toHaveTextContent('Keine Nachtschattengewächse erfasst · 6 von 10 m² frei im Zeitraum');
+    expect(options[1]).toHaveAttribute('data-rotation-status', 'conflict');
+    expect(options[2]).toHaveAttribute('aria-disabled', 'true');
+    expect(options[2]).toHaveTextContent(
+      'Nur 2 m² frei im Zeitraum (Karotte bis 15.06.2026), benötigt 5 m²',
+    );
+  });
+
+  it('accepts the conflict for the chosen bed on "Übernehmen"', async () => {
+    const user = userEvent.setup();
+    const onApply = renderDialog(rotation());
+    await openDialog();
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Bewusst so planen (Konflikt akzeptieren)' }));
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+
+    expect(onApply).toHaveBeenCalledWith(101, { rotationConflictAccepted: true, freeAreaSqm: 10 });
+  });
+
+  it('withdraws a stored acceptance', async () => {
+    const user = userEvent.setup();
+    const onApply = renderDialog(rotation({
+      status: 'accepted',
+      acceptance: {
+        rotation_conflict_accepted: true,
+        rotation_conflict_accepted_at: '2026-03-01T10:00:00Z',
+        rotation_conflict_accepted_by_user: { id: 1, email: 'a@example.com', display_name: 'Anna', display_label: 'Anna' },
+      },
+    }));
+
+    // Accepted conflicts show no icon in the table, only in the dialog.
+    expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+    await openDialog();
+    expect(await screen.findByTestId('rotation-check-accepted')).toHaveTextContent('Akzeptiert von Anna');
+    await user.click(screen.getByRole('button', { name: 'Akzeptieren zurücknehmen' }));
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+
+    expect(onApply).toHaveBeenCalledWith(101, { rotationConflictAccepted: false, freeAreaSqm: 10 });
   });
 });

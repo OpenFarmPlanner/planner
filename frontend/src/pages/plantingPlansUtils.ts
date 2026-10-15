@@ -11,7 +11,12 @@ export const AREA_LABEL_SEPARATOR = ' | ';
  * have to agree on the same number.
  */
 export const CROP_COLUMN_MAX_WIDTH = 280;
-export const BED_COLUMN_MAX_WIDTH = 220;
+/**
+ * Room the growing-area cell keeps for its crop rotation status icon button,
+ * so flagged rows do not lose the bed name to truncation.
+ */
+export const BED_STATUS_ICON_ALLOWANCE = 32;
+export const BED_COLUMN_MAX_WIDTH = 220 + BED_STATUS_ICON_ALLOWANCE;
 const UNIT_NON_BREAKING_SPACE = '\u00a0';
 
 export const toNumericValue = (value: unknown): number | null => {
@@ -397,4 +402,25 @@ export const buildMobileCreateForm = (
     bed: typeof prefill?.bedId === "number" ? String(prefill.bedId) : "",
     cultivation_type: "pre_cultivation",
   };
+};
+
+/** A row's date value (Date, ISO or German text) as an ISO date, or null. */
+export const toPlanIsoDate = (value: unknown): string | null => {
+  const key = toDateKey(value);
+  return key === null ? null : new Date(key).toISOString().slice(0, 10);
+};
+
+/**
+ * ISO date a plan stops occupying its bed: its harvest end, else its harvest
+ * start. Null when neither is known or when it lies before the planting date
+ * (stale after a date edit); the backend then derives the end from the
+ * crop's timing. The bed options and the save check both use this, so they
+ * ask the shared capacity rule about the same period.
+ */
+export const getPlanOccupancyEndIso = (
+  row: { planting_date?: unknown; harvest_end_date?: unknown; harvest_date?: unknown },
+): string | null => {
+  const end = toPlanIsoDate(row.harvest_end_date) ?? toPlanIsoDate(row.harvest_date);
+  const start = toPlanIsoDate(row.planting_date);
+  return end && start && end < start ? null : end;
 };

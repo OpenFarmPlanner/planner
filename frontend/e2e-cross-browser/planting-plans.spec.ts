@@ -11,8 +11,8 @@ import {
   test,
 } from './fixtures';
 
-// The demo project's 2026 season holds twelve planting plans.
-const CURRENT_SEASON_PLAN_COUNT = 12;
+// The demo project's 2026 season holds twenty-two planting plans.
+const CURRENT_SEASON_PLAN_COUNT = 22;
 
 test.describe('Anbaupläne table', () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -30,7 +30,9 @@ test.describe('Anbaupläne table', () => {
     } else {
       const rows = page.locator('[role="row"][data-id]');
       await expect(rows.first()).toBeVisible();
-      await expect(rows).toHaveCount(CURRENT_SEASON_PLAN_COUNT);
+      // The grid virtualizes rows below the fold, so count through its
+      // aria-rowcount (every plan plus the header row).
+      await expect(page.getByRole('grid')).toHaveAttribute('aria-rowcount', String(CURRENT_SEASON_PLAN_COUNT + 1));
     }
 
     await expectNoHorizontalPageOverflow(page);
@@ -39,8 +41,8 @@ test.describe('Anbaupläne table', () => {
 
   test('keeps the column headers visible while the grid scrolls', async ({ page }, testInfo) => {
     test.skip(isMobileProject(testInfo), 'Phones render plan cards without a grid header.');
-    // All twelve plans fit the desktop viewport; a shorter window makes the
-    // grid's own body scroll.
+    // A shorter window makes sure the
+    // grid's own body scrolls.
     const viewport = page.viewportSize()!;
     await page.setViewportSize({ width: viewport.width, height: 480 });
 

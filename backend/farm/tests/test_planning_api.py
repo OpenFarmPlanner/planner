@@ -469,6 +469,67 @@ class PlantingPlanRemainingAreaApiTest(DRFAPITestCase):
         self.assertEqual(response.data['overlapping_used_area_sqm'], 6.0)
         self.assertEqual(response.data['remaining_area_sqm'], 14.0)
 
+    def test_remaining_area_derives_the_period_end_from_the_crop(self):
+        response = self.client.get(
+            '/openfarmplanner/api/planting-plans/remaining-area/',
+            {'bed_id': self.bed.id, 'start_date': '2024-03-20', 'crop_id': self.crop.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['end_date'], '2024-04-29')
+        self.assertTrue(response.data['has_bed_area'])
+        self.assertEqual(response.data['remaining_area_sqm'], 10.0)
+
+    def test_remaining_area_without_end_or_crop_checks_the_start_day(self):
+        response = self.client.get(
+            '/openfarmplanner/api/planting-plans/remaining-area/',
+            {'bed_id': self.bed.id, 'start_date': '2024-04-25'},
+        )
+
+        self.assertEqual(response.data['end_date'], '2024-04-25')
+        # plan_one ends on 2024-04-10, plan_two on 2024-04-24.
+        self.assertEqual(response.data['overlapping_used_area_sqm'], 0.0)
+
+    def test_remaining_area_counts_plans_without_harvest_end(self):
+        """A plan without a harvest end occupies its bed until its harvest
+        start, or only on its planting day."""
+        bed = Bed.objects.create(name='Open End Bed', field=self.field, area_sqm=10, project=self.project)
+        PlantingPlan.objects.filter(
+            pk=PlantingPlan.objects.create(bed=bed, planting_date=date(2024, 5, 1), area_usage_sqm=3, project=self.project).pk,
+        ).update(harvest_date=date(2024, 6, 1), harvest_end_date=None)
+        PlantingPlan.objects.create(bed=bed, planting_date=date(2024, 5, 10), area_usage_sqm=2, project=self.project)
+
+        def used(start: str, end: str) -> float:
+            return self.client.get(
+                '/openfarmplanner/api/planting-plans/remaining-area/',
+                {'bed_id': bed.id, 'start_date': start, 'end_date': end},
+            ).data['overlapping_used_area_sqm']
+
+        self.assertEqual(used('2024-06-01', '2024-06-30'), 3.0)
+        self.assertEqual(used('2024-06-02', '2024-06-30'), 0.0)
+        self.assertEqual(used('2024-05-10', '2024-05-10'), 5.0)
+        self.assertEqual(used('2024-05-11', '2024-05-31'), 3.0)
+
+    def test_remaining_area_and_bed_options_agree(self):
+        """The save check (remaining-area) and the bed options of "Anbaufläche
+        ändern" (bed-suggestions) share one capacity rule, so a bed offered
+        there is never rejected on save."""
+        self.crop.crop_family_id = 'Asteraceae'
+        self.crop.save()
+        params = {'crop_id': self.crop.id, 'planting_date': '2024-03-20', 'area_sqm': '10'}
+        options = self.client.get('/openfarmplanner/api/planting-plans/bed-suggestions/', params).data
+
+        for row in options['results']:
+            remaining = self.client.get(
+                '/openfarmplanner/api/planting-plans/remaining-area/',
+                {'bed_id': row['bed_id'], 'start_date': options['start_date'], 'end_date': options['end_date']},
+            ).data
+            self.assertEqual(row['free_area_sqm'], remaining['remaining_area_sqm'])
+            self.assertEqual(row['has_enough_area'], 10.0 <= remaining['remaining_area_sqm'])
+        by_bed = {row['bed_id']: row for row in options['results']}
+        self.assertTrue(by_bed[self.bed.id]['has_enough_area'])
+        self.assertFalse(by_bed[self.other_bed.id]['has_enough_area'])
+
     def test_remaining_area_validates_required_params(self):
         response = self.client.get('/openfarmplanner/api/planting-plans/remaining-area/')
 

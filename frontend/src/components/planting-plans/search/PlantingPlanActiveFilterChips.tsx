@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from '../../../i18n';
 import {
   DATE_FILTER_FIELDS,
+  ROTATION_FILTER_STATUSES,
   type DateFilterField,
   type FilterOption,
   type PlantingPlanFilterGroup,
@@ -31,6 +32,10 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
   const { t } = useTranslation(['plantingPlans', 'common']);
   const { filters, options } = search;
   const monthLabel = (month: number): string => t(`common:monthsShort.${MONTH_KEYS[month - 1]}`);
+  const rotationOptions = ROTATION_FILTER_STATUSES.map((status) => ({
+    value: status,
+    label: t(`plantingPlans:search.rotationOptions.${status}`),
+  }));
 
   return search.activeFilterGroups.map((group) => {
     if (isDateFilterField(group)) {
@@ -51,6 +56,7 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
       field: { key: 'field', values: joinLabels(options.fields, filters.fieldIds) },
       cultivationType: { key: 'cultivationType', values: joinLabels(options.cultivationTypes, filters.cultivationTypes) },
       crop: { key: 'crop', values: joinLabels(options.crops, filters.cropKeys) },
+      rotation: { key: 'rotation', values: joinLabels(rotationOptions, filters.rotationStatuses) },
     } as const;
     const { key, values } = byGroup[group];
     const filterLabel = t(`plantingPlans:search.fields.${key}`);

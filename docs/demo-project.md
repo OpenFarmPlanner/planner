@@ -12,11 +12,12 @@ The service has two persistent-data entry points:
   the `seed_demo_project` management command.
 
 The template currently creates the `Solawi Sonnenacker` / `Sunny Acre CSA`
-project with two locations, four fields, twelve beds, three suppliers, twenty
+project with three locations, six fields, twenty beds, three suppliers, thirty
 crop-library rows, seed package data for the planned varieties, and
-thirty-six planting plans split across three seasons — twelve each in the
-current season and the two seasons before it — so the season switcher has more
-than one season to demonstrate. The season years are derived from today's date
+sixty-five planting plans split across four seasons — twenty-two in the
+current season, twenty-two and twenty in the two seasons before it, and one
+three seasons back — so the season switcher has more than one season to
+demonstrate. The season years are derived from today's date
 (`demo_current_year()`), never hardcoded, so the history stays inside the
 crop rotation check window in every year. `populate_demo_project` takes an
 optional `current_year` for time-pinned suites; the E2E fixture endpoint
@@ -30,28 +31,36 @@ through a regular admin `ProjectMembership`.
 
 ### Crop rotation story
 
-The two previous seasons rotate the plant families across the beds so the
+The previous seasons rotate the plant families across the beds so the
 [crop rotation check](./crop-rotation.md) has real history to read, and the
-current season shows every status on purpose:
+current season shows every rotation and bed-capacity case on purpose. The
+full list, with culture, bed and expected status for a manual check, is the
+"Demo cases" table in [crop-rotation.md](./crop-rotation.md#demo-cases).
 
-- **Passt (ok)** — eight of the twelve current plans. Each high-demand crop
-  (tomato, cucumber, zucchini) follows a medium-demand crop, so no nutrient
-  hint appears either.
-- **Konflikt** — the spring and autumn lettuce on "Salat 1": lettuce after
-  lettuce on the same bed within the two-year Asteraceae break. The two plans
-  share a year, so they flag each other (two conflict rows, one case).
-- **Konflikt akzeptiert** — tomato after tomato on "Tomatenreihe 1" in the
-  polytunnel. The acceptance is stamped on the plan and the plan note gives
-  the justification (three tunnel rows cannot hold the three-year Solanaceae
-  break).
-- **Nicht prüfbar** — the carrots on "Karotten 2", a bed newly established
-  this season (see its bed note) with no planting history.
+- **Hofgarten / Acker am Bach** keep the original story: most plans "passt",
+  the spring and autumn lettuce on "Salat 1" flag each other (two plans of
+  the same family in one year), tomato after tomato on "Tomatenreihe 1" is an
+  accepted conflict (the plan note gives the justification), "Karotten 2" is
+  newly established this season (see its bed note) and has no history, which
+  checks as "passt", and
+  "Gründüngung Reserve" carries Phacelia (a family without a break) and
+  strawberries (no plant family recorded yet).
+- **Pachtacker Lindenhof** (leased field, two plots of four beds) holds one
+  teaching case per bed: potatoes against their own 4-year break, potatoes
+  after zucchini (nutrient hint), broccoli after peas (no hint thanks to the
+  legume), broccoli after mustard green manure, bush beans after peas (the
+  peas' stricter break), leek after garlic planted last October, sweetcorn
+  (no break; copied into next season it becomes the hint of the copy dialog)
+  and zucchini back after the Cucurbitaceae break (the one plan three seasons
+  back). The leek row's "Anbaufläche ändern" shows a partly occupied bed
+  ("Zuckermais") and a bed without enough room ("Bohnen").
 
-The rotation facts come from the crops' own families and the seeded family
-defaults; the demo never adjusts crop data to look cleaner.
-`test_current_season_showcases_every_rotation_status` in
-`backend/farm/tests/test_demo_project.py` pins this distribution, so a
-template change that breaks the story fails the build.
+The new field crops are plain Kulturen without supplier data; potato and pea
+carry their own, stricter `rotation_break_years`. The rotation facts come from
+the crops' own families and the seeded family defaults. No bed is overbooked
+in any season. `DemoRotationCasesTests` in
+`backend/farm/tests/test_demo_project.py` pins every case, so a template
+change that breaks one fails the build.
 
 The demo data exists in German and English. The authenticated API and guest
 demo resolve the language from the request/UI language and create new demo

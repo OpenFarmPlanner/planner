@@ -31,12 +31,19 @@ export interface MonthRange {
 
 const OPEN_MONTH_RANGE: MonthRange = { from: null, to: null };
 
+/** Crop rotation statuses the "Fruchtfolge" filter offers (see docs/crop-rotation.md). */
+export const ROTATION_FILTER_STATUSES = ['conflict', 'accepted', 'info'] as const;
+
+export type RotationFilterStatus = (typeof ROTATION_FILTER_STATUSES)[number];
+
 export interface PlantingPlanFilters {
   locationIds: number[];
   fieldIds: number[];
   cultivationTypes: string[];
   /** Normalized Kultur names, so every Sorte of a Kultur is covered. */
   cropKeys: string[];
+  /** Kept in memory only, never carried across a season switch. */
+  rotationStatuses: RotationFilterStatus[];
   monthRanges: Record<DateFilterField, MonthRange>;
 }
 
@@ -45,6 +52,7 @@ export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
   fieldIds: [],
   cultivationTypes: [],
   cropKeys: [],
+  rotationStatuses: [],
   monthRanges: {
     plantingDate: OPEN_MONTH_RANGE,
     harvestStartDate: OPEN_MONTH_RANGE,
@@ -52,7 +60,7 @@ export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
   },
 };
 
-export type PlantingPlanFilterGroup = 'location' | 'field' | 'cultivationType' | 'crop' | DateFilterField;
+export type PlantingPlanFilterGroup = 'location' | 'field' | 'cultivationType' | 'crop' | 'rotation' | DateFilterField;
 
 export const isMonthRangeActive = (range: MonthRange): boolean => range.from !== null || range.to !== null;
 
@@ -88,6 +96,8 @@ export interface PlantingPlanSearchRecordInput {
   sowingDate: string | null;
   harvestDate: string | null;
   harvestEndDate: string | null;
+  /** The plan's crop rotation status; null for drafts. */
+  rotationStatus?: string | null;
 }
 
 export interface PlantingPlanSearchRecord extends PlantingPlanSearchRecordInput {
@@ -202,6 +212,7 @@ export function matchesPlantingPlanFilters(record: PlantingPlanSearchRecord, fil
   if (!includesIfSelected(filters.fieldIds, record.fieldId)) return false;
   if (!includesIfSelected(filters.cultivationTypes, record.cultivationType || null)) return false;
   if (!includesIfSelected(filters.cropKeys, record.cropKey || null)) return false;
+  if (!includesIfSelected<string>(filters.rotationStatuses, record.rotationStatus ?? null)) return false;
   return DATE_FILTER_FIELDS.every((field) => (
     matchesMonthRange(record[DATE_FIELD_TO_RECORD_KEY[field]], filters.monthRanges[field])
   ));
@@ -247,6 +258,7 @@ export function getActivePlantingPlanFilterGroups(filters: PlantingPlanFilters):
   if (filters.fieldIds.length > 0) groups.push('field');
   if (filters.cultivationTypes.length > 0) groups.push('cultivationType');
   if (filters.cropKeys.length > 0) groups.push('crop');
+  if (filters.rotationStatuses.length > 0) groups.push('rotation');
   for (const field of DATE_FILTER_FIELDS) {
     if (isMonthRangeActive(filters.monthRanges[field])) groups.push(field);
   }
@@ -266,6 +278,8 @@ export function clearPlantingPlanFilterGroup(
       return { ...filters, cultivationTypes: [] };
     case 'crop':
       return { ...filters, cropKeys: [] };
+    case 'rotation':
+      return { ...filters, rotationStatuses: [] };
     default:
       return withMonthRange(filters, group, OPEN_MONTH_RANGE);
   }

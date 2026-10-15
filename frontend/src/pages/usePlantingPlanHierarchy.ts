@@ -18,6 +18,7 @@ import {
   buildBedDisplayLabel,
   AREA_LABEL_SEPARATOR,
   BED_COLUMN_MAX_WIDTH,
+  BED_STATUS_ICON_ALLOWANCE,
   CROP_COLUMN_MAX_WIDTH,
 } from './plantingPlansUtils';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
@@ -235,8 +236,8 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
     const bedWidth = estimateColumnWidth(
       hierarchyColumnValues,
       hasMultipleLocationsWithBeds ? 210 : 160,
-      hasMultipleLocationsWithBeds ? 380 : BED_COLUMN_MAX_WIDTH,
-    );
+      hasMultipleLocationsWithBeds ? 380 : BED_COLUMN_MAX_WIDTH - BED_STATUS_ICON_ALLOWANCE,
+    ) + BED_STATUS_ICON_ALLOWANCE;
     return {
       crop: cropWidth,
       bed: bedWidth,
