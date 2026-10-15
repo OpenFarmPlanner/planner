@@ -302,7 +302,10 @@ describe('App', () => {
 
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Demo ohne Registrierung ansehen' }));
+    const heroDemoButton = await screen.findByRole('button', { name: 'Demo ohne Registrierung ansehen' });
+    // The hero pill shows the short label; the full meaning is its accessible name.
+    expect(heroDemoButton).toHaveTextContent(/^Demo$/);
+    fireEvent.click(heroDemoButton);
 
     expect(await screen.findByText(
       'Die Demo wurde vor Kurzem bereits gestartet. Bitte versuche es in weniger als einer Minute erneut.',

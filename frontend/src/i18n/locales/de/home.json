@@ -11,6 +11,7 @@
       "installApp": "App installieren",
       "demo": "Demo ansehen",
       "demoWithoutRegistration": "Demo ohne Registrierung ansehen",
+      "demoShort": "Demo",
       "startingDemo": "Demo wird gestartet…",
       "demoStartError": "Demo konnte nicht gestartet werden. Bitte versuche es erneut.",
       "demoRateLimited": "Die Demo wurde vor Kurzem bereits gestartet. Bitte versuche es später erneut.",

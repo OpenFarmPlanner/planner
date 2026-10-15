@@ -9,6 +9,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {
   Alert,
   Box,
@@ -28,6 +29,13 @@ import HeroImage from '../../components/HeroImage';
 import PublicTopbar from '../../components/layout/PublicTopbar';
 import PublicFooter from '../../components/layout/PublicFooter';
 import { useGuestDemoStart } from './useGuestDemoStart';
+import {
+  HERO_ACTION_FONT_SIZE,
+  HERO_DEMO_PILL_STATUS_SX,
+  HERO_DEMO_PILL_SX,
+  heroRem,
+  heroWidth,
+} from './homePageStyles';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
 import EditableTableIllustration from './homeIllustrations/EditableTableIllustration';
 import CropLibraryIllustration from './homeIllustrations/CropLibraryIllustration';
@@ -47,12 +55,6 @@ const HERO_TEXT_SHADOW = (theme: Theme) =>
 // background across a range of photos behind it, not just the current one.
 const HERO_TEXT_PRIMARY = (theme: Theme) => alpha(theme.palette.common.black, 0.92);
 const HERO_TEXT_SECONDARY = (theme: Theme) => alpha(theme.palette.common.black, 0.78);
-
-const HERO_FONT_SCALE = 1.1;
-const heroRem = (baseRem: number): string => `${+(baseRem * HERO_FONT_SCALE).toFixed(3)}rem`;
-const heroWidth = (basePx: number): number => Math.round(basePx * HERO_FONT_SCALE);
-
-const HERO_ACTION_FONT_SIZE = { xs: heroRem(1.05), sm: heroRem(1.1) };
 
 // Single glassmorphism card behind all hero content - one clearly-bounded,
 // semi-transparent panel. A slightly more opaque, lighter-bordered version
@@ -205,6 +207,7 @@ export default function HomePage() {
     compactRetryTime,
     startDemo,
   } = useGuestDemoStart();
+  const isDemoStatusShown = isStartingDemo || isDemoRetryBlocked;
 
   useEffect(() => {
     document.body.classList.add('sticky-app-bar');
@@ -365,7 +368,7 @@ export default function HomePage() {
                 {t('landing.description')}
               </Typography>
 
-              <Stack spacing={1.15} sx={{ width: '100%', pt: 0.3, alignItems: 'center' }}>
+              <Stack spacing={2} sx={{ width: '100%', pt: 0.3, alignItems: 'center' }}>
                 <Stack
                   direction="row"
                   spacing={{ xs: 1, sm: 1.2 }}
@@ -444,26 +447,11 @@ export default function HomePage() {
                   onClick={() => {
                     void startDemo();
                   }}
-                  sx={{
-                    minHeight: 34,
-                    px: 1.2,
-                    py: 0.4,
-                    borderRadius: 1,
-                    color: 'primary.main',
-                    fontSize: { xs: heroRem(1.05), sm: heroRem(1.1) },
-                    fontWeight: 600,
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '3px',
-                    whiteSpace: 'nowrap',
-                    '&:hover, &:focus-visible': {
-                      color: 'primary.dark',
-                      bgcolor: (theme) => alpha(theme.palette.common.black, 0.06),
-                      textDecoration: 'underline',
-                    },
-                    '&.Mui-disabled': {
-                      color: 'action.disabled',
-                    },
-                  }}
+                  startIcon={isDemoStatusShown ? undefined : <PlayArrowIcon />}
+                  // The short visible label relies on context; screen readers get the
+                  // full meaning. Loading/retry states announce their visible text.
+                  aria-label={isDemoStatusShown ? undefined : t('landing.actions.demoWithoutRegistration')}
+                  sx={[HERO_DEMO_PILL_SX, isDemoStatusShown && HERO_DEMO_PILL_STATUS_SX]}
                 >
                   {isStartingDemo ? (
                     <Stack component="span" direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
@@ -473,7 +461,7 @@ export default function HomePage() {
                   ) : isDemoRetryBlocked ? (
                     t('landing.actions.demoAvailableIn', { time: compactRetryTime })
                   ) : (
-                    t('landing.actions.demoWithoutRegistration')
+                    t('landing.actions.demoShort')
                   )}
                 </Button>
               </Stack>

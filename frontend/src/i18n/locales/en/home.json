@@ -11,6 +11,7 @@
       "installApp": "Install app",
       "demo": "View demo",
       "demoWithoutRegistration": "View demo without registration",
+      "demoShort": "Demo",
       "startingDemo": "Starting demo...",
       "demoStartError": "Demo could not be started. Please try again.",
       "demoRateLimited": "The demo was started recently. Please try again later.",
