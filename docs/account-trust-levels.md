@@ -367,8 +367,9 @@ neither reported nor alerted. The list exists twice and must stay in sync:
 throttled per IP (`client_error_report`, `10/hour`) and globally
 (`client_error_report_global`, `60/hour`), and answers `400` without an alert
 for any code outside the allowlist. `page_path` is cut at `?`/`#` (a query
-string could carry an activation token); `hostname` and `site_key` are
-character-restricted. A valid report answers `204` and goes through the same
+string could carry an activation token) and rejected if it contains
+whitespace or control characters, so a newline cannot forge lines in the
+alert email or log; `hostname` and `site_key` are character-restricted. A valid report answers `204` and goes through the same
 pipeline as every other alert.
 
 **Delivery.**
