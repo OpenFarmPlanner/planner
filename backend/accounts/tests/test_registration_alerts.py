@@ -319,6 +319,9 @@ class TurnstileClientErrorEndpointTest(AlertTestMixin, APITestCase):
         for code in ('110600', '300010', '600010', '200500', 'arbitrary text'):
             self.assertEqual(self._report(error_code=code), status.HTTP_400_BAD_REQUEST, code)
         self.assertEqual(self._report(hostname='evil host<script>'), status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            self._report(page_path='/register\nFailure type: fake'), status.HTTP_400_BAD_REQUEST
+        )
         self.assertEqual(_alert_mails(), [])
 
     def test_endpoint_is_rate_limited_per_ip(self) -> None:

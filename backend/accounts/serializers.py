@@ -354,6 +354,7 @@ class AccountPasswordChangeSerializer(serializers.Serializer):
 
 _HOSTNAME_PATTERN = re.compile(r'^[A-Za-z0-9.-]*$')
 _SITE_KEY_PATTERN = re.compile(r'^[A-Za-z0-9_-]*$')
+_CONTROL_OR_SPACE_PATTERN = re.compile(r'[\s\x00-\x1f\x7f]')
 
 
 class TurnstileClientErrorSerializer(serializers.Serializer):
@@ -379,7 +380,7 @@ class TurnstileClientErrorSerializer(serializers.Serializer):
     def validate_page_path(self, value: str) -> str:
         # Only the path: a query string could carry activation or reset tokens.
         path = value.split('?', 1)[0].split('#', 1)[0]
-        if path and not path.startswith('/'):
+        if path and (not path.startswith('/') or _CONTROL_OR_SPACE_PATTERN.search(path)):
             raise serializers.ValidationError('Ungültiger Pfad.')
         return path
 
