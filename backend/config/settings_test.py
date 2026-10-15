@@ -9,6 +9,9 @@ os.environ.setdefault('PUBLIC_FRONTEND_URL', 'http://localhost:5173')
 from .settings import *  # noqa: F403, F401
 
 ADMIN_NOTIFICATION_EMAIL = ''
+REGISTRATION_ALERT_EMAILS: list[str] = []
+REGISTRATION_ALERT_SEND_ASYNC = False
+ADMINS: list[tuple[str, str]] = []
 
 # Never call Cloudflare from the test suite, even if a local .env sets a key;
 # Turnstile tests enable it explicitly with override_settings and a mock.

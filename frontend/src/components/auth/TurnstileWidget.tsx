@@ -5,13 +5,20 @@
 import { Alert, Box } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useRef, useState } from 'react';
-import { loadTurnstileScript, type TurnstileApi } from '../../auth/turnstile';
+import { reportTurnstileClientError } from '../../auth/authApi';
+import { isTurnstileConfigError, loadTurnstileScript, type TurnstileApi } from '../../auth/turnstile';
 import { useTranslation } from '../../i18n';
 
 export const TURNSTILE_SCRIPT_RETRY_DELAY_MS = 10_000;
 export const TURNSTILE_SCRIPT_MAX_ATTEMPTS = 3;
 
-type WidgetProblem = 'none' | 'challengeFailed' | 'loadFailed';
+type WidgetProblem = 'none' | 'challengeFailed' | 'loadFailed' | 'configError';
+
+const PROBLEM_MESSAGE_KEYS: Record<Exclude<WidgetProblem, 'none'>, string> = {
+  challengeFailed: 'auth:register.turnstile.challengeFailed',
+  loadFailed: 'auth:register.turnstile.loadFailed',
+  configError: 'auth:register.turnstile.configError',
+};
 
 interface TurnstileWidgetProps {
   siteKey: string;
@@ -19,15 +26,21 @@ interface TurnstileWidgetProps {
   onTokenChange: (token: string | null) => void;
   /** Increment to discard the current token and run a fresh check (tokens are single-use). */
   resetSignal: number;
+  /** Called once when the widget reports that it is misconfigured (wrong site key, unauthorized hostname). */
+  onConfigError?: () => void;
 }
 
-export default function TurnstileWidget({ siteKey, onTokenChange, resetSignal }: TurnstileWidgetProps) {
+export default function TurnstileWidget({ siteKey, onTokenChange, resetSignal, onConfigError }: TurnstileWidgetProps) {
   const { t, i18n } = useTranslation('auth');
   const theme = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<TurnstileApi | null>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
   const onTokenChangeRef = useRef(onTokenChange);
+  const onConfigErrorRef = useRef(onConfigError);
+  // Turnstile may call the error callback repeatedly for one problem; the
+  // operators only need to hear about it once per page view.
+  const configErrorReportedRef = useRef(false);
   const [problem, setProblem] = useState<WidgetProblem>('none');
   const [interactive, setInteractive] = useState(false);
   const themeMode = theme.palette.mode;
@@ -36,6 +49,10 @@ export default function TurnstileWidget({ siteKey, onTokenChange, resetSignal }:
   useEffect(() => {
     onTokenChangeRef.current = onTokenChange;
   }, [onTokenChange]);
+
+  useEffect(() => {
+    onConfigErrorRef.current = onConfigError;
+  }, [onConfigError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,10 +79,26 @@ export default function TurnstileWidget({ siteKey, onTokenChange, resetSignal }:
             },
             // Turnstile retries failed checks and refreshes expired or
             // timed-out tokens on its own; we only drop the stale token and
-            // tell the user what is going on.
-            'error-callback': () => {
-              setProblem('challengeFailed');
+            // tell the user what is going on. A configuration error cannot
+            // fix itself, so it is reported to the operators instead.
+            'error-callback': (errorCode) => {
               onTokenChangeRef.current(null);
+              if (!isTurnstileConfigError(errorCode)) {
+                setProblem('challengeFailed');
+                return false;
+              }
+              setProblem('configError');
+              if (!configErrorReportedRef.current) {
+                configErrorReportedRef.current = true;
+                onConfigErrorRef.current?.();
+                reportTurnstileClientError({
+                  errorCode: String(errorCode),
+                  pagePath: window.location.pathname,
+                  hostname: window.location.hostname,
+                  siteKey,
+                }).catch(() => undefined);
+              }
+              return true;
             },
             'expired-callback': () => onTokenChangeRef.current(null),
             'timeout-callback': () => onTokenChangeRef.current(null),
@@ -108,9 +141,7 @@ export default function TurnstileWidget({ siteKey, onTokenChange, resetSignal }:
   return (
     <>
       {problem !== 'none' ? (
-        <Alert severity="warning">
-          {problem === 'loadFailed' ? t('auth:register.turnstile.loadFailed') : t('auth:register.turnstile.challengeFailed')}
-        </Alert>
+        <Alert severity={problem === 'configError' ? 'error' : 'warning'}>{t(PROBLEM_MESSAGE_KEYS[problem])}</Alert>
       ) : null}
       {/* `display: contents` keeps the invisible widget from adding an empty
           row (and its Stack spacing) to the form until Cloudflare actually

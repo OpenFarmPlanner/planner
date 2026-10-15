@@ -124,6 +124,9 @@ For production, configure these environment variables:
 - `DEV_LAN_HOSTS` - Optional comma-separated LAN hosts/IPs added to `ALLOWED_HOSTS`, CORS, and CSRF only when `DEBUG=True` and `DJANGO_ENV=development`
 - `GUEST_DEMO_THROTTLE_RATE` - Rate limit for `POST /api/auth/guest-demo/start/`. Defaults to `1000/minute` when `DJANGO_ENV=development`, otherwise `10/hour`. Invalid values fail startup instead of disabling protection.
 - `URL_PREFIX` - Optional backend URL prefix (default: root). Example: `openfarmplanner` for legacy prefixed routing.
+- `REGISTRATION_ALERT_EMAILS` - Comma-separated recipients of registration failure alerts (empty: only logged). Test delivery with `pdm run python manage.py send_test_registration_alert [--type <failure type>]`. See `docs/account-trust-levels.md`.
+- `ADMINS` - Comma-separated recipients of Django's generic 500-error emails (sent only when `DEBUG=False`; empty disables them).
+- `DEPLOYMENT_ENVIRONMENT` - Environment label shown in alerts (default: `staging` for a `staging.*` public frontend host, otherwise `DJANGO_ENV`).
 
 The guest demo endpoint uses Django REST Framework `ScopedRateThrottle` with the
 `guest_demo_start` scope. Anonymous public starts are limited per client IP, while

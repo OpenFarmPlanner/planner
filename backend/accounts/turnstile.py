@@ -11,14 +11,38 @@ import logging
 
 import requests
 from django.conf import settings
+from django.http import HttpRequest
+from rest_framework.request import Request
+
+from .registration_alerts import (
+    RegistrationFailure,
+    record_missing_turnstile_token,
+    report_registration_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 # Cloudflare rejects longer tokens outright; checking locally saves a round trip.
 TURNSTILE_MAX_TOKEN_LENGTH = 2048
-_SERVER_SIDE_ERROR_CODES = frozenset(
-    {'missing-input-secret', 'invalid-input-secret', 'internal-error'}
+# siteverify error codes per Cloudflare's "Server-side validation" docs. The
+# configuration codes mean our own secret or request is wrong; `internal-error`
+# is a failure on Cloudflare's side. Neither is the visitor's fault, so both
+# are reported to the operators. The remaining documented codes
+# (`missing-input-response`, `invalid-input-response`, `timeout-or-duplicate`)
+# are about the visitor's token and stay a plain rejection.
+SITEVERIFY_CONFIG_ERROR_CODES = frozenset(
+    {'missing-input-secret', 'invalid-input-secret', 'bad-request'}
+)
+SITEVERIFY_UNAVAILABLE_ERROR_CODES = frozenset({'internal-error'})
+# Widget error-callback codes that mean the widget itself is misconfigured,
+# per Cloudflare's "Client-side errors / Error codes" docs: invalid or unknown
+# site key (110100, 110110, 400020), hostname not authorized for the widget
+# (110200), site key region/domain mismatch (400021), disabled site key
+# (400070). Everything else (timeouts, iframe load, clock, 300*/600* challenge
+# failures) is transient or about the visitor and is never reported.
+TURNSTILE_CLIENT_CONFIG_ERROR_CODES = frozenset(
+    {'110100', '110110', '110200', '400020', '400021', '400070'}
 )
 
 
@@ -43,15 +67,22 @@ def _log_rejection(reason: str, error_codes: list[str] | None = None) -> None:
     )
 
 
-def verify_turnstile_token(token: str, remote_ip: str | None = None) -> TurnstileOutcome:
+def verify_turnstile_token(
+    token: str,
+    remote_ip: str | None = None,
+    request: HttpRequest | Request | None = None,
+) -> TurnstileOutcome:
     """Check a Turnstile token against Cloudflare's siteverify API.
 
     Returns UNAVAILABLE instead of raising when Cloudflare cannot be reached,
-    so the caller can answer with a clean error instead of a 500.
+    so the caller can answer with a clean error instead of a 500. Failures that
+    are not the visitor's fault are reported via ``registration_alerts``;
+    ``request`` only adds the path and method to that report.
     """
     token = token.strip()
     if not token:
         _log_rejection('missing_token')
+        record_missing_turnstile_token(request)
         return TurnstileOutcome.REJECTED
     if len(token) > TURNSTILE_MAX_TOKEN_LENGTH:
         _log_rejection('token_too_long')
@@ -69,13 +100,21 @@ def verify_turnstile_token(token: str, remote_ip: str | None = None) -> Turnstil
         )
         response.raise_for_status()
         result = response.json()
-    except (requests.RequestException, ValueError):
+    except (requests.RequestException, ValueError) as exc:
         logger.exception('Turnstile verification API unavailable; registration not processed')
+        report_registration_failure(
+            RegistrationFailure.TURNSTILE_UNREACHABLE, request=request, exc=exc
+        )
         return TurnstileOutcome.UNAVAILABLE
 
     if not isinstance(result, dict):
         logger.error(
             'Turnstile verification API returned an unexpected payload; registration not processed'
+        )
+        report_registration_failure(
+            RegistrationFailure.TURNSTILE_UNREACHABLE,
+            request=request,
+            details={'siteverify response': 'unexpected payload (not a JSON object)'},
         )
         return TurnstileOutcome.UNAVAILABLE
 
@@ -84,7 +123,8 @@ def verify_turnstile_token(token: str, remote_ip: str | None = None) -> Turnstil
 
     error_codes = result.get('error-codes')
     codes = [str(code) for code in error_codes] if isinstance(error_codes, list) else []
-    if _SERVER_SIDE_ERROR_CODES.intersection(codes):
+    server_side_failure = _server_side_failure(codes)
+    if server_side_failure is not None:
         # Our secret is missing/wrong or Cloudflare failed internally: not the
         # visitor's fault, so don't tell them their check failed.
         logger.error(
@@ -92,6 +132,19 @@ def verify_turnstile_token(token: str, remote_ip: str | None = None) -> Turnstil
             'registration not processed',
             ','.join(codes),
         )
+        report_registration_failure(
+            server_side_failure,
+            request=request,
+            details={'siteverify error codes': ','.join(codes)},
+        )
         return TurnstileOutcome.UNAVAILABLE
     _log_rejection('siteverify_failed', codes)
     return TurnstileOutcome.REJECTED
+
+
+def _server_side_failure(codes: list[str]) -> RegistrationFailure | None:
+    if SITEVERIFY_CONFIG_ERROR_CODES.intersection(codes):
+        return RegistrationFailure.TURNSTILE_SERVER_CONFIG
+    if SITEVERIFY_UNAVAILABLE_ERROR_CODES.intersection(codes):
+        return RegistrationFailure.TURNSTILE_UNREACHABLE
+    return None

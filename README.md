@@ -378,6 +378,20 @@ Use the ops repository for deployment guides, infrastructure configuration, and 
 
 - **https://github.com/OpenFarmPlanner/ops**
 
+Two settings from this repository need care on every deployment:
+
+- **Cloudflare Turnstile.** The widget's Hostname Management list in the
+  Cloudflare dashboard must contain every domain the registration form is
+  served from, including `staging.openfarmplanner.org`. Each environment
+  needs its own matching key pair: `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`
+  in the backend `.env` and the same site key as `VITE_TURNSTILE_SITE_KEY` in
+  the frontend build.
+- **Failure alerts.** Set `REGISTRATION_ALERT_EMAILS` (registration failures)
+  and `ADMINS` (any other 500 error), then run
+  `pdm run python manage.py send_test_registration_alert` once to confirm the
+  mail actually arrives. See
+  [`docs/account-trust-levels.md`](docs/account-trust-levels.md#registration-failure-alerts).
+
 ## Contributing
 
 Pull requests are welcome.

@@ -281,6 +281,10 @@ tests, screenshots, or manual checks were performed.
   `VITE_TURNSTILE_SITE_KEY`, which must match the backend's site key.
 - Staging (`staging.openfarmplanner.org`) and production use separate
   Turnstile widgets with separate key pairs. Roll changes out on staging first.
+- Registration failures that are not the visitor's fault (server errors,
+  activation email delivery, Turnstile misconfiguration or outage) are emailed
+  to `REGISTRATION_ALERT_EMAILS`; other 500s go to `ADMINS`. Details:
+  [`docs/account-trust-levels.md`](docs/account-trust-levels.md#registration-failure-alerts).
 
 ## Backend Rules
 - Backend packages are managed with PDM. Use `pdm` commands and do not introduce `pip install`, `requirements.txt`, or `setup.py`.

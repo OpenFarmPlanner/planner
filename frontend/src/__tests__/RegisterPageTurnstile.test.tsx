@@ -8,10 +8,17 @@ import type { TurnstileApi, TurnstileRenderOptions } from '../auth/turnstile';
 
 const registerMock = vi.fn<(...args: unknown[]) => Promise<{ detail: string }>>();
 const loadTurnstileScriptMock = vi.fn<() => Promise<TurnstileApi>>();
+const reportTurnstileClientErrorMock = vi.fn<(...args: unknown[]) => Promise<void>>();
 
-vi.mock('../auth/turnstile', () => ({
+vi.mock('../auth/turnstile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth/turnstile')>()),
   resolveTurnstileSiteKey: () => 'test-site-key',
   loadTurnstileScript: () => loadTurnstileScriptMock(),
+}));
+
+vi.mock('../auth/authApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../auth/authApi')>()),
+  reportTurnstileClientError: (...args: unknown[]) => reportTurnstileClientErrorMock(...args),
 }));
 
 vi.mock('../auth/useAuth', () => ({
@@ -85,6 +92,8 @@ describe('RegisterPage with Turnstile', () => {
     registerMock.mockReset();
     registerMock.mockResolvedValue({ detail: 'Registrierung erfolgreich.' });
     loadTurnstileScriptMock.mockReset();
+    reportTurnstileClientErrorMock.mockReset();
+    reportTurnstileClientErrorMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -165,6 +174,74 @@ describe('RegisterPage with Turnstile', () => {
 
     act(() => turnstile.renderOptions().callback?.('token-456'));
     expect(screen.queryByText('auth:register.turnstile.challengeFailed')).not.toBeInTheDocument();
+  });
+
+  it.each(['110600', '110620', '200100', '200500', '300010', '600010'])(
+    'treats the transient widget error %s as retryable and reports nothing',
+    async (errorCode) => {
+      const turnstile = createTurnstileApi();
+      loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+      renderPage();
+      await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+      act(() => {
+        turnstile.renderOptions()['error-callback']?.(errorCode);
+      });
+
+      expect(screen.getByText('auth:register.turnstile.challengeFailed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Konto erstellen' })).toBeEnabled();
+      expect(reportTurnstileClientErrorMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['110100', '110110', '110200', '400020', '400021', '400070'])(
+    'reports the configuration error %s once and disables the submit button with an explanation',
+    async (errorCode) => {
+      const turnstile = createTurnstileApi();
+      loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+      const user = userEvent.setup();
+      renderPage();
+      await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+      let handled: boolean | void = undefined;
+      act(() => {
+        handled = turnstile.renderOptions()['error-callback']?.(errorCode);
+        // Turnstile may fire the callback again for the same problem.
+        turnstile.renderOptions()['error-callback']?.(errorCode);
+      });
+
+      expect(handled).toBe(true);
+      expect(screen.getByText('auth:register.turnstile.configError')).toBeInTheDocument();
+      expect(screen.queryByText('auth:register.turnstile.challengeFailed')).not.toBeInTheDocument();
+      expect(reportTurnstileClientErrorMock).toHaveBeenCalledTimes(1);
+      expect(reportTurnstileClientErrorMock).toHaveBeenCalledWith({
+        errorCode,
+        pagePath: window.location.pathname,
+        hostname: window.location.hostname,
+        siteKey: 'test-site-key',
+      });
+
+      const submit = screen.getByRole('button', { name: 'Konto erstellen' });
+      expect(submit).toBeDisabled();
+      await user.hover(submit.parentElement as HTMLElement);
+      expect(await screen.findByText('auth:register.turnstile.configErrorSubmitDisabled')).toBeInTheDocument();
+    },
+    20000,
+  );
+
+  it('keeps the message when reporting the configuration error fails', async () => {
+    const turnstile = createTurnstileApi();
+    loadTurnstileScriptMock.mockResolvedValue(turnstile.api);
+    reportTurnstileClientErrorMock.mockRejectedValue(new Error('offline'));
+    renderPage();
+    await waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+
+    act(() => {
+      turnstile.renderOptions()['error-callback']?.('110200');
+    });
+
+    await waitFor(() => expect(reportTurnstileClientErrorMock).toHaveBeenCalled());
+    expect(screen.getByText('auth:register.turnstile.configError')).toBeInTheDocument();
   });
 
   it.each([

@@ -350,3 +350,46 @@ class AccountPasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({'new_password_confirm': _de(_('Passwords do not match.'))})
         validate_password(attrs['new_password'], user=self.context['request'].user)
         return attrs
+
+
+_HOSTNAME_PATTERN = re.compile(r'^[A-Za-z0-9.-]*$')
+_SITE_KEY_PATTERN = re.compile(r'^[A-Za-z0-9_-]*$')
+_CONTROL_OR_SPACE_PATTERN = re.compile(r'[\s\x00-\x1f\x7f]')
+
+
+class TurnstileClientErrorSerializer(serializers.Serializer):
+    """A Turnstile widget configuration error reported by the browser.
+
+    Accepts only the allowlisted configuration codes and short, character-
+    restricted context fields, so the endpoint cannot carry arbitrary text
+    into an operator email.
+    """
+
+    error_code = serializers.CharField(max_length=16)
+    page_path = serializers.CharField(max_length=512, required=False, allow_blank=True, default='')
+    hostname = serializers.CharField(max_length=253, required=False, allow_blank=True, default='')
+    site_key = serializers.CharField(max_length=128, required=False, allow_blank=True, default='')
+
+    def validate_error_code(self, value: str) -> str:
+        from .turnstile import TURNSTILE_CLIENT_CONFIG_ERROR_CODES
+
+        if value not in TURNSTILE_CLIENT_CONFIG_ERROR_CODES:
+            raise serializers.ValidationError('Unbekannter Fehlercode.')
+        return value
+
+    def validate_page_path(self, value: str) -> str:
+        # Only the path: a query string could carry activation or reset tokens.
+        path = value.split('?', 1)[0].split('#', 1)[0]
+        if path and (not path.startswith('/') or _CONTROL_OR_SPACE_PATTERN.search(path)):
+            raise serializers.ValidationError('Ungültiger Pfad.')
+        return path
+
+    def validate_hostname(self, value: str) -> str:
+        if not _HOSTNAME_PATTERN.match(value):
+            raise serializers.ValidationError('Ungültiger Hostname.')
+        return value.lower()
+
+    def validate_site_key(self, value: str) -> str:
+        if not _SITE_KEY_PATTERN.match(value):
+            raise serializers.ValidationError('Ungültiger Site Key.')
+        return value

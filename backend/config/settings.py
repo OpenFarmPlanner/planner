@@ -500,6 +500,23 @@ DEFAULT_FROM_EMAIL = _env_str('DEFAULT_FROM_EMAIL', 'OpenFarmPlanner <info@openf
 SUPPORT_CONTACT_EMAIL = _env_str('SUPPORT_CONTACT_EMAIL', 'info@openfarmplanner.org')
 ADMIN_NOTIFICATION_EMAIL = _env_str('ADMIN_NOTIFICATION_EMAIL', 'info@openfarmplanner.org')
 SERVER_EMAIL = _env_str('SERVER_EMAIL', EMAIL_HOST_USER)
+# Recipients of Django's generic "500 error" emails (AdminEmailHandler, sent
+# only when DEBUG is False). Comma-separated addresses; empty disables them.
+ADMINS = [(address, address) for address in _env_list('ADMINS')]
+
+# Label shown in operator alerts. Staging runs with DJANGO_ENV=production, so
+# it is told apart by its public hostname unless set explicitly.
+DEPLOYMENT_ENVIRONMENT = _env_str('DEPLOYMENT_ENVIRONMENT') or (
+    'staging'
+    if (parsed_public_frontend_url.hostname or '').lower().startswith('staging.')
+    else DJANGO_ENV
+)
+
+# Registration failure alerts (accounts/registration_alerts.py). Comma-separated
+# addresses; empty (the default) only logs the failures and sends no email.
+REGISTRATION_ALERT_EMAILS = _env_list('REGISTRATION_ALERT_EMAILS')
+# Sends alert emails on a background thread so SMTP never delays a response.
+REGISTRATION_ALERT_SEND_ASYNC = True
 
 # CORS and CSRF origins are intentionally configured independently via environment variables.
 _cors_origins_str = os.getenv('CORS_ALLOWED_ORIGINS', '')
@@ -640,6 +657,8 @@ REST_FRAMEWORK = {
         'invitation_accept': _env_str('THROTTLE_INVITATION_ACCEPT', '20/hour'),
         'agent_login_consume': _env_str('THROTTLE_AGENT_LOGIN_CONSUME', '30/hour'),
         'feedback_submit': _env_str('THROTTLE_FEEDBACK_SUBMIT', '20/hour'),
+        'client_error_report': _env_str('THROTTLE_CLIENT_ERROR_REPORT', '10/hour'),
+        'client_error_report_global': _env_str('THROTTLE_CLIENT_ERROR_REPORT_GLOBAL', '60/hour'),
         'write_new_account': _env_str('THROTTLE_WRITE_NEW_ACCOUNT', '100/hour'),
         'api_token_read': _env_str('THROTTLE_API_TOKEN_READ', '2000/hour'),
         'api_token_write': _env_str('THROTTLE_API_TOKEN_WRITE', '300/hour'),
@@ -800,12 +819,34 @@ if DEBUG:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_false': {'()': 'django.utils.log.RequireDebugFalse'},
+        'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue'},
+        'skip_registration_alerted': {
+            '()': 'config.logging_filters.SkipRegistrationAlertedRequests',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
         },
+        'debug_console': {
+            'class': 'logging.StreamHandler',
+            'filters': ['require_debug_true'],
+        },
+        # Django's default 'django' logger setup, redeclared so the admin
+        # emails skip errors a registration failure alert already reported.
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'filters': ['require_debug_false', 'skip_registration_alerted'],
+        },
     },
     'loggers': {
+        'django': {
+            'handlers': ['debug_console', 'mail_admins'],
+            'level': 'INFO',
+        },
         'accounts': {
             'handlers': ['console'],
             'level': 'INFO',

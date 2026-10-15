@@ -77,3 +77,21 @@ class TrustAwareWriteRateThrottle(SimpleRateThrottle):
         if user is None or not user.is_authenticated:
             return None
         return self.cache_format % {'scope': self.scope, 'ident': user.pk}
+
+
+class ClientErrorReportIpRateThrottle(SimpleRateThrottle):
+    """Per-IP limit for the unauthenticated client error report endpoint."""
+
+    scope = 'client_error_report'
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
+
+class ClientErrorReportGlobalRateThrottle(SimpleRateThrottle):
+    """One bucket shared by every client, so rotating IPs cannot flood the alert pipeline."""
+
+    scope = 'client_error_report_global'
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        return self.cache_format % {'scope': self.scope, 'ident': 'all'}

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadTurnstileScript, resolveTurnstileSiteKey, TURNSTILE_SCRIPT_URL, type TurnstileApi } from './turnstile';
+import {
+  isTurnstileConfigError,
+  loadTurnstileScript,
+  resolveTurnstileSiteKey,
+  TURNSTILE_SCRIPT_URL,
+  type TurnstileApi,
+} from './turnstile';
 
 function injectedScripts(): HTMLScriptElement[] {
   return Array.from(document.head.querySelectorAll<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_URL}"]`));
@@ -9,6 +15,18 @@ describe('resolveTurnstileSiteKey', () => {
   it('trims the configured key and treats a missing one as disabled', () => {
     expect(resolveTurnstileSiteKey('  0x4AAA  ')).toBe('0x4AAA');
     expect(resolveTurnstileSiteKey(undefined)).toBe('');
+  });
+});
+
+describe('isTurnstileConfigError', () => {
+  it('flags the documented configuration codes only', () => {
+    for (const code of ['110100', '110110', '110200', '400020', '400021', '400070', ' 110200 ']) {
+      expect(isTurnstileConfigError(code)).toBe(true);
+    }
+    expect(isTurnstileConfigError(110200)).toBe(true);
+    for (const code of ['110600', '110620', '200100', '200500', '300010', '600010', '', undefined, null]) {
+      expect(isTurnstileConfigError(code)).toBe(false);
+    }
   });
 });
 
