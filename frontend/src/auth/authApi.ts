@@ -297,6 +297,28 @@ export async function register(
   });
 }
 
+export interface TurnstileClientErrorReport {
+  errorCode: string;
+  pagePath: string;
+  hostname: string;
+  siteKey: string;
+}
+
+/** Tell the operators the Turnstile widget is misconfigured. Carries no user input. */
+export async function reportTurnstileClientError(report: TurnstileClientErrorReport): Promise<void> {
+  await ensureCsrfCookie();
+  await request<void>('/client-errors/turnstile/', {
+    method: 'POST',
+    headers: csrfHeader(),
+    body: JSON.stringify({
+      error_code: report.errorCode,
+      page_path: report.pagePath,
+      hostname: report.hostname,
+      site_key: report.siteKey,
+    }),
+  });
+}
+
 export async function acceptConsent(document: string): Promise<AuthUser> {
   await ensureCsrfCookie();
   return request<AuthUser>('/auth/consent/accept/', {

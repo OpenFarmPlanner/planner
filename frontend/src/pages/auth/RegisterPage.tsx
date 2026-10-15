@@ -8,6 +8,7 @@ import { projectAPI, type InvitationPublicStatus } from '../../api/api';
 import { AuthApiError } from '../../auth/authApi';
 import { resolveTurnstileSiteKey } from '../../auth/turnstile';
 import { useAuth } from '../../auth/useAuth';
+import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import AccountCreationLegalNotice from '../../components/auth/AccountCreationLegalNotice';
 import ActivationEmailResendPanel from '../../components/auth/ActivationEmailResendPanel';
 import SocialLoginButtons from '../../components/auth/SocialLoginButtons';
@@ -58,6 +59,7 @@ export default function RegisterPage() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [turnstileConfigError, setTurnstileConfigError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -251,11 +253,21 @@ export default function RegisterPage() {
                 siteKey={TURNSTILE_SITE_KEY}
                 onTokenChange={setTurnstileToken}
                 resetSignal={turnstileResetSignal}
+                onConfigError={() => setTurnstileConfigError(true)}
               />
             ) : null}
-            <Button type="submit" variant="contained" size="large" disabled={submitting || isLoggedIn} fullWidth sx={authPrimaryButtonSx}>
-              {submitting ? t('auth:register.submitting') : t('auth:register.submit')}
-            </Button>
+            <DisabledActionTooltip fullWidth title={turnstileConfigError && !isLoggedIn ? t('auth:register.turnstile.configErrorSubmitDisabled') : ''}>
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={submitting || isLoggedIn || turnstileConfigError}
+                fullWidth
+                sx={authPrimaryButtonSx}
+              >
+                {submitting ? t('auth:register.submitting') : t('auth:register.submit')}
+              </Button>
+            </DisabledActionTooltip>
             <Button type="button" component={RouterLink} to={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'} state={location.state} sx={authTextButtonSx}>
               {t('auth:register.hasAccount')}
             </Button>

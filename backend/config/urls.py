@@ -48,6 +48,7 @@ urlpatterns = [
     # to the single path registered with Google/Microsoft.
     path(_with_prefix('api/auth/social/'), include('accounts.social_urls')),
     path(_with_prefix('api/auth/'), include('accounts.urls')),
+    path(_with_prefix('api/client-errors/'), include('accounts.client_error_urls')),
     path(_with_prefix('api/'), include('farm.urls')),
     # Additive, forward-looking crop-library surface — see
     # docs/crop-library-architecture.md. Not yet public: same
@@ -67,6 +68,7 @@ legacy_prefix = 'openfarmplanner'
 if getattr(settings, 'URL_PREFIX', '').strip('/') != legacy_prefix:
     urlpatterns += [
         path(f'{legacy_prefix}/api/auth/', include('accounts.urls')),
+        path(f'{legacy_prefix}/api/client-errors/', include('accounts.client_error_urls')),
         path(f'{legacy_prefix}/api/', include('farm.urls')),
         path(f'{legacy_prefix}/api/crop-library/', include('crops.urls')),
         path(f'{legacy_prefix}/api/crop-species/', include('crops.species_urls')),

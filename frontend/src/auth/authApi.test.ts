@@ -17,6 +17,7 @@ import {
   logout,
   parsePositiveSeconds,
   register,
+  reportTurnstileClientError,
   request,
   requestAccountDeletion,
   requestEmailChange,
@@ -82,6 +83,33 @@ describe('authApi error mapping', () => {
     }
     const body = JSON.parse(String(registerInit.body)) as Record<string, unknown>;
     expect(body).not.toHaveProperty('accept_terms');
+  });
+
+  it('reports a Turnstile configuration error with only the widget context', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => ({
+      ok: true,
+      status: 204,
+      text: async () => '',
+      json: async () => ({}),
+    } as Response));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reportTurnstileClientError({
+      errorCode: '110200',
+      pagePath: '/register',
+      hostname: 'staging.openfarmplanner.org',
+      siteKey: '0x4AAA',
+    });
+
+    const [url, init] = fetchMock.mock.calls[1] ?? [];
+    expect(String(url)).toMatch(/\/client-errors\/turnstile\/$/);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      error_code: '110200',
+      page_path: '/register',
+      hostname: 'staging.openfarmplanner.org',
+      site_key: '0x4AAA',
+    });
   });
 
   it('sends the current UI language when starting the guest demo', async () => {

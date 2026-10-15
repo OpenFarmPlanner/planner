@@ -62,6 +62,11 @@ from .serializers import (
     UserSerializer,
 )
 from .registration_abuse import record_registration_success, registration_ip_limit_exceeded
+from .registration_alerts import (
+    RegistrationAlertMixin,
+    RegistrationFailure,
+    report_registration_failure,
+)
 from .services import (
     _clear_activation_expiry,
     _decode_uid,
@@ -145,7 +150,8 @@ def _turnstile_error_response(request: Request, client_ip: str | None) -> Respon
     if not turnstile_enabled():
         return None
     raw_token = request.data.get('turnstile_token', '') if isinstance(request.data, Mapping) else ''
-    outcome = verify_turnstile_token(raw_token if isinstance(raw_token, str) else '', client_ip)
+    token = raw_token if isinstance(raw_token, str) else ''
+    outcome = verify_turnstile_token(token, client_ip, request)
     if outcome is TurnstileOutcome.PASSED:
         return None
     if outcome is TurnstileOutcome.UNAVAILABLE:
@@ -169,7 +175,7 @@ class CsrfTokenView(APIView):
         return Response({'detail': _de(_('CSRF cookie set'))})
 
 
-class RegisterView(APIView):
+class RegisterView(RegistrationAlertMixin, APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_register'
     # Opts this view into the globally registered EmailDomainRateThrottle.
@@ -200,10 +206,16 @@ class RegisterView(APIView):
         _set_activation_expiry(user)
         try:
             _send_activation_email(user)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             logger.exception(
                 'Failed to send activation email after registration',
                 extra={'user_id': user.id},
+            )
+            report_registration_failure(
+                RegistrationFailure.VERIFICATION_EMAIL,
+                request=request,
+                exc=exc,
+                email=user.email,
             )
             return _email_send_failed_response(
                 REGISTRATION_EMAIL_SEND_FAILED_MESSAGE,
@@ -216,7 +228,7 @@ class RegisterView(APIView):
         )
 
 
-class ActivateView(APIView):
+class ActivateView(RegistrationAlertMixin, APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_activation'
 
@@ -670,7 +682,7 @@ class AccountDataExportView(APIView):
         return response
 
 
-class ResendActivationView(APIView):
+class ResendActivationView(RegistrationAlertMixin, APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_resend_activation'
 
@@ -690,10 +702,16 @@ class ResendActivationView(APIView):
             _set_activation_expiry(user)
             try:
                 _send_activation_email(user)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     'Failed to resend activation email',
                     extra={'user_id': user.id},
+                )
+                report_registration_failure(
+                    RegistrationFailure.VERIFICATION_EMAIL,
+                    request=request,
+                    exc=exc,
+                    email=user.email,
                 )
                 return _email_send_failed_response(
                     GENERIC_EMAIL_SEND_FAILED_MESSAGE,

@@ -280,17 +280,26 @@ checks above; it does not replace the throttles.
   retries failed checks and refreshes expired tokens; the widget additionally
   retries a failed script load (3 attempts, 10 s apart), shows a warning while
   a check is failing, and `RegisterPage` resets the widget after every submit
-  attempt because the backend consumes each token once.
+  attempt because the backend consumes each token once. A widget error code
+  that means the widget itself is misconfigured (see
+  [registration failure alerts](#registration-failure-alerts)) is not retried
+  silently: the widget shows an error that the operators were informed, reports
+  the code to `POST /api/client-errors/turnstile/` once per page view, and
+  `RegisterPage` disables the submit button with a tooltip explaining why.
 - **Backend.** `RegisterView` calls `accounts.turnstile.verify_turnstile_token`
   after the honeypot and per-IP cap and *before* the serializer, so a bot
   cannot use the form to probe for existing email addresses without passing
   the check. It posts the secret, the token, and the client IP (`REMOTE_ADDR`,
   after `TrustedProxyRemoteAddrMiddleware`) to Cloudflare's `siteverify` API.
-  - missing, oversized, or rejected token → `400` with code `turnstile_failed`;
+  - missing, oversized, or rejected token (`invalid-input-response`,
+    `timeout-or-duplicate`, `missing-input-response`, or no/unknown code) →
+    `400` with code `turnstile_failed`;
   - Cloudflare unreachable, timeout, non-JSON answer, or a server-side error
-    code (`internal-error`, `invalid-input-secret`, `missing-input-secret`) →
-    `503` with code `turnstile_unavailable`. Both are mapped to German/English
-    messages in the frontend; neither creates an account.
+    code (`internal-error`, `invalid-input-secret`, `missing-input-secret`,
+    `bad-request`) → `503` with code `turnstile_unavailable`. Both are mapped
+    to German/English messages in the frontend; neither creates an account.
+    `bad-request` means *our* siteverify request was malformed, so it counts
+    as server-side, not as the visitor's failure.
   - Every rejection logs one `WARNING` on the `accounts.turnstile` logger
     (`Rejected registration: Turnstile verification failed (reason=…,
     error_codes=…)`), with no token, IP, or email in it, so the rejection
@@ -304,11 +313,106 @@ checks above; it does not replace the throttles.
   that widget's `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`, and the frontend
   build for the same deployment gets the matching `VITE_TURNSTILE_SITE_KEY`.
   A secret without a site key (or the reverse) raises the Django system-check
-  warning `accounts.W001`/`accounts.W002`. Roll out on staging first: a
+  warning `accounts.W001`/`accounts.W002`. Outside `DJANGO_ENV=development`/
+  `test`, a deployment with neither key raises `accounts.W003`, and one using
+  a Cloudflare test key (`1x…`/`2x…`/`3x…` dummy site keys or secrets) raises
+  `accounts.W004`.
+- **Cloudflare dashboard, per deployment.** The widget's *Hostname
+  Management* list must contain every domain the registration form is served
+  from — production **and** `staging.openfarmplanner.org`; a missing hostname
+  makes the widget fail with error `110200` for every visitor. Each
+  environment needs its own matching site key (frontend build) and secret
+  (backend `.env`); a site key from one widget with the secret of another
+  makes every token fail verification. Roll out on staging first: a
   backend that enforces the check while its frontend was built without the
   site key rejects every registration with `turnstile_failed`.
 - **Privacy.** Covered by the "Bot-Schutz bei der Registrierung (Cloudflare
   Turnstile)" section of the privacy policy.
+
+### Registration failure alerts
+
+`accounts/registration_alerts.py` emails the operators when registration
+fails for a reason that is **not the visitor's fault**, so a broken signup is
+noticed within minutes instead of through complaints. The motivating incident
+was a wrong Turnstile site key that silently blocked every registration.
+
+| Failure type | Raised when |
+|---|---|
+| `server_error` | An unhandled exception or a 5xx response in `RegisterView`, `ActivateView` or `ResendActivationView` (via `RegistrationAlertMixin`), unless a more specific alert below already covered the request |
+| `verification_email` | Sending the activation email fails on registration or on resend (SMTP error, timeout, misconfiguration) |
+| `turnstile_client_config` | The browser reports a widget configuration error (below) |
+| `turnstile_server_config` | `siteverify` answers `missing-input-secret`, `invalid-input-secret` or `bad-request` |
+| `turnstile_unreachable` | `siteverify` times out, cannot be reached, answers non-JSON/non-2xx, or answers `internal-error` |
+| `turnstile_missing_token` | More than 5 registration attempts **without any** Turnstile token within 15 minutes (a broken widget, not a single visitor) |
+
+Never alerted, because they are the visitor's own failures: validation errors
+(weak password, email already registered, invalid input), throttled requests,
+and the user-side `siteverify` codes `invalid-input-response`,
+`timeout-or-duplicate` and `missing-input-response`.
+
+The Turnstile codes follow Cloudflare's docs ("Server-side validation → Error
+codes reference" and "Client-side errors → Error codes"). The client-side
+configuration codes are `110100`/`110110`/`400020` (invalid or unknown site
+key), `110200` (domain not authorized), `400021` (site key/domain region
+mismatch) and `400070` (site key disabled). Everything else the widget can
+report (`110600`/`110620` timeouts, `200100` clock, `200500` iframe load,
+`300*`/`600*` challenge failures) is transient or about the visitor and is
+neither reported nor alerted. The list exists twice and must stay in sync:
+`TURNSTILE_CLIENT_CONFIG_ERROR_CODES` in `accounts/turnstile.py` and
+`TURNSTILE_CONFIG_ERROR_CODES` in `frontend/src/auth/turnstile.ts`.
+
+**Client reports.** `POST /api/client-errors/turnstile/` takes
+`{error_code, page_path, hostname, site_key}`. It is unauthenticated,
+throttled per IP (`client_error_report`, `10/hour`) and globally
+(`client_error_report_global`, `60/hour`), and answers `400` without an alert
+for any code outside the allowlist. `page_path` is cut at `?`/`#` (a query
+string could carry an activation token); `hostname` and `site_key` are
+character-restricted. A valid report answers `204` and goes through the same
+pipeline as every other alert.
+
+**Delivery.**
+
+- Subject `[OpenFarmPlanner] Registrierung fehlgeschlagen: <failure type>`;
+  the body lists timestamp (UTC), environment (`DEPLOYMENT_ENVIRONMENT`),
+  failure type, exception class, message and traceback where available,
+  request method and path. Turnstile alerts add the site key the backend
+  expects (`TURNSTILE_SITE_KEY`) next to the one the browser reported and its
+  hostname, so a mismatch is visible at a glance.
+- Never included: passwords, request bodies, tokens, IP addresses. Email
+  addresses are masked (`ma***@gmx.at`), also inside exception messages and
+  tracebacks; IPv4/IPv6 addresses there are replaced with `[IP removed]`.
+- Recipients come from `REGISTRATION_ALERT_EMAILS` (comma-separated). Empty —
+  the default, and forced in `settings_test.py` — sends no email.
+- At most one email per failure type per 15 minutes. Failures during the
+  cooldown are counted, and the next email of that type carries the count.
+  The cooldown and counters live in Django's default cache, which is
+  per-process (`LocMemCache`), so each worker process throttles on its own.
+- Sending runs on a background thread with a 10 s SMTP timeout, and any
+  failure is caught and logged: an alert never breaks or slows down the
+  visitor's request.
+- Every reported failure is also logged at `ERROR` on the
+  `accounts.registration_alerts` logger with the same masked fields, so there
+  is a record even when outgoing mail is what is broken.
+
+**Generic 500 emails (`ADMINS`).** Django's `AdminEmailHandler` emails every
+unhandled exception anywhere in the app to `ADMINS` (comma-separated
+addresses, empty by default) when `DEBUG=False`. `settings.LOGGING` redeclares
+it with the `config.logging_filters.SkipRegistrationAlertedRequests` filter:
+`report_registration_failure` marks the request, and the handler skips
+records for a marked request, so one exception never produces both emails.
+
+**Checks and verification.** Outside `development`/`test`, an empty
+`REGISTRATION_ALERT_EMAILS` raises the system-check warning `accounts.W005`.
+To verify delivery on a server, run:
+
+```bash
+pdm run python manage.py send_test_registration_alert --type turnstile_client_config
+```
+
+It sends one alert marked `(TEST)` synchronously through the configured email
+backend, ignoring the cooldown, and fails loudly if delivery fails or no
+recipient is configured. `--type` accepts every failure type above (default
+`server_error`).
 
 ### Activation email resend
 
@@ -410,6 +514,11 @@ All are read from the environment in `backend/config/settings.py`.
 | `TURNSTILE_SITE_KEY` | *(empty)* | This deployment's Turnstile widget key; must match the frontend's `VITE_TURNSTILE_SITE_KEY` |
 | `TURNSTILE_SECRET_KEY` | *(empty)* | Turnstile secret; when set, registration requires a verified token |
 | `TURNSTILE_VERIFY_TIMEOUT_SECONDS` | `5` | Timeout for the `siteverify` call before answering `turnstile_unavailable` |
+| `REGISTRATION_ALERT_EMAILS` | *(empty)* | Comma-separated recipients of [registration failure alerts](#registration-failure-alerts); empty only logs |
+| `ADMINS` | *(empty)* | Comma-separated recipients of Django's generic 500-error emails (`DEBUG=False` only) |
+| `DEPLOYMENT_ENVIRONMENT` | `staging` if the `PUBLIC_FRONTEND_URL` host starts with `staging.`, else `DJANGO_ENV` | Environment label in alerts |
+| `THROTTLE_CLIENT_ERROR_REPORT` | `10/hour` | Turnstile client error reports per IP |
+| `THROTTLE_CLIENT_ERROR_REPORT_GLOBAL` | `60/hour` | Turnstile client error reports across all clients |
 
 The E2E backend raises the trust/registration rates in
 `frontend/playwright.config.ts` alongside the auth rates already raised

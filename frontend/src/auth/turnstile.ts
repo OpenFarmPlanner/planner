@@ -11,7 +11,8 @@ export interface TurnstileRenderOptions {
   size?: 'normal' | 'flexible' | 'compact';
   appearance?: 'always' | 'execute' | 'interaction-only';
   callback?: (token: string) => void;
-  'error-callback'?: (errorCode: string) => void;
+  /** Returning true tells Turnstile the error was handled, so it logs nothing itself. */
+  'error-callback'?: (errorCode: string) => boolean | void;
   'expired-callback'?: () => void;
   'timeout-callback'?: () => void;
   'before-interactive-callback'?: () => void;
@@ -28,6 +29,28 @@ declare global {
   interface Window {
     turnstile?: TurnstileApi;
   }
+}
+
+/**
+ * Widget error codes that mean the widget itself is misconfigured, per
+ * Cloudflare's "Client-side errors / Error codes" docs: invalid or unknown
+ * site key (110100, 110110, 400020), hostname not authorized for the widget
+ * (110200), site key region/domain mismatch (400021), disabled site key
+ * (400070). Every other code (timeouts, iframe load, clock, 300xxx/600xxx
+ * challenge failures) is transient or about the visitor. Must match the
+ * backend allowlist `TURNSTILE_CLIENT_CONFIG_ERROR_CODES`.
+ */
+export const TURNSTILE_CONFIG_ERROR_CODES: ReadonlySet<string> = new Set([
+  '110100',
+  '110110',
+  '110200',
+  '400020',
+  '400021',
+  '400070',
+]);
+
+export function isTurnstileConfigError(errorCode: string | number | null | undefined): boolean {
+  return TURNSTILE_CONFIG_ERROR_CODES.has(String(errorCode ?? '').trim());
 }
 
 /** Empty when this build was made without a Turnstile widget (dev, E2E). */
