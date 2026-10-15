@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-15 — Claude — Automated security review of PR #780, follow-up commit (English legal texts stay authoritative)
+
+**Scope:** `git diff cf3c8c10..HEAD`: `LegalDocumentLayout.tsx`, legal-notice i18n strings, `CLAUDE.md`, `docs/i18n.md` and tests.
+
+**Findings:** No issues. Removes a translation-notice component and reverts wording only; no new data flows, unsafe HTML APIs or backend changes. The earlier entry for this PR still holds.
+
 ## 2026-10-15 — Claude — Automated security review of PR #780 (bilingual public pages, canonical host redirect)
 
 **Scope:** `git diff origin/main...HEAD`: `CanonicalHostRedirectMiddleware` and its settings, frontend SEO registry/guard, prerendering, language switcher, `index.html` preboot script, docs and tests.
