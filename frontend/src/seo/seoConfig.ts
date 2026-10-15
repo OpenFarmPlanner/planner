@@ -3,9 +3,10 @@
  *
  * This module is the single source of truth for:
  *   - the canonical public site URL (used for canonical/OG tags, robots.txt and
- *     sitemap.xml), and
- *   - which routes are publicly indexable versus which must be kept out of
- *     search-engine indexes.
+ *     sitemap.xml),
+ *   - the registry of public pages with their German and English paths
+ *     (`PUBLIC_PAGES`), and
+ *   - which routes must be kept out of search-engine indexes.
  *
  * It is intentionally free of DOM/React/Vite imports so it can be consumed both
  * by the Vite build (to emit robots.txt / sitemap.xml and inject <head> tags)
@@ -17,9 +18,6 @@
 
 /** Fallback canonical site URL when `VITE_PUBLIC_SITE_URL` is not provided. */
 export const DEFAULT_SITE_URL = 'https://openfarmplanner.org';
-
-/** Default document language of the public site (matches index.html `lang`). */
-export const SITE_LANGUAGE = 'de';
 
 /**
  * A subset of `import.meta.env` / `process.env` this module reads. The index
@@ -78,73 +76,156 @@ export type ChangeFrequency =
   | 'yearly'
   | 'never';
 
-export interface PublicRoute {
-  /** Absolute path from the site root, always starting with `/`. */
-  path: string;
+/** Languages every public page is published in, in hreflang order. */
+export const SEO_LANGUAGES = ['de', 'en'] as const;
+export type SeoLanguage = (typeof SEO_LANGUAGES)[number];
+
+/**
+ * The site's default language: served at the root without a path prefix and
+ * used as the `x-default` hreflang target.
+ */
+export const DEFAULT_SEO_LANGUAGE: SeoLanguage = 'de';
+
+/** Open Graph `og:locale` value per language. */
+export const OG_LOCALES: Readonly<Record<SeoLanguage, string>> = {
+  de: 'de_DE',
+  en: 'en_US',
+};
+
+export type PublicPageId = 'home' | 'about' | 'imprint' | 'privacy' | 'terms';
+
+export interface PublicPage {
+  id: PublicPageId;
+  /**
+   * Canonical path per language: absolute, slashless (except the German root
+   * `/`), and German without a language prefix while every other language
+   * lives under `/<lang>`.
+   */
+  paths: Readonly<Record<SeoLanguage, string>>;
   /** Sitemap `<changefreq>` hint. */
   changefreq: ChangeFrequency;
   /** Sitemap `<priority>` in the range [0.0, 1.0]. */
   priority: number;
   /**
-   * Route-specific `<title>` / `og:title` / `twitter:title`. Falls back to the
-   * site default (see `buildHeadTags`) when omitted, which only the landing
-   * page (`/`) should rely on.
+   * `home` namespace keys of the `<title>`/`og:title` and the meta/OG
+   * description. The texts themselves live in the locale bundles
+   * (`src/i18n/locales/<lang>/home.json`) like every other UI string.
    */
-  title?: string;
-  /**
-   * Route-specific meta/OG/Twitter description. Falls back to the site
-   * default when omitted.
-   */
-  description?: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 /**
- * Publicly reachable, canonical, indexable routes.
+ * The single registry of public, indexable marketing pages.
+ *
+ * Everything public-page related derives from this list: the router entries
+ * (`App.tsx`), build-time prerendering (`build/prerender.ts`), sitemap.xml,
+ * canonical + hreflang tags (build time and runtime), the language switcher's
+ * counterpart links and the startup auth-probe skip list. Never duplicate a
+ * public path anywhere else.
  *
  * ONLY genuinely public information pages belong here — never login,
  * registration, password reset, invitations, demo-start or in-app (`/app/*`)
- * routes.
- * When a new public route is added (e.g. the planned public crop library under
- * `/crops`), add it here and it flows automatically into the sitemap and,
- * via `build/prerender.ts`, into build-time prerendered HTML.
+ * routes. Adding a page: see "Public pages and SEO" in CLAUDE.md and
+ * docs/seo-and-indexing.md.
  */
-export const PUBLIC_INDEXABLE_ROUTES: readonly PublicRoute[] = [
+export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
-    path: '/',
+    id: 'home',
+    paths: { de: '/', en: '/en' },
     changefreq: 'weekly',
     priority: 1.0,
-    title: 'OpenFarmPlanner – Anbauplanung für den Gemüsebau',
-    description: 'OpenFarmPlanner: Open-Source-Anbauplaner für den Gemüsebau. Flächen, Kulturen und Anbaupläne direkt in Tabellen bearbeiten, mit offener Kulturbibliothek.',
+    titleKey: 'seo.titles.landing',
+    descriptionKey: 'seo.descriptions.landing',
   },
   {
-    path: '/ueber',
+    id: 'about',
+    paths: { de: '/ueber', en: '/en/about' },
     changefreq: 'monthly',
     priority: 0.5,
-    title: 'Über OpenFarmPlanner',
-    description: 'Wie und warum OpenFarmPlanner entstanden ist: der Open-Source-Ansatz, die Finanzierung über Spenden, und wie du mitmachen kannst.',
+    titleKey: 'seo.titles.about',
+    descriptionKey: 'seo.descriptions.about',
   },
   {
-    path: '/impressum',
+    id: 'imprint',
+    paths: { de: '/impressum', en: '/en/legal-notice' },
     changefreq: 'yearly',
     priority: 0.3,
-    title: 'Impressum – OpenFarmPlanner',
-    description: 'Impressum von OpenFarmPlanner: Anbieterkennzeichnung, Kontaktangaben und verantwortliche Person gemäß § 5 ECG.',
+    titleKey: 'seo.titles.imprint',
+    descriptionKey: 'seo.descriptions.imprint',
   },
   {
-    path: '/datenschutz',
+    id: 'privacy',
+    paths: { de: '/datenschutz', en: '/en/privacy' },
     changefreq: 'yearly',
     priority: 0.3,
-    title: 'Datenschutzerklärung – OpenFarmPlanner',
-    description: 'Datenschutzerklärung von OpenFarmPlanner: Informationen zu Hosting, Registrierung, Projektdaten, Cookies und Ihren Rechten nach der DSGVO.',
+    titleKey: 'seo.titles.privacy',
+    descriptionKey: 'seo.descriptions.privacy',
   },
   {
-    path: '/nutzungsbedingungen',
+    id: 'terms',
+    paths: { de: '/nutzungsbedingungen', en: '/en/terms' },
     changefreq: 'yearly',
     priority: 0.3,
-    title: 'Nutzungsbedingungen – OpenFarmPlanner',
-    description: 'Nutzungsbedingungen von OpenFarmPlanner: Regeln zu Accounts, Inhalten, der öffentlichen Kulturbibliothek und Haftung.',
+    titleKey: 'seo.titles.terms',
+    descriptionKey: 'seo.descriptions.terms',
   },
 ];
+
+/** One language version of a public page — the unit that is served, prerendered and listed in the sitemap. */
+export interface PublicPageVariant {
+  page: PublicPage;
+  language: SeoLanguage;
+  path: string;
+}
+
+/** Every served public URL path: each registered page in each language. */
+export const PUBLIC_PAGE_VARIANTS: readonly PublicPageVariant[] = PUBLIC_PAGES.flatMap((page) =>
+  SEO_LANGUAGES.map((language) => ({ page, language, path: page.paths[language] })),
+);
+
+/** Look up the public page variant served at a pathname (trailing slash tolerated). */
+export function findPublicPageVariant(pathname: string): PublicPageVariant | null {
+  const normalized = normalizePathname(pathname);
+  return PUBLIC_PAGE_VARIANTS.find((variant) => variant.path === normalized) ?? null;
+}
+
+/** The registry path of a public page in a language. */
+export function publicPagePath(id: PublicPageId, language: SeoLanguage): string {
+  const page = PUBLIC_PAGES.find((candidate) => candidate.id === id);
+  if (!page) {
+    throw new Error(`Unknown public page: ${id}`);
+  }
+  return page.paths[language];
+}
+
+/** Narrow an arbitrary language code to a public-page language, falling back to the default. */
+export function toSeoLanguage(language: string | null | undefined): SeoLanguage {
+  return (SEO_LANGUAGES as readonly string[]).includes(language ?? '')
+    ? (language as SeoLanguage)
+    : DEFAULT_SEO_LANGUAGE;
+}
+
+export interface HreflangAlternate {
+  /** `de`, `en` or `x-default`. */
+  hreflang: string;
+  href: string;
+}
+
+/**
+ * Reciprocal hreflang alternates of a page: one per language plus
+ * `x-default` pointing at the default-language version. Every language
+ * version of the page carries this identical set.
+ */
+export function buildHreflangAlternates(siteUrl: string, page: PublicPage): HreflangAlternate[] {
+  return [
+    ...SEO_LANGUAGES.map((language) => ({
+      hreflang: language,
+      href: buildCanonicalUrl(siteUrl, page.paths[language]),
+    })),
+    { hreflang: 'x-default', href: buildCanonicalUrl(siteUrl, page.paths[DEFAULT_SEO_LANGUAGE]) },
+  ];
+}
 
 /**
  * Path prefixes that must never be indexed and are disallowed in robots.txt.
@@ -195,10 +276,13 @@ export function isPathIndexable(pathname: string, indexable = true): boolean {
   ) {
     return false;
   }
-  return PUBLIC_INDEXABLE_ROUTES.some((route) => route.path === normalized);
+  return findPublicPageVariant(normalized) !== null;
 }
 
-/** Build an absolute canonical URL for a given pathname. */
+/**
+ * Build an absolute canonical URL for a given pathname: always slashless
+ * (only the site root keeps its `/`), on the configured canonical host.
+ */
 export function buildCanonicalUrl(siteUrl: string, pathname: string): string {
   const normalized = normalizePathname(pathname);
   return normalized === '/' ? `${siteUrl}/` : `${siteUrl}${normalized}`;

@@ -8,7 +8,7 @@
  * @returns The main App component with routing
  */
 
-import { createBrowserRouter, Outlet, redirect, useLocation, Navigate } from 'react-router';
+import { createBrowserRouter, Outlet, redirect, useLocation, Navigate, type RouteObject } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -28,6 +28,8 @@ import { buildInvitationAcceptPath } from './pages/invitationAcceptance';
 import { resolveRouterBasename } from './routerBasename';
 import RuntimeErrorState from './components/runtime/RuntimeErrorState';
 import RouteSeo from './seo/RouteSeo';
+import RouteLanguageSync from './i18n/RouteLanguageSync';
+import { PUBLIC_PAGE_VARIANTS, type PublicPageId } from './seo/seoConfig';
 import RouteErrorBoundary from './components/runtime/RouteErrorBoundary';
 import {
   clearRouteLoadRetry,
@@ -65,6 +67,24 @@ const GanttChart = React.lazy(() => import('./pages/GanttChart'));
 const SeedDemandPage = React.lazy(() => import('./pages/SeedDemand'));
 const YieldOverviewPage = React.lazy(() => import('./pages/YieldOverview'));
 const Suppliers = React.lazy(() => import('./pages/Suppliers'));
+
+// One element per registered public page; the router gets one entry per
+// language version from the registry, so no public path is listed here.
+const PUBLIC_PAGE_ELEMENTS: Record<PublicPageId, React.ReactElement> = {
+  home: <HomePage />,
+  about: withLazyFallback(<AboutPage />),
+  imprint: withLazyFallback(<ImprintPage />),
+  privacy: withLazyFallback(<PrivacyPolicyPage />),
+  terms: withLazyFallback(<TermsOfServicePage />),
+};
+
+function buildPublicPageRoutes(): RouteObject[] {
+  return PUBLIC_PAGE_VARIANTS.map((variant): RouteObject => (
+    variant.path === '/'
+      ? { index: true, element: PUBLIC_PAGE_ELEMENTS[variant.page.id] }
+      : { path: variant.path.slice(1), element: PUBLIC_PAGE_ELEMENTS[variant.page.id] }
+  ));
+}
 
 function LegacyInvitationRedirect() {
   const location = useLocation();
@@ -177,6 +197,7 @@ function GlobalRuntimeErrorHandler({ children }: GlobalRuntimeErrorHandlerProps)
 function RootSeoLayout() {
   return (
     <>
+      <RouteLanguageSync />
       <RouteSeo />
       <Outlet />
     </>
@@ -190,29 +211,10 @@ function createAppRouter(basename: string) {
       element: <RootSeoLayout />,
       errorElement: <RouteErrorBoundary />,
       children: [
-        {
-          index: true,
-          element: <HomePage />,
-        },
+        ...buildPublicPageRoutes(),
         {
           path: 'demo',
           element: withLazyFallback(<DemoPage />),
-        },
-        {
-          path: 'impressum',
-          element: withLazyFallback(<ImprintPage />),
-        },
-        {
-          path: 'ueber',
-          element: withLazyFallback(<AboutPage />),
-        },
-        {
-          path: 'datenschutz',
-          element: withLazyFallback(<PrivacyPolicyPage />),
-        },
-        {
-          path: 'nutzungsbedingungen',
-          element: withLazyFallback(<TermsOfServicePage />),
         },
         {
           path: 'login',

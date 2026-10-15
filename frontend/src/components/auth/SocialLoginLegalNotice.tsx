@@ -2,6 +2,7 @@ import { Link, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { useSocialProviders } from '../../auth/useSocialProviders';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import { authLegalLinkSx } from '../../pages/auth/authPageStyles';
 
 interface SocialLoginLegalNoticeProps {
@@ -25,6 +26,8 @@ interface SocialLoginLegalNoticeProps {
 export default function SocialLoginLegalNotice({ compact = false }: SocialLoginLegalNoticeProps) {
   const { t } = useTranslation('auth');
   const { providers, providerNamesText } = useSocialProviders();
+  const termsPath = usePublicPagePath('terms');
+  const privacyPath = usePublicPagePath('privacy');
 
   if (providers.length === 0) {
     return null;
@@ -41,11 +44,11 @@ export default function SocialLoginLegalNotice({ compact = false }: SocialLoginL
       sx={{ lineHeight: 1.6, display: 'block', textAlign: compact ? 'center' : 'left' }}
     >
       {t(prefixKey, { providers: providerNamesText })}
-      <Link component={RouterLink} to="/nutzungsbedingungen" target="_blank" rel="noopener" sx={authLegalLinkSx}>
+      <Link component={RouterLink} to={termsPath} target="_blank" rel="noopener" sx={authLegalLinkSx}>
         {t('socialLogin.legalNoticeTermsLinkLabel')}
       </Link>
       {t(middleKey)}
-      <Link component={RouterLink} to="/datenschutz" target="_blank" rel="noopener" sx={authLegalLinkSx}>
+      <Link component={RouterLink} to={privacyPath} target="_blank" rel="noopener" sx={authLegalLinkSx}>
         {t('socialLogin.legalNoticePrivacyLinkLabel')}
       </Link>
       {t(suffixKey)}

@@ -1,11 +1,14 @@
 /**
  * Runtime, route-aware SEO metadata for the SPA.
  *
- * The build injects static canonical/robots tags for the initial HTML (the
- * landing page). This component keeps them correct as the user (or a
- * JavaScript-rendering crawler such as Googlebot) navigates client-side:
+ * The build injects static canonical/robots tags for the initial HTML and
+ * prerenders the full head of every public page. This component keeps them
+ * correct as the user (or a JavaScript-rendering crawler such as Googlebot)
+ * navigates client-side:
  *
- *   - public info pages keep `robots: index, follow` and get a per-path canonical;
+ *   - public pages (`PUBLIC_PAGES`) keep `robots: index, follow` and get a
+ *     slashless self-canonical, reciprocal hreflang alternates and the
+ *     registry's title/description in the URL's language;
  *   - every private/auth/app route switches to `robots: noindex, nofollow`.
  *
  * It renders nothing and only mutates the document <head>. It complements — does
@@ -17,29 +20,25 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
+  OG_LOCALES,
   buildCanonicalUrl,
+  buildHreflangAlternates,
+  findPublicPageVariant,
   isPathIndexable,
   resolveIndexable,
   resolveSiteUrl,
+  type HreflangAlternate,
 } from './seoConfig';
+import { resolvePublicPageMeta } from './publicPageMeta';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 
 /**
- * Page-title keys per route, in the `home` namespace.
- *
- * Only routes with a meaningful, stable title are listed; everything else
- * keeps the app-wide title. Build-time SEO metadata (canonical, robots,
- * prerendered `<title>`) stays in the site's canonical language — see
- * `seoConfig.SITE_LANGUAGE` and docs/i18n.md; this only keeps the *runtime*
- * title and `<html lang>` in step with what the user is actually reading.
+ * Page-title keys (in the `home` namespace) for the non-public routes that
+ * have a meaningful, stable title. Public pages take theirs from the
+ * `PUBLIC_PAGES` registry instead; everything else keeps the app-wide title.
  */
-const ROUTE_TITLE_KEYS: Record<string, string> = {
-  '/': 'seo.titles.landing',
-  '/ueber': 'seo.titles.about',
+const NON_PUBLIC_ROUTE_TITLE_KEYS: Record<string, string> = {
   '/demo': 'seo.titles.demo',
-  '/impressum': 'seo.titles.imprint',
-  '/datenschutz': 'seo.titles.privacy',
-  '/nutzungsbedingungen': 'seo.titles.terms',
   '/login': 'seo.titles.login',
   '/register': 'seo.titles.register',
 };
@@ -47,13 +46,13 @@ const ROUTE_TITLE_KEYS: Record<string, string> = {
 const SITE_URL = resolveSiteUrl(import.meta.env);
 const DEPLOYMENT_INDEXABLE = resolveIndexable(import.meta.env);
 
-function upsertMeta(name: string, content: string): void {
+function upsertMeta(attribute: 'name' | 'property', key: string, content: string): void {
   let element = document.head.querySelector<HTMLMetaElement>(
-    `meta[name="${name}"]`,
+    `meta[${attribute}="${key}"]`,
   );
   if (!element) {
     element = document.createElement('meta');
-    element.setAttribute('name', name);
+    element.setAttribute(attribute, key);
     document.head.appendChild(element);
   }
   element.setAttribute('content', content);
@@ -71,6 +70,19 @@ function upsertCanonical(href: string): void {
   element.setAttribute('href', href);
 }
 
+function replaceHreflangAlternates(alternates: readonly HreflangAlternate[]): void {
+  document.head
+    .querySelectorAll('link[rel="alternate"][hreflang]')
+    .forEach((element) => element.remove());
+  for (const alternate of alternates) {
+    const element = document.createElement('link');
+    element.setAttribute('rel', 'alternate');
+    element.setAttribute('hreflang', alternate.hreflang);
+    element.setAttribute('href', alternate.href);
+    document.head.appendChild(element);
+  }
+}
+
 /**
  * Side-effect-only component. Mount once near the router root so it runs on
  * every navigation.
@@ -82,13 +94,32 @@ export default function RouteSeo(): null {
 
   useEffect(() => {
     const indexable = isPathIndexable(pathname, DEPLOYMENT_INDEXABLE);
-    upsertMeta('robots', indexable ? 'index, follow' : 'noindex, nofollow');
-    upsertCanonical(buildCanonicalUrl(SITE_URL, pathname));
+    const canonical = buildCanonicalUrl(SITE_URL, pathname);
+    upsertMeta('name', 'robots', indexable ? 'index, follow' : 'noindex, nofollow');
+    upsertCanonical(canonical);
+
+    const variant = findPublicPageVariant(pathname);
+    replaceHreflangAlternates(variant ? buildHreflangAlternates(SITE_URL, variant.page) : []);
+    if (!variant) {
+      return;
+    }
+    // Mirrors what build/prerenderSeo.ts bakes into the prerendered file, so
+    // client-side navigation between public pages leaves the same head.
+    const meta = resolvePublicPageMeta(variant.page, variant.language);
+    document.title = meta.title;
+    upsertMeta('name', 'description', meta.description);
+    upsertMeta('property', 'og:title', meta.title);
+    upsertMeta('property', 'og:description', meta.description);
+    upsertMeta('property', 'og:url', canonical);
+    upsertMeta('property', 'og:locale', OG_LOCALES[variant.language]);
   }, [pathname]);
 
   useEffect(() => {
+    if (findPublicPageVariant(pathname)) {
+      return;
+    }
     document.documentElement.lang = language;
-    const titleKey = ROUTE_TITLE_KEYS[pathname.replace(/\/+$/, '') || '/'];
+    const titleKey = NON_PUBLIC_ROUTE_TITLE_KEYS[pathname.replace(/\/+$/, '') || '/'];
     if (titleKey) {
       document.title = t(titleKey);
     }

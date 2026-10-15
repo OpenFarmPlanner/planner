@@ -196,6 +196,8 @@
     "contactEmail": "info@openfarmplanner.org"
   },
   "legal": {
+    "convenienceTranslationNotice": "This is a convenience translation. Only the German version is legally binding and prevails in case of any discrepancy.",
+    "germanVersionLink": "Read the German version",
     "imprint": {
       "title": "Imprint",
       "sections": {
@@ -424,7 +426,7 @@
         },
         "languageVersions": {
           "title": "Language versions",
-          "content": "This document is provided in German and English. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
+          "content": "This document is provided in German and English. Only the German version is legally binding; the English version is a convenience translation. In the event of any discrepancy or ambiguity between the language versions, the German version shall prevail."
         }
       }
     }
@@ -439,6 +441,13 @@
       "terms": "Terms of service – OpenFarmPlanner",
       "login": "Sign in – OpenFarmPlanner",
       "register": "Sign up – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: open-source crop planner for vegetable growing. Edit fields, crops and planting plans directly in tables, with an open crop library.",
+      "about": "How and why OpenFarmPlanner came to be: the open-source approach, funding through donations, and how you can get involved.",
+      "imprint": "Imprint of OpenFarmPlanner: provider identification, contact details and the person responsible under Section 5 of the Austrian E-Commerce Act (ECG).",
+      "privacy": "Privacy policy of OpenFarmPlanner: information on hosting, registration, project data, cookies and your rights under the GDPR.",
+      "terms": "Terms of service of OpenFarmPlanner: rules on accounts, content, the public crop library and liability."
     }
   }
 }

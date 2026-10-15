@@ -1,6 +1,7 @@
 import { Box, Link, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import LegalDocumentLayout from '../../components/legal/LegalDocumentLayout';
 
 const privacySections = [
@@ -37,12 +38,13 @@ const privacySectionBulletKeys: Partial<Record<(typeof privacySections)[number],
 
 export default function PrivacyPolicyPage() {
   const { t, i18n } = useTranslation('home');
+  const termsPath = usePublicPagePath('terms');
 
   return (
     <LegalDocumentLayout
       title={t('legal.privacy.title')}
       actions={
-        <Link component={RouterLink} to="/nutzungsbedingungen" underline="hover">
+        <Link component={RouterLink} to={termsPath} underline="hover">
           {t('legal.terms.title')}
         </Link>
       }

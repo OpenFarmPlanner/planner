@@ -8,15 +8,17 @@ produced by the **frontend build**.
 
 ## What is indexable
 
-Indexable public pages (also the sitemap entries):
+Every public page exists in German and English. German is the default
+language and lives at the root without a prefix; English lives under `/en`
+with English slugs:
 
-| Path                   | Purpose                        |
-| ---------------------- | ------------------------------ |
-| `/`                    | Public landing page            |
-| `/ueber`               | About page                     |
-| `/impressum`           | Imprint (legal)                |
-| `/datenschutz`         | Privacy policy (legal)         |
-| `/nutzungsbedingungen` | Terms of service (legal)       |
+| Page             | German (`x-default`)   | English            |
+| ---------------- | ---------------------- | ------------------ |
+| Landing page     | `/`                    | `/en`              |
+| About            | `/ueber`               | `/en/about`        |
+| Imprint (legal)  | `/impressum`           | `/en/legal-notice` |
+| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      |
+| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        |
 
 Explicitly **not** indexable (disallowed in `robots.txt` and served with a
 `noindex, nofollow` robots meta at runtime):
@@ -28,18 +30,75 @@ Explicitly **not** indexable (disallowed in `robots.txt` and served with a
   the route is not intended for search indexing
 - `/invite/*`, `/invitation`
 
-The single source of truth for both lists is
-[`frontend/src/seo/seoConfig.ts`](../frontend/src/seo/seoConfig.ts)
-(`PUBLIC_INDEXABLE_ROUTES` and `NON_INDEXABLE_PATH_PREFIXES`). Add a new public
-route there and it flows automatically into the sitemap, the runtime canonical
-logic and the tests. When the planned public crop library (`/crops`, see
-[crop-library-architecture.md](crop-library-architecture.md)) ships, add its
-public routes to `PUBLIC_INDEXABLE_ROUTES`.
+None of these has an `/en/...` twin — app and auth routes are language-neutral
+and follow the user's language preference. If one ever gets one, its `/en`
+path must be added to `NON_INDEXABLE_PATH_PREFIXES` too (the SEO guard rejects
+registering it as public).
+
+## The public page registry
+
+[`frontend/src/seo/seoConfig.ts`](../frontend/src/seo/seoConfig.ts) is the
+single source of truth. `PUBLIC_PAGES` lists every public page with its German
+and English path, sitemap `changefreq`/`priority`, and the `home`-namespace
+i18n keys of its `<title>` and meta description (`seo.titles.*`,
+`seo.descriptions.*` — the texts live in the locale bundles like every other
+UI string and are resolved at build time by
+[`publicPageMeta.ts`](../frontend/src/seo/publicPageMeta.ts)).
+`PUBLIC_PAGE_VARIANTS` flattens it into one entry per served URL. Everything
+else is derived from it, so no public path is listed anywhere else:
+
+- the router entries (`buildPublicPageRoutes` in `App.tsx`, which only maps
+  page ids to components);
+- build-time prerendering, `sitemap.xml` and the prerendered `<head>`;
+- canonical, hreflang, title and description at runtime (`RouteSeo`);
+- the language switcher's counterpart links and every internal link to a
+  public page (`usePublicPagePath`);
+- the startup auth-probe skip list (`AuthContext`).
+
+`NON_INDEXABLE_PATH_PREFIXES` in the same file drives the `robots.txt`
+`Disallow` lines.
+
+### URL, canonical and hreflang rules
+
+- The canonical host is `https://openfarmplanner.org` (no `www`).
+- Public URLs are **slashless** (`/ueber`, never `/ueber/`; only the root keeps
+  its `/`). The slash variant 301-redirects to the slashless one, never the
+  other way round, and the slashless URL is served directly with 200.
+- Every public page has exactly one self-referencing canonical: the URL it is
+  served at with 200 (`buildCanonicalUrl`).
+- Every public page carries the same reciprocal hreflang set: `de`, `en` and
+  `x-default` (pointing at the German version) — in the prerendered `<head>`,
+  at runtime, and as `xhtml:link` alternates on every sitemap `<url>`.
+- **The URL alone decides the language of a public page.** There is no
+  redirect or content swap based on `Accept-Language`, cookies, stored
+  preference or geolocation: `/ueber` is German and `/en/about` English for
+  every visitor and crawler. See [i18n.md](i18n.md) for how this coexists with
+  the user's language preference on all other routes.
+
+### The SEO guard
+
+[`frontend/src/seo/seoGuard.ts`](../frontend/src/seo/seoGuard.ts) fails the
+build — and the unit tests in `src/seo/__tests__/seoGuard.test.ts` and
+`build/prerenderSeo.test.ts` fail CI — when:
+
+- a registry entry lacks a language, has a trailing slash, an English path
+  outside `/en`, a duplicate path, a path under an app-only prefix, or a
+  missing title/description translation (`validatePublicPageRegistry`, run by
+  `seoPlugin` on every build and dev-server start);
+- `sitemap.xml` misses a page variant, lists an unregistered URL, contains a
+  trailing slash or `www` host, or has non-reciprocal alternates
+  (`validateSitemapXml`, run by `seoPlugin` before emitting it);
+- a prerendered page's canonical is not the URL it is served at, its
+  `<html lang>`, `og:url`, `og:locale` or `<title>` is wrong, or the hreflang
+  annotations across all prerendered pages are not reciprocal
+  (`assertPrerenderedSeo`, run by `prerender.ts` before writing any file);
+- a component in `src/pages/public/*Page.tsx` is routed outside the registry,
+  or `App.tsx` hardcodes a public path (`seoGuard.test.ts`).
 
 ## How robots.txt and sitemap.xml are generated
 
 They are **not** static files under `frontend/public/`. They are generated at
-build time by the Vite plugin
+build time (after the SEO guard has validated them) by the Vite plugin
 [`frontend/build/seoPlugin.ts`](../frontend/build/seoPlugin.ts) from the
 central config, so the canonical domain and route list are never duplicated:
 
@@ -70,15 +129,18 @@ gap as a one-off **build** step (wired up as the `postbuild` npm script, so it
 always runs right after `vite build`):
 
 1. serves the just-built `dist/` with Vite's own `preview()` server;
-2. uses Playwright (already a devDependency for e2e) to load each entry of
-   `PUBLIC_INDEXABLE_ROUTES` in a real headless browser and capture the fully
-   client-rendered DOM — no backend is required, since none of these pages
+2. uses Playwright (already a devDependency for e2e) to load every language
+   version of every public page (`PUBLIC_PAGE_VARIANTS`) in a fresh headless
+   browser context and capture the fully client-rendered DOM — the page's
+   language comes from its URL, so each file contains the fully translated
+   content, not German text translated after load — no backend is required, since none of these pages
    need to fetch data to render their initial content;
 3. serializes the CSS-in-JS rules that Emotion/MUI inserted through the
    browser CSSOM back into the prerendered `<style data-emotion>` tags, so the
    first paint is styled even before the JavaScript bundle boots;
-4. normalizes `<head>` (title, canonical, robots, description, OG, Twitter) to
-   the route-specific values from `seoConfig.ts`/`seoAssets.ts` — the same
+4. normalizes `<html lang>` and `<head>` (title, canonical, hreflang, robots,
+   description, OG incl. `og:locale`/`og:url`, Twitter) to the page variant's
+   values from `seoConfig.ts`/`seoAssets.ts` — the same
    source `RouteSeo` and `seoPlugin` already use, via the pure helper
    [`frontend/build/prerenderSeo.ts`](../frontend/build/prerenderSeo.ts) — so
    build-time and runtime tags never disagree or duplicate. The landing page
@@ -87,9 +149,16 @@ always runs right after `vite build`):
    (`buildSoftwareApplicationJsonLd` in `seoAssets.ts`) for rich-result
    eligibility. Every claim in it (free to use, AGPL-3.0) must stay true to
    the visible page — update it in the same change if that ever changes;
-5. writes the result as a real file per route: `dist/index.html`,
-   `dist/impressum/index.html`, `dist/datenschutz/index.html`,
-   `dist/nutzungsbedingungen/index.html`;
+5. runs the SEO guard over all captured heads, then writes the result as a
+   **flat file per URL**: `dist/index.html`, `dist/en.html`,
+   `dist/ueber.html`, `dist/en/about.html`, `dist/impressum.html`, … —
+   never `<path>/index.html`. A directory named like the page makes every
+   static server (Apache's `DirectorySlash`, `vite preview`) 301 the
+   slashless URL to `<path>/`, which with a slashless canonical is exactly the
+   canonical-points-at-a-redirect conflict that kept `/ueber` out of Google.
+   The prerendered `<html>` also carries `data-ofp-page-language` and
+   `data-ofp-page-path`, which `index.html`'s language preboot uses (see
+   below);
 6. additionally copies the *un*-prerendered SPA shell to
    `dist/app-shell.html`. Production's SPA fallback serves that file for every
    non-prerendered route, so `/app/*` and the auth routes never get the
@@ -97,23 +166,24 @@ always runs right after `vite build`):
    (`e2e/public-page-prerendering.spec.ts`) guards that it stays empty.
 
 Every other route (`/app/*`, `/login`, `/register`, password reset,
-invitations, ...) has no prerendered content of its own — only the four route
+invitations, ...) has no prerendered content of its own — only the public page
 files above plus the shell are written. The
 browser then boots the exact same SPA bundle as before
 (`createRoot(...).render(...)`, no hydration) and takes over normal
 client-side routing/i18n immediately; there is no route-specific content baked
 into the JS bundle itself, only the initial markup.
 
-The prerendered public HTML uses the site's canonical SEO language
-(`SITE_LANGUAGE = 'de'` in `seoConfig.ts`). Runtime UI language is still
-user-specific, so an English visitor must not see the German prerendered body
-while the production bundle is loading. `frontend/index.html` therefore runs a
-tiny synchronous language preboot before first paint: it reads
+Each prerendered file is in the language of its URL, and so is the SPA once
+it boots on that URL (`src/i18n/routeLanguage.ts`). `frontend/index.html`
+runs a tiny synchronous language preboot before first paint: on a
+prerendered public page served at its own path (`data-ofp-page-path` matches
+the URL) it takes the page language and shows the content immediately. On
+every other route it resolves the user's language from
 `localStorage["ui.language"]`, then `navigator.languages`/`navigator.language`,
-falls back to English, sets `<html lang>`, and hides the prerendered root when
-the initial UI language is not German. React removes that guard in a
-`useLayoutEffect` after the first committed app render, so the first visible
-client-rendered frame is already in the resolved language.
+falls back to English, sets `<html lang>`, and hides the root while the UI
+language is not German (only relevant where a static server's SPA fallback
+hands out prerendered German markup). React removes that guard in a
+`useLayoutEffect` after the first committed app render.
 
 `PRERENDER_OUT_DIR` (default `dist`) tells the script which build output
 directory to prerender into, mirroring `vite build --outDir`; ops sets this
@@ -122,8 +192,8 @@ alongside `VITE_BASE_PATH` when building into `dist-production`/`dist-staging`
 
 Production must serve the generated files with distinct cache policies:
 
-- HTML documents (`index.html`, `app-shell.html`, prerendered route
-  `index.html` files) are revalidated (`Cache-Control: no-cache`) so each
+- HTML documents (`index.html`, `app-shell.html`, the prerendered
+  `<path>.html` files) are revalidated (`Cache-Control: no-cache`) so each
   deploy immediately delivers the current hashed asset references.
 - Vite content-hashed JavaScript/CSS/assets under `assets/` may be long-lived
   and immutable because a content change creates a new filename.
@@ -156,11 +226,12 @@ spread across three different layers:
    lazy-load and so still show a blank frame until their chunk loads; left
    alone deliberately since they aren't an LCP-critical route, but worth the
    same fix if one of them ever becomes one.
-2. **A `/`-only `<link rel=preload>`.** `applyHeadTags` in
+2. **A landing-page-only `<link rel=preload>`.** `applyHeadTags` in
    [`prerenderSeo.ts`](../frontend/build/prerenderSeo.ts) adds a
    `fetchpriority="high"` preload with `imagesrcset`/`imagesizes` that must
    mirror `HeroImage.tsx`'s `src`/`srcSet`/`sizes` exactly — gated on
-   `route.path === '/'` so it only lands in `dist/index.html`, never in
+   `variant.page.id === 'home'` so it only lands in `dist/index.html` and
+   `dist/en.html`, never in
    `app-shell.html` (the SPA fallback for `/app/*` and auth routes) or the
    other prerendered routes, and never causes a double-fetch.
 3. **Four responsive widths, not two.** `hero-field-640.webp` (~45 KB) and
@@ -201,15 +272,38 @@ block. Whoever changes the hero image's visual content must rename the file
 produces a new filename") rather than overwriting `hero-field.webp` in place,
 or returning visitors would keep the stale cached image for up to a year.
 
-**Local verification caveat:** `vite preview`'s static file server only
-resolves a route's prerendered `index.html` for a *trailing-slash* request
-(`/impressum/`), the same way production Apache 301-redirects `/impressum` to
-`/impressum/` before serving it (see `deploy_frontend.sh`'s generated
-`.htaccess`, which passes real files/directories straight through via its
-`-f`/`-d` rewrite condition). `curl`ing `/impressum` (no trailing slash)
-against a local `vite preview` therefore falls back to the SPA shell — that is
-a `vite preview`-only serving detail, not a prerendering bug; add `-L` to
-`curl` or use the trailing-slash URL locally.
+## Serving: slashless URLs and the `www` host
+
+Production serving lives in the `ops` repo (`deploy/lib/htaccess.sh` renders
+the web-root `.htaccess`). Two rules there are required for the URL scheme
+above:
+
+1. **Slashless public pages.** Before the generic "real files and
+   directories" pass-through, serve `<path>.html` for a slashless request and
+   301 a trailing-slash request to the slashless URL whenever that file
+   exists:
+
+   ```apache
+   RewriteCond %{DOCUMENT_ROOT}${rewrite_base}$1.html -f
+   RewriteRule ^(.+)/$ ${rewrite_base}$1 [R=301,L]
+   RewriteCond %{DOCUMENT_ROOT}${rewrite_base}$1.html -f
+   RewriteRule ^(.+)$ $1.html [L]
+   ```
+
+   Gating both rules on the prerendered file keeps them away from backend
+   prefixes, assets and app routes. `vite preview` behaves the same for the
+   slashless URL out of the box (its HTML fallback serves `<path>.html`), so
+   local checks and the e2e suite use the production URLs.
+2. **`www` → apex.** `WWW_REDIRECT_HOST` makes the `.htaccess` 301 every
+   `www.openfarmplanner.org` request to the apex host. Backend prefixes
+   proxied by `uberspace web backend` (`/api`, `/admin`, …) never reach that
+   `.htaccess`, which is how `https://www.openfarmplanner.org/api/docs/` got
+   indexed. The backend therefore redirects them itself:
+   `config.middleware.CanonicalHostRedirectMiddleware` answers any request for
+   a host in `CANONICAL_HOST_REDIRECTS` (default: `www.` + the
+   `PUBLIC_FRONTEND_URL` host; set the env var, comma separated, to override,
+   or to an empty value to disable) with a 301 (308 for non-GET/HEAD) to the
+   same path and query on the canonical host.
 
 ## Environment variables
 
@@ -255,17 +349,17 @@ actual file a static host will serve for that URL):
 ```bash
 cd frontend
 npm run build   # postbuild runs prerender.ts automatically
-grep -E '<title>|rel="canonical"|name="description"' dist/impressum/index.html
-grep -E '<title>|rel="canonical"|name="description"' dist/datenschutz/index.html
-grep -E '<title>|rel="canonical"|name="description"' dist/nutzungsbedingungen/index.html
+grep -E '<html|<title>|rel="canonical"|hreflang|og:locale' dist/ueber.html
+grep -E '<html|<title>|rel="canonical"|hreflang|og:locale' dist/en/about.html
+grep -E '<title>|rel="canonical"|name="description"' dist/impressum.html dist/en/legal-notice.html
 ! grep -R -E 'https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)' dist --include='*.html'
 ```
 
-Or over HTTP against `vite preview` — note the trailing slash (see the caveat
-above):
+Or over HTTP against `vite preview`, with the same slashless URLs as
+production:
 
 ```bash
-curl -sL http://localhost:4173/impressum/ | grep -E '<title>|rel="canonical"'
+curl -s http://localhost:4173/en/about | grep -E '<html|<title>|rel="canonical"|hreflang'
 ```
 
 Confirm a non-production build blocks indexing:
@@ -301,6 +395,16 @@ Run these against the live site (replace the host if verifying a preview):
 # Status + redirect chain to the canonical URL (expect a single 200 at the end)
 curl -sSIL https://openfarmplanner.org/ | grep -iE '^HTTP/|^location:'
 
+# Public pages: slashless URL is a direct 200, the slash variant a 301 to it
+curl -sSI https://openfarmplanner.org/ueber | grep -iE '^HTTP/|^location:'      # 200
+curl -sSI https://openfarmplanner.org/ueber/ | grep -iE '^HTTP/|^location:'     # 301 -> /ueber
+curl -sSI https://openfarmplanner.org/en/about | grep -iE '^HTTP/|^location:'   # 200
+curl -s https://openfarmplanner.org/en/about | grep -E '<html lang="en"|<title>About OpenFarmPlanner</title>|hreflang'
+
+# www -> apex, for SPA and backend paths alike
+curl -sSI https://www.openfarmplanner.org/ueber | grep -iE '^HTTP/|^location:'     # 301 -> apex
+curl -sSI https://www.openfarmplanner.org/api/docs/ | grep -iE '^HTTP/|^location:' # 301 -> apex
+
 # All host/scheme variants should end on exactly one canonical https URL
 for u in http://openfarmplanner.org https://openfarmplanner.org \
          http://www.openfarmplanner.org https://www.openfarmplanner.org; do
@@ -325,8 +429,11 @@ curl -sSI https://openfarmplanner.org/ | grep -i 'x-robots-tag'
   `robots.txt`, `sitemap.xml`, per-route `noindex` for private pages, and the
   canonical-domain configuration. All covered above.
 - **Hosting / proxy / DNS (ops):** any `X-Robots-Tag: noindex`
-  response header, HTTP→HTTPS and `www`→non-`www` redirects, TLS, and the actual
-  static serving of `robots.txt` / `sitemap.xml`. A previously-indexed site that
+  response header, HTTP→HTTPS and `www`→non-`www` redirects for the static
+  site, the slashless public-page rewrite (see "Serving" above), TLS, and the
+  actual static serving of `robots.txt` / `sitemap.xml`. The `www` redirect
+  for backend-proxied paths is handled in this repo
+  (`CanonicalHostRedirectMiddleware`). A previously-indexed site that
   silently dropped out of Google — while still being found by other engines — is
   most consistent with an `X-Robots-Tag: noindex` header (or a `robots.txt`
   `Disallow: /`) introduced at the proxy, e.g. during a beta/demo phase. Verify

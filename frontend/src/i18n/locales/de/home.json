@@ -196,6 +196,8 @@
     "contactEmail": "info@openfarmplanner.org"
   },
   "legal": {
+    "convenienceTranslationNotice": "Dies ist eine unverbindliche Übersetzung. Rechtlich verbindlich ist ausschließlich die deutsche Fassung, die bei Abweichungen Vorrang hat.",
+    "germanVersionLink": "Deutsche Fassung lesen",
     "imprint": {
       "title": "Impressum",
       "sections": {
@@ -424,7 +426,7 @@
         },
         "languageVersions": {
           "title": "Sprachfassungen",
-          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
+          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Rechtlich verbindlich ist ausschließlich die deutsche Fassung; die englische Fassung ist eine unverbindliche Übersetzung. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die deutsche Fassung maßgeblich."
         }
       }
     }
@@ -439,6 +441,13 @@
       "terms": "Nutzungsbedingungen – OpenFarmPlanner",
       "login": "Anmelden – OpenFarmPlanner",
       "register": "Registrieren – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: Open-Source-Anbauplaner für den Gemüsebau. Flächen, Kulturen und Anbaupläne direkt in Tabellen bearbeiten, mit offener Kulturbibliothek.",
+      "about": "Wie und warum OpenFarmPlanner entstanden ist: der Open-Source-Ansatz, die Finanzierung über Spenden, und wie du mitmachen kannst.",
+      "imprint": "Impressum von OpenFarmPlanner: Anbieterkennzeichnung, Kontaktangaben und verantwortliche Person gemäß § 5 ECG.",
+      "privacy": "Datenschutzerklärung von OpenFarmPlanner: Informationen zu Hosting, Registrierung, Projektdaten, Cookies und deinen Rechten nach der DSGVO.",
+      "terms": "Nutzungsbedingungen von OpenFarmPlanner: Regeln zu Accounts, Inhalten, der öffentlichen Kulturbibliothek und Haftung."
     }
   }
 }

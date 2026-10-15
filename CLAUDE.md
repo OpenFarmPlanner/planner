@@ -272,6 +272,36 @@ checked, whether mobile stayed unchanged or was intentionally changed, how
 responsive regressions were avoided for shared components, and which relevant
 tests, screenshots, or manual checks were performed.
 
+## Public pages and SEO
+Public marketing pages (landing, about, legal) must stay indexable by Google
+in German and English. Full rules and rationale:
+[`docs/seo-and-indexing.md`](docs/seo-and-indexing.md). Checklist for adding
+or changing a public page:
+
+1. Register it in `PUBLIC_PAGES` in `frontend/src/seo/seoConfig.ts` with a
+   German path (root, no prefix) and an English path (under `/en`, English
+   slug), sitemap `changefreq`/`priority`, and `titleKey`/`descriptionKey`.
+   Map its id to the component in `PUBLIC_PAGE_ELEMENTS` (`App.tsx`). The
+   router, prerendering, sitemap, canonical, hreflang, switcher links and
+   internal links all derive from the registry.
+2. Provide both translations, German first, through the locale files
+   (`seo.titles.*`, `seo.descriptions.*` and the page content); the page is
+   prerendered fully translated per language. Legal pages: German is binding,
+   English shows the convenience-translation notice.
+3. URLs are slashless (`/ueber`, never `/ueber/`) on the apex host
+   (`openfarmplanner.org`, never `www`). The canonical is the URL served with
+   200; hreflang carries `de`, `en` and `x-default` (German).
+4. Never hardcode a public path, canonical, hreflang or sitemap entry; link
+   with `usePublicPagePath(id)`.
+5. No `Accept-Language`, cookie or geolocation redirect or content swap on
+   public pages: the URL alone decides their language.
+6. App-only routes are never public pages; add their prefixes (and any `/en`
+   twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
+7. Run the SEO guard: `cd frontend && npx vitest run src/seo build` and
+   `npm run build` (the build fails on guard errors); add
+   `npx playwright test e2e/public-page-prerendering.spec.ts` for the
+   prerendered output.
+
 ## Registration Bot Protection
 - Cloudflare Turnstile is active on the registration form only (not login or
   other forms), on top of the honeypot and registration throttles. Details:

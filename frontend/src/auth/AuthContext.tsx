@@ -22,27 +22,13 @@ import {
 } from "./authEvents";
 import type { AuthUser } from "./types";
 import { AuthContext, type AuthContextValue } from "./authContextShared";
+import { findPublicPageVariant } from "../seo/seoConfig";
+import { toAppRelativePathname } from "../i18n/routeLanguage";
 
 const GUEST_DEMO_SESSION_KEY = 'guestDemoSessionId';
-const PUBLIC_PATHS_WITHOUT_AUTH_PROBE = new Set([
-  '/',
-  '/ueber',
-  '/impressum',
-  '/datenschutz',
-  '/nutzungsbedingungen',
-]);
-
-function currentRelativePathname(): string {
-  const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '');
-  const pathname = window.location.pathname;
-  const relativePath = basePath && pathname.startsWith(basePath)
-    ? pathname.slice(basePath.length) || '/'
-    : pathname;
-  return relativePath.replace(/\/+$/, '') || '/';
-}
-
+// Every language version of every registered public page (seoConfig.ts).
 function shouldSkipStartupAuthProbe(): boolean {
-  return PUBLIC_PATHS_WITHOUT_AUTH_PROBE.has(currentRelativePathname());
+  return findPublicPageVariant(toAppRelativePathname(window.location.pathname)) !== null;
 }
 
 function clearGuestDemoSession(): void {

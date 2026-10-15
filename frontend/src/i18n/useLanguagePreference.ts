@@ -1,7 +1,9 @@
 /**
  * The single place the effective UI language is decided and changed.
  *
- * Resolution order:
+ * On public SEO pages the URL alone decides the rendered language
+ * (`routeLanguage.ts`); the preference below is neither consulted nor changed
+ * by visiting one. Everywhere else the resolution order is:
  *  1. the signed-in user's stored server-side preference (unless it is `auto`),
  *  2. the locally stored choice of a guest / not-yet-loaded session,
  *  3. the detected browser language,
@@ -25,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AuthContext } from '../auth/authContextShared';
 import { updateUiLanguage } from '../auth/authApi';
+import { useRouteLanguage } from './routeLanguage';
 import {
   AUTO_LANGUAGE,
   type LanguagePreference,
@@ -37,7 +40,7 @@ import {
 } from './languages';
 
 export interface LanguagePreferenceState {
-  /** The language currently rendered. */
+  /** The language currently rendered: the URL's on public pages, otherwise the preference's. */
   language: SupportedLanguage;
   /** The stored preference, which may be `auto`. */
   preference: LanguagePreference;
@@ -65,7 +68,10 @@ export function useLanguagePreference(): LanguagePreferenceState {
     accountPreference && accountPreference !== AUTO_LANGUAGE
       ? accountPreference
       : storedPreference ?? accountPreference ?? AUTO_LANGUAGE;
-  const language = resolveLanguage(preference);
+  // Public pages render the language their URL names; the preference stays
+  // untouched and applies again on the next non-public route.
+  const routeLanguage = useRouteLanguage();
+  const language = routeLanguage ?? resolveLanguage(preference);
 
   // Keep i18next in step with the resolved preference. Guarded so an
   // unchanged language never triggers a re-render loop.
@@ -129,8 +135,12 @@ export function useLanguagePreference(): LanguagePreferenceState {
       // Always store locally: it keeps the choice working when signed out and
       // makes it available immediately, before the API round trip returns.
       writeStoredLanguagePreference(normalized);
-      const resolved = resolveLanguage(normalized, detectBrowserLanguage());
-      void i18n.changeLanguage(resolved);
+      // On a public page the switcher also navigates to the counterpart URL,
+      // which then fixes the language; don't flip the current page's text
+      // ahead of that navigation.
+      if (!routeLanguage) {
+        void i18n.changeLanguage(resolveLanguage(normalized, detectBrowserLanguage()));
+      }
       if (!user) {
         return;
       }
@@ -143,7 +153,7 @@ export function useLanguagePreference(): LanguagePreferenceState {
         }
       })();
     },
-    [i18n, refreshUser, user],
+    [i18n, refreshUser, routeLanguage, user],
   );
 
   return {

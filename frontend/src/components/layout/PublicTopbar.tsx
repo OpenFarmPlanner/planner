@@ -8,6 +8,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import AppIcon from './AppIcon';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 
 // Shared look for the anchor/page nav links: plain black at rest (the brand
 // green read as too heavy for every-link-is-emphasised) with a medium
@@ -102,9 +103,9 @@ function scrollToSection(id: string | null): void {
 
 /**
  * Sticky header for the public marketing pages (landing page, about page).
- * Anchor links navigate within the current page when already on `/` (smooth
- * scroll + hash update) and fall back to a normal `/#id` navigation
- * otherwise, so they also work as deep links from another page such as
+ * Anchor links navigate within the current page when already on the landing
+ * page of the current language (`/` or `/en`; smooth scroll + hash update)
+ * and fall back to a normal `<home>#id` navigation otherwise, so they also work as deep links from another page such as
  * `pageLink`.
  */
 export default function PublicTopbar({
@@ -119,16 +120,17 @@ export default function PublicTopbar({
   const location = useLocation();
   const navigate = useNavigate();
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const homePath = usePublicPagePath('home');
   const isPageLinkActive = location.pathname === pageLink.path;
 
   const handleAnchorClick = (event: MouseEvent, id: string | null): void => {
     setMenuAnchorEl(null);
-    if (location.pathname !== '/') {
+    if (location.pathname !== homePath) {
       return;
     }
     event.preventDefault();
     scrollToSection(id);
-    navigate({ pathname: '/', hash: id ? `#${id}` : '' }, { replace: false });
+    navigate({ pathname: homePath, hash: id ? `#${id}` : '' }, { replace: false });
   };
 
   return (
@@ -146,7 +148,7 @@ export default function PublicTopbar({
       <Toolbar sx={{ gap: { xs: 0.5, sm: 2 }, px: { xs: 1.5, sm: 3 }, minHeight: 64 }}>
         <Box
           component={RouterLink}
-          to="/"
+          to={homePath}
           onClick={(event) => handleAnchorClick(event, null)}
           aria-label={brandAriaLabel}
           sx={{
@@ -190,7 +192,7 @@ export default function PublicTopbar({
             <Button
               key={anchor.id}
               component={RouterLink}
-              to={{ pathname: '/', hash: `#${anchor.id}` }}
+              to={{ pathname: homePath, hash: `#${anchor.id}` }}
               onClick={(event) => handleAnchorClick(event, anchor.id)}
               color="inherit"
               sx={navLinkSx}
@@ -245,7 +247,7 @@ export default function PublicTopbar({
             <MenuItem
               key={anchor.id}
               component={RouterLink}
-              to={{ pathname: '/', hash: `#${anchor.id}` }}
+              to={{ pathname: homePath, hash: `#${anchor.id}` }}
               onClick={(event) => handleAnchorClick(event, anchor.id)}
               sx={navMenuItemSx}
             >

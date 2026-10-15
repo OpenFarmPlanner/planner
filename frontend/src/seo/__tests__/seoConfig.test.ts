@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_SITE_URL,
-  PUBLIC_INDEXABLE_ROUTES,
+  PUBLIC_PAGE_VARIANTS,
   buildCanonicalUrl,
+  buildHreflangAlternates,
+  findPublicPageVariant,
+  publicPagePath,
   isPathIndexable,
   normalizePathname,
   resolveIndexable,
@@ -70,8 +73,8 @@ describe('normalizePathname', () => {
 
 describe('isPathIndexable', () => {
   it('marks known public routes as indexable', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
-      expect(isPathIndexable(route.path)).toBe(true);
+    for (const variant of PUBLIC_PAGE_VARIANTS) {
+      expect(isPathIndexable(variant.path)).toBe(true);
     }
   });
 
@@ -115,5 +118,32 @@ describe('buildCanonicalUrl', () => {
     expect(buildCanonicalUrl('https://example.org', '/impressum/')).toBe(
       'https://example.org/impressum',
     );
+  });
+});
+
+describe('public page registry', () => {
+  it('serves German at the root and English under /en with English slugs', () => {
+    expect(publicPagePath('home', 'de')).toBe('/');
+    expect(publicPagePath('home', 'en')).toBe('/en');
+    expect(publicPagePath('about', 'de')).toBe('/ueber');
+    expect(publicPagePath('about', 'en')).toBe('/en/about');
+    expect(publicPagePath('imprint', 'en')).toBe('/en/legal-notice');
+    expect(publicPagePath('privacy', 'en')).toBe('/en/privacy');
+    expect(publicPagePath('terms', 'en')).toBe('/en/terms');
+  });
+
+  it('finds the variant for a path, tolerating a trailing slash', () => {
+    expect(findPublicPageVariant('/ueber/')).toMatchObject({ language: 'de', path: '/ueber' });
+    expect(findPublicPageVariant('/en/about')).toMatchObject({ language: 'en', path: '/en/about' });
+    expect(findPublicPageVariant('/login')).toBeNull();
+  });
+
+  it('builds reciprocal hreflang alternates with x-default on German', () => {
+    const variant = findPublicPageVariant('/en/about')!;
+    expect(buildHreflangAlternates('https://example.org', variant.page)).toEqual([
+      { hreflang: 'de', href: 'https://example.org/ueber' },
+      { hreflang: 'en', href: 'https://example.org/en/about' },
+      { hreflang: 'x-default', href: 'https://example.org/ueber' },
+    ]);
   });
 });

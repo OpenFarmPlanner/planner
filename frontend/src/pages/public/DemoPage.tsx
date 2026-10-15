@@ -15,6 +15,7 @@ import HeroImage from '../../components/HeroImage';
 import LegalLinks from '../../components/legal/LegalLinks';
 import { PublicLanguageSwitcher } from '../../i18n/LanguageSwitcher';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import { useGuestDemoStart } from './useGuestDemoStart';
 import AppIcon from '../../components/layout/AppIcon';
 import { alpha } from '@mui/material/styles';
@@ -25,6 +26,7 @@ const HERO_TEXT_SHADOW = (theme: Theme) =>
 
 export default function DemoPage() {
   const { t } = useTranslation('home');
+  const homePath = usePublicPagePath('home');
   const {
     isStartingDemo,
     demoStartError,
@@ -48,7 +50,7 @@ export default function DemoPage() {
           >
             <Button
               component={RouterLink}
-              to="/"
+              to={homePath}
               color="inherit"
               startIcon={<ArrowBackIcon fontSize="small" />}
               sx={{

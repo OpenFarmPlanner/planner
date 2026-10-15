@@ -1,6 +1,7 @@
 import { Box, Container, Divider, Link, Stack, Typography } from '@mui/material';
 import { Trans } from 'react-i18next';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import PublicTopbar from '../../components/layout/PublicTopbar';
 import PublicFooter from '../../components/layout/PublicFooter';
 import { publicAssetUrl } from '../../utils/publicAssetUrl';
@@ -40,6 +41,7 @@ function ZwiebelzopfLink({ children }: { children?: React.ReactNode }) {
  */
 export default function AboutPage() {
   const { t } = useTranslation('home');
+  const aboutPath = usePublicPagePath('about');
 
   const topbarAnchors = [
     { id: 'funktionen', label: t('topbar.nav.features') },
@@ -53,7 +55,7 @@ export default function AboutPage() {
         brandLabel={t('landing.title')}
         brandAriaLabel={t('topbar.brandAriaLabel')}
         anchors={topbarAnchors}
-        pageLink={{ path: '/ueber', label: t('topbar.nav.about') }}
+        pageLink={{ path: aboutPath, label: t('topbar.nav.about') }}
         menuAriaLabel={t('topbar.menuAriaLabel')}
         navAriaLabel={t('topbar.navAriaLabel')}
         signInLabel={t('topbar.signIn')}

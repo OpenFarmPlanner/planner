@@ -7,7 +7,9 @@ import {
 } from '../seoAssets';
 import {
   NON_INDEXABLE_PATH_PREFIXES,
-  PUBLIC_INDEXABLE_ROUTES,
+  PUBLIC_PAGE_VARIANTS,
+  PUBLIC_PAGES,
+  buildHreflangAlternates,
 } from '../seoConfig';
 
 const SITE = 'https://openfarmplanner.org';
@@ -50,21 +52,35 @@ describe('buildSitemapXml', () => {
   it('is a valid urlset document', () => {
     expect(sitemap).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/);
     expect(sitemap).toContain(
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     );
     expect(sitemap).toContain('</urlset>');
   });
 
-  it('contains exactly the public canonical routes', () => {
+  it('contains every public page in both languages, slashless', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
       `${SITE}/`,
+      `${SITE}/en`,
       `${SITE}/ueber`,
+      `${SITE}/en/about`,
       `${SITE}/impressum`,
+      `${SITE}/en/legal-notice`,
       `${SITE}/datenschutz`,
+      `${SITE}/en/privacy`,
       `${SITE}/nutzungsbedingungen`,
+      `${SITE}/en/terms`,
     ]);
-    expect(locs).toHaveLength(PUBLIC_INDEXABLE_ROUTES.length);
+    expect(locs).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
+  });
+
+  it('lists de, en and x-default alternates on every url entry', () => {
+    const blocks = sitemap.match(/<url>[\s\S]*?<\/url>/g) ?? [];
+    expect(blocks).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
+    const about = blocks.find((block) => block.includes(`<loc>${SITE}/en/about</loc>`))!;
+    expect(about).toContain(`<xhtml:link rel="alternate" hreflang="de" href="${SITE}/ueber" />`);
+    expect(about).toContain(`<xhtml:link rel="alternate" hreflang="en" href="${SITE}/en/about" />`);
+    expect(about).toContain(`<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}/ueber" />`);
   });
 
   it('never lists private or auth routes', () => {
@@ -95,6 +111,28 @@ describe('buildHeadTags', () => {
     expect(tags).toContain('name="twitter:card" content="summary_large_image"');
   });
 
+  it('emits hreflang alternates and the og:locale of the page language', () => {
+    const about = PUBLIC_PAGES.find((page) => page.id === 'about')!;
+    const tags = buildHeadTags({
+      siteUrl: SITE,
+      indexable: true,
+      path: '/en/about',
+      language: 'en',
+      alternates: buildHreflangAlternates(SITE, about),
+    }).join('\n');
+    expect(tags).toContain(`<link rel="canonical" href="${SITE}/en/about" />`);
+    expect(tags).toContain(`<link rel="alternate" hreflang="de" href="${SITE}/ueber" />`);
+    expect(tags).toContain(`<link rel="alternate" hreflang="en" href="${SITE}/en/about" />`);
+    expect(tags).toContain(`<link rel="alternate" hreflang="x-default" href="${SITE}/ueber" />`);
+    expect(tags).toContain('<meta property="og:locale" content="en_US" />');
+    expect(tags).toContain(`<meta property="og:url" content="${SITE}/en/about" />`);
+  });
+
+  it('defaults og:locale to German', () => {
+    const tags = buildHeadTags({ siteUrl: SITE, indexable: true }).join('\n');
+    expect(tags).toContain('<meta property="og:locale" content="de_DE" />');
+  });
+
   it('emits a noindex directive for non-indexable deployments', () => {
     const tags = buildHeadTags({ siteUrl: SITE, indexable: false }).join('\n');
     expect(tags).toContain('<meta name="robots" content="noindex, nofollow" />');
@@ -114,7 +152,7 @@ describe('buildHeadTags', () => {
 
 describe('buildSoftwareApplicationJsonLd', () => {
   it('emits a valid SoftwareApplication JSON-LD script tag', () => {
-    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'Open-source crop planning.' });
+    const tag = buildSoftwareApplicationJsonLd({ url: `${SITE}/`, description: 'Open-source crop planning.', language: 'de' });
 
     expect(tag).toMatch(/^<script type="application\/ld\+json">.*<\/script>$/);
 
@@ -125,12 +163,13 @@ describe('buildSoftwareApplicationJsonLd', () => {
       name: 'OpenFarmPlanner',
       url: `${SITE}/`,
       description: 'Open-source crop planning.',
+      inLanguage: 'de',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
     });
   });
 
   it('escapes markup characters so a description cannot close the script tag', () => {
-    const tag = buildSoftwareApplicationJsonLd({ siteUrl: SITE, description: 'x</script><b>' });
+    const tag = buildSoftwareApplicationJsonLd({ url: `${SITE}/`, description: 'x</script><b>', language: 'de' });
 
     expect(tag.match(/<\/script>/g)).toHaveLength(1);
     const body = tag.replace(/^<script type="application\/ld\+json">/, '').replace(/<\/script>$/, '');

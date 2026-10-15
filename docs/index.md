@@ -22,9 +22,13 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   actions, notes/markdown cells, copy/paste, column visibility.
 - **[Demo Project Template](./demo-project.md)** — the reusable realistic
   demo dataset used by first-project onboarding and local demo seeding.
-- **[SEO & Search-Engine Indexing](./seo-and-indexing.md)** — robots.txt/
-  sitemap generation, build-time prerendering of the public pages, and what
-  keeps the landing page's hero image fast (LCP).
+- **[SEO & Search-Engine Indexing](./seo-and-indexing.md)** — the bilingual
+  public page registry (German at the root, English under `/en`), slashless
+  canonical and hreflang rules, the build-time SEO guard, robots.txt/sitemap
+  generation, build-time prerendering of the public pages, the `www`/
+  trailing-slash serving rules, and what keeps the landing page's hero image
+  fast (LCP). The checklist for adding a public page is in `CLAUDE.md`
+  ("Public pages and SEO").
 - **[Hint Test Project](./hint-test-project.md)** — reproducible developer
   fixture for hints, warnings, empty states, incomplete calculations, and
   related manual QA paths.

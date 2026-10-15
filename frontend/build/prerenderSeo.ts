@@ -10,17 +10,47 @@
 
 import { JSDOM } from 'jsdom';
 import {
-  PUBLIC_INDEXABLE_ROUTES,
-  SITE_LANGUAGE,
+  OG_LOCALES,
+  PUBLIC_PAGE_VARIANTS,
+  buildCanonicalUrl,
+  buildHreflangAlternates,
   resolveIndexable,
   resolveSiteUrl,
-  type PublicRoute,
+  type PublicPageVariant,
   type SeoEnv,
 } from '../src/seo/seoConfig.ts';
 import { buildHeadTags, buildSoftwareApplicationJsonLd } from '../src/seo/seoAssets.ts';
+import { resolvePublicPageMeta } from '../src/seo/publicPageMeta.ts';
+import {
+  assertNoSeoProblems,
+  readHreflangAlternates,
+  validateHreflangReciprocity,
+  validatePrerenderedHead,
+} from '../src/seo/seoGuard.ts';
 
-export { PUBLIC_INDEXABLE_ROUTES, SITE_LANGUAGE };
-export type { PublicRoute };
+export { PUBLIC_PAGE_VARIANTS, OG_LOCALES };
+export type { PublicPageVariant };
+
+/**
+ * Attributes on `<html>` that tell index.html's language preboot the page
+ * language is fixed by its URL. The path lets the preboot ignore them when a
+ * static server's SPA fallback hands this file out for another URL.
+ */
+export const PAGE_LANGUAGE_ATTRIBUTE = 'data-ofp-page-language';
+export const PAGE_PATH_ATTRIBUTE = 'data-ofp-page-path';
+
+/**
+ * File a page variant is written to, relative to the build output directory.
+ *
+ * Pages are written as flat `<path>.html` files (`ueber.html`,
+ * `en/about.html`), never `<path>/index.html`: a directory makes Apache (and
+ * every other static server) 301 the slashless URL to `<path>/`, which is
+ * exactly the canonical/redirect conflict Search Console reported. Only the
+ * German root stays `index.html`.
+ */
+export function outputFileFor(routePath: string): string {
+  return routePath === '/' ? 'index.html' : `${routePath.replace(/^\//, '')}.html`;
+}
 
 function isLoopbackHttpUrl(value: string | null): boolean {
   if (!value) {
@@ -68,33 +98,54 @@ export function assertNoLoopbackUrls(html: string, routePath: string): void {
  * consistent set for this route — this is what keeps build-time and runtime
  * SEO tags from ever duplicating or disagreeing.
  */
-export function applyHeadTags(html: string, route: PublicRoute, env: SeoEnv): string {
+export function applyHeadTags(html: string, variant: PublicPageVariant, env: SeoEnv): string {
   const siteUrl = resolveSiteUrl(env);
   const indexable = resolveIndexable(env);
+  const meta = resolvePublicPageMeta(variant.page, variant.language);
 
   const dom = new JSDOM(html);
   const { document } = dom.window;
 
   removeLocalPreviewPreloads(document);
 
-  document.title = route.title ?? 'OpenFarmPlanner';
+  const root = document.documentElement;
+  root.setAttribute('lang', variant.language);
+  root.setAttribute(PAGE_LANGUAGE_ATTRIBUTE, variant.language);
+  root.setAttribute(PAGE_PATH_ATTRIBUTE, variant.path);
+  // Runtime-only state the language preboot put on the capturing browser's
+  // document; index.html recomputes it on every real load.
+  root.removeAttribute('data-initial-ui-language');
+  root.classList.remove('ofp-hide-prerender');
+  if (root.classList.length === 0) {
+    root.removeAttribute('class');
+  }
+
+  document.title = meta.title;
 
   document
     .querySelectorAll(
-      'link[rel="canonical"], meta[name="robots"], meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]',
+      'link[rel="canonical"], link[rel="alternate"][hreflang], meta[name="robots"], meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]',
     )
     .forEach((element) => element.remove());
 
   const tags = buildHeadTags({
     siteUrl,
     indexable,
-    title: route.title,
-    description: route.description,
-    path: route.path,
+    title: meta.title,
+    description: meta.description,
+    path: variant.path,
+    language: variant.language,
+    alternates: buildHreflangAlternates(siteUrl, variant.page),
   });
-  if (route.path === '/') {
+  if (variant.page.id === 'home') {
     tags.push(buildHeroImagePreloadTag());
-    tags.push(buildSoftwareApplicationJsonLd({ siteUrl, description: route.description ?? '' }));
+    tags.push(
+      buildSoftwareApplicationJsonLd({
+        url: buildCanonicalUrl(siteUrl, variant.path),
+        description: meta.description,
+        language: variant.language,
+      }),
+    );
   }
   for (const tagHtml of tags) {
     const wrapper = document.createElement('div');
@@ -109,8 +160,29 @@ export function applyHeadTags(html: string, route: PublicRoute, env: SeoEnv): st
 }
 
 /**
+ * Run the SEO guard over the final prerendered documents: each head must be
+ * self-consistent with the URL it is served at, and the hreflang annotations
+ * must be reciprocal across all pages. Throws (failing the build) otherwise.
+ */
+export function assertPrerenderedSeo(
+  pages: readonly { variant: PublicPageVariant; html: string }[],
+  env: SeoEnv,
+): void {
+  const siteUrl = resolveSiteUrl(env);
+  const problems: string[] = [];
+  const annotations = new Map<string, ReturnType<typeof readHreflangAlternates>>();
+  for (const { variant, html } of pages) {
+    const { document } = new JSDOM(html).window;
+    problems.push(...validatePrerenderedHead(document, variant, siteUrl));
+    annotations.set(buildCanonicalUrl(siteUrl, variant.path), readHreflangAlternates(document));
+  }
+  problems.push(...validateHreflangReciprocity(annotations));
+  assertNoSeoProblems('prerendered public pages', problems);
+}
+
+/**
  * High-priority preload for the landing page's LCP element, scoped to `/`
- * only (never injected into `app-shell.html`, the SPA fallback for `/app/*`
+ * and its English counterpart only (never injected into `app-shell.html`, the SPA fallback for `/app/*`
  * and auth routes, since those never render the hero image). Values must
  * mirror HeroImage.tsx's `src`/`srcSet`/`sizes` exactly so the browser never
  * fetches the image twice — see docs/seo-and-indexing.md.
