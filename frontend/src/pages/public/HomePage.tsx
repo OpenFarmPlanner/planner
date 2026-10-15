@@ -368,7 +368,7 @@ export default function HomePage() {
                 {t('landing.description')}
               </Typography>
 
-              <Stack spacing={1.15} sx={{ width: '100%', pt: 0.3, alignItems: 'center' }}>
+              <Stack spacing={2} sx={{ width: '100%', pt: 0.3, alignItems: 'center' }}>
                 <Stack
                   direction="row"
                   spacing={{ xs: 1, sm: 1.2 }}
