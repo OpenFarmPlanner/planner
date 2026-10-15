@@ -248,6 +248,9 @@ if DEBUG_TOOLBAR_ENABLED:
     INSTALLED_APPS.append('debug_toolbar')
 
 MIDDLEWARE = [
+    # Answers requests for a non-canonical host (www.) with a redirect before
+    # anything else runs — see config/middleware.py.
+    'config.middleware.CanonicalHostRedirectMiddleware',
     # Must run before anything reads REMOTE_ADDR (IP-scoped throttles,
     # registration_abuse) — see config/middleware.py. A no-op until
     # TRUSTED_PROXY_CIDRS is set.
@@ -472,6 +475,32 @@ PUBLIC_FRONTEND_URL = _public_frontend_url_from_env or FRONTEND_URL
 parsed_public_frontend_url = _validate_external_base_url(
     'PUBLIC_FRONTEND_URL',
     PUBLIC_FRONTEND_URL,
+)
+
+
+def _default_canonical_host_redirects(canonical_host: str) -> list[str]:
+    """`www.<host>` for a bare registrable host; nothing for www/IP/localhost hosts."""
+    if not canonical_host or canonical_host.startswith('www.') or '.' not in canonical_host:
+        return []
+    if canonical_host.replace('.', '').isdigit():
+        return []
+    return [f'www.{canonical_host}']
+
+
+# Hosts that are permanently redirected to the public frontend's host, path and
+# query preserved — see config.middleware.CanonicalHostRedirectMiddleware.
+# Apache's .htaccess (ops) already redirects www for the SPA, but the backend
+# prefixes proxied by `uberspace web backend` (/api, /admin, ...) never reach
+# it, which is how https://www.openfarmplanner.org/api/docs/ got indexed.
+# Defaults to `www.<PUBLIC_FRONTEND_URL host>`; set CANONICAL_HOST_REDIRECTS
+# (comma separated, empty to disable) to override.
+CANONICAL_HOST = (parsed_public_frontend_url.hostname or '').lower()
+CANONICAL_HOST_SCHEME = parsed_public_frontend_url.scheme
+_canonical_host_redirects_env = os.getenv('CANONICAL_HOST_REDIRECTS')
+CANONICAL_HOST_REDIRECTS = (
+    [host.strip().lower() for host in _canonical_host_redirects_env.split(',') if host.strip()]
+    if _canonical_host_redirects_env is not None
+    else _default_canonical_host_redirects(CANONICAL_HOST)
 )
 
 if not DEBUG:
