@@ -399,7 +399,7 @@ class RegistrationAlertSystemCheckTest(SimpleTestCase):
 
     @override_settings(DJANGO_ENV='production', TURNSTILE_SITE_KEY='', TURNSTILE_SECRET_KEY='')
     def test_missing_keys_warn_outside_local_development(self) -> None:
-        self.assertIn('accounts.W003', self._warning_ids())
+        self.assertIn('accounts.I001', self._warning_ids())
 
     @override_settings(
         DJANGO_ENV='production',
@@ -412,9 +412,9 @@ class RegistrationAlertSystemCheckTest(SimpleTestCase):
     @override_settings(DJANGO_ENV='production', **TURNSTILE_SETTINGS, REGISTRATION_ALERT_EMAILS=[])
     def test_missing_alert_recipients_warn_outside_local_development(self) -> None:
         warning_ids = self._warning_ids()
-        self.assertIn('accounts.W005', warning_ids)
-        self.assertFalse({'accounts.W003', 'accounts.W004'} & warning_ids)
+        self.assertIn('accounts.I002', warning_ids)
+        self.assertFalse({'accounts.I001', 'accounts.W004'} & warning_ids)
 
     @override_settings(DJANGO_ENV='test', TURNSTILE_SITE_KEY='', TURNSTILE_SECRET_KEY='')
     def test_local_development_has_no_warnings(self) -> None:
-        self.assertFalse({'accounts.W003', 'accounts.W004', 'accounts.W005'} & self._warning_ids())
+        self.assertFalse({'accounts.I001', 'accounts.W004', 'accounts.I002'} & self._warning_ids())

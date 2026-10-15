@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.conf import settings
-from django.core.checks import CheckMessage, Tags, Warning, register
+from django.core.checks import CheckMessage, Info, Tags, Warning, register
 
 # Cloudflare's documented dummy keys ("Testing" docs): they pass or fail every
 # check unconditionally, so they must never protect a deployed registration.
@@ -52,11 +52,13 @@ def check_turnstile_keys(app_configs: Any = None, **kwargs: Any) -> list[CheckMe
     if settings.DJANGO_ENV in _LOCAL_ENVIRONMENTS:
         return []
     if not has_site_key and not has_secret_key:
+        # Info, not Warning: deploy checks run with --fail-level WARNING, and a
+        # deployment may deliberately run without Turnstile.
         return [
-            Warning(
+            Info(
                 'Neither TURNSTILE_SITE_KEY nor TURNSTILE_SECRET_KEY is set.',
                 hint='Registration runs without the Cloudflare Turnstile bot check here.',
-                id='accounts.W003',
+                id='accounts.I001',
             )
         ]
     if (
@@ -80,13 +82,15 @@ def check_turnstile_keys(app_configs: Any = None, **kwargs: Any) -> list[CheckMe
 def check_registration_alert_recipients(
     app_configs: Any = None, **kwargs: Any
 ) -> list[CheckMessage]:
-    """Warn when a deployed instance would only log registration failures."""
+    """Point out that a deployed instance would only log registration failures."""
     if settings.DJANGO_ENV in _LOCAL_ENVIRONMENTS or settings.REGISTRATION_ALERT_EMAILS:
         return []
+    # Info, so a deploy check with --fail-level WARNING still passes before the
+    # variable is set.
     return [
-        Warning(
+        Info(
             'REGISTRATION_ALERT_EMAILS is empty.',
             hint='Registration failures are only logged; set it to receive alert emails.',
-            id='accounts.W005',
+            id='accounts.I002',
         )
     ]

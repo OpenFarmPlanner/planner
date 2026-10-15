@@ -314,9 +314,10 @@ checks above; it does not replace the throttles.
   build for the same deployment gets the matching `VITE_TURNSTILE_SITE_KEY`.
   A secret without a site key (or the reverse) raises the Django system-check
   warning `accounts.W001`/`accounts.W002`. Outside `DJANGO_ENV=development`/
-  `test`, a deployment with neither key raises `accounts.W003`, and one using
-  a Cloudflare test key (`1x…`/`2x…`/`3x…` dummy site keys or secrets) raises
-  `accounts.W004`.
+  `test`, a deployment with neither key reports the informational check
+  `accounts.I001` (not a warning, so `check --deploy --fail-level WARNING`
+  still passes), and one using a Cloudflare test key (`1x…`/`2x…`/`3x…`
+  dummy site keys or secrets) raises the warning `accounts.W004`.
 - **Cloudflare dashboard, per deployment.** The widget's *Hostname
   Management* list must contain every domain the registration form is served
   from — production **and** `staging.openfarmplanner.org`; a missing hostname
@@ -402,7 +403,9 @@ it with the `config.logging_filters.SkipRegistrationAlertedRequests` filter:
 records for a marked request, so one exception never produces both emails.
 
 **Checks and verification.** Outside `development`/`test`, an empty
-`REGISTRATION_ALERT_EMAILS` raises the system-check warning `accounts.W005`.
+`REGISTRATION_ALERT_EMAILS` reports the informational system check
+`accounts.I002` (deliberately not a warning, so deploy checks with
+`--fail-level WARNING` pass before the variable is set).
 To verify delivery on a server, run:
 
 ```bash
