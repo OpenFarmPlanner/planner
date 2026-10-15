@@ -196,8 +196,6 @@
     "contactEmail": "info@openfarmplanner.org"
   },
   "legal": {
-    "convenienceTranslationNotice": "Dies ist eine unverbindliche Übersetzung. Rechtlich verbindlich ist ausschließlich die deutsche Fassung, die bei Abweichungen Vorrang hat.",
-    "germanVersionLink": "Deutsche Fassung lesen",
     "imprint": {
       "title": "Impressum",
       "sections": {
@@ -426,7 +424,7 @@
         },
         "languageVersions": {
           "title": "Sprachfassungen",
-          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Rechtlich verbindlich ist ausschließlich die deutsche Fassung; die englische Fassung ist eine unverbindliche Übersetzung. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die deutsche Fassung maßgeblich."
+          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
         }
       }
     }

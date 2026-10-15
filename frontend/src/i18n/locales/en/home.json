@@ -196,8 +196,6 @@
     "contactEmail": "info@openfarmplanner.org"
   },
   "legal": {
-    "convenienceTranslationNotice": "This is a convenience translation. Only the German version is legally binding and prevails in case of any discrepancy.",
-    "germanVersionLink": "Read the German version",
     "imprint": {
       "title": "Imprint",
       "sections": {
@@ -426,7 +424,7 @@
         },
         "languageVersions": {
           "title": "Language versions",
-          "content": "This document is provided in German and English. Only the German version is legally binding; the English version is a convenience translation. In the event of any discrepancy or ambiguity between the language versions, the German version shall prevail."
+          "content": "This document is provided in German and English. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
         }
       }
     }

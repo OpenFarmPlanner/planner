@@ -286,8 +286,9 @@ or changing a public page:
    internal links all derive from the registry.
 2. Provide both translations, German first, through the locale files
    (`seo.titles.*`, `seo.descriptions.*` and the page content); the page is
-   prerendered fully translated per language. Legal pages: German is binding,
-   English shows the convenience-translation notice.
+   prerendered fully translated per language. Legal pages: the clause on
+   which language version prevails lives in the terms text itself; don't
+   contradict it on the page.
 3. URLs are slashless (`/ueber`, never `/ueber/`) on the apex host
    (`openfarmplanner.org`, never `www`). The canonical is the URL served with
    200; hreflang carries `de`, `en` and `x-default` (German).

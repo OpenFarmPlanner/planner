@@ -67,16 +67,6 @@ describe('public page language', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Impressum');
   });
 
-  it('shows the convenience-translation notice on English legal pages only', async () => {
-    const { unmount } = renderAt('/en/legal-notice', <ImprintPage />);
-    const notice = await screen.findByTestId('legal-convenience-translation-notice');
-    expect(within(notice).getByRole('link')).toHaveAttribute('href', '/impressum');
-    unmount();
-
-    renderAt('/impressum', <ImprintPage />);
-    expect(screen.queryByTestId('legal-convenience-translation-notice')).not.toBeInTheDocument();
-  });
-
   it('keeps the switcher links in the DOM as real counterpart links', async () => {
     renderAt('/en/legal-notice', <PublicLanguageSwitcher />);
 

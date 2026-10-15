@@ -8,14 +8,11 @@
 
 import type { ReactNode } from 'react';
 import PrintIcon from '@mui/icons-material/Print';
-import { Alert, Box, Container, IconButton, Link, Stack, Typography } from '@mui/material';
+import { Box, Container, IconButton, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 
-import { Link as RouterLink } from 'react-router';
 import { useTranslation } from '../../i18n';
-import { DEFAULT_SEO_LANGUAGE } from '../../seo/seoConfig';
-import { useCurrentPublicPage } from '../../i18n/routeLanguage';
 import PublicPageLanguageBar from '../../i18n/PublicPageLanguageBar';
 import { AppTooltip } from '../AppTooltip';
 
@@ -98,10 +95,6 @@ interface LegalDocumentLayoutProps {
 export default function LegalDocumentLayout({ title, actions, children }: LegalDocumentLayoutProps) {
   const { t } = useTranslation('home');
   const printLabel = t('legal.terms.print');
-  const variant = useCurrentPublicPage();
-  // Only the German text is legally binding; translations say so up front
-  // and link back to it.
-  const isTranslation = variant !== null && variant.language !== DEFAULT_SEO_LANGUAGE;
 
   return (
     <Container maxWidth="md" sx={documentSx}>
@@ -136,19 +129,6 @@ export default function LegalDocumentLayout({ title, actions, children }: LegalD
           >
             {actions}
           </Box>
-        ) : null}
-        {isTranslation ? (
-          <Alert severity="info" data-testid="legal-convenience-translation-notice">
-            {t('legal.convenienceTranslationNotice')}{' '}
-            <Link
-              component={RouterLink}
-              to={variant.page.paths[DEFAULT_SEO_LANGUAGE]}
-              hrefLang={DEFAULT_SEO_LANGUAGE}
-              lang={DEFAULT_SEO_LANGUAGE}
-            >
-              {t('legal.germanVersionLink')}
-            </Link>
-          </Alert>
         ) : null}
         {children}
       </Stack>
