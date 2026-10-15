@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-15 — Claude — Automated security review of PR #778 (registration failure alerts)
+
+**Scope:** `git diff origin/main...HEAD`: `registration_alerts.py`, `client_error_views.py` and serializer, throttles, `turnstile.py`, logging filter and `AdminEmailHandler` settings, `send_test_registration_alert` command, frontend reporter, docs and tests.
+
+**Findings:** No issues. The unauthenticated `api/client-errors/turnstile/` endpoint accepts only allowlisted error codes and character-restricted hostname, site key and path (query string stripped, control characters and whitespace rejected), so it cannot inject headers or free text into operator emails; the email subject is built from a fixed enum. It is limited per IP and by a global bucket, and emails are rate-limited per failure type. Email addresses are masked and IP addresses scrubbed from exception text and tracebacks, so no new personal-data flow reaches logs or mail. No raw SQL, unsafe HTML APIs or committed secrets. Accepted residual risk: a client can spoof a config-error report, bounded by the throttles and the email cooldown.
+
 ## 2026-10-14 — Claude — Automated security review of PR #774, follow-up commit (re-recorded baselines)
 
 **Scope:** `git diff 051289a2..HEAD`: re-recorded planting-plans screenshot baselines only.
