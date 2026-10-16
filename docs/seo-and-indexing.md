@@ -300,8 +300,11 @@ above:
    RewriteRule ^(.+)$ $1.html [L]
    ```
 
-   Gating both rules on the prerendered file keeps them away from backend
-   prefixes, assets and app routes. `vite preview` behaves the same for the
+   plus `DirectorySlash Off`: `/en` is both `en.html` and the directory
+   `en/`, and without it mod_dir 301s `/en` to `/en/` before the rewrite runs
+   (a redirect loop, or a 403 where the rewrite rules are missing). Gating
+   both rules on the prerendered file keeps them away from backend prefixes,
+   assets and app routes. Implemented in OpenFarmPlanner/ops#29. `vite preview` behaves the same for the
    slashless URL out of the box (its HTML fallback serves `<path>.html`), so
    local checks and the e2e suite use the production URLs.
 2. **`www` → apex.** `WWW_REDIRECT_HOST` makes the `.htaccess` 301 every
