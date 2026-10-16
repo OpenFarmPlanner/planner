@@ -51,8 +51,8 @@
           return fallback;
         }
 
-        // Prerendered public pages carry their URL-fixed language, path and
-        // language versions (build/prerenderSeo.ts). A visitor whose language
+        // Prerendered public pages carry their URL-fixed language and path
+        // (build/prerenderSeo.ts) and their language versions. A visitor whose language
         // (stored choice, otherwise browser) differs is sent to their language
         // version before first paint; crawlers never are, so each URL stays
         // indexable in its own language. Keep the crawler pattern in sync
@@ -76,14 +76,11 @@
         if (pageLanguage) {
           var isCrawler = /bot\b|bot\/|crawl|spider|slurp|mediapartners|google-inspectiontool|facebookexternalhit|embedly|lighthouse|bingpreview|whatsapp|telegram|ia_archiver/i
             .test(navigator.userAgent || '');
-          var alternates = null;
-          try {
-            alternates = JSON.parse(root.getAttribute('data-ofp-page-alternates') || 'null');
-          } catch (error) {
-            alternates = null;
-          }
+          // Set by an inline script build/prerenderSeo.ts puts before this one.
+          var alternates = window.__OFP_PAGE_ALTERNATES__;
           var target = alternates && alternates[language];
-          if (!isCrawler && language !== pageLanguage && typeof target === 'string') {
+          var isAppPath = typeof target === 'string' && /^\/(?:[a-z0-9-]+(?:\/[a-z0-9-]+)*)?$/.test(target);
+          if (!isCrawler && language !== pageLanguage && isAppPath) {
             root.classList.add('ofp-hide-prerender');
             window.location.replace(
               '%BASE_URL%'.replace(/\/+$/, '') + target + window.location.search + window.location.hash

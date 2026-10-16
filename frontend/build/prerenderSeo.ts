@@ -33,14 +33,24 @@ export type { PublicPageVariant };
 
 /**
  * Attributes on `<html>` that tell index.html's language preboot the page
- * language is fixed by its URL and where its language versions live, so it
- * can send a visitor to their language before first paint. The path lets the
- * preboot ignore them when a static server's SPA fallback hands this file out
- * for another URL.
+ * language is fixed by its URL. The path lets the preboot ignore them when a
+ * static server's SPA fallback hands this file out for another URL.
  */
 export const PAGE_LANGUAGE_ATTRIBUTE = 'data-ofp-page-language';
 export const PAGE_PATH_ATTRIBUTE = 'data-ofp-page-path';
-export const PAGE_ALTERNATES_ATTRIBUTE = 'data-ofp-page-alternates';
+
+/**
+ * Global the preboot reads the page's language versions from, so it can send
+ * a visitor to their language before first paint. Handed over as a script
+ * value rather than a DOM attribute: the preboot navigates to it, and DOM
+ * text must never flow into a navigation (CodeQL js/xss-through-dom).
+ */
+export const PAGE_ALTERNATES_GLOBAL = '__OFP_PAGE_ALTERNATES__';
+
+function buildPageAlternatesScript(variant: PublicPageVariant): string {
+  const json = JSON.stringify(variant.page.paths).replace(/</g, '\\u003c');
+  return `window.${PAGE_ALTERNATES_GLOBAL} = ${json};`;
+}
 
 /**
  * File a page variant is written to, relative to the build output directory.
@@ -115,7 +125,10 @@ export function applyHeadTags(html: string, variant: PublicPageVariant, env: Seo
   root.setAttribute('lang', variant.language);
   root.setAttribute(PAGE_LANGUAGE_ATTRIBUTE, variant.language);
   root.setAttribute(PAGE_PATH_ATTRIBUTE, variant.path);
-  root.setAttribute(PAGE_ALTERNATES_ATTRIBUTE, JSON.stringify(variant.page.paths));
+  // Must run before the language preboot, the first script in <head>.
+  const alternatesScript = document.createElement('script');
+  alternatesScript.textContent = buildPageAlternatesScript(variant);
+  document.head.insertBefore(alternatesScript, document.head.querySelector('script'));
   // Runtime-only state the language preboot put on the capturing browser's
   // document; index.html recomputes it on every real load.
   root.removeAttribute('data-initial-ui-language');
