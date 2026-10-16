@@ -96,7 +96,10 @@ describe('applyHeadTags', () => {
     const meta = resolvePublicPageMeta(aboutEn.page, 'en');
     const html = applyHeadTags(sampleCapturedHtml(), aboutEn, env);
 
-    expect(html).toMatch(/<html lang="en" data-ofp-page-language="en" data-ofp-page-path="\/en\/about">/);
+    expect(html).toContain(
+      '<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en/about" '
+        + 'data-ofp-page-alternates="{&quot;de&quot;:&quot;/ueber&quot;,&quot;en&quot;:&quot;/en/about&quot;}">',
+    );
     expect(html).toContain(`<title>${meta.title}</title>`);
     expect(meta.title).toBe('About OpenFarmPlanner');
     expect(html).toContain('<link rel="canonical" href="https://openfarmplanner.org/en/about">');

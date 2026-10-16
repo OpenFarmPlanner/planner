@@ -294,8 +294,11 @@ or changing a public page:
    200; hreflang carries `de`, `en` and `x-default` (German).
 4. Never hardcode a public path, canonical, hreflang or sitemap entry; link
    with `usePublicPagePath(id)`.
-5. No `Accept-Language`, cookie or geolocation redirect or content swap on
-   public pages: the URL alone decides their language.
+5. Every URL renders its own language. Visitors (never crawlers) landing on
+   the other language version are redirected once, on page load, by
+   `publicPageLanguageRedirect.ts` / the `index.html` preboot: stored choice,
+   otherwise browser language (German → German, anything else → English).
+   No server-side `Accept-Language` or geolocation redirect.
 6. App-only routes are never public pages; add their prefixes (and any `/en`
    twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
 7. Run the SEO guard: `cd frontend && npx vitest run src/seo build` and

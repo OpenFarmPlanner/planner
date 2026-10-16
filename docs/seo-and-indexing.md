@@ -69,11 +69,21 @@ else is derived from it, so no public path is listed anywhere else:
 - Every public page carries the same reciprocal hreflang set: `de`, `en` and
   `x-default` (pointing at the German version) — in the prerendered `<head>`,
   at runtime, and as `xhtml:link` alternates on every sitemap `<url>`.
-- **The URL alone decides the language of a public page.** There is no
-  redirect or content swap based on `Accept-Language`, cookies, stored
-  preference or geolocation: `/ueber` is German and `/en/about` English for
-  every visitor and crawler. See [i18n.md](i18n.md) for how this coexists with
-  the user's language preference on all other routes.
+- **Every URL renders its own language** — `/ueber` is always German and
+  `/en/about` always English, prerendered that way and rendered that way by
+  the SPA. There is no content swap on a URL.
+- **Visitors land in their language, crawlers never get redirected.** On the
+  first load of a public page, a visitor whose language differs from the
+  page's is sent to the counterpart URL with `location.replace` (query and
+  hash kept): their stored choice from the switcher if any, otherwise the
+  browser language — German stays German, every other language gets English.
+  The `index.html` preboot does this before first paint on prerendered pages
+  (from the `data-ofp-page-alternates` attribute), and
+  `src/i18n/publicPageLanguageRedirect.ts` is the fallback for the dev server
+  and the SPA shell. User agents matching the crawler pattern (Googlebot,
+  Bingbot, link previews, Lighthouse, …) are never redirected, otherwise
+  Google would only ever see one language. Keep the two pattern copies in
+  sync. There is no server-side `Accept-Language` or geolocation redirect.
 
 ### The SEO guard
 

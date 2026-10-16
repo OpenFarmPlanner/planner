@@ -118,36 +118,55 @@ test.describe('public page prerendering', () => {
     expect(html).not.toMatch(/<h1[^>]*>[^<]+<\/h1>/);
   });
 
-  test('the URL alone decides a public page language, whatever the browser language', async ({ browser }) => {
-    const context = await browser.newContext({ locale: 'en-US' });
+  test('a non-German browser is sent from a German page to its English version before first paint', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'fr-FR' });
     const page = await context.newPage();
-    const releaseJavaScript = await holdJavaScriptRequests(page);
 
-    await page.goto('/', { waitUntil: 'commit' });
-    await page.waitForFunction(() => document.documentElement.dataset.initialUiLanguage === 'de');
-    // The prerendered German page is shown right away: no hiding, no redirect.
-    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-    await expect(page.locator('html')).not.toHaveClass(/ofp-hide-prerender/);
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).toBeVisible();
-
-    releaseJavaScript();
-
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).toBeVisible();
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    const response = await page.goto('/ueber?ref=newsletter');
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/en\/about\?ref=newsletter$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('h1')).toHaveText('How OpenFarmPlanner came to be');
     await context.close();
   });
 
-  test('a persisted German choice still gets the English page at an English URL', async ({ page }) => {
+  test('a German browser is sent from an English page to its German version', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'de-AT' });
+    const page = await context.newPage();
+
+    await page.goto('/en');
+    await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).toBeVisible();
+    await context.close();
+  });
+
+  test('an explicit language choice wins over the browser language', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'en-US' });
+    const page = await context.newPage();
     await page.addInitScript(() => {
       window.localStorage.setItem('ui.language', 'de');
     });
 
-    const response = await page.goto('/en');
-    expect(response?.status()).toBe(200);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.getByText('Open-source crop planning for vegetable production.')).toBeVisible();
-    await expect(page).toHaveURL(/\/en$/);
+    await page.goto('/ueber');
+    await expect(page.locator('h1')).toHaveText('Wie OpenFarmPlanner entstanden ist');
+    await expect(page).toHaveURL(/\/ueber$/);
+    await context.close();
+  });
+
+  test('crawlers are never redirected and get each URL in its own language', async ({ browser }) => {
+    const context = await browser.newContext({
+      locale: 'en-US',
+      userAgent:
+        'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; +http://www.google.com/bot.html) Chrome/141.0 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    await page.goto('/ueber');
+    await expect(page.locator('h1')).toHaveText('Wie OpenFarmPlanner entstanden ist');
+    await expect(page).toHaveURL(/\/ueber$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await context.close();
   });
 
   test('a persisted English language hides the German app shell before app code loads', async ({ page }) => {

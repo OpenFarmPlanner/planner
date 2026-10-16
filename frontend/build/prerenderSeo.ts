@@ -33,11 +33,14 @@ export type { PublicPageVariant };
 
 /**
  * Attributes on `<html>` that tell index.html's language preboot the page
- * language is fixed by its URL. The path lets the preboot ignore them when a
- * static server's SPA fallback hands this file out for another URL.
+ * language is fixed by its URL and where its language versions live, so it
+ * can send a visitor to their language before first paint. The path lets the
+ * preboot ignore them when a static server's SPA fallback hands this file out
+ * for another URL.
  */
 export const PAGE_LANGUAGE_ATTRIBUTE = 'data-ofp-page-language';
 export const PAGE_PATH_ATTRIBUTE = 'data-ofp-page-path';
+export const PAGE_ALTERNATES_ATTRIBUTE = 'data-ofp-page-alternates';
 
 /**
  * File a page variant is written to, relative to the build output directory.
@@ -112,6 +115,7 @@ export function applyHeadTags(html: string, variant: PublicPageVariant, env: Seo
   root.setAttribute('lang', variant.language);
   root.setAttribute(PAGE_LANGUAGE_ATTRIBUTE, variant.language);
   root.setAttribute(PAGE_PATH_ATTRIBUTE, variant.path);
+  root.setAttribute(PAGE_ALTERNATES_ATTRIBUTE, JSON.stringify(variant.page.paths));
   // Runtime-only state the language preboot put on the capturing browser's
   // document; index.html recomputes it on every real load.
   root.removeAttribute('data-initial-ui-language');
