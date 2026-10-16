@@ -24,6 +24,7 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Link as RouterLink, useLocation, useNavigationType } from 'react-router';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import { API_DOCS_URL } from '../../api/apiDocsUrl';
 import HeroImage from '../../components/HeroImage';
 import PublicTopbar from '../../components/layout/PublicTopbar';
@@ -198,6 +199,7 @@ function OpenSourceBoxItem({ title, description, href }: OpenSourceBox) {
  */
 export default function HomePage() {
   const { t, i18n } = useTranslation('home');
+  const aboutPath = usePublicPagePath('about');
   const location = useLocation();
   const {
     isStartingDemo,
@@ -317,7 +319,7 @@ export default function HomePage() {
         brandLabel={t('landing.title')}
         brandAriaLabel={t('topbar.brandAriaLabel')}
         anchors={topbarAnchors}
-        pageLink={{ path: '/ueber', label: t('topbar.nav.about') }}
+        pageLink={{ path: aboutPath, label: t('topbar.nav.about') }}
         menuAriaLabel={t('topbar.menuAriaLabel')}
         navAriaLabel={t('topbar.navAriaLabel')}
         signInLabel={t('topbar.signIn')}
@@ -703,7 +705,7 @@ export default function HomePage() {
                 t('closing.startDemo')
               )}
             </Button>
-            <Link component={RouterLink} to="/ueber" underline="hover" color="text.secondary">
+            <Link component={RouterLink} to={aboutPath} underline="hover" color="text.secondary">
               {t('closing.aboutLink')}
             </Link>
           </Stack>

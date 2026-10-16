@@ -1,6 +1,7 @@
 import { Link, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { useTranslation } from '../../i18n';
+import { usePublicPagePath } from '../../seo/usePublicPagePath';
 import { authLegalLinkSx } from '../../pages/auth/authPageStyles';
 
 /**
@@ -12,15 +13,17 @@ import { authLegalLinkSx } from '../../pages/auth/authPageStyles';
  */
 export default function AccountCreationLegalNotice() {
   const { t } = useTranslation('auth');
+  const termsPath = usePublicPagePath('terms');
+  const privacyPath = usePublicPagePath('privacy');
 
   return (
     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.65, mb: 2.25 }}>
       {t('auth:register.termsNoticePrefix')}
-      <Link component={RouterLink} to="/nutzungsbedingungen" target="_blank" rel="noopener" sx={authLegalLinkSx}>
+      <Link component={RouterLink} to={termsPath} target="_blank" rel="noopener" sx={authLegalLinkSx}>
         {t('auth:register.termsNoticeTermsLinkLabel')}
       </Link>
       {t('auth:register.termsNoticeMiddle')}
-      <Link component={RouterLink} to="/datenschutz" target="_blank" rel="noopener" sx={authLegalLinkSx}>
+      <Link component={RouterLink} to={privacyPath} target="_blank" rel="noopener" sx={authLegalLinkSx}>
         {t('auth:register.termsNoticePrivacyLinkLabel')}
       </Link>
       {t('auth:register.termsNoticeSuffix')}

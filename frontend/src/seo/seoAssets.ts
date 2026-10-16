@@ -11,11 +11,15 @@
  */
 
 import {
+  DEFAULT_SEO_LANGUAGE,
   NON_INDEXABLE_PATH_PREFIXES,
-  PUBLIC_INDEXABLE_ROUTES,
-  SITE_LANGUAGE,
+  OG_LOCALES,
+  PUBLIC_PAGE_VARIANTS,
   buildCanonicalUrl,
-  type PublicRoute,
+  buildHreflangAlternates,
+  type HreflangAlternate,
+  type PublicPageVariant,
+  type SeoLanguage,
 } from './seoConfig.ts';
 
 export interface RobotsOptions {
@@ -58,7 +62,7 @@ export function buildRobotsTxt({ siteUrl, indexable }: RobotsOptions): string {
 
 export interface SitemapOptions {
   siteUrl: string;
-  routes?: readonly PublicRoute[];
+  variants?: readonly PublicPageVariant[];
   /** ISO date (YYYY-MM-DD) used for `<lastmod>`. Defaults to today (UTC). */
   lastmod?: string;
 }
@@ -67,21 +71,30 @@ function todayIsoUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Build a valid urlset sitemap.xml containing only public, canonical URLs. */
+/**
+ * Build a valid urlset sitemap.xml: one `<url>` per language version of every
+ * public page, each listing the page's full set of reciprocal hreflang
+ * alternates (`xhtml:link`) including `x-default`.
+ */
 export function buildSitemapXml({
   siteUrl,
-  routes = PUBLIC_INDEXABLE_ROUTES,
+  variants = PUBLIC_PAGE_VARIANTS,
   lastmod = todayIsoUtc(),
 }: SitemapOptions): string {
-  const urlEntries = routes
-    .map((route) => {
-      const loc = buildCanonicalUrl(siteUrl, route.path);
+  const urlEntries = variants
+    .map((variant) => {
+      const loc = buildCanonicalUrl(siteUrl, variant.path);
+      const alternates = buildHreflangAlternates(siteUrl, variant.page).map(
+        (alternate) =>
+          `    <xhtml:link rel="alternate" hreflang="${alternate.hreflang}" href="${alternate.href}" />`,
+      );
       return [
         '  <url>',
         `    <loc>${loc}</loc>`,
+        ...alternates,
         `    <lastmod>${lastmod}</lastmod>`,
-        `    <changefreq>${route.changefreq}</changefreq>`,
-        `    <priority>${route.priority.toFixed(1)}</priority>`,
+        `    <changefreq>${variant.page.changefreq}</changefreq>`,
+        `    <priority>${variant.page.priority.toFixed(1)}</priority>`,
         '  </url>',
       ].join('\n');
     })
@@ -89,7 +102,7 @@ export function buildSitemapXml({
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     urlEntries,
     '</urlset>',
     '',
@@ -103,6 +116,10 @@ export interface HeadTagsOptions {
   description?: string;
   /** Canonical path for the initially served document (the landing page). */
   path?: string;
+  /** Document language; drives `og:locale`. */
+  language?: SeoLanguage;
+  /** Reciprocal hreflang alternates; only public pages carry them. */
+  alternates?: readonly HreflangAlternate[];
   /** Absolute or root-relative path to the social preview image. */
   imagePath?: string;
 }
@@ -129,6 +146,8 @@ export function buildHeadTags(options: HeadTagsOptions): string[] {
     title = 'OpenFarmPlanner',
     description = 'OpenFarmPlanner ist ein Open-Source-Anbauplaner für den Gemüsebau. Plane Kulturen, Anbauflächen und Anbauzeiträume an einem Ort.',
     path = '/',
+    language = DEFAULT_SEO_LANGUAGE,
+    alternates = [],
     imagePath = '/landing/hero-field.webp',
   } = options;
 
@@ -142,11 +161,14 @@ export function buildHeadTags(options: HeadTagsOptions): string[] {
 
   const tags = [
     `<link rel="canonical" href="${canonical}" />`,
+    ...alternates.map(
+      (alternate) => `<link rel="alternate" hreflang="${alternate.hreflang}" href="${alternate.href}" />`,
+    ),
     `<meta name="robots" content="${indexable ? 'index, follow' : 'noindex, nofollow'}" />`,
     `<meta name="description" content="${d}" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="OpenFarmPlanner" />`,
-    `<meta property="og:locale" content="${SITE_LANGUAGE === 'de' ? 'de_DE' : SITE_LANGUAGE}" />`,
+    `<meta property="og:locale" content="${OG_LOCALES[language]}" />`,
     `<meta property="og:title" content="${t}" />`,
     `<meta property="og:description" content="${d}" />`,
     `<meta property="og:url" content="${canonical}" />`,
@@ -161,8 +183,10 @@ export function buildHeadTags(options: HeadTagsOptions): string[] {
 }
 
 export interface SoftwareApplicationJsonLdOptions {
-  siteUrl: string;
+  /** Canonical URL of the landing page this markup is embedded in. */
+  url: string;
   description: string;
+  language: SeoLanguage;
 }
 
 /**
@@ -172,13 +196,14 @@ export interface SoftwareApplicationJsonLdOptions {
  * (free to use, AGPL-3.0, no account required for the demo) - search
  * engines penalize structured data that disagrees with the visible page.
  */
-export function buildSoftwareApplicationJsonLd({ siteUrl, description }: SoftwareApplicationJsonLdOptions): string {
+export function buildSoftwareApplicationJsonLd({ url, description, language }: SoftwareApplicationJsonLdOptions): string {
   const data = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: 'OpenFarmPlanner',
-    url: `${siteUrl}/`,
+    url,
     description,
+    inLanguage: language,
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Any (web-based)',
     offers: {

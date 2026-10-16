@@ -439,6 +439,13 @@
       "terms": "Nutzungsbedingungen – OpenFarmPlanner",
       "login": "Anmelden – OpenFarmPlanner",
       "register": "Registrieren – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: Open-Source-Anbauplaner für den Gemüsebau. Flächen, Kulturen und Anbaupläne direkt in Tabellen bearbeiten, mit offener Kulturbibliothek.",
+      "about": "Wie und warum OpenFarmPlanner entstanden ist: der Open-Source-Ansatz, die Finanzierung über Spenden, und wie du mitmachen kannst.",
+      "imprint": "Impressum von OpenFarmPlanner: Anbieterkennzeichnung, Kontaktangaben und verantwortliche Person gemäß § 5 ECG.",
+      "privacy": "Datenschutzerklärung von OpenFarmPlanner: Informationen zu Hosting, Registrierung, Projektdaten, Cookies und deinen Rechten nach der DSGVO.",
+      "terms": "Nutzungsbedingungen von OpenFarmPlanner: Regeln zu Accounts, Inhalten, der öffentlichen Kulturbibliothek und Haftung."
     }
   }
 }

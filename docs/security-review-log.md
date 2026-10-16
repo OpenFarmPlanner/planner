@@ -38,6 +38,18 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-15 — Claude — Automated security review of PR #780, follow-up commit (English legal texts stay authoritative)
+
+**Scope:** `git diff cf3c8c10..HEAD`: `LegalDocumentLayout.tsx`, legal-notice i18n strings, `CLAUDE.md`, `docs/i18n.md` and tests.
+
+**Findings:** No issues. Removes a translation-notice component and reverts wording only; no new data flows, unsafe HTML APIs or backend changes. The earlier entry for this PR still holds.
+
+## 2026-10-15 — Claude — Automated security review of PR #780 (bilingual public pages, canonical host redirect)
+
+**Scope:** `git diff origin/main...HEAD`: `CanonicalHostRedirectMiddleware` and its settings, frontend SEO registry/guard, prerendering, language switcher, `index.html` preboot script, docs and tests.
+
+**Findings:** No issues. The redirect target is built only from the configured `CANONICAL_HOST` and scheme plus the request path, so a spoofed Host or X-Forwarded-Host header cannot steer it to another site (a leading `//` in the path stays on the canonical host); a forged www host only yields a redirect to the canonical host. The preboot script only reads attributes from the prerendered file and normalizes the language value. No unsafe HTML APIs, raw SQL, new data flows or secrets.
+
 ## 2026-10-15 — Claude — Automated security review of PR #778 (registration failure alerts)
 
 **Scope:** `git diff origin/main...HEAD`: `registration_alerts.py`, `client_error_views.py` and serializer, throttles, `turnstile.py`, logging filter and `AdminEmailHandler` settings, `send_test_registration_alert` command, frontend reporter, docs and tests.

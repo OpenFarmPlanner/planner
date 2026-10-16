@@ -3,6 +3,7 @@ import { cleanup, configure } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 import i18n from './i18n/config';
 import { LANGUAGE_STORAGE_KEY } from './i18n/languages';
+import { setCurrentRoute } from './i18n/routeLanguage';
 
 // Testing Library's default async timeout (findBy*/waitFor) is 1000ms. That's
 // too tight when the full suite (~2000 tests) runs under CI/local CPU
@@ -34,6 +35,10 @@ Object.defineProperty(window.navigator, 'language', {
 
 beforeEach(() => {
   window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  // jsdom starts at "/", the German landing page, which would pin every test
+  // to the URL-fixed public-page language. Tests that render a public route
+  // through the router (RouteLanguageSync) set it themselves.
+  setCurrentRoute(null);
   if (i18n.resolvedLanguage !== TEST_LANGUAGE) {
     void i18n.changeLanguage(TEST_LANGUAGE);
   }

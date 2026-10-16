@@ -5,7 +5,8 @@
  *   - inject canonical / Open Graph / Twitter / robots <head> tags into
  *     index.html (build and dev), so crawlers get real metadata from the first
  *     HTML response of this otherwise client-rendered SPA;
- *   - emit /robots.txt and /sitemap.xml as build assets;
+ *   - emit /robots.txt and /sitemap.xml as build assets, after the SEO guard
+ *     (`src/seo/seoGuard.ts`) validated the public page registry and sitemap;
  *   - serve /robots.txt and /sitemap.xml from the dev and preview servers so
  *     the behaviour can be verified locally with the same URLs as production.
  *
@@ -14,8 +15,18 @@
  */
 
 import type { Plugin } from 'vite';
-import { resolveIndexable, resolveSiteUrl, type SeoEnv } from '../src/seo/seoConfig.ts';
+import {
+  PUBLIC_PAGE_VARIANTS,
+  resolveIndexable,
+  resolveSiteUrl,
+  type SeoEnv,
+} from '../src/seo/seoConfig.ts';
 import { buildHeadTags, buildRobotsTxt, buildSitemapXml } from '../src/seo/seoAssets.ts';
+import {
+  assertNoSeoProblems,
+  validatePublicPageRegistry,
+  validateSitemapXml,
+} from '../src/seo/seoGuard.ts';
 
 export function seoPlugin(env: SeoEnv = process.env as SeoEnv): Plugin {
   const siteUrl = resolveSiteUrl(env);
@@ -23,6 +34,10 @@ export function seoPlugin(env: SeoEnv = process.env as SeoEnv): Plugin {
 
   const robotsTxt = buildRobotsTxt({ siteUrl, indexable });
   const sitemapXml = buildSitemapXml({ siteUrl });
+  // Fail the build (and the dev server start) instead of shipping a public
+  // page Google cannot index consistently.
+  assertNoSeoProblems('public page registry', validatePublicPageRegistry());
+  assertNoSeoProblems('sitemap.xml', validateSitemapXml(sitemapXml, siteUrl, PUBLIC_PAGE_VARIANTS));
   const headTags = buildHeadTags({ siteUrl, indexable });
 
   return {

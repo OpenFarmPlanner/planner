@@ -26,6 +26,7 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LanguageIcon from '@mui/icons-material/Language';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
 
 import {
   AUTO_LANGUAGE,
@@ -34,16 +35,33 @@ import {
   getLanguageLabel,
 } from './languages';
 import { useLanguagePreference } from './useLanguagePreference';
+import { useCurrentPublicPage } from './routeLanguage';
 
 const MIN_TOUCH_TARGET_SX = { minHeight: 44 };
 
 /**
+ * Portal target for the public-page language menu. Keeping it inside `#root`
+ * means the always-mounted menu (and its crawlable links) is part of the
+ * prerendered markup, and React replaces that copy when the bundle boots
+ * instead of leaving a stale duplicate under `<body>`.
+ */
+function appRootContainer(): HTMLElement | null {
+  return document.getElementById('root');
+}
+
+/**
  * Compact switcher for the landing page header, auth pages and other public
  * pages: a labelled button that opens a menu of language names.
+ *
+ * On a registered public page (`PUBLIC_PAGES`) each entry is a real link to
+ * the page's counterpart URL (`/ueber` <-> `/en/about`) and the menu stays
+ * mounted, so crawlers can follow the links without opening it. Elsewhere
+ * (auth pages, demo) it only switches the UI language in place, as before.
  */
 export function PublicLanguageSwitcher({ dense = false, sx }: { dense?: boolean; sx?: SxProps<Theme> }) {
   const { t } = useTranslation('common');
   const { language, setPreference } = useLanguagePreference();
+  const publicPage = useCurrentPublicPage()?.page ?? null;
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const menuId = useId();
   const buttonId = useId();
@@ -99,21 +117,40 @@ export function PublicLanguageSwitcher({ dense = false, sx }: { dense?: boolean;
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={closeMenu}
+        keepMounted={publicPage !== null}
+        container={publicPage ? appRootContainer : undefined}
         slotProps={{
           list: { 'aria-labelledby': buttonId, role: 'menu' }
         }}
       >
         {SUPPORTED_LANGUAGES.map((entry) => (
-          <MenuItem
-            key={entry.code}
-            role="menuitemradio"
-            aria-checked={language === entry.code}
-            selected={language === entry.code}
-            onClick={() => choose(entry.code)}
-            sx={MIN_TOUCH_TARGET_SX}
-          >
-            <ListItemText primary={entry.label} />
-          </MenuItem>
+          publicPage ? (
+            <MenuItem
+              key={entry.code}
+              component={RouterLink}
+              to={publicPage.paths[entry.code]}
+              hrefLang={entry.code}
+              lang={entry.code}
+              role="menuitemradio"
+              aria-checked={language === entry.code}
+              selected={language === entry.code}
+              onClick={() => choose(entry.code)}
+              sx={MIN_TOUCH_TARGET_SX}
+            >
+              <ListItemText primary={entry.label} />
+            </MenuItem>
+          ) : (
+            <MenuItem
+              key={entry.code}
+              role="menuitemradio"
+              aria-checked={language === entry.code}
+              selected={language === entry.code}
+              onClick={() => choose(entry.code)}
+              sx={MIN_TOUCH_TARGET_SX}
+            >
+              <ListItemText primary={entry.label} />
+            </MenuItem>
+          )
         ))}
       </Menu>
     </>

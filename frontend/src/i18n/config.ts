@@ -1,8 +1,9 @@
 /**
  * i18n configuration for OpenFarmPlanner.
  *
- * The startup language comes from `resolveInitialLanguage()`: the user's
- * stored choice, otherwise the browser language, otherwise English. A
+ * On public SEO pages the URL fixes the language (`routeLanguage.ts`).
+ * Elsewhere the startup language comes from `resolveInitialLanguage()`: the
+ * user's stored choice, otherwise the browser language, otherwise English. A
  * signed-in user's server-side preference is applied on top once their
  * profile loads (`useLanguagePreference`), so a deliberate choice survives
  * reloads and new sessions and is never silently re-overridden by the browser
@@ -17,6 +18,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import { FALLBACK_LANGUAGE, resolveInitialLanguage } from './languages';
+import { getRouteLanguage } from './routeLanguage';
 
 // Import translation files
 import commonDE from './locales/de/common.json';
@@ -62,9 +64,10 @@ import helpEN from './locales/en/help.json';
 i18n
   .use(initReactI18next)
   .init({
-    // Resolved from the stored choice / browser language; English is the
-    // last-resort fallback for both the language and for missing keys.
-    lng: resolveInitialLanguage(),
+    // A public page's URL fixes its language (routeLanguage.ts); everywhere
+    // else it is resolved from the stored choice / browser language. English
+    // is the last-resort fallback for both the language and for missing keys.
+    lng: getRouteLanguage() ?? resolveInitialLanguage(),
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: ['de', 'en'],
     

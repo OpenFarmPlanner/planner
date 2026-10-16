@@ -2,24 +2,21 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { PUBLIC_INDEXABLE_ROUTES } from '../src/seo/seoConfig';
+import { PUBLIC_PAGE_VARIANTS, buildCanonicalUrl } from '../src/seo/seoConfig';
 
 // This suite verifies build/prerender.ts's actual output, so it depends on
 // `dist/` already containing a real `npm run build` (which runs the
 // prerender step as its `postbuild`) — exactly what `test:e2e` does before
-// launching Playwright. It intentionally reads files from disk rather than
-// going through the `vite preview` webServer for the "no JS" assertions:
-// `vite preview`'s static server only resolves a route's prerendered
-// `index.html` for a *trailing-slash* request (`/impressum/`, matching how
-// production Apache redirects `/impressum` -> `/impressum/` and then serves
-// it) — reading the file directly sidesteps that unrelated serving detail
-// and asserts on the artifact `build/prerender.ts` actually produced.
+// launching Playwright. File assertions read the artifact from disk; the
+// browser assertions go through `vite preview`, which (like production's
+// .htaccess) serves the flat `<path>.html` files for slashless URLs.
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
+const SITE = 'https://openfarmplanner.org';
 
 function distPathFor(routePath: string): string {
   return routePath === '/'
     ? path.join(distDir, 'index.html')
-    : path.join(distDir, routePath.replace(/^\//, ''), 'index.html');
+    : path.join(distDir, `${routePath.replace(/^\//, '')}.html`);
 }
 
 async function holdJavaScriptRequests(page: import('@playwright/test').Page): Promise<() => void> {
@@ -37,14 +34,19 @@ async function holdJavaScriptRequests(page: import('@playwright/test').Page): Pr
 }
 
 test.describe('public page prerendering', () => {
-  test('build produces a real index.html for every public route', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
+  test('build produces a flat HTML file for every language version of every public page', () => {
+    for (const route of PUBLIC_PAGE_VARIANTS) {
       expect(existsSync(distPathFor(route.path)), `missing prerendered file for ${route.path}`).toBe(true);
+      // A directory of the same name would make static servers 301 the
+      // slashless canonical URL to a trailing-slash variant.
+      if (route.path !== '/' && route.path !== '/en') {
+        expect(existsSync(path.join(distDir, route.path.replace(/^\//, ''))), `${route.path} must not be a directory`).toBe(false);
+      }
     }
   });
 
   test('each prerendered page has real body content, not an empty SPA shell', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
+    for (const route of PUBLIC_PAGE_VARIANTS) {
       const html = readFileSync(distPathFor(route.path), 'utf-8');
       expect(html).toMatch(/<div id="root">\s*<[^/]/);
       expect(html).toMatch(/<h1[^>]*>[^<]+<\/h1>/);
@@ -52,7 +54,7 @@ test.describe('public page prerendering', () => {
   });
 
   test('each prerendered page serializes CSS-in-JS rules needed for first paint', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
+    for (const route of PUBLIC_PAGE_VARIANTS) {
       const html = readFileSync(distPathFor(route.path), 'utf-8');
       const emotionStyles = [...html.matchAll(/<style data-emotion="[^"]*"[^>]*>([\s\S]*?)<\/style>/g)]
         .map((match) => match[1].trim());
@@ -65,20 +67,31 @@ test.describe('public page prerendering', () => {
     }
   });
 
-  test('each prerendered page has its own correct canonical URL and single description', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
+  test('each prerendered page has its own canonical, language and reciprocal hreflang set', () => {
+    for (const route of PUBLIC_PAGE_VARIANTS) {
       const html = readFileSync(distPathFor(route.path), 'utf-8');
-      const canonical = route.path === '/'
-        ? 'https://openfarmplanner.org/'
-        : `https://openfarmplanner.org${route.path}`;
-      expect(html).toContain(`<link rel="canonical" href="${canonical}">`);
+      expect(html).toContain(`<link rel="canonical" href="${buildCanonicalUrl(SITE, route.path)}">`);
+      expect(html).toContain(`<html lang="${route.language}"`);
       expect(html.match(/name="description"/g)).toHaveLength(1);
       expect(html.match(/rel="canonical"/g)).toHaveLength(1);
+      expect(html).toContain(`<link rel="alternate" hreflang="de" href="${buildCanonicalUrl(SITE, route.page.paths.de)}">`);
+      expect(html).toContain(`<link rel="alternate" hreflang="en" href="${buildCanonicalUrl(SITE, route.page.paths.en)}">`);
+      expect(html).toContain(`<link rel="alternate" hreflang="x-default" href="${buildCanonicalUrl(SITE, route.page.paths.de)}">`);
     }
   });
 
+  test('English pages are prerendered with English content and meta', () => {
+    const html = readFileSync(distPathFor('/en/about'), 'utf-8');
+    expect(html).toContain('<title>About OpenFarmPlanner</title>');
+    expect(html).toContain('<meta property="og:locale" content="en_US">');
+    expect(html).toMatch(/<h1[^>]*>How OpenFarmPlanner came to be<\/h1>/);
+    // Internal links stay in English.
+    expect(html).toContain('href="/en/legal-notice"');
+    expect(html).not.toContain('href="/impressum"');
+  });
+
   test('every prerendered page is marked index, follow', () => {
-    for (const route of PUBLIC_INDEXABLE_ROUTES) {
+    for (const route of PUBLIC_PAGE_VARIANTS) {
       const html = readFileSync(distPathFor(route.path), 'utf-8');
       expect(html).toContain('<meta name="robots" content="index, follow">');
     }
@@ -105,54 +118,69 @@ test.describe('public page prerendering', () => {
     expect(html).not.toMatch(/<h1[^>]*>[^<]+<\/h1>/);
   });
 
-  test('English browser language hides German prerendered landing text until the SPA is ready', async ({ browser }) => {
+  test('the URL alone decides a public page language, whatever the browser language', async ({ browser }) => {
     const context = await browser.newContext({ locale: 'en-US' });
     const page = await context.newPage();
     const releaseJavaScript = await holdJavaScriptRequests(page);
 
     await page.goto('/', { waitUntil: 'commit' });
-    await page.waitForFunction(() => document.documentElement.dataset.initialUiLanguage === 'en');
-
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('html')).toHaveClass(/ofp-hide-prerender/);
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).not.toBeVisible();
-    await expect(page.getByText('Open-source crop planning for vegetable production.')).not.toBeVisible();
+    await page.waitForFunction(() => document.documentElement.dataset.initialUiLanguage === 'de');
+    // The prerendered German page is shown right away: no hiding, no redirect.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await expect(page.locator('html')).not.toHaveClass(/ofp-hide-prerender/);
+    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).toBeVisible();
 
     releaseJavaScript();
 
-    await expect(page.getByText('Open-source crop planning for vegetable production.')).toBeVisible();
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).not.toBeVisible();
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('html')).not.toHaveClass(/ofp-hide-prerender/);
+    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
     await context.close();
   });
 
-  test('a persisted English language hides German prerendered landing text before app code loads', async ({ page }) => {
+  test('a persisted German choice still gets the English page at an English URL', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('ui.language', 'de');
+    });
+
+    const response = await page.goto('/en');
+    expect(response?.status()).toBe(200);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.getByText('Open-source crop planning for vegetable production.')).toBeVisible();
+    await expect(page).toHaveURL(/\/en$/);
+  });
+
+  test('a persisted English language hides the German app shell before app code loads', async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem('ui.language', 'en');
     });
     const releaseJavaScript = await holdJavaScriptRequests(page);
 
-    await page.goto('/', { waitUntil: 'commit' });
+    // Non-public routes keep following the preference.
+    await page.goto('/login', { waitUntil: 'commit' });
     await page.waitForFunction(() => document.documentElement.dataset.initialUiLanguage === 'en');
-
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('html')).toHaveClass(/ofp-hide-prerender/);
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).not.toBeVisible();
 
     releaseJavaScript();
 
-    await expect(page.getByText('Open-source crop planning for vegetable production.')).toBeVisible();
-    await expect(page.getByText('Open-Source-Anbauplaner für den Gemüsebau.')).not.toBeVisible();
     await expect(page.locator('html')).not.toHaveClass(/ofp-hide-prerender/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  });
+
+  test('the language switcher links to the counterpart URL of the current page', async ({ page }) => {
+    await page.goto('/ueber');
+    await expect(page.locator('a[hreflang="en"][href="/en/about"]')).toHaveCount(1);
+    await page.getByRole('button', { name: /Sprache/ }).first().click();
+    await page.getByRole('menuitemradio', { name: 'English' }).click();
+    await expect(page).toHaveURL(/\/en\/about$/);
+    await expect(page.locator('h1')).toHaveText('How OpenFarmPlanner came to be');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   });
 
   test('a JS-disabled browser sees the real privacy policy content, not a blank shell', async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
-    // Trailing slash: see the module comment above re: vite preview's static
-    // serving of directory-index files.
-    await page.goto('/datenschutz/');
+    await page.goto('/datenschutz');
     await expect(page.locator('h1')).toHaveText('Datenschutzerklärung');
     await expect(page.getByText('Verantwortlicher', { exact: false }).first()).toBeVisible();
     await context.close();

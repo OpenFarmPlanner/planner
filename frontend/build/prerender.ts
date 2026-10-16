@@ -9,7 +9,8 @@
  *   1. serve the just-built `dist/` with Vite's own `preview()` server
  *      (same static assets production will serve, no dev-only behavior);
  *   2. use Playwright (already a devDependency for this project's e2e tests)
- *      to load each entry in `PUBLIC_INDEXABLE_ROUTES` in a real browser and
+ *      to load every language version of each `PUBLIC_PAGES` entry
+ *      (`PUBLIC_PAGE_VARIANTS`) in a real browser and
  *      capture the fully client-rendered DOM — no backend is required, since
  *      none of these pages fetch data to render their initial content;
  *   3. normalize the `<head>` (title, canonical, robots, OG, Twitter tags) to
@@ -17,13 +18,15 @@
  *      `prerenderSeo.ts`) — the same source of truth `RouteSeo` uses at
  *      runtime and `seoPlugin` uses for the base `index.html` — so
  *      build-time and runtime never disagree;
- *   4. write the result as a real `index.html` file per route
- *      (`dist/index.html`, `dist/impressum/index.html`, ...), so a static
- *      file server can serve each public URL's actual content directly
- *      instead of falling back to the empty SPA shell.
+ *   4. run the SEO guard over all captured heads (canonical = served URL,
+ *      reciprocal hreflang, `<html lang>`), then write the result as a flat
+ *      file per URL (`dist/index.html`, `dist/ueber.html`,
+ *      `dist/en/about.html`, ...), so a static file server can serve each
+ *      slashless public URL's actual content directly with 200 instead of
+ *      falling back to the empty SPA shell or redirecting to a `/` variant.
  *
  * Every other route (the authenticated `/app/*` shell, login/register/reset,
- * invitations) is untouched: only `dist/index.html` and the folder-per-route
+ * invitations) is untouched: only `dist/index.html` and the per-URL
  * files listed above are written. The browser then boots the same SPA bundle
  * as before (`createRoot(...).render(...)`, no hydration) and takes over
  * normal client-side routing/i18n immediately — there is nothing route- or
@@ -51,17 +54,22 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { createServer, preview } from 'vite';
-import type { PublicRoute } from './prerenderSeo.ts';
+import type { PublicPageVariant } from './prerenderSeo.ts';
 
 interface PrerenderSeoModule {
-  PUBLIC_INDEXABLE_ROUTES: readonly PublicRoute[];
-  SITE_LANGUAGE: string;
-  applyHeadTags: (html: string, route: PublicRoute, env: NodeJS.ProcessEnv) => string;
+  PUBLIC_PAGE_VARIANTS: readonly PublicPageVariant[];
+  OG_LOCALES: Readonly<Record<string, string>>;
+  applyHeadTags: (html: string, variant: PublicPageVariant, env: NodeJS.ProcessEnv) => string;
   assertNoLoopbackUrls: (html: string, routePath: string) => void;
+  assertPrerenderedSeo: (
+    pages: readonly { variant: PublicPageVariant; html: string }[],
+    env: NodeJS.ProcessEnv,
+  ) => void;
+  outputFileFor: (routePath: string) => string;
 }
 
 interface PrerenderedPage {
-  routePath: string;
+  variant: PublicPageVariant;
   outputPath: string;
   html: string;
 }
@@ -79,13 +87,6 @@ function normalizeBasePath(input?: string): string {
 
 const outDir = process.env.PRERENDER_OUT_DIR?.trim() || 'dist';
 const base = normalizeBasePath(process.env.VITE_BASE_PATH);
-
-function outputPathFor(distDir: string, routePath: string): string {
-  if (routePath === '/') {
-    return path.join(distDir, 'index.html');
-  }
-  return path.join(distDir, routePath.replace(/^\//, ''), 'index.html');
-}
 
 async function loadSeoHelpers(): Promise<PrerenderSeoModule> {
   const devServer = await createServer({
@@ -141,7 +142,14 @@ async function main(): Promise<void> {
   await copyFile(indexHtmlPath, appShellPath);
   console.log(`prerender: index.html -> ${path.relative(distDir, appShellPath)} (SPA fallback shell)`);
 
-  const { PUBLIC_INDEXABLE_ROUTES, SITE_LANGUAGE, applyHeadTags, assertNoLoopbackUrls } = await loadSeoHelpers();
+  const {
+    PUBLIC_PAGE_VARIANTS,
+    OG_LOCALES,
+    applyHeadTags,
+    assertNoLoopbackUrls,
+    assertPrerenderedSeo,
+    outputFileFor,
+  } = await loadSeoHelpers();
 
   const server = await preview({
     root: rootDir,
@@ -163,36 +171,41 @@ async function main(): Promise<void> {
     // which is a separate download CI never installs.
     const browser = await chromium.launch({ channel: 'chrome' });
     try {
-      // Prerendered HTML is a static artifact that can only carry one
-      // language, and index.html declares `lang="de"`. Pin the browser locale
-      // to the canonical site language (seoConfig.SITE_LANGUAGE) so the
-      // artifact matches that declaration instead of inheriting whatever
-      // locale the build machine happens to use. Visitors still get their own
-      // language as soon as the SPA boots — see docs/i18n.md.
-      const page = await browser.newPage({ locale: `${SITE_LANGUAGE}-DE` });
       const prerenderedPages: PrerenderedPage[] = [];
-      for (const route of PUBLIC_INDEXABLE_ROUTES) {
-        const targetUrl = new URL(route.path.replace(/^\//, ''), localUrl).toString();
-        await page.goto(targetUrl, { waitUntil: 'networkidle' });
-        await page.waitForSelector('#root h1', { timeout: 10_000 });
+      for (const variant of PUBLIC_PAGE_VARIANTS) {
+        // The page language comes from the URL alone (see
+        // src/i18n/routeLanguage.ts); a fresh context per page keeps any
+        // stored language preference from leaking between captures, and the
+        // matching locale keeps Intl formatting consistent with the page.
+        const context = await browser.newContext({ locale: OG_LOCALES[variant.language].replace('_', '-') });
+        try {
+          const page = await context.newPage();
+          const targetUrl = new URL(variant.path.replace(/^\//, ''), localUrl).toString();
+          await page.goto(targetUrl, { waitUntil: 'networkidle' });
+          await page.waitForSelector(`html[lang="${variant.language}"] #root h1`, { timeout: 10_000 });
 
-        await serializeCssInJsRules(page);
-        const html = await page.content();
-        const finalHtml = applyHeadTags(html, route, process.env);
-        assertNoLoopbackUrls(finalHtml, route.path);
+          await serializeCssInJsRules(page);
+          const html = await page.content();
+          const finalHtml = applyHeadTags(html, variant, process.env);
+          assertNoLoopbackUrls(finalHtml, variant.path);
 
-        prerenderedPages.push({
-          routePath: route.path,
-          outputPath: outputPathFor(distDir, route.path),
-          html: finalHtml,
-        });
+          prerenderedPages.push({
+            variant,
+            outputPath: path.join(distDir, outputFileFor(variant.path)),
+            html: finalHtml,
+          });
+        } finally {
+          await context.close();
+        }
       }
+
+      assertPrerenderedSeo(prerenderedPages, process.env);
 
       for (const prerenderedPage of prerenderedPages) {
         const outputPath = prerenderedPage.outputPath;
         await mkdir(path.dirname(outputPath), { recursive: true });
         await writeFile(outputPath, prerenderedPage.html, 'utf-8');
-        console.log(`prerender: ${prerenderedPage.routePath} -> ${path.relative(distDir, outputPath)}`);
+        console.log(`prerender: ${prerenderedPage.variant.path} -> ${path.relative(distDir, outputPath)}`);
       }
     } finally {
       await browser.close();

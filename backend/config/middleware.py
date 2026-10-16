@@ -30,11 +30,50 @@ import zoneinfo
 from typing import TYPE_CHECKING, Callable
 
 from django.conf import settings
+from django.http import HttpResponsePermanentRedirect
 from django.urls import Resolver404, resolve
 from django.utils import timezone
 
 if TYPE_CHECKING:
     from django.http import HttpRequest, HttpResponse
+
+
+class CanonicalHostRedirectMiddleware:
+    """Permanently redirects `CANONICAL_HOST_REDIRECTS` hosts (www.) to `CANONICAL_HOST`.
+
+    The SPA's www redirect lives in the ops-rendered `.htaccess`, but backend
+    prefixes proxied by `uberspace web backend` (/api, /admin, ...) bypass
+    Apache entirely, so without this a www URL such as `/api/docs/` is served
+    with 200 and can be indexed under the wrong host. Path and query string are
+    preserved; GET/HEAD get a 301, other methods a 308 so the method and body
+    survive. The raw Host header is read so a www host missing from
+    ALLOWED_HOSTS is redirected rather than rejected with 400.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        redirect_hosts = settings.CANONICAL_HOST_REDIRECTS
+        canonical_host = settings.CANONICAL_HOST
+        if redirect_hosts and canonical_host and self._request_host(request) in redirect_hosts:
+            scheme = settings.CANONICAL_HOST_SCHEME
+            target = f'{scheme}://{canonical_host}{request.get_full_path()}'
+            response = HttpResponsePermanentRedirect(target)
+            if request.method not in ('GET', 'HEAD'):
+                response.status_code = 308
+            return response
+        return self.get_response(request)
+
+    @staticmethod
+    def _request_host(request: HttpRequest) -> str:
+        if settings.USE_X_FORWARDED_HOST and request.META.get('HTTP_X_FORWARDED_HOST'):
+            raw_host = request.META['HTTP_X_FORWARDED_HOST'].split(',')[-1]
+        else:
+            raw_host = request.META.get('HTTP_HOST', '')
+        host = raw_host.strip().lower()
+        # Drop a port; bracketed IPv6 literals never match a configured host anyway.
+        return host.rsplit(':', 1)[0] if host.count(':') == 1 else host
 
 
 class AdminTimezoneMiddleware:

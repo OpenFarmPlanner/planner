@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
+import { usePublicPagePath } from '../seo/usePublicPagePath';
 import { AppTooltip } from '../components/AppTooltip';
 import { cropSpeciesAPI, cropAPI, publicCropAPI, type Crop } from '../api/api';
 import type {
@@ -139,6 +140,8 @@ export function CropsPublishingWizardDialog({
   onSyncPublicCrop,
 }: CropsPublishingWizardDialogProps) {
   const { t } = useTranslation(['crops', 'common']);
+  const termsPath = usePublicPagePath('terms');
+  const privacyPath = usePublicPagePath('privacy');
   const [selectedSpecies, setSelectedSpecies] = useState<CropSpecies | null>(null);
   const [publicCropOptions, setPublicCropOptions] = useState<PublicCrop[]>([]);
   const [publicCropLoading, setPublicCropLoading] = useState(false);
@@ -728,9 +731,9 @@ export function CropsPublishingWizardDialog({
       />
       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
         {t('library.publishConfirm.linkPrefix')}
-        <Link component={RouterLink} to="/datenschutz" target="_blank" rel="noopener">{t('library.publishConfirm.privacyLinkLabel')}</Link>
+        <Link component={RouterLink} to={privacyPath} target="_blank" rel="noopener">{t('library.publishConfirm.privacyLinkLabel')}</Link>
         {t('library.publishConfirm.linkMiddle')}
-        <Link component={RouterLink} to="/nutzungsbedingungen" target="_blank" rel="noopener">{t('library.publishConfirm.termsLinkLabel')}</Link>
+        <Link component={RouterLink} to={termsPath} target="_blank" rel="noopener">{t('library.publishConfirm.termsLinkLabel')}</Link>
         {t('library.publishConfirm.linkSuffix')}
       </Typography>
     </Box>

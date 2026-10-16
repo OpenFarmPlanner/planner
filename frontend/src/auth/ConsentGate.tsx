@@ -3,6 +3,8 @@ import { Alert, Button, Container, Link, Stack, Typography } from '@mui/material
 import { Link as RouterLink } from 'react-router';
 import { useAuth } from './useAuth';
 import { useTranslation } from '../i18n';
+import { usePublicPageLanguage } from '../seo/usePublicPagePath';
+import { publicPagePath, type PublicPageId } from '../seo/seoConfig';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 /**
@@ -11,9 +13,9 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
  * document starts requiring versioned consent — no other gating logic
  * needs to change.
  */
-const CONSENT_DOCUMENT_CONFIG: Record<string, { path: string; translationKey: string; versionKey: string }> = {
-  terms: { path: '/nutzungsbedingungen', translationKey: 'terms', versionKey: 'legal.terms.version' },
-  privacy: { path: '/datenschutz', translationKey: 'privacy', versionKey: 'legal.privacy.version' },
+const CONSENT_DOCUMENT_CONFIG: Record<string, { pageId: PublicPageId; translationKey: string; versionKey: string }> = {
+  terms: { pageId: 'terms', translationKey: 'terms', versionKey: 'legal.terms.version' },
+  privacy: { pageId: 'privacy', translationKey: 'privacy', versionKey: 'legal.privacy.version' },
 };
 
 export default function ConsentGate() {
@@ -22,6 +24,7 @@ export default function ConsentGate() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const linkLanguage = usePublicPageLanguage();
 
   const documentKey = user?.pending_consents[0];
   const config = documentKey ? CONSENT_DOCUMENT_CONFIG[documentKey] : undefined;
@@ -78,7 +81,7 @@ export default function ConsentGate() {
         </Typography>
         {error ? <Alert severity="error">{error}</Alert> : null}
         <Stack spacing={0.75}>
-          <Link component={RouterLink} to={config.path} target="_blank" rel="noopener">
+          <Link component={RouterLink} to={publicPagePath(config.pageId, linkLanguage)} target="_blank" rel="noopener">
             {t(`reconsent.${config.translationKey}.linkLabel`)}
           </Link>
           {additionalPendingDocuments.length > 0 ? (
@@ -87,7 +90,7 @@ export default function ConsentGate() {
                 {t('reconsent.additionalDocuments')}
               </Typography>
               {additionalPendingDocuments.map((pendingConfig) => (
-                <Link key={pendingConfig.translationKey} component={RouterLink} to={pendingConfig.path} target="_blank" rel="noopener">
+                <Link key={pendingConfig.translationKey} component={RouterLink} to={publicPagePath(pendingConfig.pageId, linkLanguage)} target="_blank" rel="noopener">
                   {t(`reconsent.${pendingConfig.translationKey}.linkLabel`)}
                 </Link>
               ))}

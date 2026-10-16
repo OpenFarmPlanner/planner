@@ -51,6 +51,29 @@
           return fallback;
         }
 
+        // Prerendered public pages carry their URL-fixed language and path
+        // (build/prerenderSeo.ts). When this file is served at that path its
+        // content already matches the language, so it wins over any
+        // preference and the root is never hidden. A static server's SPA
+        // fallback may hand the same file out for another URL; then the
+        // attributes are ignored.
+        function currentAppPath() {
+          var base = '%BASE_URL%'.replace(/\/+$/, '');
+          var path = window.location.pathname;
+          if (base && path.indexOf(base) === 0) {
+            path = path.slice(base.length);
+          }
+          return path.replace(/\/+$/, '') || '/';
+        }
+        var root = document.documentElement;
+        var pageLanguage = root.getAttribute('data-ofp-page-path') === currentAppPath()
+          ? normalize(root.getAttribute('data-ofp-page-language'))
+          : null;
+        if (pageLanguage) {
+          document.documentElement.lang = pageLanguage;
+          document.documentElement.dataset.initialUiLanguage = pageLanguage;
+          return;
+        }
         var preference = readStoredPreference();
         var language = preference && preference !== 'auto' ? preference : detectBrowserLanguage();
         document.documentElement.lang = language;
