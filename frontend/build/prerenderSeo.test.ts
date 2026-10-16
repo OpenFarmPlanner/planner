@@ -96,7 +96,11 @@ describe('applyHeadTags', () => {
     const meta = resolvePublicPageMeta(aboutEn.page, 'en');
     const html = applyHeadTags(sampleCapturedHtml(), aboutEn, env);
 
-    expect(html).toMatch(/<html lang="en" data-ofp-page-language="en" data-ofp-page-path="\/en\/about">/);
+    expect(html).toContain('<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en/about">');
+    // The language versions reach the preboot as a script value, before its
+    // own script, never as DOM text.
+    expect(html).toContain('<script>window.__OFP_PAGE_ALTERNATES__ = {"de":"/ueber","en":"/en/about"};</script>');
+    expect(html).not.toContain('data-ofp-page-alternates');
     expect(html).toContain(`<title>${meta.title}</title>`);
     expect(meta.title).toBe('About OpenFarmPlanner');
     expect(html).toContain('<link rel="canonical" href="https://openfarmplanner.org/en/about">');

@@ -52,9 +52,11 @@
         }
 
         // Prerendered public pages carry their URL-fixed language and path
-        // (build/prerenderSeo.ts). When this file is served at that path its
-        // content already matches the language, so it wins over any
-        // preference and the root is never hidden. A static server's SPA
+        // (build/prerenderSeo.ts) and their language versions. A visitor whose language
+        // (stored choice, otherwise browser) differs is sent to their language
+        // version before first paint; crawlers never are, so each URL stays
+        // indexable in its own language. Keep the crawler pattern in sync
+        // with src/i18n/publicPageLanguageRedirect.ts. A static server's SPA
         // fallback may hand the same file out for another URL; then the
         // attributes are ignored.
         function currentAppPath() {
@@ -69,13 +71,26 @@
         var pageLanguage = root.getAttribute('data-ofp-page-path') === currentAppPath()
           ? normalize(root.getAttribute('data-ofp-page-language'))
           : null;
+        var preference = readStoredPreference();
+        var language = preference && preference !== 'auto' ? preference : detectBrowserLanguage();
         if (pageLanguage) {
+          var isCrawler = /bot\b|bot\/|crawl|spider|slurp|mediapartners|google-inspectiontool|facebookexternalhit|embedly|lighthouse|bingpreview|whatsapp|telegram|ia_archiver/i
+            .test(navigator.userAgent || '');
+          // Set by an inline script build/prerenderSeo.ts puts before this one.
+          var alternates = window.__OFP_PAGE_ALTERNATES__;
+          var target = alternates && alternates[language];
+          var isAppPath = typeof target === 'string' && /^\/(?:[a-z0-9-]+(?:\/[a-z0-9-]+)*)?$/.test(target);
+          if (!isCrawler && language !== pageLanguage && isAppPath) {
+            root.classList.add('ofp-hide-prerender');
+            window.location.replace(
+              '%BASE_URL%'.replace(/\/+$/, '') + target + window.location.search + window.location.hash
+            );
+            return;
+          }
           document.documentElement.lang = pageLanguage;
           document.documentElement.dataset.initialUiLanguage = pageLanguage;
           return;
         }
-        var preference = readStoredPreference();
-        var language = preference && preference !== 'auto' ? preference : detectBrowserLanguage();
         document.documentElement.lang = language;
         document.documentElement.dataset.initialUiLanguage = language;
         if (language !== 'de') {
