@@ -6,6 +6,7 @@ import { projectAPI, type InvitationPublicStatus } from '../../api/api';
 import { useAuth } from '../../auth/useAuth';
 import { AuthApiError } from '../../auth/authApi';
 import { getAuthenticatedAppDestination } from '../../auth/authDestination';
+import { useEndGuestDemoOnAuthPage } from '../../auth/useEndGuestDemoOnAuthPage';
 import { useTranslation } from '../../i18n';
 import ActivationEmailResendPanel from '../../components/auth/ActivationEmailResendPanel';
 import SocialLoginButtons from '../../components/auth/SocialLoginButtons';
@@ -19,6 +20,7 @@ import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 export default function LoginPage() {
   const { user, login, restoreAccount } = useAuth();
   const { t } = useTranslation(['auth', 'projectInvitations']);
+  const isGuestDemo = useEndGuestDemoOnAuthPage();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -49,7 +51,7 @@ export default function LoginPage() {
     void loadPendingInvitation();
   }, []);
 
-  if (user) return <Navigate to={authenticatedDestination} replace />;
+  if (user && !isGuestDemo) return <Navigate to={authenticatedDestination} replace />;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

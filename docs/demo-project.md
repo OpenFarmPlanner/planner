@@ -98,6 +98,11 @@ workspace per visitor:
   schedules it every 30 minutes.
 - The frontend stores the guest session id in `sessionStorage`. A new browser
   session starts a fresh workspace instead of reusing old demo data.
+- Opening `/login` or `/register` during a guest demo ends the demo through
+  the same `endGuestDemo` cleanup as "Demo beenden" (falling back to a plain
+  logout) and shows the form, instead of the "already signed in → app"
+  redirect. The check uses the backend's `is_guest_demo` flag; real accounts
+  are still redirected (`useEndGuestDemoOnAuthPage` in `frontend/src/auth/`).
 - Because a guest workspace is deleted without a trace, every start and, on
   deletion, whether the guest changed anything is booked to
   `GuestDemoUsageDay`, an anonymous per-day counter read by the admin
