@@ -2,7 +2,7 @@ import { Box, Button, Chip, Stack, Typography } from '@mui/material';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import type { PublicCropRevision } from '../../../api/types';
-import { getPublicCropFieldLabel, getRevisionValueLabel } from './formatters';
+import { getPublicAuthorLabel, getPublicCropFieldLabel, getRevisionValueLabel } from './formatters';
 import { DisabledActionTooltip } from '../../../components/DisabledActionTooltip';
 
 export interface VersionCardProps {
@@ -42,7 +42,7 @@ export function VersionCard({
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {t('library.page.metaByDate', {
-              author: revision.created_by_label || anonymousLabel,
+              author: getPublicAuthorLabel(revision, anonymousLabel, t),
               date: formatDate(revision.created_at),
             })}
           </Typography>

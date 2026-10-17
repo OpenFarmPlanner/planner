@@ -23,7 +23,8 @@
     "actions": {
       "setPublicDisplayName": "Set name",
       "editPublicDisplayName": "Change name"
-    }
+    },
+    "transparencyHint": "Shown publicly as the author of your contributions to the crop library, including your earlier ones."
   },
   "moderatorRequest": {
     "title": "Help as a moderator",

@@ -753,7 +753,18 @@
         "authorDeleted": "Dieser Beitrag wurde vom Autor gelöscht.",
         "moderatorDeleted": "Dieser Beitrag wurde von einem Moderator entfernt.",
         "rootDeleteBlocked": "Der Eröffnungsbeitrag kann nicht gelöscht werden, solange sichtbare Antworten vorhanden sind.",
-        "submit": "Absenden"
+        "submit": "Absenden",
+        "ownBadge": "Du",
+        "topicStarterBadge": "Themenstarter",
+        "anonymousNotice": {
+          "message": "Du schreibst als Anonym. Andere sehen dich in diesem Thema als „Anonym“ mit einer Nummer.",
+          "setPublicName": "Öffentlichen Namen festlegen",
+          "publicNameLabel": "Öffentlicher Name",
+          "publicNameHelper": "Wird öffentlich als Autor deiner Beiträge in der Kulturbibliothek angezeigt, auch bei deinen bisherigen Beiträgen.",
+          "save": "Speichern",
+          "cancel": "Abbrechen",
+          "saveError": "Der Name konnte nicht gespeichert werden."
+        }
       },
       "edit": {
         "open": "Bearbeiten",
@@ -1335,7 +1346,8 @@
       "confirm": "Wieder veröffentlichen",
       "speciesRequired": "Dieser Kultur ist keine offizielle Kulturart zugeordnet, die veröffentlicht werden kann. Bitte wähle eine aus.",
       "checkError": "Die Veröffentlichung konnte nicht geprüft werden. Bitte versuche es erneut."
-    }
+    },
+    "anonymousAuthorNumbered": "Anonym {{number}}"
   },
   "commands": {
     "focusSearch": "Kultursuche fokussieren (/)",

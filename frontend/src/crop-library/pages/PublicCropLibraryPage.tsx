@@ -108,6 +108,7 @@ import {
 import { DetailGrid, DetailRow, DetailSection } from '../components/publicCropLibrary/DetailPrimitives';
 import { VersionCard } from '../components/publicCropLibrary/VersionCard';
 import { CommentForm } from '../components/publicCropLibrary/CommentForm';
+import { AnonymousPostingNotice } from '../components/publicCropLibrary/AnonymousPostingNotice';
 import { ThreadCommentBranch } from '../components/publicCropLibrary/DiscussionComment';
 import { PublicCropMobileSelectorDialog } from '../components/publicCropLibrary/PublicCropMobileSelectorDialog';
 import { ImportConflictDialog } from '../components/publicCropLibrary/ImportConflictDialog';
@@ -123,6 +124,7 @@ import {
   buildThreadCommentTree,
   formatDays,
   formatDiscussionPreview,
+  getPublicAuthorLabel,
   formatLocalizedNumber,
   formatMetersAsCentimeters,
   getCultivationTypesLabel,
@@ -390,6 +392,17 @@ export default function PublicCropLibraryPage() {
     liveUpdates: Boolean(user),
     onSelectedTopicMissing: handleSelectedTopicMissing,
   });
+
+  const reloadDiscussionAfterNameChange = useCallback(async (): Promise<void> => {
+    if (selectedTopicId !== null) {
+      await refreshTopicsAndComments();
+    } else if (selectedCropId !== null) {
+      await reloadCollaboration(selectedCropId);
+    }
+  }, [refreshTopicsAndComments, reloadCollaboration, selectedCropId, selectedTopicId]);
+  const anonymousPostingNotice = user && !isGuestDemo && !user.public_display_name ? (
+    <AnonymousPostingNotice t={t} onSaved={reloadDiscussionAfterNameChange} />
+  ) : null;
 
   const selectMobileCrop = useCallback((crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string): void => {
     updateSelectedCropId(crop.id, { replace: false, speciesViewKey: itemKind === 'species' ? speciesKey : null });
@@ -2037,6 +2050,7 @@ export default function PublicCropLibraryPage() {
                               {t('library.page.discussion.newTopic')}
                             </Button>
                           ) : null}
+                          {newTopicOpen ? anonymousPostingNotice : null}
                           {newTopicOpen ? (
                             <Box component="form" onSubmit={(event) => void handleCommentSubmit(event)} sx={{ display: 'grid', gap: 1, pb: 1.25, borderBottom: '1px solid', borderColor: 'divider' }}>
                               <Typography variant="subtitle2">{t('library.page.discussion.newTopic')}</Typography>
@@ -2096,7 +2110,7 @@ export default function PublicCropLibraryPage() {
                                 <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>{topic.title}</Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {t('library.page.discussion.topicMeta', {
-                                    author: topic.created_by_label || anonymousLabel,
+                                    author: getPublicAuthorLabel(topic, anonymousLabel, t),
                                     count: topic.comment_count,
                                     date: formatDate(topic.last_activity_at || topic.created_at),
                                   })}
@@ -2149,6 +2163,8 @@ export default function PublicCropLibraryPage() {
                                   key={node.comment.id}
                                   node={node}
                                   depth={0}
+                                  openingCommentId={threadCommentTree[0]?.comment.id}
+                                  composeNotice={anonymousPostingNotice}
                                   anonymousLabel={anonymousLabel}
                                   formatDate={formatDate}
                                   replyTo={replyTo}
@@ -2173,6 +2189,9 @@ export default function PublicCropLibraryPage() {
                                 />
                               ))}
                             </Stack>
+                          ) : null}
+                          {replyTo === null && editingCommentId === null && commentsStatus !== 'loading' && commentsStatus !== 'error' && selectedTopic ? (
+                            anonymousPostingNotice
                           ) : null}
                           {replyTo === null && editingCommentId === null && commentsStatus !== 'loading' && commentsStatus !== 'error' && selectedTopic ? (
                             <CommentForm

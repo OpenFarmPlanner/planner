@@ -158,6 +158,26 @@ export function buildThreadCommentTree(comments: PublicCropDiscussionComment[]):
   return sortTree(rootNodes);
 }
 
+export interface PublicAuthorAttribution {
+  created_by_label?: string;
+  created_by_anonymous_number?: number | null;
+}
+
+/** Public name, else "Anonym N" for the topic/entry pseudonym, else the plain anonymous label. */
+export function getPublicAuthorLabel(
+  attribution: PublicAuthorAttribution,
+  anonymousLabel: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (attribution.created_by_label) {
+    return attribution.created_by_label;
+  }
+  if (attribution.created_by_anonymous_number) {
+    return t('library.anonymousAuthorNumbered', { number: attribution.created_by_anonymous_number });
+  }
+  return anonymousLabel;
+}
+
 export function getDeletedCommentPlaceholder(
   comment: PublicCropDiscussionComment,
   t: (key: string, options?: Record<string, unknown>) => string,

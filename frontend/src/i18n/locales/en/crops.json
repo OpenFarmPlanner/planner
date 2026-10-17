@@ -753,7 +753,18 @@
         "authorDeleted": "This post was deleted by the author.",
         "moderatorDeleted": "This post was removed by a moderator.",
         "rootDeleteBlocked": "The opening post cannot be deleted while visible replies exist.",
-        "submit": "Submit"
+        "submit": "Submit",
+        "ownBadge": "You",
+        "topicStarterBadge": "Topic starter",
+        "anonymousNotice": {
+          "message": "You are posting anonymously. Others see you in this topic as “Anonymous” with a number.",
+          "setPublicName": "Set public name",
+          "publicNameLabel": "Public name",
+          "publicNameHelper": "Shown publicly as the author of your contributions to the crop library, including your earlier ones.",
+          "save": "Save",
+          "cancel": "Cancel",
+          "saveError": "The name could not be saved."
+        }
       },
       "edit": {
         "open": "Edit",
@@ -1335,7 +1346,8 @@
       "confirm": "Publish again",
       "speciesRequired": "This crop has no official crop species that can be published. Please select one.",
       "checkError": "Publishing could not be checked. Please try again."
-    }
+    },
+    "anonymousAuthorNumbered": "Anonymous {{number}}"
   },
   "commands": {
     "focusSearch": "Focus crop search (/)",

@@ -99,6 +99,23 @@ describe('what the comment shows', () => {
     expect(replyButton('Anonym')).toBeInTheDocument();
   });
 
+  it('numbers an anonymous author with the topic pseudonym, also in the reply action', () => {
+    setup({ comment: comment({ created_by_label: '', created_by_anonymous_number: 2 }) });
+
+    expect(screen.getByText('Anonym 2 · 15.03.2026')).toBeInTheDocument();
+    expect(replyButton('Anonym 2')).toBeInTheDocument();
+  });
+
+  it('names the parent author with their pseudonym in the reply context', () => {
+    setup({
+      isReply: true,
+      logicalDepth: MAX_VISIBLE_REPLY_DEPTH + 1,
+      parentAuthorLabel: 'Anonym 2',
+    });
+
+    expect(screen.getByText('Antwort auf Anonym 2')).toBeInTheDocument();
+  });
+
   it('marks an edited comment as edited', () => {
     // Readers need to know the text they are replying to may have changed.
     setup({ comment: comment({ is_edited: true }) });
@@ -450,5 +467,35 @@ describe('nesting', () => {
     const { container } = setup();
 
     expect(container.querySelector('[data-comment-id="1"]')).toHaveAttribute('tabindex', '-1');
+  });
+});
+
+describe('author badges', () => {
+  const badges = () => Array.from(document.querySelectorAll('.MuiChip-root')).map((chip) => chip.textContent);
+
+  it('marks the reader\'s own comment with "Du" and puts it in the comment\'s accessible name', () => {
+    setup({ comment: comment({ is_own: true }) });
+
+    expect(badges()).toEqual(['Du']);
+    expect(screen.getByRole('article', { name: /Martina · 15\.03\.2026\s*Du/ })).toBeInTheDocument();
+  });
+
+  it('marks a later reply by the topic starter', () => {
+    setup({ comment: comment({ is_topic_starter: true }), isReply: true });
+
+    expect(badges()).toEqual(['Themenstarter']);
+    expect(screen.getByRole('article', { name: /Themenstarter/ })).toBeInTheDocument();
+  });
+
+  it('shows only "Du" when the reader is also the topic starter', () => {
+    setup({ comment: comment({ is_own: true, is_topic_starter: true }) });
+
+    expect(badges()).toEqual(['Du']);
+  });
+
+  it('does not mark the opening post as the topic starter\'s', () => {
+    setup({ comment: comment({ is_topic_starter: true }), isOpeningPost: true });
+
+    expect(badges()).toEqual([]);
   });
 });

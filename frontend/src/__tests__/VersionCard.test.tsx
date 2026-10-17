@@ -95,6 +95,11 @@ describe('VersionCard', () => {
       renderCard({ rev: revision({ created_by_label: author }) });
       expect(screen.getByText(/^Anonym · /)).toBeInTheDocument();
     });
+
+    it('numbers an anonymous author with the per-entry pseudonym', () => {
+      renderCard({ rev: revision({ created_by_label: '', created_by_anonymous_number: 2 }) });
+      expect(screen.getByText(/^Anonym 2 · /)).toBeInTheDocument();
+    });
   });
 
   describe('the action chip', () => {

@@ -1,11 +1,11 @@
-import type { FormEvent, Ref } from 'react';
-import { Box, IconButton, Menu, MenuItem, Stack, Typography } from '@mui/material';
+import { useId, type FormEvent, type ReactNode, type Ref } from 'react';
+import { Box, Chip, IconButton, Menu, MenuItem, Stack, Typography } from '@mui/material';
 import MoreVertOutlinedIcon from '@mui/icons-material/MoreVertOutlined';
 import ReplyOutlinedIcon from '@mui/icons-material/ReplyOutlined';
 import type { PublicCropDiscussionComment } from '../../../api/types';
 import { AppTooltip } from '../../../components/AppTooltip';
 import { CommentForm } from './CommentForm';
-import { MAX_VISIBLE_REPLY_DEPTH, getDeletedCommentPlaceholder, type ThreadCommentGroup } from './formatters';
+import { MAX_VISIBLE_REPLY_DEPTH, getDeletedCommentPlaceholder, getPublicAuthorLabel, type ThreadCommentGroup } from './formatters';
 
 export interface DiscussionCommentProps {
   comment: PublicCropDiscussionComment;
@@ -15,6 +15,8 @@ export interface DiscussionCommentProps {
   logicalDepth: number;
   visualDepth: number;
   parentAuthorLabel?: string;
+  /** The topic's first post never carries the topic-starter badge. */
+  isOpeningPost?: boolean;
   isEditing: boolean;
   menuAnchorElement: HTMLElement | null;
   submittingComment: boolean;
@@ -44,6 +46,7 @@ export function DiscussionComment({
   logicalDepth,
   visualDepth,
   parentAuthorLabel,
+  isOpeningPost = false,
   isEditing,
   menuAnchorElement,
   submittingComment,
@@ -63,11 +66,13 @@ export function DiscussionComment({
   registerCommentRef,
   activeFormInputRef,
 }: DiscussionCommentProps) {
+  const authorLabel = getPublicAuthorLabel(comment, anonymousLabel, t);
   const metaText = `${t('library.page.metaByDate', {
-    author: comment.created_by_label || anonymousLabel,
+    author: authorLabel,
     date: formatDate(comment.created_at),
   })}${comment.is_edited ? ` · ${t('library.page.discussion.edited')}` : ''}`;
-  const authorLabel = comment.created_by_label || anonymousLabel;
+  const metaId = useId();
+  const authorBadge = getAuthorBadgeLabel(comment, isOpeningPost, t);
   const replyLabel = t('library.page.discussion.replyToAuthor', { author: authorLabel });
   const deletedPlaceholder = getDeletedCommentPlaceholder(comment, t);
   const canShowDeleteAction = comment.can_delete || comment.delete_blocked_reason === 'visible_replies';
@@ -76,6 +81,8 @@ export function DiscussionComment({
     <Box
       ref={(element: HTMLDivElement | null) => registerCommentRef(comment.id, element)}
       tabIndex={-1}
+      role="article"
+      aria-labelledby={metaId}
       data-comment-id={comment.id}
       data-logical-depth={logicalDepth}
       data-visual-depth={visualDepth}
@@ -97,9 +104,12 @@ export function DiscussionComment({
               {t('library.page.discussion.replyContext', { author: parentAuthorLabel })}
             </Typography>
           ) : null}
-          <Typography variant="caption" color="text.secondary">
-            {metaText}
-          </Typography>
+          <Box id={metaId} sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 0.75 }}>
+            <Typography variant="caption" color="text.secondary">
+              {metaText}
+            </Typography>
+            {authorBadge ? <Chip size="small" variant="outlined" label={authorBadge} /> : null}
+          </Box>
           {isEditing ? (
             <Box sx={{ mt: 1 }}>
               <CommentForm
@@ -184,10 +194,27 @@ export function DiscussionComment({
   );
 }
 
+function getAuthorBadgeLabel(
+  comment: PublicCropDiscussionComment,
+  isOpeningPost: boolean,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | null {
+  if (comment.is_own) {
+    return t('library.page.discussion.ownBadge');
+  }
+  if (comment.is_topic_starter && !isOpeningPost) {
+    return t('library.page.discussion.topicStarterBadge');
+  }
+  return null;
+}
+
 export interface ThreadCommentBranchProps {
   node: ThreadCommentGroup;
   depth: number;
   parentAuthorLabel?: string;
+  openingCommentId?: number;
+  /** Shown above reply forms, e.g. the anonymous-posting notice. */
+  composeNotice?: ReactNode;
   anonymousLabel: string;
   formatDate: (value?: string | null) => string;
   replyTo: number | null;
@@ -216,6 +243,8 @@ export function ThreadCommentBranch({
   node,
   depth,
   parentAuthorLabel,
+  openingCommentId,
+  composeNotice,
   anonymousLabel,
   formatDate,
   replyTo,
@@ -242,7 +271,7 @@ export function ThreadCommentBranch({
   const childDepth = depth + 1;
   const childVisualDepth = Math.min(childDepth, MAX_VISIBLE_REPLY_DEPTH);
   const childIndentIncreases = childVisualDepth > visualDepth;
-  const childAuthorLabel = node.comment.created_by_label || anonymousLabel;
+  const childAuthorLabel = getPublicAuthorLabel(node.comment, anonymousLabel, t);
   const hasChildGroup = node.children.length > 0 || replyTo === node.comment.id;
 
   return (
@@ -255,6 +284,7 @@ export function ThreadCommentBranch({
         logicalDepth={depth}
         visualDepth={visualDepth}
         parentAuthorLabel={parentAuthorLabel}
+        isOpeningPost={node.comment.id === openingCommentId}
         isEditing={editingCommentId === node.comment.id}
         menuAnchorElement={commentActionMenu?.commentId === node.comment.id ? commentActionMenu.anchorElement : null}
         submittingComment={submittingComment}
@@ -293,6 +323,8 @@ export function ThreadCommentBranch({
               node={childNode}
               depth={childDepth}
               parentAuthorLabel={childAuthorLabel}
+              openingCommentId={openingCommentId}
+              composeNotice={composeNotice}
               anonymousLabel={anonymousLabel}
               formatDate={formatDate}
               replyTo={replyTo}
@@ -316,6 +348,7 @@ export function ThreadCommentBranch({
               activeFormInputRef={activeFormInputRef}
             />
           ))}
+          {replyTo === node.comment.id ? composeNotice : null}
           {replyTo === node.comment.id ? (
             <CommentForm
               body={commentBody}

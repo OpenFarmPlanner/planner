@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -13,7 +15,7 @@ from rest_framework.test import APITestCase as DRFAPITestCase
 
 from accounts.consent import record_acceptance
 from accounts.guest_demo import create_guest_demo_session
-from accounts.models import DocumentConsent
+from accounts.models import DocumentConsent, PublicProfile
 from accounts.trust import grant_established_trust
 from crops.models import CropSpecies, CropSpeciesTranslation
 from crops.permissions import grant_public_library_moderator_access
@@ -5494,3 +5496,152 @@ class PublicCropUnpublishedLinkReproTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.crop.refresh_from_db()
         self.assertIsNone(self.crop.source_public_crop_id)
+
+
+class PublicCropAnonymousPseudonymTest(DRFAPITestCase):
+    """Authors without a public name get a per-topic / per-entry number."""
+
+    def setUp(self):
+        self.starter = User.objects.create_user(username='starter', email='starter@example.com', password='pw')
+        self.second = User.objects.create_user(username='second', email='second@example.com', password='pw')
+        self.named = User.objects.create_user(username='named', email='named@example.com', password='pw')
+        self.third = User.objects.create_user(username='third', email='third@example.com', password='pw')
+        PublicProfile.objects.create(user=self.named, public_display_name='Grüner Hof')
+        self.public_crop = PublicCrop.objects.create(
+            name='Tomato', variety='Roma', status='published', created_by=self.starter,
+        )
+        self.topic = self._topic_with_comments(
+            [self.starter, self.second, self.named, self.starter, self.third],
+        )
+
+    def _topic_with_comments(self, authors: list) -> PublicCropDiscussionTopic:
+        topic = PublicCropDiscussionTopic.objects.create(
+            public_crop=self.public_crop, title='Spacing', created_by=authors[0],
+        )
+        for index, author in enumerate(authors):
+            PublicCropDiscussionComment.objects.create(topic=topic, body=f'Comment {index}', created_by=author)
+        return topic
+
+    def _comments_url(self, topic: PublicCropDiscussionTopic) -> str:
+        return f'/openfarmplanner/api/public-crops/{self.public_crop.id}/discussion-topics/{topic.id}/comments/'
+
+    def _get_comments(self, topic: PublicCropDiscussionTopic) -> list[dict]:
+        response = self.client.get(self._comments_url(topic))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data
+
+    def test_numbers_follow_first_comment_order_and_skip_named_authors(self):
+        comments = self._get_comments(self.topic)
+
+        self.assertEqual([c['created_by_anonymous_number'] for c in comments], [1, 2, None, 1, 3])
+        self.assertEqual(comments[2]['created_by_label'], 'Grüner Hof')
+        self.assertEqual(comments[0]['created_by_label'], '')
+
+    def test_deleted_comments_keep_their_number_slot(self):
+        second_comment = self.topic.comments.get(created_by=self.second)
+        second_comment.body = ''
+        second_comment.deleted_at = timezone.now()
+        second_comment.deleted_by = self.second
+        second_comment.save()
+
+        comments = self._get_comments(self.topic)
+
+        self.assertEqual(comments[1]['created_by_anonymous_number'], 2)
+        self.assertEqual(comments[4]['created_by_anonymous_number'], 3)
+
+    def test_numbers_are_independent_per_topic(self):
+        other_topic = self._topic_with_comments([self.third, self.starter])
+
+        comments = self._get_comments(other_topic)
+
+        self.assertEqual([c['created_by_anonymous_number'] for c in comments], [1, 2])
+
+    def test_topic_list_gives_starter_number_one_or_null_when_named(self):
+        named_topic = self._topic_with_comments([self.named, self.second])
+
+        response = self.client.get(f'/openfarmplanner/api/public-crops/{self.public_crop.id}/discussion-topics/')
+
+        numbers = {topic['id']: topic['created_by_anonymous_number'] for topic in response.data}
+        self.assertEqual(numbers, {self.topic.id: 1, named_topic.id: None})
+
+    def test_is_own_and_is_topic_starter(self):
+        self.client.force_authenticate(self.second)
+
+        comments = self._get_comments(self.topic)
+
+        self.assertEqual([c['is_own'] for c in comments], [False, True, False, False, False])
+        self.assertEqual([c['is_topic_starter'] for c in comments], [True, False, False, True, False])
+
+    def test_is_own_is_false_for_anonymous_visitors(self):
+        comments = self._get_comments(self.topic)
+
+        self.assertFalse(any(c['is_own'] for c in comments))
+
+    def test_new_reply_gets_the_authors_existing_number(self):
+        self.client.force_authenticate(self.second)
+
+        response = self.client.post(self._comments_url(self.topic), {'body': 'Again'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data['created_by_anonymous_number'], 2)
+        self.assertTrue(response.data['is_own'])
+        self.assertFalse(response.data['is_topic_starter'])
+
+    def test_comment_list_query_count_is_constant_in_participant_count(self):
+        def count_queries(topic: PublicCropDiscussionTopic) -> int:
+            with CaptureQueriesContext(connection) as context:
+                self._get_comments(topic)
+            return len(context.captured_queries)
+
+        small_topic = self._topic_with_comments([self.starter, self.second])
+        extra_users = [
+            User.objects.create_user(username=f'extra-{index}', email=f'extra-{index}@example.com', password='pw')
+            for index in range(5)
+        ]
+        large_topic = self._topic_with_comments([self.starter, self.second, self.named, *extra_users])
+
+        self.assertEqual(count_queries(small_topic), count_queries(large_topic))
+        # Public crop + translations, topic with starter, comments with
+        # authors; the rest is the test transaction's savepoint pair.
+        with self.assertNumQueries(6):
+            self._get_comments(large_topic)
+
+    def test_versions_number_authors_per_entry_in_first_revision_order(self):
+        self.client.force_authenticate(self.third)
+        for version, author in enumerate([self.starter, self.named, self.second, self.starter], start=1):
+            PublicCropRevision.objects.create(
+                public_crop=self.public_crop, version=version, action='updated', snapshot={}, created_by=author,
+            )
+        other_crop = PublicCrop.objects.create(
+            name='Bean', variety='Neckargold', status='published', created_by=self.named,
+        )
+        PublicCropRevision.objects.create(
+            public_crop=other_crop, version=1, action='created', snapshot={}, created_by=self.second,
+        )
+
+        response = self.client.get(f'/openfarmplanner/api/public-crops/{self.public_crop.id}/versions/')
+        other_response = self.client.get(f'/openfarmplanner/api/public-crops/{other_crop.id}/versions/')
+
+        numbers = {revision['version']: revision['created_by_anonymous_number'] for revision in response.data}
+        self.assertEqual(numbers, {1: 1, 2: None, 3: 2, 4: 1})
+        self.assertEqual(other_response.data[0]['created_by_anonymous_number'], 1)
+
+    def test_versions_query_count_is_constant_in_revision_count(self):
+        self.client.force_authenticate(self.third)
+        def count_queries() -> int:
+            with CaptureQueriesContext(connection) as context:
+                response = self.client.get(f'/openfarmplanner/api/public-crops/{self.public_crop.id}/versions/')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            return len(context.captured_queries)
+
+        authors = [self.starter, self.second, self.named, self.third]
+        PublicCropRevision.objects.create(
+            public_crop=self.public_crop, version=1, action='created', snapshot={}, created_by=self.starter,
+        )
+        baseline = count_queries()
+        for version, author in enumerate(authors, start=2):
+            PublicCropRevision.objects.create(
+                public_crop=self.public_crop, version=version, action='updated', snapshot={}, created_by=author,
+            )
+
+        self.assertEqual(count_queries(), baseline)

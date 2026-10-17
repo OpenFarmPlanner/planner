@@ -472,6 +472,8 @@ export interface PublicCropRevision {
   changed_fields: PublicCropRevisionChange[];
   restored_from_version?: number | null;
   created_by_label?: string;
+  /** Per-entry pseudonym number for authors without a public name, else null. */
+  created_by_anonymous_number?: number | null;
   created_at?: string;
 }
 
@@ -518,6 +520,10 @@ export interface PublicCropDiscussionComment {
   parent?: number | null;
   body: string;
   created_by_label?: string;
+  /** Per-topic pseudonym number for authors without a public name, else null. */
+  created_by_anonymous_number?: number | null;
+  is_own?: boolean;
+  is_topic_starter?: boolean;
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -533,6 +539,7 @@ export interface PublicCropDiscussionTopic {
   public_crop: number;
   title: string;
   created_by_label?: string;
+  created_by_anonymous_number?: number | null;
   created_at?: string;
   revision?: number | null;
   version?: number | null;
