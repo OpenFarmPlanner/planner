@@ -353,6 +353,13 @@ or changing a public page:
 - The seeded family defaults are initial reference values still to be verified
   against LfL Bayern / Bio Austria via the crop-data workflow. Details:
   [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).
+- The database (`CropSpecies`, `CropSpeciesTranslation`) is the only source of
+  crop-species names, synonyms, regional names and languages. Maintain them
+  through the crop-species API only — never via a seed file or a new data
+  migration. `backend/crops/migrations/data/species_bootstrap_v1.json` is a
+  frozen starter snapshot read only by historical migrations; never edit it or
+  read it from application code. Naming rules:
+  [`docs/crop-taxonomy-guidelines.md`](docs/crop-taxonomy-guidelines.md).
 
 ## Git and PR Workflow
 - This repository should use the SSH GitHub remote:

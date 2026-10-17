@@ -76,7 +76,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('Every project crop name resolves to a species.'))
             return
         self.stdout.write(
-            'Nothing was changed. Add confirmed gaps to backend/crops/seed_data.py and sync '
-            'them with a migration; decide the manual cases against '
-            'docs/crop-taxonomy-guidelines.md first.'
+            'Nothing was changed. The database is the crop-species source: add confirmed '
+            'gaps through the crop-species API (POST /api/crop-species/ and moderator '
+            'approval, or synonyms on an existing species via PATCH); decide the manual '
+            'cases against docs/crop-taxonomy-guidelines.md first.'
         )

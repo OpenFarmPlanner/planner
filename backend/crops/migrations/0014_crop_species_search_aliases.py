@@ -3,8 +3,8 @@
 Aliases are matching-only names on `CropSpeciesTranslation.synonyms`; the new
 `Pfefferoni`, `Puntarelle`, `Schnittkohl` and `Zuckererbse` species exist
 because those are functionally distinct crops rather than regional names for
-Paprika, Chicorée, Grünkohl or Erbse. See the criterion documented on
-`crops.seed_data.CROP_SPECIES_SYNONYM_SEED_DATA`.
+Paprika, Chicorée, Grünkohl or Erbse. See the alias criterion in
+docs/crop-taxonomy-guidelines.md.
 """
 from django.db import migrations
 
@@ -32,12 +32,12 @@ def _build_search_text(common_name, synonyms, regional_names):
 
 
 def _find_species(apps, entry):
-    from crops.seed_data import get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import get_bootstrap_species_name
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     CropSpeciesTranslation = apps.get_model('crops', 'CropSpeciesTranslation')
 
-    german_name = get_crop_species_seed_name(entry, 'de')
+    german_name = get_bootstrap_species_name(entry, 'de')
     species = CropSpecies.objects.filter(name_normalized=_normalized(german_name)).first()
     if species is not None:
         return species
@@ -53,12 +53,12 @@ def _find_species(apps, entry):
 
 
 def _create_species(apps, entry):
-    from crops.seed_data import get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import get_bootstrap_species_name
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     CropSpeciesTranslation = apps.get_model('crops', 'CropSpeciesTranslation')
 
-    german_name = get_crop_species_seed_name(entry, 'de')
+    german_name = get_bootstrap_species_name(entry, 'de')
     species = CropSpecies.objects.create(
         name=german_name,
         name_normalized=_normalized(german_name),
@@ -100,12 +100,15 @@ def _write_synonyms(translation, synonyms):
 
 
 def seed_crop_species_search_aliases(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, CROP_SPECIES_SYNONYM_SEED_DATA
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        BOOTSTRAP_SPECIES_SYNONYMS,
+    )
 
     CropSpeciesTranslation = apps.get_model('crops', 'CropSpeciesTranslation')
 
-    for entry in CROP_SPECIES_SEED_DATA:
-        synonyms_by_language = CROP_SPECIES_SYNONYM_SEED_DATA.get(entry.key, {})
+    for entry in BOOTSTRAP_SPECIES:
+        synonyms_by_language = BOOTSTRAP_SPECIES_SYNONYMS.get(entry.key, {})
         species = _find_species(apps, entry)
         if species is None:
             # Only the species newly added to the seed list are missing here;
@@ -132,10 +135,13 @@ def remove_crop_species_search_aliases(apps, schema_editor):
     Species are deliberately not deleted: published crops may already link to
     them, and a species row is not what this migration is reversing.
     """
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, CROP_SPECIES_SYNONYM_SEED_DATA
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        BOOTSTRAP_SPECIES_SYNONYMS,
+    )
 
-    for entry in CROP_SPECIES_SEED_DATA:
-        synonyms_by_language = CROP_SPECIES_SYNONYM_SEED_DATA.get(entry.key, {})
+    for entry in BOOTSTRAP_SPECIES:
+        synonyms_by_language = BOOTSTRAP_SPECIES_SYNONYMS.get(entry.key, {})
         if not synonyms_by_language:
             continue
         species = _find_species(apps, entry)

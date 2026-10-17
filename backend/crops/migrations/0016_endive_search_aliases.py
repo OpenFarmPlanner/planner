@@ -5,8 +5,8 @@ Cichorium endivia, with the same harvest logic, so they are aliases rather
 than species of their own; see docs/crop-taxonomy-guidelines.md §3.
 Chicorée and Radicchio are deliberately untouched.
 
-The alias list is written out here instead of read from `crops.seed_data`, so
-this migration keeps doing the same thing when the seed list changes later.
+The alias list is written out here instead of read from the bootstrap snapshot
+(`crops/migrations/data/`), so this migration stays self-contained.
 """
 from django.db import migrations
 

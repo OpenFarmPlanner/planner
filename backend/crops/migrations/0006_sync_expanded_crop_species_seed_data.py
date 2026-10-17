@@ -2,14 +2,17 @@ from django.db import migrations
 
 
 def sync_expanded_crop_species_seed_data(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        get_bootstrap_species_name,
+    )
     from farm.utils import normalize_text
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     CropSpeciesTranslation = apps.get_model('crops', 'CropSpeciesTranslation')
 
-    for entry in CROP_SPECIES_SEED_DATA:
-        name = get_crop_species_seed_name(entry, 'de')
+    for entry in BOOTSTRAP_SPECIES:
+        name = get_bootstrap_species_name(entry, 'de')
         normalized_name = normalize_text(name) or ''
         species = CropSpecies.objects.filter(name_normalized=normalized_name).first()
         if species is None:

@@ -33,22 +33,22 @@ def _build_search_text(common_name, synonyms, regional_names):
 
 def _seeded_translations(apps):
     """Yield ``(key, translation, seeded_regional_names)`` for every entry."""
-    from crops.seed_data import (
-        CROP_SPECIES_REGIONAL_NAME_SEED_DATA,
-        CROP_SPECIES_SEED_DATA,
-        get_crop_species_seed_name,
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        BOOTSTRAP_SPECIES_REGIONAL_NAMES,
+        get_bootstrap_species_name,
     )
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     CropSpeciesTranslation = apps.get_model('crops', 'CropSpeciesTranslation')
 
-    entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
-    for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+    entries_by_key = {entry.key: entry for entry in BOOTSTRAP_SPECIES}
+    for key, regional_names_by_language in BOOTSTRAP_SPECIES_REGIONAL_NAMES.items():
         entry = entries_by_key.get(key)
         if entry is None:
             continue
         species = CropSpecies.objects.filter(
-            name_normalized=_normalized(get_crop_species_seed_name(entry, 'de')),
+            name_normalized=_normalized(get_bootstrap_species_name(entry, 'de')),
         ).first()
         if species is None:
             continue

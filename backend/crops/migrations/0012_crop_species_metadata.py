@@ -17,14 +17,17 @@ def _clean_categories(value):
 
 
 def sync_crop_species_metadata(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        get_bootstrap_species_name,
+    )
     from farm.utils import normalize_text
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     Crop = apps.get_model('farm', 'Crop')
     PublicCrop = apps.get_model('farm', 'PublicCrop')
 
-    for entry in CROP_SPECIES_SEED_DATA:
+    for entry in BOOTSTRAP_SPECIES:
         metadata = {
             'scientific_name': ' '.join((entry.scientific_name or '').split()),
             'family': ' '.join((entry.family or '').split()),
@@ -33,7 +36,7 @@ def sync_crop_species_metadata(apps, schema_editor):
         if not any(metadata.values()):
             continue
 
-        normalized_name = normalize_text(get_crop_species_seed_name(entry, 'de')) or ''
+        normalized_name = normalize_text(get_bootstrap_species_name(entry, 'de')) or ''
         species = CropSpecies.objects.filter(name_normalized=normalized_name).first()
         if species is None:
             continue
@@ -58,14 +61,17 @@ def sync_crop_species_metadata(apps, schema_editor):
 
 
 def clear_seeded_crop_species_metadata(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        get_bootstrap_species_name,
+    )
     from farm.utils import normalize_text
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
 
     normalized_names = [
-        normalize_text(get_crop_species_seed_name(entry, 'de')) or ''
-        for entry in CROP_SPECIES_SEED_DATA
+        normalize_text(get_bootstrap_species_name(entry, 'de')) or ''
+        for entry in BOOTSTRAP_SPECIES
         if entry.scientific_name or entry.family or entry.categories
     ]
     if not normalized_names:

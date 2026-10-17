@@ -53,9 +53,11 @@ standalone field on the `Crop` write endpoint).
 There is also **no separate "suggestion list" entity.** The autocomplete is
 just `services.search_crop_species()` ranking over published `CropSpecies`
 + their translations (name, synonyms, regional names, common names). The
-seed file `backend/crops/seed_data.py` only matters for the initial data
-migration and future `RunPython` migrations that merge into existing rows
-(`docs/crop-taxonomy-guidelines.md`). Managing "the suggestion list" is
+former seed file `backend/crops/seed_data.py` has since been retired: its
+content is frozen as `backend/crops/migrations/data/species_bootstrap_v1.json`
+and only feeds the historical migrations of a fresh database. The database is
+the only source, and names are maintained through this API, never through new
+data migrations (`docs/crop-taxonomy-guidelines.md`). Managing "the suggestion list" is
 therefore not a fourth concern — it's the same `CropSpecies`/translation
 CRUD described above, there is no separate list to expose.
 

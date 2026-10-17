@@ -4,7 +4,7 @@ Documented assumptions being verified here (see the migration docstrings):
   - existing species names were entered in a German-only UI, so they become
     the German translation;
   - English names are written only for species that match a curated entry in
-    ``crops/seed_data.py`` — never generated;
+    the frozen bootstrap snapshot (``crops/migrations/data/``) — never generated;
   - species with no curated match get German only, and are simply reported as
     "no translation in your language" in an English UI;
   - existing names, varieties and descriptions are never modified.

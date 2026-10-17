@@ -8,8 +8,9 @@ invented and no existing text is changed:
    therefore stored as the ``de`` translation. ``name`` itself is left
    untouched and keeps serving as the canonical reference label.
 2. English names are written **only** for species whose normalized name
-   matches a curated entry in ``crops/seed_data.py``. Those pairs are
-   hand-maintained repository data, not generated text.
+   matches a curated entry in the frozen bootstrap snapshot
+   (``crops/migrations/data/species_bootstrap_v1.json``). Those pairs are
+   hand-curated repository data, not generated text.
 3. Species that do not match a seed entry (user proposals) get a ``de`` row
    only. They will simply fall back to German in an English UI, and the
    frontend marks that as "translation missing" rather than pretending the
@@ -24,11 +25,11 @@ from django.db import migrations
 
 
 def _seed_names_by_normalized_german(normalize_text):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA
+    from crops.migrations.data.species_bootstrap import BOOTSTRAP_SPECIES
 
     return {
         normalize_text(entry.translations['de']) or '': entry.translations
-        for entry in CROP_SPECIES_SEED_DATA
+        for entry in BOOTSTRAP_SPECIES
     }
 
 

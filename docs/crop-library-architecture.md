@@ -501,11 +501,13 @@ name without frontend-specific region logic.
 Those synonyms are the crop library's answer to regional naming: searching
 `Erdapfel`, `Karfiol` or `Porree` resolves to the official `Kartoffel`,
 `Blumenkohl`/`Karfiol` and `Lauch` species instead of offering to create a
-second one. The initial German (AT/DE/CH) list lives in
-`crops.seed_data.CROP_SPECIES_SYNONYM_SEED_DATA` and is applied by migration
-`0014_crop_species_search_aliases`; moderators curate it further in the
+second one. The database is the only source of these names. A fresh database
+receives the initial German (AT/DE/CH) list from the frozen bootstrap snapshot
+(`crops/migrations/data/species_bootstrap_v1.json`) via migration
+`0014_crop_species_search_aliases`; from then on moderators curate it in the
 "Kulturart-Synonyme" section of `/app/public-library-moderation`, which PATCHes
-`translations[].synonyms` through the existing species endpoint.
+`translations[].synonyms` through the existing species endpoint, or through a
+crop-library API token. The snapshot itself is never edited.
 
 Whether a name becomes an alias or its own species is a *use* question, not a
 botanical one:
@@ -1084,8 +1086,9 @@ backend/crops/
   permissions.py   is_public_library_moderator() / is_public_library_admin(),
                     the `Public Library Moderators` group and the
                     `crops.moderate_crop_species` permission
-  seed_data.py     CROP_SPECIES_SEED_DATA — the starter species catalogue with
-                    stable keys and de/en names
+  migrations/data/ frozen bootstrap snapshot (species_bootstrap_v1.json) of
+                    the starter species catalogue, read only by historical
+                    migrations — never edited, see its README
   services.py      list_published_crops(), get_published_crop(),
                     find_exact_crop_match() — reads farm.models.PublicCrop,
                     nothing else
@@ -1573,18 +1576,22 @@ wizard is not only a UI affordance. Private project crops remain
 flexible: `Crop.crop_species` is nullable, and incomplete project
 crops can still be created and edited. The strictness lives at the
 public-library boundary where durable shared data is created. The official
-species dropdown is seeded from `crops.seed_data.CROP_SPECIES_SEED_DATA`, a
-central starter catalogue for common DACH crop species. It is intentionally
+species dropdown reads published `CropSpecies` from the database, the only
+source of species names. A fresh database starts from a starter catalogue for
+common DACH crop species, frozen as
+`crops/migrations/data/species_bootstrap_v1.json` (formerly
+`crops/seed_data.py`); every later change goes through the crop-species API.
+The starter catalogue is intentionally
 aligned with the crop categories covered by established German, Austrian,
 and Swiss organic seed suppliers such as ReinSaat, Bingenheimer, Samen Maier,
-Austrosaat, Dreschflegel, Culinaris, and Sativa Rheinau. Entries already carry
-stable keys and translation maps for the future multilingual species library.
+Austrosaat, Dreschflegel, Culinaris, and Sativa Rheinau. Snapshot entries carry
+stable keys and de/en translation maps.
 The catalogue stores concrete crop species only: usage categories such as
 `Gründüngung` / `Green manure` are represented by concrete species like
 Buchweizen, Phacelia, Inkarnatklee, or Ölrettich instead of becoming upload
 targets themselves.
 
-Naming conventions for `CROP_SPECIES_SEED_DATA` entries:
+Naming conventions for crop species (applied in moderation):
 
 - No slash collective names unless both terms are genuine synonyms for the
   same species. `Asiatisches Blattgemüse/Senfkohl` was not a synonym pair but
@@ -1604,18 +1611,19 @@ Naming conventions for `CROP_SPECIES_SEED_DATA` entries:
   and do not introduce an umbrella entry alongside them.
 
 - Alias names (`Porree` for `Lauch`, `Blumenkohl` for `Karfiol`) are never
-  their own entry. They live beside the entry, in one of two seed lists:
-  `CROP_SPECIES_SYNONYM_SEED_DATA` for search-only aliases, and
-  `CROP_SPECIES_REGIONAL_NAME_SEED_DATA` for terms that *replace* the canonical
-  name for projects in that region (`austria` / `switzerland`). A term can be in
+  their own entry. They live on the species' translation, in one of two fields:
+  `synonyms` for search-only aliases, and `regional_names` for terms that
+  *replace* the canonical name for projects in that region
+  (`austria` / `switzerland`). A term can be in
   both. When a term means different crops in different regions — `Peperoni` and
   `Fisolen` are the standing examples — it may be a search alias of several
   species, but never a displayed regional name.
 
 [`crop-taxonomy-guidelines.md`](./crop-taxonomy-guidelines.md) is the full
 decision rule behind these conventions: crop species vs. alias vs. variety, and
-how AT/DE/CH terminology is stored. `crops/tests/test_seed_data.py` enforces the
-first two rules plus the alias rules for the seed catalogue, and the
+how AT/DE/CH terminology is stored. `crops/tests/test_species_bootstrap_snapshot.py`
+enforces the first two rules plus the alias rules for the frozen starter
+catalogue (and that the snapshot stays unchanged), and the
 `0011_replace_asian_greens_collective_species` migration rejects such collective
 species already stored in a database so they stop being public mapping targets.
 `python manage.py audit_crop_species_coverage` reports crop names used in
