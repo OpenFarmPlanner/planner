@@ -38,6 +38,12 @@ Dependabot, Django deployment checks) are described in
 [`security-automation.md`](./security-automation.md) and are not logged here
 entry by entry; a review may of course cite their output.
 
+## 2026-10-17 — Claude — Automated security review of PR #782 (end guest demo on login/registration)
+
+**Scope:** `git diff origin/main...HEAD`: `useEndGuestDemoOnAuthPage.ts`, `LoginPage.tsx`, `RegisterPage.tsx`, `docs/demo-project.md` and tests.
+
+**Findings:** No issues. Frontend-only change that calls the existing `endGuestDemo`/`logout` actions when the backend-supplied `is_guest_demo` flag is set; real accounts are never touched, and no new endpoint, data flow, unsafe HTML API or secret is introduced.
+
 ## 2026-10-15 — Claude — Automated security review of PR #780, follow-up commit (English legal texts stay authoritative)
 
 **Scope:** `git diff cf3c8c10..HEAD`: `LegalDocumentLayout.tsx`, legal-notice i18n strings, `CLAUDE.md`, `docs/i18n.md` and tests.

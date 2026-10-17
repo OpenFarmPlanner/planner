@@ -8,6 +8,7 @@ import { projectAPI, type InvitationPublicStatus } from '../../api/api';
 import { AuthApiError } from '../../auth/authApi';
 import { resolveTurnstileSiteKey } from '../../auth/turnstile';
 import { useAuth } from '../../auth/useAuth';
+import { useEndGuestDemoOnAuthPage } from '../../auth/useEndGuestDemoOnAuthPage';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import AccountCreationLegalNotice from '../../components/auth/AccountCreationLegalNotice';
 import ActivationEmailResendPanel from '../../components/auth/ActivationEmailResendPanel';
@@ -67,7 +68,8 @@ export default function RegisterPage() {
   const [confirmation, setConfirmation] = useState<RegistrationConfirmation | null>(null);
   const [pendingInvitation, setPendingInvitation] = useState<InvitationPublicStatus | null>(null);
   const nextPath = getNextFromSearch(location.search);
-  const isLoggedIn = user !== null;
+  const isGuestDemo = useEndGuestDemoOnAuthPage();
+  const isLoggedIn = user !== null && !isGuestDemo;
   const currentUserLabel = user?.display_label || user?.email || '–';
 
   useEffect(() => {
