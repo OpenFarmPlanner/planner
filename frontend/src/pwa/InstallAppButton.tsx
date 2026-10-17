@@ -18,6 +18,11 @@ interface InstallAppButtonProps {
   sx?: SxProps<Theme>;
 }
 
+const MANUAL_INSTRUCTION_KEYS: Record<ManualInstallPlatform, 'firefoxAndroid' | 'ios'> = {
+  'manual-firefox-android': 'firefoxAndroid',
+  'manual-ios': 'ios',
+};
+
 /**
  * The landing page's install CTA, on top of the browser's own (easy to miss)
  * install icon in the address bar. Renders nothing once the app is already
@@ -27,11 +32,6 @@ interface InstallAppButtonProps {
  * the platform instead (Firefox Android, iOS/iPadOS), so an iPad wider than
  * the mobile breakpoint still gets them.
  */
-const MANUAL_INSTRUCTION_KEYS: Record<ManualInstallPlatform, 'firefoxAndroid' | 'ios'> = {
-  'manual-firefox-android': 'firefoxAndroid',
-  'manual-ios': 'ios',
-};
-
 export function InstallAppButton({ sx }: InstallAppButtonProps) {
   const { t } = useTranslation('home');
   const { mode, promptInstall } = usePwaInstall();
