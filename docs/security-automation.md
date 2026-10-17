@@ -67,11 +67,12 @@ required checks.
 
 The `Claude PR Review` workflow (`.github/workflows/claude-pr.yml`) runs such
 an AI-assisted security review automatically on pull requests whose paths or
-added lines hit the security triage rules. The review is read-only: it never
-commits to the PR branch (a commit would change the reviewed head SHA,
-re-trigger CI and make parallel PRs conflict). It posts findings as inline
-review comments, opens a `security` issue per finding, and ends with one PR
-comment stating the reviewed commit SHA, the changed files and the result. Its trigger criteria and fix
+added lines hit the security triage rules and fixes the findings on the PR
+branch, one commit per finding. It writes no log file: a review without
+findings commits nothing, so it neither changes the head SHA, re-triggers CI
+nor conflicts with parallel PRs. Unfixed findings get an inline review
+comment and a `security` issue, and the job ends with one PR comment stating
+the reviewed commit SHA, the changed files and the result. Its trigger criteria and fix
 rules are summarized in the "Automated Claude PR Review" section of
 [`CLAUDE.md`](../CLAUDE.md#automated-claude-pr-review); the exact patterns
 live in the workflow's triage step.

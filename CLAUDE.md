@@ -402,7 +402,9 @@ When asked to search for bugs, run exploratory tests, or do a QA sweep:
 ## Security Review Protocol
 Claude and Codex alternate security reviews of this repository, so each tool
 has to be able to see what the other already covered. Results are recorded
-where they can be acted on, never by committing to a PR branch:
+where they can be acted on, never in a log file committed to the PR branch
+(fix commits for actual findings are fine; a review without findings
+commits nothing):
 
 - **Per-PR reviews** (automated or manual) are documented in a PR comment that
   states the exact reviewed commit SHA, the scope (changed files) and the
@@ -459,16 +461,17 @@ content patterns live, commented, in the triage step's `env` block.
   new dependency, adds a line matching a risky pattern (`.raw(`,
   `csrf_exempt`, `dangerouslySetInnerHTML`, `X-Project-Id`, …), or carries the
   `claude-security` label. It runs after the code review, never in parallel.
-- **Code review fix rules:** every finding is fixed on the PR branch, one
-  commit per finding prefixed `claude-review:`, with migrations, docs and
-  i18n in the same commit per the rules above. The affected tests (plus `tsc`
-  and ESLint for frontend changes) run before each push; a fix that cannot be
-  made to pass is dropped and reported as not fixed. The job ends with one
-  summary comment listing fixes by commit SHA and flagging behavior, API,
-  data or migration changes and uncertain fixes.
-- **Security review is read-only:** it never commits or pushes. It posts
-  findings as inline review comments, opens a `security` issue per finding,
-  and ends with one PR comment stating the reviewed commit SHA, the changed
-  files and the result (see "Security Review Protocol").
+- **Fix rules:** every finding is fixed on the PR branch, one commit per
+  finding prefixed `claude-review:` or `claude-security:`, with migrations,
+  docs and i18n in the same commit per the rules above. The affected tests
+  (plus `tsc` and ESLint for frontend changes) run before each push; a fix
+  that cannot be made to pass is dropped and reported as not fixed. A review
+  without findings commits nothing, so it neither moves the head SHA nor
+  re-triggers CI. Each job ends with one summary comment listing fixes by
+  commit SHA and flagging behavior, API, data or migration changes and
+  uncertain fixes.
+- **Security review reporting:** no log file. The summary comment states the
+  reviewed commit SHA, the changed files and the result; unfixed findings get
+  an inline comment and a `security` issue (see "Security Review Protocol").
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.
