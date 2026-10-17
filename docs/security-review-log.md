@@ -1,5 +1,14 @@
 # Shared security review log
 
+> **Frozen (2026-10-17).** No new entries are added. Per-PR security reviews
+> are now documented as PR comments that state the reviewed commit SHA, scope
+> and result; unfixed findings are tracked as GitHub issues labeled
+> `security`; durable decisions live in
+> [`security-automation.md`](./security-automation.md#security-decisions).
+> The entries below are kept as history; an OPEN finding here without an
+> issue is still open. See the "Security Review Protocol" section of
+> [`CLAUDE.md`](../CLAUDE.md#security-review-protocol).
+
 Claude and Codex alternate security reviews of this repository. This file is
 the shared record between them: what was reviewed, by which tool, when, and
 what came out of it. It exists so that neither tool re-reports a finding the

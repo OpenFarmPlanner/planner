@@ -2,8 +2,10 @@
 #
 # A deterministic `triage` job decides whether a PR needs a code review, a
 # security review, both, or neither. The review jobs then run Claude Code
-# (anthropics/claude-code-action@v1), which fixes every finding directly on
-# the PR branch, one commit per finding, and posts a summary comment.
+# (anthropics/claude-code-action@v1). The code review fixes every finding
+# directly on the PR branch, one commit per finding; the security review is
+# read-only and reports through PR comments and `security` issues. Both post
+# a summary comment.
 #
 # The trigger criteria, labels and fix rules are summarized in CLAUDE.md
 # ("Automated Claude PR Review"). All path and content patterns the triage
@@ -438,14 +440,12 @@ jobs:
 
       # The same toolchain as ci.yml, so Claude can run the backend and
       # frontend tests, tsc and ESLint before pushing a fix.
-      - &setup-python
-        name: Setup Python 3.12
+      - name: Setup Python 3.12
         uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
-      - &install-backend
-        name: Install backend dependencies
+      - name: Install backend dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y gettext
           python -m pip install --upgrade pip pdm
@@ -453,8 +453,7 @@ jobs:
           pdm install -dG test -dG quality
           pdm run compilemessages
 
-      - &setup-node
-        name: Setup Node (LTS)
+      - name: Setup Node (LTS)
         id: setup-node
         uses: actions/setup-node@v7
         with:
@@ -463,16 +462,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       # Same wholesale node_modules cache and key as ci.yml.
-      - &cache-node-modules
-        name: Cache frontend node_modules
+      - name: Cache frontend node_modules
         id: node-modules-cache
         uses: actions/cache@v6
         with:
           path: frontend/node_modules
           key: node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
 
-      - &install-frontend
-        name: Install frontend dependencies
+      - name: Install frontend dependencies
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: |
           cd frontend
@@ -553,9 +550,12 @@ jobs:
 
   security-review:
     name: Claude security review
-    # Runs after the code review, whether it ran, was skipped or failed, so
-    # the two jobs never push to the branch at the same time. It checks out
-    # the branch head, i.e. including the code review's fix commits.
+    # Runs after the code review, whether it ran, was skipped or failed, so it
+    # reviews the branch head including the code review's fix commits. The
+    # security review itself is read-only: it never commits or pushes, so the
+    # reviewed SHA stays the PR head and parallel PRs cannot conflict over a
+    # shared log file. Results live in the PR comment, inline review comments
+    # and `security` issues (see docs/security-automation.md).
     needs: [triage, code-review]
     if: >-
       always() &&
@@ -565,10 +565,11 @@ jobs:
       needs.triage.outputs.self_push != 'true' &&
       needs.code-review.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
+      issues: write
       id-token: write
     steps:
       - name: Checkout PR branch
@@ -576,13 +577,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          persist-credentials: false
 
       - *check-auth
-      - *setup-python
-      - *install-backend
-      - *setup-node
-      - *cache-node-modules
-      - *install-frontend
 
       - name: Run Claude security review
         uses: anthropics/claude-code-action@v1
@@ -590,25 +587,28 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
-            --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,LS,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(cd:*),Bash(ls:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git fetch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git reset --hard HEAD~1),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(pdm run test:*),Bash(pdm run python -m pytest:*),Bash(pdm run makemigrations:*),Bash(pdm run python manage.py makemigrations:*),Bash(pdm run ruff:*),Bash(pdm run compilemessages:*),Bash(npm run test:*),Bash(npm run lint:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(npx eslint:*)"
+            --allowedTools "Read,Glob,Grep,LS,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(cd:*),Bash(ls:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git fetch:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh issue list:*)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
             BASE BRANCH: ${{ github.event.pull_request.base.ref }}
             PR BRANCH: ${{ github.event.pull_request.head.ref }}
 
-            You are the automated security reviewer for this pull request,
-            and you fix what you find yourself, directly on the PR branch,
-            which is already checked out (including any `claude-review:`
-            commits the code review job just pushed).
+            You are the automated security reviewer for this pull request.
+            The PR branch is checked out (including any `claude-review:`
+            commits the code review job just pushed). This review is
+            read-only: never edit, commit or push files, and never write to
+            docs/security-review-log.md (it is frozen history).
 
-            Project rules: read CLAUDE.md first and follow it, in particular
-            its "Security Review Protocol" section: read
-            docs/security-review-log.md in full before reviewing and append
-            an entry afterwards. Read docs/security-automation.md and the
-            docs for the areas the diff touches (e.g. docs/agent-api.md,
-            docs/account-trust-levels.md, docs/realtime-updates.md). Do not
-            restate or override those rules.
+            Project rules: read CLAUDE.md first and follow it. Read
+            docs/security-automation.md (including its "Security decisions"
+            section: do not re-report accepted risks or deliberate exceptions
+            listed there) and the docs for the areas the diff touches (e.g.
+            docs/agent-api.md, docs/account-trust-levels.md,
+            docs/realtime-updates.md). Do not restate or override those rules.
+
+            First record the reviewed commit: `git rev-parse HEAD`. Every
+            statement you post refers to that exact SHA.
 
             ## Review
             Review the diff against the base branch
@@ -635,44 +635,28 @@ jobs:
             - GDPR-relevant data flows (personal data in logs, exports,
               admin views, third-party requests, retention).
 
-            ## Fix rules
-            - Fix every finding. No finding is skipped because of its
-              category or because you are unsure about it.
-            - One commit per finding. The commit message starts with
-              `claude-security: ` and states the problem, the fix and the
-              reasoning.
-            - A model change gets its migration (`pdm run makemigrations`) in
-              the same commit. Documentation updates required by CLAUDE.md go
-              in the same commit as the code change. UI text only through
-              i18n: German first, update every locale file, never delete a
-              shared key.
-            - Before pushing, run the tests covering the changed files
-              (`cd backend && pdm run test <paths>`,
-              `cd frontend && npx vitest run <paths>`), plus
-              `cd frontend && npx tsc -b && npm run lint` for any frontend
-              change. If a fix breaks them and you cannot correct it, drop
-              that commit (`git reset --hard HEAD~1` on your own unpushed
-              commit) and report the finding as not fixed.
-            - Never modify files under .github/workflows/ (the token cannot
-              push them); report such findings as not fixed instead.
-            - Record every finding in a new entry at the top of
-              docs/security-review-log.md (tool: Claude, scope: this PR),
-              status FIXED with the commit, or OPEN if the fix was dropped.
-              Commit that entry last, with the `claude-security: ` prefix.
-              If you found nothing, still add the entry (the protocol
-              requires it).
-            - Push with `git push origin HEAD:${{ github.event.pull_request.head.ref }}`.
-            - Use `mcp__github_inline_comment__create_inline_comment` for
-              findings you could not fix, anchored to the relevant line.
+            ## Reporting findings
+            - Post every finding as an inline review comment with
+              `mcp__github_inline_comment__create_inline_comment`, anchored
+              to the affected line, stating the problem, the impact and a
+              concrete fix. If a finding cannot be anchored to a changed
+              line, put it in the summary comment with `path:line`.
+            - Open one GitHub issue per finding so it stays tracked if it is
+              not fixed within this PR:
+              `gh issue create --label security --title "<short title>"
+              --body "<problem, impact, fix, path:line, PR #${{ github.event.pull_request.number }}, reviewed SHA>"`.
+              First check `gh issue list --label security --state open
+              --search "<path or title>"` and do not open a duplicate. If the
+              `security` label does not exist, create the issue without it
+              and say so in the summary comment.
 
             ## Summary comment
-            Finish with exactly one PR comment via `gh pr comment`:
-            - If you found nothing, a single line saying the Claude security
-              review found no issues.
-            - Otherwise a list of every fix with its commit SHA and a
-              one-line description, and every finding left OPEN. Explicitly
-              mark (e.g. with "⚠️ Behavior change") every fix that changes
-              API behavior, response formats, UI flows, data or migrations,
-              and (with "❓ Uncertain") every fix for a finding you were not
+            Finish with exactly one PR comment via `gh pr comment`, headed
+            "Claude security review", containing:
+            - **Reviewed commit:** the full SHA from `git rev-parse HEAD`.
+            - **Scope:** the changed files (`git diff --name-only
+              origin/${{ github.event.pull_request.base.ref }}...HEAD`).
+            - **Result:** "No issues" or the list of findings, each with
+              severity, `path:line`, a one-line description and its issue
+              number. Mark (with "❓ Uncertain") any finding you are not
               sure about.
-

@@ -401,44 +401,40 @@ When asked to search for bugs, run exploratory tests, or do a QA sweep:
 
 ## Security Review Protocol
 Claude and Codex alternate security reviews of this repository, so each tool
-has to be able to see what the other already covered. `docs/security-review-log.md`
-is the shared, append-only record of that. It is the process record; the deep
-narrative of the most recent full review stays in its own dated document
-(`docs/security-review-*.md`), and the always-on automated checks are described
-in `docs/security-automation.md`.
+has to be able to see what the other already covered. Results are recorded
+where they can be acted on, never by committing to a PR branch:
+
+- **Per-PR reviews** (automated or manual) are documented in a PR comment that
+  states the exact reviewed commit SHA, the scope (changed files) and the
+  result ("No issues" or the findings). Findings go as inline review comments
+  on the affected lines, otherwise in that comment with `path:line`.
+- **Findings not fixed within the PR** are tracked as GitHub issues labeled
+  `security`.
+- **Durable decisions** (accepted risks, deliberate exceptions, recurring
+  patterns) live in the "Security decisions" section of
+  `docs/security-automation.md`.
+- **Full sweeps** keep their narrative in a dated `docs/security-review-*.md`.
+- `docs/security-review-log.md` is frozen history: read it, never add to it.
 
 When you are about to perform a security review — a full sweep, a targeted
 review of a boundary, or the security part of a larger change:
 
-1. Read `docs/security-review-log.md` in full first. Not just the top entry:
-   an OPEN finding several entries down is still open.
-2. Find the most recent entry that covers the scope you are about to review,
-   and let it decide what kind of review this is:
-   - **Last reviewed by the other tool and not yet CROSS-CONFIRMED** — do a
-     real cross-review of that scope. Independently re-derive the findings
-     from the code rather than accepting them; this is the whole point of two
-     tools alternating. Do not skip the scope because it "was just reviewed".
-   - **Last reviewed by the same tool with nothing changed since** — verify
-     that the prior findings still hold instead of re-flagging them as new
-     discoveries. Spend the effort on scope that is stale or never covered.
-   - **Never covered** — review it and say so in the entry, so the gap stops
-     being invisible.
-3. For every OPEN finding in your scope, check whether the code has since
-   fixed it. If it has, record it as FIXED in your new entry, naming the
-   commit or PR that fixed it; do not report it again as a new finding.
-   Deferred scope listed as OPEN (e.g. `ops`-repo infrastructure) stays OPEN
-   until it is actually reviewed.
-4. After finishing the review, append a new entry at the top of
-   `docs/security-review-log.md` — never edit or delete a prior entry — with
-   the date, the tool (Claude or Codex), the scope (commit range, PR, or named
-   area), and the findings. Each finding gets one of `FIXED`, `OPEN`,
-   `WONTFIX` (plus a short reason), or `CROSS-CONFIRMED`. Mark findings from
-   the other tool's prior entries as CROSS-CONFIRMED where you independently
-   verified that they still hold or have been addressed, naming which entry
-   and finding you confirmed.
-
-A review that produced no findings still gets an entry. "Nothing found here on
-this date, by this tool" is exactly the information the other tool needs.
+1. Read the "Security decisions" section of `docs/security-automation.md`,
+   the open `security` issues, and, for older context, the frozen
+   `docs/security-review-log.md` (an OPEN finding there that has no issue yet
+   is still open).
+2. Check who last reviewed your scope (latest security PR comments, issues,
+   dated reviews). If it was the other tool, do a real cross-review:
+   independently re-derive the findings from the code rather than accepting
+   them. If it was the same tool with nothing changed since, verify the prior
+   findings still hold instead of re-flagging them. Never-covered scope gets
+   reviewed and called out as such.
+3. For every open finding in your scope, check whether the code has since
+   fixed it; if so, close its issue naming the fixing commit or PR instead of
+   reporting it again.
+4. Report the result as described above. A review with no findings still
+   states that, with the reviewed SHA: "nothing found here, at this commit, by
+   this tool" is exactly what the other tool needs.
 
 ## Automated Claude PR Review
 `.github/workflows/claude-pr.yml` runs on `opened`, `synchronize`,
@@ -463,13 +459,16 @@ content patterns live, commented, in the triage step's `env` block.
   new dependency, adds a line matching a risky pattern (`.raw(`,
   `csrf_exempt`, `dangerouslySetInnerHTML`, `X-Project-Id`, …), or carries the
   `claude-security` label. It runs after the code review, never in parallel.
-- **Fix rules:** every finding is fixed on the PR branch, one commit per
-  finding prefixed `claude-review:` or `claude-security:`, with migrations,
-  docs and i18n in the same commit per the rules above. The affected tests
-  (plus `tsc` and ESLint for frontend changes) run before each push; a fix
-  that cannot be made to pass is dropped and reported as not fixed. Security
-  findings are logged in `docs/security-review-log.md`. Each job ends with
-  one summary comment listing fixes by commit SHA and flagging behavior,
-  API, data or migration changes and uncertain fixes.
+- **Code review fix rules:** every finding is fixed on the PR branch, one
+  commit per finding prefixed `claude-review:`, with migrations, docs and
+  i18n in the same commit per the rules above. The affected tests (plus `tsc`
+  and ESLint for frontend changes) run before each push; a fix that cannot be
+  made to pass is dropped and reported as not fixed. The job ends with one
+  summary comment listing fixes by commit SHA and flagging behavior, API,
+  data or migration changes and uncertain fixes.
+- **Security review is read-only:** it never commits or pushes. It posts
+  findings as inline review comments, opens a `security` issue per finding,
+  and ends with one PR comment stating the reviewed commit SHA, the changed
+  files and the result (see "Security Review Protocol").
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.
