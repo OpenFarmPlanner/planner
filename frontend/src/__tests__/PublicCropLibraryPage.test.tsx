@@ -1669,7 +1669,7 @@ describe('PublicCropLibraryPage', () => {
     await user.click(await screen.findByText('Allgemeine Diskussion'));
 
     expect(await screen.findByLabelText('Dieser Beitrag wurde vom Autor gelöscht.')).toBeInTheDocument();
-    expect(await screen.findByLabelText('Dieser Beitrag wurde von einem Moderator entfernt.')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Dieser Beitrag wurde von der Moderation entfernt.')).toBeInTheDocument();
     expect(screen.queryByText('Dieser Beitrag wurde gelöscht.')).not.toBeInTheDocument();
     expect(screen.getByText('Antwort bleibt sichtbar')).toBeInTheDocument();
     expect(container.querySelector('[data-comment-id="2"]')).toHaveAttribute('data-logical-depth', '1');

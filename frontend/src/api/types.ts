@@ -532,6 +532,8 @@ export interface PublicCropDiscussionComment {
   is_edited: boolean;
   can_edit: boolean;
   can_delete?: boolean;
+  /** True for moderators on someone else's visible comment (removal keeps the text server-side). */
+  can_moderate?: boolean;
 }
 
 export interface PublicCropDiscussionTopic {

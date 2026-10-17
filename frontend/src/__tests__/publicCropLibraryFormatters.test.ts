@@ -252,7 +252,7 @@ describe('getDeletedCommentPlaceholder', () => {
     )).toBe('Dieser Beitrag wurde vom Autor gelöscht.');
     expect(getDeletedCommentPlaceholder(
       comment({ id: 1, deletion_kind: 'moderator' } as never), t,
-    )).toBe('Dieser Beitrag wurde von einem Moderator entfernt.');
+    )).toBe('Dieser Beitrag wurde von der Moderation entfernt.');
   });
 
   it('falls back to the neutral wording when the reason is unknown', () => {

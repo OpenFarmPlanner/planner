@@ -148,7 +148,7 @@ export function DiscussionComment({
                 <ReplyOutlinedIcon fontSize="small" />
               </IconButton>
             </AppTooltip>
-            {comment.can_edit || canShowDeleteAction ? (
+            {comment.can_edit || canShowDeleteAction || comment.can_moderate ? (
               <>
                 <AppTooltip title={t('library.page.discussion.moreActions')}>
                   <IconButton
@@ -182,6 +182,14 @@ export function DiscussionComment({
                       sx={{ color: comment.can_delete ? 'error.main' : 'text.primary' }}
                     >
                       {t('library.page.discussion.delete')}
+                    </MenuItem>
+                  ) : null}
+                  {comment.can_moderate ? (
+                    <MenuItem
+                      onClick={() => { onCloseMenu(); onDelete(comment.id); }}
+                      sx={{ color: 'error.main' }}
+                    >
+                      {t('library.page.discussion.moderatorRemove')}
                     </MenuItem>
                   ) : null}
                 </Menu>

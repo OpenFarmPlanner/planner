@@ -2588,6 +2588,111 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         child_comment.refresh_from_db()
         self.assertEqual(child_comment.parent_id, comment.id)
 
+    def _create_foreign_discussion(self):
+        author = User.objects.create_user(username='comment-author', password='testpass')
+        public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=author)
+        topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Rights', created_by=author)
+        root_comment = PublicCropDiscussionComment.objects.create(topic=topic, body='Author root', created_by=author)
+        reply = PublicCropDiscussionComment.objects.create(topic=topic, parent=root_comment, body='Author reply', created_by=author)
+        return author, public_crop, topic, root_comment, reply
+
+    def _comment_url(self, public_crop, comment):
+        return f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-comments/{comment.id}/'
+
+    def test_comment_author_can_edit_and_delete_own_comment(self):
+        author, public_crop, _topic, _root, reply = self._create_foreign_discussion()
+        self.client.force_authenticate(author)
+
+        edited = self.client.patch(self._comment_url(public_crop, reply), {'body': 'Changed'}, format='json')
+        deleted = self.client.delete(self._comment_url(public_crop, reply))
+
+        reply.refresh_from_db()
+        self.assertEqual(edited.status_code, status.HTTP_200_OK)
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(reply.body, '')
+        self.assertEqual(reply.deleted_by_id, author.id)
+
+    def test_other_user_cannot_edit_or_delete_foreign_comment(self):
+        _author, public_crop, _topic, _root, reply = self._create_foreign_discussion()
+        self.client.force_authenticate(User.objects.create_user(username='comment-stranger', password='testpass'))
+
+        edited = self.client.patch(self._comment_url(public_crop, reply), {'body': 'Changed'}, format='json')
+        deleted = self.client.delete(self._comment_url(public_crop, reply))
+
+        reply.refresh_from_db()
+        self.assertEqual(edited.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(edited.data['code'], 'comment_owner_required')
+        self.assertEqual(deleted.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(reply.body, 'Author reply')
+        self.assertIsNone(reply.deleted_at)
+
+    def test_moderator_cannot_edit_foreign_comment(self):
+        _author, public_crop, _topic, _root, reply = self._create_foreign_discussion()
+        for flags in ({'is_staff': True}, {'is_superuser': True}):
+            moderator = User.objects.create_user(username=f'comment-mod-{next(iter(flags))}', password='testpass', **flags)
+            self.client.force_authenticate(moderator)
+
+            response = self.client.patch(self._comment_url(public_crop, reply), {'body': 'Moderated'}, format='json')
+
+            reply.refresh_from_db()
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(response.data['code'], 'comment_owner_required')
+            self.assertEqual(reply.body, 'Author reply')
+            self.assertIsNone(reply.edited_at)
+
+    def test_moderator_removal_keeps_original_text_but_hides_it(self):
+        _author, public_crop, topic, root_comment, _reply = self._create_foreign_discussion()
+        moderator = User.objects.create_user(username='comment-moderator', password='testpass', is_staff=True)
+        self.client.force_authenticate(moderator)
+
+        response = self.client.delete(self._comment_url(public_crop, root_comment))
+
+        root_comment.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIsNotNone(root_comment.deleted_at)
+        self.assertEqual(root_comment.deleted_by_id, moderator.id)
+        self.assertEqual(root_comment.body, 'Author root')
+        for viewer in (moderator, None):
+            self.client.force_authenticate(viewer)
+            list_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/')
+            payload = next(item for item in list_response.data if item['id'] == root_comment.id)
+            self.assertEqual(payload['body'], '')
+            self.assertEqual(payload['deletion_kind'], 'moderator')
+            self.assertFalse(payload['can_moderate'])
+
+    def test_anonymous_user_cannot_edit_or_delete_comment(self):
+        _author, public_crop, _topic, _root, reply = self._create_foreign_discussion()
+        self.client.force_authenticate(None)
+
+        edited = self.client.patch(self._comment_url(public_crop, reply), {'body': 'Changed'}, format='json')
+        deleted = self.client.delete(self._comment_url(public_crop, reply))
+
+        reply.refresh_from_db()
+        self.assertEqual(edited.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(deleted.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(reply.body, 'Author reply')
+        self.assertIsNone(reply.deleted_at)
+
+    def test_comment_action_flags_per_role(self):
+        author, public_crop, topic, _root, reply = self._create_foreign_discussion()
+        moderator = User.objects.create_user(username='comment-flag-mod', password='testpass', is_staff=True)
+        stranger = User.objects.create_user(username='comment-flag-stranger', password='testpass')
+        expected = {
+            author: (True, True, False),
+            moderator: (False, False, True),
+            stranger: (False, False, False),
+            None: (False, False, False),
+        }
+        for viewer, (can_edit, can_delete, can_moderate) in expected.items():
+            self.client.force_authenticate(viewer)
+            response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/')
+            payload = next(item for item in response.data if item['id'] == reply.id)
+            self.assertEqual(
+                (payload['can_edit'], payload['can_delete'], payload['can_moderate']),
+                (can_edit, can_delete, can_moderate),
+                msg=f'viewer={viewer}',
+            )
+
     def test_comment_owner_can_delete_root_discussion_post_without_visible_replies(self):
         public_crop = PublicCrop.objects.create(name='Tomato', variety='Roma', status='published', created_by=self.user)
         topic = PublicCropDiscussionTopic.objects.create(public_crop=public_crop, title='Root delete', created_by=self.user)
@@ -2700,7 +2805,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         reply.refresh_from_db()
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIsNotNone(root_comment.deleted_at)
-        self.assertEqual(root_comment.body, '')
+        self.assertEqual(root_comment.body, 'Root content')
         self.assertEqual(reply.parent_id, root_comment.id)
         list_response = self.client.get(f'/openfarmplanner/api/public-crops/{public_crop.id}/discussion-topics/{topic.id}/comments/')
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
