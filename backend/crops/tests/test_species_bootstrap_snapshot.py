@@ -1,26 +1,105 @@
+"""Integrity of the frozen crop-species bootstrap snapshot.
+
+The snapshot only feeds the historical migrations of a fresh database; the
+database is the maintained source. These invariants are the ones the retired
+``crops/seed_data.py`` was held to, so a fresh database keeps starting from a
+consistent catalogue.
+"""
+
+import ast
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+from django.conf import settings
 from django.test import SimpleTestCase
 
-from crops.models import SUPPORTED_REGIONAL_NAME_KEYS
-from crops.seed_data import (
-    CROP_SPECIES_REGIONAL_NAME_SEED_DATA,
-    CROP_SPECIES_SEED_DATA,
-    CROP_SPECIES_SYNONYM_SEED_DATA,
-    get_crop_species_seed_name,
-    get_crop_species_seed_regional_names,
-    get_crop_species_seed_synonyms,
+from crops.migrations.data import species_bootstrap
+from crops.migrations.data.species_bootstrap import (
+    BOOTSTRAP_SPECIES,
+    BOOTSTRAP_SPECIES_REGIONAL_NAMES,
+    BOOTSTRAP_SPECIES_SYNONYMS,
+    SNAPSHOT_PATH,
+    get_bootstrap_species_name,
+    get_bootstrap_species_regional_names,
+    get_bootstrap_species_synonyms,
 )
+from crops.models import SUPPORTED_REGIONAL_NAME_KEYS
+
+FROZEN_SNAPSHOT_SHA256 = 'cf264e10600b0824d9d35e68f485c4a3694e6ce9bfe2df07640864abf0a78673'
 
 
-class CropSpeciesSeedDataTest(SimpleTestCase):
-    def test_seed_entries_have_stable_keys_and_initial_translations(self):
-        keys = [entry.key for entry in CROP_SPECIES_SEED_DATA]
+class BootstrapSnapshotFrozenTest(SimpleTestCase):
+    def test_snapshot_file_is_unchanged(self):
+        """Names, synonyms and languages are maintained through the API, not here.
+
+        Editing the snapshot would make a fresh database differ from every
+        existing one without a migration recording the change.
+        """
+        digest = hashlib.sha256(SNAPSHOT_PATH.read_bytes()).hexdigest()
+        self.assertEqual(
+            digest,
+            FROZEN_SNAPSHOT_SHA256,
+            'species_bootstrap_v1.json is frozen. Maintain crop-species names '
+            'through the API instead; see crops/migrations/data/README.md.',
+        )
+
+    def test_snapshot_has_the_expected_shape(self):
+        payload = json.loads(SNAPSHOT_PATH.read_text(encoding='utf-8'))
+
+        self.assertEqual(payload['version'], 1)
+        self.assertEqual(set(payload), {'version', 'species', 'synonyms', 'regional_names'})
+        for item in payload['species']:
+            self.assertEqual(
+                set(item),
+                {'key', 'translations', 'scientific_name', 'family', 'categories'},
+            )
+
+    def test_loader_imports_only_the_standard_library(self):
+        """Migrations must not depend on application code that keeps changing."""
+        tree = ast.parse(Path(species_bootstrap.__file__).read_text(encoding='utf-8'))
+        imported = {
+            alias.name.split('.')[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        } | {
+            node.module.split('.')[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+
+        self.assertTrue(imported)
+        for module_name in imported:
+            with self.subTest(module=module_name):
+                self.assertIn(module_name, sys.stdlib_module_names | {'__future__'})
+
+    def test_only_migrations_and_tests_read_the_snapshot(self):
+        """App code reads crop-species names from the database, never from here."""
+        backend_dir = Path(settings.BASE_DIR)
+        packages = [path.parent for path in backend_dir.glob('*/__init__.py')]
+        offenders = []
+        for path in (file for package in packages for file in package.rglob('*.py')):
+            relative = path.relative_to(backend_dir)
+            if 'migrations' in relative.parts or 'tests' in relative.parts:
+                continue
+            if 'species_bootstrap' in path.read_text(encoding='utf-8'):
+                offenders.append(str(relative))
+
+        self.assertEqual(offenders, [])
+
+
+class BootstrapSpeciesSnapshotTest(SimpleTestCase):
+    def test_entries_have_stable_keys_and_initial_translations(self):
+        keys = [entry.key for entry in BOOTSTRAP_SPECIES]
         german_names = [
-            get_crop_species_seed_name(entry, 'de')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'de')
+            for entry in BOOTSTRAP_SPECIES
         ]
         english_names = [
-            get_crop_species_seed_name(entry, 'en')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'en')
+            for entry in BOOTSTRAP_SPECIES
         ]
 
         self.assertEqual(len(keys), len(set(keys)))
@@ -79,7 +158,7 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         for name in dach_supplier_extension_names:
             self.assertIn(name, german_names)
 
-        for entry in CROP_SPECIES_SEED_DATA:
+        for entry in BOOTSTRAP_SPECIES:
             self.assertIn('de', entry.translations)
             self.assertIn('en', entry.translations)
             self.assertIsInstance(entry.scientific_name, str)
@@ -88,15 +167,15 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
             for category in entry.categories:
                 self.assertEqual(category, category.strip().lower())
 
-    def test_seed_entries_can_carry_species_metadata(self):
+    def test_entries_can_carry_species_metadata(self):
         bulb_fennel = next(
-            entry for entry in CROP_SPECIES_SEED_DATA if entry.key == 'fennel_bulb'
+            entry for entry in BOOTSTRAP_SPECIES if entry.key == 'fennel_bulb'
         )
         herb_fennel = next(
-            entry for entry in CROP_SPECIES_SEED_DATA if entry.key == 'fennel_herb'
+            entry for entry in BOOTSTRAP_SPECIES if entry.key == 'fennel_herb'
         )
         leaf_mustard = next(
-            entry for entry in CROP_SPECIES_SEED_DATA if entry.key == 'leaf_mustard'
+            entry for entry in BOOTSTRAP_SPECIES if entry.key == 'leaf_mustard'
         )
 
         self.assertEqual(bulb_fennel.scientific_name, 'Foeniculum vulgare var. azoricum')
@@ -109,7 +188,7 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         self.assertEqual(leaf_mustard.family, 'Brassicaceae')
         self.assertEqual(leaf_mustard.categories, ('vegetable',))
 
-    def test_seed_entries_use_concrete_species_instead_of_supplier_categories(self):
+    def test_entries_use_concrete_species_instead_of_supplier_categories(self):
         """Guards the naming convention documented in docs/crop-library-architecture.md.
 
         Slash collective names and supplier/shop categories mix several
@@ -117,12 +196,12 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         must never become suggestable crop species again.
         """
         german_names = [
-            get_crop_species_seed_name(entry, 'de')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'de')
+            for entry in BOOTSTRAP_SPECIES
         ]
         english_names = [
-            get_crop_species_seed_name(entry, 'en')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'en')
+            for entry in BOOTSTRAP_SPECIES
         ]
 
         for name in german_names + english_names:
@@ -156,14 +235,14 @@ class CropSpeciesSeedDataTest(SimpleTestCase):
         self.assertIn('Mustard greens', english_names)
 
 
-class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
+class BootstrapSpeciesSynonymsTest(SimpleTestCase):
     """The alias list decides which names must *not* become their own species."""
 
     def test_every_alias_belongs_to_a_seeded_species(self):
-        seed_keys = {entry.key for entry in CROP_SPECIES_SEED_DATA}
+        snapshot_keys = {entry.key for entry in BOOTSTRAP_SPECIES}
 
-        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
-            self.assertIn(key, seed_keys)
+        for key, synonyms_by_language in BOOTSTRAP_SPECIES_SYNONYMS.items():
+            self.assertIn(key, snapshot_keys)
             for language_code, synonyms in synonyms_by_language.items():
                 self.assertIn(language_code, {'de', 'en'})
                 self.assertIsInstance(synonyms, tuple)
@@ -175,10 +254,10 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
         """An alias that names a *different* species would merge two crops."""
         names_by_key = {
             entry.key: {name.casefold() for name in entry.translations.values()}
-            for entry in CROP_SPECIES_SEED_DATA
+            for entry in BOOTSTRAP_SPECIES
         }
 
-        for key, synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.items():
+        for key, synonyms_by_language in BOOTSTRAP_SPECIES_SYNONYMS.items():
             foreign_names = {
                 name
                 for other_key, names in names_by_key.items()
@@ -191,18 +270,18 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
                         self.assertNotIn(synonym.casefold(), foreign_names)
 
     def test_regional_names_of_the_same_crop_are_aliases(self):
-        self.assertIn('Erdapfel', get_crop_species_seed_synonyms('potato'))
-        self.assertIn('Blumenkohl', get_crop_species_seed_synonyms('cauliflower'))
-        self.assertIn('Porree', get_crop_species_seed_synonyms('leek'))
-        self.assertIn('Paradeiser', get_crop_species_seed_synonyms('tomato'))
-        self.assertIn('Meerrettich', get_crop_species_seed_synonyms('horseradish'))
+        self.assertIn('Erdapfel', get_bootstrap_species_synonyms('potato'))
+        self.assertIn('Blumenkohl', get_bootstrap_species_synonyms('cauliflower'))
+        self.assertIn('Porree', get_bootstrap_species_synonyms('leek'))
+        self.assertIn('Paradeiser', get_bootstrap_species_synonyms('tomato'))
+        self.assertIn('Meerrettich', get_bootstrap_species_synonyms('horseradish'))
 
     def test_ambiguous_names_are_aliases_of_every_candidate(self):
         """Rather offer both crops than force a wrong automatic assignment."""
         for key in ('pepper', 'chili', 'pepperoncini'):
-            self.assertIn('Peperoni', get_crop_species_seed_synonyms(key))
+            self.assertIn('Peperoni', get_bootstrap_species_synonyms(key))
         for key in ('bush_bean', 'pole_bean', 'french_bean'):
-            self.assertIn('Fisolen', get_crop_species_seed_synonyms(key))
+            self.assertIn('Fisolen', get_bootstrap_species_synonyms(key))
 
     def test_functionally_distinct_crops_are_species_not_aliases(self):
         """Different cultivation or harvest means an own species, not an alias.
@@ -214,12 +293,12 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
         Erbse, or Chicorée.
         """
         german_names = {
-            get_crop_species_seed_name(entry, 'de')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'de')
+            for entry in BOOTSTRAP_SPECIES
         }
         all_synonyms = {
             synonym.casefold()
-            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms_by_language in BOOTSTRAP_SPECIES_SYNONYMS.values()
             for synonyms in synonyms_by_language.values()
             for synonym in synonyms
         }
@@ -232,10 +311,10 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
     def test_smooth_and_curly_endive_are_aliases_of_endivie(self):
         """Eskariol and Frisée differ only on the variety level."""
         german_names = {
-            get_crop_species_seed_name(entry, 'de').casefold()
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'de').casefold()
+            for entry in BOOTSTRAP_SPECIES
         }
-        endive_synonyms = get_crop_species_seed_synonyms('endive')
+        endive_synonyms = get_bootstrap_species_synonyms('endive')
 
         for name in ('Eskariol', 'Escariol', 'Frisée', 'Frisee', 'Endiviensalat'):
             with self.subTest(name=name):
@@ -248,11 +327,11 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
     def test_chicory_and_radicchio_stay_separate_from_endive(self):
         """Forced Chicorée and Radicchio have their own cultivation logic."""
         german_names = {
-            get_crop_species_seed_name(entry, 'de')
-            for entry in CROP_SPECIES_SEED_DATA
+            get_bootstrap_species_name(entry, 'de')
+            for entry in BOOTSTRAP_SPECIES
         }
         endive_synonyms = {
-            synonym.casefold() for synonym in get_crop_species_seed_synonyms('endive')
+            synonym.casefold() for synonym in get_bootstrap_species_synonyms('endive')
         }
 
         for name in ('Chicorée', 'Radicchio'):
@@ -262,23 +341,23 @@ class CropSpeciesSynonymSeedDataTest(SimpleTestCase):
 
     def test_swede_is_not_aliased_onto_kohlrabi(self):
         """Kohlrübe is the swede, a different crop the library does not seed."""
-        self.assertEqual(get_crop_species_seed_synonyms('kohlrabi'), ())
+        self.assertEqual(get_bootstrap_species_synonyms('kohlrabi'), ())
         all_synonyms = {
             synonym.casefold()
-            for synonyms_by_language in CROP_SPECIES_SYNONYM_SEED_DATA.values()
+            for synonyms_by_language in BOOTSTRAP_SPECIES_SYNONYMS.values()
             for synonyms in synonyms_by_language.values()
             for synonym in synonyms
         }
         self.assertNotIn('kohlrübe', all_synonyms)
 
 
-class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
+class BootstrapSpeciesRegionalNamesTest(SimpleTestCase):
     """Regional display names follow docs/crop-taxonomy-guidelines.md §4."""
 
     def test_every_entry_targets_a_known_key_language_and_region(self):
-        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
+        entries_by_key = {entry.key: entry for entry in BOOTSTRAP_SPECIES}
 
-        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+        for key, regional_names_by_language in BOOTSTRAP_SPECIES_REGIONAL_NAMES.items():
             with self.subTest(key=key):
                 entry = entries_by_key.get(key)
                 self.assertIsNotNone(entry, f'{key} is not a seeded species')
@@ -293,12 +372,12 @@ class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
         """Displaying one species under another's name would merge them for the user."""
         canonical_names = {
             name.casefold()
-            for entry in CROP_SPECIES_SEED_DATA
+            for entry in BOOTSTRAP_SPECIES
             for name in entry.translations.values()
         }
-        entries_by_key = {entry.key: entry for entry in CROP_SPECIES_SEED_DATA}
+        entries_by_key = {entry.key: entry for entry in BOOTSTRAP_SPECIES}
 
-        for key, regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.items():
+        for key, regional_names_by_language in BOOTSTRAP_SPECIES_REGIONAL_NAMES.items():
             own_names = {
                 name.casefold()
                 for name in entries_by_key[key].translations.values()
@@ -320,7 +399,7 @@ class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
         """
         displayed = {
             name.casefold()
-            for regional_names_by_language in CROP_SPECIES_REGIONAL_NAME_SEED_DATA.values()
+            for regional_names_by_language in BOOTSTRAP_SPECIES_REGIONAL_NAMES.values()
             for regional_names in regional_names_by_language.values()
             for name in regional_names.values()
         }
@@ -330,13 +409,13 @@ class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
 
     def test_requested_regional_display_names_are_seeded(self):
         self.assertEqual(
-            get_crop_species_seed_regional_names('aubergine'), {'austria': 'Melanzani'},
+            get_bootstrap_species_regional_names('aubergine'), {'austria': 'Melanzani'},
         )
         self.assertEqual(
-            get_crop_species_seed_regional_names('potato'), {'austria': 'Erdapfel'},
+            get_bootstrap_species_regional_names('potato'), {'austria': 'Erdapfel'},
         )
         self.assertEqual(
-            get_crop_species_seed_regional_names('corn_salad'),
+            get_bootstrap_species_regional_names('corn_salad'),
             {'austria': 'Vogerlsalat', 'switzerland': 'Nüsslisalat'},
         )
 
@@ -355,10 +434,10 @@ class CropSpeciesRegionalNameSeedDataTest(SimpleTestCase):
         for key, expected_name in swiss_names.items():
             with self.subTest(key=key):
                 self.assertEqual(
-                    get_crop_species_seed_regional_names(key).get('switzerland'),
+                    get_bootstrap_species_regional_names(key).get('switzerland'),
                     expected_name,
                 )
 
     def test_unknown_key_returns_an_empty_mapping(self):
-        self.assertEqual(get_crop_species_seed_regional_names('tomato', 'fr'), {})
-        self.assertEqual(get_crop_species_seed_regional_names('does-not-exist'), {})
+        self.assertEqual(get_bootstrap_species_regional_names('tomato', 'fr'), {})
+        self.assertEqual(get_bootstrap_species_regional_names('does-not-exist'), {})

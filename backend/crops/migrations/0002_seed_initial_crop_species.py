@@ -2,13 +2,16 @@ from django.db import migrations
 
 
 def seed_initial_crop_species(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        get_bootstrap_species_name,
+    )
     from farm.utils import normalize_text
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
 
-    for entry in CROP_SPECIES_SEED_DATA:
-        name = get_crop_species_seed_name(entry, 'de')
+    for entry in BOOTSTRAP_SPECIES:
+        name = get_bootstrap_species_name(entry, 'de')
         normalized_name = normalize_text(name) or ''
         species = CropSpecies.objects.filter(name_normalized=normalized_name).first()
         if species is None:
@@ -26,13 +29,16 @@ def seed_initial_crop_species(apps, schema_editor):
 
 
 def unseed_initial_crop_species(apps, schema_editor):
-    from crops.seed_data import CROP_SPECIES_SEED_DATA, get_crop_species_seed_name
+    from crops.migrations.data.species_bootstrap import (
+        BOOTSTRAP_SPECIES,
+        get_bootstrap_species_name,
+    )
     from farm.utils import normalize_text
 
     CropSpecies = apps.get_model('crops', 'CropSpecies')
     normalized_names = [
-        normalize_text(get_crop_species_seed_name(entry, 'de')) or ''
-        for entry in CROP_SPECIES_SEED_DATA
+        normalize_text(get_bootstrap_species_name(entry, 'de')) or ''
+        for entry in BOOTSTRAP_SPECIES
     ]
     CropSpecies.objects.filter(name_normalized__in=normalized_names, status='published').delete()
 

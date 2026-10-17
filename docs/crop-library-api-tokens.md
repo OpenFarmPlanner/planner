@@ -6,6 +6,11 @@ the design decided in
 [`rfc-crop-taxonomy-admin-api.md`](./rfc-crop-taxonomy-admin-api.md); read
 that first for the "why" and the alternatives considered.
 
+This API is the only way to maintain crop-species names, synonyms, regional
+names and languages: the database is their sole source, and the bootstrap
+snapshot under `backend/crops/migrations/data/` is frozen. Which name belongs
+where follows [`crop-taxonomy-guidelines.md`](./crop-taxonomy-guidelines.md).
+
 ## Why a second token type
 
 [`agent-api.md`](./agent-api.md)'s `ProjectApiToken` is irreducibly bound to

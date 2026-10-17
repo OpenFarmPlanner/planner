@@ -427,7 +427,11 @@ Existing tables that remain unchanged in this phase: `Crop`,
 ### Phase 2 — seed and backfill the public library
 
 1. Insert the curated species and translation seed data with stable primary
-   keys or stable import identifiers.
+   keys or stable import identifiers. *(Done. The curated starter catalogue is
+   now frozen as `backend/crops/migrations/data/species_bootstrap_v1.json` and
+   only feeds the historical migrations of a fresh database; the database is
+   the source, and names, synonyms and languages are maintained through the
+   crop-species API only — see `docs/crop-taxonomy-guidelines.md`.)*
 2. Map each legacy published row to a canonical species using a reviewed,
    version-controlled mapping table. Never infer ambiguous multilingual names
    silently.
