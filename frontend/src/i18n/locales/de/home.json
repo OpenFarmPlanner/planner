@@ -21,9 +21,10 @@
       "demoUnexpectedResponse": "Die Demo konnte nicht gestartet werden, weil die Serverantwort unerwartet war. Bitte versuche es erneut.",
       "demoAvailableIn": "Demo wieder verfügbar in {{time}}"
     },
-    "installIos": {
-      "title": "App installieren",
-      "instructions": "Tippe unten auf das Teilen-Symbol und wähle \"Zum Home-Bildschirm\", um OpenFarmPlanner wie eine App zu installieren.",
+    "installManual": {
+      "title": "OpenFarmPlanner als App installieren",
+      "firefoxAndroid": "Tippe oben rechts auf das Menü (⋮) und wähle „Installieren“ oder „Zum Startbildschirm hinzufügen“.",
+      "ios": "Tippe auf das Teilen-Symbol und wähle „Zum Home-Bildschirm“. In Chrome oder Firefox auf dem iPhone findest du das Teilen-Symbol in der Adressleiste oder im Menü.",
       "dismiss": "Verstanden"
     },
     "retryTime": {

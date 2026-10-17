@@ -21,9 +21,10 @@
       "demoUnexpectedResponse": "The demo could not be started because the server response was unexpected. Please try again.",
       "demoAvailableIn": "Demo available again in {{time}}"
     },
-    "installIos": {
-      "title": "Install app",
-      "instructions": "Tap the Share icon below and choose \"Add to Home Screen\" to install OpenFarmPlanner like an app.",
+    "installManual": {
+      "title": "Install OpenFarmPlanner as an app",
+      "firefoxAndroid": "Tap the menu (⋮) at the top right and choose \"Install\" or \"Add to Home screen\".",
+      "ios": "Tap the Share icon and choose \"Add to Home Screen\". In Chrome or Firefox on iPhone, the Share icon is in the address bar or the menu.",
       "dismiss": "Got it"
     },
     "retryTime": {

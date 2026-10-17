@@ -155,25 +155,30 @@ is about the connection, never about the server.
 
 ## Install button
 
-`src/pwa/InstallAppButton.tsx`, fed by `useInstallPrompt`. Rendered on the
+`src/pwa/InstallAppButton.tsx`, fed by `usePwaInstall`. Rendered on the
 landing page's hero, next to Register/Sign in, as a more visible install
-affordance than the browser's own (easy to miss) address-bar icon.
+affordance than the browser's own (easy to miss) address-bar icon. The hook
+returns one `mode`:
 
-- **Mobile only** — gated by `useIsMobile` (`src/hooks/useIsMobile.ts`, same
-  `md` breakpoint as the app shell's own mobile check in `RootLayout`).
-  Desktop browsers already surface their own install icon in the address bar,
-  so the button never renders there even when `beforeinstallprompt` fires
-  (Chrome/Edge on desktop do fire it).
-- **Chrome/Edge/Android** — `beforeinstallprompt` fires once per page load at
-  most and is *not* re-firable; the hook captures and holds the event (also
-  suppressing the browser's own mini-infobar via `preventDefault()`, so this
-  button is the only prompt trigger) until the button is clicked, which
-  shows the native install dialog via `event.prompt()`.
-- **iOS Safari** — never fires `beforeinstallprompt` at all. The button opens
-  a small dialog with the manual "Share → Add to Home Screen" steps instead
-  of a native prompt.
-- **Already installed, or no installability signal at all** (e.g. desktop
-  Firefox) — renders nothing; there is nothing for the button to do.
+- **`unavailable`** — already running installed (`display-mode: standalone`,
+  or `navigator.standalone` on iOS), or no install path at all (e.g. desktop
+  Firefox). Renders nothing.
+- **`native`** (Chrome/Edge/Samsung Internet) — `beforeinstallprompt` fires
+  once per page load at most and is *not* re-firable; the hook captures and
+  holds the event (also suppressing the browser's own mini-infobar via
+  `preventDefault()`, so this button is the only prompt trigger) until the
+  button is clicked, which shows the native install dialog via
+  `event.prompt()`. Mobile only — gated by `useIsMobile` (same `md`
+  breakpoint as `RootLayout`), because desktop Chrome/Edge also fire the
+  event but already show their own address-bar install icon.
+- **`manual-firefox-android`** / **`manual-ios`** — browsers that never fire
+  `beforeinstallprompt` but can still install manually: Firefox on Android,
+  and every browser on iOS/iPadOS (including iPadOS reporting a Mac user agent,
+  told apart by `navigator.maxTouchPoints > 1`). The button opens a dialog
+  with platform-specific steps. Detection is purely user-agent based
+  (`detectManualInstallPlatform`), so Chromium never lands in this branch and
+  the button cannot flicker from fallback to native while waiting for the
+  event. Not gated by width, so an iPad in landscape still sees it.
 
 ## Testing it locally
 

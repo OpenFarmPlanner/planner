@@ -12,7 +12,7 @@ import {
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 import { useTranslation } from '../i18n';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { useInstallPrompt } from './useInstallPrompt';
+import { usePwaInstall, type ManualInstallPlatform } from './usePwaInstall';
 
 interface InstallAppButtonProps {
   sx?: SxProps<Theme>;
@@ -21,28 +21,34 @@ interface InstallAppButtonProps {
 /**
  * The landing page's install CTA, on top of the browser's own (easy to miss)
  * install icon in the address bar. Renders nothing once the app is already
- * installed, on a browser that never offers installation at all (neither
- * `beforeinstallprompt` nor iOS Safari's manual flow), or on desktop — "Install
- * app" only makes sense as a mobile home-screen affordance; desktop browsers
- * already surface their own install icon in the address bar.
+ * installed or on a browser that offers no installation at all. The native
+ * prompt is offered on mobile widths only — desktop browsers already surface
+ * their own install icon in the address bar. The manual instructions follow
+ * the platform instead (Firefox Android, iOS/iPadOS), so an iPad wider than
+ * the mobile breakpoint still gets them.
  */
+const MANUAL_INSTRUCTION_KEYS: Record<ManualInstallPlatform, 'firefoxAndroid' | 'ios'> = {
+  'manual-firefox-android': 'firefoxAndroid',
+  'manual-ios': 'ios',
+};
+
 export function InstallAppButton({ sx }: InstallAppButtonProps) {
   const { t } = useTranslation('home');
-  const { canPromptInstall, isIos, isInstalled, promptInstall } = useInstallPrompt();
+  const { mode, promptInstall } = usePwaInstall();
   const isMobile = useIsMobile();
-  const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
-  if (!isMobile || isInstalled || (!canPromptInstall && !isIos)) {
+  if (mode === 'unavailable' || (mode === 'native' && !isMobile)) {
     return null;
   }
 
   const handleClick = (): void => {
-    if (canPromptInstall) {
+    if (mode === 'native') {
       void promptInstall();
       return;
     }
 
-    setShowIosInstructions(true);
+    setShowInstructions(true);
   };
 
   return (
@@ -56,15 +62,17 @@ export function InstallAppButton({ sx }: InstallAppButtonProps) {
       >
         {t('landing.actions.installApp')}
       </Button>
-      <Dialog open={showIosInstructions} onClose={() => setShowIosInstructions(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{t('landing.installIos.title')}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">{t('landing.installIos.instructions')}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowIosInstructions(false)}>{t('landing.installIos.dismiss')}</Button>
-        </DialogActions>
-      </Dialog>
+      {mode !== 'native' && (
+        <Dialog open={showInstructions} onClose={() => setShowInstructions(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>{t('landing.installManual.title')}</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">{t(`landing.installManual.${MANUAL_INSTRUCTION_KEYS[mode]}`)}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowInstructions(false)}>{t('landing.installManual.dismiss')}</Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </>
   );
 }
