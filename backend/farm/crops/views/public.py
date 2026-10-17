@@ -35,6 +35,7 @@ from farm.models import (
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
 from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
+from farm.services.public_discussions import delete_comment_by_author, remove_comment_by_moderation
 from farm.services.public_crops import (
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
@@ -579,8 +580,11 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return forbidden
         public_crop = self.get_object()
         comment = get_object_or_404(PublicCropDiscussionComment.objects.select_related('topic__created_by__public_profile'), pk=comment_id, topic__public_crop=public_crop)
-        may_moderate = self._is_moderator(request.user)
-        if comment.created_by_id != request.user.id and not may_moderate:
+        is_author = comment.created_by_id == request.user.id
+        if request.method == 'DELETE' and not is_author and self._is_moderator(request.user):
+            remove_comment_by_moderation(comment, request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if not is_author:
             return api_error_response(
                 code='comment_owner_required',
                 detail='You may only change your own comments.',
@@ -588,7 +592,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             )
         if request.method == 'DELETE':
             root_comment_id = comment.topic.comments.order_by('created_at', 'id').values_list('id', flat=True).first()
-            if comment.id == root_comment_id and not may_moderate:
+            if comment.id == root_comment_id:
                 visible_reply_exists = comment.topic.comments.filter(deleted_at__isnull=True).exclude(pk=comment.id).exists()
                 if visible_reply_exists:
                     return api_error_response(
@@ -596,11 +600,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                         detail='The opening post cannot be deleted while visible replies exist.',
                         status_code=status.HTTP_409_CONFLICT,
                     )
-            if not comment.deleted_at:
-                comment.body = ''
-                comment.deleted_at = timezone.now()
-                comment.deleted_by = request.user
-                comment.save(update_fields=['body', 'deleted_at', 'deleted_by', 'updated_at'])
+            delete_comment_by_author(comment)
             return Response(status=status.HTTP_204_NO_CONTENT)
         if comment.deleted_at:
             return api_error_response(
