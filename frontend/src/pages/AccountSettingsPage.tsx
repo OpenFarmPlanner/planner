@@ -317,7 +317,7 @@ export default function AccountSettingsPage() {
                 value={publicDisplayName}
                 onChange={(event) => setPublicDisplayName(event.target.value)}
                 sx={wideSingleColumnFieldSx}
-                helperText={t('publicProfile.helperText')}
+                helperText={`${t('publicProfile.transparencyHint')} ${t('publicProfile.helperText')}`}
                 slotProps={{ htmlInput: { maxLength: 255 } }}
               />
             </InlineEditor>

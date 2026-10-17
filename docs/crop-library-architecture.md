@@ -436,6 +436,33 @@ creation timestamp and record `edited_at`. Existing pre-topic comments are
 grouped per crop by migration 0081 into an `Allgemeine Diskussion` topic
 without changing their authors, timestamps, text, or chronological order.
 
+### Anonymous pseudonyms and author badges
+
+Attribution is opt-in (`PublicProfile.public_display_name`). Authors without a
+public name are not all collapsed into one "Anonym": each gets a number scoped
+to **one** discussion topic, assigned in order of their first comment there
+(the topic starter is always number 1, deleted comments keep their slot so
+numbers never shift). The version history does the same per library entry, in
+order of the author's first revision. The API exposes this as
+`created_by_anonymous_number` (int, or null when a public name is set) on
+comments, topics (the starter, always 1 if anonymous) and revisions, next to
+the unchanged `created_by_label`; the frontend renders "Anonym 2" /
+"Anonymous 2" and falls back to the plain label without a number. The numbers
+are computed once per topic or entry in `farm/services/public_pseudonyms.py`
+and handed to the serializer through its context, so lists cost no extra query
+per row.
+
+Data minimisation is the reason for the per-thread scope: a global or
+per-crop number would let readers link one person's contributions across
+topics and entries, so no user id or other stable identifier leaves the API.
+Comments also carry `is_own` (always false for visitors) and
+`is_topic_starter`; the UI shows a "Du" or "Themenstarter" chip ("Du" wins,
+the opening post itself gets none). Signed-in authors without a public name
+see a notice above the comment fields with an inline field to set one through
+the account endpoint; posting anonymously stays allowed. Public names starting
+with "Anonym"/"Anonymous" (case-insensitive) are rejected as reserved so they
+cannot be mistaken for a pseudonym.
+
 Discussion records and public revisions (`PublicCropRevision`) do not
 touch project-owned `Crop` rows. Editing or reverting a public entry changes
 only the shared public-library row; projects that already imported an entry

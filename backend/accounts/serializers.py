@@ -303,6 +303,11 @@ class AccountLanguageSerializer(serializers.Serializer):
         return normalized or UI_LANGUAGE_AUTO
 
 
+# The crop library renders authors without a public name as "Anonym N" /
+# "Anonymous N"; a chosen name must not be mistaken for such a pseudonym.
+RESERVED_PUBLIC_NAME_PREFIXES = ('anonym', 'anonymous')
+
+
 class AccountPublicProfileSerializer(serializers.Serializer):
     public_display_name = serializers.CharField(max_length=255, allow_blank=True, required=True)
 
@@ -310,6 +315,8 @@ class AccountPublicProfileSerializer(serializers.Serializer):
         value = value.strip()
         if not value:
             return value
+        if value.casefold().startswith(RESERVED_PUBLIC_NAME_PREFIXES):
+            raise serializers.ValidationError('Dieser Name ist reserviert. Bitte wähle einen anderen.')
         request = self.context.get('request')
         queryset = PublicProfile.objects.filter(public_display_name__iexact=value)
         if request is not None:

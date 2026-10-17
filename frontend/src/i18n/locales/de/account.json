@@ -23,7 +23,8 @@
     "actions": {
       "setPublicDisplayName": "Namen festlegen",
       "editPublicDisplayName": "Namen ändern"
-    }
+    },
+    "transparencyHint": "Wird öffentlich als Autor deiner Beiträge in der Kulturbibliothek angezeigt, auch bei deinen bisherigen Beiträgen."
   },
   "moderatorRequest": {
     "title": "Als Moderator mithelfen",

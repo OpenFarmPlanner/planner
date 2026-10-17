@@ -26,6 +26,7 @@ from farm.models import (
 )
 from farm.project_context import get_active_project_optional
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 from farm.services.public_crops import (
     PUBLIC_CROP_EDITABLE_FIELDS,
     is_project_crop_up_to_date,
@@ -446,8 +447,15 @@ class PublicCropSpeciesRelinkRequestSerializer(serializers.ModelSerializer):
         return get_public_user_label(obj.requested_by)
 
 
+def _anonymous_number(numbers: dict[int, int], user_id: int | None) -> int | None:
+    return numbers.get(user_id) if user_id is not None else None
+
+
 class PublicCropRevisionSerializer(serializers.ModelSerializer):
+    """Expects ``anonymous_numbers`` (see ``public_pseudonyms``) in the context."""
+
     created_by_label = serializers.SerializerMethodField()
+    created_by_anonymous_number = serializers.SerializerMethodField()
 
     class Meta:
         model = PublicCropRevision
@@ -460,6 +468,7 @@ class PublicCropRevisionSerializer(serializers.ModelSerializer):
             'changed_fields',
             'restored_from_version',
             'created_by_label',
+            'created_by_anonymous_number',
             'created_at',
         ]
         read_only_fields = fields
@@ -467,9 +476,15 @@ class PublicCropRevisionSerializer(serializers.ModelSerializer):
     def get_created_by_label(self, obj: PublicCropRevision) -> str:
         return get_public_user_label(obj.created_by)
 
+    def get_created_by_anonymous_number(self, obj: PublicCropRevision) -> int | None:
+        return _anonymous_number(self.context.get('anonymous_numbers', {}), obj.created_by_id)
+
 
 class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
     created_by_label = serializers.SerializerMethodField()
+    created_by_anonymous_number = serializers.SerializerMethodField()
+    is_own = serializers.SerializerMethodField()
+    is_topic_starter = serializers.SerializerMethodField()
     deletion_kind = serializers.SerializerMethodField()
     delete_blocked_reason = serializers.SerializerMethodField()
     is_edited = serializers.SerializerMethodField()
@@ -484,6 +499,9 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
             'parent',
             'body',
             'created_by_label',
+            'created_by_anonymous_number',
+            'is_own',
+            'is_topic_starter',
             'created_at',
             'updated_at',
             'deleted_at',
@@ -497,6 +515,9 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
             'id',
             'topic',
             'created_by_label',
+            'created_by_anonymous_number',
+            'is_own',
+            'is_topic_starter',
             'created_at',
             'updated_at',
             'deleted_at',
@@ -509,6 +530,21 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
 
     def get_created_by_label(self, obj: PublicCropDiscussionComment) -> str:
         return get_public_user_label(obj.created_by)
+
+    def get_created_by_anonymous_number(self, obj: PublicCropDiscussionComment) -> int | None:
+        # List views pass the topic's numbers once; single comments compute them.
+        numbers = self.context.get('anonymous_numbers')
+        if numbers is None:
+            numbers = number_topic_authors(obj.topic)
+        return _anonymous_number(numbers, obj.created_by_id)
+
+    def get_is_own(self, obj: PublicCropDiscussionComment) -> bool:
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return bool(user and user.is_authenticated and obj.created_by_id == user.id)
+
+    def get_is_topic_starter(self, obj: PublicCropDiscussionComment) -> bool:
+        return obj.created_by_id is not None and obj.created_by_id == obj.topic.created_by_id
 
     def get_deletion_kind(self, obj: PublicCropDiscussionComment) -> str | None:
         if not obj.deleted_at:
@@ -568,6 +604,7 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
 
 class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
     created_by_label = serializers.SerializerMethodField()
+    created_by_anonymous_number = serializers.SerializerMethodField()
     version = serializers.IntegerField(source='revision.version', read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
     last_activity_at = serializers.DateTimeField(read_only=True)
@@ -580,6 +617,7 @@ class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
             'public_crop',
             'title',
             'created_by_label',
+            'created_by_anonymous_number',
             'created_at',
             'revision',
             'version',
@@ -591,6 +629,7 @@ class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
             'id',
             'public_crop',
             'created_by_label',
+            'created_by_anonymous_number',
             'created_at',
             'version',
             'comment_count',
@@ -600,6 +639,12 @@ class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
 
     def get_created_by_label(self, obj: PublicCropDiscussionTopic) -> str:
         return get_public_user_label(obj.created_by)
+
+    def get_created_by_anonymous_number(self, obj: PublicCropDiscussionTopic) -> int | None:
+        # The starter is always the first participant of their own topic.
+        if obj.created_by is None or has_public_name(obj.created_by):
+            return None
+        return 1
 
 
 class PublicCropChangeProposalSerializer(serializers.ModelSerializer):

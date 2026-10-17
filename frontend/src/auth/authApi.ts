@@ -124,6 +124,7 @@ const knownValidationMessageKeys: Record<string, string> = {
   'Die E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org).': 'emailSendFailed',
   'Dein Konto wurde erstellt, aber die Aktivierungs-E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org), damit wir dein Konto aktivieren oder dir den Link erneut senden können.': 'activationEmailSendFailed',
   'Dieser Name wird bereits verwendet.': 'publicDisplayNameTaken',
+  'Dieser Name ist reserviert. Bitte wähle einen anderen.': 'publicDisplayNameReserved',
 };
 
 function translateOrFallback(key: string, fallback: string, options?: Record<string, unknown>): string {
@@ -153,6 +154,15 @@ function localizeBackendMessage(message: string): string {
   }
 
   return trimmed;
+}
+
+/** Localized validation messages the backend returned for one field, if any. */
+export function getLocalizedFieldError(error: unknown, field: string): string | null {
+  if (!(error instanceof AuthApiError) || !error.payload) {
+    return null;
+  }
+  const messages = flattenErrorStrings(error.payload[field]).map((message) => localizeBackendMessage(message));
+  return messages.length > 0 ? messages.join(' ') : null;
 }
 
 function flattenErrorStrings(value: unknown): string[] {

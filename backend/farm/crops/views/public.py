@@ -34,6 +34,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
+from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
 from farm.services.public_crops import (
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
@@ -535,14 +536,14 @@ class PublicCropViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path=r'discussion-topics/(?P<topic_id>[^/.]+)/comments')
     def topic_comments(self, request: Request, pk: int | None = None, topic_id: str | None = None) -> Response:
         public_crop = self.get_object()
-        topic = get_object_or_404(public_crop.discussion_topics, pk=topic_id)
+        topic = get_object_or_404(
+            public_crop.discussion_topics.select_related('created_by__public_profile'), pk=topic_id,
+        )
         if request.method == 'GET':
-            comments = topic.comments.select_related('created_by__public_profile')
-            root_comment_id = comments.order_by('created_at', 'id').values_list('id', flat=True).first()
-            visible_reply_exists = (
-                comments.filter(deleted_at__isnull=True).exclude(pk=root_comment_id).exists()
-                if root_comment_id is not None
-                else False
+            comments = list(topic.comments.select_related('created_by__public_profile').order_by('created_at', 'id'))
+            root_comment_id = comments[0].id if comments else None
+            visible_reply_exists = any(
+                comment.deleted_at is None and comment.id != root_comment_id for comment in comments
             )
             return Response(PublicCropDiscussionCommentSerializer(
                 comments,
@@ -551,6 +552,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     'request': request,
                     'root_comment_id': root_comment_id,
                     'visible_reply_exists': visible_reply_exists,
+                    'anonymous_numbers': number_topic_authors(topic, comments),
                 },
             ).data)
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
@@ -576,7 +578,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
         public_crop = self.get_object()
-        comment = get_object_or_404(PublicCropDiscussionComment.objects.select_related('topic'), pk=comment_id, topic__public_crop=public_crop)
+        comment = get_object_or_404(PublicCropDiscussionComment.objects.select_related('topic__created_by__public_profile'), pk=comment_id, topic__public_crop=public_crop)
         may_moderate = self._is_moderator(request.user)
         if comment.created_by_id != request.user.id and not may_moderate:
             return api_error_response(
@@ -614,8 +616,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='versions')
     def versions(self, request: Request, pk: int | None = None) -> Response:
         public_crop = self.get_object()
-        revisions = public_crop.revisions.select_related('created_by__public_profile')
-        serializer = PublicCropRevisionSerializer(revisions, many=True)
+        revisions = list(public_crop.revisions.select_related('created_by__public_profile'))
+        oldest_first = sorted(revisions, key=lambda revision: (revision.version, revision.id))
+        serializer = PublicCropRevisionSerializer(
+            revisions,
+            many=True,
+            context={'anonymous_numbers': number_anonymous_authors(revision.created_by for revision in oldest_first)},
+        )
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='revert')

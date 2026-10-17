@@ -767,6 +767,21 @@ class AuthApiTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_public_profile_update_rejects_names_reserved_for_pseudonyms(self) -> None:
+        self.client.post('/openfarmplanner/api/auth/login/', {'email': self.user.email, 'password': self.password}, format='json')
+        for name in ('Anonym 2', '  anonymous', 'ANONYMOUSE Hof'):
+            response = self.client.patch(
+                '/openfarmplanner/api/auth/account/public-profile/', {'public_display_name': name}, format='json'
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, name)
+            self.assertIn('Dieser Name ist reserviert.', str(response.data['public_display_name']))
+        self.assertFalse(PublicProfile.objects.filter(user=self.user).exists())
+
+        response = self.client.patch(
+            '/openfarmplanner/api/auth/account/public-profile/', {'public_display_name': 'Hof Anonym'}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_public_profile_update_allows_multiple_users_to_stay_anonymous(self) -> None:
         other = User.objects.create_user(
             username='other', email='other@example.com', password=self.password, is_active=True,
