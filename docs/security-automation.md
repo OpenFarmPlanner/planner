@@ -55,17 +55,35 @@ Django deployment check deliberately uses an obvious, non-production value.
 Routine checks are deterministic guardrails, not a replacement for review.
 Authorization boundaries, project scoping, OAuth account linking, token flows,
 and business-logic abuse cases require focused human or AI-assisted security
-review. Those reviews are logged in
-[`security-review-log.md`](./security-review-log.md); read it, and the
-"Security Review Protocol" section of [`CLAUDE.md`](../CLAUDE.md#security-review-protocol),
-before starting one. Conversely, an ordinary UI-only change normally needs no
+review. Read the "Security Review Protocol" section of
+[`CLAUDE.md`](../CLAUDE.md#security-review-protocol) before starting one: each
+review is documented in a PR comment with the reviewed commit SHA, unfixed
+findings are tracked as `security` issues, and durable decisions go in
+[Security decisions](#security-decisions) below. The former
+[`security-review-log.md`](./security-review-log.md) is frozen history.
+Conversely, an ordinary UI-only change normally needs no
 additional backend-specific manual security procedure beyond the automated
 required checks.
 
 The `Claude PR Review` workflow (`.github/workflows/claude-pr.yml`) runs such
 an AI-assisted security review automatically on pull requests whose paths or
-added lines hit the security triage rules, fixes the findings on the PR
-branch, and appends its entry to the review log. Its trigger criteria and fix
+added lines hit the security triage rules and fixes the findings on the PR
+branch, one commit per finding. It writes no log file: a review without
+findings commits nothing, so it neither changes the head SHA, re-triggers CI
+nor conflicts with parallel PRs. Unfixed findings get an inline review
+comment and a `security` issue, and the job ends with one PR comment stating
+the reviewed commit SHA, the changed files and the result. Its trigger criteria and fix
 rules are summarized in the "Automated Claude PR Review" section of
 [`CLAUDE.md`](../CLAUDE.md#automated-claude-pr-review); the exact patterns
 live in the workflow's triage step.
+
+## Security decisions
+
+Durable security decisions that outlive a single PR: accepted risks,
+deliberate exceptions and recurring patterns reviewers should know about.
+Per-PR review results do not belong here; they live in the PR's review
+comment. Add an entry with the date, the decision, the reason and the
+PR or issue that made it. Reviewers must not re-report an accepted risk or
+deliberate exception listed here.
+
+_No entries yet._
