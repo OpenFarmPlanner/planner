@@ -119,7 +119,6 @@ describe('usePwaInstall', () => {
     });
 
     expect(result.current.mode).toBe('unavailable');
-    expect(result.current.mode).toBe('unavailable');
   });
 
   it('reports already installed when launched standalone', () => {
