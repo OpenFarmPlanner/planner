@@ -361,6 +361,48 @@ test.describe('Gantt calendar layout', () => {
     }
   });
 
+  test('toggles a Standort or Parzelle row by clicking anywhere on it', async ({ page, request }) => {
+    await loginWithFreshProject(page, request, 'gantt-layout-row-toggle');
+    await createCalendarFixture(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/app/gantt-chart');
+
+    const taskList = page.locator('.gantt-container-wrapper .rmg-task-list');
+    const locationRow = taskList.getByRole('button', { name: 'Layout Testhof' });
+    const fieldRow = taskList.getByRole('button', { name: 'Layout Testfeld' });
+    const bedName = taskList.getByText('Layout Testbeet', { exact: true });
+    await expect(bedName).toBeVisible({ timeout: 10_000 });
+    await expect(fieldRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(fieldRow).toHaveCSS('cursor', 'pointer');
+    await expect(taskList.locator('[data-group-id^="bed-"]').first()).toHaveCSS('cursor', 'default');
+
+    await fieldRow.getByText('Layout Testfeld').click();
+    await expect(fieldRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(bedName).toBeHidden();
+
+    await fieldRow.press('Enter');
+    await expect(fieldRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(bedName).toBeVisible();
+
+    await locationRow.hover();
+    await locationRow.getByRole('button', { name: 'Aktionen' }).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(locationRow).toHaveAttribute('aria-expanded', 'true');
+
+    await locationRow.focus();
+    await page.keyboard.press('Space');
+    await expect(locationRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(fieldRow).toBeHidden();
+
+    // The global level controls in the column header share the same state.
+    await page.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' }).click();
+    await expect(locationRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(fieldRow).toBeVisible();
+    await page.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }).click();
+    await expect(locationRow).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('persists a resized desktop sidebar across reloads', async ({ page, request }) => {
     const consoleErrors = trackConsoleErrors(page);
     await loginWithFreshProject(page, request, 'gantt-layout-sidebar-resize');

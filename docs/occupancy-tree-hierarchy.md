@@ -41,6 +41,14 @@ Locations are always expanded by default. Fields are also expanded by default **
 
 Small farms (the common case) see a fully expanded tree by default; large ones get a scannable, collapsed-by-default starting point.
 
+## Expanding and collapsing a row
+
+A Standort or Parzelle row that has children is one expand/collapse target: clicking anywhere on it (name, padding, chevron) toggles it, exactly like the chevron alone used to. The chevron is now a decorative icon inside the row, not its own button. The row is `role="button"`, focusable (`tabIndex=0`), toggles on Enter/Space and carries `aria-expanded`. Only rows the host can toggle (`isExpandable` plus an `onToggleGroupExpand` handler) get this; leaf rows (beds) are neither focusable nor `cursor: pointer`, because clicking them does nothing (`data-clickable` marks the clickable ones, `TaskList.tsx`). The "⋮" indicator stops click propagation, so it opens the context menu without toggling. The −/+ level buttons in the column header and row clicks write the same `useExpandedState` set, so they stay in sync.
+
+The hover background (`action.hover`) and keyboard focus ring (`primary.main`) come from the MUI theme via the `.gantt-container-wrapper` `<Box>`'s `sx` in `GanttChart.tsx`; `gantt.css` only carries a library-default focus ring. The "⋮" indicator appears on hover or on *keyboard* focus (`:focus-visible`, not `:focus-within`), so a tap or click on the now-focusable row doesn't leave it covering the name.
+
+The Anbauflächen DataGrid tree deliberately keeps chevron-only toggling: a click on its name cell selects the row and starts inline editing, so its pointer cursor already has an action.
+
 ## What's aggregated vs. not
 
 Standort/Parzelle rows currently show a **meta-text summary** in place of bars (`emptyRowLabel`, e.g. "3 Parzellen · 12 Beete · 8 belegt", rendered by `TaskRow` at the start of that row's timeline area — quiet, small, absolutely positioned, and explicitly *not* a bar bound to a month) rather than an aggregate bar rolling up their descendants' planting-plan date ranges. This was a deliberate scope cut — implementing a generic "aggregate child date ranges into a parent bar" concept in the Gantt base component, without leaking farm-specific meaning into it, is a larger piece of work (deciding what "aggregate" means when children have overlapping or gapped ranges, how it renders at different zoom levels, etc.).
@@ -56,6 +64,7 @@ The seedling/Anzucht view has its own, much simpler filter bar: free-text search
 ## Tests
 
 - `frontend/src/__tests__/treeRows.test.ts` — generic flatten/expand/collapse/filter mechanics, no OFP domain involved.
+- `frontend/src/__tests__/gantt-chart/TaskList.hierarchy.test.tsx` (`describe('TaskList tree row expand toggle', ...)`) — row click, Enter/Space, `aria-expanded`, "⋮" not toggling, leaf rows inert; `frontend/e2e/gantt-layout.spec.ts` covers the same in the real page, including the header −/+ buttons.
 - `frontend/src/__tests__/ganttChartUtils.test.ts` (`describe('buildFieldOccupancyHierarchy', ...)`) — node construction, parent/child wiring, count aggregation, empty-bed inclusion.
 - `frontend/src/__tests__/GanttChart.test.tsx` (`describe('occupancy tree filters and search', ...)`) — end-to-end: search reveals a match with parent context and hides unrelated branches, Standort filter reduces the tree, "Nur belegte Beete" toggles empty-bed visibility. The existing windowing/large-dataset test was updated to expand a field before asserting on scroll virtualization, since large trees now start with fields collapsed by design.
 - `frontend/src/__tests__/GanttChart.test.tsx` (`describe('structure summary in the timeline area', ...)`) — summary contents per level, singular/plural, English localization, filter/search/collapse effects on the counts, and that the string is handed to the group's `emptyRowLabel` (timeline) rather than a sidebar field.
