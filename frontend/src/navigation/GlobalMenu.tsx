@@ -1,4 +1,4 @@
-import { Box, Divider, ListItemIcon, Menu, MenuItem } from '@mui/material';
+import { Divider, ListItemIcon, Menu, MenuItem } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -12,21 +12,6 @@ import { ACTION_MENU_ICON_PROPS, ACTION_MENU_ITEM_ICON_SX, MENU_SECTION_LABEL_SX
 import { LanguageMenuItems } from '../i18n/LanguageSwitcher';
 import { DisabledMenuItemTooltip } from '../components/DisabledActionTooltip';
 import type { ReactNode } from 'react';
-import type { SxProps, Theme } from '@mui/material/styles';
-
-// Small rounded pill marking a menu entry as new.
-const NEW_BADGE_SX: SxProps<Theme> = {
-  ml: 1,
-  px: 0.75,
-  py: 0.125,
-  borderRadius: 5,
-  bgcolor: 'primary.light',
-  color: 'primary.contrastText',
-  fontSize: '0.625rem',
-  fontWeight: 600,
-  lineHeight: 1.6,
-  letterSpacing: '0.04em',
-};
 
 interface GlobalMenuProps {
   anchorEl: HTMLElement | null;
@@ -47,7 +32,6 @@ interface GlobalMenuProps {
    * Highlights the feedback entry as new until it has been opened once — the
    * owner persists that per user, so the badge never comes back afterwards.
    */
-  showFeedbackNewBadge?: boolean;
   /**
    * Page-specific help (the "?" icon content) — only wired up for the mobile
    * layout, where that icon is removed from the topbar in favor of this menu
@@ -86,7 +70,6 @@ export function GlobalMenu(props: GlobalMenuProps) {
     onOpenShortcuts,
     onOpenHelp,
     onOpenFeedback,
-    showFeedbackNewBadge,
     onOpenPageHelp,
     pageHelpAvailable,
     pageHelpUnavailableReason,
@@ -105,9 +88,6 @@ export function GlobalMenu(props: GlobalMenuProps) {
     <MenuItem key={key} onClick={wrap(onOpenFeedback)}>
       <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><ChatBubbleOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
       {t('globalMenu.feedback')}
-      {showFeedbackNewBadge ? (
-        <Box component="span" sx={NEW_BADGE_SX}>{t('globalMenu.feedbackNewBadge')}</Box>
-      ) : null}
     </MenuItem>
   );
 
