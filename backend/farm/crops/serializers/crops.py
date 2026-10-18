@@ -840,23 +840,7 @@ class CropSerializer(serializers.ModelSerializer):
         supplier_data_input = validated_data.pop('supplier_data_input', [])
         seed_packages = validated_data.pop('seed_packages', [])
         try:
-            with transaction.atomic():
-                crop = super().create(validated_data)
-                promote_fields = self._promotable_species_invariant_fields
-                crop._auto_general_crop = ensure_general_crop_for_variety(
-                    crop,
-                    copy_values=copy_values_to_crop,
-                    promote_fields=promote_fields,
-                )
-                if crop._auto_general_crop is not None:
-                    clear_species_invariant_overrides(crop, fields=promote_fields)
-                if link_public_crop is not None:
-                    # An empty decision: the form already holds the values the
-                    # user chose, so nothing is pulled and the entry's version
-                    # becomes the baseline (see link_project_crop_to_public_reference).
-                    link_project_crop_to_public_reference(
-                        crop=crop, public_crop=link_public_crop, pull_fields=[],
-                    )
+            crop = self._create_crop_row(validated_data, copy_values_to_crop, link_public_crop)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -880,6 +864,32 @@ class CropSerializer(serializers.ModelSerializer):
                     package_data.pop('crop', None)
                     package_data.setdefault('project', crop.project)
                     SeedPackage.objects.create(crop=crop, **package_data)
+        return crop
+
+    def _create_crop_row(
+        self,
+        validated_data: dict[str, Any],
+        copy_values_to_crop: bool,
+        link_public_crop: PublicCrop | None,
+    ) -> Crop:
+        """Create the crop, its implicit general Kultur and its library link atomically."""
+        with transaction.atomic():
+            crop = super().create(validated_data)
+            promote_fields = self._promotable_species_invariant_fields
+            crop._auto_general_crop = ensure_general_crop_for_variety(
+                crop,
+                copy_values=copy_values_to_crop,
+                promote_fields=promote_fields,
+            )
+            if crop._auto_general_crop is not None:
+                clear_species_invariant_overrides(crop, fields=promote_fields)
+            if link_public_crop is not None:
+                # An empty decision: the form already holds the values the
+                # user chose, so nothing is pulled and the entry's version
+                # becomes the baseline (see link_project_crop_to_public_reference).
+                link_project_crop_to_public_reference(
+                    crop=crop, public_crop=link_public_crop, pull_fields=[],
+                )
         return crop
 
     def update(self, instance, validated_data):
