@@ -45,7 +45,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import { ProjectMenu } from './ProjectMenu';
 import { GlobalMenu } from './GlobalMenu';
-import { hasSeenFeedbackBadge, markFeedbackBadgeSeen } from './feedbackBadgeStorage';
 import { FeedbackDialog } from '../components/feedback/FeedbackDialog';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { ConnectionStatusIndicator } from '../pwa/ConnectionStatusIndicator';
@@ -216,7 +215,6 @@ function RootLayout() {
   const seasonSetupPrompt = useSeasonSetupPrompt(activeProjectId, location.pathname);
   const [globalMenuAnchor, setGlobalMenuAnchor] = useState<null | HTMLElement>(null);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
-  const [feedbackBadgeDismissed, setFeedbackBadgeDismissed] = useState(false);
   const [projectMenuAnchor, setProjectMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileProjectSwitcherOpen, setMobileProjectSwitcherOpen] = useState(false);
@@ -341,15 +339,7 @@ function RootLayout() {
   const openGlobalHelp = (): void => {
     setGlobalHelpOpen(true);
   };
-  // The badge is a one-time marker: opening the dialog once hides it for good
-  // for this account, independent of any time window.
-  const feedbackBadgeSeen = useMemo(
-    () => feedbackBadgeDismissed || hasSeenFeedbackBadge(user?.id ?? null),
-    [feedbackBadgeDismissed, user?.id],
-  );
   const openFeedbackDialog = (): void => {
-    markFeedbackBadgeSeen(user?.id ?? null);
-    setFeedbackBadgeDismissed(true);
     setFeedbackDialogOpen(true);
   };
   const closeGlobalHelp = (): void => {
@@ -1427,7 +1417,6 @@ function RootLayout() {
             onOpenShortcuts={handleOpenShortcuts}
             onOpenHelp={openGlobalHelp}
             onOpenFeedback={openFeedbackDialog}
-            showFeedbackNewBadge={!feedbackBadgeSeen}
             canLeaveDemoProject={canLeaveDemoProject}
             isGuestDemoSession={isGuestDemoSession}
             onLeaveDemoProject={handleLeaveDemoProject}
@@ -1738,7 +1727,6 @@ function RootLayout() {
                 onOpenShortcuts={handleOpenShortcuts}
                 onOpenHelp={openGlobalHelp}
                 onOpenFeedback={openFeedbackDialog}
-                showFeedbackNewBadge={!feedbackBadgeSeen}
                 onOpenPageHelp={openCurrentPageHelp}
                 pageHelpAvailable={Boolean(topbarHelpConfig)}
                 canLeaveDemoProject={canLeaveDemoProject}

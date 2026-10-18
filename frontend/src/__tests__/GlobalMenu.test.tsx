@@ -12,7 +12,6 @@ const labels: Record<string, string> = {
   'globalMenu.pageHelpUnavailable': 'Für diese Seite ist keine spezifische Hilfe verfügbar.',
   'globalMenu.appHelp': 'App-Hilfe',
   'globalMenu.feedback': 'Feedback geben',
-  'globalMenu.feedbackNewBadge': 'NEU',
   'commandPalette.commands.logout': 'Abmelden',
   'language.label': 'Sprache',
   'projectSwitcher.ariaLabel': 'Aktives Projekt wechseln',
@@ -148,17 +147,6 @@ describe('GlobalMenu "Feedback geben" entry', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'Feedback geben' }));
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it('shows the "NEU" badge only until it has been marked as seen', () => {
-    const anchor = document.createElement('button');
-    document.body.appendChild(anchor);
-
-    const { rerender } = render(<GlobalMenu {...baseProps} anchorEl={anchor} showFeedbackNewBadge />);
-    expect(screen.getByRole('menuitem', { name: /Feedback geben/ }).textContent).toContain('NEU');
-
-    rerender(<GlobalMenu {...baseProps} anchorEl={anchor} showFeedbackNewBadge={false} />);
-    expect(screen.getByRole('menuitem', { name: /Feedback geben/ }).textContent).not.toContain('NEU');
   });
 
   it('is also available in the mobile menu', () => {
