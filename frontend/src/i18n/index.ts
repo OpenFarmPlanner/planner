@@ -4,5 +4,5 @@
  * Re-exports i18n configuration and types for use throughout the application.
  */
 
-export { default } from './config';
+export { default, getCurrentUiLanguage } from './config';
 export { useTranslation } from 'react-i18next';

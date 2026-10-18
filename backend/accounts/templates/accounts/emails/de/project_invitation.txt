@@ -1,9 +1,9 @@
-Hallo,
+{% autoescape off %}Hallo,
 
 {{ invited_by }} hat dich zu OpenFarmPlanner eingeladen.
 
 Projekt: {{ project_name }}
-Rolle: {{ role }}
+Rolle: {{ role_label }}
 
 Bitte öffne den folgenden Link, um die Einladung anzunehmen:
 {{ invite_link }}
@@ -12,3 +12,4 @@ Falls du kein OpenFarmPlanner-Konto hast, registriere dich zuerst mit derselben 
 
 Viele Grüße
 OpenFarmPlanner
+{% endautoescape %}

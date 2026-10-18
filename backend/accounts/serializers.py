@@ -21,7 +21,7 @@ from farm.services.demo_project import is_demo_project_description
 
 from .consent import get_pending_consent_documents, has_accepted_current, record_acceptance
 from .disposable_domains import is_disposable_email_domain
-from .models import AccountDeletionRequest, DocumentConsent, PublicProfile
+from .models import AccountDeletionRequest, DocumentConsent, PublicProfile, UserProjectSettings
 
 User = get_user_model()
 _username_validator = UnicodeUsernameValidator()
@@ -239,6 +239,9 @@ class RegisterSerializer(serializers.Serializer):
             first_name=display_name,
             is_active=False,
         )
+        ui_language = str(validated_data.get('ui_language') or '')
+        if ui_language:
+            UserProjectSettings.objects.create(user=user, ui_language=ui_language)
         record_acceptance(user, DocumentConsent.DOCUMENT_TERMS)
         return user
 

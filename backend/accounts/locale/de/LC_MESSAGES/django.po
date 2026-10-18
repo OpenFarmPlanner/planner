@@ -25,46 +25,6 @@ msgstr "Ein Konto mit dieser E-Mail-Adresse existiert bereits."
 msgid "Passwords do not match."
 msgstr "Die Passwörter stimmen nicht überein."
 
-#: accounts/templates/accounts/emails/activation_email.txt:1
-#, python-format
-msgid ""
-"Hello,\n"
-"\n"
-"please activate your OpenFarmPlanner account by clicking the link below:\n"
-"\n"
-"%(link)s\n"
-"\n"
-"If you did not create this account, you can ignore this email."
-msgstr ""
-"Hallo,\n"
-"\n"
-"bitte aktiviere deinen OpenFarmPlanner-Account über den folgenden Link:\n"
-"\n"
-"%(link)s\n"
-"\n"
-"Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren."
-
-#: accounts/templates/accounts/emails/password_reset_email.txt:1
-#, python-format
-msgid ""
-"Hello,\n"
-"\n"
-"use the following link to reset your OpenFarmPlanner password:\n"
-"\n"
-"%(link)s\n"
-"\n"
-"If you did not request this reset, you can ignore this email."
-msgstr ""
-"Hallo,\n"
-"\n"
-"verwende den folgenden Link, um dein OpenFarmPlanner-Passwort "
-"zurückzusetzen:\n"
-"\n"
-"%(link)s\n"
-"\n"
-"Falls du diese Zurücksetzung nicht angefragt hast, kannst du diese E-Mail "
-"ignorieren."
-
 #: accounts/views.py:39
 msgid "If the account exists, an email has been sent."
 msgstr "Falls das Konto existiert, wurde eine E-Mail gesendet."
@@ -87,14 +47,6 @@ msgstr ""
 "Registrierung erfolgreich. In der lokalen Entwicklungsumgebung wird die "
 "Aktivierungs-E-Mail im Server-Log/Terminal ausgegeben und nicht in ein "
 "Postfach zugestellt."
-
-#: accounts/views.py:72
-msgid "Activate your OpenFarmPlanner account"
-msgstr "OpenFarmPlanner-Konto aktivieren"
-
-#: accounts/views.py:85
-msgid "Reset your OpenFarmPlanner password"
-msgstr "OpenFarmPlanner-Passwort zurücksetzen"
 
 #: accounts/views.py:105
 msgid "CSRF cookie set"

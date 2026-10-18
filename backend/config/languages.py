@@ -14,7 +14,9 @@ Three separate concerns use these helpers and must not be confused:
 
 Adding a language means: add the code here, add the frontend locale bundle
 under ``frontend/src/i18n/locales/<code>/``, and add the code to
-``frontend/src/i18n/languages.ts``. Nothing else is language-specific.
+``frontend/src/i18n/languages.ts``, and add the email templates under
+``accounts/templates/accounts/emails/<code>/`` (a parity test fails until
+they exist). Nothing else is language-specific.
 """
 
 from __future__ import annotations
@@ -95,6 +97,36 @@ def normalize_ui_language_preference(value: str | None) -> str:
     raise ValueError(f'Unsupported UI language preference: {value!r}')
 
 
+def explicit_ui_language(user) -> str:
+    """The user's stored UI language, or '' when it is ``auto`` or missing."""
+    settings_row = getattr(user, 'project_settings', None)
+    stored = getattr(settings_row, 'ui_language', '') or ''
+    if stored == UI_LANGUAGE_AUTO:
+        return ''
+    return normalize_language_tag(stored)
+
+
+def resolve_email_language(*, recipient=None, request=None) -> str:
+    """The language an email to ``recipient`` must be written in.
+
+    Resolution order (see "E-Mails" in docs/i18n.md):
+
+    1. the recipient account's explicit UI language (never ``auto``),
+    2. the language of the triggering request via
+       :func:`resolve_request_language`: the frontend's resolved UI language
+       sent as ``?language=``, then the signed-in requester's preference
+       (the inviter, for project invitations), then ``Accept-Language``,
+    3. English.
+    """
+    if recipient is not None:
+        preference = explicit_ui_language(recipient)
+        if preference:
+            return preference
+    if request is not None:
+        return resolve_request_language(request)
+    return DEFAULT_LANGUAGE_CODE
+
+
 def resolve_request_language(request, *, default: str = DEFAULT_LANGUAGE_CODE) -> str:
     """The content language an API response should prefer for this request.
 
@@ -117,12 +149,9 @@ def resolve_request_language(request, *, default: str = DEFAULT_LANGUAGE_CODE) -
 
     user = getattr(request, 'user', None)
     if user is not None and getattr(user, 'is_authenticated', False):
-        settings_row = getattr(user, 'project_settings', None)
-        stored = getattr(settings_row, 'ui_language', '') or ''
-        if stored != UI_LANGUAGE_AUTO:
-            preference = normalize_language_tag(stored)
-            if preference:
-                return preference
+        preference = explicit_ui_language(user)
+        if preference:
+            return preference
 
     header = ''
     headers = getattr(request, 'headers', None)

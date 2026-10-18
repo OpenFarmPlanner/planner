@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 import { setupUserWithoutProjects, VIEWPORTS } from './utils';
 
 const PASSWORD = 'e2e-safe-password-123';
+const RESEND_ACTIVATION_PATH = '/api/auth/resend-activation/';
+
+// Matched on the path alone: the request carries the UI language as `?language=`.
+function isResendActivationUrl(url: string | URL): boolean {
+  return new URL(url).pathname.endsWith(RESEND_ACTIVATION_PATH);
+}
 
 function uniqueEmail(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
@@ -26,7 +32,7 @@ test('confirmation page shows the address, the spam hint and a rate-limited rese
   await expect(page.getByRole('button', { name: 'Konto erstellen' })).toHaveCount(0);
 
   const resendButton = page.getByRole('button', { name: 'E-Mail erneut senden' });
-  const resendResponse = page.waitForResponse((response) => response.url().endsWith('/api/auth/resend-activation/'));
+  const resendResponse = page.waitForResponse((response) => isResendActivationUrl(response.url()));
   await resendButton.click();
   expect((await resendResponse).status()).toBe(200);
 
@@ -40,7 +46,7 @@ test('confirmation page shows the address, the spam hint and a rate-limited rese
 });
 
 test('confirmation page shows the limit message when the hourly resend cap is reached', async ({ page }) => {
-  await page.route('**/api/auth/resend-activation/', (route) =>
+  await page.route(isResendActivationUrl, (route) =>
     route.fulfill({
       status: 429,
       contentType: 'application/json',

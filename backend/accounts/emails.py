@@ -1,5 +1,8 @@
 """Account lifecycle email delivery (activation, password reset, email change).
 
+Each sender takes the recipient's language explicitly; callers resolve it with
+``config.languages.resolve_email_language`` (order in docs/i18n.md, "E-Mails").
+
 Extracted from accounts/views.py so the views only parse requests and map
 responses; tests patch ``accounts.emails.send_mail`` to simulate delivery
 failures.
@@ -10,13 +13,17 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils import translation
 from django.utils.http import urlsafe_base64_encode
-from django.utils.translation import gettext as _
 
 from config.frontend_urls import build_public_frontend_url
 
+from .email_templates import (
+    ACTIVATION_EMAIL,
+    EMAIL_CHANGE_CONFIRMATION_EMAIL,
+    PASSWORD_RESET_EMAIL,
+    public_website_url,
+    render_email,
+)
 from .models import AccountEmailChangeRequest
 
 User = get_user_model()
@@ -40,7 +47,7 @@ def _build_frontend_token_link(path: str, user: User) -> str:
     return _build_frontend_link(f'{path}?uid={uid}&token={token}')
 
 
-def _send_activation_email(user: User) -> None:
+def _send_activation_email(user: User, *, language: str) -> None:
     """
     Send multipart activation email with explicit sender metadata.
 
@@ -49,55 +56,45 @@ def _send_activation_email(user: User) -> None:
     recipients can contact support via a monitored sender mailbox and mailbox providers
     see a trustworthy identity.
     """
-    activation_link = _build_frontend_token_link('/activate', user)
-    with translation.override('de'):
-        subject = 'OpenFarmPlanner – Registrierung bestätigen'
-        text_body = render_to_string('accounts/emails/activation_email.txt', {
-            'activation_link': activation_link,
-            'contact_email': settings.SUPPORT_CONTACT_EMAIL,
-            'project_website': 'https://openfarmplanner.org',
-            'project_name': 'OpenFarmPlanner',
-            'user': user,
-        })
-        html_body = render_to_string('accounts/emails/activation_email.html', {
-            'activation_link': activation_link,
-            'contact_email': settings.SUPPORT_CONTACT_EMAIL,
-            'project_website': 'https://openfarmplanner.org',
-            'project_name': 'OpenFarmPlanner',
-            'user': user,
-        })
+    email = render_email(ACTIVATION_EMAIL, language, {
+        'activation_link': _build_frontend_token_link('/activate', user),
+        'contact_email': settings.SUPPORT_CONTACT_EMAIL,
+        'project_website': public_website_url(language),
+        'project_name': 'OpenFarmPlanner',
+        'user': user,
+    })
     send_mail(
-        subject=subject,
-        message=text_body,
+        subject=email.subject,
+        message=email.text,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
-        html_message=html_body,
+        html_message=email.html,
         fail_silently=False,
     )
 
 
-def _send_password_reset_email(user: User) -> None:
-    reset_link = _build_frontend_token_link('/reset-password', user)
-    with translation.override('de'):
-        subject = _('Reset your OpenFarmPlanner password')
-        body = render_to_string('accounts/emails/password_reset_email.txt', {
-            'reset_link': reset_link,
-            'user': user,
-        })
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email])
+def _send_password_reset_email(user: User, *, language: str) -> None:
+    email = render_email(PASSWORD_RESET_EMAIL, language, {
+        'reset_link': _build_frontend_token_link('/reset-password', user),
+        'user': user,
+    })
+    send_mail(email.subject, email.text, settings.DEFAULT_FROM_EMAIL, [user.email])
 
 
-def _send_email_change_confirmation_email(user: User, request_obj: AccountEmailChangeRequest) -> None:
+def _send_email_change_confirmation_email(
+    user: User,
+    request_obj: AccountEmailChangeRequest,
+    *,
+    language: str,
+) -> None:
     confirmation_link = _build_frontend_link(
         f'/confirm-email-change?uid={urlsafe_base64_encode(str(user.pk).encode("utf-8"))}'
         f'&token={default_token_generator.make_token(user)}'
         f'&request_id={request_obj.id}'
     )
-    with translation.override('de'):
-        subject = _('Confirm your OpenFarmPlanner email change')
-        body = render_to_string('accounts/emails/email_change_confirmation_email.txt', {
-            'confirmation_link': confirmation_link,
-            'new_email': request_obj.new_email,
-            'user': user,
-        })
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [request_obj.new_email])
+    email = render_email(EMAIL_CHANGE_CONFIRMATION_EMAIL, language, {
+        'confirmation_link': confirmation_link,
+        'new_email': request_obj.new_email,
+        'user': user,
+    })
+    send_mail(email.subject, email.text, settings.DEFAULT_FROM_EMAIL, [request_obj.new_email])

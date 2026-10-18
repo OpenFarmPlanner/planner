@@ -6,6 +6,15 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+### Fixes
+
+- Emails to users (activation, password reset, email change, project
+  invitation) are now sent in the recipient's language instead of always in
+  German: the account's explicit UI language, otherwise the UI language of the
+  triggering request (the inviter's for invitations), otherwise English. Each
+  language has its own subject and body templates; registration stores the
+  guest's UI language on the new account.
+
 ### Refactor
 
 - Crop species: the database (`CropSpecies`, `CropSpeciesTranslation`) is now the
