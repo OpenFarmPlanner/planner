@@ -143,7 +143,7 @@ describe('what the comment shows', () => {
 describe('a deleted comment', () => {
   it.each([
     ['author', 'Dieser Beitrag wurde vom Autor gelöscht.'],
-    ['moderator', 'Dieser Beitrag wurde von einem Moderator entfernt.'],
+    ['moderator', 'Dieser Beitrag wurde von der Moderation entfernt.'],
   ] as const)('says so in the %s\'s words', (kind, expected) => {
     // Who removed it is the point: a moderator removal reads differently to
     // the thread than an author changing their mind.
@@ -243,6 +243,12 @@ describe('the actions menu', () => {
     expect(moreButton()).toBeInTheDocument();
   });
 
+  it('appears when the comment can be moderated', () => {
+    setup({ comment: comment({ can_moderate: true }) });
+
+    expect(moreButton()).toBeInTheDocument();
+  });
+
   it('appears when deleting is blocked, so the reason can be explained', () => {
     // The action stays reachable precisely to tell the user why it will not
     // work, rather than vanishing with no explanation.
@@ -329,6 +335,20 @@ describe('the open menu', () => {
     expect(onDelete).toHaveBeenCalledWith(1);
   });
 
+  it('offers a moderator removal instead of editing or deleting a foreign comment', async () => {
+    // Moderators may hide someone else's post but never rewrite it.
+    const user = userEvent.setup();
+    const { onDelete, onCloseMenu } = openMenu({ can_moderate: true });
+    const menu = within(screen.getByRole('menu'));
+
+    expect(menu.queryByText('Bearbeiten')).not.toBeInTheDocument();
+    expect(menu.queryByText('Löschen')).not.toBeInTheDocument();
+    await user.click(menu.getByText('Entfernen (Moderation)'));
+
+    expect(onCloseMenu).toHaveBeenCalled();
+    expect(onDelete).toHaveBeenCalledWith(1);
+  });
+
   it('explains instead of deleting when replies are in the way', async () => {
     // Removing a comment that still has visible replies would orphan them,
     // so the page says why rather than doing it.
@@ -342,8 +362,8 @@ describe('the open menu', () => {
   });
 
   it('explains rather than deleting even for someone who may delete', async () => {
-    // The block is about the thread's shape, not about permission, so it
-    // applies to a moderator too.
+    // The block is about the thread's shape: an author may delete their
+    // replies but not an opening post that still has visible answers.
     const user = userEvent.setup();
     const { onDelete, onDeleteBlocked } = openMenu({
       can_delete: true, delete_blocked_reason: 'visible_replies',

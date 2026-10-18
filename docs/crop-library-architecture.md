@@ -425,11 +425,19 @@ latest comment preview, and optional revision reference needed for the compact
 discussion list without per-topic comment fetches.
 Topics may reference an immutable `PublicCropRevision`, so the version being
 discussed remains stable when newer revisions are created. Comments use soft
-deletion (`deleted_at`/`deleted_by`) and retain their row and replies, with the
-body cleared and a neutral placeholder shown in the UI. Normal authors may
-soft-delete their replies and may delete the root discussion post only while no
-visible, non-deleted replies remain. Public-library moderators may remove any
-comment, including root posts with visible replies. Discussion topics with no
+deletion (`deleted_at`/`deleted_by`) and retain their row and replies; the API
+never returns the body of a deleted comment and the UI shows a placeholder
+naming who removed it. Only the author may edit a comment — moderators, staff
+and superusers included get `403 comment_owner_required` on someone else's
+comment. Authors may soft-delete their replies (the body is cleared) and may
+delete the root discussion post only while no visible, non-deleted replies
+remain. Public-library moderators (staff, superusers, or the crop-species
+moderation permission) may remove someone else's comment, including root posts
+with visible replies, through the same DELETE endpoint; a moderation removal
+keeps the original text in the database for review. Each comment carries
+`can_edit`, `can_delete` (author actions) and `can_moderate` (moderator removal
+of a foreign comment), and the UI offers actions from these flags only; the
+service is `farm/services/public_discussions.py`. Discussion topics with no
 visible comments are hidden from the normal topic overview so users do not see
 threads made only of deletion placeholders. Edits keep the original author and
 creation timestamp and record `edited_at`. Existing pre-topic comments are

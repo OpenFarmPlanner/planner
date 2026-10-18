@@ -490,6 +490,7 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
     is_edited = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
+    can_moderate = serializers.SerializerMethodField()
 
     class Meta:
         model = PublicCropDiscussionComment
@@ -510,6 +511,7 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
             'is_edited',
             'can_edit',
             'can_delete',
+            'can_moderate',
         ]
         read_only_fields = [
             'id',
@@ -526,7 +528,15 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
             'is_edited',
             'can_edit',
             'can_delete',
+            'can_moderate',
         ]
+
+    def to_representation(self, instance: PublicCropDiscussionComment) -> dict[str, Any]:
+        data = super().to_representation(instance)
+        if instance.deleted_at:
+            # Moderation removals keep the original text in the database only.
+            data['body'] = ''
+        return data
 
     def get_created_by_label(self, obj: PublicCropDiscussionComment) -> str:
         return get_public_user_label(obj.created_by)
@@ -560,7 +570,7 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
             return None
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        if not user or not user.is_authenticated or is_public_library_moderator(user):
+        if not user or not user.is_authenticated:
             return None
         if obj.created_by_id != user.id:
             return None
@@ -574,26 +584,28 @@ class PublicCropDiscussionCommentSerializer(serializers.ModelSerializer):
         return bool(obj.edited_at and not obj.deleted_at)
 
     def get_can_edit(self, obj: PublicCropDiscussionComment) -> bool:
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        return bool(user and user.is_authenticated and (obj.created_by_id == user.id or is_public_library_moderator(user)))
+        return not obj.deleted_at and self._is_author(obj)
 
     def get_can_delete(self, obj: PublicCropDiscussionComment) -> bool:
-        if obj.deleted_at:
-            return False
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if not user or not user.is_authenticated:
-            return False
-        may_moderate = is_public_library_moderator(user)
-        if obj.created_by_id != user.id and not may_moderate:
+        if obj.deleted_at or not self._is_author(obj):
             return False
         root_comment_id = self.context.get('root_comment_id')
         if root_comment_id is None:
             root_comment_id = obj.topic.comments.order_by('created_at', 'id').values_list('id', flat=True).first()
-        if may_moderate or obj.id != root_comment_id:
+        if obj.id != root_comment_id:
             return True
         return not bool(self.context.get('visible_reply_exists'))
+
+    def get_can_moderate(self, obj: PublicCropDiscussionComment) -> bool:
+        if obj.deleted_at or self._is_author(obj):
+            return False
+        request = self.context.get('request')
+        return is_public_library_moderator(getattr(request, 'user', None))
+
+    def _is_author(self, obj: PublicCropDiscussionComment) -> bool:
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return bool(user and user.is_authenticated and obj.created_by_id == user.id)
 
     def validate_body(self, value: str) -> str:
         value = value.strip()
