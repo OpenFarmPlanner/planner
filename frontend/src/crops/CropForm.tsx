@@ -70,9 +70,13 @@ import {
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
 import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
-import { metersToRoundedCentimeters } from '../utils/measurementConversion';
+import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { buildVarietyFieldTooltipTitle, type GetVarietyFieldTooltipProps } from './varietyFieldTooltipHelpers';
 import { VarietyValueLegend } from './VarietyValueLegend';
+import { PublicCropSyncPanel } from './PublicCropSyncPanel';
+import { buildDefaultSyncChoices, type PublicCropSyncChoices } from './publicCropSync';
+import { pickLibraryChoices, pickLibraryLinkValues, planLibraryLink } from './libraryLink';
+import type { PublicCropSyncFieldChange } from '../api/types';
 import {
   compactFieldSx,
   formRowSx,
@@ -91,6 +95,11 @@ export interface FirstVarietyDraft {
   name: string;
   draft?: Partial<Crop>;
   copyValuesToCrop?: boolean;
+  /**
+   * The linked library entry's values. They belong to the general Kultur the
+   * link is created on; the Sorte keeps inheriting them instead of copying.
+   */
+  libraryLinkValues?: Partial<Crop>;
 }
 
 interface CropFormProps {
@@ -204,11 +213,40 @@ const PublicCropApplyHint = ({ hintText, actionLabel, onApply }: { hintText: str
   </Box>
 );
 
+const PublicCropLinkedHint = ({ hintText, filledText, actionLabel, onUnlink }: {
+  hintText: string;
+  filledText: string;
+  actionLabel: string;
+  onUnlink: () => void;
+}) => (
+  <Box data-testid="crop-library-linked-hint" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+    <Typography variant="body2" color="text.secondary">{hintText}</Typography>
+    <Button size="small" onClick={onUnlink}>{actionLabel}</Button>
+    {filledText ? (
+      <Typography variant="body2" color="text.secondary" role="status" sx={{ flexBasis: '100%' }}>
+        {filledText}
+      </Typography>
+    ) : null}
+  </Box>
+);
+
+interface LibraryLinkConflict {
+  entry: PublicCrop;
+  fills: Partial<Crop>;
+  changes: PublicCropSyncFieldChange[];
+  choices: PublicCropSyncChoices;
+}
+
 const DUPLICATE_CHECK_DEBOUNCE_MS = 400;
 
 const getPublicCropDraftName = (publicCrop: PublicCrop): string => (
   publicCrop.display_name || publicCrop.crop_species_name || publicCrop.name
 );
+
+// The species-level ("no variety") entry a Kultur links to.
+const findGeneralLibraryEntry = (entries: PublicCrop[]): PublicCrop | undefined => entries.find((item) => (
+  !(item.variety || '').trim() && !isLikelyTestPublicCropEntry(item)
+));
 
 const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   name: getPublicCropDraftName(publicCrop),
@@ -230,7 +268,9 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   expected_yield: publicCrop.expected_yield ?? undefined,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
   row_spacing_cm: metersToRoundedCentimeters(publicCrop.row_spacing_m),
-  sowing_depth_cm: metersToRoundedCentimeters(publicCrop.sowing_depth_m),
+  // The only spacing field that takes decimals; rounding it would make a
+  // freshly linked crop differ from its entry.
+  sowing_depth_cm: metersToCentimeters(publicCrop.sowing_depth_m),
   seed_rate_value: publicCrop.seed_rate_value ?? null,
   seed_rate_unit: publicCrop.seed_rate_unit ?? null,
   seed_rate_by_cultivation: publicCrop.seed_rate_by_cultivation ?? null,
@@ -343,6 +383,13 @@ export function CropForm({
   // suggestion, so that variety gets the same source linking as an import.
   const [firstVarietyPublicCrop, setFirstVarietyPublicCrop] = useState<PublicCrop | null>(null);
   const hasFirstVarietyName = firstVarietyName.trim().length > 0;
+  // Only a new Kultur is linked on create; editing, the Add-variety form and
+  // the library's own form keep their copy behaviour.
+  const canLinkOnCreate = isProjectForm && !isEdit && formKind === 'crop';
+  // The library entry the new Kultur will be created linked to.
+  const [pendingLibraryLink, setPendingLibraryLink] = useState<PublicCrop | null>(null);
+  const [libraryLinkFilledCount, setLibraryLinkFilledCount] = useState(0);
+  const [libraryLinkConflict, setLibraryLinkConflict] = useState<LibraryLinkConflict | null>(null);
 
   // --- Validation now imported from ../crops/validation ---
 
@@ -353,6 +400,7 @@ export function CropForm({
       ...(isProjectForm && formKind === 'variety' && !isEdit && Boolean((draft.variety ?? '').trim())
         ? { copy_values_to_crop: copyValuesToCrop }
         : {}),
+      ...(canLinkOnCreate && pendingLibraryLink ? { link_public_crop: pendingLibraryLink.id } : {}),
     };
     // The Name field displays the species' current translated name
     // (crop_display_name) so a rename elsewhere shows up immediately, but
@@ -373,6 +421,9 @@ export function CropForm({
         name: trimmedFirstVarietyName,
         draft: firstVarietyDraft,
         ...(copyValuesToCrop ? { copyValuesToCrop: true } : {}),
+        ...(canLinkOnCreate && pendingLibraryLink
+          ? { libraryLinkValues: pickLibraryLinkValues(buildDraftFromPublicCrop(pendingLibraryLink)) }
+          : {}),
       }
       : undefined;
     await onSave(dataToSave, firstVariety);
@@ -769,6 +820,58 @@ export function CropForm({
     applyPublicCropDraft(publicCrop);
   }, [applyPublicCropDraft, validateAndSet]);
 
+  const finishLibraryLink = useCallback((entry: PublicCrop, values: Partial<Crop>) => {
+    setPendingLibraryLink(entry);
+    setLibraryLinkFilledCount(Object.keys(values).length);
+    setFormData((prev) => {
+      const updated = { ...prev, ...values, crop_species: entry.crop_species ?? prev.crop_species ?? null };
+      setIsDirty(true);
+      setUserInteracted(true);
+      setSaveError('');
+      validateAndSet(updated);
+      return updated;
+    });
+  }, [validateAndSet]);
+
+  /**
+   * Links the new Kultur to a library entry, the same for a list pick and the
+   * "Mit Kulturbibliothek verknüpfen" button: empty fields take the library
+   * values; values the user already entered that differ go to the shared
+   * per-field sync choice first, so nothing is overwritten without a choice.
+   * The link itself is created with the crop (`link_public_crop`).
+   */
+  const linkLibraryEntry = useCallback((entry: PublicCrop) => {
+    const { fills, conflicts } = planLibraryLink(formData, buildDraftFromPublicCrop(entry));
+    if (conflicts.length > 0) {
+      setLibraryLinkConflict({ entry, fills, changes: conflicts, choices: buildDefaultSyncChoices(conflicts) });
+      return;
+    }
+    finishLibraryLink(entry, fills);
+  }, [finishLibraryLink, formData]);
+
+  const handleConfirmLibraryLinkConflict = useCallback(() => {
+    if (!libraryLinkConflict) return;
+    const { entry, fills, changes, choices } = libraryLinkConflict;
+    setLibraryLinkConflict(null);
+    finishLibraryLink(entry, { ...fills, ...pickLibraryChoices(changes, choices) });
+  }, [finishLibraryLink, libraryLinkConflict]);
+
+  // Removes only the pending link; whatever the form holds stays as it is.
+  const clearLibraryLink = useCallback(() => {
+    setPendingLibraryLink(null);
+    setLibraryLinkFilledCount(0);
+  }, []);
+
+  // A Kultur being created links (`linkLibraryEntry`); every other form keeps
+  // copying the entry's values into the draft.
+  const applyLibraryEntry = useCallback((entry: PublicCrop) => {
+    if (canLinkOnCreate) {
+      linkLibraryEntry(entry);
+      return;
+    }
+    applyPublicCropDraft(entry, { preserveVariety: true });
+  }, [applyPublicCropDraft, canLinkOnCreate, linkLibraryEntry]);
+
   // The one place that links a crop draft to a library species and carries
   // over its general ("no variety") fields (crop_family, spacing, seed
   // rate, ...). Every entry point that can identify a species - picking or
@@ -785,15 +888,16 @@ export function CropForm({
   // entry stays linked by `crop_species` alone rather than copying an
   // arbitrary variety's values.
   const applySpeciesGeneralPrefill = useCallback((cropSpeciesId: number) => {
-    if (formData.crop_species === cropSpeciesId) {
+    const alreadyApplied = canLinkOnCreate
+      ? pendingLibraryLink?.crop_species === cropSpeciesId
+      : formData.crop_species === cropSpeciesId;
+    if (alreadyApplied) {
       return;
     }
     if (loadedVarietySpeciesId === cropSpeciesId) {
-      const generalEntry = varietyPublicCrops.find((item) => (
-        !(item.variety || '').trim() && !isLikelyTestPublicCropEntry(item)
-      ));
+      const generalEntry = findGeneralLibraryEntry(varietyPublicCrops);
       if (generalEntry) {
-        applyPublicCropDraft(generalEntry, { preserveVariety: true });
+        applyLibraryEntry(generalEntry);
         return;
       }
     }
@@ -806,11 +910,20 @@ export function CropForm({
       validateAndSet(updated);
       return updated;
     });
-  }, [applyPublicCropDraft, formData.crop_species, loadedVarietySpeciesId, validateAndSet, varietyPublicCrops]);
+  }, [
+    applyLibraryEntry,
+    canLinkOnCreate,
+    formData.crop_species,
+    loadedVarietySpeciesId,
+    pendingLibraryLink,
+    validateAndSet,
+    varietyPublicCrops,
+  ]);
 
   const handleNameOptionSelect = useCallback((option: { cropSpeciesId: number | null } | null) => {
     if (option?.cropSpeciesId == null) {
       pendingSpeciesPrefillRef.current = null;
+      clearLibraryLink();
       setFormData((prev) => {
         const updated = { ...prev, crop_species: null };
         setIsDirty(true);
@@ -822,7 +935,7 @@ export function CropForm({
       return;
     }
     applySpeciesGeneralPrefill(option.cropSpeciesId);
-  }, [applySpeciesGeneralPrefill, validateAndSet]);
+  }, [applySpeciesGeneralPrefill, clearLibraryLink, validateAndSet]);
 
   // Explicit apply action for free text that matches a Name suggestion
   // exactly without having been picked from the dropdown — reuses the exact
@@ -833,19 +946,30 @@ export function CropForm({
     }
   }, [handleNameOptionSelect, matchedNameOption]);
 
+  // The species-level entry the typed Name matches, once its rows are loaded.
+  // Without one there is nothing to link to, so no link is offered.
+  const matchedGeneralEntry = matchedNameOption?.cropSpeciesId != null
+    && loadedVarietySpeciesId === matchedNameOption.cropSpeciesId
+    ? findGeneralLibraryEntry(varietyPublicCrops)
+    : undefined;
+
+  const handleLinkMatchedEntry = useCallback(() => {
+    if (matchedGeneralEntry) {
+      linkLibraryEntry(matchedGeneralEntry);
+    }
+  }, [linkLibraryEntry, matchedGeneralEntry]);
+
   useEffect(() => {
     const pendingSpeciesId = pendingSpeciesPrefillRef.current;
     if (pendingSpeciesId === null || pendingSpeciesId !== loadedVarietySpeciesId) {
       return;
     }
     pendingSpeciesPrefillRef.current = null;
-    const generalEntry = varietyPublicCrops.find((item) => (
-      !(item.variety || '').trim() && !isLikelyTestPublicCropEntry(item)
-    ));
+    const generalEntry = findGeneralLibraryEntry(varietyPublicCrops);
     if (generalEntry) {
-      queueMicrotask(() => applyPublicCropDraft(generalEntry, { preserveVariety: true }));
+      queueMicrotask(() => applyLibraryEntry(generalEntry));
     }
-  }, [applyPublicCropDraft, loadedVarietySpeciesId, varietyPublicCrops]);
+  }, [applyLibraryEntry, loadedVarietySpeciesId, varietyPublicCrops]);
 
   // The library entry the typed first-variety text matches exactly. Exposed
   // separately from `firstVarietyPublicCrop` so free text that happens to
@@ -932,7 +1056,42 @@ export function CropForm({
   // formData.crop_species/source_public_crop and firstVarietyPublicCrop
   // only get set via an actual dropdown pick, so a match without a link means
   // the current text was typed rather than chosen from the suggestion list.
-  const showNameApplyHint = isProjectForm && Boolean(matchedNameOption) && !formData.crop_species;
+  const showNameApplyHint = isProjectForm && !canLinkOnCreate && Boolean(matchedNameOption) && !formData.crop_species;
+  // Typed text that matches a library entry without having been picked: the
+  // link stays an explicit choice. A list pick links right away instead.
+  const showNameLinkHint = canLinkOnCreate && Boolean(matchedGeneralEntry)
+    && pendingLibraryLink?.id !== matchedGeneralEntry?.id;
+  const nameLibraryHint = (() => {
+    if (canLinkOnCreate && pendingLibraryLink) {
+      return (
+        <PublicCropLinkedHint
+          hintText={t('form.publicCropLinkedHint', { name: getPublicCropDraftName(pendingLibraryLink) })}
+          filledText={libraryLinkFilledCount > 0 ? t('form.publicCropLinkFilled', { count: libraryLinkFilledCount }) : ''}
+          actionLabel={t('form.publicCropUnlinkAction')}
+          onUnlink={clearLibraryLink}
+        />
+      );
+    }
+    if (showNameLinkHint && matchedGeneralEntry) {
+      return (
+        <PublicCropApplyHint
+          hintText={t('form.publicCropLinkHint', { name: getPublicCropDraftName(matchedGeneralEntry) })}
+          actionLabel={t('form.publicCropLinkAction')}
+          onApply={handleLinkMatchedEntry}
+        />
+      );
+    }
+    if (showNameApplyHint && matchedNameOption) {
+      return (
+        <PublicCropApplyHint
+          hintText={t('form.publicCropApplyHint', { name: matchedNameOption.name })}
+          actionLabel={t('form.publicCropApplyAction')}
+          onApply={handleApplyNameSuggestion}
+        />
+      );
+    }
+    return null;
+  })();
   const showVarietyApplyHint = isProjectForm && showVarietyField && Boolean(matchedVarietyOption)
     && formData.source_public_crop !== matchedVarietyOption?.id;
   const showFirstVarietyApplyHint = isProjectForm && showFirstVarietyField && Boolean(matchedFirstVarietyOption)
@@ -1238,13 +1397,7 @@ export function CropForm({
               nameOptionsLoading={nameOptionsLoading}
               onNameSearchChange={isProjectForm ? handleManualPublicCropSearchChange : undefined}
               onNameOptionSelect={isProjectForm ? handleNameOptionSelect : undefined}
-              nameApplyHint={showNameApplyHint && matchedNameOption ? (
-                <PublicCropApplyHint
-                  hintText={t('form.publicCropApplyHint', { name: matchedNameOption.name })}
-                  actionLabel={t('form.publicCropApplyAction')}
-                  onApply={handleApplyNameSuggestion}
-                />
-              ) : null}
+              nameApplyHint={nameLibraryHint}
               varietyOptions={isProjectForm ? varietyOptions : undefined}
               varietyOptionsLoading={varietyOptionsLoading}
               onVarietyCommit={isProjectForm ? handleVarietyCommit : undefined}
@@ -1530,6 +1683,36 @@ export function CropForm({
           </AppTooltip>
         </DialogActions>
       </form>
+      <Dialog
+        open={libraryLinkConflict !== null}
+        onClose={() => setLibraryLinkConflict(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{t('form.publicCropLinkAction')}</DialogTitle>
+        <DialogContent dividers>
+          {libraryLinkConflict ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="body2">
+                {t('form.publicCropLinkConflictIntro', { name: getPublicCropDraftName(libraryLinkConflict.entry) })}
+              </Typography>
+              <PublicCropSyncPanel
+                changes={libraryLinkConflict.changes}
+                choices={libraryLinkConflict.choices}
+                onChoicesChange={(choices) => setLibraryLinkConflict((prev) => (prev ? { ...prev, choices } : prev))}
+                requiresModeration={false}
+                keepMineLocally
+              />
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Button onClick={() => setLibraryLinkConflict(null)}>{t('form.cancel')}</Button>
+          <Button variant="contained" onClick={handleConfirmLibraryLinkConflict}>
+            {t('form.publicCropLinkConfirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <ConfirmationDialog
         open={showDiscardConfirm}
         title={t('form.discardChangesTitle')}

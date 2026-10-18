@@ -14,6 +14,7 @@ import {
   normalizeSeedRateUnit,
 } from '../crops/enumNormalization';
 import { VARIETY_INHERITABLE_FIELDS } from '../crops/varietyValueSource';
+import { arePublicValuesEqual } from '../crop-library/components/publicCropLibrary/formatters';
 
 export type CropSavePayload = Crop & {
   supplier_id: number | null;
@@ -63,6 +64,26 @@ export function buildGeneralCropDraftForFirstVariety(
   });
 
   return draft;
+}
+
+// Every crop states its own cultivation types; a Sorte never inherits them.
+const NON_INHERITED_LIBRARY_FIELDS = new Set<string>(['cultivation_type', 'cultivation_types']);
+
+/**
+ * The first Sorte's values without the ones that only repeat the linked
+ * library entry: those belong to the general Kultur, and the Sorte keeps
+ * inheriting them instead of freezing a copy. Values the user chose to keep
+ * as their own stay on the Sorte.
+ */
+export function omitInheritedLibraryValues(crop: Crop, libraryValues: Partial<Crop> | undefined): Crop {
+  if (!libraryValues) return crop;
+  const result: Crop = { ...crop };
+  Object.entries(libraryValues).forEach(([field, value]) => {
+    if (!NON_INHERITED_LIBRARY_FIELDS.has(field) && arePublicValuesEqual(crop[field as keyof Crop], value)) {
+      delete (result as Partial<Crop>)[field as keyof Crop];
+    }
+  });
+  return result;
 }
 
 const mapSupplierDataRowToInput = (row: CropSupplierData): CropSupplierDataInput => ({

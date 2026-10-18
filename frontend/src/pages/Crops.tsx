@@ -34,6 +34,7 @@ import { createCropsCommandSpecs } from './cropsCommandSpecs';
 import {
   buildCropSavePayload,
   buildGeneralCropDraftForFirstVariety,
+  omitInheritedLibraryValues,
 } from './cropsSaveUtils';
 import { type HistoryScope } from './cropsHistoryUtils';
 import { useSelectedCropSync } from './useSelectedCropSync';
@@ -629,10 +630,14 @@ function Crops() {
           updateSelectedCropId(savedCrop.id, 'internal');
         } else {
           const generalCropPayload = firstVariety
-            ? buildCropSavePayload(buildGeneralCropDraftForFirstVariety(
-              crop,
-              { copyValuesToCrop: Boolean(firstVariety.copyValuesToCrop) },
-            ) as Crop)
+            ? buildCropSavePayload({
+              ...buildGeneralCropDraftForFirstVariety(
+                crop,
+                { copyValuesToCrop: Boolean(firstVariety.copyValuesToCrop) },
+              ),
+              ...(firstVariety.libraryLinkValues ?? {}),
+              link_public_crop: crop.link_public_crop,
+            } as Crop)
             : savePayload;
           const response = await cropAPI.create(generalCropPayload as Crop);
           savedCrop = response.data;
@@ -646,7 +651,8 @@ function Crops() {
             // values; with one it carries the library values and the same
             // source linking an import would produce.
             const varietyPayload = buildCropSavePayload({
-              ...crop,
+              ...omitInheritedLibraryValues(crop, firstVariety.libraryLinkValues),
+              link_public_crop: undefined,
               ...(firstVariety.draft ?? {}),
               id: undefined,
               name: crop.name,

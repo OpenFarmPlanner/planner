@@ -608,19 +608,49 @@ Both suggestion sources filter out entries whose name or variety looks like
 manual-QA test data (`isLikelyTestPublicCropEntry`) — a display-only
 filter; no public-library rows are deleted for this.
 
-Selecting a Name suggestion links `crop_species` immediately and then copies
-the species' general ("no variety") public entry into the draft — baseline
-values plus `source_public_crop`/`source_public_version` and
-`origin_type: 'imported'`, i.e. exactly the shape the "Import from library"
-button produces, so the re-import/update model in
-`import_public_crop_into_project()` applies to these crops unchanged.
-The copy reuses the species rows the Variety field fetches anyway (guarded by
-`loadedVarietySpeciesId`, since an empty list is otherwise ambiguous between
-"still loading" and "no entries"), so no extra request is made. A species with
-no general entry — mostly legacy data, since `ensure_general_public_crop()`
-creates one on publish — stays linked by `crop_species` alone rather than
-copying an arbitrary variety's values. Species-level prefill never overwrites
-a variety the user already typed (`preserveVariety`).
+In the Add-**crop** dialog ("Kultur hinzufügen") a matching library entry is
+offered as a **link**, not as a copy. The link target is the species' general
+("no variety") public entry, read from the species rows the Variety field
+fetches anyway (guarded by `loadedVarietySpeciesId`, since an empty list is
+otherwise ambiguous between "still loading" and "no entries"), so no extra
+request is made.
+
+- **Picking a Name suggestion** is an explicit choice and links right away.
+  **Typed text** that matches a species without having been picked shows the
+  hint "„{name}“ gibt es in der Kulturbibliothek. Ohne Verknüpfung legst du
+  eine eigene Kultur an." with the button "Mit Kulturbibliothek verknüpfen".
+  Not linking is a valid path: the user then creates an ordinary own Kultur.
+- Both paths run the same `linkLibraryEntry()` (`CropForm.tsx`, planned by
+  `planLibraryLink()` in `crops/libraryLink.ts`): empty fields take the
+  library values and a short note says how many were filled. When values the
+  user already entered differ from the entry, the shared per-field
+  `PublicCropSyncPanel` opens first, with the link flow's preselection
+  (`getDefaultSyncChoice`); nothing is overwritten without that choice, and
+  "mine" keeps the value in the new crop (`keepMineLocally`).
+- The linked state reads "Verknüpft mit „{name}“ aus der Kulturbibliothek."
+  with "Verknüpfung aufheben", which drops only the pending link; the form
+  values stay. Editing the Name after a pick drops the link the same way, and
+  text that matches an entry again shows the unlinked hint.
+- On "Erstellen" the crop is created already linked: `POST /api/crops/` takes a
+  write-only `link_public_crop` (published entries only, create only) and runs
+  `link_project_crop_to_public_reference(pull_fields=[])` inside the create
+  transaction, so the entry's version is the baseline and any value the user
+  kept reads as a local change (4-case update model). There is no second
+  request that could fail on its own.
+- With a first Sorte, the link and the entry's values go to the general Kultur
+  (`FirstVarietyDraft.libraryLinkValues`); the Sorte drops the values that only
+  repeat the entry (`omitInheritedLibraryValues`) and keeps inheriting them.
+  "Zeit-, Ertrags- und Saatgutwerte auch als allgemeine Kulturwerte
+  übernehmen" keeps its meaning for the Sorte's own values.
+- A species without a general entry, or a legacy entry without a species, has
+  nothing to link to, so no link is offered (the former "Werte übernehmen"
+  button was shown for those too and did nothing).
+
+Other forms (editing a crop, the Add-variety dialog) keep copying a picked
+entry into the draft — baseline values plus `source_public_crop`/
+`source_public_version` and `origin_type: 'imported'`, the shape the "Import
+from library" button produces. Species-level prefill never overwrites a
+variety the user already typed (`preserveVariety`).
 
 Which variety field is shown depends on `formKind`. The Add-**variety** dialog
 renders the real `variety` field, and selecting a suggestion there copies that

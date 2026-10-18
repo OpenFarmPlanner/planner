@@ -830,7 +830,7 @@ describe('CropForm', () => {
   // Regression guard for the "Add crop" dialog, where no variety field exists
   // to select from: picking a Name suggestion must itself prefill and link,
   // otherwise the public library is unreachable from that dialog entirely.
-  it('prefills and links from the species general entry when a name suggestion is selected', async () => {
+  it('links the new Kultur to the species general entry when a name suggestion is selected', async () => {
     publicCropListMock.mockImplementation((params: { q?: string; crop_species?: number }) => Promise.resolve({
       data: {
         results: params.crop_species === 7
@@ -876,7 +876,7 @@ describe('CropForm', () => {
     await screen.findByRole('button', { name: 'select-name-option' });
     fireEvent.click(screen.getByRole('button', { name: 'select-name-option' }));
 
-    await waitFor(() => expect(screen.getByText('form.publicCropSourceHint')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('row-spacing-input')).toHaveValue('60'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'form.create' })).not.toBeDisabled());
     fireEvent.click(screen.getByRole('button', { name: 'form.create' }));
 
@@ -885,13 +885,13 @@ describe('CropForm', () => {
       name: 'Tomate',
       variety: '',
       crop_species: 7,
-      source_public_crop: 40,
-      source_public_version: 2,
+      link_public_crop: 40,
       crop_family: 'Nachtschattengewächse',
       growth_duration_days: 80,
       row_spacing_cm: 60,
-      origin_type: 'imported',
     }), undefined);
+    // The link is created with the crop, not copied in as an import.
+    expect(onSave.mock.calls[0][0].source_public_crop).toBeFalsy();
   });
 
   it('links only crop_species when the matched species has no general entry', async () => {

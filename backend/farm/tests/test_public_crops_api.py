@@ -38,6 +38,7 @@ from farm.services.crop_inheritance import get_general_crop
 from farm.services.public_crops import (
     has_pending_public_crop_update,
     link_project_crop_to_public_reference,
+    public_crop_update_changes,
 )
 from farm.tests.api_base import User
 from notifications.models import Notification
@@ -1209,6 +1210,126 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         own_sorte.refresh_from_db()
         self.assertEqual(own_sorte.crop_species_id, species.id)
         self.assertEqual(get_general_crop(own_sorte), own_kultur)
+
+    def _foreign_general_entry(self, species_name: str, **values) -> PublicCrop:
+        other_user = User.objects.create_user(
+            username=f'entry-owner-{species_name}', email=f'{species_name}@example.com',
+            password='testpass', is_active=True,
+        )
+        return PublicCrop.objects.create(
+            name=species_name,
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=CropSpecies.objects.create(name=f'{species_name} link-test'),
+            created_by=other_user,
+            **values,
+        )
+
+    def test_create_with_link_public_crop_creates_the_crop_already_linked(self):
+        entry = self._foreign_general_entry(
+            'Fenchel',
+            growth_duration_days=80,
+            harvest_duration_days=30,
+            cultivation_type='pre_cultivation',
+            cultivation_types=['pre_cultivation'],
+        )
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Fenchel',
+            'growth_duration_days': 80,
+            'harvest_duration_days': 30,
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        crop = Crop.objects.get(pk=response.data['id'])
+        self.assertEqual(crop.source_public_crop_id, entry.id)
+        self.assertEqual(crop.source_public_version, entry.version)
+        self.assertEqual(crop.crop_species_id, entry.crop_species_id)
+        self.assertEqual(crop.origin_type, Crop.ORIGIN_IMPORTED)
+        self.assertFalse(crop.is_modified_from_source)
+        self.assertNotIn('link_public_crop', response.data)
+
+    def test_create_with_link_public_crop_keeps_own_values_as_local_changes(self):
+        entry = self._foreign_general_entry('Pastinake', growth_duration_days=120)
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Pastinake',
+            'growth_duration_days': 100,
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        crop = Crop.objects.get(pk=response.data['id'])
+        # The user's own value wins and is never overwritten by the link; with
+        # the entry's version as baseline it reads as a change to contribute.
+        self.assertEqual(crop.growth_duration_days, 100)
+        self.assertEqual(crop.source_public_version, entry.version)
+        self.assertTrue(crop.is_modified_from_source)
+
+    def test_create_with_link_public_crop_matches_an_entry_with_a_unit_only_seed_rate(self):
+        # Regression: the form drops a seed_rate_unit without a seed rate on
+        # save, and a sowing depth of 1.5 cm must survive the round trip; both
+        # made a freshly linked crop offer "Bibliothek aktualisieren" at once.
+        entry = self._foreign_general_entry(
+            'Schwarzwurzel',
+            cultivation_type='direct_sowing',
+            cultivation_types=['direct_sowing'],
+            sowing_depth_m=0.015,
+            seed_rate_unit='g_per_m2',
+        )
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Schwarzwurzel',
+            'cultivation_type': 'direct_sowing',
+            'cultivation_types': ['direct_sowing'],
+            'sowing_depth_cm': 1.5,
+            'seed_rate_unit': None,
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        crop = Crop.objects.get(pk=response.data['id'])
+        self.assertFalse(crop.is_modified_from_source)
+        self.assertEqual(public_crop_update_changes(crop), [])
+
+    def test_create_with_unpublished_link_public_crop_is_rejected_without_creating(self):
+        entry = self._foreign_general_entry('Rucola')
+        entry.status = PublicCrop.STATUS_REMOVED
+        entry.save(update_fields=['status'])
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Rucola',
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('link_public_crop', response.data)
+        self.assertFalse(Crop.objects.filter(project=self.project, name='Rucola').exists())
+
+    def test_update_rejects_link_public_crop(self):
+        entry = self._foreign_general_entry('Mangold')
+        crop = Crop.objects.create(name='Mangold', variety='', project=self.project)
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{crop.id}/', {'link_public_crop': entry.id}, format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        crop.refresh_from_db()
+        self.assertIsNone(crop.source_public_crop_id)
+
+    def test_create_with_link_public_crop_still_reports_a_name_conflict(self):
+        entry = self._foreign_general_entry('Lauch')
+        Crop.objects.create(name='Lauch', variety='', project=self.project)
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Lauch',
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.data.get('code'), 'crop_name_conflict')
+        self.assertEqual(Crop.objects.filter(project=self.project, name='Lauch').count(), 1)
 
     def test_link_public_crop_records_the_entry_version_when_content_already_matches(self):
         # The complementary case: nothing diverges, so the link is already

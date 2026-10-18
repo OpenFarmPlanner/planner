@@ -65,6 +65,7 @@ from farm.services.public_crops import (
     has_open_public_crop_update,
     is_public_crop_contributor,
     is_public_crop_update_rejected,
+    link_project_crop_to_public_reference,
     resolve_public_crop_unlink_block,
     resolve_public_publish_block,
 )
@@ -303,6 +304,19 @@ class CropSerializer(serializers.ModelSerializer):
         help_text=(
             'When creating a linked variety, also fill currently empty timing, '
             'yield, and seed fields on its general crop from the variety values.'
+        ),
+    )
+
+    link_public_crop = serializers.PrimaryKeyRelatedField(
+        queryset=PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED),
+        write_only=True,
+        required=False,
+        allow_null=True,
+        help_text=(
+            'Create only: link the new crop to this published library entry in '
+            'the same transaction, with the same baseline rules as '
+            '`link-public-crop`. The submitted values are the user\'s per-field '
+            'decision; any remaining difference counts as a local change.'
         ),
     )
 
@@ -822,19 +836,11 @@ class CropSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         copy_values_to_crop = validated_data.pop('copy_values_to_crop', False)
+        link_public_crop = validated_data.pop('link_public_crop', None)
         supplier_data_input = validated_data.pop('supplier_data_input', [])
         seed_packages = validated_data.pop('seed_packages', [])
         try:
-            with transaction.atomic():
-                crop = super().create(validated_data)
-                promote_fields = self._promotable_species_invariant_fields
-                crop._auto_general_crop = ensure_general_crop_for_variety(
-                    crop,
-                    copy_values=copy_values_to_crop,
-                    promote_fields=promote_fields,
-                )
-                if crop._auto_general_crop is not None:
-                    clear_species_invariant_overrides(crop, fields=promote_fields)
+            crop = self._create_crop_row(validated_data, copy_values_to_crop, link_public_crop)
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
@@ -858,6 +864,32 @@ class CropSerializer(serializers.ModelSerializer):
                     package_data.pop('crop', None)
                     package_data.setdefault('project', crop.project)
                     SeedPackage.objects.create(crop=crop, **package_data)
+        return crop
+
+    def _create_crop_row(
+        self,
+        validated_data: dict[str, Any],
+        copy_values_to_crop: bool,
+        link_public_crop: PublicCrop | None,
+    ) -> Crop:
+        """Create the crop, its implicit general Kultur and its library link atomically."""
+        with transaction.atomic():
+            crop = super().create(validated_data)
+            promote_fields = self._promotable_species_invariant_fields
+            crop._auto_general_crop = ensure_general_crop_for_variety(
+                crop,
+                copy_values=copy_values_to_crop,
+                promote_fields=promote_fields,
+            )
+            if crop._auto_general_crop is not None:
+                clear_species_invariant_overrides(crop, fields=promote_fields)
+            if link_public_crop is not None:
+                # An empty decision: the form already holds the values the
+                # user chose, so nothing is pulled and the entry's version
+                # becomes the baseline (see link_project_crop_to_public_reference).
+                link_project_crop_to_public_reference(
+                    crop=crop, public_crop=link_public_crop, pull_fields=[],
+                )
         return crop
 
     def update(self, instance, validated_data):
@@ -926,6 +958,13 @@ class CropSerializer(serializers.ModelSerializer):
                     package_data.pop('crop', None)
                     package_data.setdefault('project', crop.project)
                     SeedPackage.objects.create(crop=crop, **package_data)
+
+    def validate_link_public_crop(self, value: PublicCrop | None) -> PublicCrop | None:
+        if value is not None and self.instance is not None:
+            raise serializers.ValidationError(
+                'Only a new crop can be linked here; use link-public-crop for an existing one.',
+            )
+        return value
 
     def validate_origin_type(self, value):
         if value in {None, ''}:

@@ -572,6 +572,50 @@ describe('Crops save payload', () => {
     expect(varietyPayload.copy_values_to_crop).toBe(true);
   });
 
+  it('creates the library link on the general Kultur and lets the first variety inherit its values', async () => {
+    listMock
+      .mockResolvedValueOnce({ data: { count: 0, next: null, previous: null, results: [] } })
+      .mockResolvedValueOnce({ data: { count: 0, next: null, previous: null, results: [] } });
+    createMock
+      .mockResolvedValueOnce({ data: { id: 2, name: 'Tomate', variety: '', crop_species: 7 } })
+      .mockResolvedValueOnce({ data: { id: 3, name: 'Tomate', variety: 'Nova' } });
+    saveCropMock.mockReturnValue({
+      name: 'Tomate',
+      variety: '',
+      crop_species: 7,
+      link_public_crop: 40,
+      growth_duration_days: 80,
+      harvest_duration_days: 21,
+    } as Crop);
+    saveFirstVarietyMock.mockReturnValueOnce({
+      name: 'Nova',
+      libraryLinkValues: { growth_duration_days: 80, harvest_duration_days: 30 },
+    });
+
+    render(
+      <MemoryRouter>
+        <FocusManagerProvider><CommandProvider>
+          <Crops />
+        </CommandProvider></FocusManagerProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Kultur hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'submit-edit' }));
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(2));
+    const cropPayload = createMock.mock.calls[0][0] as Record<string, unknown>;
+    const varietyPayload = createMock.mock.calls[1][0] as Record<string, unknown>;
+    expect(cropPayload.link_public_crop).toBe(40);
+    expect(cropPayload.growth_duration_days).toBe(80);
+    expect(cropPayload.harvest_duration_days).toBe(30);
+    expect(varietyPayload.link_public_crop).toBeUndefined();
+    // A value equal to the library's is inherited from the Kultur, not copied.
+    expect(varietyPayload.growth_duration_days).toBeUndefined();
+    // A value the user kept as their own stays on the Sorte.
+    expect(varietyPayload.harvest_duration_days).toBe(21);
+  });
+
   it('creates only the first variety when the crop name already exists', async () => {
     listMock
       .mockResolvedValueOnce({

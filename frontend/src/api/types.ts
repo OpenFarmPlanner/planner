@@ -102,6 +102,8 @@ export type SeedRequirements = Partial<Record<CultivationType, SeedRequirementEn
 export interface Crop {
   /** Explicitly seed empty general-crop fields when creating this variety. */
   copy_values_to_crop?: boolean;
+  /** Create only: link the new crop to this published library entry in the same request. */
+  link_public_crop?: number | null;
   source_public_crop?: number | null;
   /** Provenance: the entry this crop was imported from or linked to; survives an unlink. */
   derived_from_public_crop?: number | null;
