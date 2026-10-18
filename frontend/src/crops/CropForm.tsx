@@ -70,7 +70,7 @@ import {
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
 import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
-import { metersToRoundedCentimeters } from '../utils/measurementConversion';
+import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { buildVarietyFieldTooltipTitle, type GetVarietyFieldTooltipProps } from './varietyFieldTooltipHelpers';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { PublicCropSyncPanel } from './PublicCropSyncPanel';
@@ -268,7 +268,9 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   expected_yield: publicCrop.expected_yield ?? undefined,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
   row_spacing_cm: metersToRoundedCentimeters(publicCrop.row_spacing_m),
-  sowing_depth_cm: metersToRoundedCentimeters(publicCrop.sowing_depth_m),
+  // The only spacing field that takes decimals; rounding it would make a
+  // freshly linked crop differ from its entry.
+  sowing_depth_cm: metersToCentimeters(publicCrop.sowing_depth_m),
   seed_rate_value: publicCrop.seed_rate_value ?? null,
   seed_rate_unit: publicCrop.seed_rate_unit ?? null,
   seed_rate_by_cultivation: publicCrop.seed_rate_by_cultivation ?? null,

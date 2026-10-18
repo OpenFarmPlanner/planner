@@ -293,6 +293,21 @@ describe('CropForm library autocomplete (real BasicInfoSection)', () => {
       expect(onSave.mock.calls[0][0].source_public_crop).toBeFalsy();
     });
 
+    // Regression: a linked crop showed "Bibliothek aktualisieren" right after
+    // creation because the sowing depth was rounded to whole centimetres.
+    it('takes a fractional sowing depth from the entry unrounded', async () => {
+      mockLibrary([{ ...GENERAL_TOMATO, sowing_depth_m: 0.015 } as PublicCrop, MONEYMAKER]);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+
+      render(<CropForm formKind="crop" onSave={onSave} onCancel={() => {}} />);
+      fireEvent.click(await typeMatchingName());
+      await screen.findByText('form.publicCropLinkedHint');
+      fireEvent.click(screen.getByRole('button', { name: 'form.create' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0].sowing_depth_cm).toBe(1.5);
+    });
+
     // Regression: the old "Werte übernehmen" button was offered for every
     // name match, but for a match it could not apply (no general entry of the
     // species, or a legacy entry without a species) clicking it did nothing.

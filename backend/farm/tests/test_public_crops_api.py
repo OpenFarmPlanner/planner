@@ -38,6 +38,7 @@ from farm.services.crop_inheritance import get_general_crop
 from farm.services.public_crops import (
     has_pending_public_crop_update,
     link_project_crop_to_public_reference,
+    public_crop_update_changes,
 )
 from farm.tests.api_base import User
 from notifications.models import Notification
@@ -1265,6 +1266,32 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(crop.growth_duration_days, 100)
         self.assertEqual(crop.source_public_version, entry.version)
         self.assertTrue(crop.is_modified_from_source)
+
+    def test_create_with_link_public_crop_matches_an_entry_with_a_unit_only_seed_rate(self):
+        # Regression: the form drops a seed_rate_unit without a seed rate on
+        # save, and a sowing depth of 1.5 cm must survive the round trip; both
+        # made a freshly linked crop offer "Bibliothek aktualisieren" at once.
+        entry = self._foreign_general_entry(
+            'Schwarzwurzel',
+            cultivation_type='direct_sowing',
+            cultivation_types=['direct_sowing'],
+            sowing_depth_m=0.015,
+            seed_rate_unit='g_per_m2',
+        )
+
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Schwarzwurzel',
+            'cultivation_type': 'direct_sowing',
+            'cultivation_types': ['direct_sowing'],
+            'sowing_depth_cm': 1.5,
+            'seed_rate_unit': None,
+            'link_public_crop': entry.id,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        crop = Crop.objects.get(pk=response.data['id'])
+        self.assertFalse(crop.is_modified_from_source)
+        self.assertEqual(public_crop_update_changes(crop), [])
 
     def test_create_with_unpublished_link_public_crop_is_rejected_without_creating(self):
         entry = self._foreign_general_entry('Rucola')

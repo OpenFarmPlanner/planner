@@ -322,6 +322,18 @@ def _copy_fields(instance: Any) -> dict[str, Any]:
     return payload
 
 
+def _comparable_copy_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """``payload`` as compared between a crop and an entry, never as written.
+
+    A ``seed_rate_unit`` without any seed rate carries no information. The crop
+    form drops such a unit on save, while an entry can still hold one, so it
+    would otherwise read as a difference no sync can resolve.
+    """
+    if payload.get('seed_rate_value') is None and not payload.get('seed_rate_by_cultivation'):
+        return {**payload, 'seed_rate_unit': None}
+    return payload
+
+
 def _resolved_copy_fields(
     crop: Crop,
     index: GeneralCropIndex | None = None,
@@ -1272,8 +1284,8 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     dropped when the entry is species-level: a specific Sorte linked to the
     general entry is an inherent granularity difference, not a local edit.
     """
-    local = _resolved_copy_fields(local_crop)
-    remote = _copy_fields(entry)
+    local = _comparable_copy_fields(_resolved_copy_fields(local_crop))
+    remote = _comparable_copy_fields(_copy_fields(entry))
     fields = _compared_public_update_fields(local_crop)
     if not (entry.variety or '').strip():
         fields = [field for field in fields if field != 'variety']
@@ -2799,8 +2811,8 @@ def public_crop_field_changes(
     serializer rendering that entry's rows) compares without dereferencing
     ``crop.source_public_crop`` once per row.
     """
-    local = _resolved_copy_fields(crop, index)
-    remote = _copy_fields(public_crop)
+    local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
+    remote = _comparable_copy_fields(_copy_fields(public_crop))
     return [
         (field, local[field], remote[field])
         for field in _compared_public_update_fields(crop)
@@ -2937,7 +2949,10 @@ def resolve_public_publish_block(
             return 'no_local_changes'
         return None
 
-    if _resolved_copy_fields(crop, index) == _copy_fields(owned_public_crop):
+    if (
+        _comparable_copy_fields(_resolved_copy_fields(crop, index))
+        == _comparable_copy_fields(_copy_fields(owned_public_crop))
+    ):
         return 'no_local_changes'
     return None
 
