@@ -37,6 +37,11 @@ interface PublicCropSyncPanelProps {
   requiresModeration: boolean;
   loadError?: string;
   disabled?: boolean;
+  /**
+   * The crop does not exist yet (link on create): "mine" keeps the value in
+   * the new crop instead of writing it into the entry right away.
+   */
+  keepMineLocally?: boolean;
 }
 
 /** Fields whose value is free-form Markdown and may need a collapse toggle when long. */
@@ -399,6 +404,7 @@ export function PublicCropSyncPanel({
   requiresModeration,
   loadError,
   disabled = false,
+  keepMineLocally = false,
 }: PublicCropSyncPanelProps) {
   const { t } = useTranslation(['crops', 'common']);
 
@@ -421,11 +427,12 @@ export function PublicCropSyncPanel({
   const setChoice = (field: string, choice: PublicCropSyncChoice) => {
     onChoicesChange({ ...choices, [field]: choice });
   };
+  const mineSummaryKey = keepMineLocally
+    ? 'library.sync.summaryKeep'
+    : (requiresModeration ? 'library.sync.summaryPropose' : 'library.sync.summaryPush');
   const summaryParts = [
     pullFields.length ? t('library.sync.summaryPull', { count: pullFields.length }) : null,
-    pushFields.length
-      ? t(requiresModeration ? 'library.sync.summaryPropose' : 'library.sync.summaryPush', { count: pushFields.length })
-      : null,
+    pushFields.length ? t(mineSummaryKey, { count: pushFields.length }) : null,
   ].filter((part): part is string => part !== null);
   const summary = summaryParts.length === 2
     ? t('library.sync.summaryBoth', { pull: summaryParts[0], push: summaryParts[1] })
