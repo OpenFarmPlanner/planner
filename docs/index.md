@@ -89,8 +89,8 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   local configuration, and the infrastructure work deferred to Part B.
 - **[Internationalization (i18n)](./i18n.md)** — supported languages, how the
   UI language is resolved and stored, the crop-library translation model and
-  its fallback rules, cross-language search and duplicate detection, and the
-  data-migration assumptions.
+  its fallback rules, cross-language search and duplicate detection, the
+  language of emails to users, and the data-migration assumptions.
 - **[International Public Crop Library Data Model](./public-crop-library-data-model.md)** — the
   language-independent species/variety architecture, translation
   strategy, attribute inheritance, and incremental migration plan.

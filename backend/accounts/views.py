@@ -20,7 +20,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from config.languages import UI_LANGUAGE_AUTO
+from config.languages import UI_LANGUAGE_AUTO, normalize_language_tag, resolve_email_language
 from config.responses import api_error_response
 from farm.services.demo_project import resolve_demo_request_language
 
@@ -200,12 +200,14 @@ class RegisterView(RegistrationAlertMixin, APIView):
 
         serializer = RegisterSerializer(data=request.data)
         _validate_serializer_in_german(serializer)
-        user = serializer.save()
+        # The guest's resolved UI language becomes the new account's
+        # preference, like a guest choice is promoted on sign-in.
+        user = serializer.save(ui_language=normalize_language_tag(request.query_params.get('language')))
         if client_ip:
             record_registration_success(client_ip)
         _set_activation_expiry(user)
         try:
-            _send_activation_email(user)
+            _send_activation_email(user, language=resolve_email_language(recipient=user, request=request))
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 'Failed to send activation email after registration',
@@ -455,7 +457,11 @@ class AccountEmailChangeRequestView(APIView):
         )
 
         try:
-            _send_email_change_confirmation_email(request.user, email_change_request)
+            _send_email_change_confirmation_email(
+                request.user,
+                email_change_request,
+                language=resolve_email_language(recipient=request.user, request=request),
+            )
         except Exception:  # noqa: BLE001
             logger.exception(
                 'Failed to send email change confirmation',
@@ -701,7 +707,7 @@ class ResendActivationView(RegistrationAlertMixin, APIView):
         if user is not None and not user.is_active:
             _set_activation_expiry(user)
             try:
-                _send_activation_email(user)
+                _send_activation_email(user, language=resolve_email_language(recipient=user, request=request))
             except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     'Failed to resend activation email',
@@ -756,7 +762,7 @@ class PasswordResetRequestView(APIView):
         user = User.objects.filter(email__iexact=email, is_active=True).first()
         if user is not None:
             try:
-                _send_password_reset_email(user)
+                _send_password_reset_email(user, language=resolve_email_language(recipient=user, request=request))
             except Exception:  # noqa: BLE001
                 logger.exception(
                     'Failed to send password reset email',

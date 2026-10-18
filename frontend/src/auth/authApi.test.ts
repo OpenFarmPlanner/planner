@@ -497,9 +497,9 @@ describe('auth endpoints', () => {
       { current_password: 'alt', new_password: 'neu', new_password_confirm: 'neu' }],
     ['restoreAccount', () => restoreAccount('a@b.de', 'pw'), '/auth/account/restore/', 'POST',
       { email: 'a@b.de', password: 'pw' }],
-    ['resendActivation', () => resendActivation('a@b.de'), '/auth/resend-activation/', 'POST',
+    ['resendActivation', () => resendActivation('a@b.de'), '/auth/resend-activation/?language=en', 'POST',
       { email: 'a@b.de' }],
-    ['requestPasswordReset', () => requestPasswordReset('a@b.de'), '/auth/password-reset/', 'POST',
+    ['requestPasswordReset', () => requestPasswordReset('a@b.de'), '/auth/password-reset/?language=en', 'POST',
       { email: 'a@b.de' }],
     ['confirmPasswordReset', () => confirmPasswordReset('u1', 'tok', 'neu', 'neu'),
       '/auth/password-reset-confirm/', 'POST',
@@ -509,6 +509,7 @@ describe('auth endpoints', () => {
   ];
 
   it.each(cases)('%s posts the right path, method and payload', async (_name, call, path, method, body) => {
+    await i18n.changeLanguage('en');
     const fetchMock = installOkFetch();
 
     await call();
@@ -571,6 +572,21 @@ describe('auth endpoints', () => {
     await register('a@b.de', 'pw', 'pw', '', '', 'token-123');
 
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ turnstile_token: 'token-123' });
+  });
+
+  it.each([
+    ['register', () => register('a@b.de', 'pw', 'pw'), '/auth/register/'],
+    ['resendActivation', () => resendActivation('a@b.de'), '/auth/resend-activation/'],
+    ['requestPasswordReset', () => requestPasswordReset('a@b.de'), '/auth/password-reset/'],
+  ] as const)('%s sends the current UI language so the email matches it', async (_name, call, path) => {
+    for (const language of ['de', 'en']) {
+      await i18n.changeLanguage(language);
+      const fetchMock = installOkFetch();
+
+      await call();
+
+      expect(String(fetchMock.mock.calls[1]?.[0])).toMatch(new RegExp(`${path}\\?language=${language}$`));
+    }
   });
 
   it('forwards a non-empty honeypot value untouched', async () => {

@@ -1,4 +1,5 @@
 import http from './httpClient';
+import { getCurrentUiLanguage } from '../i18n';
 import type {
   ApiToken,
   ApiTokenCreatePayload,
@@ -541,7 +542,9 @@ export const projectAPI = {
   permanentDelete: (projectId: number) =>
     http.delete(`/projects/${projectId}/permanent/`),
   invite: (projectId: number, data: { email: string; role: 'admin' | 'member' }) =>
-    http.post(`/projects/${projectId}/invitations/`, data),
+    // The invitee without an explicit account language gets the email in the
+    // inviter's current UI language (docs/i18n.md, "E-Mails").
+    http.post(`/projects/${projectId}/invitations/`, data, { params: { language: getCurrentUiLanguage() } }),
   listMembers: (projectId: number) =>
     http.get<ProjectMemberPayload[]>(`/projects/${projectId}/members/`),
   updateMember: (projectId: number, membershipId: number, role: 'admin' | 'member') =>

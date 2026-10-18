@@ -1,0 +1,17 @@
+{% autoescape off %}Hello,
+
+you have just created an account with OpenFarmPlanner.
+
+Please confirm your registration using the following link:
+
+{{ activation_link }}
+
+OpenFarmPlanner is an open source web application for planning vegetable growing.
+
+If you did not create an account, you can ignore this email.
+
+Contact:
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

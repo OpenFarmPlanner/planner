@@ -8,6 +8,10 @@
 - All API responses and application logs must be in English.
 - All explanations, summaries, and code-related output from AI agents must be in English.
 - UI text must remain in German and must be handled through i18n resources.
+- Emails to users are written in the recipient's language from per-language
+  template files under `backend/accounts/templates/accounts/emails/<code>/`;
+  a new language must ship all of them. Details:
+  [`docs/i18n.md`](docs/i18n.md#8-e-mails).
 - Do not mix German and English within code.
 
 ## Engineering Safety Rules

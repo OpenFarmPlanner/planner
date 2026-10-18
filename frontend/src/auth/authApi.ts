@@ -1,5 +1,5 @@
 import type { AccountActionResponse, AccountDeleteResponse, AuthUser, MeResponse, ProjectSwitchResponse } from './types';
-import i18n from '../i18n';
+import i18n, { getCurrentUiLanguage } from '../i18n';
 import { computeBaseURL } from '../api/httpClient';
 import { GUEST_DEMO_RESTRICTED_CODE } from '../api/errors';
 import { readCookie } from '../utils/cookies';
@@ -280,6 +280,14 @@ export interface RegisterResponse {
   sender_email?: string;
 }
 
+/**
+ * Append the current UI language to an endpoint that sends an email, so the
+ * backend can write it in the language the user sees (docs/i18n.md, "E-Mails").
+ */
+function withEmailLanguage(path: string): string {
+  return `${path}?language=${encodeURIComponent(getCurrentUiLanguage())}`;
+}
+
 export async function register(
   email: string,
   password: string,
@@ -293,7 +301,7 @@ export async function register(
   turnstileToken = '',
 ): Promise<RegisterResponse> {
   await ensureCsrfCookie();
-  return request<RegisterResponse>('/auth/register/', {
+  return request<RegisterResponse>(withEmailLanguage('/auth/register/'), {
     method: 'POST',
     headers: csrfHeader(),
     body: JSON.stringify({
@@ -465,7 +473,7 @@ export interface ResendActivationResponse {
 
 export async function resendActivation(email: string): Promise<ResendActivationResponse> {
   await ensureCsrfCookie();
-  return request<ResendActivationResponse>('/auth/resend-activation/', {
+  return request<ResendActivationResponse>(withEmailLanguage('/auth/resend-activation/'), {
     method: 'POST',
     headers: csrfHeader(),
     body: JSON.stringify({ email }),
@@ -474,7 +482,7 @@ export async function resendActivation(email: string): Promise<ResendActivationR
 
 export async function requestPasswordReset(email: string): Promise<{ detail: string }> {
   await ensureCsrfCookie();
-  return request<{ detail: string }>('/auth/password-reset/', {
+  return request<{ detail: string }>(withEmailLanguage('/auth/password-reset/'), {
     method: 'POST',
     headers: csrfHeader(),
     body: JSON.stringify({ email }),

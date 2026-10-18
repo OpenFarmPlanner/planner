@@ -1,10 +1,10 @@
-Hallo,
+{% autoescape off %}Hallo,
 
 du hast gerade ein Konto bei OpenFarmPlanner erstellt.
 
 Bitte bestätige deine Registrierung über den folgenden Link:
 
-{{ activation_link|safe }}
+{{ activation_link }}
 
 OpenFarmPlanner ist eine Open-Source-Webanwendung für die Planung von Gemüseanbau.
 
@@ -14,3 +14,4 @@ Kontakt:
 {{ contact_email }}
 
 {{ project_website }}
+{% endautoescape %}

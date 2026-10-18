@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import i18n from '../i18n/config';
+
 const { getMock, postMock, putMock, patchMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
@@ -561,6 +563,16 @@ describe('untested endpoint groups', () => {
     // Omitting the key would leave the previous selection in place.
     seedDemandAPI.saveSupplierSelection(4, null);
     expect(postMock).toHaveBeenCalledWith('/seed-demand/', { crop_id: 4, supplier_id: null });
+  });
+
+  it('sends the current UI language with an invitation so the email matches it', async () => {
+    await i18n.changeLanguage('de');
+    projectAPI.invite(2, { email: 'a@b.de', role: 'member' });
+    expect(postMock).toHaveBeenCalledWith(
+      '/projects/2/invitations/',
+      { email: 'a@b.de', role: 'member' },
+      { params: { language: 'de' } },
+    );
   });
 
   it('lists deleted projects through a query flag on the normal endpoint', () => {

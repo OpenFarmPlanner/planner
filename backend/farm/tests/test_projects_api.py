@@ -443,6 +443,57 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(second.data['code'], 'invitation_resent')
         self.assertEqual(ProjectInvitation.objects.filter(project=self.project, email_normalized='invitee@example.com', status='pending').count(), 1)
 
+    def _invite_and_capture_mail(self, email: str, *, query: str = '', role: str = 'member') -> tuple[str, str]:
+        """Invite through the API and return the (subject, body) handed to send_mail.
+
+        The invitation sender skips delivery on the locmem test backend, so
+        the outgoing mail is captured at ``send_mail``.
+        """
+        with (
+            override_settings(EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'),
+            patch('farm.projects.emails.send_mail', return_value=1) as mocked_send_mail,
+        ):
+            response = self.client.post(
+                f'/openfarmplanner/api/projects/{self.project.id}/invitations/{query}',
+                {'email': email, 'role': role},
+                format='json',
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data['mail_sent'])
+        subject, body, _sender, recipients = mocked_send_mail.call_args.args
+        self.assertEqual(recipients, [email])
+        return subject, body
+
+    def test_invitation_email_uses_invitee_explicit_account_language(self) -> None:
+        UserProjectSettings.objects.create(user=self.invitee, ui_language='en')
+
+        subject, body = self._invite_and_capture_mail('invitee@example.com', query='?language=de')
+
+        self.assertEqual(subject, 'Invitation to OpenFarmPlanner: P1')
+        self.assertIn('Role: Member', body)
+        self.assertIn('/invite/accept?token=', body)
+
+    def test_invitation_email_without_account_uses_inviter_language(self) -> None:
+        subject, body = self._invite_and_capture_mail('stranger@example.com', query='?language=de', role='admin')
+
+        self.assertEqual(subject, 'Einladung zu OpenFarmPlanner: P1')
+        self.assertIn('Rolle: Admin', body)
+        self.assertNotIn('Rolle: admin', body)
+
+    def test_invitation_email_for_auto_invitee_uses_inviter_stored_language(self) -> None:
+        UserProjectSettings.objects.create(user=self.invitee, ui_language='auto')
+        UserProjectSettings.objects.filter(user=self.user).update(ui_language='de')
+
+        subject, body = self._invite_and_capture_mail('invitee@example.com')
+
+        self.assertEqual(subject, 'Einladung zu OpenFarmPlanner: P1')
+        self.assertIn('Rolle: Mitglied', body)
+
+    def test_invitation_email_without_any_language_hint_is_english(self) -> None:
+        subject, _body = self._invite_and_capture_mail('stranger@example.com')
+
+        self.assertEqual(subject, 'Invitation to OpenFarmPlanner: P1')
+
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
     def test_invitation_returns_mail_not_sent_on_console_backend(self) -> None:
         response = self.client.post(

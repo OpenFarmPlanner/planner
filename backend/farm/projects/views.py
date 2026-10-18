@@ -35,7 +35,7 @@ from farm.services.project_invitations import (
     store_pending_invitation_token,
 )
 
-from .emails import _send_project_invitation_email
+from .emails import _send_project_invitation_email, resolve_invitation_email_language
 from .serializers import (
     InvitationTokenSerializer,
     ProjectInvitationSerializer,
@@ -380,6 +380,7 @@ class ProjectInvitationView(APIView):
             invitation=invitation,
             project_name=project.name,
             invited_by=request.user,
+            language=resolve_invitation_email_language(invitation=invitation, request=request),
         )
 
         payload = ProjectInvitationSerializer(invitation).data

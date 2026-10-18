@@ -17,7 +17,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { FALLBACK_LANGUAGE, resolveInitialLanguage } from './languages';
+import { FALLBACK_LANGUAGE, normalizeLanguageTag, resolveInitialLanguage, type SupportedLanguage } from './languages';
 import { getRouteLanguage } from './routeLanguage';
 
 // Import translation files
@@ -146,5 +146,14 @@ function applyDocumentLanguage(language: string): void {
 
 applyDocumentLanguage(i18n.resolvedLanguage ?? i18n.language ?? FALLBACK_LANGUAGE);
 i18n.on('languageChanged', applyDocumentLanguage);
+
+/**
+ * The UI language currently rendered. Requests that make the backend email
+ * someone send it as `?language=`, so the email matches what the user sees
+ * (docs/i18n.md, "E-Mails").
+ */
+export function getCurrentUiLanguage(): SupportedLanguage {
+  return normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE;
+}
 
 export default i18n;
