@@ -123,7 +123,10 @@ body width live in `MuiCssBaseline` so they can consume theme tokens.
 render itself, so it cannot be expressed as `sx`; the wrapper's own box model
 lives on `<Box>` in `GanttChart.tsx`. `.gantt-container-wrapper` survives
 purely as the scoping hook for these rules and as the selector the Gantt e2e
-specs use.
+specs use. The exception is a rule that needs a theme colour: those go into
+that `<Box>`'s `sx` as a descendant selector (e.g. the clickable tree row's
+`action.hover` background and `primary.main` focus ring), so they still read
+the palette instead of adding another hand-synced literal here.
 
 This file also sets the library's `--rmg-primary-color`, `--rmg-task-color`
 and `--rmg-hover-color`. Those three are the only colour literals that are

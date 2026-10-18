@@ -234,10 +234,14 @@
 }
 
 /* "Weitere Aktionen" affordance (shared ContextMenuIndicator component) —
-   invisible until the row is hovered/focused. On touch devices it stays
-   hidden at all times; a long press opens the context menu directly. */
+   invisible until the row is hovered/keyboard-focused. On touch devices it
+   stays hidden at all times; a long press opens the context menu directly.
+   :focus-visible rather than :focus-within, because a toggleable tree row is
+   itself focusable and a tap or click on it must not leave the indicator
+   covering the row's name. */
 .rmg-task-group:hover .ofp-context-menu-indicator,
-.rmg-task-group:focus-within .ofp-context-menu-indicator {
+.rmg-task-group:focus-visible .ofp-context-menu-indicator,
+.rmg-task-group:has(:focus-visible) .ofp-context-menu-indicator {
   opacity: 1;
   pointer-events: auto;
 }
@@ -258,6 +262,22 @@
 .rmg-task-group-tree-row {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+/* Tree rows only advertise a click when they do something: expandable rows
+   toggle on click, leaf rows (e.g. beds) stay inert unless the host passes
+   onGroupClick. */
+.rmg-task-group-tree-row {
+  cursor: default;
+}
+
+.rmg-task-group-tree-row[data-clickable="true"] {
+  cursor: pointer;
+}
+
+.rmg-task-group-tree-row:focus-visible {
+  outline: 2px solid var(--rmg-primary-color, var(--rmg-blue-500));
+  outline-offset: -2px;
 }
 
 /* Dezent row highlight when the corresponding timeline bar is hovered

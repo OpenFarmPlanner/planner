@@ -1728,6 +1728,14 @@ function GanttChartPage() {
               borderColor: 'surface.surfaceSoftBorder',
               borderRadius: 2,
               bgcolor: 'surface.surfaceBackground',
+              '& .rmg-task-group-tree-row[data-clickable="true"]:hover': {
+                bgcolor: 'action.hover',
+              },
+              '& .rmg-task-group-tree-row:focus-visible': {
+                outline: '2px solid',
+                outlineColor: 'primary.main',
+                outlineOffset: -2,
+              },
             }}
           >
             <Box

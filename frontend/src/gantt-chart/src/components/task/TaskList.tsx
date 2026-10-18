@@ -74,9 +74,23 @@ const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
-  const handleChevronClick = (event: React.MouseEvent, groupId: string) => {
-    event.stopPropagation();
-    onToggleGroupExpand?.(groupId);
+  const canToggleGroup = (group: TaskGroup) => Boolean(group.isExpandable && onToggleGroupExpand);
+
+  // A toggleable tree row is one big expand/collapse target: clicking
+  // anywhere on it (the chevron is only a visual hint) or pressing
+  // Enter/Space while it is focused flips its expansion state.
+  const handleTreeRowClick = (group: TaskGroup) => {
+    handleGroupClick(group);
+    if (canToggleGroup(group)) {
+      onToggleGroupExpand?.(group.id);
+    }
+  };
+
+  const handleTreeRowKeyDown = (event: React.KeyboardEvent, group: TaskGroup) => {
+    if (event.target !== event.currentTarget || !canToggleGroup(group)) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onToggleGroupExpand?.(group.id);
   };
 
   // Only one row can be pressed at a time, so a single long-press timer
@@ -141,13 +155,19 @@ const TaskList: React.FC<TaskListProps> = ({
           const depth = taskGroup.depth ?? 0;
           const isExpanded = Boolean(taskGroup.isExpanded);
           const displayName = taskGroup.name || "Unnamed";
+          const isToggleable = canToggleGroup(taskGroup);
+          const isClickable = isToggleable || Boolean(onGroupClick);
 
           return (
             <div
               key={`task-group-${taskGroup.id || "unknown"}`}
               className="rmg-task-group rmg-task-group-tree-row"
               style={{ minHeight: `${groupHeight}px` }}
-              onClick={() => handleGroupClick(taskGroup)}
+              onClick={() => handleTreeRowClick(taskGroup)}
+              onKeyDown={isToggleable ? (event) => handleTreeRowKeyDown(event, taskGroup) : undefined}
+              role={isToggleable ? "button" : undefined}
+              tabIndex={isToggleable ? 0 : undefined}
+              aria-expanded={isToggleable ? isExpanded : undefined}
               onContextMenu={
                 onGroupContextMenu ? (event) => onGroupContextMenu(event, taskGroup) : undefined
               }
@@ -159,6 +179,7 @@ const TaskList: React.FC<TaskListProps> = ({
               data-group-id={taskGroup.id}
               data-depth={depth}
               data-expanded={taskGroup.isExpandable ? isExpanded : undefined}
+              data-clickable={isClickable ? "true" : undefined}
               data-hover-linked={hoveredGroupId === taskGroup.id ? "true" : undefined}
               data-long-pressing={isLongPressing && pressedGroupId === taskGroup.id ? "true" : undefined}
             >
@@ -167,16 +188,13 @@ const TaskList: React.FC<TaskListProps> = ({
                 style={{ paddingLeft: `${depth * TREE_INDENT_PX}px` }}
               >
                 {taskGroup.isExpandable ? (
-                  <button
-                    type="button"
+                  <span
                     className="rmg-task-group-chevron"
-                    onClick={(event) => handleChevronClick(event, taskGroup.id)}
-                    aria-expanded={isExpanded}
-                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                    aria-hidden="true"
                     data-rmg-component="task-group-chevron"
                   >
                     <ChevronIcon expanded={isExpanded} />
-                  </button>
+                  </span>
                 ) : (
                   <span className="rmg-task-group-chevron-spacer" aria-hidden="true" />
                 )}
