@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import i18n from '../i18n';
 import {
   buildFieldOccupancyHierarchy,
   buildFieldOccupancyTaskGroups,
   buildSeedlingTaskGroups,
   buildSeedlingTooltipDetails,
+  createGanttTaskLabels,
   formatCropDisplayLabel,
   getOccupancyCalendarRange,
   getOccupancyTaskPhase,
@@ -13,6 +15,7 @@ import {
 const locations = [{ id: 1, name: 'Hof' }];
 const fields = [{ id: 10, name: 'Nordfeld', location: 1 }];
 const beds = [{ id: 100, name: 'Beet A', field: 10 }];
+const labels = createGanttTaskLabels(i18n.getFixedT('de'));
 
 describe('getOccupancyTaskPhase', () => {
   it('identifies growth tasks by id suffix', () => {
@@ -113,6 +116,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('builds propagation windows grouped by crop', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -156,6 +160,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('builds a propagation window from timing a Sorte inherits from its general Kultur', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -194,6 +199,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('aggregates seedling requirements by crop, start date and transplant date independent of beds', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations: [
         { id: 1, name: 'Hof' },
         { id: 2, name: 'Pacht' },
@@ -268,6 +274,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('falls back to planting plan payload when the crop list is incomplete', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -296,6 +303,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('prefers localized planting plan crop names in seedling labels', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -330,6 +338,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('ignores direct sowings and incomplete propagation data', () => {
     const groups = buildSeedlingTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -372,6 +381,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('shows variety in occupancy task labels', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -397,6 +407,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('prefers localized planting plan crop names in occupancy labels', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -424,6 +435,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('omits location level in occupancy hierarchy when only one used location exists', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -449,6 +461,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('includes location level in occupancy hierarchy when multiple used locations exist', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations: [
         { id: 1, name: 'Hof' },
         { id: 2, name: 'Pacht' },
@@ -495,6 +508,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('shows variety in occupancy harvest labels', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -521,6 +535,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('keeps the original plan note in growth and harvest tooltips', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -545,6 +560,7 @@ describe('buildSeedlingTaskGroups', () => {
 
   it('keeps the growth task but omits the harvest period without a computed harvest end date', () => {
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -591,6 +607,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('always builds a location node and a field node, even for a single location', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations,
       fields,
       beds,
@@ -608,6 +625,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('includes beds without any planting plan as empty leaf nodes', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations,
       fields,
       beds,
@@ -623,6 +641,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('sets parentId references forming a Standort -> Parzelle -> Beet chain', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations: multiLocationLocations,
       fields: multiLocationFields,
       beds: multiLocationBeds,
@@ -641,6 +660,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('aggregates bed/occupied-bed/plan counts up through field and location nodes', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations: multiLocationLocations,
       fields: multiLocationFields,
       beds: multiLocationBeds,
@@ -682,6 +702,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('builds growth and harvest tasks for occupied beds the same way as buildFieldOccupancyTaskGroups', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations,
       fields,
       beds,
@@ -708,6 +729,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('prefers localized planting plan crop names in hierarchy task labels', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations,
       fields,
       beds,
@@ -734,6 +756,7 @@ describe('buildFieldOccupancyHierarchy', () => {
 
   it('returns an empty list when there are no locations', () => {
     const nodes = buildFieldOccupancyHierarchy({
+      labels,
       locations: [],
       fields,
       beds,
@@ -747,6 +770,7 @@ describe('buildFieldOccupancyHierarchy', () => {
   it('renders growth and harvest phase colors without alpha blending', () => {
     const baseColor = '#93c5fd';
     const groups = buildFieldOccupancyTaskGroups({
+      labels,
       locations,
       fields,
       beds,
@@ -774,5 +798,49 @@ describe('buildFieldOccupancyHierarchy', () => {
     expect(growthTask.color).not.toBe(baseColor);
     expect(growthTask.color).not.toBe(harvestTask.color);
     expect(harvestTask.color).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});
+
+describe('createGanttTaskLabels', () => {
+  const plan = {
+    id: 21,
+    crop: 42,
+    crop_name: 'Salat',
+    bed: 100,
+    planting_date: '2026-03-01',
+    harvest_date: '2026-04-15',
+    harvest_end_date: '2026-04-30',
+  };
+
+  it.each([
+    ['de', 'Salat (Ernte)'],
+    ['en', 'Salat (harvest)'],
+    ['fr', 'Salat (récolte)'],
+    ['es', 'Salat (cosecha)'],
+  ])('names the harvest task in %s', (language, expectedName) => {
+    const groups = buildFieldOccupancyTaskGroups({
+      labels: createGanttTaskLabels(i18n.getFixedT(language)),
+      locations,
+      fields,
+      beds,
+      crops: [],
+      plantingPlans: [plan],
+    });
+
+    expect(groups[0].tasks[1].name).toBe(expectedName);
+  });
+
+  it('falls back to a localized crop name when the plan carries none', () => {
+    const groups = buildFieldOccupancyTaskGroups({
+      labels: createGanttTaskLabels(i18n.getFixedT('fr')),
+      locations,
+      fields,
+      beds,
+      crops: [],
+      plantingPlans: [{ ...plan, crop_name: undefined }],
+    });
+
+    expect(groups[0].tasks[0].name).toBe('Culture 42');
+    expect(groups[0].tasks[1].name).toBe('Culture 42 (récolte)');
   });
 });

@@ -199,5 +199,9 @@
     "editLocation": "Standort bearbeiten",
     "addPlan": "Anbauplan hinzufügen",
     "confirmDeletePlan": "Diesen Anbauplan wirklich löschen?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (Ernte)",
+    "unknownCrop": "Kultur {{id}}"
   }
 }

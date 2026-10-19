@@ -91,6 +91,7 @@ import { formatDateToAPI } from '../utils/isoDate';
 import {
   buildOccupancyTooltipDetails,
   buildSeedlingTaskGroups,
+  createGanttTaskLabels,
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
   formatPlantCount,
@@ -682,6 +683,7 @@ function GanttChartPage() {
     toggleHierarchyExpand(groupId);
   }, [toggleHierarchyExpand]);
 
+  const ganttTaskLabels = useMemo(() => createGanttTaskLabels(t), [t]);
   const seedlingTaskGroups = useMemo<GanttTaskGroup[]>(() => {
     const allGroups = buildSeedlingTaskGroups({
       locations: [],
@@ -689,6 +691,7 @@ function GanttChartPage() {
       beds: [],
       plantingPlans,
       crops,
+      labels: ganttTaskLabels,
     });
 
     const normalizedSearch = seedlingSearchText.trim().toLowerCase();
@@ -699,7 +702,7 @@ function GanttChartPage() {
     return allGroups.filter((group) => (
       (group.name || '').toLowerCase().includes(normalizedSearch)
     ));
-  }, [crops, plantingPlans, seedlingSearchText]);
+  }, [crops, ganttTaskLabels, plantingPlans, seedlingSearchText]);
 
   const resolvedLocale = useMemo(
     () => resolveLocaleFromLanguage(i18n.resolvedLanguage || i18n.language || 'de'),

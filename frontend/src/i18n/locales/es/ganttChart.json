@@ -202,5 +202,9 @@
     "editLocation": "Editar ubicación",
     "addPlan": "Añadir plan de cultivo",
     "confirmDeletePlan": "¿Seguro que quieres eliminar este plan de cultivo?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (cosecha)",
+    "unknownCrop": "Cultivo {{id}}"
   }
 }

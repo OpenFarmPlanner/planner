@@ -202,5 +202,9 @@
     "editLocation": "Modifier le site",
     "addPlan": "Ajouter un plan de culture",
     "confirmDeletePlan": "Vraiment supprimer ce plan de culture ?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (récolte)",
+    "unknownCrop": "Culture {{id}}"
   }
 }

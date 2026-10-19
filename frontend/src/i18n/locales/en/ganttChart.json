@@ -199,5 +199,9 @@
     "editLocation": "Edit location",
     "addPlan": "Add planting plan",
     "confirmDeletePlan": "Really delete this planting plan?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (harvest)",
+    "unknownCrop": "Crop {{id}}"
   }
 }

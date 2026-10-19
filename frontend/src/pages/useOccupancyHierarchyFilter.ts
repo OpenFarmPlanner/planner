@@ -3,7 +3,8 @@ import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/api';
 import { useExpandedState } from '../components/hierarchy/hooks/useExpandedState';
 import { useHierarchyLevelToggle } from '../components/hierarchy/hooks/useHierarchyLevelToggle';
 import { OCCUPANCY_TREE_AUTO_EXPAND_ALL_THRESHOLD } from './ganttChartState';
-import { buildFieldOccupancyHierarchy, type OccupancyHierarchyNode } from './ganttChartUtils';
+import { useTranslation } from '../i18n';
+import { buildFieldOccupancyHierarchy, createGanttTaskLabels, type OccupancyHierarchyNode } from './ganttChartUtils';
 
 interface UseOccupancyHierarchyFilterParams {
   locations: Location[];
@@ -30,6 +31,7 @@ export function useOccupancyHierarchyFilter({
   crops,
   activeProjectId,
 }: UseOccupancyHierarchyFilterParams) {
+  const { t } = useTranslation('ganttChart');
   const [occupancyLocationFilter, setOccupancyLocationFilter] = useState<number | 'all'>('all');
   const [occupancyFieldFilter, setOccupancyFieldFilter] = useState<number | 'all'>('all');
   const [onlyOccupiedBeds, setOnlyOccupiedBeds] = useState(true);
@@ -51,7 +53,8 @@ export function useOccupancyHierarchyFilter({
     beds,
     plantingPlans,
     crops,
-  }), [beds, crops, fields, locations, plantingPlans]);
+    labels: createGanttTaskLabels(t),
+  }), [beds, crops, fields, locations, plantingPlans, t]);
 
   // Default expansion — once per project, until the user manually
   // expands/collapses something (which then persists via useExpandedState's
