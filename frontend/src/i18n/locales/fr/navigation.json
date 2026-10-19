@@ -206,6 +206,7 @@
     "previewColumnPeriod": "Période",
     "current": "(actuelle)",
     "previewReferenceHint": "(dernière saison existante)",
+    "previewHint": "(aperçu)",
     "transition": {
       "gapLabel": "Intervalle",
       "overlapLabel": "Chevauchement",

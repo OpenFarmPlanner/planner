@@ -206,6 +206,7 @@
     "previewColumnPeriod": "Periodo",
     "current": "(actual)",
     "previewReferenceHint": "(última temporada existente)",
+    "previewHint": "(vista previa)",
     "transition": {
       "gapLabel": "Hueco",
       "overlapLabel": "Solapamiento",
