@@ -838,6 +838,12 @@ export interface Bed {
 
 
 
+export interface BulkBedCreatePayload {
+  field: number;
+  /** Dimensions in meters; both are required and > 0. */
+  beds: Array<{ name: string; length_m: number; width_m: number }>;
+}
+
 export interface BedLayoutEntry {
   id?: number;
   bed: number;

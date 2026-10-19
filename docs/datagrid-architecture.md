@@ -628,6 +628,49 @@ first persists the current row draft with the note value, then closes the
 drawer. Users should never need to click outside the grid to make a new row
 exist before saving its notes.
 
+### Creating many similar beds
+
+Three entries in the hierarchy's ⋮/context menu speed up laying out a
+field. All of them name beds through one helper,
+`components/hierarchy/utils/bedNaming.ts`: `incrementName` raises the
+*last* number in a name and keeps everything around it ("E 2 8" → "E 2 9",
+"Beet 09" → "Beet 10", "B-3" → "B-4"; no number → " 2" appended), and
+`nextFreeName` keeps counting until the name is free in the field (bed
+names are unique per field in the backend).
+
+- **"Beet hinzufügen" (field row, `Einfg`)** prefills the new draft row
+  from the field's *last* bed in the current table order: its length and
+  width, and its name counted up. The values are visible and editable in
+  the draft row; a field without beds still starts empty. A prefilled
+  draft has a name, so clicking away saves it like any other filled draft.
+- **"Beet duplizieren" (bed row, `Ctrl+D` / `⌘D`)** creates the copy right
+  away (`useBedOperations.duplicateBed`): only length and width are copied
+  — no notes, planting plans or layout. Beds have no explicit order, so
+  the copy lands where every new row lands (top of its field, see the order
+  snapshot above) and becomes the active row. The shortcut only fires and
+  only calls `preventDefault` for an active, persisted bed row with no row
+  in edit mode; a held key does not repeat, and a second duplicate is
+  ignored while the first is still saving (both would compute the same
+  name).
+- **"Mehrere Beete anlegen" (field row)** opens `BulkBedCreateDialog`. Its
+  pure logic lives in `utils/bulkBedCreatePlan.ts`: naming by sequence
+  ("E 1", "E 2", …) or by row and bed ("E 1 1" … "E 2 8"), defaults that
+  continue the field's existing scheme when every bed name follows one of
+  the two patterns with one prefix (row/bed wins when both fit), the
+  "beds side by side across the field width" calculator
+  (`floor((field width + path) / (bed width + path))`), the preview, and the
+  non-blocking warning when existing plus new bed area exceeds the field
+  area. Names already used in the field block the submit. The dialog is
+  mounted per opening, so its defaults are read once from the beds at that
+  moment. The series is saved with one request,
+  `POST /api/beds/bulk-create/` (`BedViewSet.bulk_create`), which is
+  all-or-nothing and stays one write against the per-account write
+  throttle; it caps a series at 200 beds and records one `created`
+  revision per bed. It is session-only (not in the API-token allowlist).
+
+The mobile list (`FieldsBedsHierarchyMobile.tsx`) keeps its own add flow
+and does not offer these entries.
+
 ## Mobile layout (< sm)
 
 Below the MUI `sm` breakpoint (600px), or below a 500px viewport height,

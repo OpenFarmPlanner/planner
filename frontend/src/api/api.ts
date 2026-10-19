@@ -4,6 +4,7 @@ import type {
   ApiToken,
   ApiTokenCreatePayload,
   ApiTokenCreated,
+  BulkBedCreatePayload,
   CropLibraryToken,
   CropLibraryTokenCreatePayload,
   CropLibraryTokenCreated,
@@ -334,6 +335,8 @@ export const bedAPI = {
   listAll: () => fetchAllPaginated<Bed>('/beds/'),
   get: (id: number) => http.get<Bed>(`/beds/${id}/`),
   create: (data: Bed) => http.post<Bed>('/beds/', withActiveProject(data)),
+  /** Creates a whole series of beds in one field atomically (all or none). */
+  bulkCreate: (data: BulkBedCreatePayload) => http.post<Bed[]>('/beds/bulk-create/', data),
   update: (id: number, data: Bed) => http.put<Bed>(`/beds/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/beds/${id}/`),
 };
@@ -632,6 +635,7 @@ export type {
   Location,
   Field,
   Bed,
+  BulkBedCreatePayload,
   PlantingPlan,
   PaginatedResponse,
   Supplier,

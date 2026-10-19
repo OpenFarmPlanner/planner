@@ -2,7 +2,7 @@
  * Column definitions for hierarchy grid
  */
 
-import type { ReactElement, KeyboardEvent, MouseEvent, PointerEvent, TouchEvent } from 'react';
+import type { FocusEvent, ReactElement, KeyboardEvent, MouseEvent, PointerEvent, TouchEvent } from 'react';
 import { GridEditInputCell } from '@mui/x-data-grid';
 import type {
   GridColDef,
@@ -53,15 +53,39 @@ export const DEFAULT_HIERARCHY_COLUMN_WIDTHS: HierarchyColumnWidths = {
 const DIMENSION_HEADER_ALLOWANCE = 50;
 const AREA_HEADER_ALLOWANCE = 30;
 
+// A new bed row can start prefilled ("Beet hinzufügen" copies the last bed's
+// dimensions and counts its name up). The first focus of each new-row cell
+// selects its value so typing replaces it and Enter/Tab keep it; refocusing
+// a cell later keeps the caret like any edited value. `params.row` already
+// carries the draft, so "first focus" is tracked per row id and field (new
+// row ids are unique transient ids).
+const focusedNewRowCells = new Set<string>();
+const selectPrefilledValueOnFocus = (params: GridRenderEditCellParams<HierarchyRow>) => {
+  if (!params.row.isNew) {
+    return undefined;
+  }
+  const cellKey = `${String(params.id)}:${params.field}`;
+  return (event: FocusEvent<HTMLElement>): void => {
+    if (focusedNewRowCells.has(cellKey)) {
+      return;
+    }
+    focusedNewRowCells.add(cellKey);
+    if (event.target instanceof HTMLInputElement && event.target.value !== '') {
+      event.target.select();
+    }
+  };
+};
+
 const renderImmediateEditInputCell = (
   params: GridRenderEditCellParams<HierarchyRow>,
-): ReactElement => <GridEditInputCell {...params} debounceMs={0} />;
+): ReactElement => <GridEditInputCell {...params} debounceMs={0} onFocus={selectPrefilledValueOnFocus(params)} />;
 const renderDecimalEditInputCell = (
   params: GridRenderEditCellParams<HierarchyRow>,
 ): ReactElement => (
   <GridEditInputCell
     {...params}
     debounceMs={0}
+    onFocus={selectPrefilledValueOnFocus(params)}
     slotProps={{ root: { slotProps: { htmlInput: { inputMode: 'decimal' } } } }}
   />
 );

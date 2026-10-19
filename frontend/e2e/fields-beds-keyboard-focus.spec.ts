@@ -250,3 +250,90 @@ test.describe('fields-beds keyboard focus after Enter save', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe('fields-beds fast bed creation', () => {
+  test('"Beet hinzufügen" prefills the last bed\'s dimensions and counts its name up', async ({ page, request }) => {
+    await loginWithFreshProject(page, request, 'fields-bed-prefill');
+    await createFieldsBedsFixture(page);
+    await page.goto('/app/fields-beds');
+
+    const fieldRow = page.locator('[role="row"][data-id]').filter({ hasText: 'Keyboard Focus Parzelle' }).first();
+    await fieldRow.hover();
+    await fieldRow.getByRole('button', { name: 'Beet für diese Parzelle hinzufügen' }).click();
+
+    const editRow = page.locator('.MuiDataGrid-row--editing').first();
+    const nameInput = editRow.locator('[data-field="name"] input');
+    await expect(nameInput).toBeFocused();
+    await expect(nameInput).toHaveValue('Keyboard Focus Beet D 2');
+    await expect(editRow.locator('[data-field="length_m"] input')).toHaveValue('10');
+    await expect(editRow.locator('[data-field="width_m"] input')).toHaveValue('1');
+
+    const createResponsePromise = page.waitForResponse((response) => (
+      response.url().includes('/api/beds/') && response.request().method() === 'POST' && response.status() === 201
+    ));
+    await page.keyboard.press('Enter');
+    await createResponsePromise;
+    await expect(page.locator('[role="row"][data-id]').filter({ hasText: 'Keyboard Focus Beet D 2' })).toHaveCount(1);
+  });
+
+  test('duplicates a bed from its menu and with Ctrl+D, copying only the dimensions', async ({ page, request }) => {
+    await loginWithFreshProject(page, request, 'fields-bed-duplicate');
+    const fixture = await createFieldsBedsFixture(page);
+    await page.goto('/app/fields-beds');
+
+    const bedRow = page.locator(`[role="row"][data-id="${fixture.bedB.id}"]`);
+    await bedRow.click({ button: 'right' });
+    const duplicateItem = page.getByRole('menuitem', { name: /^Beet duplizieren/ });
+    await expect(duplicateItem).toContainText('Strg+D');
+    await duplicateItem.click();
+    const duplicateRow = page.locator('[role="row"][data-id]').filter({ hasText: 'Keyboard Focus Beet B 2' });
+    await expect(duplicateRow).toHaveCount(1);
+    await expect(duplicateRow.locator('[data-field="length_m"]')).toHaveText('10');
+    await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(0);
+
+    // The duplicate is now the active row; Ctrl+D duplicates it again
+    // instead of opening the browser's bookmark dialog.
+    await expect(page.locator(`[role="row"][data-id] [role="gridcell"]:focus`)).toHaveCount(1);
+    await page.evaluate(() => {
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'd') {
+          setTimeout(() => {
+            (window as unknown as { lastDuplicatePrevented?: boolean }).lastDuplicatePrevented = event.defaultPrevented;
+          });
+        }
+      });
+    });
+    await page.keyboard.press('Control+d');
+    await expect(page.locator('[role="row"][data-id]').filter({ hasText: 'Keyboard Focus Beet B 3' })).toHaveCount(1);
+    expect(await page.evaluate(() => (window as unknown as { lastDuplicatePrevented?: boolean }).lastDuplicatePrevented)).toBe(true);
+  });
+
+  test('"Mehrere Beete anlegen" creates a row/bed series in one step', async ({ page, request }) => {
+    await loginWithFreshProject(page, request, 'fields-bed-bulk');
+    await createFieldsBedsFixture(page);
+    await page.goto('/app/fields-beds');
+
+    const fieldRow = page.locator('[role="row"][data-id]').filter({ hasText: 'Keyboard Focus Parzelle' }).first();
+    await fieldRow.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Mehrere Beete anlegen in Keyboard Focus Parzelle' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel('Präfix')).toBeFocused();
+    await expect(dialog.getByRole('textbox', { name: 'Länge (m)' })).toHaveValue('10');
+    await expect(dialog.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('1');
+
+    await dialog.getByRole('radio', { name: 'Nach Reihe und Beet' }).check();
+    await dialog.getByLabel('Präfix').fill('R');
+    await dialog.getByRole('spinbutton', { name: 'Anzahl Reihen' }).fill('2');
+    await dialog.getByRole('spinbutton', { name: 'Beete pro Reihe' }).fill('3');
+    await expect(dialog.getByRole('list', { name: 'Namen der neuen Beete' })).toContainText('R 2 3');
+    await expect(dialog.getByText('6 Beete, je 10 m², gesamt 60 m²')).toBeVisible();
+
+    await dialog.getByRole('button', { name: '6 Beete anlegen' }).click();
+    await expect(dialog).not.toBeVisible();
+    for (const name of ['R 1 1', 'R 1 3', 'R 2 1', 'R 2 3']) {
+      await expect(page.locator('[role="row"][data-id]').filter({ hasText: name })).toHaveCount(1);
+    }
+  });
+});

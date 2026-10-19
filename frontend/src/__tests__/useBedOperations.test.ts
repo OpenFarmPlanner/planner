@@ -4,8 +4,9 @@ import { renderHook } from '@testing-library/react';
 import { useBedOperations } from '../components/hierarchy/hooks/useBedOperations';
 import type { Bed } from '../api/api';
 
-const { createBedMock, updateBedMock, deleteBedMock, confirmActionMock } = vi.hoisted(() => ({
+const { createBedMock, bulkCreateBedMock, updateBedMock, deleteBedMock, confirmActionMock } = vi.hoisted(() => ({
   createBedMock: vi.fn(),
+  bulkCreateBedMock: vi.fn(),
   updateBedMock: vi.fn(),
   deleteBedMock: vi.fn(),
   confirmActionMock: vi.fn(),
@@ -14,6 +15,7 @@ const { createBedMock, updateBedMock, deleteBedMock, confirmActionMock } = vi.ho
 vi.mock('../api/api', () => ({
   bedAPI: {
     create: createBedMock,
+    bulkCreate: bulkCreateBedMock,
     update: updateBedMock,
     delete: deleteBedMock,
   },
@@ -59,6 +61,78 @@ describe('useBedOperations', () => {
       area_sqm: undefined,
       notes: '',
     });
+  });
+
+  it('prefills a temporary bed with a name and the dimensions only', () => {
+    const harness = createStateHarness([]);
+    const { result } = renderHook(() =>
+      useBedOperations(harness.setBeds, vi.fn(), mockT as never)
+    );
+
+    const tempId = result.current.addBed(9, { name: 'E 2 9', length_m: 10, width_m: 0.75 });
+
+    expect(harness.getBeds()).toEqual([{
+      id: tempId,
+      name: 'E 2 9',
+      field: 9,
+      // The grid derives the area from the dimensions; a stored area would
+      // outlive clearing them.
+      area_sqm: undefined,
+      length_m: 10,
+      width_m: 0.75,
+      notes: '',
+    }]);
+  });
+
+  it('duplicates a bed with only its dimensions and adds it to the state', async () => {
+    const source: Bed = { id: 4, name: 'B-3', field: 2, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: 'Do not copy' };
+    const harness = createStateHarness([source]);
+    const created: Bed = { id: 40, name: 'B-4', field: 2, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: '' };
+    createBedMock.mockResolvedValue({ data: created });
+    const { result } = renderHook(() =>
+      useBedOperations(harness.setBeds, vi.fn(), mockT as never)
+    );
+
+    const response = await result.current.duplicateBed(source, 'B-4');
+
+    expect(createBedMock).toHaveBeenCalledWith({ name: 'B-4', field: 2, length_m: 8, width_m: 1.2, notes: '' });
+    expect(response).toEqual(created);
+    expect(harness.getBeds()).toEqual([created, source]);
+  });
+
+  it('ignores a second duplicate while the first is still saving', async () => {
+    const source: Bed = { id: 4, name: 'B-3', field: 2, notes: '' };
+    const harness = createStateHarness([source]);
+    let resolveCreate: (value: { data: Bed }) => void = () => {};
+    createBedMock.mockReturnValue(new Promise((resolve) => { resolveCreate = resolve; }));
+    const { result } = renderHook(() =>
+      useBedOperations(harness.setBeds, vi.fn(), mockT as never)
+    );
+
+    const first = result.current.duplicateBed(source, 'B-4');
+    await expect(result.current.duplicateBed(source, 'B-4')).resolves.toBeNull();
+    resolveCreate({ data: { id: 41, name: 'B-4', field: 2 } });
+    await first;
+
+    expect(createBedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates a bed series in one request and adds all beds in order', async () => {
+    const harness = createStateHarness([{ id: 1, name: 'Old', field: 3 }]);
+    const created: Bed[] = [{ id: 7, name: 'E 1', field: 3 }, { id: 8, name: 'E 2', field: 3 }];
+    bulkCreateBedMock.mockResolvedValue({ data: created });
+    const { result } = renderHook(() =>
+      useBedOperations(harness.setBeds, vi.fn(), mockT as never)
+    );
+    const payload = {
+      field: 3,
+      beds: [{ name: 'E 1', length_m: 10, width_m: 1 }, { name: 'E 2', length_m: 10, width_m: 1 }],
+    };
+
+    await expect(result.current.bulkCreateBeds(payload)).resolves.toEqual(created);
+
+    expect(bulkCreateBedMock).toHaveBeenCalledWith(payload);
+    expect(harness.getBeds().map((bed) => bed.id)).toEqual([7, 8, 1]);
   });
 
   it('creates a new bed from temporary data and replaces local temporary row', async () => {

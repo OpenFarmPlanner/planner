@@ -52,6 +52,10 @@ interface UseHierarchyRowUpdateParams {
   setDraftValidationWarning: (warning: string) => void;
   fetchData: (options?: { showLoading: boolean }) => Promise<void>;
   saveBed: (bed: Partial<Bed> & { id: number; field: number }) => Promise<Bed>;
+  // A prefilled new bed the user hasn't changed counts as empty when its
+  // edit is cancelled (Escape), so cancelling "Beet hinzufügen" leaves
+  // nothing behind, exactly as for an empty new row.
+  isUntouchedPrefilledDraft?: (row: HierarchyRow) => boolean;
   // Called instead of the inline warning whenever a new row's edit ends
   // (click outside handles this itself before ever reaching processRowUpdate,
   // but a cross-row click or a natural blur still land here) while it has
@@ -78,6 +82,7 @@ export function useHierarchyRowUpdate({
   setDraftValidationWarning,
   fetchData,
   saveBed,
+  isUntouchedPrefilledDraft,
   t,
 }: UseHierarchyRowUpdateParams) {
   const getBedAreaSum = useCallback(
@@ -233,7 +238,11 @@ export function useHierarchyRowUpdate({
           return;
         }
 
-        if (options?.force || isCompletelyEmptyNewHierarchyRow(draftRow)) {
+        if (
+          options?.force
+          || isCompletelyEmptyNewHierarchyRow(draftRow)
+          || isUntouchedPrefilledDraft?.(draftRow)
+        ) {
           setBeds((previousBeds) =>
             previousBeds.filter((bed) => String(bed.id) !== String(rowId)),
           );
@@ -249,7 +258,7 @@ export function useHierarchyRowUpdate({
         [rowId]: { mode: GridRowModes.View, ignoreModifications: true },
       }));
     },
-    [getDraftRow, preservePartialNewBedDraft, rowSnapshotRef, setBeds, setDraftValidationWarning, setFields, setRowModesModel],
+    [getDraftRow, isUntouchedPrefilledDraft, preservePartialNewBedDraft, rowSnapshotRef, setBeds, setDraftValidationWarning, setFields, setRowModesModel],
   );
 
   const discardActiveRowEdit = useCallback((): void => {

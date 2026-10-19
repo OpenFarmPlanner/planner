@@ -342,10 +342,10 @@ describe('FieldsBedsHierarchy row order stability', () => {
     fireEvent.click(within(fieldRow).getByRole('button', { name: 'Beet zu dieser Parzelle hinzufügen' }));
     await waitFor(() => expect(screen.getByTestId('row--1700000000000')).toBeInTheDocument());
 
-    // The new draft (empty name) is expected to render as the first bed
-    // under Ackerfeld right away, next to the action that created it —
-    // not below the existing beds.
-    expect(readOrder()).toEqual(['Ackerfeld', '', 'Beet A', 'Beet C', 'Bergfeld']);
+    // The new draft (name prefilled from the group's last bed, "Beet C") is
+    // expected to render as the first bed under Ackerfeld right away, next
+    // to the action that created it — not below the existing beds.
+    expect(readOrder()).toEqual(['Ackerfeld', 'Beet C 2', 'Beet A', 'Beet C', 'Bergfeld']);
 
     await user.click(screen.getByRole('button', { name: 'Rename -1700000000000' }));
     await user.click(screen.getByRole('button', { name: 'Blur -1700000000000' }));

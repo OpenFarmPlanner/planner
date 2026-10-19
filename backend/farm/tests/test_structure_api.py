@@ -1,6 +1,8 @@
 """API tests for locations, fields, beds, and areas."""
 
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APITestCase as DRFAPITestCase
 
@@ -8,6 +10,7 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    EntityRevision,
     Field,
     FieldLayout,
     Location,
@@ -259,6 +262,109 @@ class StructureApiTest(ProjectApiTestCase):
         response = self.client.post('/openfarmplanner/api/beds/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('area_sqm', response.data)
+
+
+class BedBulkCreateApiTest(ProjectApiTestCase):
+    """POST /beds/bulk-create/ creates a whole series of beds atomically."""
+
+    url = '/openfarmplanner/api/beds/bulk-create/'
+
+    def _payload(self, names: list[str], **overrides) -> dict:
+        payload = {
+            'field': self.field.id,
+            'beds': [{'name': name, 'length_m': 10, 'width_m': 1.2} for name in names],
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_creates_all_beds_with_area_from_dimensions(self):
+        response = self.client.post(self.url, self._payload(['E 1', 'E 2', 'E 3']), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual([bed['name'] for bed in response.data], ['E 1', 'E 2', 'E 3'])
+        self.assertEqual(response.data[0]['field_name'], self.field.name)
+        created = Bed.objects.filter(field=self.field, name__startswith='E ')
+        self.assertEqual(created.count(), 3)
+        for bed in created:
+            self.assertEqual(bed.project_id, self.project.id)
+            self.assertEqual(float(bed.area_sqm), 12.0)
+
+    def test_records_one_created_revision_per_bed(self):
+        response = self.client.post(self.url, self._payload(['E 1', 'E 2']), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_ids = [bed['id'] for bed in response.data]
+        revisions = EntityRevision.objects.filter(
+            project=self.project, entity_type='bed', object_id__in=created_ids,
+            action=EntityRevision.ACTION_CREATED,
+        )
+        self.assertEqual(revisions.count(), 2)
+
+    def test_existing_name_rejects_the_whole_series(self):
+        payload = self._payload(['E 1', self.bed.name])
+        response = self.client.post(self.url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['taken_names'], [self.bed.name])
+        self.assertFalse(Bed.objects.filter(name='E 1').exists())
+
+    def test_duplicate_names_in_payload_are_rejected(self):
+        response = self.client.post(self.url, self._payload(['E 1', 'E 1']), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Bed.objects.filter(name='E 1').exists())
+
+    def test_dimensions_are_required_and_positive(self):
+        payload = self._payload(['E 1'])
+        payload['beds'][0]['width_m'] = 0
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        payload = {'field': self.field.id, 'beds': [{'name': 'E 1', 'length_m': 10}]}
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Bed.objects.filter(name='E 1').exists())
+
+    def test_rejects_empty_and_oversized_series(self):
+        self.assertEqual(
+            self.client.post(self.url, self._payload([]), format='json').status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        names = [f'E {index}' for index in range(201)]
+        self.assertEqual(
+            self.client.post(self.url, self._payload(names), format='json').status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertFalse(Bed.objects.filter(name='E 1').exists())
+
+    def test_rejects_field_from_another_project(self):
+        foreign_project = Project.objects.create(name='Foreign bulk', slug='foreign-bulk-proj')
+        foreign_location = Location.objects.create(name='Foreign', project=foreign_project)
+        foreign_field = Field.objects.create(
+            name='Foreign field', location=foreign_location, project=foreign_project
+        )
+
+        payload = self._payload(['E 1'], field=foreign_field.id)
+        response = self.client.post(self.url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Same answer as for a field id that does not exist at all.
+        missing = self.client.post(self.url, self._payload(['E 1'], field=999999), format='json')
+        self.assertEqual(response.data['field'][0].code, 'does_not_exist')
+        self.assertEqual(missing.data['field'][0].code, 'does_not_exist')
+        self.assertFalse(Bed.objects.filter(field=foreign_field).exists())
+
+    def test_query_count_does_not_depend_on_lookups_per_bed(self):
+        # Validation reads the field and the taken names once for the whole
+        # series; per bed there is only the insert, the revision snapshot
+        # read and the revision insert (the same as a single create).
+        with CaptureQueriesContext(connection) as small:
+            self.client.post(self.url, self._payload(['S 1', 'S 2']), format='json')
+        with CaptureQueriesContext(connection) as large:
+            self.client.post(self.url, self._payload(['L 1', 'L 2', 'L 3', 'L 4']), format='json')
+
+        per_bed = (len(large.captured_queries) - len(small.captured_queries)) / 2
+        self.assertEqual(per_bed, 3)
 
 
 class CropLayoutApiTest(DRFAPITestCase):

@@ -13,6 +13,7 @@ import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUti
 import { mockT } from './helpers/testI18n';
 
 const {
+  bedBulkCreateMock,
   bedCreateMock,
   bedDeleteMock,
   bedListMock,
@@ -28,6 +29,7 @@ const {
   mockUseNavigationBlocker,
   mockDrafts,
 } = vi.hoisted(() => ({
+  bedBulkCreateMock: vi.fn(),
   bedCreateMock: vi.fn(),
   bedDeleteMock: vi.fn(),
   bedListMock: vi.fn(),
@@ -78,6 +80,7 @@ vi.mock('../api/api', async () => {
   return {
     ...actual,
     bedAPI: {
+      bulkCreate: bedBulkCreateMock,
       create: bedCreateMock,
       delete: bedDeleteMock,
       list: bedListMock,
@@ -622,6 +625,37 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(screen.queryByText('Zeile wurde nicht gespeichert, da der Name fehlt.')).not.toBeInTheDocument();
   });
 
+  it('removes an untouched prefilled new bed with Escape, like an empty one', async () => {
+    const user = userEvent.setup();
+    bedListMock.mockResolvedValue({
+      data: { results: [{ id: 21, name: 'E 1', field: 10, length_m: 10, width_m: 0.75 }] },
+    });
+    renderHierarchy();
+    await screen.findByTestId('row-21');
+    await addNewBed();
+
+    await user.click(screen.getByRole('button', { name: 'Escape -1700000000000' }));
+
+    await waitFor(() => expect(screen.queryByTestId('row--1700000000000')).not.toBeInTheDocument());
+    expect(bedCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps an edited prefilled new bed as a draft on Escape', async () => {
+    const user = userEvent.setup();
+    bedListMock.mockResolvedValue({
+      data: { results: [{ id: 21, name: 'E 1', field: 10, length_m: 10, width_m: 0.75 }] },
+    });
+    renderHierarchy();
+    await screen.findByTestId('row-21');
+    await addNewBed();
+
+    await user.click(screen.getByRole('button', { name: 'Partial name -1700000000000' }));
+    await user.click(screen.getByRole('button', { name: 'Escape -1700000000000' }));
+
+    await waitFor(() => expect(screen.getByTestId('mode--1700000000000')).toHaveTextContent('view'));
+    expect(screen.getByTestId('row--1700000000000')).toBeInTheDocument();
+  });
+
   it('discards a completely empty new row on blur without showing a validation error', async () => {
     renderHierarchy();
     await addNewBed();
@@ -933,6 +967,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Beet hinzufügenEinfg',
+      'Mehrere Beete anlegen',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
@@ -948,6 +983,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Beet hinzufügenEinfg',
+      'Mehrere Beete anlegen',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
@@ -965,6 +1001,120 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     const createPlanMenuItem = screen.getByRole('menuitem', { name: 'Pflanzplan erstellen' });
     expect(createPlanMenuItem).toBeInTheDocument();
     expect(createPlanMenuItem.querySelector('svg')).not.toBeNull();
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Beet duplizierenStrg+D',
+      'Pflanzplan erstellen',
+      'Löschen',
+      'actions.copyRow',
+      'actions.copyTable',
+    ]);
+  });
+
+  it('prefills "Beet hinzufügen" from the last bed of the field and counts its name up', async () => {
+    bedListMock.mockResolvedValue({
+      data: { results: [{ id: 21, name: 'E 2 8', field: 10, length_m: 10, width_m: 0.75, area_sqm: 7.5 }] },
+    });
+    renderHierarchy();
+    await screen.findByTestId('row-21');
+
+    await addNewBed();
+    fireEvent.click(screen.getByRole('button', { name: 'Blur -1700000000000' }));
+
+    await waitFor(() => expect(bedCreateMock).toHaveBeenCalledTimes(1));
+    expect(bedCreateMock).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'E 2 9',
+      field: 10,
+      length_m: 10,
+      width_m: 0.75,
+    }));
+  });
+
+  it('keeps "Beet hinzufügen" empty for a field without beds', async () => {
+    renderHierarchy();
+    await addNewBed();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Blur -1700000000000' }));
+
+    await waitFor(() => expect(screen.queryByTestId('row--1700000000000')).not.toBeInTheDocument());
+    expect(bedCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('duplicates a bed from its context menu with only the dimensions and a counted-up name', async () => {
+    bedListMock.mockResolvedValue({
+      data: {
+        results: [
+          { id: 21, name: 'B-3', field: 10, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: 'Mulch' },
+          { id: 22, name: 'B-4', field: 10 },
+        ],
+      },
+    });
+    renderHierarchy();
+
+    fireEvent.contextMenu(await screen.findByTestId('row-21'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Beet duplizieren/ }));
+
+    await waitFor(() => expect(bedCreateMock).toHaveBeenCalledWith({
+      name: 'B-5',
+      field: 10,
+      length_m: 8,
+      width_m: 1.2,
+      notes: '',
+    }));
+    expect(await screen.findByTestId('row-101')).toBeInTheDocument();
+  });
+
+  it('duplicates the focused bed row with Ctrl+D', async () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('Win32');
+    bedListMock.mockResolvedValue({ data: { results: [{ id: 21, name: 'Beet 09', field: 10 }] } });
+    renderHierarchy();
+
+    const bedRow = await screen.findByTestId('row-21');
+    fireEvent.click(within(bedRow).getByRole('button', { name: 'Edit length 21' }));
+    fireEvent.click(within(bedRow).getByRole('button', { name: 'Escape 21' }));
+    await waitFor(() => expect(screen.getByTestId('mode-21')).toHaveTextContent('view'));
+
+    const event = new KeyboardEvent('keydown', { key: 'd', ctrlKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      window.dispatchEvent(event);
+    });
+
+    await waitFor(() => expect(bedCreateMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'Beet 10' })));
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('creates a numbered bed series from the "Mehrere Beete anlegen" dialog', async () => {
+    bedListMock.mockResolvedValue({
+      data: { results: [{ id: 21, name: 'E 1', field: 10, length_m: 10, width_m: 0.75, area_sqm: 7.5 }] },
+    });
+    bedBulkCreateMock.mockImplementation((payload: { field: number; beds: Array<{ name: string }> }) => Promise.resolve({
+      data: payload.beds.map((bed, index) => ({ id: 500 + index, field: payload.field, ...bed })),
+    }));
+    renderHierarchy();
+
+    fireEvent.contextMenu(await screen.findByTestId('row-field-10'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('textbox', { name: 'dialogs.bulkCreateBeds.prefix' })).toHaveValue('E');
+    expect(within(dialog).getByRole('spinbutton', { name: 'dialogs.bulkCreateBeds.startNumber' })).toHaveValue(2);
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.count/ }), {
+      target: { value: '3' },
+    });
+    expect(within(dialog).getByRole('list', { name: 'dialogs.bulkCreateBeds.previewList' })).toHaveTextContent('E 2E 3E 4');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount' }));
+
+    await waitFor(() => expect(bedBulkCreateMock).toHaveBeenCalledWith({
+      field: 10,
+      beds: [
+        { name: 'E 2', length_m: 10, width_m: 0.75 },
+        { name: 'E 3', length_m: 10, width_m: 0.75 },
+        { name: 'E 4', length_m: 10, width_m: 0.75 },
+      ],
+    }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByTestId('row-500')).toBeInTheDocument();
+    expect(screen.getByTestId('row-502')).toBeInTheDocument();
   });
 
   it('adds a bed via the Insert key when a field row is focused, mirroring "Beet hinzufügen"', async () => {
