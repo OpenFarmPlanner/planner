@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
-  Card,
-  CardContent,
   Stack,
   Table,
   TableBody,
@@ -21,11 +19,13 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { SeasonStartDateFields } from './SeasonStartDateFields';
+import { SettingsSection } from '../components/settings/SettingsSection';
+import { settingsActionButtonSx, settingsFlatAlertSx } from '../components/settings/settingsStyles';
+import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { buildSeasonPreviewRows } from './seasonPreviewRows';
 
-const sectionCardContentSx = { p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: { xs: 2, sm: 2.5 } } };
-
-export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () => void }) {
+/** The project-settings section that sets when each season starts. */
+export function SeasonPatternCard({ id = 'season-pattern', onSaved }: { id?: string; onSaved?: () => void }) {
   const { t, i18n } = useTranslation(['navigation', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const [startDay, setStartDay] = useState(1);
@@ -39,7 +39,7 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
   });
   const [existingSeasons, setExistingSeasons] = useState<Season[]>([]);
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadPreview = useCallback(async (day: number, month: number) => {
     try {
@@ -99,109 +99,112 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
 
   const handleSave = async () => {
     setSaving(true);
-    setFeedback(null);
+    setSaveError(null);
     try {
       await seasonPatternAPI.update({ start_day: startDay, start_month: startMonth });
       setSavedStartDay(startDay);
       setSavedStartMonth(startMonth);
-      setFeedback({ severity: 'success', message: t('navigation:seasonPattern.saveSuccess') });
+      showGlobalSnackbar({ message: t('navigation:seasonPattern.saveSuccess'), severity: 'success' });
       // The due-season suggestion is derived from the pattern; let the app
       // refresh it so a later "create season" uses the new period.
       onSaved?.();
-    } catch (saveError) {
-      setFeedback({ severity: 'error', message: extractApiErrorMessage(saveError, t, t('navigation:seasonPattern.saveError')) });
+    } catch (error) {
+      setSaveError(extractApiErrorMessage(error, t, t('navigation:seasonPattern.saveError')));
     } finally {
       setSaving(false);
     }
   };
 
+  const disabledReason = saving ? t('common:disabledReasons.busy') : !hasChanges ? t('common:disabledReasons.noChanges') : '';
+
   return (
-    <Card id={id} variant="outlined" aria-labelledby="project-season-pattern-title" sx={{ scrollMarginTop: 80 }}>
-      <CardContent sx={sectionCardContentSx}>
-        <Typography id="project-season-pattern-title" variant="h6" sx={{ mb: 2 }}>
-          {t('navigation:seasonPattern.title')}
-        </Typography>
-
-        <SeasonStartDateFields idPrefix="season-pattern" startDay={startDay} startMonth={startMonth} onChange={handleChange} />
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2.5 }}>
-          {t('navigation:seasonPattern.helper')}
-        </Typography>
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('navigation:seasonPattern.previewTitle')}</Typography>
-        <Table size="small" sx={{ mb: 2 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('navigation:seasonPattern.previewColumnLabel')}</TableCell>
-              <TableCell>{t('navigation:seasonPattern.previewColumnPeriod')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {previewRows.map((row) => (row.kind === 'transition' ? (
-              <TableRow key={`transition-${row.transition.start_date}`} sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12) }}>
-                <TableCell sx={{ color: 'warning.dark' }}>
-                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                    <WarningAmberIcon fontSize="small" />
-                    {t(`navigation:seasonPattern.transition.${row.transition.kind}Label`)}
-                  </Stack>
-                </TableCell>
-                <TableCell sx={{ color: 'warning.dark' }}>
-                  {formatSeasonPeriod(row.transition.start_date, row.transition.end_date, locale)}
-                  {' '}
-                  <Typography component="span" variant="caption" color="warning.dark">
-                    {t('navigation:seasonPattern.transition.rowHint')}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              <TableRow key={row.year} sx={row.isLatestExisting ? { bgcolor: 'action.hover' } : undefined}>
-                <TableCell>
-                  {row.label}
-                  {row.isCurrent ? ` ${t('navigation:seasonPattern.current')}` : ''}
-                </TableCell>
-                <TableCell>
-                  {formatSeasonPeriod(row.startDate, row.endDate, locale)}
-                  {row.isLatestExisting ? (
-                    <>
-                      {' '}
-                      <Typography component="span" variant="caption" color="text.secondary">
-                        {t('navigation:seasonPattern.previewReferenceHint')}
-                      </Typography>
-                    </>
-                  ) : null}
-                  {row.isPreview ? (
-                    <>
-                      {' '}
-                      <Typography component="span" variant="caption" color="text.secondary">
-                        {t('navigation:seasonPattern.previewHint')}
-                      </Typography>
-                    </>
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            )))}
-          </TableBody>
-        </Table>
-
-        <Alert severity="info" sx={{ mb: 2 }}>{t('navigation:seasonPattern.changeNotice')}</Alert>
-
-        {feedback ? <Alert severity={feedback.severity} sx={{ mb: 2 }}>{feedback.message}</Alert> : null}
-
-        <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-          <DisabledActionTooltip title={saving ? t('common:disabledReasons.busy') : !hasChanges ? t('common:disabledReasons.noChanges') : ''}>
-            <Button onClick={handleCancel} disabled={saving || !hasChanges}>{t('navigation:seasonPattern.cancel')}</Button>
+    <SettingsSection
+      id={id}
+      title={t('navigation:seasonPattern.title')}
+      actions={(
+        <>
+          <DisabledActionTooltip title={disabledReason}>
+            <Button onClick={handleCancel} disabled={saving || !hasChanges} sx={settingsActionButtonSx}>
+              {t('navigation:seasonPattern.cancel')}
+            </Button>
           </DisabledActionTooltip>
-          <DisabledActionTooltip title={saving ? t('common:disabledReasons.busy') : !hasChanges ? t('common:disabledReasons.noChanges') : ''}>
+          <DisabledActionTooltip title={disabledReason}>
             <Button
               variant="contained"
               onClick={() => void handleSave()}
               disabled={saving || !hasChanges}
               aria-label={t('navigation:seasonPattern.saveAriaLabel')}
+              sx={settingsActionButtonSx}
             >
               {t('navigation:seasonPattern.save')}
             </Button>
           </DisabledActionTooltip>
-        </Stack>
-      </CardContent>
-    </Card>
+        </>
+      )}
+    >
+      <SeasonStartDateFields idPrefix="season-pattern" startDay={startDay} startMonth={startMonth} onChange={handleChange} />
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2.5 }}>
+        {t('navigation:seasonPattern.helper')}
+      </Typography>
+
+      <Typography component="h3" variant="subtitle2" sx={{ mb: 1 }}>{t('navigation:seasonPattern.previewTitle')}</Typography>
+      <Table size="small" sx={{ mb: 2 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('navigation:seasonPattern.previewColumnLabel')}</TableCell>
+            <TableCell>{t('navigation:seasonPattern.previewColumnPeriod')}</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {previewRows.map((row) => (row.kind === 'transition' ? (
+            <TableRow key={`transition-${row.transition.start_date}`} sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12) }}>
+              <TableCell sx={{ color: 'warning.dark' }}>
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                  <WarningAmberIcon fontSize="small" />
+                  {t(`navigation:seasonPattern.transition.${row.transition.kind}Label`)}
+                </Stack>
+              </TableCell>
+              <TableCell sx={{ color: 'warning.dark' }}>
+                {formatSeasonPeriod(row.transition.start_date, row.transition.end_date, locale)}
+                {' '}
+                <Typography component="span" variant="caption" color="warning.dark">
+                  {t('navigation:seasonPattern.transition.rowHint')}
+                </Typography>
+              </TableCell>
+            </TableRow>
+          ) : (
+            <TableRow key={row.year} sx={row.isLatestExisting ? { bgcolor: 'action.hover' } : undefined}>
+              <TableCell>
+                {row.label}
+                {row.isCurrent ? ` ${t('navigation:seasonPattern.current')}` : ''}
+              </TableCell>
+              <TableCell>
+                {formatSeasonPeriod(row.startDate, row.endDate, locale)}
+                {row.isLatestExisting ? (
+                  <>
+                    {' '}
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {t('navigation:seasonPattern.previewReferenceHint')}
+                    </Typography>
+                  </>
+                ) : null}
+                {row.isPreview ? (
+                  <>
+                    {' '}
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {t('navigation:seasonPattern.previewHint')}
+                    </Typography>
+                  </>
+                ) : null}
+              </TableCell>
+            </TableRow>
+          )))}
+        </TableBody>
+      </Table>
+
+      <Alert severity="info" sx={settingsFlatAlertSx}>{t('navigation:seasonPattern.changeNotice')}</Alert>
+
+      {saveError ? <Alert severity="error" sx={{ ...settingsFlatAlertSx, mt: 2 }}>{saveError}</Alert> : null}
+    </SettingsSection>
   );
 }

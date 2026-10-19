@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { SeasonPatternPreviewResponse } from '../api/types';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -56,7 +57,15 @@ const choose = async (
   await user.click(await screen.findByRole('option', { name: option }));
 };
 
+let snackbars: GlobalSnackbarDetail[] = [];
+const recordSnackbar = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+/** Success is confirmed through the global snackbar, not inside the card. */
+const savedConfirmation = () =>
+  waitFor(() => expect(snackbars).toContainEqual({ message: 'Saison-Muster gespeichert.', severity: 'success' }));
+
 beforeEach(() => {
+  snackbars = [];
+  window.addEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
   mocks.get.mockReset();
   mocks.update.mockReset();
   mocks.preview.mockReset();
@@ -69,6 +78,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  window.removeEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
   vi.restoreAllMocks();
 });
 
@@ -369,7 +379,7 @@ describe('SeasonPatternCard', () => {
       await waitFor(() =>
         expect(mocks.update).toHaveBeenCalledWith({ start_day: 1, start_month: 9 }),
       );
-      expect(await screen.findByText('Saison-Muster gespeichert.')).toBeInTheDocument();
+      await savedConfirmation();
       // The due-season suggestion is derived from the pattern, so the app has
       // to be told to recompute it.
       expect(onSaved).toHaveBeenCalled();
@@ -383,7 +393,7 @@ describe('SeasonPatternCard', () => {
       await choose(user, 'Monat', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
-      await screen.findByText('Saison-Muster gespeichert.');
+      await savedConfirmation();
 
       // Otherwise the card would keep offering to save what it just saved.
       expect(saveButton()).toBeDisabled();
@@ -443,7 +453,7 @@ describe('SeasonPatternCard', () => {
           screen.queryByText('Saison-Muster konnte nicht gespeichert werden.'),
         ).not.toBeInTheDocument(),
       );
-      expect(screen.getByText('Saison-Muster gespeichert.')).toBeInTheDocument();
+      await savedConfirmation();
     });
   });
 
@@ -475,7 +485,7 @@ describe('SeasonPatternCard', () => {
       await choose(user, 'Monat', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
-      await screen.findByText('Saison-Muster gespeichert.');
+      await savedConfirmation();
 
       await choose(user, 'Monat', 'März');
       await waitFor(() => expect(cancelButton()).toBeEnabled());

@@ -137,7 +137,7 @@ docs/                  # This documentation
   | `SeedDemand.tsx` | `/app/seed-demand` | Seed quantity/package requirement per crop |
   | `Suppliers.tsx` | `/app/suppliers` | Manage seed/plant suppliers |
   | `ProjectSelectionPage.tsx` | `/app/project-selection` | Pick/create/restore a project |
-  | `ProjectSettingsPage.tsx` | `/app/project-settings` | Rename/delete project, manage members & invitations |
+  | `ProjectSettingsPage.tsx` | `/app/project-settings` | Name/region, season pattern, members & invitations, delete project |
   | `AccountSettingsPage.tsx` | `/app/account-settings` | Account details, login methods, API tokens for external tools, language, data export, deletion |
 
   (`pages/InvitationPage.tsx`, an earlier, unrouted invitation-accept
@@ -253,6 +253,30 @@ DataGrid table with columns for name, rights, project, creation time, expiry,
 last use, and action. Expired and revoked tokens are grouped below the active
 table behind the collapsed toggle **Abgelaufene und widerrufene Tokens anzeigen
 (N)** and render in a separate table without the action column.
+
+## Project Settings UI
+
+`/app/project-settings` keeps the project sidebar and uses the same
+`SettingsLayout` with `navPlacement="top"` (a tab bar above a centred 820px
+column). Sections:
+
+- **Allgemein** (`#general`) — project name and regional terms in one form with
+  one Cancel/Save footer; both are sent in a single `PATCH`. Enter submits,
+  Escape restores the stored name.
+- **Saison-Muster** (`#season-pattern`, deep-linked from the season dialogs) —
+  `SeasonPatternCard`, see [seasons-architecture.md](./seasons-architecture.md).
+- **Mitglieder** (`#members`) — one card with three `h3` parts: *Person
+  einladen* (admins only; the button stays enabled and an empty or invalid
+  email is reported at the field), *Mitglieder (n)* (avatar initials, name,
+  email, role as text, and a ⋮ menu with role change and removal for other
+  members; the own row gets an "Ich" badge and no menu, because the backend
+  allows neither changing your own role nor leaving the project), and *Offene
+  Einladungen* (pending invitations only; empty state is plain grey text).
+- **Projekt löschen** (`#delete-project`, admins only, danger tone) — opens the
+  existing name-confirmation dialog.
+
+Successful saves are confirmed through the global snackbar; errors (and the
+"invitation created but mail not delivered" link) stay inside their section.
 
 ## Notable architecture & UX decisions worth knowing before changing things
 

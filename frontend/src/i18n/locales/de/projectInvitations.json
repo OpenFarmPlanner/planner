@@ -3,20 +3,20 @@
   "noActiveProject": "Kein aktives Projekt ausgewählt.",
   "projectLabel": "Projekt: {{name}}",
   "currentProjectLabel": "Projektname",
-  "projectRename": {
-    "label": "Projekt umbenennen",
+  "general": {
+    "title": "Allgemein",
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "success": "Projektname aktualisiert.",
-    "error": "Projektname konnte nicht aktualisiert werden.",
+    "saved": "Projekteinstellungen gespeichert.",
+    "saveError": "Projekteinstellungen konnten nicht gespeichert werden."
+  },
+  "projectRename": {
     "empty": "Projektname darf nicht leer sein.",
     "minLength": "Mindestens 2 Zeichen."
   },
   "projectRegion": {
     "label": "Regionale Begriffe",
     "help": "Legt fest, welche regionalen Kulturart-Namen dieses Projekt in Bibliothek und Planung sieht. Diese Einstellung ist unabhängig von der UI-Sprache.",
-    "success": "Regionale Begriffe aktualisiert.",
-    "error": "Regionale Begriffe konnten nicht aktualisiert werden.",
     "options": {
       "germany": "Deutschland",
       "austria": "Österreich",
@@ -24,11 +24,9 @@
     }
   },
   "projectDelete": {
-    "managementTitle": "Projekt verwalten",
-    "managementDescription": "Zusätzliche Aktionen für dieses Projekt.",
-    "shortInfoTitle": "Kurzinfo:",
-    "shortInfoText": "Gelöschte Projekte können innerhalb von 30 Tagen wiederhergestellt werden.",
-    "openButton": "Projekt löschen",
+    "title": "Projekt löschen",
+    "restoreHint": "Gelöschte Projekte lassen sich 30 Tage lang wiederherstellen.",
+    "openButton": "Projekt löschen …",
     "devQuickDescription": "Nur im Entwicklungsmodus: löscht das aktive Projekt ohne Eingabe des Projektnamens.",
     "devQuickButton": "Dev: ohne Namensbestätigung löschen",
     "devQuickDeleteFromListConfirm": "Nur im Entwicklungsmodus: Projekt \"{{name}}\" löschen? Kann unten im Papierkorb wiederhergestellt werden.",
@@ -44,36 +42,37 @@
     "restoreError": "Projekt konnte nicht wiederhergestellt werden.",
     "error": "Projekt konnte nicht gelöscht werden."
   },
-  "inviteSectionTitle": "Nutzer einladen",
+  "inviteSectionTitle": "Person einladen",
   "emailLabel": "E-Mail",
+  "emailRequired": "Bitte gib eine E-Mail-Adresse ein.",
   "roleLabel": "Rolle",
   "roleMember": "Mitglied",
   "roleAdmin": "Admin",
-  "sendInvite": "Einladung senden",
-  "adminOnly": "Nur Admins können Nutzer einladen.",
+  "sendInvite": "Einladen",
   "inviteSent": "Einladung gesendet.",
   "inviteResent": "Einladung erneut gesendet.",
   "inviteSentNoMail": "Einladung erstellt, aber E-Mail konnte nicht zugestellt werden.",
   "inviteFailed": "Einladung konnte nicht versendet werden.",
   "membersSectionTitle": "Mitglieder",
+  "membersCount": "Mitglieder ({{count}})",
   "membersEmpty": "Es gibt aktuell keine Mitglieder.",
   "memberRoleUpdated": "Mitgliedsrolle aktualisiert.",
   "memberRoleUpdateFailed": "Mitgliedsrolle konnte nicht aktualisiert werden.",
   "memberRemoved": "Mitglied aus dem Projekt entfernt.",
   "memberRemoveFailed": "Mitglied konnte nicht entfernt werden.",
   "memberListLoadFailed": "Mitglieder konnten nicht geladen werden.",
-  "memberRoleLabel": "Projektrolle",
   "memberDisplayFallback": "Ohne Anzeigenamen",
-  "memberYou": "Du",
+  "memberYou": "Ich",
+  "memberActions": "Aktionen für {{name}}",
+  "makeAdmin": "Zum Admin machen",
+  "makeMember": "Zum Mitglied machen",
   "removeMember": "Aus Projekt entfernen",
   "removeDialogTitle": "Mitglied wirklich entfernen?",
   "removeDialogText": "Möchtest du {{name}} ({{email}}) wirklich aus diesem Projekt entfernen?",
   "removeDialogCancel": "Abbrechen",
   "removeDialogConfirm": "Jetzt entfernen",
-  "roleChangeBlocked": "Die eigene Rolle kann hier nicht geändert werden.",
-  "removeBlocked": "Du kannst dich hier nicht selbst aus dem Projekt entfernen.",
-  "listTitle": "Einladungen",
-  "listEmpty": "Es gibt aktuell keine Einladungen.",
+  "listTitle": "Offene Einladungen",
+  "listEmpty": "Keine offenen Einladungen.",
   "revoke": "Einladung widerrufen",
   "revokeSuccess": "Einladung widerrufen.",
   "revokeFailed": "Einladung konnte nicht widerrufen werden.",
@@ -86,12 +85,6 @@
   "openApp": "Zur App",
   "projectName": "Projekt: {{name}}",
   "emailMasked": "Eingeladene E-Mail: {{email}}",
-  "status": {
-    "pending": "Ausstehend",
-    "accepted": "Angenommen",
-    "revoked": "Widerrufen",
-    "expired": "Abgelaufen"
-  },
   "result": {
     "pending": "Diese Einladung ist gültig.",
     "accepted": "Diese Einladung wurde bereits verwendet.",
@@ -109,16 +102,6 @@
     "email_send_failed": "Die E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org)."
   },
   "listLoadFailed": "Einladungen konnten nicht geladen werden.",
-  "projectMembers": {
-    "invitations": {
-      "noAccess": "Nur Admins können Einladungen sehen und verwalten.",
-      "loadError": "Einladungen konnten nicht geladen werden.",
-      "empty": "Es gibt aktuell keine Einladungen."
-    },
-    "invite": {
-      "noPermission": "Nur Admins können Einladungen senden und verwalten."
-    }
-  },
   "toRegister": "Registrieren",
   "loginWithDifferentAccount": "Mit anderem Konto anmelden",
   "authHint": "Du wurdest zum Projekt {{project}} eingeladen. Bitte melde dich mit {{email}} an.",

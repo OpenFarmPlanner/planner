@@ -3,20 +3,20 @@
   "noActiveProject": "No hay ningún proyecto activo seleccionado.",
   "projectLabel": "Proyecto: {{name}}",
   "currentProjectLabel": "Nombre del proyecto",
-  "projectRename": {
-    "label": "Cambiar el nombre del proyecto",
+  "general": {
+    "title": "General",
     "save": "Guardar",
     "cancel": "Cancelar",
-    "success": "Nombre del proyecto actualizado.",
-    "error": "No se ha podido actualizar el nombre del proyecto.",
+    "saved": "Ajustes del proyecto guardados.",
+    "saveError": "No se han podido guardar los ajustes del proyecto."
+  },
+  "projectRename": {
     "empty": "El nombre del proyecto no puede estar vacío.",
     "minLength": "Al menos 2 caracteres."
   },
   "projectRegion": {
     "label": "Términos regionales",
     "help": "Determina qué nombres regionales de especies de cultivo ve este proyecto en la biblioteca y en las vistas de planificación. Este ajuste es independiente del idioma de la interfaz.",
-    "success": "Términos regionales actualizados.",
-    "error": "No se han podido actualizar los términos regionales.",
     "options": {
       "germany": "Alemania",
       "austria": "Austria",
@@ -24,11 +24,9 @@
     }
   },
   "projectDelete": {
-    "managementTitle": "Gestionar proyecto",
-    "managementDescription": "Acciones adicionales para este proyecto.",
-    "shortInfoTitle": "En resumen:",
-    "shortInfoText": "Los proyectos eliminados se pueden restaurar durante 30 días.",
-    "openButton": "Eliminar proyecto",
+    "title": "Eliminar proyecto",
+    "restoreHint": "Los proyectos eliminados se pueden restaurar durante 30 días.",
+    "openButton": "Eliminar proyecto…",
     "devQuickDescription": "Solo en modo de desarrollo: elimina el proyecto activo sin introducir el nombre del proyecto.",
     "devQuickButton": "Dev: eliminar sin confirmar el nombre",
     "devQuickDeleteFromListConfirm": "Solo en modo de desarrollo: ¿eliminar el proyecto «{{name}}»? Se podrá restaurar desde la papelera de abajo.",
@@ -44,36 +42,37 @@
     "restoreError": "No se ha podido restaurar el proyecto.",
     "error": "No se ha podido eliminar el proyecto."
   },
-  "inviteSectionTitle": "Invitar a usuarios",
+  "inviteSectionTitle": "Invitar a una persona",
   "emailLabel": "Correo electrónico",
+  "emailRequired": "Introduce una dirección de correo.",
   "roleLabel": "Rol",
   "roleMember": "Miembro",
   "roleAdmin": "Administrador",
-  "sendInvite": "Enviar invitación",
-  "adminOnly": "Solo los administradores pueden invitar a usuarios.",
+  "sendInvite": "Invitar",
   "inviteSent": "Invitación enviada.",
   "inviteResent": "Invitación reenviada.",
   "inviteSentNoMail": "Invitación creada, pero el envío del correo ha fallado.",
   "inviteFailed": "No se ha podido enviar la invitación.",
   "membersSectionTitle": "Miembros",
+  "membersCount": "Miembros ({{count}})",
   "membersEmpty": "Actualmente no hay miembros.",
   "memberRoleUpdated": "Rol del miembro actualizado.",
   "memberRoleUpdateFailed": "No se ha podido actualizar el rol del miembro.",
   "memberRemoved": "Miembro eliminado del proyecto.",
   "memberRemoveFailed": "No se ha podido eliminar al miembro.",
   "memberListLoadFailed": "No se han podido cargar los miembros.",
-  "memberRoleLabel": "Rol en el proyecto",
   "memberDisplayFallback": "Sin nombre visible",
-  "memberYou": "Tú",
+  "memberYou": "Yo",
+  "memberActions": "Acciones para {{name}}",
+  "makeAdmin": "Hacer administrador",
+  "makeMember": "Hacer miembro",
   "removeMember": "Quitar del proyecto",
   "removeDialogTitle": "¿Quitar al miembro?",
   "removeDialogText": "¿Seguro que quieres quitar a {{name}} ({{email}}) de este proyecto?",
   "removeDialogCancel": "Cancelar",
   "removeDialogConfirm": "Quitar ahora",
-  "roleChangeBlocked": "Tu propio rol no se puede cambiar aquí.",
-  "removeBlocked": "Aquí no puedes quitarte a ti mismo del proyecto.",
-  "listTitle": "Invitaciones",
-  "listEmpty": "Actualmente no hay invitaciones.",
+  "listTitle": "Invitaciones pendientes",
+  "listEmpty": "No hay invitaciones pendientes.",
   "revoke": "Revocar invitación",
   "revokeSuccess": "Invitación revocada.",
   "revokeFailed": "No se ha podido revocar la invitación.",
@@ -86,12 +85,6 @@
   "openApp": "Abrir la aplicación",
   "projectName": "Proyecto: {{name}}",
   "emailMasked": "Correo invitado: {{email}}",
-  "status": {
-    "pending": "Pendiente",
-    "accepted": "Aceptada",
-    "revoked": "Revocada",
-    "expired": "Caducada"
-  },
   "result": {
     "pending": "Esta invitación es válida.",
     "accepted": "Esta invitación ya se ha utilizado.",
@@ -109,16 +102,6 @@
     "email_send_failed": "No se ha podido enviar el correo. Ponte en contacto con [info@openfarmplanner.org](mailto:info@openfarmplanner.org)."
   },
   "listLoadFailed": "No se han podido cargar las invitaciones.",
-  "projectMembers": {
-    "invitations": {
-      "noAccess": "Solo los administradores pueden ver y gestionar las invitaciones.",
-      "loadError": "No se han podido cargar las invitaciones.",
-      "empty": "Actualmente no hay invitaciones."
-    },
-    "invite": {
-      "noPermission": "Solo los administradores pueden enviar y gestionar invitaciones."
-    }
-  },
   "toRegister": "Registrarse",
   "loginWithDifferentAccount": "Iniciar sesión con otra cuenta",
   "authHint": "Te han invitado al proyecto {{project}}. Inicia sesión con {{email}}.",
