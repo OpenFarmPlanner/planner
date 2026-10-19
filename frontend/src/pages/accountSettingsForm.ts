@@ -2,11 +2,12 @@
 // button width style and the per-section submit-state hook.
 
 import { useState } from 'react';
+import { showGlobalSnackbar } from '../utils/globalSnackbar';
 
-export const actionButtonSx = { width: { xs: '100%', sm: 'auto' } } as const;
+export { settingsActionButtonSx as actionButtonSx } from '../components/settings/settingsStyles';
 
+/** Submit state of one settings form: success goes to the global snackbar, errors stay at the form. */
 export interface SectionSubmit {
-  message: string | null;
   error: string | null;
   submitting: boolean;
   submit: (action: () => Promise<{ detail: string }>, onSuccess?: () => void | Promise<void>) => Promise<void>;
@@ -14,7 +15,6 @@ export interface SectionSubmit {
 }
 
 export function useSectionSubmit(genericErrorMessage: string): SectionSubmit {
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -23,11 +23,10 @@ export function useSectionSubmit(genericErrorMessage: string): SectionSubmit {
     onSuccess?: () => void | Promise<void>,
   ): Promise<void> => {
     setSubmitting(true);
-    setMessage(null);
     setError(null);
     try {
       const response = await action();
-      setMessage(response.detail);
+      showGlobalSnackbar({ message: response.detail, severity: 'success' });
       await onSuccess?.();
     } catch (error) {
       setError(error instanceof Error ? error.message : genericErrorMessage);
@@ -36,5 +35,5 @@ export function useSectionSubmit(genericErrorMessage: string): SectionSubmit {
     }
   };
 
-  return { message, error, submitting, submit, clearError: () => setError(null) };
+  return { error, submitting, submit, clearError: () => setError(null) };
 }

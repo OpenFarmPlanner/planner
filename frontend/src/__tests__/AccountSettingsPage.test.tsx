@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi, type MockInstance } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
@@ -83,13 +83,15 @@ function LocationProbe() {
 describe('AccountSettingsPage', () => {
   const createObjectURLMock = vi.fn(() => 'blob:openfarmplanner-data-export');
   const revokeObjectURLMock = vi.fn();
-  const anchorClickMock = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  let anchorClickMock: MockInstance<() => void>;
 
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     createObjectURLMock.mockClear();
     revokeObjectURLMock.mockClear();
-    anchorClickMock.mockClear();
+    // setupTests restores all spies after each test, so re-spy per test.
+    anchorClickMock = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     moderatorRequestApiMocks.mine.mockClear();
     moderatorRequestApiMocks.create.mockClear();
     moderatorRequestApiMocks.mine.mockResolvedValue({ data: { is_moderator: false, request: null } });
@@ -104,58 +106,80 @@ describe('AccountSettingsPage', () => {
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURLMock });
   });
 
-  it('renders compact sections and keeps delete disabled until confirmation phrase is present', async () => {
+  it('shows every section as an open card in a fixed order, with a section navigation', async () => {
     render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
 
-    expect(screen.getByText('Profil')).toBeInTheDocument();
-    expect(screen.getByText('Kulturbibliothek')).toBeInTheDocument();
-    expect(screen.getByText('Login & Sicherheit')).toBeInTheDocument();
-    expect(screen.getByText('Zugangsdaten')).toBeInTheDocument();
-    expect(await screen.findByText('Anmeldemethoden')).toBeInTheDocument();
-    expect(screen.getByText('Diese Anmeldemethoden sind mit deinem Konto verknüpft.')).toBeInTheDocument();
-    expect(screen.getByText('E-Mail & Passwort · Aktiv')).toBeInTheDocument();
-    expect(screen.getByText('Datenschutz & Datenexport')).toBeInTheDocument();
-    expect(screen.getByText('Konto')).toBeInTheDocument();
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+    // The developer section only exists in development builds (vitest runs as one).
+    expect(headings).toEqual([
+      'Profil',
+      'Sprache',
+      'Anmeldung & Sicherheit',
+      'API-Zugriff',
+      'Datenschutz & Datenexport',
+      'Entwickler',
+      'Konto löschen',
+    ]);
+    const nav = screen.getByRole('navigation', { name: 'Abschnitte' });
+    expect(within(nav).getByRole('link', { name: 'Sprache' })).toHaveAttribute('href', '#language');
+    expect(within(nav).getByRole('link', { name: 'Konto löschen' })).toHaveAttribute('href', '#delete-account');
+    // Nothing is collapsed any more: every section's content is on the page.
+    expect(screen.queryByRole('button', { expanded: false })).not.toBeInTheDocument();
+    expect(screen.getByText(/Die Sprache der Oberfläche gehört zu deinem Konto/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Meine Daten herunterladen' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Anzeigename ändern' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Namen festlegen' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Kulturbibliothek' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Zugangsdaten' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 3, name: 'Anmeldemethoden' })).toBeInTheDocument();
+    expect(screen.getByText('Diese Anmeldemethoden sind mit deinem Konto verknüpft.')).toBeInTheDocument();
+    expect(screen.getByText('E-Mail & Passwort · Aktiv')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'E-Mail-Adresse ändern' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Passwort ändern' })).toBeInTheDocument();
-    expect(screen.getByText(/Projekte ohne verbleibende Mitglieder werden dann einschließlich Projektdaten gelöscht/)).toBeInTheDocument();
-    expect(screen.getByText(/veröffentlichte Kulturbibliotheks-Einträge bleiben bestehen/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Neue E-Mail-Adresse')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Neues Passwort')).not.toBeInTheDocument();
-    expect(screen.queryByText('Die Sprache der Oberfläche gehört zu deinem Konto')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Meine Daten herunterladen' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Onboarding erneut anzeigen' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Profil' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: 'Login & Sicherheit' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.queryByRole('button', { name: 'Konto' })).not.toBeInTheDocument();
+  });
+
+  it('groups both API token kinds as subsections of one API access card', async () => {
+    render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
+
+    const apiSection = screen.getByRole('region', { name: 'API-Zugriff' });
+    expect(within(apiSection).getByRole('heading', { level: 3, name: 'API-Tokens für externe Tools' })).toBeInTheDocument();
+  });
+
+  it('keeps the email change disabled until its fields are filled', async () => {
+    render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
 
     await userEvent.click(screen.getByRole('button', { name: 'E-Mail-Adresse ändern' }));
     const sendConfirmationButton = screen.getByRole('button', { name: 'Bestätigungslink senden' });
     expect(sendConfirmationButton).toBeDisabled();
     await userEvent.hover(sendConfirmationButton.parentElement as HTMLElement);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Bitte alle Pflichtfelder ausfüllen.');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Anzeigename ändern' })).not.toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: 'Login & Sicherheit' })).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
+  it('downloads the data export and confirms it in a snackbar', async () => {
+    const snackbars: GlobalSnackbarDetail[] = [];
+    const listener = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+    render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sprache' }));
-    expect(screen.getByText(/Die Sprache der Oberfläche gehört zu deinem Konto/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Meine Daten herunterladen' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Datenschutz & Datenexport' }));
     fireEvent.click(screen.getByRole('button', { name: 'Meine Daten herunterladen' }));
-    expect(await screen.findByText('Datenexport wurde erstellt.')).toBeInTheDocument();
+
+    await waitFor(() => expect(snackbars).toEqual([{ message: 'Datenexport wurde erstellt.', severity: 'success' }]));
+    window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener);
     expect(createObjectURLMock).toHaveBeenCalledOnce();
     expect(anchorClickMock).toHaveBeenCalledOnce();
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:openfarmplanner-data-export');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Konto löschen' }));
+  it('marks account deletion as the danger section and keeps delete disabled until the confirmation phrase is present', async () => {
+    render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
+
+    const dangerSection = screen.getByRole('region', { name: 'Konto löschen' });
+    expect(within(dangerSection).getByText(/Projekte ohne verbleibende Mitglieder werden dann einschließlich Projektdaten gelöscht/)).toBeInTheDocument();
+    expect(within(dangerSection).getByText(/veröffentlichte Kulturbibliotheks-Einträge bleiben bestehen/)).toBeInTheDocument();
+
+    fireEvent.click(within(dangerSection).getByRole('button', { name: 'Konto löschen …' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/Projekte ohne verbleibende Mitglieder werden dann gelöscht/)).toBeInTheDocument();
     const confirmButton = within(dialog).getByRole('button', { name: 'Konto zur Löschung vormerken' });
@@ -166,6 +190,21 @@ describe('AccountSettingsPage', () => {
     expect(confirmButton).toBeDisabled();
     fireEvent.change(within(dialog).getByLabelText('Bestätigungstext'), { target: { value: 'LÖSCHEN' } });
     expect(confirmButton).toBeEnabled();
+  });
+
+  it('links back to the last visited project page', () => {
+    window.sessionStorage.setItem('ofp.lastProjectRoute', '/app/crops?crop=4');
+    const originalUser = authState.user;
+    authState.user = { ...originalUser, memberships: [{ project_id: 7, project_name: 'Gärtnerei Nord', role: 'admin' }] } as unknown as typeof originalUser;
+    Object.assign(authState, { activeProjectId: 7 });
+    try {
+      render(<MemoryRouter><AccountSettingsPage /></MemoryRouter>);
+
+      expect(screen.getByRole('link', { name: 'Zurück zu Gärtnerei Nord' })).toHaveAttribute('href', '/app/crops?crop=4');
+    } finally {
+      authState.user = originalUser;
+      Object.assign(authState, { activeProjectId: null });
+    }
   });
 
   it('submits a public library moderator request from account settings', async () => {
@@ -192,7 +231,7 @@ describe('AccountSettingsPage', () => {
 
     expect(screen.getByTestId('guest-demo-notice')).toHaveTextContent('Du nutzt die Demo ohne Konto.');
     fireEvent.click(screen.getByRole('button', { name: 'Anzeigename ändern' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Konto löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Konto löschen …' }));
     window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener);
 
     expect(screen.queryByRole('textbox', { name: 'Anzeigename' })).not.toBeInTheDocument();
@@ -233,7 +272,6 @@ describe('AccountSettingsPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Entwickler' }));
     fireEvent.click(screen.getByRole('button', { name: 'Onboarding erneut anzeigen' }));
 
     expect(localStorage.getItem(DEV_ONBOARDING_PREVIEW_STORAGE_KEY)).toBe('1');

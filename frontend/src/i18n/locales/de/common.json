@@ -264,5 +264,8 @@
     "oct": "Okt",
     "nov": "Nov",
     "dec": "Dez"
+  },
+  "settingsNavigation": {
+    "label": "Abschnitte"
   }
 }

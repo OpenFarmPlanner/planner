@@ -7,8 +7,9 @@
     "publicProfile": "Bibliothèque de cultures",
     "security": "Connexion et sécurité",
     "privacy": "Confidentialité et export des données",
-    "account": "Compte",
-    "language": "Langue"
+    "language": "Langue",
+    "apiAccess": "Accès à l'API",
+    "deleteAccount": "Supprimer le compte"
   },
   "dataExport": {
     "description": "Téléchargez une copie structurée des données de votre compte, de vos projets et de la bibliothèque de cultures sous forme de fichier JSON.",
@@ -65,10 +66,9 @@
     "connectedSince": "{{provider}} · associé depuis le {{date}}",
     "connectedSinceWithEmail": "{{provider}} · {{email}} · associé depuis le {{date}}"
   },
-  "dangerZone": "Zone de danger",
   "deleteDescription": "Si vous supprimez votre compte, il est immédiatement désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants sont alors supprimés avec leurs données ; les fiches publiées dans la bibliothèque de cultures sont conservées.",
   "restoreDescription": "Vous pouvez annuler la suppression pendant cette période.",
-  "deleteButton": "Supprimer le compte",
+  "deleteButton": "Supprimer le compte…",
   "dialogTitle": "Programmer la suppression du compte",
   "dialogWarning": "Veuillez confirmer avec votre mot de passe actuel et le texte « {{phrase}} ». Votre compte sera désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants seront alors supprimés.",
   "dialogWarningWithoutPassword": "Veuillez confirmer avec le texte « {{phrase}} ». Votre compte sera désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants seront alors supprimés.",

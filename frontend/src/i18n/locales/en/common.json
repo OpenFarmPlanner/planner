@@ -264,5 +264,8 @@
     "oct": "Oct",
     "nov": "Nov",
     "dec": "Dec"
+  },
+  "settingsNavigation": {
+    "label": "Sections"
   }
 }

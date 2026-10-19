@@ -36,7 +36,8 @@ import { useTranslation } from '../i18n';
 import { getDataGridLocaleText } from '../components/data-grid/localeText';
 import { mediumStackedFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
 import { actionButtonSx } from './accountSettingsForm';
-import { InlineEditor, SectionAlerts, SettingsCard } from './accountSettingsCards';
+import { InlineEditor, SectionAlerts } from './accountSettingsCards';
+import { SettingsSubsection } from '../components/settings/SettingsSection';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 const SCOPES: CropLibraryTokenScope[] = ['read', 'write'];
@@ -301,12 +302,7 @@ export default function AccountSettingsCropLibraryTokenCard() {
   }
 
   return (
-    <SettingsCard
-      title={t('cropLibraryToken.title')}
-      description={t('cropLibraryToken.description')}
-      collapsible
-      defaultExpanded
-    >
+    <SettingsSubsection title={t('cropLibraryToken.title')} description={t('cropLibraryToken.description')}>
       <Stack spacing={2}>
         <Typography variant="body2" color="text.secondary">
           <Link href={CROP_LIBRARY_TOKEN_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
@@ -426,6 +422,6 @@ export default function AccountSettingsCropLibraryTokenCard() {
           </Button>
         </DialogActions>
       </Dialog>
-    </SettingsCard>
+    </SettingsSubsection>
   );
 }

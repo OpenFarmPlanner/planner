@@ -81,13 +81,12 @@ describe('AccountSettingsApiTokensCard', () => {
   });
 
   it('lists existing tokens with their project, scope, and status', async () => {
-    const user = userEvent.setup();
     listMock.mockResolvedValue({ data: [token({ scope: 'write' })] });
 
     render(<AccountSettingsApiTokensCard />);
 
-    const cardToggle = screen.getByRole('button', { name: 'API-Tokens für externe Tools' });
-    expect(cardToggle).toHaveAttribute('aria-expanded', 'true');
+    // A subsection of the account settings' API access card, never collapsed.
+    expect(screen.getByRole('heading', { level: 3, name: 'API-Tokens für externe Tools' })).toBeInTheDocument();
     expect(await screen.findByText('Codex')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Rechte' })).toBeInTheDocument();
@@ -98,11 +97,6 @@ describe('AccountSettingsApiTokensCard', () => {
     expect(screen.getByRole('columnheader', { name: 'Aktion' })).toBeInTheDocument();
     expect(screen.getByText('Lesen und schreiben')).toBeInTheDocument();
     expect(screen.getByText(/Hof Nord/)).toBeInTheDocument();
-
-    await user.click(cardToggle);
-
-    await waitFor(() => expect(screen.queryByText('Codex')).not.toBeInTheDocument());
-    expect(cardToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('sorts tokens by creation time descending by default', async () => {

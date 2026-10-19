@@ -217,18 +217,38 @@ docs/                  # This documentation
 ## Account Settings UI
 
 `/app/account-settings` uses the normal app topbar title (`Kontoeinstellungen`
-in the German UI); the page body starts directly with the **Profile** card
-rather than repeating a large content heading. The settings are grouped into
-independent cards, all using the same card-collapse pattern:
+in the German UI) as its `h1`. The project sidebar is hidden on this page
+(desktop; the mobile drawer is unchanged) because account settings are not
+project-scoped; instead a **"← Zurück zu <Projekt>"** link
+(`navigation/BackToProjectLink.tsx`) leads to the last project page visited in
+this tab. `RootLayout` records every project-scoped route in session storage
+(`navigation/lastProjectRoute.ts`, key `ofp.lastProjectRoute`); without one the
+link falls back to the overview (`/app/dashboard`).
 
-- **Profile**, **Login & Security**, and **API tokens for external tools** are
-  expanded by default.
-- **Language**, **Privacy & data export**, and **Developer** are collapsed by
-  default.
-- **Account** stays visible and non-collapsible because it contains the
-  destructive account-deletion action.
+Account and project settings share one shell, `components/settings/`:
 
-The **API tokens for external tools** card renders active tokens in a MUI
+- `SettingsLayout` takes `sections` (`{ id, label, tone?: 'danger' }`) and a
+  `navPlacement` of `side` (account settings: a ~232px link column beside a
+  max-820px content column) or `top` (a tab bar above the content). Below `md`
+  both become a horizontally scrolling tab bar. Links are real `<a href="#id">`
+  anchors; the active one (`aria-current="true"`) follows the section in view
+  via IntersectionObserver, and a `#id` deep link scrolls to its section on
+  load. The navigation is deliberately not sticky.
+- `SettingsSection` is the card for one section: always an `h2` heading and an
+  `id`, optional footer `actions` (Cancel/Save, right-aligned, full-width on
+  phones), and a `danger` tone (red border and heading). `SettingsSubsection`
+  is an `h3` group inside a card. Disabled buttons inside a section keep a
+  readable label colour, and info hints use a flat alert (`settingsFlatAlertSx`).
+
+The account settings sections are, in this order and never collapsed:
+**Profil**, **Sprache** (`#language`), **Anmeldung & Sicherheit**,
+**API-Zugriff** (external-tool tokens and, for platform admins, the crop-library
+token as `h3` subsections), **Datenschutz & Datenexport**, **Entwickler**
+(development builds only) and **Konto löschen** (danger tone, opens the
+existing confirmation dialog). Successful saves are confirmed through the
+global snackbar; errors stay at the form.
+
+The **API tokens for external tools** subsection renders active tokens in a MUI
 DataGrid table with columns for name, rights, project, creation time, expiry,
 last use, and action. Expired and revoked tokens are grouped below the active
 table behind the collapsed toggle **Abgelaufene und widerrufene Tokens anzeigen
