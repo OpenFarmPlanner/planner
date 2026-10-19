@@ -204,7 +204,7 @@
     "title": "Comment OpenFarmPlanner est né",
     "intro1": "Il y a quelque temps, notre maraîchère de la <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> m'a demandé de jeter un œil à un logiciel de planification des cultures. Ni celui-là ni aucun des nombreux autres que j'ai essayés ensuite ne m'a convaincu. Je devais souvent lire d'abord le manuel pour comprendre comment quelque chose fonctionnait, et la saisie comme la modification des données étaient fastidieuses.",
     "intro2": "En tant qu'ingénieur électricien et étudiant en informatique, j'ai donc commencé à développer mon propre outil en décembre 2025. OpenFarmPlanner repose sur des tableaux modifiables comme un tableur et sur une interface compréhensible sans manuel.",
-    "photoCaption": "Le développeur, détendu, en train de semer des haricots à la GeLaWi Zwiebelzopf.",
+    "photoCaption": "Le développeur sème tranquillement des haricots à la ferme GeLaWi Zwiebelzopf.",
     "photoAlt": "Martin, allongé dans un champ, rit en semant des haricots",
     "openSection": {
       "title": "Ouvert et collaboratif",

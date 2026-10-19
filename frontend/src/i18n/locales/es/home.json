@@ -204,7 +204,7 @@
     "title": "Cómo nació OpenFarmPlanner",
     "intro1": "Hace un tiempo, nuestra agricultora de la <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> me pidió que echara un vistazo a un programa de planificación de cultivos. Ni ese ni ninguno de los muchos otros que probé después me convenció. A menudo tenía que leer primero el manual solo para entender cómo funcionaba algo, y introducir y modificar datos resultaba engorroso.",
     "intro2": "Como ingeniero eléctrico y estudiante de informática, empecé por eso en diciembre de 2025 a desarrollar mi propia herramienta. OpenFarmPlanner se basa en tablas que se editan como una hoja de cálculo y en una interfaz que se entiende sin manual.",
-    "photoCaption": "El desarrollador, relajado, sembrando judías en la GeLaWi Zwiebelzopf.",
+    "photoCaption": "El desarrollador siembra judías con calma en la finca GeLaWi Zwiebelzopf.",
     "photoAlt": "Martin, tumbado en un campo, se ríe mientras siembra judías",
     "openSection": {
       "title": "Abierto y colaborativo",
