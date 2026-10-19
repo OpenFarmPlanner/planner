@@ -1,7 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
+import LanguageSynchronizer from '../i18n/LanguageSynchronizer';
+import { setDevLanguageOverride } from '../i18n/devLanguageOverride';
+import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
+
+const updateUiLanguage = vi.hoisted(() => vi.fn());
+vi.mock('../auth/authApi', () => ({ updateUiLanguage }));
 import { GlobalMenu } from '../navigation/GlobalMenu';
 
 const labels: Record<string, string> = {
@@ -189,15 +195,24 @@ describe('GlobalMenu "Feedback geben" entry', () => {
 describe('GlobalMenu development language switcher', () => {
   afterEach(async () => {
     vi.unstubAllEnvs();
+    setDevLanguageOverride(null);
     await i18n.changeLanguage('de');
   });
 
-  it('opens a submenu that switches only the UI language', async () => {
+  it('opens a submenu that switches only the UI language, against the account preference', async () => {
     const anchor = document.createElement('button');
     document.body.appendChild(anchor);
-    await i18n.changeLanguage('de');
+    // The root language sync is mounted as in the app, so the switch has to
+    // survive it re-applying the account preference.
+    const auth = { user: { id: 1, ui_language: 'de' }, refreshUser: vi.fn() } as unknown as AuthContextValue;
 
-    render(<GlobalMenu {...baseProps} anchorEl={anchor} />);
+    render(
+      <AuthContext.Provider value={auth}>
+        <LanguageSynchronizer />
+        <GlobalMenu {...baseProps} anchorEl={anchor} />
+      </AuthContext.Provider>,
+    );
+    await waitFor(() => expect(i18n.resolvedLanguage).toBe('de'));
 
     await userEvent.click(screen.getByRole('menuitem', { name: /Sprache/ }));
     const options = screen.getAllByRole('menuitemradio');
@@ -206,7 +221,10 @@ describe('GlobalMenu development language switcher', () => {
     expect(screen.getByRole('menuitemradio', { name: 'Deutsch' })).toHaveAttribute('aria-checked', 'true');
 
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    await waitFor(() => expect(i18n.resolvedLanguage).toBe('fr'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(i18n.resolvedLanguage).toBe('fr');
+    expect(updateUiLanguage).not.toHaveBeenCalled();
   });
 
   it('is not rendered outside the development server', () => {
