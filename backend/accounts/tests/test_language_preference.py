@@ -44,6 +44,14 @@ class AccountLanguageApiTest(DRFAPITestCase):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)
 
+    def test_switching_between_every_language_is_persisted_each_time(self):
+        for code in ('de', 'en', 'fr', 'es', 'de'):
+            response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK, code)
+            self.assertEqual(response.data['user']['ui_language'], code)
+            self.assertEqual(self.client.get(ME_URL).data['ui_language'], code)
+
     def test_rejects_unsupported_language_codes(self):
         for code in ('it', 'de-AT', 'nonsense', ''):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')

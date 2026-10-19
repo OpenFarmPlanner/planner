@@ -6,10 +6,12 @@ import type { AuthContextValue } from '../auth/authContextShared';
 import type { AuthUser } from '../auth/types';
 import { LANGUAGE_STORAGE_KEY, SIGNED_OUT_LANGUAGE_CHOICE_KEY } from '../i18n/languages';
 import { useLanguagePreference } from '../i18n/useLanguagePreference';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
-const { updateUiLanguageMock, changeLanguageMock, i18nState } = vi.hoisted(() => ({
+const { updateUiLanguageMock, changeLanguageMock, tMock, i18nState } = vi.hoisted(() => ({
   updateUiLanguageMock: vi.fn(),
   changeLanguageMock: vi.fn(),
+  tMock: vi.fn((key: string, options?: { lng?: string }) => `${options?.lng}:${key}`),
   i18nState: { resolvedLanguage: 'en' },
 }));
 
@@ -20,6 +22,7 @@ vi.mock('react-i18next', () => ({
     i18n: {
       get resolvedLanguage() { return i18nState.resolvedLanguage; },
       changeLanguage: changeLanguageMock,
+      t: tMock,
     },
   }),
 }));
@@ -62,7 +65,20 @@ beforeEach(() => {
   vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('it-IT');
 });
 
+/** Collects every global snackbar shown while the test runs. */
+const captureSnackbars = (): GlobalSnackbarDetail[] => {
+  const shown: GlobalSnackbarDetail[] = [];
+  const listener = (event: Event) => shown.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+  window.addEventListener(GLOBAL_SNACKBAR_EVENT, listener);
+  removeSnackbarListeners.push(() => window.removeEventListener(GLOBAL_SNACKBAR_EVENT, listener));
+  return shown;
+};
+const removeSnackbarListeners: Array<() => void> = [];
+
+const SAVE_FAILED = 'common:language.saveFailed';
+
 afterEach(() => {
+  removeSnackbarListeners.splice(0).forEach((remove) => remove());
   vi.restoreAllMocks();
   document.documentElement.removeAttribute('lang');
 });
@@ -213,15 +229,62 @@ describe('useLanguagePreference — setPreference', () => {
     expect(updateUiLanguageMock).not.toHaveBeenCalled();
   });
 
-  it('keeps the switch applied when persisting fails', async () => {
-    // A failed sync must not undo what the user just saw happen.
-    updateUiLanguageMock.mockRejectedValue(new Error('offline'));
-    const { result } = setup({ authUser: user() });
+  it('reverts to the account language and reports the error when persisting fails', async () => {
+    // A reload would restore the account value anyway; showing the new
+    // language until then would hide that the choice was lost.
+    updateUiLanguageMock.mockRejectedValue(new Error('forbidden'));
+    const snackbars = captureSnackbars();
+    const { result } = setup({ authUser: user({ ui_language: 'de' }) });
 
-    await act(async () => { result.current.setPreference('de'); });
+    await act(async () => { result.current.setPreference('fr'); });
 
+    expect(changeLanguageMock).toHaveBeenCalledWith('fr');
+    await waitFor(() => expect(changeLanguageMock).toHaveBeenLastCalledWith('de'));
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('de');
-    expect(changeLanguageMock).toHaveBeenCalledWith('de');
+    expect(result.current.preference).toBe('de');
+    expect(result.current.language).toBe('de');
+    expect(snackbars).toEqual([{ message: `de:${SAVE_FAILED}`, severity: 'error' }]);
+  });
+
+  it('reverts an account on auto back to auto, so the select shows it again', async () => {
+    updateUiLanguageMock.mockRejectedValue(new Error('offline'));
+    const snackbars = captureSnackbars();
+    const { result } = setup({ authUser: user({ ui_language: 'auto' }) });
+
+    await act(async () => { result.current.setPreference('es'); });
+
+    await waitFor(() => expect(result.current.preference).toBe('auto'));
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('auto');
+    expect(changeLanguageMock).toHaveBeenLastCalledWith('en');
+    expect(result.current.language).toBe('en');
+    expect(snackbars).toHaveLength(1);
+  });
+
+  it('shows no error when the save succeeds', async () => {
+    const snackbars = captureSnackbars();
+    const { result, refreshUser } = setup({ authUser: user({ ui_language: 'de' }) });
+
+    await act(async () => { result.current.setPreference('fr'); });
+
+    await waitFor(() => expect(refreshUser).toHaveBeenCalled());
+    expect(snackbars).toHaveLength(0);
+  });
+
+  it('does not let an older failed save undo a newer switch', async () => {
+    let rejectFirst: (reason: unknown) => void = () => undefined;
+    updateUiLanguageMock
+      .mockImplementationOnce(() => new Promise((_, reject) => { rejectFirst = reject; }))
+      .mockResolvedValueOnce({ ui_language: 'es' });
+    const snackbars = captureSnackbars();
+    const { result } = setup({ authUser: user({ ui_language: 'de' }) });
+
+    await act(async () => { result.current.setPreference('fr'); });
+    await act(async () => { result.current.setPreference('es'); });
+    await act(async () => { rejectFirst(new Error('late')); });
+
+    expect(changeLanguageMock).toHaveBeenLastCalledWith('es');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('es');
+    expect(snackbars).toHaveLength(0);
   });
 
   it('does not leave the failed sync as an unhandled rejection', async () => {
@@ -320,26 +383,16 @@ describe('useLanguagePreference — promoting a guest choice on sign-in', () => 
     expect(rejections).toHaveLength(0);
   });
 
-  it('loses the guest choice when the promotion fails', async () => {
-    // The source says a failed sync is harmless because "the local choice
-    // still applies and the next explicit switch will retry". It does not: the
-    // mirror effect has already written the account's `auto` over the stored
-    // `de` on the same commit, so once the request fails there is nothing left
-    // to fall back to. The user is signed in, sees the browser language, and
-    // their choice is gone from storage.
-    //
-    // Asserted after a rerender on purpose — reading `result.current` from the
-    // first render would still show `de`, because that render resolved its
-    // value before the mirror effect ran.
+  it('falls back to the account value and reports it when the promotion fails', async () => {
+    // The account still holds `auto`, which is what a reload would show, so
+    // the UI shows it now too, and the user learns the choice was not saved.
     updateUiLanguageMock.mockRejectedValue(new Error('offline'));
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    const snackbars = captureSnackbars();
 
-    const { result, rerender } = setup({ authUser: user({ ui_language: 'auto' }) });
+    const { result } = setup({ authUser: user({ ui_language: 'auto' }) });
 
-    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalled());
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    rerender();
-
+    await waitFor(() => expect(snackbars).toEqual([{ message: `en:${SAVE_FAILED}`, severity: 'error' }]));
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('auto');
     expect(result.current.language).toBe('en');
   });
@@ -412,19 +465,22 @@ describe('useLanguagePreference — a choice made while signed out in this tab',
     expect(updateUiLanguageMock).not.toHaveBeenCalled();
   });
 
-  it('keeps applying the choice in this tab when saving it fails', async () => {
+  it('returns to the account language and reports it when saving the choice fails', async () => {
+    // Sign-in itself is unaffected; only the language falls back to what the
+    // account holds, so the next reload shows no surprise.
     updateUiLanguageMock.mockRejectedValue(new Error('offline'));
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
     window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+    const snackbars = captureSnackbars();
 
-    const { result, rerender } = setup({ authUser: user({ ui_language: 'de' }) });
-
-    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalled());
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    rerender();
+    const { result } = setup({ authUser: user({ ui_language: 'de' }) });
 
     expect(result.current.language).toBe('fr');
-    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+    await waitFor(() => expect(result.current.language).toBe('de'));
+    expect(changeLanguageMock).toHaveBeenLastCalledWith('de');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('de');
+    expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+    expect(snackbars).toEqual([{ message: `de:${SAVE_FAILED}`, severity: 'error' }]);
   });
 
   it('promotes again after signing out and back in as the same user', async () => {
@@ -499,5 +555,71 @@ describe('useLanguagePreference — isPersistedToAccount', () => {
   it('is true only while someone is signed in', () => {
     expect(setup({ authUser: user() }).result.current.isPersistedToAccount).toBe(true);
     expect(setup().result.current.isPersistedToAccount).toBe(false);
+  });
+});
+
+describe('useLanguagePreference — what survives a reload', () => {
+  /**
+   * A fake account endpoint plus a remountable hook: unmounting and rendering
+   * again with the user `/auth/me/` would now return is a page reload.
+   */
+  const setupWithServer = (initial: string) => {
+    let serverLanguage = initial;
+    updateUiLanguageMock.mockImplementation(async (next: string) => {
+      serverLanguage = next;
+      return { ui_language: next };
+    });
+    let currentUser = user({ ui_language: serverLanguage });
+    const refreshUser = vi.fn(async () => { currentUser = user({ ui_language: serverLanguage }); });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AuthContext.Provider value={{ user: currentUser, refreshUser } as unknown as AuthContextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+    const mount = () => renderHook(() => useLanguagePreference(), { wrapper });
+    const reload = (view: ReturnType<typeof mount>) => {
+      view.unmount();
+      currentUser = user({ ui_language: serverLanguage });
+      return mount();
+    };
+    return { mount, reload, refreshUser, serverLanguage: () => serverLanguage };
+  };
+
+  it('keeps a successfully saved language after a reload', async () => {
+    const server = setupWithServer('de');
+    const view = server.mount();
+
+    await act(async () => { view.result.current.setPreference('fr'); });
+    await waitFor(() => expect(server.refreshUser).toHaveBeenCalled());
+
+    const reloaded = server.reload(view);
+    expect(reloaded.result.current.preference).toBe('fr');
+    expect(reloaded.result.current.language).toBe('fr');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+  });
+
+  it('shows the same language before and after a reload when the save failed', async () => {
+    const server = setupWithServer('de');
+    updateUiLanguageMock.mockRejectedValue(new Error('offline'));
+    const view = server.mount();
+
+    await act(async () => { view.result.current.setPreference('fr'); });
+    await waitFor(() => expect(view.result.current.language).toBe('de'));
+
+    const reloaded = server.reload(view);
+    expect(reloaded.result.current.language).toBe('de');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('de');
+  });
+
+  it('saves and keeps every supported language in turn', async () => {
+    const server = setupWithServer('auto');
+    let view = server.mount();
+
+    for (const code of ['de', 'en', 'fr', 'es'] as const) {
+      await act(async () => { view.result.current.setPreference(code); });
+      await waitFor(() => expect(server.serverLanguage()).toBe(code));
+      view = server.reload(view);
+      expect(view.result.current.language).toBe(code);
+    }
   });
 });

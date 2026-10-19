@@ -200,7 +200,8 @@
   "language": {
     "label": "Sprache",
     "auto": "Automatisch (Browsersprache)",
-    "switcherLabel": "Sprache ändern, aktuell: {{language}}"
+    "switcherLabel": "Sprache ändern, aktuell: {{language}}",
+    "saveFailed": "Die Sprache konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   "errorFieldLabels": {
     "area_input_value": "Fläche",

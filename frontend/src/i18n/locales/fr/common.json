@@ -201,7 +201,8 @@
   "language": {
     "label": "Langue",
     "auto": "Automatique (langue du navigateur)",
-    "switcherLabel": "Changer de langue, actuellement : {{language}}"
+    "switcherLabel": "Changer de langue, actuellement : {{language}}",
+    "saveFailed": "La langue n'a pas pu être enregistrée. Veuillez réessayer."
   },
   "errorFieldLabels": {
     "area_input_value": "Surface",
