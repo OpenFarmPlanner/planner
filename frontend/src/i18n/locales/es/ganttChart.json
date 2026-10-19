@@ -1,5 +1,5 @@
 {
-  "title": "Calendario de cultivo",
+  "title": "Calendario de cultivos",
   "zoomIn": "Ampliar",
   "zoomOut": "Reducir",
   "viewModes": {
@@ -31,7 +31,7 @@
   "loading": "Cargando…",
   "errors": {
     "load": "No se han podido cargar los datos",
-    "updatePlan": "No se ha podido actualizar el plan de cultivo",
+    "updatePlan": "No se ha podido actualizar la serie",
     "render": "No se ha podido cargar la vista de calendario."
   },
   "tooltip": {
@@ -48,7 +48,7 @@
     "location": "Ubicación",
     "plantsCount": "Número de plantas",
     "totalPlantsCount": "Total de plantas",
-    "plantingPlanCount": "Número de planes de cultivo",
+    "plantingPlanCount": "Número de series",
     "involvedLocations": "Ubicaciones implicadas",
     "seedRequirement": "Necesidad de semillas",
     "notes": "Nota",
@@ -57,7 +57,7 @@
       "harvest": "Fase de cosecha"
     }
   },
-  "noData": "No hay planes de cultivo disponibles",
+  "noData": "No hay series disponibles",
   "modeLabel": "Modo",
   "modeAriaLabel": "Seleccionar modo",
   "modeViewOption": "Ver",
@@ -67,7 +67,7 @@
   "moveModeCommandDeactivate": "Desactivar mover periodo",
   "modeViewTooltip": "Modo de vista: ver el calendario y navegar por él. Sin cambios mediante arrastrar y soltar.",
   "moveModeTooltipDescription": "Activa el modo de mover para desplazar los periodos de cultivo arrastrando y soltando.",
-  "moveModeActiveTooltipDescription": "Arrastra un periodo a la izquierda o a la derecha para desplazar en el tiempo todo el plan de cultivo.",
+  "moveModeActiveTooltipDescription": "Arrastra un periodo a la izquierda o a la derecha para desplazar en el tiempo toda la serie.",
   "viewMode": "Modo de vista",
   "viewSelectorAriaLabel": "Seleccionar vista del calendario",
   "chartLocaleText": {
@@ -95,9 +95,13 @@
     "occupancy": "Ocupación de parcelas",
     "seedlings": "Semillero"
   },
+  "modesShort": {
+    "occupancy": "Ocupación",
+    "seedlings": "Semillero"
+  },
   "modeTooltips": {
-    "occupancy": "Muestra la ocupación de los bancales a lo largo del año. Los periodos mostrados se calculan a partir de los planes de cultivo y del calendario específico de cada cultivo (p. ej. siembra, plantación y cosecha).",
-    "seedlings": "Muestra la fase de semillero de los cultivos antes de la plantación. Los periodos mostrados se calculan a partir de los planes de cultivo y de la duración en semillero específica de cada cultivo."
+    "occupancy": "Muestra la ocupación de los bancales a lo largo del año. Los periodos mostrados se calculan a partir de las series y del calendario específico de cada cultivo (p. ej. siembra, plantación y cosecha).",
+    "seedlings": "Muestra la fase de semillero de los cultivos antes de la plantación. Los periodos mostrados se calculan a partir de las series y de la duración en semillero específica de cada cultivo."
   },
   "shortcuts": {
     "today": "Ir al periodo actual",
@@ -115,7 +119,7 @@
     "focusSearch": "Ir a la búsqueda (/)"
   },
   "modeDescriptions": {
-    "occupancy": "Ocupación de parcelas y bancales a lo largo del año. Esta vista también permite mover planes de cultivo existentes.",
+    "occupancy": "Ocupación de parcelas y bancales a lo largo del año. Esta vista también permite mover series existentes.",
     "seedlings": "Periodos de semillero por cultivo. Esta vista es de solo lectura y solo muestra los semilleros relevantes del año en curso."
   },
   "seedlings": {
@@ -139,29 +143,29 @@
       "done": "Bancal disponible"
     },
     "plan": {
-      "label": "Plan de cultivo",
-      "missing": "Falta el plan de cultivo",
-      "done": "Plan de cultivo disponible"
+      "label": "Serie",
+      "missing": "Falta la serie",
+      "done": "Serie disponible"
     }
   },
   "emptyStates": {
     "requirementsTitle": "Todavía no es posible planificar cultivos",
-    "requirementsDescription": "Abre Superficies de cultivo y añade allí una parcela en la ubicación correspondiente. Después podrás registrar bancales, cultivos y planes de cultivo.",
+    "requirementsDescription": "Abre Superficies de cultivo y añade allí una parcela en la ubicación correspondiente. Después podrás registrar bancales, cultivos y series.",
     "states": {
       "crops": {
         "title": "Todavía no hay cultivos",
-        "description": "Crea ahora tu primer cultivo o impórtalo desde la biblioteca de cultivos. Después podrás crear planes de cultivo."
+        "description": "Crea ahora tu primer cultivo o impórtalo desde la biblioteca de cultivos. Después podrás crear series."
       },
       "plans": {
-        "title": "Todavía no hay planes de cultivo",
-        "description": "Todavía no se han creado planes de cultivo para las superficies de cultivo existentes. Crea un plan de cultivo para mostrar cultivos y fechas en el calendario de cultivo."
+        "title": "Todavía no hay series",
+        "description": "Todavía no se han creado series para las superficies de cultivo existentes. Crea una serie para mostrar cultivos y fechas en el calendario de cultivos."
       }
     },
     "actions": {
       "createCrop": "Añadir cultivo",
       "createField": "Añadir parcela",
       "createAreas": "Ir a Superficies de cultivo",
-      "createPlan": "Añadir plan de cultivo"
+      "createPlan": "Añadir serie"
     }
   },
   "sidebar": {
@@ -192,7 +196,7 @@
     "clearSearch": "Borrar búsqueda"
   },
   "contextMenu": {
-    "openPlan": "Abrir plan de cultivo",
+    "openPlan": "Abrir serie",
     "openCrop": "Abrir cultivo",
     "openBed": "Abrir bancal",
     "openField": "Abrir parcela",
@@ -200,8 +204,8 @@
     "editBed": "Editar bancal",
     "editField": "Editar parcela",
     "editLocation": "Editar ubicación",
-    "addPlan": "Añadir plan de cultivo",
-    "confirmDeletePlan": "¿Seguro que quieres eliminar este plan de cultivo?"
+    "addPlan": "Añadir serie",
+    "confirmDeletePlan": "¿Seguro que quieres eliminar esta serie?"
   },
   "taskNames": {
     "harvest": "{{crop}} (cosecha)",

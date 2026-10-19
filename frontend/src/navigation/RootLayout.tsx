@@ -238,10 +238,11 @@ function RootLayout() {
     // Dashboard stays reachable even without a project: it is the "home" nav
     // entry and already shows the same project-required empty state/CTA as
     // other pages, so disabling it would be a dead end rather than a guide.
-    { to: '/app/dashboard', label: t('dashboard'), activeAliases: [], keywords: ['übersicht', 'dashboard'], icon: <NavEmojiIcon emoji={getNavItemEmoji('/app/dashboard')} />, requiresProject: false },
+    { to: '/app/dashboard', label: t('dashboard'), shortLabel: t('short.dashboard'), activeAliases: [], keywords: ['übersicht', 'dashboard'], icon: <NavEmojiIcon emoji={getNavItemEmoji('/app/dashboard')} />, requiresProject: false },
     ...MAIN_NAV_ITEMS.map((item) => ({
       to: item.to,
       label: t(item.labelKey),
+      shortLabel: t(`short.${item.labelKey}`),
       activeAliases: item.activeAliases ?? [],
       keywords: item.keywords,
       requiresProject: item.requiresProject,
@@ -864,7 +865,7 @@ function RootLayout() {
                   <NavListItem
                     key={item.to}
                     to={item.to}
-                    label={item.label}
+                    label={item.shortLabel}
                     icon={item.icon}
                     isActive={isActive}
                     disabled={disabled}
@@ -928,6 +929,9 @@ function RootLayout() {
             minWidth: 0,
             width: 'max-content',
             maxWidth: { xs: 240, sm: 280, md: 400, lg: 480 },
+            // From 1024px the topbar has room for the longest title plus the
+            // calendar mode toggle (fr/es/en); below that md keeps its 400px cap.
+            [`@media (min-width: 1024px) and (max-width: ${theme.breakpoints.values.lg - 0.05}px)`]: { maxWidth: 500 },
             flex: { xs: '0 1 max-content', md: '0 0 max-content' },
             flexWrap: 'nowrap',
             overflow: 'hidden',
@@ -1023,7 +1027,7 @@ function RootLayout() {
                       <AppTooltip key={action.id} title={action.tooltip ?? action.label} describeChild enterTouchDelay={0}>
                         <ToggleButton
                           value={action.id}
-                          aria-label={action.label}
+                          aria-label={action.ariaLabel ?? action.label}
                           onClick={action.onClick}
                           disabled={action.disabled}
                           sx={action.hidden ? {
@@ -1043,21 +1047,27 @@ function RootLayout() {
                 variant="outlined"
                 sx={{ ...segmentedButtonGroupSx, ml: 1, flexShrink: 0 }}
               >
-                {topbarTitleActions.map((action) => (
-                  <Button
-                    key={action.id}
-                    size="small"
-                    variant={action.active ? 'contained' : 'outlined'}
-                    color={action.active ? 'success' : 'inherit'}
-                    onClick={action.onClick}
-                    aria-label={action.ariaLabel ?? action.label}
-                    aria-pressed={action.active}
-                    disabled={action.disabled}
-                    sx={getSegmentedActionButtonSx({ active: Boolean(action.active), hidden: Boolean(action.hidden) })}
-                  >
-                    {action.label}
-                  </Button>
-                ))}
+                {topbarTitleActions.map((action) => {
+                  const button = (
+                    <Button
+                      key={action.id}
+                      size="small"
+                      variant={action.active ? 'contained' : 'outlined'}
+                      color={action.active ? 'success' : 'inherit'}
+                      onClick={action.onClick}
+                      aria-label={action.ariaLabel ?? action.label}
+                      aria-pressed={action.active}
+                      disabled={action.disabled}
+                      sx={getSegmentedActionButtonSx({ active: Boolean(action.active), hidden: Boolean(action.hidden) })}
+                    >
+                      {action.label}
+                    </Button>
+                  );
+                  // A shortened label keeps its full name reachable on hover.
+                  return action.ariaLabel && action.ariaLabel !== action.label ? (
+                    <AppTooltip key={action.id} title={action.ariaLabel}>{button}</AppTooltip>
+                  ) : button;
+                })}
               </ButtonGroup>
               )
             ) : null}
@@ -1945,7 +1955,7 @@ function RootLayout() {
               <ListItem key={item.to} disablePadding>
                 <NavListItem
                   to={item.to}
-                  label={item.label}
+                  label={item.shortLabel}
                   icon={item.icon}
                   isActive={isActive}
                   disabled={disabled}

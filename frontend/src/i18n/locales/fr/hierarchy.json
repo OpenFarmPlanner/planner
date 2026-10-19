@@ -3,7 +3,7 @@
   "addField": "Parcelle",
   "addBed": "Planche",
   "addBedToField": "Ajouter une planche à cette parcelle",
-  "createPlantingPlan": "Ajouter un plan de culture",
+  "createPlantingPlan": "Ajouter une série",
   "columns": {
     "name": "Nom",
     "location": "Site",

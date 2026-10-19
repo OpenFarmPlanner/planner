@@ -6,10 +6,21 @@
   "crops": "Cultivos",
   "cropLibrary": "Biblioteca de cultivos",
   "suppliers": "Proveedores",
-  "plantingPlans": "Planes de cultivo",
-  "ganttChart": "Calendario de cultivo",
+  "plantingPlans": "Plan de cultivos",
+  "ganttChart": "Calendario de cultivos",
   "yieldOverview": "Resumen de rendimientos",
   "seedDemand": "Necesidad de semillas",
+  "short": {
+    "dashboard": "Resumen",
+    "fieldsAndBeds": "Superficies",
+    "crops": "Cultivos",
+    "cropLibrary": "Biblioteca",
+    "plantingPlans": "Plan de cultivos",
+    "ganttChart": "Calendario",
+    "yieldOverview": "Rendimientos",
+    "seedDemand": "Semillas",
+    "suppliers": "Proveedores"
+  },
   "graphicalFields": "Vista gráfica",
   "accountSettings": "Ajustes de la cuenta",
   "publicLibraryModeration": "Moderar la biblioteca de cultivos",
@@ -47,9 +58,9 @@
   "seasonSwitcher": {
     "ariaLabel": "Cambiar la temporada activa",
     "sectionTitle": "Temporadas",
-    "planCount_one": "{{count}} plan de cultivo",
-    "planCount_other": "{{count}} planes de cultivo",
-    "planCount_many": "{{count}} planes de cultivo",
+    "planCount_one": "{{count}} serie",
+    "planCount_other": "{{count}} series",
+    "planCount_many": "{{count}} series",
     "loadError": "No se han podido cargar las temporadas.",
     "deleted": "Temporada «{{label}}» eliminada",
     "undo": "Deshacer",
@@ -70,7 +81,7 @@
       "save": "Guardar",
       "error": "No se ha podido cambiar el periodo.",
       "unknownCrop": "Cultivo desconocido",
-      "plantingConflictIntro": "Estos planes de cultivo tienen una fecha de plantación fuera del nuevo periodo. Ajústalos o muévelos primero antes de cambiar el periodo:",
+      "plantingConflictIntro": "Estas series tienen una fecha de plantación fuera del nuevo periodo. Ajústalas o muévelas primero antes de cambiar el periodo:",
       "plantingConflictItem": "{{crop}} – fecha de plantación {{date}}",
       "overlapConflictIntro": "El nuevo periodo se solapa con otra temporada:",
       "overlapConflictItem": "Temporada {{label}}: {{period}}"
@@ -82,10 +93,10 @@
       "copyDescription": "Las superficies de cultivo, los bancales y las asignaciones de la rotación de cultivos se copiarán en la nueva temporada.",
       "create": "Crear",
       "createError": "No se ha podido crear la temporada.",
-      "outOfRangeError_one": "No se puede crear la temporada para {{period}} porque un plan de cultivo existente queda fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
-      "outOfRangeError_other": "No se puede crear la temporada para {{period}} porque {{count}} planes de cultivo existentes quedan fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
-      "outOfRangeError_many": "No se puede crear la temporada para {{period}} porque {{count}} planes de cultivo existentes quedan fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
-      "outOfRangeFallbackExamples": "planes de cultivo existentes",
+      "outOfRangeError_one": "No se puede crear la temporada para {{period}} porque una serie existente queda fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
+      "outOfRangeError_other": "No se puede crear la temporada para {{period}} porque {{count}} series existentes quedan fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
+      "outOfRangeError_many": "No se puede crear la temporada para {{period}} porque {{count}} series existentes quedan fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
+      "outOfRangeFallbackExamples": "series existentes",
       "patternHint": {
         "prefix": "¿El periodo no encaja? Puedes ajustar el patrón de temporada en los",
         "link": "ajustes del proyecto",
@@ -115,9 +126,9 @@
           "gap": "Queda un hueco: {{period}}.",
           "overlap": "Queda un solapamiento: {{period}}."
         },
-        "copyPreviewAll": "Se copiarán los {{total}} planes de cultivo de {{label}}.",
-        "copyPreviewPartial": "Se copiarán {{copied}} de {{total}} planes de cultivo de {{label}}; {{skipped}} quedan fuera del periodo y no se copiarán.",
-        "copyPreviewFollowup": "Temporada siguiente {{label}}: se copiarán {{copied}} de {{total}} planes de cultivo."
+        "copyPreviewAll": "Se copiarán las {{total}} series de {{label}}.",
+        "copyPreviewPartial": "Se copiarán {{copied}} de {{total}} series de {{label}}; {{skipped}} quedan fuera del periodo y no se copiarán.",
+        "copyPreviewFollowup": "Temporada siguiente {{label}}: se copiarán {{copied}} de {{total}} series."
       },
       "createDisabledTooltip": "Selecciona primero una opción para la transición entre temporadas."
     },
@@ -130,21 +141,21 @@
     "copyDialog": {
       "title": "Copiar datos",
       "sourceLabel": "Origen",
-      "warning_one": "La temporada {{target}} ya contiene 1 plan de cultivo. Al copiar se añadirán además los planes de cultivo de la temporada {{source}}; los planes de cultivo existentes en {{target}} no se modificarán ni se sustituirán.",
-      "warning_other": "La temporada {{target}} ya contiene {{count}} planes de cultivo. Al copiar se añadirán además los planes de cultivo de la temporada {{source}}; los planes de cultivo existentes en {{target}} no se modificarán ni se sustituirán.",
-      "warning_many": "La temporada {{target}} ya contiene {{count}} planes de cultivo. Al copiar se añadirán además los planes de cultivo de la temporada {{source}}; los planes de cultivo existentes en {{target}} no se modificarán ni se sustituirán.",
-      "summary_one": "→ Se añadirá {{count}} plan de cultivo de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
-      "summary_other": "→ Se añadirán {{count}} planes de cultivo de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
-      "summary_many": "→ Se añadirán {{count}} planes de cultivo de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
+      "warning_one": "La temporada {{target}} ya contiene 1 serie. Al copiar se añadirán además las series de la temporada {{source}}; las series existentes en {{target}} no se modificarán ni se sustituirán.",
+      "warning_other": "La temporada {{target}} ya contiene {{count}} series. Al copiar se añadirán además las series de la temporada {{source}}; las series existentes en {{target}} no se modificarán ni se sustituirán.",
+      "warning_many": "La temporada {{target}} ya contiene {{count}} series. Al copiar se añadirán además las series de la temporada {{source}}; las series existentes en {{target}} no se modificarán ni se sustituirán.",
+      "summary_one": "→ Se añadirá {{count}} serie de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
+      "summary_other": "→ Se añadirán {{count}} series de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
+      "summary_many": "→ Se añadirán {{count}} series de la temporada {{source}} a la temporada {{target}} (total después: {{total}}).",
       "confirm": "Copiar",
       "error": "No se han podido copiar los datos.",
       "confirmDisabledTooltip": "Selecciona primero una temporada de origen.",
       "rotation": {
         "checking": "Comprobando la rotación de cultivos en la temporada de destino…",
         "checkError": "No se ha podido comprobar la rotación de cultivos. Aun así, puedes copiar.",
-        "summary_one": "Se copiará {{count}} plan de cultivo de la temporada {{source}} en los mismos bancales.",
-        "summary_other": "Se copiarán {{count}} planes de cultivo de la temporada {{source}} en los mismos bancales.",
-        "summary_many": "Se copiarán {{count}} planes de cultivo de la temporada {{source}} en los mismos bancales.",
+        "summary_one": "Se copiará {{count}} serie de la temporada {{source}} en los mismos bancales.",
+        "summary_other": "Se copiarán {{count}} series de la temporada {{source}} en los mismos bancales.",
+        "summary_many": "Se copiarán {{count}} series de la temporada {{source}} en los mismos bancales.",
         "warningConflicts": "{{conflicts}} de ellos incumplen la rotación de cultivos porque la misma familia volvería a estar en el mismo bancal al año siguiente.",
         "warningConflictsAndHints": "{{conflicts}} de ellos incumplen la rotación de cultivos porque la misma familia volvería a estar en el mismo bancal al año siguiente. Otros {{hints}} tienen un aviso sobre la secuencia de necesidades de nutrientes.",
         "hintsOnly": "{{hints}} de ellos tienen un aviso sobre la secuencia de necesidades de nutrientes.",
@@ -158,7 +169,7 @@
         "modes": {
           "without_bed": {
             "label": "Copiar sin bancal",
-            "description": "Los {{conflicts}} planes de cultivo se crean como asignaciones abiertas y después eliges el bancal con ayuda de sugerencias."
+            "description": "Las {{conflicts}} series se crean como asignaciones abiertas y después eliges el bancal con ayuda de sugerencias."
           },
           "keep": {
             "label": "Copiar igualmente en los mismos bancales",
@@ -166,7 +177,7 @@
           },
           "skip": {
             "label": "No copiar",
-            "description": "Solo se copian los {{ok}} planes de cultivo sin conflictos."
+            "description": "Solo se copian las {{ok}} series sin conflictos."
           }
         }
       }
@@ -174,14 +185,14 @@
   },
   "seasonSetup": {
     "title": "Configurar la planificación por temporadas",
-    "description_one": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada el {{count}} plan de cultivo existente de este proyecto.",
-    "description_other": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada los {{count}} planes de cultivo existentes de este proyecto.",
-    "description_many": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada los {{count}} planes de cultivo existentes de este proyecto.",
+    "description_one": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada la {{count}} serie existente de este proyecto.",
+    "description_other": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada las {{count}} series existentes de este proyecto.",
+    "description_many": "Antes de poder trabajar con temporadas, definiremos tu patrón de temporada y asignaremos a una temporada las {{count}} series existentes de este proyecto.",
     "startLabel": "La temporada empieza el",
-    "infoBox": "No se modificará ni eliminará ningún dato: todos los planes de cultivo existentes se asignarán simplemente a la temporada «{{label}}». Puedes ajustar el patrón y la asignación en cualquier momento.",
-    "summary_one": "→ El {{count}} plan de cultivo existente se asignará a la temporada «{{label}}» ({{period}}).",
-    "summary_other": "→ Los {{count}} planes de cultivo existentes se asignarán a la temporada «{{label}}» ({{period}}).",
-    "summary_many": "→ Los {{count}} planes de cultivo existentes se asignarán a la temporada «{{label}}» ({{period}}).",
+    "infoBox": "No se modificará ni eliminará ningún dato: todas las series existentes se asignarán simplemente a la temporada «{{label}}». Puedes ajustar el patrón y la asignación en cualquier momento.",
+    "summary_one": "→ La {{count}} serie existente se asignará a la temporada «{{label}}» ({{period}}).",
+    "summary_other": "→ Las {{count}} series existentes se asignarán a la temporada «{{label}}» ({{period}}).",
+    "summary_many": "→ Las {{count}} series existentes se asignarán a la temporada «{{label}}» ({{period}}).",
     "submit": "Configurar",
     "error": "No se ha podido completar la configuración."
   },
@@ -249,8 +260,8 @@
     "areas": "Ayuda sobre las superficies de cultivo",
     "crops": "Ayuda sobre los cultivos",
     "cropLibrary": "Ayuda sobre la biblioteca de cultivos",
-    "plantingPlans": "Ayuda sobre los planes de cultivo",
-    "calendar": "Ayuda sobre el calendario de cultivo",
+    "plantingPlans": "Ayuda sobre el plan de cultivos",
+    "calendar": "Ayuda sobre el calendario de cultivos",
     "yieldOverview": "Ayuda sobre el resumen de rendimientos",
     "seedDemand": "Ayuda sobre la necesidad de semillas",
     "suppliers": "Ayuda sobre los proveedores",
@@ -320,7 +331,7 @@
         "exportCurrent": "Exportar el cultivo seleccionado",
         "exportAll": "Exportar todos los cultivos",
         "import": "Importar cultivos",
-        "createPlan": "Crear plan de cultivo a partir del cultivo",
+        "createPlan": "Crear serie a partir del cultivo",
         "previous": "Seleccionar el cultivo anterior",
         "next": "Seleccionar el cultivo siguiente"
       },
@@ -343,14 +354,14 @@
         "toggleGraphicalEdit": "Activar/desactivar la edición gráfica"
       },
       "plans": {
-        "title": "Planes de cultivo",
-        "create": "Añadir plan de cultivo",
-        "edit": "Editar plan de cultivo",
-        "delete": "Eliminar plan de cultivo",
-        "search": "Ir a la búsqueda de planes de cultivo"
+        "title": "Plan de cultivos",
+        "create": "Añadir serie",
+        "edit": "Editar serie",
+        "delete": "Eliminar serie",
+        "search": "Ir a la búsqueda de series"
       },
       "calendar": {
-        "title": "Calendario de cultivo",
+        "title": "Calendario de cultivos",
         "today": "Ir al periodo actual",
         "previousPeriod": "Periodo anterior",
         "nextPeriod": "Periodo siguiente",
@@ -384,8 +395,8 @@
       "publicCropLibrary": "Biblioteca de cultivos",
       "locations": "Ubicaciones",
       "areas": "Superficies de cultivo",
-      "plans": "Planes de cultivo",
-      "calendar": "Calendario de cultivo",
+      "plans": "Plan de cultivos",
+      "calendar": "Calendario de cultivos",
       "seedDemand": "Necesidad de semillas"
     },
     "shortcutSections": {

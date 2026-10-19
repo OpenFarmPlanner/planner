@@ -28,10 +28,10 @@
   },
   "empty": {
     "noPlansTitle": "Aucune prévision de rendement disponible pour l'instant",
-    "description": "Les prévisions de rendement sont disponibles dès qu'il existe des plans de culture avec des périodes de récolte.",
-    "createPlanAction": "Ajouter un plan de culture",
+    "description": "Les prévisions de rendement sont disponibles dès qu'il existe des séries avec des périodes de récolte.",
+    "createPlanAction": "Ajouter une série",
     "noYieldTitle": "Aucun rendement prévu pour cette saison",
     "noYieldDescription": "Aucune donnée de récolte n'existe pour la saison active. Vérifiez que des rendements prévus sont saisis pour vos cultures.",
-    "openPlansAction": "Ouvrir les plans de culture"
+    "openPlansAction": "Ouvrir le plan de culture"
   }
 }

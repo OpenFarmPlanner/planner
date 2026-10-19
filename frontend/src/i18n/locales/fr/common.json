@@ -59,7 +59,7 @@
     "openAreas": "Ouvrir les surfaces de culture",
     "openCropLibrary": "Ouvrir la bibliothèque de cultures",
     "createCrop": "Ajouter une culture",
-    "createPlan": "Ajouter un plan de culture"
+    "createPlan": "Ajouter une série"
   },
   "notes": {
     "empty": "Aucune note",
@@ -160,10 +160,10 @@
   },
   "projectRequired": {
     "noProjectsTitle": "Vous n'avez pas encore de projet.",
-    "noProjectsDescription": "Créez d'abord un projet pour gérer les sites, les surfaces de culture, les plans de culture et les calendriers.",
+    "noProjectsDescription": "Créez d'abord un projet pour gérer les sites, les surfaces de culture, les séries et les calendriers.",
     "noProjectsSelectionDescription": "Créez votre premier projet pour commencer à planifier.",
     "noActiveProjectTitle": "Aucun projet n'est actuellement sélectionné.",
-    "noActiveProjectDescription": "Sélectionnez un projet pour gérer les sites, les surfaces de culture, les plans de culture et les calendriers.",
+    "noActiveProjectDescription": "Sélectionnez un projet pour gérer les sites, les surfaces de culture, les séries et les calendriers.",
     "createProjectAction": "Créer un premier projet",
     "createFirstProjectAction": "Créer un premier projet",
     "selectProjectAction": "Sélectionner un projet"
@@ -172,7 +172,7 @@
     "pageTitle": "Lancez votre premier projet",
     "pageDescription": "Choisissez de commencer avec votre propre projet vide ou de découvrir d'abord OpenFarmPlanner avec des données d'exemple réalistes.",
     "emptyTitle": "Commencer avec un projet vide",
-    "emptyDescription": "Créez votre propre projet et ajoutez progressivement des sites, des cultures et des plans de culture.",
+    "emptyDescription": "Créez votre propre projet et ajoutez progressivement des sites, des cultures et des séries.",
     "emptyAction": "Créer un projet vide",
     "demoTitle": "Essayer un projet de démonstration",
     "demoDescription": "Commencez avec un projet de culture préparé et découvrez directement les fonctions principales avec des données d'exemple réalistes.",

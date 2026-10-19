@@ -17,8 +17,8 @@
     "locationRequired": "Le site est obligatoire"
   },
   "confirmDelete": "Voulez-vous vraiment supprimer cette parcelle ?",
-  "addButton": "Ajouter une nouvelle parcelle",
-  "createNew": "Créer une nouvelle parcelle",
+  "addButton": "Ajouter une parcelle",
+  "createNew": "Créer une parcelle",
   "cancel": "Annuler",
   "submit": "Créer",
   "selectLocation": "Choisir un site",

@@ -31,7 +31,7 @@
   "loading": "Chargement…",
   "errors": {
     "load": "Impossible de charger les données",
-    "updatePlan": "Impossible de mettre à jour le plan de culture",
+    "updatePlan": "Impossible de mettre à jour la série",
     "render": "Impossible de charger la vue calendrier."
   },
   "tooltip": {
@@ -41,14 +41,14 @@
     "firstHarvest": "Première récolte",
     "lastHarvest": "Dernière récolte",
     "areaUsage": "Surface",
-    "propagationStart": "Début de l'élevage des plants",
+    "propagationStart": "Mise en pépinière",
     "transplantDate": "Plantation",
-    "propagationDuration": "Durée d'élevage des plants",
+    "propagationDuration": "Durée en pépinière",
     "bed": "Planche",
     "location": "Site",
     "plantsCount": "Nombre de plants",
     "totalPlantsCount": "Total des plants",
-    "plantingPlanCount": "Nombre de plans de culture",
+    "plantingPlanCount": "Nombre de séries",
     "involvedLocations": "Sites concernés",
     "seedRequirement": "Besoin en semences",
     "notes": "Note",
@@ -57,7 +57,7 @@
       "harvest": "Phase de récolte"
     }
   },
-  "noData": "Aucun plan de culture disponible",
+  "noData": "Aucune série disponible",
   "modeLabel": "Mode",
   "modeAriaLabel": "Choisir le mode",
   "modeViewOption": "Consulter",
@@ -67,12 +67,12 @@
   "moveModeCommandDeactivate": "Désactiver le déplacement de période",
   "modeViewTooltip": "Mode consultation : consulter le calendrier et y naviguer. Aucune modification par glisser-déposer.",
   "moveModeTooltipDescription": "Activez le mode déplacement pour déplacer les périodes de culture par glisser-déposer.",
-  "moveModeActiveTooltipDescription": "Faites glisser une période vers la gauche ou la droite pour décaler tout le plan de culture dans le temps.",
+  "moveModeActiveTooltipDescription": "Faites glisser une période vers la gauche ou la droite pour décaler toute la série dans le temps.",
   "viewMode": "Mode d'affichage",
   "viewSelectorAriaLabel": "Choisir la vue du calendrier",
   "chartLocaleText": {
     "titleOccupancy": "Planification des parcelles",
-    "titleSeedlings": "Planification de l'élevage des plants",
+    "titleSeedlings": "Planification de la pépinière",
     "resources": "Surfaces",
     "resourcesSeedlings": "Cultures",
     "today": "Aujourd'hui",
@@ -93,11 +93,15 @@
   "noYieldData": "Aucun rendement prévu disponible pour cette année.",
   "modes": {
     "occupancy": "Occupation des parcelles",
-    "seedlings": "Élevage des plants"
+    "seedlings": "Pépinière"
+  },
+  "modesShort": {
+    "occupancy": "Occupation",
+    "seedlings": "Pépinière"
   },
   "modeTooltips": {
-    "occupancy": "Affiche l'occupation des planches au cours de l'année. Les périodes affichées sont calculées à partir des plans de culture et du calendrier propre à chaque culture (p. ex. semis, plantation et récolte).",
-    "seedlings": "Affiche la phase d'élevage des plants des cultures avant la plantation. Les périodes affichées sont calculées à partir des plans de culture et de la durée d'élevage des plants propre à chaque culture."
+    "occupancy": "Affiche l'occupation des planches au cours de l'année. Les périodes affichées sont calculées à partir des séries et du calendrier propre à chaque culture (p. ex. semis, plantation et récolte).",
+    "seedlings": "Affiche la phase de pépinière des cultures avant la plantation. Les périodes affichées sont calculées à partir des séries et de la durée en pépinière propre à chaque culture."
   },
   "shortcuts": {
     "today": "Aller à la période actuelle",
@@ -111,15 +115,15 @@
     "quarterView": "Afficher la vue trimestrielle",
     "yearView": "Afficher la vue annuelle",
     "showOccupancy": "Afficher l'occupation des parcelles",
-    "showSeedlings": "Afficher l'élevage des plants",
+    "showSeedlings": "Afficher la pépinière",
     "focusSearch": "Aller à la recherche (/)"
   },
   "modeDescriptions": {
-    "occupancy": "Occupation des parcelles et des planches tout au long de l'année. Cette vue permet aussi de déplacer des plans de culture existants.",
-    "seedlings": "Périodes d'élevage des plants par culture. Cette vue est en lecture seule et n'affiche que les élevages de plants pertinents de l'année en cours."
+    "occupancy": "Occupation des parcelles et des planches tout au long de l'année. Cette vue permet aussi de déplacer des séries existantes.",
+    "seedlings": "Périodes en pépinière par culture. Cette vue est en lecture seule et n'affiche que les cultures en pépinière pertinentes de l'année en cours."
   },
   "seedlings": {
-    "emptyState": "Aucune période d'élevage des plants disponible pour cette année.",
+    "emptyState": "Aucune période en pépinière disponible pour cette année.",
     "plantsUnit": "plants"
   },
   "requirements": {
@@ -139,29 +143,29 @@
       "done": "Planche disponible"
     },
     "plan": {
-      "label": "Plan de culture",
-      "missing": "Plan de culture manquant",
-      "done": "Plan de culture disponible"
+      "label": "Série",
+      "missing": "Série manquante",
+      "done": "Série disponible"
     }
   },
   "emptyStates": {
     "requirementsTitle": "Planification des cultures pas encore possible",
-    "requirementsDescription": "Ouvrez Surfaces de culture et ajoutez-y une parcelle sur le site approprié. Vous pourrez ensuite saisir des planches, des cultures et des plans de culture.",
+    "requirementsDescription": "Ouvrez Surfaces de culture et ajoutez-y une parcelle sur le site approprié. Vous pourrez ensuite saisir des planches, des cultures et des séries.",
     "states": {
       "crops": {
         "title": "Aucune culture pour l'instant",
-        "description": "Créez dès maintenant votre première culture ou importez-en une depuis la bibliothèque de cultures. Vous pourrez ensuite créer des plans de culture."
+        "description": "Créez dès maintenant votre première culture ou importez-en une depuis la bibliothèque de cultures. Vous pourrez ensuite créer des séries."
       },
       "plans": {
-        "title": "Aucun plan de culture pour l'instant",
-        "description": "Aucun plan de culture n'a encore été créé pour les surfaces de culture existantes. Créez un plan de culture pour afficher les cultures et les dates dans le calendrier de culture."
+        "title": "Aucune série pour l'instant",
+        "description": "Aucune série n'a encore été créée pour les surfaces de culture existantes. Créez une série pour afficher les cultures et les dates dans le calendrier de culture."
       }
     },
     "actions": {
       "createCrop": "Ajouter une culture",
       "createField": "Ajouter une parcelle",
       "createAreas": "Aller à Surfaces de culture",
-      "createPlan": "Ajouter un plan de culture"
+      "createPlan": "Ajouter une série"
     }
   },
   "sidebar": {
@@ -192,7 +196,7 @@
     "clearSearch": "Effacer la recherche"
   },
   "contextMenu": {
-    "openPlan": "Ouvrir le plan de culture",
+    "openPlan": "Ouvrir la série",
     "openCrop": "Ouvrir la culture",
     "openBed": "Ouvrir la planche",
     "openField": "Ouvrir la parcelle",
@@ -200,8 +204,8 @@
     "editBed": "Modifier la planche",
     "editField": "Modifier la parcelle",
     "editLocation": "Modifier le site",
-    "addPlan": "Ajouter un plan de culture",
-    "confirmDeletePlan": "Vraiment supprimer ce plan de culture ?"
+    "addPlan": "Ajouter une série",
+    "confirmDeletePlan": "Vraiment supprimer cette série ?"
   },
   "taskNames": {
     "harvest": "{{crop}} (récolte)",

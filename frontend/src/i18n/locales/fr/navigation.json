@@ -6,10 +6,21 @@
   "crops": "Cultures",
   "cropLibrary": "Bibliothèque de cultures",
   "suppliers": "Fournisseurs",
-  "plantingPlans": "Plans de culture",
+  "plantingPlans": "Plan de culture",
   "ganttChart": "Calendrier de culture",
   "yieldOverview": "Aperçu des rendements",
   "seedDemand": "Besoin en semences",
+  "short": {
+    "dashboard": "Vue d'ensemble",
+    "fieldsAndBeds": "Parcellaire",
+    "crops": "Cultures",
+    "cropLibrary": "Bibliothèque",
+    "plantingPlans": "Plan de culture",
+    "ganttChart": "Calendrier",
+    "yieldOverview": "Rendements",
+    "seedDemand": "Semences",
+    "suppliers": "Fournisseurs"
+  },
   "graphicalFields": "Vue graphique",
   "accountSettings": "Paramètres du compte",
   "publicLibraryModeration": "Modérer la bibliothèque de cultures",
@@ -47,9 +58,9 @@
   "seasonSwitcher": {
     "ariaLabel": "Changer de saison active",
     "sectionTitle": "Saisons",
-    "planCount_one": "{{count}} plan de culture",
-    "planCount_other": "{{count}} plans de culture",
-    "planCount_many": "{{count}} plans de culture",
+    "planCount_one": "{{count}} série",
+    "planCount_other": "{{count}} séries",
+    "planCount_many": "{{count}} séries",
     "loadError": "Impossible de charger les saisons.",
     "deleted": "Saison «  {{label}}  » supprimée",
     "undo": "Annuler",
@@ -70,7 +81,7 @@
       "save": "Enregistrer",
       "error": "Impossible de modifier la période.",
       "unknownCrop": "Culture inconnue",
-      "plantingConflictIntro": "Ces plans de culture ont une date de plantation en dehors de la nouvelle période. Ajustez-les ou déplacez-les d'abord avant de modifier la période :",
+      "plantingConflictIntro": "Ces séries ont une date de plantation en dehors de la nouvelle période. Ajustez-les ou déplacez-les d'abord avant de modifier la période :",
       "plantingConflictItem": "{{crop}} – date de plantation {{date}}",
       "overlapConflictIntro": "La nouvelle période chevauche une autre saison :",
       "overlapConflictItem": "Saison {{label}} : {{period}}"
@@ -82,10 +93,10 @@
       "copyDescription": "Les surfaces de culture, les planches et les affectations de la rotation des cultures seront copiées dans la nouvelle saison.",
       "create": "Créer",
       "createError": "Impossible de créer la saison.",
-      "outOfRangeError_one": "La saison pour {{period}} ne peut pas être créée, car {{count}} plan de culture existant se situe en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
-      "outOfRangeError_other": "La saison pour {{period}} ne peut pas être créée, car {{count}} plans de culture existants se situent en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
-      "outOfRangeError_many": "La saison pour {{period}} ne peut pas être créée, car {{count}} plans de culture existants se situent en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
-      "outOfRangeFallbackExamples": "plans de culture existants",
+      "outOfRangeError_one": "La saison pour {{period}} ne peut pas être créée, car {{count}} série existante se situe en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
+      "outOfRangeError_other": "La saison pour {{period}} ne peut pas être créée, car {{count}} séries existantes se situent en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
+      "outOfRangeError_many": "La saison pour {{period}} ne peut pas être créée, car {{count}} séries existantes se situent en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
+      "outOfRangeFallbackExamples": "séries existantes",
       "patternHint": {
         "prefix": "La période ne convient pas ? Vous pouvez ajuster le modèle de saison dans les",
         "link": "paramètres du projet",
@@ -115,9 +126,9 @@
           "gap": "Un intervalle subsiste : {{period}}.",
           "overlap": "Un chevauchement subsiste : {{period}}."
         },
-        "copyPreviewAll": "Les {{total}} plans de culture de {{label}} seront copiés.",
-        "copyPreviewPartial": "{{copied}} plans de culture sur {{total}} de {{label}} seront copiés – {{skipped}} se situent en dehors de la période et ne seront pas copiés.",
-        "copyPreviewFollowup": "Saison suivante {{label}} : {{copied}} plans de culture sur {{total}} seront copiés."
+        "copyPreviewAll": "Les {{total}} séries de {{label}} seront copiées.",
+        "copyPreviewPartial": "{{copied}} séries sur {{total}} de {{label}} seront copiées – {{skipped}} se situent en dehors de la période et ne seront pas copiées.",
+        "copyPreviewFollowup": "Saison suivante {{label}} : {{copied}} séries sur {{total}} seront copiées."
       },
       "createDisabledTooltip": "Choisissez d'abord une option pour la transition entre saisons."
     },
@@ -130,21 +141,21 @@
     "copyDialog": {
       "title": "Copier les données",
       "sourceLabel": "Source",
-      "warning_one": "La saison {{target}} contient déjà {{count}} plan de culture. La copie ajoute en plus les plans de culture de la saison {{source}} — les plans de culture existants de {{target}} ne seront ni modifiés ni remplacés.",
-      "warning_other": "La saison {{target}} contient déjà {{count}} plans de culture. La copie ajoute en plus les plans de culture de la saison {{source}} — les plans de culture existants de {{target}} ne seront ni modifiés ni remplacés.",
-      "warning_many": "La saison {{target}} contient déjà {{count}} plans de culture. La copie ajoute en plus les plans de culture de la saison {{source}} — les plans de culture existants de {{target}} ne seront ni modifiés ni remplacés.",
-      "summary_one": "→ {{count}} plan de culture de la saison {{source}} sera ajouté à la saison {{target}} (total ensuite : {{total}}).",
-      "summary_other": "→ {{count}} plans de culture de la saison {{source}} seront ajoutés à la saison {{target}} (total ensuite : {{total}}).",
-      "summary_many": "→ {{count}} plans de culture de la saison {{source}} seront ajoutés à la saison {{target}} (total ensuite : {{total}}).",
+      "warning_one": "La saison {{target}} contient déjà {{count}} série. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
+      "warning_other": "La saison {{target}} contient déjà {{count}} séries. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
+      "warning_many": "La saison {{target}} contient déjà {{count}} séries. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
+      "summary_one": "→ {{count}} série de la saison {{source}} sera ajoutée à la saison {{target}} (total ensuite : {{total}}).",
+      "summary_other": "→ {{count}} séries de la saison {{source}} seront ajoutées à la saison {{target}} (total ensuite : {{total}}).",
+      "summary_many": "→ {{count}} séries de la saison {{source}} seront ajoutées à la saison {{target}} (total ensuite : {{total}}).",
       "confirm": "Copier",
       "error": "Impossible de copier les données.",
       "confirmDisabledTooltip": "Choisissez d'abord une saison source.",
       "rotation": {
         "checking": "Vérification de la rotation des cultures dans la saison cible…",
         "checkError": "La rotation des cultures n'a pas pu être vérifiée. Vous pouvez tout de même copier.",
-        "summary_one": "{{count}} plan de culture de la saison {{source}} sera copié sur les mêmes planches.",
-        "summary_other": "{{count}} plans de culture de la saison {{source}} seront copiés sur les mêmes planches.",
-        "summary_many": "{{count}} plans de culture de la saison {{source}} seront copiés sur les mêmes planches.",
+        "summary_one": "{{count}} série de la saison {{source}} sera copiée sur les mêmes planches.",
+        "summary_other": "{{count}} séries de la saison {{source}} seront copiées sur les mêmes planches.",
+        "summary_many": "{{count}} séries de la saison {{source}} seront copiées sur les mêmes planches.",
         "warningConflicts": "{{conflicts}} d'entre eux enfreignent la rotation des cultures, car la même famille se retrouverait sur la même planche l'année suivante.",
         "warningConflictsAndHints": "{{conflicts}} d'entre eux enfreignent la rotation des cultures, car la même famille se retrouverait sur la même planche l'année suivante. {{hints}} autres font l'objet d'une indication sur la succession des besoins nutritifs.",
         "hintsOnly": "{{hints}} d'entre eux font l'objet d'une indication sur la succession des besoins nutritifs.",
@@ -158,7 +169,7 @@
         "modes": {
           "without_bed": {
             "label": "Copier sans planche",
-            "description": "Les {{conflicts}} plans de culture sont créés comme affectations ouvertes et vous choisissez ensuite la planche à l'aide de suggestions."
+            "description": "Les {{conflicts}} séries sont créées comme affectations ouvertes et vous choisissez ensuite la planche à l'aide de suggestions."
           },
           "keep": {
             "label": "Copier malgré tout sur les mêmes planches",
@@ -166,7 +177,7 @@
           },
           "skip": {
             "label": "Ne pas copier",
-            "description": "Seuls les {{ok}} plans de culture sans conflit sont copiés."
+            "description": "Seules les {{ok}} séries sans conflit sont copiées."
           }
         }
       }
@@ -174,14 +185,14 @@
   },
   "seasonSetup": {
     "title": "Configurer la planification par saisons",
-    "description_one": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison le {{count}} plan de culture existant de ce projet.",
-    "description_other": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison les {{count}} plans de culture existants de ce projet.",
-    "description_many": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison les {{count}} plans de culture existants de ce projet.",
+    "description_one": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison la {{count}} série existante de ce projet.",
+    "description_other": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison les {{count}} séries existantes de ce projet.",
+    "description_many": "Avant de pouvoir travailler avec des saisons, nous définissons votre modèle de saison et affectons à une saison les {{count}} séries existantes de ce projet.",
     "startLabel": "La saison commence le",
-    "infoBox": "Aucune donnée n'est modifiée ni supprimée — tous les plans de culture existants sont simplement affectés à la saison «  {{label}}  ». Vous pouvez ajuster le modèle et l'affectation à tout moment par la suite.",
-    "summary_one": "→ Le {{count}} plan de culture existant sera affecté à la saison «  {{label}}  » ({{period}}).",
-    "summary_other": "→ Les {{count}} plans de culture existants seront affectés à la saison «  {{label}}  » ({{period}}).",
-    "summary_many": "→ Les {{count}} plans de culture existants seront affectés à la saison «  {{label}}  » ({{period}}).",
+    "infoBox": "Aucune donnée n'est modifiée ni supprimée — toutes les séries existantes sont simplement affectées à la saison «  {{label}}  ». Vous pouvez ajuster le modèle et l'affectation à tout moment par la suite.",
+    "summary_one": "→ La {{count}} série existante sera affectée à la saison «  {{label}}  » ({{period}}).",
+    "summary_other": "→ Les {{count}} séries existantes seront affectées à la saison «  {{label}}  » ({{period}}).",
+    "summary_many": "→ Les {{count}} séries existantes seront affectées à la saison «  {{label}}  » ({{period}}).",
     "submit": "Configurer",
     "error": "La configuration a échoué."
   },
@@ -249,7 +260,7 @@
     "areas": "Aide sur les surfaces de culture",
     "crops": "Aide sur les cultures",
     "cropLibrary": "Aide sur la bibliothèque de cultures",
-    "plantingPlans": "Aide sur les plans de culture",
+    "plantingPlans": "Aide sur le plan de culture",
     "calendar": "Aide sur le calendrier de culture",
     "yieldOverview": "Aide sur l'aperçu des rendements",
     "seedDemand": "Aide sur le besoin en semences",
@@ -320,7 +331,7 @@
         "exportCurrent": "Exporter la culture sélectionnée",
         "exportAll": "Exporter toutes les cultures",
         "import": "Importer des cultures",
-        "createPlan": "Créer un plan de culture à partir de la culture",
+        "createPlan": "Créer une série à partir de la culture",
         "previous": "Sélectionner la culture précédente",
         "next": "Sélectionner la culture suivante"
       },
@@ -343,11 +354,11 @@
         "toggleGraphicalEdit": "Activer/désactiver l'édition graphique"
       },
       "plans": {
-        "title": "Plans de culture",
-        "create": "Ajouter un plan de culture",
-        "edit": "Modifier le plan de culture",
-        "delete": "Supprimer le plan de culture",
-        "search": "Aller à la recherche de plans de culture"
+        "title": "Plan de culture",
+        "create": "Ajouter une série",
+        "edit": "Modifier la série",
+        "delete": "Supprimer la série",
+        "search": "Aller à la recherche de séries"
       },
       "calendar": {
         "title": "Calendrier de culture",
@@ -363,7 +374,7 @@
         "yearView": "Vue annuelle",
         "search": "Aller à la recherche du calendrier",
         "showOccupancy": "Afficher l'occupation des parcelles",
-        "showSeedlings": "Afficher l'élevage des plants",
+        "showSeedlings": "Afficher la pépinière",
         "toggleEdit": "Activer/désactiver le déplacement des périodes"
       },
       "locations": {
@@ -384,7 +395,7 @@
       "publicCropLibrary": "Bibliothèque de cultures",
       "locations": "Sites",
       "areas": "Surfaces de culture",
-      "plans": "Plans de culture",
+      "plans": "Plan de culture",
       "calendar": "Calendrier de culture",
       "seedDemand": "Besoin en semences"
     },
@@ -416,7 +427,7 @@
       "calendarQuarterView": "Vue trimestrielle",
       "calendarYearView": "Vue annuelle",
       "calendarOccupancy": "Afficher l'occupation des parcelles",
-      "calendarSeedlings": "Afficher l'élevage des plants",
+      "calendarSeedlings": "Afficher la pépinière",
       "calendarToggleMove": "Activer/désactiver le déplacement des périodes"
     },
     "feedback": {

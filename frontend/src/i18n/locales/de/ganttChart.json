@@ -95,6 +95,10 @@
     "occupancy": "Feldbelegung",
     "seedlings": "Anzucht"
   },
+  "modesShort": {
+    "occupancy": "Feldbelegung",
+    "seedlings": "Anzucht"
+  },
   "modeTooltips": {
     "occupancy": "Zeigt die Belegung der Beete über das Jahr. Die dargestellten Zeiträume werden aus den Anbauplänen und den kulturspezifischen Zeitangaben (z. B. Aussaat, Pflanzung und Ernte) berechnet.",
     "seedlings": "Zeigt die Anzuchtphase der Kulturen vor der Pflanzung. Die dargestellten Zeiträume werden aus den Anbauplänen sowie den kulturspezifischen Angaben zur Anzuchtdauer berechnet."

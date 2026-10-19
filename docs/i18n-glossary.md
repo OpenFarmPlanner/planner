@@ -31,6 +31,33 @@ missing, add it here in the same change.
 The provider speaks as **we** everywhere: *wir* / *we* / *nous* /
 *nosotros*.
 
+## Short labels (navigation and toggles)
+
+Navigation labels (sidebar, mobile drawer) and segmented toggles use the
+**core word**; page titles (topbar, page heading, browser tab) use the
+**full term**. Wherever a label is shortened, the full term stays reachable
+as the control's `aria-label` and tooltip. Menu labels live in their own
+keys (`navigation:short.<key>`), page titles in the existing keys; German
+and English currently use the same text for both.
+
+| DE (page title) | FR short / page title | ES short / page title |
+| --- | --- | --- |
+| Übersicht | Vue d'ensemble / Vue d'ensemble | Resumen / Resumen |
+| Anbauflächen | Parcellaire / Surfaces de culture | Superficies / Superficies de cultivo |
+| Kulturen | Cultures / Cultures | Cultivos / Cultivos |
+| Kulturbibliothek | Bibliothèque / Bibliothèque de cultures | Biblioteca / Biblioteca de cultivos |
+| Lieferanten | Fournisseurs / Fournisseurs | Proveedores / Proveedores |
+| Anbaupläne | Plan de culture / Plan de culture | Plan de cultivos / Plan de cultivos |
+| Anbaukalender | Calendrier / Calendrier de culture | Calendario / Calendario de cultivos |
+| Ertragsübersicht | Rendements / Aperçu des rendements | Rendimientos / Resumen de rendimientos |
+| Saatgutbedarf | Semences / Besoin en semences | Semillas / Necesidad de semillas |
+| Feldbelegung (Kalender-Modus) | Occupation / Occupation des parcelles | Ocupación / Ocupación de parcelas |
+| Anzucht (Kalender-Modus) | Pépinière / Pépinière | Semillero / Semillero |
+
+Add actions name only the object: *Ajouter une parcelle*, *Añadir
+parcela* — never *Ajouter une nouvelle …* / *Añadir nuevo …* unless the
+German says *neu*.
+
 ## Typography
 
 - **French:** a narrow no-break space (U+202F) before `:` `?` `!` `;` and
@@ -58,6 +85,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Parzelle | Field / Plot | Parcelle | Parcela |
 | Beet | Bed | Planche | Bancal |
 | Anbaufläche(n) | Growing area(s) | Surface(s) de culture | Superficie(s) de cultivo |
+| Anbauflächen (Gesamtheit, Navigation) | Growing areas | Parcellaire | Superficies |
 | Feldplanung (Gantt) | Field planning | Planification des parcelles | Planificación de parcelas |
 | Flächenbelegung | Field occupancy | Occupation des parcelles | Ocupación de parcelas |
 | Projekt | Project | Projet | Proyecto |
@@ -79,8 +107,8 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Anbauart | Cultivation type | Mode de culture | Tipo de cultivo |
 | Direktsaat | Direct sowing | Semis direct | Siembra directa |
 | Pflanzung (Anbauart) | Transplanting | Plantation | Trasplante |
-| Anzucht | Propagation | Élevage de plants | Semillero |
-| Anzuchtdauer | Propagation duration | Durée d'élevage des plants | Duración en semillero |
+| Anzucht | Propagation | Pépinière † | Semillero † |
+| Anzuchtdauer | Propagation duration | Durée en pépinière | Duración en semillero |
 | Kulturdauer / Wachstumszeit | Growth duration | Durée de culture | Duración del cultivo |
 | Erntedauer / Erntezeit | Harvest duration | Durée de récolte | Duración de la cosecha |
 | Pflanzabstand | In-row spacing | Espacement sur le rang | Distancia entre plantas |
@@ -104,8 +132,10 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 
 | DE | EN | FR | ES |
 | --- | --- | --- | --- |
-| Anbauplan | Planting plan | Plan de culture | Plan de cultivo |
-| Anbaupläne | Planting plans | Plans de culture | Planes de cultivo |
+| Anbauplan (Eintrag) | Planting plan | Série † | Serie † |
+| Anbaupläne (Einträge) | Planting plans | Séries | Series |
+| Anbaupläne (Seite, Gesamtplanung) | Planting plans | Plan de culture | Plan de cultivos |
+| Anbaukalender | Crop calendar | Calendrier de culture | Calendario de cultivos |
 | Saison | Season | Saison | Temporada |
 | Saison-Muster | Season pattern | Modèle de saison | Patrón de temporada |
 | Pflanztermin | Planting date | Date de plantation | Fecha de plantación |
@@ -182,6 +212,17 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
   change to a legal text is made in all four languages in the same commit.
 
 ### Notes on terms marked †
+
+- **Série / serie (Anbauplan as an entry):** French market-gardening
+  planning (e.g. Qrop) calls one planned planting a *série*; Spanish
+  follows with *serie*. The whole planning, and the page, is the *plan de
+  culture* / *plan de cultivos* (singular). *Série* also covers the
+  succession (*Satz*), since each succession is one entry. Both nouns are
+  feminine: *une série supprimée*, *una serie eliminada*.
+- **Pépinière / semillero (Anzucht):** the established terms for raising
+  transplants; they replace the earlier descriptive *élevage de plants*.
+  Durations are *durée en pépinière* / *duración en semillero*, the start
+  is *mise en pépinière*.
 
 - **Pausa de rotación (es):** Spanish horticultural sources describe the
   rule ("no repetir la misma familia … años") but have no established single

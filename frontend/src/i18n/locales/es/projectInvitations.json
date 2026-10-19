@@ -34,7 +34,7 @@
     "devQuickDeleteFromListConfirm": "Solo en modo de desarrollo: ¿eliminar el proyecto «{{name}}»? Se podrá restaurar desde la papelera de abajo.",
     "devQuickHint": "Solo visible en modo de desarrollo",
     "dialogTitle": "¿Seguro que quieres eliminar el proyecto?",
-    "dialogText": "Este proyecto, incluidas las ubicaciones, parcelas, cultivos, planes de cultivo y todos los datos relacionados, se moverá a la papelera.",
+    "dialogText": "Este proyecto, incluidas las ubicaciones, parcelas, cultivos, series y todos los datos relacionados, se moverá a la papelera.",
     "confirmationLabel": "Introduce el nombre del proyecto para confirmar",
     "cancel": "Cancelar",
     "confirm": "Eliminar proyecto",

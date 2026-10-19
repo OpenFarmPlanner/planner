@@ -1,5 +1,5 @@
 {
-  "title": "Plans de culture",
+  "title": "Plan de culture",
   "columns": {
     "crop": "Culture (variété)",
     "location": "Site",
@@ -22,8 +22,8 @@
   "actions": {
     "useAvailableArea": "Utiliser la surface restante",
     "useBedArea": "Utiliser la surface de la planche",
-    "copyPlantingPlan": "Copier le plan de culture",
-    "createPlantingPlan": "Créer un plan de culture"
+    "copyPlantingPlan": "Copier la série",
+    "createPlantingPlan": "Créer une série"
   },
   "feedback": {
     "areaAutoFilled": "Surface restante disponible appliquée automatiquement : {{area}}"
@@ -54,8 +54,8 @@
   "tooltips": {
     "coupledFields": "Surface occupée : liée au nombre de plants. Toute modification met automatiquement à jour l'autre valeur.",
     "areaAutoMax": "Vide ou « max » utilise automatiquement la surface restante maximale disponible.",
-    "areaInputTitle": "Surface occupée par ce plan de culture",
-    "areaInputDescription": "La surface de la planche occupée par ce plan de culture. Toute modification de la surface ou du nombre de plants met automatiquement à jour l'autre valeur. Vide ou « max » utilise la surface restante maximale disponible.",
+    "areaInputTitle": "Surface occupée par cette série",
+    "areaInputDescription": "La surface de la planche occupée par cette série. Toute modification de la surface ou du nombre de plants met automatiquement à jour l'autre valeur. Vide ou « max » utilise la surface restante maximale disponible.",
     "plantsFromSpacing": "Nombre de plants : lié à la surface occupée. Toute modification met automatiquement à jour l'autre valeur.",
     "calculatedHarvestStartDate": "Calculé automatiquement à partir de la date de plantation et de la durée de culture.",
     "calculatedHarvestEndDate": "Calculé automatiquement à partir du début de récolte et de la durée de récolte de la culture.",
@@ -63,23 +63,23 @@
     "missingHarvestDuration": "Calcul impossible, car aucune durée de récolte n'est indiquée pour cette culture.",
     "missingGrowthAndHarvestDuration": "Calcul impossible, car ni la durée de culture ni la durée de récolte ne sont indiquées pour cette culture.",
     "sowingDateTitle": "Date de semis",
-    "sowingDateDescription": "Liée à la date de plantation : date de plantation moins la durée d'élevage des plants de la culture. Toute modification met automatiquement à jour l'autre valeur. Identique à la date de plantation en cas de semis direct.",
+    "sowingDateDescription": "Liée à la date de plantation : date de plantation moins la durée en pépinière de la culture. Toute modification met automatiquement à jour l'autre valeur. Identique à la date de plantation en cas de semis direct.",
     "plantingDateTitle": "Date de plantation",
     "plantingDateDescription": "Liée à la date de semis. En cas de semis direct, c'est aussi la date de semis. Doit se situer dans la saison.",
-    "missingPropagationDuration": "Calcul impossible, car aucune durée d'élevage des plants n'est indiquée pour cette culture."
+    "missingPropagationDuration": "Calcul impossible, car aucune durée en pépinière n'est indiquée pour cette culture."
   },
   "hints": {
     "plantingDateSeasonRange": "Dans la saison : {{start}} – {{end}}"
   },
   "errors": {
-    "load": "Impossible de charger les plans de culture",
-    "save": "Impossible d'enregistrer le plan de culture",
-    "delete": "Impossible de supprimer le plan de culture",
+    "load": "Impossible de charger les séries",
+    "save": "Impossible d'enregistrer la série",
+    "delete": "Impossible de supprimer la série",
     "editCropSpacing": "Modifier la culture"
   },
   "messages": {
-    "deleted": "Plan de culture supprimé",
-    "plantingPlanCopied": "Plan de culture copié."
+    "deleted": "Série supprimée",
+    "plantingPlanCopied": "Série copiée."
   },
   "validation": {
     "plantingDateRequired": "La date de plantation est obligatoire",
@@ -97,8 +97,8 @@
     "availableArea": "Surface restante disponible",
     "noAvailableArea": "Il n'y a plus de surface libre disponible sur cette planche pendant la période choisie."
   },
-  "confirmDelete": "Voulez-vous vraiment supprimer ce plan de culture ?",
-  "addButton": "Ajouter un plan de culture",
+  "confirmDelete": "Voulez-vous vraiment supprimer cette série ?",
+  "addButton": "Ajouter une série",
   "cultivationTypes": {
     "directSowing": "Semis direct",
     "preCultivation": "Plantation"
@@ -108,7 +108,7 @@
     "editButton": "Modifier la surface de culture",
     "hierarchyHint": "Le site filtre les parcelles, la parcelle filtre les planches.",
     "emptyStateTitle": "Aucune surface de culture disponible",
-    "emptyStateDescription": "Créez d'abord des parcelles et des planches avant d'affecter une surface à un plan de culture.",
+    "emptyStateDescription": "Créez d'abord des parcelles et des planches avant d'affecter une surface à une série.",
     "emptyStateAction": "Aller à Surfaces de culture",
     "apply": "Appliquer",
     "cancel": "Annuler",
@@ -121,15 +121,15 @@
   "mobile": {
     "showDetails": "Afficher les détails",
     "hideDetails": "Masquer les détails",
-    "fabLabel": "Ajouter un plan de culture",
-    "fabAria": "Ajouter un plan de culture",
-    "emptyTitle": "Aucun plan de culture pour l'instant",
-    "emptyDescription": "Créez votre premier plan de culture pour gérer clairement sur mobile la culture, le mode de culture et les périodes.",
-    "emptyCta": "Ajouter un plan de culture",
-    "createTitle": "Ajouter un plan de culture",
-    "editTitle": "Modifier le plan de culture",
-    "editAria": "Modifier le plan de culture",
-    "actionsAria": "Actions pour le plan de culture {{plan}}",
+    "fabLabel": "Ajouter une série",
+    "fabAria": "Ajouter une série",
+    "emptyTitle": "Aucune série pour l'instant",
+    "emptyDescription": "Créez votre première série pour gérer clairement sur mobile la culture, le mode de culture et les périodes.",
+    "emptyCta": "Ajouter une série",
+    "createTitle": "Ajouter une série",
+    "editTitle": "Modifier la série",
+    "editAria": "Modifier la série",
+    "actionsAria": "Actions pour la série {{plan}}",
     "notesPhotos": "Photos",
     "notesPhotosAria": "Ouvrir les notes et les photos"
   },
@@ -137,24 +137,24 @@
     "createBlockedTooltip": "Les planches s'ajoutent à l'intérieur des parcelles, sur la page Surfaces de culture.",
     "states": {
       "fields": {
-        "title": "Vous ne pouvez pas encore ajouter de plan de culture.",
+        "title": "Vous ne pouvez pas encore ajouter de série.",
         "description": "Ouvrez Surfaces de culture et ajoutez-y une parcelle sur le site approprié."
       },
       "beds": {
         "title": "Vous n'avez pas encore créé de planches.",
-        "description": "Les planches sont la base des plans de culture. Ouvrez Surfaces de culture et ajoutez une planche à partir d'une parcelle."
+        "description": "Les planches sont la base des séries. Ouvrez Surfaces de culture et ajoutez une planche à partir d'une parcelle."
       },
       "crops": {
         "title": "Vous n'avez pas encore créé de cultures.",
-        "description": "Des cultures sont nécessaires pour créer des plans de culture."
+        "description": "Des cultures sont nécessaires pour créer des séries."
       },
       "seasons": {
         "title": "Aucune saison créée pour l'instant",
-        "description": "Créez une saison avant d'ajouter des plans de culture."
+        "description": "Créez une saison avant d'ajouter des séries."
       },
       "plans": {
-        "title": "Vous n'avez pas encore créé de plan de culture.",
-        "description": "Créez dès maintenant votre premier plan de culture."
+        "title": "Vous n'avez pas encore créé de série.",
+        "description": "Créez dès maintenant votre première série."
       }
     },
     "actions": {
@@ -166,20 +166,20 @@
     }
   },
   "commands": {
-    "edit": "Modifier le plan de culture (Alt+E)",
-    "delete": "Supprimer le plan de culture (Suppr)",
+    "edit": "Modifier la série (Alt+E)",
+    "delete": "Supprimer la série (Suppr)",
     "keywords": {
-      "edit": "plan de culture, modifier",
-      "delete": "plan de culture, supprimer",
-      "search": "plan de culture, rechercher, trouver, filtrer"
+      "edit": "série, plan de culture, modifier",
+      "delete": "série, plan de culture, supprimer",
+      "search": "série, plan de culture, rechercher, trouver, filtrer"
     },
-    "focusSearch": "Aller à la recherche de plans de culture (/)"
+    "focusSearch": "Aller à la recherche de séries (/)"
   },
-  "loadingPlans": "Chargement des plans de culture…",
+  "loadingPlans": "Chargement des séries…",
   "search": {
-    "placeholderDesktop": "Rechercher des plans de culture",
+    "placeholderDesktop": "Rechercher des séries",
     "placeholderMobile": "Rechercher",
-    "ariaLabel": "Rechercher des plans de culture",
+    "ariaLabel": "Rechercher des séries",
     "clear": "Effacer la recherche",
     "shortcutHintAria": "Appuyez sur / pour aller à la recherche",
     "filterButton": "Filtrer",
@@ -210,18 +210,18 @@
       "cropAsc": "Culture, de A à Z",
       "harvestStartAsc": "Début de récolte, croissant"
     },
-    "count_one": "{{count}} plan de culture",
-    "count_other": "{{count}} plans de culture",
-    "count_many": "{{count}} plans de culture",
-    "filteredCountDesktop": "{{shown}} plans de culture sur {{total}}",
+    "count_one": "{{count}} série",
+    "count_other": "{{count}} séries",
+    "count_many": "{{count}} séries",
+    "filteredCountDesktop": "{{shown}} séries sur {{total}}",
     "filteredCountMobile": "{{shown}} sur {{total}}",
     "reset": "Réinitialiser",
     "matches_one": "{{count}} résultat",
     "matches_other": "{{count}} résultats",
     "matches_many": "{{count}} résultats",
-    "showResults_one": "Afficher {{count}} plan de culture",
-    "showResults_other": "Afficher {{count}} plans de culture",
-    "showResults_many": "Afficher {{count}} plans de culture",
+    "showResults_one": "Afficher {{count}} série",
+    "showResults_other": "Afficher {{count}} séries",
+    "showResults_many": "Afficher {{count}} séries",
     "chip": "{{filter}} : {{values}}",
     "chipDateLabels": {
       "plantingDate": "Date de plantation",
@@ -239,8 +239,8 @@
     "synonymHint": "Synonyme : {{name}}",
     "notesMatchAria": "Résultat dans les notes",
     "empty": {
-      "titleWithQuery": "Aucun plan de culture trouvé pour « {{query}} »",
-      "title": "Aucun plan de culture trouvé",
+      "titleWithQuery": "Aucune série trouvée pour « {{query}} »",
+      "title": "Aucune série trouvée",
       "hintWithFilters_one": "Sans les filtres actifs, il y aurait {{count}} résultat.",
       "hintWithFilters_other": "Sans les filtres actifs, il y aurait {{count}} résultats.",
       "hintWithFilters_many": "Sans les filtres actifs, il y aurait {{count}} résultats.",
@@ -307,7 +307,7 @@
         "lastFamily": "dernière occurrence de {{family}} en {{year}}, culture précédente {{previousCulture}}.",
         "lastFamilyWithoutPrevious": "dernière occurrence de {{family}} en {{year}}.",
         "noFamilyOnBed": "aucune occurrence de {{family}} enregistrée sur cette planche.",
-        "noHistory": "aucun plan de culture antérieur enregistré sur cette planche."
+        "noHistory": "aucune série antérieure enregistrée sur cette planche."
       }
     },
     "bedHistory": {
@@ -346,7 +346,7 @@
         "lastFamily": "Dernière occurrence de {{family}} en {{year}}",
         "soilImproverBefore": "La culture précédente {{previousCulture}} laisse de l'azote pour {{culture}}.",
         "hint": "{{previousCulture}} a été cultivé ici en {{year}}, également une culture très exigeante.",
-        "noHistory": "Aucun plan de culture antérieur enregistré",
+        "noHistory": "Aucune série antérieure enregistrée",
         "noFamily": "{{culture}} n'a pas de famille botanique.",
         "noBreak": "{{family}} n'a pas de délai de retour.",
         "conflict": "{{previousCulture}} ({{family}}) a été cultivé ici en {{year}}, au plus tôt à nouveau en {{earliestYear}}."

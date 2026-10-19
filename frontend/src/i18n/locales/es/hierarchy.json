@@ -3,7 +3,7 @@
   "addField": "Parcela",
   "addBed": "Bancal",
   "addBedToField": "Añadir bancal a esta parcela",
-  "createPlantingPlan": "Añadir plan de cultivo",
+  "createPlantingPlan": "Añadir serie",
   "columns": {
     "name": "Nombre",
     "location": "Ubicación",

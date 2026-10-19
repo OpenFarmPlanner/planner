@@ -1480,7 +1480,7 @@ function GanttChartPage() {
   const viewModeActions = useMemo<TopbarContextAction[]>(() => (hasCalendarRequirements ? [
     {
       id: 'calendar-view-mode-occupancy',
-      label: t('ganttChart:modes.occupancy'),
+      label: t('ganttChart:modesShort.occupancy'),
       ariaLabel: t('ganttChart:modes.occupancy'),
       onClick: () => handleCalendarModeChange('occupancy'),
       active: calendarMode === 'occupancy',
@@ -1489,7 +1489,7 @@ function GanttChartPage() {
     },
     {
       id: 'calendar-view-mode-seedlings',
-      label: t('ganttChart:modes.seedlings'),
+      label: t('ganttChart:modesShort.seedlings'),
       ariaLabel: t('ganttChart:modes.seedlings'),
       onClick: () => handleCalendarModeChange('seedlings'),
       active: calendarMode === 'seedlings',

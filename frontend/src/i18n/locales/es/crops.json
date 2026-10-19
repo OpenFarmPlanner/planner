@@ -165,7 +165,7 @@
     "sectionTiming": "Calendario",
     "sectionHarvest": "Información de cosecha",
     "sectionPlanting": "Distancia entre plantas",
-    "sectionColor": "Color de visualización (calendario de cultivo)",
+    "sectionColor": "Color de visualización (calendario de cultivos)",
     "name": "Nombre",
     "namePlaceholder": "p. ej. tomate",
     "nameRequired": "El nombre es obligatorio",
@@ -277,7 +277,7 @@
     "sowingDepthCmPlaceholder": "p. ej. 1,5",
     "sowingDepthCmError": "La profundidad de siembra debe ser ≥ 0",
     "displayColor": "Color de visualización",
-    "displayColorHelp": "Color usado en el calendario de cultivo.",
+    "displayColorHelp": "Color usado en el calendario de cultivos.",
     "displayColorError": "Formato de color no válido (usa #RRGGBB).",
     "seedRateSectionTitle": "Necesidad de semillas",
     "seedRateDirectSectionTitle": "Necesidad de semillas para siembra directa",
@@ -359,9 +359,9 @@
     "saveError": "No se ha podido guardar la selección de proveedor.",
     "requirements": {
       "plantingPlans": {
-        "label": "Planes de cultivo",
-        "missing": "Faltan planes de cultivo",
-        "done": "Planes de cultivo disponibles"
+        "label": "Series",
+        "missing": "Faltan series",
+        "done": "Series disponibles"
       },
       "seedData": {
         "label": "Datos de semillas",
@@ -371,11 +371,11 @@
     },
     "emptyStates": {
       "requirementsTitle": "Todavía no se puede calcular la necesidad de semillas",
-      "requirementsDescription": "La necesidad de semillas requiere planes de cultivo y datos de semillas para tus cultivos.",
+      "requirementsDescription": "La necesidad de semillas requiere series y datos de semillas para tus cultivos.",
       "noResultsTitle": "No hay necesidad de semillas disponible",
-      "noResultsDescription": "No se ha podido calcular ninguna necesidad de semillas para los planes de cultivo actuales.",
+      "noResultsDescription": "No se ha podido calcular ninguna necesidad de semillas para las series actuales.",
       "actions": {
-        "createPlan": "Añadir plan de cultivo",
+        "createPlan": "Añadir serie",
         "editCrops": "Editar cultivos"
       }
     },
@@ -397,8 +397,8 @@
       },
       "plans": {
         "title": "Todavía no se puede calcular la necesidad de semillas",
-        "description": "A continuación, crea un plan de cultivo para que surja una necesidad de semillas concreta.",
-        "action": "Añadir plan de cultivo"
+        "description": "A continuación, crea una serie para que surja una necesidad de semillas concreta.",
+        "action": "Añadir serie"
       },
       "seedData": {
         "title": "Todavía no se puede calcular la necesidad de semillas",
@@ -498,7 +498,7 @@
     },
     "objectTypes": {
       "crop": "Cultivo",
-      "plantingPlan": "Plan de cultivo",
+      "plantingPlan": "Serie",
       "location": "Ubicación",
       "field": "Parcela",
       "bed": "Bancal",
@@ -518,18 +518,18 @@
       "seasonUndelete": "Temporada {{season}} restaurada",
       "seasonCopyData": "Datos copiados de la temporada {{source}}",
       "fallback": "Varios cambios",
-      "countDeleted_one": "{{count}} plan de cultivo eliminado",
-      "countDeleted_other": "{{count}} planes de cultivo eliminados",
-      "countDeleted_many": "{{count}} planes de cultivo eliminados",
-      "countCreated_one": "{{count}} plan de cultivo creado",
-      "countCreated_other": "{{count}} planes de cultivo creados",
-      "countCreated_many": "{{count}} planes de cultivo creados",
-      "countRestored_one": "{{count}} plan de cultivo restaurado",
-      "countRestored_other": "{{count}} planes de cultivo restaurados",
-      "countRestored_many": "{{count}} planes de cultivo restaurados",
-      "countUpdated_one": "{{count}} plan de cultivo actualizado",
-      "countUpdated_other": "{{count}} planes de cultivo actualizados",
-      "countUpdated_many": "{{count}} planes de cultivo actualizados",
+      "countDeleted_one": "{{count}} serie eliminada",
+      "countDeleted_other": "{{count}} series eliminadas",
+      "countDeleted_many": "{{count}} series eliminadas",
+      "countCreated_one": "{{count}} serie creada",
+      "countCreated_other": "{{count}} series creadas",
+      "countCreated_many": "{{count}} series creadas",
+      "countRestored_one": "{{count}} serie restaurada",
+      "countRestored_other": "{{count}} series restauradas",
+      "countRestored_many": "{{count}} series restauradas",
+      "countUpdated_one": "{{count}} serie actualizada",
+      "countUpdated_other": "{{count}} series actualizadas",
+      "countUpdated_many": "{{count}} series actualizadas",
       "reverted": "Restaurado: {{what}}"
     }
   },
@@ -572,23 +572,23 @@
     "delete": "Eliminar",
     "moreActions": "Más acciones",
     "deleteConfirm": "¿Seguro que quieres eliminar este cultivo?",
-    "createPlantingPlan": "Añadir plan de cultivo",
+    "createPlantingPlan": "Añadir serie",
     "goToFieldsBeds": "Ir a las superficies de cultivo",
     "createField": "Añadir parcela",
     "createSeason": "Crear temporada",
     "createPlantingPlanDisabled": {
-      "fields": "Primero necesitas al menos una parcela para crear un plan de cultivo.",
+      "fields": "Primero necesitas al menos una parcela para crear una serie.",
       "beds": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
-      "crops": "Primero necesitas al menos un cultivo para crear un plan de cultivo.",
-      "seasons": "Crea una temporada antes de añadir un plan de cultivo a partir de un cultivo.",
-      "null": "Añadir plan de cultivo"
+      "crops": "Primero necesitas al menos un cultivo para crear una serie.",
+      "seasons": "Crea una temporada antes de añadir una serie a partir de un cultivo.",
+      "null": "Añadir serie"
     },
     "createPlantingPlanMissingSeasonTitle": "Todavía no se ha creado ninguna temporada",
-    "createPlantingPlanMissingFieldsTitle": "Para crear un plan de cultivo necesitas al menos una parcela.",
-    "createPlantingPlanMissingBedsTitle": "Para crear un plan de cultivo necesitas al menos un bancal.",
-    "createPlantingPlanMissingBedsHint": "Para un plan de cultivo necesitas primero al menos un bancal.",
+    "createPlantingPlanMissingFieldsTitle": "Para crear una serie necesitas al menos una parcela.",
+    "createPlantingPlanMissingBedsTitle": "Para crear una serie necesitas al menos un bancal.",
+    "createPlantingPlanMissingBedsHint": "Para una serie necesitas primero al menos un bancal.",
     "createPlantingPlanMissingBedsTooltip": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
-    "createPlantingPlanMissingSeasonTooltip": "Los planes de cultivo requieren primero una temporada activa."
+    "createPlantingPlanMissingSeasonTooltip": "Las series requieren primero una temporada activa."
   },
   "import": {
     "menuLabel": "Importar desde archivo",
@@ -1158,7 +1158,7 @@
           "low": "Bajas",
           "medium": "Medias",
           "high": "Altas",
-          "pre_cultivation": "Semillero",
+          "pre_cultivation": "Trasplante",
           "direct_sowing": "Siembra directa",
           "per_plant": "Por planta",
           "per_sqm": "Por metro cuadrado",
@@ -1390,7 +1390,7 @@
     "exportAllShort": "Exportar cultivos (JSON) (Alt+J)",
     "exportAll": "Exportar todos los cultivos (JSON) (Alt+Mayús+J)",
     "import": "Importar cultivos (JSON) (Alt+I)",
-    "createPlan": "Crear plan de cultivo (Alt+P)",
+    "createPlan": "Crear serie (Alt+P)",
     "previous": "Cultivo anterior (Alt+Mayús+←)",
     "next": "Cultivo siguiente (Alt+Mayús+→)",
     "keywords": {
@@ -1400,7 +1400,7 @@
       "export": "json, exportar, cultivo",
       "exportAll": "json, exportar, todos los cultivos",
       "import": "json, importar",
-      "createPlan": "plan de cultivo, planificar",
+      "createPlan": "serie, plan de cultivos, planificar",
       "previous": "anterior, cultivo",
       "next": "siguiente, cultivo"
     }

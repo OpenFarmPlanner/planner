@@ -28,10 +28,10 @@
   },
   "empty": {
     "noPlansTitle": "Todavía no hay previsión de rendimiento",
-    "description": "Las previsiones de rendimiento están disponibles en cuanto existan planes de cultivo con periodos de cosecha.",
-    "createPlanAction": "Añadir plan de cultivo",
+    "description": "Las previsiones de rendimiento están disponibles en cuanto existan series con periodos de cosecha.",
+    "createPlanAction": "Añadir serie",
     "noYieldTitle": "No hay rendimientos previstos en esta temporada",
     "noYieldDescription": "No hay datos de cosecha para la temporada activa. Comprueba que tus cultivos tengan rendimientos previstos.",
-    "openPlansAction": "Abrir planes de cultivo"
+    "openPlansAction": "Abrir plan de cultivos"
   }
 }

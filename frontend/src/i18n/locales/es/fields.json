@@ -17,8 +17,8 @@
     "locationRequired": "La ubicación es obligatoria"
   },
   "confirmDelete": "¿Seguro que quieres eliminar esta parcela?",
-  "addButton": "Añadir nueva parcela",
-  "createNew": "Crear nueva parcela",
+  "addButton": "Añadir parcela",
+  "createNew": "Crear parcela",
   "cancel": "Cancelar",
   "submit": "Crear",
   "selectLocation": "Seleccionar ubicación",

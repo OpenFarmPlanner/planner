@@ -1,5 +1,5 @@
 {
-  "title": "Planes de cultivo",
+  "title": "Plan de cultivos",
   "columns": {
     "crop": "Cultivo (variedad)",
     "location": "Ubicación",
@@ -22,8 +22,8 @@
   "actions": {
     "useAvailableArea": "Usar la superficie restante",
     "useBedArea": "Usar la superficie del bancal",
-    "copyPlantingPlan": "Copiar plan de cultivo",
-    "createPlantingPlan": "Crear plan de cultivo"
+    "copyPlantingPlan": "Copiar serie",
+    "createPlantingPlan": "Crear serie"
   },
   "feedback": {
     "areaAutoFilled": "Superficie restante disponible aplicada automáticamente: {{area}}"
@@ -54,8 +54,8 @@
   "tooltips": {
     "coupledFields": "Superficie ocupada: vinculada al número de plantas. Los cambios actualizan automáticamente el otro valor.",
     "areaAutoMax": "Si se deja vacío o se escribe «max», se usa automáticamente la superficie restante máxima disponible.",
-    "areaInputTitle": "Superficie ocupada por este plan de cultivo",
-    "areaInputDescription": "La superficie del bancal que ocupa este plan de cultivo. Los cambios en la superficie o en el número de plantas actualizan automáticamente el otro valor. Si se deja vacío o se escribe «max», se usa la superficie restante máxima disponible.",
+    "areaInputTitle": "Superficie ocupada por esta serie",
+    "areaInputDescription": "La superficie del bancal que ocupa esta serie. Los cambios en la superficie o en el número de plantas actualizan automáticamente el otro valor. Si se deja vacío o se escribe «max», se usa la superficie restante máxima disponible.",
     "plantsFromSpacing": "Número de plantas: vinculado a la superficie ocupada. Los cambios actualizan automáticamente el otro valor.",
     "calculatedHarvestStartDate": "Calculado automáticamente a partir de la fecha de plantación y de la duración del cultivo.",
     "calculatedHarvestEndDate": "Calculado automáticamente a partir del inicio de cosecha y de la duración de la cosecha del cultivo.",
@@ -72,14 +72,14 @@
     "plantingDateSeasonRange": "Dentro de la temporada: {{start}} – {{end}}"
   },
   "errors": {
-    "load": "No se han podido cargar los planes de cultivo",
-    "save": "No se ha podido guardar el plan de cultivo",
-    "delete": "No se ha podido eliminar el plan de cultivo",
+    "load": "No se han podido cargar las series",
+    "save": "No se ha podido guardar la serie",
+    "delete": "No se ha podido eliminar la serie",
     "editCropSpacing": "Editar cultivo"
   },
   "messages": {
-    "deleted": "Plan de cultivo eliminado",
-    "plantingPlanCopied": "Plan de cultivo copiado."
+    "deleted": "Serie eliminada",
+    "plantingPlanCopied": "Serie copiada."
   },
   "validation": {
     "plantingDateRequired": "La fecha de plantación es obligatoria",
@@ -97,8 +97,8 @@
     "availableArea": "Superficie restante disponible",
     "noAvailableArea": "Ya no hay superficie libre disponible en este bancal durante el periodo seleccionado."
   },
-  "confirmDelete": "¿Seguro que quieres eliminar este plan de cultivo?",
-  "addButton": "Añadir plan de cultivo",
+  "confirmDelete": "¿Seguro que quieres eliminar esta serie?",
+  "addButton": "Añadir serie",
   "cultivationTypes": {
     "directSowing": "Siembra directa",
     "preCultivation": "Trasplante"
@@ -108,7 +108,7 @@
     "editButton": "Editar superficie de cultivo",
     "hierarchyHint": "La ubicación filtra las parcelas y la parcela filtra los bancales.",
     "emptyStateTitle": "No hay superficies de cultivo disponibles",
-    "emptyStateDescription": "Crea primero parcelas y bancales antes de asignar una superficie a un plan de cultivo.",
+    "emptyStateDescription": "Crea primero parcelas y bancales antes de asignar una superficie a una serie.",
     "emptyStateAction": "Ir a Superficies de cultivo",
     "apply": "Aplicar",
     "cancel": "Cancelar",
@@ -121,15 +121,15 @@
   "mobile": {
     "showDetails": "Mostrar detalles",
     "hideDetails": "Ocultar detalles",
-    "fabLabel": "Añadir plan de cultivo",
-    "fabAria": "Añadir plan de cultivo",
-    "emptyTitle": "Todavía no hay planes de cultivo",
-    "emptyDescription": "Crea tu primer plan de cultivo para gestionar con claridad en el móvil el cultivo, el tipo de cultivo y los periodos.",
-    "emptyCta": "Añadir plan de cultivo",
-    "createTitle": "Añadir plan de cultivo",
-    "editTitle": "Editar plan de cultivo",
-    "editAria": "Editar plan de cultivo",
-    "actionsAria": "Acciones para el plan de cultivo {{plan}}",
+    "fabLabel": "Añadir serie",
+    "fabAria": "Añadir serie",
+    "emptyTitle": "Todavía no hay series",
+    "emptyDescription": "Crea tu primera serie para gestionar con claridad en el móvil el cultivo, el tipo de cultivo y los periodos.",
+    "emptyCta": "Añadir serie",
+    "createTitle": "Añadir serie",
+    "editTitle": "Editar serie",
+    "editAria": "Editar serie",
+    "actionsAria": "Acciones para la serie {{plan}}",
     "notesPhotos": "Fotos",
     "notesPhotosAria": "Abrir notas y fotos"
   },
@@ -137,24 +137,24 @@
     "createBlockedTooltip": "Los bancales se añaden dentro de las parcelas, en la página Superficies de cultivo.",
     "states": {
       "fields": {
-        "title": "Todavía no puedes añadir un plan de cultivo.",
+        "title": "Todavía no puedes añadir una serie.",
         "description": "Abre Superficies de cultivo y añade allí una parcela en la ubicación correspondiente."
       },
       "beds": {
         "title": "Todavía no has creado ningún bancal.",
-        "description": "Los bancales son la base de los planes de cultivo. Abre Superficies de cultivo y añade un bancal desde una parcela."
+        "description": "Los bancales son la base de las series. Abre Superficies de cultivo y añade un bancal desde una parcela."
       },
       "crops": {
         "title": "Todavía no has creado ningún cultivo.",
-        "description": "Se necesitan cultivos para crear planes de cultivo."
+        "description": "Se necesitan cultivos para crear series."
       },
       "seasons": {
         "title": "Todavía no se ha creado ninguna temporada",
-        "description": "Crea una temporada antes de añadir planes de cultivo."
+        "description": "Crea una temporada antes de añadir series."
       },
       "plans": {
-        "title": "Todavía no has creado ningún plan de cultivo.",
-        "description": "Crea ahora tu primer plan de cultivo."
+        "title": "Todavía no has creado ninguna serie.",
+        "description": "Crea ahora tu primera serie."
       }
     },
     "actions": {
@@ -166,20 +166,20 @@
     }
   },
   "commands": {
-    "edit": "Editar plan de cultivo (Alt+E)",
-    "delete": "Eliminar plan de cultivo (Supr)",
+    "edit": "Editar serie (Alt+E)",
+    "delete": "Eliminar serie (Supr)",
     "keywords": {
-      "edit": "plan de cultivo, editar",
-      "delete": "plan de cultivo, eliminar",
-      "search": "plan de cultivo, buscar, encontrar, filtrar"
+      "edit": "serie, plan de cultivos, editar",
+      "delete": "serie, plan de cultivos, eliminar",
+      "search": "serie, plan de cultivos, buscar, encontrar, filtrar"
     },
-    "focusSearch": "Ir a la búsqueda de planes de cultivo (/)"
+    "focusSearch": "Ir a la búsqueda de series (/)"
   },
-  "loadingPlans": "Cargando planes de cultivo…",
+  "loadingPlans": "Cargando series…",
   "search": {
-    "placeholderDesktop": "Buscar planes de cultivo",
+    "placeholderDesktop": "Buscar series",
     "placeholderMobile": "Buscar",
-    "ariaLabel": "Buscar planes de cultivo",
+    "ariaLabel": "Buscar series",
     "clear": "Borrar búsqueda",
     "shortcutHintAria": "Pulsa / para ir a la búsqueda",
     "filterButton": "Filtrar",
@@ -210,18 +210,18 @@
       "cropAsc": "Cultivo, de la A a la Z",
       "harvestStartAsc": "Inicio de cosecha, ascendente"
     },
-    "count_one": "{{count}} plan de cultivo",
-    "count_other": "{{count}} planes de cultivo",
-    "count_many": "{{count}} planes de cultivo",
-    "filteredCountDesktop": "{{shown}} de {{total}} planes de cultivo",
+    "count_one": "{{count}} serie",
+    "count_other": "{{count}} series",
+    "count_many": "{{count}} series",
+    "filteredCountDesktop": "{{shown}} de {{total}} series",
     "filteredCountMobile": "{{shown}} de {{total}}",
     "reset": "Restablecer",
     "matches_one": "{{count}} coincidencia",
     "matches_other": "{{count}} coincidencias",
     "matches_many": "{{count}} coincidencias",
-    "showResults_one": "Mostrar {{count}} plan de cultivo",
-    "showResults_other": "Mostrar {{count}} planes de cultivo",
-    "showResults_many": "Mostrar {{count}} planes de cultivo",
+    "showResults_one": "Mostrar {{count}} serie",
+    "showResults_other": "Mostrar {{count}} series",
+    "showResults_many": "Mostrar {{count}} series",
     "chip": "{{filter}}: {{values}}",
     "chipDateLabels": {
       "plantingDate": "Fecha de plantación",
@@ -239,8 +239,8 @@
     "synonymHint": "Sinónimo: {{name}}",
     "notesMatchAria": "Coincidencia en las notas",
     "empty": {
-      "titleWithQuery": "No se han encontrado planes de cultivo para «{{query}}»",
-      "title": "No se han encontrado planes de cultivo",
+      "titleWithQuery": "No se han encontrado series para «{{query}}»",
+      "title": "No se han encontrado series",
       "hintWithFilters_one": "Sin los filtros activos habría {{count}} coincidencia.",
       "hintWithFilters_other": "Sin los filtros activos habría {{count}} coincidencias.",
       "hintWithFilters_many": "Sin los filtros activos habría {{count}} coincidencias.",
@@ -307,7 +307,7 @@
         "lastFamily": "{{family}} por última vez en {{year}}, cultivo anterior {{previousCulture}}.",
         "lastFamilyWithoutPrevious": "{{family}} por última vez en {{year}}.",
         "noFamilyOnBed": "no hay {{family}} registrada en este bancal.",
-        "noHistory": "no hay planes de cultivo anteriores registrados en este bancal."
+        "noHistory": "no hay series anteriores registradas en este bancal."
       }
     },
     "bedHistory": {
@@ -346,7 +346,7 @@
         "lastFamily": "{{family}} por última vez en {{year}}",
         "soilImproverBefore": "El cultivo anterior {{previousCulture}} deja nitrógeno para {{culture}}.",
         "hint": "{{previousCulture}} se cultivó aquí en {{year}}, también un cultivo muy exigente.",
-        "noHistory": "No hay planes de cultivo anteriores registrados",
+        "noHistory": "No hay series anteriores registradas",
         "noFamily": "{{culture}} no tiene familia botánica.",
         "noBreak": "{{family}} no tiene pausa de rotación.",
         "conflict": "{{previousCulture}} ({{family}}) se cultivó aquí en {{year}}, como pronto de nuevo en {{earliestYear}}."

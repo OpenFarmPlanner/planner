@@ -32,8 +32,8 @@ describe('plural texts', () => {
   it.each([
     ['de', ['0 Anbaupläne', '1 Anbauplan', '2 Anbaupläne', '1000000 Anbaupläne']],
     ['en', ['0 planting plans', '1 planting plan', '2 planting plans', '1000000 planting plans']],
-    ['fr', ['0 plan de culture', '1 plan de culture', '2 plans de culture', '1000000 plans de culture']],
-    ['es', ['0 planes de cultivo', '1 plan de cultivo', '2 planes de cultivo', '1000000 planes de cultivo']],
+    ['fr', ['0 série', '1 série', '2 séries', '1000000 séries']],
+    ['es', ['0 series', '1 serie', '2 series', '1000000 series']],
   ])('renders search.count in %s for 0, 1, 2 and 1000000', (language, expected) => {
     expect(COUNTS.map((count) => render(language, 'search.count', count))).toEqual(expected);
   });

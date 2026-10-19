@@ -5,7 +5,7 @@
   },
   "emptyState": {
     "title": "Empieza tu planificación de cultivos",
-    "description": "Abre Superficies de cultivo y añade allí una parcela. Después podrás registrar cultivos y planes de cultivo.",
+    "description": "Abre Superficies de cultivo y añade allí una parcela. Después podrás registrar cultivos y series.",
     "shortDescription": "Añade una parcela en la página Superficies de cultivo.",
     "action": "Añadir parcela"
   },
@@ -21,6 +21,6 @@
     "field": "Añadir parcela",
     "bed": "Añadir bancal",
     "crop": "Añadir cultivo",
-    "plan": "Añadir plan de cultivo"
+    "plan": "Añadir serie"
   }
 }

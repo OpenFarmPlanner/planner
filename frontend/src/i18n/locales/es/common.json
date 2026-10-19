@@ -59,7 +59,7 @@
     "openAreas": "Abrir superficies de cultivo",
     "openCropLibrary": "Abrir la biblioteca de cultivos",
     "createCrop": "Añadir cultivo",
-    "createPlan": "Añadir plan de cultivo"
+    "createPlan": "Añadir serie"
   },
   "notes": {
     "empty": "Sin notas",
@@ -160,10 +160,10 @@
   },
   "projectRequired": {
     "noProjectsTitle": "Todavía no tienes ningún proyecto.",
-    "noProjectsDescription": "Crea primero un proyecto para gestionar ubicaciones, superficies de cultivo, planes de cultivo y calendarios.",
+    "noProjectsDescription": "Crea primero un proyecto para gestionar ubicaciones, superficies de cultivo, series y calendarios.",
     "noProjectsSelectionDescription": "Crea tu primer proyecto para empezar a planificar.",
     "noActiveProjectTitle": "No hay ningún proyecto seleccionado.",
-    "noActiveProjectDescription": "Selecciona un proyecto para gestionar ubicaciones, superficies de cultivo, planes de cultivo y calendarios.",
+    "noActiveProjectDescription": "Selecciona un proyecto para gestionar ubicaciones, superficies de cultivo, series y calendarios.",
     "createProjectAction": "Crear el primer proyecto",
     "createFirstProjectAction": "Crear el primer proyecto",
     "selectProjectAction": "Seleccionar proyecto"
@@ -172,7 +172,7 @@
     "pageTitle": "Empieza tu primer proyecto",
     "pageDescription": "Elige si quieres empezar con tu propio proyecto vacío o explorar primero OpenFarmPlanner con datos de ejemplo realistas.",
     "emptyTitle": "Empezar con un proyecto vacío",
-    "emptyDescription": "Crea tu propio proyecto y añade paso a paso ubicaciones, cultivos y planes de cultivo.",
+    "emptyDescription": "Crea tu propio proyecto y añade paso a paso ubicaciones, cultivos y series.",
     "emptyAction": "Crear proyecto vacío",
     "demoTitle": "Probar un proyecto de demostración",
     "demoDescription": "Empieza con un proyecto de cultivo preparado y explora directamente las funciones principales con datos de ejemplo realistas.",

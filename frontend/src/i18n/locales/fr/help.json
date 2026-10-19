@@ -8,7 +8,7 @@
     {
       "title": "Vue d'ensemble",
       "points": [
-        "Voyez d'un coup d'œil les prochaines dates de semis, de plantation, d'élevage des plants et de récolte."
+        "Voyez d'un coup d'œil les prochaines dates de semis, de plantation, de mise en pépinière et de récolte."
       ]
     },
     {
@@ -24,7 +24,7 @@
       ]
     },
     {
-      "title": "Plans de culture",
+      "title": "Plan de culture",
       "points": [
         "Planifiez quelle culture est cultivée sur quelle planche, et quand."
       ]
@@ -32,13 +32,13 @@
     {
       "title": "Calendrier de culture",
       "points": [
-        "Consultez ici le déroulement dans le temps de vos plans de culture."
+        "Consultez ici le déroulement dans le temps de vos séries."
       ]
     },
     {
       "title": "Aperçu des rendements",
       "points": [
-        "Consultez les quantités récoltées attendues d'après vos plans de culture."
+        "Consultez les quantités récoltées attendues d'après vos séries."
       ]
     },
     {
@@ -55,11 +55,11 @@
     }
   ],
   "workflowTitle": "Déroulement",
-  "workflow": "Surfaces de culture → Cultures → Plans de culture → Calendrier de culture → Besoin en semences",
+  "workflow": "Surfaces de culture → Cultures → Plan de culture → Calendrier de culture → Besoin en semences",
   "pages": {
     "dashboard": {
       "title": "Aide : Vue d'ensemble",
-      "intro": "Dès que des plans de culture existent, les tâches à venir pour le semis, la plantation, l'élevage des plants et la récolte apparaissent ici."
+      "intro": "Dès que des séries existent, les tâches à venir pour le semis, la plantation, la mise en pépinière et la récolte apparaissent ici."
     },
     "locations": {
       "title": "Aide : Sites",
@@ -76,13 +76,13 @@
           "title": "Lien avec les autres pages",
           "points": [
             "Sur la page Surfaces de culture, vous ajoutez des parcelles et des planches pour chaque site.",
-            "Les tâches sont déduites des plans de culture."
+            "Les tâches sont déduites des séries."
           ]
         }
       ],
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
-        "add": "Ajouter un nouveau site",
+        "add": "Ajouter un site",
         "edit": "Modifier le site",
         "delete": "Supprimer le site"
       }
@@ -102,7 +102,7 @@
     },
     "beds": {
       "title": "Aide : Planches",
-      "intro": "Gérez ici vos planches. Chaque planche appartient à une parcelle et peut ensuite être utilisée dans les plans de culture.",
+      "intro": "Gérez ici vos planches. Chaque planche appartient à une parcelle et peut ensuite être utilisée dans les séries.",
       "sections": [
         {
           "title": "Utilisation",
@@ -114,26 +114,26 @@
         {
           "title": "Lien avec les autres pages",
           "points": [
-            "Dans les plans de culture, vous affectez des cultures à des planches précises."
+            "Dans les séries, vous affectez des cultures à des planches précises."
           ]
         }
       ]
     },
     "areas": {
       "title": "Aide : Surfaces de culture - vue liste",
-      "intro": "Gérez ici la structure des surfaces de votre ferme — des sites aux parcelles jusqu'aux planches individuelles.\n\nLes nouveaux sites, parcelles et planches s'ajoutent avec l'icône {{addIcon}} qui apparaît lorsque vous survolez un élément.\n\nLes entrées peuvent être modifiées directement dans le tableau. L'icône {{createPlanIcon}} sur une planche crée immédiatement un plan de culture pour celle-ci. D'autres actions, comme renommer ou supprimer, se trouvent dans le menu contextuel du clic droit.",
+      "intro": "Gérez ici la structure des surfaces de votre ferme — des sites aux parcelles jusqu'aux planches individuelles.\n\nLes nouveaux sites, parcelles et planches s'ajoutent avec l'icône {{addIcon}} qui apparaît lorsque vous survolez un élément.\n\nLes entrées peuvent être modifiées directement dans le tableau. L'icône {{createPlanIcon}} sur une planche crée immédiatement une série pour celle-ci. D'autres actions, comme renommer ou supprimer, se trouvent dans le menu contextuel du clic droit.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "expandToggle": "Déplier ou replier la section",
         "add": "Créer un nouvel élément",
         "delete": "Supprimer l'élément",
-        "createPlan": "Créer un plan de culture pour cette planche",
+        "createPlan": "Créer une série pour cette planche",
         "dimensions": "Définir l'orientation de la longueur et de la largeur pour la vue graphique"
       }
     },
     "crops": {
       "title": "Aide : Cultures",
-      "intro": "Gérez ici les cultures et leurs principales propriétés. Ces données sont utilisées dans les plans de culture, le calendrier et le besoin en semences.",
+      "intro": "Gérez ici les cultures et leurs principales propriétés. Ces données sont utilisées dans les séries, le calendrier et le besoin en semences.",
       "sections": [
         {
           "title": "Utilisation",
@@ -146,16 +146,16 @@
         {
           "title": "Lien avec les autres pages",
           "points": [
-            "Dans les plans de culture, vous affectez des cultures à des planches et à des périodes précises.",
+            "Dans les séries, vous affectez des cultures à des planches et à des périodes précises.",
             "Le calendrier de culture et le besoin en semences utilisent ces données pour planifier les dates et les quantités."
           ]
         }
       ],
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
-        "add": "Créer une nouvelle culture",
+        "add": "Créer une culture",
         "library": "Ouvrir la bibliothèque de cultures",
-        "createPlan": "Créer un plan de culture pour cette culture",
+        "createPlan": "Créer une série pour cette culture",
         "more": "Ouvrir d'autres actions",
         "edit": "Modifier les données de la culture"
       }
@@ -182,11 +182,11 @@
       ]
     },
     "plantingPlans": {
-      "title": "Aide : Plans de culture",
+      "title": "Aide : Plan de culture",
       "intro": "Planifiez quelle culture est cultivée sur quelle planche, et quand.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
-        "add": "Créer un nouveau plan de culture",
+        "add": "Créer une série",
         "mobileAdd": "Créer rapidement une nouvelle entrée sur mobile",
         "notes": "Ouvrir les notes et pièces jointes d'une entrée",
         "edit": "Modifier les valeurs directement dans le tableau"
@@ -194,16 +194,16 @@
     },
     "calendar": {
       "title": "Aide : Calendrier de culture",
-      "intro": "Le calendrier de culture montre le déroulement dans le temps de vos plans de culture. Il vous aide à repérer l'occupation, les phases d'élevage des plants et les éventuels chevauchements.",
+      "intro": "Le calendrier de culture montre le déroulement dans le temps de vos séries. Il vous aide à repérer l'occupation, les phases de pépinière et les éventuels chevauchements.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
-        "tabs": "Basculer entre la vue occupation et la vue élevage des plants",
+        "tabs": "Basculer entre la vue occupation et la vue pépinière",
         "tooltip": "Afficher des détails supplémentaires"
       }
     },
     "seedDemand": {
       "title": "Aide : Besoin en semences",
-      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des entrées des plans de culture.",
+      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des séries.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "supplierSelect": "Définir le fournisseur par culture",
@@ -252,7 +252,7 @@
     },
     "yieldOverview": {
       "title": "Aide : Aperçu des rendements",
-      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos plans de culture.",
+      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos séries.",
       "points": []
     }
   }

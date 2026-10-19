@@ -34,7 +34,7 @@
     "devQuickDeleteFromListConfirm": "Mode développement uniquement : supprimer le projet « {{name}} » ? Il pourra être restauré depuis la corbeille ci-dessous.",
     "devQuickHint": "Visible uniquement en mode développement",
     "dialogTitle": "Vraiment supprimer le projet ?",
-    "dialogText": "Ce projet, y compris les sites, parcelles, cultures, plans de culture et toutes les données associées, sera placé dans la corbeille.",
+    "dialogText": "Ce projet, y compris les sites, parcelles, cultures, séries et toutes les données associées, sera placé dans la corbeille.",
     "confirmationLabel": "Saisissez le nom du projet pour confirmer",
     "cancel": "Annuler",
     "confirm": "Supprimer le projet",

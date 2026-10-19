@@ -5,7 +5,7 @@
   },
   "emptyState": {
     "title": "Commencez votre planification des cultures",
-    "description": "Ouvrez Surfaces de culture et ajoutez-y une parcelle. Vous pourrez ensuite saisir des cultures et des plans de culture.",
+    "description": "Ouvrez Surfaces de culture et ajoutez-y une parcelle. Vous pourrez ensuite saisir des cultures et des séries.",
     "shortDescription": "Ajoutez une parcelle sur la page Surfaces de culture.",
     "action": "Ajouter une parcelle"
   },
@@ -21,6 +21,6 @@
     "field": "Ajouter une parcelle",
     "bed": "Ajouter une planche",
     "crop": "Ajouter une culture",
-    "plan": "Ajouter un plan de culture"
+    "plan": "Ajouter une série"
   }
 }
