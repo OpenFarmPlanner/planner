@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -14,13 +14,14 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { seasonPatternAPI } from '../api/api';
-import type { SeasonPatternPreviewResponse } from '../api/types';
+import { seasonAPI, seasonPatternAPI } from '../api/api';
+import type { Season, SeasonPatternPreviewResponse } from '../api/types';
 import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { SeasonStartDateFields } from './SeasonStartDateFields';
+import { buildSeasonPreviewRows } from './seasonPreviewRows';
 
 const sectionCardContentSx = { p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: { xs: 2, sm: 2.5 } } };
 
@@ -36,6 +37,7 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
     reference_season: null,
     transition: null,
   });
+  const [existingSeasons, setExistingSeasons] = useState<Season[]>([]);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
 
@@ -62,6 +64,24 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
       }
     })();
   }, [loadPreview]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await seasonAPI.list();
+        setExistingSeasons(response.data.results);
+      } catch (error) {
+        // Without the list only the latest existing season is known; the
+        // other years are then shown as previews.
+        console.error('Error loading seasons:', error);
+      }
+    })();
+  }, []);
+
+  const previewRows = useMemo(
+    () => buildSeasonPreviewRows(preview, existingSeasons),
+    [preview, existingSeasons],
+  );
 
   const handleChange = (day: number, month: number) => {
     setStartDay(day);
@@ -116,52 +136,49 @@ export function SeasonPatternCard({ id, onSaved }: { id?: string; onSaved?: () =
             </TableRow>
           </TableHead>
           <TableBody>
-            {preview.reference_season ? (
-              <TableRow sx={{ bgcolor: 'action.hover' }}>
-                <TableCell>{preview.reference_season.label}</TableCell>
-                <TableCell>
-                  {formatSeasonPeriod(
-                    preview.reference_season.start_date,
-                    preview.reference_season.end_date,
-                    locale,
-                  )}
-                  {' '}
-                  <Typography component="span" variant="caption" color="text.secondary">
-                    {t('navigation:seasonPattern.previewReferenceHint')}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : null}
-            {preview.transition ? (
-              <TableRow sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12) }}>
+            {previewRows.map((row) => (row.kind === 'transition' ? (
+              <TableRow key={`transition-${row.transition.start_date}`} sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12) }}>
                 <TableCell sx={{ color: 'warning.dark' }}>
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <WarningAmberIcon fontSize="small" />
-                    {t(`navigation:seasonPattern.transition.${preview.transition.kind}Label`)}
+                    {t(`navigation:seasonPattern.transition.${row.transition.kind}Label`)}
                   </Stack>
                 </TableCell>
                 <TableCell sx={{ color: 'warning.dark' }}>
-                  {formatSeasonPeriod(
-                    preview.transition.start_date,
-                    preview.transition.end_date,
-                    locale,
-                  )}
+                  {formatSeasonPeriod(row.transition.start_date, row.transition.end_date, locale)}
                   {' '}
                   <Typography component="span" variant="caption" color="warning.dark">
                     {t('navigation:seasonPattern.transition.rowHint')}
                   </Typography>
                 </TableCell>
               </TableRow>
-            ) : null}
-            {preview.periods.map((period) => (
-              <TableRow key={period.start_date}>
+            ) : (
+              <TableRow key={row.year} sx={row.isLatestExisting ? { bgcolor: 'action.hover' } : undefined}>
                 <TableCell>
-                  {new Date(`${period.start_date}T00:00:00`).getFullYear()}
-                  {period.is_current ? ` ${t('navigation:seasonPattern.current')}` : ''}
+                  {row.label}
+                  {row.isCurrent ? ` ${t('navigation:seasonPattern.current')}` : ''}
                 </TableCell>
-                <TableCell>{formatSeasonPeriod(period.start_date, period.end_date, locale)}</TableCell>
+                <TableCell>
+                  {formatSeasonPeriod(row.startDate, row.endDate, locale)}
+                  {row.isLatestExisting ? (
+                    <>
+                      {' '}
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {t('navigation:seasonPattern.previewReferenceHint')}
+                      </Typography>
+                    </>
+                  ) : null}
+                  {row.isPreview ? (
+                    <>
+                      {' '}
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        {t('navigation:seasonPattern.previewHint')}
+                      </Typography>
+                    </>
+                  ) : null}
+                </TableCell>
               </TableRow>
-            ))}
+            )))}
           </TableBody>
         </Table>
 

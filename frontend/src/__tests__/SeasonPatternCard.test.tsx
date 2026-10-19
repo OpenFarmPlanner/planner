@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   update: vi.fn(),
   preview: vi.fn(),
+  listSeasons: vi.fn(),
 }));
 
 vi.mock('../api/api', async () => {
@@ -19,6 +20,10 @@ vi.mock('../api/api', async () => {
       get: mocks.get,
       update: mocks.update,
       preview: mocks.preview,
+    },
+    seasonAPI: {
+      ...actual.seasonAPI,
+      list: mocks.listSeasons,
     },
   };
 });
@@ -58,6 +63,8 @@ beforeEach(() => {
   mocks.get.mockResolvedValue({ data: { start_day: 1, start_month: 1 } });
   mocks.update.mockResolvedValue({ data: { start_day: 1, start_month: 1 } });
   mocks.preview.mockResolvedValue({ data: emptyPreview });
+  mocks.listSeasons.mockReset();
+  mocks.listSeasons.mockResolvedValue({ data: { count: 0, next: null, previous: null, results: [] } });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -183,6 +190,40 @@ describe('SeasonPatternCard', () => {
       // are counted from.
       expect(await screen.findByText('2025')).toBeInTheDocument();
       expect(screen.getByText('(zuletzt bestehende Saison)')).toBeInTheDocument();
+    });
+
+    it('lists each year once, in order, when the latest season is the current one', async () => {
+      mocks.listSeasons.mockResolvedValue({
+        data: {
+          count: 2,
+          next: null,
+          previous: null,
+          results: [
+            { id: 1, start_date: '2025-01-01', end_date: '2025-12-31' },
+            { id: 2, start_date: '2026-01-01', end_date: '2026-12-31' },
+          ],
+        },
+      });
+      mocks.preview.mockResolvedValue({
+        data: preview({
+          periods: [
+            { start_date: '2025-01-01', end_date: '2025-12-31', is_current: false },
+            { start_date: '2026-01-01', end_date: '2026-12-31', is_current: true },
+            { start_date: '2027-01-01', end_date: '2027-12-31', is_current: false },
+          ],
+          reference_season: { start_date: '2026-01-01', end_date: '2026-12-31', label: '2026' },
+        }),
+      });
+      renderCard();
+
+      const current = await screen.findByText('2026 (aktuell)');
+      await waitFor(() => expect(screen.getAllByRole('row').slice(1)).toHaveLength(3));
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows.map((row) => row.cells[0].textContent)).toEqual(['2025', '2026 (aktuell)', '2027']);
+      expect(within(current.closest('tr') as HTMLElement).getByText('(zuletzt bestehende Saison)')).toBeInTheDocument();
+      // Only the year without a season yet is a preview.
+      await waitFor(() => expect(screen.getAllByText('(Vorschau)')).toHaveLength(1));
+      expect(within(rows[2]).getByText('(Vorschau)')).toBeInTheDocument();
     });
 
     it('leaves the reference row out when there is no season yet', async () => {
