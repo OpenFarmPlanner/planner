@@ -61,6 +61,10 @@ vi.mock('../api/api', async () => {
       delete: (...args: unknown[]) => deleteProjectMock(...args),
       restore: (...args: unknown[]) => restoreProjectMock(...args),
     },
+    seasonAPI: {
+      ...actual.seasonAPI,
+      list: async () => ({ data: { count: 0, next: null, previous: null, results: [] } }),
+    },
     seasonPatternAPI: {
       ...actual.seasonPatternAPI,
       get: (...args: unknown[]) => seasonPatternGetMock(...args),
