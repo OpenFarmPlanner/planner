@@ -34,7 +34,7 @@ export interface AuthUser {
   guest_demo_session_id: number | null;
   /** False for accounts that sign in only through Google/Microsoft. */
   has_password: boolean;
-  /** Personal UI language: 'auto' (follow the browser), 'de' or 'en'. */
+  /** Personal UI language: 'auto' (follow the browser) or a supported code ('de', 'en', 'fr', 'es'). */
   ui_language?: string;
 }
 

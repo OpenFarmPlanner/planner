@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_SITE_URL,
   PUBLIC_PAGE_VARIANTS,
+  PUBLIC_PAGES,
+  SEO_LANGUAGES,
   buildCanonicalUrl,
   buildHreflangAlternates,
   findPublicPageVariant,
@@ -143,7 +145,20 @@ describe('public page registry', () => {
     expect(buildHreflangAlternates('https://example.org', variant.page)).toEqual([
       { hreflang: 'de', href: 'https://example.org/ueber' },
       { hreflang: 'en', href: 'https://example.org/en/about' },
+      { hreflang: 'fr', href: 'https://example.org/fr/a-propos' },
+      { hreflang: 'es', href: 'https://example.org/es/acerca-de' },
       { hreflang: 'x-default', href: 'https://example.org/ueber' },
     ]);
+  });
+
+  it('gives every language version of a page the same alternates', () => {
+    for (const page of PUBLIC_PAGES) {
+      const alternates = buildHreflangAlternates('https://example.org', page);
+      for (const language of SEO_LANGUAGES) {
+        const variant = findPublicPageVariant(page.paths[language])!;
+        expect(variant.language).toBe(language);
+        expect(buildHreflangAlternates('https://example.org', variant.page)).toEqual(alternates);
+      }
+    }
   });
 });

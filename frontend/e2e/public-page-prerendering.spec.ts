@@ -38,8 +38,10 @@ test.describe('public page prerendering', () => {
     for (const route of PUBLIC_PAGE_VARIANTS) {
       expect(existsSync(distPathFor(route.path)), `missing prerendered file for ${route.path}`).toBe(true);
       // A directory of the same name would make static servers 301 the
-      // slashless canonical URL to a trailing-slash variant.
-      if (route.path !== '/' && route.path !== '/en') {
+      // slashless canonical URL to a trailing-slash variant. Only the
+      // language roots (`/en`, `/fr`, `/es`) are also directories, holding
+      // that language's pages; DirectorySlash Off covers them in production.
+      if (route.page.id !== 'home') {
         expect(existsSync(path.join(distDir, route.path.replace(/^\//, ''))), `${route.path} must not be a directory`).toBe(false);
       }
     }
@@ -118,8 +120,8 @@ test.describe('public page prerendering', () => {
     expect(html).not.toMatch(/<h1[^>]*>[^<]+<\/h1>/);
   });
 
-  test('a non-German browser is sent from a German page to its English version before first paint', async ({ browser }) => {
-    const context = await browser.newContext({ locale: 'fr-FR' });
+  test('a browser in an unsupported language is sent from a German page to its English version before first paint', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'it-IT' });
     const page = await context.newPage();
 
     const response = await page.goto('/ueber?ref=newsletter');
@@ -129,6 +131,23 @@ test.describe('public page prerendering', () => {
     await expect(page.locator('h1')).toHaveText('How OpenFarmPlanner came to be');
     await context.close();
   });
+
+  for (const { locale, from, to, lang, heading } of [
+    { locale: 'fr-CA', from: '/ueber', to: /\/fr\/a-propos$/, lang: 'fr', heading: 'Comment OpenFarmPlanner est né' },
+    { locale: 'es-419', from: '/en/about', to: /\/es\/acerca-de$/, lang: 'es', heading: 'Cómo nació OpenFarmPlanner' },
+  ]) {
+    test(`a ${locale} browser is sent to the ${lang} version before first paint`, async ({ browser }) => {
+      const context = await browser.newContext({ locale });
+      const page = await context.newPage();
+
+      const response = await page.goto(from);
+      expect(response?.status()).toBe(200);
+      await expect(page).toHaveURL(to);
+      await expect(page.locator('html')).toHaveAttribute('lang', lang);
+      await expect(page.locator('h1')).toHaveText(heading);
+      await context.close();
+    });
+  }
 
   test('a German browser is sent from an English page to its German version', async ({ browser }) => {
     const context = await browser.newContext({ locale: 'de-AT' });

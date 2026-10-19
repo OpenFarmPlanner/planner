@@ -1,0 +1,76 @@
+{
+  "title": "Parcelles",
+  "columns": {
+    "name": "Nom",
+    "location": "Site",
+    "area": "Surface (m²)",
+    "notes": "Notes"
+  },
+  "errors": {
+    "load": "Erreur lors du chargement des parcelles",
+    "save": "Erreur lors de l'enregistrement de la parcelle",
+    "delete": "Erreur lors de la suppression de la parcelle",
+    "loadLocations": "Erreur lors du chargement des sites"
+  },
+  "validation": {
+    "nameRequired": "Le nom est obligatoire",
+    "locationRequired": "Le site est obligatoire"
+  },
+  "confirmDelete": "Voulez-vous vraiment supprimer cette parcelle ?",
+  "addButton": "Ajouter une parcelle",
+  "createNew": "Créer une parcelle",
+  "cancel": "Annuler",
+  "submit": "Créer",
+  "selectLocation": "Choisir un site",
+  "representation": {
+    "label": "Affichage",
+    "ariaLabel": "Choisir l'affichage",
+    "table": "Liste",
+    "graphical": "Graphique"
+  },
+  "graphical": {
+    "title": "Vue graphique des parcelles",
+    "viewMode": "Mode",
+    "modeAriaLabel": "Choisir le mode",
+    "viewModeOption": "Consulter",
+    "editModeOption": "Modifier",
+    "editMode": "Mode édition",
+    "modeHelpAria": "Afficher l'aide sur les modes",
+    "modeHelpTooltip": "Naviguer, zoomer et consulter les détails. Les parcelles et les planches ne peuvent être déplacées ou modifiées qu'en mode édition. Raccourci : Alt+E",
+    "viewModeDescription": "Naviguer, zoomer et consulter les détails. Les parcelles et les planches ne peuvent être déplacées ou modifiées qu'en mode édition.",
+    "editModeDescription": "Déplacer les parcelles et les planches et ajuster la disposition.",
+    "editModeBanner": "Mode édition actif – les parcelles et les planches peuvent maintenant être déplacées.",
+    "locationEditModeBanner": "Édition graphique active : les parcelles et les planches de ce site peuvent être déplacées.",
+    "editModeShortcut": "Raccourci : Alt+E",
+    "locationEditModeAction": "Modifier le graphique",
+    "locationEditModeActive": "Édition graphique active",
+    "enableLocationEditMode": "Modifier le graphique",
+    "disableLocationEditMode": "Terminer l'édition graphique du site « {{name}} »",
+    "zoomIn": "Zoomer",
+    "zoomOut": "Dézoomer",
+    "panUp": "Déplacer vers le haut",
+    "panDown": "Déplacer vers le bas",
+    "panLeft": "Déplacer vers la gauche",
+    "panRight": "Déplacer vers la droite",
+    "fitToView": "Tout afficher",
+    "enterFullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran",
+    "zoomLevel": "Zoom : {{value}}×",
+    "locationTitle": "Site : {{name}}",
+    "details": {
+      "field": "Détails de la parcelle",
+      "bed": "Détails de la planche"
+    },
+    "location": "Site",
+    "parentField": "Parcelle",
+    "area": "Surface"
+  },
+  "commands": {
+    "showList": "Afficher la vue liste",
+    "showGraphical": "Afficher la vue graphique",
+    "keywords": {
+      "showList": "liste, tableau, surfaces de culture",
+      "showGraphical": "graphique, plan, surfaces de culture"
+    }
+  }
+}

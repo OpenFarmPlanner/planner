@@ -8,17 +8,19 @@ produced by the **frontend build**.
 
 ## What is indexable
 
-Every public page exists in German and English. German is the default
-language and lives at the root without a prefix; English lives under `/en`
-with English slugs:
+Every public page exists in German, English, French and Spanish. German is
+the default language and lives at the root without a prefix; every other
+language lives under its own prefix with slugs in that language:
 
-| Page             | German (`x-default`)   | English            |
-| ---------------- | ---------------------- | ------------------ |
-| Landing page     | `/`                    | `/en`              |
-| About            | `/ueber`               | `/en/about`        |
-| Imprint (legal)  | `/impressum`           | `/en/legal-notice` |
-| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      |
-| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        |
+| Page             | German (`x-default`)   | English            | French                      | Spanish           |
+| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- |
+| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             |
+| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   |
+| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` |
+| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  |
+| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   |
+
+Slugs are plain ASCII (no accents), lowercase, hyphen-separated.
 
 Explicitly **not** indexable (disallowed in `robots.txt` and served with a
 `noindex, nofollow` robots meta at runtime):
@@ -30,16 +32,17 @@ Explicitly **not** indexable (disallowed in `robots.txt` and served with a
   the route is not intended for search indexing
 - `/invite/*`, `/invitation`
 
-None of these has an `/en/...` twin — app and auth routes are language-neutral
-and follow the user's language preference. If one ever gets one, its `/en`
-path must be added to `NON_INDEXABLE_PATH_PREFIXES` too (the SEO guard rejects
+None of these has an `/en/...`, `/fr/...` or `/es/...` twin — app and auth
+routes are language-neutral and follow the user's language preference. If one
+ever gets one, its prefixed path must be added to `NON_INDEXABLE_PATH_PREFIXES` too (the SEO guard rejects
 registering it as public).
 
 ## The public page registry
 
 [`frontend/src/seo/seoConfig.ts`](../frontend/src/seo/seoConfig.ts) is the
-single source of truth. `PUBLIC_PAGES` lists every public page with its German
-and English path, sitemap `changefreq`/`priority`, and the `home`-namespace
+single source of truth. `SEO_LANGUAGES` lists the published languages in
+hreflang order (`de`, `en`, `fr`, `es`); `PUBLIC_PAGES` lists every public
+page with its path per language, sitemap `changefreq`/`priority`, and the `home`-namespace
 i18n keys of its `<title>` and meta description (`seo.titles.*`,
 `seo.descriptions.*` — the texts live in the locale bundles like every other
 UI string and are resolved at build time by
@@ -66,17 +69,20 @@ else is derived from it, so no public path is listed anywhere else:
   other way round, and the slashless URL is served directly with 200.
 - Every public page has exactly one self-referencing canonical: the URL it is
   served at with 200 (`buildCanonicalUrl`).
-- Every public page carries the same reciprocal hreflang set: `de`, `en` and
-  `x-default` (pointing at the German version) — in the prerendered `<head>`,
+- Every public page carries the same reciprocal hreflang set: `de`, `en`,
+  `fr`, `es` and `x-default` (pointing at the German version) — in the prerendered `<head>`,
   at runtime, and as `xhtml:link` alternates on every sitemap `<url>`.
-- **Every URL renders its own language** — `/ueber` is always German and
-  `/en/about` always English, prerendered that way and rendered that way by
+- **Every URL renders its own language** — `/ueber` is always German,
+  `/en/about` always English, `/fr/a-propos` always French and
+  `/es/acerca-de` always Spanish, prerendered that way and rendered that way by
   the SPA. There is no content swap on a URL.
 - **Visitors land in their language, crawlers never get redirected.** On the
   first load of a public page, a visitor whose language differs from the
   page's is sent to the counterpart URL with `location.replace` (query and
   hash kept): their stored choice from the switcher if any, otherwise the
-  browser language — German stays German, every other language gets English.
+  browser language — German, French and Spanish browsers (any regional
+  variant, e.g. `fr-CA`, `es-419`, `es-MX`) get their language, every other
+  language gets English.
   The `index.html` preboot does this before first paint on prerendered pages
   (from the `data-ofp-page-alternates` attribute), and
   `src/i18n/publicPageLanguageRedirect.ts` is the fallback for the dev server
@@ -91,8 +97,8 @@ else is derived from it, so no public path is listed anywhere else:
 build — and the unit tests in `src/seo/__tests__/seoGuard.test.ts` and
 `build/prerenderSeo.test.ts` fail CI — when:
 
-- a registry entry lacks a language, has a trailing slash, an English path
-  outside `/en`, a duplicate path, a path under an app-only prefix, or a
+- a registry entry lacks a language, has a trailing slash, a non-German path
+  outside its language prefix (`/en`, `/fr`, `/es`), a duplicate path, a path under an app-only prefix, or a
   missing title/description translation (`validatePublicPageRegistry`, run by
   `seoPlugin` on every build and dev-server start);
 - `sitemap.xml` misses a page variant, lists an unregistered URL, contains a

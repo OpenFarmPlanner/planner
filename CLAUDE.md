@@ -7,7 +7,9 @@
 - All commit messages must be written in English.
 - All API responses and application logs must be in English.
 - All explanations, summaries, and code-related output from AI agents must be in English.
-- UI text must remain in German and must be handled through i18n resources.
+- UI text is handled through i18n resources in German (the reference bundle),
+  English, French and Spanish; terminology and forms of address follow
+  [`docs/i18n-glossary.md`](docs/i18n-glossary.md).
 - Emails to users are written in the recipient's language from per-language
   template files under `backend/accounts/templates/accounts/emails/<code>/`;
   a new language must ship all of them. Details:
@@ -173,7 +175,10 @@ Deploy scripts, cron/scheduling config, and infra are **not** in this repo — t
 
 ### Text, Types, and Components
 - UI text must always use i18n resources. New or changed user-facing text must
-  include German translations in the relevant namespace.
+  include translations in all four languages (de, en, fr, es) in the relevant
+  namespace, using the terms of [`docs/i18n-glossary.md`](docs/i18n-glossary.md);
+  pluralized keys need every plural form of each language (fr/es add `_many`).
+  Details: [`docs/i18n.md`](docs/i18n.md).
 - Never hardcode user-visible strings directly in components, dialogs, tables,
   filters, tooltips, snackbars, form helpers, or similar UI surfaces.
 - Never render raw enum values, backend field names, or technical API error
@@ -278,33 +283,34 @@ tests, screenshots, or manual checks were performed.
 
 ## Public pages and SEO
 Public marketing pages (landing, about, legal) must stay indexable by Google
-in German and English. Full rules and rationale:
+in German, English, French and Spanish. Full rules and rationale:
 [`docs/seo-and-indexing.md`](docs/seo-and-indexing.md). Checklist for adding
 or changing a public page:
 
 1. Register it in `PUBLIC_PAGES` in `frontend/src/seo/seoConfig.ts` with a
-   German path (root, no prefix) and an English path (under `/en`, English
-   slug), sitemap `changefreq`/`priority`, and `titleKey`/`descriptionKey`.
+   German path (root, no prefix) and an English, French and Spanish path
+   (under `/en`, `/fr`, `/es`, with slugs in that language), sitemap `changefreq`/`priority`, and `titleKey`/`descriptionKey`.
    Map its id to the component in `PUBLIC_PAGE_ELEMENTS` (`App.tsx`). The
    router, prerendering, sitemap, canonical, hreflang, switcher links and
    internal links all derive from the registry.
-2. Provide both translations, German first, through the locale files
+2. Provide all four translations, German first, through the locale files
    (`seo.titles.*`, `seo.descriptions.*` and the page content); the page is
    prerendered fully translated per language. Legal pages: the clause on
    which language version prevails lives in the terms text itself; don't
    contradict it on the page.
 3. URLs are slashless (`/ueber`, never `/ueber/`) on the apex host
    (`openfarmplanner.org`, never `www`). The canonical is the URL served with
-   200; hreflang carries `de`, `en` and `x-default` (German).
+   200; hreflang carries `de`, `en`, `fr`, `es` and `x-default` (German).
 4. Never hardcode a public path, canonical, hreflang or sitemap entry; link
    with `usePublicPagePath(id)`.
 5. Every URL renders its own language. Visitors (never crawlers) landing on
    the other language version are redirected once, on page load, by
    `publicPageLanguageRedirect.ts` / the `index.html` preboot: stored choice,
-   otherwise browser language (German → German, anything else → English).
+   otherwise browser language (German, French and Spanish → their version,
+   anything else → English).
    No server-side `Accept-Language` or geolocation redirect.
-6. App-only routes are never public pages; add their prefixes (and any `/en`
-   twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
+6. App-only routes are never public pages; add their prefixes (and any
+   `/en`, `/fr` or `/es` twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
 7. Run the SEO guard: `cd frontend && npx vitest run src/seo build` and
    `npm run build` (the build fails on guard errors); add
    `npx playwright test e2e/public-page-prerendering.spec.ts` for the

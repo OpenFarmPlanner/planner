@@ -1,0 +1,76 @@
+{
+  "title": "Parcelas",
+  "columns": {
+    "name": "Nombre",
+    "location": "Ubicación",
+    "area": "Superficie (m²)",
+    "notes": "Notas"
+  },
+  "errors": {
+    "load": "Error al cargar las parcelas",
+    "save": "Error al guardar la parcela",
+    "delete": "Error al eliminar la parcela",
+    "loadLocations": "Error al cargar las ubicaciones"
+  },
+  "validation": {
+    "nameRequired": "El nombre es obligatorio",
+    "locationRequired": "La ubicación es obligatoria"
+  },
+  "confirmDelete": "¿Seguro que quieres eliminar esta parcela?",
+  "addButton": "Añadir parcela",
+  "createNew": "Crear parcela",
+  "cancel": "Cancelar",
+  "submit": "Crear",
+  "selectLocation": "Seleccionar ubicación",
+  "representation": {
+    "label": "Vista",
+    "ariaLabel": "Seleccionar vista",
+    "table": "Lista",
+    "graphical": "Gráfico"
+  },
+  "graphical": {
+    "title": "Vista gráfica de parcelas",
+    "viewMode": "Modo",
+    "modeAriaLabel": "Seleccionar modo",
+    "viewModeOption": "Ver",
+    "editModeOption": "Editar",
+    "editMode": "Modo de edición",
+    "modeHelpAria": "Mostrar ayuda sobre los modos",
+    "modeHelpTooltip": "Navegar, ampliar y consultar detalles. Las parcelas y los bancales solo se pueden mover o editar en el modo de edición. Atajo: Alt+E",
+    "viewModeDescription": "Navegar, ampliar y consultar detalles. Las parcelas y los bancales solo se pueden mover o editar en el modo de edición.",
+    "editModeDescription": "Mover parcelas y bancales y ajustar la disposición.",
+    "editModeBanner": "Modo de edición activo: ahora se pueden mover las parcelas y los bancales.",
+    "locationEditModeBanner": "Edición gráfica activa: se pueden mover las parcelas y los bancales de esta ubicación.",
+    "editModeShortcut": "Atajo: Alt+E",
+    "locationEditModeAction": "Editar gráfico",
+    "locationEditModeActive": "Edición gráfica activa",
+    "enableLocationEditMode": "Editar gráfico",
+    "disableLocationEditMode": "Terminar la edición gráfica de la ubicación «{{name}}»",
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reducir",
+    "panUp": "Desplazar hacia arriba",
+    "panDown": "Desplazar hacia abajo",
+    "panLeft": "Desplazar a la izquierda",
+    "panRight": "Desplazar a la derecha",
+    "fitToView": "Ajustar todo",
+    "enterFullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "zoomLevel": "Zoom: {{value}}×",
+    "locationTitle": "Ubicación: {{name}}",
+    "details": {
+      "field": "Detalles de la parcela",
+      "bed": "Detalles del bancal"
+    },
+    "location": "Ubicación",
+    "parentField": "Parcela",
+    "area": "Superficie"
+  },
+  "commands": {
+    "showList": "Mostrar vista de lista",
+    "showGraphical": "Mostrar vista gráfica",
+    "keywords": {
+      "showList": "lista, tabla, superficies de cultivo",
+      "showGraphical": "gráfico, plano, superficies de cultivo"
+    }
+  }
+}

@@ -243,10 +243,10 @@ class PublicCropTranslationTest(ProjectApiTestCase):
         replace_public_crop_translations(
             public_crop=self.public_crop,
             user=self.user,
-            descriptions={'fr': 'Variété robuste.'},
+            descriptions={'it': 'Varietà robusta.'},
         )
 
-        self.assertNotIn('fr', self.public_crop.descriptions_by_language())
+        self.assertNotIn('it', self.public_crop.descriptions_by_language())
 
     def test_the_variety_name_is_never_part_of_the_translated_content(self):
         sync_original_language_translation(self.public_crop)
@@ -357,5 +357,7 @@ class LanguageCodeNormalizationTest(ProjectApiTestCase):
         self.assertEqual(normalize_language_code('de'), 'de')
         self.assertEqual(normalize_language_code('EN'), 'en')
         self.assertEqual(normalize_language_code('de-AT'), 'de')
-        self.assertEqual(normalize_language_code('fr'), '')
+        self.assertEqual(normalize_language_code('fr'), 'fr')
+        self.assertEqual(normalize_language_code('es-419'), 'es')
+        self.assertEqual(normalize_language_code('it'), '')
         self.assertEqual(normalize_language_code(None), '')

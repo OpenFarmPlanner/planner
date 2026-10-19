@@ -9,11 +9,15 @@
 
 import homeDE from '../i18n/locales/de/home.json' with { type: 'json' };
 import homeEN from '../i18n/locales/en/home.json' with { type: 'json' };
+import homeES from '../i18n/locales/es/home.json' with { type: 'json' };
+import homeFR from '../i18n/locales/fr/home.json' with { type: 'json' };
 import type { PublicPage, SeoLanguage } from './seoConfig.ts';
 
 const HOME_BUNDLES: Readonly<Record<SeoLanguage, unknown>> = {
   de: homeDE,
   en: homeEN,
+  fr: homeFR,
+  es: homeES,
 };
 
 function lookupKey(bundle: unknown, key: string): string | null {

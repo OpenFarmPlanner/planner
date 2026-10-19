@@ -1,0 +1,51 @@
+{
+  "title": "Fournisseurs",
+  "create": "Ajouter un fournisseur",
+  "edit": "Modifier le fournisseur",
+  "name": "Nom",
+  "homepage": "Site web",
+  "allowedDomains": "Domaines autorisés",
+  "active": "Actif",
+  "actions": "Actions",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "addDomain": "Ajouter un domaine",
+  "add": "Ajouter",
+  "saveError": "Impossible d'enregistrer le fournisseur.",
+  "loadError": "Impossible de charger les fournisseurs.",
+  "yes": "Oui",
+  "no": "Non",
+  "editAction": "Modifier",
+  "deleteAction": "Supprimer",
+  "deleteError": "Impossible de supprimer le fournisseur.",
+  "restoreDeleteError": "Impossible de restaurer le fournisseur.",
+  "messages": {
+    "deleted": "Fournisseur supprimé.",
+    "deletedWithUnlinkedCrops_one": "Fournisseur supprimé. Le lien vers le fournisseur a été retiré de {{count}} culture.",
+    "deletedWithUnlinkedCrops_other": "Fournisseur supprimé. Le lien vers le fournisseur a été retiré de {{count}} cultures.",
+    "deletedWithUnlinkedCrops_many": "Fournisseur supprimé. Le lien vers le fournisseur a été retiré de {{count}} cultures."
+  },
+  "deleteUsageDialog": {
+    "title": "Le fournisseur est encore utilisé",
+    "summary_one": "Ce fournisseur est encore utilisé par {{count}} culture.",
+    "summary_other": "Ce fournisseur est encore utilisé par {{count}} cultures.",
+    "summary_many": "Ce fournisseur est encore utilisé par {{count}} cultures.",
+    "cropUsage_one": "{{count}} culture utilise directement ce fournisseur.",
+    "cropUsage_other": "{{count}} cultures utilisent directement ce fournisseur.",
+    "cropUsage_many": "{{count}} cultures utilisent directement ce fournisseur.",
+    "supplierDataUsage": "{{cropCount}} cultures ont des données de semences ou de fournisseur comprenant {{rowCount}} entrées.",
+    "seedDemandUsage_one": "{{count}} culture utilise ce fournisseur dans la planification du besoin en semences.",
+    "seedDemandUsage_other": "{{count}} cultures utilisent ce fournisseur dans la planification du besoin en semences.",
+    "seedDemandUsage_many": "{{count}} cultures utilisent ce fournisseur dans la planification du besoin en semences.",
+    "unlinkExplanation": "Les cultures ne sont pas supprimées. Seul leur lien avec le fournisseur est retiré avant la suppression du fournisseur.",
+    "openAffectedCrops": "Aller aux cultures concernées",
+    "unlinkAndDelete": "Supprimer le fournisseur"
+  },
+  "invalidDomain": "Domaine non valide : {{domain}}. Les domaines doivent être des noms d'hôte valides, sans schéma ni chemin (p. ex. example.com).",
+  "domainValidationError": "Certains domaines ne sont pas valides. Veuillez corriger la saisie.",
+  "invalidUrl": "Veuillez saisir une URL valide (p. ex. https://example.com).",
+  "emptyState": {
+    "title": "Aucun fournisseur pour l'instant",
+    "description": "Les fournisseurs vous aident à planifier le besoin en semences et à comparer les conditionnements. Vous pouvez aussi commencer sans fournisseur."
+  }
+}

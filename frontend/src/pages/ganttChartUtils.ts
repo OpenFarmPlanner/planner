@@ -1,5 +1,6 @@
+import type { TFunction } from 'i18next';
 import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
-import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import { formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
 import { getGanttPhaseColors } from '../utils/colorContrast';
@@ -54,12 +55,29 @@ export interface GanttTaskGroup {
   rowHeightOverride?: number;
 }
 
+/**
+ * Localized task names the builders emit. Passed in rather than read from the
+ * global i18n instance so a language switch recomputes the memoized groups.
+ */
+export interface GanttTaskLabels {
+  harvestTaskName: (cropLabel: string) => string;
+  unknownCropName: (cropId: number | null | undefined) => string;
+}
+
+export function createGanttTaskLabels(t: TFunction): GanttTaskLabels {
+  return {
+    harvestTaskName: (cropLabel) => t('ganttChart:taskNames.harvest', { crop: cropLabel }),
+    unknownCropName: (cropId) => t('ganttChart:taskNames.unknownCrop', { id: cropId ?? '' }),
+  };
+}
+
 interface BuildTaskGroupsArgs {
   locations: Location[];
   fields: Field[];
   beds: Bed[];
   plantingPlans: PlantingPlan[];
   crops: Crop[];
+  labels: GanttTaskLabels;
 }
 
 /** Inclusive start/end of the calendar's visible time axis. */
@@ -263,15 +281,15 @@ export function formatSeedlingTooltipTitle(task: Pick<GanttTask, 'cropName' | 'c
 }
 
 export function formatGanttDate(value: Date): string {
-  return value.toLocaleDateString('de-DE');
+  return value.toLocaleDateString(getActiveFormattingLocale());
 }
 
 export function formatAreaSquareMeters(value: number): string {
-  return `${formatLocalizedNumber(value, 'de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
+  return `${formatLocalizedNumber(value, getActiveFormattingLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
 }
 
 export function formatPlantCount(value: number): string {
-  return formatLocalizedNumber(value, 'de-DE', { maximumFractionDigits: 0 });
+  return formatLocalizedNumber(value, getActiveFormattingLocale(), { maximumFractionDigits: 0 });
 }
 
 function formatCropLabel(crop?: Crop, fallbackName?: string | null, fallbackVariety?: string | null): string {
@@ -363,6 +381,7 @@ export function buildFieldOccupancyTaskGroups({
   beds,
   plantingPlans,
   crops,
+  labels,
 }: BuildTaskGroupsArgs): GanttTaskGroup[] {
   if (!locations.length || !fields.length || !beds.length || !plantingPlans.length) {
     return [];
@@ -431,7 +450,7 @@ export function buildFieldOccupancyTaskGroups({
           const baseColor = getCropColor(crops, plan.crop, cropDisplayName, plan.crop_display_color);
           const phaseColors = getGanttPhaseColors(baseColor);
           const cropLabel = formatCropDisplayLabel(
-            cropDisplayName || `Crop ${plan.crop}`,
+            cropDisplayName || labels.unknownCropName(plan.crop),
             plan.crop_variety,
           );
 
@@ -454,7 +473,7 @@ export function buildFieldOccupancyTaskGroups({
           if (harvestEndDate > harvestStartDate) {
             tasks.push({
               id: `plan-${plan.id}-harvest`,
-              name: `${cropLabel} (Ernte)`,
+              name: labels.harvestTaskName(cropLabel),
               startDate: harvestStartDate,
               endDate: harvestEndDate,
               color: phaseColors.harvest,
@@ -549,6 +568,7 @@ export function buildFieldOccupancyHierarchy({
   beds,
   plantingPlans,
   crops,
+  labels,
 }: BuildTaskGroupsArgs): OccupancyHierarchyNode[] {
   if (!locations.length) {
     return [];
@@ -591,7 +611,7 @@ export function buildFieldOccupancyHierarchy({
       const baseColor = getCropColor(crops, plan.crop, cropDisplayName, plan.crop_display_color);
       const phaseColors = getGanttPhaseColors(baseColor);
       const cropLabel = formatCropDisplayLabel(
-        cropDisplayName || `Crop ${plan.crop}`,
+        cropDisplayName || labels.unknownCropName(plan.crop),
         plan.crop_variety,
       );
 
@@ -614,7 +634,7 @@ export function buildFieldOccupancyHierarchy({
       if (harvestEndDate > harvestStartDate) {
         tasks.push({
           id: `plan-${plan.id}-harvest`,
-          name: `${cropLabel} (Ernte)`,
+          name: labels.harvestTaskName(cropLabel),
           startDate: harvestStartDate,
           endDate: harvestEndDate,
           color: phaseColors.harvest,
@@ -718,6 +738,7 @@ export function buildFieldOccupancyHierarchy({
 export function buildSeedlingTaskGroups({
   plantingPlans,
   crops,
+  labels,
 }: BuildTaskGroupsArgs): GanttTaskGroup[] {
   if (!plantingPlans.length) {
     return [];
@@ -739,7 +760,7 @@ export function buildSeedlingTaskGroups({
     const cropDisplayName = getPlanCropDisplayName(plan);
     const cropLabel = crop
       ? formatCropLabel(crop, cropDisplayName || null, plan.crop_variety)
-      : formatCropDisplayLabel(cropDisplayName || `Kultur ${plan.crop}`, plan.crop_variety);
+      : formatCropDisplayLabel(cropDisplayName || labels.unknownCropName(plan.crop), plan.crop_variety);
     const groupId = `crop-${plan.crop}`;
     const group = groupsByCrop.get(groupId) ?? {
       id: groupId,

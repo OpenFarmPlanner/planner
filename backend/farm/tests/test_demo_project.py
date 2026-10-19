@@ -37,6 +37,9 @@ from farm.services.demo_project import (
     create_or_reset_demo_project,
     create_personal_demo_project,
     demo_current_year,
+    get_demo_project_description,
+    get_demo_project_name,
+    resolve_demo_language,
     resolve_demo_request_language,
 )
 from farm.services.seasons import build_planting_plan_copies
@@ -330,10 +333,22 @@ class DemoRequestLanguageTests(TestCase):
         self.factory = RequestFactory()
 
     def test_falls_back_to_german_where_the_api_falls_back_to_english(self) -> None:
-        request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE='fr')
+        request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE='it')
 
         self.assertEqual(resolve_demo_request_language(request), 'de')
         self.assertEqual(resolve_request_language(request), 'en')
+
+    def test_french_and_spanish_get_the_english_demo(self) -> None:
+        # Supported UI languages without demo templates must not raise a
+        # KeyError and must not silently get the German templates either.
+        for language in ('fr', 'es'):
+            with self.subTest(language=language):
+                request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE=language)
+                self.assertEqual(resolve_request_language(request), language)
+                self.assertEqual(resolve_demo_request_language(request), 'en')
+                self.assertEqual(resolve_demo_language(language), 'en')
+                self.assertEqual(get_demo_project_name(language), get_demo_project_name('en'))
+                self.assertEqual(get_demo_project_description(language), get_demo_project_description('en'))
 
     def test_an_explicit_query_parameter_wins_over_the_demo_default(self) -> None:
         request = self.factory.get('/', {'language': 'en'})

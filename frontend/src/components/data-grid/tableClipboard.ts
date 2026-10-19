@@ -1,4 +1,5 @@
 import { showGlobalSnackbar, type GlobalSnackbarSeverity } from '../../utils/globalSnackbar';
+import { getActiveFormattingLocale } from '../../utils/numberLocalization';
 import type { EditableDataGridClipboardColumn, EditableRow } from './types';
 
 export type TableClipboardRow = readonly string[];
@@ -22,7 +23,7 @@ export function formatClipboardValue(value: unknown): string {
     return '';
   }
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '' : value.toLocaleDateString('de-DE');
+    return Number.isNaN(value.getTime()) ? '' : value.toLocaleDateString(getActiveFormattingLocale());
   }
   if (typeof value === 'string') {
     return value;

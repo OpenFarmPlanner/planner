@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import i18n from '../../i18n';
 import { MAIN_NAV_ITEMS, shouldDisableNavItem } from '../mainNavigation';
 
 describe('shouldDisableNavItem', () => {
@@ -26,5 +27,23 @@ describe('MAIN_NAV_ITEMS', () => {
     for (const item of MAIN_NAV_ITEMS) {
       expect(item.requiresProject).toBe(true);
     }
+  });
+});
+
+describe('navigation menu labels', () => {
+  const labelKeys = ['dashboard', ...MAIN_NAV_ITEMS.map((item) => item.labelKey)];
+
+  it.each(['de', 'en', 'fr', 'es'])('gives every menu entry its own short label in %s', (language) => {
+    const t = i18n.getFixedT(language, 'navigation');
+    for (const key of labelKeys) {
+      expect(i18n.exists(`navigation:short.${key}`, { lng: language })).toBe(true);
+      expect(t(`short.${key}`).length).toBeLessThanOrEqual(t(key).length);
+    }
+  });
+
+  it('keeps the full term as page title where the menu label is shortened', () => {
+    const t = i18n.getFixedT('fr', 'navigation');
+    expect(t('short.ganttChart')).toBe('Calendrier');
+    expect(t('ganttChart')).toBe('Calendrier de culture');
   });
 });

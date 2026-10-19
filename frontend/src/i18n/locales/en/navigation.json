@@ -10,6 +10,17 @@
   "ganttChart": "Planting calendar",
   "yieldOverview": "Yield overview",
   "seedDemand": "Seed demand",
+  "short": {
+    "dashboard": "Overview",
+    "fieldsAndBeds": "Fields",
+    "crops": "Crops",
+    "cropLibrary": "Crop library",
+    "plantingPlans": "Planting plans",
+    "ganttChart": "Planting calendar",
+    "yieldOverview": "Yield overview",
+    "seedDemand": "Seed demand",
+    "suppliers": "Suppliers"
+  },
   "graphicalFields": "Graphical view",
   "accountSettings": "Account settings",
   "publicLibraryModeration": "Moderate crop library",

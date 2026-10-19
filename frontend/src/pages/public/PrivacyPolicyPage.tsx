@@ -24,6 +24,7 @@ const privacySections = [
   'rights',
   'complaint',
   'changes',
+  'languageVersions',
 ] as const;
 
 const privacySectionBulletKeys: Partial<Record<(typeof privacySections)[number], readonly string[]>> = {

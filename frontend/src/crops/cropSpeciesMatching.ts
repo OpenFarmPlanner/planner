@@ -254,12 +254,18 @@ export type RequiredSpeciesLanguage = 'de' | 'en';
 export type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
 export const REQUIRED_SPECIES_LANGUAGES: RequiredSpeciesLanguage[] = ['de', 'en'];
 
+const isRequiredSpeciesLanguage = (code: string | null | undefined): code is RequiredSpeciesLanguage => (
+  REQUIRED_SPECIES_LANGUAGES.includes(code as RequiredSpeciesLanguage)
+);
+
 /**
  * Seeds the two-language approval form: existing translations for a species
  * that already has some, or — for a name that was only just typed and has no
  * `CropSpecies` yet — the typed name under the current UI language, leaving
  * the other language blank so the moderator has to consciously fill it
- * rather than silently getting a duplicate of the same text.
+ * rather than silently getting a duplicate of the same text. A name typed in
+ * a language that is not a required one (e.g. French) is never put into the
+ * German or English field.
  */
 export const getInitialSpeciesApprovalTranslations = (
   species: Pick<CropSpecies, 'translations' | 'display_name' | 'display_language_code' | 'name'> | null,
@@ -268,16 +274,19 @@ export const getInitialSpeciesApprovalTranslations = (
 ): SpeciesApprovalTranslations => {
   const translations: SpeciesApprovalTranslations = { de: '', en: '' };
   for (const translation of species?.translations ?? []) {
-    if (translation.language_code === 'de' || translation.language_code === 'en') {
+    if (isRequiredSpeciesLanguage(translation.language_code)) {
       translations[translation.language_code] = translation.common_name;
     }
   }
   if (translations.de || translations.en) {
     return translations;
   }
-  const fallbackLanguage = species?.display_language_code === 'de' || species?.display_language_code === 'en'
+  const currentLanguage = currentLanguageCode.split('-')[0];
+  const fallbackLanguage = isRequiredSpeciesLanguage(species?.display_language_code)
     ? species.display_language_code
-    : currentLanguageCode === 'de' ? 'de' : 'en';
-  translations[fallbackLanguage] = species?.display_name || species?.name || fallbackName;
+    : isRequiredSpeciesLanguage(currentLanguage) ? currentLanguage : null;
+  if (fallbackLanguage) {
+    translations[fallbackLanguage] = species?.display_name || species?.name || fallbackName;
+  }
   return translations;
 };

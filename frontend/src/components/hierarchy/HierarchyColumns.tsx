@@ -32,6 +32,7 @@ import { CALCULATED_COLUMN_CELL_CLASS, getCalculatedColumnProps } from '../data-
 import { HierarchyLevelButtons } from './HierarchyLevelToggle';
 import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/FullCellTooltip';
 import { dataGridHeaderLabelSx } from '../data-grid/dataGridHeaderLabelSx';
+import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
 
 export interface HierarchyColumnWidths {
   name: number;
@@ -46,6 +47,11 @@ export const DEFAULT_HIERARCHY_COLUMN_WIDTHS: HierarchyColumnWidths = {
   dimensions: 130,
   notes: 220,
 };
+
+// Header room beside the title: the dimension headers carry an icon, the
+// calculated area header does not.
+const DIMENSION_HEADER_ALLOWANCE = 50;
+const AREA_HEADER_ALLOWANCE = 30;
 
 const renderImmediateEditInputCell = (
   params: GridRenderEditCellParams<HierarchyRow>,
@@ -171,9 +177,24 @@ export function createHierarchyColumns(
     : onOpenNotesOrColumnWidths as (rowId: string | number, field: string) => void;
   const t = (usesLegacySignature ? onOpenContextMenuOrT : tOrColumnWidths) as TFunction;
   const resolvedColumnWidths = (usesLegacySignature ? onOpenNotesOrColumnWidths : columnWidths) as Partial<HierarchyColumnWidths> | undefined;
-  const widths: HierarchyColumnWidths = {
+  const configuredWidths: HierarchyColumnWidths = {
     ...DEFAULT_HIERARCHY_COLUMN_WIDTHS,
     ...resolvedColumnWidths,
+  };
+  // Longer French and Spanish titles widen these columns; German and English
+  // titles fit the configured widths, which therefore stay unchanged.
+  const widths: HierarchyColumnWidths = {
+    ...configuredWidths,
+    dimensions: widthForHeaderTitles([t('columns.length'), t('columns.width')], {
+      baseWidth: configuredWidths.dimensions,
+      allowance: DIMENSION_HEADER_ALLOWANCE,
+      maxWidth: configuredWidths.dimensions + 40,
+    }),
+    area: widthForHeaderTitles([t('hierarchy:columns.area')], {
+      baseWidth: configuredWidths.area,
+      allowance: AREA_HEADER_ALLOWANCE,
+      maxWidth: configuredWidths.area + 40,
+    }),
   };
 
   const callbacks: NameCellCallbacks = {

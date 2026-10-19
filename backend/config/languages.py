@@ -12,17 +12,19 @@ Three separate concerns use these helpers and must not be confused:
    supplier names, variety names. Never translated, never duplicated per
    language; stored and shown exactly as typed.
 
-Adding a language means: add the code here, add the frontend locale bundle
-under ``frontend/src/i18n/locales/<code>/``, and add the code to
+Supported languages are English, German, French and Spanish. Adding a
+language means: add the code here, add the frontend locale bundle under
+``frontend/src/i18n/locales/<code>/``, add the code to
 ``frontend/src/i18n/languages.ts``, and add the email templates under
 ``accounts/templates/accounts/emails/<code>/`` (a parity test fails until
-they exist). Nothing else is language-specific.
+they exist). Content that only exists in some languages (e.g. the demo
+project templates) must fall back explicitly; see docs/i18n.md.
 """
 
 from __future__ import annotations
 
 # Ordered by preference for the "any other translation" fallback step.
-SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de')
+SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es')
 
 # Public crop species become shared lookup data once approved. Keep this list
 # explicit so adding a UI language does not silently make every old proposal
@@ -38,6 +40,8 @@ UI_LANGUAGE_CHOICES = [
     (UI_LANGUAGE_AUTO, 'Automatic (browser language)'),
     ('de', 'Deutsch'),
     ('en', 'English'),
+    ('fr', 'Français'),
+    ('es', 'Español'),
 ]
 UI_LANGUAGE_VALUES = frozenset({UI_LANGUAGE_AUTO, *SUPPORTED_LANGUAGE_CODES})
 
@@ -46,7 +50,9 @@ def normalize_language_tag(value: str | None) -> str:
     """Reduce a BCP-47 tag to a supported code, or '' when unsupported.
 
     ``de-AT``/``de_DE``/``DE`` all become ``de``; ``en-GB`` becomes ``en``;
-    ``fr`` and nonsense become ``''`` so callers can decide the fallback.
+    ``fr-CA`` becomes ``fr``; ``es-419``/``es-MX`` become ``es``. Unsupported
+    tags (``it``) and nonsense become ``''`` so callers can decide the
+    fallback.
     """
     normalized = (value or '').strip().lower().replace('_', '-')
     if not normalized:
@@ -63,7 +69,7 @@ def resolve_language_tag(value: str | None, *, default: str = DEFAULT_LANGUAGE_C
 def parse_accept_language(header: str | None) -> str:
     """First supported language in an ``Accept-Language`` header, or ''.
 
-    Quality values are honoured, so ``fr;q=0.9, de;q=0.8`` resolves to ``de``
+    Quality values are honoured, so ``it;q=0.9, de;q=0.8`` resolves to ``de``
     rather than to the header's first (unsupported) entry.
     """
     if not header:
@@ -90,7 +96,7 @@ def parse_accept_language(header: str | None) -> str:
 
 
 def normalize_ui_language_preference(value: str | None) -> str:
-    """Validate a stored UI preference value ('auto' | 'de' | 'en')."""
+    """Validate a stored UI preference value ('auto' or a supported code)."""
     normalized = (value or '').strip().lower()
     if normalized in UI_LANGUAGE_VALUES:
         return normalized

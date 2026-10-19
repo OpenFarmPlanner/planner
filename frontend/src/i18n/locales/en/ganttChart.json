@@ -95,6 +95,10 @@
     "occupancy": "Field occupancy",
     "seedlings": "Propagation"
   },
+  "modesShort": {
+    "occupancy": "Field occupancy",
+    "seedlings": "Propagation"
+  },
   "modeTooltips": {
     "occupancy": "Shows bed occupancy over the year. The displayed periods are calculated from the planting plans and culture-specific timing (e.g. sowing, planting, and harvest).",
     "seedlings": "Shows the propagation phase of cultures before planting. The displayed periods are calculated from the planting plans and culture-specific propagation duration data."
@@ -199,5 +203,9 @@
     "editLocation": "Edit location",
     "addPlan": "Add planting plan",
     "confirmDeletePlan": "Really delete this planting plan?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (harvest)",
+    "unknownCrop": "Crop {{id}}"
   }
 }

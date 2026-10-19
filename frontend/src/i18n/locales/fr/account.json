@@ -1,0 +1,214 @@
+{
+  "title": "Paramètres du compte",
+  "email": "E-mail",
+  "displayName": "Nom d'affichage",
+  "sections": {
+    "profile": "Profil",
+    "publicProfile": "Bibliothèque de cultures",
+    "security": "Connexion et sécurité",
+    "privacy": "Confidentialité et export des données",
+    "account": "Compte",
+    "language": "Langue"
+  },
+  "dataExport": {
+    "description": "Téléchargez une copie structurée des données de votre compte, de vos projets et de la bibliothèque de cultures sous forme de fichier JSON.",
+    "downloadButton": "Télécharger mes données",
+    "success": "L'export des données a été créé."
+  },
+  "publicProfile": {
+    "description": "Ce nom appartient à votre compte et est affiché comme auteur de chaque culture que vous avez publiée ou publierez dans la bibliothèque de cultures.",
+    "publicDisplayName": "Nom sur les publications",
+    "noPublicDisplayName": "Anonyme",
+    "helperText": "Sans nom, vos publications apparaissent de manière anonyme. Si vous définissez un nom plus tard, il apparaît automatiquement comme auteur de toutes les cultures déjà publiées – si vous le supprimez à nouveau, ces cultures redeviennent anonymes. Le nom doit être unique et ne pas être déjà utilisé par quelqu'un d'autre.",
+    "actions": {
+      "setPublicDisplayName": "Définir un nom",
+      "editPublicDisplayName": "Modifier le nom"
+    },
+    "transparencyHint": "Affiché publiquement comme auteur de vos contributions à la bibliothèque de cultures, y compris les précédentes."
+  },
+  "moderatorRequest": {
+    "title": "Aider en tant que modérateur",
+    "description": "Aidez à examiner les propositions de nouvelles espèces cultivées et à maintenir la cohérence de la bibliothèque de cultures.",
+    "loading": "Chargement du statut…",
+    "alreadyModerator": "Vous disposez déjà des droits de modérateur pour la bibliothèque de cultures.",
+    "pending": "Votre demande est en cours d'examen.",
+    "rejectedHint": "Vous pouvez envoyer une nouvelle demande si vous souhaitez toujours aider.",
+    "motivationLabel": "Pourquoi souhaitez-vous modérer ?",
+    "submit": "Envoyer la demande",
+    "sending": "Envoi…",
+    "success": "Votre demande a été envoyée."
+  },
+  "actions": {
+    "saveProfile": "Enregistrer le profil",
+    "requestEmailChange": "Demander un changement d'e-mail",
+    "changePassword": "Changer le mot de passe",
+    "editDisplayName": "Modifier le nom d'affichage",
+    "save": "Enregistrer",
+    "sendConfirmationLink": "Envoyer le lien de confirmation",
+    "savePassword": "Enregistrer le mot de passe"
+  },
+  "security": {
+    "changeEmailTitle": "Changer l'adresse e-mail",
+    "credentials": "Identifiants",
+    "newEmail": "Nouvelle adresse e-mail",
+    "changePasswordTitle": "Changer le mot de passe",
+    "newPassword": "Nouveau mot de passe",
+    "repeatNewPassword": "Répéter le nouveau mot de passe",
+    "noPasswordHint": "Ce compte se connecte avec Google ou Microsoft et n'a pas de mot de passe. Vous pouvez en définir un via « Mot de passe oublié » sur la page de connexion."
+  },
+  "loginMethods": {
+    "title": "Méthodes de connexion",
+    "description": "Ces méthodes de connexion sont associées à votre compte.",
+    "emailPasswordActive": "E-mail et mot de passe · Actif",
+    "connect": "Associer {{provider}}",
+    "connected": "La méthode de connexion a été associée.",
+    "connectedSince": "{{provider}} · associé depuis le {{date}}",
+    "connectedSinceWithEmail": "{{provider}} · {{email}} · associé depuis le {{date}}"
+  },
+  "dangerZone": "Zone de danger",
+  "deleteDescription": "Si vous supprimez votre compte, il est immédiatement désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants sont alors supprimés avec leurs données ; les fiches publiées dans la bibliothèque de cultures sont conservées.",
+  "restoreDescription": "Vous pouvez annuler la suppression pendant cette période.",
+  "deleteButton": "Supprimer le compte",
+  "dialogTitle": "Programmer la suppression du compte",
+  "dialogWarning": "Veuillez confirmer avec votre mot de passe actuel et le texte « {{phrase}} ». Votre compte sera désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants seront alors supprimés.",
+  "dialogWarningWithoutPassword": "Veuillez confirmer avec le texte « {{phrase}} ». Votre compte sera désactivé puis anonymisé au bout de 14 jours. Les projets sans membres restants seront alors supprimés.",
+  "currentPassword": "Mot de passe actuel",
+  "deletePhrase": "SUPPRIMER",
+  "deletePhraseLabel": "Texte de confirmation",
+  "deletePhraseHelper": "Veuillez saisir exactement « {{phrase}} » pour confirmer.",
+  "cancel": "Annuler",
+  "confirmDelete": "Programmer la suppression du compte",
+  "deletionScheduled": "La suppression de votre compte a été programmée. Il sera anonymisé le {{date}}.",
+  "noDisplayName": "—",
+  "errors": {
+    "generic": "L'action n'a pas pu être effectuée.",
+    "delete": "Impossible de programmer la suppression."
+  },
+  "unsavedChangesWarning": "Des modifications ne sont pas enregistrées. Elles seront perdues si vous quittez la page.",
+  "emailConfirm": {
+    "title": "Confirmer le changement d'e-mail",
+    "loading": "Vérification de la confirmation…",
+    "invalid": "Le lien de confirmation n'est pas valide ou a expiré."
+  },
+  "developer": {
+    "title": "Développeur",
+    "hintsDescription": "Réinitialiser les indications locales de développement ou afficher à nouveau l'accueil du premier projet. Cela ne supprime ni projets ni données de compte.",
+    "hintsResetDone": "Indications réinitialisées.",
+    "resetHintsAction": "Réinitialiser les indications",
+    "showOnboardingAction": "Afficher à nouveau l'accueil"
+  },
+  "language": {
+    "description": "La langue de l'interface appartient à votre compte, pas à un projet. D'autres membres du même projet peuvent utiliser OpenFarmPlanner dans une autre langue au même moment. Les contenus que vous saisissez vous-même — noms de projets, de sites et de planches — ne sont jamais traduits."
+  },
+  "apiTokens": {
+    "title": "Jetons d'API pour outils externes",
+    "description": "Chaque jeton ne s'applique qu'à un seul projet et ne peut jamais modifier les membres, les invitations ou les paramètres du compte.",
+    "docsLink": "Ouvrir la documentation de l'API",
+    "loading": "Chargement des jetons…",
+    "empty": "Vous n'avez encore créé aucun jeton d'API.",
+    "noProjects": "Vous devez être membre d'un projet pour pouvoir créer un jeton d'API.",
+    "revoked": "Le jeton « {{name}} » a été révoqué et ne fonctionne plus.",
+    "inactiveToggle": "Afficher les jetons expirés et révoqués ({{count}})",
+    "status": {
+      "active": "Actif",
+      "expired": "Expiré",
+      "revoked": "Révoqué"
+    },
+    "scopes": {
+      "read": "Lecture",
+      "write": "Lecture et écriture",
+      "delete": "Lecture, écriture et suppression"
+    },
+    "scopeHelp": {
+      "read": "Peut lire les données du projet. Ne peut rien modifier.",
+      "write": "Peut lire les données du projet et créer ou modifier des cultures. Ne peut rien supprimer.",
+      "delete": "Peut en outre supprimer et restaurer des cultures. Les membres du projet, les invitations, les paramètres du compte et les autres domaines administratifs restent bloqués."
+    },
+    "columns": {
+      "name": "Nom",
+      "scope": "Autorisations",
+      "project": "Projet",
+      "created": "Créé le",
+      "expires": "Expire le",
+      "lastUsed": "Dernière utilisation",
+      "action": "Action"
+    },
+    "meta": {
+      "project": "Projet",
+      "prefix": "Jeton",
+      "created": "Créé le",
+      "expires": "Expire le",
+      "lastUsed": "Dernière utilisation",
+      "never": "sans expiration",
+      "neverUsed": "jamais"
+    },
+    "actions": {
+      "create": "Créer un jeton",
+      "revoke": "Révoquer"
+    },
+    "form": {
+      "name": "Nom",
+      "project": "Projet",
+      "projectHelper": "Le jeton ne pourra jamais accéder qu'à ce projet. Ce choix ne peut pas être modifié ultérieurement.",
+      "scope": "Autorisations",
+      "expiresAt": "Date d'expiration (facultatif)",
+      "expiresAtHelper": "Laissez vide pour un jeton sans date d'expiration. Au maximum un an à l'avance."
+    },
+    "created": {
+      "title": "Votre nouveau jeton d'API",
+      "warning": "Copiez le jeton maintenant. Il n'est affiché qu'une seule fois et ne pourra pas être récupéré.",
+      "description": "Conservez le jeton comme un mot de passe, par exemple dans le stockage de secrets de votre agent. Ne l'enregistrez jamais dans un dépôt de code. Si vous le perdez, révoquez-le ici et créez-en un nouveau.",
+      "tokenLabel": "Jeton",
+      "usageHint": "Utilisez-le comme en-tête HTTP : Authorization: Bearer <token>",
+      "confirm": "J'ai conservé le jeton"
+    }
+  },
+  "cropLibraryToken": {
+    "title": "Jeton d'API de la bibliothèque de cultures",
+    "description": "Réservé aux superutilisateurs : ce jeton agit sur toute la plateforme et peut écrire les espèces cultivées officielles, les synonymes et les noms régionaux. Il n'est lié à aucun projet et est distinct des jetons d'API ci-dessus.",
+    "docsLink": "Ouvrir la documentation",
+    "loading": "Chargement du jeton…",
+    "empty": "Aucun jeton de bibliothèque de cultures n'a encore été créé.",
+    "revoked": "Le jeton « {{name}} » a été révoqué et ne fonctionne plus.",
+    "inactiveToggle": "Afficher les jetons expirés et révoqués ({{count}})",
+    "scopes": {
+      "read": "Lecture",
+      "write": "Lecture et écriture"
+    },
+    "scopeHelp": {
+      "read": "Peut lire les espèces cultivées officielles, y compris les propositions en attente.",
+      "write": "Peut en outre proposer et modifier des espèces cultivées (y compris les synonymes et les noms régionaux). L'approbation, le refus et la suppression restent bloqués."
+    },
+    "columns": {
+      "name": "Nom",
+      "scope": "Droits",
+      "created": "Créé le",
+      "expires": "Expire le",
+      "lastUsed": "Dernière utilisation",
+      "action": "Action"
+    },
+    "meta": {
+      "prefix": "Jeton",
+      "never": "sans date d'expiration",
+      "neverUsed": "jamais"
+    },
+    "actions": {
+      "create": "Créer un jeton",
+      "revoke": "Révoquer"
+    },
+    "form": {
+      "name": "Nom",
+      "scope": "Droits",
+      "expiresAt": "Date d'expiration (facultatif)",
+      "expiresAtHelper": "Laissez vide pour un jeton sans date d'expiration. Au maximum un an dans le futur."
+    },
+    "created": {
+      "title": "Votre nouveau jeton de bibliothèque de cultures",
+      "warning": "Copiez le jeton maintenant. Il n'est affiché qu'une seule fois et ne pourra pas être récupéré.",
+      "description": "Conservez le jeton comme un mot de passe. Ne l'enregistrez jamais dans un dépôt de code. Si vous le perdez, révoquez-le ici et créez-en un nouveau.",
+      "tokenLabel": "Jeton",
+      "usageHint": "Utilisez-le comme en-tête HTTP : Authorization: Bearer <token>",
+      "confirm": "J'ai conservé le jeton"
+    }
+  }
+}

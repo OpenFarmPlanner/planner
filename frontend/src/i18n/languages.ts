@@ -8,14 +8,18 @@
  *  3. **user project content** (project/location/bed names, notes, suppliers),
  *     which is shown exactly as typed and is never translated.
  *
- * To add a language: extend `SUPPORTED_LANGUAGES`, add a locale bundle under
- * `src/i18n/locales/<code>/`, register it in `config.ts`, and add the code to
- * `backend/config/languages.py`.
+ * Supported: German, English, French and Spanish. To add a language: extend
+ * `SUPPORTED_LANGUAGES`, add a locale bundle under `src/i18n/locales/<code>/`,
+ * register it in `config.ts`, add the code to `backend/config/languages.py`
+ * and to the preboot resolver in `index.html`, and follow the checklist in
+ * docs/i18n.md ("Adding a language").
  */
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'de', label: 'Deutsch' },
   { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Français' },
+  { code: 'es', label: 'Español' },
 ] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]['code'];
@@ -35,7 +39,8 @@ const SUPPORTED_CODES: readonly string[] = SUPPORTED_LANGUAGES.map((entry) => en
  * Reduce a BCP-47 tag to a supported language code.
  *
  * `de`, `de-AT`, `de-DE`, `de-CH` and `de_DE` all resolve to `de`; `en`,
- * `en-US`, `en-GB` to `en`; anything unsupported to `null` so callers decide
+ * `en-US`, `en-GB` to `en`; `fr-FR`, `fr-CA`, `fr-CH` to `fr`; `es-ES`,
+ * `es-MX`, `es-419` to `es`; anything unsupported to `null` so callers decide
  * the fallback themselves.
  */
 export function normalizeLanguageTag(value: string | null | undefined): SupportedLanguage | null {

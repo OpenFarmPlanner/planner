@@ -26,6 +26,7 @@ import { collectHierarchyAvailability } from '../components/planting-plans/areaH
 import type { SearchableSelectOption } from '../components/data-grid';
 import { useTranslation } from '../i18n';
 import { formatCropDisplayName } from '../crops/cropDisplay';
+import { widthForHeaderTitles } from '../components/data-grid/columnHeaderWidth';
 
 export interface CultivationTypeSelectOption {
   value: CultivationType;
@@ -44,13 +45,19 @@ const CULTIVATION_TYPE_OPTIONS = [
   { value: 'pre_cultivation', labelKey: 'plantingPlans:cultivationTypes.preCultivation' },
 ] as const;
 
-const DATE_COLUMN_WIDTH = 142;
+// Every German and English date title (at most 13 characters) fits the base
+// width; longer French and Spanish titles widen the column.
+const DATE_COLUMN_WIDTH_OPTIONS = { baseWidth: 142, allowance: 38, maxWidth: 200 } as const;
 
 const estimateColumnWidth = (values: string[], min: number, max: number): number => {
   const longest = values.reduce((length, value) => Math.max(length, value.length), 0);
   const estimated = longest * 8 + 52;
   return Math.max(min, Math.min(max, estimated));
 };
+
+const estimateDateColumnWidth = (headerName: string): number => (
+  widthForHeaderTitles([headerName], DATE_COLUMN_WIDTH_OPTIONS)
+);
 
 export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean) {
   const { t } = useTranslation(['plantingPlans', 'common']);
@@ -246,10 +253,10 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
         110,
         150,
       ),
-      sowingDate: DATE_COLUMN_WIDTH,
-      plantingDate: DATE_COLUMN_WIDTH,
-      harvestDate: DATE_COLUMN_WIDTH,
-      harvestEndDate: DATE_COLUMN_WIDTH,
+      sowingDate: estimateDateColumnWidth(t('plantingPlans:columns.sowingDate')),
+      plantingDate: estimateDateColumnWidth(t('plantingPlans:columns.plantingDate')),
+      harvestDate: estimateDateColumnWidth(t('plantingPlans:columns.harvestStartDate')),
+      harvestEndDate: estimateDateColumnWidth(t('plantingPlans:columns.harvestEndDate')),
       area: estimateColumnWidth(
         [
           t('plantingPlans:columns.areaM2'),

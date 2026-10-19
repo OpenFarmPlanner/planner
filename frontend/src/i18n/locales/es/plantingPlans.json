@@ -1,0 +1,361 @@
+{
+  "title": "Plan de cultivos",
+  "columns": {
+    "crop": "Cultivo (variedad)",
+    "location": "Ubicación",
+    "field": "Parcela",
+    "bed": "Bancal",
+    "fieldBed": "Parcela{{separator}}Bancal",
+    "sowingDate": "Fecha de siembra",
+    "plantingDate": "Fecha de plantación",
+    "harvestDate": "Fecha de cosecha",
+    "harvestStartDate": "Inicio de cosecha",
+    "harvestEndDate": "Fin de cosecha",
+    "areaM2": "Superficie (m²)",
+    "plantsCount": "Plantas (≈)",
+    "notes": "Notas",
+    "cultivationType": "Tipo de cultivo"
+  },
+  "labels": {
+    "coupled": "vinculados"
+  },
+  "actions": {
+    "useAvailableArea": "Usar la superficie restante",
+    "useBedArea": "Usar la superficie del bancal",
+    "copyPlantingPlan": "Copiar serie",
+    "createPlantingPlan": "Crear serie"
+  },
+  "feedback": {
+    "areaAutoFilled": "Superficie restante disponible aplicada automáticamente: {{area}}"
+  },
+  "dateEditor": {
+    "openCalendar": "Abrir calendario"
+  },
+  "areaValidation": {
+    "maxAreaApplied": "Superficie máxima disponible aplicada: {{area}}",
+    "remainingLimitTitle": "La superficie indicada supera la superficie restante disponible de este bancal.",
+    "noRemainingTitle": "No hay superficie libre disponible en este bancal durante el periodo seleccionado.",
+    "bedLimitTitle": "La superficie indicada supera el tamaño de este bancal.",
+    "availableArea": "Superficie restante disponible: {{area}}",
+    "bedArea": "Superficie del bancal: {{area}}",
+    "occupiedArea": "Ya ocupada: {{area}}",
+    "requestedArea": "Solicitada: {{area}}",
+    "acceptedArea": "Aplicada: {{area}}",
+    "applyRemainingArea": "Usar la superficie restante",
+    "applyBedArea": "Usar la superficie del bancal"
+  },
+  "placeholders": {
+    "selectCrop": "Seleccionar cultivo",
+    "selectCultivationType": "Seleccionar tipo de cultivo",
+    "selectArea": "Seleccionar superficie de cultivo",
+    "plantsCount": "Introducir cantidad",
+    "maxKeyword": "max"
+  },
+  "tooltips": {
+    "coupledFields": "Superficie ocupada: vinculada al número de plantas. Los cambios actualizan automáticamente el otro valor.",
+    "areaAutoMax": "Si se deja vacío o se escribe «max», se usa automáticamente la superficie restante máxima disponible.",
+    "areaInputTitle": "Superficie ocupada por esta serie",
+    "areaInputDescription": "La superficie del bancal que ocupa esta serie. Los cambios en la superficie o en el número de plantas actualizan automáticamente el otro valor. Si se deja vacío o se escribe «max», se usa la superficie restante máxima disponible.",
+    "plantsFromSpacing": "Número de plantas: vinculado a la superficie ocupada. Los cambios actualizan automáticamente el otro valor.",
+    "calculatedHarvestStartDate": "Calculado automáticamente a partir de la fecha de plantación y de la duración del cultivo.",
+    "calculatedHarvestEndDate": "Calculado automáticamente a partir del inicio de cosecha y de la duración de la cosecha del cultivo.",
+    "missingGrowthDuration": "No se puede calcular porque este cultivo no tiene duración del cultivo.",
+    "missingHarvestDuration": "No se puede calcular porque este cultivo no tiene duración de la cosecha.",
+    "missingGrowthAndHarvestDuration": "No se puede calcular porque este cultivo no tiene ni duración del cultivo ni duración de la cosecha.",
+    "sowingDateTitle": "Fecha de siembra",
+    "sowingDateDescription": "Vinculada a la fecha de plantación: fecha de plantación menos la duración en semillero del cultivo. Los cambios actualizan automáticamente el otro valor. Igual a la fecha de plantación en la siembra directa.",
+    "plantingDateTitle": "Fecha de plantación",
+    "plantingDateDescription": "Vinculada a la fecha de siembra. En la siembra directa es también la fecha de siembra. Debe estar dentro de la temporada.",
+    "missingPropagationDuration": "No se puede calcular porque este cultivo no tiene duración en semillero."
+  },
+  "hints": {
+    "plantingDateSeasonRange": "Dentro de la temporada: {{start}} – {{end}}"
+  },
+  "errors": {
+    "load": "No se han podido cargar las series",
+    "save": "No se ha podido guardar la serie",
+    "delete": "No se ha podido eliminar la serie",
+    "editCropSpacing": "Editar cultivo"
+  },
+  "messages": {
+    "deleted": "Serie eliminada",
+    "plantingPlanCopied": "Serie copiada."
+  },
+  "validation": {
+    "plantingDateRequired": "La fecha de plantación es obligatoria",
+    "cropRequired": "El cultivo es obligatorio",
+    "bedRequired": "El bancal es obligatorio",
+    "cultivationTypeRequired": "El tipo de cultivo es obligatorio",
+    "plantingDateOutsideSeason": "La fecha de plantación debe estar dentro de la temporada ({{start}} – {{end}}).",
+    "requiredFields": "Deben completarse los siguientes campos obligatorios: {{fields}}",
+    "cropOrBedRequired": "El cultivo o el bancal es obligatorio",
+    "areaExceedsRemaining": "La superficie indicada supera la superficie restante disponible de este bancal.",
+    "areaExceedsBedArea": "La superficie indicada supera el tamaño de este bancal.",
+    "bedArea": "Superficie del bancal",
+    "alreadyAllocated": "Ocupada",
+    "requestedArea": "Solicitada",
+    "availableArea": "Superficie restante disponible",
+    "noAvailableArea": "Ya no hay superficie libre disponible en este bancal durante el periodo seleccionado."
+  },
+  "confirmDelete": "¿Seguro que quieres eliminar esta serie?",
+  "addButton": "Añadir serie",
+  "cultivationTypes": {
+    "directSowing": "Siembra directa",
+    "preCultivation": "Trasplante"
+  },
+  "areaAssignment": {
+    "title": "Cambiar superficie de cultivo",
+    "editButton": "Editar superficie de cultivo",
+    "hierarchyHint": "La ubicación filtra las parcelas y la parcela filtra los bancales.",
+    "emptyStateTitle": "No hay superficies de cultivo disponibles",
+    "emptyStateDescription": "Crea primero parcelas y bancales antes de asignar una superficie a una serie.",
+    "emptyStateAction": "Ir a Superficies de cultivo",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "selectLocationFirst": "Selecciona primero una ubicación.",
+    "noFieldsForLocation": "No hay parcelas disponibles para esta ubicación.",
+    "selectFieldFirst": "Selecciona primero una parcela.",
+    "noBedsForField": "No hay bancales disponibles para esta parcela.",
+    "selectBedFirst": "Selecciona primero un bancal."
+  },
+  "mobile": {
+    "showDetails": "Mostrar detalles",
+    "hideDetails": "Ocultar detalles",
+    "fabLabel": "Añadir serie",
+    "fabAria": "Añadir serie",
+    "emptyTitle": "Todavía no hay series",
+    "emptyDescription": "Crea tu primera serie para gestionar con claridad en el móvil el cultivo, el tipo de cultivo y los periodos.",
+    "emptyCta": "Añadir serie",
+    "createTitle": "Añadir serie",
+    "editTitle": "Editar serie",
+    "editAria": "Editar serie",
+    "actionsAria": "Acciones para la serie {{plan}}",
+    "notesPhotos": "Fotos",
+    "notesPhotosAria": "Abrir notas y fotos"
+  },
+  "emptyStates": {
+    "createBlockedTooltip": "Los bancales se añaden dentro de las parcelas, en la página Superficies de cultivo.",
+    "states": {
+      "fields": {
+        "title": "Todavía no puedes añadir una serie.",
+        "description": "Abre Superficies de cultivo y añade allí una parcela en la ubicación correspondiente."
+      },
+      "beds": {
+        "title": "Todavía no has creado ningún bancal.",
+        "description": "Los bancales son la base de las series. Abre Superficies de cultivo y añade un bancal desde una parcela."
+      },
+      "crops": {
+        "title": "Todavía no has creado ningún cultivo.",
+        "description": "Se necesitan cultivos para crear series."
+      },
+      "seasons": {
+        "title": "Todavía no se ha creado ninguna temporada",
+        "description": "Crea una temporada antes de añadir series."
+      },
+      "plans": {
+        "title": "Todavía no has creado ninguna serie.",
+        "description": "Crea ahora tu primera serie."
+      }
+    },
+    "actions": {
+      "createField": "Añadir parcela",
+      "createAreas": "Ir a Superficies de cultivo",
+      "openCropLibrary": "Abrir la biblioteca de cultivos",
+      "addCrop": "Añadir cultivo",
+      "createSeason": "Crear temporada"
+    }
+  },
+  "commands": {
+    "edit": "Editar serie (Alt+E)",
+    "delete": "Eliminar serie (Supr)",
+    "keywords": {
+      "edit": "serie, plan de cultivos, editar",
+      "delete": "serie, plan de cultivos, eliminar",
+      "search": "serie, plan de cultivos, buscar, encontrar, filtrar"
+    },
+    "focusSearch": "Ir a la búsqueda de series (/)"
+  },
+  "loadingPlans": "Cargando series…",
+  "search": {
+    "placeholderDesktop": "Buscar series",
+    "placeholderMobile": "Buscar",
+    "ariaLabel": "Buscar series",
+    "clear": "Borrar búsqueda",
+    "shortcutHintAria": "Pulsa / para ir a la búsqueda",
+    "filterButton": "Filtrar",
+    "filterButtonActiveAria_one": "Filtrar, {{count}} filtro activo",
+    "filterButtonActiveAria_other": "Filtrar, {{count}} filtros activos",
+    "filterButtonActiveAria_many": "Filtrar, {{count}} filtros activos",
+    "columnsButton": "Columnas",
+    "panelTitle": "Filtrar",
+    "sheetTitle": "Filtrar y ordenar",
+    "fields": {
+      "sort": "Ordenar por",
+      "location": "Ubicación",
+      "field": "Parcela",
+      "cultivationType": "Tipo de cultivo",
+      "crop": "Cultivo",
+      "plantingDate": "Periodo de plantación",
+      "harvestStartDate": "Inicio de cosecha",
+      "harvestEndDate": "Fin de cosecha",
+      "rotation": "Rotación de cultivos"
+    },
+    "monthFrom": "Desde",
+    "monthTo": "Hasta",
+    "monthRangeSeparator": "a",
+    "fieldHint": "Consejo: elige primero una ubicación para ver solo sus parcelas.",
+    "sortOptions": {
+      "plantingDateAsc": "Fecha de plantación, ascendente",
+      "plantingDateDesc": "Fecha de plantación, descendente",
+      "cropAsc": "Cultivo, de la A a la Z",
+      "harvestStartAsc": "Inicio de cosecha, ascendente"
+    },
+    "count_one": "{{count}} serie",
+    "count_other": "{{count}} series",
+    "count_many": "{{count}} series",
+    "filteredCountDesktop": "{{shown}} de {{total}} series",
+    "filteredCountMobile": "{{shown}} de {{total}}",
+    "reset": "Restablecer",
+    "matches_one": "{{count}} coincidencia",
+    "matches_other": "{{count}} coincidencias",
+    "matches_many": "{{count}} coincidencias",
+    "showResults_one": "Mostrar {{count}} serie",
+    "showResults_other": "Mostrar {{count}} series",
+    "showResults_many": "Mostrar {{count}} series",
+    "chip": "{{filter}}: {{values}}",
+    "chipDateLabels": {
+      "plantingDate": "Fecha de plantación",
+      "harvestStartDate": "Inicio de cosecha",
+      "harvestEndDate": "Fin de cosecha"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: de {{from}} a {{to}}",
+      "from": "{{filter}}: desde {{from}}",
+      "to": "{{filter}}: hasta {{to}}"
+    },
+    "removeChip": "Quitar el filtro {{filter}}",
+    "resetAll": "Restablecer todo",
+    "activeFiltersAria": "Filtros activos",
+    "synonymHint": "Sinónimo: {{name}}",
+    "notesMatchAria": "Coincidencia en las notas",
+    "empty": {
+      "titleWithQuery": "No se han encontrado series para «{{query}}»",
+      "title": "No se han encontrado series",
+      "hintWithFilters_one": "Sin los filtros activos habría {{count}} coincidencia.",
+      "hintWithFilters_other": "Sin los filtros activos habría {{count}} coincidencias.",
+      "hintWithFilters_many": "Sin los filtros activos habría {{count}} coincidencias.",
+      "hint": "Revisa la ortografía o busca un cultivo, una variedad o un bancal.",
+      "clearSearch": "Borrar búsqueda",
+      "resetFilters": "Restablecer filtros"
+    },
+    "rotationOptions": {
+      "conflict": "Conflicto",
+      "accepted": "Aceptado",
+      "info": "No comprobable"
+    }
+  },
+  "rotation": {
+    "iconAria": {
+      "conflict": "Conflicto de rotación de cultivos, cambiar superficie de cultivo",
+      "info": "Rotación de cultivos no comprobable, cambiar superficie de cultivo"
+    },
+    "status": {
+      "conflict": "Conflicto",
+      "accepted": "Conflicto aceptado",
+      "hint": "Aviso",
+      "info": "No comprobable",
+      "ok": "Encaja"
+    },
+    "checking": "Comprobando la rotación de cultivos…",
+    "checkError": "En este momento no se ha podido comprobar la rotación de cultivos. Aun así, puedes guardar.",
+    "conflict": {
+      "title": "Rotación de cultivos: {{family}} demasiado pronto en este bancal",
+      "textCrop_one": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{culture}} tiene una pausa de rotación de {{count}} año, por lo que el primer año posible es {{earliestYear}}.",
+      "textCrop_other": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{culture}} tiene una pausa de rotación de {{count}} años, por lo que el primer año posible es {{earliestYear}}.",
+      "textCrop_many": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{culture}} tiene una pausa de rotación de {{count}} años, por lo que el primer año posible es {{earliestYear}}.",
+      "textFamily_one": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{family}} tiene una pausa de rotación predeterminada de {{count}} año, por lo que el primer año posible es {{earliestYear}}.",
+      "textFamily_other": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{family}} tiene una pausa de rotación predeterminada de {{count}} años, por lo que el primer año posible es {{earliestYear}}.",
+      "textFamily_many": "{{previousCulture}} ({{family}}) se cultivó en {{bed}} en {{year}}. {{family}} tiene una pausa de rotación predeterminada de {{count}} años, por lo que el primer año posible es {{earliestYear}}.",
+      "showSuggestions": "Mostrar bancales adecuados",
+      "showBedHistory": "Ver el historial de {{bed}}",
+      "hideBedHistory": "Ocultar el historial de {{bed}}",
+      "changeBreak": "Cambiar la pausa de rotación de {{culture}}",
+      "setBreak": "Definir la pausa de rotación de {{culture}}",
+      "acceptLabel": "Planificarlo así a propósito (aceptar el conflicto)",
+      "saveNote": "Aun así, puedes guardar. Los conflictos aceptados siguen marcados como tales en la tabla."
+    },
+    "accepted": {
+      "title": "{{family}} demasiado pronto, aceptado a propósito",
+      "text": "{{previousCulture}} en {{year}} en este bancal. Aceptado por {{user}} el {{date}}.",
+      "textWithoutUser": "{{previousCulture}} en {{year}} en este bancal. Aceptado el {{date}}.",
+      "revoke": "Retirar la aceptación"
+    },
+    "hint": {
+      "title": "Cultivo muy exigente después de cultivo muy exigente",
+      "text": "{{previousCulture}} se cultivó aquí en {{year}}. Prevé suficiente compost o un abono verde entre ambos."
+    },
+    "info": {
+      "title": "No se puede comprobar la rotación de cultivos",
+      "noFamily": "{{culture}} no tiene familia botánica. Sin familia no podemos comprobar ninguna pausa de rotación.",
+      "addFamily": "Añadir una familia a {{culture}}",
+      "noBreak": "Ni {{family}} ni {{culture}} tienen pausa de rotación. Sin pausa no podemos comprobar la rotación de cultivos.",
+      "incomplete": "Elige un cultivo, un bancal y una fecha de plantación para que podamos comprobar la rotación de cultivos."
+    },
+    "ok": {
+      "text": "La rotación de cultivos encaja: {{reason}}",
+      "reasons": {
+        "lastFamily": "{{family}} por última vez en {{year}}, cultivo anterior {{previousCulture}}.",
+        "lastFamilyWithoutPrevious": "{{family}} por última vez en {{year}}.",
+        "noFamilyOnBed": "no hay {{family}} registrada en este bancal.",
+        "noHistory": "no hay series anteriores registradas en este bancal."
+      }
+    },
+    "bedHistory": {
+      "title": "Historial de {{bed}}",
+      "empty": "No hay historial de cultivo registrado para este bancal.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Bancales adecuados para {{culture}}",
+      "periodTitle": "Bancales adecuados, libres del {{start}} al {{end}}",
+      "subtitle": "Ordenados por pausa de rotación, secuencia de necesidades de nutrientes y años desde la misma familia. Solo bancales con suficiente superficie libre en el periodo.",
+      "categories": {
+        "good": "Encaja muy bien",
+        "fits": "Encaja",
+        "hint": "Aviso",
+        "no_data": "Sin datos",
+        "conflict": "Conflicto"
+      },
+      "apply": "Aplicar",
+      "applyAria": "Aplicar {{bed}}",
+      "current": "seleccionado actualmente",
+      "showAll": "Mostrar los {{count}} bancales",
+      "showAllMatching": "Mostrar los {{count}} bancales adecuados",
+      "showLess": "Mostrar menos bancales",
+      "empty": "No hay ningún bancal libre en la fecha de plantación. Revisa la fecha de plantación o añade otro bancal.",
+      "emptyMatching": "Ningún bancal tiene suficiente superficie libre sin conflicto de rotación de cultivos en este periodo. Revisa la fecha de plantación y la superficie, o añade otro bancal.",
+      "loading": "Comprobando bancales…",
+      "error": "No se han podido cargar las sugerencias de bancales.",
+      "needsInput": "Elige un cultivo y una fecha de plantación; después te mostraremos los bancales adecuados.",
+      "show": "Mostrar bancales adecuados",
+      "hide": "Ocultar sugerencias",
+      "reasons": {
+        "neverOnBed": "No hay {{family}} registrada",
+        "neverOnBedWithPrevious": "No hay {{family}} registrada, cultivo anterior {{previousCulture}}",
+        "lastFamily": "{{family}} por última vez en {{year}}",
+        "soilImproverBefore": "El cultivo anterior {{previousCulture}} deja nitrógeno para {{culture}}.",
+        "hint": "{{previousCulture}} se cultivó aquí en {{year}}, también un cultivo muy exigente.",
+        "noHistory": "No hay series anteriores registradas",
+        "noFamily": "{{culture}} no tiene familia botánica.",
+        "noBreak": "{{family}} no tiene pausa de rotación.",
+        "conflict": "{{previousCulture}} ({{family}}) se cultivó aquí en {{year}}, como pronto de nuevo en {{earliestYear}}."
+      }
+    },
+    "capacity": {
+      "partial": "{{free}} de {{total}} m² libres en este periodo",
+      "insufficient": "Solo {{free}} m² libres en este periodo ({{blockingCulture}} hasta el {{date}}), se necesitan {{needed}} m²",
+      "insufficientWithoutBlocker": "Solo {{free}} m² libres en este periodo, se necesitan {{needed}} m²"
+    }
+  }
+}

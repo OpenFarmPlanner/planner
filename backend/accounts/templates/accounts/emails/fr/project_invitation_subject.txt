@@ -1,0 +1,1 @@
+{% autoescape off %}Invitation à OpenFarmPlanner : {{ project_name }}{% endautoescape %}

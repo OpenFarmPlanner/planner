@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Enviar comentarios",
+    "subtitle": "Leemos personalmente cada mensaje: gracias por ayudarnos a dar forma a OpenFarmPlanner.",
+    "categoryLabel": "Categoría (opcional)",
+    "categoryAriaLabel": "Categoría de los comentarios",
+    "categories": {
+      "bug": "Error",
+      "idea": "Idea",
+      "question": "Pregunta",
+      "other": "Otro"
+    },
+    "messageLabel": "Mensaje",
+    "messagePlaceholder": "¿Qué quieres contarnos?",
+    "messageRequiredTooltip": "Escribe un mensaje",
+    "context": "Se envía automáticamente: proyecto «{{project}}», vista «{{route}}», información del navegador.",
+    "contextNoProject": "ningún proyecto",
+    "contactConsent": "Permitir que te contactemos con preguntas de seguimiento",
+    "contactConsentHint": "También hablamos en persona con mucho gusto: nos encanta intercambiar ideas con explotaciones en activo.",
+    "contactEmail": "{{email}} (de tu cuenta)",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "error": "No se han podido enviar tus comentarios. Inténtalo de nuevo."
+  },
+  "success": {
+    "title": "¡Gracias por tus comentarios!",
+    "text": "Tu mensaje ha llegado. Si nos has permitido contactarte, te escribiremos directamente.",
+    "close": "Cerrar"
+  }
+}

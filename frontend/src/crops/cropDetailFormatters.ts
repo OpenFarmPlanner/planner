@@ -4,6 +4,7 @@
  */
 
 import type { Crop } from '../api/types';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 export const CROP_FILTERS_STORAGE_KEY = 'cropsDetailFiltersV1';
 /** Pre-"Crop" spelling, still present in a tab opened before the rename. */
@@ -29,7 +30,7 @@ export interface PersistedCropFilters {
 export function formatNumber(
   value: number | null | undefined,
   t: (key: string) => string,
-  locale = 'de-DE',
+  locale = getActiveFormattingLocale(),
 ): string {
   if (value === null || value === undefined) {
     return t('noData');
@@ -46,7 +47,7 @@ export function formatNumber(
 export function formatSeedRateNumber(
   value: number | null | undefined,
   t: (key: string) => string,
-  locale = 'de-DE',
+  locale = getActiveFormattingLocale(),
 ): string {
   if (value === null || value === undefined) {
     return t('noData');
@@ -64,7 +65,7 @@ export function formatSeedRateNumber(
 export function formatDistance(
   value: number | null | undefined,
   t: (key: string) => string,
-  locale = 'de-DE',
+  locale = getActiveFormattingLocale(),
   decimals = 0,
 ): string {
   if (value === null || value === undefined) {
@@ -116,7 +117,7 @@ export function formatSeedUnitLabel(unit: string | null | undefined, t: (key: st
 export function formatPackageSizes(
   packageSizes: Array<{ size_value?: number | null; size_unit?: string | null }> | null | undefined,
   t: (key: string) => string,
-  locale = 'de-DE',
+  locale = getActiveFormattingLocale(),
 ): string {
   if (!Array.isArray(packageSizes) || packageSizes.length === 0) {
     return t('noData');

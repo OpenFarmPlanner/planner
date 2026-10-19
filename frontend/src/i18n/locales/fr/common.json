@@ -1,0 +1,269 @@
+{
+  "appName": "OpenFarmPlanner",
+  "actions": {
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "duplicate": "Dupliquer",
+    "delete": "Supprimer",
+    "undo": "Annuler",
+    "copyRow": "Copier la ligne",
+    "copyTable": "Copier le tableau",
+    "save": "Enregistrer",
+    "saveRow": "Enregistrer la ligne",
+    "cancelRowEdit": "Annuler la modification",
+    "deleteRow": "Supprimer la ligne",
+    "cancel": "Annuler",
+    "reset": "Réinitialiser",
+    "search": "Rechercher",
+    "close": "Fermer",
+    "actions": "Actions",
+    "moreOptions": "Plus d'options",
+    "moreActions": "Plus d'actions"
+  },
+  "messages": {
+    "loading": "Chargement…",
+    "noData": "Aucune donnée",
+    "error": "Erreur",
+    "success": "Succès",
+    "rowCopied": "Ligne copiée.",
+    "tableCopied": "Tableau copié.",
+    "copyError": "Les données n'ont pas pu être copiées.",
+    "contextMenuTableHint": "Astuce : faites un clic droit sur une ligne pour plus d'actions.",
+    "contextMenuTableHintTouch": "Astuce : appuyez longuement sur une ligne pour plus d'actions.",
+    "contextMenuHintKeyboard": "Sinon : touche Menu contextuel ou Maj+F10.",
+    "confirmation": "Confirmation",
+    "rowChanged": "Modifiée",
+    "unsavedChanges": "Le tableau contient des modifications non enregistrées. Un clic en dehors d'une ligne les enregistre. Voulez-vous vraiment continuer ?",
+    "validationErrors": "Des erreurs de validation doivent être corrigées avant de pouvoir continuer. Veuillez corriger les erreurs ou annuler la modification (touche Échap).",
+    "noRows": "Aucune entrée",
+    "noResults": "Aucune entrée correspondante trouvée"
+  },
+  "fields": {
+    "name": "Nom",
+    "address": "Adresse",
+    "notes": "Notes",
+    "description": "Description",
+    "project": "Projet"
+  },
+  "columns": {
+    "project": "Projet"
+  },
+  "hierarchyLevelToggle": {
+    "expandTooltip": "Afficher un niveau hiérarchique de plus",
+    "collapseTooltip": "Masquer un niveau hiérarchique"
+  },
+  "project": "Projet",
+  "setupActions": {
+    "createField": "Ajouter une parcelle",
+    "createBed": "Ajouter une planche",
+    "openAreas": "Ouvrir les surfaces de culture",
+    "openCropLibrary": "Ouvrir la bibliothèque de cultures",
+    "createCrop": "Ajouter une culture",
+    "createPlan": "Ajouter une série"
+  },
+  "notes": {
+    "empty": "Aucune note",
+    "editEmpty": "Ajouter une note",
+    "editWithContent": "Modifier la note",
+    "compactNoteAndImages": "Note et images disponibles",
+    "compactNote": "Note disponible",
+    "compactImages": "Images disponibles",
+    "compactEmpty": "Aucune note ni image disponible",
+    "attachmentsCount_one": "{{count}} photo dans les notes",
+    "attachmentsCount_other": "{{count}} photos dans les notes",
+    "attachmentsCount_many": "{{count}} photos dans les notes"
+  },
+  "notesPreview": {
+    "heading": "Note",
+    "empty": "Aucune note disponible",
+    "openNote": "Ouvrir la note",
+    "loadingImages": "Chargement des images…",
+    "imagesLoadError": "Les images n'ont pas pu être chargées.",
+    "openImageAria": "Ouvrir la photo",
+    "moreImagesAria": "Ouvrir {{count}} photos supplémentaires"
+  },
+  "notesDrawer": {
+    "takePhoto": "Prendre une photo",
+    "selectFromGallery": "Choisir dans la galerie",
+    "uploading": "Envoi…",
+    "attachmentAlt": "Pièce jointe",
+    "markdownPlaceholder": "Notes en Markdown…",
+    "imageDialogTitle": "Photo",
+    "attachmentPreviewAlt": "Aperçu de la pièce jointe",
+    "cropDialogTitle": "Recadrer",
+    "cropInstructions": "Dessinez, déplacez et redimensionnez la zone de recadrage. La zone extérieure est assombrie.",
+    "cropSourceAlt": "Image source du recadrage",
+    "backendUnavailable": "Le traitement des images est actuellement indisponible sur le serveur. Veuillez installer Pillow et redémarrer le backend.",
+    "uploadFailed": "L'envoi a échoué. Veuillez réessayer.",
+    "camera": {
+      "title": "Prendre une photo",
+      "capture": "Capturer",
+      "noSignal": "Aucune image de la caméra n'arrive. Elle est peut-être utilisée par une autre application ou indisponible dans cet environnement.",
+      "useFilePicker": "Choisir plutôt un fichier"
+    },
+    "tabs": {
+      "edit": "Modifier",
+      "preview": "Aperçu"
+    },
+    "unsavedDialog": {
+      "title": "Notes non enregistrées",
+      "message": "Les notes contiennent des modifications non enregistrées. Continuer la modification ou abandonner les modifications ?",
+      "continueEditing": "Continuer la modification",
+      "discardAndClose": "Abandonner"
+    },
+    "markdownToolbar": {
+      "bold": "Gras",
+      "boldTooltip": "Gras (Ctrl+B)",
+      "italic": "Italique",
+      "italicTooltip": "Italique (Ctrl+I)",
+      "code": "Code",
+      "heading": "Titre",
+      "bulletList": "Liste à puces",
+      "numberedList": "Liste numérotée",
+      "link": "Insérer un lien",
+      "quote": "Citation",
+      "ariaLabel": "Barre d'outils de mise en forme"
+    },
+    "defaults": {
+      "bold": "texte en gras",
+      "italic": "texte en italique",
+      "heading": "Titre",
+      "listItem": "Élément de liste",
+      "linkText": "Texte du lien",
+      "quote": "Citation"
+    }
+  },
+  "errors": {
+    "generic": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "noPublicCrops": "Aucune culture publique n'a été trouvée.",
+    "bedNotFound": "La planche est introuvable.",
+    "fileTooLarge": "Le fichier est trop volumineux (10 Mo maximum).",
+    "invalidImage": "Le fichier envoyé n'est pas une image valide.",
+    "supplierDataDuplicate": "Ce fournisseur a déjà des données pour cette culture.",
+    "supplierDataMissingSupplier": "Choisissez un fournisseur ou supprimez les données du fournisseur.",
+    "supplierSpecificTkgUnsupported": "Le poids de mille grains propre au fournisseur n'est plus pris en charge.",
+    "supplierProjectMismatch": "Le fournisseur n'appartient pas au projet actif.",
+    "selectedSupplierProjectMismatch": "Le fournisseur de semences sélectionné n'appartient pas au projet actif.",
+    "cropProjectMismatch": "La culture n'appartient pas au projet actif."
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
+    "minLength": "Au moins {{count}} caractères requis.",
+    "invalidNumberExample": "Veuillez saisir un nombre valide, p. ex. 3,9",
+    "areaInputPositive": "La valeur doit être supérieure à 0.",
+    "areaInputPlantsCropRequired": "Choisissez une culture pour calculer la surface à partir du nombre de plants.",
+    "areaInputPlantsSpacingMissing": "L'espacement sur le rang ou entre les rangs manque pour cette culture ; la surface ne peut donc pas être calculée à partir du nombre de plants.",
+    "bedAreaExceeded": "La surface saisie dépasse la surface maximale disponible sur cette planche.",
+    "availableArea": "Surface restante disponible"
+  },
+  "projectRequired": {
+    "noProjectsTitle": "Vous n'avez pas encore de projet.",
+    "noProjectsDescription": "Créez d'abord un projet pour gérer les sites, les surfaces de culture, les séries et les calendriers.",
+    "noProjectsSelectionDescription": "Créez votre premier projet pour commencer à planifier.",
+    "noActiveProjectTitle": "Aucun projet n'est actuellement sélectionné.",
+    "noActiveProjectDescription": "Sélectionnez un projet pour gérer les sites, les surfaces de culture, les séries et les calendriers.",
+    "createProjectAction": "Créer un premier projet",
+    "createFirstProjectAction": "Créer un premier projet",
+    "selectProjectAction": "Sélectionner un projet"
+  },
+  "projectOnboarding": {
+    "pageTitle": "Lancez votre premier projet",
+    "pageDescription": "Choisissez de commencer avec votre propre projet vide ou de découvrir d'abord OpenFarmPlanner avec des données d'exemple réalistes.",
+    "emptyTitle": "Commencer avec un projet vide",
+    "emptyDescription": "Créez votre propre projet et ajoutez progressivement des sites, des cultures et des séries.",
+    "emptyAction": "Créer un projet vide",
+    "demoTitle": "Essayer un projet de démonstration",
+    "demoDescription": "Commencez avec un projet de culture préparé et découvrez directement les fonctions principales avec des données d'exemple réalistes.",
+    "demoAction": "Créer un projet de démonstration",
+    "demoCreating": "Création du projet de démonstration…",
+    "demoCreatedHint": "Ce projet contient des données d'exemple. Vous pouvez tout modifier librement ou supprimer le projet à tout moment.",
+    "demoCreateError": "Le projet de démonstration n'a pas pu être créé. Veuillez réessayer."
+  },
+  "guestDemo": {
+    "restricted": "Non disponible dans la démo. Créez un compte gratuit pour utiliser cette fonction.",
+    "cropLibraryNotice": "Vous utilisez la démo : vous pouvez parcourir la bibliothèque de cultures publique et importer des cultures dans votre projet de démonstration. Modifier ou traduire des fiches, restaurer des versions antérieures et rédiger des messages de discussion nécessitent un compte gratuit.",
+    "cropLibraryEdit": "La bibliothèque de cultures publique ne peut pas être modifiée dans la démo.",
+    "cropLibraryDiscussion": "Dans la démo, vous pouvez lire les discussions, mais pas rédiger de messages.",
+    "publishCrop": "Dans la démo, vous ne pouvez pas publier de cultures dans la bibliothèque de cultures publique ni lui envoyer de modifications. Vous pouvez néanmoins appliquer les mises à jour de la bibliothèque.",
+    "unlinkPublicCrop": "Dans la démo, le lien avec la bibliothèque de cultures publique ne peut pas être supprimé.",
+    "accountSettingsNotice": "Vous utilisez la démo sans compte : le profil, l'adresse e-mail, le mot de passe, les demandes de modérateur, l'export des données et la suppression du compte ne sont donc pas disponibles. Les données de démonstration sont supprimées automatiquement au plus tard au bout de 8 heures.",
+    "createProject": "Vous ne pouvez pas créer d'autres projets dans la démo.",
+    "inviteMembers": "Vous ne pouvez pas inviter de personnes au projet dans la démo.",
+    "noteAttachments": "Dans la démo, aucune photo ne peut être ajoutée aux notes."
+  },
+  "runtime": {
+    "applicationUpdatedFallback": "L'application n'a pas pu être mise à jour automatiquement. Veuillez recharger la page.",
+    "routeErrorFallback": "La page n'a pas pu être restaurée automatiquement. Veuillez recharger la page.",
+    "reloadAction": "Recharger la page"
+  },
+  "language": {
+    "label": "Langue",
+    "auto": "Automatique (langue du navigateur)",
+    "switcherLabel": "Changer de langue, actuellement : {{language}}"
+  },
+  "errorFieldLabels": {
+    "area_input_value": "Surface",
+    "area_input_unit": "Saisie de la surface",
+    "area_usage_sqm": "Surface (m²)",
+    "area_sqm": "Surface (m²)",
+    "planting_date": "Date de plantation",
+    "harvest_date": "Début de récolte",
+    "harvest_end_date": "Fin de récolte",
+    "quantity": "Plants",
+    "cultivation_type": "Mode de culture",
+    "crop": "Culture",
+    "bed": "Planche",
+    "field": "Parcelle",
+    "location": "Site",
+    "non_field_errors": "Erreur"
+  },
+  "dateFormatPlaceholder": "JJ.MM.AAAA",
+  "disabledReasons": {
+    "busy": "L'action est en cours de traitement.",
+    "noChanges": "Il n'y a aucune modification non enregistrée.",
+    "invalidDateRange": "Saisissez d'abord une période valide.",
+    "requiredFields": "Remplissez tous les champs obligatoires.",
+    "selectFile": "Choisissez d'abord un fichier.",
+    "cameraNotReady": "La caméra n'est pas encore prête.",
+    "copyRowUnavailable": "Aucune donnée copiable n'est disponible pour cette ligne.",
+    "copyTableUnavailable": "Le tableau ne contient aucune ligne copiable."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}} disponible",
+    "missing": "{{label}} manquant"
+  },
+  "months": {
+    "jan": "janvier",
+    "feb": "février",
+    "mar": "mars",
+    "apr": "avril",
+    "may": "mai",
+    "jun": "juin",
+    "jul": "juillet",
+    "aug": "août",
+    "sep": "septembre",
+    "oct": "octobre",
+    "nov": "novembre",
+    "dec": "décembre"
+  },
+  "monthsShort": {
+    "jan": "janv.",
+    "feb": "févr.",
+    "mar": "mars",
+    "apr": "avr.",
+    "may": "mai",
+    "jun": "juin",
+    "jul": "juil.",
+    "aug": "août",
+    "sep": "sept.",
+    "oct": "oct.",
+    "nov": "nov.",
+    "dec": "déc."
+  }
+}

@@ -1,0 +1,17 @@
+{% autoescape off %}Bonjour,
+
+vous venez de créer un compte sur OpenFarmPlanner.
+
+Veuillez confirmer votre inscription en cliquant sur le lien suivant :
+
+{{ activation_link }}
+
+OpenFarmPlanner est une application web open source de planification des cultures maraîchères.
+
+Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.
+
+Contact :
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

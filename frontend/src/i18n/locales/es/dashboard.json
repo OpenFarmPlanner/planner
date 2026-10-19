@@ -1,0 +1,26 @@
+{
+  "title": "Resumen",
+  "errors": {
+    "load": "No se han podido cargar los datos del panel"
+  },
+  "emptyState": {
+    "title": "Empieza tu planificación de cultivos",
+    "description": "Abre Superficies de cultivo y añade allí una parcela. Después podrás registrar cultivos y series.",
+    "shortDescription": "Añade una parcela en la página Superficies de cultivo.",
+    "action": "Añadir parcela"
+  },
+  "tasks": {
+    "title": "Próximas tareas",
+    "empty": "No hay tareas próximas",
+    "emptyTitle": "No hay tareas próximas",
+    "emptyDescription": "Actualmente no hay tareas próximas para este proyecto."
+  },
+  "checklist": {
+    "title": "Inicio del proyecto",
+    "intro": "OpenFarmPlanner te ayuda a estructurar la planificación de superficies, cultivos y ciclos de cultivo. Empieza por tu primera parcela.",
+    "field": "Añadir parcela",
+    "bed": "Añadir bancal",
+    "crop": "Añadir cultivo",
+    "plan": "Añadir serie"
+  }
+}

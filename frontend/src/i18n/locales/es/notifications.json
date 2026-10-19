@@ -1,0 +1,38 @@
+{
+  "bell": {
+    "ariaLabel": "Notificaciones",
+    "unreadAriaLabel": "Notificaciones ({{unread}} sin leer)",
+    "title": "Notificaciones",
+    "loadError": "No se han podido cargar las notificaciones.",
+    "noUnread": "No hay notificaciones nuevas",
+    "showAll": "Mostrar todas las notificaciones"
+  },
+  "history": {
+    "title": "Todas las notificaciones",
+    "back": "Volver",
+    "unreadSubtitle": "{{unread}} sin leer",
+    "emptyTitle": "Todavía no hay notificaciones",
+    "emptyDescription": "Aquí aparecen las decisiones sobre tus propuestas y los avisos de la biblioteca de cultivos en cuanto haya novedades.",
+    "pageAriaLabel": "Página {{page}}",
+    "nextPageAriaLabel": "Página siguiente",
+    "previousPageAriaLabel": "Página anterior"
+  },
+  "markAllRead": {
+    "label": "Marcar todo como leído",
+    "nothingUnread": "No hay notificaciones sin leer",
+    "error": "No se han podido marcar las notificaciones como leídas."
+  },
+  "messages": {
+    "crop_species_proposal_accepted": "Tu propuesta para la especie de cultivo «{{name}}» ha sido aceptada.",
+    "crop_species_proposal_rejected": "Tu propuesta para la especie de cultivo «{{name}}» ha sido rechazada.",
+    "crop_species_proposal_submitted": "Una nueva propuesta de especie de cultivo «{{name}}» está pendiente de revisión.",
+    "moderator_request_submitted": "{{name}} ha solicitado acceso de moderador para la biblioteca de cultivos.",
+    "public_crop_removed": "Tu cultivo publicado «{{name}}» se ha retirado de la biblioteca de cultivos porque su especie de cultivo «{{species_name}}» ha sido rechazada.",
+    "public_crop_species_relink_cancelled": "La corrección de la especie de cultivo de «{{name}}» a «{{species_name}}» no se ha aplicado. Revisa de nuevo la ficha.",
+    "crop_species_reassigned": "La especie de cultivo de «{{crop_name}}» se ha corregido de «{{old_name}}» a «{{new_name}}». Valores heredados que han cambiado: {{changes}}.",
+    "public_crop_change_proposal_submitted": "Una contribución a «{{name}}» está pendiente de revisión.",
+    "public_crop_change_proposal_reviewed_approved": "Tu contribución a «{{name}}» ha sido aprobada.",
+    "public_crop_change_proposal_reviewed_rejected": "Tu contribución a «{{name}}» ha sido rechazada.",
+    "public_crop_change_proposal_reviewed": "Tu contribución a «{{name}}» ha sido revisada."
+  }
+}

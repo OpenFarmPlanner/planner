@@ -1031,8 +1031,6 @@
         "dialogTitle": "Edit aliases",
         "dialogIntro": "Decide which other names find \"{{name}}\". Separate multiple aliases with commas.",
         "fieldLabel": "Aliases ({{language}})",
-        "languageDe": "German",
-        "languageEn": "English",
         "helperText": "Only names for the very same crop. A different cultivation or harvest characteristic belongs in its own crop species.",
         "save": "Save",
         "saveSuccess": "The aliases were saved.",

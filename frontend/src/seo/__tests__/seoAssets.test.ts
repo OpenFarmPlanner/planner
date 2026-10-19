@@ -9,6 +9,7 @@ import {
   NON_INDEXABLE_PATH_PREFIXES,
   PUBLIC_PAGE_VARIANTS,
   PUBLIC_PAGES,
+  buildCanonicalUrl,
   buildHreflangAlternates,
 } from '../seoConfig';
 
@@ -57,30 +58,56 @@ describe('buildSitemapXml', () => {
     expect(sitemap).toContain('</urlset>');
   });
 
-  it('contains every public page in both languages, slashless', () => {
+  it('contains every public page in all four languages, slashless', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
       `${SITE}/`,
       `${SITE}/en`,
+      `${SITE}/fr`,
+      `${SITE}/es`,
       `${SITE}/ueber`,
       `${SITE}/en/about`,
+      `${SITE}/fr/a-propos`,
+      `${SITE}/es/acerca-de`,
       `${SITE}/impressum`,
       `${SITE}/en/legal-notice`,
+      `${SITE}/fr/mentions-legales`,
+      `${SITE}/es/aviso-legal`,
       `${SITE}/datenschutz`,
       `${SITE}/en/privacy`,
+      `${SITE}/fr/confidentialite`,
+      `${SITE}/es/privacidad`,
       `${SITE}/nutzungsbedingungen`,
       `${SITE}/en/terms`,
+      `${SITE}/fr/conditions-utilisation`,
+      `${SITE}/es/terminos`,
     ]);
     expect(locs).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
   });
 
-  it('lists de, en and x-default alternates on every url entry', () => {
+  it('lists de, en, fr, es and x-default alternates on every url entry', () => {
     const blocks = sitemap.match(/<url>[\s\S]*?<\/url>/g) ?? [];
     expect(blocks).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
     const about = blocks.find((block) => block.includes(`<loc>${SITE}/en/about</loc>`))!;
     expect(about).toContain(`<xhtml:link rel="alternate" hreflang="de" href="${SITE}/ueber" />`);
     expect(about).toContain(`<xhtml:link rel="alternate" hreflang="en" href="${SITE}/en/about" />`);
+    expect(about).toContain(`<xhtml:link rel="alternate" hreflang="fr" href="${SITE}/fr/a-propos" />`);
+    expect(about).toContain(`<xhtml:link rel="alternate" hreflang="es" href="${SITE}/es/acerca-de" />`);
     expect(about).toContain(`<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}/ueber" />`);
+  });
+
+  it('gives every language version of a page the identical, reciprocal alternate set', () => {
+    const blocks = sitemap.match(/<url>[\s\S]*?<\/url>/g) ?? [];
+    for (const page of PUBLIC_PAGES) {
+      const alternateSets = Object.values(page.paths).map((path) => {
+        const block = blocks.find((candidate) => candidate.includes(`<loc>${buildCanonicalUrl(SITE, path)}</loc>`))!;
+        return [...block.matchAll(/<xhtml:link [^>]+>/g)].map((m) => m[0]).sort();
+      });
+      expect(alternateSets[0]).toHaveLength(5);
+      for (const set of alternateSets) {
+        expect(set).toEqual(alternateSets[0]);
+      }
+    }
   });
 
   it('never lists private or auth routes', () => {
@@ -126,6 +153,22 @@ describe('buildHeadTags', () => {
     expect(tags).toContain(`<link rel="alternate" hreflang="x-default" href="${SITE}/ueber" />`);
     expect(tags).toContain('<meta property="og:locale" content="en_US" />');
     expect(tags).toContain(`<meta property="og:url" content="${SITE}/en/about" />`);
+  });
+
+  it.each([
+    ['fr', '/fr/a-propos', 'fr_FR'],
+    ['es', '/es/acerca-de', 'es_ES'],
+  ] as const)('emits the og:locale of the %s version', (language, path, ogLocale) => {
+    const about = PUBLIC_PAGES.find((page) => page.id === 'about')!;
+    const tags = buildHeadTags({
+      siteUrl: SITE,
+      indexable: true,
+      path,
+      language,
+      alternates: buildHreflangAlternates(SITE, about),
+    }).join('\n');
+    expect(tags).toContain(`<link rel="canonical" href="${SITE}${path}" />`);
+    expect(tags).toContain(`<meta property="og:locale" content="${ogLocale}" />`);
   });
 
   it('defaults og:locale to German', () => {

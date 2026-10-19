@@ -1,0 +1,259 @@
+{
+  "showTooltip": "Mostrar ayuda",
+  "title": "Ayuda",
+  "globalTitle": "Resumen: cómo funciona OpenFarmPlanner",
+  "heading": "Cómo funciona OpenFarmPlanner",
+  "intro": "OpenFarmPlanner se compone de varias páginas que funcionan juntas:",
+  "sections": [
+    {
+      "title": "Resumen",
+      "points": [
+        "Consulta de un vistazo las próximas fechas de siembra, plantación, semillero y cosecha."
+      ]
+    },
+    {
+      "title": "Superficies de cultivo",
+      "points": [
+        "Crea aquí parcelas y bancales. Añade más ubicaciones cuando las necesites."
+      ]
+    },
+    {
+      "title": "Cultivos",
+      "points": [
+        "Introduce aquí los datos de tus cultivos o recurre a la biblioteca de cultivos."
+      ]
+    },
+    {
+      "title": "Plan de cultivos",
+      "points": [
+        "Planifica qué cultivo se siembra o planta en qué bancal y cuándo."
+      ]
+    },
+    {
+      "title": "Calendario de cultivos",
+      "points": [
+        "Consulta aquí la evolución en el tiempo de tus series."
+      ]
+    },
+    {
+      "title": "Resumen de rendimientos",
+      "points": [
+        "Consulta las cantidades de cosecha previstas según tus series."
+      ]
+    },
+    {
+      "title": "Necesidad de semillas",
+      "points": [
+        "Aquí se calcula cuántas semillas necesitas."
+      ]
+    },
+    {
+      "title": "Proveedores",
+      "points": [
+        "Registra aquí tus proveedores para poder vincularlos a los cultivos."
+      ]
+    }
+  ],
+  "workflowTitle": "Flujo de trabajo",
+  "workflow": "Superficies de cultivo → Cultivos → Plan de cultivos → Calendario de cultivos → Necesidad de semillas",
+  "pages": {
+    "dashboard": {
+      "title": "Ayuda: Resumen",
+      "intro": "En cuanto existan series, aquí aparecerán las próximas tareas de siembra, trasplante, semillero y cosecha."
+    },
+    "locations": {
+      "title": "Ayuda: Ubicaciones",
+      "intro": "Gestiona aquí las ubicaciones de tu proyecto. Forman el nivel superior de la estructura de tus superficies de cultivo.",
+      "sections": [
+        {
+          "title": "Cómo se usa",
+          "points": [
+            "Crea ubicaciones y añade coordenadas, dirección, tipo de suelo o notas.",
+            "Edita las ubicaciones existentes desde las acciones de la lista."
+          ]
+        },
+        {
+          "title": "Relación con otras páginas",
+          "points": [
+            "En la página Superficies de cultivo añades parcelas y bancales para cada ubicación.",
+            "Las tareas se derivan de las series."
+          ]
+        }
+      ],
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "add": "Añadir una ubicación",
+        "edit": "Editar ubicación",
+        "delete": "Eliminar ubicación"
+      }
+    },
+    "fields": {
+      "title": "Ayuda: Parcelas",
+      "intro": "Gestiona aquí las parcelas de una ubicación. Una parcela agrupa varios bancales.",
+      "sections": [
+        {
+          "title": "Cómo se usa",
+          "points": [
+            "Usa «Nuevo» para crear una parcela.",
+            "Haz clic en las filas de la tabla para editar las entradas."
+          ]
+        }
+      ]
+    },
+    "beds": {
+      "title": "Ayuda: Bancales",
+      "intro": "Gestiona aquí tus bancales. Cada bancal pertenece a una parcela y puede usarse después en las series.",
+      "sections": [
+        {
+          "title": "Cómo se usa",
+          "points": [
+            "Usa «Nuevo» para crear un bancal.",
+            "Haz clic en las filas de la tabla para editar las entradas."
+          ]
+        },
+        {
+          "title": "Relación con otras páginas",
+          "points": [
+            "En las series asignas cultivos a bancales concretos."
+          ]
+        }
+      ]
+    },
+    "areas": {
+      "title": "Ayuda: Superficies de cultivo - vista de lista",
+      "intro": "Gestiona aquí la estructura de superficies de tu explotación: desde las ubicaciones, pasando por las parcelas, hasta cada bancal.\n\nLas nuevas ubicaciones, parcelas y bancales se añaden con el icono {{addIcon}} que aparece al pasar el ratón sobre un elemento.\n\nLas entradas se pueden editar directamente en la tabla. El icono {{createPlanIcon}} de un bancal crea al instante una serie para él. Otras acciones, como cambiar el nombre o eliminar, están en el menú contextual del clic derecho.",
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "expandToggle": "Desplegar o contraer la sección",
+        "add": "Crear un nuevo elemento",
+        "delete": "Eliminar elemento",
+        "createPlan": "Crear una serie para este bancal",
+        "dimensions": "Definir la orientación de longitud y anchura para la vista gráfica"
+      }
+    },
+    "crops": {
+      "title": "Ayuda: Cultivos",
+      "intro": "Gestiona aquí los cultivos y sus propiedades principales. Estos datos se usan en las series, el calendario y la necesidad de semillas.",
+      "sections": [
+        {
+          "title": "Cómo se usa",
+          "points": [
+            "Selecciona un cultivo para ver o editar sus detalles.",
+            "El icono {{moreIcon}} abre más acciones, como las versiones, la publicación en la biblioteca de cultivos o la eliminación del cultivo seleccionado.",
+            "Usa la biblioteca de cultivos para compartir o importar cultivos."
+          ]
+        },
+        {
+          "title": "Relación con otras páginas",
+          "points": [
+            "En las series asignas cultivos a bancales y periodos concretos.",
+            "El calendario de cultivos y la necesidad de semillas usan estos datos para planificar fechas y cantidades."
+          ]
+        }
+      ],
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "add": "Crear un cultivo",
+        "library": "Abrir la biblioteca de cultivos",
+        "createPlan": "Crear una serie para este cultivo",
+        "more": "Abrir más acciones",
+        "edit": "Editar los datos del cultivo"
+      }
+    },
+    "cropLibrary": {
+      "title": "Ayuda: Biblioteca de cultivos",
+      "intro": "La biblioteca de cultivos contiene cultivos publicados por la comunidad que se pueden usar en todos los proyectos.",
+      "sections": [
+        {
+          "title": "Colaboración",
+          "points": [
+            "Los usuarios con sesión iniciada pueden editar juntos los cultivos públicos.",
+            "Cada cambio se guarda como versión con fecha y autor.",
+            "Las versiones anteriores se pueden restaurar sin borrar el historial de versiones."
+          ]
+        },
+        {
+          "title": "Usar cultivos",
+          "points": [
+            "Importa cultivos útiles al proyecto actual como copia propia del proyecto.",
+            "Los cultivos ya importados al proyecto no se ven afectados por cambios posteriores en la biblioteca de cultivos."
+          ]
+        }
+      ]
+    },
+    "plantingPlans": {
+      "title": "Ayuda: Plan de cultivos",
+      "intro": "Planifica qué cultivo se siembra o planta en qué bancal y cuándo.",
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "add": "Crear una serie",
+        "mobileAdd": "Crear rápidamente una nueva entrada en el móvil",
+        "notes": "Abrir notas y adjuntos de una entrada",
+        "edit": "Cambiar valores directamente en la tabla"
+      }
+    },
+    "calendar": {
+      "title": "Ayuda: Calendario de cultivos",
+      "intro": "El calendario de cultivos muestra la evolución en el tiempo de tus series. Te ayuda a ver la ocupación, las fases de semillero y los posibles solapamientos.",
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "tabs": "Cambiar entre la vista de ocupación y la de semillero",
+        "tooltip": "Mostrar detalles adicionales"
+      }
+    },
+    "seedDemand": {
+      "title": "Ayuda: Necesidad de semillas",
+      "intro": "Consulta cuántas semillas necesitas para los cultivos planificados. Las cantidades se calculan a partir de los datos de los cultivos, las superficies y las series.",
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "supplierSelect": "Definir el proveedor por cultivo",
+        "packageInfo": "Revisar las combinaciones de envases recomendadas"
+      }
+    },
+    "suppliers": {
+      "title": "Ayuda: Proveedores",
+      "intro": "Gestiona aquí los proveedores de semillas y la información de sus envases.",
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "add": "Añadir proveedor",
+        "edit": "Editar los datos del proveedor",
+        "delete": "Quitar proveedor"
+      }
+    },
+    "graphical": {
+      "title": "Ayuda: Superficies de cultivo - vista gráfica",
+      "intro": "Consulta aquí las ubicaciones, parcelas y bancales dispuestos en el espacio. La vista gráfica te ayuda a revisar y ajustar visualmente la estructura de superficies.",
+      "sections": [
+        {
+          "title": "Cómo se usa",
+          "points": [
+            "Haz clic en un bancal o una parcela para mostrar sus detalles.",
+            "Mueve los elementos en el modo «Editar».",
+            "Arrastra un espacio vacío para desplazar la vista.",
+            "Amplía con la rueda del ratón o pellizcando."
+          ]
+        },
+        {
+          "title": "Relación con otras páginas",
+          "points": [
+            "La vista gráfica muestra las mismas superficies que la vista de lista."
+          ]
+        }
+      ],
+      "symbolsTitle": "Iconos y controles",
+      "symbols": {
+        "panArrows": "Mover la vista hacia arriba, la izquierda, la derecha o abajo",
+        "zoomIn": "Ampliar",
+        "zoomOut": "Reducir",
+        "fit": "Ajustar a la vista completa",
+        "fullscreen": "Mostrar en pantalla completa",
+        "editToggle": "Editar disposición: arrastrar y soltar para mover y ordenar los bancales y parcelas de una ubicación"
+      }
+    },
+    "yieldOverview": {
+      "title": "Ayuda: Resumen de rendimientos",
+      "intro": "El resumen de rendimientos muestra las cantidades de cosecha previstas según tus series.",
+      "points": []
+    }
+  }
+}

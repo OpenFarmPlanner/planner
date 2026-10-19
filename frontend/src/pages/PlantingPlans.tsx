@@ -57,6 +57,7 @@ import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/e
 import {
   formatLocalizedNumberForInput,
   parseLocalizedNumber,
+  resolveLocaleFromLanguage,
 } from "../utils/numberLocalization";
 import { AreaM2EditCell } from "../components/data-grid/AreaM2EditCell";
 import { PlantsCountEditCell } from "../components/data-grid/PlantsCountEditCell";
@@ -607,8 +608,8 @@ function PlantingPlans() {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString("de-DE");
-  }, []);
+    return date.toLocaleDateString(resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language));
+  }, [i18n.language, i18n.resolvedLanguage]);
 
   const getRowSowingSchedule = useCallback(
     (row: PlantingPlanRow) => getPlanSowingSchedule(row, crops.find((item) => item.id === row.crop)),

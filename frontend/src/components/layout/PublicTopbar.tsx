@@ -162,19 +162,35 @@ export default function PublicTopbar({
           }}
         >
           <AppIcon decorative size={{ xs: 26, sm: 32 }} sx={{ flexShrink: 0 }} />
-          <Typography
+          {/* The wordmark is shown whole or not at all: on a narrow phone, where
+              longer language and sign-in labels leave too little room, only the
+              logo mark remains instead of a cut-off "OpenFarm…". The empty
+              first item makes a wordmark that does not fit wrap onto a second
+              line, which the fixed one-line height clips. */}
+          <Box
             sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
               minWidth: 0,
-              fontWeight: 600,
               fontSize: { xs: '0.8rem', sm: '1.1rem' },
-              whiteSpace: 'nowrap',
+              lineHeight: 1.5,
+              height: '1.5em',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              color: 'text.primary',
             }}
           >
-            {brandLabel}
-          </Typography>
+            <Box component="span" aria-hidden="true" sx={{ width: 0, height: '1.5em' }} />
+            <Typography
+              sx={{
+                fontWeight: 600,
+                fontSize: 'inherit',
+                lineHeight: 'inherit',
+                whiteSpace: 'nowrap',
+                color: 'text.primary',
+              }}
+            >
+              {brandLabel}
+            </Typography>
+          </Box>
         </Box>
 
         <Box

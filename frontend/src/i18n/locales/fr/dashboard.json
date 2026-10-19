@@ -1,0 +1,26 @@
+{
+  "title": "Vue d'ensemble",
+  "errors": {
+    "load": "Impossible de charger les données du tableau de bord"
+  },
+  "emptyState": {
+    "title": "Commencez votre planification des cultures",
+    "description": "Ouvrez Surfaces de culture et ajoutez-y une parcelle. Vous pourrez ensuite saisir des cultures et des séries.",
+    "shortDescription": "Ajoutez une parcelle sur la page Surfaces de culture.",
+    "action": "Ajouter une parcelle"
+  },
+  "tasks": {
+    "title": "Tâches à venir",
+    "empty": "Aucune tâche à venir",
+    "emptyTitle": "Aucune tâche à venir",
+    "emptyDescription": "Il n'y a actuellement aucune tâche à venir pour ce projet."
+  },
+  "checklist": {
+    "title": "Démarrage du projet",
+    "intro": "OpenFarmPlanner vous aide à structurer la planification de vos surfaces, de vos cultures et de vos cycles de culture. Commencez par votre première parcelle.",
+    "field": "Ajouter une parcelle",
+    "bed": "Ajouter une planche",
+    "crop": "Ajouter une culture",
+    "plan": "Ajouter une série"
+  }
+}

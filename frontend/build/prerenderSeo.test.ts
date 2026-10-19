@@ -99,7 +99,9 @@ describe('applyHeadTags', () => {
     expect(html).toContain('<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en/about">');
     // The language versions reach the preboot as a script value, before its
     // own script, never as DOM text.
-    expect(html).toContain('<script>window.__OFP_PAGE_ALTERNATES__ = {"de":"/ueber","en":"/en/about"};</script>');
+    expect(html).toContain(
+      '<script>window.__OFP_PAGE_ALTERNATES__ = {"de":"/ueber","en":"/en/about","fr":"/fr/a-propos","es":"/es/acerca-de"};</script>',
+    );
     expect(html).not.toContain('data-ofp-page-alternates');
     expect(html).toContain(`<title>${meta.title}</title>`);
     expect(meta.title).toBe('About OpenFarmPlanner');
@@ -108,7 +110,22 @@ describe('applyHeadTags', () => {
     expect(html).toContain('<meta property="og:url" content="https://openfarmplanner.org/en/about">');
     expect(html).toContain('<link rel="alternate" hreflang="de" href="https://openfarmplanner.org/ueber">');
     expect(html).toContain('<link rel="alternate" hreflang="en" href="https://openfarmplanner.org/en/about">');
+    expect(html).toContain('<link rel="alternate" hreflang="fr" href="https://openfarmplanner.org/fr/a-propos">');
+    expect(html).toContain('<link rel="alternate" hreflang="es" href="https://openfarmplanner.org/es/acerca-de">');
     expect(html).toContain('<link rel="alternate" hreflang="x-default" href="https://openfarmplanner.org/ueber">');
+  });
+
+  it.each([
+    ['/fr/mentions-legales', 'fr', 'fr_FR', 'Mentions légales – OpenFarmPlanner'],
+    ['/es/aviso-legal', 'es', 'es_ES', 'Aviso legal – OpenFarmPlanner'],
+  ])('renders %s with its own language, title and og:locale', (path, language, ogLocale, title) => {
+    const variant = variantAt(path);
+    const html = applyHeadTags(sampleCapturedHtml(), variant, env);
+
+    expect(html).toContain(`<html lang="${language}" data-ofp-page-language="${language}" data-ofp-page-path="${path}">`);
+    expect(html).toContain(`<title>${title}</title>`);
+    expect(html).toContain(`<link rel="canonical" href="https://openfarmplanner.org${path}">`);
+    expect(html).toContain(`<meta property="og:locale" content="${ogLocale}">`);
   });
 
   it('adds SoftwareApplication JSON-LD structured data on the landing page only', () => {
@@ -201,9 +218,10 @@ describe('assertPrerenderedSeo', () => {
       variant,
       html: applyHeadTags(sampleCapturedHtml(), variant, env),
     }));
-    pages[2] = {
-      ...pages[2],
-      html: pages[2].html.replace(
+    const about = pages.findIndex((page) => page.variant.path === '/ueber');
+    pages[about] = {
+      ...pages[about],
+      html: pages[about].html.replace(
         'rel="canonical" href="https://openfarmplanner.org/ueber"',
         'rel="canonical" href="https://openfarmplanner.org/ueber/"',
       ),

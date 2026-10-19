@@ -402,7 +402,7 @@ export async function updateProfile(displayName: string): Promise<{ detail: stri
 }
 
 /**
- * Persist the signed-in user's UI language preference ('auto' | 'de' | 'en').
+ * Persist the signed-in user's UI language preference ('auto' or a supported code).
  *
  * The setting belongs to the user, not to a project, so two members of the
  * same project can use different interface languages at the same time.
