@@ -1,7 +1,8 @@
-import { Divider, ListItemIcon, Menu, MenuItem } from '@mui/material';
+import { Divider, ListItemIcon, ListItemText, Menu, MenuItem, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import KeyboardOutlinedIcon from '@mui/icons-material/KeyboardOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
@@ -9,9 +10,13 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlineOutlined
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { ACTION_MENU_ICON_PROPS, ACTION_MENU_ITEM_ICON_SX, MENU_SECTION_LABEL_SX } from './topbarMenuStyles';
-import { LanguageMenuItems } from '../i18n/LanguageSwitcher';
+import { DevLanguageMenuItem } from '../i18n/LanguageSwitcher';
+import { SHORTCUTS_HELP_HINT } from '../commands/commands';
 import { DisabledMenuItemTooltip } from '../components/DisabledActionTooltip';
 import type { ReactNode } from 'react';
+
+// Touch-friendly minimum height for every actionable entry (not the section labels).
+const ITEM_SX = { minHeight: 44 } as const;
 
 interface GlobalMenuProps {
   anchorEl: HTMLElement | null;
@@ -84,9 +89,11 @@ export function GlobalMenu(props: GlobalMenuProps) {
   const wrap = (fn: () => void): () => void => () => { onClose(); fn(); };
   const wrapAsync = (fn: () => Promise<void>): () => void => () => { onClose(); void fn(); };
 
+  const icon = (node: ReactNode) => <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}>{node}</ListItemIcon>;
+
   const feedbackItem = (key: string) => (
-    <MenuItem key={key} onClick={wrap(onOpenFeedback)}>
-      <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><ChatBubbleOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+    <MenuItem key={key} onClick={wrap(onOpenFeedback)} sx={ITEM_SX}>
+      {icon(<ChatBubbleOutlineIcon {...ACTION_MENU_ICON_PROPS} />)}
       {t('globalMenu.feedback')}
     </MenuItem>
   );
@@ -98,9 +105,9 @@ export function GlobalMenu(props: GlobalMenuProps) {
         key={key}
         onClick={() => { onClose(); onOpenPageHelp(); }}
         disabled={!pageHelpAvailable}
-        sx={{ color: 'text.primary' }}
+        sx={{ ...ITEM_SX, color: 'text.primary' }}
       >
-        <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+        {icon(<HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} />)}
         {t('globalMenu.pageHelp')}
       </MenuItem>
     );
@@ -116,8 +123,8 @@ export function GlobalMenu(props: GlobalMenuProps) {
 
   const historyMenuItem = (key: string) => {
     const item = (
-      <MenuItem key={key} onClick={wrapAsync(onOpenProjectHistory)} disabled={historyLoading}>
-        <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HistoryOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
+      <MenuItem key={key} onClick={wrapAsync(onOpenProjectHistory)} disabled={historyLoading} sx={ITEM_SX}>
+        {icon(<HistoryOutlinedIcon {...ACTION_MENU_ICON_PROPS} />)}
         {t('commandPalette.commands.openVersionHistory')}
       </MenuItem>
     );
@@ -128,6 +135,62 @@ export function GlobalMenu(props: GlobalMenuProps) {
     ) : item;
   };
 
+  const projectSettingsItem = (key: string) => (
+    <MenuItem key={key} onClick={wrap(onOpenProjectSettings)} sx={ITEM_SX}>
+      {icon(<SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} />)}
+      {t('project.settings')}
+    </MenuItem>
+  );
+
+  const shortcutsItem = (key: string) => (
+    <MenuItem key={key} onClick={wrap(onOpenShortcuts)} sx={ITEM_SX}>
+      {icon(<KeyboardOutlinedIcon {...ACTION_MENU_ICON_PROPS} />)}
+      <ListItemText primary={t('globalMenu.shortcuts')} />
+      <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>{SHORTCUTS_HELP_HINT}</Typography>
+    </MenuItem>
+  );
+
+  const appHelpItem = (key: string) => (
+    <MenuItem key={key} onClick={wrap(onOpenHelp)} sx={ITEM_SX}>
+      {icon(<HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} />)}
+      {t('globalMenu.appHelp')}
+    </MenuItem>
+  );
+
+  const accountSettingsItem = (key: string) => (
+    <MenuItem key={key} onClick={wrap(onOpenAccountSettings)} sx={ITEM_SX}>
+      {icon(<ManageAccountsOutlinedIcon {...ACTION_MENU_ICON_PROPS} />)}
+      {t('accountSettings')}
+    </MenuItem>
+  );
+
+  // Development-only: `import.meta.env.DEV` is statically false in every
+  // production build (staging included), so the bundler drops this entry.
+  const devLanguageItem = (key: string) => (import.meta.env.DEV
+    ? <DevLanguageMenuItem key={key} label={t('language.label')} onSelected={onClose} />
+    : null);
+
+  const hasSessionItems = canLeaveDemoProject || !isGuestDemoSession;
+  const sessionItems = (prefix: string) => (hasSessionItems ? [
+    <Divider key={`${prefix}-divider-session`} />,
+    canLeaveDemoProject ? (
+      <MenuItem key={`${prefix}-leave-demo`} onClick={wrapAsync(onLeaveDemoProject)} sx={ITEM_SX}>
+        {icon(<ExitToAppIcon {...ACTION_MENU_ICON_PROPS} />)}
+        {t('commandPalette.commands.leaveDemo')}
+      </MenuItem>
+    ) : null,
+    !isGuestDemoSession ? (
+      <MenuItem key={`${prefix}-logout`} onClick={wrapAsync(onLogout)} sx={ITEM_SX}>
+        {icon(<LogoutIcon {...ACTION_MENU_ICON_PROPS} />)}
+        <ListItemText
+          primary={t('commandPalette.commands.logout')}
+          secondary={userLabel || undefined}
+          slotProps={{ secondary: { noWrap: true } }}
+        />
+      </MenuItem>
+    ) : null,
+  ] : []);
+
   const mobileMenuItems = [
     ...(notificationItems ? [
       <MenuItem key="mobile-section-notifications" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.notifications')}</MenuItem>,
@@ -135,44 +198,37 @@ export function GlobalMenu(props: GlobalMenuProps) {
       <Divider key="mobile-divider-notifications" />,
     ] : []),
     <MenuItem key="mobile-section-project" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.projectActions')}</MenuItem>,
-    <MenuItem key="mobile-project-switcher" onClick={wrap(onOpenProjectSwitcher)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SwapHorizIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('projectSwitcher.ariaLabel')}</MenuItem>,
-    <MenuItem key="mobile-project-create" onClick={wrap(onOpenCreateProject)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><AddIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.create')}</MenuItem>,
-    <MenuItem key="mobile-project-settings" onClick={wrap(onOpenProjectSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.settings')}</MenuItem>,
+    <MenuItem key="mobile-project-switcher" onClick={wrap(onOpenProjectSwitcher)} sx={ITEM_SX}>{icon(<SwapHorizIcon {...ACTION_MENU_ICON_PROPS} />)}{t('projectSwitcher.ariaLabel')}</MenuItem>,
+    <MenuItem key="mobile-project-create" onClick={wrap(onOpenCreateProject)} sx={ITEM_SX}>{icon(<AddIcon {...ACTION_MENU_ICON_PROPS} />)}{t('project.create')}</MenuItem>,
+    projectSettingsItem('mobile-project-settings'),
     historyMenuItem('mobile-project-history'),
     <Divider key="mobile-divider-project-app" />,
     <MenuItem key="mobile-section-app" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.app')}</MenuItem>,
-    <MenuItem key="mobile-app-shortcuts" onClick={wrap(onOpenShortcuts)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><KeyboardOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.shortcuts')}</MenuItem>,
+    shortcutsItem('mobile-app-shortcuts'),
     pageHelpMenuItem('mobile-app-page-help'),
-    <MenuItem key="mobile-app-help" onClick={wrap(onOpenHelp)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.appHelp')}</MenuItem>,
+    appHelpItem('mobile-app-help'),
     feedbackItem('mobile-app-feedback'),
-    <MenuItem key="mobile-app-account-settings" onClick={wrap(onOpenAccountSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('accountSettings')}</MenuItem>,
-    <Divider key="mobile-divider-app-language" />,
-    <MenuItem key="mobile-section-language" disabled sx={MENU_SECTION_LABEL_SX}>{t('language.label')}</MenuItem>,
-    <LanguageMenuItems key="mobile-language-items" onSelected={onClose} />,
     <Divider key="mobile-divider-app-account" />,
     <MenuItem key="mobile-section-account" disabled sx={MENU_SECTION_LABEL_SX}>{t('globalMenu.account')}</MenuItem>,
-    canLeaveDemoProject ? <MenuItem key="mobile-account-leave-demo" onClick={wrapAsync(onLeaveDemoProject)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><ExitToAppIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.leaveDemo')}</MenuItem> : null,
-    !isGuestDemoSession ? <MenuItem key="mobile-account-logout" onClick={wrapAsync(onLogout)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><LogoutIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.logout')} {userLabel}</MenuItem> : null,
+    accountSettingsItem('mobile-account-settings'),
+    devLanguageItem('mobile-account-language'),
+    ...sessionItems('mobile-account'),
   ];
   const desktopMenuItems = [
-    <MenuItem key="desktop-project-settings" onClick={wrap(onOpenProjectSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('project.settings')}</MenuItem>,
+    projectSettingsItem('desktop-project-settings'),
     historyMenuItem('desktop-history'),
     <Divider key="desktop-divider-project" />,
-    <MenuItem key="desktop-account-settings" onClick={wrap(onOpenAccountSettings)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><SettingsOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('accountSettings')}</MenuItem>,
-    <Divider key="desktop-divider-language" />,
-    <MenuItem key="desktop-section-language" disabled sx={MENU_SECTION_LABEL_SX}>{t('language.label')}</MenuItem>,
-    <LanguageMenuItems key="desktop-language-items" onSelected={onClose} />,
-    <Divider key="desktop-divider-language-end" />,
-    <MenuItem key="desktop-shortcuts" onClick={wrap(onOpenShortcuts)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><KeyboardOutlinedIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.shortcuts')}</MenuItem>,
-    <MenuItem key="desktop-help" onClick={wrap(onOpenHelp)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><HelpOutlineIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('globalMenu.appHelp')}</MenuItem>,
+    shortcutsItem('desktop-shortcuts'),
+    appHelpItem('desktop-help'),
     feedbackItem('desktop-feedback'),
-    canLeaveDemoProject ? <MenuItem key="desktop-leave-demo" onClick={wrapAsync(onLeaveDemoProject)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><ExitToAppIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.leaveDemo')}</MenuItem> : null,
-    !isGuestDemoSession ? <MenuItem key="desktop-logout" onClick={wrapAsync(onLogout)}><ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><LogoutIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>{t('commandPalette.commands.logout')} {userLabel}</MenuItem> : null,
+    <Divider key="desktop-divider-help" />,
+    accountSettingsItem('desktop-account-settings'),
+    devLanguageItem('desktop-language'),
+    ...sessionItems('desktop'),
   ];
-  // `variant="menu"` rather than MUI's default `selectedMenu`: the latter moves
-  // the initial focus onto the *selected* item — the active language, which
-  // sits far down the list — and focusing it scrolls the menu there, so the
-  // dropdown opened showing its bottom instead of its first section.
+  // `variant="menu"` rather than MUI's default `selectedMenu`, so the initial
+  // focus always lands on the first entry rather than a selected one further
+  // down the list (which would scroll the dropdown away from its top).
   return (
     <Menu
       id="global-actions-menu"

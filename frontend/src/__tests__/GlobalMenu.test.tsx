@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18n from '../i18n';
 import { GlobalMenu } from '../navigation/GlobalMenu';
 
 const labels: Record<string, string> = {
@@ -53,17 +54,42 @@ describe('GlobalMenu (desktop)', () => {
     expect(menuItems).toEqual([
       'Projekteinstellungen',
       'Versionsverlauf öffnen',
-      'Kontoeinstellungen',
-      'Sprache',
-      'Tastenkürzel',
+      'Tastenkürzel?',
       'App-Hilfe',
       'Feedback geben',
-      'Abmelden test@example.com',
+      'Kontoeinstellungen',
+      'SpracheDeutsch',
+      'Abmeldentest@example.com',
     ]);
 
     const menu = screen.getByRole('menu');
     const separators = menu.querySelectorAll('hr');
     expect(separators).toHaveLength(3);
+    // The language list itself lives in a submenu now, not inline.
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+  });
+
+  it('shows the email address as secondary text under "Abmelden"', () => {
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+
+    render(<GlobalMenu {...baseProps} anchorEl={anchor} />);
+
+    const logout = screen.getByRole('menuitem', { name: /Abmelden/ });
+    expect(logout.querySelector('.MuiListItemText-primary')).toHaveTextContent('Abmelden');
+    expect(logout.querySelector('.MuiListItemText-secondary')).toHaveTextContent('test@example.com');
+  });
+
+  it('uses different icons for project and account settings', () => {
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+
+    render(<GlobalMenu {...baseProps} anchorEl={anchor} />);
+
+    const iconOf = (name: string) => screen.getByRole('menuitem', { name })
+      .querySelector('svg')?.getAttribute('data-testid');
+    expect(iconOf('Projekteinstellungen')).toBe('SettingsOutlinedIcon');
+    expect(iconOf('Kontoeinstellungen')).toBe('ManageAccountsOutlinedIcon');
   });
 
   it('does not show crop library moderation in the global menu', () => {
@@ -157,5 +183,40 @@ describe('GlobalMenu "Feedback geben" entry', () => {
 
     const labelsInOrder = screen.getAllByRole('menuitem').map((item) => item.textContent);
     expect(labelsInOrder[labelsInOrder.indexOf('App-Hilfe') + 1]).toBe('Feedback geben');
+  });
+});
+
+describe('GlobalMenu development language switcher', () => {
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    await i18n.changeLanguage('de');
+  });
+
+  it('opens a submenu that switches only the UI language', async () => {
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+    await i18n.changeLanguage('de');
+
+    render(<GlobalMenu {...baseProps} anchorEl={anchor} />);
+
+    await userEvent.click(screen.getByRole('menuitem', { name: /Sprache/ }));
+    const options = screen.getAllByRole('menuitemradio');
+    expect(options.map((option) => option.textContent)).toEqual(['Deutsch', 'English', 'Français', 'Español']);
+    expect(options.map((option) => option.getAttribute('lang'))).toEqual(['de', 'en', 'fr', 'es']);
+    expect(screen.getByRole('menuitemradio', { name: 'Deutsch' })).toHaveAttribute('aria-checked', 'true');
+
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+    expect(i18n.resolvedLanguage).toBe('fr');
+  });
+
+  it('is not rendered outside the development server', () => {
+    vi.stubEnv('DEV', false);
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+
+    render(<GlobalMenu {...baseProps} anchorEl={anchor} />);
+
+    expect(screen.queryByRole('menuitem', { name: /Sprache/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).not.toContain('SpracheDeutsch');
   });
 });

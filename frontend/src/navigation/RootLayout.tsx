@@ -1417,7 +1417,7 @@ function RootLayout() {
             anchorEl={globalMenuAnchor}
             open={Boolean(globalMenuAnchor)}
             historyLoading={projectHistory.loading}
-            userLabel={user?.email ? `(${user.email})` : (user?.display_label ? `(${user.display_label})` : '')}
+            userLabel={user?.email || user?.display_label || ''}
             isMobile={false}
             onClose={handleGlobalMenuClose}
             onOpenProjectSwitcher={handleOpenMobileProjectSwitcher}
@@ -1726,7 +1726,7 @@ function RootLayout() {
                 anchorEl={globalMenuAnchor}
                 open={Boolean(globalMenuAnchor)}
                 historyLoading={projectHistory.loading}
-                userLabel={user?.email ? `(${user.email})` : (user?.display_label ? `(${user.display_label})` : '')}
+                userLabel={user?.email || user?.display_label || ''}
                 isMobile={isCompactTopbar}
                 notificationItems={isCompactTopbar ? notificationMenuItems : undefined}
                 onClose={handleGlobalMenuClose}

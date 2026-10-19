@@ -12,7 +12,7 @@ export const ACTION_MENU_ICON_PROPS = { fontSize: 'small' } as const;
 // `overflow` can't be the fix instead.
 export const TOPBAR_BADGE_SX = { '& .MuiBadge-badge': { top: 6 } } as const;
 
-// Section label rows inside the topbar menus ("APP", "SPRACHE", "ACCOUNT",
+// Section label rows inside the topbar menus ("APP", "ACCOUNT",
 // "BENACHRICHTIGUNGEN", "PROJEKTAKTIONEN"). They are `MenuItem`s only so MUI
 // keeps them in the list it renders; as labels they are never a touch target,
 // so the item's default minimum height is dropped in favour of compact padding.

@@ -247,9 +247,9 @@ Two further behaviours are load-bearing and easy to "fix" wrongly:
   "Alle als gelesen markieren" action. An implicit bulk "seen" on open would
   silently bury a decision the user glanced past.
 - **`GlobalMenu` renders its `Menu` as `variant="menu"`.** MUI's default
-  (`selectedMenu`) hands the initial focus to the *selected* item — the active
-  language, far down the list — and focusing it scrolls the menu there, so the
-  dropdown opened showing its bottom instead of its first section.
+  (`selectedMenu`) hands the initial focus to a *selected* item further down
+  the list (originally the active language) and focusing it scrolls the menu
+  there, so the dropdown opened showing its bottom instead of its first section.
 - **Relative timestamps use `Intl.RelativeTimeFormat` with
   `numeric: 'always'`** (`frontend/src/utils/relativeTime.ts`), not translated
   strings. Wording, plural rules and word order differ per language and the

@@ -35,6 +35,8 @@ export interface RootCommandFactoryOptions {
   };
 }
 
+export const SHORTCUTS_HELP_HINT = '?';
+
 export function getVisibleCommands(commands: CommandSpec[]): CommandSpec[] {
   return commands.filter((command) => command.isVisible?.() ?? true);
 }
@@ -179,7 +181,7 @@ export function createRootCommands(options: RootCommandFactoryOptions): CommandS
       label: options.labels.openShortcutsHelp,
       keywords: ['tastenkürzel', 'shortcuts', 'hilfe'],
       group: 'help',
-      shortcutHint: '?',
+      shortcutHint: SHORTCUTS_HELP_HINT,
       keys: { key: '?' },
       contextTags: ['global'],
       action: options.onOpenShortcutsHelp,
