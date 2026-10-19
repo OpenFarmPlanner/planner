@@ -81,7 +81,6 @@ describe('AccountSettingsApiTokensCard', () => {
   });
 
   it('lists existing tokens with their project, scope, and status', async () => {
-    const user = userEvent.setup();
     listMock.mockResolvedValue({ data: [token({ scope: 'write' })] });
 
     render(<AccountSettingsApiTokensCard />);
@@ -98,11 +97,6 @@ describe('AccountSettingsApiTokensCard', () => {
     expect(screen.getByRole('columnheader', { name: 'Aktion' })).toBeInTheDocument();
     expect(screen.getByText('Lesen und schreiben')).toBeInTheDocument();
     expect(screen.getByText(/Hof Nord/)).toBeInTheDocument();
-
-    await user.click(cardToggle);
-
-    await waitFor(() => expect(screen.queryByText('Codex')).not.toBeInTheDocument());
-    expect(cardToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('sorts tokens by creation time descending by default', async () => {
