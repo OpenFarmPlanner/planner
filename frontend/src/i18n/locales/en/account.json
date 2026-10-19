@@ -5,10 +5,11 @@
   "sections": {
     "profile": "Profile",
     "publicProfile": "Crop library",
-    "security": "Login & security",
+    "security": "Sign-in & security",
     "privacy": "Privacy & data export",
-    "account": "Account",
-    "language": "Language"
+    "language": "Language",
+    "apiAccess": "API access",
+    "deleteAccount": "Delete account"
   },
   "dataExport": {
     "description": "Download a structured copy of your account, project, and crop library data as a JSON file.",
@@ -65,10 +66,9 @@
     "connectedSince": "{{provider}} · connected since {{date}}",
     "connectedSinceWithEmail": "{{provider}} · {{email}} · connected since {{date}}"
   },
-  "dangerZone": "Danger zone",
   "deleteDescription": "If you delete your account, it is deactivated immediately and anonymized after 14 days. Projects without remaining members are then deleted including project data; published crop library entries remain.",
   "restoreDescription": "You can undo the deletion within this period.",
-  "deleteButton": "Delete account",
+  "deleteButton": "Delete account…",
   "dialogTitle": "Schedule account for deletion",
   "dialogWarning": "Please confirm with your current password and the text \"{{phrase}}\". Your account will be deactivated and anonymized after 14 days. Projects without remaining members are then deleted.",
   "dialogWarningWithoutPassword": "Please confirm with the text \"{{phrase}}\". Your account is deactivated and anonymized after 14 days. Projects without remaining members are then deleted.",

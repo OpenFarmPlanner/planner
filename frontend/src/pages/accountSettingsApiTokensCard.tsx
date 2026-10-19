@@ -35,7 +35,9 @@ import { useTranslation } from '../i18n';
 import { getDataGridLocaleText } from '../components/data-grid/localeText';
 import { mediumStackedFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
 import { actionButtonSx } from './accountSettingsForm';
-import { InlineEditor, SectionAlerts, SettingsCard } from './accountSettingsCards';
+import { InlineEditor, SectionAlerts } from './accountSettingsCards';
+import { SettingsSubsection } from '../components/settings/SettingsSection';
+import { settingsFlatAlertSx } from '../components/settings/settingsStyles';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 const SCOPES: ApiTokenScope[] = ['read', 'write', 'delete'];
@@ -309,7 +311,7 @@ export default function AccountSettingsApiTokensCard() {
   const hasProjects = memberships.length > 0;
 
   return (
-    <SettingsCard title={t('apiTokens.title')} description={t('apiTokens.description')} collapsible defaultExpanded>
+    <SettingsSubsection title={t('apiTokens.title')} description={t('apiTokens.description')}>
       <Stack spacing={2}>
         <Typography variant="body2" color="text.secondary">
           <Link href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" underline="hover">
@@ -318,7 +320,7 @@ export default function AccountSettingsApiTokensCard() {
         </Typography>
         <SectionAlerts message={message} error={listError} />
 
-        {!hasProjects ? <Alert severity="info">{t('apiTokens.noProjects')}</Alert> : null}
+        {!hasProjects ? <Alert severity="info" sx={settingsFlatAlertSx}>{t('apiTokens.noProjects')}</Alert> : null}
 
         {loading ? (
           <Typography variant="body2" color="text.secondary">
@@ -455,6 +457,6 @@ export default function AccountSettingsApiTokensCard() {
           </Button>
         </DialogActions>
       </Dialog>
-    </SettingsCard>
+    </SettingsSubsection>
   );
 }

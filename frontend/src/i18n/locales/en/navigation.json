@@ -436,5 +436,9 @@
   },
   "language": {
     "label": "Language"
+  },
+  "backToProject": {
+    "named": "Back to {{project}}",
+    "overview": "Back to the overview"
   }
 }

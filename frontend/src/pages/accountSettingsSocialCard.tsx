@@ -24,14 +24,9 @@ import { PROVIDER_ICONS } from '../components/auth/socialProviderIcons';
 import { socialLoginErrorKey } from '../components/auth/socialLoginErrors';
 import { useTranslation } from '../i18n';
 import { actionButtonSx } from './accountSettingsForm';
-import { SettingsCard } from './accountSettingsCards';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
-interface AccountSettingsSocialMethodsContentProps {
-  wrapInCard: boolean;
-}
-
-function AccountSettingsSocialMethodsContent({ wrapInCard }: AccountSettingsSocialMethodsContentProps) {
+export function AccountSettingsSocialMethods() {
   const { t } = useTranslation(['account', 'auth']);
   const { user } = useAuth();
   const location = useLocation();
@@ -82,7 +77,7 @@ function AccountSettingsSocialMethodsContent({ wrapInCard }: AccountSettingsSoci
     }
   };
 
-  const content = (
+  return (
     <Stack spacing={2}>
       {redirectErrorCode ? (
         <Alert severity="error">{t(socialLoginErrorKey(redirectErrorCode))}</Alert>
@@ -170,22 +165,4 @@ function AccountSettingsSocialMethodsContent({ wrapInCard }: AccountSettingsSoci
       </Stack>
     </Stack>
   );
-
-  if (wrapInCard) {
-    return (
-      <SettingsCard title={t('loginMethods.title')}>
-        {content}
-      </SettingsCard>
-    );
-  }
-
-  return content;
-}
-
-export function AccountSettingsSocialMethods() {
-  return <AccountSettingsSocialMethodsContent wrapInCard={false} />;
-}
-
-export default function AccountSettingsSocialCard() {
-  return <AccountSettingsSocialMethodsContent wrapInCard />;
 }

@@ -5,10 +5,11 @@
   "sections": {
     "profile": "Profil",
     "publicProfile": "Kulturbibliothek",
-    "security": "Login & Sicherheit",
+    "security": "Anmeldung & Sicherheit",
     "privacy": "Datenschutz & Datenexport",
-    "account": "Konto",
-    "language": "Sprache"
+    "language": "Sprache",
+    "apiAccess": "API-Zugriff",
+    "deleteAccount": "Konto löschen"
   },
   "dataExport": {
     "description": "Lade eine strukturierte Kopie deiner Konto-, Projekt- und Kulturbibliotheksdaten als JSON-Datei herunter.",
@@ -65,10 +66,9 @@
     "connectedSince": "{{provider}} · verknüpft seit {{date}}",
     "connectedSinceWithEmail": "{{provider}} · {{email}} · verknüpft seit {{date}}"
   },
-  "dangerZone": "Gefährlicher Bereich",
   "deleteDescription": "Wenn du dein Konto löschst, wird es sofort deaktiviert und nach 14 Tagen anonymisiert. Projekte ohne verbleibende Mitglieder werden dann einschließlich Projektdaten gelöscht; veröffentlichte Kulturbibliotheks-Einträge bleiben bestehen.",
   "restoreDescription": "Innerhalb dieser Frist kannst du die Löschung rückgängig machen.",
-  "deleteButton": "Konto löschen",
+  "deleteButton": "Konto löschen …",
   "dialogTitle": "Konto zur Löschung vormerken",
   "dialogWarning": "Bitte bestätige mit deinem aktuellen Passwort und dem Text „{{phrase}}“. Dein Konto wird deaktiviert und nach 14 Tagen anonymisiert. Projekte ohne verbleibende Mitglieder werden dann gelöscht.",
   "dialogWarningWithoutPassword": "Bitte bestätige mit dem Text „{{phrase}}“. Dein Konto wird deaktiviert und nach 14 Tagen anonymisiert. Projekte ohne verbleibende Mitglieder werden dann gelöscht.",

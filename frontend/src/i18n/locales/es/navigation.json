@@ -444,5 +444,9 @@
   },
   "language": {
     "label": "Idioma"
+  },
+  "backToProject": {
+    "named": "Volver a {{project}}",
+    "overview": "Volver al resumen"
   }
 }

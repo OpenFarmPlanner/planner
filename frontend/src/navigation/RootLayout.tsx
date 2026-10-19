@@ -79,6 +79,7 @@ import { useGlobalOverlayKeyboardScroll } from '../hooks/useDialogKeyboardScroll
 import { useFocusRegion } from '../focus/useFocusManager';
 import { useTopbarActionsRouteReset } from '../hooks/useTopbarActionsRouteReset';
 import { appRouteUrl } from '../utils/appRouteUrl';
+import { rememberProjectRoute } from '../navigation/lastProjectRoute';
 import { KEYBOARD_NAV_ROUTES, MAIN_NAV_ITEMS, getKeyboardNavigationRouteFromPathname, isProjectIndependentRoute, normalizeMainRoutePath, shouldDisableNavItem } from '../navigation/mainNavigation';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import NavListItem from '../navigation/NavListItem';
@@ -695,6 +696,12 @@ function RootLayout() {
   useRegisterCommands('global-app', globalCommands);
 
   const sidebarWidth = sidebarCollapsed ? 64 : 240;
+  // Account settings are not project-scoped: the page links back to the last
+  // project page instead of showing the project navigation.
+  const hidesProjectSidebar = location.pathname.startsWith('/app/account-settings');
+  useEffect(() => {
+    rememberProjectRoute(location.pathname, location.search, location.hash);
+  }, [location.hash, location.pathname, location.search]);
   const currentPageTitle = useMemo(() => {
     const activeItem = navItems.find((item) => location.pathname === item.to || item.activeAliases.includes(location.pathname));
     if (!activeItem && location.pathname.startsWith('/app/locations')) {
@@ -790,7 +797,7 @@ function RootLayout() {
 
   return (
     <Box sx={{ display: 'flex', width: '100%', maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh', bgcolor: 'surface.appBackground', position: 'relative', isolation: 'isolate', 'body.sticky-app-bar &': { overflowX: 'clip' } }}>
-      {isDesktopUp ? (
+      {isDesktopUp && !hidesProjectSidebar ? (
         <Box
           component="aside"
           ref={sidebarRegionRef}

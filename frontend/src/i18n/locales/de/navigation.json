@@ -436,5 +436,9 @@
   },
   "language": {
     "label": "Sprache"
+  },
+  "backToProject": {
+    "named": "Zurück zu {{project}}",
+    "overview": "Zurück zur Übersicht"
   }
 }

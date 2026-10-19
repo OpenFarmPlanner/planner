@@ -7,8 +7,9 @@
     "publicProfile": "Biblioteca de cultivos",
     "security": "Inicio de sesión y seguridad",
     "privacy": "Privacidad y exportación de datos",
-    "account": "Cuenta",
-    "language": "Idioma"
+    "language": "Idioma",
+    "apiAccess": "Acceso a la API",
+    "deleteAccount": "Eliminar cuenta"
   },
   "dataExport": {
     "description": "Descarga una copia estructurada de los datos de tu cuenta, tus proyectos y la biblioteca de cultivos como archivo JSON.",
@@ -65,10 +66,9 @@
     "connectedSince": "{{provider}} · vinculado desde el {{date}}",
     "connectedSinceWithEmail": "{{provider}} · {{email}} · vinculado desde el {{date}}"
   },
-  "dangerZone": "Zona de peligro",
   "deleteDescription": "Si eliminas tu cuenta, se desactiva de inmediato y se anonimiza al cabo de 14 días. Los proyectos sin miembros restantes se eliminan entonces junto con sus datos; las fichas publicadas en la biblioteca de cultivos se conservan.",
   "restoreDescription": "Puedes deshacer la eliminación durante este periodo.",
-  "deleteButton": "Eliminar cuenta",
+  "deleteButton": "Eliminar cuenta…",
   "dialogTitle": "Programar la eliminación de la cuenta",
   "dialogWarning": "Confirma con tu contraseña actual y el texto «{{phrase}}». Tu cuenta se desactivará y se anonimizará al cabo de 14 días. Los proyectos sin miembros restantes se eliminarán entonces.",
   "dialogWarningWithoutPassword": "Confirma con el texto «{{phrase}}». Tu cuenta se desactivará y se anonimizará al cabo de 14 días. Los proyectos sin miembros restantes se eliminarán entonces.",

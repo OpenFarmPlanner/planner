@@ -86,8 +86,8 @@ describe('AccountSettingsApiTokensCard', () => {
 
     render(<AccountSettingsApiTokensCard />);
 
-    const cardToggle = screen.getByRole('button', { name: 'API-Tokens für externe Tools' });
-    expect(cardToggle).toHaveAttribute('aria-expanded', 'true');
+    // A subsection of the account settings' API access card, never collapsed.
+    expect(screen.getByRole('heading', { level: 3, name: 'API-Tokens für externe Tools' })).toBeInTheDocument();
     expect(await screen.findByText('Codex')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Rechte' })).toBeInTheDocument();
