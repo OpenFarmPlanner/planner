@@ -3,7 +3,7 @@
     "title": "OpenFarmPlanner",
     "heroImageAlt": "Planches de légumes devant un versant de montagne boisé",
     "subtitle": "Planification des cultures open source pour le maraîchage.",
-    "description": "Conçu spécialement pour les fermes maraîchères, les AMAP et les autres fermes qui cultivent de nombreuses cultures différentes.",
+    "description": "Conçu spécialement pour les fermes maraîchères, les projets d'agriculture soutenue par la communauté (AMAP) et les autres fermes qui cultivent de nombreuses cultures différentes.",
     "statusLine": "Utilisation gratuite, destinée à être financée par des dons volontaires.",
     "actions": {
       "openApp": "Se connecter",
@@ -190,7 +190,7 @@
       },
       "practice": {
         "title": "Issu de la pratique",
-        "description": "Développé avec une ferme de type AMAP (GeLaWi) en Carinthie."
+        "description": "Développé avec une ferme en agriculture soutenue par la communauté (GeLaWi) en Carinthie."
       }
     }
   },
@@ -235,7 +235,7 @@
       "title": "Mentions légales",
       "sections": {
         "provider": {
-          "title": "Informations sur le prestataire",
+          "title": "Informations conformément au § 5 ECG (loi autrichienne sur le commerce électronique)",
           "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAutriche"
         },
         "contact": {
@@ -254,7 +254,7 @@
       "sections": {
         "controller": {
           "title": "Responsable du traitement",
-          "content": "Responsable du traitement des données sur ce site web :\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAutriche\n\nE-mail : info@openfarmplanner.org"
+          "content": "Responsable du traitement des données sur ce site web au sens du règlement général sur la protection des données (RGPD) :\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAutriche\n\nE-mail : info@openfarmplanner.org"
         },
         "generalNotice": {
           "title": "Informations générales",
@@ -271,7 +271,7 @@
             "operatingSystem": "Système d'exploitation",
             "referrerUrl": "URL de provenance (referrer), si elle est transmise"
           },
-          "legalBasis": "Les fichiers journaux du serveur web sont supprimés automatiquement au bout de 7 jours. En outre, nous traitons des journaux techniques de l'application (par exemple les journaux d'erreurs de Django ou de Gunicorn). Ceux-ci contiennent principalement des informations techniques telles que des messages d'erreur, des horodatages et les requêtes concernées ; dans certains cas d'erreur liés à la gestion des comptes, des connexions ou des invitations, ils peuvent également contenir l'adresse e-mail concernée, le nom d'utilisateur ou un identifiant utilisateur interne. Les journaux servent exclusivement au diagnostic des erreurs ainsi qu'au fonctionnement sûr et stable de l'application.\n\nBase juridique : art. 6(1)(f) RGPD (intérêt légitime au fonctionnement sûr et stable de l'application)."
+          "legalBasis": "Les fichiers journaux du serveur web sont supprimés automatiquement au bout de 7 jours. En outre, nous traitons des journaux techniques de l'application (par exemple les journaux d'erreurs de Django ou de Gunicorn). Ceux-ci contiennent principalement des informations techniques telles que des messages d'erreur, des horodatages et les requêtes concernées ; dans certains cas d'erreur liés à la gestion des comptes, des connexions ou des invitations, ils peuvent également contenir l'adresse e-mail concernée, le nom d'utilisateur ou un identifiant utilisateur interne. Les journaux servent exclusivement au diagnostic des erreurs ainsi qu'au fonctionnement sûr et stable de l'application.\n\nBase juridique : art. 6(1)(f) RGPD (intérêt légitime au fonctionnement sûr et stable de l'application ; cf. considérant 49 du RGPD relatif à la sécurité des réseaux et de l'information)."
         },
         "cloudflare": {
           "title": "Cloudflare (DNS, CDN et sécurité)",
@@ -286,12 +286,12 @@
             "nameOptional": "Nom d'affichage (facultatif)",
             "encryptedPassword": "Mot de passe (stocké sous forme hachée sécurisée – non consultable en clair par nous)"
           },
-          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution d'un contrat)"
+          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution du contrat d'utilisation par la mise à disposition d'un compte utilisateur)."
         },
         "turnstile": {
           "title": "Protection contre les robots lors de l'inscription (Cloudflare Turnstile)",
           "content": "Afin de prévenir les abus et les inscriptions massives automatisées, nous utilisons sur le formulaire d'inscription Cloudflare Turnstile, un service fourni par Cloudflare, Inc. (voir la section « Cloudflare »). Turnstile détermine au moyen d'une vérification comportementale, généralement invisible pour vous, si une inscription est effectuée par une personne ou par un programme automatisé (robot) ; aucune énigme visuelle classique n'est nécessaire. À cet effet, des signaux techniques relatifs à l'appareil et au comportement de votre navigateur sont transmis à Cloudflare et y sont évalués pendant le processus d'inscription.\n\nTurnstile sert exclusivement à la protection contre les abus automatisés et n'est pas utilisé à des fins de suivi, d'analyse ou de marketing. S'agissant d'une mesure de sécurité techniquement nécessaire, aucun consentement distinct n'est requis.",
-          "legalBasis": "Base juridique : art. 6(1)(f) RGPD (intérêt légitime à protéger la plateforme et ses utilisateurs contre les abus automatisés). Turnstile étant également exploité par Cloudflare, Inc., dont le siège est aux États-Unis, le transfert repose sur les clauses contractuelles types de l'UE (voir la section « Transferts vers des pays tiers »). Pour plus d'informations, consultez la politique de confidentialité de Cloudflare (https://www.cloudflare.com/privacypolicy/). Cette base juridique couvre le traitement des données transmises en tant que tel ; la question de savoir si l'accès technique au stockage de votre navigateur qui y est associé (p. ex. un jeton de courte durée défini par Turnstile) nécessite un consentement distinct est régie par le § 165, paragraphe 3, de la loi autrichienne sur les télécommunications (TKG), qui transpose la directive « vie privée et communications électroniques » (ePrivacy). Turnstile relève de l'exception prévue pour les mesures techniquement nécessaires, car il sert exclusivement à la vérification de sécurité que vous avez demandée en envoyant le formulaire."
+          "legalBasis": "Base juridique : art. 6(1)(f) RGPD (intérêt légitime à protéger la plateforme et ses utilisateurs contre les abus automatisés). Turnstile étant également exploité par Cloudflare, Inc., dont le siège est aux États-Unis, le transfert repose sur les clauses contractuelles types de l'UE (voir la section « Transferts vers des pays tiers »). Pour plus d'informations, consultez la politique de confidentialité de Cloudflare (https://www.cloudflare.com/privacypolicy/). Cette base juridique couvre le traitement des données transmises en tant que tel ; la question de savoir si l'accès technique au stockage de votre navigateur qui y est associé (p. ex. un jeton de courte durée défini par Turnstile) nécessite un consentement distinct est régie par le § 165(3) de la loi autrichienne sur les télécommunications (TKG), qui transpose la directive « vie privée et communications électroniques » (ePrivacy). Turnstile relève de l'exception prévue pour les mesures techniquement nécessaires, car il sert exclusivement à la vérification de sécurité que vous avez demandée en envoyant le formulaire."
         },
         "socialLogin": {
           "title": "Connexion avec Google",
@@ -302,12 +302,12 @@
             "purpose": "Ces données sont utilisées exclusivement pour la création du compte et la connexion. OpenFarmPlanner n'appelle aucune API Google après la connexion et n'enregistre aucun jeton d'accès Google.",
             "disconnect": "Vous pouvez dissocier votre compte Google à tout moment dans les paramètres du compte, sous « Méthodes de connexion », à condition de disposer d'un autre moyen de connexion (un mot de passe ou un autre fournisseur associé)."
           },
-          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution d'un contrat par la mise à disposition d'une autre méthode de connexion). Concernant le transfert vers Google, voir la section « Transferts vers des pays tiers »."
+          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution du contrat d'utilisation par la mise à disposition d'une autre méthode de connexion). Concernant le transfert vers Google, voir la section « Transferts vers des pays tiers »."
         },
         "projectData": {
           "title": "Données de projet et d'application",
           "content": "Dans le cadre de vos projets, nous traitons les données relatives au projet saisies par vous et par les autres membres du projet. Il s'agit notamment des données de base du projet (p. ex. nom du projet, membres et sites), des données opérationnelles de planification et de gestion des fonctions utilisées (p. ex. concernant les parcelles, les cultures, la planification des cultures ou les tâches) ainsi que d'informations complémentaires telles que des notes, des fichiers téléversés et l'historique des modifications, y compris le nom d'affichage de la personne ayant effectué la modification. Ces données ne sont en principe visibles que par vous et par les autres membres du projet concerné.",
-          "legalBasis": "Base juridique : art. 6(1)(b) RGPD"
+          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution du contrat d'utilisation : mise à disposition des fonctions de planification)."
         },
         "publicLibrary": {
           "title": "Bibliothèque de cultures publique",
@@ -332,19 +332,19 @@
             "projectInvitations": "les invitations à des projets",
             "systemNotifications": "d'autres communications liées à votre compte utilisateur, telles que des notifications système"
           },
-          "legalBasis": "Base juridique : art. 6(1)(b) RGPD"
+          "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution du contrat d'utilisation)."
         },
         "cookies": {
           "title": "Cookies",
           "content": "OpenFarmPlanner utilise uniquement des cookies techniquement nécessaires. Aucun cookie d'analyse, de suivi ou de marketing n'est utilisé. Les cookies servent uniquement à permettre l'utilisation de l'application en étant connecté et à protéger techniquement les requêtes. La durée de conservation concrète dépend de la configuration de session et de sécurité du serveur ; les cookies de session sont supprimés au plus tard à leur expiration ou lorsque vous les supprimez dans votre navigateur.",
           "bullets": {
             "sessionCookies": "Cookie de session pour maintenir votre connexion (base juridique : art. 6(1)(b) RGPD - sans ce cookie, l'utilisation de l'application en étant connecté ne peut pas être fournie)",
-            "securityCookies": "Cookie de sécurité pour la protection contre la falsification de requête intersite, ou CSRF (base juridique : art. 6(1)(f) RGPD, intérêt légitime à la sécurisation de l'application)"
+            "securityCookies": "Cookie de sécurité pour la protection contre la falsification de requête intersite, ou CSRF (base juridique : art. 6(1)(f) RGPD, intérêt légitime à la sécurisation de l'application, cf. considérant 49 du RGPD)"
           }
         },
         "localStorage": {
           "title": "Stockage local (Local Storage/Session Storage)",
-          "content": "En plus des cookies, l'application enregistre certains paramètres techniques dans le stockage local de votre navigateur (Local Storage/Session Storage). Il s'agit notamment du dernier projet ouvert, des options d'affichage, de l'état de la barre latérale et des tableaux, des tris et filtres, des indications déjà affichées ainsi que de redirections ou de jetons temporairement enregistrés pour les invitations à des projets. Ces données ne quittent pas votre appareil, ne sont pas visibles par nous et ne contiennent pas d'identifiants de connexion. Les données du Local Storage restent dans votre navigateur jusqu'à ce qu'elles soient remplacées par l'application, réinitialisées par vous dans l'application ou supprimées au moyen des fonctions du navigateur ; les données du Session Storage sont généralement supprimées à la fermeture de l'onglet du navigateur. Comme nous ne traitons pas ces données sur nos systèmes, il ne s'agit pas d'un traitement de données personnelles de notre part au sens de l'art. 4, point 2, RGPD ; une base juridique distincte n'est donc pas applicable."
+          "content": "En plus des cookies, l'application enregistre certains paramètres techniques dans le stockage local de votre navigateur (Local Storage/Session Storage). Il s'agit notamment du dernier projet ouvert, des options d'affichage, de l'état de la barre latérale et des tableaux, des tris et filtres, des indications déjà affichées ainsi que de redirections ou de jetons temporairement enregistrés pour les invitations à des projets. Ces données ne quittent pas votre appareil, ne sont pas visibles par nous et ne contiennent pas d'identifiants de connexion. Les données du Local Storage restent dans votre navigateur jusqu'à ce qu'elles soient remplacées par l'application, réinitialisées par vous dans l'application ou supprimées au moyen des fonctions du navigateur ; les données du Session Storage sont généralement supprimées à la fermeture de l'onglet du navigateur. Comme nous ne traitons pas ces données sur nos systèmes, il ne s'agit pas d'un traitement de données personnelles de notre part au sens de l'art. 4(2) RGPD ; une base juridique distincte n'est donc pas applicable."
         },
         "dataSharing": {
           "title": "Communication de données",
@@ -455,11 +455,11 @@
         },
         "futureFeatures": {
           "title": "Évolution de la plateforme",
-          "content": "OpenFarmPlanner est développé en continu. Les présentes conditions d'utilisation s'appliquent par analogie aux futures fonctions relatives aux contenus fournis par les utilisateurs, telles que les commentaires, les évaluations ou les historiques de versions des fiches de la bibliothèque de cultures publique. En cas de nouvelles fonctions importantes de ce type, nous mettrons à jour les présentes conditions d'utilisation si nécessaire (voir la section « Modifications des présentes conditions d'utilisation »)."
+          "content": "OpenFarmPlanner est développé en continu. À long terme, la bibliothèque de cultures publique a vocation à proposer des fonctions telles que des historiques de versions, l'édition collaborative, des commentaires, des évaluations, des API publiques et des exports de données. Les présentes conditions d'utilisation s'appliquent par analogie à ces futures fonctions relatives aux données de culture publiées et aux contenus fournis par les utilisateurs. En cas de nouvelles fonctions importantes de ce type, nous mettrons à jour les présentes conditions d'utilisation si nécessaire (voir la section « Modifications des présentes conditions d'utilisation »)."
         },
         "changes": {
           "title": "Modifications des présentes conditions d'utilisation",
-          "content": "Nous mettons à jour les présentes conditions d'utilisation si les fonctions proposées ou le cadre juridique changent. La version publiée dans l'application au moment de votre utilisation fait foi ; la date de la dernière modification figure en haut de cette page. En cas de modifications importantes, nous informons les utilisateurs actifs de manière appropriée, par exemple par e-mail ou par un avis dans l'application."
+          "content": "Nous mettons à jour les présentes conditions d'utilisation si les fonctions proposées ou le cadre juridique changent. La version publiée dans l'application au moment de votre utilisation fait foi ; la date de la dernière modification figure à la fin de cette page. En cas de modifications importantes, nous informons les utilisateurs actifs de manière appropriée, par exemple par e-mail ou par un avis dans l'application."
         },
         "languageVersions": {
           "title": "Versions linguistiques",
@@ -482,7 +482,7 @@
     "descriptions": {
       "landing": "OpenFarmPlanner : logiciel open source de planification des cultures pour le maraîchage. Modifiez parcelles, cultures et plans de culture directement dans des tableaux, avec une bibliothèque de cultures ouverte.",
       "about": "Comment et pourquoi OpenFarmPlanner est né : l'approche open source, le financement par des dons et la manière dont vous pouvez participer.",
-      "imprint": "Mentions légales d'OpenFarmPlanner : identification du fournisseur, coordonnées et personne responsable au sens du § 5 de la loi autrichienne sur le commerce électronique (ECG).",
+      "imprint": "Mentions légales d'OpenFarmPlanner : identification du fournisseur, coordonnées et personne responsable conformément au § 5 ECG (loi autrichienne sur le commerce électronique).",
       "privacy": "Politique de confidentialité d'OpenFarmPlanner : informations sur l'hébergement, l'inscription, les données de projet, les cookies et vos droits au titre du RGPD.",
       "terms": "Conditions d'utilisation d'OpenFarmPlanner : règles relatives aux comptes, aux contenus, à la bibliothèque de cultures publique et à la responsabilité."
     }

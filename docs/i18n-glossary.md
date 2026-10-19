@@ -13,9 +13,11 @@ missing, add it here in the same change.
   French *maraîchage*, Spanish *horticultura*. Canonical variants are
   **fr-FR** and **es-ES**; regional forms (fr-CA, es-419/es-MX) are not
   separate bundles.
-- Terms marked † have several common translations; the choice is deliberate
-  but should be checked by a domain expert (see the PR that introduced
-  FR/ES).
+- Terms marked † have no single established translation; the choice is
+  deliberate and documented in the notes below the tables. Every other term
+  was checked against French and Spanish horticultural sources (chambers of
+  agriculture, regional plant-health bulletins, Junta de Andalucía, FAO
+  AGROVOC).
 
 ## Form of address
 
@@ -54,7 +56,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | --- | --- | --- | --- |
 | Standort | Location | Site | Ubicación |
 | Parzelle | Field / Plot | Parcelle | Parcela |
-| Beet | Bed | Planche | Bancal † |
+| Beet | Bed | Planche | Bancal |
 | Anbaufläche(n) | Growing area(s) | Surface(s) de culture | Superficie(s) de cultivo |
 | Feldplanung (Gantt) | Field planning | Planification des parcelles | Planificación de parcelas |
 | Flächenbelegung | Field occupancy | Occupation des parcelles | Ocupación de parcelas |
@@ -77,7 +79,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Anbauart | Cultivation type | Mode de culture | Tipo de cultivo |
 | Direktsaat | Direct sowing | Semis direct | Siembra directa |
 | Pflanzung (Anbauart) | Transplanting | Plantation | Trasplante |
-| Anzucht | Propagation | Élevage de plants † | Semillero † |
+| Anzucht | Propagation | Élevage de plants | Semillero |
 | Anzuchtdauer | Propagation duration | Durée d'élevage des plants | Duración en semillero |
 | Kulturdauer / Wachstumszeit | Growth duration | Durée de culture | Duración del cultivo |
 | Erntedauer / Erntezeit | Harvest duration | Durée de récolte | Duración de la cosecha |
@@ -126,7 +128,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Änderung vorschlagen | Suggest change | Proposer une modification | Proponer un cambio |
 | Einladung | Invitation | Invitation | Invitación |
 | Rückmeldung (Feedback) | Feedback | Retour | Comentarios |
-| GeLaWi / SoLaWi (Gemeinschaftsgetragene / Solidarische Landwirtschaft) | CSA (community-supported agriculture) | AMAP † (Association pour le maintien d'une agriculture paysanne) | ASC † (agricultura sostenida por la comunidad) |
+| GeLaWi / SoLaWi (Gemeinschaftsgetragene / Solidarische Landwirtschaft) | CSA (community-supported agriculture) | agriculture soutenue par la communauté (ASC); in France: AMAP | agricultura sostenida por la comunidad (ASC) |
 | Gemüsebau / Gemüseanbau | Vegetable growing | Maraîchage | Horticultura |
 | Gärtnerei / Betrieb | Farm | Ferme maraîchère / exploitation | Explotación hortícola / finca |
 
@@ -166,5 +168,26 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Stand | Last updated | Dernière mise à jour | Última actualización |
 | maßgeblich (Sprachfassung) | prevails | fait foi | prevalece |
 
-Article references (Art. 6 (1) (b) GDPR, § 5 ECG, …) are never translated or
-renumbered; only the abbreviation of the regulation changes (RGPD).
+### Citations and content of the legal texts
+
+- **One citation notation in every language**, including German:
+  `Art. 6(1)(f)`, `Art. 7(3)`, `Art. 46(2)(c)`, `Art. 4(2)`, `§ 165(3)`,
+  `§ 5 ECG`. Never the German `Abs.`/`lit.`/`Nr.` form, never the
+  spelled-out French or Spanish form ("paragraphe 1, point f)"). Only the
+  abbreviation of the regulation changes (DSGVO, GDPR, RGPD) and French and
+  Spanish write `art.` in lower case inside a sentence.
+- **All four language versions say the same.** Every paragraph cites the
+  same articles and names the same numbers, deadlines, URLs and email
+  addresses (guarded by `src/__tests__/legalTextConsistency.test.ts`). A
+  change to a legal text is made in all four languages in the same commit.
+
+### Notes on terms marked †
+
+- **Pausa de rotación (es):** Spanish horticultural sources describe the
+  rule ("no repetir la misma familia … años") but have no established single
+  term; the form's helper text explains it. French uses the established
+  *délai de retour*.
+- **CSA:** the general term is *agriculture soutenue par la communauté (ASC)*
+  (OQLF, FAO AGROVOC) and *agricultura sostenida por la comunidad (ASC)*
+  (Urgenci, MITECO). *AMAP* is the French form of the model and is named
+  alongside, never as a translation of an Austrian GeLaWi.

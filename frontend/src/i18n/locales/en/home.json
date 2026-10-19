@@ -231,7 +231,7 @@
       "title": "Imprint",
       "sections": {
         "provider": {
-          "title": "Provider information",
+          "title": "Information pursuant to § 5 ECG (Austrian E-Commerce Act)",
           "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria"
         },
         "contact": {
@@ -250,7 +250,7 @@
       "sections": {
         "controller": {
           "title": "Controller",
-          "content": "Responsible for data processing on this website:\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria\n\nEmail: info@openfarmplanner.org"
+          "content": "Controller for data processing on this website within the meaning of the General Data Protection Regulation (GDPR):\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria\n\nEmail: info@openfarmplanner.org"
         },
         "generalNotice": {
           "title": "General information",
@@ -267,7 +267,7 @@
             "operatingSystem": "Operating system",
             "referrerUrl": "Referrer URL, if transmitted"
           },
-          "legalBasis": "The web server log files are deleted automatically after 7 days. In addition, we process technical application logs (for example Django or Gunicorn error logs). These primarily contain technical information such as error messages, timestamps, and affected requests; in individual error cases relating to account, login, or invitation management, they may also contain the affected email address, username, or an internal user ID. The logs are used exclusively for troubleshooting and secure, stable operation of the application.\n\nLegal basis: Art. 6(1)(f) GDPR (legitimate interest in secure and stable operation of the application)."
+          "legalBasis": "The web server log files are deleted automatically after 7 days. In addition, we process technical application logs (for example Django or Gunicorn error logs). These primarily contain technical information such as error messages, timestamps, and affected requests; in individual error cases relating to account, login, or invitation management, they may also contain the affected email address, username, or an internal user ID. The logs are used exclusively for troubleshooting and secure, stable operation of the application.\n\nLegal basis: Art. 6(1)(f) GDPR (legitimate interest in secure and stable operation of the application; cf. Recital 49 GDPR on network and information security)."
         },
         "cloudflare": {
           "title": "Cloudflare (DNS, CDN and security)",
@@ -282,12 +282,12 @@
             "nameOptional": "Display name (optional)",
             "encryptedPassword": "Password (stored securely hashed – not viewable by us in plain text)"
           },
-          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of a contract)"
+          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of the contract of use by providing a user account)."
         },
         "turnstile": {
           "title": "Bot protection during registration (Cloudflare Turnstile)",
           "content": "To prevent abuse and automated mass registrations, we use Cloudflare Turnstile, a service provided by Cloudflare, Inc. (see the \"Cloudflare\" section), on the registration form. Turnstile uses a behavior-based check, usually invisible to you, to determine whether a registration is carried out by a person or by an automated program (bot); no traditional image puzzles are required. For this purpose, technical device and behavior signals from your browser are transmitted to Cloudflare and evaluated there during the registration process.\n\nTurnstile is used exclusively to protect against automated abuse and not for tracking, analytics, or marketing. As it is a technically necessary security measure, no separate consent is required.",
-          "legalBasis": "Legal basis: Art. 6(1)(f) GDPR (legitimate interest in protecting the platform and its users against automated abuse). As Turnstile is also operated by Cloudflare, Inc., headquartered in the USA, the transfer is based on the EU Standard Contractual Clauses (see the \"Third-country transfers\" section). For more information, see Cloudflare's privacy policy (https://www.cloudflare.com/privacypolicy/). This legal basis covers the processing of the transmitted data as such; whether the associated technical storage access in your browser (e.g. a short-lived token set by Turnstile) requires separate consent is governed by section 165(3) of the Austrian Telecommunications Act (TKG), which implements the ePrivacy Directive. Turnstile falls under the exemption for technically necessary measures there, as it serves exclusively the security check you requested by submitting the form."
+          "legalBasis": "Legal basis: Art. 6(1)(f) GDPR (legitimate interest in protecting the platform and its users against automated abuse). As Turnstile is also operated by Cloudflare, Inc., headquartered in the USA, the transfer is based on the EU Standard Contractual Clauses (see the \"Third-country transfers\" section). For more information, see Cloudflare's privacy policy (https://www.cloudflare.com/privacypolicy/). This legal basis covers the processing of the transmitted data as such; whether the associated technical storage access in your browser (e.g. a short-lived token set by Turnstile) requires separate consent is governed by § 165(3) of the Austrian Telecommunications Act (TKG), which implements the ePrivacy Directive. Turnstile falls under the exemption for technically necessary measures there, as it serves exclusively the security check you requested by submitting the form."
         },
         "socialLogin": {
           "title": "Sign-in with Google",
@@ -298,12 +298,12 @@
             "purpose": "This data is used exclusively for account creation and sign-in. OpenFarmPlanner does not call any Google APIs after sign-in and does not store any Google access tokens.",
             "disconnect": "You can disconnect your Google account at any time in the account settings under \"Sign-in methods\", provided you have another way to sign in (a password or another connected provider)."
           },
-          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of a contract by providing an alternative sign-in method). For the transfer to Google, see the \"Third-country transfers\" section."
+          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of the contract of use by providing an alternative sign-in method). For the transfer to Google, see the \"Third-country transfers\" section."
         },
         "projectData": {
           "title": "Project and application data",
           "content": "Within your projects, we process the project-related data entered by you and other project members. This includes, in particular, master data of the project (e.g. project name, memberships and locations), operational planning and management data for the features in use (e.g. relating to fields, crops, cultivation planning or tasks), and supplementary information such as notes, uploaded files, and the change history, including the display name of the person who made the change. This data is generally visible only to you and the other members of the respective project.",
-          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR"
+          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of the contract of use: providing the planning features)."
         },
         "publicLibrary": {
           "title": "Public crop library",
@@ -328,19 +328,19 @@
             "projectInvitations": "Project invitations",
             "systemNotifications": "other communication related to your user account, such as system notifications"
           },
-          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR"
+          "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of the contract of use)."
         },
         "cookies": {
           "title": "Cookies",
           "content": "OpenFarmPlanner uses only technically necessary cookies. No analytics, tracking, or marketing cookies are used. The cookies are used only to enable logged-in use of the application and to protect requests technically. The specific storage period depends on the server's session and security configuration; session cookies are deleted at the latest when they expire or when you delete them in your browser.",
           "bullets": {
             "sessionCookies": "Session cookie to maintain your login (legal basis: Art. 6(1)(b) GDPR - without this cookie, logged-in use of the application cannot be provided)",
-            "securityCookies": "Security cookie for protection against cross-site request forgery, or CSRF (legal basis: Art. 6(1)(f) GDPR, legitimate interest in securing the application)"
+            "securityCookies": "Security cookie for protection against cross-site request forgery, or CSRF (legal basis: Art. 6(1)(f) GDPR, legitimate interest in securing the application, cf. Recital 49 GDPR)"
           }
         },
         "localStorage": {
           "title": "Local storage (Local Storage/Session Storage)",
-          "content": "In addition to cookies, the application stores individual technical settings in your browser's local storage (Local Storage/Session Storage). This includes, in particular, the last opened project, view options, sidebar and table states, sorting and filters, hints that have already been shown, and temporarily stored redirects or tokens for project invitations. This data does not leave your device, is not visible to us, and does not contain login credentials. Local Storage data remains in your browser until it is replaced by the application, reset by you in the application, or deleted via browser functions; Session Storage data is usually deleted when the browser tab is closed. Because we do not process this data on our systems, this is not processing of personal data by us within the meaning of Art. 4 No. 2 GDPR; a separate legal basis is therefore not applicable."
+          "content": "In addition to cookies, the application stores individual technical settings in your browser's local storage (Local Storage/Session Storage). This includes, in particular, the last opened project, view options, sidebar and table states, sorting and filters, hints that have already been shown, and temporarily stored redirects or tokens for project invitations. This data does not leave your device, is not visible to us, and does not contain login credentials. Local Storage data remains in your browser until it is replaced by the application, reset by you in the application, or deleted via browser functions; Session Storage data is usually deleted when the browser tab is closed. Because we do not process this data on our systems, this is not processing of personal data by us within the meaning of Art. 4(2) GDPR; a separate legal basis is therefore not applicable."
         },
         "dataSharing": {
           "title": "Data sharing",
@@ -451,11 +451,11 @@
         },
         "futureFeatures": {
           "title": "Further development of the platform",
-          "content": "OpenFarmPlanner is continuously developed. These Terms of Service apply analogously to future features around user-provided content, such as comments, ratings, or version histories for entries in the public crop library. In the case of material new functions of this kind, we will update these Terms of Service if necessary (see the \"Changes to these Terms of Service\" section)."
+          "content": "OpenFarmPlanner is continuously developed. In the long term, the public crop library is intended to support features such as version histories, collaborative editing, comments, ratings, public APIs and data exports. These Terms of Service apply analogously to such future features around published crop data and user-provided content. In the case of material new functions of this kind, we will update these Terms of Service if necessary (see the \"Changes to these Terms of Service\" section)."
         },
         "changes": {
           "title": "Changes to these Terms of Service",
-          "content": "We update these Terms of Service if the offered functions or legal framework change. The version published within the application at the time of your use is authoritative; the date of the last change can be found at the top of this page. In the event of material changes, we will inform active users in an appropriate way, for example by email or through a notice in the application."
+          "content": "We update these Terms of Service if the offered functions or legal framework change. The version published within the application at the time of your use is authoritative; the date of the last change can be found at the end of this page. In the event of material changes, we will inform active users in an appropriate way, for example by email or through a notice in the application."
         },
         "languageVersions": {
           "title": "Language versions",
@@ -478,7 +478,7 @@
     "descriptions": {
       "landing": "OpenFarmPlanner: open-source crop planner for vegetable growing. Edit fields, crops and planting plans directly in tables, with an open crop library.",
       "about": "How and why OpenFarmPlanner came to be: the open-source approach, funding through donations, and how you can get involved.",
-      "imprint": "Imprint of OpenFarmPlanner: provider identification, contact details and the person responsible under Section 5 of the Austrian E-Commerce Act (ECG).",
+      "imprint": "Imprint of OpenFarmPlanner: provider identification, contact details and the person responsible pursuant to § 5 ECG (Austrian E-Commerce Act).",
       "privacy": "Privacy policy of OpenFarmPlanner: information on hosting, registration, project data, cookies and your rights under the GDPR.",
       "terms": "Terms of service of OpenFarmPlanner: rules on accounts, content, the public crop library and liability."
     }

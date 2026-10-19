@@ -67,11 +67,11 @@ describe('PrivacyPolicyPage', () => {
     const legalBasisLines = screen.getAllByText(/Rechtsgrundlage:/);
     const publicLibraryBasis = legalBasisLines.find((el) => el.textContent?.includes('öffentlichen Kulturbibliothek'));
     expect(publicLibraryBasis).toBeDefined();
-    expect(publicLibraryBasis?.textContent).toMatch(/Art\. 6 Abs\. 1 lit\. b/);
-    expect(publicLibraryBasis?.textContent).toMatch(/Art\. 6 Abs\. 1 lit\. f/);
+    expect(publicLibraryBasis?.textContent).toMatch(/Art\. 6\(1\)\(b\)/);
+    expect(publicLibraryBasis?.textContent).toMatch(/Art\. 6\(1\)\(f\)/);
     expect(publicLibraryBasis?.textContent).toMatch(/personenbezogene Bezüge/);
     expect(publicLibraryBasis?.textContent).toMatch(/Rein sachliche oder anonymisierte Kulturdaten fallen nicht unter die DSGVO/);
-    expect(publicLibraryBasis?.textContent).not.toMatch(/lit\. a/);
+    expect(publicLibraryBasis?.textContent).not.toMatch(/Art\. 6\(1\)\(a\)/);
     expect(publicLibraryBasis?.textContent).not.toMatch(/nicht oder nicht mehr personenbezogene/);
   });
 
@@ -106,7 +106,7 @@ describe('PrivacyPolicyPage', () => {
 
     expect(screen.queryByText(/werden nicht an Dritte weitergegeben/)).not.toBeInTheDocument();
     expect(screen.getByText(/Auftragsverarbeitung/)).toBeInTheDocument();
-    expect(screen.getByText(/deren Sichtbarkeit für andere Nutzer wählen/)).toBeInTheDocument();
+    expect(screen.getByText(/deren Sichtbarkeit für alle angemeldeten Nutzer wählen/)).toBeInTheDocument();
     expect(screen.queryByText(/perspektivisch über öffentliche APIs oder Datenexporte/)).not.toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe('PrivacyPolicyPage', () => {
 
     expect(screen.getByText(/Widerruf einer erteilten Einwilligung/)).toBeInTheDocument();
     expect(screen.getByText(/Art\. 15 DSGVO/)).toBeInTheDocument();
-    expect(screen.getByText(/Art\. 7 Abs\. 3 DSGVO/)).toBeInTheDocument();
+    expect(screen.getByText(/Art\. 7\(3\) DSGVO/)).toBeInTheDocument();
     expect(
       screen.getByText(/Datenexport und Kontolöschung können Sie direkt in den Kontoeinstellungen ausüben/),
     ).toBeInTheDocument();
@@ -203,7 +203,7 @@ describe('PrivacyPolicyPage', () => {
     expect(screen.getByText(/ist keine gesonderte Einwilligung erforderlich/)).toBeInTheDocument();
     expect(screen.getAllByText(/https:\/\/www\.cloudflare\.com\/privacypolicy\//)).toHaveLength(2);
     expect(screen.getByText(/an die Cloudflare, Inc\. mit Sitz in den USA übermittelt/)).toBeInTheDocument();
-    expect(screen.getByText(/Standardvertragsklauseln \(Art\. 46 Abs\. 2 lit\. c DSGVO\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Standardvertragsklauseln \(Art\. 46\(2\)\(c\) DSGVO\)/)).toBeInTheDocument();
   });
 
   it('no longer lists the supplier name among publicly published crop data', () => {
