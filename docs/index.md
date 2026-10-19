@@ -87,10 +87,13 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Real-time Updates](./realtime-updates.md)** — Channels/WebSocket
   invalidations, discussion authorization, resilient frontend connections,
   local configuration, and the infrastructure work deferred to Part B.
-- **[Internationalization (i18n)](./i18n.md)** — supported languages, how the
-  UI language is resolved and stored, the crop-library translation model and
-  its fallback rules, cross-language search and duplicate detection, the
-  language of emails to users, and the data-migration assumptions.
+- **[Internationalization (i18n)](./i18n.md)** — supported languages (de, en,
+  fr, es), how the UI language is resolved and stored, plural forms and
+  formatting, the crop-library translation model and its fallback rules,
+  cross-language search and duplicate detection, the language of emails to
+  users, and the data-migration assumptions.
+- **[Translation glossary](./i18n-glossary.md)** — binding DE/EN/FR/ES
+  terminology, forms of address and typography for every translation.
 - **[International Public Crop Library Data Model](./public-crop-library-data-model.md)** — the
   language-independent species/variety architecture, translation
   strategy, attribute inheritance, and incremental migration plan.

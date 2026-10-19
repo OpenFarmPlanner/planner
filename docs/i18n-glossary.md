@@ -1,0 +1,170 @@
+# Translation glossary (DE / EN / FR / ES)
+
+Binding terminology for every OpenFarmPlanner translation: locale bundles
+(`frontend/src/i18n/locales/<code>/`), email templates
+(`backend/accounts/templates/accounts/emails/<code>/`) and the legal texts.
+A new or changed string must use the term listed here; if a concept is
+missing, add it here in the same change.
+
+- **Source language for FR and ES is English.** German is the reference for
+  meaning: where the English wording is ambiguous or inconsistent (the English
+  bundle uses both "Plot" and "Field" for *Parzelle*), the German term decides.
+- **Domain register:** vegetable-growing (market-gardening) vocabulary —
+  French *maraîchage*, Spanish *horticultura*. Canonical variants are
+  **fr-FR** and **es-ES**; regional forms (fr-CA, es-419/es-MX) are not
+  separate bundles.
+- Terms marked † have several common translations; the choice is deliberate
+  but should be checked by a domain expert (see the PR that introduced
+  FR/ES).
+
+## Form of address
+
+| Language | App UI, emails | Legal texts (imprint, privacy policy, terms) |
+| --- | --- | --- |
+| DE | *du* | *Sie* |
+| EN | *you* | *you* |
+| FR | *vous* throughout | *vous* |
+| ES | *tú* | *usted* |
+
+The provider speaks as **we** everywhere: *wir* / *we* / *nous* /
+*nosotros*.
+
+## Typography
+
+- **French:** a narrow no-break space (U+202F) before `:` `?` `!` `;` and
+  inside guillemets `« … »`. Quotation marks are `« … »`, never `"…"`.
+  Ellipsis `…`.
+- **Spanish:** opening `¿` and `¡`; quotation marks `«…»`; no space before
+  punctuation.
+- Numbers, dates and months are never written into strings; they are
+  formatted through `Intl` with the active locale (`fr-FR`, `es-ES`).
+
+## Plurals
+
+i18next selects plural forms through `Intl.PluralRules`. Every pluralized
+key needs every category of its language — DE/EN: `_one`, `_other`;
+FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
+(`_one`); both FR and ES use `_many` for large round numbers
+(1 000 000). Guarded by `src/__tests__/i18nKeyParity.test.ts` and
+`src/__tests__/i18nPlurals.test.ts`.
+
+## Structure and areas
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Standort | Location | Site | Ubicación |
+| Parzelle | Field / Plot | Parcelle | Parcela |
+| Beet | Bed | Planche | Bancal † |
+| Anbaufläche(n) | Growing area(s) | Surface(s) de culture | Superficie(s) de cultivo |
+| Feldplanung (Gantt) | Field planning | Planification des parcelles | Planificación de parcelas |
+| Flächenbelegung | Field occupancy | Occupation des parcelles | Ocupación de parcelas |
+| Projekt | Project | Projet | Proyecto |
+| Mitglied | Member | Membre | Miembro |
+| Admin (Rolle) | Admin | Administrateur | Administrador |
+| Region (Projekt) | Region | Région | Región |
+
+## Crops and crop library
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Kultur | Crop | Culture | Cultivo |
+| Kulturen | Crops | Cultures | Cultivos |
+| Sorte | Variety | Variété | Variedad |
+| Kulturart | Crop species | Espèce cultivée | Especie de cultivo |
+| Kulturbibliothek | Crop library | Bibliothèque de cultures | Biblioteca de cultivos |
+| Pflanzenfamilie | Crop family | Famille botanique | Familia botánica |
+| Lieferant | Supplier | Fournisseur | Proveedor |
+| Anbauart | Cultivation type | Mode de culture | Tipo de cultivo |
+| Direktsaat | Direct sowing | Semis direct | Siembra directa |
+| Pflanzung (Anbauart) | Transplanting | Plantation | Trasplante |
+| Anzucht | Propagation | Élevage de plants † | Semillero † |
+| Anzuchtdauer | Propagation duration | Durée d'élevage des plants | Duración en semillero |
+| Kulturdauer / Wachstumszeit | Growth duration | Durée de culture | Duración del cultivo |
+| Erntedauer / Erntezeit | Harvest duration | Durée de récolte | Duración de la cosecha |
+| Pflanzabstand | In-row spacing | Espacement sur le rang | Distancia entre plantas |
+| Reihenabstand | Row spacing | Espacement entre les rangs | Distancia entre filas |
+| Abstände | Spacing | Espacements | Distancias |
+| Saatgutbedarf | Seed demand / Seed requirement | Besoin en semences | Necesidad de semillas |
+| Saatgutmenge | Seed quantity | Quantité de semences | Cantidad de semillas |
+| TKG (Tausendkorngewicht) | TKW (thousand-kernel weight) | PMG (poids de mille grains) | PMS (peso de mil semillas) |
+| Keimrate | Germination rate | Taux de germination | Tasa de germinación |
+| Nährstoffbedarf | Nutrient demand | Besoins nutritifs | Necesidades de nutrientes |
+| Schwach-/Mittel-/Starkzehrer | Light/medium/heavy feeder | Culture peu / moyennement / très exigeante | Cultivo poco / medianamente / muy exigente |
+| Ertrag | Yield | Rendement | Rendimiento |
+| Ertragseinheit | Yield unit | Unité de rendement | Unidad de rendimiento |
+| Ertragsübersicht | Yield overview | Aperçu des rendements | Resumen de rendimientos |
+| Fruchtfolge | Crop rotation | Rotation des cultures | Rotación de cultivos |
+| Anbaupause / Familienpause | Rotation break | Délai de retour | Pausa de rotación † |
+| Kulturbibliothek-Eintrag | Library entry | Fiche de la bibliothèque | Ficha de la biblioteca |
+| Synonym | Synonym | Synonyme | Sinónimo |
+
+## Planning
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Anbauplan | Planting plan | Plan de culture | Plan de cultivo |
+| Anbaupläne | Planting plans | Plans de culture | Planes de cultivo |
+| Saison | Season | Saison | Temporada |
+| Saison-Muster | Season pattern | Modèle de saison | Patrón de temporada |
+| Pflanztermin | Planting date | Date de plantation | Fecha de plantación |
+| Aussaat / Aussaattermin | Sowing / sowing date | Semis / date de semis | Siembra / fecha de siembra |
+| Erntebeginn | Harvest start | Début de récolte | Inicio de cosecha |
+| Ernteende | Harvest end | Fin de récolte | Fin de cosecha |
+| Ernte | Harvest | Récolte | Cosecha |
+| Satz (Folgesatz) | Succession | Série | Serie |
+| Pflanzen (Anzahl) | Plants | Plants | Plantas |
+| Aufgabe | Task | Tâche | Tarea |
+
+## Community and moderation
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Moderation | Moderation | Modération | Moderación |
+| Moderator:in | Moderator | Modérateur | Moderador |
+| veröffentlichen | publish | publier | publicar |
+| Vorschlag / Änderungsvorschlag | Proposal / change proposal | Proposition / proposition de modification | Propuesta / propuesta de cambio |
+| Änderung vorschlagen | Suggest change | Proposer une modification | Proponer un cambio |
+| Einladung | Invitation | Invitation | Invitación |
+| Rückmeldung (Feedback) | Feedback | Retour | Comentarios |
+| GeLaWi / SoLaWi (Gemeinschaftsgetragene / Solidarische Landwirtschaft) | CSA (community-supported agriculture) | AMAP † (Association pour le maintien d'une agriculture paysanne) | ASC † (agricultura sostenida por la comunidad) |
+| Gemüsebau / Gemüseanbau | Vegetable growing | Maraîchage | Horticultura |
+| Gärtnerei / Betrieb | Farm | Ferme maraîchère / exploitation | Explotación hortícola / finca |
+
+## Account and app
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Konto | Account | Compte | Cuenta |
+| Anmelden | Sign in | Se connecter | Iniciar sesión |
+| Registrieren | Register | S'inscrire | Registrarse |
+| Abmelden | Sign out | Se déconnecter | Cerrar sesión |
+| Passwort | Password | Mot de passe | Contraseña |
+| Einstellungen | Settings | Paramètres | Ajustes |
+| Sprache | Language | Langue | Idioma |
+| Rückgängig | Undo | Annuler | Deshacer |
+| Speichern | Save | Enregistrer | Guardar |
+| Abbrechen | Cancel | Annuler | Cancelar |
+| Löschen | Delete | Supprimer | Eliminar |
+| Verlauf | History | Historique | Historial |
+| Startseite | Home | Accueil | Inicio |
+| Übersicht (Dashboard) | Dashboard | Tableau de bord | Panel |
+
+## Legal
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Impressum | Legal notice | Mentions légales | Aviso legal |
+| Datenschutzerklärung | Privacy policy | Politique de confidentialité | Política de privacidad |
+| Nutzungsbedingungen | Terms of use | Conditions d'utilisation | Términos de uso |
+| DSGVO | GDPR | RGPD | RGPD |
+| Verantwortlicher | Controller | Responsable du traitement | Responsable del tratamiento |
+| Auftragsverarbeiter | Processor | Sous-traitant | Encargado del tratamiento |
+| betroffene Person | Data subject | Personne concernée | Interesado |
+| berechtigtes Interesse | Legitimate interest | Intérêt légitime | Interés legítimo |
+| Einwilligung | Consent | Consentement | Consentimiento |
+| Aufsichtsbehörde | Supervisory authority | Autorité de contrôle | Autoridad de control |
+| Stand | Last updated | Dernière mise à jour | Última actualización |
+| maßgeblich (Sprachfassung) | prevails | fait foi | prevalece |
+
+Article references (Art. 6 (1) (b) GDPR, § 5 ECG, …) are never translated or
+renumbered; only the abbreviation of the regulation changes (RGPD).
