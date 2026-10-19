@@ -44,8 +44,20 @@ describe('normalizeLanguageTag', () => {
     }
   });
 
+  it('maps every French regional tag to fr', () => {
+    for (const tag of ['fr', 'fr-FR', 'fr-CA', 'fr-CH', 'FR-be', 'fr_FR']) {
+      expect(normalizeLanguageTag(tag)).toBe('fr');
+    }
+  });
+
+  it('maps every Spanish regional tag to es, including Latin American Spanish', () => {
+    for (const tag of ['es', 'es-ES', 'es-419', 'es-MX', 'ES-ar', 'es_ES']) {
+      expect(normalizeLanguageTag(tag)).toBe('es');
+    }
+  });
+
   it('returns null for unsupported and empty tags', () => {
-    for (const tag of ['fr', 'fr-FR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
+    for (const tag of ['it', 'it-IT', 'pt-BR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
       expect(normalizeLanguageTag(tag)).toBeNull();
     }
   });
@@ -60,13 +72,19 @@ describe('detectBrowserLanguage', () => {
     expect(detectBrowserLanguage(navigatorWith(['en-GB']))).toBe('en');
   });
 
+  it('detects French and Spanish browsers', () => {
+    expect(detectBrowserLanguage(navigatorWith(['fr-CA']))).toBe('fr');
+    expect(detectBrowserLanguage(navigatorWith(['es-419']))).toBe('es');
+    expect(detectBrowserLanguage(navigatorWith(['es-MX', 'en-US']))).toBe('es');
+  });
+
   it('falls back to English for unsupported browser languages', () => {
-    expect(detectBrowserLanguage(navigatorWith(['fr-FR', 'it-IT']))).toBe(FALLBACK_LANGUAGE);
+    expect(detectBrowserLanguage(navigatorWith(['it-IT', 'pt-BR']))).toBe(FALLBACK_LANGUAGE);
     expect(detectBrowserLanguage(navigatorWith([]))).toBe(FALLBACK_LANGUAGE);
   });
 
   it('picks the first supported entry rather than the first entry', () => {
-    expect(detectBrowserLanguage(navigatorWith(['fr-FR', 'de-CH', 'en-US']))).toBe('de');
+    expect(detectBrowserLanguage(navigatorWith(['it-IT', 'de-CH', 'en-US']))).toBe('de');
   });
 });
 
@@ -98,7 +116,7 @@ describe('stored preference', () => {
   });
 
   it('ignores an unsupported stored value instead of trusting it', () => {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'it');
     expect(readStoredLanguagePreference()).toBeNull();
   });
 
@@ -117,11 +135,13 @@ describe('normalizeLanguagePreference', () => {
   it('accepts the supported values', () => {
     expect(normalizeLanguagePreference('de')).toBe('de');
     expect(normalizeLanguagePreference('en')).toBe('en');
+    expect(normalizeLanguagePreference('fr')).toBe('fr');
+    expect(normalizeLanguagePreference('es')).toBe('es');
     expect(normalizeLanguagePreference(AUTO_LANGUAGE)).toBe(AUTO_LANGUAGE);
   });
 
   it('treats anything else as auto rather than throwing', () => {
-    expect(normalizeLanguagePreference('fr')).toBe(AUTO_LANGUAGE);
+    expect(normalizeLanguagePreference('it')).toBe(AUTO_LANGUAGE);
     expect(normalizeLanguagePreference(undefined)).toBe(AUTO_LANGUAGE);
   });
 });
@@ -130,6 +150,8 @@ describe('getLanguageLabel', () => {
   it('names each language in that language, not in the UI language', () => {
     expect(getLanguageLabel('de')).toBe('Deutsch');
     expect(getLanguageLabel('en')).toBe('English');
+    expect(getLanguageLabel('fr')).toBe('Français');
+    expect(getLanguageLabel('es')).toBe('Español');
   });
 });
 

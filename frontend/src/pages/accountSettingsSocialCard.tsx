@@ -25,6 +25,7 @@ import { socialLoginErrorKey } from '../components/auth/socialLoginErrors';
 import { useTranslation } from '../i18n';
 import { actionButtonSx } from './accountSettingsForm';
 import { SettingsCard } from './accountSettingsCards';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 interface AccountSettingsSocialMethodsContentProps {
   wrapInCard: boolean;
@@ -139,7 +140,7 @@ function AccountSettingsSocialMethodsContent({ wrapInCard }: AccountSettingsSoci
                   {
                     provider: connection.provider_name,
                     email: connection.email,
-                    date: new Date(connection.connected_at).toLocaleDateString('de-DE'),
+                    date: new Date(connection.connected_at).toLocaleDateString(getActiveFormattingLocale()),
                   },
                 )}
               </Typography>

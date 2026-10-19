@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Envoyer un retour",
+    "subtitle": "Nous lisons personnellement chaque message — merci de contribuer à façonner OpenFarmPlanner.",
+    "categoryLabel": "Catégorie (facultatif)",
+    "categoryAriaLabel": "Catégorie du retour",
+    "categories": {
+      "bug": "Bogue",
+      "idea": "Idée",
+      "question": "Question",
+      "other": "Autre"
+    },
+    "messageLabel": "Message",
+    "messagePlaceholder": "Que souhaitez-vous nous dire ?",
+    "messageRequiredTooltip": "Veuillez saisir un message",
+    "context": "Envoyé automatiquement : projet « {{project}} », vue « {{route}} », informations sur le navigateur.",
+    "contextNoProject": "aucun projet",
+    "contactConsent": "Nous autoriser à vous contacter pour des questions complémentaires",
+    "contactConsentHint": "Nous discutons aussi volontiers de vive voix — les échanges avec des fermes en activité nous tiennent à cœur.",
+    "contactEmail": "{{email}} (de votre compte)",
+    "cancel": "Annuler",
+    "submit": "Envoyer",
+    "error": "Votre retour n'a pas pu être envoyé. Veuillez réessayer."
+  },
+  "success": {
+    "title": "Merci pour votre retour !",
+    "text": "Votre message est bien arrivé. Si vous nous avez autorisés à vous recontacter, nous vous écrirons directement.",
+    "close": "Fermer"
+  }
+}

@@ -53,6 +53,8 @@ DEMO_PROJECT_DESCRIPTIONS = frozenset({
     DEMO_SCREENSHOT_PROJECT_DESCRIPTION_EN,
 })
 DEMO_LANGUAGE_DEFAULT = 'de'
+# Supported UI languages without demo templates (fr, es) get the English demo.
+DEMO_LANGUAGE_FALLBACK = 'en'
 DEMO_USER_EMAIL = 'demo-openfarmplanner@example.local'
 DEMO_USERNAME = 'openfarmplanner-demo'
 DEMO_PASSWORD = 'OpenFarmPlannerDemo2026!'
@@ -337,13 +339,20 @@ def find_demo_crop_species(name: str | None) -> CropSpecies | None:
 
 
 def resolve_demo_language(language_code: str | None) -> str:
-    """Resolve a requested demo language, preserving German as template default."""
-    return normalize_language_tag(language_code) or DEMO_LANGUAGE_DEFAULT
+    """Resolve a requested demo language to one that has demo templates.
+
+    Unknown or missing codes keep German as the template default; a supported
+    UI language without its own templates (fr, es) falls back to English.
+    """
+    language = normalize_language_tag(language_code)
+    if not language:
+        return DEMO_LANGUAGE_DEFAULT
+    return language if language in DEMO_TEXT else DEMO_LANGUAGE_FALLBACK
 
 
 def resolve_demo_request_language(request: Any) -> str:
     """Resolve the demo template language from a request, defaulting to German."""
-    return resolve_request_language(request, default=DEMO_LANGUAGE_DEFAULT)
+    return resolve_demo_language(resolve_request_language(request, default=DEMO_LANGUAGE_DEFAULT))
 
 
 def get_demo_project_name(language_code: str | None) -> str:

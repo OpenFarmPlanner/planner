@@ -1,0 +1,17 @@
+{% autoescape off %}Hola:
+
+acabas de crear una cuenta en OpenFarmPlanner.
+
+Confirma tu registro con el siguiente enlace:
+
+{{ activation_link }}
+
+OpenFarmPlanner es una aplicación web de código abierto para planificar el cultivo de hortalizas.
+
+Si no has creado ninguna cuenta, puedes ignorar este correo.
+
+Contacto:
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

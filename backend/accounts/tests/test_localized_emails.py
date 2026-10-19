@@ -32,10 +32,14 @@ PASSWORD = 'safe-password-123'
 ACTIVATION_SUBJECTS = {
     'de': 'Registrierung bei OpenFarmPlanner bestätigen',
     'en': 'Confirm your registration with OpenFarmPlanner',
+    'fr': 'Confirmez votre inscription à OpenFarmPlanner',
+    'es': 'Confirma tu registro en OpenFarmPlanner',
 }
 PASSWORD_RESET_SUBJECTS = {
     'de': 'OpenFarmPlanner-Passwort zurücksetzen',
     'en': 'Reset your OpenFarmPlanner password',
+    'fr': 'Réinitialisez votre mot de passe OpenFarmPlanner',
+    'es': 'Restablece tu contraseña de OpenFarmPlanner',
 }
 EMAIL_CHANGE_SUBJECTS = {
     'de': 'E-Mail-Änderung bei OpenFarmPlanner bestätigen',
@@ -94,14 +98,25 @@ class EmailTemplateParityTests(SimpleTestCase):
                     self.assertTrue(render_project_role_label(role, language))
         self.assertEqual(render_project_role_label('member', 'de'), 'Mitglied')
         self.assertEqual(render_project_role_label('member', 'en'), 'Member')
+        self.assertEqual(render_project_role_label('member', 'fr'), 'Membre')
+        self.assertEqual(render_project_role_label('member', 'es'), 'Miembro')
+
+    def test_french_and_spanish_render_their_own_templates(self) -> None:
+        for language in ('fr', 'es'):
+            with self.subTest(language=language):
+                email = render_email(PASSWORD_RESET_EMAIL, language, {'reset_link': 'https://example.org/reset'})
+                self.assertEqual(email.subject, PASSWORD_RESET_SUBJECTS[language])
+                self.assertIn('https://example.org/reset', email.text)
 
     def test_unsupported_language_falls_back_to_english(self) -> None:
-        email = render_email(PASSWORD_RESET_EMAIL, 'fr', {'reset_link': 'https://example.org/reset'})
+        email = render_email(PASSWORD_RESET_EMAIL, 'it', {'reset_link': 'https://example.org/reset'})
         self.assertEqual(email.subject, PASSWORD_RESET_SUBJECTS['en'])
 
     def test_public_website_url_is_language_specific(self) -> None:
         self.assertEqual(public_website_url('de'), 'https://openfarmplanner.org')
         self.assertEqual(public_website_url('en'), 'https://openfarmplanner.org/en')
+        self.assertEqual(public_website_url('fr'), 'https://openfarmplanner.org/fr')
+        self.assertEqual(public_website_url('es-419'), 'https://openfarmplanner.org/es')
 
     def test_resolve_email_language_without_any_hint_is_english(self) -> None:
         self.assertEqual(resolve_email_language(), 'en')
@@ -160,10 +175,24 @@ class LocalizedAccountEmailTests(APITestCase):
         self.assertEqual(mail.outbox[-1].subject, ACTIVATION_SUBJECTS['en'])
 
     def test_registration_ignores_unsupported_language(self) -> None:
-        self._register('fr-guest@example.com', query='?language=fr')
+        self._register('it-guest@example.com', query='?language=it')
 
         self.assertEqual(mail.outbox[-1].subject, ACTIVATION_SUBJECTS['en'])
-        self.assertFalse(UserProjectSettings.objects.filter(user__email='fr-guest@example.com').exists())
+        self.assertFalse(UserProjectSettings.objects.filter(user__email='it-guest@example.com').exists())
+
+    def test_registration_in_french_and_spanish_sends_localized_mail_and_stores_preference(self) -> None:
+        for language in ('fr', 'es'):
+            with self.subTest(language=language):
+                email = f'{language}-guest@example.com'
+                response = self._register(email, query=f'?language={language}', HTTP_ACCEPT_LANGUAGE='de')
+
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                message = mail.outbox[-1]
+                self.assertEqual(message.subject, ACTIVATION_SUBJECTS[language])
+                self.assertIn(f'https://openfarmplanner.org/{language}', message.body)
+                html_body, _ = message.alternatives[0]
+                self.assertIn(f'lang="{language}"', html_body)
+                self.assertEqual(User.objects.get(email=email).project_settings.ui_language, language)
 
     # Activation (resend)
 

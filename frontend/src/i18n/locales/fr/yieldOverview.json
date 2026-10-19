@@ -1,0 +1,37 @@
+{
+  "loading": "Chargement…",
+  "errors": {
+    "load": "Impossible de charger l'aperçu des rendements."
+  },
+  "filters": {
+    "crop": "Culture",
+    "allCrops": "Toutes les cultures",
+    "period": "Affichage",
+    "week": "Semaine",
+    "month": "Mois"
+  },
+  "chart": {
+    "title": "Répartition des rendements",
+    "tooltip": "{{period}} · {{crop}} : {{yield}} kg",
+    "tooltipPeriod": "Période",
+    "tooltipYield": "Rendement",
+    "yearBoundary": "Changement d'année : {{year1}} → {{year2}}"
+  },
+  "legend": {
+    "showAll": "Afficher les {{count}} cultures",
+    "showMore": "Afficher {{count}} de plus",
+    "expand": "Afficher plus",
+    "collapse": "Réduire aux {{count}} premières"
+  },
+  "contextMenu": {
+    "openCrop": "Ouvrir la culture"
+  },
+  "empty": {
+    "noPlansTitle": "Aucune prévision de rendement disponible pour l'instant",
+    "description": "Les prévisions de rendement sont disponibles dès qu'il existe des plans de culture avec des périodes de récolte.",
+    "createPlanAction": "Ajouter un plan de culture",
+    "noYieldTitle": "Aucun rendement prévu pour cette saison",
+    "noYieldDescription": "Aucune donnée de récolte n'existe pour la saison active. Vérifiez que des rendements prévus sont saisis pour vos cultures.",
+    "openPlansAction": "Ouvrir les plans de culture"
+  }
+}

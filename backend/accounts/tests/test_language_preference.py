@@ -40,18 +40,18 @@ class AccountLanguageApiTest(DRFAPITestCase):
         self.assertEqual(UserProjectSettings.objects.get(user=self.user).ui_language, 'auto')
 
     def test_accepts_every_supported_code(self):
-        for code in ('auto', 'de', 'en'):
+        for code in ('auto', 'de', 'en', 'fr', 'es'):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)
 
     def test_rejects_unsupported_language_codes(self):
-        for code in ('fr', 'de-AT', 'nonsense', ''):
+        for code in ('it', 'de-AT', 'nonsense', ''):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, code)
 
     def test_an_unsupported_value_leaves_the_stored_preference_untouched(self):
         self.client.put(LANGUAGE_URL, {'ui_language': 'de'}, format='json')
-        self.client.put(LANGUAGE_URL, {'ui_language': 'fr'}, format='json')
+        self.client.put(LANGUAGE_URL, {'ui_language': 'it'}, format='json')
 
         self.assertEqual(UserProjectSettings.objects.get(user=self.user).ui_language, 'de')
 

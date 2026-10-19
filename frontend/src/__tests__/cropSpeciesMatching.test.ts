@@ -1,4 +1,5 @@
 import {
+  getInitialSpeciesApprovalTranslations,
   findMatchedCropSpeciesAlias,
   formatCropSpeciesMatchLabel,
   getCropSpeciesCanonicalName,
@@ -267,5 +268,30 @@ describe('getCropSpeciesSearchMatch', () => {
     expect(getCropSpeciesSearchMatch(leek, 'Lauck', 'Lauch')).toEqual({ source: 'fuzzy', synonym: '' });
     expect(getCropSpeciesSearchMatch(leek, 'Tomate', 'Lauch')).toBeNull();
     expect(getCropSpeciesSearchMatch(leek, '  ', 'Lauch')).toBeNull();
+  });
+});
+
+describe('getInitialSpeciesApprovalTranslations', () => {
+  it('puts a newly typed name under the current UI language when it is a required one', () => {
+    expect(getInitialSpeciesApprovalTranslations(null, 'Tomate', 'de')).toEqual({ de: 'Tomate', en: '' });
+    expect(getInitialSpeciesApprovalTranslations(null, 'Tomato', 'en-GB')).toEqual({ de: '', en: 'Tomato' });
+  });
+
+  it('never puts a name typed in French or Spanish into the German or English field', () => {
+    expect(getInitialSpeciesApprovalTranslations(null, 'Poireau', 'fr')).toEqual({ de: '', en: '' });
+    expect(getInitialSpeciesApprovalTranslations(null, 'Puerro', 'es-419')).toEqual({ de: '', en: '' });
+  });
+
+  it('keeps existing German and English translations and ignores other languages', () => {
+    const species = {
+      name: 'Lauch',
+      display_name: 'Poireau',
+      display_language_code: 'fr',
+      translations: [
+        { language_code: 'de', common_name: 'Lauch' },
+        { language_code: 'fr', common_name: 'Poireau' },
+      ],
+    } as unknown as Parameters<typeof getInitialSpeciesApprovalTranslations>[0];
+    expect(getInitialSpeciesApprovalTranslations(species, 'Lauch', 'fr')).toEqual({ de: 'Lauch', en: '' });
   });
 });

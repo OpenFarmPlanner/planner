@@ -4,7 +4,7 @@
  * This module is the single source of truth for:
  *   - the canonical public site URL (used for canonical/OG tags, robots.txt and
  *     sitemap.xml),
- *   - the registry of public pages with their German and English paths
+ *   - the registry of public pages with their paths in every language
  *     (`PUBLIC_PAGES`), and
  *   - which routes must be kept out of search-engine indexes.
  *
@@ -77,7 +77,7 @@ export type ChangeFrequency =
   | 'never';
 
 /** Languages every public page is published in, in hreflang order. */
-export const SEO_LANGUAGES = ['de', 'en'] as const;
+export const SEO_LANGUAGES = ['de', 'en', 'fr', 'es'] as const;
 export type SeoLanguage = (typeof SEO_LANGUAGES)[number];
 
 /**
@@ -90,6 +90,8 @@ export const DEFAULT_SEO_LANGUAGE: SeoLanguage = 'de';
 export const OG_LOCALES: Readonly<Record<SeoLanguage, string>> = {
   de: 'de_DE',
   en: 'en_US',
+  fr: 'fr_FR',
+  es: 'es_ES',
 };
 
 export type PublicPageId = 'home' | 'about' | 'imprint' | 'privacy' | 'terms';
@@ -132,7 +134,7 @@ export interface PublicPage {
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
     id: 'home',
-    paths: { de: '/', en: '/en' },
+    paths: { de: '/', en: '/en', fr: '/fr', es: '/es' },
     changefreq: 'weekly',
     priority: 1.0,
     titleKey: 'seo.titles.landing',
@@ -140,7 +142,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'about',
-    paths: { de: '/ueber', en: '/en/about' },
+    paths: { de: '/ueber', en: '/en/about', fr: '/fr/a-propos', es: '/es/acerca-de' },
     changefreq: 'monthly',
     priority: 0.5,
     titleKey: 'seo.titles.about',
@@ -148,7 +150,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'imprint',
-    paths: { de: '/impressum', en: '/en/legal-notice' },
+    paths: { de: '/impressum', en: '/en/legal-notice', fr: '/fr/mentions-legales', es: '/es/aviso-legal' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.imprint',
@@ -156,7 +158,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'privacy',
-    paths: { de: '/datenschutz', en: '/en/privacy' },
+    paths: { de: '/datenschutz', en: '/en/privacy', fr: '/fr/confidentialite', es: '/es/privacidad' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.privacy',
@@ -164,7 +166,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'terms',
-    paths: { de: '/nutzungsbedingungen', en: '/en/terms' },
+    paths: { de: '/nutzungsbedingungen', en: '/en/terms', fr: '/fr/conditions-utilisation', es: '/es/terminos' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.terms',
@@ -207,7 +209,7 @@ export function toSeoLanguage(language: string | null | undefined): SeoLanguage 
 }
 
 export interface HreflangAlternate {
-  /** `de`, `en` or `x-default`. */
+  /** A language code (`de`, `en`, `fr`, `es`) or `x-default`. */
   hreflang: string;
   href: string;
 }

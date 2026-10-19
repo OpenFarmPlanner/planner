@@ -22,7 +22,10 @@ export function PlantingPlanMobileListHeader({ search, onOpenFilterSheet }: Plan
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 1,
+        // Longer sort labels (French, Spanish) move to a second line instead
+        // of overlapping the hit count or running off screen.
+        flexWrap: 'wrap',
+        columnGap: 1,
         px: { xs: 1, sm: 0 },
         mb: 1,
       }}
@@ -34,7 +37,7 @@ export function PlantingPlanMobileListHeader({ search, onOpenFilterSheet }: Plan
         startIcon={<SwapVertIcon fontSize="small" />}
         onClick={onOpenFilterSheet}
         aria-label={`${t('search.fields.sort')}: ${sortLabel}`}
-        sx={{ color: 'text.secondary', fontWeight: 500, minWidth: 0, whiteSpace: 'nowrap', minHeight: 36 }}
+        sx={{ color: 'text.secondary', fontWeight: 500, minWidth: 0, whiteSpace: 'nowrap', minHeight: 36, ml: 'auto' }}
       >
         {sortLabel}
       </Button>

@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { CropHistoryChange, CropHistoryEntry } from '../api/types';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 export type HistoryScope = 'crop' | 'global' | 'project';
 
@@ -123,7 +124,7 @@ export function getHistoryEntryMeta(
   fallbackActorLabel?: string,
 ): string {
   const actorLabel = getHistoryActorLabel(entry, t, fallbackActorLabel);
-  const timestamp = new Date(entry.history_date).toLocaleString('de-DE');
+  const timestamp = new Date(entry.history_date).toLocaleString(getActiveFormattingLocale());
   return t('history.meta', { actor: actorLabel, timestamp });
 }
 
@@ -144,7 +145,7 @@ export function getHistoryChangeFieldLabel(change: CropHistoryChange, t: TFuncti
 }
 
 function formatNumberValue(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
+  return new Intl.NumberFormat(getActiveFormattingLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   }).format(value);

@@ -36,7 +36,7 @@ describe('validatePublicPageRegistry', () => {
     const broken: PublicPage[] = [
       {
         ...PUBLIC_PAGES[1],
-        paths: { de: '/ueber/', en: '/about' },
+        paths: { de: '/ueber/', en: '/about', fr: '/fr/a-propos', es: '/es/acerca-de' },
         titleKey: 'seo.titles.doesNotExist',
       },
     ];
@@ -47,7 +47,7 @@ describe('validatePublicPageRegistry', () => {
   });
 
   it('rejects a public page under an app-only prefix', () => {
-    const broken: PublicPage[] = [{ ...PUBLIC_PAGES[1], paths: { de: '/login', en: '/en/login' } }];
+    const broken: PublicPage[] = [{ ...PUBLIC_PAGES[1], paths: { de: '/login', en: '/en/login', fr: '/fr/login', es: '/es/login' } }];
     expect(validatePublicPageRegistry(broken).join('\n')).toMatch(/non-indexable prefix/);
   });
 });

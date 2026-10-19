@@ -55,10 +55,10 @@ beforeEach(() => {
   window.localStorage.clear();
   i18nState.resolvedLanguage = 'en';
   updateUiLanguageMock.mockResolvedValue({ ui_language: 'de' });
-  // A browser that asks for neither supported language, so every test that
-  // does not set one explicitly falls through to the English default.
-  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['fr-FR']);
-  vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('fr-FR');
+  // A browser that asks for no supported language, so every test that does
+  // not set one explicitly falls through to the English default.
+  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['it-IT']);
+  vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('it-IT');
 });
 
 afterEach(() => {
@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('useLanguagePreference — resolution order', () => {
-  it('falls back to English when nothing is stored and the browser asks for neither', () => {
+  it('falls back to English when nothing is stored and the browser asks for no supported language', () => {
     const { result } = setup();
     expect(result.current.preference).toBe('auto');
     expect(result.current.language).toBe('en');

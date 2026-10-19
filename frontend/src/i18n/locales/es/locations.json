@@ -1,0 +1,58 @@
+{
+  "title": "Ubicaciones",
+  "errors": {
+    "load": "No se han podido cargar las ubicaciones",
+    "save": "No se ha podido guardar la ubicación",
+    "delete": "No se ha podido eliminar la ubicación"
+  },
+  "validation": {
+    "nameRequired": "El nombre es obligatorio",
+    "latitudeRange": "La latitud debe estar entre -90 y 90.",
+    "longitudeRange": "La longitud debe estar entre -180 y 180.",
+    "coordinateFormat": "Introduce las coordenadas con el formato «latitud, longitud»."
+  },
+  "confirmDelete": "¿Seguro que quieres eliminar esta ubicación?",
+  "addButton": "Añadir ubicación",
+  "editTitle": "Editar ubicación",
+  "emptyState": {
+    "title": "Todavía no hay ubicaciones.",
+    "description": "Las ubicaciones te ayudan a estructurar tus superficies de cultivo, por ejemplo distintos huertos o campos."
+  },
+  "openInGoogleMaps": "Abrir en Google Maps",
+  "upcomingTasks": "Próximas tareas",
+  "noUpcomingTasks": "No hay tareas próximas",
+  "taskTitles": {
+    "sowing": "Siembra",
+    "planting": "Plantación",
+    "propagationStart": "Inicio del semillero",
+    "harvestStart": "Inicio de cosecha"
+  },
+  "columns": {
+    "coordinates": "Coordenadas",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "address": "Dirección",
+    "description": "Descripción",
+    "soilType": "Tipo de suelo",
+    "exposure": "Orientación"
+  },
+  "helpers": {
+    "optionalField": "Opcional",
+    "coordinatesExample": "Ejemplo: 46.6473, 13.8688"
+  },
+  "soilType": {
+    "sand": "Arenoso",
+    "loam": "Franco",
+    "clay": "Arcilloso"
+  },
+  "exposure": {
+    "north": "Norte",
+    "south": "Sur",
+    "east": "Este",
+    "west": "Oeste",
+    "flat": "Llano"
+  },
+  "placeholders": {
+    "coordinates": "p. ej. 46.6473, 13.8688"
+  }
+}

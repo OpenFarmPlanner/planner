@@ -5,17 +5,32 @@
  * API payloads and persisted values must remain numeric.
  */
 
+import i18n from "i18next";
+
+// Canonical regional variant used to format numbers, dates and month names
+// for each UI language (docs/i18n-glossary.md: fr-FR and es-ES are canonical).
+const FORMATTING_LOCALES: Record<string, string> = {
+  de: "de-DE",
+  en: "en-US",
+  fr: "fr-FR",
+  es: "es-ES",
+};
+
 export function resolveLocaleFromLanguage(language: string | undefined): string {
   if (!language) {
-    return "en-US";
+    return FORMATTING_LOCALES.en;
   }
-  if (language.toLowerCase().startsWith("de")) {
-    return "de-DE";
-  }
-  if (language.toLowerCase().startsWith("en")) {
-    return "en-US";
-  }
-  return language;
+  const base = language.toLowerCase().replace(/_/g, "-").split("-")[0];
+  return FORMATTING_LOCALES[base] ?? language;
+}
+
+/**
+ * Formatting locale of the UI language currently rendered. For helpers that
+ * run outside a component; read at call time so a language switch applies on
+ * the next render.
+ */
+export function getActiveFormattingLocale(): string {
+  return resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
 }
 
 // Constructing an Intl.NumberFormat is one to two orders of magnitude more

@@ -14,6 +14,7 @@ import { showProjectDeleteUndoSnackbar } from '../projects/projectDeletionFeedba
 import { compactFieldSx, wideFieldSx } from '../components/forms/formLayout';
 import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 interface InviteFeedback {
   severity: 'success' | 'warning' | 'error';
@@ -573,7 +574,7 @@ export default function ProjectSettingsPage() {
                     <Box>
                       <Typography sx={{ fontWeight: 600 }}>{invitation.email}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {t('expiresAt', { date: new Date(invitation.expires_at).toLocaleString('de-DE') })}
+                        {t('expiresAt', { date: new Date(invitation.expires_at).toLocaleString(getActiveFormattingLocale()) })}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center", }} >

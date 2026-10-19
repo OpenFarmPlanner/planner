@@ -1,5 +1,5 @@
 import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
-import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import { formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
 import { getGanttPhaseColors } from '../utils/colorContrast';
@@ -263,15 +263,15 @@ export function formatSeedlingTooltipTitle(task: Pick<GanttTask, 'cropName' | 'c
 }
 
 export function formatGanttDate(value: Date): string {
-  return value.toLocaleDateString('de-DE');
+  return value.toLocaleDateString(getActiveFormattingLocale());
 }
 
 export function formatAreaSquareMeters(value: number): string {
-  return `${formatLocalizedNumber(value, 'de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
+  return `${formatLocalizedNumber(value, getActiveFormattingLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
 }
 
 export function formatPlantCount(value: number): string {
-  return formatLocalizedNumber(value, 'de-DE', { maximumFractionDigits: 0 });
+  return formatLocalizedNumber(value, getActiveFormattingLocale(), { maximumFractionDigits: 0 });
 }
 
 function formatCropLabel(crop?: Crop, fallbackName?: string | null, fallbackVariety?: string | null): string {

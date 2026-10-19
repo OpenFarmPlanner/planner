@@ -1,0 +1,37 @@
+{
+  "loading": "Cargando…",
+  "errors": {
+    "load": "No se ha podido cargar el resumen de rendimientos."
+  },
+  "filters": {
+    "crop": "Cultivo",
+    "allCrops": "Todos los cultivos",
+    "period": "Vista",
+    "week": "Semana",
+    "month": "Mes"
+  },
+  "chart": {
+    "title": "Distribución de rendimientos",
+    "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
+    "tooltipPeriod": "Periodo",
+    "tooltipYield": "Rendimiento",
+    "yearBoundary": "Cambio de año: {{year1}} → {{year2}}"
+  },
+  "legend": {
+    "showAll": "Mostrar los {{count}} cultivos",
+    "showMore": "Mostrar {{count}} más",
+    "expand": "Mostrar más",
+    "collapse": "Reducir a los {{count}} principales"
+  },
+  "contextMenu": {
+    "openCrop": "Abrir cultivo"
+  },
+  "empty": {
+    "noPlansTitle": "Todavía no hay previsión de rendimiento",
+    "description": "Las previsiones de rendimiento están disponibles en cuanto existan planes de cultivo con periodos de cosecha.",
+    "createPlanAction": "Añadir plan de cultivo",
+    "noYieldTitle": "No hay rendimientos previstos en esta temporada",
+    "noYieldDescription": "No hay datos de cosecha para la temporada activa. Comprueba que tus cultivos tengan rendimientos previstos.",
+    "openPlansAction": "Abrir planes de cultivo"
+  }
+}

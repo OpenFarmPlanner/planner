@@ -1,16 +1,16 @@
 /**
  * Sends visitors of a public page to the language version they read.
  *
- * Every public page exists as a German and an English URL, and each URL
- * always renders its own language (`routeLanguage.ts`), so search engines can
- * index both. Visitors, however, should land in their language: on the first
- * load of a public page we replace the URL with its counterpart when the
- * visitor's language differs — their explicit choice from the switcher if
- * they made one, otherwise the browser language (German stays German,
- * everything else gets English).
+ * Every public page exists once per language (German, English, French,
+ * Spanish), and each URL always renders its own language (`routeLanguage.ts`),
+ * so search engines can index all of them. Visitors, however, should land in
+ * their language: on the first load of a public page we replace the URL with
+ * its counterpart when the visitor's language differs — their explicit choice
+ * from the switcher if they made one, otherwise the browser language (German,
+ * French and Spanish browsers get their language, everything else English).
  *
  * Crawlers are never redirected: they must see every URL in its own language,
- * otherwise the German pages would fall out of the index again. Client-side
+ * otherwise the other language versions would fall out of the index again. Client-side
  * navigation is never redirected either; links already point at the current
  * language's URLs.
  *

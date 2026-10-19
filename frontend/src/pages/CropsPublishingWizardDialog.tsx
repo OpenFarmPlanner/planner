@@ -36,7 +36,7 @@ import type {
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import i18n from '../i18n/config';
-import { getLanguageDisplayName } from '../i18n/languages';
+import { FALLBACK_LANGUAGE, getLanguageDisplayName, normalizeLanguageTag, SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from '../crops/usePublicCropSyncPreview';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
@@ -107,16 +107,15 @@ interface CropsPublishingWizardDialogProps {
   }) => Promise<boolean>;
 }
 
-const LANGUAGE_CODES = ['de', 'en'] as const;
+const LANGUAGE_CODES = SUPPORTED_LANGUAGES.map(({ code }) => code);
 const EMPTY_REQUIRED_FIELDS: PublishPublicCropPreview['missing_required_fields'] = [];
 const EMPTY_DUPLICATES: PublishPublicCropPreview['duplicates'] = [];
 const EMPTY_VARIETIES: Crop[] = [];
 const DETAILED_BLOCKING_REASONS: ReadonlySet<PublishBlockingReason> = new Set(['missing_required_fields', 'duplicates']);
 
-const getDefaultLanguageCode = (): string => {
-  const language = (i18n.language || 'de').split('-')[0];
-  return LANGUAGE_CODES.includes(language as (typeof LANGUAGE_CODES)[number]) ? language : 'de';
-};
+const getDefaultLanguageCode = (): string => (
+  normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE
+);
 
 const getPublicCropOptionLabel = (option: PublicCrop): string => {
   const name = option.display_name || option.crop_species_name || option.name;

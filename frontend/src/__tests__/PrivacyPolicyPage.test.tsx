@@ -164,6 +164,16 @@ describe('PrivacyPolicyPage', () => {
     expect(screen.getByText(/unangemeldete Demo-Funktion.*spätestens 8 Stunden nach Sitzungsbeginn automatisch gelöscht/)).toBeInTheDocument();
   });
 
+  it('states which language version prevails, in the same wording as the terms', () => {
+    renderPrivacyPolicyPage();
+
+    expect(screen.getByRole('heading', { name: /Sprachfassungen/ })).toBeInTheDocument();
+    expect(
+      screen.getByText(/in deutscher, englischer, französischer und spanischer Sprache bereitgestellt/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ist die englische Fassung maßgeblich/)).toBeInTheDocument();
+  });
+
   it('uses a concrete revision date instead of a generic month/year stamp', () => {
     renderPrivacyPolicyPage();
 

@@ -1,0 +1,163 @@
+{
+  "title": "Surfaces de culture",
+  "addField": "Parcelle",
+  "addBed": "Planche",
+  "addBedToField": "Ajouter une planche à cette parcelle",
+  "createPlantingPlan": "Ajouter un plan de culture",
+  "columns": {
+    "name": "Nom",
+    "location": "Site",
+    "field": "Parcelle",
+    "bed": "Planche",
+    "area": "Surface (m²)",
+    "notes": "Notes",
+    "length": "Longueur (m)",
+    "width": "Largeur (m)"
+  },
+  "errors": {
+    "load": "Impossible de charger les données",
+    "save": "Impossible d'enregistrer",
+    "delete": "Impossible de supprimer",
+    "createField": "Impossible de créer la parcelle",
+    "deleteField": "Impossible de supprimer la parcelle",
+    "saveBed": "Impossible d'enregistrer la planche",
+    "deleteBed": "Impossible de supprimer la planche"
+  },
+  "validation": {
+    "nameRequired": "Le nom est obligatoire",
+    "bedAreaExceedsField": "La somme des surfaces des planches ({{sum}} m²) dépasse la surface de la parcelle ({{max}} m²). Veuillez ajuster les surfaces.",
+    "areaMustBePositive": "La surface doit être supérieure à 0.",
+    "areaTooLarge": "La surface saisie est trop grande. Veuillez saisir une valeur plus petite.",
+    "lengthNonNegative": "La longueur doit être supérieure ou égale à 0.",
+    "widthNonNegative": "La largeur doit être supérieure ou égale à 0.",
+    "lengthNotANumber": "La longueur doit être un nombre valide.",
+    "widthNotANumber": "La largeur doit être un nombre valide.",
+    "duplicateFieldName": "Une parcelle portant ce nom existe déjà sur ce site.",
+    "duplicateBedName": "Une planche portant ce nom existe déjà dans cette parcelle."
+  },
+  "confirmDelete": "Voulez-vous vraiment supprimer cette entrée ?",
+  "footer": {
+    "singleLocation": "Dépliez les parcelles pour ajouter des planches",
+    "multipleLocations": "Dépliez les sites/parcelles pour ajouter de nouvelles parcelles/planches"
+  },
+  "tooltips": {
+    "expand": "Déplier l'entrée",
+    "collapse": "Replier l'entrée",
+    "addField": "Ajouter une parcelle",
+    "calculatedArea": "La surface est calculée automatiquement à partir de longueur × largeur et ne peut pas être modifiée directement."
+  },
+  "messages": {
+    "createLocationFirst": "Veuillez d'abord créer un site.",
+    "singleLocationHint": "Site : {{name}}",
+    "invalidLocationSelection": "Veuillez choisir un site valide.",
+    "noBedsHintTitle": "Il n'y a pas encore de planches.",
+    "noBedsHintBeforeIcon": "Ajoutez des planches avec l'icône",
+    "noBedsHintAfterIcon": "sur la parcelle concernée. Elle apparaît au survol.",
+    "noBedsHintMobile": "Appuyez longuement sur la parcelle concernée et choisissez « Ajouter une planche ».",
+    "missingDimensionsHint": "La longueur et la largeur sont importantes pour le calcul des surfaces, le besoin en semences et la planification des cultures.",
+    "missingDimensionsHintOptional": "Vous pouvez compléter les valeurs plus tard.",
+    "missingDimensionsCellTooltip": "Cette valeur est nécessaire au calcul de la surface et à toute planification qui en dépend.",
+    "createLocationError": "Impossible de créer le site.",
+    "locationCreated": "Le site a été créé.",
+    "unsavedMissingName": "La ligne n'a pas été enregistrée, car le nom est manquant.",
+    "unsavedInvalidRowsNavigationWarning": "Une ligne sans nom n'est pas enregistrée. Elle sera perdue si vous quittez la page.",
+    "unsavedRowEditNavigationWarning": "Une ligne est en cours de modification. Les modifications seront perdues si vous quittez la page.",
+    "locationDeleted": "Site supprimé",
+    "fieldDeleted": "Parcelle supprimée",
+    "bedDeleted": "Planche supprimée",
+    "locationAndBedsDeleted": "Site et planches ({{count}}) supprimés",
+    "fieldAndBedsDeleted": "Parcelle et planches ({{count}}) supprimées",
+    "locationsNowVisible": "Les sites sont désormais affichés, car il en existe plusieurs."
+  },
+  "prompts": {
+    "newFieldName": "Nom de la nouvelle parcelle :",
+    "selectLocationForField": "Veuillez saisir l'identifiant du site pour la nouvelle parcelle :\n{{options}}"
+  },
+  "actions": {
+    "addField": "Ajouter une parcelle",
+    "addBed": "Ajouter une planche",
+    "addShortcutHint": "Ins",
+    "createLocation": "Ajouter un site",
+    "addAdditionalLocation": "Plusieurs lieux ? Ajouter un autre site",
+    "undo": "Annuler",
+    "addFieldDropdown": "Ajouter une parcelle"
+  },
+  "dialogs": {
+    "addField": {
+      "title": "Ajouter une parcelle",
+      "nameLabel": "Nom de la parcelle",
+      "submit": "Ajouter"
+    },
+    "addAdditionalLocation": {
+      "title": "Ajouter un autre site",
+      "description": "Les sites vous permettent de gérer séparément des surfaces situées à différents endroits. Pour un projet n'ayant qu'un seul lieu, vous n'avez rien d'autre à configurer.",
+      "nameLabel": "Nom du site",
+      "submit": "Créer le site"
+    },
+    "unsavedRow": {
+      "title": "Ligne non enregistrée",
+      "message": "Le nom est un champ obligatoire. Cette ligne ne peut pas être enregistrée sans nom.",
+      "continueEditing": "Continuer la modification",
+      "discard": "Abandonner"
+    }
+  },
+  "emptyAreas": {
+    "title": "Aucune surface de culture pour l'instant",
+    "description": "Le site principal n'est pas encore disponible pour ce projet. Vous pourrez ensuite y saisir des parcelles et des planches.",
+    "missingLocationTitle": "Site manquant",
+    "missingLocationDescription": "Le site principal n'est pas encore disponible pour ce projet.",
+    "missingFieldTitle": "Parcelle manquante",
+    "missingFieldSingleLocationDescription": "Créez une parcelle pour commencer.",
+    "additionalLocationHint": "Si vous gérez des surfaces à plusieurs endroits, vous pouvez aussi",
+    "additionalLocationLink": "créer d'autres sites",
+    "missingFieldMultipleLocationsBeforeIcon": "Ajoutez une parcelle sur le site souhaité avec l'icône",
+    "missingFieldMultipleLocationsAfterIcon": "ou le menu contextuel.",
+    "actions": {
+      "createLocation": "Ajouter un site",
+      "createField": "Ajouter une parcelle",
+      "createBed": "Ajouter une planche"
+    }
+  },
+  "confirm": {
+    "deleteFieldWithBeds": "Voulez-vous vraiment supprimer cette parcelle ? Toutes les planches associées seront également supprimées.",
+    "deleteBed": "Voulez-vous vraiment supprimer cette planche ?"
+  },
+  "commands": {
+    "create": "Créer",
+    "delete": "Supprimer (Alt+Maj+D)",
+    "keywords": {
+      "create": "nouveau, surfaces de culture, créer",
+      "edit": "modifier",
+      "delete": "supprimer"
+    }
+  },
+  "mobile": {
+    "expand": "Déplier : {{name}}",
+    "collapse": "Replier : {{name}}",
+    "hasNotes": "Note présente",
+    "secondary": {
+      "field_zero": "Aucune parcelle",
+      "field_one": "{{count}} parcelle",
+      "field_other": "{{count}} parcelles",
+      "field_many": "{{count}} parcelles",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · sans dimensions"
+    },
+    "sheet": {
+      "topLevel": "Niveau supérieur",
+      "editTitle": "Modifier : {{type}}",
+      "createTitle": "Ajouter : {{type}}",
+      "locationNoDimensions": "Les sites n'ont pas de dimensions propres.",
+      "calculatedArea": "Surface (calculée)",
+      "discardTitle": "Abandonner les modifications ?",
+      "discardMessage": "Vous avez des modifications non enregistrées. Les abandonner ou continuer la modification ?",
+      "discardKeep": "Continuer la modification",
+      "discardConfirm": "Abandonner"
+    },
+    "typeLabel": {
+      "location": "Site",
+      "field": "Parcelle",
+      "bed": "Planche"
+    }
+  }
+}

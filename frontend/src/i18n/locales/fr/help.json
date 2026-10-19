@@ -1,0 +1,259 @@
+{
+  "showTooltip": "Afficher l'aide",
+  "title": "Aide",
+  "globalTitle": "Vue d'ensemble : comment fonctionne OpenFarmPlanner",
+  "heading": "Comment fonctionne OpenFarmPlanner",
+  "intro": "OpenFarmPlanner se compose de plusieurs pages qui fonctionnent ensemble :",
+  "sections": [
+    {
+      "title": "Vue d'ensemble",
+      "points": [
+        "Voyez d'un coup d'œil les prochaines dates de semis, de plantation, d'élevage des plants et de récolte."
+      ]
+    },
+    {
+      "title": "Surfaces de culture",
+      "points": [
+        "Créez ici les parcelles et les planches. Ajoutez d'autres sites si nécessaire."
+      ]
+    },
+    {
+      "title": "Cultures",
+      "points": [
+        "Saisissez ici les données de vos cultures ou appuyez-vous sur la bibliothèque de cultures."
+      ]
+    },
+    {
+      "title": "Plans de culture",
+      "points": [
+        "Planifiez quelle culture est cultivée sur quelle planche, et quand."
+      ]
+    },
+    {
+      "title": "Calendrier de culture",
+      "points": [
+        "Consultez ici le déroulement dans le temps de vos plans de culture."
+      ]
+    },
+    {
+      "title": "Aperçu des rendements",
+      "points": [
+        "Consultez les quantités récoltées attendues d'après vos plans de culture."
+      ]
+    },
+    {
+      "title": "Besoin en semences",
+      "points": [
+        "Calcule la quantité de semences dont vous avez besoin."
+      ]
+    },
+    {
+      "title": "Fournisseurs",
+      "points": [
+        "Enregistrez ici vos fournisseurs afin de pouvoir les associer aux cultures."
+      ]
+    }
+  ],
+  "workflowTitle": "Déroulement",
+  "workflow": "Surfaces de culture → Cultures → Plans de culture → Calendrier de culture → Besoin en semences",
+  "pages": {
+    "dashboard": {
+      "title": "Aide : Vue d'ensemble",
+      "intro": "Dès que des plans de culture existent, les tâches à venir pour le semis, la plantation, l'élevage des plants et la récolte apparaissent ici."
+    },
+    "locations": {
+      "title": "Aide : Sites",
+      "intro": "Gérez ici les sites de votre projet. Ils constituent le niveau supérieur de la structure de vos surfaces de culture.",
+      "sections": [
+        {
+          "title": "Utilisation",
+          "points": [
+            "Créez des sites et ajoutez des coordonnées, une adresse, un type de sol ou des notes.",
+            "Modifiez les sites existants à l'aide des actions de la liste."
+          ]
+        },
+        {
+          "title": "Lien avec les autres pages",
+          "points": [
+            "Sur la page Surfaces de culture, vous ajoutez des parcelles et des planches pour chaque site.",
+            "Les tâches sont déduites des plans de culture."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "add": "Ajouter un nouveau site",
+        "edit": "Modifier le site",
+        "delete": "Supprimer le site"
+      }
+    },
+    "fields": {
+      "title": "Aide : Parcelles",
+      "intro": "Gérez ici les parcelles d'un site. Une parcelle regroupe plusieurs planches.",
+      "sections": [
+        {
+          "title": "Utilisation",
+          "points": [
+            "Utilisez « Nouveau » pour créer une parcelle.",
+            "Cliquez sur les lignes du tableau pour modifier les entrées."
+          ]
+        }
+      ]
+    },
+    "beds": {
+      "title": "Aide : Planches",
+      "intro": "Gérez ici vos planches. Chaque planche appartient à une parcelle et peut ensuite être utilisée dans les plans de culture.",
+      "sections": [
+        {
+          "title": "Utilisation",
+          "points": [
+            "Utilisez « Nouveau » pour créer une planche.",
+            "Cliquez sur les lignes du tableau pour modifier les entrées."
+          ]
+        },
+        {
+          "title": "Lien avec les autres pages",
+          "points": [
+            "Dans les plans de culture, vous affectez des cultures à des planches précises."
+          ]
+        }
+      ]
+    },
+    "areas": {
+      "title": "Aide : Surfaces de culture - vue liste",
+      "intro": "Gérez ici la structure des surfaces de votre ferme — des sites aux parcelles jusqu'aux planches individuelles.\n\nLes nouveaux sites, parcelles et planches s'ajoutent avec l'icône {{addIcon}} qui apparaît lorsque vous survolez un élément.\n\nLes entrées peuvent être modifiées directement dans le tableau. L'icône {{createPlanIcon}} sur une planche crée immédiatement un plan de culture pour celle-ci. D'autres actions, comme renommer ou supprimer, se trouvent dans le menu contextuel du clic droit.",
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "expandToggle": "Déplier ou replier la section",
+        "add": "Créer un nouvel élément",
+        "delete": "Supprimer l'élément",
+        "createPlan": "Créer un plan de culture pour cette planche",
+        "dimensions": "Définir l'orientation de la longueur et de la largeur pour la vue graphique"
+      }
+    },
+    "crops": {
+      "title": "Aide : Cultures",
+      "intro": "Gérez ici les cultures et leurs principales propriétés. Ces données sont utilisées dans les plans de culture, le calendrier et le besoin en semences.",
+      "sections": [
+        {
+          "title": "Utilisation",
+          "points": [
+            "Sélectionnez une culture pour consulter ou modifier ses détails.",
+            "L'icône {{moreIcon}} ouvre d'autres actions, comme les versions, la publication dans la bibliothèque de cultures ou la suppression de la culture sélectionnée.",
+            "Utilisez la bibliothèque de cultures pour partager ou importer des cultures."
+          ]
+        },
+        {
+          "title": "Lien avec les autres pages",
+          "points": [
+            "Dans les plans de culture, vous affectez des cultures à des planches et à des périodes précises.",
+            "Le calendrier de culture et le besoin en semences utilisent ces données pour planifier les dates et les quantités."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "add": "Créer une nouvelle culture",
+        "library": "Ouvrir la bibliothèque de cultures",
+        "createPlan": "Créer un plan de culture pour cette culture",
+        "more": "Ouvrir d'autres actions",
+        "edit": "Modifier les données de la culture"
+      }
+    },
+    "cropLibrary": {
+      "title": "Aide : Bibliothèque de cultures",
+      "intro": "La bibliothèque de cultures contient des cultures publiées par la communauté, utilisables dans tous les projets.",
+      "sections": [
+        {
+          "title": "Collaboration",
+          "points": [
+            "Les utilisateurs connectés peuvent modifier ensemble les cultures publiques.",
+            "Chaque modification est enregistrée comme version, avec la date et l'auteur.",
+            "Les versions plus anciennes peuvent être restaurées sans supprimer l'historique des versions."
+          ]
+        },
+        {
+          "title": "Utiliser des cultures",
+          "points": [
+            "Importez des cultures utiles dans le projet actuel sous forme de copie propre au projet.",
+            "Les cultures déjà importées dans le projet restent indépendantes des modifications ultérieures de la bibliothèque de cultures."
+          ]
+        }
+      ]
+    },
+    "plantingPlans": {
+      "title": "Aide : Plans de culture",
+      "intro": "Planifiez quelle culture est cultivée sur quelle planche, et quand.",
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "add": "Créer un nouveau plan de culture",
+        "mobileAdd": "Créer rapidement une nouvelle entrée sur mobile",
+        "notes": "Ouvrir les notes et pièces jointes d'une entrée",
+        "edit": "Modifier les valeurs directement dans le tableau"
+      }
+    },
+    "calendar": {
+      "title": "Aide : Calendrier de culture",
+      "intro": "Le calendrier de culture montre le déroulement dans le temps de vos plans de culture. Il vous aide à repérer l'occupation, les phases d'élevage des plants et les éventuels chevauchements.",
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "tabs": "Basculer entre la vue occupation et la vue élevage des plants",
+        "tooltip": "Afficher des détails supplémentaires"
+      }
+    },
+    "seedDemand": {
+      "title": "Aide : Besoin en semences",
+      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des entrées des plans de culture.",
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "supplierSelect": "Définir le fournisseur par culture",
+        "packageInfo": "Vérifier les combinaisons de conditionnements recommandées"
+      }
+    },
+    "suppliers": {
+      "title": "Aide : Fournisseurs",
+      "intro": "Gérez ici les fournisseurs de semences et les informations sur leurs conditionnements.",
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "add": "Ajouter un fournisseur",
+        "edit": "Modifier les données du fournisseur",
+        "delete": "Retirer le fournisseur"
+      }
+    },
+    "graphical": {
+      "title": "Aide : Surfaces de culture - vue graphique",
+      "intro": "Voyez ici les sites, parcelles et planches disposés dans l'espace. La vue graphique vous aide à vérifier et à ajuster visuellement la structure des surfaces.",
+      "sections": [
+        {
+          "title": "Utilisation",
+          "points": [
+            "Cliquez sur une planche ou une parcelle pour afficher ses détails.",
+            "Déplacez les éléments en mode « Modifier ».",
+            "Faites glisser une zone vide pour déplacer la vue.",
+            "Zoomez avec la molette de la souris ou en pinçant."
+          ]
+        },
+        {
+          "title": "Lien avec les autres pages",
+          "points": [
+            "La vue graphique montre les mêmes surfaces que la vue liste."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icônes et commandes",
+      "symbols": {
+        "panArrows": "Déplacer la vue vers le haut, la gauche, la droite ou le bas",
+        "zoomIn": "Zoomer",
+        "zoomOut": "Dézoomer",
+        "fit": "Ajuster à la vue complète",
+        "fullscreen": "Afficher en plein écran",
+        "editToggle": "Modifier la disposition : déplacer et organiser par glisser-déposer les planches et parcelles d'un site"
+      }
+    },
+    "yieldOverview": {
+      "title": "Aide : Aperçu des rendements",
+      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos plans de culture.",
+      "points": []
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "title": "Proveedores",
+  "create": "Añadir proveedor",
+  "edit": "Editar proveedor",
+  "name": "Nombre",
+  "homepage": "Sitio web",
+  "allowedDomains": "Dominios permitidos",
+  "active": "Activo",
+  "actions": "Acciones",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "addDomain": "Añadir dominio",
+  "add": "Añadir",
+  "saveError": "No se ha podido guardar el proveedor.",
+  "loadError": "No se han podido cargar los proveedores.",
+  "yes": "Sí",
+  "no": "No",
+  "editAction": "Editar",
+  "deleteAction": "Eliminar",
+  "deleteError": "No se ha podido eliminar el proveedor.",
+  "restoreDeleteError": "No se ha podido restaurar el proveedor.",
+  "messages": {
+    "deleted": "Proveedor eliminado.",
+    "deletedWithUnlinkedCrops_one": "Proveedor eliminado. Se ha quitado el vínculo con el proveedor de {{count}} cultivo.",
+    "deletedWithUnlinkedCrops_other": "Proveedor eliminado. Se ha quitado el vínculo con el proveedor de {{count}} cultivos.",
+    "deletedWithUnlinkedCrops_many": "Proveedor eliminado. Se ha quitado el vínculo con el proveedor de {{count}} cultivos."
+  },
+  "deleteUsageDialog": {
+    "title": "El proveedor todavía está en uso",
+    "summary_one": "{{count}} cultivo todavía usa este proveedor.",
+    "summary_other": "{{count}} cultivos todavía usan este proveedor.",
+    "summary_many": "{{count}} cultivos todavía usan este proveedor.",
+    "cropUsage_one": "{{count}} cultivo usa este proveedor directamente.",
+    "cropUsage_other": "{{count}} cultivos usan este proveedor directamente.",
+    "cropUsage_many": "{{count}} cultivos usan este proveedor directamente.",
+    "supplierDataUsage": "{{cropCount}} cultivos tienen datos de semillas o de proveedor con {{rowCount}} entradas.",
+    "seedDemandUsage_one": "{{count}} cultivo usa este proveedor en la planificación de la necesidad de semillas.",
+    "seedDemandUsage_other": "{{count}} cultivos usan este proveedor en la planificación de la necesidad de semillas.",
+    "seedDemandUsage_many": "{{count}} cultivos usan este proveedor en la planificación de la necesidad de semillas.",
+    "unlinkExplanation": "Los cultivos no se eliminan. Solo se quita su relación con el proveedor antes de eliminar el proveedor.",
+    "openAffectedCrops": "Ir a los cultivos afectados",
+    "unlinkAndDelete": "Eliminar proveedor"
+  },
+  "invalidDomain": "Dominio no válido: {{domain}}. Los dominios deben ser nombres de host válidos, sin esquema ni ruta (p. ej. example.com).",
+  "domainValidationError": "Algunos dominios no son válidos. Corrige los datos introducidos.",
+  "invalidUrl": "Introduce una URL válida (p. ej. https://example.com).",
+  "emptyState": {
+    "title": "Todavía no hay proveedores",
+    "description": "Los proveedores te ayudan a planificar la necesidad de semillas y a comparar envases. También puedes empezar sin proveedores."
+  }
+}

@@ -37,6 +37,7 @@ import { getDataGridLocaleText } from '../components/data-grid/localeText';
 import { mediumStackedFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
 import { actionButtonSx } from './accountSettingsForm';
 import { InlineEditor, SectionAlerts, SettingsCard } from './accountSettingsCards';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 const SCOPES: CropLibraryTokenScope[] = ['read', 'write'];
 
@@ -45,7 +46,7 @@ function formatMoment(value: string | null, fallback: string): string {
     return fallback;
   }
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toLocaleString(getActiveFormattingLocale());
 }
 
 function isInactiveToken(token: CropLibraryToken): boolean {

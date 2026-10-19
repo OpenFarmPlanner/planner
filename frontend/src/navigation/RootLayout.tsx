@@ -109,6 +109,7 @@ import { AppTooltip } from '../components/AppTooltip';
 import { OverflowTooltip } from '../components/OverflowTooltip';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 import { TOPBAR_BADGE_SX } from './topbarMenuStyles';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 const HIERARCHY_CREATE_LOCATION_ACTION_ID = 'fields-global-add-location';
 const TOPBAR_ACTION_GROUP_GAP = 1.25;
@@ -326,7 +327,7 @@ function RootLayout() {
     await projectHistory.openHistory();
   }, [handleGlobalMenuClose, projectHistory]);
 
-  const formatHistoryTimestamp = (value: string): string => new Date(value).toLocaleString('de-DE');
+  const formatHistoryTimestamp = (value: string): string => new Date(value).toLocaleString(getActiveFormattingLocale());
 
   const handleOpenShortcuts = () => {
     handleGlobalMenuClose();

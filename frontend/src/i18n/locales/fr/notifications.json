@@ -1,0 +1,38 @@
+{
+  "bell": {
+    "ariaLabel": "Notifications",
+    "unreadAriaLabel": "Notifications ({{unread}} non lues)",
+    "title": "Notifications",
+    "loadError": "Impossible de charger les notifications.",
+    "noUnread": "Aucune nouvelle notification",
+    "showAll": "Afficher toutes les notifications"
+  },
+  "history": {
+    "title": "Toutes les notifications",
+    "back": "Retour",
+    "unreadSubtitle": "{{unread}} non lues",
+    "emptyTitle": "Aucune notification pour l'instant",
+    "emptyDescription": "Les décisions concernant vos propositions et les avis de la bibliothèque de cultures apparaissent ici dès qu'il y a du nouveau.",
+    "pageAriaLabel": "Page {{page}}",
+    "nextPageAriaLabel": "Page suivante",
+    "previousPageAriaLabel": "Page précédente"
+  },
+  "markAllRead": {
+    "label": "Tout marquer comme lu",
+    "nothingUnread": "Aucune notification non lue",
+    "error": "Impossible de marquer les notifications comme lues."
+  },
+  "messages": {
+    "crop_species_proposal_accepted": "Votre proposition pour l'espèce cultivée « {{name}} » a été acceptée.",
+    "crop_species_proposal_rejected": "Votre proposition pour l'espèce cultivée « {{name}} » a été refusée.",
+    "crop_species_proposal_submitted": "Une nouvelle proposition d'espèce cultivée « {{name}} » attend d'être examinée.",
+    "moderator_request_submitted": "{{name}} a demandé un accès de modérateur pour la bibliothèque de cultures.",
+    "public_crop_removed": "Votre culture publiée « {{name}} » a été retirée de la bibliothèque de cultures, car son espèce cultivée « {{species_name}} » a été refusée.",
+    "public_crop_species_relink_cancelled": "La correction de l'espèce cultivée de « {{name}} » vers « {{species_name}} » n'a pas été appliquée. Veuillez vérifier à nouveau la fiche.",
+    "crop_species_reassigned": "L'espèce cultivée de « {{crop_name}} » a été corrigée de « {{old_name}} » en « {{new_name}} ». Valeurs héritées modifiées : {{changes}}.",
+    "public_crop_change_proposal_submitted": "Une contribution à « {{name}} » attend d'être examinée.",
+    "public_crop_change_proposal_reviewed_approved": "Votre contribution à « {{name}} » a été approuvée.",
+    "public_crop_change_proposal_reviewed_rejected": "Votre contribution à « {{name}} » a été refusée.",
+    "public_crop_change_proposal_reviewed": "Votre contribution à « {{name}} » a été examinée."
+  }
+}

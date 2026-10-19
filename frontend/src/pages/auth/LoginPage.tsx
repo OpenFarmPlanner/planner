@@ -16,6 +16,7 @@ import { getNextFromSearch } from '../invitationAcceptance';
 import AuthPageShell from './AuthPageShell';
 import { authFormSx, authPrimaryButtonSx, authSecondaryButtonSx, authTextButtonSx, authTextFieldSx } from './authPageStyles';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
+import { getActiveFormattingLocale } from '../../utils/numberLocalization';
 
 export default function LoginPage() {
   const { user, login, restoreAccount } = useAuth();
@@ -113,7 +114,7 @@ export default function LoginPage() {
           ) : null}
           {pendingDeletionAt ? (
             <Alert severity="warning">
-              {t('auth:login.pendingDeletion', { date: new Date(pendingDeletionAt).toLocaleString('de-DE') })}
+              {t('auth:login.pendingDeletion', { date: new Date(pendingDeletionAt).toLocaleString(getActiveFormattingLocale()) })}
             </Alert>
           ) : null}
           <TextField

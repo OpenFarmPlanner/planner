@@ -1,0 +1,22 @@
+{
+  "title": "Planches",
+  "columns": {
+    "name": "Nom",
+    "field": "Parcelle",
+    "area": "Surface (m²)",
+    "notes": "Notes"
+  },
+  "errors": {
+    "load": "Impossible de charger les planches",
+    "save": "Impossible d'enregistrer la planche",
+    "delete": "Impossible de supprimer la planche",
+    "loadFields": "Impossible de charger les parcelles"
+  },
+  "validation": {
+    "nameRequired": "Le nom est obligatoire",
+    "fieldRequired": "La parcelle est obligatoire"
+  },
+  "confirmDelete": "Voulez-vous vraiment supprimer cette planche ?",
+  "addButton": "Ajouter une planche",
+  "selectField": "Choisir une parcelle"
+}

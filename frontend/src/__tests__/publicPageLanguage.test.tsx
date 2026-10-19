@@ -59,6 +59,18 @@ describe('public page language', () => {
     expect(readStoredLanguagePreference()).toBe('de');
   });
 
+  it.each([
+    ['/fr/mentions-legales', 'fr', 'Mentions légales'],
+    ['/es/aviso-legal', 'es', 'Aviso legal'],
+  ])('renders %s in its own language', async (path, language, heading) => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    renderAt(path, <ImprintPage />);
+
+    await waitFor(() => expect(i18n.resolvedLanguage).toBe(language));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(heading);
+    expect(document.documentElement.lang).toBe(language);
+  });
+
   it('renders a German URL in German even when English is the stored preference', async () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en');
     renderAt('/impressum', <ImprintPage />);
@@ -77,6 +89,14 @@ describe('public page language', () => {
     expect(german).toHaveAttribute('href', '/impressum');
     expect(german).toHaveAttribute('hreflang', 'de');
     expect(english).toHaveAttribute('href', '/en/legal-notice');
+    expect(document.querySelector('a[role="menuitemradio"][hreflang="fr"]')).toHaveAttribute(
+      'href',
+      '/fr/mentions-legales',
+    );
+    expect(document.querySelector('a[role="menuitemradio"][hreflang="es"]')).toHaveAttribute(
+      'href',
+      '/es/aviso-legal',
+    );
   });
 
   it('navigates to the counterpart URL when switching and remembers the choice', async () => {
@@ -100,6 +120,15 @@ describe('public page language', () => {
     expect(screen.getByRole('link', { name: /Terms/ })).toHaveAttribute('href', '/en/terms');
   });
 
+  it('points internal links at the Spanish URLs on a Spanish page', async () => {
+    renderAt('/es/acerca-de', <LegalLinks />);
+
+    await waitFor(() => expect(i18n.resolvedLanguage).toBe('es'));
+    expect(screen.getByRole('link', { name: 'Aviso legal' })).toHaveAttribute('href', '/es/aviso-legal');
+    expect(screen.getByRole('link', { name: /privacidad/ })).toHaveAttribute('href', '/es/privacidad');
+    expect(screen.getByRole('link', { name: /Términos/ })).toHaveAttribute('href', '/es/terminos');
+  });
+
   it('sets a self canonical and reciprocal hreflang alternates at runtime', async () => {
     renderAt('/en/about', <div />);
 
@@ -115,6 +144,8 @@ describe('public page language', () => {
     expect(alternates).toEqual([
       'de=https://openfarmplanner.org/ueber',
       'en=https://openfarmplanner.org/en/about',
+      'fr=https://openfarmplanner.org/fr/a-propos',
+      'es=https://openfarmplanner.org/es/acerca-de',
       'x-default=https://openfarmplanner.org/ueber',
     ]);
     expect(document.title).toBe('About OpenFarmPlanner');

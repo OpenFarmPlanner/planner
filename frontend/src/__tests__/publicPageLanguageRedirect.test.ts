@@ -31,6 +31,14 @@ describe('preferredPublicPagePath', () => {
     expect(preferredPublicPagePath('/', 'en')).toBe('/en');
   });
 
+  it('maps every page between all four languages', () => {
+    expect(preferredPublicPagePath('/ueber', 'fr')).toBe('/fr/a-propos');
+    expect(preferredPublicPagePath('/en/privacy', 'es')).toBe('/es/privacidad');
+    expect(preferredPublicPagePath('/fr/mentions-legales', 'es')).toBe('/es/aviso-legal');
+    expect(preferredPublicPagePath('/es/terminos', 'fr')).toBe('/fr/conditions-utilisation');
+    expect(preferredPublicPagePath('/es', 'de')).toBe('/');
+  });
+
   it('stays put on a page already in that language or off public pages', () => {
     expect(preferredPublicPagePath('/ueber', 'de')).toBeNull();
     expect(preferredPublicPagePath('/login', 'en')).toBeNull();
@@ -46,10 +54,27 @@ describe('isCrawlerUserAgent', () => {
 });
 
 describe('redirectToPreferredLanguageVersion', () => {
-  it('sends a non-German browser from a German page to the English version', () => {
-    const replace = stubBrowser('/ueber', ['fr-FR', 'en-US']);
+  it('sends a browser in an unsupported language from a German page to the English version', () => {
+    const replace = stubBrowser('/ueber', ['it-IT', 'pt-BR']);
     expect(redirectToPreferredLanguageVersion()).toBe(true);
     expect(replace).toHaveBeenCalledWith('/en/about?ref=x#top');
+  });
+
+  it('sends French and Spanish browsers to their language version', () => {
+    const french = stubBrowser('/ueber', ['fr-CA', 'en-US']);
+    expect(redirectToPreferredLanguageVersion()).toBe(true);
+    expect(french).toHaveBeenCalledWith('/fr/a-propos?ref=x#top');
+
+    const spanish = stubBrowser('/en/legal-notice', ['es-419']);
+    expect(redirectToPreferredLanguageVersion()).toBe(true);
+    expect(spanish).toHaveBeenCalledWith('/es/aviso-legal?ref=x#top');
+  });
+
+  it('lets a stored French choice win over a German browser', () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
+    const replace = stubBrowser('/datenschutz', ['de-DE']);
+    expect(redirectToPreferredLanguageVersion()).toBe(true);
+    expect(replace).toHaveBeenCalledWith('/fr/confidentialite?ref=x#top');
   });
 
   it('sends a German browser from an English page to the German version', () => {
@@ -66,7 +91,7 @@ describe('redirectToPreferredLanguageVersion', () => {
   });
 
   it('never redirects crawlers', () => {
-    const replace = stubBrowser('/ueber', ['en-US'], GOOGLEBOT_UA);
+    const replace = stubBrowser('/es/acerca-de', ['en-US'], GOOGLEBOT_UA);
     expect(redirectToPreferredLanguageVersion()).toBe(false);
     expect(replace).not.toHaveBeenCalled();
   });

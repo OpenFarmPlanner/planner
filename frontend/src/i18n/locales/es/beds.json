@@ -1,0 +1,22 @@
+{
+  "title": "Bancales",
+  "columns": {
+    "name": "Nombre",
+    "field": "Parcela",
+    "area": "Superficie (m²)",
+    "notes": "Notas"
+  },
+  "errors": {
+    "load": "No se han podido cargar los bancales",
+    "save": "No se ha podido guardar el bancal",
+    "delete": "No se ha podido eliminar el bancal",
+    "loadFields": "No se han podido cargar las parcelas"
+  },
+  "validation": {
+    "nameRequired": "El nombre es obligatorio",
+    "fieldRequired": "La parcela es obligatoria"
+  },
+  "confirmDelete": "¿Seguro que quieres eliminar este bancal?",
+  "addButton": "Añadir bancal",
+  "selectField": "Seleccionar parcela"
+}

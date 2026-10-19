@@ -1,0 +1,269 @@
+{
+  "appName": "OpenFarmPlanner",
+  "actions": {
+    "add": "Añadir",
+    "edit": "Editar",
+    "duplicate": "Duplicar",
+    "delete": "Eliminar",
+    "undo": "Deshacer",
+    "copyRow": "Copiar fila",
+    "copyTable": "Copiar tabla",
+    "save": "Guardar",
+    "saveRow": "Guardar fila",
+    "cancelRowEdit": "Cancelar edición",
+    "deleteRow": "Eliminar fila",
+    "cancel": "Cancelar",
+    "reset": "Restablecer",
+    "search": "Buscar",
+    "close": "Cerrar",
+    "actions": "Acciones",
+    "moreOptions": "Más opciones",
+    "moreActions": "Más acciones"
+  },
+  "messages": {
+    "loading": "Cargando…",
+    "noData": "Sin datos",
+    "error": "Error",
+    "success": "Correcto",
+    "rowCopied": "Fila copiada.",
+    "tableCopied": "Tabla copiada.",
+    "copyError": "No se han podido copiar los datos.",
+    "contextMenuTableHint": "Consejo: haz clic derecho en una fila para ver más acciones.",
+    "contextMenuTableHintTouch": "Consejo: mantén pulsada una fila para ver más acciones.",
+    "contextMenuHintKeyboard": "También: tecla de menú contextual o Mayús+F10.",
+    "confirmation": "Confirmación",
+    "rowChanged": "Modificada",
+    "unsavedChanges": "Hay cambios sin guardar en la tabla. Al hacer clic fuera de una fila se guardarán. ¿Seguro que quieres continuar?",
+    "validationErrors": "Hay errores de validación que deben corregirse antes de continuar. Corrige los errores o cancela la edición (tecla Esc).",
+    "noRows": "Sin entradas",
+    "noResults": "No se han encontrado entradas coincidentes"
+  },
+  "fields": {
+    "name": "Nombre",
+    "address": "Dirección",
+    "notes": "Notas",
+    "description": "Descripción",
+    "project": "Proyecto"
+  },
+  "columns": {
+    "project": "Proyecto"
+  },
+  "hierarchyLevelToggle": {
+    "expandTooltip": "Mostrar un nivel jerárquico más",
+    "collapseTooltip": "Ocultar un nivel jerárquico"
+  },
+  "project": "Proyecto",
+  "setupActions": {
+    "createField": "Añadir parcela",
+    "createBed": "Añadir bancal",
+    "openAreas": "Abrir superficies de cultivo",
+    "openCropLibrary": "Abrir la biblioteca de cultivos",
+    "createCrop": "Añadir cultivo",
+    "createPlan": "Añadir plan de cultivo"
+  },
+  "notes": {
+    "empty": "Sin notas",
+    "editEmpty": "Añadir nota",
+    "editWithContent": "Editar nota",
+    "compactNoteAndImages": "Nota e imágenes disponibles",
+    "compactNote": "Nota disponible",
+    "compactImages": "Imágenes disponibles",
+    "compactEmpty": "No hay nota ni imágenes disponibles",
+    "attachmentsCount_one": "{{count}} foto en las notas",
+    "attachmentsCount_other": "{{count}} fotos en las notas",
+    "attachmentsCount_many": "{{count}} fotos en las notas"
+  },
+  "notesPreview": {
+    "heading": "Nota",
+    "empty": "No hay nota disponible",
+    "openNote": "Abrir nota",
+    "loadingImages": "Cargando imágenes…",
+    "imagesLoadError": "No se han podido cargar las imágenes.",
+    "openImageAria": "Abrir foto",
+    "moreImagesAria": "Abrir {{count}} fotos más"
+  },
+  "notesDrawer": {
+    "takePhoto": "Hacer foto",
+    "selectFromGallery": "Elegir de la galería",
+    "uploading": "Subiendo…",
+    "attachmentAlt": "Adjunto",
+    "markdownPlaceholder": "Notas en Markdown…",
+    "imageDialogTitle": "Foto",
+    "attachmentPreviewAlt": "Vista previa del adjunto",
+    "cropDialogTitle": "Recortar",
+    "cropInstructions": "Dibuja, mueve y cambia el tamaño del área de recorte. La zona exterior se oscurece.",
+    "cropSourceAlt": "Imagen de origen del recorte",
+    "backendUnavailable": "El procesamiento de imágenes no está disponible en el servidor en este momento. Instala Pillow y reinicia el backend.",
+    "uploadFailed": "No se ha podido subir. Inténtalo de nuevo.",
+    "camera": {
+      "title": "Hacer foto",
+      "capture": "Capturar",
+      "noSignal": "No llega ninguna imagen de la cámara. Puede que otra aplicación la esté usando o que no esté disponible en este entorno.",
+      "useFilePicker": "Elegir un archivo en su lugar"
+    },
+    "tabs": {
+      "edit": "Editar",
+      "preview": "Vista previa"
+    },
+    "unsavedDialog": {
+      "title": "Notas sin guardar",
+      "message": "Las notas contienen cambios sin guardar. ¿Seguir editando o descartar los cambios?",
+      "continueEditing": "Seguir editando",
+      "discardAndClose": "Descartar"
+    },
+    "markdownToolbar": {
+      "bold": "Negrita",
+      "boldTooltip": "Negrita (Ctrl+B)",
+      "italic": "Cursiva",
+      "italicTooltip": "Cursiva (Ctrl+I)",
+      "code": "Código",
+      "heading": "Encabezado",
+      "bulletList": "Lista con viñetas",
+      "numberedList": "Lista numerada",
+      "link": "Insertar enlace",
+      "quote": "Cita",
+      "ariaLabel": "Barra de herramientas de formato"
+    },
+    "defaults": {
+      "bold": "texto en negrita",
+      "italic": "texto en cursiva",
+      "heading": "Encabezado",
+      "listItem": "Elemento de lista",
+      "linkText": "Texto del enlace",
+      "quote": "Cita"
+    }
+  },
+  "errors": {
+    "generic": "Se ha producido un error inesperado. Inténtalo de nuevo.",
+    "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "noPublicCrops": "No se han encontrado cultivos públicos.",
+    "bedNotFound": "No se ha encontrado el bancal.",
+    "fileTooLarge": "El archivo es demasiado grande (máximo 10 MB).",
+    "invalidImage": "El archivo subido no es una imagen válida.",
+    "supplierDataDuplicate": "Este proveedor ya tiene datos para este cultivo.",
+    "supplierDataMissingSupplier": "Selecciona un proveedor o elimina los datos del proveedor.",
+    "supplierSpecificTkgUnsupported": "El peso de mil semillas específico del proveedor ya no se admite.",
+    "supplierProjectMismatch": "El proveedor no pertenece al proyecto activo.",
+    "selectedSupplierProjectMismatch": "El proveedor de semillas seleccionado no pertenece al proyecto activo.",
+    "cropProjectMismatch": "El cultivo no pertenece al proyecto activo."
+  },
+  "validation": {
+    "required": "Este campo es obligatorio.",
+    "invalidEmail": "Introduce una dirección de correo válida.",
+    "minLength": "Se necesitan al menos {{count}} caracteres.",
+    "invalidNumberExample": "Introduce un número válido, p. ej. 3,9",
+    "areaInputPositive": "El valor debe ser mayor que 0.",
+    "areaInputPlantsCropRequired": "Selecciona un cultivo para calcular la superficie a partir del número de plantas.",
+    "areaInputPlantsSpacingMissing": "A este cultivo le falta la distancia entre plantas o entre filas, por lo que no se puede calcular la superficie a partir del número de plantas.",
+    "bedAreaExceeded": "La superficie introducida supera la superficie máxima disponible en este bancal.",
+    "availableArea": "Superficie restante disponible"
+  },
+  "projectRequired": {
+    "noProjectsTitle": "Todavía no tienes ningún proyecto.",
+    "noProjectsDescription": "Crea primero un proyecto para gestionar ubicaciones, superficies de cultivo, planes de cultivo y calendarios.",
+    "noProjectsSelectionDescription": "Crea tu primer proyecto para empezar a planificar.",
+    "noActiveProjectTitle": "No hay ningún proyecto seleccionado.",
+    "noActiveProjectDescription": "Selecciona un proyecto para gestionar ubicaciones, superficies de cultivo, planes de cultivo y calendarios.",
+    "createProjectAction": "Crear el primer proyecto",
+    "createFirstProjectAction": "Crear el primer proyecto",
+    "selectProjectAction": "Seleccionar proyecto"
+  },
+  "projectOnboarding": {
+    "pageTitle": "Empieza tu primer proyecto",
+    "pageDescription": "Elige si quieres empezar con tu propio proyecto vacío o explorar primero OpenFarmPlanner con datos de ejemplo realistas.",
+    "emptyTitle": "Empezar con un proyecto vacío",
+    "emptyDescription": "Crea tu propio proyecto y añade paso a paso ubicaciones, cultivos y planes de cultivo.",
+    "emptyAction": "Crear proyecto vacío",
+    "demoTitle": "Probar un proyecto de demostración",
+    "demoDescription": "Empieza con un proyecto de cultivo preparado y explora directamente las funciones principales con datos de ejemplo realistas.",
+    "demoAction": "Crear proyecto de demostración",
+    "demoCreating": "Creando proyecto de demostración…",
+    "demoCreatedHint": "Este proyecto contiene datos de ejemplo. Puedes editarlo todo libremente o eliminar el proyecto en cualquier momento.",
+    "demoCreateError": "No se ha podido crear el proyecto de demostración. Inténtalo de nuevo."
+  },
+  "guestDemo": {
+    "restricted": "No disponible en la demo. Crea una cuenta gratuita para usar esta función.",
+    "cropLibraryNotice": "Estás usando la demo: puedes explorar la biblioteca de cultivos pública e importar cultivos a tu proyecto de demostración. Para editar o traducir fichas, restaurar versiones anteriores y escribir mensajes en los debates se necesita una cuenta gratuita.",
+    "cropLibraryEdit": "La biblioteca de cultivos pública no se puede editar en la demo.",
+    "cropLibraryDiscussion": "En la demo puedes leer los debates, pero no escribir mensajes.",
+    "publishCrop": "En la demo no puedes publicar cultivos en la biblioteca de cultivos pública ni enviarle cambios. Sí puedes aplicar actualizaciones de la biblioteca.",
+    "unlinkPublicCrop": "En la demo no se puede quitar el vínculo con la biblioteca de cultivos pública.",
+    "accountSettingsNotice": "Estás usando la demo sin cuenta, por lo que el perfil, la dirección de correo, la contraseña, las solicitudes de moderador, la exportación de datos y la eliminación de la cuenta no están disponibles. Los datos de la demo se eliminan automáticamente como máximo al cabo de 8 horas.",
+    "createProject": "En la demo no puedes crear más proyectos.",
+    "inviteMembers": "En la demo no puedes invitar a personas al proyecto.",
+    "noteAttachments": "En la demo no se pueden subir fotos a las notas."
+  },
+  "runtime": {
+    "applicationUpdatedFallback": "No se ha podido actualizar la aplicación automáticamente. Vuelve a cargar la página.",
+    "routeErrorFallback": "No se ha podido restaurar la página automáticamente. Vuelve a cargar la página.",
+    "reloadAction": "Volver a cargar la página"
+  },
+  "language": {
+    "label": "Idioma",
+    "auto": "Automático (idioma del navegador)",
+    "switcherLabel": "Cambiar idioma, actual: {{language}}"
+  },
+  "errorFieldLabels": {
+    "area_input_value": "Superficie",
+    "area_input_unit": "Introducción de la superficie",
+    "area_usage_sqm": "Superficie (m²)",
+    "area_sqm": "Superficie (m²)",
+    "planting_date": "Fecha de plantación",
+    "harvest_date": "Inicio de cosecha",
+    "harvest_end_date": "Fin de cosecha",
+    "quantity": "Plantas",
+    "cultivation_type": "Tipo de cultivo",
+    "crop": "Cultivo",
+    "bed": "Bancal",
+    "field": "Parcela",
+    "location": "Ubicación",
+    "non_field_errors": "Error"
+  },
+  "dateFormatPlaceholder": "DD.MM.AAAA",
+  "disabledReasons": {
+    "busy": "La acción se está procesando.",
+    "noChanges": "No hay cambios sin guardar.",
+    "invalidDateRange": "Introduce primero un periodo válido.",
+    "requiredFields": "Completa todos los campos obligatorios.",
+    "selectFile": "Selecciona primero un archivo.",
+    "cameraNotReady": "La cámara todavía no está lista.",
+    "copyRowUnavailable": "No hay datos copiables para esta fila.",
+    "copyTableUnavailable": "La tabla no contiene filas copiables."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}}: disponible",
+    "missing": "{{label}}: falta"
+  },
+  "months": {
+    "jan": "enero",
+    "feb": "febrero",
+    "mar": "marzo",
+    "apr": "abril",
+    "may": "mayo",
+    "jun": "junio",
+    "jul": "julio",
+    "aug": "agosto",
+    "sep": "septiembre",
+    "oct": "octubre",
+    "nov": "noviembre",
+    "dec": "diciembre"
+  },
+  "monthsShort": {
+    "jan": "ene",
+    "feb": "feb",
+    "mar": "mar",
+    "apr": "abr",
+    "may": "may",
+    "jun": "jun",
+    "jul": "jul",
+    "aug": "ago",
+    "sep": "sept",
+    "oct": "oct",
+    "nov": "nov",
+    "dec": "dic"
+  }
+}

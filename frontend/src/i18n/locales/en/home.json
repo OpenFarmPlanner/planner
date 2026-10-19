@@ -79,14 +79,32 @@
     "illustration": {
       "ariaLabel": "Example planting-plan table from the demo project with crop, field and bed, sowing date, planting date, and area. The cucumber row shows how changing the planting date automatically shifts the sowing date with it. Below it two linked views, cultivation calendar and yields, that also recalculate automatically.",
       "rows": {
-        "lettuce": { "crop": "Lettuce (Lollo Bionda)", "field": "North Early Beds", "bed": "Lettuce 2" },
-        "tomato": { "crop": "Tomato (Roma)", "field": "South Polytunnel", "bed": "Tomato Row 1" },
-        "cucumber": { "crop": "Cucumber (Arola)", "field": "South Polytunnel", "bed": "Cucumber Row" }
+        "lettuce": {
+          "crop": "Lettuce (Lollo Bionda)",
+          "field": "North Early Beds",
+          "bed": "Lettuce 2"
+        },
+        "tomato": {
+          "crop": "Tomato (Roma)",
+          "field": "South Polytunnel",
+          "bed": "Tomato Row 1"
+        },
+        "cucumber": {
+          "crop": "Cucumber (Arola)",
+          "field": "South Polytunnel",
+          "bed": "Cucumber Row"
+        }
       },
       "linkedCaption": "Linked views recalculate automatically",
       "cards": {
-        "calendar": { "title": "Cultivation calendar", "detail": "Cucumber Row from week 19" },
-        "yield": { "title": "Yields", "detail": "Harvest start moves with it" }
+        "calendar": {
+          "title": "Cultivation calendar",
+          "detail": "Cucumber Row from week 19"
+        },
+        "yield": {
+          "title": "Yields",
+          "detail": "Harvest start moves with it"
+        }
       }
     }
   },
@@ -154,10 +172,22 @@
     "description": "OpenFarmPlanner is free software under the AGPL. No advertising and no reselling of farm data.",
     "sourceButton": "Source code on GitHub",
     "boxes": {
-      "agpl": { "title": "AGPL-3.0", "description": "Open source code, open for public review." },
-      "gdpr": { "title": "GDPR", "description": "Hosted in Germany, data minimal." },
-      "api": { "title": "Documented API", "description": "With your own access token for scripts, automation, and AI agents." },
-      "practice": { "title": "From practice", "description": "Developed together with a community-supported farm (GeLaWi) in Carinthia." }
+      "agpl": {
+        "title": "AGPL-3.0",
+        "description": "Open source code, open for public review."
+      },
+      "gdpr": {
+        "title": "GDPR",
+        "description": "Hosted in Germany, data minimal."
+      },
+      "api": {
+        "title": "Documented API",
+        "description": "With your own access token for scripts, automation, and AI agents."
+      },
+      "practice": {
+        "title": "From practice",
+        "description": "Developed together with a community-supported farm (GeLaWi) in Carinthia."
+      }
     }
   },
   "closing": {
@@ -349,6 +379,10 @@
         "changes": {
           "title": "Changes to this privacy policy",
           "content": "We update this privacy policy when the processing of personal data changes due to new features or changed legal requirements. The version published in the application applies. The date of the last change is shown at the end of this privacy policy. We inform active users about material changes in an appropriate way, for example by email or through a notice within the application."
+        },
+        "languageVersions": {
+          "title": "Language versions",
+          "content": "This document is provided in German, English, French and Spanish. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
         }
       }
     },
@@ -425,7 +459,7 @@
         },
         "languageVersions": {
           "title": "Language versions",
-          "content": "This document is provided in German and English. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
+          "content": "This document is provided in German, English, French and Spanish. In the event of any discrepancy or ambiguity between the language versions, the English version shall prevail."
         }
       }
     }

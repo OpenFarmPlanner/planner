@@ -79,14 +79,32 @@
     "illustration": {
       "ariaLabel": "Beispielhafte Anbauplan-Tabelle aus dem Demo-Projekt mit Kultur, Parzelle und Beet, Aussaattermin, Pflanztermin und Fläche. Die Gurken-Zeile zeigt, wie ein geänderter Pflanztermin den Aussaattermin automatisch mitverschiebt. Darunter zwei verknüpfte Ansichten: Anbaukalender und Erträge, die ebenfalls automatisch mitrechnen.",
       "rows": {
-        "lettuce": { "crop": "Salat (Lollo Bionda)", "field": "Frühbeete Nord", "bed": "Salat 2" },
-        "tomato": { "crop": "Tomate (Roma)", "field": "Folientunnel Süd", "bed": "Tomatenreihe 1" },
-        "cucumber": { "crop": "Gurke (Arola)", "field": "Folientunnel Süd", "bed": "Gurkenreihe" }
+        "lettuce": {
+          "crop": "Salat (Lollo Bionda)",
+          "field": "Frühbeete Nord",
+          "bed": "Salat 2"
+        },
+        "tomato": {
+          "crop": "Tomate (Roma)",
+          "field": "Folientunnel Süd",
+          "bed": "Tomatenreihe 1"
+        },
+        "cucumber": {
+          "crop": "Gurke (Arola)",
+          "field": "Folientunnel Süd",
+          "bed": "Gurkenreihe"
+        }
       },
       "linkedCaption": "Verknüpfte Ansichten rechnen automatisch mit",
       "cards": {
-        "calendar": { "title": "Anbaukalender", "detail": "Gurkenreihe ab KW 19" },
-        "yield": { "title": "Erträge", "detail": "Erntebeginn rückt mit" }
+        "calendar": {
+          "title": "Anbaukalender",
+          "detail": "Gurkenreihe ab KW 19"
+        },
+        "yield": {
+          "title": "Erträge",
+          "detail": "Erntebeginn rückt mit"
+        }
       }
     }
   },
@@ -154,10 +172,22 @@
     "description": "OpenFarmPlanner ist freie Software unter der AGPL. Keine Werbung und kein Weiterverkauf von Betriebsdaten.",
     "sourceButton": "Quellcode auf GitHub",
     "boxes": {
-      "agpl": { "title": "AGPL-3.0", "description": "Offener Quellcode, öffentlich überprüfbar." },
-      "gdpr": { "title": "DSGVO", "description": "Gehostet in Deutschland, datensparsam." },
-      "api": { "title": "Dokumentierte API", "description": "Mit eigenem Zugangsschlüssel für Skripte, Automatisierung und KI-Agenten." },
-      "practice": { "title": "Aus der Praxis", "description": "Entwickelt mit einer GeLaWi in Kärnten." }
+      "agpl": {
+        "title": "AGPL-3.0",
+        "description": "Offener Quellcode, öffentlich überprüfbar."
+      },
+      "gdpr": {
+        "title": "DSGVO",
+        "description": "Gehostet in Deutschland, datensparsam."
+      },
+      "api": {
+        "title": "Dokumentierte API",
+        "description": "Mit eigenem Zugangsschlüssel für Skripte, Automatisierung und KI-Agenten."
+      },
+      "practice": {
+        "title": "Aus der Praxis",
+        "description": "Entwickelt mit einer GeLaWi in Kärnten."
+      }
     }
   },
   "closing": {
@@ -349,6 +379,10 @@
         "changes": {
           "title": "Änderungen dieser Datenschutzerklärung",
           "content": "Wir passen diese Datenschutzerklärung an, wenn sich die Verarbeitung personenbezogener Daten durch neue Funktionen oder geänderte rechtliche Anforderungen ändert. Es gilt die jeweils in der Anwendung veröffentlichte Fassung. Den Stand der letzten Änderung finden Sie am Ende dieser Datenschutzerklärung. Über wesentliche Änderungen informieren wir aktive Nutzer in geeigneter Weise, etwa per E-Mail oder durch einen Hinweis in der Anwendung."
+        },
+        "languageVersions": {
+          "title": "Sprachfassungen",
+          "content": "Dieses Dokument wird in deutscher, englischer, französischer und spanischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
         }
       }
     },
@@ -425,7 +459,7 @@
         },
         "languageVersions": {
           "title": "Sprachfassungen",
-          "content": "Dieses Dokument wird in deutscher und englischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
+          "content": "Dieses Dokument wird in deutscher, englischer, französischer und spanischer Sprache bereitgestellt. Bei Widersprüchen oder Unklarheiten zwischen den Sprachfassungen ist die englische Fassung maßgeblich."
         }
       }
     }

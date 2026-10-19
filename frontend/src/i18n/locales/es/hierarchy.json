@@ -1,0 +1,163 @@
+{
+  "title": "Superficies de cultivo",
+  "addField": "Parcela",
+  "addBed": "Bancal",
+  "addBedToField": "Añadir bancal a esta parcela",
+  "createPlantingPlan": "Añadir plan de cultivo",
+  "columns": {
+    "name": "Nombre",
+    "location": "Ubicación",
+    "field": "Parcela",
+    "bed": "Bancal",
+    "area": "Superficie (m²)",
+    "notes": "Notas",
+    "length": "Longitud (m)",
+    "width": "Anchura (m)"
+  },
+  "errors": {
+    "load": "No se han podido cargar los datos",
+    "save": "No se ha podido guardar",
+    "delete": "No se ha podido eliminar",
+    "createField": "No se ha podido crear la parcela",
+    "deleteField": "No se ha podido eliminar la parcela",
+    "saveBed": "No se ha podido guardar el bancal",
+    "deleteBed": "No se ha podido eliminar el bancal"
+  },
+  "validation": {
+    "nameRequired": "El nombre es obligatorio",
+    "bedAreaExceedsField": "La suma de las superficies de los bancales ({{sum}} m²) supera la superficie de la parcela ({{max}} m²). Ajusta las superficies.",
+    "areaMustBePositive": "La superficie debe ser mayor que 0.",
+    "areaTooLarge": "La superficie introducida es demasiado grande. Introduce un valor menor.",
+    "lengthNonNegative": "La longitud debe ser mayor o igual que 0.",
+    "widthNonNegative": "La anchura debe ser mayor o igual que 0.",
+    "lengthNotANumber": "La longitud debe ser un número válido.",
+    "widthNotANumber": "La anchura debe ser un número válido.",
+    "duplicateFieldName": "Ya existe una parcela con este nombre en esta ubicación.",
+    "duplicateBedName": "Ya existe un bancal con este nombre en esta parcela."
+  },
+  "confirmDelete": "¿Seguro que quieres eliminar esta entrada?",
+  "footer": {
+    "singleLocation": "Despliega las parcelas para añadir bancales",
+    "multipleLocations": "Despliega las ubicaciones/parcelas para añadir nuevas parcelas/bancales"
+  },
+  "tooltips": {
+    "expand": "Desplegar entrada",
+    "collapse": "Contraer entrada",
+    "addField": "Añadir parcela",
+    "calculatedArea": "La superficie se calcula automáticamente a partir de longitud × anchura y no se puede editar directamente."
+  },
+  "messages": {
+    "createLocationFirst": "Primero crea una ubicación.",
+    "singleLocationHint": "Ubicación: {{name}}",
+    "invalidLocationSelection": "Selecciona una ubicación válida.",
+    "noBedsHintTitle": "Todavía no hay bancales.",
+    "noBedsHintBeforeIcon": "Añade bancales con el icono",
+    "noBedsHintAfterIcon": "de la parcela correspondiente. Aparece al pasar el ratón por encima.",
+    "noBedsHintMobile": "Mantén pulsada la parcela correspondiente y selecciona «Añadir bancal».",
+    "missingDimensionsHint": "La longitud y la anchura son importantes para el cálculo de superficies, la necesidad de semillas y la planificación de cultivos.",
+    "missingDimensionsHintOptional": "Puedes completar los valores más tarde.",
+    "missingDimensionsCellTooltip": "Este valor es necesario para el cálculo de la superficie y para cualquier planificación basada en él.",
+    "createLocationError": "No se ha podido crear la ubicación.",
+    "locationCreated": "Se ha creado la ubicación.",
+    "unsavedMissingName": "La fila no se ha guardado porque falta el nombre.",
+    "unsavedInvalidRowsNavigationWarning": "Hay una fila sin nombre sin guardar. Se perderá si sales de la página.",
+    "unsavedRowEditNavigationWarning": "Se está editando una fila. Los cambios se perderán si sales de la página.",
+    "locationDeleted": "Ubicación eliminada",
+    "fieldDeleted": "Parcela eliminada",
+    "bedDeleted": "Bancal eliminado",
+    "locationAndBedsDeleted": "Ubicación y bancales ({{count}}) eliminados",
+    "fieldAndBedsDeleted": "Parcela y bancales ({{count}}) eliminados",
+    "locationsNowVisible": "Ahora se muestran las ubicaciones porque existen varias."
+  },
+  "prompts": {
+    "newFieldName": "Nombre de la nueva parcela:",
+    "selectLocationForField": "Introduce el ID de la ubicación para la nueva parcela:\n{{options}}"
+  },
+  "actions": {
+    "addField": "Añadir parcela",
+    "addBed": "Añadir bancal",
+    "addShortcutHint": "Ins",
+    "createLocation": "Añadir ubicación",
+    "addAdditionalLocation": "¿Varios lugares? Añadir otra ubicación",
+    "undo": "Deshacer",
+    "addFieldDropdown": "Añadir parcela"
+  },
+  "dialogs": {
+    "addField": {
+      "title": "Añadir parcela",
+      "nameLabel": "Nombre de la parcela",
+      "submit": "Añadir"
+    },
+    "addAdditionalLocation": {
+      "title": "Añadir otra ubicación",
+      "description": "Las ubicaciones te permiten gestionar por separado superficies situadas en distintos lugares. Para un proyecto con un solo lugar no necesitas configurar nada más.",
+      "nameLabel": "Nombre de la ubicación",
+      "submit": "Crear ubicación"
+    },
+    "unsavedRow": {
+      "title": "Fila no guardada",
+      "message": "El nombre es un campo obligatorio. Esta fila no se puede guardar sin nombre.",
+      "continueEditing": "Seguir editando",
+      "discard": "Descartar"
+    }
+  },
+  "emptyAreas": {
+    "title": "Todavía no hay superficies de cultivo",
+    "description": "La ubicación principal todavía no está disponible para este proyecto. Después podrás registrar allí parcelas y bancales.",
+    "missingLocationTitle": "Falta la ubicación",
+    "missingLocationDescription": "La ubicación principal todavía no está disponible para este proyecto.",
+    "missingFieldTitle": "Falta la parcela",
+    "missingFieldSingleLocationDescription": "Crea una parcela para empezar.",
+    "additionalLocationHint": "Si gestionas superficies en varios lugares, también puedes",
+    "additionalLocationLink": "crear más ubicaciones",
+    "missingFieldMultipleLocationsBeforeIcon": "Añade una parcela en la ubicación deseada con el icono",
+    "missingFieldMultipleLocationsAfterIcon": "o el menú contextual.",
+    "actions": {
+      "createLocation": "Añadir ubicación",
+      "createField": "Añadir parcela",
+      "createBed": "Añadir bancal"
+    }
+  },
+  "confirm": {
+    "deleteFieldWithBeds": "¿Seguro que quieres eliminar esta parcela? También se eliminarán todos los bancales asociados.",
+    "deleteBed": "¿Seguro que quieres eliminar este bancal?"
+  },
+  "commands": {
+    "create": "Crear nuevo",
+    "delete": "Eliminar (Alt+Mayús+D)",
+    "keywords": {
+      "create": "nuevo, superficies de cultivo, crear",
+      "edit": "editar",
+      "delete": "eliminar"
+    }
+  },
+  "mobile": {
+    "expand": "Desplegar: {{name}}",
+    "collapse": "Contraer: {{name}}",
+    "hasNotes": "Tiene nota",
+    "secondary": {
+      "field_zero": "Ninguna parcela",
+      "field_one": "{{count}} parcela",
+      "field_other": "{{count}} parcelas",
+      "field_many": "{{count}} parcelas",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · sin dimensiones"
+    },
+    "sheet": {
+      "topLevel": "Nivel superior",
+      "editTitle": "Editar: {{type}}",
+      "createTitle": "Añadir: {{type}}",
+      "locationNoDimensions": "Las ubicaciones no tienen dimensiones propias.",
+      "calculatedArea": "Superficie (calculada)",
+      "discardTitle": "¿Descartar los cambios?",
+      "discardMessage": "Tienes cambios sin guardar. ¿Descartarlos o seguir editando?",
+      "discardKeep": "Seguir editando",
+      "discardConfirm": "Descartar"
+    },
+    "typeLabel": {
+      "location": "Ubicación",
+      "field": "Parcela",
+      "bed": "Bancal"
+    }
+  }
+}

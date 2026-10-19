@@ -6,6 +6,20 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+### Features
+
+- OpenFarmPlanner is now available in French and Spanish as well as German
+  and English: the whole app interface, emails to users, the public pages
+  (landing, about, imprint, privacy policy, terms) with their own indexable
+  URLs under `/fr` and `/es`, and the crop library, which accepts and shows
+  French and Spanish names and descriptions (falling back to English until
+  they exist). Browsers in French or Spanish (including `fr-CA`, `es-419`,
+  `es-MX`) start in their language; the switcher offers "Français" and
+  "Español". The language-version clause of the terms and the privacy
+  policy now names all four languages (the English version still prevails).
+  Dates and numbers that were always formatted the German way now follow the
+  active language.
+
 ### Fixes
 
 - Emails to users (activation, password reset, email change, project

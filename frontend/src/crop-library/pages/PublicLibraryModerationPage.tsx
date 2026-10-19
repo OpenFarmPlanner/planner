@@ -37,6 +37,7 @@ import { useAuth } from '../../auth/useAuth';
 import PageContainer from '../../components/layout/PageContainer';
 import PageHeader from '../../components/layout/PageHeader';
 import { useTranslation } from '../../i18n';
+import { getLanguageDisplayName, SUPPORTED_LANGUAGES } from '../../i18n/languages';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
@@ -133,7 +134,7 @@ export default function PublicLibraryModerationPage() {
   const openSpeciesApproval = (proposal: CropSpecies): void => {
     setApprovalProposal(proposal);
     setApprovalTranslations(getInitialSpeciesApprovalTranslations(
-      proposal, proposal.name, i18n.resolvedLanguage === 'de' ? 'de' : 'en',
+      proposal, proposal.name, i18n.resolvedLanguage ?? i18n.language,
     ));
   };
 
@@ -434,8 +435,8 @@ export default function PublicLibraryModerationPage() {
                     </TableHead>
                     <TableBody>
                       {aliasSpecies.map((species) => {
-                        const aliases = REQUIRED_SPECIES_LANGUAGES.flatMap(
-                          (languageCode) => getSpeciesAliases(species, languageCode),
+                        const aliases = SUPPORTED_LANGUAGES.flatMap(
+                          ({ code }) => getSpeciesAliases(species, code),
                         );
                         return (
                           <TableRow key={species.id}>
@@ -632,9 +633,7 @@ export default function PublicLibraryModerationPage() {
               <TextField
                 key={translation.language_code}
                 label={t('library.moderation.speciesAliases.fieldLabel', {
-                  language: translation.language_code === 'de'
-                    ? t('library.moderation.speciesAliases.languageDe')
-                    : t('library.moderation.speciesAliases.languageEn'),
+                  language: getLanguageDisplayName(translation.language_code, i18n.resolvedLanguage ?? i18n.language),
                 })}
                 value={aliasDraft[translation.language_code] ?? ''}
                 fullWidth

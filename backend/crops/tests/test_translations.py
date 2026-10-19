@@ -184,8 +184,41 @@ class CropSpeciesApiTest(DRFAPITestCase):
         self.assertEqual(payload['display_name'], 'Salsify')
         self.assertEqual(payload['display_language_code'], 'en')
 
+    def test_french_and_spanish_requests_get_the_english_name_and_report_it(self):
+        species = CropSpecies.objects.create(name='Testart Fallback')
+        CropSpeciesTranslation.objects.create(species=species, language_code='de', common_name='Haferwurzel')
+        CropSpeciesTranslation.objects.create(species=species, language_code='en', common_name='Salsify')
+
+        for language in ('fr', 'es'):
+            with self.subTest(language=language):
+                response = self.client.get(
+                    '/openfarmplanner/api/crop-species/',
+                    {'language': language, 'q': 'Salsify'},
+                )
+                results = response.data['results'] if isinstance(response.data, dict) else response.data
+                payload = next(item for item in results if item['id'] == species.id)
+
+                self.assertEqual(payload['display_name'], 'Salsify')
+                self.assertEqual(payload['display_language_code'], 'en')
+
+    def test_a_french_translation_is_served_once_it_exists(self):
+        species = CropSpecies.objects.create(name='Testart Franzoesisch')
+        CropSpeciesTranslation.objects.create(species=species, language_code='en', common_name='Salsify')
+        CropSpeciesTranslation.objects.create(species=species, language_code='fr', common_name='Salsifis')
+
+        response = self.client.get(
+            '/openfarmplanner/api/crop-species/',
+            {'q': 'Salsify'},
+            HTTP_ACCEPT_LANGUAGE='fr-FR,fr;q=0.9',
+        )
+        results = response.data['results'] if isinstance(response.data, dict) else response.data
+        payload = next(item for item in results if item['id'] == species.id)
+
+        self.assertEqual(payload['display_name'], 'Salsifis')
+        self.assertEqual(payload['display_language_code'], 'fr')
+
     def test_an_unsupported_language_parameter_falls_back_instead_of_failing(self):
-        response = self.client.get('/openfarmplanner/api/crop-species/', {'language': 'fr'})
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'language': 'it'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -288,12 +321,34 @@ class CropSpeciesApiTest(DRFAPITestCase):
         species = CropSpecies.objects.get(name='Testart Vorschlag')
         self.assertEqual(species.translations_by_language(), {'de': 'Pastinake', 'en': 'Parsnip'})
 
+    def test_accepts_french_and_spanish_translations_with_a_proposal(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crop-species/',
+            {
+                'name': 'Testart Vierisprachig',
+                'translations': [
+                    {'language_code': 'de', 'common_name': 'Pastinake'},
+                    {'language_code': 'en', 'common_name': 'Parsnip'},
+                    {'language_code': 'fr', 'common_name': 'Panais'},
+                    {'language_code': 'es', 'common_name': 'Chirivía'},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        species = CropSpecies.objects.get(name='Testart Vierisprachig')
+        self.assertEqual(
+            species.translations_by_language(),
+            {'de': 'Pastinake', 'en': 'Parsnip', 'fr': 'Panais', 'es': 'Chirivía'},
+        )
+
     def test_rejects_an_unsupported_translation_language(self):
         response = self.client.post(
             '/openfarmplanner/api/crop-species/',
             {
                 'name': 'Testart Unbekannte Sprache',
-                'translations': [{'language_code': 'fr', 'common_name': 'Panais'}],
+                'translations': [{'language_code': 'it', 'common_name': 'Pastinaca'}],
             },
             format='json',
         )
@@ -517,10 +572,22 @@ class CropApiLocalizationTest(DRFAPITestCase):
             {'de': 'Robuste Freilandsorte.', 'en': 'Robust outdoor variety.'},
         )
 
+    def test_translations_endpoint_accepts_french_and_spanish(self):
+        response = self.client.put(
+            f'/openfarmplanner/api/public-crops/{self.crop.id}/translations/',
+            {'translations': {'fr': 'Variété robuste.', 'es': 'Variedad robusta.'}},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['translations']['fr'], 'Variété robuste.')
+        self.assertEqual(response.data['translations']['es'], 'Variedad robusta.')
+        self.assertEqual(response.data['translations']['de'], 'Robuste Freilandsorte.')
+
     def test_translations_endpoint_rejects_an_unsupported_language(self):
         response = self.client.put(
             f'/openfarmplanner/api/public-crops/{self.crop.id}/translations/',
-            {'translations': {'fr': 'Variété robuste.'}},
+            {'translations': {'it': 'Varietà robusta.'}},
             format='json',
         )
 

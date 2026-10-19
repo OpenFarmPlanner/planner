@@ -1,5 +1,5 @@
 import type { SeedDemand } from '../api/types';
-import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import type { SeedDemandTranslator } from './seedDemandDiagnostics';
 
 export const formatUnit = (unit: 'g' | 'seeds', t: SeedDemandTranslator): string => (
@@ -7,7 +7,7 @@ export const formatUnit = (unit: 'g' | 'seeds', t: SeedDemandTranslator): string
 );
 
 export const formatSeedAmount = (value: number, options?: Intl.NumberFormatOptions): string => (
-  formatLocalizedNumber(value, 'de-DE', options)
+  formatLocalizedNumber(value, getActiveFormattingLocale(), options)
 );
 
 export const formatRequiredSeedAmount = (value: number): string => (

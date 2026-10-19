@@ -1031,8 +1031,6 @@
         "dialogTitle": "Synonyme bearbeiten",
         "dialogIntro": "Lege fest, unter welchen weiteren Bezeichnungen „{{name}}“ gefunden wird. Mehrere Synonyme mit Komma trennen.",
         "fieldLabel": "Synonyme ({{language}})",
-        "languageDe": "Deutsch",
-        "languageEn": "Englisch",
         "helperText": "Nur Bezeichnungen für dieselbe Kulturart. Eine abweichende Anbau- oder Erntecharakteristik gehört als eigene Kulturart angelegt.",
         "save": "Speichern",
         "saveSuccess": "Die Synonyme wurden gespeichert.",
