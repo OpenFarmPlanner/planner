@@ -35,12 +35,18 @@ import type {
 } from "@mui/x-data-grid";
 import { Box, Alert, useMediaQuery } from "@mui/material";
 import AgricultureIcon from "@mui/icons-material/Agriculture";
+import ControlPointDuplicateIcon from "@mui/icons-material/ControlPointDuplicate";
+import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ContextMenuActionItem } from "../components/contextMenu/ContextMenuActionItem";
 import { CustomContextMenu } from "../components/contextMenu/CustomContextMenu";
 import { renderGroupedContextMenuActions } from "../components/contextMenu/contextMenuGroups";
 import { ConfirmationDialog } from "../components/feedback/ConfirmationDialog";
 import { HierarchyAddIcon } from "../components/hierarchy/HierarchyAddIcon";
+import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import { nextFreeName } from "../components/hierarchy/utils/bedNaming";
+import { showGlobalSnackbar } from "../utils/globalSnackbar";
+import { isApplePlatform } from "../utils/platform";
 import EmptyStateCard from '../components/project/EmptyStateCard';
 import { PAGE_CONTAINER_SX } from '../components/layout/pageContainerStyles';
 import {
@@ -84,7 +90,7 @@ import { keywordList } from "../commands/keywordList";
 import { useHierarchyKeyboard } from "../components/hierarchy/hooks/useHierarchyKeyboard";
 import { useHierarchyGridKeyboard } from "../components/hierarchy/hooks/useHierarchyGridKeyboard";
 import { usePersistentSortModel } from "../hooks/usePersistentSortModel";
-import { fieldAPI, bedAPI, locationAPI, type Field } from "../api/api";
+import { fieldAPI, bedAPI, locationAPI, type Bed, type BulkBedCreatePayload, type Field } from "../api/api";
 import {
   applyHierarchyOrderSnapshot,
   buildHierarchyIndex,
@@ -242,8 +248,20 @@ function FieldsBedsHierarchy({
   }, [sortModel]);
 
   // Bed operations
-  const { addBed, saveBed, pendingEditRow, setPendingEditRow } =
+  const {
+    addBed,
+    isUntouchedPrefilledDraft,
+    saveBed,
+    duplicateBed,
+    bulkCreateBeds,
+    pendingEditRow,
+    setPendingEditRow,
+  } =
     useBedOperations(setBeds, setError, t);
+  // A bed created outside inline editing (duplicate, bulk create) becomes
+  // the active row once it is rendered.
+  const [pendingFocusBedId, setPendingFocusBedId] = useState<number | null>(null);
+  const [bulkCreateFieldId, setBulkCreateFieldId] = useState<number | null>(null);
   const [pendingFieldEditRow, setPendingFieldEditRow] = useState<string | number | null>(null);
 
   // Row order is only recomputed from the current sort field on a fresh
@@ -515,6 +533,7 @@ function FieldsBedsHierarchy({
     setDraftValidationWarning,
     fetchData,
     saveBed,
+    isUntouchedPrefilledDraft,
     t,
   });
 
@@ -747,6 +766,11 @@ function FieldsBedsHierarchy({
     [ensureExpanded, locations, setFields],
   );
 
+  const getFieldBedNames = useCallback(
+    (fieldId: number): string[] => beds.filter((bed) => bed.field === fieldId).map((bed) => bed.name),
+    [beds],
+  );
+
   const handleAddBed = useCallback(
     (fieldId: number): void => {
       const field = fields.find((f) => f.id === fieldId);
@@ -755,11 +779,62 @@ function FieldsBedsHierarchy({
       const fieldKey = `field-${fieldId}`;
       ensureExpanded(fieldKey);
 
-      const newBedId = addBed(fieldId);
+      // Prefill from the field's last bed in the current table order: its
+      // dimensions, and its name counted up to the next free one.
+      const fieldBeds = hierarchyIndex.bedsByField.get(fieldId) ?? [];
+      const lastBed = [...fieldBeds].reverse().find((bed) => hasPersistedEntityId(bed.id));
+      const newBedId = addBed(fieldId, lastBed ? {
+        name: nextFreeName(lastBed.name, getFieldBedNames(fieldId)),
+        length_m: lastBed.length_m,
+        width_m: lastBed.width_m,
+      } : undefined);
 
       setPendingEditRow(newBedId); //will be applied after re-render
     },
-    [addBed, ensureExpanded, fields, setPendingEditRow],
+    [addBed, ensureExpanded, fields, getFieldBedNames, hierarchyIndex, setPendingEditRow],
+  );
+
+  const handleDuplicateBed = useCallback(
+    async (bedId: number): Promise<void> => {
+      const source = beds.find((bed) => bed.id === bedId);
+      if (!source) return;
+
+      try {
+        const created = await duplicateBed(source, nextFreeName(source.name, getFieldBedNames(source.field)));
+        if (created?.id !== undefined) {
+          setPendingFocusBedId(created.id);
+        }
+      } catch {
+        // duplicateBed already reported the error on the page.
+      }
+    },
+    [beds, duplicateBed, getFieldBedNames],
+  );
+
+  const handleBulkCreateBeds = useCallback(
+    async (payload: BulkBedCreatePayload): Promise<void> => {
+      const created = await bulkCreateBeds(payload);
+      ensureExpanded(`field-${payload.field}`);
+      setBulkCreateFieldId(null);
+      const firstCreatedId = created[0]?.id;
+      if (firstCreatedId !== undefined) {
+        setPendingFocusBedId(firstCreatedId);
+      }
+      showGlobalSnackbar({
+        message: t("dialogs.bulkCreateBeds.created", { count: created.length }),
+        severity: "success",
+      });
+    },
+    [bulkCreateBeds, ensureExpanded, t],
+  );
+
+  const bulkCreateField = useMemo(
+    () => fields.find((field) => field.id === bulkCreateFieldId) ?? null,
+    [bulkCreateFieldId, fields],
+  );
+  const bulkCreateFieldBeds = useMemo<Bed[]>(
+    () => (bulkCreateFieldId === null ? [] : hierarchyIndex.bedsByField.get(bulkCreateFieldId) ?? []),
+    [bulkCreateFieldId, hierarchyIndex],
   );
 
   useEffect(() => {
@@ -931,6 +1006,26 @@ function FieldsBedsHierarchy({
     selectRowTransient(rowId);
     focusRow(rowId);
   }, [focusRow, selectRowTransient]);
+
+  useEffect(() => {
+    if (pendingFocusBedId === null || !rows.some((row) => row.id === pendingFocusBedId)) {
+      return;
+    }
+    const rowId = pendingFocusBedId;
+    // One frame for the grid to render the new row before focusing it.
+    const frame = requestAnimationFrame(() => {
+      setPendingFocusBedId(null);
+      runAfterRowVisibleOnPage(rowId, () => {
+        activateFirstRowForKeyboard(rowId);
+        const rowElement = document.querySelector(`[data-id="${String(rowId)}"]`);
+        // Optional call: jsdom has no scrollIntoView.
+        if (rowElement instanceof HTMLElement && typeof rowElement.scrollIntoView === "function") {
+          rowElement.scrollIntoView({ block: "nearest" });
+        }
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activateFirstRowForKeyboard, pendingFocusBedId, rows, runAfterRowVisibleOnPage]);
 
   // Consumes a `?highlight=location:<id>|field:<id>|bed:<id>` deep link (e.g.
   // from the Gantt calendar's "Standort/Parzelle/Beet öffnen" context menu
@@ -1199,6 +1294,20 @@ function FieldsBedsHierarchy({
     }
   }, [handleAddBed, handleAddField, rowsRef, selectedRowIdRef]);
 
+  // Ctrl+D / ⌘D: only for a saved bed row while no row is being edited.
+  // Returns whether it acted, so the browser shortcut (bookmark) is only
+  // suppressed when the table really used the key.
+  const handleDuplicateShortcut = useCallback((): boolean => {
+    const row = rowsRef.current.find((r) => r.id === selectedRowIdRef.current);
+    if (row?.type !== "bed" || !hasPersistedEntityId(row.bedId)) return false;
+    const isEditingRow = Object.values(rowModesModelRef.current).some(
+      (mode) => mode.mode === GridRowModes.Edit,
+    );
+    if (isEditingRow) return false;
+    void handleDuplicateBed(row.bedId);
+    return true;
+  }, [handleDuplicateBed, rowsRef, selectedRowIdRef]);
+
   const handleEditSelected = useCallback(() => {
     const row = rowsRef.current.find((r) => r.id === selectedRowIdRef.current);
     if (!row) return;
@@ -1234,9 +1343,28 @@ function FieldsBedsHierarchy({
         icon: <HierarchyAddIcon interactive={false} ariaHidden />,
         shortcutHint: t("actions.addShortcutHint"),
       });
+      createActions.push({
+        id: "bulk-create-beds",
+        label: t("actions.bulkCreateBeds"),
+        group: "create",
+        onClick: () => setBulkCreateFieldId(row.fieldId!),
+        icon: <PlaylistAddIcon fontSize="small" />,
+      });
     }
 
     if (row.type === "bed" && row.bedId) {
+      createActions.push({
+        id: "duplicate-bed",
+        label: t("actions.duplicateBed"),
+        group: "create",
+        icon: <ControlPointDuplicateIcon fontSize="small" />,
+        onClick: () => {
+          void handleDuplicateBed(row.bedId!);
+        },
+        shortcutHint: isApplePlatform()
+          ? t("actions.duplicateShortcutHintMac")
+          : t("actions.duplicateShortcutHint"),
+      });
       createActions.push({
         id: "create-planting-plan",
         label: t("createPlantingPlan"),
@@ -1263,6 +1391,7 @@ function FieldsBedsHierarchy({
     handleAddBed,
     handleAddField,
     handleCreatePlantingPlan,
+    handleDuplicateBed,
     t,
   ]);
 
@@ -1386,6 +1515,7 @@ function FieldsBedsHierarchy({
     discardActiveRowEdit: handleClickOutsideGrid,
     openContextMenuForRow,
     onInsertShortcut: handleCreateBySelection,
+    onDuplicateShortcut: handleDuplicateShortcut,
   });
 
   const nameColumnWidth = useMemo(() => {
@@ -1917,6 +2047,18 @@ function FieldsBedsHierarchy({
           }}
         />
       ))}
+      {bulkCreateField ? (
+        // Mounted per opening so its defaults are derived from the field's
+        // beds at that moment.
+        <BulkBedCreateDialog
+          key={bulkCreateField.id}
+          open
+          field={bulkCreateField}
+          fieldBeds={bulkCreateFieldBeds}
+          onClose={() => setBulkCreateFieldId(null)}
+          onCreate={handleBulkCreateBeds}
+        />
+      ) : null}
       <ConfirmationDialog
         open={unsavedRowDialogId !== null}
         title={t("dialogs.unsavedRow.title")}

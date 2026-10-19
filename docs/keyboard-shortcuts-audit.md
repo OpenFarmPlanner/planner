@@ -41,6 +41,7 @@ Scope: `frontend/src`
 | `Alt+Shift+N` | New row/item in hierarchy/plans | `pages/FieldsBedsHierarchy.tsx`, `pages/PlantingPlans.tsx` |
 | `Alt+E` | Edit selected item | `pages/FieldsBedsHierarchy.tsx`, `pages/PlantingPlans.tsx`, UI labels in `pages/Crops.tsx` |
 | `Alt+Shift+D` | Delete selected item | `pages/FieldsBedsHierarchy.tsx`, `pages/PlantingPlans.tsx`, UI labels in `pages/Crops.tsx` |
+| `Ctrl+D` / `⌘D` | Duplicate the active bed row (only while the Anbauflächen table is active and no cell is edited; the browser's bookmark shortcut stays untouched otherwise) | `components/hierarchy/hooks/useHierarchyKeyboard.ts` → `pages/FieldsBedsHierarchy.tsx` |
 | `Alt+P` | Create planting plan from crop context | UI in `pages/Crops.tsx` |
 | `Alt+J` / `Alt+Shift+J` / `Alt+I` | Export current/all crops; import JSON | `pages/Crops.tsx` |
 | `Alt+U` / `Alt+R` / `Alt+A` | AI complete / re-research / complete all crops | `pages/Crops.tsx` |

@@ -63,6 +63,7 @@ const setup = ({
     discardActiveRowEdit: vi.fn(),
     openContextMenuForRow: vi.fn(),
     onInsertShortcut: vi.fn(),
+    onDuplicateShortcut: vi.fn(() => true),
   };
 
   const view = renderHook(
@@ -627,5 +628,80 @@ describe('listener lifecycle', () => {
     press('ArrowDown');
 
     expect(selectRow).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Ctrl+D duplicate shortcut', () => {
+  const setPlatform = (platform: string) => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform);
+  };
+
+  it('duplicates the active row and suppresses the browser bookmark', () => {
+    setPlatform('Win32');
+    const { onDuplicateShortcut } = setup({ selectedRowId: 'bed-1' });
+
+    const event = press('d', { ctrlKey: true });
+
+    expect(onDuplicateShortcut).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('uses ⌘D instead of Ctrl+D on macOS', () => {
+    setPlatform('MacIntel');
+    const { onDuplicateShortcut } = setup({ selectedRowId: 'bed-1' });
+
+    const ctrlEvent = press('d', { ctrlKey: true });
+    expect(onDuplicateShortcut).not.toHaveBeenCalled();
+    expect(ctrlEvent.defaultPrevented).toBe(false);
+
+    const metaEvent = press('d', { metaKey: true });
+    expect(onDuplicateShortcut).toHaveBeenCalledTimes(1);
+    expect(metaEvent.defaultPrevented).toBe(true);
+  });
+
+  it('keeps the browser shortcut when the handler did not act', () => {
+    setPlatform('Win32');
+    const { onDuplicateShortcut } = setup({ selectedRowId: 'field-1' });
+    onDuplicateShortcut.mockReturnValue(false);
+
+    const event = press('d', { ctrlKey: true });
+
+    expect(onDuplicateShortcut).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('does nothing outside the table, while typing, with other modifiers or an open menu', () => {
+    setPlatform('Win32');
+    const inactive = setup({ treeActive: false });
+    expect(press('d', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(inactive.onDuplicateShortcut).not.toHaveBeenCalled();
+    inactive.unmount();
+
+    const typing = setup();
+    focusEditableElement();
+    expect(press('d', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(typing.onDuplicateShortcut).not.toHaveBeenCalled();
+    typing.unmount();
+    document.body.innerHTML = '';
+
+    const modified = setup();
+    press('d', { ctrlKey: true, shiftKey: true });
+    press('d');
+    expect(modified.onDuplicateShortcut).not.toHaveBeenCalled();
+    modified.unmount();
+
+    const withMenu = setup({ contextMenuState: { row: ROWS[2] } });
+    press('d', { ctrlKey: true });
+    expect(withMenu.onDuplicateShortcut).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat while the key is held', () => {
+    setPlatform('Win32');
+    const { onDuplicateShortcut } = setup({ selectedRowId: 'bed-1' });
+
+    const event = press('d', { ctrlKey: true, repeat: true });
+
+    expect(onDuplicateShortcut).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
   });
 });

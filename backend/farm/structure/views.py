@@ -2,9 +2,10 @@
 
 import logging
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +22,7 @@ from .serializers import (
     FIELD_NAME_DUPLICATE_MESSAGE,
     BedLayoutSerializer,
     BedSerializer,
+    BulkBedCreateSerializer,
     FieldLayoutSerializer,
     FieldSerializer,
     LocationSerializer,
@@ -172,6 +174,38 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
         except IntegrityError as exc:
             raise DRFValidationError({'name': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+
+    @action(detail=False, methods=['post'], url_path='bulk-create')
+    def bulk_create(self, request) -> Response:
+        """Create a series of beds in one field atomically ("Mehrere Beete anlegen").
+
+        All-or-nothing, so a failed name never leaves half a series behind,
+        and one request instead of one per bed keeps a large series inside
+        the per-account write throttle.
+        """
+        serializer = BulkBedCreateSerializer(
+            data=request.data, context=self.get_serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        field = serializer.validated_data['field']
+        created: list[Bed] = []
+        try:
+            with transaction.atomic():
+                for entry in serializer.validated_data['beds']:
+                    bed = Bed.objects.create(
+                        project=request.active_project,
+                        field=field,
+                        name=entry['name'],
+                        length_m=entry['length_m'],
+                        width_m=entry['width_m'],
+                    )
+                    self.record_revision(bed, EntityRevision.ACTION_CREATED)
+                    created.append(bed)
+        except IntegrityError as exc:
+            raise DRFValidationError({'beds': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
+        return Response(
+            BedSerializer(created, many=True).data, status=status.HTTP_201_CREATED
+        )
 
     def perform_destroy(self, instance):
         instance_id = instance.pk

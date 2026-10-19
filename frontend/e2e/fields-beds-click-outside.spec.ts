@@ -1,5 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { loginWithDeterministicProject } from './utils';
+
+// "Beet hinzufügen" prefills a new bed from the field's last bed (name
+// counted up, length and width). These specs are about empty/nameless
+// drafts, so they clear the prefilled values first.
+const clearPrefilledBedDraft = async (page: Page, fields: readonly string[]): Promise<void> => {
+  for (const field of fields) {
+    const input = page.locator(`.MuiDataGrid-row--editing [data-field="${field}"] input`);
+    await input.click();
+    await input.fill('');
+  }
+  // MUI's default edit cell debounces committing keystrokes (~200ms).
+  await page.waitForTimeout(300);
+};
 
 test.describe('fields-beds row edit exit behavior', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -105,6 +118,7 @@ test.describe('fields-beds row edit exit behavior with existing rows', () => {
     await page.getByRole('menuitem', { name: /^Beet hinzufügen/ }).click();
     await page.waitForTimeout(400);
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);
+    await clearPrefilledBedDraft(page, ['name', 'length_m', 'width_m']);
 
     // Click a cell in a DIFFERENT, existing row - not a click outside the grid
     // entirely (already covered above), but MUI's own row-to-row edit switch,
@@ -124,6 +138,7 @@ test.describe('fields-beds row edit exit behavior with existing rows', () => {
     await existingFieldRow.click({ button: 'right' });
     await page.getByRole('menuitem', { name: /^Beet hinzufügen/ }).click();
     await page.waitForTimeout(400);
+    await clearPrefilledBedDraft(page, ['name', 'length_m', 'width_m']);
 
     const lengthCell = page.locator('.MuiDataGrid-row--editing [role="gridcell"][data-field="length_m"]');
     await lengthCell.click();

@@ -1,5 +1,7 @@
 """DRF serializers for the farm structure domain (locations, fields, beds, layouts)."""
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
@@ -185,6 +187,72 @@ class BedSerializer(serializers.ModelSerializer):
                 duplicate_beds = duplicate_beds.exclude(pk=self.instance.pk)
             if duplicate_beds.exists():
                 raise serializers.ValidationError({'name': BED_NAME_DUPLICATE_MESSAGE})
+        return attrs
+
+
+MAX_BULK_BED_COUNT = 200
+
+
+class BulkBedItemSerializer(serializers.Serializer):
+    """One bed of a bulk create; dimensions in meters, both required."""
+
+    name = serializers.CharField(max_length=200)
+    length_m = serializers.FloatField(min_value=0, help_text='Bed length in meters (> 0).')
+    width_m = serializers.FloatField(min_value=0, help_text='Bed width in meters (> 0).')
+
+    def validate(self, attrs: dict) -> dict:
+        attrs = super().validate(attrs)
+        if attrs['length_m'] <= 0 or attrs['width_m'] <= 0:
+            raise serializers.ValidationError('Length and width must be greater than 0.')
+        # Same rounding as Bed.save(), which derives area_sqm from the dimensions.
+        area = Decimal(str(attrs['length_m'] * attrs['width_m'])).quantize(Decimal('0.1'))
+        if area < Bed.MIN_AREA_SQM or area > Bed.MAX_AREA_SQM:
+            raise serializers.ValidationError(
+                f'Area must be between {Bed.MIN_AREA_SQM} and {Bed.MAX_AREA_SQM} sqm.'
+            )
+        return attrs
+
+
+class BulkBedCreateSerializer(serializers.Serializer):
+    """Validates a series of beds created in one field in one request."""
+
+    field = serializers.PrimaryKeyRelatedField(queryset=Field.objects.none())
+    beds = BulkBedItemSerializer(many=True)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # Only the active project's fields resolve, so a foreign field id
+        # reads as nonexistent instead of confirming that it exists.
+        project = _resolve_active_project_from_serializer(self)
+        if project is not None:
+            self.fields['field'].queryset = Field.objects.filter(project=project)
+
+    def validate_beds(self, value: list[dict]) -> list[dict]:
+        if not 1 <= len(value) <= MAX_BULK_BED_COUNT:
+            raise serializers.ValidationError(
+                f'Between 1 and {MAX_BULK_BED_COUNT} beds can be created at once.'
+            )
+        names = [entry['name'] for entry in value]
+        if len(set(names)) != len(names):
+            raise serializers.ValidationError('Bed names must be unique.')
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        attrs = super().validate(attrs)
+        project = _resolve_active_project_from_serializer(self)
+        field = attrs['field']
+        if project is None or field.project_id != project.id:
+            raise serializers.ValidationError(
+                {'field': 'Field does not belong to the active project.'}
+            )
+        names = [entry['name'] for entry in attrs['beds']]
+        taken = sorted(
+            Bed.objects.filter(field=field, name__in=names).values_list('name', flat=True)
+        )
+        if taken:
+            raise serializers.ValidationError(
+                {'beds': [BED_NAME_DUPLICATE_MESSAGE], 'taken_names': taken}
+            )
         return attrs
 
 

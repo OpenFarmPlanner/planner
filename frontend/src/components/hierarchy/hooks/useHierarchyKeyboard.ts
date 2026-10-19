@@ -3,6 +3,7 @@ import type { GridRowId } from "@mui/x-data-grid";
 import type { HierarchyRow } from "../utils/types";
 import { getHierarchyKeyboardAction } from "../utils/hierarchyKeyboardNavigation";
 import { isTypingInEditableElement } from "../../../hooks/useKeyboardShortcuts";
+import { isPrimaryModifierOnly } from "../../../utils/platform";
 
 interface UseHierarchyKeyboardParams {
   contextMenuState: { row: HierarchyRow } | null;
@@ -23,6 +24,8 @@ interface UseHierarchyKeyboardParams {
     origin?: HTMLElement | null,
   ) => void;
   onInsertShortcut: () => void;
+  /** Ctrl+D / ⌘D on the active row; returns whether it acted. */
+  onDuplicateShortcut?: () => boolean;
 }
 
 export function useHierarchyKeyboard({
@@ -39,6 +42,7 @@ export function useHierarchyKeyboard({
   discardActiveRowEdit,
   openContextMenuForRow,
   onInsertShortcut,
+  onDuplicateShortcut,
 }: UseHierarchyKeyboardParams): void {
   // Window-level keyboard handlers: Alt+T focus, ArrowDown/Up navigation,
   // ArrowLeft/Right expand/collapse. A separate listener handles context-menu
@@ -62,6 +66,24 @@ export function useHierarchyKeyboard({
 
       event.preventDefault();
       onInsertShortcut();
+    };
+
+    // Ctrl+D / ⌘D duplicates the active bed row. The browser's own Ctrl+D
+    // (bookmark) is only suppressed when the table is active, nothing is
+    // being typed or edited, and the handler actually duplicated a row.
+    const handleDuplicateShortcut = (event: KeyboardEvent) => {
+      if (!onDuplicateShortcut) return;
+      if (event.key !== "d" && event.key !== "D") return;
+      if (!isPrimaryModifierOnly(event)) return;
+      if (contextMenuState !== null || !treeActiveRef.current) return;
+      if (isTypingInEditableElement(document.activeElement)) return;
+      if (event.repeat) {
+        event.preventDefault();
+        return;
+      }
+      if (onDuplicateShortcut()) {
+        event.preventDefault();
+      }
     };
 
     const handleFocusTable = (event: KeyboardEvent) => {
@@ -122,6 +144,7 @@ export function useHierarchyKeyboard({
     window.addEventListener("keydown", handleFocusTable);
     window.addEventListener("keydown", handleTreeNavigation);
     window.addEventListener("keydown", handleInsertShortcut);
+    window.addEventListener("keydown", handleDuplicateShortcut);
 
     return () => {
       document.removeEventListener("mousedown", handleDocumentPointerDown);
@@ -129,8 +152,9 @@ export function useHierarchyKeyboard({
       window.removeEventListener("keydown", handleFocusTable);
       window.removeEventListener("keydown", handleTreeNavigation);
       window.removeEventListener("keydown", handleInsertShortcut);
+      window.removeEventListener("keydown", handleDuplicateShortcut);
     };
-  }, [activateFirstRow, contextMenuState, discardActiveRowEdit, expandedRowsRef, onInsertShortcut, rowsRef, selectRow, selectedRowIdRef, setTreeActive, tableWrapperRef, toggleExpand, treeActiveRef]);
+  }, [activateFirstRow, contextMenuState, discardActiveRowEdit, expandedRowsRef, onDuplicateShortcut, onInsertShortcut, rowsRef, selectRow, selectedRowIdRef, setTreeActive, tableWrapperRef, toggleExpand, treeActiveRef]);
 
   // Context-menu keyboard trigger (ContextMenu key / Shift+F10).
   useEffect(() => {
