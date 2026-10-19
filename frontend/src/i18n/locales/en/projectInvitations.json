@@ -3,20 +3,20 @@
   "noActiveProject": "No active project selected.",
   "projectLabel": "Project: {{name}}",
   "currentProjectLabel": "Project name",
-  "projectRename": {
-    "label": "Rename project",
+  "general": {
+    "title": "General",
     "save": "Save",
     "cancel": "Cancel",
-    "success": "Project name updated.",
-    "error": "Project name could not be updated.",
+    "saved": "Project settings saved.",
+    "saveError": "Project settings could not be saved."
+  },
+  "projectRename": {
     "empty": "Project name cannot be empty.",
     "minLength": "At least 2 characters."
   },
   "projectRegion": {
     "label": "Regional terms",
     "help": "Controls which regional crop species names this project sees in the library and planning views. This setting is independent from the UI language.",
-    "success": "Regional terms updated.",
-    "error": "Regional terms could not be updated.",
     "options": {
       "germany": "Germany",
       "austria": "Austria",
@@ -24,11 +24,9 @@
     }
   },
   "projectDelete": {
-    "managementTitle": "Manage project",
-    "managementDescription": "Additional actions for this project.",
-    "shortInfoTitle": "Quick info:",
-    "shortInfoText": "Deleted projects can be restored within 30 days.",
-    "openButton": "Delete project",
+    "title": "Delete project",
+    "restoreHint": "Deleted projects can be restored for 30 days.",
+    "openButton": "Delete project…",
     "devQuickDescription": "Development mode only: deletes the active project without entering the project name.",
     "devQuickButton": "Dev: delete without name confirmation",
     "devQuickDeleteFromListConfirm": "Development mode only: delete project \"{{name}}\"? It can be restored from the trash below.",
@@ -44,36 +42,37 @@
     "restoreError": "Project could not be restored.",
     "error": "Project could not be deleted."
   },
-  "inviteSectionTitle": "Invite users",
+  "inviteSectionTitle": "Invite someone",
   "emailLabel": "Email",
+  "emailRequired": "Please enter an email address.",
   "roleLabel": "Role",
   "roleMember": "Member",
   "roleAdmin": "Admin",
-  "sendInvite": "Send invitation",
-  "adminOnly": "Only admins can invite users.",
+  "sendInvite": "Invite",
   "inviteSent": "Invitation sent.",
   "inviteResent": "Invitation re-sent.",
   "inviteSentNoMail": "Invitation created, but email delivery failed.",
   "inviteFailed": "Invitation could not be sent.",
   "membersSectionTitle": "Members",
+  "membersCount": "Members ({{count}})",
   "membersEmpty": "There are currently no members.",
   "memberRoleUpdated": "Member role updated.",
   "memberRoleUpdateFailed": "Member role could not be updated.",
   "memberRemoved": "Member removed from project.",
   "memberRemoveFailed": "Member could not be removed.",
   "memberListLoadFailed": "Members could not be loaded.",
-  "memberRoleLabel": "Project role",
   "memberDisplayFallback": "No display name",
-  "memberYou": "You",
+  "memberYou": "Me",
+  "memberActions": "Actions for {{name}}",
+  "makeAdmin": "Make admin",
+  "makeMember": "Make member",
   "removeMember": "Remove from project",
   "removeDialogTitle": "Remove member?",
   "removeDialogText": "Do you really want to remove {{name}} ({{email}}) from this project?",
   "removeDialogCancel": "Cancel",
   "removeDialogConfirm": "Remove now",
-  "roleChangeBlocked": "Your own role cannot be changed here.",
-  "removeBlocked": "You cannot remove yourself from the project here.",
-  "listTitle": "Invitations",
-  "listEmpty": "There are currently no invitations.",
+  "listTitle": "Pending invitations",
+  "listEmpty": "No pending invitations.",
   "revoke": "Revoke invitation",
   "revokeSuccess": "Invitation revoked.",
   "revokeFailed": "Invitation could not be revoked.",
@@ -86,12 +85,6 @@
   "openApp": "Open app",
   "projectName": "Project: {{name}}",
   "emailMasked": "Invited email: {{email}}",
-  "status": {
-    "pending": "Pending",
-    "accepted": "Accepted",
-    "revoked": "Revoked",
-    "expired": "Expired"
-  },
   "result": {
     "pending": "This invitation is valid.",
     "accepted": "This invitation was already used.",
@@ -109,16 +102,6 @@
     "email_send_failed": "The email could not be sent. Please contact [info@openfarmplanner.org](mailto:info@openfarmplanner.org)."
   },
   "listLoadFailed": "Invitations could not be loaded.",
-  "projectMembers": {
-    "invitations": {
-      "noAccess": "Only admins can view and manage invitations.",
-      "loadError": "Invitations could not be loaded.",
-      "empty": "There are currently no invitations."
-    },
-    "invite": {
-      "noPermission": "Only admins can send and manage invitations."
-    }
-  },
   "toRegister": "Register",
   "loginWithDifferentAccount": "Sign in with another account",
   "authHint": "You were invited to project {{project}}. Please sign in with {{email}}.",

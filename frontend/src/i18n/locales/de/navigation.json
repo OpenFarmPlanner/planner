@@ -199,6 +199,7 @@
     "previewColumnPeriod": "Zeitraum",
     "current": "(aktuell)",
     "previewReferenceHint": "(zuletzt bestehende Saison)",
+    "previewHint": "(Vorschau)",
     "transition": {
       "gapLabel": "Lücke",
       "overlapLabel": "Überlappung",

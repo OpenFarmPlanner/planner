@@ -94,6 +94,7 @@ export function SettingsLayout({ sections, navPlacement, children }: SettingsLay
       sx={isSide
         ? { width: SETTINGS_SIDE_NAV_WIDTH, flexShrink: 0 }
         : {
+          width: '100%',
           mb: 3,
           borderBottom: 1,
           borderColor: 'divider',

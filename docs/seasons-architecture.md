@@ -327,10 +327,17 @@ decides once, at the point the concrete season is actually created.
   skip-ahead period `find_due_but_missing_season` already used, now shared.
 - **Preview (project settings, `SeasonPatternCard`).**
   `GET /season-pattern/preview/` now returns
-  `{periods, reference_season, transition}`. The card renders the latest real
-  season as a greyed reference row and, when `transition` is set, a warn-styled
-  row (orange, warning icon) with an inline "Optionen beim Anlegen wählbar"
-  hint so it reads as a pending decision, not an error. Saving the pattern
+  `{periods, reference_season, transition}`. `reference_season` can share a
+  year with one of the computed `periods`, so the card merges them in
+  `seasons/seasonPreviewRows.ts::buildSeasonPreviewRows`, together with the
+  project's existing seasons from `GET /seasons/`: one row per start year,
+  sorted by start date. A year that already has a season shows that season's
+  real period and label (a pattern change never moves it); any other year is
+  marked "(Vorschau)". The latest real season keeps its grey background and
+  "(zuletzt bestehende Saison)" hint on its own (possibly current) row. When
+  `transition` is set, a warn-styled row (orange, warning icon) with an inline
+  "Optionen beim Anlegen wählbar" hint is sorted in by its start date so it
+  reads as a pending decision, not an error. Saving the pattern
   still has no confirmation dialog and persists nothing about the gap.
 - **Create flow (`SeasonCreateSuggestionDialog`).**
   The whole response is assembled by

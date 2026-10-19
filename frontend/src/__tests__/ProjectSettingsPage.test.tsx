@@ -1,5 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import ProjectSettingsPage from '../pages/ProjectSettingsPage';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
@@ -61,6 +62,10 @@ vi.mock('../api/api', async () => {
       delete: (...args: unknown[]) => deleteProjectMock(...args),
       restore: (...args: unknown[]) => restoreProjectMock(...args),
     },
+    seasonAPI: {
+      ...actual.seasonAPI,
+      list: async () => ({ data: { count: 0, next: null, previous: null, results: [] } }),
+    },
     seasonPatternAPI: {
       ...actual.seasonPatternAPI,
       get: (...args: unknown[]) => seasonPatternGetMock(...args),
@@ -70,8 +75,19 @@ vi.mock('../api/api', async () => {
   };
 });
 
+let snackbars: GlobalSnackbarDetail[] = [];
+const recordSnackbar = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+const expectSuccessSnackbar = (message: string) =>
+  waitFor(() => expect(snackbars).toContainEqual({ message, severity: 'success' }));
+
 describe('ProjectSettingsPage', () => {
+  afterEach(() => {
+    window.removeEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
+  });
+
   beforeEach(() => {
+    snackbars = [];
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
     window.localStorage.setItem('activeProjectId', '1');
     authState.user = {
       id: 1,
@@ -106,26 +122,134 @@ describe('ProjectSettingsPage', () => {
     });
   });
 
+  it('lays the settings out as tabbed sections in a fixed order', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    await screen.findByText('Member Name');
+
+    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      'Allgemein',
+      'Saison-Muster',
+      'Mitglieder',
+      'Projekt löschen',
+    ]);
+    const nav = screen.getByRole('navigation', { name: 'Abschnitte' });
+    expect(within(nav).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '#general',
+      '#season-pattern',
+      '#members',
+      '#delete-project',
+    ]);
+    const members = screen.getByRole('region', { name: 'Mitglieder' });
+    expect(within(members).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      'Person einladen',
+      'Mitglieder (1)',
+      'Offene Einladungen',
+    ]);
+  });
+
+  it('offers project deletion as the danger section with the existing confirmation dialog', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const dangerSection = await screen.findByRole('region', { name: 'Projekt löschen' });
+    expect(within(dangerSection).getByText('Gelöschte Projekte lassen sich 30 Tage lang wiederherstellen.')).toBeInTheDocument();
+    fireEvent.click(within(dangerSection).getByRole('button', { name: 'Projekt löschen …' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Projekt wirklich löschen?' });
+    expect(within(dialog).getByRole('button', { name: 'Projekt löschen' })).toBeDisabled();
+  });
+
+  it('lists only open invitations and says so plainly when there are none', async () => {
+    listMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 3,
+          email: 'accepted@example.com',
+          role: 'member',
+          token: 'accepted-token',
+          status: 'accepted',
+          resolved_status: 'accepted',
+          expires_at: '2026-04-11T13:07:30Z',
+          accepted_at: '2026-04-01T13:07:30Z',
+          revoked_at: null,
+          created_at: '2026-03-28T13:07:30Z',
+        },
+      ],
+    });
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const emptyText = await screen.findByText('Keine offenen Einladungen.');
+    // Plain grey text, not an info box.
+    expect(emptyText.closest('.MuiAlert-root')).toBeNull();
+    expect(screen.queryByText('accepted@example.com')).not.toBeInTheDocument();
+  });
+
+  it('revokes an open invitation and confirms it in a snackbar', async () => {
+    listMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 4,
+          email: 'open@example.com',
+          role: 'admin',
+          token: 'open-token',
+          status: 'pending',
+          resolved_status: 'pending',
+          expires_at: '2026-04-11T13:07:30Z',
+          accepted_at: null,
+          revoked_at: null,
+          created_at: '2026-03-28T13:07:30Z',
+        },
+      ],
+    });
+    revokeInvitationMock.mockResolvedValueOnce({});
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const row = (await screen.findByText('open@example.com')).closest('li') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Einladung widerrufen' }));
+
+    await waitFor(() => expect(revokeInvitationMock).toHaveBeenCalledWith(1, 4));
+    await expectSuccessSnackbar('Einladung widerrufen.');
+  });
+
   it('invites a user from project settings page', async () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
     await waitFor(() => expect(listMock).toHaveBeenCalledWith(1));
     await waitFor(() => expect(listMembersMock).toHaveBeenCalledWith(1));
 
     fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invitee@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladung senden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einladen' }));
 
     await waitFor(() => expect(inviteMock).toHaveBeenCalledWith(1, { email: 'invitee@example.com', role: 'member' }));
+    await expectSuccessSnackbar('Einladung gesendet.');
+    expect(screen.getByLabelText('E-Mail')).toHaveValue('');
+  });
+
+  it('keeps the invite button enabled and explains an empty or invalid email at the field', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    await waitFor(() => expect(listMock).toHaveBeenCalledWith(1));
+
+    const inviteButton = screen.getByRole('button', { name: 'Einladen' });
+    expect(inviteButton).toBeEnabled();
+    fireEvent.click(inviteButton);
+    expect(await screen.findByText('Bitte gib eine E-Mail-Adresse ein.')).toBeInTheDocument();
+    expect(screen.getByLabelText('E-Mail')).toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'not-an-email' } });
+    fireEvent.click(inviteButton);
+    expect(await screen.findByText('Bitte gib eine gültige E-Mail-Adresse ein.')).toBeInTheDocument();
+    expect(inviteMock).not.toHaveBeenCalled();
   });
 
   it('updates member roles and removes members from project settings page', async () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
 
     await screen.findByText('Member Name');
-    fireEvent.mouseDown(screen.getByLabelText('Projektrolle'));
-    fireEvent.click(await screen.findByRole('option', { name: 'Admin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aktionen für Member Name' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Zum Admin machen' }));
     await waitFor(() => expect(updateMemberMock).toHaveBeenCalledWith(1, 11, 'admin'));
+    await expectSuccessSnackbar('Mitgliedsrolle aktualisiert.');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Projekt entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aktionen für Member Name' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Aus Projekt entfernen' }));
     expect(await screen.findByText('Mitglied wirklich entfernen?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt entfernen' }));
     await waitFor(() => expect(removeMemberMock).toHaveBeenCalledWith(1, 11));
@@ -148,15 +272,16 @@ describe('ProjectSettingsPage', () => {
 
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
 
-    expect(await screen.findByText('martin.stipsitz@gmail.com')).toBeInTheDocument();
+    const ownRow = (await screen.findByText('martin.stipsitz@gmail.com')).closest('li') as HTMLElement;
     expect(screen.queryByText('Ohne Anzeigenamen')).not.toBeInTheDocument();
-    expect(screen.getByText('Die eigene Rolle kann hier nicht geändert werden.')).toBeInTheDocument();
-    const removeSelfButton = screen.getByRole('button', { name: 'Aus Projekt entfernen' });
-    expect(removeSelfButton).toBeDisabled();
-    fireEvent.mouseOver(removeSelfButton.parentElement as HTMLElement);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Du kannst dich hier nicht selbst aus dem Projekt entfernen.',
-    );
+    // The own row shows a badge and the role as text only: the backend allows
+    // neither changing your own role nor leaving, so it offers no action at all.
+    expect(within(ownRow).getByText('Ich')).toBeInTheDocument();
+    expect(within(ownRow).getByText('Admin')).toBeInTheDocument();
+    expect(within(ownRow).getByText('MS')).toBeInTheDocument();
+    expect(within(ownRow).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(ownRow).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Mitglieder (1)' })).toBeInTheDocument();
   });
 
   it('explains in the guest demo that invitations are unavailable instead of sending one', async () => {
@@ -169,8 +294,10 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(listMembersMock).toHaveBeenCalledWith(1));
 
     expect(screen.getByTestId('guest-demo-notice')).toHaveTextContent('In der Demo kannst du keine Personen in das Projekt einladen.');
-    expect(screen.getByLabelText('E-Mail')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Einladung senden' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invitee@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Einladen' }));
+    await waitFor(() => expect(snackbars).toHaveLength(1));
+    expect(snackbars[0].severity).toBe('info');
     expect(inviteMock).not.toHaveBeenCalled();
   });
 
@@ -184,11 +311,13 @@ describe('ProjectSettingsPage', () => {
 
     await waitFor(() => expect(listMembersMock).toHaveBeenCalledWith(1));
     await waitFor(() => expect(listMock).not.toHaveBeenCalled());
-    expect(await screen.findByText('Nur Admins können Einladungen sehen und verwalten.')).toBeInTheDocument();
-    expect(screen.getByText('Nur Admins können Einladungen senden und verwalten.')).toBeInTheDocument();
-    expect(screen.queryByText('Es gibt aktuell keine Einladungen.')).not.toBeInTheDocument();
+    expect(await screen.findByText(/Für die Mitgliederverwaltung benötigst du Admin-Rechte/)).toBeInTheDocument();
+    // Members can neither invite nor see invitations, and get no member actions.
+    expect(screen.queryByRole('heading', { name: 'Person einladen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Offene Einladungen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Aktionen für/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Einladungen konnten nicht geladen werden.')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Einladung senden' })).toBeDisabled();
+    expect(screen.queryByRole('heading', { name: 'Projekt löschen' })).not.toBeInTheDocument();
   });
 
   it('shows invitation load errors only for admins when the API fails', async () => {
@@ -212,7 +341,7 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(listMock).toHaveBeenCalledWith(1));
 
     fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invitee@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladung senden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einladen' }));
 
     const warningMessage = await screen.findByText(/Einladung erstellt, aber E-Mail konnte nicht zugestellt werden\./);
     const alertElement = warningMessage.closest('.MuiAlert-root');
@@ -235,7 +364,7 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(listMock).toHaveBeenCalledWith(1));
 
     fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'invitee@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladung senden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einladen' }));
 
     expect(await screen.findByText(/Die E-Mail konnte nicht gesendet werden\./)).toBeInTheDocument();
     expect(screen.getByText(/info@openfarmplanner.org/)).toBeInTheDocument();
@@ -285,6 +414,7 @@ describe('ProjectSettingsPage', () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
     expect(await screen.findByLabelText('Projektname')).toHaveValue('Alpha');
     expect(screen.queryByRole('button', { name: 'Projekt umbenennen' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Regionale Begriffe')).toBeInTheDocument();
     const saveButton = screen.getByRole('button', { name: 'Speichern' });
     expect(saveButton).toBeDisabled();
     fireEvent.mouseOver(saveButton.parentElement as HTMLElement);
@@ -313,7 +443,7 @@ describe('ProjectSettingsPage', () => {
 
     await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { name: 'Beta' }));
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
-    expect(await screen.findByText('Projektname aktualisiert.')).toBeInTheDocument();
+    await expectSuccessSnackbar('Projekteinstellungen gespeichert.');
   });
 
   it('updates the regional terminology setting', async () => {
@@ -325,13 +455,45 @@ describe('ProjectSettingsPage', () => {
 
     fireEvent.mouseDown(await screen.findByLabelText('Regionale Begriffe'));
     fireEvent.click(await screen.findByRole('option', { name: 'Österreich' }));
+    // Name and region share one form: choosing a region alone saves nothing.
+    expect(updateProjectMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { region: 'austria' }));
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
-    expect(await screen.findByText('Regionale Begriffe aktualisiert.')).toBeInTheDocument();
+    await expectSuccessSnackbar('Projekteinstellungen gespeichert.');
   });
 
-  it('prevents empty project name saves and restores the old name with feedback', async () => {
+  it('saves a changed name and region together in one request', async () => {
+    authState.user = {
+      id: 1,
+      memberships: [{ project_id: 1, project_name: 'Alpha', project_region: 'germany', role: 'admin' }],
+    };
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    fireEvent.change(await screen.findByLabelText('Projektname'), { target: { value: 'Beta' } });
+    fireEvent.mouseDown(screen.getByLabelText('Regionale Begriffe'));
+    fireEvent.click(await screen.findByRole('option', { name: 'Schweiz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { name: 'Beta', region: 'switzerland' }));
+    expect(updateProjectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels unsaved general changes back to the stored values', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    const projectNameInput = await screen.findByLabelText('Projektname');
+
+    fireEvent.change(projectNameInput, { target: { value: 'Beta' } });
+    const generalSection = screen.getByRole('region', { name: 'Allgemein' });
+    fireEvent.click(within(generalSection).getByRole('button', { name: 'Abbrechen' }));
+
+    expect(projectNameInput).toHaveValue('Alpha');
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    expect(updateProjectMock).not.toHaveBeenCalled();
+  });
+
+  it('prevents empty project name saves and explains why at the field', async () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
     const projectNameInput = await screen.findByLabelText('Projektname');
 
@@ -339,8 +501,8 @@ describe('ProjectSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     expect(updateProjectMock).not.toHaveBeenCalled();
-    expect(projectNameInput).toHaveValue('Alpha');
-    expect(screen.getAllByText('Projektname darf nicht leer sein.').length).toBeGreaterThan(0);
+    expect(await screen.findByText('Projektname darf nicht leer sein.')).toBeInTheDocument();
+    expect(projectNameInput).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('ignores unchanged project name saves', async () => {
@@ -355,7 +517,8 @@ describe('ProjectSettingsPage', () => {
     render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
     const projectNameInput = await screen.findByLabelText('Projektname');
     fireEvent.change(projectNameInput, { target: { value: 'Gamma' } });
-    fireEvent.keyDown(projectNameInput, { key: 'Enter', code: 'Enter' });
+    // Enter submits the general form (a native form submit in a browser).
+    fireEvent.submit(projectNameInput.closest('form') as HTMLFormElement);
 
     await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { name: 'Gamma' }));
   });

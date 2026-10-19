@@ -3,11 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { SeasonPatternPreviewResponse } from '../api/types';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   update: vi.fn(),
   preview: vi.fn(),
+  listSeasons: vi.fn(),
 }));
 
 vi.mock('../api/api', async () => {
@@ -19,6 +21,10 @@ vi.mock('../api/api', async () => {
       get: mocks.get,
       update: mocks.update,
       preview: mocks.preview,
+    },
+    seasonAPI: {
+      ...actual.seasonAPI,
+      list: mocks.listSeasons,
     },
   };
 });
@@ -51,17 +57,28 @@ const choose = async (
   await user.click(await screen.findByRole('option', { name: option }));
 };
 
+let snackbars: GlobalSnackbarDetail[] = [];
+const recordSnackbar = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+/** Success is confirmed through the global snackbar, not inside the card. */
+const savedConfirmation = () =>
+  waitFor(() => expect(snackbars).toContainEqual({ message: 'Saison-Muster gespeichert.', severity: 'success' }));
+
 beforeEach(() => {
+  snackbars = [];
+  window.addEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
   mocks.get.mockReset();
   mocks.update.mockReset();
   mocks.preview.mockReset();
   mocks.get.mockResolvedValue({ data: { start_day: 1, start_month: 1 } });
   mocks.update.mockResolvedValue({ data: { start_day: 1, start_month: 1 } });
   mocks.preview.mockResolvedValue({ data: emptyPreview });
+  mocks.listSeasons.mockReset();
+  mocks.listSeasons.mockResolvedValue({ data: { count: 0, next: null, previous: null, results: [] } });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
+  window.removeEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
   vi.restoreAllMocks();
 });
 
@@ -183,6 +200,40 @@ describe('SeasonPatternCard', () => {
       // are counted from.
       expect(await screen.findByText('2025')).toBeInTheDocument();
       expect(screen.getByText('(zuletzt bestehende Saison)')).toBeInTheDocument();
+    });
+
+    it('lists each year once, in order, when the latest season is the current one', async () => {
+      mocks.listSeasons.mockResolvedValue({
+        data: {
+          count: 2,
+          next: null,
+          previous: null,
+          results: [
+            { id: 1, start_date: '2025-01-01', end_date: '2025-12-31' },
+            { id: 2, start_date: '2026-01-01', end_date: '2026-12-31' },
+          ],
+        },
+      });
+      mocks.preview.mockResolvedValue({
+        data: preview({
+          periods: [
+            { start_date: '2025-01-01', end_date: '2025-12-31', is_current: false },
+            { start_date: '2026-01-01', end_date: '2026-12-31', is_current: true },
+            { start_date: '2027-01-01', end_date: '2027-12-31', is_current: false },
+          ],
+          reference_season: { start_date: '2026-01-01', end_date: '2026-12-31', label: '2026' },
+        }),
+      });
+      renderCard();
+
+      const current = await screen.findByText('2026 (aktuell)');
+      await waitFor(() => expect(screen.getAllByRole('row').slice(1)).toHaveLength(3));
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows.map((row) => row.cells[0].textContent)).toEqual(['2025', '2026 (aktuell)', '2027']);
+      expect(within(current.closest('tr') as HTMLElement).getByText('(zuletzt bestehende Saison)')).toBeInTheDocument();
+      // Only the year without a season yet is a preview.
+      await waitFor(() => expect(screen.getAllByText('(Vorschau)')).toHaveLength(1));
+      expect(within(rows[2]).getByText('(Vorschau)')).toBeInTheDocument();
     });
 
     it('leaves the reference row out when there is no season yet', async () => {
@@ -328,7 +379,7 @@ describe('SeasonPatternCard', () => {
       await waitFor(() =>
         expect(mocks.update).toHaveBeenCalledWith({ start_day: 1, start_month: 9 }),
       );
-      expect(await screen.findByText('Saison-Muster gespeichert.')).toBeInTheDocument();
+      await savedConfirmation();
       // The due-season suggestion is derived from the pattern, so the app has
       // to be told to recompute it.
       expect(onSaved).toHaveBeenCalled();
@@ -342,7 +393,7 @@ describe('SeasonPatternCard', () => {
       await choose(user, 'Monat', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
-      await screen.findByText('Saison-Muster gespeichert.');
+      await savedConfirmation();
 
       // Otherwise the card would keep offering to save what it just saved.
       expect(saveButton()).toBeDisabled();
@@ -402,7 +453,7 @@ describe('SeasonPatternCard', () => {
           screen.queryByText('Saison-Muster konnte nicht gespeichert werden.'),
         ).not.toBeInTheDocument(),
       );
-      expect(screen.getByText('Saison-Muster gespeichert.')).toBeInTheDocument();
+      await savedConfirmation();
     });
   });
 
@@ -434,7 +485,7 @@ describe('SeasonPatternCard', () => {
       await choose(user, 'Monat', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
-      await screen.findByText('Saison-Muster gespeichert.');
+      await savedConfirmation();
 
       await choose(user, 'Monat', 'März');
       await waitFor(() => expect(cancelButton()).toBeEnabled());
