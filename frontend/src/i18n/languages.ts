@@ -123,6 +123,37 @@ export function writeStoredLanguagePreference(preference: LanguagePreference | n
 }
 
 /**
+ * Session-scoped marker for a language picked while signed out.
+ *
+ * Unlike `LANGUAGE_STORAGE_KEY` — which also caches the account preference and
+ * may be a leftover in a shared browser — this only exists in the tab where
+ * someone deliberately switched just before signing in, so it may override an
+ * explicit account preference (see `useLanguagePreference`).
+ */
+export const SIGNED_OUT_LANGUAGE_CHOICE_KEY = 'ui.language.signedOutChoice';
+
+export function readSignedOutLanguageChoice(): LanguagePreference | null {
+  try {
+    const stored = window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+    return stored === null ? null : normalizeLanguagePreference(stored);
+  } catch {
+    return null;
+  }
+}
+
+export function writeSignedOutLanguageChoice(choice: LanguagePreference | null): void {
+  try {
+    if (choice === null) {
+      window.sessionStorage.removeItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, choice);
+  } catch {
+    // Without session storage the account preference simply wins on sign-in.
+  }
+}
+
+/**
  * Turn a preference into the language to actually render.
  *
  * `auto` (and "no preference stored") means: follow the browser, falling back

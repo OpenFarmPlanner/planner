@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { AuthContext } from '../auth/authContextShared';
 import type { AuthContextValue } from '../auth/authContextShared';
 import type { AuthUser } from '../auth/types';
-import { LANGUAGE_STORAGE_KEY } from '../i18n/languages';
+import { LANGUAGE_STORAGE_KEY, SIGNED_OUT_LANGUAGE_CHOICE_KEY } from '../i18n/languages';
 import { useLanguagePreference } from '../i18n/useLanguagePreference';
 
 const { updateUiLanguageMock, changeLanguageMock, i18nState } = vi.hoisted(() => ({
@@ -53,6 +53,7 @@ const setup = ({
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   i18nState.resolvedLanguage = 'en';
   updateUiLanguageMock.mockResolvedValue({ ui_language: 'de' });
   // A browser that asks for no supported language, so every test that does
@@ -366,6 +367,84 @@ describe('useLanguagePreference — promoting a guest choice on sign-in', () => 
     setup({ authUser: user({ ui_language: 'auto' }) });
 
     await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('de'));
+  });
+});
+
+describe('useLanguagePreference — a choice made while signed out in this tab', () => {
+  it('marks a switch made while signed out for the next sign-in', () => {
+    const { result } = setup();
+    act(() => result.current.setPreference('fr'));
+    expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBe('fr');
+  });
+
+  it('drops the mark when the switch is made while signed in', async () => {
+    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+    const { result } = setup({ authUser: user({ ui_language: 'fr' }) });
+    await act(async () => { result.current.setPreference('es'); });
+    expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+  });
+
+  it('wins over an explicit account preference and is saved to the account', async () => {
+    // Picked French on the landing page, then signed in to an account that
+    // stored German at registration: the fresh choice must survive.
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
+    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+
+    const { result, refreshUser } = setup({ authUser: user({ ui_language: 'de' }) });
+
+    // Rendered in French from the first signed-in render — no German flash.
+    expect(result.current.language).toBe('fr');
+    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('fr'));
+    await waitFor(() => expect(refreshUser).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+    });
+    // The mirror effect must not have cached the old account value meanwhile.
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+  });
+
+  it('only clears the mark when the account already has that language', async () => {
+    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'de');
+    setup({ authUser: user({ ui_language: 'de' }) });
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+    });
+    expect(updateUiLanguageMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps applying the choice in this tab when saving it fails', async () => {
+    updateUiLanguageMock.mockRejectedValue(new Error('offline'));
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
+    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+
+    const { result, rerender } = setup({ authUser: user({ ui_language: 'de' }) });
+
+    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalled());
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    rerender();
+
+    expect(result.current.language).toBe('fr');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+  });
+
+  it('promotes again after signing out and back in as the same user', async () => {
+    let currentUser: AuthUser | null = user({ id: 1, ui_language: 'de' });
+    const refreshUser = vi.fn().mockResolvedValue(undefined);
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AuthContext.Provider value={{ user: currentUser, refreshUser } as unknown as AuthContextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+    const { result, rerender } = renderHook(() => useLanguagePreference(), { wrapper });
+
+    currentUser = null;
+    rerender();
+    act(() => result.current.setPreference('fr'));
+
+    currentUser = user({ id: 1, ui_language: 'de' });
+    rerender();
+
+    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('fr'));
   });
 });
 
