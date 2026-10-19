@@ -16,25 +16,33 @@ import {
   Button,
   FormControl,
   InputLabel,
+  ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
   Select,
   type SelectChangeEvent,
+  Typography,
 } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LanguageIcon from '@mui/icons-material/Language';
+import CheckIcon from '@mui/icons-material/Check';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 
 import {
   AUTO_LANGUAGE,
+  FALLBACK_LANGUAGE,
   SUPPORTED_LANGUAGES,
   type LanguagePreference,
+  type SupportedLanguage,
   getLanguageLabel,
+  normalizeLanguageTag,
 } from './languages';
 import { useLanguagePreference } from './useLanguagePreference';
+import { setDevLanguageOverride } from './devLanguageOverride';
 import { useCurrentPublicPage } from './routeLanguage';
 
 const MIN_TOUCH_TARGET_SX = { minHeight: 44 };
@@ -194,29 +202,67 @@ export function AccountLanguageSelect() {
 }
 
 /**
- * Menu items for the signed-in app's account menu, so the language is
- * reachable in one click without opening the settings page.
+ * Development-only language row for the signed-in app's global menu: shows the
+ * current language and opens a submenu of all supported languages. It switches
+ * only the UI language in place, through an in-memory override that the
+ * language sync applies with `i18n.changeLanguage`, and never stores the
+ * account preference — users change that on the account settings page.
+ * Render it behind `import.meta.env.DEV` so production builds drop it.
  */
-export function LanguageMenuItems({ onSelected }: { onSelected?: () => void }) {
-  const { language, setPreference } = useLanguagePreference();
+export function DevLanguageMenuItem({ label, onSelected }: { label: string; onSelected?: () => void }) {
+  const { i18n } = useTranslation();
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const itemId = useId();
+  const menuId = useId();
+  const current = normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE;
+
+  const choose = (code: SupportedLanguage) => {
+    setDevLanguageOverride(code);
+    setAnchorEl(null);
+    onSelected?.();
+  };
 
   return (
     <>
-      {SUPPORTED_LANGUAGES.map((entry) => (
-        <MenuItem
-          key={entry.code}
-          role="menuitemradio"
-          aria-checked={language === entry.code}
-          selected={language === entry.code}
-          onClick={() => {
-            setPreference(entry.code);
-            onSelected?.();
-          }}
-          sx={MIN_TOUCH_TARGET_SX}
-        >
-          <ListItemText primary={entry.label} />
-        </MenuItem>
-      ))}
+      <MenuItem
+        id={itemId}
+        aria-haspopup="menu"
+        aria-controls={anchorEl ? menuId : undefined}
+        aria-expanded={anchorEl ? true : undefined}
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        sx={MIN_TOUCH_TARGET_SX}
+      >
+        <ListItemIcon sx={{ minWidth: 32, color: 'text.secondary' }}><LanguageIcon fontSize="small" /></ListItemIcon>
+        <ListItemText primary={label} />
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>{getLanguageLabel(current)}</Typography>
+        <ChevronRightIcon fontSize="small" sx={{ ml: 0.5, color: 'text.secondary' }} />
+      </MenuItem>
+      <Menu
+        id={menuId}
+        variant="menu"
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        slotProps={{ list: { 'aria-labelledby': itemId, role: 'menu' } }}
+      >
+        {SUPPORTED_LANGUAGES.map((entry) => (
+          <MenuItem
+            key={entry.code}
+            role="menuitemradio"
+            lang={entry.code}
+            aria-checked={current === entry.code}
+            onClick={() => choose(entry.code)}
+            sx={MIN_TOUCH_TARGET_SX}
+          >
+            <ListItemIcon sx={{ minWidth: 32 }}>
+              {current === entry.code ? <CheckIcon fontSize="small" /> : null}
+            </ListItemIcon>
+            <ListItemText primary={entry.label} />
+          </MenuItem>
+        ))}
+      </Menu>
     </>
   );
 }

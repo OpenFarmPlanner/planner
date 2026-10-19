@@ -136,22 +136,21 @@ describe('GlobalMenu notifications section', () => {
     expect(screen.queryByText('Dein Vorschlag für die Kulturart „Rote Bete“ wurde abgelehnt.')).not.toBeInTheDocument();
   });
 
-  it('opens showing its first section instead of scrolled to the active language', async () => {
+  it('opens with focus in its first section instead of further down the list', async () => {
     renderMenu();
 
     await screen.findByText('Dein Vorschlag für die Kulturart „Kürbis“ wurde angenommen.');
 
-    // MUI's default `selectedMenu` variant hands the initial focus to the
-    // *selected* item — the active language, far down the list — and focusing
-    // it scrolls the menu there, which is what made the dropdown open showing
-    // its bottom. Focus has to stay above that section.
+    // MUI's default `selectedMenu` variant hands the initial focus to a
+    // *selected* item further down (originally the active language), and
+    // focusing it scrolls the menu there, which made the dropdown open showing
+    // its bottom. Focus has to stay in the first section.
     const menuItems = Array.from(screen.getByRole('menu').querySelectorAll('li'));
-    const activeLanguageItem = screen.getByRole('menuitemradio', { checked: true });
+    const secondSectionLabel = screen.getByRole('menuitem', { name: 'Projektaktionen' });
 
     await waitFor(() => expect(menuItems).toContain(document.activeElement));
-    expect(activeLanguageItem).not.toHaveFocus();
     expect(menuItems.indexOf(document.activeElement as HTMLElement))
-      .toBeLessThan(menuItems.indexOf(activeLanguageItem));
+      .toBeLessThan(menuItems.indexOf(secondSectionLabel));
   });
 
   it('omits the section entirely on the full topbar, where the bell owns it', async () => {
