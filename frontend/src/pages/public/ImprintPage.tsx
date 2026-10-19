@@ -6,6 +6,7 @@ const imprintSections = [
   'provider',
   'contact',
   'responsiblePerson',
+  'mediaDisclosure',
 ] as const;
 
 export default function ImprintPage() {

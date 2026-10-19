@@ -245,6 +245,10 @@
         "responsiblePerson": {
           "title": "Responsable du contenu",
           "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAutriche"
+        },
+        "mediaDisclosure": {
+          "title": "Informations conformément au § 25 MedienG (loi autrichienne sur les médias)",
+          "content": "Propriétaire du média : Martin Stipsitz\nObjet de l'activité : développement et exploitation de l'application web open source OpenFarmPlanner pour la planification des cultures maraîchères\nLieu de résidence : Villach, Autriche"
         }
       }
     },

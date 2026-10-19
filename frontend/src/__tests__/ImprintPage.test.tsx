@@ -32,4 +32,13 @@ describe('ImprintPage', () => {
     expect(screen.getAllByText(/9500 Villach/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Österreich/).length).toBeGreaterThan(0);
   });
+
+  it('discloses the media owner, business purpose and residence under § 25 MedienG', () => {
+    renderImprintPage();
+
+    expect(screen.getByRole('heading', { name: 'Offenlegung gemäß § 25 MedienG' })).toBeInTheDocument();
+    expect(screen.getByText(/Medieninhaber: Martin Stipsitz/)).toBeInTheDocument();
+    expect(screen.getByText(/Unternehmensgegenstand: Entwicklung und Betrieb der Open-Source-Webanwendung OpenFarmPlanner/)).toBeInTheDocument();
+    expect(screen.getByText(/Wohnort: Villach, Österreich/)).toBeInTheDocument();
+  });
 });
