@@ -29,7 +29,9 @@ import {
 import { DeleteUndoSnackbar } from "../components/data-grid";
 import { compareHierarchyNames, type HierarchySortConfig } from "../components/hierarchy/utils/hierarchyUtils";
 import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
-import type { Bed } from "../api/api";
+import type { Bed, BulkBedCreatePayload } from "../api/api";
+import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import { showGlobalSnackbar } from "../utils/globalSnackbar";
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -110,8 +112,11 @@ function FieldsBedsHierarchyMobile({
     t,
   });
 
+  const [bulkCreateFieldId, setBulkCreateFieldId] = useState<number | null>(null);
+
   const {
     saveBed,
+    bulkCreateBeds,
     pendingDeletions,
     undoPendingDeletion,
     closePendingDeletionSnackbar,
@@ -129,9 +134,27 @@ function FieldsBedsHierarchyMobile({
     setSelectedRowId,
     setError,
     onPendingDeletionCountChange,
+    onBulkCreateBeds: setBulkCreateFieldId,
     onDuplicateField: openDuplicateField,
     t,
   });
+
+  const bulkCreateField = useMemo(
+    () => fields.find((field) => field.id === bulkCreateFieldId) ?? null,
+    [bulkCreateFieldId, fields],
+  );
+  const handleBulkCreateBeds = useCallback(
+    async (payload: BulkBedCreatePayload): Promise<void> => {
+      const created = await bulkCreateBeds(payload);
+      ensureExpanded(`field-${payload.field}`);
+      setBulkCreateFieldId(null);
+      showGlobalSnackbar({
+        message: t("dialogs.bulkCreateBeds.created", { count: created.length }),
+        severity: "success",
+      });
+    },
+    [bulkCreateBeds, ensureExpanded, t],
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>(null);
 
@@ -254,9 +277,9 @@ function FieldsBedsHierarchyMobile({
     if (sheetState?.mode !== "edit") {
       return [];
     }
-    // Deleting closes the sheet, and so does duplicating: its dialog takes over.
+    // Deleting closes the sheet, and so do the actions whose dialog takes over.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
-      action.group === "destructive" || action.id === "duplicate-field"
+      action.group === "destructive" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
         ? {
             ...action,
             onClick: () => {
@@ -313,6 +336,18 @@ function FieldsBedsHierarchyMobile({
         }}
       />
 
+      {bulkCreateField?.id !== undefined ? (
+        // Mounted per opening so its defaults are derived from the field's
+        // beds at that moment.
+        <BulkBedCreateDialog
+          key={bulkCreateField.id}
+          open
+          field={bulkCreateField}
+          fieldBeds={getFieldBedsByName(bulkCreateField.id)}
+          onClose={() => setBulkCreateFieldId(null)}
+          onCreate={handleBulkCreateBeds}
+        />
+      ) : null}
       {duplicateFieldDialog}
 
       <Stack>

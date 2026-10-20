@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { useNavigate } from "react-router";
 import AgricultureIcon from "@mui/icons-material/Agriculture";
 import ControlPointDuplicateIcon from "@mui/icons-material/ControlPointDuplicate";
+import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
 import type { Bed, Field, Location } from "../../../api/api";
 import { HierarchyAddIcon } from "../HierarchyAddIcon";
@@ -41,6 +42,7 @@ interface UseMobileHierarchyRowOperationsParams {
   setSelectedRowId: Dispatch<SetStateAction<string | number | null>>;
   setError: (error: string) => void;
   onPendingDeletionCountChange?: (count: number) => void;
+  onBulkCreateBeds: (fieldId: number) => void;
   onDuplicateField: (fieldId: number) => void;
   t: TFunction;
 }
@@ -65,12 +67,13 @@ export function useMobileHierarchyRowOperations({
   setSelectedRowId,
   setError,
   onPendingDeletionCountChange,
+  onBulkCreateBeds,
   onDuplicateField,
   t,
 }: UseMobileHierarchyRowOperationsParams) {
   const navigate = useNavigate();
 
-  const { saveBed } = useBedOperations(setBeds, setError, t);
+  const { saveBed, bulkCreateBeds } = useBedOperations(setBeds, setError, t);
 
   const {
     pendingDeletions,
@@ -130,6 +133,13 @@ export function useMobileHierarchyRowOperations({
           shortcutHint: t("actions.addShortcutHint"),
         });
         createActions.push({
+          id: "bulk-create-beds",
+          label: t("actions.bulkCreateBeds"),
+          group: "create",
+          onClick: () => onBulkCreateBeds(row.fieldId!),
+          icon: <PlaylistAddIcon fontSize="small" />,
+        });
+        createActions.push({
           id: "duplicate-field",
           label: t("actions.duplicateField"),
           group: "create",
@@ -161,11 +171,12 @@ export function useMobileHierarchyRowOperations({
 
       return [...createActions, ...destructiveActions];
     },
-    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, onDuplicateField, t],
+    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, onBulkCreateBeds, onDuplicateField, t],
   );
 
   return {
     saveBed,
+    bulkCreateBeds,
     pendingDeletions,
     deleteHierarchyRowWithUndo,
     undoPendingDeletion,

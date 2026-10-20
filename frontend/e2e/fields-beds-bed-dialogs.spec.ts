@@ -5,7 +5,7 @@ type IdResponse = { id: number };
 
 /**
  * "Mehrere Beete anlegen" and "Parzelle duplizieren" at the standard
- * breakpoints. Functional assertions plus a layout check (no horizontal
+ * breakpoints (from the context menu on desktop, the sheet menu on mobile). Functional assertions plus a layout check (no horizontal
  * overflow, actions inside the viewport); the screenshots are attached for
  * manual review only, not compared against baselines.
  */
@@ -140,6 +140,33 @@ for (const viewport of VIEWPORTS.filter((preset) => preset.key !== 'mobile')) {
 
 test.describe('bed dialogs at mobile', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 800 } });
+
+  test('"Mehrere Beete anlegen" opens full screen from the sheet menu', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'bed-dialogs-bulk-mobile', { loginAsAdmin: true });
+    const { fieldId, fieldName } = await seedField(page, 'Bulk mobile');
+    await page.goto('/app/fields-beds');
+
+    const fieldRow = page.locator(`[data-hierarchy-mobile-row-id="field-${fieldId}"]`);
+    if (!(await fieldRow.isVisible())) {
+      await page.getByRole('button', { name: /^Aufklappen:/ }).first().click();
+    }
+    await fieldRow.getByRole('button', { name: new RegExp(`^${fieldName}`) }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await page.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }).click();
+
+    const dialog = page.getByRole('dialog', { name: `Mehrere Beete anlegen in ${fieldName}` });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.boundingBox()).toMatchObject({ x: 0, y: 0, width: 375, height: 800 });
+    await expect(dialog.getByRole('spinbutton', { name: 'Anzahl Beete' })).toHaveValue('6');
+    await expect(dialog.getByRole('textbox', { name: 'Name des ersten Beets' })).toHaveValue('E 1 3');
+    await expectDialogFits(page, dialog);
+    await attachScreenshot(page, 'bulk-dialog-mobile');
+
+    await dialog.getByRole('button', { name: '6 Beete anlegen' }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText('6 Beete angelegt.')).toBeVisible();
+    await expect(page.locator('[data-hierarchy-mobile-row-id]').filter({ hasText: 'E 1 8' })).toHaveCount(1);
+  });
 
   test('"Parzelle duplizieren" opens full screen from the sheet menu', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'bed-dialogs-duplicate-mobile', { loginAsAdmin: true });

@@ -652,7 +652,8 @@ names are unique per field in the backend).
   in edit mode; a held key does not repeat, and a second duplicate is
   ignored while the first is still saving (both would compute the same
   name).
-- **"Mehrere Beete anlegen" (field row)** opens `BulkBedCreateDialog`, laid
+- **"Mehrere Beete anlegen" (field row, desktop and mobile)** opens
+  `BulkBedCreateDialog` (full screen below `sm`), laid
   out to be filled top to bottom like a spreadsheet row. Its pure logic
   lives in `utils/bulkBedCreatePlan.ts`:
   - *Maße*: the beds run along the field length (default) or width; the
@@ -703,8 +704,9 @@ names are unique per field in the backend).
 Rows without an explicit sort follow their names in natural order
 (`compareHierarchyNames`: "E 2" before "E 10", "E 1 9" before "E 1 10");
 the name-column sort uses the same comparison. The mobile list offers
-"Parzelle duplizieren" in the sheet's ⋮ menu but keeps its own add flow
-for single beds and has no bulk create.
+"Mehrere Beete anlegen" and "Parzelle duplizieren" in the sheet's ⋮ menu
+(choosing either closes the sheet first) but keeps its own add flow for
+single beds and has no "Beet duplizieren".
 
 ## Mobile layout (< sm)
 
