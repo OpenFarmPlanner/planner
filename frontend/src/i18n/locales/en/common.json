@@ -200,8 +200,7 @@
   "language": {
     "label": "Language",
     "auto": "Automatic (browser language)",
-    "switcherLabel": "Change language, currently: {{language}}",
-    "saveFailed": "The language could not be saved. Please try again."
+    "switcherLabel": "Change language, currently: {{language}}"
   },
   "errorFieldLabels": {
     "area_input_value": "Area",

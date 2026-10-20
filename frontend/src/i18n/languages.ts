@@ -123,33 +123,58 @@ export function writeStoredLanguagePreference(preference: LanguagePreference | n
 }
 
 /**
- * Session-scoped marker for a language picked while signed out.
+ * A language the user picked that is not yet saved to their account.
  *
- * Unlike `LANGUAGE_STORAGE_KEY` — which also caches the account preference and
- * may be a leftover in a shared browser — this only exists in the tab where
- * someone deliberately switched just before signing in, so it may override an
- * explicit account preference (see `useLanguagePreference`).
+ * Set by every switch and cleared only once the account holds the value, so a
+ * choice made while the app did not know about the account (signed out, or on
+ * a public page, which skips the `/auth/me/` probe) or whose save failed is
+ * saved on the next signed-in load instead of being overwritten by the old
+ * account value. Kept in `localStorage`, unlike `LANGUAGE_STORAGE_KEY` it
+ * never caches the account value, so it may override an explicit account
+ * preference (see `useLanguagePreference`).
  */
-export const SIGNED_OUT_LANGUAGE_CHOICE_KEY = 'ui.language.signedOutChoice';
+export const PENDING_LANGUAGE_CHOICE_KEY = 'ui.language.pendingChoice';
 
-export function readSignedOutLanguageChoice(): LanguagePreference | null {
+/**
+ * @deprecated Tab-scoped `sessionStorage` key of the same marker, written by
+ * builds before it moved to `localStorage`. Still read (and migrated) so a
+ * choice made in a tab that was open across the deploy is not lost; remove
+ * once no open tab can still carry it, i.e. one release after the move.
+ */
+export const LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY = 'ui.language.signedOutChoice';
+
+function readLegacySignedOutLanguageChoice(): string | null {
   try {
-    const stored = window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+    const legacy = window.sessionStorage.getItem(LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+    if (legacy !== null) {
+      window.sessionStorage.removeItem(LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+      window.localStorage.setItem(PENDING_LANGUAGE_CHOICE_KEY, legacy);
+    }
+    return legacy;
+  } catch {
+    return null;
+  }
+}
+
+export function readPendingLanguageChoice(): LanguagePreference | null {
+  try {
+    const stored = window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY) ?? readLegacySignedOutLanguageChoice();
     return stored === null ? null : normalizeLanguagePreference(stored);
   } catch {
     return null;
   }
 }
 
-export function writeSignedOutLanguageChoice(choice: LanguagePreference | null): void {
+export function writePendingLanguageChoice(choice: LanguagePreference | null): void {
   try {
+    window.sessionStorage.removeItem(LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY);
     if (choice === null) {
-      window.sessionStorage.removeItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY);
+      window.localStorage.removeItem(PENDING_LANGUAGE_CHOICE_KEY);
       return;
     }
-    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, choice);
+    window.localStorage.setItem(PENDING_LANGUAGE_CHOICE_KEY, choice);
   } catch {
-    // Without session storage the account preference simply wins on sign-in.
+    // Without storage the account preference simply wins on the next load.
   }
 }
 

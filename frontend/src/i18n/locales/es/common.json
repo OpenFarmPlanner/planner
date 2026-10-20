@@ -201,8 +201,7 @@
   "language": {
     "label": "Idioma",
     "auto": "Automático (idioma del navegador)",
-    "switcherLabel": "Cambiar idioma, actual: {{language}}",
-    "saveFailed": "No se ha podido guardar el idioma. Inténtalo de nuevo."
+    "switcherLabel": "Cambiar idioma, actual: {{language}}"
   },
   "errorFieldLabels": {
     "area_input_value": "Superficie",
