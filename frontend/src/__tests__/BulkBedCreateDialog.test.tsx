@@ -5,9 +5,10 @@ import { BulkBedCreateDialog } from '../components/hierarchy/BulkBedCreateDialog
 
 vi.mock('../i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => (
-      options && 'count' in options ? `${key}:${String(options.count)}` : key
-    ),
+    t: (key: string, options?: Record<string, unknown>) => {
+      if (key === 'dialogs.bulkCreateBeds.defaultFirstName') return 'Beet 1';
+      return options && 'count' in options ? `${key}:${String(options.count)}` : key;
+    },
   }),
 }));
 
@@ -20,87 +21,102 @@ const renderDialog = (fieldBeds: Bed[] = [], field: Field = FIELD, onCreate = vi
   return { dialog: screen.getByRole('dialog'), onCreate };
 };
 
-const setValue = (dialog: HTMLElement, name: RegExp | string, value: string): void => {
-  fireEvent.change(within(dialog).getByRole('spinbutton', { name }), { target: { value } });
-};
+const countField = (dialog: HTMLElement): HTMLElement => (
+  within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.count/ })
+);
 
 const setDecimal = (dialog: HTMLElement, name: RegExp | string, value: string): void => {
   fireEvent.change(within(dialog).getByRole('textbox', { name }), { target: { value } });
 };
 
 describe('BulkBedCreateDialog', () => {
-  it('starts empty with start 1 when the field has no beds', () => {
+  it('starts with "Beet 1", the field length and no count for an empty field', () => {
     const { dialog } = renderDialog();
 
-    expect(within(dialog).getByRole('textbox', { name: 'dialogs.bulkCreateBeds.prefix' })).toHaveValue('');
-    expect(within(dialog).getByRole('spinbutton', { name: 'dialogs.bulkCreateBeds.startNumber' })).toHaveValue(1);
+    expect(within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.firstName/ })).toHaveValue('Beet 1');
+    expect(within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ })).toHaveValue('20');
+    expect(countField(dialog)).toHaveValue(null);
+    expect(within(dialog).queryByText(/dialogs.bulkCreateBeds.suggestion/)).not.toBeInTheDocument();
     expect(within(dialog).getByText('dialogs.bulkCreateBeds.previewEmpty')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submit' })).toBeDisabled();
   });
 
-  it('previews row/bed names, abbreviated beyond 12, and creates them', () => {
-    const { dialog, onCreate } = renderDialog();
+  it('shows the live suggestion and applies it only through the link', () => {
+    const { dialog } = renderDialog();
+    setDecimal(dialog, /dialogs.bulkCreateBeds.width/, '1,2');
+    setDecimal(dialog, /dialogs.bulkCreateBeds.pathWidth/, '0,4');
 
-    fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.namingRowBed' }));
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'dialogs.bulkCreateBeds.prefix' }), { target: { value: 'E' } });
-    setValue(dialog, /dialogs.bulkCreateBeds.rowCount/, '2');
-    setValue(dialog, /dialogs.bulkCreateBeds.bedsPerRow/, '8');
-    setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '10');
-    setDecimal(dialog, /dialogs.bulkCreateBeds.width/, '0,75');
+    // floor((10 + 0.4) / (1.2 + 0.4)) = 6
+    expect(within(dialog).getByText('dialogs.bulkCreateBeds.suggestion:6')).toBeInTheDocument();
+    expect(countField(dialog)).toHaveValue(null);
 
+    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.applySuggestion:6' }));
+
+    expect(countField(dialog)).toHaveValue(6);
+    expect(within(dialog).queryByRole('button', { name: /applySuggestion/ })).not.toBeInTheDocument();
+  });
+
+  it('prefills the count, continues the names and counts in existing beds', () => {
+    const { dialog, onCreate } = renderDialog([
+      { id: 1, name: 'E 2 1', field: 10, length_m: 20, width_m: 1 },
+      { id: 2, name: 'E 2 2', field: 10, length_m: 20, width_m: 1 },
+    ]);
+
+    // free = 10 - 2 = 8 → 8 beds of 1 m
+    expect(countField(dialog)).toHaveValue(8);
+    expect(within(dialog).getByText('dialogs.bulkCreateBeds.suggestionRemaining:8')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /applySuggestion/ })).not.toBeInTheDocument();
+
+    fireEvent.change(countField(dialog), { target: { value: '16' } });
     const items = within(within(dialog).getByRole('list')).getAllByRole('listitem').map((item) => item.textContent);
-    expect(items).toEqual(['E 1 1', 'E 1 2', 'E 1 3', 'E 1 4', 'E 1 5', 'E 1 6', '…', 'E 2 6', 'E 2 7', 'E 2 8']);
-    expect(within(dialog).getByText('dialogs.bulkCreateBeds.summary:16')).toBeInTheDocument();
+    expect(items).toEqual(['E 2 3', 'E 2 4', 'E 2 5', 'E 2 6', 'E 2 7', 'E 2 8', '…', 'E 2 16', 'E 2 17', 'E 2 18']);
+    // The suggestion never overwrites the typed value; the link offers it again.
+    expect(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.applySuggestion:8' })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount:16' }));
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ field: 10 }));
     expect(onCreate.mock.calls[0][0].beds).toHaveLength(16);
-    expect(onCreate.mock.calls[0][0].beds[15]).toEqual({ name: 'E 2 8', length_m: 10, width_m: 0.75 });
+    expect(onCreate.mock.calls[0][0].beds[15]).toEqual({ name: 'E 2 18', length_m: 20, width_m: 1 });
   });
 
-  it('suggests a count from the field width and applies it with the field length', () => {
+  it('switches the length with the orientation until the user edits it', () => {
     const { dialog } = renderDialog();
-    setDecimal(dialog, /dialogs.bulkCreateBeds.width/, '1,2');
+    const length = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ });
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.calculatorToggle' }));
-    setDecimal(dialog, 'dialogs.bulkCreateBeds.pathWidth', '0,4');
-    // floor((10 + 0.4) / (1.2 + 0.4)) = 6
-    expect(within(dialog).getByText('dialogs.bulkCreateBeds.suggestion:6')).toBeInTheDocument();
-    expect(within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.count/ })).toHaveValue(null);
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationWidth' }));
+    expect(length).toHaveValue('10');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.applyCount' }));
-
-    expect(within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.count/ })).toHaveValue(6);
-    expect(within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ })).toHaveValue('20');
+    setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '7');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationLength' }));
+    expect(length).toHaveValue('7');
   });
 
-  it('applies the suggestion to "beds per row" in row/bed mode', () => {
-    const { dialog } = renderDialog([{ id: 1, name: 'A 1 1', field: 10, length_m: 15, width_m: 1 }]);
+  it('says when no room is left', () => {
+    const { dialog } = renderDialog([{ id: 1, name: 'A', field: 10, length_m: 20, width_m: 10 }]);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.calculatorToggle' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.applyCount' }));
-
-    expect(within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.bedsPerRow/ })).toHaveValue(10);
-    expect(within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ })).toHaveValue('15');
+    expect(within(dialog).getByText('dialogs.bulkCreateBeds.noSpaceLeft')).toBeInTheDocument();
+    expect(countField(dialog)).toHaveValue(null);
   });
 
-  it('hides the calculator for a field without dimensions', () => {
+  it('hides the orientation and the hint for a field without dimensions', () => {
     const { dialog } = renderDialog([], { ...FIELD, length_m: null, width_m: null });
+    setDecimal(dialog, /dialogs.bulkCreateBeds.width/, '1');
 
-    expect(within(dialog).queryByRole('button', { name: 'dialogs.bulkCreateBeds.calculatorToggle' })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/dialogs.bulkCreateBeds.suggestion/)).not.toBeInTheDocument();
   });
 
   it('warns without blocking when the beds exceed the field area', () => {
     const { dialog } = renderDialog([{ id: 1, name: '1', field: 10, length_m: 20, width_m: 9, area_sqm: 180 }]);
-    setValue(dialog, /dialogs.bulkCreateBeds.count/, '2');
+    fireEvent.change(countField(dialog), { target: { value: '2' } });
 
     expect(within(dialog).getByText('dialogs.bulkCreateBeds.areaWarning')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount:2' })).toBeEnabled();
   });
 
   it('blocks names that already exist in the field', () => {
-    const { dialog } = renderDialog([{ id: 2, name: 'x', field: 10 }, { id: 1, name: '3', field: 10, length_m: 1, width_m: 1 }]);
-    setValue(dialog, /dialogs.bulkCreateBeds.count/, '4');
+    const { dialog } = renderDialog([{ id: 2, name: '5', field: 10 }, { id: 1, name: '3', field: 10, length_m: 1, width_m: 1 }]);
+    fireEvent.change(countField(dialog), { target: { value: '4' } });
 
     expect(within(dialog).getByText('dialogs.bulkCreateBeds.namesTaken:1')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount:4' })).toBeDisabled();

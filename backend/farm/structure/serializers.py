@@ -256,6 +256,21 @@ class BulkBedCreateSerializer(serializers.Serializer):
         return attrs
 
 
+class FieldDuplicateSerializer(serializers.Serializer):
+    """Input of "Parzelle duplizieren": the new name and how to copy the beds."""
+
+    name = serializers.CharField(max_length=200)
+    copy_beds = serializers.BooleanField(default=True)
+    # Not trimmed: a space can be part of what is searched or inserted.
+    replace_search = serializers.CharField(
+        max_length=200, required=False, allow_blank=True, trim_whitespace=False, default='',
+        help_text='Replaced in each copied bed name, first case-sensitive occurrence only.',
+    )
+    replace_with = serializers.CharField(
+        max_length=200, required=False, allow_blank=True, trim_whitespace=False, default='',
+    )
+
+
 class FieldLayoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = FieldLayout

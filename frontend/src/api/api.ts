@@ -8,6 +8,8 @@ import type {
   CropLibraryToken,
   CropLibraryTokenCreatePayload,
   CropLibraryTokenCreated,
+  FieldDuplicatePayload,
+  FieldDuplicateResponse,
   AppNotification,
   NotificationListResponse,
   Crop,
@@ -456,6 +458,8 @@ export const fieldAPI = {
   get: (id: number) => http.get<Field>(`/fields/${id}/`),
   create: (data: Field) => http.post<Field>('/fields/', withActiveProject(data)),
   update: (id: number, data: Field) => http.put<Field>(`/fields/${id}/`, withActiveProject(data)),
+  duplicate: (id: number, data: FieldDuplicatePayload) =>
+    http.post<FieldDuplicateResponse>(`/fields/${id}/duplicate/`, data),
   delete: (id: number) => http.delete(`/fields/${id}/`),
 };
 
@@ -636,6 +640,8 @@ export type {
   Field,
   Bed,
   BulkBedCreatePayload,
+  FieldDuplicatePayload,
+  FieldDuplicateResponse,
   PlantingPlan,
   PaginatedResponse,
   Supplier,

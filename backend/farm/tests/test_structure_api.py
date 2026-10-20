@@ -1,6 +1,9 @@
 """API tests for locations, fields, beds, and areas."""
 
 
+from datetime import date
+from unittest import mock
+
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
@@ -14,6 +17,7 @@ from farm.models import (
     Field,
     FieldLayout,
     Location,
+    PlantingPlan,
     Project,
     ProjectMembership,
     Supplier,
@@ -362,6 +366,178 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
             self.client.post(self.url, self._payload(['S 1', 'S 2']), format='json')
         with CaptureQueriesContext(connection) as large:
             self.client.post(self.url, self._payload(['L 1', 'L 2', 'L 3', 'L 4']), format='json')
+
+        per_bed = (len(large.captured_queries) - len(small.captured_queries)) / 2
+        self.assertEqual(per_bed, 3)
+
+
+class FieldDuplicateApiTest(ProjectApiTestCase):
+    """POST /fields/{id}/duplicate/ copies a field and its beds atomically."""
+
+    def setUp(self):
+        super().setUp()
+        self.field.length_m = 20
+        self.field.width_m = 10
+        self.field.notes = 'Field notes'
+        self.field.save()
+        self.bed.notes = 'Bed notes'
+        self.bed.name = 'Nord 1'
+        self.bed.length_m = 20
+        self.bed.width_m = 1.2
+        self.bed.save()
+        Bed.objects.create(
+            name='Nord 2', field=self.field, length_m=20, width_m=0.8, project=self.project,
+        )
+        PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, planting_date=date(2026, 4, 1), project=self.project,
+        )
+        FieldLayout.objects.create(
+            field=self.field, location=self.location, project=self.project, x=1, y=2,
+        )
+
+    def _url(self, field_id: int | None = None) -> str:
+        return f'/openfarmplanner/api/fields/{field_id or self.field.id}/duplicate/'
+
+    def test_copies_field_and_beds_without_notes_plans_or_layout(self):
+        response = self.client.post(self._url(), {'name': 'Kopie'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_field = Field.objects.get(pk=response.data['field']['id'])
+        self.assertEqual(new_field.name, 'Kopie')
+        self.assertEqual(new_field.location_id, self.location.id)
+        self.assertEqual(new_field.project_id, self.project.id)
+        self.assertEqual((new_field.length_m, new_field.width_m), (20, 10))
+        self.assertEqual(float(new_field.area_sqm), 200.0)
+        self.assertEqual(new_field.notes, '')
+        self.assertFalse(FieldLayout.objects.filter(field=new_field).exists())
+
+        self.assertEqual([bed['name'] for bed in response.data['beds']], ['Nord 1', 'Nord 2'])
+        new_beds = Bed.objects.filter(field=new_field).order_by('name')
+        self.assertEqual([(bed.length_m, bed.width_m) for bed in new_beds], [(20, 1.2), (20, 0.8)])
+        for bed in new_beds:
+            self.assertEqual((bed.notes, bed.project_id), ('', self.project.id))
+        self.assertFalse(PlantingPlan.objects.filter(bed__field=new_field).exists())
+        # The source is untouched.
+        self.assertEqual(Bed.objects.filter(field=self.field).count(), 2)
+        self.assertEqual(PlantingPlan.objects.filter(bed__field=self.field).count(), 1)
+
+    def test_records_created_revisions(self):
+        response = self.client.post(self._url(), {'name': 'Kopie'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = EntityRevision.objects.filter(
+            project=self.project, action=EntityRevision.ACTION_CREATED,
+        )
+        field_id = response.data['field']['id']
+        bed_ids = [bed['id'] for bed in response.data['beds']]
+        self.assertTrue(created.filter(entity_type='field', object_id=field_id).exists())
+        self.assertEqual(created.filter(entity_type='bed', object_id__in=bed_ids).count(), 2)
+
+    def test_without_beds(self):
+        payload = {'name': 'Leer', 'copy_beds': False}
+        response = self.client.post(self._url(), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['beds'], [])
+        self.assertFalse(Bed.objects.filter(field_id=response.data['field']['id']).exists())
+
+    def test_replaces_first_case_sensitive_occurrence_in_bed_names(self):
+        payload = {'name': 'Süd', 'replace_search': 'Nord', 'replace_with': 'Süd'}
+        response = self.client.post(self._url(), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual([bed['name'] for bed in response.data['beds']], ['Süd 1', 'Süd 2'])
+
+        Bed.objects.create(name='nord Nord Nord', field=self.field, project=self.project)
+        payload = {'name': 'Süd 2', 'replace_search': 'Nord', 'replace_with': 'X'}
+        response = self.client.post(self._url(), payload, format='json')
+        self.assertIn('nord X Nord', [bed['name'] for bed in response.data['beds']])
+
+    def test_taken_field_name_is_409_and_creates_nothing(self):
+        Field.objects.create(name='Belegt', location=self.location, project=self.project)
+        fields_before = Field.objects.count()
+
+        response = self.client.post(self._url(), {'name': 'Belegt'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'field_name_taken')
+        self.assertEqual(Field.objects.count(), fields_before)
+
+    def test_bed_names_merged_by_the_replacement_are_409_and_roll_back(self):
+        beds_before = Bed.objects.count()
+        fields_before = Field.objects.count()
+        payload = {'name': 'Kopie', 'replace_search': ' 2', 'replace_with': ' 1'}
+
+        response = self.client.post(self._url(), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'bed_names_conflict')
+        self.assertEqual(response.data['names'], ['Nord 1'])
+        self.assertEqual(Field.objects.count(), fields_before)
+        self.assertEqual(Bed.objects.count(), beds_before)
+
+    def test_empty_bed_name_after_replacement_is_rejected(self):
+        payload = {'name': 'Kopie', 'replace_search': 'Nord 1', 'replace_with': ''}
+
+        response = self.client.post(self._url(), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['names'], ['Nord 1'])
+        self.assertFalse(Field.objects.filter(name='Kopie').exists())
+
+    def test_rolls_back_the_field_when_a_bed_insert_fails(self):
+        fields_before = Field.objects.count()
+        original_create = Bed.objects.create
+        calls = {'count': 0}
+
+        def failing_create(**kwargs):
+            calls['count'] += 1
+            if calls['count'] == 2:
+                raise RuntimeError('simulated')
+            return original_create(**kwargs)
+
+        with mock.patch.object(Bed.objects, 'create', side_effect=failing_create):
+            with self.assertRaises(RuntimeError):
+                self.client.post(self._url(), {'name': 'Kopie'}, format='json')
+
+        self.assertEqual(Field.objects.count(), fields_before)
+        self.assertFalse(Bed.objects.filter(field__name='Kopie').exists())
+
+    def test_field_of_another_project_is_not_found(self):
+        foreign_project = Project.objects.create(name='Foreign dup', slug='foreign-dup-proj')
+        foreign_location = Location.objects.create(name='Foreign', project=foreign_project)
+        foreign_field = Field.objects.create(
+            name='Fremd', location=foreign_location, project=foreign_project,
+        )
+
+        response = self.client.post(self._url(foreign_field.id), {'name': 'Kopie'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(Field.objects.filter(name='Kopie').exists())
+
+    def test_name_is_required(self):
+        response = self.client.post(self._url(), {'name': '  '}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_query_count_does_not_grow_with_lookups_per_bed(self):
+        # Per copied bed there is only the insert, the revision snapshot read
+        # and the revision insert, the same as in the bulk create.
+        small_field = Field.objects.create(
+            name='Klein', location=self.location, project=self.project,
+        )
+        large_field = Field.objects.create(
+            name='Groß', location=self.location, project=self.project,
+        )
+        for index in range(2):
+            Bed.objects.create(name=f'K {index}', field=small_field, project=self.project)
+        for index in range(4):
+            Bed.objects.create(name=f'G {index}', field=large_field, project=self.project)
+
+        with CaptureQueriesContext(connection) as small:
+            self.client.post(self._url(small_field.id), {'name': 'Klein 2'}, format='json')
+        with CaptureQueriesContext(connection) as large:
+            self.client.post(self._url(large_field.id), {'name': 'Groß 2'}, format='json')
 
         per_bed = (len(large.captured_queries) - len(small.captured_queries)) / 2
         self.assertEqual(per_bed, 3)

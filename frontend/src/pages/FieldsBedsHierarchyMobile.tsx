@@ -27,7 +27,9 @@ import {
   type HierarchyEditSheetCreateContext,
 } from "../components/hierarchy/mobile/HierarchyEditSheet";
 import { DeleteUndoSnackbar } from "../components/data-grid";
-import type { HierarchySortConfig } from "../components/hierarchy/utils/hierarchyUtils";
+import { compareHierarchyNames, type HierarchySortConfig } from "../components/hierarchy/utils/hierarchyUtils";
+import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
+import type { Bed } from "../api/api";
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -77,7 +79,7 @@ function FieldsBedsHierarchyMobile({
     fetchData,
   } = hierarchyData ?? internalHierarchyData;
 
-  const { expandedRows, toggleExpand, expandAll } = useExpandedState("fieldsBedsHierarchy");
+  const { expandedRows, toggleExpand, expandAll, ensureExpanded } = useExpandedState("fieldsBedsHierarchy");
   const { sortModel } = usePersistentSortModel({
     tableKey: "fieldsBedsHierarchy",
     allowedFields: ["name", "area_sqm"],
@@ -92,6 +94,21 @@ function FieldsBedsHierarchyMobile({
   }, [sortModel]);
 
   const rows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows);
+
+  const getFieldBedsByName = useCallback(
+    (fieldId: number): Bed[] => beds
+      .filter((bed) => bed.field === fieldId)
+      .sort((left, right) => compareHierarchyNames(left.name ?? "", right.name ?? "")),
+    [beds],
+  );
+  const { openDuplicateField, dialog: duplicateFieldDialog } = useFieldDuplication({
+    fields,
+    setFields,
+    setBeds,
+    getFieldBeds: getFieldBedsByName,
+    ensureExpanded,
+    t,
+  });
 
   const {
     saveBed,
@@ -112,6 +129,7 @@ function FieldsBedsHierarchyMobile({
     setSelectedRowId,
     setError,
     onPendingDeletionCountChange,
+    onDuplicateField: openDuplicateField,
     t,
   });
 
@@ -236,8 +254,9 @@ function FieldsBedsHierarchyMobile({
     if (sheetState?.mode !== "edit") {
       return [];
     }
+    // Deleting closes the sheet, and so does duplicating: its dialog takes over.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
-      action.group === "destructive"
+      action.group === "destructive" || action.id === "duplicate-field"
         ? {
             ...action,
             onClick: () => {
@@ -293,6 +312,8 @@ function FieldsBedsHierarchyMobile({
           t,
         }}
       />
+
+      {duplicateFieldDialog}
 
       <Stack>
         {pendingDeletions.map((deletion, index) => (

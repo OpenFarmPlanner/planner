@@ -20,6 +20,7 @@ const {
   bedUpdateMock,
   fieldCreateMock,
   fieldDeleteMock,
+  fieldDuplicateMock,
   fieldListMock,
   fieldUpdateMock,
   locationCreateMock,
@@ -36,6 +37,7 @@ const {
   bedUpdateMock: vi.fn(),
   fieldCreateMock: vi.fn(),
   fieldDeleteMock: vi.fn(),
+  fieldDuplicateMock: vi.fn(),
   fieldListMock: vi.fn(),
   fieldUpdateMock: vi.fn(),
   locationCreateMock: vi.fn(),
@@ -92,6 +94,7 @@ vi.mock('../api/api', async () => {
     fieldAPI: {
       create: fieldCreateMock,
       delete: fieldDeleteMock,
+      duplicate: fieldDuplicateMock,
       list: fieldListMock,
       listAll: async () => (await fieldListMock()).data,
       update: fieldUpdateMock,
@@ -968,6 +971,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Beet hinzufügenEinfg',
       'Mehrere Beete anlegen',
+      'Parzelle duplizieren',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
@@ -984,6 +988,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Beet hinzufügenEinfg',
       'Mehrere Beete anlegen',
+      'Parzelle duplizieren',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
@@ -1082,6 +1087,36 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('duplicates a field with its beds from the field menu', async () => {
+    bedListMock.mockResolvedValue({
+      data: { results: [{ id: 21, name: 'N 1', field: 10, length_m: 10, width_m: 1, area_sqm: 10 }] },
+    });
+    fieldDuplicateMock.mockResolvedValue({
+      data: {
+        field: { id: 11, name: 'Nordfeld 2', location: 1, area_sqm: 20 },
+        beds: [{ id: 600, name: 'S 1', field: 11, length_m: 10, width_m: 1, area_sqm: 10 }],
+      },
+    });
+    renderHierarchy();
+
+    fireEvent.contextMenu(await screen.findByTestId('row-field-10'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Parzelle duplizieren' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('textbox', { name: /dialogs.duplicateField.name/ })).toHaveValue('Nordfeld 2');
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'dialogs.duplicateField.replaceSearch' }), { target: { value: 'N' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'dialogs.duplicateField.replaceWith' }), { target: { value: 'S' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.duplicateField.submit' }));
+
+    await waitFor(() => expect(fieldDuplicateMock).toHaveBeenCalledWith(10, {
+      name: 'Nordfeld 2', copy_beds: true, replace_search: 'N', replace_with: 'S',
+    }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByTestId('row-field-11')).toBeInTheDocument();
+    // The copy is expanded, so its bed is visible right away.
+    expect(screen.getByTestId('row-600')).toBeInTheDocument();
+  });
+
   it('creates a numbered bed series from the "Mehrere Beete anlegen" dialog', async () => {
     bedListMock.mockResolvedValue({
       data: { results: [{ id: 21, name: 'E 1', field: 10, length_m: 10, width_m: 0.75, area_sqm: 7.5 }] },
@@ -1095,8 +1130,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByRole('textbox', { name: 'dialogs.bulkCreateBeds.prefix' })).toHaveValue('E');
-    expect(within(dialog).getByRole('spinbutton', { name: 'dialogs.bulkCreateBeds.startNumber' })).toHaveValue(2);
+    expect(within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.firstName/ })).toHaveValue('E 2');
     fireEvent.change(within(dialog).getByRole('spinbutton', { name: /dialogs.bulkCreateBeds.count/ }), {
       target: { value: '3' },
     });
