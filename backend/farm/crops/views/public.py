@@ -36,6 +36,7 @@ from farm.models import (
 from farm.project_context import get_active_project_optional, get_active_project_or_400
 from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
 from farm.services.public_discussions import delete_comment_by_author, remove_comment_by_moderation
+from farm.services.public_crop_trade_names import matched_trade_name, variety_search_query
 from farm.services.public_crops import (
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
@@ -172,6 +173,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 ),
             )
         )
+        if self.action in {'list', 'retrieve'}:
+            # Only the serialized entries read `variety_display`/`trade_names`;
+            # detail actions (discussions, versions, …) never need them.
+            queryset = queryset.prefetch_related('trade_names')
         active_project = get_active_project_optional(self.request)
         if active_project is not None:
             queryset = queryset.prefetch_related(
@@ -193,8 +198,8 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if name:
             queryset = queryset.filter(build_public_crop_search_query(name, include_variety=False)).distinct()
         if variety:
-            # Variety names are proper names — matched verbatim, not translated.
-            queryset = queryset.filter(variety__icontains=variety)
+            # The original name is never translated; trade names are matched too.
+            queryset = queryset.filter(variety_search_query(variety)).distinct()
         if crop_species_param:
             try:
                 queryset = queryset.filter(crop_species_id=int(crop_species_param))
@@ -412,6 +417,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 'id': crop.id,
                 'name': crop.name,
                 'variety': crop.variety,
+                'matched_trade_name': matched_trade_name(crop, request.query_params.get('variety')),
             },
         })
 

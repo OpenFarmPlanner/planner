@@ -20,6 +20,7 @@ from config.responses import api_error_response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from config.languages import REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
+from farm.services.public_crop_trade_names import matched_trade_name
 
 from . import services
 from .agent_api.permissions import CropLibraryTokenAccessPermission
@@ -442,6 +443,7 @@ class CropViewSet(viewsets.ReadOnlyModelViewSet):
                 'id': crop.id,
                 'name': crop.name,
                 'variety': crop.variety,
+                'matched_trade_name': matched_trade_name(crop, request.query_params.get('variety')),
             },
         })
 

@@ -1,10 +1,10 @@
 # RFC: Language-specific trade names for varieties in the public crop library
 
-**Status:** design decided (2026-10-20), not yet implemented. No code,
-migrations, or permission changes have been made. This document is the
-"analyse and plan" step. §2 lists the decisions that were fixed before
-analysis began, and §13 records the decisions made on review.
-Implementation still needs its own go-ahead.
+**Status:** design decided (2026-10-20); phases 0 and 1 implemented
+(2026-10-20), phases 2–5 not yet. §2 lists the decisions that were fixed
+before analysis began, and §13 records the decisions made on review. §3
+describes the state *before* this work and is kept as the baseline the design
+was derived from. Implementation notes for the shipped phases are in §12.
 
 ## 1. Motivation
 
@@ -560,6 +560,20 @@ through the automated security review.
 | 3. Frontend | Display helper and every surface in §6.2. The dialog in the detail view. History in the dialog. The report action. The moderation queue. Sync and import comparison rules. Translations in all four languages. Visual review at 375/768/1024/1440 and in phone landscape for the detail view and the dialog. | Users can maintain trade names. |
 | 4. Starter set | `CropLibraryApiToken` opt-in (§9) and token-surface tests. Staging first, then a `crop-data` sync job. | Starter set imported on production. |
 | 5. Linked private crops | Read-only `variety_display_name` on the project crop API, shown in project views and found by page search (§13, D1). Query-count test for `GET /api/crops/`. | A linked crop shows the trade name in the UI language. |
+
+**Shipped in phases 0–1:** the glossary entry; `PublicCropTradeName` and
+`PublicCropTradeNameEvent` (`farm/models/crops.py`, migration
+`farm.0115_public_crop_trade_names`); `PublicCrop.variety_trade_name()` /
+`variety_display()` / `trade_names_by_language()`; the read fields of §5.1 on
+`/api/public-crops/` and `/api/crop-library/`; `matched_trade_name` on
+duplicate candidates and both `/match/` responses; trade-name search on `q`
+and `variety` (`farm/services/public_crop_trade_names.py`); trade names in
+duplicate detection and identity conflicts (rename, restore, relink); and the
+`œ`/`æ` folding in `search.md`, `frontend/src/search/searchText.ts` and
+`farm.utils.normalize_search_text`. A variety rename, restore or relink that
+makes a trade name invalid (equal to the new original, or the entry became a
+species-level entry) removes it and records a `removed` event. Phase 1 has no
+write endpoint: trade names can only be created in the database until phase 2.
 
 Suggested effort: **high** for phases 1–2 (identity, duplicate detection,
 permission and token surface) and **medium** for phase 3.

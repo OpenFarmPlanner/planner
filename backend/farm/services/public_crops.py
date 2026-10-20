@@ -61,6 +61,12 @@ from farm.services.crop_inheritance import (
     resolve_crop_field,
     sync_crop_species_across_crop_group,
 )
+from farm.services.public_crop_trade_names import (
+    find_variety_identity_conflict,
+    matched_trade_name,
+    prune_trade_names_for_variety,
+    variety_identity_query,
+)
 
 User = get_user_model()
 
@@ -173,6 +179,9 @@ class DuplicateCandidate:
     published_at: Any
     created_by_label: str
     is_mine: bool
+    # Set when the crop matched this entry through a trade name rather than
+    # its original variety name: ``{'language_code': 'fr', 'name': 'Poire jaune'}``.
+    matched_trade_name: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -448,9 +457,11 @@ def find_public_crop_identity_conflict(
     """Another published entry that a variety rename would collide with, if any.
 
     Mirrors the identity rule in :func:`detect_public_crop_duplicates`
-    (species, or legacy name, plus normalized variety) but starts from an
-    existing ``PublicCrop`` being renamed rather than a project ``Crop``
-    being published, and excludes the entry itself.
+    (species, or legacy name, plus a variety matched by its original name or
+    any trade name) but starts from an existing ``PublicCrop`` being renamed
+    rather than a project ``Crop`` being published, and excludes the entry
+    itself. The entry's own trade names are checked too: they move with it, so
+    they must not identify another entry of the target species either.
 
     ``crop_species_id`` asks the same question about a species the entry does
     not carry yet, which is what the "Kulturart korrigieren" relink needs:
@@ -460,19 +471,12 @@ def find_public_crop_identity_conflict(
     target_species_id = (
         crop_species_id if crop_species_id is not None else public_crop.crop_species_id
     )
-    normalized_variety = normalize_identity_value(variety)
-    queryset = PublicCrop.objects.filter(
-        status=PublicCrop.STATUS_PUBLISHED,
-        variety_normalized=normalized_variety,
-    ).exclude(pk=public_crop.pk)
-    if target_species_id:
-        queryset = queryset.filter(
-            Q(crop_species_id=target_species_id)
-            | Q(crop_species__isnull=True, name_normalized=public_crop.name_normalized),
-        )
-    else:
-        queryset = queryset.filter(name_normalized=public_crop.name_normalized)
-    return queryset.first()
+    own_trade_names = [trade_name.name for trade_name in public_crop.trade_names.all()]
+    return find_variety_identity_conflict(
+        public_crop,
+        names=[variety, *own_trade_names],
+        crop_species_id=target_species_id,
+    )
 
 
 def update_public_crop_directly(
@@ -523,13 +527,7 @@ def update_public_crop_directly(
             if conflict is not None:
                 raise PublicCropIdentityConflictError(conflicting_public_crop=conflict)
 
-        update_fields = [*changed_field_names, 'version', 'updated_at']
-        if 'variety' in changed_field_names:
-            update_fields.append('variety_normalized')
-        locked.version = max(locked.version, 1) + 1
-        locked.save(update_fields=update_fields)
-        if 'notes' in changed_field_names:
-            sync_original_language_translation(locked)
+        _save_edited_public_crop(locked, changed_field_names, user=user)
         create_public_crop_revision(
             public_crop=locked,
             user=user,
@@ -537,6 +535,24 @@ def update_public_crop_directly(
             previous_snapshot=previous_snapshot,
         )
         return locked
+
+
+def _save_edited_public_crop(
+    public_crop: PublicCrop,
+    changed_field_names: list[str],
+    *,
+    user: User | None,
+) -> None:
+    """Persist a direct edit as the next version, with its dependent rows."""
+    update_fields = [*changed_field_names, 'version', 'updated_at']
+    if 'variety' in changed_field_names:
+        update_fields.append('variety_normalized')
+    public_crop.version = max(public_crop.version, 1) + 1
+    public_crop.save(update_fields=update_fields)
+    if 'variety' in changed_field_names:
+        prune_trade_names_for_variety(public_crop, user=user)
+    if 'notes' in changed_field_names:
+        sync_original_language_translation(public_crop)
 
 
 def restore_public_crop_version(
@@ -579,6 +595,8 @@ def restore_public_crop_version(
 
         locked.version = max(locked.version, 1) + 1
         locked.save(update_fields=[*update_fields, 'version', 'updated_at'])
+        if 'variety' in update_fields:
+            prune_trade_names_for_variety(locked, user=user)
         if 'notes' in update_fields:
             # Restoring an old version rewrites `notes`; the original-language
             # translation has to follow, or the entry would keep rendering the
@@ -1404,16 +1422,17 @@ def detect_public_crop_duplicates(
     species can be determined at all does this fall back to name matching, for
     legacy entries that predate species links.
 
+    The variety matches an entry's original name or any of its trade names,
+    so publishing ``Tomate + Poire jaune`` finds ``Gelbe Birne`` once that
+    entry carries the French trade name; the candidate then reports it in
+    ``matched_trade_name``.
+
     Normalization is intentionally shallow — trim, collapse whitespace,
     case-fold — and never touches the stored or displayed original name.
     """
-    normalized_variety = (
-        normalize_identity_value(public_variety)
-        if public_variety is not None
-        else crop.variety_normalized
-    )
+    variety = public_variety if public_variety is not None else crop.variety
     queryset = PublicCrop.objects.filter(
-        variety_normalized=normalized_variety,
+        variety_identity_query(variety),
         status=PublicCrop.STATUS_PUBLISHED,
     )
     species = crop_species or crop.crop_species or find_species_by_common_name(crop.name)
@@ -1425,7 +1444,13 @@ def detect_public_crop_duplicates(
         )
     else:
         queryset = queryset.filter(name_normalized=crop.name_normalized)
-    queryset = queryset.select_related('created_by').order_by('-published_at', '-id')
+    queryset = (
+        queryset
+        .distinct()
+        .select_related('created_by')
+        .prefetch_related('trade_names')
+        .order_by('-published_at', '-id')
+    )
 
     candidates: list[DuplicateCandidate] = []
     for item in queryset:
@@ -1437,6 +1462,7 @@ def detect_public_crop_duplicates(
             published_at=item.published_at,
             created_by_label=item.created_by_label,
             is_mine=bool(user and user.is_authenticated and item.created_by_id == user.id),
+            matched_trade_name=matched_trade_name(item, variety),
         ))
         if len(candidates) >= 5:
             break
@@ -1740,6 +1766,8 @@ def _update_public_crop_from_project_crop(
         public_crop.published_at = timezone.now()
         public_crop.status_changed_at = timezone.now()
     public_crop.save()
+    if previous_snapshot.get('variety') != public_crop.variety:
+        prune_trade_names_for_variety(public_crop, user=public_crop.created_by)
     create_public_crop_revision(
         public_crop=public_crop,
         user=public_crop.created_by,
@@ -1890,6 +1918,7 @@ def _apply_public_crop_species_relink(
         locked.variety = target_variety
         locked.version = max(locked.version, 1) + 1
         locked.save(update_fields=['crop_species', 'variety', 'variety_normalized', 'version', 'updated_at'])
+        prune_trade_names_for_variety(locked, user=user)
         create_public_crop_revision(
             public_crop=locked,
             user=user,

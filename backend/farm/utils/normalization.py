@@ -5,6 +5,7 @@ supplier names) for consistent matching and deduplication in the database.
 """
 
 import re
+import unicodedata
 
 
 def normalize_text(value: str | None) -> str | None:
@@ -71,3 +72,21 @@ def normalize_supplier_name(value: str | None) -> str | None:
     normalized = normalized.strip()
     
     return normalized if normalized else None
+
+
+_COMBINING_MARKS = re.compile(r'[̀-ͯ]')
+# Ligatures that NFD leaves intact ("Cœur de bœuf" is typed "coeur de boeuf").
+_LIGATURE_FOLDS = {'œ': 'oe', 'æ': 'ae'}
+
+
+def normalize_search_text(value: str | None) -> str:
+    """Fold text the way ``docs/search.md`` §Normalization specifies.
+
+    Lower case, ``ß`` → ``ss``, ``œ``/``æ`` → ``oe``/``ae``, diacritics
+    removed after NFD decomposition, whitespace trimmed and collapsed. Mirrors
+    ``normalizeSearchText`` in ``frontend/src/search/searchText.ts``.
+    """
+    compacted = ' '.join((value or '').split()).lower().replace('ß', 'ss')
+    for ligature, folded in _LIGATURE_FOLDS.items():
+        compacted = compacted.replace(ligature, folded)
+    return _COMBINING_MARKS.sub('', unicodedata.normalize('NFD', compacted))

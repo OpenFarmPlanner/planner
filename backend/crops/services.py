@@ -39,6 +39,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce, Greatest
 
 from farm.models import PublicCrop
+from farm.services.public_crop_trade_names import variety_identity_query, variety_search_query
 from farm.utils import normalize_text
 
 if TYPE_CHECKING:
@@ -113,11 +114,15 @@ def build_crop_search_terms(value: str) -> set[str]:
 
 
 def build_public_crop_search_query(value: str, *, include_variety: bool = True) -> Q:
-    """Build a search query spanning crop names, species names, and translations."""
+    """Build a search query spanning crop names, species names, and translations.
+
+    The variety part covers the original name and every trade name in every
+    language, so ``Poire jaune`` finds ``Gelbe Birne`` from any UI language.
+    """
     query = Q()
     stripped_value = value.strip()
     if stripped_value and include_variety:
-        query |= Q(variety__icontains=stripped_value)
+        query |= variety_search_query(stripped_value)
     for term in build_crop_search_terms(value):
         query |= (
             Q(name_normalized__icontains=term)
@@ -430,7 +435,7 @@ def list_published_crops(
         # reads `created_by_label`; without it the attribution alone costs two
         # queries per result.
         .select_related('crop_species', 'created_by__public_profile')
-        .prefetch_related('crop_species__translations', 'translations')
+        .prefetch_related('crop_species__translations', 'translations', 'trade_names')
         .order_by('name', 'variety')
     )
 
@@ -445,8 +450,8 @@ def list_published_crops(
             build_public_crop_search_query(name, include_variety=False),
         ).distinct()
     if variety:
-        # Variety names are proper names: never translated, matched verbatim.
-        queryset = queryset.filter(variety__icontains=variety)
+        # The original name is never translated; trade names are matched too.
+        queryset = queryset.filter(variety_search_query(variety)).distinct()
     return queryset
 
 
@@ -517,8 +522,9 @@ def find_exact_crop_match(*, name: str | None, variety: str | None) -> PublicCro
 
     Identity is (species, normalized variety) whenever the name resolves to a
     species, so a German and an English spelling of the same species find the
-    same entry. Entries published before species links existed are still
-    matched on their own normalized name.
+    same entry. The variety matches the original name or any trade name.
+    Entries published before species links existed are still matched on their
+    own normalized name.
     """
     normalized_name = normalize_text(name)
     normalized_variety = normalize_text(variety)
@@ -526,8 +532,8 @@ def find_exact_crop_match(*, name: str | None, variety: str | None) -> PublicCro
         return None
 
     queryset = PublicCrop.objects.filter(
+        variety_identity_query(variety),
         status=PublicCrop.STATUS_PUBLISHED,
-        variety_normalized=normalized_variety,
     ).filter(visible_public_crop_species_query())
     species = find_species_by_common_name(name)
     if species is not None:
@@ -537,7 +543,9 @@ def find_exact_crop_match(*, name: str | None, variety: str | None) -> PublicCro
 
     return (
         queryset
-        .only('id', 'name', 'variety', 'published_at')
+        .distinct()
+        .only('id', 'name', 'variety', 'variety_normalized', 'published_at')
+        .prefetch_related('trade_names')
         .order_by('-published_at', '-id')
         .first()
     )

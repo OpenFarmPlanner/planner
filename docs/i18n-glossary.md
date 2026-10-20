@@ -101,6 +101,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Kultur | Crop | Culture | Cultivo |
 | Kulturen | Crops | Cultures | Cultivos |
 | Sorte | Variety | Variété | Variedad |
+| Handelsname (Sorte) | Trade name | Nom commercial | Nombre comercial |
 | Kulturart | Crop species | Espèce cultivée | Especie de cultivo |
 | Kulturbibliothek | Crop library | Bibliothèque de cultures | Biblioteca de cultivos |
 | Pflanzenfamilie | Crop family | Famille botanique | Familia botánica |

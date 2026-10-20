@@ -1135,11 +1135,43 @@ class PublicCrop(TimestampedModel):
             return notes, (self.original_language_code or None)
         return '', None
 
+    def trade_names_by_language(self) -> dict[str, dict[str, str]]:
+        """language code → ``{name, source_url}``, for every stored trade name."""
+        return {
+            trade_name.language_code: {'name': trade_name.name, 'source_url': trade_name.source_url}
+            for trade_name in self.trade_names.all()
+        }
+
+    def variety_trade_name(self, language_code: str | None) -> str | None:
+        """Trade name in exactly ``language_code``, or None.
+
+        Deliberately no fallback chain: another language's trade name is not
+        what this variety is sold as here, and the original name needs no
+        "only available in …" label.
+        """
+        from config.languages import normalize_language_tag
+
+        if not (self.variety or '').strip():
+            return None
+        requested = normalize_language_tag(language_code)
+        for trade_name in self.trade_names.all():
+            if trade_name.language_code == requested:
+                return trade_name.name
+        return None
+
+    def variety_display(self, language_code: str | None) -> str:
+        """``"Poire jaune (Gelbe Birne)"`` with a trade name, else the original name."""
+        trade_name = self.variety_trade_name(language_code)
+        if trade_name:
+            return f'{trade_name} ({self.variety})'
+        return self.variety
+
     def display_name(self, language_code: str | None, region: str | None = None) -> tuple[str, str]:
         """Species common name in the requested language, plus that language.
 
-        ``variety`` is deliberately not part of this: variety names are proper
-        names and are never translated. Callers combine the two themselves.
+        ``variety`` is deliberately not part of this: the original variety name
+        is never translated (see :meth:`variety_display` for trade names).
+        Callers combine the two themselves.
         """
         if self.crop_species_id and self.crop_species is not None:
             return self.crop_species.localized_name(language_code, region)
@@ -1185,6 +1217,119 @@ class PublicCropTranslation(models.Model):
 
     def __str__(self) -> str:
         return f'{self.public_crop_id} [{self.language_code}]'
+
+
+class PublicCropTradeName(models.Model):
+    """The name a variety is sold under in one language area, if any.
+
+    Not a translation of :attr:`PublicCrop.variety`: the original name stays
+    the entry's identity, and a trade name exists only where the variety is
+    actually traded under it (``Gelbe Birne`` → ``Poire jaune``). Only variety
+    entries carry trade names, never a species-level general entry. See
+    docs/rfc-variety-trade-names.md.
+    """
+
+    public_crop = models.ForeignKey(
+        PublicCrop,
+        on_delete=models.CASCADE,
+        related_name='trade_names',
+    )
+    language_code = models.CharField(max_length=10, db_index=True)
+    name = models.CharField(max_length=200)
+    name_normalized = models.CharField(max_length=200, db_index=True, editable=False)
+    source_url = models.URLField(max_length=500, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_public_crop_trade_names',
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='updated_public_crop_trade_names',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['language_code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['public_crop', 'language_code'],
+                name='unique_public_crop_trade_name_per_language',
+            ),
+        ]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        from farm.utils import normalize_search_text
+
+        self.language_code = (self.language_code or '').strip().lower()
+        self.name = ' '.join((self.name or '').split())
+        self.name_normalized = normalize_search_text(self.name)
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            kwargs['update_fields'] = set(update_fields) | {'name', 'name_normalized'}
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f'{self.public_crop_id} [{self.language_code}] {self.name}'
+
+
+class PublicCropTradeNameEvent(models.Model):
+    """Append-only history of one entry's trade names, per language.
+
+    Kept apart from :class:`PublicCropRevision` on purpose: a trade-name edit
+    must not bump ``PublicCrop.version`` (that would raise edit conflicts for
+    anyone editing the entry itself), and a revert has to restore one
+    language's name without rolling back unrelated field edits.
+    """
+
+    ACTION_SET = 'set'
+    ACTION_REMOVED = 'removed'
+    ACTION_REVERTED = 'reverted'
+    ACTION_CHOICES = [
+        (ACTION_SET, 'Set'),
+        (ACTION_REMOVED, 'Removed'),
+        (ACTION_REVERTED, 'Reverted'),
+    ]
+
+    public_crop = models.ForeignKey(
+        PublicCrop,
+        on_delete=models.CASCADE,
+        related_name='trade_name_events',
+    )
+    language_code = models.CharField(max_length=10)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    old_name = models.CharField(max_length=200, blank=True)
+    new_name = models.CharField(max_length=200, blank=True)
+    old_source_url = models.URLField(max_length=500, blank=True)
+    new_source_url = models.URLField(max_length=500, blank=True)
+    reverted_event = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='reverts',
+    )
+    origin_api = models.BooleanField(
+        default=False,
+        help_text='Whether this change came through a CropLibraryApiToken-authenticated request.',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='public_crop_trade_name_events',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
 
 
 class PublicCropStatusEvent(models.Model):

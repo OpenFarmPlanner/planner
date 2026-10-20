@@ -90,8 +90,10 @@ class PublicCropSerializer(serializers.ModelSerializer):
     ``display_name``/``description`` are what the app renders in the caller's
     language (after the standard fallback chain), while ``translations`` and
     ``crop_species_translations`` carry every stored language so editorial and
-    moderation screens can edit any of them. ``variety``, supplier, spacings
-    and every numeric field are language-independent and served verbatim.
+    moderation screens can edit any of them. ``variety`` (the original name),
+    supplier, spacings and every numeric field are language-independent and
+    served verbatim; ``variety_display`` adds the trade name of the request
+    language, when one exists, without any language fallback.
     """
 
     created_by_label = serializers.SerializerMethodField()
@@ -121,6 +123,24 @@ class PublicCropSerializer(serializers.ModelSerializer):
     description = serializers.SerializerMethodField()
     description_language_code = serializers.SerializerMethodField()
     translations = serializers.SerializerMethodField()
+    variety_trade_name = serializers.SerializerMethodField(
+        help_text=(
+            'Trade name of the variety in the request language, or null. '
+            'Never another language.'
+        ),
+    )
+    variety_display = serializers.SerializerMethodField(
+        help_text=(
+            '"Trade name (original)" when a trade name exists in the request '
+            'language, else the original name.'
+        ),
+    )
+    trade_names = serializers.SerializerMethodField(
+        help_text=(
+            'Every stored trade name, keyed by language code: '
+            '{"fr": {"name": ..., "source_url": ...}}.'
+        ),
+    )
     project_import_status = serializers.SerializerMethodField()
     imported_crops_count = serializers.SerializerMethodField()
     distance_within_row_cm = CentimetersField(source='distance_within_row_m', read_only=True)
@@ -146,6 +166,9 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'removal_reason',
             'name',
             'variety',
+            'variety_trade_name',
+            'variety_display',
+            'trade_names',
             'notes',
             'crop_species',
             'crop_species_name',
@@ -325,6 +348,15 @@ class PublicCropSerializer(serializers.ModelSerializer):
 
     def get_translations(self, obj: PublicCrop) -> dict[str, str]:
         return obj.descriptions_by_language()
+
+    def get_variety_trade_name(self, obj: PublicCrop) -> str | None:
+        return obj.variety_trade_name(self._language())
+
+    def get_variety_display(self, obj: PublicCrop) -> str:
+        return obj.variety_display(self._language())
+
+    def get_trade_names(self, obj: PublicCrop) -> dict[str, dict[str, str]]:
+        return obj.trade_names_by_language()
 
     def get_crop_species_translations(self, obj: PublicCrop) -> dict[str, str]:
         if obj.crop_species is None:

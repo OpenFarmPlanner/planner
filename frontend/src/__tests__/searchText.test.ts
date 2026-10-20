@@ -20,6 +20,11 @@ describe('normalizeSearchText', () => {
     expect(normalizeSearchText('STRAẞE')).toBe('strasse');
   });
 
+  it('folds the ligatures œ and æ, which NFD leaves intact', () => {
+    expect(normalizeSearchText('Cœur de BŒUF')).toBe('coeur de boeuf');
+    expect(normalizeSearchText('Æbleskiver')).toBe('aebleskiver');
+  });
+
   it('normalizes decomposed umlauts like composed ones', () => {
     expect(normalizeSearchText('Rübe')).toBe('rube');
   });
@@ -52,6 +57,12 @@ describe('findMatchRanges', () => {
     const text = 'Rote Rübe';
     const [range] = findMatchRanges(text, ['rube']);
     expect(text.slice(range.start, range.end)).toBe('Rübe');
+  });
+
+  it('maps a folded ligature back to the original character', () => {
+    const text = 'Cœur de bœuf';
+    const ranges = findMatchRanges(text, ['boeuf']);
+    expect(ranges.map((range) => text.slice(range.start, range.end))).toEqual(['bœuf']);
   });
 
   it('handles ß expanding to two characters', () => {

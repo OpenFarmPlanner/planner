@@ -39,6 +39,7 @@ from farm.models import (
     ProjectMembership,
     PublicCrop,
     PublicCropChangeProposal,
+    PublicCropTradeName,
     Season,
     SeedPackage,
     Supplier,
@@ -142,6 +143,13 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 original_language_code='en', crop_family_id=PLANT_FAMILY_KEYS[index],
             )
             self.public_crops.append(public_crop)
+            # Two trade names per entry, so `variety_display`/`trade_names`
+            # would cost a query per row without the list's prefetch.
+            for language_code in ('fr', 'es'):
+                PublicCropTradeName.objects.create(
+                    public_crop=public_crop, language_code=language_code,
+                    name=f'Sorte {language_code} {index}',
+                )
             # An imported copy so the serializer's `project_import_status` has
             # something to resolve for every public row. `notes` is set and the
             # copy is left pristine so `description_language_code` reaches into
@@ -380,8 +388,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         is_up_to_date` compares through: one per page, not one per imported
         copy, and only when a copy is actually behind its library entry (which
         every copy in this fixture is). `crop_family_display_name` adds the
-        plant-family list once per page (families plus translations)."""
-        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 11)
+        plant-family list once per page (families plus translations), and the
+        variety trade names behind `variety_display`/`trade_names` are one
+        prefetch per page."""
+        self.assert_list_query_count('/openfarmplanner/api/public-crops/', 12)
 
     def test_projects_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/projects/', 4, expected_rows=1)
@@ -420,9 +430,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
     def test_crop_library_list_query_count(self):
         """The public crop library list serves published entries with their
-        species translations resolved for the whole page."""
+        species translations and variety trade names resolved for the whole page."""
         # +2: the plant-family list behind `crop_family_display_name`, once per page.
-        self.assert_list_query_count('/openfarmplanner/api/crop-library/', 10)
+        self.assert_list_query_count('/openfarmplanner/api/crop-library/', 11)
 
     def test_moderator_requests_list_query_count(self):
         """Each request resolves the requesting and reviewing user plus both

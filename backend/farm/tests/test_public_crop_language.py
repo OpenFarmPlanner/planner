@@ -2,17 +2,30 @@
 
 The core rule: "Tomate + Moneymaker" and "Tomato + Moneymaker" are the same
 crop. Duplicate detection must recognise that through the language-independent
-species, not through whichever localized name a user happened to type.
+species, not through whichever localized name a user happened to type. The
+same holds for a variety's trade names: "Poire jaune" is "Gelbe Birne".
 """
 
+from django.contrib.auth import get_user_model
+
 from crops.models import CropSpecies, CropSpeciesTranslation
-from farm.models import Crop, PublicCrop, PublicCropTranslation
+from crops.services import find_exact_crop_match
+from farm.models import (
+    Crop,
+    PublicCrop,
+    PublicCropTradeName,
+    PublicCropTradeNameEvent,
+    PublicCropTranslation,
+)
 from farm.services.crop_display import resolve_crop_display_name
+from farm.services.public_crop_trade_names import find_trade_name_conflict
 from farm.services.public_crops import (
+    PublicCropIdentityConflictError,
     detect_public_crop_duplicates,
     normalize_language_code,
     replace_public_crop_translations,
     sync_original_language_translation,
+    update_public_crop_directly,
 )
 from farm.tests.api_base import ProjectApiTestCase
 
@@ -130,6 +143,189 @@ class CrossLanguageDuplicateDetectionTest(ProjectApiTestCase):
         candidate = self._crop(name='Pastinake', variety='Halblange')
 
         self.assertIn(legacy.id, [item.id for item in detect_public_crop_duplicates(candidate)])
+
+
+class VarietyTradeNameTest(ProjectApiTestCase):
+    """Trade names: display without fallback, search, and identity lookups.
+
+    See docs/rfc-variety-trade-names.md.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.species = CropSpecies.objects.get(name_normalized='tomate')
+        for language_code, common_name in (('de', 'Tomate'), ('en', 'Tomato'), ('fr', 'Tomate')):
+            CropSpeciesTranslation.objects.update_or_create(
+                species=self.species,
+                language_code=language_code,
+                defaults={'common_name': common_name},
+            )
+        self.gelbe_birne = self._entry('Gelbe Birne')
+        self.poire_jaune = PublicCropTradeName.objects.create(
+            public_crop=self.gelbe_birne, language_code='fr', name='Poire jaune',
+            source_url='https://example.com/poire-jaune',
+        )
+        PublicCropTradeName.objects.create(
+            public_crop=self.gelbe_birne, language_code='en', name='Yellow Pear',
+        )
+
+    def _entry(self, variety: str, **overrides) -> PublicCrop:
+        defaults = {
+            'name': 'Tomate',
+            'variety': variety,
+            'status': PublicCrop.STATUS_PUBLISHED,
+            'crop_species': self.species,
+            'original_language_code': 'de',
+            'version': 1,
+            'created_by': self.user,
+        }
+        defaults.update(overrides)
+        return PublicCrop.objects.create(**defaults)
+
+    def _crop(self, variety: str) -> Crop:
+        return Crop.objects.create(
+            name='Tomate', variety=variety, crop_species=self.species,
+            growth_duration_days=60, harvest_duration_days=20, project=self.project,
+        )
+
+    def _get(self, url: str):
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200, response.data)
+        return response.data
+
+    def test_trade_name_is_stored_normalized_for_search(self):
+        trade_name = PublicCropTradeName.objects.create(
+            public_crop=self._entry('Ochsenherz'), language_code=' FR ', name='  Cœur  de bœuf ',
+        )
+
+        self.assertEqual(trade_name.language_code, 'fr')
+        self.assertEqual(trade_name.name, 'Cœur de bœuf')
+        self.assertEqual(trade_name.name_normalized, 'coeur de boeuf')
+
+    def test_display_uses_the_trade_name_of_the_request_language_then_the_original(self):
+        self.assertEqual(self.gelbe_birne.variety_display('fr'), 'Poire jaune (Gelbe Birne)')
+        self.assertEqual(self.gelbe_birne.variety_trade_name('fr'), 'Poire jaune')
+
+    def test_display_never_falls_back_to_another_languages_trade_name(self):
+        # Spanish has no trade name: the original alone, not "Yellow Pear".
+        self.assertEqual(self.gelbe_birne.variety_display('es'), 'Gelbe Birne')
+        self.assertIsNone(self.gelbe_birne.variety_trade_name('es'))
+        self.assertEqual(self.gelbe_birne.variety_display('de'), 'Gelbe Birne')
+
+    def test_api_serves_resolved_and_raw_trade_names(self):
+        for url in (
+            f'/openfarmplanner/api/public-crops/{self.gelbe_birne.id}/?language=fr',
+            f'/openfarmplanner/api/crop-library/{self.gelbe_birne.id}/?language=fr',
+        ):
+            with self.subTest(url=url):
+                data = self._get(url)
+                self.assertEqual(data['variety'], 'Gelbe Birne')
+                self.assertEqual(data['variety_trade_name'], 'Poire jaune')
+                self.assertEqual(data['variety_display'], 'Poire jaune (Gelbe Birne)')
+                self.assertEqual(data['trade_names'], {
+                    'en': {'name': 'Yellow Pear', 'source_url': ''},
+                    'fr': {'name': 'Poire jaune', 'source_url': 'https://example.com/poire-jaune'},
+                })
+
+    def test_api_serves_the_original_alone_without_a_trade_name(self):
+        data = self._get(f'/openfarmplanner/api/public-crops/{self.gelbe_birne.id}/?language=es')
+
+        self.assertIsNone(data['variety_trade_name'])
+        self.assertEqual(data['variety_display'], 'Gelbe Birne')
+
+    def test_search_finds_trade_names_of_every_language(self):
+        for query in ('Poire jaune', 'yellow pear', 'Gelbe Birne'):
+            for url in ('/openfarmplanner/api/public-crops/', '/openfarmplanner/api/crop-library/'):
+                with self.subTest(query=query, url=url):
+                    data = self._get(f'{url}?q={query}&language=de')
+                    self.assertEqual([row['id'] for row in data['results']], [self.gelbe_birne.id])
+
+    def test_search_folds_diacritics_and_ligatures_of_trade_names(self):
+        entry = self._entry('Ochsenherz')
+        for language_code, name in (('fr', 'Cœur de bœuf'), ('es', 'Corazón de buey')):
+            PublicCropTradeName.objects.create(
+                public_crop=entry, language_code=language_code, name=name,
+            )
+
+        for query in ('coeur de boeuf', 'corazon'):
+            with self.subTest(query=query):
+                data = self._get(f'/openfarmplanner/api/public-crops/?variety={query}')
+                self.assertEqual([row['id'] for row in data['results']], [entry.id])
+
+    def test_publishing_a_trade_name_finds_the_original_entry(self):
+        duplicates = detect_public_crop_duplicates(self._crop('Poire jaune'))
+
+        self.assertEqual([item.id for item in duplicates], [self.gelbe_birne.id])
+        self.assertEqual(
+            duplicates[0].matched_trade_name, {'language_code': 'fr', 'name': 'Poire jaune'},
+        )
+
+    def test_publishing_the_original_name_reports_no_trade_name_match(self):
+        duplicates = detect_public_crop_duplicates(self._crop('gelbe birne'))
+
+        self.assertEqual([item.id for item in duplicates], [self.gelbe_birne.id])
+        self.assertIsNone(duplicates[0].matched_trade_name)
+
+    def test_exact_match_resolves_a_trade_name_to_the_entry(self):
+        self.assertEqual(
+            find_exact_crop_match(name='Tomato', variety='Yellow Pear'), self.gelbe_birne,
+        )
+
+        data = self._get(
+            '/openfarmplanner/api/public-crops/match/?name=Tomate&variety=Poire%20jaune',
+        )
+        self.assertEqual(data['crop']['id'], self.gelbe_birne.id)
+        self.assertEqual(
+            data['crop']['matched_trade_name'], {'language_code': 'fr', 'name': 'Poire jaune'},
+        )
+
+    def test_trade_name_conflicts_with_another_entrys_original_or_trade_name(self):
+        separate = self._entry('Poire jaune')
+        other = self._entry('Ochsenherz')
+
+        self.assertEqual(find_trade_name_conflict(other, 'POIRE JAUNE'), separate)
+        self.assertEqual(find_trade_name_conflict(other, 'Yellow Pear'), self.gelbe_birne)
+        self.assertIsNone(find_trade_name_conflict(other, 'Cœur de bœuf'))
+
+    def test_trade_names_of_another_species_do_not_conflict(self):
+        other_species = CropSpecies.objects.exclude(pk=self.species.pk).first()
+        other = self._entry('Ochsenherz', name='Paprika', crop_species=other_species)
+
+        self.assertIsNone(find_trade_name_conflict(other, 'Yellow Pear'))
+
+    def test_renaming_a_variety_onto_another_entrys_trade_name_is_a_conflict(self):
+        other = self._entry('Ochsenherz')
+        admin = get_user_model().objects.create_user(
+            username='trade-admin', email='trade-admin@example.com', password='pw', is_staff=True,
+        )
+
+        with self.assertRaises(PublicCropIdentityConflictError):
+            update_public_crop_directly(
+                public_crop=other, user=admin, data={'variety': 'Yellow Pear'},
+            )
+
+    def test_renaming_onto_its_own_trade_name_drops_it_and_records_why(self):
+        update_public_crop_directly(
+            public_crop=self.gelbe_birne,
+            user=self.user,
+            data={'variety': 'Poire jaune'},
+            allow_variety_rename=True,
+        )
+
+        self.assertEqual(
+            sorted(self.gelbe_birne.trade_names.values_list('language_code', flat=True)), ['en'],
+        )
+        event = PublicCropTradeNameEvent.objects.get(public_crop=self.gelbe_birne)
+        self.assertEqual(
+            (event.action, event.language_code, event.old_name, event.created_by),
+            (PublicCropTradeNameEvent.ACTION_REMOVED, 'fr', 'Poire jaune', self.user),
+        )
+
+    def test_a_species_level_entry_never_shows_a_trade_name(self):
+        general = self._entry('')
+        PublicCropTradeName.objects.create(public_crop=general, language_code='fr', name='Tomate')
+
+        self.assertEqual(general.variety_display('fr'), '')
 
 
 class PublicCropTranslationTest(ProjectApiTestCase):
