@@ -34,15 +34,12 @@ import { Link as RouterLink } from 'react-router';
 
 import {
   AUTO_LANGUAGE,
-  FALLBACK_LANGUAGE,
   SUPPORTED_LANGUAGES,
   type LanguagePreference,
   type SupportedLanguage,
   getLanguageLabel,
-  normalizeLanguageTag,
 } from './languages';
 import { useLanguagePreference } from './useLanguagePreference';
-import { setDevLanguageOverride } from './devLanguageOverride';
 import { useCurrentPublicPage } from './routeLanguage';
 
 const MIN_TOUCH_TARGET_SX = { minHeight: 44 };
@@ -203,21 +200,19 @@ export function AccountLanguageSelect() {
 
 /**
  * Development-only language row for the signed-in app's global menu: shows the
- * current language and opens a submenu of all supported languages. It switches
- * only the UI language in place, through an in-memory override that the
- * language sync applies with `i18n.changeLanguage`, and never stores the
- * account preference — users change that on the account settings page.
+ * current language and opens a submenu of all supported languages. Choosing
+ * one sets the preference exactly like the account settings, so it is saved
+ * to the account and survives reloads.
  * Render it behind `import.meta.env.DEV` so production builds drop it.
  */
 export function DevLanguageMenuItem({ label, onSelected }: { label: string; onSelected?: () => void }) {
-  const { i18n } = useTranslation();
+  const { language: current, setPreference } = useLanguagePreference();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const itemId = useId();
   const menuId = useId();
-  const current = normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE;
 
   const choose = (code: SupportedLanguage) => {
-    setDevLanguageOverride(code);
+    setPreference(code);
     setAnchorEl(null);
     onSelected?.();
   };
