@@ -79,6 +79,11 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   is a crop species of its own, an alias, or a variety; how regional AT/DE/CH
   terms are stored; and the audit command that finds gaps in the official
   suggestion list.
+- **[RFC: Variety trade names](./rfc-variety-trade-names.md)** — proposal
+  (not implemented) for optional per-language trade names of public-library
+  varieties (`Gelbe Birne` / `Poire jaune`): data model, API, display, search
+  and duplicate rules, user maintenance with history and reports, and open
+  questions.
 - **[In-App Notifications](./notifications.md)** — the generic
   `Notification` model and topbar bell: why the stored text is English while
   the UI is German, how a new notification kind is added, and the two
