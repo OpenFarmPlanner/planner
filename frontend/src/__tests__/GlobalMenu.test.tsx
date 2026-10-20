@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
 import LanguageSynchronizer from '../i18n/LanguageSynchronizer';
-import { setDevLanguageOverride } from '../i18n/devLanguageOverride';
+import { LANGUAGE_STORAGE_KEY } from '../i18n/languages';
 import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
 
 const updateUiLanguage = vi.hoisted(() => vi.fn());
@@ -195,22 +196,36 @@ describe('GlobalMenu "Feedback geben" entry', () => {
 describe('GlobalMenu development language switcher', () => {
   afterEach(async () => {
     vi.unstubAllEnvs();
-    setDevLanguageOverride(null);
+    updateUiLanguage.mockReset();
+    window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
     await i18n.changeLanguage('de');
   });
 
-  it('opens a submenu that switches only the UI language, against the account preference', async () => {
+  it('opens a submenu that switches the language and saves it to the account', async () => {
     const anchor = document.createElement('button');
     document.body.appendChild(anchor);
-    // The root language sync is mounted as in the app, so the switch has to
-    // survive it re-applying the account preference.
-    const auth = { user: { id: 1, ui_language: 'de' }, refreshUser: vi.fn() } as unknown as AuthContextValue;
+    // The root language sync is mounted as in the app, and the account value
+    // only changes once the refreshed user is loaded, as in AuthProvider.
+    let accountLanguage = 'de';
+    updateUiLanguage.mockImplementation(async (next: string) => {
+      accountLanguage = next;
+    });
+    function AuthWithAccountLanguage({ children }: { children: ReactNode }) {
+      const [user, setUser] = useState({ id: 1, ui_language: accountLanguage });
+      const refreshUser = async () => {
+        const refreshed = { id: 1, ui_language: accountLanguage };
+        setUser(refreshed);
+        return refreshed;
+      };
+      const auth = { user, refreshUser } as unknown as AuthContextValue;
+      return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+    }
 
     render(
-      <AuthContext.Provider value={auth}>
+      <AuthWithAccountLanguage>
         <LanguageSynchronizer />
         <GlobalMenu {...baseProps} anchorEl={anchor} />
-      </AuthContext.Provider>,
+      </AuthWithAccountLanguage>,
     );
     await waitFor(() => expect(i18n.resolvedLanguage).toBe('de'));
 
@@ -224,7 +239,8 @@ describe('GlobalMenu development language switcher', () => {
     await waitFor(() => expect(i18n.resolvedLanguage).toBe('fr'));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(i18n.resolvedLanguage).toBe('fr');
-    expect(updateUiLanguage).not.toHaveBeenCalled();
+    expect(updateUiLanguage).toHaveBeenCalledWith('fr');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
   });
 
   it('is not rendered outside the development server', () => {

@@ -24,13 +24,12 @@
  * because that value may just be the cache of another account's preference.
  */
 
-import { useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AuthContext } from '../auth/authContextShared';
 import { updateUiLanguage } from '../auth/authApi';
 import { useRouteLanguage } from './routeLanguage';
-import { getDevLanguageOverride, setDevLanguageOverride, subscribeDevLanguageOverride } from './devLanguageOverride';
 import {
   AUTO_LANGUAGE,
   type LanguagePreference,
@@ -80,9 +79,7 @@ export function useLanguagePreference(): LanguagePreferenceState {
   // Public pages render the language their URL names; the preference stays
   // untouched and applies again on the next non-public route.
   const routeLanguage = useRouteLanguage();
-  // Development-only switcher in the global menu; always null in production.
-  const devLanguageOverride = useSyncExternalStore(subscribeDevLanguageOverride, getDevLanguageOverride);
-  const language = routeLanguage ?? devLanguageOverride ?? resolveLanguage(preference);
+  const language = routeLanguage ?? resolveLanguage(preference);
 
   // Keep i18next in step with the resolved preference. Guarded so an
   // unchanged language never triggers a re-render loop.
@@ -176,8 +173,6 @@ export function useLanguagePreference(): LanguagePreferenceState {
   const setPreference = useCallback(
     (next: LanguagePreference) => {
       const normalized = normalizeLanguagePreference(next);
-      // An explicit preference change supersedes the dev-only override.
-      setDevLanguageOverride(null);
       // Always store locally: it keeps the choice working when signed out and
       // makes it available immediately, before the API round trip returns.
       writeStoredLanguagePreference(normalized);
