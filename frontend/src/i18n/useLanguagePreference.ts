@@ -14,14 +14,14 @@
  * account), so it survives reloads and new sessions and is never silently
  * overwritten on the next page load.
  *
- * **Guest chose a language, then signs in:** a choice made in the switcher
- * while signed out *in this tab* (`readSignedOutLanguageChoice`) is promoted
- * to the account even over an explicit account preference — the user made it
- * moments ago and losing it would be surprising. Otherwise the locally stored
- * value is only promoted when the account has no explicit preference
- * (`auto`); an explicit account preference wins over it, because that value
- * may be a leftover from a shared browser or just the cache of another
- * account's preference.
+ * **A choice not yet saved to the account** (`readPendingLanguageChoice`)
+ * wins over the account value and is saved on the next signed-in load. That
+ * covers a switch made while signed out, one made on a public page (which
+ * skips the `/auth/me/` probe, so a signed-in user looks signed out there),
+ * and one whose save failed. It is cleared only once the account holds it.
+ * Otherwise the locally stored value is only promoted when the account has no
+ * explicit preference (`auto`); an explicit account preference wins over it,
+ * because that value may just be the cache of another account's preference.
  */
 
 import { useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
@@ -37,10 +37,10 @@ import {
   type SupportedLanguage,
   detectBrowserLanguage,
   normalizeLanguagePreference,
-  readSignedOutLanguageChoice,
+  readPendingLanguageChoice,
   readStoredLanguagePreference,
   resolveLanguage,
-  writeSignedOutLanguageChoice,
+  writePendingLanguageChoice,
   writeStoredLanguagePreference,
 } from './languages';
 
@@ -69,11 +69,11 @@ export function useLanguagePreference(): LanguagePreferenceState {
 
   const accountPreference = user ? normalizeLanguagePreference(user.ui_language) : null;
   const storedPreference = readStoredLanguagePreference();
-  // While a fresh signed-out choice is being promoted it already decides the
-  // rendered language, so the account's old value never flashes in between.
-  const pendingSignedOutChoice = user ? readSignedOutLanguageChoice() : null;
+  // An unsaved choice already decides the rendered language, so the account's
+  // old value never flashes in between (or wins after a failed save).
+  const pendingChoice = user ? readPendingLanguageChoice() : null;
   const preference: LanguagePreference =
-    pendingSignedOutChoice
+    pendingChoice
       ?? (accountPreference && accountPreference !== AUTO_LANGUAGE
         ? accountPreference
         : storedPreference ?? accountPreference ?? AUTO_LANGUAGE);
@@ -95,7 +95,34 @@ export function useLanguagePreference(): LanguagePreferenceState {
     }
   }, [i18n, language]);
 
-  // Promote a choice made while signed out to the account on sign-in.
+  /**
+   * Save `choice` to the account. The pending marker is cleared only once the
+   * account and the loaded user hold it, and only if no
+   * newer switch replaced it meanwhile; on failure it stays, keeps deciding
+   * the rendered language and is saved again on the next signed-in load.
+   */
+  const saveToAccount = useCallback(
+    async (choice: LanguagePreference) => {
+      try {
+        await updateUiLanguage(choice);
+      } catch {
+        return;
+      }
+      // Until the loaded user carries the new value, the pending marker is
+      // what keeps the stale in-memory account value from winning.
+      const refreshed = await refreshUser?.().catch(() => null);
+      if (
+        refreshed
+        && normalizeLanguagePreference(refreshed.ui_language) === choice
+        && readPendingLanguageChoice() === choice
+      ) {
+        writePendingLanguageChoice(null);
+      }
+    },
+    [refreshUser],
+  );
+
+  // Save a choice the account does not hold yet once a user is known.
   useEffect(() => {
     if (!user) {
       // Signing out re-arms the check, so signing back in after switching the
@@ -108,37 +135,23 @@ export function useLanguagePreference(): LanguagePreferenceState {
     }
     promotedForUserRef.current = user.id;
     const accountChoice = normalizeLanguagePreference(user.ui_language);
-    const signedOutChoice = readSignedOutLanguageChoice();
-    if (signedOutChoice !== null && signedOutChoice === accountChoice) {
-      writeSignedOutLanguageChoice(null);
+    const unsavedChoice = readPendingLanguageChoice();
+    if (unsavedChoice !== null && unsavedChoice === accountChoice) {
+      writePendingLanguageChoice(null);
       return;
     }
     const storedChoice = readStoredLanguagePreference();
     const choiceToPromote =
-      signedOutChoice
+      unsavedChoice
       ?? (storedChoice !== null && storedChoice !== AUTO_LANGUAGE && accountChoice === AUTO_LANGUAGE
         ? storedChoice
         : null);
     if (choiceToPromote === null) {
       return;
     }
-    void (async () => {
-      try {
-        await updateUiLanguage(choiceToPromote);
-        try {
-          await refreshUser?.();
-        } finally {
-          // Cleared only once persisted (and, when possible, once the account
-          // reflects it): if the update fails, the choice keeps applying for
-          // this tab instead of flipping back to the account value.
-          writeSignedOutLanguageChoice(null);
-        }
-      } catch {
-        // A failed sync must not break sign-in; the local choice still
-        // applies and the next explicit switch will retry.
-      }
-    })();
-  }, [refreshUser, user]);
+    // Not awaited: sign-in never waits on, or fails with, this save.
+    void saveToAccount(choiceToPromote);
+  }, [saveToAccount, user]);
 
   // Mirror the account preference into local storage so the *next* page load
   // starts in the right language immediately.
@@ -152,13 +165,13 @@ export function useLanguagePreference(): LanguagePreferenceState {
   // on the first commit for a user the promotion check still sees the guest's
   // own choice rather than the value written here.
   useEffect(() => {
-    if (!accountPreference || pendingSignedOutChoice) {
+    if (!accountPreference || pendingChoice) {
       return;
     }
     if (readStoredLanguagePreference() !== accountPreference) {
       writeStoredLanguagePreference(accountPreference);
     }
-  }, [accountPreference, pendingSignedOutChoice]);
+  }, [accountPreference, pendingChoice]);
 
   const setPreference = useCallback(
     (next: LanguagePreference) => {
@@ -168,9 +181,9 @@ export function useLanguagePreference(): LanguagePreferenceState {
       // Always store locally: it keeps the choice working when signed out and
       // makes it available immediately, before the API round trip returns.
       writeStoredLanguagePreference(normalized);
-      // A choice made while signed out is carried into the next sign-in in
-      // this tab; a signed-in switch is persisted directly and supersedes it.
-      writeSignedOutLanguageChoice(user ? null : normalized);
+      // Pending until the account holds it: saved right away when signed in,
+      // otherwise (or if that save fails) on the next signed-in load.
+      writePendingLanguageChoice(normalized);
       // On a public page the switcher also navigates to the counterpart URL,
       // which then fixes the language; don't flip the current page's text
       // ahead of that navigation.
@@ -180,16 +193,9 @@ export function useLanguagePreference(): LanguagePreferenceState {
       if (!user) {
         return;
       }
-      void (async () => {
-        try {
-          await updateUiLanguage(normalized);
-          await refreshUser?.();
-        } catch {
-          // Keep the switch applied locally even if persisting failed.
-        }
-      })();
+      void saveToAccount(normalized);
     },
-    [i18n, refreshUser, routeLanguage, user],
+    [i18n, routeLanguage, saveToAccount, user],
   );
 
   return {

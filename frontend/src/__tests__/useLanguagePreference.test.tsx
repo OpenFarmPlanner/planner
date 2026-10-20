@@ -4,7 +4,11 @@ import type { ReactNode } from 'react';
 import { AuthContext } from '../auth/authContextShared';
 import type { AuthContextValue } from '../auth/authContextShared';
 import type { AuthUser } from '../auth/types';
-import { LANGUAGE_STORAGE_KEY, SIGNED_OUT_LANGUAGE_CHOICE_KEY } from '../i18n/languages';
+import {
+  LANGUAGE_STORAGE_KEY,
+  LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY,
+  PENDING_LANGUAGE_CHOICE_KEY,
+} from '../i18n/languages';
 import { useLanguagePreference } from '../i18n/useLanguagePreference';
 
 const { updateUiLanguageMock, changeLanguageMock, i18nState } = vi.hoisted(() => ({
@@ -320,13 +324,12 @@ describe('useLanguagePreference — promoting a guest choice on sign-in', () => 
     expect(rejections).toHaveLength(0);
   });
 
-  it('loses the guest choice when the promotion fails', async () => {
-    // The source says a failed sync is harmless because "the local choice
-    // still applies and the next explicit switch will retry". It does not: the
-    // mirror effect has already written the account's `auto` over the stored
-    // `de` on the same commit, so once the request fails there is nothing left
-    // to fall back to. The user is signed in, sees the browser language, and
-    // their choice is gone from storage.
+  it('loses an unmarked local value when the promotion fails', async () => {
+    // Only a local value *without* the pending marker: that is just the cache
+    // of the last account, not a choice. The mirror effect writes the
+    // account's `auto` over the stored `de` on the same commit, so once the
+    // request fails there is nothing left to fall back to. A real switch also
+    // sets the marker and survives this (see "a choice not yet saved").
     //
     // Asserted after a rerender on purpose — reading `result.current` from the
     // first render would still show `de`, because that render resolved its
@@ -370,52 +373,57 @@ describe('useLanguagePreference — promoting a guest choice on sign-in', () => 
   });
 });
 
-describe('useLanguagePreference — a choice made while signed out in this tab', () => {
+describe('useLanguagePreference — a choice not yet saved to the account', () => {
   it('marks a switch made while signed out for the next sign-in', () => {
     const { result } = setup();
     act(() => result.current.setPreference('fr'));
-    expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBe('fr');
+    expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBe('fr');
   });
 
-  it('drops the mark when the switch is made while signed in', async () => {
-    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
-    const { result } = setup({ authUser: user({ ui_language: 'fr' }) });
+  it('drops the mark once a signed-in switch is saved', async () => {
+    const refreshUser = vi.fn().mockResolvedValue(user({ ui_language: 'es' }));
+    const { result } = setup({ authUser: user({ ui_language: 'fr' }), refreshUser });
+
     await act(async () => { result.current.setPreference('es'); });
-    expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBeNull();
+    });
   });
 
   it('wins over an explicit account preference and is saved to the account', async () => {
     // Picked French on the landing page, then signed in to an account that
     // stored German at registration: the fresh choice must survive.
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
-    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+    window.localStorage.setItem(PENDING_LANGUAGE_CHOICE_KEY, 'fr');
+    const refreshUser = vi.fn().mockResolvedValue(user({ ui_language: 'fr' }));
 
-    const { result, refreshUser } = setup({ authUser: user({ ui_language: 'de' }) });
+    const { result } = setup({ authUser: user({ ui_language: 'de' }), refreshUser });
 
     // Rendered in French from the first signed-in render — no German flash.
     expect(result.current.language).toBe('fr');
     await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('fr'));
     await waitFor(() => expect(refreshUser).toHaveBeenCalled());
     await waitFor(() => {
-      expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+      expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBeNull();
     });
     // The mirror effect must not have cached the old account value meanwhile.
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
   });
 
   it('only clears the mark when the account already has that language', async () => {
-    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'de');
+    window.localStorage.setItem(PENDING_LANGUAGE_CHOICE_KEY, 'de');
     setup({ authUser: user({ ui_language: 'de' }) });
     await waitFor(() => {
-      expect(window.sessionStorage.getItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
+      expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBeNull();
     });
     expect(updateUiLanguageMock).not.toHaveBeenCalled();
   });
 
-  it('keeps applying the choice in this tab when saving it fails', async () => {
+  it('keeps applying the choice, and keeps it pending, when saving it fails', async () => {
     updateUiLanguageMock.mockRejectedValue(new Error('offline'));
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'fr');
-    window.sessionStorage.setItem(SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+    window.localStorage.setItem(PENDING_LANGUAGE_CHOICE_KEY, 'fr');
 
     const { result, rerender } = setup({ authUser: user({ ui_language: 'de' }) });
 
@@ -425,6 +433,46 @@ describe('useLanguagePreference — a choice made while signed out in this tab',
 
     expect(result.current.language).toBe('fr');
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+    expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBe('fr');
+  });
+
+  it('keeps the mark when the save succeeds but the user cannot be reloaded', async () => {
+    // The in-memory account still says German; without the mark it would win
+    // again for the rest of the session.
+    const refreshUser = vi.fn().mockResolvedValue(null);
+    const { result, rerender } = setup({ authUser: user({ ui_language: 'de' }), refreshUser });
+
+    await act(async () => { result.current.setPreference('fr'); });
+    await waitFor(() => expect(refreshUser).toHaveBeenCalled());
+    rerender();
+
+    expect(result.current.language).toBe('fr');
+    expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBe('fr');
+  });
+
+  it('does not let an older save clear the mark of a newer switch', async () => {
+    let resolveFirst: () => void = () => undefined;
+    updateUiLanguageMock
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    const refreshUser = vi.fn().mockResolvedValue(user({ ui_language: 'fr' }));
+    const { result } = setup({ authUser: user({ ui_language: 'de' }), refreshUser });
+
+    await act(async () => { result.current.setPreference('fr'); });
+    await act(async () => { result.current.setPreference('es'); });
+    await act(async () => { resolveFirst(); });
+
+    expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBe('es');
+  });
+
+  it('picks up a choice from the tab-scoped key older builds wrote', async () => {
+    window.sessionStorage.setItem(LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY, 'fr');
+
+    const { result } = setup({ authUser: user({ ui_language: 'de' }) });
+
+    expect(result.current.language).toBe('fr');
+    await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('fr'));
+    expect(window.sessionStorage.getItem(LEGACY_SIGNED_OUT_LANGUAGE_CHOICE_KEY)).toBeNull();
   });
 
   it('promotes again after signing out and back in as the same user', async () => {
@@ -445,6 +493,100 @@ describe('useLanguagePreference — a choice made while signed out in this tab',
     rerender();
 
     await waitFor(() => expect(updateUiLanguageMock).toHaveBeenCalledWith('fr'));
+  });
+});
+
+describe('useLanguagePreference — what survives a reload', () => {
+  /**
+   * A fake account endpoint plus a remountable hook: unmounting and rendering
+   * again with the user `/auth/me/` would now return is a page reload; also
+   * clearing session storage makes it a new tab.
+   */
+  const setupWithServer = (initial: string) => {
+    let serverLanguage = initial;
+    updateUiLanguageMock.mockImplementation(async (next: string) => {
+      serverLanguage = next;
+      return { ui_language: next };
+    });
+    let currentUser: AuthUser | null = user({ ui_language: serverLanguage });
+    const refreshUser = vi.fn(async () => {
+      currentUser = user({ ui_language: serverLanguage });
+      return currentUser;
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AuthContext.Provider value={{ user: currentUser, refreshUser } as unknown as AuthContextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+    const mount = () => renderHook(() => useLanguagePreference(), { wrapper });
+    const reload = (view: ReturnType<typeof mount>, { signedIn = true, newTab = false } = {}) => {
+      view.unmount();
+      if (newTab) {
+        window.sessionStorage.clear();
+      }
+      currentUser = signedIn ? user({ ui_language: serverLanguage }) : null;
+      return mount();
+    };
+    return { mount, reload, refreshUser, serverLanguage: () => serverLanguage };
+  };
+
+  it('keeps a language switched in the account settings', async () => {
+    const server = setupWithServer('de');
+    const view = server.mount();
+
+    await act(async () => { view.result.current.setPreference('fr'); });
+    await waitFor(() => expect(server.refreshUser).toHaveBeenCalled());
+
+    const reloaded = server.reload(view, { newTab: true });
+    expect(reloaded.result.current.preference).toBe('fr');
+    expect(reloaded.result.current.language).toBe('fr');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('fr');
+  });
+
+  it('keeps a language switched on a public page, even in a new tab', async () => {
+    // Public pages skip the /auth/me/ probe, so a signed-in user is switching
+    // "signed out" there; the old tab-scoped marker died with the tab and the
+    // account's old value won on the next app load.
+    const server = setupWithServer('de');
+    const publicPage = server.reload(server.mount(), { signedIn: false });
+
+    act(() => publicPage.result.current.setPreference('fr'));
+
+    const app = server.reload(publicPage, { newTab: true });
+    expect(app.result.current.language).toBe('fr');
+    await waitFor(() => expect(server.serverLanguage()).toBe('fr'));
+    await waitFor(() => expect(window.localStorage.getItem(PENDING_LANGUAGE_CHOICE_KEY)).toBeNull());
+
+    const later = server.reload(app, { newTab: true });
+    expect(later.result.current.language).toBe('fr');
+  });
+
+  it('keeps the language after a failed save and saves it on the next load', async () => {
+    const server = setupWithServer('de');
+    updateUiLanguageMock.mockRejectedValueOnce(new Error('forbidden'));
+    const view = server.mount();
+
+    await act(async () => { view.result.current.setPreference('fr'); });
+    // i18next re-renders on the switch in the app; the mock here does not.
+    view.rerender();
+    expect(server.serverLanguage()).toBe('de');
+    expect(view.result.current.language).toBe('fr');
+
+    const reloaded = server.reload(view);
+    expect(reloaded.result.current.language).toBe('fr');
+    await waitFor(() => expect(server.serverLanguage()).toBe('fr'));
+  });
+
+  it('saves and keeps every supported language in turn', async () => {
+    const server = setupWithServer('auto');
+    let view = server.mount();
+
+    for (const code of ['de', 'en', 'fr', 'es'] as const) {
+      await act(async () => { view.result.current.setPreference(code); });
+      await waitFor(() => expect(server.serverLanguage()).toBe(code));
+      view = server.reload(view, { newTab: true });
+      expect(view.result.current.language).toBe(code);
+    }
   });
 });
 
