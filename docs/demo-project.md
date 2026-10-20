@@ -55,6 +55,16 @@ full list, with culture, bed and expected status for a manual check, is the
   back). The leek row's "Anbaufläche ändern" shows a partly occupied bed
   ("Zuckermais") and a bed without enough room ("Bohnen").
 
+### Bought-in young plants
+
+Three current-season plans use the cultivation type "Pflanzung mit gekauften
+Pflanzen" (`purchased_transplant`): the tomatoes on "Tomatenreihe 2" and the
+broccoli on "Brokkoli" and "Kohlbeet" (Lindenhof). They have no Anzucht and
+no seed demand and fill the [young-plant demand](./young-plant-demand.md)
+list with computed plant counts (both crops have spacing). The cultivation
+type does not affect the crop rotation check, so the rotation cases below
+are unchanged. `test_demo_project_lists_bought_in_young_plants` pins them.
+
 The new field crops are plain Kulturen without supplier data; potato and pea
 carry their own, stricter `rotation_break_years`. The rotation facts come from
 the crops' own families and the seeded family defaults. No bed is overbooked

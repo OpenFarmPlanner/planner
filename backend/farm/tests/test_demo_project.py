@@ -43,11 +43,29 @@ from farm.services.demo_project import (
     resolve_demo_request_language,
 )
 from farm.services.seasons import build_planting_plan_copies
+from farm.services.young_plant_demand import build_young_plant_demand_rows
 
 User = get_user_model()
 
 
 class DemoProjectServiceTests(TestCase):
+    def test_demo_project_lists_bought_in_young_plants(self) -> None:
+        result = create_or_reset_demo_project()
+        season = Season.objects.get(
+            project=result.project, start_date__year=demo_current_year(),
+        )
+
+        rows = build_young_plant_demand_rows(
+            project=result.project, language_code='de', season_id=season.id,
+        )
+
+        plans_by_crop: Counter[str] = Counter()
+        for row in rows:
+            plans_by_crop[row['crop_name']] += row['plan_count']
+        # Both broccoli beds share a row when 20 and 22 April fall in one ISO week.
+        self.assertEqual(plans_by_crop, Counter({'Brokkoli': 2, 'Tomate': 1}))
+        self.assertTrue(all(row['plant_count'] for row in rows))
+
     def test_create_or_reset_demo_project_replaces_project_data(self) -> None:
         result = create_or_reset_demo_project()
 

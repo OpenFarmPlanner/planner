@@ -1509,7 +1509,9 @@ def _create_planting_plans(
             f"{plan_notes['tomate']} {plan_notes['tomate_akzeptiert']}",
             rotation_conflict_accepted=True,
         ),
-        PlanSpec('tomate', 'tomate-2', 'pre_cultivation', date(current, 5, 2), Decimal('14.0'), 35),
+        # Bought-in young plants (no Anzucht, no seed demand): they fill the
+        # young-plant demand list (docs/young-plant-demand.md).
+        PlanSpec('tomate', 'tomate-2', 'purchased_transplant', date(current, 5, 2), Decimal('14.0'), 35),
         PlanSpec('gurke', 'gurke', 'pre_cultivation', date(current, 5, 10), Decimal('12.0'), 38),
         PlanSpec('karotte', 'karotte-1', 'direct_sowing', date(current, 3, 12), Decimal('16.0')),
         # Not checkable: "Karotten 2" is newly established this season and
@@ -1526,9 +1528,10 @@ def _create_planting_plans(
         # Hint: heavy feeder (potato) right after a heavy feeder (zucchini).
         PlanSpec('kartoffel', 'kartoffel-2', 'direct_sowing', date(current, 4, 14), Decimal('20.0')),
         # Ok, no hint: the peas between zucchini and broccoli break the sequence.
-        PlanSpec('brokkoli', 'brokkoli', 'pre_cultivation', date(current, 4, 20), Decimal('16.0'), 80),
+        # Bought in as well, like the broccoli on "Kohlbeet" below.
+        PlanSpec('brokkoli', 'brokkoli', 'purchased_transplant', date(current, 4, 20), Decimal('16.0'), 80),
         # Conflict from last year's mustard green manure (Brassicaceae default).
-        PlanSpec('brokkoli', 'kohlbeet', 'pre_cultivation', date(current, 4, 22), Decimal('16.0'), 80),
+        PlanSpec('brokkoli', 'kohlbeet', 'purchased_transplant', date(current, 4, 22), Decimal('16.0'), 80),
         # Conflict: beans after peas, the peas' stricter 5-year break applies.
         PlanSpec('buschbohne', 'bohnen', 'direct_sowing', date(current, 5, 12), Decimal('20.0')),
         # Conflict through the garlic planted last October and harvested in July.
