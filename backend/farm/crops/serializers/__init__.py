@@ -27,6 +27,7 @@ from .seed_demand import (
 from .seed_packages import SeedPackageSerializer
 from .seed_rates import EMPTY_SEED_RATE_UNIT_VALUES, PRE_CULTIVATION_SEED_RATE_UNITS
 from .suppliers import CropSupplierDataSerializer, SupplierSerializer
+from .young_plant_demand import YoungPlantDemandSerializer
 
 __all__ = [
     'CropImportApplySummarySerializer',
@@ -47,4 +48,5 @@ __all__ = [
     'SeedDemandSerializer',
     'SeedPackageSerializer',
     'SupplierSerializer',
+    'YoungPlantDemandSerializer',
 ]

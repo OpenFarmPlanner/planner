@@ -22,6 +22,7 @@ from farm.services.crop_inheritance import (
     resolve_plants_per_m2,
 )
 from farm.services.crop_rotation import RotationResult, RotationService
+from farm.services.plant_count import compute_plan_plant_count
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 
 
@@ -203,12 +204,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     
     def get_plants_count(self, obj: PlantingPlan) -> int | None:
         """Compute plant count from area and the crop's effective spacing."""
-        if not obj.area_usage_sqm or not obj.crop:
+        if not obj.crop:
             return None
-        plants_per_m2 = resolve_plants_per_m2(obj.crop, self._general_crop_index(obj))
-        if not plants_per_m2 or plants_per_m2 <= 0:
-            return None
-        return round(obj.area_usage_sqm * plants_per_m2)
+        return compute_plan_plant_count(obj, self._general_crop_index(obj)).count
 
     def validate(self, attrs):
         self._validate_minimal_identity(attrs)

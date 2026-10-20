@@ -54,7 +54,9 @@ export const CultivationTypeEditCell = memo(function CultivationTypeEditCell({
               },
             },
           },
-          renderValue: () => selectedOption?.label ?? (
+          // The closed select sits in the narrow table column and shows the
+          // short label; the menu lists the full labels and may be wider.
+          renderValue: () => selectedOption?.shortLabel ?? (
             <Box
               component="span"
               sx={{

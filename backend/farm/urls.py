@@ -33,6 +33,7 @@ from .crops.views import (
     SeedDemandListView,
     SeedPackageViewSet,
     SupplierViewSet,
+    YoungPlantDemandListView,
 )
 from .history.views import (
     BatchOperationRevertView,
@@ -116,6 +117,7 @@ urlpatterns = [
     path('notes/<int:note_id>/attachments/', NoteAttachmentListCreateView.as_view(), name='note-attachments'),
     path('attachments/<int:attachment_id>/', NoteAttachmentDeleteView.as_view(), name='note-attachment-delete'),
     path('seed-demand/', SeedDemandListView.as_view(), name='seed-demand-list'),
+    path('young-plant-demand/', YoungPlantDemandListView.as_view(), name='young-plant-demand-list'),
     path('yield-calendar/', YieldCalendarListView.as_view(), name='yield-calendar-list'),
     path('season-pattern/', SeasonPatternView.as_view(), name='season-pattern'),
     path('season-pattern/preview/', SeasonPatternPreviewView.as_view(), name='season-pattern-preview'),

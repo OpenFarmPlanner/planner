@@ -446,6 +446,49 @@
       "copyError": "The data could not be copied."
     }
   },
+  "youngPlantDemand": {
+    "title": "Young plant demand",
+    "loadError": "Young plant demand could not be loaded.",
+    "emptyState": {
+      "title": "No transplants with bought-in plants are planned for this season.",
+      "description": "Choose the cultivation type “Transplant with bought-in plants” in the planting plans to list the demand here.",
+      "action": "Open planting plans"
+    },
+    "reserveLabel": "Reserve for losses",
+    "reserveHelper": "Added to the plant count, rounded up to whole plants.",
+    "columns": {
+      "crop": "Crop",
+      "variety": "Variety",
+      "plantingWeek": "Planting week",
+      "plantCount": "Quantity",
+      "plans": "Plans / beds"
+    },
+    "weekLabel": "Wk {{week}}",
+    "weekRange": "{{start}} – {{end}}",
+    "noPlantingDate": "No planting date",
+    "plansSummary": "{{plans}} / {{beds}}",
+    "plansSummaryTooltip_one": "{{count}} planting plan on {{beds}} bed(s)",
+    "plansSummaryTooltip_other": "{{count}} planting plans on {{beds}} bed(s)",
+    "countUnavailable": "Quantity cannot be calculated: {{reason}}",
+    "calculationBlockers": {
+      "missing_plant_spacing": "in-row spacing missing",
+      "missing_area": "area missing",
+      "missingData": "required data missing"
+    },
+    "reserveBreakdown": "{{base}} plants + {{percent}} % reserve = {{total}}",
+    "showPlans": "Show planting plans",
+    "hidePlans": "Hide planting plans",
+    "detailColumns": {
+      "area": "Growing area",
+      "plantingDate": "Planting date",
+      "areaM2": "Area (m²)",
+      "plantCount": "Quantity"
+    },
+    "contextMenu": {
+      "openCrop": "Open crop",
+      "editCrop": "Edit crop"
+    }
+  },
   "history": {
     "titles": {
       "crop": "Versions",

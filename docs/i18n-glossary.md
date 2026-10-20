@@ -51,6 +51,7 @@ and English currently use the same text for both.
 | Anbaukalender | Calendrier / Calendrier de culture | Calendario / Calendario de cultivos |
 | Ertragsübersicht | Rendements / Aperçu des rendements | Rendimientos / Resumen de rendimientos |
 | Saatgutbedarf | Semences / Besoin en semences | Semillas / Necesidad de semillas |
+| Jungpflanzenbedarf | Plants / Besoin en plants | Plantel / Necesidad de plantel |
 | Feldbelegung (Kalender-Modus) | Occupation / Occupation des parcelles | Ocupación / Ocupación de parcelas |
 | Anzucht (Kalender-Modus) | Pépinière / Pépinière | Semillero / Semillero |
 
@@ -107,6 +108,12 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Anbauart | Cultivation type | Mode de culture | Tipo de cultivo |
 | Direktsaat | Direct sowing | Semis direct | Siembra directa |
 | Pflanzung (Anbauart) | Transplanting | Plantation | Trasplante |
+| Pflanzung (eigene Anzucht) | Transplant (home-raised) | Plantation (plants autoproduits) | Trasplante (plantel propio) |
+| Pflanzung mit gekauften Pflanzen | Transplant with bought-in plants | Plantation de plants achetés | Trasplante de plantel comprado |
+| Pfl. Zukauf (short label) | Bought-in | Plant. achat | Trasp. compra |
+| Jungpflanzenbedarf | Young plant demand | Besoin en plants | Necesidad de plantel |
+| Reserve für Ausfälle | Reserve for losses | Réserve pour pertes | Reserva por pérdidas |
+| Pflanzwoche | Planting week | Semaine de plantation | Semana de trasplante |
 | Anzucht | Propagation | Pépinière † | Semillero † |
 | Anzuchtdauer | Propagation duration | Durée en pépinière | Duración en semillero |
 | Kulturdauer / Wachstumszeit | Growth duration | Durée de culture | Duración del cultivo |

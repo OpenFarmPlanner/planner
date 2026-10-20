@@ -745,6 +745,7 @@ function RootLayout() {
     if (location.pathname.startsWith('/app/gantt-chart')) return { pageKey: 'calendar' as const, label: t('pageHelp.calendar') };
     if (location.pathname.startsWith('/app/yield-overview')) return { pageKey: 'yieldOverview' as const, label: t('pageHelp.yieldOverview') };
     if (location.pathname.startsWith('/app/seed-demand')) return { pageKey: 'seedDemand' as const, label: t('pageHelp.seedDemand') };
+    if (location.pathname.startsWith('/app/young-plant-demand')) return { pageKey: 'youngPlantDemand' as const, label: t('pageHelp.youngPlantDemand') };
     if (location.pathname.startsWith('/app/suppliers')) return { pageKey: 'suppliers' as const, label: t('pageHelp.suppliers') };
     return null;
   }, [isFieldsBedsGraphicalViewActive, location.pathname, t]);

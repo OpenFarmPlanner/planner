@@ -7,7 +7,7 @@ import {
   type Crop,
   type Bed,
 } from '../api/api';
-import type { Field, Location, CultivationType } from '../api/types';
+import type { Field, Location, PlanCultivationType } from '../api/types';
 import {
   getAllowedCultivationTypesForCrop,
 } from './plantingPlansUtils';
@@ -29,8 +29,11 @@ import { formatCropDisplayName } from '../crops/cropDisplay';
 import { widthForHeaderTitles } from '../components/data-grid/columnHeaderWidth';
 
 export interface CultivationTypeSelectOption {
-  value: CultivationType;
+  value: PlanCultivationType;
+  /** Full label for menus, dialogs, the mobile sheet and tooltips. */
   label: string;
+  /** Compact label shown in the plans table cell; may equal `label`. */
+  shortLabel: string;
 }
 
 // Stable identities so consumers' memos do not see new arrays on every
@@ -41,8 +44,21 @@ const EMPTY_FIELDS: Field[] = [];
 const EMPTY_BEDS: Bed[] = [];
 
 const CULTIVATION_TYPE_OPTIONS = [
-  { value: 'direct_sowing', labelKey: 'plantingPlans:cultivationTypes.directSowing' },
-  { value: 'pre_cultivation', labelKey: 'plantingPlans:cultivationTypes.preCultivation' },
+  {
+    value: 'direct_sowing',
+    labelKey: 'plantingPlans:cultivationTypesLong.directSowing',
+    shortLabelKey: 'plantingPlans:cultivationTypes.directSowing',
+  },
+  {
+    value: 'pre_cultivation',
+    labelKey: 'plantingPlans:cultivationTypesLong.preCultivation',
+    shortLabelKey: 'plantingPlans:cultivationTypes.preCultivation',
+  },
+  {
+    value: 'purchased_transplant',
+    labelKey: 'plantingPlans:cultivationTypesLong.purchasedTransplant',
+    shortLabelKey: 'plantingPlans:cultivationTypes.purchasedTransplant',
+  },
 ] as const;
 
 // Every German and English date title (at most 13 characters) fits the base
@@ -53,6 +69,28 @@ const estimateColumnWidth = (values: string[], min: number, max: number): number
   const longest = values.reduce((length, value) => Math.max(length, value.length), 0);
   const estimated = longest * 8 + 52;
   return Math.max(min, Math.min(max, estimated));
+};
+
+// Spaces and full stops are about half as wide as an average glyph. Counting
+// them as such keeps abbreviated short labels ("Pfl. Zukauf") from widening
+// the cultivation-type column past the width its longest word-label needs.
+const NARROW_CHARACTERS = new Set([' ', '.']);
+
+const countLabelWidthUnits = (label: string): number => (
+  Array.from(label).reduce((units, character) => units + (NARROW_CHARACTERS.has(character) ? 0.5 : 1), 0)
+);
+
+/**
+ * Width of the cultivation-type column: driven by the header and the longest
+ * short label of the active language. Long labels only appear in the
+ * dropdown menu and tooltips, which may be wider than the column.
+ */
+export const estimateCultivationTypeColumnWidth = (headerName: string, shortLabels: string[]): number => {
+  const longest = [headerName, ...shortLabels].reduce(
+    (units, value) => Math.max(units, countLabelWidthUnits(value)),
+    0,
+  );
+  return Math.max(110, Math.min(150, longest * 8 + 52));
 };
 
 const estimateDateColumnWidth = (headerName: string): number => (
@@ -176,7 +214,11 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
   );
 
   const cultivationTypeOptions: CultivationTypeSelectOption[] = useMemo(
-    () => CULTIVATION_TYPE_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) })),
+    () => CULTIVATION_TYPE_OPTIONS.map((option) => ({
+      value: option.value,
+      label: t(option.labelKey),
+      shortLabel: t(option.shortLabelKey),
+    })),
     [t],
   );
 
@@ -187,7 +229,7 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
       const allowedTypes = getAllowedCultivationTypesForCrop(crop);
       optionsByCropId.set(
         crop.id,
-        cultivationTypeOptions.filter((option) => allowedTypes.includes(option.value as CultivationType)),
+        cultivationTypeOptions.filter((option) => allowedTypes.includes(option.value)),
       );
     });
     return optionsByCropId;
@@ -248,10 +290,9 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
     return {
       crop: cropWidth,
       bed: bedWidth,
-      cultivationType: estimateColumnWidth(
-        [t('plantingPlans:columns.cultivationType'), ...cultivationTypeOptions.map((option) => option.label)],
-        110,
-        150,
+      cultivationType: estimateCultivationTypeColumnWidth(
+        t('plantingPlans:columns.cultivationType'),
+        cultivationTypeOptions.map((option) => option.shortLabel),
       ),
       sowingDate: estimateDateColumnWidth(t('plantingPlans:columns.sowingDate')),
       plantingDate: estimateDateColumnWidth(t('plantingPlans:columns.plantingDate')),

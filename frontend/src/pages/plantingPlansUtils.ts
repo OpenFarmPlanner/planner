@@ -1,4 +1,4 @@
-import type { Bed, Crop, CultivationType, Field, PlantingPlan } from '../api/types';
+import type { Bed, Crop, CultivationType, Field, PlanCultivationType, PlantingPlan } from '../api/types';
 import type { EditableRow } from '../components/data-grid/types';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { formatLocalizedNumber, parseLocalizedNumber } from '../utils/numberLocalization';
@@ -65,12 +65,17 @@ export const buildBedDisplayLabel = (
   return `${combinedName} (${formatAreaM2(areaSqm, locale)})`;
 };
 
+/**
+ * Cultivation types a plan of `crop` may use. The crop restricts direct
+ * sowing and transplanting; bought-in plants are a way of transplanting, so
+ * they are allowed exactly when transplanting is.
+ */
 export function getAllowedCultivationTypesForCrop(
   crop?: Crop | null,
-): CultivationType[] {
+): PlanCultivationType[] {
   const cultivationTypes = getEffectiveCropValue(crop, 'cultivation_types');
   const cultivationType = getEffectiveCropValue(crop, 'cultivation_type');
-  const allowedValues = (
+  const cropTypes = (
     cultivationTypes?.length
       ? cultivationTypes
       : cultivationType
@@ -80,27 +85,28 @@ export function getAllowedCultivationTypesForCrop(
     (value): value is CultivationType =>
       value === 'pre_cultivation' || value === 'direct_sowing',
   );
+  const allowedValues: CultivationType[] = cropTypes.length > 0
+    ? cropTypes
+    : ['direct_sowing', 'pre_cultivation'];
 
-  if (allowedValues.length > 0) {
-    return allowedValues;
-  }
-
-  return ['direct_sowing', 'pre_cultivation'];
+  return allowedValues.includes('pre_cultivation')
+    ? [...allowedValues, 'purchased_transplant']
+    : allowedValues;
 }
 
 export function normalizeCultivationType(
   value: unknown,
-): CultivationType | undefined {
-  if (value === 'pre_cultivation' || value === 'direct_sowing') {
+): PlanCultivationType | undefined {
+  if (value === 'pre_cultivation' || value === 'direct_sowing' || value === 'purchased_transplant') {
     return value;
   }
   return undefined;
 }
 
 export function resolveCultivationTypeForAllowedOptions(
-  allowedTypes: CultivationType[],
+  allowedTypes: PlanCultivationType[],
   currentValue?: unknown,
-): CultivationType | '' {
+): PlanCultivationType | '' {
   const normalizedCurrent = normalizeCultivationType(currentValue);
   if (normalizedCurrent && allowedTypes.includes(normalizedCurrent)) {
     return normalizedCurrent;
@@ -129,7 +135,7 @@ export interface PlantingPlanRow extends PlantingPlan, EditableRow {
 export interface MobileCreateFormState {
   crop: string;
   bed: string;
-  cultivation_type: CultivationType | "";
+  cultivation_type: PlanCultivationType | "";
   /** Derived from `planting_date`; German-formatted, like `planting_date`. */
   sowing_date: string;
   planting_date: string;

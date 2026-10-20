@@ -57,6 +57,7 @@ export type HelpPageKey =
   | 'cropLibrary'
   | 'plantingPlans'
   | 'seedDemand'
+  | 'youngPlantDemand'
   | 'suppliers'
   | 'graphical';
 
@@ -126,6 +127,17 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
   seedDemand: [
     { key: 'supplierSelect', icon: <ArrowDropDownIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
     { key: 'packageInfo', icon: <OpenInFullIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
+  ],
+  youngPlantDemand: [
+    {
+      key: 'expand',
+      icon: (
+        <Stack direction="row" spacing={0.1} sx={{ alignItems: "center", }} >
+          <ChevronRightIcon fontSize="small" />
+          <ExpandMoreIcon fontSize="small" />
+        </Stack>
+      ),
+    },
   ],
   suppliers: [
     { key: 'add', icon: <AddIcon fontSize="small" sx={{ color: 'primary.main' }} /> },

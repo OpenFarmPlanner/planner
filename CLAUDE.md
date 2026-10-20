@@ -363,6 +363,12 @@ or changing a public page:
 - The seeded family defaults are initial reference values still to be verified
   against LfL Bayern / Bio Austria via the crop-data workflow. Details:
   [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).
+- `PlantingPlan.cultivation_type` also accepts the plan-only
+  `purchased_transplant` (bought-in young plants): never add it to a crop's
+  `cultivation_types`; it is selectable whenever `pre_cultivation` is. Such
+  plans have no Anzucht, no sowing date and no seed demand and feed the
+  young-plant demand. Details:
+  [`docs/young-plant-demand.md`](docs/young-plant-demand.md).
 - The database (`CropSpecies`, `CropSpeciesTranslation`) is the only source of
   crop-species names, synonyms, regional names and languages. Maintain them
   through the crop-species API only — never via a seed file or a new data

@@ -77,7 +77,8 @@ reads `PlantingPlan` scopes by the active season explicitly — there is no
 free ride through a shared queryset, because the Gantt/occupancy calendar
 goes through `/api/planting-plans/` (a `ModelViewSet`) while yield overview
 and seed demand are plain `APIView`s that build their own querysets in
-`farm/services/yield_calendar.py` and `farm/services/seed_demand.py`. Both
+`farm/services/yield_calendar.py` and `farm/services/seed_demand.py` (as does
+the young-plant demand in `farm/services/young_plant_demand.py`). All of them
 accept an optional `season_id` and both views resolve it from the request the
 same way the planting-plans viewset does — via
 `resolve_season_id_from_request()` — so all three surfaces stay consistent

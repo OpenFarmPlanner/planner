@@ -52,7 +52,7 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { CultivationType } from "../api/types";
+import type { PlanCultivationType } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
 import {
   formatLocalizedNumberForInput,
@@ -121,7 +121,12 @@ import { PlantingPlanMobileListHeader } from "../components/planting-plans/searc
 import { PlantingPlanFilterSheet } from "../components/planting-plans/search/PlantingPlanFilterSheet";
 import { PlantingPlanSearchEmptyState } from "../components/planting-plans/search/PlantingPlanSearchEmptyState";
 import { getEffectiveCropValue, resolveSpacingEditCropId } from "../crops/varietyValueSource";
-import { getPlanPropagationInfo, getPlanSowingSchedule, getPlantingDateFromSowingDate } from "./planSowingDate";
+import {
+  getPlanPropagationInfo,
+  getPlanSowingSchedule,
+  getPlantingDateFromSowingDate,
+  PURCHASED_TRANSPLANT,
+} from "./planSowingDate";
 
 import { useAreaValidationDialog, type AreaValidationDialogState } from "./useAreaValidationDialog";
 import { AreaValidationDialog } from "../components/planting-plans/AreaValidationDialog";
@@ -712,15 +717,24 @@ function PlantingPlans() {
           return getCultivationTypeOptionsForRow(row);
         },
         valueFormatter: (value) => {
-          const stringValue = typeof value === "string" ? value : "";
-          const option = cultivationTypeOptions.find(
-            (item) => item.value === (stringValue as CultivationType),
-          );
-          return option?.label ?? "";
+          const option = cultivationTypeOptions.find((item) => item.value === value);
+          return option?.shortLabel ?? "";
+        },
+        cellClassName: (params) => {
+          const option = cultivationTypeOptions.find((item) => item.value === params.value);
+          return option && option.shortLabel !== option.label ? FULL_CELL_TOOLTIP_CELL_CLASS : "";
         },
         renderCell: (params) => {
           const formattedValue =
             typeof params.formattedValue === "string" ? params.formattedValue : "";
+          const option = cultivationTypeOptions.find((item) => item.value === params.value);
+          if (option && option.shortLabel !== option.label) {
+            return (
+              <FullCellTooltip title={option.label} cellHasFocus={params.hasFocus}>
+                <Box component="span"><SearchHighlightedText text={formattedValue} /></Box>
+              </FullCellTooltip>
+            );
+          }
           return <SearchHighlightedText text={formattedValue} />;
         },
         renderEditCell: (params) => {
@@ -848,8 +862,11 @@ function PlantingPlans() {
         renderCell: (params) => {
           const schedule = getRowSowingSchedule(params.row as PlantingPlanRow);
           if (!schedule?.sowingDate) {
+            const tooltip = schedule?.isPurchasedTransplant
+              ? t("plantingPlans:tooltips.noOwnPropagation")
+              : t("plantingPlans:tooltips.missingPropagationDuration");
             return (
-              <FullCellTooltip title={t("plantingPlans:tooltips.missingPropagationDuration")} cellHasFocus={params.hasFocus}>
+              <FullCellTooltip title={tooltip} cellHasFocus={params.hasFocus}>
                 <Box component="span">—</Box>
               </FullCellTooltip>
             );
@@ -858,11 +875,26 @@ function PlantingPlans() {
             <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
           );
         },
-        renderEditCell: (params) => (
-          <DateEditCell {...params} onCommitted={(value) => applyLinkedDateValue(params, "sowing_date", value)} />
-        ),
+        renderEditCell: (params) => {
+          // The grid-level isCellEditable decides editability, so bought-in
+          // plants (no own sowing) keep the read-only cell while the row edits.
+          const editedRow = params.api.getRowWithUpdatedValues(params.id, params.field) as PlantingPlanRow;
+          if (editedRow.cultivation_type === PURCHASED_TRANSPLANT) {
+            return (
+              <FullCellTooltip title={t("plantingPlans:tooltips.noOwnPropagation")} cellHasFocus={params.hasFocus}>
+                <Box component="span" sx={{ px: 1.25 }}>—</Box>
+              </FullCellTooltip>
+            );
+          }
+          return (
+            <DateEditCell {...params} onCommitted={(value) => applyLinkedDateValue(params, "sowing_date", value)} />
+          );
+        },
         preProcessEditCellProps: (params) => {
           const row = params.row as PlantingPlanRow;
+          if (row.cultivation_type === PURCHASED_TRANSPLANT) {
+            return { ...params.props, error: false };
+          }
           if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedDateFieldRef.current = "sowing_date";
           }
@@ -1248,15 +1280,21 @@ function PlantingPlans() {
   };
 
   /**
-   * Whether the mobile dialog's Aussaattermin field can be computed at all
-   * for the form's current crop/cultivation_type, independent of whether a
-   * planting date has been entered yet. False only for Anzucht without a
-   * resolvable propagation duration.
+   * Why the mobile dialog's Aussaattermin field cannot be computed for the
+   * form's current crop/cultivation_type (bought-in plants, or Anzucht
+   * without a resolvable propagation duration), independent of whether a
+   * planting date has been entered yet; null when it can.
    */
-  const getMobileSowingFieldDisabled = (form: MobileCreateFormState): boolean => {
+  const getMobileSowingDateDisabledReason = (form: MobileCreateFormState): string | null => {
     const crop = crops.find((item) => item.id === Number(form.crop));
     const propagationInfo = getPlanPropagationInfo(form, crop);
-    return propagationInfo.isPreCultivation && propagationInfo.propagationDurationDays === null;
+    if (propagationInfo.isPurchasedTransplant) {
+      return t("plantingPlans:tooltips.noOwnPropagation");
+    }
+    if (propagationInfo.isPreCultivation && propagationInfo.propagationDurationDays === null) {
+      return t("plantingPlans:tooltips.missingPropagationDuration");
+    }
+    return null;
   };
 
   /** Recomputes the Aussaattermin text from the form's current planting date. */
@@ -1324,6 +1362,7 @@ function PlantingPlans() {
       cropSynonyms: linkedCrop?.crop_species_search_names ?? [],
       cultivationType: row.cultivation_type ?? "",
       cultivationTypeLabel: cultivationTypeOptions.find((item) => item.value === row.cultivation_type)?.label ?? "",
+      cultivationTypeShortLabel: cultivationTypeOptions.find((item) => item.value === row.cultivation_type)?.shortLabel ?? "",
       locationId: linkedLocation?.id ?? row.location_id ?? null,
       locationName: linkedLocation?.name ?? toOptionalString(row.location_name) ?? "",
       fieldId: linkedField?.id ?? row.field_id ?? null,
@@ -1772,7 +1811,7 @@ function PlantingPlans() {
     setMobileCreateForm({
       crop: String(row.crop ?? ""),
       bed: String(row.bed ?? ""),
-      cultivation_type: (row.cultivation_type as CultivationType) || "",
+      cultivation_type: (row.cultivation_type as PlanCultivationType) || "",
       sowing_date: formatDateAsGerman(getRowSowingSchedule(row)?.sowingDate ?? null),
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
@@ -1851,7 +1890,7 @@ function PlantingPlans() {
     setMobileCreateForm({
       crop: String(row.crop ?? ""),
       bed: String(row.bed ?? ""),
-      cultivation_type: (row.cultivation_type as CultivationType) || "",
+      cultivation_type: (row.cultivation_type as PlanCultivationType) || "",
       sowing_date: formatDateAsGerman(getRowSowingSchedule(row)?.sowingDate ?? null),
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
@@ -2086,7 +2125,7 @@ function PlantingPlans() {
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={t(`plantingPlans:cultivationTypes.${item.cultivation_type === "direct_sowing" ? "directSowing" : "preCultivation"}`)} /></Typography>
+                  <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   {getRowSowingSchedule(item)?.sowingDate ? (
                     <Typography variant="body2"><strong>{t("plantingPlans:columns.sowingDate")}:</strong> <SearchHighlightedText text={formatDateForDisplay(getRowSowingSchedule(item)?.sowingDate)} /></Typography>
@@ -2285,7 +2324,7 @@ function PlantingPlans() {
             // from row.sowing_date instead, the same way the area/plants
             // pair below picks its payload from lastEditedFieldRef rather
             // than trusting the grid's own row assembly.
-            if (lastEditedDateFieldRef.current === "sowing_date") {
+            if (lastEditedDateFieldRef.current === "sowing_date" && row.cultivation_type !== PURCHASED_TRANSPLANT) {
               const sowingDateIso = toIsoDateString(row.sowing_date);
               if (sowingDateIso) {
                 const crop = crops.find((item) => item.id === row.crop);
@@ -2557,7 +2596,7 @@ function PlantingPlans() {
             : undefined
         }
         getPlantsPerSqm={getPlantsPerSqmForCrop}
-        isSowingDateDisabled={getMobileSowingFieldDisabled}
+        getSowingDateDisabledReason={getMobileSowingDateDisabledReason}
         getSowingDateFromPlantingDate={getMobileSowingDateFromPlantingDate}
         getPlantingDateFromSowingDate={getMobilePlantingDateFromSowingDate}
         onLinkedFieldEdited={handleMobileLinkedFieldEdited}

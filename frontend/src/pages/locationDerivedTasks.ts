@@ -26,11 +26,12 @@ const getPlanCropDisplayName = (plan: PlantingPlan): string | undefined => (
 
 const DIRECT_SOWING = 'direct_sowing';
 const PRE_CULTIVATION = 'pre_cultivation';
+const PURCHASED_TRANSPLANT = 'purchased_transplant';
 
 const isDirectSowingPlan = (plan: PlantingPlan, crop?: Crop): boolean => {
   const planType = plan.cultivation_type || plan.crop_cultivation_type;
   if (planType === DIRECT_SOWING) return true;
-  if (planType === PRE_CULTIVATION) return false;
+  if (planType === PRE_CULTIVATION || planType === PURCHASED_TRANSPLANT) return false;
 
   const supported = plan.crop_cultivation_types
     ?? getEffectiveCropValue(crop, 'cultivation_types')

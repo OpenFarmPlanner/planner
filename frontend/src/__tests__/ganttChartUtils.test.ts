@@ -158,6 +158,55 @@ describe('buildSeedlingTaskGroups', () => {
     expect(groups[0].tasks[0].plantingPlanCount).toBe(1);
   });
 
+  it('leaves bought-in plants out of the propagation calendar', () => {
+    const groups = buildSeedlingTaskGroups({
+      labels,
+      locations,
+      fields,
+      beds,
+      crops: [
+        { id: 7, name: 'Tomate', propagation_duration_days: 21, cultivation_types: ['pre_cultivation'] },
+      ],
+      plantingPlans: [
+        {
+          id: 5,
+          crop: 7,
+          bed: 100,
+          planting_date: '2026-05-10',
+          cultivation_type: 'purchased_transplant',
+        },
+      ],
+    });
+
+    expect(groups).toEqual([]);
+  });
+
+  it('starts the occupancy bar of bought-in plants at the planting date', () => {
+    const groups = buildFieldOccupancyTaskGroups({
+      labels,
+      locations,
+      fields,
+      beds,
+      crops: [
+        { id: 7, name: 'Tomate', propagation_duration_days: 21, cultivation_types: ['pre_cultivation'] },
+      ],
+      plantingPlans: [
+        {
+          id: 5,
+          crop: 7,
+          crop_name: 'Tomate',
+          bed: 100,
+          planting_date: '2026-05-10',
+          harvest_date: '2026-07-01',
+          harvest_end_date: '2026-08-01',
+          cultivation_type: 'purchased_transplant',
+        },
+      ],
+    });
+
+    expect(groups[0].tasks[0].startDate.toISOString()).toContain('2026-05-10');
+  });
+
   it('builds a propagation window from timing a Sorte inherits from its general Kultur', () => {
     const groups = buildSeedlingTaskGroups({
       labels,

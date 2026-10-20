@@ -82,7 +82,10 @@ export interface PlantingPlanSearchRecordInput {
   /** Names of the linked crop species (translations, synonyms, regional names). */
   cropSynonyms: readonly string[];
   cultivationType: string;
+  /** Full label; filter options and the searched text use it. */
   cultivationTypeLabel: string;
+  /** Compact label the table cell shows; searched too. Omitted when equal. */
+  cultivationTypeShortLabel?: string;
   locationId: number | null;
   locationName: string;
   fieldId: number | null;
@@ -155,6 +158,7 @@ export function createPlantingPlanSearchRecord(input: PlantingPlanSearchRecordIn
     normalizedVisibleTexts: [
       input.cropLabel,
       input.cultivationTypeLabel,
+      input.cultivationTypeShortLabel ?? '',
       input.locationName,
       input.fieldName,
       input.bedName,

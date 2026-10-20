@@ -15,7 +15,16 @@ from .structure import Bed
 
 class PlantingPlan(TimestampedModel):
     """A planting schedule linking a crop to a bed with dates."""
-    CULTIVATION_TYPE_CHOICES = Crop.CULTIVATION_TYPE_CHOICES
+    # Plan-only cultivation type: planted out from bought-in young plants, so
+    # there is no own propagation (Anzucht) and no seed demand. A crop never
+    # lists it in its own `cultivation_types`; it is selectable whenever the
+    # crop allows 'pre_cultivation' (transplanting).
+    CULTIVATION_TYPE_PURCHASED_TRANSPLANT = 'purchased_transplant'
+    CULTIVATION_TYPE_CHOICES = [
+        *Crop.CULTIVATION_TYPE_CHOICES,
+        # Pflanzung mit gekauften Pflanzen
+        (CULTIVATION_TYPE_PURCHASED_TRANSPLANT, 'Transplant with bought-in plants'),
+    ]
 
     crop = models.ForeignKey(
         Crop,
@@ -37,7 +46,10 @@ class PlantingPlan(TimestampedModel):
         max_length=30,
         choices=CULTIVATION_TYPE_CHOICES,
         blank=True,
-        help_text="Cultivation type used for this plan",
+        help_text=(
+            "Cultivation type used for this plan: direct sowing, transplanting "
+            "from own propagation, or transplanting bought-in young plants"
+        ),
     )
     planting_date = models.DateField(
         null=True,

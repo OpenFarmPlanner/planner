@@ -303,7 +303,7 @@ test.describe('planting plans tab navigation with hidden columns', () => {
     await expect(page.getByRole('listbox')).toBeVisible();
 
     await page.keyboard.press('ArrowDown');
-    await expect(page.getByRole('option', { name: 'Pflanzung' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Pflanzung (eigene Anzucht)', exact: true })).toBeVisible();
     await page.keyboard.press('Enter');
 
     await expect(page.getByRole('listbox')).toBeHidden();

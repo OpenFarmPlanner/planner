@@ -114,6 +114,20 @@ describe('planting plan search', () => {
     expect(search('direktsaat nordfeld')).toEqual([3]);
   });
 
+  it('finds bought-in plants by the full and by the short cultivation-type label', () => {
+    const boughtIn = makeRecord({
+      id: 9,
+      cultivationType: 'purchased_transplant',
+      cultivationTypeLabel: 'Pflanzung mit gekauften Pflanzen',
+      cultivationTypeShortLabel: 'Pfl. Zukauf',
+    });
+    const terms = (query: string) => tokenizeSearchQuery(query);
+
+    expect(matchPlantingPlan(boughtIn, terms('gekauften'), EMPTY_PLANTING_PLAN_FILTERS).matches).toBe(true);
+    expect(matchPlantingPlan(boughtIn, terms('zukauf'), EMPTY_PLANTING_PLAN_FILTERS).matches).toBe(true);
+    expect(matchPlantingPlan(tomato, terms('zukauf'), EMPTY_PLANTING_PLAN_FILTERS).matches).toBe(false);
+  });
+
   it('matches in the middle of a word', () => {
     expect(search('rott')).toEqual([3]);
   });

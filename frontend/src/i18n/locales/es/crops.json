@@ -454,6 +454,50 @@
       "copyError": "No se han podido copiar los datos."
     }
   },
+  "youngPlantDemand": {
+    "title": "Necesidad de plantel",
+    "loadError": "No se pudo cargar la necesidad de plantel.",
+    "emptyState": {
+      "title": "No hay trasplantes de plantel comprado previstos en esta temporada.",
+      "description": "Elige el tipo de cultivo «Trasplante de plantel comprado» en el plan de cultivos para ver aquí la necesidad.",
+      "action": "Abrir el plan de cultivos"
+    },
+    "reserveLabel": "Reserva por pérdidas",
+    "reserveHelper": "Se suma a la cantidad de plantas, redondeada a plantas enteras.",
+    "columns": {
+      "crop": "Cultivo",
+      "variety": "Variedad",
+      "plantingWeek": "Semana de trasplante",
+      "plantCount": "Cantidad",
+      "plans": "Series / bancales"
+    },
+    "weekLabel": "Sem. {{week}}",
+    "weekRange": "{{start}} – {{end}}",
+    "noPlantingDate": "Sin fecha de trasplante",
+    "plansSummary": "{{plans}} / {{beds}}",
+    "plansSummaryTooltip_one": "{{count}} serie en {{beds}} bancal(es)",
+    "plansSummaryTooltip_many": "{{count}} series en {{beds}} bancal(es)",
+    "plansSummaryTooltip_other": "{{count}} series en {{beds}} bancal(es)",
+    "countUnavailable": "Cantidad no calculable: {{reason}}",
+    "calculationBlockers": {
+      "missing_plant_spacing": "falta la distancia entre plantas",
+      "missing_area": "falta la superficie",
+      "missingData": "faltan datos necesarios"
+    },
+    "reserveBreakdown": "{{base}} plantas + {{percent}} % de reserva = {{total}}",
+    "showPlans": "Mostrar series",
+    "hidePlans": "Ocultar series",
+    "detailColumns": {
+      "area": "Superficie de cultivo",
+      "plantingDate": "Fecha de trasplante",
+      "areaM2": "Superficie (m²)",
+      "plantCount": "Cantidad"
+    },
+    "contextMenu": {
+      "openCrop": "Abrir cultivo",
+      "editCrop": "Editar cultivo"
+    }
+  },
   "history": {
     "titles": {
       "crop": "Versiones",

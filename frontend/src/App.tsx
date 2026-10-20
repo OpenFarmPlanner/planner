@@ -65,6 +65,7 @@ const NotificationHistoryPage = React.lazy(() => import('./notifications/pages/N
 const PlantingPlans = React.lazy(() => import('./pages/PlantingPlans'));
 const GanttChart = React.lazy(() => import('./pages/GanttChart'));
 const SeedDemandPage = React.lazy(() => import('./pages/SeedDemand'));
+const YoungPlantDemandPage = React.lazy(() => import('./pages/YoungPlantDemand'));
 const YieldOverviewPage = React.lazy(() => import('./pages/YieldOverview'));
 const Suppliers = React.lazy(() => import('./pages/Suppliers'));
 
@@ -289,6 +290,7 @@ function createAppRouter(basename: string) {
                 { path: 'gantt-chart', element: withLazyFallback(<GanttChart />) },
                 { path: 'yield-overview', element: withLazyFallback(<YieldOverviewPage />) },
                 { path: 'seed-demand', element: withLazyFallback(<SeedDemandPage />) },
+                { path: 'young-plant-demand', element: withLazyFallback(<YoungPlantDemandPage />) },
                 { path: 'project-selection', element: withLazyFallback(<ProjectSelectionPage />) },
                 { path: 'account-settings', element: withLazyFallback(<AccountSettingsPage />) },
                 { path: 'notifications', element: withLazyFallback(<NotificationHistoryPage />) },

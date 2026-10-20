@@ -9,6 +9,7 @@ from .public import PublicCropViewSet
 from .seed_demand import SeedDemandListView
 from .seed_packages import SeedPackageViewSet
 from .suppliers import CropSupplierDataViewSet, SupplierViewSet
+from .young_plant_demand import YoungPlantDemandListView
 
 __all__ = [
     'CropSupplierDataViewSet',
@@ -17,4 +18,5 @@ __all__ = [
     'SeedDemandListView',
     'SeedPackageViewSet',
     'SupplierViewSet',
+    'YoungPlantDemandListView',
 ]

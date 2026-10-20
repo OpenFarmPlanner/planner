@@ -66,7 +66,8 @@
     "sowingDateDescription": "Mit dem Pflanztermin gekoppelt: Pflanztermin minus Anzuchtdauer der Kultur. Änderungen aktualisieren automatisch den anderen Wert. Bei Direktsaat gleich dem Pflanztermin.",
     "plantingDateTitle": "Pflanztermin",
     "plantingDateDescription": "Mit dem Aussaattermin gekoppelt. Bei Direktsaat ist das zugleich der Aussaattermin. Muss innerhalb der Saison liegen.",
-    "missingPropagationDuration": "Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist."
+    "missingPropagationDuration": "Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.",
+    "noOwnPropagation": "Keine eigene Anzucht, die Pflanzen werden zugekauft."
   },
   "hints": {
     "plantingDateSeasonRange": "Innerhalb der Saison: {{start}} – {{end}}"
@@ -101,7 +102,13 @@
   "addButton": "Anbauplan hinzufügen",
   "cultivationTypes": {
     "directSowing": "Direktsaat",
-    "preCultivation": "Pflanzung"
+    "preCultivation": "Pflanzung",
+    "purchasedTransplant": "Pfl. Zukauf"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Direktsaat",
+    "preCultivation": "Pflanzung (eigene Anzucht)",
+    "purchasedTransplant": "Pflanzung mit gekauften Pflanzen"
   },
   "areaAssignment": {
     "title": "Anbaufläche ändern",
