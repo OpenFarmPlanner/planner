@@ -44,6 +44,7 @@ export const i18nMap: Record<string, string> = {
   'actions.addBed': 'Beet hinzufügen',
   'actions.addShortcutHint': 'Einfg',
   'actions.bulkCreateBeds': 'Mehrere Beete anlegen',
+  'actions.duplicateField': 'Parzelle duplizieren',
   'actions.duplicateBed': 'Beet duplizieren',
   'actions.duplicateShortcutHint': 'Strg+D',
   'actions.duplicateShortcutHintMac': '⌘D',

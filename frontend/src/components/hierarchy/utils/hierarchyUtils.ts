@@ -23,12 +23,20 @@ export const hasPersistedEntityId = (id: number | undefined): id is number => (
   typeof id === 'number' && Number.isInteger(id) && id > 0
 );
 
+// Natural order: digit runs compare as numbers, so "E 2" sorts before
+// "E 10" and "E 1 9" before "E 1 10".
+const nameCollator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+
+/** Natural, case-insensitive name order used for every hierarchy level. */
+export const compareHierarchyNames = (left: string, right: string): number => nameCollator.compare(left, right);
+
 const compareText = (left: string, right: string, direction: 'asc' | 'desc'): number => {
-  const normalizedLeft = left.toLocaleLowerCase('de');
-  const normalizedRight = right.toLocaleLowerCase('de');
-  const result = normalizedLeft.localeCompare(normalizedRight, 'de');
+  const result = compareHierarchyNames(left, right);
   return direction === 'asc' ? result : -result;
 };
+
+/** Without an explicit sort, rows follow their names in natural order. */
+export const DEFAULT_HIERARCHY_SORT_CONFIG: HierarchySortConfig = { field: 'name', direction: 'asc' };
 
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -107,10 +115,11 @@ export function computeHierarchyOrderSnapshot(
   beds: Bed[],
   sortConfig?: HierarchySortConfig,
 ): HierarchyOrderSnapshot {
+  const effectiveSortConfig = sortConfig ?? DEFAULT_HIERARCHY_SORT_CONFIG;
   return {
-    locationOrder: sortByConfig(locations, sortConfig).map((location) => location.id!),
-    fieldOrder: sortByConfig(fields, sortConfig).map((field) => field.id!),
-    bedOrder: sortByConfig(beds, sortConfig).map((field) => field.id!),
+    locationOrder: sortByConfig(locations, effectiveSortConfig).map((location) => location.id!),
+    fieldOrder: sortByConfig(fields, effectiveSortConfig).map((field) => field.id!),
+    bedOrder: sortByConfig(beds, effectiveSortConfig).map((field) => field.id!),
   };
 }
 
@@ -161,6 +170,30 @@ export function applyHierarchyOrderSnapshot(
     fields: orderByStableIds(fields, orderSnapshot.fieldOrder),
     beds: orderByStableIds(beds, orderSnapshot.bedOrder),
   };
+}
+
+/**
+ * Places a duplicated field directly below its source in the order snapshot
+ * (instead of at the top, where unsnapshotted rows go) and its beds in
+ * natural name order.
+ */
+export function placeDuplicatedFieldInSnapshot(
+  snapshot: HierarchyOrderSnapshot,
+  sourceFieldId: number,
+  createdField: Field,
+  createdBeds: readonly Bed[],
+): HierarchyOrderSnapshot {
+  const createdFieldId = createdField.id;
+  const sourceIndex = snapshot.fieldOrder.indexOf(sourceFieldId);
+  if (createdFieldId === undefined || sourceIndex === -1) {
+    return snapshot;
+  }
+  const fieldOrder = [...snapshot.fieldOrder];
+  fieldOrder.splice(sourceIndex + 1, 0, createdFieldId);
+  const bedIds = [...createdBeds]
+    .sort((left, right) => compareHierarchyNames(left.name ?? '', right.name ?? ''))
+    .flatMap((bed) => (bed.id === undefined ? [] : [bed.id]));
+  return { ...snapshot, fieldOrder, bedOrder: [...snapshot.bedOrder, ...bedIds] };
 }
 
 /**

@@ -10,9 +10,17 @@ export const FIXED_NOW = new Date('2026-05-15T10:00:00+02:00');
 // Sub-pixel rounding differs between engines; anything larger is a real overflow.
 export const LAYOUT_TOLERANCE_PX = 1;
 
-export const test = base.extend<{ fixedClock: void }>({
+export const test = base.extend<{ fixedClock: void; shortcutHintSeen: void }>({
   fixedClock: [async ({ page }, provide) => {
     await page.clock.setFixedTime(FIXED_NOW);
+    await provide();
+  }, { auto: true }],
+  // The one-time "Alt+K" tip appears a few seconds after a feature page loads
+  // when no dialog is open yet. On a slow runner it lands before a test opens
+  // its dialog and then covers the dialog's buttons in the screenshot, so
+  // every page starts with the tip already seen.
+  shortcutHintSeen: [async ({ page }, provide) => {
+    await page.addInitScript(() => window.localStorage.setItem('ofp.shortcutHintSeen', '1'));
     await provide();
   }, { auto: true }],
 });

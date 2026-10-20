@@ -308,7 +308,7 @@ test.describe('fields-beds fast bed creation', () => {
     expect(await page.evaluate(() => (window as unknown as { lastDuplicatePrevented?: boolean }).lastDuplicatePrevented)).toBe(true);
   });
 
-  test('"Mehrere Beete anlegen" creates a row/bed series in one step', async ({ page, request }) => {
+  test('"Mehrere Beete anlegen" creates a name series in one step', async ({ page, request }) => {
     await loginWithFreshProject(page, request, 'fields-bed-bulk');
     await createFieldsBedsFixture(page);
     await page.goto('/app/fields-beds');
@@ -319,20 +319,21 @@ test.describe('fields-beds fast bed creation', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Mehrere Beete anlegen in Keyboard Focus Parzelle' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByLabel('Präfix')).toBeFocused();
+    // The field has no dimensions: no orientation choice, the last bed's size.
+    await expect(dialog.getByRole('textbox', { name: 'Länge (m)' })).toBeFocused();
     await expect(dialog.getByRole('textbox', { name: 'Länge (m)' })).toHaveValue('10');
     await expect(dialog.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('1');
+    await expect(dialog.getByRole('radio')).toHaveCount(0);
+    await expect(dialog.getByLabel('Name des ersten Beets')).toHaveValue('Keyboard Focus Beet D 2');
 
-    await dialog.getByRole('radio', { name: 'Nach Reihe und Beet' }).check();
-    await dialog.getByLabel('Präfix').fill('R');
-    await dialog.getByRole('spinbutton', { name: 'Anzahl Reihen' }).fill('2');
-    await dialog.getByRole('spinbutton', { name: 'Beete pro Reihe' }).fill('3');
-    await expect(dialog.getByRole('list', { name: 'Namen der neuen Beete' })).toContainText('R 2 3');
+    await dialog.getByRole('spinbutton', { name: 'Anzahl Beete' }).fill('6');
+    await dialog.getByLabel('Name des ersten Beets').fill('R 1');
+    await expect(dialog.getByRole('list', { name: 'Namen der neuen Beete' })).toContainText('R 6');
     await expect(dialog.getByText('6 Beete, je 10 m², gesamt 60 m²')).toBeVisible();
 
     await dialog.getByRole('button', { name: '6 Beete anlegen' }).click();
     await expect(dialog).not.toBeVisible();
-    for (const name of ['R 1 1', 'R 1 3', 'R 2 1', 'R 2 3']) {
+    for (const name of ['R 1', 'R 3', 'R 6']) {
       await expect(page.locator('[role="row"][data-id]').filter({ hasText: name })).toHaveCount(1);
     }
   });

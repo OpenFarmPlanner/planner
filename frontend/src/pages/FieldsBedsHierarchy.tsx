@@ -44,6 +44,7 @@ import { renderGroupedContextMenuActions } from "../components/contextMenu/conte
 import { ConfirmationDialog } from "../components/feedback/ConfirmationDialog";
 import { HierarchyAddIcon } from "../components/hierarchy/HierarchyAddIcon";
 import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
 import { nextFreeName } from "../components/hierarchy/utils/bedNaming";
 import { showGlobalSnackbar } from "../utils/globalSnackbar";
 import { isApplePlatform } from "../utils/platform";
@@ -96,6 +97,7 @@ import {
   buildHierarchyIndex,
   computeHierarchyOrderSnapshot,
   createHierarchyRowsProjector,
+  placeDuplicatedFieldInSnapshot,
   type HierarchyOrderSnapshot,
   type HierarchySortConfig,
 } from "../components/hierarchy/utils/hierarchyUtils";
@@ -837,6 +839,28 @@ function FieldsBedsHierarchy({
     [bulkCreateFieldId, hierarchyIndex],
   );
 
+  const getFieldBedsInTableOrder = useCallback(
+    (fieldId: number): Bed[] => hierarchyIndex.bedsByField.get(fieldId) ?? [],
+    [hierarchyIndex],
+  );
+  const placeDuplicatedField = useCallback(
+    (sourceFieldId: number, createdField: Field, createdBeds: Bed[]): void => {
+      setHierarchyOrderSnapshot((previous) =>
+        placeDuplicatedFieldInSnapshot(previous, sourceFieldId, createdField, createdBeds),
+      );
+    },
+    [],
+  );
+  const { openDuplicateField, dialog: duplicateFieldDialog } = useFieldDuplication({
+    fields,
+    setFields,
+    setBeds,
+    getFieldBeds: getFieldBedsInTableOrder,
+    ensureExpanded,
+    onDuplicated: placeDuplicatedField,
+    t,
+  });
+
   useEffect(() => {
     if (!location.pathname.startsWith("/app/fields-beds")) {
       return;
@@ -1350,6 +1374,13 @@ function FieldsBedsHierarchy({
         onClick: () => setBulkCreateFieldId(row.fieldId!),
         icon: <PlaylistAddIcon fontSize="small" />,
       });
+      createActions.push({
+        id: "duplicate-field",
+        label: t("actions.duplicateField"),
+        group: "create",
+        onClick: () => openDuplicateField(row.fieldId!),
+        icon: <ControlPointDuplicateIcon fontSize="small" />,
+      });
     }
 
     if (row.type === "bed" && row.bedId) {
@@ -1392,6 +1423,7 @@ function FieldsBedsHierarchy({
     handleAddField,
     handleCreatePlantingPlan,
     handleDuplicateBed,
+    openDuplicateField,
     t,
   ]);
 
@@ -2059,6 +2091,7 @@ function FieldsBedsHierarchy({
           onCreate={handleBulkCreateBeds}
         />
       ) : null}
+      {duplicateFieldDialog}
       <ConfirmationDialog
         open={unsavedRowDialogId !== null}
         title={t("dialogs.unsavedRow.title")}

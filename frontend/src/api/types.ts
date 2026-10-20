@@ -844,6 +844,19 @@ export interface BulkBedCreatePayload {
   beds: Array<{ name: string; length_m: number; width_m: number }>;
 }
 
+export interface FieldDuplicatePayload {
+  name: string;
+  copy_beds: boolean;
+  /** Replaced in each copied bed name (first case-sensitive occurrence); empty keeps the names. */
+  replace_search: string;
+  replace_with: string;
+}
+
+export interface FieldDuplicateResponse {
+  field: Field;
+  beds: Bed[];
+}
+
 export interface BedLayoutEntry {
   id?: number;
   bed: number;

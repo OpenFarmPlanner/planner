@@ -630,7 +630,7 @@ exist before saving its notes.
 
 ### Creating many similar beds
 
-Three entries in the hierarchy's ⋮/context menu speed up laying out a
+Four entries in the hierarchy's ⋮/context menu speed up laying out a
 field. All of them name beds through one helper,
 `components/hierarchy/utils/bedNaming.ts`: `incrementName` raises the
 *last* number in a name and keeps everything around it ("E 2 8" → "E 2 9",
@@ -652,24 +652,61 @@ names are unique per field in the backend).
   in edit mode; a held key does not repeat, and a second duplicate is
   ignored while the first is still saving (both would compute the same
   name).
-- **"Mehrere Beete anlegen" (field row)** opens `BulkBedCreateDialog`. Its
-  pure logic lives in `utils/bulkBedCreatePlan.ts`: naming by sequence
-  ("E 1", "E 2", …) or by row and bed ("E 1 1" … "E 2 8"), defaults that
-  continue the field's existing scheme when every bed name follows one of
-  the two patterns with one prefix (row/bed wins when both fit), the
-  "beds side by side across the field width" calculator
-  (`floor((field width + path) / (bed width + path))`), the preview, and the
-  non-blocking warning when existing plus new bed area exceeds the field
-  area. Names already used in the field block the submit. The dialog is
-  mounted per opening, so its defaults are read once from the beds at that
-  moment. The series is saved with one request,
+- **"Mehrere Beete anlegen" (field row, desktop and mobile)** opens
+  `BulkBedCreateDialog` (full screen below `sm`), laid
+  out to be filled top to bottom like a spreadsheet row. Its pure logic
+  lives in `utils/bulkBedCreatePlan.ts`:
+  - *Maße*: the beds run along the field length (default) or width; the
+    choice is only shown when the field has both. Length defaults to that
+    field side, otherwise the last bed's length; switching the orientation
+    moves it to the other side until the user has typed a length. Width
+    defaults to the last bed's width, the path (*Weg*) to empty (= 0).
+  - *Anzahl*: `suggestBulkBedCount` fills the *other* field side: free =
+    cross side − widths of all saved beds − one path per saved bed, then
+    `floor((free + path) / (bed width + path))`. The hint under the field
+    updates live (with/without existing beds, "no space left" at ≤ 0, no
+    hint without field dimensions or bed width); a "{n} übernehmen" link
+    appears while the field differs. The count is prefilled once on open
+    and never overwritten afterwards except through that link.
+  - *Namen*: one "first bed" name, defaulting to `nextFreeName` after the
+    last bed (otherwise the localized "Beet 1"); `buildBedNameSeries`
+    applies `incrementName` to each previous name ("E 2 1", "E 2 2", …;
+    "Nordbeet", "Nordbeet 2", …). Taken names are not skipped — they block
+    the submit with the list of conflicts.
+  - *Vorschau*: abbreviated names, per-bed and total area, and the
+    non-blocking warning when existing plus new bed area exceeds the field.
+
+  The dialog is mounted per opening, so its defaults are read once from the
+  beds at that moment. The frontend sends the finished name list to
   `POST /api/beds/bulk-create/` (`BedViewSet.bulk_create`), which is
   all-or-nothing and stays one write against the per-account write
   throttle; it caps a series at 200 beds and records one `created`
   revision per bed. It is session-only (not in the API-token allowlist).
+- **"Parzelle duplizieren" (field row, desktop and mobile)** opens
+  `DuplicateFieldDialog`, wired through the shared
+  `hooks/useFieldDuplication.tsx` so both layouts behave the same. The new
+  name defaults to the source name counted up past every field name in the
+  location. "Beete mitkopieren" (hidden for a field without beds) copies
+  the beds with an optional find-and-replace in their names (first
+  case-sensitive occurrence, `utils/fieldDuplicatePlan.ts`; the backend
+  applies the same rule). An empty or taken field name, or a replacement
+  that would make bed names empty or equal, blocks the action.
+  `POST /api/fields/{id}/duplicate/` (`FieldViewSet.duplicate`,
+  `services/field_duplication.py`) copies the location and dimensions of
+  the field and the name and dimensions of each bed in one transaction —
+  never notes, layouts, planting plans or crop-rotation data. A taken
+  field name answers 409 `field_name_taken`, colliding bed names 409
+  `bed_names_conflict` with `names`. On desktop the copy is inserted
+  right below its source in the order snapshot
+  (`placeDuplicatedFieldInSnapshot`) and expanded. Session-only like the
+  bulk create.
 
-The mobile list (`FieldsBedsHierarchyMobile.tsx`) keeps its own add flow
-and does not offer these entries.
+Rows without an explicit sort follow their names in natural order
+(`compareHierarchyNames`: "E 2" before "E 10", "E 1 9" before "E 1 10");
+the name-column sort uses the same comparison. The mobile list offers
+"Mehrere Beete anlegen" and "Parzelle duplizieren" in the sheet's ⋮ menu
+(choosing either closes the sheet first) but keeps its own add flow for
+single beds and has no "Beet duplizieren".
 
 ## Mobile layout (< sm)
 

@@ -3,6 +3,7 @@ import type { Bed, Field, Location } from "../../../api/api";
 import {
   buildHierarchyIndex,
   buildHierarchyRowsFromIndex,
+  DEFAULT_HIERARCHY_SORT_CONFIG,
   type HierarchySortConfig,
 } from "../utils/hierarchyUtils";
 import type { HierarchyRow } from "../utils/types";
@@ -23,7 +24,7 @@ export function useMobileHierarchyRows(
   expandedRows: Set<string | number>,
 ): MobileHierarchyRow[] {
   const hierarchyIndex = useMemo(
-    () => buildHierarchyIndex(locations, fields, beds, hierarchySortConfig),
+    () => buildHierarchyIndex(locations, fields, beds, hierarchySortConfig ?? DEFAULT_HIERARCHY_SORT_CONFIG),
     [locations, fields, beds, hierarchySortConfig],
   );
 

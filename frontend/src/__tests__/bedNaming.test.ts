@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   abbreviateNameList,
-  buildRowBedNames,
-  buildSequentialBedNames,
-  detectBedNaming,
+  buildBedNameSeries,
   incrementName,
-  joinBedName,
   nextFreeName,
   suggestBedCountAcrossWidth,
 } from '../components/hierarchy/utils/bedNaming';
@@ -69,54 +66,25 @@ describe('nextFreeName', () => {
   });
 });
 
-describe('joinBedName', () => {
-  it('separates prefix and numbers with a space', () => {
-    expect(joinBedName('E', 2, 8)).toBe('E 2 8');
+describe('buildBedNameSeries', () => {
+  it('counts the last number of the first name up', () => {
+    expect(buildBedNameSeries('E 2 1', 3)).toEqual(['E 2 1', 'E 2 2', 'E 2 3']);
+    expect(buildBedNameSeries('pre_1', 3)).toEqual(['pre_1', 'pre_2', 'pre_3']);
+    expect(buildBedNameSeries('Beet 09', 2)).toEqual(['Beet 09', 'Beet 10']);
   });
 
-  it('adds no leading space for an empty prefix', () => {
-    expect(joinBedName('', 3)).toBe('3');
-    expect(joinBedName('   ', 1, 2)).toBe('1 2');
-  });
-});
-
-describe('bulk name builders', () => {
-  it('builds sequential names', () => {
-    expect(buildSequentialBedNames({ prefix: 'E', start: 1, count: 3 })).toEqual(['E 1', 'E 2', 'E 3']);
-    expect(buildSequentialBedNames({ prefix: '', start: 5, count: 2 })).toEqual(['5', '6']);
-    expect(buildSequentialBedNames({ prefix: 'E', start: 1, count: 0 })).toEqual([]);
+  it('appends a number to a name without one', () => {
+    expect(buildBedNameSeries('Nordbeet', 3)).toEqual(['Nordbeet', 'Nordbeet 2', 'Nordbeet 3']);
   });
 
-  it('builds row/bed names row by row', () => {
-    expect(buildRowBedNames({ prefix: 'E', rows: 2, bedsPerRow: 3, firstRow: 1, firstBed: 1 })).toEqual([
-      'E 1 1', 'E 1 2', 'E 1 3', 'E 2 1', 'E 2 2', 'E 2 3',
-    ]);
-    expect(buildRowBedNames({ prefix: '', rows: 1, bedsPerRow: 2, firstRow: 3, firstBed: 4 })).toEqual(['3 4', '3 5']);
-  });
-});
-
-describe('detectBedNaming', () => {
-  it('continues a sequential scheme', () => {
-    expect(detectBedNaming(['E 1', 'E 2', 'E 3'])).toEqual({ mode: 'sequential', prefix: 'E', start: 4 });
-    expect(detectBedNaming(['4', '2'])).toEqual({ mode: 'sequential', prefix: '', start: 5 });
+  it('trims the first name', () => {
+    expect(buildBedNameSeries('  E 1 ', 2)).toEqual(['E 1', 'E 2']);
   });
 
-  it('continues a row/bed scheme with the next row', () => {
-    expect(detectBedNaming(['E 1 1', 'E 1 2', 'E 2 1', 'E 2 2'])).toEqual({
-      mode: 'rowBed', prefix: 'E', firstRow: 3, firstBed: 1, bedsPerRow: 2,
-    });
-  });
-
-  it('reads a single row as row/bed', () => {
-    expect(detectBedNaming(['E 1 1', 'E 1 2'])).toMatchObject({ mode: 'rowBed', firstRow: 2 });
-  });
-
-  it('returns null for mixed or unrecognized names', () => {
-    expect(detectBedNaming([])).toBeNull();
-    expect(detectBedNaming(['E 1', 'F 2'])).toBeNull();
-    expect(detectBedNaming(['E 1', 'E 1 1'])).toBeNull();
-    expect(detectBedNaming(['Nordbeet'])).toBeNull();
-    expect(detectBedNaming(['B-3'])).toBeNull();
+  it('is empty without a first name or count', () => {
+    expect(buildBedNameSeries('', 3)).toEqual([]);
+    expect(buildBedNameSeries('   ', 3)).toEqual([]);
+    expect(buildBedNameSeries('E 1', 0)).toEqual([]);
   });
 });
 

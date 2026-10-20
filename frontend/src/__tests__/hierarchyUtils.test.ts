@@ -10,6 +10,7 @@ import {
   buildHierarchyRowsFromIndex,
   computeHierarchyOrderSnapshot,
   createHierarchyRowsProjector,
+  placeDuplicatedFieldInSnapshot,
 } from '../components/hierarchy/utils/hierarchyUtils';
 import type { Location, Field, Bed } from '../api/api';
 
@@ -694,5 +695,41 @@ describe('hierarchy stable order snapshot', () => {
     const ordered = applyHierarchyOrderSnapshot([], fields, [], snapshot);
     const location1Fields = ordered.fields.filter((field) => field.location === 1).map((f) => f.id);
     expect(location1Fields).toEqual([1, 3]);
+  });
+});
+
+describe('natural name order', () => {
+  const beds = ['E 10', 'E 2', 'E 1 10', 'E 1 9', 'e 3'].map((name, index) => ({ id: index + 1, name, field: 10 } as Bed));
+  const names = (ids: number[]): string[] => ids.map((id) => beds.find((bed) => bed.id === id)!.name);
+
+  it('is the default order without an explicit sort', () => {
+    const snapshot = computeHierarchyOrderSnapshot([], [], beds);
+    expect(names(snapshot.bedOrder)).toEqual(['E 1 9', 'E 1 10', 'E 2', 'e 3', 'E 10']);
+  });
+
+  it('applies to the name column sort in both directions', () => {
+    const descending = computeHierarchyOrderSnapshot([], [], beds, { field: 'name', direction: 'desc' });
+    expect(names(descending.bedOrder)).toEqual(['E 10', 'e 3', 'E 2', 'E 1 10', 'E 1 9']);
+
+    const fields = [{ id: 1, name: 'Feld 10', location: 1 }, { id: 2, name: 'Feld 9', location: 1 }] as Field[];
+    const index = buildHierarchyIndex([], fields, [], { field: 'name', direction: 'asc' });
+    expect(index.fieldsByLocation.get(1)!.map((field) => field.name)).toEqual(['Feld 9', 'Feld 10']);
+  });
+});
+
+describe('placeDuplicatedFieldInSnapshot', () => {
+  it('puts the copy right below its source and its beds in natural order', () => {
+    const snapshot = { locationOrder: [1], fieldOrder: [3, 1, 2], bedOrder: [10] };
+    const created = { id: 7, name: 'Nord 2', location: 1 } as Field;
+    const createdBeds = [{ id: 31, name: 'B 10', field: 7 }, { id: 30, name: 'B 2', field: 7 }] as Bed[];
+
+    expect(placeDuplicatedFieldInSnapshot(snapshot, 1, created, createdBeds)).toEqual({
+      locationOrder: [1], fieldOrder: [3, 1, 7, 2], bedOrder: [10, 30, 31],
+    });
+  });
+
+  it('leaves the snapshot alone when the source is not in it', () => {
+    const snapshot = { locationOrder: [], fieldOrder: [], bedOrder: [] };
+    expect(placeDuplicatedFieldInSnapshot(snapshot, 1, { id: 7, name: 'x', location: 1 } as Field, [])).toBe(snapshot);
   });
 });

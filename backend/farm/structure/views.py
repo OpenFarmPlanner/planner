@@ -16,6 +16,12 @@ from farm.history import _serialize_instance
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import extract_layout_payloads, save_location_layouts
+from farm.services.field_duplication import (
+    BedNameConflictError,
+    FieldNameTakenError,
+    InvalidBedNameError,
+    duplicate_field,
+)
 
 from .serializers import (
     BED_NAME_DUPLICATE_MESSAGE,
@@ -23,6 +29,7 @@ from .serializers import (
     BedLayoutSerializer,
     BedSerializer,
     BulkBedCreateSerializer,
+    FieldDuplicateSerializer,
     FieldLayoutSerializer,
     FieldSerializer,
     LocationSerializer,
@@ -130,6 +137,59 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
         except IntegrityError as exc:
             raise DRFValidationError({'name': [FIELD_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+
+    @action(detail=True, methods=['post'], url_path='duplicate')
+    def duplicate(self, request, pk: str | None = None) -> Response:
+        """Copy a field and, on request, its beds in one transaction ("Parzelle duplizieren").
+
+        Returns 409 when the new field name is taken in the location
+        (`field_name_taken`) or when the find-and-replace would give two
+        copied beds the same name (`bed_names_conflict`, with `names`).
+        """
+        source = self.get_object()
+        serializer = FieldDuplicateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            result = duplicate_field(
+                source,
+                name=data['name'],
+                copy_beds=data['copy_beds'],
+                search=data['replace_search'],
+                replacement=data['replace_with'],
+                on_created=lambda instance: self.record_revision(
+                    instance, EntityRevision.ACTION_CREATED
+                ),
+            )
+        except FieldNameTakenError:
+            return api_error_response(
+                code='field_name_taken',
+                detail=FIELD_NAME_DUPLICATE_MESSAGE,
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        except BedNameConflictError as exc:
+            return api_error_response(
+                code='bed_names_conflict',
+                detail='The renamed beds would share a name in the new field.',
+                status_code=status.HTTP_409_CONFLICT,
+                names=exc.names,
+            )
+        except InvalidBedNameError as exc:
+            return api_error_response(
+                code='invalid_bed_names',
+                detail='The renamed bed names must not be empty or longer than 200 characters.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+                names=exc.names,
+            )
+        return Response(
+            {
+                'field': FieldSerializer(result.field, context=self.get_serializer_context()).data,
+                'beds': BedSerializer(
+                    result.beds, many=True, context=self.get_serializer_context()
+                ).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     def perform_destroy(self, instance):
         instance_id = instance.pk

@@ -27,7 +27,11 @@ import {
   type HierarchyEditSheetCreateContext,
 } from "../components/hierarchy/mobile/HierarchyEditSheet";
 import { DeleteUndoSnackbar } from "../components/data-grid";
-import type { HierarchySortConfig } from "../components/hierarchy/utils/hierarchyUtils";
+import { compareHierarchyNames, type HierarchySortConfig } from "../components/hierarchy/utils/hierarchyUtils";
+import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
+import type { Bed, BulkBedCreatePayload } from "../api/api";
+import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import { showGlobalSnackbar } from "../utils/globalSnackbar";
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -77,7 +81,7 @@ function FieldsBedsHierarchyMobile({
     fetchData,
   } = hierarchyData ?? internalHierarchyData;
 
-  const { expandedRows, toggleExpand, expandAll } = useExpandedState("fieldsBedsHierarchy");
+  const { expandedRows, toggleExpand, expandAll, ensureExpanded } = useExpandedState("fieldsBedsHierarchy");
   const { sortModel } = usePersistentSortModel({
     tableKey: "fieldsBedsHierarchy",
     allowedFields: ["name", "area_sqm"],
@@ -93,8 +97,26 @@ function FieldsBedsHierarchyMobile({
 
   const rows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows);
 
+  const getFieldBedsByName = useCallback(
+    (fieldId: number): Bed[] => beds
+      .filter((bed) => bed.field === fieldId)
+      .sort((left, right) => compareHierarchyNames(left.name ?? "", right.name ?? "")),
+    [beds],
+  );
+  const { openDuplicateField, dialog: duplicateFieldDialog } = useFieldDuplication({
+    fields,
+    setFields,
+    setBeds,
+    getFieldBeds: getFieldBedsByName,
+    ensureExpanded,
+    t,
+  });
+
+  const [bulkCreateFieldId, setBulkCreateFieldId] = useState<number | null>(null);
+
   const {
     saveBed,
+    bulkCreateBeds,
     pendingDeletions,
     undoPendingDeletion,
     closePendingDeletionSnackbar,
@@ -112,8 +134,27 @@ function FieldsBedsHierarchyMobile({
     setSelectedRowId,
     setError,
     onPendingDeletionCountChange,
+    onBulkCreateBeds: setBulkCreateFieldId,
+    onDuplicateField: openDuplicateField,
     t,
   });
+
+  const bulkCreateField = useMemo(
+    () => fields.find((field) => field.id === bulkCreateFieldId) ?? null,
+    [bulkCreateFieldId, fields],
+  );
+  const handleBulkCreateBeds = useCallback(
+    async (payload: BulkBedCreatePayload): Promise<void> => {
+      const created = await bulkCreateBeds(payload);
+      ensureExpanded(`field-${payload.field}`);
+      setBulkCreateFieldId(null);
+      showGlobalSnackbar({
+        message: t("dialogs.bulkCreateBeds.created", { count: created.length }),
+        severity: "success",
+      });
+    },
+    [bulkCreateBeds, ensureExpanded, t],
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>(null);
 
@@ -236,8 +277,9 @@ function FieldsBedsHierarchyMobile({
     if (sheetState?.mode !== "edit") {
       return [];
     }
+    // Deleting closes the sheet, and so do the actions whose dialog takes over.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
-      action.group === "destructive"
+      action.group === "destructive" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
         ? {
             ...action,
             onClick: () => {
@@ -293,6 +335,20 @@ function FieldsBedsHierarchyMobile({
           t,
         }}
       />
+
+      {bulkCreateField?.id !== undefined ? (
+        // Mounted per opening so its defaults are derived from the field's
+        // beds at that moment.
+        <BulkBedCreateDialog
+          key={bulkCreateField.id}
+          open
+          field={bulkCreateField}
+          fieldBeds={getFieldBedsByName(bulkCreateField.id)}
+          onClose={() => setBulkCreateFieldId(null)}
+          onCreate={handleBulkCreateBeds}
+        />
+      ) : null}
+      {duplicateFieldDialog}
 
       <Stack>
         {pendingDeletions.map((deletion, index) => (
