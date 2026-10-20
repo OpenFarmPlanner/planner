@@ -70,6 +70,26 @@ describe('deriveLocationTasks', () => {
     expect(tasks[1][0].date).toBe('2026-04-12');
   });
 
+  it('derives a planting task but no propagation start for bought-in plants', () => {
+    const crops: Crop[] = [
+      { id: 6, name: 'Salat', cultivation_types: ['direct_sowing'], propagation_duration_days: 21, growth_duration_days: 35 },
+    ];
+    const plans: PlantingPlan[] = [
+      { id: 1000, crop: 6, bed: 100, planting_date: '2026-05-03', cultivation_type: 'purchased_transplant' },
+    ];
+
+    const tasks = deriveLocationTasks({
+      locations,
+      fields,
+      beds,
+      plantingPlans: plans,
+      crops,
+      today: new Date('2026-04-01'),
+    });
+
+    expect(tasks[1].map((task) => task.type)).toEqual(['planting', 'harvestStart']);
+  });
+
   it('prefers localized planting plan crop names', () => {
     const crops: Crop[] = [
       { id: 5, name: 'Karotte', cultivation_types: ['direct_sowing'], growth_duration_days: 60 },
