@@ -1,10 +1,10 @@
 # RFC: Language-specific trade names for varieties in the public crop library
 
-**Status:** proposal (2026-10-20), not implemented. No code, migrations, or
-permission changes have been made. This document is the "analyse and plan"
-step. §2 lists the decisions that were fixed before analysis began, and §13
-lists the questions still open. Implementation needs its own go-ahead once
-§13 is answered.
+**Status:** design decided (2026-10-20), not yet implemented. No code,
+migrations, or permission changes have been made. This document is the
+"analyse and plan" step. §2 lists the decisions that were fixed before
+analysis began, and §13 records the decisions made on review.
+Implementation still needs its own go-ahead.
 
 ## 1. Motivation
 
@@ -292,8 +292,10 @@ Rules:
    uses them.
 4. The species part of the title keeps its existing localisation and regional
    override, unchanged.
-5. How the title combines species and variety (`Tomate (Poire jaune (Gelbe
-   Birne))` would nest parentheses) is open question Q2.
+5. Where species and variety are combined in one string, an entry with a
+   displayed trade name reads `Tomate · Poire jaune (Gelbe Birne)`. Every
+   other title keeps its current form, `Tomate (Moneymaker)` (decided in
+   §13, D2).
 
 ### 6.2 Affected surfaces
 
@@ -303,10 +305,10 @@ Rules:
 | Library detail (`PublicCropLibraryPage.tsx`) | Header and "Sorte" row use §6.1. A new "Handelsnamen" block lists all languages with their sources, plus an action that opens the edit dialog (§8.1). |
 | Library picker and mobile selector (`PublicCropLibraryDialog.tsx`, `PublicCropMobileSelectorDialog.tsx`, `formatters.ts`) | Label from §6.1. |
 | Publish wizard (`CropsPublishingWizardDialog.tsx`) | The "existing variety" picker shows §6.1 labels. Pre-selection also matches the local variety against trade names. The duplicate step names the matched trade name (§7.1). |
-| Import into project (`import_to_project`, `ImportConflictDialog.tsx`) | The import copies the **original** name into `Crop.variety`, unchanged (decision 8). The conflict dialog does not report a variety change when the local name equals one of the entry's trade names. Whether the user may take the trade name instead is part of Q1/Q3. |
+| Import into project (`import_to_project`, `ImportConflictDialog.tsx`) | The import copies the **original** name into `Crop.variety`, unchanged (decision 8). The conflict dialog does not report a variety change when the local name equals one of the entry's trade names. |
 | Sync with a linked entry (`_sync_compared_fields`, `public_crop_field_changes`) | A private variety that equals the original or **any** trade name of the entry counts as "in sync" for `variety`. Otherwise a French user's `Poire jaune` would be offered as a pull to `Gelbe Birne` or as an attempted rename. |
-| Project crop form autocomplete (`usePublicCropSuggestions.ts`, `dedupePublicCropVarieties()`) | Options show §6.1 labels. What gets written into the free-text field is Q3. |
-| Anbaupläne, Saatgutbedarf, Jungpflanzenbedarf, every other project view | Unchanged: they show the private `Crop.variety` (decision 8). Whether a linked crop shows the trade name is Q1. |
+| Project crop form autocomplete (`usePublicCropSuggestions.ts`, `dedupePublicCropVarieties()`) | Options show §6.1 labels. Picking `Poire jaune (Gelbe Birne)` writes the trade name `Poire jaune` into the free-text field (§13, D3). |
+| Anbaupläne, Saatgutbedarf, Jungpflanzenbedarf, every other project view | Unchanged in phases 1–4: they show the private `Crop.variety` (decision 8). Phase 5 adds a read-only trade-name display for linked crops (§13, D1). |
 | Moderation page (`PublicLibraryModerationPage.tsx`) | New queue: open reports (§8.3). |
 
 ### 6.3 Search rules
@@ -371,7 +373,7 @@ than `E`:
 
 The response links to the conflicting entry. Resolving it is a human
 decision. If it is a real duplicate, a moderator removes one entry with
-reason `duplicate` (the existing removal flow). There is no merge tool (Q6).
+reason `duplicate` (the existing removal flow). There is no merge tool (§13, D6).
 The same checks run when a variety is renamed and when a species is relinked
 ("Kulturart korrigieren"), because both change the scope that trade names are
 checked against.
@@ -396,7 +398,7 @@ language is not a trade name for any of them (guideline addition, §10).
 | Actor | Trade names: add, change, remove, revert | Report | Resolve reports |
 | --- | --- | --- | --- |
 | Signed-in session user (`established`) | yes, live | yes | — |
-| Signed-in session user (`new` trust level) | yes, live (decision 6). Whether to queue instead is **Q4**. | yes | — |
+| Signed-in session user (`new` trust level) | yes, live, with the same rights as established accounts and no moderation queue (§13, D4). Only the throttle in §8.4 applies. | yes | — |
 | Guest demo user | no (`_guest_demo_write_forbidden`, like `translations`) | no | — |
 | Library moderator / admin | yes | yes | yes, from the moderation page |
 | `ProjectApiToken` | **no**: not added to `api_token_actions` | no | no |
@@ -428,7 +430,7 @@ field. All new UI text exists in de, en, fr, and es. The glossary gains
   never deletes history.
 - History lives in the trade-name dialog, not in the "Versionen" panel, so
   `PublicCrop.version` and its edit-conflict and update semantics stay
-  untouched (option C's problem). Whether to merge the two views is Q5.
+  untouched (option C's problem). Decided in §13, D5.
 - History authors are pseudonymised like revision authors.
 - Data export (`accounts/data_export.py`) includes the user's own events.
   Account deletion sets `created_by` to null.
@@ -552,77 +554,66 @@ through the automated security review.
 
 | Phase | Content | Exit criterion |
 | --- | --- | --- |
-| 0. Decisions | Answer §13. Add the glossary entry. | Q1–Q7 answered. |
+| 0. Glossary | Add the `Handelsname` entry to `i18n-glossary.md` (§11). | Term available for all four languages. |
 | 1. Backend model and read path | `PublicCropTradeName` and `PublicCropTradeNameEvent`, migration. Serializer fields (§5.1), search (§6.3), duplicate detection and conflict checks (§7). `assertNumQueries` for both list endpoints with several entries and trade names (`farm/tests/test_api_query_counts.py`). Tests for cross-language duplicates in `farm/tests/test_public_crop_language.py`. | Read side complete. No write UI yet. |
 | 2. Write API with safeguards | `/trade-names/` PUT, history, revert, reports, moderator resolve, throttles, data export. Session users only. | **Editing never goes live without history, report and throttle.** That is why they ship together. |
 | 3. Frontend | Display helper and every surface in §6.2. The dialog in the detail view. History in the dialog. The report action. The moderation queue. Sync and import comparison rules. Translations in all four languages. Visual review at 375/768/1024/1440 and in phone landscape for the detail view and the dialog. | Users can maintain trade names. |
 | 4. Starter set | `CropLibraryApiToken` opt-in (§9) and token-surface tests. Staging first, then a `crop-data` sync job. | Starter set imported on production. |
+| 5. Linked private crops | Read-only `variety_display_name` on the project crop API, shown in project views and found by page search (§13, D1). Query-count test for `GET /api/crops/`. | A linked crop shows the trade name in the UI language. |
 
 Suggested effort: **high** for phases 1–2 (identity, duplicate detection,
 permission and token surface) and **medium** for phase 3.
 
-## 13. Open questions
+## 13. Decisions (reviewed 2026-10-20)
 
-**Q1. Should a private crop linked to the library show the trade name in the
-UI language?** A project crop with `source_public_crop = Gelbe Birne` and
-`Crop.variety = "Gelbe Birne"` could appear in a French UI as `Poire jaune
-(Gelbe Birne)`, in the same way the API already adds `crop_display_name`
-beside the verbatim `name` for species. Options:
+**D1. A private crop linked to the library shows the trade name in the UI
+language,** read-only and additive, in a separate phase after phase 3
+(phase 5). The project crop API gains `variety_display_name` beside the
+unchanged `variety`, following the existing `crop_display_name` pattern. It
+is set only while the linked entry is published and only while
+`Crop.variety` still equals the entry's original name or one of its trade
+names. Editing, history and exports keep the stored name (decision 8). Page
+search also finds the plan under the trade name (`search.md`). The accepted
+consequence: in a shared project, a German and a French member see the same
+plan under different variety names.
 
-- (a) No. Project views always show `Crop.variety` verbatim. This is the
-  simplest reading of decision 8 and avoids surprises in shared projects
-  where members use different UI languages.
-- (b) Yes, read-only and additive: a `variety_display_name` beside the
-  unchanged `variety`, only while the linked entry is published and only
-  when `Crop.variety` still equals the original name. Editing, history and
-  exports keep the stored name. This follows the existing
-  `crop_display_name` pattern. Page search would then also find the plan
-  under the trade name (`search.md`).
+**D2. Combined titles use `Tomate · Poire jaune (Gelbe Birne)`.** Where the
+variety label stands alone (hierarchy rows, the detail row, pickers), it
+follows decision 3. In strings that combine species and variety, an entry
+with a displayed trade name uses the `·` separator the publish wizard already
+uses. Every other title keeps its current form, `Tomate (Moneymaker)`, so no
+nested parentheses appear.
 
-*Recommendation: (b), but in a later phase after phase 3.* The data is
-already there, and the pattern exists. It does need a decision, because the
-same plan would then look different to a German and a French member of the
-same project.
+**D3. The variety autocomplete in the project crop form writes the trade
+name.** A French user who picks `Poire jaune (Gelbe Birne)` gets `Poire jaune`
+in the free-text field, because that is the name they buy under. §6.2 keeps
+sync and duplicate detection working with either name.
 
-**Q2. How are species and variety combined in one string?** Today it is
-`Tomate (Gelbe Birne)`. With a trade name this would become `Tomate (Poire
-jaune (Gelbe Birne))`. Options: nested parentheses; `Tomate – Poire jaune
-(Gelbe Birne)` only where a trade name is shown; or `Tomate (Poire jaune ·
-Gelbe Birne)`. *Recommendation:* the variety label always follows decision 3
-where it stands alone (hierarchy rows, detail row, pickers). In combined
-titles, use `Tomate · Poire jaune (Gelbe Birne)`, the separator the publish
-wizard already uses, and apply it only to entries with a displayed trade name,
-so all other titles keep their current form.
+**D4. No moderation for trade names, for any account.** `new`-trust accounts
+add, change, remove and revert trade names live, with the same rights as
+established accounts. There is no moderation queue and no "add only"
+restriction. `requires_moderation_queue()` is not called on the trade-name
+actions, and `account-trust-levels.md` records this exception. The
+safeguards are the after-the-fact ones from decision 6: history with revert
+(§8.2), reports (§8.3) and the throttle (§8.4).
 
-**Q3. What does the project crop form's variety autocomplete write?** If a
-French user picks the option `Poire jaune (Gelbe Birne)`, the free-text field
-could receive `Poire jaune` (what the user buys) or `Gelbe Birne` (the
-original). §6.2 makes both work with sync and duplicate detection.
-*Recommendation:* `Poire jaune`, because the user's own wording is what
-decision 8 protects.
+**D5. Trade-name history stays separate from the "Versionen" panel.** It is
+shown in the trade-name dialog (§8.2).
 
-**Q4. Should `new`-trust accounts write live?** Decision 6 says no moderation.
-However, every other public-library write by a `new` account is queued today
-(`requires_moderation_queue()`), while description translations are not.
-Options: live with the throttle in §8.4 (recommended, consistent with
-descriptions), or queued. A middle path: `new` accounts may add a trade name
-but not change or remove one entered by someone else.
+**D6. No merge tool in this work.** Duplicates found through trade names are
+resolved by removing one entry with reason `duplicate` (§7.2). A merge tool
+that moves linked private crops, discussions and history is left to its own
+RFC.
 
-**Q5. Should history appear in the "Versionen" panel as well?** The
-recommendation keeps it separate (§8.2). A merged timeline would be more
-discoverable but mixes versioned and unversioned changes.
+**D7. The publish wizard does not collect trade names in the first
+version** (§7.3). Trade names are added in the detail view afterwards.
 
-**Q6. Is a merge tool for duplicate variety entries needed?** Today a
-duplicate is only *removed*. Linked private crops, discussions and history
-stay on the removed entry. With trade names, duplicates become much easier to
-find. This could be its own RFC.
+**D8. Description translations stay without history** in this work. The
+trade-name event table can serve as the pattern if that is taken up later.
 
-**Q7. Should trade names be collected in the publish wizard?** This RFC says
-not in the first version (§7.3).
-
-**Q8. Should the description-translation path also gain history?** It has
-none today (§3.1). This is out of scope, but the trade-name event table could
-serve as the pattern for it.
+**D9. Defaults and terms as proposed:** `public_crop_trade_name_write` is
+`30/hour` and `public_crop_report` is `20/hour` (§8.4). The glossary term is
+`Handelsname` / Trade name / Nom commercial / Nombre comercial (§11).
 
 ## 14. What this RFC deliberately does not cover
 
