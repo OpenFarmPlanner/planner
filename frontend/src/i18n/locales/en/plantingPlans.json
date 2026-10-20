@@ -66,7 +66,8 @@
     "sowingDateDescription": "Coupled with the planting date: planting date minus the crop's propagation duration. Changes update the other value automatically. Equal to the planting date for direct sowing.",
     "plantingDateTitle": "Planting date",
     "plantingDateDescription": "Coupled with the sowing date. For direct sowing this is also the sowing date. Must lie within the season.",
-    "missingPropagationDuration": "Cannot be calculated because no propagation duration is set for this crop."
+    "missingPropagationDuration": "Cannot be calculated because no propagation duration is set for this crop.",
+    "noOwnPropagation": "No own propagation, the plants are bought in."
   },
   "hints": {
     "plantingDateSeasonRange": "Within the season: {{start}} – {{end}}"
@@ -101,7 +102,13 @@
   "addButton": "Add planting plan",
   "cultivationTypes": {
     "directSowing": "Direct sowing",
-    "preCultivation": "Transplanting"
+    "preCultivation": "Transplant",
+    "purchasedTransplant": "Bought-in"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Direct sowing",
+    "preCultivation": "Transplant (home-raised)",
+    "purchasedTransplant": "Transplant with bought-in plants"
   },
   "areaAssignment": {
     "title": "Change growing area",

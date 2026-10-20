@@ -4,6 +4,7 @@ import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 
 export const PRE_CULTIVATION = 'pre_cultivation';
 export const DIRECT_SOWING = 'direct_sowing';
+export const PURCHASED_TRANSPLANT = 'purchased_transplant';
 
 type PlanCultivationFields = Pick<
   PlantingPlan,
@@ -35,12 +36,14 @@ function normalizePlantingDate(value: PlantingPlan['planting_date'] | Date): str
 
 export interface PlanSowingSchedule {
   isPreCultivation: boolean;
+  /** Planted from bought-in young plants: no own Anzucht and no sowing date. */
+  isPurchasedTransplant: boolean;
   /** Effective propagation duration in days, or null when not resolvable. */
   propagationDurationDays: number | null;
   /**
    * ISO date the crop must be sown. Equal to `planting_date` for direct
-   * sowing. Null only when the plan uses Anzucht but no effective
-   * propagation duration can be resolved for the crop.
+   * sowing. Null for bought-in plants, and when the plan uses Anzucht but no
+   * effective propagation duration can be resolved for the crop.
    */
   sowingDate: string | null;
 }
@@ -74,8 +77,13 @@ function resolvePropagationDurationDays(
 
 export interface PlanPropagationInfo {
   isPreCultivation: boolean;
+  isPurchasedTransplant: boolean;
   propagationDurationDays: number | null;
 }
+
+const isPurchasedTransplantPlan = (plan: PlanCultivationFields): boolean => (
+  plan.cultivation_type === PURCHASED_TRANSPLANT
+);
 
 /**
  * Whether a plan uses Anzucht and its effective propagation duration,
@@ -87,17 +95,23 @@ export function getPlanPropagationInfo(
   plan: PlanPropagationFields,
   crop: Crop | undefined,
 ): PlanPropagationInfo {
+  const isPurchasedTransplant = isPurchasedTransplantPlan(plan);
   const isPreCultivation = resolveIsPreCultivation(plan, crop);
   if (!isPreCultivation) {
-    return { isPreCultivation: false, propagationDurationDays: null };
+    return { isPreCultivation: false, isPurchasedTransplant, propagationDurationDays: null };
   }
-  return { isPreCultivation: true, propagationDurationDays: resolvePropagationDurationDays(plan, crop) };
+  return {
+    isPreCultivation: true,
+    isPurchasedTransplant: false,
+    propagationDurationDays: resolvePropagationDurationDays(plan, crop),
+  };
 }
 
 /**
  * Resolves whether a plan is grown via Anzucht and, if so, its sowing date
- * (planting date minus the crop's effective propagation duration). Returns
- * null when the plan has no planting date yet (nothing to anchor on).
+ * (planting date minus the crop's effective propagation duration). Bought-in
+ * plants have neither Anzucht nor a sowing date. Returns null when the plan
+ * has no planting date yet (nothing to anchor on).
  */
 export function getPlanSowingSchedule(
   plan: PlanScheduleFields,
@@ -108,23 +122,27 @@ export function getPlanSowingSchedule(
     return null;
   }
 
+  if (isPurchasedTransplantPlan(plan)) {
+    return { isPreCultivation: false, isPurchasedTransplant: true, propagationDurationDays: null, sowingDate: null };
+  }
+
   const isPreCultivation = resolveIsPreCultivation(plan, crop);
   if (!isPreCultivation) {
-    return { isPreCultivation: false, propagationDurationDays: null, sowingDate: plantingDateIso };
+    return { isPreCultivation: false, isPurchasedTransplant: false, propagationDurationDays: null, sowingDate: plantingDateIso };
   }
 
   const propagationDurationDays = resolvePropagationDurationDays(plan, crop);
   if (!propagationDurationDays || propagationDurationDays <= 0) {
-    return { isPreCultivation: true, propagationDurationDays: null, sowingDate: null };
+    return { isPreCultivation: true, isPurchasedTransplant: false, propagationDurationDays: null, sowingDate: null };
   }
 
   const plantingDate = parseIsoDate(plantingDateIso);
   if (!plantingDate) {
-    return { isPreCultivation: true, propagationDurationDays, sowingDate: null };
+    return { isPreCultivation: true, isPurchasedTransplant: false, propagationDurationDays, sowingDate: null };
   }
 
   const sowingDate = formatIsoDate(addUtcDays(plantingDate, -propagationDurationDays));
-  return { isPreCultivation: true, propagationDurationDays, sowingDate };
+  return { isPreCultivation: true, isPurchasedTransplant: false, propagationDurationDays, sowingDate };
 }
 
 /**

@@ -20,7 +20,7 @@ describe('getAllowedCultivationTypesForCrop', () => {
       cultivation_type: 'pre_cultivation',
     } as never);
 
-    expect(options).toEqual(['pre_cultivation']);
+    expect(options).toEqual(['pre_cultivation', 'purchased_transplant']);
   });
 
   it('uses live inherited cultivation restrictions for a variety', () => {
@@ -33,13 +33,22 @@ describe('getAllowedCultivationTypesForCrop', () => {
       },
     } as never);
 
-    expect(options).toEqual(['pre_cultivation']);
+    expect(options).toEqual(['pre_cultivation', 'purchased_transplant']);
   });
 
-  it('falls back to both options when crop does not define restrictions', () => {
+  it('falls back to every option when crop does not define restrictions', () => {
     const options = getAllowedCultivationTypesForCrop(undefined);
 
-    expect(options).toEqual(['direct_sowing', 'pre_cultivation']);
+    expect(options).toEqual(['direct_sowing', 'pre_cultivation', 'purchased_transplant']);
+  });
+
+  it('allows bought-in plants exactly when transplanting is allowed', () => {
+    expect(getAllowedCultivationTypesForCrop({
+      cultivation_types: ['direct_sowing', 'pre_cultivation'],
+    } as never)).toEqual(['direct_sowing', 'pre_cultivation', 'purchased_transplant']);
+    expect(getAllowedCultivationTypesForCrop({
+      cultivation_types: ['direct_sowing'],
+    } as never)).not.toContain('purchased_transplant');
   });
 });
 

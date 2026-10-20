@@ -210,6 +210,14 @@
         "packageInfo": "Vérifier les combinaisons de conditionnements recommandées"
       }
     },
+    "youngPlantDemand": {
+      "title": "Aide : besoin en plants",
+      "intro": "Cette page indique combien de plants commander pour les plantations de plants achetés de la saison active, regroupés par culture, variété et semaine de plantation.\n\nLa quantité découle de la surface de chaque série et des espacements sur le rang et entre les rangs de la culture. La réserve pour pertes est arrondie au plant entier supérieur.",
+      "symbolsTitle": "Symboles et commandes",
+      "symbols": {
+        "expand": "Afficher ou masquer les séries concernées"
+      }
+    },
     "suppliers": {
       "title": "Aide : Fournisseurs",
       "intro": "Gérez ici les fournisseurs de semences et les informations sur leurs conditionnements.",

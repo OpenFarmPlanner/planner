@@ -21,9 +21,14 @@ const crops: Crop[] = [anzuchtCrop, anzuchtCropWithoutDuration, directCrop];
 const findCrop = (form: MobileCreateFormState): Crop | undefined =>
   crops.find((item) => item.id === Number(form.crop));
 
-const isSowingDateDisabled = (form: MobileCreateFormState): boolean => {
+const getSowingDateDisabledReason = (form: MobileCreateFormState): string | null => {
   const info = getPlanPropagationInfo(form, findCrop(form));
-  return info.isPreCultivation && info.propagationDurationDays === null;
+  if (info.isPurchasedTransplant) {
+    return "Keine eigene Anzucht, die Pflanzen werden zugekauft.";
+  }
+  return info.isPreCultivation && info.propagationDurationDays === null
+    ? "Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist."
+    : null;
 };
 
 const getSowingDateFromPlantingDate = (form: MobileCreateFormState): string => {
@@ -71,12 +76,13 @@ function renderDialog(form: MobileCreateFormState = initialForm) {
         ]}
         bedOptions={[{ value: "101", label: "Parzelle | Beet" }]}
         cultivationTypeOptions={[
-          { value: "pre_cultivation", label: "Vorkultur" },
-          { value: "direct_sowing", label: "Direktsaat" },
+          { value: "pre_cultivation", label: "Vorkultur", shortLabel: "Vorkultur" },
+          { value: "direct_sowing", label: "Direktsaat", shortLabel: "Direktsaat" },
+          { value: "purchased_transplant", label: "Pflanzung mit gekauften Pflanzen", shortLabel: "Pfl. Zukauf" },
         ]}
         numberLocale="de-DE"
         getPlantsPerSqm={() => null}
-        isSowingDateDisabled={isSowingDateDisabled}
+        getSowingDateDisabledReason={getSowingDateDisabledReason}
         getSowingDateFromPlantingDate={getSowingDateFromPlantingDate}
         getPlantingDateFromSowingDate={getPlantingDateFromSowingDate}
         onLinkedFieldEdited={vi.fn()}
@@ -146,5 +152,13 @@ describe("MobilePlanFormDialog", () => {
     const sowingField = screen.getByRole("textbox", { name: "Aussaattermin" });
     expect(sowingField).toBeDisabled();
     expect(screen.getByText("Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.")).toBeInTheDocument();
+  });
+
+  it("leaves the sowing date empty and explains why for bought-in plants", () => {
+    renderDialog({ ...initialForm, crop: "1", cultivation_type: "purchased_transplant", planting_date: "01.05.2026" });
+
+    const sowingField = screen.getByRole("textbox", { name: "Aussaattermin" });
+    expect(sowingField).toBeDisabled();
+    expect(screen.getByText("Keine eigene Anzucht, die Pflanzen werden zugekauft.")).toBeInTheDocument();
   });
 });

@@ -10,6 +10,7 @@
   "ganttChart": "Planting calendar",
   "yieldOverview": "Yield overview",
   "seedDemand": "Seed demand",
+  "youngPlantDemand": "Young plant demand",
   "short": {
     "dashboard": "Overview",
     "fieldsAndBeds": "Fields",
@@ -19,6 +20,7 @@
     "ganttChart": "Planting calendar",
     "yieldOverview": "Yield overview",
     "seedDemand": "Seed demand",
+    "youngPlantDemand": "Young plant demand",
     "suppliers": "Suppliers"
   },
   "graphicalFields": "Graphical view",
@@ -258,6 +260,7 @@
     "calendar": "Help for planting calendar",
     "yieldOverview": "Help for yield overview",
     "seedDemand": "Help for seed demand",
+    "youngPlantDemand": "Help for young plant demand",
     "suppliers": "Help for suppliers",
     "openAria": "Open {{label}}"
   },
@@ -390,7 +393,8 @@
       "areas": "Growing areas",
       "plans": "Planting plans",
       "calendar": "Planting calendar",
-      "seedDemand": "Seed demand"
+      "seedDemand": "Seed demand",
+      "youngPlantDemand": "Young plant demand"
     },
     "shortcutSections": {
       "navigation": "Navigation",

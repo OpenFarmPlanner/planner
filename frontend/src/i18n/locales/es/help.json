@@ -210,6 +210,14 @@
         "packageInfo": "Revisar las combinaciones de envases recomendadas"
       }
     },
+    "youngPlantDemand": {
+      "title": "Ayuda: Necesidad de plantel",
+      "intro": "Aquí ves cuántas plantas de plantel debes pedir para los trasplantes de plantel comprado de la temporada activa, agrupadas por cultivo, variedad y semana de trasplante.\n\nLa cantidad se calcula a partir de la superficie de cada serie y de las distancias entre plantas y entre filas del cultivo. La reserva por pérdidas se redondea a plantas enteras.",
+      "symbolsTitle": "Símbolos y controles",
+      "symbols": {
+        "expand": "Mostrar u ocultar las series correspondientes"
+      }
+    },
     "suppliers": {
       "title": "Ayuda: Proveedores",
       "intro": "Gestiona aquí los proveedores de semillas y la información de sus envases.",

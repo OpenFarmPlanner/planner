@@ -10,6 +10,7 @@
   "ganttChart": "Calendario de cultivos",
   "yieldOverview": "Resumen de rendimientos",
   "seedDemand": "Necesidad de semillas",
+  "youngPlantDemand": "Necesidad de plantel",
   "short": {
     "dashboard": "Resumen",
     "fieldsAndBeds": "Superficies",
@@ -19,6 +20,7 @@
     "ganttChart": "Calendario",
     "yieldOverview": "Rendimientos",
     "seedDemand": "Semillas",
+    "youngPlantDemand": "Plantel",
     "suppliers": "Proveedores"
   },
   "graphicalFields": "Vista gráfica",
@@ -265,6 +267,7 @@
     "calendar": "Ayuda sobre el calendario de cultivos",
     "yieldOverview": "Ayuda sobre el resumen de rendimientos",
     "seedDemand": "Ayuda sobre la necesidad de semillas",
+    "youngPlantDemand": "Ayuda sobre la necesidad de plantel",
     "suppliers": "Ayuda sobre los proveedores",
     "openAria": "Abrir: {{label}}"
   },
@@ -398,7 +401,8 @@
       "areas": "Superficies de cultivo",
       "plans": "Plan de cultivos",
       "calendar": "Calendario de cultivos",
-      "seedDemand": "Necesidad de semillas"
+      "seedDemand": "Necesidad de semillas",
+      "youngPlantDemand": "Necesidad de plantel"
     },
     "shortcutSections": {
       "navigation": "Navegación",

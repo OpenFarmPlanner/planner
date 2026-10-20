@@ -454,6 +454,50 @@
       "copyError": "Les données n'ont pas pu être copiées."
     }
   },
+  "youngPlantDemand": {
+    "title": "Besoin en plants",
+    "loadError": "Le besoin en plants n’a pas pu être chargé.",
+    "emptyState": {
+      "title": "Aucune plantation de plants achetés n’est prévue pour cette saison.",
+      "description": "Choisissez le mode de culture « Plantation de plants achetés » dans le plan de culture pour voir le besoin ici.",
+      "action": "Ouvrir le plan de culture"
+    },
+    "reserveLabel": "Réserve pour pertes",
+    "reserveHelper": "Ajoutée au nombre de plants, arrondie au plant entier supérieur.",
+    "columns": {
+      "crop": "Culture",
+      "variety": "Variété",
+      "plantingWeek": "Semaine de plantation",
+      "plantCount": "Quantité",
+      "plans": "Séries / planches"
+    },
+    "weekLabel": "Sem. {{week}}",
+    "weekRange": "{{start}} – {{end}}",
+    "noPlantingDate": "Pas de date de plantation",
+    "plansSummary": "{{plans}} / {{beds}}",
+    "plansSummaryTooltip_one": "{{count}} série sur {{beds}} planche(s)",
+    "plansSummaryTooltip_many": "{{count}} séries sur {{beds}} planche(s)",
+    "plansSummaryTooltip_other": "{{count}} séries sur {{beds}} planche(s)",
+    "countUnavailable": "Quantité non calculable : {{reason}}",
+    "calculationBlockers": {
+      "missing_plant_spacing": "espacement sur le rang manquant",
+      "missing_area": "surface manquante",
+      "missingData": "données nécessaires manquantes"
+    },
+    "reserveBreakdown": "{{base}} plants + {{percent}} % de réserve = {{total}}",
+    "showPlans": "Afficher les séries",
+    "hidePlans": "Masquer les séries",
+    "detailColumns": {
+      "area": "Surface de culture",
+      "plantingDate": "Date de plantation",
+      "areaM2": "Surface (m²)",
+      "plantCount": "Quantité"
+    },
+    "contextMenu": {
+      "openCrop": "Ouvrir la culture",
+      "editCrop": "Modifier la culture"
+    }
+  },
   "history": {
     "titles": {
       "crop": "Versions",

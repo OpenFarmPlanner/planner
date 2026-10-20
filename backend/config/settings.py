@@ -739,6 +739,12 @@ SPECTACULAR_SETTINGS = {
     'AUTHENTICATION_WHITELIST': ['farm.agent_api.authentication.ProjectApiTokenAuthentication'],
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+    # Crops and planting plans both have a `cultivation_type` field with
+    # different choices (plans add `purchased_transplant`); name both enums.
+    'ENUM_NAME_OVERRIDES': {
+        'CropCultivationTypeEnum': 'farm.models.crops.Crop.CULTIVATION_TYPE_CHOICES',
+        'PlantingPlanCultivationTypeEnum': 'farm.models.planning.PlantingPlan.CULTIVATION_TYPE_CHOICES',
+    },
     # Versions must match the SRI hashes in farm/agent_api/schema_views.py.
     'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0',
     'REDOC_DIST': 'https://cdn.jsdelivr.net/npm/redoc@2.5.4',

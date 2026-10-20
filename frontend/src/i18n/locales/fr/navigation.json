@@ -10,6 +10,7 @@
   "ganttChart": "Calendrier de culture",
   "yieldOverview": "Aperçu des rendements",
   "seedDemand": "Besoin en semences",
+  "youngPlantDemand": "Besoin en plants",
   "short": {
     "dashboard": "Vue d'ensemble",
     "fieldsAndBeds": "Parcellaire",
@@ -19,6 +20,7 @@
     "ganttChart": "Calendrier",
     "yieldOverview": "Rendements",
     "seedDemand": "Semences",
+    "youngPlantDemand": "Plants",
     "suppliers": "Fournisseurs"
   },
   "graphicalFields": "Vue graphique",
@@ -265,6 +267,7 @@
     "calendar": "Aide sur le calendrier de culture",
     "yieldOverview": "Aide sur l'aperçu des rendements",
     "seedDemand": "Aide sur le besoin en semences",
+    "youngPlantDemand": "Aide sur le besoin en plants",
     "suppliers": "Aide sur les fournisseurs",
     "openAria": "Ouvrir : {{label}}"
   },
@@ -398,7 +401,8 @@
       "areas": "Surfaces de culture",
       "plans": "Plan de culture",
       "calendar": "Calendrier de culture",
-      "seedDemand": "Besoin en semences"
+      "seedDemand": "Besoin en semences",
+      "youngPlantDemand": "Besoin en plants"
     },
     "shortcutSections": {
       "navigation": "Navigation",

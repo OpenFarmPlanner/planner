@@ -446,6 +446,49 @@
       "copyError": "Daten konnten nicht kopiert werden."
     }
   },
+  "youngPlantDemand": {
+    "title": "Jungpflanzenbedarf",
+    "loadError": "Jungpflanzenbedarf konnte nicht geladen werden.",
+    "emptyState": {
+      "title": "In dieser Saison sind keine Pflanzungen mit gekauften Pflanzen geplant.",
+      "description": "Wähle in den Anbauplänen die Anbauart „Pflanzung mit gekauften Pflanzen“, damit der Bedarf hier erscheint.",
+      "action": "Anbaupläne öffnen"
+    },
+    "reserveLabel": "Reserve für Ausfälle",
+    "reserveHelper": "Zuschlag auf die Stückzahl, auf ganze Pflanzen aufgerundet.",
+    "columns": {
+      "crop": "Kultur",
+      "variety": "Sorte",
+      "plantingWeek": "Pflanzwoche",
+      "plantCount": "Stückzahl",
+      "plans": "Anbaupläne / Beete"
+    },
+    "weekLabel": "KW {{week}}",
+    "weekRange": "{{start}} – {{end}}",
+    "noPlantingDate": "Kein Pflanztermin",
+    "plansSummary": "{{plans}} / {{beds}}",
+    "plansSummaryTooltip_one": "{{count}} Anbauplan auf {{beds}} Beet(en)",
+    "plansSummaryTooltip_other": "{{count}} Anbaupläne auf {{beds}} Beet(en)",
+    "countUnavailable": "Stückzahl nicht berechenbar: {{reason}}",
+    "calculationBlockers": {
+      "missing_plant_spacing": "Pflanzabstand fehlt",
+      "missing_area": "Fläche fehlt",
+      "missingData": "notwendige Angaben fehlen"
+    },
+    "reserveBreakdown": "{{base}} Pflanzen + {{percent}} % Reserve = {{total}}",
+    "showPlans": "Anbaupläne anzeigen",
+    "hidePlans": "Anbaupläne ausblenden",
+    "detailColumns": {
+      "area": "Anbaufläche",
+      "plantingDate": "Pflanztermin",
+      "areaM2": "Fläche (m²)",
+      "plantCount": "Stückzahl"
+    },
+    "contextMenu": {
+      "openCrop": "Kultur öffnen",
+      "editCrop": "Kultur bearbeiten"
+    }
+  },
   "history": {
     "titles": {
       "crop": "Versionen",

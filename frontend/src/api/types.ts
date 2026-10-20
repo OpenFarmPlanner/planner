@@ -71,6 +71,12 @@ export interface SupplierRestoreUnlinkedDeleteResponse {
 
 export type SeedRateUnit = 'g_per_m2' | 'g_per_lfm' | 'seeds_per_m2' | 'seeds_per_lfm' | 'seeds_per_plant';
 export type CultivationType = 'pre_cultivation' | 'direct_sowing';
+/**
+ * A planting plan's cultivation type. `purchased_transplant` (bought-in young
+ * plants) is plan-only: a crop never lists it, it is selectable whenever the
+ * crop allows `pre_cultivation`.
+ */
+export type PlanCultivationType = CultivationType | 'purchased_transplant';
 
 export interface SeedRateUnitConstraint {
   value_type: 'number' | 'integer';
@@ -754,6 +760,50 @@ export interface PublishPublicCropResponse {
   duplicates: PublicCropDuplicateCandidate[];
 }
 
+export type YoungPlantDemandBlocker = 'missing_area' | 'missing_plant_spacing';
+
+export interface YoungPlantDemandWeek {
+  iso_year: number;
+  iso_week: number;
+  /** ISO date of the week's Monday. */
+  start_date: string;
+  /** ISO date of the week's Sunday. */
+  end_date: string;
+}
+
+export interface YoungPlantDemandPlan {
+  plan_id: number;
+  planting_date: string | null;
+  bed_id: number | null;
+  bed_name: string;
+  field_name: string;
+  location_name: string;
+  /** m² */
+  area_usage_sqm: number | null;
+  plant_count: number | null;
+  calculation_blockers: YoungPlantDemandBlocker[];
+}
+
+/** One crop + planting-week group of bought-in transplants (Jungpflanzenbedarf). */
+export interface YoungPlantDemand {
+  key: string;
+  crop_id: number;
+  crop_name: string;
+  crop_display_name?: string | null;
+  crop_display_language_code?: string | null;
+  variety: string;
+  planting_week: YoungPlantDemandWeek | null;
+  /** Summed plant count without reserve; null when any plan cannot be calculated. */
+  plant_count: number | null;
+  /** `plant_count` plus `reserve_percent`, rounded up to whole plants. */
+  plant_count_with_reserve: number | null;
+  reserve_percent: number;
+  calculation_blockers: YoungPlantDemandBlocker[];
+  plan_count: number;
+  bed_count: number;
+  plans: YoungPlantDemandPlan[];
+}
+
 export interface SeedDemand {
   crop_id: number;
   crop_name: string;
@@ -892,7 +942,7 @@ export interface PlantingPlan {
   // Optional until the plan is fully filled in — a plan can be saved as a
   // draft as long as at least one of crop/bed is chosen.
   crop: number | null;
-  cultivation_type?: CultivationType | '';
+  cultivation_type?: PlanCultivationType | '';
   crop_name?: string | null;
   crop_display_name?: string | null;
   crop_display_language_code?: string | null;

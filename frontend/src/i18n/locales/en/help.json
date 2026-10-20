@@ -210,6 +210,14 @@
         "packageInfo": "Review recommended package combinations"
       }
     },
+    "youngPlantDemand": {
+      "title": "Help: Young plant demand",
+      "intro": "This page shows how many young plants to order for the active season's transplants with bought-in plants, grouped by crop, variety and planting week.\n\nThe quantity comes from each planting plan's area and the crop's in-row and row spacing. The reserve for losses is rounded up to whole plants.",
+      "symbolsTitle": "Symbols and controls",
+      "symbols": {
+        "expand": "Show or hide the underlying planting plans"
+      }
+    },
     "suppliers": {
       "title": "Help: Suppliers",
       "intro": "Manage seed suppliers and their package information here.",

@@ -14,6 +14,7 @@ export const NAV_ITEM_EMOJI: Record<string, string> = {
   '/app/gantt-chart': '📆',
   '/app/yield-overview': '📈',
   '/app/seed-demand': '🌾',
+  '/app/young-plant-demand': '🪴',
   '/app/suppliers': '🚚',
 };
 

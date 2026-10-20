@@ -10,6 +10,7 @@
   "ganttChart": "Anbaukalender",
   "yieldOverview": "Ertragsübersicht",
   "seedDemand": "Saatgutbedarf",
+  "youngPlantDemand": "Jungpflanzenbedarf",
   "short": {
     "dashboard": "Übersicht",
     "fieldsAndBeds": "Anbauflächen",
@@ -19,6 +20,7 @@
     "ganttChart": "Anbaukalender",
     "yieldOverview": "Ertragsübersicht",
     "seedDemand": "Saatgutbedarf",
+    "youngPlantDemand": "Jungpflanzenbedarf",
     "suppliers": "Lieferanten"
   },
   "graphicalFields": "Grafische Ansicht",
@@ -258,6 +260,7 @@
     "calendar": "Hilfe zu Anbaukalender",
     "yieldOverview": "Hilfe zu Ertragsübersicht",
     "seedDemand": "Hilfe zu Saatgutbedarf",
+    "youngPlantDemand": "Hilfe zu Jungpflanzenbedarf",
     "suppliers": "Hilfe zu Lieferanten",
     "openAria": "{{label}} öffnen"
   },
@@ -390,7 +393,8 @@
       "areas": "Anbauflächen",
       "plans": "Anbaupläne",
       "calendar": "Anbaukalender",
-      "seedDemand": "Saatgutbedarf"
+      "seedDemand": "Saatgutbedarf",
+      "youngPlantDemand": "Jungpflanzenbedarf"
     },
     "shortcutSections": {
       "navigation": "Navigation",

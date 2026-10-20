@@ -21,6 +21,7 @@ import type {
   PaginatedResponse,
   Supplier,
   SeedDemand,
+  YoungPlantDemand,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -442,6 +443,12 @@ export const seedDemandAPI = {
     }),
 };
 
+export const youngPlantDemandAPI = {
+  list: (reservePercent: number) => http.get<PaginatedResponse<YoungPlantDemand>>('/young-plant-demand/', {
+    params: { reserve_percent: reservePercent },
+  }),
+};
+
 export const yieldCalendarAPI = {
   // No year: the endpoint scopes to the active season (via the X-Season-Id
   // header) and returns every ISO year that season spans. An explicit year is
@@ -646,6 +653,7 @@ export type {
   PaginatedResponse,
   Supplier,
   SeedDemand,
+  YoungPlantDemand,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -677,6 +685,7 @@ export default {
   fields: fieldAPI,
   locations: locationAPI,
   seedDemand: seedDemandAPI,
+  youngPlantDemand: youngPlantDemandAPI,
   yieldCalendar: yieldCalendarAPI,
   noteAttachments: noteAttachmentAPI,
   mediaFiles: mediaFileAPI,

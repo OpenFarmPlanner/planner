@@ -210,6 +210,14 @@
         "packageInfo": "Empfohlene Verpackungskombinationen einsehen"
       }
     },
+    "youngPlantDemand": {
+      "title": "Hilfe: Jungpflanzenbedarf",
+      "intro": "Hier siehst du, wie viele Jungpflanzen du für die Pflanzungen mit gekauften Pflanzen der aktiven Saison bestellen musst – nach Kultur, Sorte und Pflanzwoche zusammengefasst.\n\nDie Stückzahl ergibt sich aus der Fläche des Anbauplans und den Pflanz- und Reihenabständen der Kultur. Die Reserve für Ausfälle wird auf ganze Pflanzen aufgerundet.",
+      "symbolsTitle": "Symbole und Bedienelemente",
+      "symbols": {
+        "expand": "Zugehörige Anbaupläne ein- oder ausblenden"
+      }
+    },
     "suppliers": {
       "title": "Hilfe: Lieferanten",
       "intro": "Hier verwaltest du deine Lieferanten.\n\nLieferanten können in Kulturen hinterlegt werden, um kulturspezifische Artikel- und Verpackungsinformationen zu erfassen.",

@@ -314,6 +314,25 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/planting-plans/', 11, expected_rows=2 * ROW_COUNT,
         )
 
+    def test_young_plant_demand_list_query_count(self):
+        """Crop, species translations and the bed/field/location of every plan
+        come from one queryset; the general Kulturen the Sorten inherit their
+        spacing from are looked up once for the whole list."""
+        PlantingPlan.objects.filter(project=self.project).update(
+            cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
+        )
+        self.assert_list_query_count('/openfarmplanner/api/young-plant-demand/', 6)
+
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 5, 1),
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+                cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
+            )
+        self.assert_list_query_count(
+            '/openfarmplanner/api/young-plant-demand/', 6, expected_rows=2 * ROW_COUNT,
+        )
+
     def test_bed_suggestions_query_count_is_constant_in_bed_count(self):
         """Ranking beds checks every bed in memory against one project-wide bed
         history, and their capacity in one query; the blocking plan's culture

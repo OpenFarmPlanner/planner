@@ -331,6 +331,9 @@ def _aggregate_requirements_by_crop(
         # Draft plans without a crop chosen yet can't contribute to a
         # per-crop seed requirement — exclude them rather than crashing.
         .filter(project=project, crop__isnull=False)
+        # Bought-in young plants need no seed of our own; they are listed in
+        # the young-plant demand instead (farm.services.young_plant_demand).
+        .exclude(cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT)
         .select_related(
             'crop',
             'crop__crop_species',

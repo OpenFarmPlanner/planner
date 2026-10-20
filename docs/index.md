@@ -104,6 +104,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
 - **[Seed Demand Calculation](./seed-demand-calculation.md)** — how
   required seed amounts and package suggestions are computed, with worked
   examples.
+- **[Bought-in Young Plants](./young-plant-demand.md)** — the plan-only
+  cultivation type `purchased_transplant`, its short/long labels, and the
+  Jungpflanzenbedarf list (shared plant count, planting-week grouping,
+  reserve for losses).
 - **[Versioning and History](./versioning-and-history.md)** — the
   `EntityRevision` audit trail and how crop/project restore works.
 - **[Large-Dataset Rendering](./large-dataset-rendering.md)** — pagination,

@@ -42,7 +42,9 @@ spans two fields.
 For a planting plan, the searched texts are:
 
 - Kultur and Sorte (the visible crop label "Kultur (Sorte)")
-- Anbauart (the localized label, e.g. "Direktsaat")
+- Anbauart (the localized long and short label, e.g. "Pflanzung mit
+  gekauften Pflanzen" and "Pfl. Zukauf"; the filter options use the long
+  label)
 - Standort, Parzelle, Beet (names)
 - Notizen (markdown stripped to plain text)
 - Pflanztermin, Aussaattermin, Erntebeginn and Ernteende, each in three

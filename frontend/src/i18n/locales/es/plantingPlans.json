@@ -66,7 +66,8 @@
     "sowingDateDescription": "Vinculada a la fecha de plantación: fecha de plantación menos la duración en semillero del cultivo. Los cambios actualizan automáticamente el otro valor. Igual a la fecha de plantación en la siembra directa.",
     "plantingDateTitle": "Fecha de plantación",
     "plantingDateDescription": "Vinculada a la fecha de siembra. En la siembra directa es también la fecha de siembra. Debe estar dentro de la temporada.",
-    "missingPropagationDuration": "No se puede calcular porque este cultivo no tiene duración en semillero."
+    "missingPropagationDuration": "No se puede calcular porque este cultivo no tiene duración en semillero.",
+    "noOwnPropagation": "Sin semillero propio, el plantel se compra."
   },
   "hints": {
     "plantingDateSeasonRange": "Dentro de la temporada: {{start}} – {{end}}"
@@ -101,7 +102,13 @@
   "addButton": "Añadir serie",
   "cultivationTypes": {
     "directSowing": "Siembra directa",
-    "preCultivation": "Trasplante"
+    "preCultivation": "Trasplante",
+    "purchasedTransplant": "Trasp. compra"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Siembra directa",
+    "preCultivation": "Trasplante (plantel propio)",
+    "purchasedTransplant": "Trasplante de plantel comprado"
   },
   "areaAssignment": {
     "title": "Cambiar superficie de cultivo",

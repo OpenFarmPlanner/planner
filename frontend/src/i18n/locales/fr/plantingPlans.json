@@ -66,7 +66,8 @@
     "sowingDateDescription": "Liée à la date de plantation : date de plantation moins la durée en pépinière de la culture. Toute modification met automatiquement à jour l'autre valeur. Identique à la date de plantation en cas de semis direct.",
     "plantingDateTitle": "Date de plantation",
     "plantingDateDescription": "Liée à la date de semis. En cas de semis direct, c'est aussi la date de semis. Doit se situer dans la saison.",
-    "missingPropagationDuration": "Calcul impossible, car aucune durée en pépinière n'est indiquée pour cette culture."
+    "missingPropagationDuration": "Calcul impossible, car aucune durée en pépinière n'est indiquée pour cette culture.",
+    "noOwnPropagation": "Pas de pépinière, les plants sont achetés."
   },
   "hints": {
     "plantingDateSeasonRange": "Dans la saison : {{start}} – {{end}}"
@@ -101,7 +102,13 @@
   "addButton": "Ajouter une série",
   "cultivationTypes": {
     "directSowing": "Semis direct",
-    "preCultivation": "Plantation"
+    "preCultivation": "Plantation",
+    "purchasedTransplant": "Plant. achat"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Semis direct",
+    "preCultivation": "Plantation (plants autoproduits)",
+    "purchasedTransplant": "Plantation de plants achetés"
   },
   "areaAssignment": {
     "title": "Modifier la surface de culture",

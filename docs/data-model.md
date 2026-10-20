@@ -166,7 +166,11 @@ erDiagram
 
 - **`PlantingPlan`** is the central operational record: one crop, on one
   bed, with a planting date and computed harvest date(s). It drives the
-  Gantt/occupancy calendar, the seed demand view, and the yield overview.
+  Gantt/occupancy calendar, the seed demand and young-plant demand views,
+  and the yield overview. Its `cultivation_type` is `direct_sowing`,
+  `pre_cultivation` or the plan-only `purchased_transplant` (bought-in
+  plants: no Anzucht, no seed demand — see
+  [young-plant-demand.md](./young-plant-demand.md)).
   Its crop rotation status is computed on read from the bed's other plans;
   only a consciously accepted conflict is stored on the plan
   (`rotation_conflict_accepted_by`/`_at`) — see

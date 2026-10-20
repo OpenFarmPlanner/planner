@@ -33,6 +33,11 @@ fields/beds/crops/plans yet.
 
 ## Calculation, step by step
 
+Plans with the cultivation type `purchased_transplant` (bought-in young
+plants) need no seed of their own and are excluded before any of the steps
+below; they appear in the young-plant demand instead — see
+[young-plant-demand.md](./young-plant-demand.md).
+
 For each crop with at least one planting plan:
 
 1. **Per-plan requirement.** Pick the seed rate for the plan's

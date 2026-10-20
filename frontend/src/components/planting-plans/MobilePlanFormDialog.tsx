@@ -19,7 +19,7 @@ import {
   TextField,
 } from "@mui/material";
 
-import type { CultivationType } from "../../api/types";
+import type { PlanCultivationType } from "../../api/types";
 import { useTranslation } from "../../i18n";
 import {
   formatLocalizedNumberForInput,
@@ -67,11 +67,12 @@ interface MobilePlanFormDialogProps {
   plantingDateHelperText?: string;
   getPlantsPerSqm: (cropId: string) => number | null;
   /**
-   * Whether the Aussaattermin field can be computed at all for the form's
-   * current crop/cultivation_type (false only for Anzucht without a
-   * resolvable propagation duration — not simply an empty planting date).
+   * Why the Aussaattermin field cannot be computed at all for the form's
+   * current crop/cultivation_type (bought-in plants, or Anzucht without a
+   * resolvable propagation duration — not simply an empty planting date);
+   * null when it can.
    */
-  isSowingDateDisabled: (form: MobileCreateFormState) => boolean;
+  getSowingDateDisabledReason: (form: MobileCreateFormState) => string | null;
   /** Recomputes the Aussaattermin text from the form's current planting date. */
   getSowingDateFromPlantingDate: (form: MobileCreateFormState) => string;
   /** Recomputes the planting date text from the form's current Aussaattermin. */
@@ -103,7 +104,7 @@ export function MobilePlanFormDialog({
   numberLocale,
   plantingDateHelperText,
   getPlantsPerSqm,
-  isSowingDateDisabled,
+  getSowingDateDisabledReason,
   getSowingDateFromPlantingDate,
   getPlantingDateFromSowingDate,
   onLinkedFieldEdited,
@@ -148,7 +149,8 @@ export function MobilePlanFormDialog({
     pickerInput.click();
   };
 
-  const sowingDateDisabled = isSowingDateDisabled(form);
+  const sowingDateDisabledReason = getSowingDateDisabledReason(form);
+  const sowingDateDisabled = sowingDateDisabledReason !== null;
   const sowingPickerValue = toIsoDateString(parseGermanDateText(form.sowing_date)) ?? "";
   const openSowingDatePicker = (): void => {
     const pickerInput = sowingDatePickerRef.current;
@@ -251,7 +253,7 @@ export function MobilePlanFormDialog({
               label={t("plantingPlans:columns.cultivationType")}
               onChange={(event) =>
                 setForm((previous) => {
-                  const next = { ...previous, cultivation_type: event.target.value as CultivationType };
+                  const next = { ...previous, cultivation_type: event.target.value as PlanCultivationType };
                   return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
                 })
               }
@@ -274,7 +276,7 @@ export function MobilePlanFormDialog({
                   return { ...next, planting_date: getPlantingDateFromSowingDate(next) };
                 })
               }
-              helperText={sowingDateDisabled ? t("plantingPlans:tooltips.missingPropagationDuration") : undefined}
+              helperText={sowingDateDisabledReason ?? undefined}
               sx={compactFieldSx}
               slotProps={{
                 htmlInput: { inputMode: "numeric" },

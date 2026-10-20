@@ -8,7 +8,8 @@ export type CommandContextTag =
   | 'areas'
   | 'plans'
   | 'calendar'
-  | 'seedDemand';
+  | 'seedDemand'
+  | 'youngPlantDemand';
 
 export type CommandGroup = 'project' | 'account' | 'navigation' | 'help';
 

@@ -31,6 +31,7 @@ const CONTEXT_TITLE_KEYS: Record<CommandContextTag, string> = {
   plans: 'commandPalette.contextTitles.plans',
   calendar: 'commandPalette.contextTitles.calendar',
   seedDemand: 'commandPalette.contextTitles.seedDemand',
+  youngPlantDemand: 'commandPalette.contextTitles.youngPlantDemand',
 };
 
 const SHORTCUT_HINT_KEY = 'ofp.shortcutHintSeen';

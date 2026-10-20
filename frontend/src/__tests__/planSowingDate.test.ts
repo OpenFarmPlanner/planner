@@ -32,6 +32,7 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, anzuchtCrop);
     expect(schedule).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: 28,
       sowingDate: '2026-04-03',
     });
@@ -46,6 +47,7 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, anzuchtCrop);
     expect(schedule).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: 28,
       sowingDate: '2026-04-03',
     });
@@ -56,6 +58,7 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, directCrop);
     expect(schedule).toEqual({
       isPreCultivation: false,
+      isPurchasedTransplant: false,
       propagationDurationDays: null,
       sowingDate: '2026-05-01',
     });
@@ -66,6 +69,7 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, anzuchtCropWithoutDuration);
     expect(schedule).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: null,
       sowingDate: null,
     });
@@ -83,6 +87,7 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, sorte);
     expect(schedule).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: 28,
       sowingDate: '2026-04-03',
     });
@@ -98,8 +103,30 @@ describe('getPlanSowingSchedule', () => {
     const schedule = getPlanSowingSchedule(plan, undefined);
     expect(schedule).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: 14,
       sowingDate: '2026-04-17',
+    });
+  });
+});
+
+describe('bought-in plants (purchased_transplant)', () => {
+  const plan: PlantingPlan = { crop: 1, planting_date: '2026-05-01', cultivation_type: 'purchased_transplant' };
+
+  it('has no Anzucht and no sowing date, even for a crop with a propagation duration', () => {
+    expect(getPlanSowingSchedule(plan, anzuchtCrop)).toEqual({
+      isPreCultivation: false,
+      isPurchasedTransplant: true,
+      propagationDurationDays: null,
+      sowingDate: null,
+    });
+  });
+
+  it('reports itself as bought in without a planting date', () => {
+    expect(getPlanPropagationInfo({ ...plan, planting_date: null }, anzuchtCrop)).toEqual({
+      isPreCultivation: false,
+      isPurchasedTransplant: true,
+      propagationDurationDays: null,
     });
   });
 });
@@ -109,6 +136,7 @@ describe('getPlanPropagationInfo', () => {
     const plan = { crop: 1, cultivation_type: 'pre_cultivation' as const };
     expect(getPlanPropagationInfo(plan, anzuchtCrop)).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: 28,
     });
   });
@@ -117,6 +145,7 @@ describe('getPlanPropagationInfo', () => {
     const plan = { crop: 3, cultivation_type: 'pre_cultivation' as const };
     expect(getPlanPropagationInfo(plan, anzuchtCropWithoutDuration)).toEqual({
       isPreCultivation: true,
+      isPurchasedTransplant: false,
       propagationDurationDays: null,
     });
   });
@@ -125,6 +154,7 @@ describe('getPlanPropagationInfo', () => {
     const plan = { crop: 2, cultivation_type: 'direct_sowing' as const };
     expect(getPlanPropagationInfo(plan, directCrop)).toEqual({
       isPreCultivation: false,
+      isPurchasedTransplant: false,
       propagationDurationDays: null,
     });
   });
