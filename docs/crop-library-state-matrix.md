@@ -43,7 +43,7 @@ tool, not part of the CI suite). Behaviour itself is described in
 | Version state | aligned · linked without baseline · library ahead · library ahead but rejected · local changes · local and library changed · local changes after a rejection |
 | Local pins (`library_pinned_fields`) | none · pinned and otherwise aligned · pinned, library ahead in another field · pinned, library changed only the pinned field · pinned plus a local change elsewhere · pinned Sorte inheriting from a pinned Kultur |
 | Actor | established account · `new` trust account · API token (queued proposal) · project member without edit rights |
-| Actions | publish · link · sync (all pull / all push / all local / mixed) · pull (with/without releasing a pin) · pin / unpin a field · reject update · unlink · re-link · relink species · remove · restore · revert · withdraw · rename variety · delete crop |
+| Actions | publish · link · sync (all pull / all push / all local / mixed) · pull (with/without releasing a pin, with/without keeping a local change) · unpin a field · reject update · unlink · re-link · relink species · remove · restore · revert · withdraw · rename variety · delete crop |
 
 ## Cells and expected outcome
 
@@ -61,6 +61,7 @@ columns are what the crop serializer must report.
 | `foreign_published_aligned` | foreign, published | aligned | `no_local_changes` | yes | chip "Aktuell" |
 | `foreign_published_local_changes` | foreign, published | local changes | `null` | yes | button "Bibliothek aktualisieren" |
 | `foreign_library_ahead` | foreign, published | library ahead | `null`, `public_update_available` | yes | button "Kultur aktualisieren" |
+| `foreign_library_ahead_local_changes` | foreign, published | local change in one field, library ahead in another | `null`, `public_update_available` | yes | button "Kultur aktualisieren" (the pull wins; its dialog offers "Nur lokal behalten" for the local change) |
 | `foreign_library_ahead_rejected` | foreign, published | ahead, declined | `null`, `public_update_rejected` | yes | chip "Update abgelehnt" |
 | `foreign_withdrawn` | foreign, withdrawn | aligned | `entry_withdrawn` | yes | chip "Eintrag zurückgezogen" |
 | `foreign_removed` | foreign, removed | aligned | `entry_removed` | yes | chip "Eintrag entfernt" |
@@ -89,7 +90,9 @@ Rules that cut across cells:
   fields is "Aktuell", a library change of only a pinned field brings no pull,
   and a pull or push never touches a pinned field. They are released only
   explicitly — the sync's "Bibliothek"/"Meine Kultur" choice, the pull
-  dialog's checkbox, the form's pin, clearing the field — or by an unlink.
+  dialog's checkbox, "Fixierung lösen" in the form pin's popover, clearing
+  the field — or by an unlink. They are set only in the sync ("Nur lokal")
+  and in the pull dialog ("Nur lokal behalten" on a locally changed field).
 - **Rejected proposal**: when a moderated edit proposal is rejected the
   `proposalPending` chip disappears and the crop, which still differs from the
   entry, resolves to "Bibliothek aktualisieren" again — it never reads as

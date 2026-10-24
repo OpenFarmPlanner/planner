@@ -294,9 +294,11 @@ The public Crop Library follows an open-data model:
      fields do not count: a crop that differs only there is case 5, and the
      tooltip adds "Lokal fixiert: {fields}." A second chip "{n} Felder lokal
      fixiert" (violet, pin icon, `CropLibraryPinnedChip`) sits next to the
-     status and lists the fields in its tooltip; the crop list shows a small
-     pin in the corner of the row's status icon (`CropLibraryStatusIcon`,
-     with its own accessible label), inside the fixed-width slot.
+     status and lists the fields in its tooltip. The crop list deliberately
+     shows no pin: its status icon (`CropLibraryStatusIcon`) says whether a
+     crop needs an action, and a pinned field is a decision already made, so
+     a synced crop with pins shows the plain check like any other, and neither
+     its label nor its tooltip mentions the pins.
 
   A crop species still under moderation (`public_crop_species_pending`) freezes
   cases 2-4 as a disabled button with the existing "Vorschlag in Prüfung"
@@ -414,16 +416,34 @@ The public Crop Library follows an open-data model:
     never overwrites a pinned field. `unpin_fields` releases named pins first
     (400 `library_unpin_field_not_pinned` for a field that is not pinned); the
     release is part of the same, history-recorded save.
+    *Keeping a local change ("Nur lokal behalten").* Case 2 ranks before the
+    push, so a crop with an unpinned local change whose library entry moved on
+    never reaches the sync dialog — the pull is its only way to pin. Each
+    entry of `changes` in `GET public-update/` therefore carries
+    `locally_changed` (the copy differs from the entry's baseline revision as
+    well as from the entry now; without a baseline revision every differing
+    field of a modified copy counts) and `can_keep_local` (a locally changed,
+    pinnable field with a value; `public_update_keepable_fields`). The dialog
+    lists those fields in a "Lokal geändert" block next to the pinned one,
+    each with "Bibliothekswert übernehmen" (the default, the old behaviour)
+    or "Nur lokal behalten"; fields only the library changed stay in the
+    diff table. `import/` with `mode=update` takes `pin_fields` for the kept
+    fields (400 `library_pin_field_not_local_change` for any other field) and
+    `base_version`, the entry version the dialog showed: the apply runs in
+    one transaction under a row lock on the entry and is refused with 409
+    `stale_public_crop_version` when the entry moved on, so no decision is
+    applied to values the user has not seen. The overwrite warning shows only
+    while at least one local change is set to take the library value.
     `GET public-update/` adds `pinned_changes` — pinned fields whose library
     value moved between the copy's baseline revision and now
     (`previous_public_value` → `public_value`), and only those: the pin is not
     a notice. Without a baseline revision nothing is listed. The pull dialog
     shows them in a "Lokal fixiert – bleibt unverändert" block with a
     "Fixierung lösen und {Wert} übernehmen" checkbox per field, and the
-    summary "… Werte werden in deine Kultur übernommen, … fixierte Werte
-    bleiben erhalten." There is deliberately no other hint when a pinned
-    field's library value changes; the value is only shown passively
-    ("Lokal fixiert · Bibliothek: {Wert}" in the form).
+    summary "… Werte werden in deine Kultur übernommen, … Werte bleiben nur
+    lokal, … fixierte Werte bleiben erhalten." There is deliberately no other
+    hint when a pinned field's library value changes; the value is only shown
+    passively (the pin's tooltip in the form).
   - *Push.* `build_public_crop_payload` drops pinned fields, so no publish,
     republish, owned-entry update or moderated proposal shares them. In the
     sync, a pinned field is shared only when the decision names it under
@@ -438,16 +458,25 @@ The public Crop Library follows an open-data model:
     decision does not name stay. A field in two lists is rejected. A pin
     change is saved through `Crop.save()`, so it is a normal, visible history
     entry.
-  - *Form.* The edit form of a linked crop shows a pin at the end of every
-    pinnable field (`libraryFieldPin.ts`, `LibraryPinButton`): a quiet outline
-    ("Lokal fixieren"), or filled with a violet border and the helper text
-    "Lokal fixiert · Bibliothek: {Wert}" ("Fixierung lösen"). One form control
-    can stand for several model fields (the cultivation picker pins
-    `cultivation_types` and `cultivation_type` together). The seed-rate rows,
-    whose form fields are the per-method values rather than the compared
-    `seed_rate_*` fields, and the plant family are pinned through the sync
-    only. A field without a value cannot be pinned; a pin on a field the form
-    clears is dropped on save. Unlinked crops show no pin at all.
+  - *Form.* Pinning happens only in the sync dialogs (the sync and the
+    pull); the form only shows a pin and lets the user release it, to keep
+    the form quiet. An unpinned field renders exactly as on an unlinked crop:
+    no pin, no helper line. A pinned field gets a violet border and a filled
+    pin at its end (`libraryFieldPinProps.tsx`, `LibraryPinButton`), with no
+    helper line; the pin's tooltip and accessible name carry the library
+    value ("Lokal fixiert. Bibliothek: {Wert}."). Clicking or tapping the pin
+    never releases it directly — touch has no hover and a stray tap must not
+    undo a decision — but opens a small popover ("Lokal fixiert",
+    "Bibliothek: {Wert}", text button "Fixierung lösen", keyboard-focusable,
+    closed with Escape). The release changes the form state only and takes
+    effect with "Speichern"; afterwards the normal sync logic counts the field
+    as a local change or as in sync again. A pinned field whose value equals
+    the library value again stays pinned. Inherited fields of a Sorte
+    (`inherited_fields`) never show a pin, and their green marking is
+    unchanged. One form control can stand for several model fields (the
+    cultivation picker covers `cultivation_types` and `cultivation_type`
+    together). A pin on a field the form clears is dropped on save. Unlinked
+    crops show no pin at all.
   - *Lifecycle.* `Crop.save()` normalizes the list on every save
     (`normalize_library_pinned_fields`): it is empty without a sync link,
     and a pinned field whose *effective* value is cleared loses its pin
