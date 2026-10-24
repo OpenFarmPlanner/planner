@@ -3,8 +3,6 @@ import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
 import { hasCropIdParam, readCropIdParam } from '../../compat/legacyCropNames';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
   Alert,
   Badge,
@@ -63,8 +61,7 @@ import { useTranslation } from '../../i18n';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../i18n/languages';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
-import { stripCitationMarkers } from '../../components/data-grid/markdown';
-import { markdownComponents } from '../../components/data-grid/markdownComponents';
+import { LocalizedMarkdownNotes } from '../components/LocalizedMarkdownNotes';
 import { buildCropHierarchy, findSpeciesCrop, getCropSpeciesKey, type CropHierarchyItemKind } from '../../crops/cropHierarchy';
 import { filterCropGroupsForSearch } from '../../crops/cropGroupSearch';
 import { CropForm } from '../../crops/CropForm';
@@ -81,7 +78,6 @@ import { createPublicCropLibraryCommandSpecs } from '../publicCropLibraryCommand
 import { usePublicCropDiscussion } from '../hooks/usePublicCropDiscussion';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import {
-  getDescriptionFallbackNotice,
   getPublicCropDescription,
   getPublicCropName,
 } from '../publicCropDisplay';
@@ -640,10 +636,6 @@ export default function PublicCropLibraryPage() {
       ? getPublicCropDescription(selectedCrop, language)
       : { text: '', languageCode: null, isFallback: false }),
     [language, selectedCrop],
-  );
-  const descriptionFallbackNotice = useMemo(
-    () => getDescriptionFallbackNotice(selectedCropDescription, t, language),
-    [selectedCropDescription, t, language],
   );
   const currentLanguageCode = normalizeLanguageTag(language) ?? 'de';
   const selectedCropOriginalLanguageCode = selectedCrop
@@ -1942,57 +1934,26 @@ export default function PublicCropLibraryPage() {
                         {/* The public description is translatable; when only
                             another language exists, say so instead of showing
                             it as if it were this language. */}
-                        {descriptionFallbackNotice ? (
-                          <Stack
-                            direction={{ xs: 'column', sm: 'row' }}
-                            spacing={1}
-                            sx={{ mb: 1,
-                      alignItems: { xs: 'flex-start', sm: 'center' }, }}
-                          >
-                            <AppTooltip title={descriptionFallbackNotice.tooltip}>
-                              <Chip
-                                size="small"
-                                icon={<TranslateOutlinedIcon fontSize="small" />}
-                                label={descriptionFallbackNotice.label}
-                                variant="outlined"
-                                color="warning"
-                              />
-                            </AppTooltip>
-                            {canEditPublicCrop ? (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<TranslateOutlinedIcon fontSize="small" />}
-                                onClick={openTranslationDialog}
-                              >
-                                {t('library.translation.addTranslationAction', {
-                                  language: getLanguageDisplayName(currentLanguageCode, language),
-                                })}
-                              </Button>
-                            ) : null}
-                          </Stack>
-                        ) : null}
-                        {selectedCropDescription.text ? (
-                          <Box
-                            sx={{
-                              '& h3': { mt: 2, mb: 1, fontSize: '1.05rem' },
-                              '& h3:first-of-type': { mt: 0.25 },
-                              '& p': { mb: 1, maxWidth: '95ch' },
-                              '& ul': { pl: 3, mb: 1 },
-                              '& li': { mb: 0.5 },
-                              '& a': { color: 'primary.main' },
-                              '& em': { color: 'text.secondary' },
-                            }}
-                          >
-                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                              {stripCitationMarkers(selectedCropDescription.text)}
-                            </ReactMarkdown>
-                          </Box>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            {t('library.page.noNotes')}
-                          </Typography>
-                        )}
+                        <LocalizedMarkdownNotes
+                          localized={selectedCropDescription}
+                          fallbackAction={canEditPublicCrop ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<TranslateOutlinedIcon fontSize="small" />}
+                              onClick={openTranslationDialog}
+                            >
+                              {t('library.translation.addTranslationAction', {
+                                language: getLanguageDisplayName(currentLanguageCode, language),
+                              })}
+                            </Button>
+                          ) : null}
+                          emptyState={(
+                            <Typography variant="body2" color="text.secondary">
+                              {t('library.page.noNotes')}
+                            </Typography>
+                          )}
+                        />
                       </DetailSection>
                     </Stack>
                   ) : null}

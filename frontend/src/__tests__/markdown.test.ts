@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { stripMarkdown, getPlainExcerpt, stripCitationMarkers } from '../components/data-grid/markdown';
+import { stripMarkdown, getPlainExcerpt, stripCitationMarkers, normalizeMarkdownSource } from '../components/data-grid/markdown';
 
 describe('stripMarkdown', () => {
   it('should return empty string for null input', () => {
@@ -240,5 +240,20 @@ describe('getPlainExcerpt', () => {
     const result = getPlainExcerpt(input, 50);
     expect(result.endsWith('...')).toBe(true);
     expect(result.length).toBeLessThanOrEqual(53); // 50 + '...'
+  });
+});
+
+describe('normalizeMarkdownSource', () => {
+  it('drops invisible characters that would keep a bold run from closing', () => {
+    expect(normalizeMarkdownSource('- Ernte der **Hülsen.**\u200B')).toBe('- Ernte der **Hülsen.**');
+    expect(normalizeMarkdownSource('**Hülsen.**\u00AD und \u2060_mehr_')).toBe('**Hülsen.** und _mehr_');
+  });
+
+  it('keeps invisible characters that do not touch a delimiter', () => {
+    expect(normalizeMarkdownSource('Bohnen\u00ADhülsen')).toBe('Bohnen\u00ADhülsen');
+  });
+
+  it('also strips citation markers', () => {
+    expect(normalizeMarkdownSource('**Fakt.**【1†L1-L2】')).toBe('**Fakt.**');
   });
 });

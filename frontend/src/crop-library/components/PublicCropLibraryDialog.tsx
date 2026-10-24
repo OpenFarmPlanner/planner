@@ -1,8 +1,6 @@
 import { alpha } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../../i18n';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import type { PublicCrop } from '../../api/types';
@@ -27,16 +25,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
 import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-// Cross-domain import: a markdown helper that today lives under the
-// app-specific data-grid module. Kept as-is rather than duplicated/moved —
-// see docs/crop-library-architecture.md for why this is flagged as a
-// future cleanup candidate rather than fixed now.
-import { stripCitationMarkers } from '../../components/data-grid/markdown';
-import { markdownComponents } from '../../components/data-grid/markdownComponents';
 import { useOverlayHistory } from '../../hooks/useOverlayHistory';
 import { PublicCropHierarchyList } from '../../crops/PublicCropHierarchyList';
 import { usePlantFamilies } from '../../crops/plantFamilies';
-import { getPublicCropTitle } from '../publicCropDisplay';
+import { getPublicCropDescription, getPublicCropTitle } from '../publicCropDisplay';
+import { DetailSection } from './publicCropLibrary/DetailPrimitives';
+import { LocalizedMarkdownNotes } from './LocalizedMarkdownNotes';
 import { PublicCropFiltersPopover } from './PublicCropFiltersPopover';
 import {
   EMPTY_PUBLIC_CROP_FILTERS,
@@ -460,7 +454,7 @@ export function PublicCropLibraryDialog({
                     sx={previewBadgeSx}
                   />
                 </Box>
-                <Box sx={{ display: 'grid', gap: 0.5, mb: selectedCrop.notes ? 1.5 : 0.75 }}>
+                <Box sx={{ display: 'grid', gap: 0.5, mb: 1.5 }}>
                   <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
                     <strong>{t('form.growthDurationDays')}:</strong> {selectedCrop.growth_duration_days ?? t('noData')}
                   </Typography>
@@ -468,42 +462,16 @@ export function PublicCropLibraryDialog({
                     <strong>{t('form.harvestDurationDays')}:</strong> {selectedCrop.harvest_duration_days ?? t('noData')}
                   </Typography>
                 </Box>
-                <Typography
-                  variant="subtitle1"
-                  component="h3"
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: useMobileFilterLayout ? '1rem' : '1.05rem',
-                    lineHeight: 1.3,
-                    mb: 0.75,
-                  }}
-                >
-                  {t('form.notes')}
-                </Typography>
-                {selectedCrop.notes ? (
-                  <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 1.25 }}>
-                    <Box
-                      sx={{
-                        '& h3': { mt: 1.35, mb: 0.5, fontSize: '0.9rem' },
-                        '& h3:first-of-type': { mt: 0.25 },
-                        '& p': { mb: 0.75, lineHeight: 1.45 },
-                        '& ul': { pl: 2.5, mb: 0.75 },
-                        '& li': { mb: 0.25 },
-                        '& a': { color: 'primary.main' },
-                        '& em': { color: 'text.secondary' },
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {stripCitationMarkers(selectedCrop.notes)}
-                      </ReactMarkdown>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 1.25 }}>
-                    <Typography variant="body2" color="text.secondary">{t('noData')}</Typography>
-                  </Box>
-                )}
+                <DetailSection title={t('library.page.sections.notes')} outlined showHeaderDivider>
+                  <LocalizedMarkdownNotes
+                    localized={getPublicCropDescription(selectedCrop, language)}
+                    emptyState={(
+                      <Typography variant="body2" color="text.secondary">
+                        {t('library.page.noNotes')}
+                      </Typography>
+                    )}
+                  />
+                </DetailSection>
               </>
             ) : (
               <LibraryEmptyState

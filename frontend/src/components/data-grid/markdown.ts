@@ -21,6 +21,24 @@ export function stripCitationMarkers(text: string): string {
   return text.replace(CITATION_MARKER_RE, '');
 }
 
+// Invisible format characters (zero-width space, word joiner, BOM, soft hyphen)
+// touching an emphasis delimiter run. CommonMark counts them as neither
+// whitespace nor punctuation, so `**Hülsen.**\u200B` no longer closes the bold
+// and the asterisks render literally.
+const INVISIBLE_AFTER_DELIMITER_RE = /([*_])[\u200B\u2060\uFEFF\u00AD]+/g;
+const INVISIBLE_BEFORE_DELIMITER_RE = /[\u200B\u2060\uFEFF\u00AD]+([*_])/g;
+
+/**
+ * Prepare stored notes text for markdown rendering: drop citation markers and
+ * invisible characters that would break `**bold**`/`_emphasis_` delimiters.
+ */
+export function normalizeMarkdownSource(text: string): string {
+  if (!text) return text;
+  return stripCitationMarkers(text)
+    .replace(INVISIBLE_AFTER_DELIMITER_RE, '$1')
+    .replace(INVISIBLE_BEFORE_DELIMITER_RE, '$1');
+}
+
 /**
  * Strip common markdown syntax tokens from text.
  * Removes headers, bold, italic, links, code blocks, lists, etc.
