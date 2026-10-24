@@ -1897,6 +1897,47 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(detail_response.data['notes'], 'Deutsche Beschreibung')
         self.assertEqual(detail_response.data['description_language_code'], 'de')
 
+    def test_import_by_english_user_keeps_german_only_notes_german(self):
+        """A German-only description imported from an English UI stays German.
+
+        Project crops hold one ``notes`` text whose language is the entry's
+        original language; the request language must not relabel it, and the
+        import must not create an English translation on the entry.
+        """
+        public_crop = PublicCrop.objects.create(
+            name='Ackerbohne',
+            variety='Hangdown',
+            notes='Nur deutsche Notizen',
+            status='published',
+            created_by=self.user,
+            original_language_code='de',
+        )
+        PublicCropTranslation.objects.create(
+            public_crop=public_crop,
+            language_code='de',
+            description='Nur deutsche Notizen',
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/import/',
+            {},
+            format='json',
+            HTTP_ACCEPT_LANGUAGE='en',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        imported = Crop.objects.get(id=response.data['crop']['id'])
+        self.assertEqual(imported.notes, 'Nur deutsche Notizen')
+        self.assertEqual(response.data['crop']['description_language_code'], 'de')
+        self.assertEqual(public_crop.descriptions_by_language(), {'de': 'Nur deutsche Notizen'})
+
+        detail_response = self.client.get(
+            f'/openfarmplanner/api/crops/{imported.id}/',
+            HTTP_ACCEPT_LANGUAGE='en',
+        )
+        self.assertEqual(detail_response.data['notes'], 'Nur deutsche Notizen')
+        self.assertEqual(detail_response.data['description_language_code'], 'de')
+
     def test_imported_crop_detail_falls_back_when_requested_translation_is_missing(self):
         species = CropSpecies.objects.create(name='Localized Import Species 3')
         CropSpeciesTranslation.objects.create(species=species, language_code='de', common_name='Ackerbohne')

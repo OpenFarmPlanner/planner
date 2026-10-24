@@ -6,8 +6,6 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import type { Ref } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
 import { useSearchParams } from 'react-router';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
@@ -19,7 +17,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import AddIcon from '@mui/icons-material/Add';
-import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
@@ -46,8 +43,6 @@ import {
 } from '@mui/material';
 import type { Crop } from '../api/api';
 import EmptyStateCard from '../components/project/EmptyStateCard';
-import { stripCitationMarkers } from '../components/data-grid/markdown';
-import { markdownComponents } from '../components/data-grid/markdownComponents';
 import { useCropListKeyboardNavigation } from './useCropListKeyboardNavigation';
 import { useSearchExpandedGroups } from './useSearchExpandedGroups';
 import { DetailPageActions } from '../components/layout/DetailPageActions';
@@ -73,7 +68,8 @@ import { VarietyValueLegend } from './VarietyValueLegend';
 import { CropVarietiesOverview } from './CropVarietiesOverview';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
 import { getEffectiveCropValue, isEmptyCropValue, getVarietyOwnValueSource } from './varietyValueSource';
-import { buildLocalizedText, getDescriptionFallbackNotice } from '../crop-library/publicCropDisplay';
+import { buildLocalizedText } from '../crop-library/publicCropDisplay';
+import { LocalizedMarkdownNotes } from '../crop-library/components/LocalizedMarkdownNotes';
 
 interface CropDetailProps {
   crops: Crop[];
@@ -381,18 +377,14 @@ const detailSectionGridSx = {
     () => crops.find((crop) => crop.id === selectedCropId) ?? null,
     [crops, selectedCropId],
   );
-  const descriptionFallbackNotice = useMemo(
-    () => getDescriptionFallbackNotice(
-      buildLocalizedText(
-        selectedCrop?.notes,
-        selectedCrop?.description_language_code,
-        currentLanguage,
-        '',
-      ),
-      t,
+  const localizedNotes = useMemo(
+    () => buildLocalizedText(
+      selectedCrop?.notes,
+      selectedCrop?.description_language_code,
       currentLanguage,
+      '',
     ),
-    [currentLanguage, selectedCrop, t],
+    [currentLanguage, selectedCrop],
   );
   const publicUpdate = usePublicCropUpdate(selectedCrop, onPublicUpdateApplied);
   // The variety is published, but under a species a moderator has not
@@ -1319,35 +1311,7 @@ const detailSectionGridSx = {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: { xs: '100%', xl: 1180 } }}>
                   {selectedCrop.notes && (
                     <Box>
-                      {descriptionFallbackNotice ? (
-                        <AppTooltip title={descriptionFallbackNotice.tooltip}>
-                          <Chip
-                            size="small"
-                            icon={<TranslateOutlinedIcon fontSize="small" />}
-                            label={descriptionFallbackNotice.label}
-                            variant="outlined"
-                            color="warning"
-                            sx={{ mb: 1 }}
-                          />
-                        </AppTooltip>
-                      ) : null}
-                      <Box
-                        sx={{
-                          '& h3': { mt: 2, mb: 1, fontSize: '1.05rem' },
-                          '& p': { mb: 1, maxWidth: '95ch' },
-                          '& ul': { pl: 3, mb: 1 },
-                          '& li': { mb: 0.5 },
-                          '& a': { color: 'primary.main' },
-                          '& em': { color: 'text.secondary' },
-                        }}
-                      >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={markdownComponents}
-                        >
-                          {stripCitationMarkers(selectedCrop.notes)}
-                        </ReactMarkdown>
-                      </Box>
+                      <LocalizedMarkdownNotes localized={localizedNotes} />
                     </Box>
                   )}
                 </Box>

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicCropLibraryDialog } from '../crop-library/components/PublicCropLibraryDialog';
 import type { PublicCrop } from '../api/types';
+import i18n from '../i18n/config';
 
 const crop: PublicCrop = {
   id: 1,
@@ -263,6 +264,64 @@ describe('PublicCropLibraryDialog', () => {
     fireEvent.click(await screen.findByRole('option', { name: /Broad bean/ }));
     expect(screen.getByRole('heading', { level: 6, name: 'Broad bean (Hangdown)' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /Ackerbohne/ })).not.toBeInTheDocument();
+  });
+
+  it('renders the notes like the library detail view, with the fallback hint and lang attribute', async () => {
+    mockDesktopViewport();
+    await i18n.changeLanguage('en');
+    try {
+      renderDialog(
+        {
+          open: true,
+          loading: false,
+          error: null,
+          crops: [{
+            ...crop,
+            notes: '### Ernte\n\n- Ernte der reifen **Hülsen.**\u200B',
+            description: '### Ernte\n\n- Ernte der reifen **Hülsen.**\u200B',
+            description_language_code: 'de',
+            original_language_code: 'de',
+          }],
+          importingId: null,
+          onClose: vi.fn(),
+          onSearch: vi.fn(),
+          onImport: vi.fn(),
+        },
+      );
+
+      fireEvent.click(await screen.findByRole('option', { name: /Tomate/ }));
+
+      expect(screen.getByRole('heading', { level: 6, name: 'Notes' })).toBeInTheDocument();
+      expect(screen.getByText('Only available in German')).toBeInTheDocument();
+      const bold = screen.getByText('Hülsen.');
+      expect(bold.tagName).toBe('STRONG');
+      expect(bold.closest('[lang]')).toHaveAttribute('lang', 'de');
+      expect(screen.getByRole('heading', { level: 3, name: 'Ernte' })).toBeInTheDocument();
+      expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage('de');
+    }
+  });
+
+  it('shows no fallback hint when the notes are in the UI language', async () => {
+    mockDesktopViewport();
+    renderDialog(
+      {
+        open: true,
+        loading: false,
+        error: null,
+        crops: [{ ...crop, description: 'Robuste Sorte.', description_language_code: 'de' }],
+        importingId: null,
+        onClose: vi.fn(),
+        onSearch: vi.fn(),
+        onImport: vi.fn(),
+      },
+    );
+
+    fireEvent.click(await screen.findByRole('option', { name: /Tomate/ }));
+
+    expect(screen.getByText('Robuste Sorte.')).toBeInTheDocument();
+    expect(screen.queryByText(/Nur auf .* verfügbar/)).not.toBeInTheDocument();
   });
 
   it('supports keyboard navigation in the desktop import list', async () => {
