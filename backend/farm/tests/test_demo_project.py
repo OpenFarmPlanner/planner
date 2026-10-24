@@ -12,6 +12,7 @@ from accounts.models import UserProjectSettings
 from farm.models import Bed, BedLayout, Crop, FieldLayout, Location, PlantingPlan, Project, ProjectMembership, PublicCrop, Season, Supplier
 from config.languages import resolve_request_language
 from farm.services.bed_capacity import calculate_bed_capacity
+from farm.services.crop_import.field_specs import seed_rate_value_constraint_error
 from farm.services.crop_rotation import (
     BREAK_SOURCE_CROP,
     BREAK_SOURCE_FAMILY,
@@ -227,6 +228,30 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(field_layouts_by_name, expected_field_positions)
         self.assertEqual(layouts_by_name, expected_positions)
+
+    def test_demo_seed_rates_pass_the_unit_constraints(self) -> None:
+        # The crop API rejects e.g. 1.2 seeds per plant, so a demo crop carrying
+        # one could not be saved again without the user touching the seed rate.
+        result = create_or_reset_demo_project()
+
+        violations = []
+        for crop in Crop.objects.filter(project=result.project):
+            rates = [
+                (crop.seed_rate_value, crop.seed_rate_unit),
+                (crop.seed_rate_direct_value, crop.seed_rate_direct_unit),
+                (crop.seed_rate_pre_cultivation_value, crop.seed_rate_pre_cultivation_unit),
+                *(
+                    (entry.get('value'), entry.get('unit'))
+                    for entry in (crop.seed_rate_by_cultivation or {}).values()
+                ),
+            ]
+            violations.extend(
+                (crop.name, crop.variety, value, unit)
+                for value, unit in rates
+                if value is not None and seed_rate_value_constraint_error(value, unit)
+            )
+
+        self.assertEqual(violations, [])
 
     def test_management_command_seeds_requested_demo_project(self) -> None:
         call_command(
