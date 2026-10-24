@@ -23,6 +23,7 @@ two disagree about what exists, this file wins.
 | Non-destructive lifecycle (`draft`/`published`/`withdrawn`/`removed`) + status events + staff hard delete | **implemented** |
 | Moderation surfaces: species proposals, moderator-access requests, restoring removed entries (`/app/public-library-moderation`) | **implemented** |
 | Moderator crop-species correction of a published entry ("Kulturart korrigieren", §9) | **implemented** |
+| Locally pinned fields of a linked crop ("Nur lokal", `Crop.library_pinned_fields`) | **implemented** — see "Locally pinned fields" in §0 |
 | Full library workspace at `/app/crop-library` (browse, import, discuss, edit, versions) | **implemented** |
 | Curated global plant-family list (`PlantFamily`) referenced by `crop_family` on project and public crops | **implemented** — see "Plant families" below |
 | `PublicCropChangeProposal` review workflow | **implemented** — queues contributions from new accounts and API tokens, reviewed in the contributions queue on the moderation page (see [account-trust-levels.md](./account-trust-levels.md)) |
@@ -112,6 +113,8 @@ The public Crop Library follows an open-data model:
   species entry). An apply overwrites exactly that same set — `variety`
   included, so a rename can never be applied without appearing in the preview;
   `display_color` is popped from the apply too, matching the diff.
+  Fields the user pinned locally (`Crop.library_pinned_fields`, see "Locally
+  pinned fields" below) drop out of this set as well.
   `GET /api/crops/<id>/public-update/` returns that diff and is read-only:
   confirming in the dialog calls `public-crops/<id>/import/` with
   `mode=update`, so the private crop page and the library page share one
@@ -150,7 +153,8 @@ The public Crop Library follows an open-data model:
 - **Removing a library link ("Verknüpfung aufheben").** `POST
   /api/crops/<id>/unlink-public-crop/` (`unlink_crop_from_public_entry()`,
   same permission as editing the crop) clears only the sync link fields above
-  (`is_modified_from_source` stays);
+  (`is_modified_from_source` stays) and the locally pinned fields, which mean
+  nothing without a link;
   no crop value, no provenance, no `origin_type` and nothing in the public
   library changes, and linked Sorten keep their own links (live inheritance
   runs over `crop_species`, not the link). It is a normal `Crop.save()`, so the
@@ -170,9 +174,10 @@ The public Crop Library follows an open-data model:
   only when the Kultur has linked Sorten). The dialog names the entry from
   `source_public_crop_title`, and shows a backend rejection inline. Afterwards the crop resolves to
   case 1 ("In Bibliothek teilen"), the "Importiert" badge stays, and the
-  wizard offers the duplicate's "Mit diesem Eintrag verknüpfen" again. This is
-  also the way out for a farm that deliberately keeps its own values and does
-  not want a standing "Bibliothek aktualisieren" action.
+  wizard offers the duplicate's "Mit diesem Eintrag verknüpfen" again. A farm
+  that deliberately keeps only *some* of its own values does not need to
+  unlink: it pins those fields ("Locally pinned fields" below) and stays
+  synced in all others.
 - This link is recorded on **publish**, not only on import.
   `publish_crop_to_public_library` calls `link_local_crop_to_owned_public_entry`
   for the published crop, setting `source_public_crop` /
@@ -285,7 +290,13 @@ The public Crop Library follows an open-data model:
   5. **linked, nothing pending, nothing to contribute** -> not a button but a
      plain "Aktuell" status chip (`crop-detail-library-status`), tooltip
      "Diese Kultur entspricht dem aktuellen Stand in der Kulturbibliothek."
-     There is no action, so no dialog opens.
+     There is no action, so no dialog opens. Differences in locally pinned
+     fields do not count: a crop that differs only there is case 5, and the
+     tooltip adds "Lokal fixiert: {fields}." A second chip "{n} Felder lokal
+     fixiert" (violet, pin icon, `CropLibraryPinnedChip`) sits next to the
+     status and lists the fields in its tooltip; the crop list shows a small
+     pin in the corner of the row's status icon (`CropLibraryStatusIcon`,
+     with its own accessible label), inside the fixed-width slot.
 
   A crop species still under moderation (`public_crop_species_pending`) freezes
   cases 2-4 as a disabled button with the existing "Vorschlag in Prüfung"
@@ -367,6 +378,91 @@ The public Crop Library follows an open-data model:
   value differs from the crop's *effective* one. A Sorte that inherits a field
   from its general Kultur, and whose library value equals that inherited
   value, keeps inheriting instead of gaining a frozen local override.
+- **Locally pinned fields ("Nur lokal").** A linked crop can keep single
+  values locally on purpose — a growing or harvest duration, a yield or a
+  spacing that differs because of climate or altitude — while every other
+  field stays synced with the library. This replaced the earlier rule that the
+  update model has no "linked but intentionally different" state (the only
+  way out used to be removing the whole link).
+  - *Data.* `Crop.library_pinned_fields` is a JSON list of model field names
+    (names only, never values; migration `0117_crop_library_pinned_fields`).
+    Only compared fields can be pinned (`LIBRARY_PINNABLE_FIELDS`:
+    `CROP_COPY_FIELDS` minus `name`, `variety` and `display_color`), and the
+    species-invariant `crop_family` / `nutrient_demand` only on a general
+    Kultur, never on a Sorte (`library_pinnable_fields()`).
+    `rotation_break_years` is not a compared field and cannot be pinned at
+    all. The backend validates every write (`validate_library_pinned_fields`,
+    400 `library_pin_requires_link` / `library_pin_field_not_allowed` /
+    `library_pin_field_empty`, each with `fields`). The crop serializer adds
+    read-only `library_pinnable_fields` (empty while unlinked) and
+    `library_pinned_values` — the entry's current value per pinned field,
+    read from the already `select_related` entry, so the list endpoints keep
+    their query count.
+  - *Diffs.* `_compared_public_update_fields()` drops pinned fields, and with
+    it every reader built on it: `public_crop_field_changes` /
+    `public_crop_update_changes`, `has_pending_public_crop_update`,
+    `is_project_crop_up_to_date`, `resolve_public_publish_block`,
+    `_owned_entry_is_locally_modified`, `build_public_crop_update_status` and
+    `_sync_compared_fields`. `Crop._flag_source_divergence` ignores edits of
+    pinned fields, so `is_modified_from_source` keeps meaning "unpinned local
+    changes" (and `description_language_code` treats pinned `notes` as the
+    user's own text). Consequences: a crop that differs only in pinned fields
+    is case 5; a library change of only a pinned field brings no pull and no
+    notice (the baseline stays where it was, which is harmless because the
+    comparison ignores the field); case 2 is triggered by unpinned fields only.
+  - *Pull.* An apply (`import/` with `mode=update`, `_apply_public_crop_update`)
+    never overwrites a pinned field. `unpin_fields` releases named pins first
+    (400 `library_unpin_field_not_pinned` for a field that is not pinned); the
+    release is part of the same, history-recorded save.
+    `GET public-update/` adds `pinned_changes` — pinned fields whose library
+    value moved between the copy's baseline revision and now
+    (`previous_public_value` → `public_value`), and only those: the pin is not
+    a notice. Without a baseline revision nothing is listed. The pull dialog
+    shows them in a "Lokal fixiert – bleibt unverändert" block with a
+    "Fixierung lösen und {Wert} übernehmen" checkbox per field, and the
+    summary "… Werte werden in deine Kultur übernommen, … fixierte Werte
+    bleiben erhalten." There is deliberately no other hint when a pinned
+    field's library value changes; the value is only shown passively
+    ("Lokal fixiert · Bibliothek: {Wert}" in the form).
+  - *Push.* `build_public_crop_payload` drops pinned fields, so no publish,
+    republish, owned-entry update or moderated proposal shares them. In the
+    sync, a pinned field is shared only when the decision names it under
+    `push_fields`, which releases the pin in the same step (see below) — a
+    value is never shared while it is pinned.
+  - *Sync.* `GET public-sync/` lists pinned fields too (`pinned: true`), with
+    `pinnable` (a pinnable field with a local value); `POST` takes a third
+    list `pin_fields` next to `pull_fields` / `push_fields`, in the same
+    transaction and under the same `base_version` check. The resulting pins are
+    *(previous pins − pull − push) ∪ pin_fields*: choosing "Bibliothek" or
+    "Meine Kultur" for a pinned row is the explicit release, and pins the
+    decision does not name stay. A field in two lists is rejected. A pin
+    change is saved through `Crop.save()`, so it is a normal, visible history
+    entry.
+  - *Form.* The edit form of a linked crop shows a pin at the end of every
+    pinnable field (`libraryFieldPin.ts`, `LibraryPinButton`): a quiet outline
+    ("Lokal fixieren"), or filled with a violet border and the helper text
+    "Lokal fixiert · Bibliothek: {Wert}" ("Fixierung lösen"). One form control
+    can stand for several model fields (the cultivation picker pins
+    `cultivation_types` and `cultivation_type` together). The seed-rate rows,
+    whose form fields are the per-method values rather than the compared
+    `seed_rate_*` fields, and the plant family are pinned through the sync
+    only. A field without a value cannot be pinned; a pin on a field the form
+    clears is dropped on save. Unlinked crops show no pin at all.
+  - *Lifecycle.* `Crop.save()` normalizes the list on every save
+    (`normalize_library_pinned_fields`): it is empty without a sync link,
+    and a pinned field whose *effective* value is cleared loses its pin
+    ("Leeren löst die Fixierung"). Unlink clears the list explicitly.
+    Restoring a crop revision restores the list with the link (a snapshot from
+    before this feature restores no pins; one whose link cannot be restored
+    keeps none).
+  - *Inheritance.* A Sorte that inherits a field from a Kultur that pins it
+    simply inherits the pinned value. Pins are per row and never reach
+    another row's link: a Sorte linked to its own variety entry compares
+    that inherited value against its entry like any other value, so it is
+    offered a push or pull for it. To keep it, the Sorte pins the field
+    itself; because an inherited value still counts as a value, the pin holds
+    while the Sorte keeps inheriting (no raw override is written). If the
+    Kultur later clears the field, the Sorte's pin is dropped on its next save.
 - `CropSerializer.public_publish_blocked_reason` reports why a *push* is not on
   offer: `update_pending` / `update_rejected` (the library is ahead — the
   button shows case 2 instead) and `no_local_changes` (aligned copy with
@@ -1555,6 +1651,19 @@ attention than the values themselves. Each side is a visually hidden native
 radio (row = `radiogroup`, accessible names are the former toggle labels), so
 focus, arrow keys and screen readers behave like any radio group; a click on a
 link inside a Markdown value opens the link without switching sides.
+In the sync of an already linked crop ("Mit Kulturbibliothek abgleichen",
+`allowLocal`) each row has a third choice, "Nur lokal" (keep, do not share;
+pin icon, the theme's violet `libraryLocal` colour): the column headings
+carry an icon and a short description ("Bibliothek / in meine Kultur
+übernehmen", "Meine Kultur / in der Bibliothek teilen", "Nur lokal /
+behalten, nicht teilen"), the bulk buttons read "Alle aus Bibliothek", "Alle
+teilen", "Alle nur lokal", already pinned rows start on "Nur lokal" with the
+hint "bisher lokal fixiert", an info line explains what a local value means,
+and the summary gains "… Werte bleiben nur lokal." "Nur lokal" is disabled
+with a tooltip for `name` / `variety`, for a row without a local value, and
+for species-invariant fields on a Sorte. On phones the three headings put the
+icon in front of the label. The link confirmation and the add-crop dialog
+keep the two choices.
 Preselection (`crops/publicCropSync.ts`, `PublicCropSyncMode`): only the
 library has a value -> library; only the local crop has one -> mine; both set
 and different -> library when linking (`link`: the two sides share no
@@ -1575,9 +1684,9 @@ buttons under the column headings and set every row at once, and a live summary 
 aktualisiert.", a part is dropped when its count is 0; for a moderated
 contributor the push part reads "… werden zur Prüfung eingereicht"). Without
 differences it shows "Keine Abweichungen zum öffentlichen Eintrag." and no
-choice UI. There is deliberately no "keep only locally" option: the update
-model has no "linked but intentionally different" state, so such a choice
-would leave a permanent push action.
+choice UI. "Nur lokal" (above) is the "linked but intentionally different"
+state: a pinned field is excluded from every later diff, so it never leaves a
+standing push or pull action.
 
 On confirm the link runs in three steps. (1) `link-public-crop` with
 `pull_fields`: `link_project_crop_to_public_reference()` links the crop

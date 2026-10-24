@@ -115,6 +115,9 @@ Branch on `code`, never on `detail`. Messages may be reworded; codes are stable
 | `public_crop_update_blocked` | 409 | `publish-public` | The library entry has a newer version this crop has not taken over. |
 | `public_crop_link_unavailable` | 409 | `publish-public` | The linked entry was withdrawn or removed; see `reason`. |
 | `crop_species_pending` | 409 | public crop update | The entry's species is awaiting moderation. |
+| `library_pin_requires_link` | 400 | `PATCH /api/crops/` | `library_pinned_fields` was set on a crop without a library link. |
+| `library_pin_field_not_allowed` | 400 | `PATCH /api/crops/` | A named field cannot be pinned on this crop (see `library_pinnable_fields`); `fields` lists them. |
+| `library_pin_field_empty` | 400 | `PATCH /api/crops/` | A newly pinned field has no value; `fields` lists them. |
 | `pending_proposal_limit_exceeded` | 429 | library writes | Too many of your contributions are awaiting moderation. |
 | `invalid_payload` | 400 | public crop update | The body must be a JSON object. |
 | `api_token_required` | 403 | `/api/agent/context/` | Called without a token. |
@@ -215,6 +218,18 @@ cases:
 3. **Linked, with local changes:** `publish-public` proposes the changes as an
    update of the linked entry.
 4. **Linked and in sync:** nothing to publish.
+
+**Locally pinned fields.** A linked crop can keep single values locally on
+purpose, e.g. a harvest duration that differs because of the local climate:
+`PATCH /api/crops/{id}/` with `library_pinned_fields` (model field names such
+as `growth_duration_days` or `distance_within_row_m`, only from the crop's
+`library_pinnable_fields`; never `name` or `variety`, and the
+plant-family / nutrient-demand fields only on a general crop). A pinned field
+is never published or overwritten by a library update, and a crop that differs
+from its entry only in pinned fields counts as in sync (case 4).
+`library_pinned_values` returns the entry's current value for each pinned
+field. Clearing a pinned field releases its pin; removing the library link
+clears all pins.
 
 **Every library write made with an API token is moderated,** regardless of
 the token's scope or the owner's trust level:
