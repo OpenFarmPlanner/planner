@@ -13,7 +13,14 @@ import { useTranslation } from '../i18n';
 import { cropAPI, publicCropAPI } from '../api/api';
 import type { Crop, CropPublicUpdate } from '../api/types';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
+import { extractApiErrorCode } from '../api/errors';
 import { readCropLibrarySyncFlags } from './cropLibraryAction';
+import { describeLibraryPinError } from './libraryFieldPin';
+
+export interface PublicCropUpdateDecision {
+  unpinFields?: string[];
+  pinFields?: string[];
+}
 
 export interface PublicCropUpdateController {
   /** The loaded diff while the dialog is open, `null` while it is closed. */
@@ -34,8 +41,9 @@ export interface PublicCropUpdateController {
   /**
    * Takes the update over. `unpinFields` releases those locally pinned fields
    * so they take the new library value too; other pins keep the local value.
+   * `pinFields` keeps those locally changed fields ("Nur lokal behalten").
    */
-  applyUpdate: (unpinFields?: string[]) => void;
+  applyUpdate: (decision?: PublicCropUpdateDecision) => void;
   rejectUpdate: () => void;
 }
 
@@ -82,13 +90,16 @@ export function usePublicCropUpdate(
     setUpdate(null);
   }, [isApplying, isRejecting]);
 
-  const applyUpdate = useCallback((unpinFields: string[] = []): void => {
+  const applyUpdate = useCallback((decision: PublicCropUpdateDecision = {}): void => {
     const publicCropId = update?.public_crop_id;
     if (!publicCropId) {
       return;
     }
     setIsApplying(true);
-    void publicCropAPI.importToProject(publicCropId, 'update', unpinFields)
+    void publicCropAPI.importToProject(publicCropId, 'update', {
+      ...decision,
+      baseVersion: update?.public_version,
+    })
       .then(() => {
         showGlobalSnackbar({
           message: t('library.publicUpdate.applied', {
@@ -99,8 +110,20 @@ export function usePublicCropUpdate(
         setUpdate(null);
         onUpdated?.();
       })
-      .catch(() => {
-        showGlobalSnackbar({ message: t('library.publicUpdate.applyError'), severity: 'error' });
+      .catch((error: unknown) => {
+        if (extractApiErrorCode(error) === 'stale_public_crop_version') {
+          // The library moved on since the dialog loaded: nothing was applied,
+          // so close it and let the user review the new version.
+          showGlobalSnackbar({ message: t('library.publicUpdate.staleError'), severity: 'info' });
+          setUpdate(null);
+          onUpdated?.();
+          return;
+        }
+        const code = extractApiErrorCode(error);
+        showGlobalSnackbar({
+          message: describeLibraryPinError(code, t) ?? t('library.publicUpdate.applyError'),
+          severity: 'error',
+        });
       })
       .finally(() => {
         setIsApplying(false);

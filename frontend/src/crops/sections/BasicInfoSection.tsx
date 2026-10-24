@@ -2,7 +2,7 @@
  * BasicInfoSection: Name, Variety, Crop Family, Nutrient Demand
  */
 import { useCallback, useMemo, type ReactNode } from 'react';
-import { Autocomplete, Box, CircularProgress, TextField, FormControl, FormHelperText, InputLabel, MenuItem, Typography } from '@mui/material';
+import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel, MenuItem, Typography } from '@mui/material';
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
@@ -467,7 +467,6 @@ export function BasicInfoSection({
               <MenuItem value="medium">{t('form.nutrientDemandMedium')}</MenuItem>
               <MenuItem value="high">{t('form.nutrientDemandHigh')}</MenuItem>
             </Select>
-            {nutrientDemandPin?.helperText ? <FormHelperText>{nutrientDemandPin.helperText}</FormHelperText> : null}
           </FormControl>
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={rotationBreakYearsVariety?.tooltipTitle}>

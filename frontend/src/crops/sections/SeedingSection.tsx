@@ -198,7 +198,7 @@ export function SeedingSection({
             value={formData.thousand_kernel_weight_g}
             onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}
             error={Boolean(errors.thousand_kernel_weight_g)}
-            helperText={errors.thousand_kernel_weight_g || thousandKernelWeightPin?.helperText}
+            helperText={errors.thousand_kernel_weight_g}
             slotProps={{ input: { endAdornment: thousandKernelWeightPin?.endAdornment } }}
           />
         </DropdownAwareTooltip>

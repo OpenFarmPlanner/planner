@@ -79,6 +79,7 @@ const LIBRARY_PIN_ERROR_CODES = new Set([
   'library_pin_field_not_allowed',
   'library_pin_field_empty',
   'library_unpin_field_not_pinned',
+  'library_pin_field_not_local_change',
 ]);
 
 /** The localized message for a rejected pin (stable backend codes), or null for any other error code. */

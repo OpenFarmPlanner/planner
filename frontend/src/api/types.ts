@@ -376,6 +376,10 @@ export interface PublicCropUpdateFieldChange {
   field: string;
   local_value: unknown;
   public_value: unknown;
+  /** The copy changed this field since its baseline: applying overwrites a local edit. */
+  locally_changed?: boolean;
+  /** The local change may be kept instead ("Nur lokal behalten" pins the field). */
+  can_keep_local?: boolean;
 }
 
 /** A locally pinned field whose library value moved since the copy's baseline. */

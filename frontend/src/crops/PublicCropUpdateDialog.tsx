@@ -12,6 +12,12 @@
  * Locally pinned fields are never part of the update. When the library changed
  * one of them in this version, a separate block names it with the library's old
  * and new value and lets the user release the pin and take the new value too.
+ *
+ * A field the user changed locally (not pinned) gets its own block with the
+ * choice "Bibliothekswert übernehmen" (the default, the update's behaviour so
+ * far) or "Nur lokal behalten", which pins the field so the update and later
+ * ones leave it alone. This is the pull's only way to pin: the library being
+ * ahead blocks the sync dialog where pinning otherwise happens.
  */
 
 import { useState } from 'react';
@@ -26,9 +32,12 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  Radio,
+  RadioGroup,
   Typography,
 } from '@mui/material';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import type { Crop, PublicCropPinnedFieldChange, PublicCropUpdateFieldChange } from '../api/types';
@@ -74,6 +83,8 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
   const pinnedChanges: PublicCropPinnedFieldChange[] = update?.pinned_changes ?? [];
   const varietyChange = changes.find((change) => change.field === 'variety');
   const otherChanges = changes.filter((change) => change.field !== 'variety');
+  const tableChanges = otherChanges.filter((change) => !change.can_keep_local);
+  const keepableChanges = otherChanges.filter((change) => change.can_keep_local);
   const isBusy = isApplying || isRejecting;
   // Pins the user chose to release, per loaded diff: a reopened dialog starts
   // with every pin kept again.
@@ -85,12 +96,35 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
       : releasedFields.filter((releasedField) => releasedField !== field);
     setReleased({ update, fields: next });
   };
+  // Locally changed fields the user keeps ("Nur lokal behalten"), per loaded
+  // diff like the released pins; the default takes the library value.
+  const [keptLocal, setKeptLocal] = useState<{ update: typeof update; fields: string[] }>({ update: null, fields: [] });
+  const keptLocalFields = keptLocal.update === update ? keptLocal.fields : [];
+  const setKeepLocal = (field: string, keep: boolean) => {
+    const others = keptLocalFields.filter((keptField) => keptField !== field);
+    setKeptLocal({ update, fields: keep ? [...others, field] : others });
+  };
   const keptPinnedCount = pinnedChanges.length - releasedFields.length;
-  const applyCount = changes.length + releasedFields.length;
+  const applyCount = changes.length - keptLocalFields.length + releasedFields.length;
   const summaryParts = [
     applyCount ? t('library.publicUpdate.summaryApply', { count: applyCount }) : null,
+    keptLocalFields.length ? t('library.publicUpdate.summaryKeptLocal', { count: keptLocalFields.length }) : null,
     keptPinnedCount ? t('library.publicUpdate.summaryPinned', { count: keptPinnedCount }) : null,
   ].filter((part): part is string => part !== null);
+  const summary = summaryParts.length === 3
+    ? t('library.publicUpdate.summaryTriple', { first: summaryParts[0], second: summaryParts[1], third: summaryParts[2] })
+    : summaryParts.length === 2
+      ? t('library.publicUpdate.summaryBoth', { apply: summaryParts[0], pinned: summaryParts[1] })
+      : summaryParts.length === 1
+        ? t('library.publicUpdate.summarySingle', { part: summaryParts[0] })
+        : '';
+  // Warn only while a local edit would actually be overwritten. A server
+  // without per-field flags falls back to the copy-wide flag.
+  const hasPerFieldFlags = changes.every((change) => change.locally_changed !== undefined);
+  const overwritesLocalChanges = Boolean(update?.has_local_changes) && (
+    !hasPerFieldFlags
+    || changes.some((change) => change.locally_changed && !keptLocalFields.includes(change.field))
+  );
 
   return (
     <Dialog open={update !== null} onClose={closeDiff} maxWidth="sm" fullWidth>
@@ -117,7 +151,7 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
           </Alert>
         ) : null}
 
-        {otherChanges.length ? (
+        {tableChanges.length ? (
           <Box
             aria-label={t('library.publicUpdate.changesAriaLabel')}
             sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
@@ -132,7 +166,7 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
               </Typography>
             </Box>
             <Box component="dl" sx={{ m: 0 }}>
-              {otherChanges.map((change) => (
+              {tableChanges.map((change) => (
                 <Box key={change.field} sx={DIFF_ROW_SX}>
                   <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>
                     {getPublicCropComparisonFieldLabel(change.field, t)}
@@ -146,6 +180,63 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
                 </Box>
               ))}
             </Box>
+          </Box>
+        ) : null}
+
+        {keepableChanges.length ? (
+          <Box
+            data-testid="crop-public-update-local-changes"
+            sx={{ mt: 2, border: 1, borderColor: 'divider', borderRadius: 1, px: 2, py: 1.5 }}
+          >
+            <Typography
+              variant="subtitle2"
+              component="h3"
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}
+            >
+              <EditOutlinedIcon fontSize="small" aria-hidden />
+              {t('library.publicUpdate.localChangesTitle')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              {t('library.publicUpdate.localChangesHint')}
+            </Typography>
+            {keepableChanges.map((change) => {
+              const label = getPublicCropComparisonFieldLabel(change.field, t);
+              const keep = keptLocalFields.includes(change.field);
+              return (
+                <Box key={change.field} data-testid={`crop-public-update-local-${change.field}`} sx={{ '& + &': { mt: 1.5 } }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{label}</Typography>
+                  <Typography variant="body2">
+                    {t('library.publicUpdate.pinnedOwnValue', {
+                      value: formatPublicCropValue(change.field, change.local_value, t),
+                    })}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('library.publicUpdate.localChangeLibraryValue', {
+                      value: formatPublicCropValue(change.field, change.public_value, t),
+                    })}
+                  </Typography>
+                  <RadioGroup
+                    row
+                    aria-label={label}
+                    value={keep ? 'keep' : 'take'}
+                    onChange={(event) => setKeepLocal(change.field, event.target.value === 'keep')}
+                  >
+                    <FormControlLabel
+                      value="take"
+                      disabled={isBusy}
+                      control={<Radio size="small" />}
+                      label={t('library.publicUpdate.localChangeTake')}
+                    />
+                    <FormControlLabel
+                      value="keep"
+                      disabled={isBusy}
+                      control={<Radio size="small" sx={{ '&.Mui-checked': { color: 'libraryLocal.main' } }} />}
+                      label={t('library.publicUpdate.localChangeKeep')}
+                    />
+                  </RadioGroup>
+                </Box>
+              );
+            })}
           </Box>
         ) : null}
 
@@ -197,7 +288,7 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
           </Box>
         ) : null}
 
-        {pinnedChanges.length && summaryParts.length ? (
+        {(pinnedChanges.length || keepableChanges.length) && summary ? (
           <Typography
             variant="body2"
             color="text.secondary"
@@ -205,13 +296,11 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
             data-testid="crop-public-update-summary"
             aria-live="polite"
           >
-            {summaryParts.length === 2
-              ? t('library.publicUpdate.summaryBoth', { apply: summaryParts[0], pinned: summaryParts[1] })
-              : t('library.publicUpdate.summarySingle', { part: summaryParts[0] })}
+            {summary}
           </Typography>
         ) : null}
 
-        {update?.has_local_changes ? (
+        {overwritesLocalChanges ? (
           <Alert severity="warning" sx={{ mt: 2 }}>
             {t('library.importConflictDialog.updateWarning')}
           </Alert>
@@ -244,8 +333,8 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
         <DisabledActionTooltip title={isBusy ? t('common:disabledReasons.busy') : ''}>
           <Button
             variant="contained"
-            color={update?.has_local_changes ? 'error' : 'primary'}
-            onClick={() => applyUpdate(releasedFields)}
+            color={overwritesLocalChanges ? 'error' : 'primary'}
+            onClick={() => applyUpdate({ unpinFields: releasedFields, pinFields: keptLocalFields })}
             disabled={isBusy}
             startIcon={isApplying ? <CircularProgress size={16} color="inherit" /> : undefined}
           >

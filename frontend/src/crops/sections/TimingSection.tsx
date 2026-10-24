@@ -2,7 +2,7 @@
  * TimingSection: Cultivation type, growth/harvest/propagation durations
  * @remarks Presentational, no internal state
  */
-import { Box, Typography, FormControl, FormHelperText, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
 import { fieldRowSx, smallFieldSx } from './styles.tsx';
 import type { Crop, CultivationType } from '../../api/types';
 import type { TFunction } from 'i18next';
@@ -82,19 +82,10 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
                   <ListItemText primary={t('form.cultivationTypeDirectSowing')} />
                 </MenuItem>
               </Select>
-              {cultivationTypePin?.helperText ? <FormHelperText>{cultivationTypePin.helperText}</FormHelperText> : null}
             </FormControl>
           </VarietyFieldTooltip>
         </Box>
-        {/* Bottom-aligned as before; a pin's helper text below one field would
-            push its input above its neighbours', so the row aligns at the top then. */}
-        <Box
-          sx={{
-            ...fieldRowSx,
-            alignItems: [growthDurationPin, harvestDurationPin, propagationDurationPin]
-              .some((pin) => pin?.helperText) ? 'flex-start' : 'flex-end',
-          }}
-        >
+        <Box sx={{ ...fieldRowSx, alignItems: 'flex-end' }}>
           <DropdownAwareTooltip title={growthDurationVariety?.tooltipTitle ?? t('form.growthDurationDaysHelp')} arrow>
             <TextField
               sx={mergeVarietyFieldSx(smallFieldSx, growthDurationVariety?.sx, growthDurationPin?.fieldSx)}
@@ -104,7 +95,7 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
               value={formData.growth_duration_days ?? ''}
               onChange={e => onChange('growth_duration_days', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
               error={Boolean(errors.growth_duration_days)}
-              helperText={errors.growth_duration_days || growthDurationPin?.helperText}
+              helperText={errors.growth_duration_days}
               slotProps={{
                 htmlInput: { min: 1, step: 1, inputMode: 'numeric' },
                 input: { endAdornment: growthDurationPin?.endAdornment },
@@ -120,7 +111,7 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
               value={formData.harvest_duration_days ?? ''}
               onChange={e => onChange('harvest_duration_days', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
               error={Boolean(errors.harvest_duration_days)}
-              helperText={errors.harvest_duration_days || harvestDurationPin?.helperText}
+              helperText={errors.harvest_duration_days}
               slotProps={{
                 htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
                 input: { endAdornment: harvestDurationPin?.endAdornment },
@@ -146,7 +137,7 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
                 errors.propagation_duration_days
                   || ((formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0)
                     ? t('form.propagationDurationDaysTooLong')
-                    : propagationDurationPin?.helperText)
+                    : undefined)
               }
               slotProps={{
                 htmlInput: { min: 0, step: 1, inputMode: 'numeric' },

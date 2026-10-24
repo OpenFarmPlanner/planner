@@ -258,10 +258,19 @@ export const publicCropAPI = {
     http.get<PublicCropMatchResponse>('/public-crops/match/', { params, signal }),
   // `unpinFields` releases those pins of the existing copy so the update takes
   // the library value for them too; pinned fields are never overwritten otherwise.
-  importToProject: (id: number, mode?: 'update' | 'new', unpinFields?: string[]) =>
+  // `pinFields` keeps locally changed fields ("Nur lokal behalten"), and
+  // `baseVersion` refuses the update (409) when the entry moved on since the
+  // dialog loaded it.
+  importToProject: (
+    id: number,
+    mode?: 'update' | 'new',
+    options: { unpinFields?: string[]; pinFields?: string[]; baseVersion?: number } = {},
+  ) =>
     http.post<ImportPublicCropResponse>(`/public-crops/${id}/import/`, {
       ...(mode ? { mode } : {}),
-      ...(unpinFields?.length ? { unpin_fields: unpinFields } : {}),
+      ...(options.unpinFields?.length ? { unpin_fields: options.unpinFields } : {}),
+      ...(options.pinFields?.length ? { pin_fields: options.pinFields } : {}),
+      ...(options.baseVersion !== undefined ? { base_version: options.baseVersion } : {}),
     }),
   // Contributors remove their own entry without a reason; moderators removing
   // somebody else's entry must supply a structured moderation reason.
