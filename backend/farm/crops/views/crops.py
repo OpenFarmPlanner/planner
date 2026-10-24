@@ -57,6 +57,7 @@ from farm.services.crop_import.field_specs import seed_rate_unit_constraints_pay
 from farm.services.crop_import.spreadsheet import apply_crop_import, preview_crop_import
 from farm.services.public_crops import (
     DuplicatePublicCropError,
+    LibraryPinnedFieldsError,
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
     PublicCropLinkUnavailableError,
@@ -777,6 +778,13 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     def _public_sync_error_response(error: Exception) -> Response:
         if isinstance(error, PublicCropSyncFieldsError):
             return _invalid_sync_fields_response(error.fields, code=error.code)
+        if isinstance(error, LibraryPinnedFieldsError):
+            return api_error_response(
+                code=error.code,
+                detail=error.message,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                fields=error.fields,
+            )
         if isinstance(error, PublicCropEditConflictError):
             return api_error_response(
                 code=error.code,
@@ -806,7 +814,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         POST applies the user's decision: `pull_fields` take the entry's
         values locally, `push_fields` write the crop's values into the entry —
         live through the direct-edit path, or as one edit proposal when the
-        contribution is moderated. Nothing to push creates no public version.
+        contribution is moderated — and `pin_fields` keep the crop's values
+        locally (`library_pinned_fields`). A pinned field named under
+        `pull_fields`/`push_fields` is released. Nothing to push creates no
+        public version.
         """
         crop = self.get_object()
         if request.method == 'GET':
@@ -835,6 +846,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                     'local_value': change.local_value,
                     'public_value': change.public_value,
                     'pushable': change.pushable,
+                    'pinned': change.pinned,
+                    'pinnable': change.pinnable,
                 }
                 for change in changes
             ],
@@ -846,7 +859,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             return target
         pull_fields = _request_field_list(request.data.get('pull_fields', []))
         push_fields = _request_field_list(request.data.get('push_fields', []))
-        if pull_fields is None or push_fields is None:
+        pin_fields = _request_field_list(request.data.get('pin_fields', []))
+        if pull_fields is None or push_fields is None or pin_fields is None:
             return _invalid_sync_fields_response()
         base_version = request.data.get('base_version')
         if base_version is not None and not isinstance(base_version, int):
@@ -875,6 +889,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 user=request.user,
                 pull_fields=pull_fields,
                 push_fields=push_fields,
+                pin_fields=pin_fields,
                 base_version=base_version,
                 require_moderation=moderated,
                 origin_api=origin_api,
@@ -882,6 +897,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             )
         except (
             PublicCropSyncFieldsError,
+            LibraryPinnedFieldsError,
             PublicCropEditConflictError,
             PublicCropPermissionError,
             PublicCropIdentityConflictError,
@@ -932,6 +948,15 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                     'public_value': change.public_value,
                 }
                 for change in update_status.changes
+            ],
+            'pinned_changes': [
+                {
+                    'field': change.field,
+                    'local_value': change.local_value,
+                    'previous_public_value': change.previous_public_value,
+                    'public_value': change.public_value,
+                }
+                for change in update_status.pinned_changes
             ],
         })
 

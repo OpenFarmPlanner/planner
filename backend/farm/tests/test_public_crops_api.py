@@ -36,9 +36,13 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import get_general_crop
 from farm.services.public_crops import (
+    build_public_crop_payload,
+    ensure_public_crop_revision,
     has_pending_public_crop_update,
+    is_project_crop_up_to_date,
     link_project_crop_to_public_reference,
     public_crop_update_changes,
+    update_public_crop_directly,
 )
 from farm.tests.api_base import User
 from notifications.models import Notification
@@ -5871,3 +5875,483 @@ class PublicCropAnonymousPseudonymTest(DRFAPITestCase):
             )
 
         self.assertEqual(count_queries(), baseline)
+
+
+class LibraryPinnedFieldsApiTest(DRFAPITestCase):
+    """Locally pinned fields (`Crop.library_pinned_fields`) of a linked crop.
+
+    A pinned field keeps the crop's value on purpose: it drops out of every
+    library diff, is never pulled or pushed, and only the sync, the pull dialog,
+    clearing the field or an unlink release it.
+    """
+
+    CULTIVATION = {'cultivation_types': ['pre_cultivation'], 'cultivation_type': 'pre_cultivation'}
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='pin-user', email='pin@example.com', password='testpass', is_active=True,
+        )
+        self.other_user = User.objects.create_user(
+            username='pin-other', email='pin-other@example.com', password='testpass',
+            is_active=True,
+        )
+        self.project = Project.objects.create(name='Pin Project', slug='pin-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        grant_established_trust(self.user)
+        record_acceptance(self.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.species = CropSpecies.objects.create(name='Chard')
+        self.entry = PublicCrop.objects.create(
+            name='Mangold',
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+            created_by=self.other_user,
+            growth_duration_days=60,
+            harvest_duration_days=30,
+            expected_yield=Decimal('2.50'),
+            notes='Public notes',
+            **self.CULTIVATION,
+        )
+        ensure_public_crop_revision(self.entry)
+        self.kultur = Crop.objects.create(
+            name='Mangold',
+            variety='',
+            growth_duration_days=60,
+            harvest_duration_days=30,
+            expected_yield=Decimal('2.50'),
+            notes='Public notes',
+            project=self.project,
+            **self.CULTIVATION,
+        )
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.id}/link-public-crop/',
+            {'public_crop_id': self.entry.id, 'pull_fields': []},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+
+    def _crop_url(self, crop, suffix=''):
+        return f'/openfarmplanner/api/crops/{crop.id}/{suffix}'
+
+    def _patch(self, crop, data):
+        return self.client.patch(self._crop_url(crop), data, format='json')
+
+    def _get(self, crop):
+        return self.client.get(self._crop_url(crop))
+
+    def _pin(self, crop, fields):
+        response = self._patch(crop, {'library_pinned_fields': fields})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        crop.refresh_from_db()
+        return response
+
+    def _sync(self, crop, *, pull_fields=(), push_fields=(), pin_fields=()):
+        self.entry.refresh_from_db()
+        return self.client.post(
+            self._crop_url(crop, 'public-sync/'),
+            {
+                'public_crop_id': self.entry.id,
+                'pull_fields': list(pull_fields),
+                'push_fields': list(push_fields),
+                'pin_fields': list(pin_fields),
+                'base_version': self.entry.version,
+            },
+            format='json',
+        )
+
+    def _library_edit(self, **data):
+        self.entry.refresh_from_db()
+        self.entry = update_public_crop_directly(
+            public_crop=self.entry, user=self.other_user, data=data,
+        )
+
+    # --- validation ---------------------------------------------------------
+
+    def test_pinning_is_stored_and_recorded_in_the_history(self):
+        revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+        before = revisions.count()
+
+        response = self._pin(self.kultur, ['growth_duration_days', 'growth_duration_days'])
+
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(response.data['library_pinned_fields'], ['growth_duration_days'])
+        self.assertEqual(response.data['library_pinned_values'], {'growth_duration_days': 60})
+        self.assertIn('growth_duration_days', response.data['library_pinnable_fields'])
+        self.assertEqual(revisions.count(), before + 1)
+        latest = revisions.order_by('-id').first()
+        self.assertIn('library_pinned_fields', latest.changed_fields)
+        self.assertEqual(latest.snapshot['library_pinned_fields'], ['growth_duration_days'])
+
+    def test_name_and_variety_can_never_be_pinned(self):
+        for field in ('name', 'variety', 'display_color'):
+            response = self._patch(self.kultur, {'library_pinned_fields': [field]})
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+            self.assertEqual(response.data['fields'], [field])
+
+    def test_unknown_fields_are_rejected(self):
+        response = self._patch(
+            self.kultur, {'library_pinned_fields': ['sowing_calculation_safety_percent']},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+
+    def test_species_invariant_fields_are_pinnable_on_the_kultur_only(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(nutrient_demand='high')
+        self.kultur.refresh_from_db()
+        self._pin(self.kultur, ['nutrient_demand'])
+        self.assertEqual(self.kultur.library_pinned_fields, ['nutrient_demand'])
+
+        variety_entry = PublicCrop.objects.create(
+            name='Mangold', variety='Bright Lights', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.other_user, growth_duration_days=55,
+        )
+        sorte = Crop.objects.create(
+            name='Mangold', variety='Bright Lights', crop_species=self.species,
+            growth_duration_days=55, project=self.project,
+        )
+        link_project_crop_to_public_reference(crop=sorte, public_crop=variety_entry, pull_fields=[])
+
+        response = self._patch(sorte, {'library_pinned_fields': ['nutrient_demand']})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+        self.assertNotIn('nutrient_demand', self._get(sorte).data['library_pinnable_fields'])
+
+    def test_pinning_needs_a_library_link(self):
+        crop = Crop.objects.create(
+            name='Rucola', variety='', growth_duration_days=30, project=self.project,
+        )
+
+        response = self._patch(crop, {'library_pinned_fields': ['growth_duration_days']})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_requires_link')
+        self.assertEqual(self._get(crop).data['library_pinnable_fields'], [])
+
+    def test_a_field_without_a_value_cannot_be_pinned(self):
+        response = self._patch(self.kultur, {'library_pinned_fields': ['row_spacing_m']})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_empty')
+
+    def test_clearing_a_pinned_field_releases_the_pin(self):
+        self._pin(self.kultur, ['expected_yield', 'growth_duration_days'])
+
+        response = self._patch(self.kultur, {
+            'expected_yield': None,
+            'library_pinned_fields': ['expected_yield', 'growth_duration_days'],
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+
+    # --- diffs and case resolution -------------------------------------------
+
+    def test_editing_a_pinned_field_is_not_a_local_change(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+
+        response = self._patch(self.kultur, {'growth_duration_days': 75})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertFalse(self.kultur.is_modified_from_source)
+        # Case 5 ("Aktuell"): nothing to pull, nothing to push.
+        self.assertFalse(response.data['public_update_available'])
+        self.assertEqual(response.data['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertEqual(public_crop_update_changes(self.kultur), [])
+        self.assertEqual(response.data['library_pinned_values'], {'growth_duration_days': 60})
+
+    def test_a_crop_differing_only_in_pinned_fields_is_up_to_date(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(
+            growth_duration_days=75, is_modified_from_source=True,
+        )
+        self.kultur.refresh_from_db()
+        # Unpinned, the difference is a local change to push (case 3/4).
+        self.assertIsNone(self._get(self.kultur).data['public_publish_blocked_reason'])
+
+        self._pin(self.kultur, ['growth_duration_days'])
+
+        data = self._get(self.kultur).data
+        self.assertFalse(data['public_update_available'])
+        self.assertEqual(data['public_publish_blocked_reason'], 'no_local_changes')
+
+    def test_a_library_change_of_only_a_pinned_field_offers_no_pull(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+
+        self._library_edit(growth_duration_days=90)
+
+        self.kultur.refresh_from_db()
+        self.assertFalse(has_pending_public_crop_update(self.kultur))
+        data = self._get(self.kultur).data
+        self.assertFalse(data['public_update_available'])
+        self.assertEqual(data['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertEqual(data['library_pinned_values'], {'growth_duration_days': 90})
+        self.assertTrue(is_project_crop_up_to_date(self.kultur, self.entry))
+        response = self.client.get(self._crop_url(self.kultur, 'public-update/'))
+        self.assertEqual(response.data, {'available': False})
+
+    def test_pull_never_overwrites_pinned_fields(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        self._library_edit(growth_duration_days=90, harvest_duration_days=40)
+
+        preview = self.client.get(self._crop_url(self.kultur, 'public-update/')).data
+
+        self.assertTrue(preview['available'])
+        self.assertEqual(
+            [change['field'] for change in preview['changes']], ['harvest_duration_days'],
+        )
+        self.assertEqual(preview['pinned_changes'], [{
+            'field': 'growth_duration_days',
+            'local_value': 60,
+            'previous_public_value': 60,
+            'public_value': 90,
+        }])
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/',
+            {'mode': 'update'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 60)
+        self.assertEqual(self.kultur.harvest_duration_days, 40)
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
+
+    def test_pull_can_release_a_pin_and_take_the_new_value(self):
+        self._pin(self.kultur, ['growth_duration_days', 'expected_yield'])
+        self._library_edit(growth_duration_days=90, harvest_duration_days=40)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/',
+            {'mode': 'update', 'unpin_fields': ['growth_duration_days']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 90)
+        self.assertEqual(self.kultur.library_pinned_fields, ['expected_yield'])
+        latest = (
+            EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+            .order_by('-id').first()
+        )
+        self.assertIn('library_pinned_fields', latest.changed_fields)
+
+    def test_pull_rejects_releasing_a_field_that_is_not_pinned(self):
+        self._library_edit(harvest_duration_days=40)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/',
+            {'mode': 'update', 'unpin_fields': ['growth_duration_days']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_unpin_field_not_pinned')
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.harvest_duration_days, 30)
+
+    def test_local_change_in_an_unpinned_field_still_offers_the_push(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        self._patch(self.kultur, {'growth_duration_days': 75})
+
+        response = self._patch(self.kultur, {'harvest_duration_days': 45})
+
+        self.assertIsNone(response.data['public_publish_blocked_reason'])
+        preview = self.client.get(
+            self._crop_url(self.kultur, 'public-sync/'), {'public_crop_id': self.entry.id},
+        ).data
+        changes = {change['field']: change for change in preview['changes']}
+        self.assertEqual(set(changes), {'growth_duration_days', 'harvest_duration_days'})
+        self.assertTrue(changes['growth_duration_days']['pinned'])
+        self.assertTrue(changes['growth_duration_days']['pinnable'])
+        self.assertFalse(changes['harvest_duration_days']['pinned'])
+
+    # --- sync -----------------------------------------------------------------
+
+    def test_sync_pins_fields_in_the_same_transaction(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(
+            growth_duration_days=75, harvest_duration_days=45, is_modified_from_source=True,
+        )
+        self.kultur.refresh_from_db()
+        version = self.entry.version
+
+        response = self._sync(
+            self.kultur, pin_fields=['growth_duration_days'], push_fields=['harvest_duration_days'],
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.entry.refresh_from_db()
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.entry.harvest_duration_days, 45)
+        # The pinned value is never shared.
+        self.assertEqual(self.entry.growth_duration_days, 60)
+        self.assertEqual(self.entry.version, version + 1)
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertFalse(self.kultur.is_modified_from_source)
+        self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
+        latest = (
+            EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+            .order_by('-id').first()
+        )
+        self.assertEqual(latest.snapshot['library_pinned_fields'], ['growth_duration_days'])
+
+    def test_sync_releases_a_pin_chosen_for_the_library_value(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        self._patch(self.kultur, {'growth_duration_days': 75})
+
+        response = self._sync(self.kultur, pull_fields=['growth_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 60)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    def test_sync_shares_a_pinned_value_only_when_its_pin_is_released_explicitly(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        self._patch(self.kultur, {'growth_duration_days': 75})
+
+        response = self._sync(self.kultur, push_fields=['growth_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.entry.refresh_from_db()
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.entry.growth_duration_days, 75)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    def test_sync_keeps_pins_the_decision_does_not_name(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        Crop.objects.filter(pk=self.kultur.pk).update(harvest_duration_days=45)
+        self.kultur.refresh_from_db()
+
+        response = self._sync(self.kultur, pull_fields=['harvest_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+
+    def test_sync_rejects_a_field_both_pinned_and_pushed(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(growth_duration_days=75)
+        self.kultur.refresh_from_db()
+
+        response = self._sync(
+            self.kultur, pin_fields=['growth_duration_days'], push_fields=['growth_duration_days'],
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['fields'], ['growth_duration_days'])
+
+    def test_sync_rejects_pinning_name(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(name='Mangold lokal')
+        self.kultur.refresh_from_db()
+
+        response = self._sync(self.kultur, pin_fields=['name'])
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+
+    def test_pinned_fields_are_never_part_of_a_publish_payload(self):
+        self._pin(self.kultur, ['growth_duration_days', 'notes'])
+
+        payload = build_public_crop_payload(self.kultur)
+
+        self.assertNotIn('growth_duration_days', payload)
+        self.assertNotIn('notes', payload)
+        self.assertIn('harvest_duration_days', payload)
+
+    # --- lifecycle --------------------------------------------------------------
+
+    def test_unlink_clears_the_pins_and_restore_brings_them_back(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        pinned_revision = (
+            EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+            .order_by('-id').first()
+        )
+
+        response = self.client.post(self._crop_url(self.kultur, 'unlink-public-crop/'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+        self.assertEqual(response.data['library_pinned_fields'], [])
+
+        response = self.client.post(
+            self._crop_url(self.kultur, 'restore/'),
+            {'history_id': pinned_revision.id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.source_public_crop_id, self.entry.id)
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+
+    def test_restore_without_the_link_does_not_restore_pins(self):
+        self._pin(self.kultur, ['growth_duration_days'])
+        pinned_revision = (
+            EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+            .order_by('-id').first()
+        )
+        snapshot = {**pinned_revision.snapshot, 'source_public_crop_id': None}
+        EntityRevision.objects.filter(pk=pinned_revision.pk).update(snapshot=snapshot)
+        self.client.post(self._crop_url(self.kultur, 'unlink-public-crop/'))
+
+        self.client.post(
+            self._crop_url(self.kultur, 'restore/'),
+            {'history_id': pinned_revision.id},
+            format='json',
+        )
+
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    # --- inheritance --------------------------------------------------------------
+
+    def test_a_sorte_inherits_the_pinned_kultur_value_and_syncs_it_with_its_own_entry(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(crop_species=self.species)
+        self._pin(self.kultur, ['growth_duration_days'])
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        variety_entry = PublicCrop.objects.create(
+            name='Mangold', variety='Bright Lights', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.other_user,
+            growth_duration_days=60, harvest_duration_days=30, expected_yield=Decimal('2.50'),
+            notes='Public notes', **self.CULTIVATION,
+        )
+        sorte = Crop.objects.create(
+            name='Mangold', variety='Bright Lights', crop_species=self.species,
+            project=self.project, harvest_duration_days=30, expected_yield=Decimal('2.50'),
+            notes='Public notes', **self.CULTIVATION,
+        )
+        link_project_crop_to_public_reference(crop=sorte, public_crop=variety_entry, pull_fields=[])
+        sorte.refresh_from_db()
+
+        data = self._get(sorte).data
+
+        # Inherits the Kultur's pinned value...
+        self.assertEqual(data['effective_values']['growth_duration_days'], 75)
+        self.assertIn('growth_duration_days', data['inherited_fields'])
+        # ...which its own link compares like any other value: the Kultur's pin
+        # does not reach the Sorte's own entry.
+        self.assertEqual(
+            [field for field, _local, _public in public_crop_update_changes(sorte)],
+            ['growth_duration_days'],
+        )
+
+        # Pinning the inherited field on the Sorte keeps it inheriting.
+        self._pin(sorte, ['growth_duration_days'])
+        self.assertIsNone(sorte.growth_duration_days)
+        self.assertEqual(public_crop_update_changes(sorte), [])
+        self.assertEqual(self._get(sorte).data['public_publish_blocked_reason'], 'no_local_changes')

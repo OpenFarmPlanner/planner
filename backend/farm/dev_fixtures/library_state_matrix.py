@@ -36,6 +36,15 @@ PROJECT_SLUGS = {ESTABLISHED_USERNAME: 'matrix-project-a', NEW_USERNAME: 'matrix
 
 BASE_DURATION_DAYS = 100
 LIBRARY_DURATION_DAYS = 120
+BASE_HARVEST_DAYS = 14
+# The pinned cells keep their own harvest duration against the entry's.
+PINNED_FIELD = 'harvest_duration_days'
+PINNED_HARVEST_DAYS = 21
+LIBRARY_HARVEST_DAYS = 28
+PINNED_SORTE_VARIETY = 'Fixiert'
+# Helper rows of a cell (the general Kultur of the pinned-Sorte cell) are named
+# apart from the "Matrix " cells, so counting cells by name stays exact.
+HELPER_PREFIX = 'Matrix-helper'
 
 
 @dataclass(frozen=True)
@@ -66,8 +75,10 @@ def _expected(
     update_rejected: bool = False,
     proposal_pending: bool = False,
     can_republish: bool = False,
+    pinned: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     return {
+        'library_pinned_fields': list(pinned),
         'source_public_crop_status': status,
         'public_publish_blocked_reason': blocked,
         'can_unlink_public_crop': can_unlink,
@@ -81,7 +92,9 @@ def _expected(
 # Cell key -> (owner of the entry, entry status, entry version, crop state, expectation).
 # owner: 'self' (the crop's user), 'other' (the publisher account) or None (no link).
 # state: 'aligned', 'local_changes', 'baseline_withheld', 'library_ahead',
-# 'library_ahead_rejected', 'proposal'.
+# 'library_ahead_rejected', 'proposal', and the pinned states 'pinned_aligned',
+# 'pinned_library_ahead', 'pinned_library_pinned_only', 'pinned_local_changes',
+# 'pinned_sorte'.
 CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     'unlinked': (None, '', '', _expected(status=None, blocked=None, can_unlink=False)),
     'own_published_aligned': (
@@ -144,6 +157,44 @@ CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
             status='published', blocked=None, can_unlink=True, proposal_pending=True,
         ),
     ),
+    # Pinned harvest duration that differs from the entry: still "Aktuell".
+    'pinned_aligned': (
+        'other', 'published', 'pinned_aligned',
+        _expected(
+            status='published', blocked='no_local_changes', can_unlink=True,
+            pinned=(PINNED_FIELD,),
+        ),
+    ),
+    # The library moved on in an unpinned field: the pull is offered.
+    'pinned_library_ahead_other_field': (
+        'other', 'published', 'pinned_library_ahead',
+        _expected(
+            status='published', blocked=None, can_unlink=True, update_available=True,
+            pinned=(PINNED_FIELD,),
+        ),
+    ),
+    # The library changed only the pinned field: no pull, no notice.
+    'pinned_library_changed_pinned_only': (
+        'other', 'published', 'pinned_library_pinned_only',
+        _expected(
+            status='published', blocked='no_local_changes', can_unlink=True,
+            pinned=(PINNED_FIELD,),
+        ),
+    ),
+    # A local edit of an unpinned field next to the pin: the push is offered.
+    'pinned_local_changes': (
+        'other', 'published', 'pinned_local_changes',
+        _expected(status='published', blocked=None, can_unlink=True, pinned=(PINNED_FIELD,)),
+    ),
+    # A Sorte linked to its own variety entry inherits the pinned value of its
+    # general Kultur; its own link compares that value, so it pins it too.
+    'pinned_sorte_vs_pinned_kultur': (
+        'other', 'published', 'pinned_sorte',
+        _expected(
+            status='published', blocked='no_local_changes', can_unlink=True,
+            pinned=(PINNED_FIELD,),
+        ),
+    ),
 }
 
 
@@ -174,7 +225,7 @@ def _entry_for(key: str, species: CropSpecies, owner: User, entry_status: str) -
     )
     PublicCrop.objects.filter(pk=entry.pk).update(
         status=entry_status, version=1, growth_duration_days=BASE_DURATION_DAYS,
-        harvest_duration_days=14,
+        harvest_duration_days=BASE_HARVEST_DAYS,
         # Deliberately not the fixture users' UI language (German is the
         # default), so a republish that read the UI language instead of this
         # stored value would be caught mistagging the entry.
@@ -190,10 +241,22 @@ def _entry_for(key: str, species: CropSpecies, owner: User, entry_status: str) -
 def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: User, user: User) -> None:
     updates: dict[str, Any] = {
         'source_public_crop': entry, 'source_public_version': 1, 'rejected_public_version': None,
-        'growth_duration_days': BASE_DURATION_DAYS, 'harvest_duration_days': 14,
-        'is_modified_from_source': False,
+        'growth_duration_days': BASE_DURATION_DAYS, 'harvest_duration_days': BASE_HARVEST_DAYS,
+        'is_modified_from_source': False, 'library_pinned_fields': [],
     }
-    if state in {'local_changes', 'proposal', 'baseline_withheld'}:
+    if state.startswith('pinned_'):
+        updates.update(
+            library_pinned_fields=[PINNED_FIELD], harvest_duration_days=PINNED_HARVEST_DAYS,
+        )
+    if state == 'pinned_library_ahead':
+        PublicCrop.objects.filter(pk=entry.pk).update(
+            version=2, growth_duration_days=LIBRARY_DURATION_DAYS,
+        )
+    if state == 'pinned_library_pinned_only':
+        PublicCrop.objects.filter(pk=entry.pk).update(
+            version=2, harvest_duration_days=LIBRARY_HARVEST_DAYS,
+        )
+    if state in {'local_changes', 'proposal', 'baseline_withheld', 'pinned_local_changes'}:
         updates.update(growth_duration_days=BASE_DURATION_DAYS + 7, is_modified_from_source=True)
     if state == 'baseline_withheld':
         updates['source_public_version'] = None
@@ -230,7 +293,8 @@ def build_library_state_matrix() -> MatrixFixture:
         user, project = users[username], fixture.projects[username]
         species, _ = CropSpecies.objects.get_or_create(name=f'Matrix {key}')
         crop, _ = Crop.objects.get_or_create(
-            project=project, name=f'Matrix {key}', variety='',
+            project=project, name=f'Matrix {key}',
+            variety=PINNED_SORTE_VARIETY if state == 'pinned_sorte' else '',
             defaults={
                 'crop_species': species,
                 'growth_duration_days': BASE_DURATION_DAYS,
@@ -241,7 +305,11 @@ def build_library_state_matrix() -> MatrixFixture:
         if owner_kind is None:
             Crop.objects.filter(pk=crop.pk).update(
                 source_public_crop=None, source_public_version=None, rejected_public_version=None,
+                library_pinned_fields=[],
             )
+        elif state == 'pinned_sorte':
+            owner = users[PUBLISHER_USERNAME]
+            crop, entry = _pinned_sorte_cell(key, species, project, owner, user, crop)
         else:
             owner = user if owner_kind == 'self' else users[PUBLISHER_USERNAME]
             entry = _entry_for(key, species, owner, entry_status)
@@ -251,6 +319,44 @@ def build_library_state_matrix() -> MatrixFixture:
             public_crop_id=entry.id if entry else None, expected=expected,
         )
     return fixture
+
+
+def _pinned_sorte_cell(
+    key: str, species: CropSpecies, project: Project, owner: User, user: User, cell_crop: Crop,
+) -> tuple[Crop, PublicCrop]:
+    """The pinned-Sorte cell: its general Kultur pins a value the Sorte inherits.
+
+    ``cell_crop`` is the Sorte; the general Kultur and its entry are helper rows.
+    """
+    general_entry, _ = PublicCrop.objects.get_or_create(
+        name=f'{HELPER_PREFIX} {key}', variety='', crop_species=species, created_by=owner,
+        defaults={'status': PublicCrop.STATUS_PUBLISHED},
+    )
+    PublicCrop.objects.filter(pk=general_entry.pk).update(
+        status=PublicCrop.STATUS_PUBLISHED, version=1, growth_duration_days=BASE_DURATION_DAYS,
+        harvest_duration_days=BASE_HARVEST_DAYS,
+    )
+    kultur, _ = Crop.objects.get_or_create(
+        project=project, name=f'{HELPER_PREFIX} {key}', variety='',
+        defaults={'crop_species': species},
+    )
+    _apply_state(kultur, general_entry, 'pinned_aligned', owner, user)
+
+    entry, _ = PublicCrop.objects.get_or_create(
+        name=f'Matrix {key}', variety=PINNED_SORTE_VARIETY, crop_species=species, created_by=owner,
+        defaults={'status': PublicCrop.STATUS_PUBLISHED},
+    )
+    PublicCrop.objects.filter(pk=entry.pk).update(
+        status=PublicCrop.STATUS_PUBLISHED, version=1, growth_duration_days=BASE_DURATION_DAYS,
+        harvest_duration_days=BASE_HARVEST_DAYS,
+    )
+    Crop.objects.filter(pk=cell_crop.pk).update(
+        source_public_crop=entry, source_public_version=1, rejected_public_version=None,
+        growth_duration_days=BASE_DURATION_DAYS, harvest_duration_days=None,
+        is_modified_from_source=False, library_pinned_fields=[PINNED_FIELD],
+    )
+    cell_crop.refresh_from_db()
+    return cell_crop, entry
 
 
 def _ensure_api_token(user: User, project: Project) -> tuple[ProjectApiToken, str]:

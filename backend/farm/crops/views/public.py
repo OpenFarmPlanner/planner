@@ -49,6 +49,7 @@ from farm.services.public_crop_trade_names import (
     variety_search_query,
 )
 from farm.services.public_crops import (
+    LibraryPinnedFieldsError,
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
     PublicCropImportConfirmationRequiredError,
@@ -662,11 +663,28 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return blocked
         request.active_project = get_active_project_or_400(request)
         mode = request.data.get('mode') or 'auto'
+        unpin_fields = request.data.get('unpin_fields', [])
+        if not isinstance(unpin_fields, list) or not all(
+            isinstance(item, str) for item in unpin_fields
+        ):
+            return api_error_response(
+                code='invalid_unpin_fields',
+                detail='unpin_fields must be a list of field names.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             imported, operation = import_public_crop_into_project(
                 public_crop=public_crop,
                 project=request.active_project,
                 mode=mode,
+                unpin_fields=unpin_fields,
+            )
+        except LibraryPinnedFieldsError as error:
+            return api_error_response(
+                code=error.code,
+                detail=error.message,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                fields=error.fields,
             )
         except PublicCropImportConfirmationRequiredError as error:
             existing = error.existing_crop

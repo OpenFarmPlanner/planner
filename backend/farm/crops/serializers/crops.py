@@ -1,5 +1,6 @@
 """Serializer for crops (unit conversion, seed rates, supplier rows)."""
 
+import copy
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
@@ -38,6 +39,7 @@ from farm.models.crops import (
     PLANT_FAMILY_REFERENCE_FIELDS,
     crop_field_attname,
     get_crop_field_value,
+    set_crop_field_value,
 )
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
@@ -61,13 +63,18 @@ from farm.services.crop_inheritance import (
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
+    LibraryPinnedFieldsError,
     can_republish_withdrawn_entry,
+    get_library_pinned_fields,
     has_open_public_crop_update,
     is_public_crop_contributor,
     is_public_crop_update_rejected,
+    library_pinnable_fields,
+    library_pinned_public_values,
     link_project_crop_to_public_reference,
     resolve_public_crop_unlink_block,
     resolve_public_publish_block,
+    validate_library_pinned_fields,
 )
 
 from .seed_packages import SeedPackageSerializer
@@ -105,6 +112,17 @@ class CropNameConflict(APIException):
             'code': self.default_code,
             'detail': 'A general crop with this name already exists in this project.',
         })
+
+
+class LibraryPinnedFieldsInvalid(APIException):
+    """A write names locally pinned fields that cannot be pinned on this crop."""
+
+    status_code = 400
+    default_code = 'library_pin_field_not_allowed'
+
+    def __init__(self, error: LibraryPinnedFieldsError) -> None:
+        super().__init__({'code': error.code, 'detail': error.message, 'fields': error.fields})
+
 
 # The inheritable model fields whose API name differs from the model field name
 # (distances are stored in meters and exposed in centimeters).
@@ -350,6 +368,27 @@ class CropSerializer(serializers.ModelSerializer):
             'to inherit from, in which case the raw fields already are the effective values.'
         ),
     )
+    library_pinned_fields = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text=(
+            'Model field names (e.g. growth_duration_days, distance_within_row_m) this '
+            'linked crop keeps locally: they stay out of every library diff, pull and '
+            'push. Only fields from library_pinnable_fields; a field without a value '
+            'cannot be pinned, and clearing a pinned field releases the pin. Rejected '
+            'with 400 library_pin_requires_link / library_pin_field_not_allowed / '
+            'library_pin_field_empty.'
+        ),
+    )
+    library_pinnable_fields = serializers.SerializerMethodField(
+        help_text='Fields this crop may pin (empty while it is not linked to a library entry).',
+    )
+    library_pinned_values = serializers.SerializerMethodField(
+        help_text=(
+            "The linked entry's current value per pinned field (model units), shown "
+            'passively next to the local value.'
+        ),
+    )
     owned_public_crop_id = serializers.SerializerMethodField()
     owned_public_crop_role = serializers.SerializerMethodField()
     public_update_available = serializers.SerializerMethodField()
@@ -422,6 +461,7 @@ class CropSerializer(serializers.ModelSerializer):
         if (
             not obj.derived_from_public_crop_id
             or obj.is_modified_from_source
+            or 'notes' in get_library_pinned_fields(obj)
             or not (obj.notes or '').strip()
         ):
             return None
@@ -689,6 +729,13 @@ class CropSerializer(serializers.ModelSerializer):
         return resolve_public_publish_block(
             obj, self._resolve_owned_public_crop(obj), self._general_crop_index(obj),
         )
+
+    def get_library_pinnable_fields(self, obj: Crop) -> list[str]:
+        return library_pinnable_fields(obj) if obj.source_public_crop_id else []
+
+    @extend_schema_field(serializers.DictField(child=serializers.JSONField()))
+    def get_library_pinned_values(self, obj: Crop) -> dict[str, Any]:
+        return library_pinned_public_values(obj)
 
     def get_source_public_crop_status(self, obj: Crop) -> str | None:
         """Lifecycle status of the linked entry, so the client never needs the
@@ -1052,8 +1099,39 @@ class CropSerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
 
+        self._validate_library_pinned_fields(attrs)
         self._run_model_clean(attrs)
         return attrs
+
+    def validate_library_pinned_fields(self, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
+
+    def _validate_library_pinned_fields(self, attrs: dict[str, Any]) -> None:
+        """Check the requested pins against the crop as this write will save it."""
+        if 'library_pinned_fields' not in attrs:
+            return
+        requested = attrs['library_pinned_fields']
+        if self.instance is None:
+            # The create-time link is recorded inside the create transaction;
+            # pins are set afterwards, on the linked crop.
+            if requested:
+                raise LibraryPinnedFieldsInvalid(
+                    LibraryPinnedFieldsError(requested, code='library_pin_requires_link'),
+                )
+            return
+        candidate = copy.copy(self.instance)
+        model_fields = {field.name for field in Crop._meta.fields}
+        for field_name, value in attrs.items():
+            if field_name in model_fields:
+                set_crop_field_value(candidate, field_name, value)
+        try:
+            validate_library_pinned_fields(
+                candidate,
+                requested,
+                previous_fields=sorted(get_library_pinned_fields(self.instance)),
+            )
+        except LibraryPinnedFieldsError as error:
+            raise LibraryPinnedFieldsInvalid(error) from error
 
     def _resolve_project(self, attrs, *, instance_first: bool):
         """Resolve the project the way the original inline blocks did.
