@@ -111,7 +111,9 @@ describe('PublicCropUpdateDialog', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
 
-    await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(42, 'update', []));
+    await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(
+      42, 'update', { unpinFields: [], pinFields: [], baseVersion: 2 },
+    ));
     await waitFor(() => expect(onUpdated).toHaveBeenCalled());
   });
 
@@ -142,6 +144,78 @@ describe('PublicCropUpdateDialog', () => {
     expect(screen.getByTestId('crop-public-update-rejected-hint')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.publicUpdate.reject })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.publicUpdate.apply })).toBeEnabled();
+  });
+
+  describe('locally changed fields', () => {
+    const localChangeUpdate: CropPublicUpdate = {
+      ...varietyRenameUpdate,
+      has_local_changes: true,
+      changes: [
+        {
+          field: 'growth_duration_days', local_value: 75, public_value: 60,
+          locally_changed: true, can_keep_local: true,
+        },
+        {
+          field: 'harvest_duration_days', local_value: 30, public_value: 40,
+          locally_changed: false, can_keep_local: false,
+        },
+      ],
+    };
+
+    it('offers "Nur lokal behalten" against taking the library value, taking it by default', async () => {
+      await openDialog(localChangeUpdate);
+
+      const row = screen.getByTestId('crop-public-update-local-growth_duration_days');
+      expect(row).toHaveTextContent('Dein Wert: 75');
+      expect(row).toHaveTextContent('Bibliothek: 60');
+      expect(screen.getByRole('radio', { name: t.publicUpdate.localChangeTake })).toBeChecked();
+      expect(screen.getByRole('radio', { name: t.publicUpdate.localChangeKeep })).not.toBeChecked();
+      // A field only the library changed stays a plain row of the table.
+      expect(screen.queryByTestId('crop-public-update-local-harvest_duration_days')).not.toBeInTheDocument();
+      expect(screen.getByText(t.importConflictDialog.updateWarning)).toBeInTheDocument();
+    });
+
+    it('takes the library value for the local change when the user keeps the default', async () => {
+      apiMocks.importToProject.mockResolvedValue({ data: { operation: 'updated' } });
+      await openDialog(localChangeUpdate);
+
+      await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
+
+      await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(
+        42, 'update', { unpinFields: [], pinFields: [], baseVersion: 2 },
+      ));
+    });
+
+    it('keeps the local value and pins it with "Nur lokal behalten"', async () => {
+      apiMocks.importToProject.mockResolvedValue({ data: { operation: 'updated' } });
+      await openDialog(localChangeUpdate);
+
+      await userEvent.click(screen.getByRole('radio', { name: t.publicUpdate.localChangeKeep }));
+
+      // Nothing local is overwritten any more.
+      expect(screen.queryByText(t.importConflictDialog.updateWarning)).not.toBeInTheDocument();
+      expect(screen.getByTestId('crop-public-update-summary')).toHaveTextContent(
+        '1 Wert wird in deine Kultur übernommen, 1 Wert bleibt nur lokal.',
+      );
+      await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
+
+      await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(
+        42, 'update', { unpinFields: [], pinFields: ['growth_duration_days'], baseVersion: 2 },
+      ));
+    });
+
+    it('closes without applying when the library moved on since the dialog loaded', async () => {
+      apiMocks.importToProject.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 409, data: { code: 'stale_public_crop_version' } },
+      });
+      const onUpdated = await openDialog(localChangeUpdate);
+
+      await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
+
+      await waitFor(() => expect(screen.queryByText(t.publicUpdate.dialogTitle)).toBeNull());
+      expect(onUpdated).toHaveBeenCalled();
+    });
   });
 
   describe('pinned fields', () => {
@@ -175,7 +249,9 @@ describe('PublicCropUpdateDialog', () => {
       );
       await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
 
-      await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(42, 'update', ['harvest_duration_days']));
+      await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(
+        42, 'update', { unpinFields: ['harvest_duration_days'], pinFields: [], baseVersion: 2 },
+      ));
     });
 
     it('shows no pinned block when no pinned field changed', async () => {

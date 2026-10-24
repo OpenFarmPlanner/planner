@@ -118,6 +118,7 @@ Branch on `code`, never on `detail`. Messages may be reworded; codes are stable
 | `library_pin_requires_link` | 400 | `PATCH /api/crops/` | `library_pinned_fields` was set on a crop without a library link. |
 | `library_pin_field_not_allowed` | 400 | `PATCH /api/crops/` | A named field cannot be pinned on this crop (see `library_pinnable_fields`); `fields` lists them. |
 | `library_pin_field_empty` | 400 | `PATCH /api/crops/` | A newly pinned field has no value; `fields` lists them. |
+| `library_pin_field_not_local_change` | 400 | `POST /api/public-crops/{id}/import/` | `pin_fields` names a field that is not a local change of the pending update (`can_keep_local` in `public-update`); `fields` lists them. |
 | `pending_proposal_limit_exceeded` | 429 | library writes | Too many of your contributions are awaiting moderation. |
 | `invalid_payload` | 400 | public crop update | The body must be a JSON object. |
 | `api_token_required` | 403 | `/api/agent/context/` | Called without a token. |
@@ -229,7 +230,12 @@ is never published or overwritten by a library update, and a crop that differs
 from its entry only in pinned fields counts as in sync (case 4).
 `library_pinned_values` returns the entry's current value for each pinned
 field. Clearing a pinned field releases its pin; removing the library link
-clears all pins.
+clears all pins. When a library update is pending, `GET
+/api/crops/{id}/public-update/` marks each change with `locally_changed` and
+`can_keep_local`; `POST /api/public-crops/{id}/import/` with `mode: "update"`
+takes `pin_fields` (keep those local changes pinned instead of overwriting
+them), `unpin_fields` and `base_version` (409 `stale_public_crop_version`
+when the entry changed since).
 
 **Every library write made with an API token is moderated,** regardless of
 the token's scope or the owner's trust level:

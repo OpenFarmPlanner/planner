@@ -79,6 +79,25 @@ describe('CropLibraryActionButton', () => {
     expect(onPublish).toHaveBeenCalledTimes(1);
   });
 
+  it('explains the push with the share-or-keep-locally tooltip', async () => {
+    render(
+      <Harness
+        crop={{
+          ...baseCrop,
+          owned_public_crop_id: 9,
+          owned_public_crop_role: 'contributor',
+          public_publish_blocked_reason: null,
+        }}
+        onPublish={vi.fn()}
+      />,
+    );
+
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Bibliothek aktualisieren' }));
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 })).toHaveTextContent(
+      'Deine Kultur weicht von der Kulturbibliothek ab. Teile die Werte oder behalte sie nur lokal.',
+    );
+  });
+
   it('renders a plain "Aktuell" status chip, not a button, when there is nothing to do', async () => {
     const onPublish = vi.fn();
     render(

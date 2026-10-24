@@ -2,7 +2,7 @@
  * HarvestSection: yield unit and expected yield
  * @remarks Presentational, no internal state
  */
-import { Box, Typography, FormControl, FormHelperText, InputLabel, MenuItem } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { fieldRowSx, smallFieldSx } from './styles.tsx';
@@ -51,9 +51,6 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
             {errors.harvest_method && (
               <Typography variant="caption" color="error">{t('form.yieldUnitRequired')}</Typography>
             )}
-            {!errors.harvest_method && harvestMethodPin?.helperText ? (
-              <FormHelperText>{harvestMethodPin.helperText}</FormHelperText>
-            ) : null}
           </FormControl>
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={expectedYieldVariety?.tooltipTitle}>
@@ -64,7 +61,7 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
             value={formData.expected_yield}
             onValueChange={(value) => onChange('expected_yield', value ?? undefined)}
             error={Boolean(errors.expected_yield)}
-            helperText={errors.expected_yield || expectedYieldPin?.helperText}
+            helperText={errors.expected_yield}
             slotProps={{ input: { endAdornment: expectedYieldPin?.endAdornment } }}
           />
         </VarietyFieldTooltip>

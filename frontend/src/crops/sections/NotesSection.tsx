@@ -38,11 +38,6 @@ export function NotesSection({ formData, onChange, t, label, getFieldPinProps }:
           ariaLabel={editorLabel}
         />
       </Box>
-      {notesPin?.helperText ? (
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'libraryLocal.main' }}>
-          {notesPin.helperText}
-        </Typography>
-      ) : null}
     </Box>
   );
 }

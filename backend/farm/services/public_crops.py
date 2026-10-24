@@ -389,6 +389,9 @@ class LibraryPinnedFieldsError(Exception):
         'library_pin_field_not_allowed': 'These fields cannot be kept locally on this crop.',
         'library_pin_field_empty': 'A field without a value cannot be kept locally.',
         'library_unpin_field_not_pinned': 'These fields are not kept locally on this crop.',
+        'library_pin_field_not_local_change': (
+            'Only fields changed locally since the last library update can be kept locally here.'
+        ),
     }
 
     def __init__(self, fields: Sequence[str], *, code: str) -> None:
@@ -2930,20 +2933,26 @@ def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> 
 
 
 def _apply_public_crop_update(
-    *, crop: Crop, public_crop: PublicCrop, unpin_fields: Sequence[str] = (),
+    *,
+    crop: Crop,
+    public_crop: PublicCrop,
+    unpin_fields: Sequence[str] = (),
+    pin_fields: Sequence[str] = (),
 ) -> Crop:
     """Overwrite `crop`'s library-sourced fields with the current public crop.
 
     Pinned fields keep the crop's value. ``unpin_fields`` (the pull dialog's
     "Fixierung lösen und … übernehmen") release those pins first, so they take
-    the entry's value like every other field; the release is part of the same,
-    history-recorded save.
+    the entry's value like every other field; ``pin_fields`` (the pull dialog's
+    "Nur lokal behalten" on a locally changed field, validated by
+    :func:`validate_public_update_pin_fields`) pin those fields so they keep
+    the crop's value. Both are part of the same, history-recorded save.
     """
     pinned = get_library_pinned_fields(crop)
     not_pinned = set(unpin_fields) - pinned
     if not_pinned:
         raise LibraryPinnedFieldsError(not_pinned, code='library_unpin_field_not_pinned')
-    remaining_pins = pinned - set(unpin_fields)
+    remaining_pins = (pinned - set(unpin_fields)) | set(pin_fields)
     crop.library_pinned_fields = sorted(remaining_pins)
     payload = build_project_crop_payload(public_crop)
     for field in remaining_pins:
@@ -2976,6 +2985,11 @@ class PublicCropFieldChange:
     field: str
     local_value: Any
     public_value: Any
+    # The copy changed this field since its baseline version: a local edit,
+    # not only a library change. Applying the update overwrites it unless it
+    # is kept locally, which ``can_keep_local`` allows ("Nur lokal behalten").
+    locally_changed: bool = False
+    can_keep_local: bool = False
 
 
 @dataclass(frozen=True)
@@ -3221,11 +3235,15 @@ def build_public_crop_update_status(crop: Crop) -> PublicCropUpdateStatus | None
     if not has_pending_public_crop_update(crop):
         return None
     public_crop = crop.source_public_crop
+    local_changes = public_update_local_changes(crop, public_crop)
+    keepable = public_update_keepable_fields(crop, public_crop, local_changes)
     changes = [
         PublicCropFieldChange(
             field=field,
             local_value=_json_safe(local_value),
             public_value=_json_safe(public_value),
+            locally_changed=field in local_changes,
+            can_keep_local=field in keepable,
         )
         for field, local_value, public_value in public_crop_update_changes(crop)
     ]
@@ -3240,6 +3258,76 @@ def build_public_crop_update_status(crop: Crop) -> PublicCropUpdateStatus | None
     )
 
 
+def _public_crop_baseline_snapshot(crop: Crop, public_crop: PublicCrop) -> dict[str, Any] | None:
+    """The entry's snapshot at the copy's baseline version, or None when it is unknown."""
+    if crop.source_public_version is None:
+        return None
+    baseline = public_crop.revisions.filter(version=crop.source_public_version).first()
+    return baseline.snapshot if baseline is not None else None
+
+
+def public_update_local_changes(crop: Crop, public_crop: PublicCrop) -> set[str]:
+    """Fields of a pending update the copy changed locally since its baseline version.
+
+    A field qualifies when the copy differs from the entry now *and* from the
+    entry's baseline version — a local edit, whether or not the library changed
+    the same field too. A field only the library changed is a plain update.
+    Without a known baseline every differing field of a locally modified copy
+    counts, so a local edit is never silently treated as a library change.
+    """
+    if not crop.is_modified_from_source:
+        return set()
+    differing = {field for field, _local, _public in public_crop_field_changes(crop, public_crop)}
+    baseline = _public_crop_baseline_snapshot(crop, public_crop)
+    if baseline is None:
+        return differing
+    local = _resolved_copy_fields(crop)
+    return {
+        field for field in differing
+        if field not in baseline
+        or not _same_snapshot_value(_json_safe(local[field]), baseline[field])
+    }
+
+
+def public_update_keepable_fields(
+    crop: Crop, public_crop: PublicCrop, local_changes: set[str] | None = None,
+) -> set[str]:
+    """The local changes of a pending update the copy may keep ("Nur lokal behalten").
+
+    Only fields the crop may pin and that hold a value qualify.
+    """
+    if local_changes is None:
+        local_changes = public_update_local_changes(crop, public_crop)
+    pinnable = set(library_pinnable_fields(crop))
+    return {
+        field for field in local_changes
+        if field in pinnable and _has_effective_value(crop, field)
+    }
+
+
+_EMPTY_SNAPSHOT_VALUES: tuple[Any, ...] = (None, '', [], {})
+
+
+def _same_snapshot_value(value: Any, snapshot_value: Any) -> bool:
+    """Equality for snapshot values, with every empty spelling counting as the same."""
+    if value in _EMPTY_SNAPSHOT_VALUES and snapshot_value in _EMPTY_SNAPSHOT_VALUES:
+        return True
+    return value == snapshot_value
+
+
+def validate_public_update_pin_fields(
+    crop: Crop, public_crop: PublicCrop, pin_fields: Sequence[str],
+) -> None:
+    """Reject ``pin_fields`` of a pull that are not locally changed fields of this update."""
+    requested = set(pin_fields)
+    if not requested:
+        return
+    validate_library_pinned_fields(crop, sorted(requested))
+    not_keepable = requested - public_update_keepable_fields(crop, public_crop)
+    if not_keepable:
+        raise LibraryPinnedFieldsError(not_keepable, code='library_pin_field_not_local_change')
+
+
 def _pinned_public_crop_changes(
     crop: Crop, public_crop: PublicCrop,
 ) -> list[PublicCropPinnedFieldChange]:
@@ -3251,18 +3339,18 @@ def _pinned_public_crop_changes(
     pull is.
     """
     pinned = get_library_pinned_fields(crop)
-    if not pinned or crop.source_public_version is None:
+    if not pinned:
         return []
-    baseline = public_crop.revisions.filter(version=crop.source_public_version).first()
+    baseline = _public_crop_baseline_snapshot(crop, public_crop)
     if baseline is None:
         return []
     local = _resolved_copy_fields(crop)
     remote = _copy_fields(public_crop)
     changes = []
     for field in CROP_COPY_FIELDS:
-        if field not in pinned or field not in baseline.snapshot:
+        if field not in pinned or field not in baseline:
             continue
-        previous_value = baseline.snapshot[field]
+        previous_value = baseline[field]
         public_value = _json_safe(remote[field])
         if previous_value != public_value:
             changes.append(PublicCropPinnedFieldChange(
@@ -3280,6 +3368,8 @@ def import_public_crop_into_project(
     project: Project,
     mode: str = 'auto',
     unpin_fields: Sequence[str] = (),
+    pin_fields: Sequence[str] = (),
+    base_version: int | None = None,
 ) -> tuple[Crop, str]:
     """Import a public crop into a project, or resolve a re-import.
 
@@ -3297,7 +3387,12 @@ def import_public_crop_into_project(
 
     ``unpin_fields`` releases those pins of the existing copy before an
     update applies (see :func:`_apply_public_crop_update`); pinned fields keep
-    the copy's value otherwise.
+    the copy's value otherwise. ``pin_fields`` ('update' only) pins locally
+    changed fields so they keep the copy's value instead of being overwritten
+    ("Nur lokal behalten"). ``base_version`` is the entry version the pull
+    dialog showed: the update applies under a row lock on the entry and is
+    refused with :class:`PublicCropEditConflictError` when the entry moved on,
+    so a decision is never applied to values the user has not seen.
 
     Returns (crop, operation) where operation is one of
     'created' | 'unchanged' | 'updated'.
@@ -3320,10 +3415,17 @@ def import_public_crop_into_project(
         return crop, 'created'
 
     if mode == 'update':
-        crop = _apply_public_crop_update(
-            crop=existing, public_crop=public_crop, unpin_fields=unpin_fields,
-        )
+        with transaction.atomic():
+            locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+            _validate_base_version(locked, base_version)
+            validate_public_update_pin_fields(existing, locked, pin_fields)
+            crop = _apply_public_crop_update(
+                crop=existing, public_crop=locked, unpin_fields=unpin_fields, pin_fields=pin_fields,
+            )
         return crop, 'updated'
+
+    if pin_fields:
+        raise LibraryPinnedFieldsError(pin_fields, code='library_pin_field_not_local_change')
 
     if existing.is_modified_from_source:
         raise PublicCropImportConfirmationRequiredError(existing_crop=existing)

@@ -255,31 +255,79 @@ describe('CropForm', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Kürbis' }), undefined);
   });
 
-  it('pins a field of a linked crop and saves the pin with the crop', async () => {
+  const PINNED_CROP = {
+    ...CROP_A,
+    growth_duration_days: 80,
+    harvest_duration_days: 20,
+    source_public_crop: 9,
+    library_pinned_fields: ['growth_duration_days'],
+    library_pinnable_fields: ['growth_duration_days', 'harvest_duration_days'],
+    library_pinned_values: { growth_duration_days: 60 },
+  };
+
+  it('shows a pin only at pinned fields, without a helper line', () => {
+    render(<CropForm crop={PINNED_CROP} onSave={vi.fn()} onCancel={() => {}} />);
+
+    const pins = screen.getAllByTestId('crop-form-library-pin');
+    expect(pins).toHaveLength(1);
+    expect(pins[0]).toHaveAccessibleName('library.pin.ariaLabel');
+    expect(screen.queryByText(/library\.pin\.helper/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'library.pin.pin' })).not.toBeInTheDocument();
+  });
+
+  it('opens a popover on the pin and releases the pin only via "Fixierung lösen", applied on save', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(
-      <CropForm
-        crop={{
-          ...CROP_A,
-          growth_duration_days: 80,
-          source_public_crop: 9,
-          library_pinned_fields: [],
-          library_pinnable_fields: ['growth_duration_days', 'harvest_duration_days'],
-        }}
-        onSave={onSave}
-        onCancel={() => {}}
-      />,
-    );
+    render(<CropForm crop={PINNED_CROP} onSave={onSave} onCancel={() => {}} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'library.pin.pin' }));
-    expect(screen.getByRole('button', { name: 'library.pin.unpin' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('crop-form-library-pin'));
+    const popover = await screen.findByTestId('crop-form-library-pin-popover');
+    expect(popover).toHaveTextContent('library.pin.popoverTitle');
+    // Opening the popover changes nothing yet.
+    expect(screen.getByTestId('crop-form-library-pin')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'library.pin.unpin' }));
+    await waitFor(() => expect(screen.queryByTestId('crop-form-library-pin')).not.toBeInTheDocument());
+    expect(onSave).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ library_pinned_fields: [] }),
+      undefined,
+    );
+  });
 
+  it('closes the pin popover with Escape and keeps the pin', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={PINNED_CROP} onSave={onSave} onCancel={() => {}} />);
+
+    fireEvent.click(screen.getByTestId('crop-form-library-pin'));
+    const popover = await screen.findByTestId('crop-form-library-pin-popover');
+    fireEvent.keyDown(popover, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('crop-form-library-pin-popover')).not.toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('thousand-kernel-input'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ library_pinned_fields: ['growth_duration_days'] }),
       undefined,
     );
+  });
+
+  it('never shows a pin on an inherited field', () => {
+    render(
+      <CropForm
+        crop={{
+          ...PINNED_CROP,
+          inherited_fields: ['growth_duration_days'],
+        }}
+        onSave={vi.fn()}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.queryByTestId('crop-form-library-pin')).not.toBeInTheDocument();
   });
 
   it('offers no pin for a crop without a library link', () => {
@@ -291,7 +339,7 @@ describe('CropForm', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'library.pin.pin' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('crop-form-library-pin')).not.toBeInTheDocument();
   });
 
   it('saves an actual edit to the Name field verbatim', async () => {

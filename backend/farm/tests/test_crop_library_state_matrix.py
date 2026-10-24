@@ -223,6 +223,17 @@ class LibraryStateMatrixTest(DRFAPITestCase):
                 fields = [change['field'] for change in update.get('changes', [])]
                 self.assertNotIn(PINNED_FIELD, fields)
 
+    def test_library_ahead_with_a_local_change_offers_keeping_it_in_the_pull(self):
+        cell = self.fixture.cells['foreign_library_ahead_local_changes']
+        self._login(cell)
+
+        update = self.client.get(f'{API}/crops/{cell.crop_id}/public-update/').data
+
+        changes = {change['field']: change for change in update['changes']}
+        self.assertEqual(set(changes), {'growth_duration_days', 'harvest_duration_days'})
+        self.assertTrue(changes['growth_duration_days']['can_keep_local'])
+        self.assertFalse(changes['harvest_duration_days']['locally_changed'])
+
     def test_pinned_sorte_inherits_the_value_its_kultur_pins(self):
         cell = self.fixture.cells['pinned_sorte_vs_pinned_kultur']
         data = self._get(cell).data

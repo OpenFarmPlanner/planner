@@ -8,7 +8,7 @@ const baseCrop: Crop = { id: 1, name: 'Tomate', variety: 'Roma', is_modified_fro
 
 const PUBLISH_TOOLTIP = 'Diese Kultur zum ersten Mal in der gemeinschaftlichen Kulturbibliothek veröffentlichen.';
 const PULL_TOOLTIP = 'Die Bibliothek hat eine neuere Version. Änderungen ansehen und in deine Projektkultur übernehmen.';
-const PUSH_TOOLTIP = 'Deine lokalen Änderungen in die öffentliche Version in der Bibliothek übernehmen.';
+const PUSH_TOOLTIP = 'Deine Kultur weicht von der Kulturbibliothek ab. Teile die Werte oder behalte sie nur lokal.';
 const REJECTED_TOOLTIP_START = 'Du hast diese Version aus der Kulturbibliothek abgelehnt.';
 const UP_TO_DATE_TOOLTIP = 'Diese Kultur entspricht dem aktuellen Stand in der Kulturbibliothek.';
 const PENDING_TOOLTIP = 'Diese Funktion ist erst verfügbar, sobald der Kulturart-Vorschlag von einem Moderator geprüft wurde.';
@@ -125,21 +125,22 @@ describe('CropLibraryStatusIcon', () => {
     expect(onRowClick).not.toHaveBeenCalled();
   });
 
-  it('adds a pin marker with its own label for pinned fields, keeping the "Aktuell" state', () => {
+  it('shows only the check for a synced crop with pinned fields, never mentioning the pins', () => {
     const { icon } = renderIcon({
       ...upToDateCrop,
       library_pinned_fields: ['cultivation_type', 'cultivation_types', 'growth_duration_days'],
     });
 
     expect(icon).toHaveAttribute('data-status', 'upToDate');
-    // cultivation_type echoes cultivation_types: one control, one pinned field.
-    expect(screen.getByTestId('crop-list-library-pinned')).toHaveAttribute('aria-label', '2 Felder lokal fixiert');
-    expect(icon).toHaveAttribute('aria-label', `${UP_TO_DATE_TOOLTIP} 2 Felder lokal fixiert`);
+    expect(icon).toHaveAttribute('aria-label', UP_TO_DATE_TOOLTIP);
+    expect(screen.queryByTestId('crop-list-library-pinned')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('PushPinIcon')).not.toBeInTheDocument();
   });
 
-  it('shows no pin marker without pins or without a link', () => {
-    renderIcon({ ...baseCrop, library_pinned_fields: ['growth_duration_days'] });
+  it('shows no pin on the other states either', () => {
+    renderIcon({ ...pushCrop, library_pinned_fields: ['growth_duration_days'] });
 
-    expect(screen.queryByTestId('crop-list-library-pinned')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('PushPinIcon')).not.toBeInTheDocument();
+    expect(screen.getByTestId('crop-list-library-status')).toHaveAttribute('aria-label', PUSH_TOOLTIP);
   });
 });

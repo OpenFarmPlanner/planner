@@ -472,7 +472,7 @@ export function CropForm({
     };
   }, [selectedSpeciesCrop, formData, t]);
   // Locally pinned library fields: only an edited project crop that is linked
-  // to a library entry offers the pin (the backend lists what it may pin).
+  // to a library entry marks its pinned fields (the backend lists what it may pin).
   const libraryPinnableFields = isProjectForm && isEdit && crop?.source_public_crop
     ? crop.library_pinnable_fields ?? []
     : [];
@@ -769,6 +769,7 @@ export function CropForm({
       field,
       formData,
       pinnableFields: libraryPinnableFields,
+      inheritedFields: crop?.inherited_fields ?? [],
       pinnedLibraryValues: crop?.library_pinned_values ?? {},
       onPinnedFieldsChange: (pinned) => handleChange('library_pinned_fields', pinned),
       t,

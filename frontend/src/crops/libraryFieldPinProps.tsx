@@ -14,16 +14,14 @@ import {
   type LibraryPinFormField,
 } from './libraryFieldPin';
 
-/** What a section needs to render one pinnable field; `null` when pinning does not apply. */
+/** What a section needs to render one pinned field; `null` when the field is not pinned. */
 export interface LibraryFieldPinProps {
-  pinned: boolean;
-  fieldSx: SxProps<Theme> | undefined;
+  pinned: true;
+  fieldSx: SxProps<Theme>;
   /** The pin button, as an `InputAdornment` for the field's end. */
   endAdornment: ReactNode;
   /** The pin button alone, for a field without an input adornment slot. */
   button: ReactNode;
-  /** "Lokal fixiert · Bibliothek: {value}" while pinned. */
-  helperText: ReactNode | undefined;
 }
 
 export type GetLibraryFieldPinProps = (field: LibraryPinFormField) => LibraryFieldPinProps | null;
@@ -33,16 +31,24 @@ interface BuildLibraryFieldPinPropsOptions {
   formData: Partial<Crop>;
   /** Fields the crop may pin (`library_pinnable_fields`). */
   pinnableFields: readonly string[];
+  /** Fields a Sorte inherits from its Kultur; they never show a pin. */
+  inheritedFields?: readonly string[];
   /** The linked entry's current value per pinned field (`library_pinned_values`). */
   pinnedLibraryValues: Readonly<Record<string, unknown>>;
   onPinnedFieldsChange: (pinned: string[]) => void;
   t: TFunction;
 }
 
+/**
+ * Only a pinned field gets a marker in the form: the "local" border and the
+ * filled pin, whose popover releases the pin. Pinning happens in the sync
+ * dialogs, so an unpinned field renders exactly as before.
+ */
 export function buildLibraryFieldPinProps({
   field,
   formData,
   pinnableFields,
+  inheritedFields = [],
   pinnedLibraryValues,
   onPinnedFieldsChange,
   t,
@@ -51,30 +57,28 @@ export function buildLibraryFieldPinProps({
   if (!modelFields.every((modelField) => pinnableFields.includes(modelField))) {
     return null;
   }
+  if (inheritedFields.includes(field)) {
+    return null;
+  }
   const pinnedFields = formData.library_pinned_fields ?? [];
-  const hasValue = hasLibraryPinFormValue(formData, field);
-  const pinned = hasValue && isLibraryPinGroupPinned(pinnedFields, field);
+  if (!hasLibraryPinFormValue(formData, field) || !isLibraryPinGroupPinned(pinnedFields, field)) {
+    return null;
+  }
+  const primaryModelField = modelFields[0];
+  const libraryValue = primaryModelField in pinnedLibraryValues
+    ? formatLibraryPinnedValue(primaryModelField, pinnedLibraryValues[primaryModelField], t)
+    : undefined;
   const button = (
     <LibraryPinButton
-      pinned={pinned}
-      disabledReason={hasValue ? undefined : t('library.pin.pinDisabledEmpty')}
-      onToggle={() => onPinnedFieldsChange(setLibraryPinGroup(pinnedFields, field, !pinned))}
+      libraryValue={libraryValue}
+      onUnpin={() => onPinnedFieldsChange(setLibraryPinGroup(pinnedFields, field, false))}
       t={t}
     />
   );
-  const primaryModelField = modelFields[0];
-  const helperText = pinned
-    ? (primaryModelField in pinnedLibraryValues
-      ? t('library.pin.helper', {
-        value: formatLibraryPinnedValue(primaryModelField, pinnedLibraryValues[primaryModelField], t),
-      })
-      : t('library.pin.helperPending'))
-    : undefined;
   return {
-    pinned,
-    fieldSx: pinned ? libraryPinnedFieldSx : undefined,
+    pinned: true,
+    fieldSx: libraryPinnedFieldSx,
     endAdornment: <InputAdornment position="end">{button}</InputAdornment>,
     button,
-    helperText,
   };
 }

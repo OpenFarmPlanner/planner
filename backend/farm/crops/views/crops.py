@@ -946,6 +946,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                     'field': change.field,
                     'local_value': change.local_value,
                     'public_value': change.public_value,
+                    'locally_changed': change.locally_changed,
+                    'can_keep_local': change.can_keep_local,
                 }
                 for change in update_status.changes
             ],
