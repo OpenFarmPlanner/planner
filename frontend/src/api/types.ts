@@ -139,6 +139,15 @@ export interface Crop {
   /** True for the user's own withdrawn entry: publishing again brings it back. */
   can_republish_public_crop?: boolean;
   unlink_public_crop_blocked_reason?: 'crop_not_linked' | 'crop_link_owned' | null;
+  /**
+   * Model field names (e.g. `growth_duration_days`, `distance_within_row_m`) this
+   * linked crop keeps locally: they stay out of every library diff, pull and push.
+   */
+  library_pinned_fields?: string[];
+  /** Fields this crop may pin; empty while it is not linked to a library entry. */
+  library_pinnable_fields?: string[];
+  /** The linked entry's current value per pinned field (model units), shown passively. */
+  library_pinned_values?: Record<string, unknown>;
   crop_species?: number | null;
   thousand_kernel_weight_g?: number;
   package_size_g?: number; // deprecated, replaced by seed_packages
@@ -369,6 +378,14 @@ export interface PublicCropUpdateFieldChange {
   public_value: unknown;
 }
 
+/** A locally pinned field whose library value moved since the copy's baseline. */
+export interface PublicCropPinnedFieldChange {
+  field: string;
+  local_value: unknown;
+  previous_public_value: unknown;
+  public_value: unknown;
+}
+
 /**
  * Preview of the pending library update for one imported project crop.
  * `available: false` means the copy is already on the library's current
@@ -384,6 +401,8 @@ export interface CropPublicUpdate {
   /** True when this exact public version was already declined by the user. */
   is_rejected?: boolean;
   changes?: PublicCropUpdateFieldChange[];
+  /** Pinned fields the update leaves alone although the library changed them. */
+  pinned_changes?: PublicCropPinnedFieldChange[];
 }
 
 /** One field where a crop and its public entry differ, for the field-by-field sync. */
@@ -393,6 +412,10 @@ export interface PublicCropSyncFieldChange {
   public_value: unknown;
   /** Whether this user may write the local value into the entry (e.g. not the fixed `name`). */
   pushable: boolean;
+  /** Kept locally right now; choosing the library or the local value releases the pin. */
+  pinned?: boolean;
+  /** May be kept locally ("Nur lokal"): a pinnable field with a local value. */
+  pinnable?: boolean;
 }
 
 export interface CropPublicSyncPreview {
@@ -410,6 +433,8 @@ export interface CropPublicSyncRequest {
   pull_fields: string[];
   /** Fields whose local value is written into the library entry. */
   push_fields: string[];
+  /** Fields kept locally (pinned); a pinned field named in pull/push is released. */
+  pin_fields?: string[];
   accepted_public_library_terms?: boolean;
 }
 

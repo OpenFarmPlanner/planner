@@ -124,4 +124,22 @@ describe('CropLibraryStatusIcon', () => {
     expect(onActivate).toHaveBeenCalledWith('publish');
     expect(onRowClick).not.toHaveBeenCalled();
   });
+
+  it('adds a pin marker with its own label for pinned fields, keeping the "Aktuell" state', () => {
+    const { icon } = renderIcon({
+      ...upToDateCrop,
+      library_pinned_fields: ['cultivation_type', 'cultivation_types', 'growth_duration_days'],
+    });
+
+    expect(icon).toHaveAttribute('data-status', 'upToDate');
+    // cultivation_type echoes cultivation_types: one control, one pinned field.
+    expect(screen.getByTestId('crop-list-library-pinned')).toHaveAttribute('aria-label', '2 Felder lokal fixiert');
+    expect(icon).toHaveAttribute('aria-label', `${UP_TO_DATE_TOOLTIP} 2 Felder lokal fixiert`);
+  });
+
+  it('shows no pin marker without pins or without a link', () => {
+    renderIcon({ ...baseCrop, library_pinned_fields: ['growth_duration_days'] });
+
+    expect(screen.queryByTestId('crop-list-library-pinned')).not.toBeInTheDocument();
+  });
 });

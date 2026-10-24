@@ -15,17 +15,23 @@ from crops.permissions import grant_public_library_moderator_access
 from farm.dev_fixtures.library_state_matrix import (
     CELL_SPECS,
     ESTABLISHED_USERNAME,
+    PINNED_FIELD,
+    PINNED_HARVEST_DAYS,
     PUBLISHER_USERNAME,
     MatrixCell,
     build_library_state_matrix,
 )
-from farm.models import Crop, PublicCrop, PublicCropChangeProposal
+from farm.models import Crop, PublicCrop, PublicCropChangeProposal, format_crop_display_name
 from farm.services.public_crops import reinstate_removed_public_crop, remove_public_crop
 
 API = '/openfarmplanner/api'
 UNPUBLISHED_CELLS = [
     'own_withdrawn', 'own_removed', 'foreign_withdrawn', 'foreign_removed',
 ]
+
+
+def entry_harvest(cell: MatrixCell) -> int:
+    return PublicCrop.objects.get(pk=cell.public_crop_id).harvest_duration_days
 
 
 class LibraryStateMatrixTest(DRFAPITestCase):
@@ -66,7 +72,12 @@ class LibraryStateMatrixTest(DRFAPITestCase):
                 continue
             with self.subTest(cell=key):
                 data = self._get(cell).data
-                self.assertEqual(data['source_public_crop_title'], f'Matrix {key}')
+                entry = PublicCrop.objects.get(pk=cell.public_crop_id)
+                self.assertEqual(entry.name, f'Matrix {key}')
+                self.assertEqual(
+                    data['source_public_crop_title'],
+                    format_crop_display_name(entry.name, entry.variety),
+                )
 
     def test_push_and_sync_are_rejected_with_a_stable_code_for_unpublished_entries(self):
         for key in UNPUBLISHED_CELLS:
@@ -200,6 +211,23 @@ class LibraryStateMatrixTest(DRFAPITestCase):
         self.assertFalse(data['public_change_proposal_pending'])
         self.assertIsNone(data['public_publish_blocked_reason'])
         self.assertTrue(data['is_modified_from_source'])
+
+    def test_pinned_cells_keep_the_pinned_value_out_of_every_diff(self):
+        for key, cell in self.fixture.cells.items():
+            if not cell.expected['library_pinned_fields']:
+                continue
+            with self.subTest(cell=key):
+                data = self._get(cell).data
+                self.assertEqual(data['library_pinned_values'], {PINNED_FIELD: entry_harvest(cell)})
+                update = self.client.get(f'{API}/crops/{cell.crop_id}/public-update/').data
+                fields = [change['field'] for change in update.get('changes', [])]
+                self.assertNotIn(PINNED_FIELD, fields)
+
+    def test_pinned_sorte_inherits_the_value_its_kultur_pins(self):
+        cell = self.fixture.cells['pinned_sorte_vs_pinned_kultur']
+        data = self._get(cell).data
+        self.assertIn(PINNED_FIELD, data['inherited_fields'])
+        self.assertEqual(data['effective_values'][PINNED_FIELD], PINNED_HARVEST_DAYS)
 
     def test_builder_is_idempotent(self):
         first = {key: cell.crop_id for key, cell in self.fixture.cells.items()}

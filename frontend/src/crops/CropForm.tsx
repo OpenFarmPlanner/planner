@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
 import type { Crop, PublicCrop, SeedRateUnitConstraints, Supplier } from '../api/types';
-import { extractApiErrorMessage } from '../api/errors';
+import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import {
   Dialog,
   DialogTitle,
@@ -73,6 +73,8 @@ import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
 import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { buildVarietyFieldTooltipTitle, type GetVarietyFieldTooltipProps } from './varietyFieldTooltipHelpers';
 import { VarietyValueLegend } from './VarietyValueLegend';
+import { describeLibraryPinError, libraryPinnedFieldsForSave } from './libraryFieldPin';
+import { buildLibraryFieldPinProps, type GetLibraryFieldPinProps } from './libraryFieldPinProps';
 import { PublicCropSyncPanel } from './PublicCropSyncPanel';
 import { buildDefaultSyncChoices, type PublicCropSyncChoices } from './publicCropSync';
 import { pickLibraryChoices, pickLibraryLinkValues, planLibraryLink } from './libraryLink';
@@ -469,6 +471,11 @@ export function CropForm({
       tooltipTitle: buildVarietyFieldTooltipTitle(t, active, helpText),
     };
   }, [selectedSpeciesCrop, formData, t]);
+  // Locally pinned library fields: only an edited project crop that is linked
+  // to a library entry offers the pin (the backend lists what it may pin).
+  const libraryPinnableFields = isProjectForm && isEdit && crop?.source_public_crop
+    ? crop.library_pinnable_fields ?? []
+    : [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [duplicateErrorKey, setDuplicateErrorKey] = useState<string>('');
   const [isDuplicateChecking, setIsDuplicateChecking] = useState(false);
@@ -751,6 +758,20 @@ export function CropForm({
       }
       validateAndSet(updated);
       return updated;
+    });
+  };
+
+  const getFieldPinProps: GetLibraryFieldPinProps = (field) => {
+    if (libraryPinnableFields.length === 0) {
+      return null;
+    }
+    return buildLibraryFieldPinProps({
+      field,
+      formData,
+      pinnableFields: libraryPinnableFields,
+      pinnedLibraryValues: crop?.library_pinned_values ?? {},
+      onPinnedFieldsChange: (pinned) => handleChange('library_pinned_fields', pinned),
+      t,
     });
   };
 
@@ -1134,12 +1155,17 @@ export function CropForm({
           (field) => (field in EMPTY_CROP ? EMPTY_CROP[field as keyof typeof EMPTY_CROP] : ''),
         )
         : formData;
-      await saveCrop(dataToSave);
+      await saveCrop(libraryPinnableFields.length > 0
+        ? { ...dataToSave, library_pinned_fields: libraryPinnedFieldsForSave(formData) }
+        : dataToSave);
       setSaveError('');
       setIsDirty(false);
       setHasSubmitted(false);
     } catch (error) {
-      setSaveError(extractApiErrorMessage(error, t, t('messages.updateError')));
+      setSaveError(
+        describeLibraryPinError(extractApiErrorCode(error), t)
+          ?? extractApiErrorMessage(error, t, t('messages.updateError')),
+      );
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -1354,6 +1380,7 @@ export function CropForm({
               onChange={handleChange}
               t={t}
               getFieldTooltipProps={getFieldTooltipProps}
+              getFieldPinProps={getFieldPinProps}
               speciesInvariantFieldsReadOnly={isSpeciesLinkedVariety}
               showIdentityFields={isProjectForm}
               showVarietyField={showVarietyField}
@@ -1442,21 +1469,22 @@ export function CropForm({
                 <PublicCropSourceHint text={t('form.publicCropSourceHint')} />
               ) : null}
             />
-            <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} />
-            <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} />
-            <SpacingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} />
+            <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            <SpacingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <SeedingSection
               formData={formData}
               errors={errors}
               onChange={handleChange}
               t={t}
               getFieldTooltipProps={getFieldTooltipProps}
+              getFieldPinProps={getFieldPinProps}
               seedRateUnitConstraints={seedRateUnitConstraints}
               showSeedSafetyMargin={isProjectForm}
             />
             <ColorSection formData={formData} errors={errors} onChange={handleChange} t={t} defaultColor={DEFAULT_DISPLAY_COLOR} />
             {isProjectForm ? (
-              <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} />
+              <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />
             ) : null}
             {extraSections}
             {showSupplierDataSection ? (

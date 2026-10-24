@@ -256,8 +256,13 @@ export const publicCropAPI = {
     http.patch<PublicCrop>(`/public-crops/${id}/`, data),
   match: (params: { name: string; variety: string }, signal?: AbortSignal) =>
     http.get<PublicCropMatchResponse>('/public-crops/match/', { params, signal }),
-  importToProject: (id: number, mode?: 'update' | 'new') =>
-    http.post<ImportPublicCropResponse>(`/public-crops/${id}/import/`, mode ? { mode } : {}),
+  // `unpinFields` releases those pins of the existing copy so the update takes
+  // the library value for them too; pinned fields are never overwritten otherwise.
+  importToProject: (id: number, mode?: 'update' | 'new', unpinFields?: string[]) =>
+    http.post<ImportPublicCropResponse>(`/public-crops/${id}/import/`, {
+      ...(mode ? { mode } : {}),
+      ...(unpinFields?.length ? { unpin_fields: unpinFields } : {}),
+    }),
   // Contributors remove their own entry without a reason; moderators removing
   // somebody else's entry must supply a structured moderation reason.
   remove: (id: number, reason?: PublicCropRemovalReason) =>

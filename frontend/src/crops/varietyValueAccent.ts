@@ -28,7 +28,15 @@ export const varietySpecificFieldHighlightSx = {
   },
 } as const;
 
-/** Combines a field's base layout `sx` with the variety highlight `sx`, when present. */
-export function mergeVarietyFieldSx(base: SxProps<Theme>, overrideSx: SxProps<Theme> | undefined): SxProps<Theme> {
-  return overrideSx ? [base, overrideSx] as SxProps<Theme> : base;
+/**
+ * Combines a field's base layout `sx` with the highlight `sx` values that apply
+ * (the variety highlight, the locally-pinned border), skipping absent ones.
+ */
+export function mergeVarietyFieldSx(
+  base: SxProps<Theme>,
+  ...overrides: (SxProps<Theme> | undefined)[]
+): SxProps<Theme> {
+  const present = overrides.filter((overrideSx): overrideSx is SxProps<Theme> => Boolean(overrideSx));
+  if (present.length === 0) return base;
+  return [base, ...present].flatMap((sx) => (Array.isArray(sx) ? sx : [sx])) as SxProps<Theme>;
 }

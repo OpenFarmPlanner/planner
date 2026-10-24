@@ -41,8 +41,9 @@ tool, not part of the CI suite). Behaviour itself is described in
 | Link kind | not linked · own published entry (`origin_type` stays manual) · imported foreign entry · linked through "Mit diesem Eintrag verknüpfen" (foreign or own) |
 | Entry state | published · withdrawn · removed · restored · reverted to an older version · species relinked (with/without variety change) · species rejected · parked relink request |
 | Version state | aligned · linked without baseline · library ahead · library ahead but rejected · local changes · local and library changed · local changes after a rejection |
+| Local pins (`library_pinned_fields`) | none · pinned and otherwise aligned · pinned, library ahead in another field · pinned, library changed only the pinned field · pinned plus a local change elsewhere · pinned Sorte inheriting from a pinned Kultur |
 | Actor | established account · `new` trust account · API token (queued proposal) · project member without edit rights |
-| Actions | publish · link · sync (all pull / all push / mixed) · pull · reject update · unlink · re-link · relink species · remove · restore · revert · withdraw · rename variety · delete crop |
+| Actions | publish · link · sync (all pull / all push / all local / mixed) · pull (with/without releasing a pin) · pin / unpin a field · reject update · unlink · re-link · relink species · remove · restore · revert · withdraw · rename variety · delete crop |
 
 ## Cells and expected outcome
 
@@ -65,6 +66,15 @@ columns are what the crop serializer must report.
 | `foreign_removed` | foreign, removed | aligned | `entry_removed` | yes | chip "Eintrag entfernt" |
 | `foreign_restored` | foreign, published again | aligned | `no_local_changes` | yes | chip "Aktuell" (as if never removed) |
 | `new_account_proposal_pending` | foreign, published | local changes + queued proposal | `null`, `public_change_proposal_pending` | yes | chip "Vorschlag in Prüfung" |
+| `pinned_aligned` | foreign, published | harvest duration pinned and different, everything else aligned | `no_local_changes` | yes | chip "Aktuell" + chip "1 Feld lokal fixiert" |
+| `pinned_library_ahead_other_field` | foreign, published | pinned; library ahead in an unpinned field | `null`, `public_update_available` | yes | button "Kultur aktualisieren" (the pinned field is not in the diff) |
+| `pinned_library_changed_pinned_only` | foreign, published | pinned; library changed only the pinned field | `no_local_changes` | yes | chip "Aktuell" (no pull, no notice) |
+| `pinned_local_changes` | foreign, published | pinned plus a local change in an unpinned field | `null` | yes | button "Bibliothek aktualisieren" (sync lists the pinned row preselected "Nur lokal") |
+| `pinned_sorte_vs_pinned_kultur` | foreign variety entry, published | Sorte inherits its Kultur's pinned value and pins it against its own entry | `no_local_changes` | yes | chip "Aktuell" + chip "1 Feld lokal fixiert" |
+
+Every cell also reports its `library_pinned_fields` (`[]` outside the pinned
+cells). The pinned-Sorte cell's general Kultur is a helper row named
+`Matrix-helper …`, so cell counts by name stay exact.
 
 Rules that cut across cells:
 
@@ -75,6 +85,11 @@ Rules that cut across cells:
 - **Republish**: the contributor's own withdrawn entry gets a "Wieder veröffentlichen" button (one confirmation, `publish-public`; the confirmation requires "Offizielle Kulturart" when the crop's species is missing or rejected); foreign withdrawn and removed entries never do.
 - **Restore** puts a still-linked crop back to its normal state (values are
   untouched); a crop unlinked meanwhile stays unlinked.
+- **Pins** never change the case on their own: a difference only in pinned
+  fields is "Aktuell", a library change of only a pinned field brings no pull,
+  and a pull or push never touches a pinned field. They are released only
+  explicitly — the sync's "Bibliothek"/"Meine Kultur" choice, the pull
+  dialog's checkbox, the form's pin, clearing the field — or by an unlink.
 - **Rejected proposal**: when a moderated edit proposal is rejected the
   `proposalPending` chip disappears and the crop, which still differs from the
   entry, resolves to "Bibliothek aktualisieren" again — it never reads as

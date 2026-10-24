@@ -2,7 +2,7 @@
  * BasicInfoSection: Name, Variety, Crop Family, Nutrient Demand
  */
 import { useCallback, useMemo, type ReactNode } from 'react';
-import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel, MenuItem, Typography } from '@mui/material';
+import { Autocomplete, Box, CircularProgress, TextField, FormControl, FormHelperText, InputLabel, MenuItem, Typography } from '@mui/material';
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
@@ -14,6 +14,8 @@ import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSele
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import { libraryPinSelectSx } from '../libraryFieldPin';
+import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import type { PublicCropSpeciesOption } from '../publicCropNameSuggestions';
 import { CropSpeciesOptionContent } from '../CropSpeciesOptionContent';
 import { usePlantFamilies } from '../plantFamilies';
@@ -62,6 +64,7 @@ interface BasicInfoSectionProps {
   /** Optional control rendered directly below the Name/Sorte identity row. */
   identityRowControl?: ReactNode;
   getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldPinProps?: GetLibraryFieldPinProps;
   /**
    * Render the species-invariant crop-rotation fields (crop family, nutrient
    * demand, rotation break) read-only and show an info icon next to the section
@@ -124,6 +127,7 @@ export function BasicInfoSection({
   varietyApplyHint,
   identityRowControl,
   getFieldTooltipProps,
+  getFieldPinProps,
   speciesInvariantFieldsReadOnly = false,
 }: BasicInfoSectionProps) {
   const nameAutocomplete = nameOptions && onNameSearchChange && onNameOptionSelect
@@ -162,6 +166,7 @@ export function BasicInfoSection({
     : null;
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
+  const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
   const rotationBreakYearsVariety = getFieldTooltipProps?.('rotation_break_years');
 
   return (
@@ -444,7 +449,7 @@ export function BasicInfoSection({
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={nutrientDemandVariety?.tooltipTitle}>
           <FormControl
-            sx={mergeVarietyFieldSx(smallFieldSx, nutrientDemandVariety?.sx)}
+            sx={mergeVarietyFieldSx(smallFieldSx, nutrientDemandVariety?.sx, nutrientDemandPin?.fieldSx)}
             disabled={speciesInvariantFieldsReadOnly}
           >
             <InputLabel>{t('form.nutrientDemand')}</InputLabel>
@@ -454,12 +459,15 @@ export function BasicInfoSection({
               onChange={e => onChange('nutrient_demand', e.target.value)}
               label={t('form.nutrientDemand')}
               disabled={speciesInvariantFieldsReadOnly}
+              endAdornment={nutrientDemandPin?.endAdornment}
+              sx={nutrientDemandPin ? libraryPinSelectSx : undefined}
             >
               <MenuItem value="">{t('noData')}</MenuItem>
               <MenuItem value="low">{t('form.nutrientDemandLow')}</MenuItem>
               <MenuItem value="medium">{t('form.nutrientDemandMedium')}</MenuItem>
               <MenuItem value="high">{t('form.nutrientDemandHigh')}</MenuItem>
             </Select>
+            {nutrientDemandPin?.helperText ? <FormHelperText>{nutrientDemandPin.helperText}</FormHelperText> : null}
           </FormControl>
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={rotationBreakYearsVariety?.tooltipTitle}>

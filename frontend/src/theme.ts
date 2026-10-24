@@ -86,6 +86,12 @@ declare module '@mui/material/styles' {
   }
 
   interface Palette {
+    /**
+     * "Kept locally" in the crop-library sync: a value pinned against the
+     * library. Violet, apart from pull (info blue), push (warning orange) and
+     * in sync (success green); `main` holds ≥ 4.5:1 against white.
+     */
+    libraryLocal: Palette['primary'];
     surface: SurfacePalette;
     chart: ChartPalette;
     searchHighlight: SearchHighlightPalette;
@@ -110,6 +116,7 @@ declare module '@mui/material/styles' {
   }
 
   interface PaletteOptions {
+    libraryLocal?: PaletteOptions['primary'];
     surface?: SurfacePalette;
     chart?: ChartPalette;
     searchHighlight?: SearchHighlightPalette;
@@ -177,6 +184,12 @@ const theme = createTheme({
     },
     error: {
       main: '#d32f2f',
+    },
+    libraryLocal: {
+      main: '#6a1b9a',
+      light: '#9c4dcc',
+      dark: '#38006b',
+      contrastText: '#ffffff',
     },
     background: {
       default: surfaceColors.appBackground,

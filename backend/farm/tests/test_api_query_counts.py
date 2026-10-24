@@ -293,6 +293,21 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             sum(1 for row in rows if row['public_change_proposal_pending']), ROW_COUNT,
         )
 
+    def test_crops_list_query_count_is_flat_for_pinned_fields(self):
+        """`library_pinned_values` reads each pinned field from the linked entry:
+        the entry is already joined, so locally pinned fields add no queries."""
+        for crop in Crop.objects.filter(project=self.project, source_public_crop__isnull=False):
+            crop.library_pinned_fields = ['notes']
+            crop.save()
+
+        with self.assertNumQueries(15):
+            response = self.client.get('/openfarmplanner/api/crops/')
+        self.assertEqual(response.status_code, 200)
+        pinned_rows = [row for row in response.data['results'] if row['library_pinned_fields']]
+        self.assertTrue(pinned_rows)
+        for row in pinned_rows:
+            self.assertIn('notes', row['library_pinned_values'])
+
     def test_crop_supplier_data_list_query_count(self):
         """Rows embed a full nested `SupplierSerializer`."""
         self.assert_list_query_count('/openfarmplanner/api/crop-supplier-data/', 5)

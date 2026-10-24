@@ -2,7 +2,7 @@
  * TimingSection: Cultivation type, growth/harvest/propagation durations
  * @remarks Presentational, no internal state
  */
-import { Box, Typography, FormControl, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
+import { Box, Typography, FormControl, FormHelperText, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
 import { fieldRowSx, smallFieldSx } from './styles.tsx';
 import type { Crop, CultivationType } from '../../api/types';
 import type { TFunction } from 'i18next';
@@ -11,6 +11,8 @@ import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSele
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import { libraryPinSelectSx } from '../libraryFieldPin';
+import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 
 interface TimingSectionProps {
   formData: Partial<Crop>;
@@ -18,9 +20,10 @@ interface TimingSectionProps {
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
   getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldPinProps?: GetLibraryFieldPinProps;
 }
 
-export function TimingSection({ formData, errors, onChange, t, getFieldTooltipProps }: TimingSectionProps) {
+export function TimingSection({ formData, errors, onChange, t, getFieldTooltipProps, getFieldPinProps }: TimingSectionProps) {
   const selectedCultivationTypes = formData.cultivation_types?.length
     ? formData.cultivation_types
     : (formData.cultivation_type ? [formData.cultivation_type as CultivationType] : []);
@@ -32,6 +35,10 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
     'propagation_duration_days',
     isDirectSowingOnly ? t('form.directSowingPropagationDisabledHelp') : t('form.propagationDurationDaysHelp'),
   );
+  const cultivationTypePin = getFieldPinProps?.('cultivation_types');
+  const growthDurationPin = getFieldPinProps?.('growth_duration_days');
+  const harvestDurationPin = getFieldPinProps?.('harvest_duration_days');
+  const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
 
   return (
     <>
@@ -39,7 +46,7 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ ...fieldRowSx, mb: 1 }}>
           <VarietyFieldTooltip tooltipTitle={cultivationTypeVariety?.tooltipTitle}>
-            <FormControl sx={mergeVarietyFieldSx(smallFieldSx, cultivationTypeVariety?.sx)}>
+            <FormControl sx={mergeVarietyFieldSx(smallFieldSx, cultivationTypeVariety?.sx, cultivationTypePin?.fieldSx)}>
               <InputLabel id="cultivation-type-label">{t('form.cultivationType')}</InputLabel>
               <Select
                 fullWidth
@@ -47,6 +54,8 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
                 multiple
                 value={selectedCultivationTypes}
                 label={t('form.cultivationType')}
+                endAdornment={cultivationTypePin?.endAdornment}
+                sx={cultivationTypePin ? libraryPinSelectSx : undefined}
                 onChange={e => {
                   const values = (e.target.value as CultivationType[]).filter(Boolean);
                   onChange('cultivation_types', values);
@@ -73,34 +82,49 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
                   <ListItemText primary={t('form.cultivationTypeDirectSowing')} />
                 </MenuItem>
               </Select>
+              {cultivationTypePin?.helperText ? <FormHelperText>{cultivationTypePin.helperText}</FormHelperText> : null}
             </FormControl>
           </VarietyFieldTooltip>
         </Box>
-        <Box sx={{ ...fieldRowSx, alignItems: 'flex-end' }}>
+        {/* Bottom-aligned as before; a pin's helper text below one field would
+            push its input above its neighbours', so the row aligns at the top then. */}
+        <Box
+          sx={{
+            ...fieldRowSx,
+            alignItems: [growthDurationPin, harvestDurationPin, propagationDurationPin]
+              .some((pin) => pin?.helperText) ? 'flex-start' : 'flex-end',
+          }}
+        >
           <DropdownAwareTooltip title={growthDurationVariety?.tooltipTitle ?? t('form.growthDurationDaysHelp')} arrow>
             <TextField
-              sx={mergeVarietyFieldSx(smallFieldSx, growthDurationVariety?.sx)}
+              sx={mergeVarietyFieldSx(smallFieldSx, growthDurationVariety?.sx, growthDurationPin?.fieldSx)}
               type="number"
               label={t('form.growthDurationDays')}
               placeholder={t('form.growthDurationDaysPlaceholder')}
               value={formData.growth_duration_days ?? ''}
               onChange={e => onChange('growth_duration_days', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
               error={Boolean(errors.growth_duration_days)}
-              helperText={errors.growth_duration_days}
-              slotProps={{ htmlInput: { min: 1, step: 1, inputMode: 'numeric' } }}
+              helperText={errors.growth_duration_days || growthDurationPin?.helperText}
+              slotProps={{
+                htmlInput: { min: 1, step: 1, inputMode: 'numeric' },
+                input: { endAdornment: growthDurationPin?.endAdornment },
+              }}
             />
           </DropdownAwareTooltip>
           <DropdownAwareTooltip title={harvestDurationVariety?.tooltipTitle ?? t('form.harvestDurationDaysHelp')} arrow>
             <TextField
-              sx={mergeVarietyFieldSx(smallFieldSx, harvestDurationVariety?.sx)}
+              sx={mergeVarietyFieldSx(smallFieldSx, harvestDurationVariety?.sx, harvestDurationPin?.fieldSx)}
               type="number"
               label={t('form.harvestDurationDays')}
               placeholder={t('form.harvestDurationDaysPlaceholder')}
               value={formData.harvest_duration_days ?? ''}
               onChange={e => onChange('harvest_duration_days', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
               error={Boolean(errors.harvest_duration_days)}
-              helperText={errors.harvest_duration_days}
-              slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
+              helperText={errors.harvest_duration_days || harvestDurationPin?.helperText}
+              slotProps={{
+                htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+                input: { endAdornment: harvestDurationPin?.endAdornment },
+              }}
             />
           </DropdownAwareTooltip>
           <DropdownAwareTooltip
@@ -111,7 +135,7 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
             arrow
           >
             <TextField
-              sx={mergeVarietyFieldSx(smallFieldSx, propagationDurationVariety?.sx)}
+              sx={mergeVarietyFieldSx(smallFieldSx, propagationDurationVariety?.sx, propagationDurationPin?.fieldSx)}
               type="number"
               label={t('form.propagationDurationDays')}
               value={isDirectSowingOnly ? 0 : (formData.propagation_duration_days ?? '')}
@@ -122,9 +146,12 @@ export function TimingSection({ formData, errors, onChange, t, getFieldTooltipPr
                 errors.propagation_duration_days
                   || ((formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0)
                     ? t('form.propagationDurationDaysTooLong')
-                    : undefined)
+                    : propagationDurationPin?.helperText)
               }
-              slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
+              slotProps={{
+                htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+                input: { endAdornment: isDirectSowingOnly ? undefined : propagationDurationPin?.endAdornment },
+              }}
             />
           </DropdownAwareTooltip>
         </Box>

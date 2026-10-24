@@ -12,6 +12,7 @@ import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 import { publishSelectedVarieties, type PublishVarietySelection } from '../crops/publishVarieties';
 import { describePublishChecksFailure, extractPublishChecks } from '../crops/publishChecks';
+import { describeLibraryPinError } from '../crops/libraryFieldPin';
 
 interface UsePublicCropLibraryConfig {
   shouldShowProjectRequiredState: boolean;
@@ -175,7 +176,7 @@ export function usePublicCropLibrary({
     if (code === 'pending_proposal_limit_exceeded') {
       return t('library.sync.proposalLimitError');
     }
-    return t('library.sync.error');
+    return describeLibraryPinError(code, t) ?? t('library.sync.error');
   };
 
   const pushSyncFields = async (
@@ -185,6 +186,7 @@ export function usePublicCropLibrary({
       baseVersion: number;
       pullFields: string[];
       pushFields: string[];
+      pinFields?: string[];
       acceptedPublicLibraryTerms: boolean;
     },
   ) => {
@@ -193,6 +195,7 @@ export function usePublicCropLibrary({
       base_version: data.baseVersion,
       pull_fields: data.pullFields,
       push_fields: data.pushFields,
+      ...(data.pinFields?.length ? { pin_fields: data.pinFields } : {}),
       ...(data.acceptedPublicLibraryTerms ? { accepted_public_library_terms: true } : {}),
     });
     if (data.acceptedPublicLibraryTerms) {
@@ -293,6 +296,7 @@ export function usePublicCropLibrary({
     baseVersion: number;
     pullFields: string[];
     pushFields: string[];
+    pinFields: string[];
   }): Promise<boolean> => {
     if (!selectedCrop?.id) {
       return false;

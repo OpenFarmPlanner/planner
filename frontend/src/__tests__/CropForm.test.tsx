@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropForm } from '../crops/CropForm';
 import type { Crop, PublicCrop } from '../api/types';
 import type { PublicCropSpeciesOption } from '../crops/publicCropNameSuggestions';
+import type { GetLibraryFieldPinProps } from '../crops/libraryFieldPinProps';
 
 vi.mock('../i18n', () => ({
   useTranslation: () => ({
@@ -151,7 +152,11 @@ vi.mock('../crops/sections/SpacingSection', () => ({
   ),
 }));
 
-vi.mock('../crops/sections/TimingSection', () => ({ TimingSection: () => null }));
+vi.mock('../crops/sections/TimingSection', () => ({
+  TimingSection: ({ getFieldPinProps }: { getFieldPinProps?: GetLibraryFieldPinProps }) => (
+    <>{getFieldPinProps?.('growth_duration_days')?.button ?? null}</>
+  ),
+}));
 vi.mock('../crops/sections/HarvestSection', () => ({ HarvestSection: () => null }));
 vi.mock('../crops/sections/SeedingSection', () => ({
   SeedingSection: ({ formData, onChange }: { formData: Partial<Crop>; onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void }) => (
@@ -248,6 +253,45 @@ describe('CropForm', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Kürbis' }), undefined);
+  });
+
+  it('pins a field of a linked crop and saves the pin with the crop', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CropForm
+        crop={{
+          ...CROP_A,
+          growth_duration_days: 80,
+          source_public_crop: 9,
+          library_pinned_fields: [],
+          library_pinnable_fields: ['growth_duration_days', 'harvest_duration_days'],
+        }}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'library.pin.pin' }));
+    expect(screen.getByRole('button', { name: 'library.pin.unpin' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ library_pinned_fields: ['growth_duration_days'] }),
+      undefined,
+    );
+  });
+
+  it('offers no pin for a crop without a library link', () => {
+    render(
+      <CropForm
+        crop={{ ...CROP_A, growth_duration_days: 80, library_pinnable_fields: [] }}
+        onSave={vi.fn()}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'library.pin.pin' })).not.toBeInTheDocument();
   });
 
   it('saves an actual edit to the Name field verbatim', async () => {

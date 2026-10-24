@@ -23,6 +23,7 @@ import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
+import { CropLibraryPinnedChip } from './CropLibraryPinnedChip';
 import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
 import { canUnlinkPublicCrop, type CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
@@ -994,6 +995,7 @@ const detailSectionGridSx = {
                             isPublishing={isPublishingCrop}
                           />
                         ) : null}
+                        {onPublishCrop ? <CropLibraryPinnedChip crop={selectedCrop} /> : null}
                         {isPublishedUnderPendingSpecies ? <CropSpeciesPendingChip /> : null}
                       </Box>
                     </Box>

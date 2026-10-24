@@ -99,6 +99,26 @@ describe('CropLibraryActionButton', () => {
     expect(apiMocks.publicUpdate).not.toHaveBeenCalled();
   });
 
+  it('keeps "Aktuell" for pinned differences and lists the pinned fields in its tooltip', async () => {
+    render(
+      <Harness
+        crop={{
+          ...baseCrop,
+          source_public_crop: 9,
+          public_publish_blocked_reason: 'no_local_changes',
+          library_pinned_fields: ['growth_duration_days'],
+        }}
+        onPublish={vi.fn()}
+      />,
+    );
+
+    const chip = screen.getByTestId('crop-detail-library-status');
+    expect(chip).toHaveTextContent('Aktuell');
+    fireEvent.mouseOver(chip);
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 }))
+      .toHaveTextContent('Lokal fixiert: Wachstumszeit (Tage).');
+  });
+
   it('replaces the pull button with a clickable "Update abgelehnt" chip after a decline', async () => {
     const onPublish = vi.fn();
     render(

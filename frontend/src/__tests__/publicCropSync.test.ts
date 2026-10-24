@@ -57,6 +57,7 @@ describe('sync quick actions and split', () => {
     expect(splitSyncChoices(changes, choices)).toEqual({
       pullFields: ['growth_duration_days', 'notes', 'name'],
       pushFields: [],
+      pinFields: [],
     });
   });
 
@@ -65,6 +66,48 @@ describe('sync quick actions and split', () => {
     expect(splitSyncChoices(changes, choices)).toEqual({
       pullFields: ['name'],
       pushFields: ['growth_duration_days', 'notes'],
+      pinFields: [],
+    });
+  });
+});
+
+describe('"Nur lokal" (pinned fields)', () => {
+  const pinnedChange = change({ field: 'harvest_duration_days', pinned: true, pinnable: true });
+  const pinnableChange = change({ field: 'growth_duration_days', pinnable: true });
+  const namedChange = change({ field: 'name', pushable: false, pinnable: false });
+  const changes = [pinnedChange, pinnableChange, namedChange];
+
+  it('preselects an already pinned field as local only where the flow offers it', () => {
+    expect(getDefaultSyncChoice(pinnedChange, { allowLocal: true })).toBe('local');
+    expect(getDefaultSyncChoice(pinnableChange, { allowLocal: true })).toBe('library');
+    // The link confirmation has no third option.
+    expect(getDefaultSyncChoice(pinnedChange)).toBe('library');
+  });
+
+  it('"Alle nur lokal" keeps every pinnable field locally and leaves the rest on the library side', () => {
+    const choices = buildUniformSyncChoices(changes, 'local');
+    expect(choices).toEqual({ harvest_duration_days: 'local', growth_duration_days: 'local', name: 'library' });
+    expect(splitSyncChoices(changes, choices, { allowLocal: true })).toEqual({
+      pullFields: ['name'],
+      pushFields: [],
+      pinFields: ['harvest_duration_days', 'growth_duration_days'],
+    });
+  });
+
+  it('releases a pinned field chosen for the library or for sharing', () => {
+    const choices = { harvest_duration_days: 'mine', growth_duration_days: 'library', name: 'library' } as const;
+    expect(splitSyncChoices(changes, choices, { allowLocal: true })).toEqual({
+      pullFields: ['growth_duration_days', 'name'],
+      pushFields: ['harvest_duration_days'],
+      pinFields: [],
+    });
+  });
+
+  it('never pins without the third option, even when a choice says local', () => {
+    expect(splitSyncChoices([pinnableChange], { growth_duration_days: 'local' })).toEqual({
+      pullFields: ['growth_duration_days'],
+      pushFields: [],
+      pinFields: [],
     });
   });
 });

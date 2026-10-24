@@ -8,6 +8,7 @@ import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSele
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { getSeedRateValueInputProps } from '../seedRateConstraints';
 
 interface SeedingSectionProps {
@@ -16,6 +17,7 @@ interface SeedingSectionProps {
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
   getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldPinProps?: GetLibraryFieldPinProps;
   seedRateUnitConstraints?: Partial<SeedRateUnitConstraints> | null;
   /**
    * The seed safety margin is a farm-specific planning decision, so the public
@@ -142,6 +144,7 @@ export function SeedingSection({
   onChange,
   t,
   getFieldTooltipProps,
+  getFieldPinProps,
   seedRateUnitConstraints,
   showSeedSafetyMargin = true,
 }: SeedingSectionProps) {
@@ -149,6 +152,7 @@ export function SeedingSection({
   const showsDirect = cultivationTypes.includes('direct_sowing');
   const showsPreCultivation = cultivationTypes.includes('pre_cultivation');
   const thousandKernelWeightVariety = getFieldTooltipProps?.('thousand_kernel_weight_g', t('form.thousandKernelWeightHelp'));
+  const thousandKernelWeightPin = getFieldPinProps?.('thousand_kernel_weight_g');
 
   return (
     <>
@@ -189,12 +193,13 @@ export function SeedingSection({
       <Box sx={fieldRowSx}>
         <DropdownAwareTooltip title={thousandKernelWeightVariety?.tooltipTitle ?? t('form.thousandKernelWeightHelp')} arrow>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(smallFieldSx, thousandKernelWeightVariety?.sx)}
+            sx={mergeVarietyFieldSx(smallFieldSx, thousandKernelWeightVariety?.sx, thousandKernelWeightPin?.fieldSx)}
             label={t('form.thousandKernelWeightLabel')}
             value={formData.thousand_kernel_weight_g}
             onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}
             error={Boolean(errors.thousand_kernel_weight_g)}
-            helperText={errors.thousand_kernel_weight_g}
+            helperText={errors.thousand_kernel_weight_g || thousandKernelWeightPin?.helperText}
+            slotProps={{ input: { endAdornment: thousandKernelWeightPin?.endAdornment } }}
           />
         </DropdownAwareTooltip>
       </Box>

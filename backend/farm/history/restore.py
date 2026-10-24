@@ -218,6 +218,10 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
             elif key in link_attnames and (value is None or value in existing_public_ids):
                 setattr(crop, key, value)
         _restore_crop_family_from_snapshot(crop, revision.snapshot)
+        # A snapshot from before local pins existed had none; Crop.save() drops
+        # restored pins again when the snapshot's link could not be restored.
+        if 'library_pinned_fields' not in revision.snapshot:
+            crop.library_pinned_fields = []
         crop.deleted_at = None
         crop._history_action = EntityRevision.ACTION_RESTORED
         crop.save()

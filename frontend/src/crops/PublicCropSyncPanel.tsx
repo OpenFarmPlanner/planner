@@ -9,6 +9,11 @@ import {
   Typography,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import type { TFunction } from 'i18next';
@@ -22,11 +27,14 @@ import {
 } from '../crop-library/components/publicCropLibrary/formatters';
 import {
   buildUniformSyncChoices,
+  canKeepSyncFieldLocally,
   getDefaultSyncChoice,
   splitSyncChoices,
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
 } from './publicCropSync';
+import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
+import { libraryLocalTint } from './libraryFieldPin';
 
 interface PublicCropSyncPanelProps {
   /** Null while the differences are loading. */
@@ -42,6 +50,12 @@ interface PublicCropSyncPanelProps {
    * the new crop instead of writing it into the entry right away.
    */
   keepMineLocally?: boolean;
+  /**
+   * Offer the third choice "Nur lokal" (pin the value, do not share it). Only
+   * the sync of an already linked crop does; the column headings then also
+   * name the direction of each choice.
+   */
+  allowLocal?: boolean;
 }
 
 /** Fields whose value is free-form Markdown and may need a collapse toggle when long. */
@@ -67,6 +81,12 @@ const VALUE_COLUMNS_SX = {
   rowGap: 0.5,
 } as const;
 
+const THREE_VALUE_COLUMNS_SX = {
+  ...VALUE_COLUMNS_SX,
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  columnGap: { xs: 0.5, sm: 1 },
+} as const;
+
 const CLAMPED_VALUE_SX = {
   display: '-webkit-box',
   WebkitLineClamp: COLLAPSED_LINE_CLAMP,
@@ -84,7 +104,7 @@ const FADED_VALUE_SX = {
 
 interface SyncValueColumnProps {
   field: string;
-  side: 'library' | 'mine';
+  side: PublicCropSyncChoice;
   value: unknown;
   isRichText: boolean;
   expanded: boolean;
@@ -170,6 +190,13 @@ const OPTION_SX = {
     borderColor: 'primary.main',
     bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
   },
+  // "Nur lokal" carries the pin colour, the same one the crop form marks a
+  // pinned field with.
+  '&[data-selected="true"][data-choice="local"]': {
+    borderColor: 'libraryLocal.main',
+    bgcolor: (theme: Theme) => libraryLocalTint(theme),
+    '& [data-check-slot]': { color: 'libraryLocal.main' },
+  },
   '&[data-disabled="true"]': {
     cursor: 'default',
     '&:hover': { bgcolor: 'transparent' },
@@ -221,19 +248,59 @@ interface SyncColumnHeadingProps {
   actionLabel: string;
   disabled: boolean;
   onAction: () => void;
+  /** Direction icon and short description, shown when the panel offers three choices. */
+  icon?: SvgIconComponent;
+  description?: string;
+  testId?: string;
 }
 
-function SyncColumnHeading({ label, actionLabel, disabled, onAction }: SyncColumnHeadingProps) {
+function SyncColumnHeading({
+  label,
+  actionLabel,
+  disabled,
+  onAction,
+  icon: Icon,
+  description,
+  testId,
+}: SyncColumnHeadingProps) {
+  // Three narrow columns on a phone: the icon moves in front of the label
+  // (no check-mark slot) and text wraps instead of running into the next column.
+  const compact = Boolean(description);
   return (
-    <Box sx={COLUMN_HEADING_SX}>
-      <Box component="span" aria-hidden sx={CHECK_SLOT_SX} />
-      <Box sx={COLUMN_HEADING_CONTENT_SX}>
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
+    <Box
+      sx={compact ? { ...COLUMN_HEADING_SX, px: { xs: 0.5, sm: 1 }, gap: { xs: 0, sm: 0.75 } } : COLUMN_HEADING_SX}
+      data-testid={testId}
+    >
+      <Box
+        component="span"
+        aria-hidden
+        sx={{ ...CHECK_SLOT_SX, color: 'text.secondary', ...(compact ? { display: { xs: 'none', sm: 'inline-flex' } } : {}) }}
+      >
+        {Icon ? <Icon sx={{ fontSize: '1rem' }} /> : null}
+      </Box>
+      <Box sx={{ ...COLUMN_HEADING_CONTENT_SX, ...(compact ? { overflowWrap: 'anywhere', hyphens: 'auto' } : {}) }}>
+        <Typography variant="caption" color="text.secondary" sx={compact ? { fontWeight: 600 } : undefined}>
+          {Icon && compact ? (
+            <Icon aria-hidden sx={{ display: { xs: 'inline-block', sm: 'none' }, fontSize: '0.875rem', verticalAlign: 'text-bottom', mr: 0.25 }} />
+          ) : null}
+          {label}
+        </Typography>
+        {description ? (
+          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+            {description}
+          </Typography>
+        ) : null}
         <Button
           size="small"
           variant="text"
           disabled={disabled}
-          sx={{ minWidth: 0, px: 0, py: 0, textAlign: 'left' }}
+          sx={{
+            minWidth: 0,
+            px: 0,
+            py: 0,
+            textAlign: 'left',
+            ...(compact ? { fontSize: { xs: '0.75rem', sm: undefined }, lineHeight: { xs: 1.25, sm: undefined } } : {}),
+          }}
           onClick={onAction}
         >
           {actionLabel}
@@ -272,6 +339,7 @@ function SyncOption({ name, value, checked, disabled, label, onSelect, children 
       sx={OPTION_SX}
       data-selected={checked}
       data-disabled={disabled}
+      data-choice={value}
       data-testid={`public-crop-sync-option-${value}-${name}`}
       onClick={handleClick}
     >
@@ -285,7 +353,7 @@ function SyncOption({ name, value, checked, disabled, label, onSelect, children 
         onChange={onSelect}
         style={VISUALLY_HIDDEN_STYLE}
       />
-      <Box component="span" aria-hidden sx={CHECK_SLOT_SX}>
+      <Box component="span" aria-hidden data-check-slot sx={CHECK_SLOT_SX}>
         {checked ? <CheckCircleIcon sx={{ fontSize: '1rem' }} /> : null}
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>{children}</Box>
@@ -297,11 +365,21 @@ interface SyncFieldRowProps {
   change: PublicCropSyncFieldChange;
   choice: PublicCropSyncChoice;
   disabled: boolean;
+  allowLocal: boolean;
   t: TFunction;
   onChoiceChange: (choice: PublicCropSyncChoice) => void;
 }
 
-function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncFieldRowProps) {
+const IDENTITY_FIELDS = new Set(['name', 'variety']);
+
+/** Why "Nur lokal" is unavailable for a field, as an i18n key under `library.sync`. */
+function notPinnableReasonKey(change: PublicCropSyncFieldChange): string {
+  if (IDENTITY_FIELDS.has(change.field)) return 'notPinnableIdentity';
+  if (isEmptyPublicValue(change.local_value)) return 'notPinnableEmpty';
+  return 'notPinnableSpeciesInvariant';
+}
+
+function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange }: SyncFieldRowProps) {
   const label = getPublicCropComparisonFieldLabel(change.field, t);
   const isRichText = isRichTextSyncField(change.field);
   const [expanded, setExpanded] = useState(false);
@@ -345,15 +423,49 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
       {mineValue}
     </SyncOption>
   );
+  const canKeepLocally = canKeepSyncFieldLocally(change);
+  const localOption = allowLocal ? (
+    <SyncOption
+      name={radioName}
+      value="local"
+      checked={choice === 'local'}
+      disabled={disabled || !canKeepLocally}
+      label={t('library.sync.chooseLocal')}
+      onSelect={() => onChoiceChange('local')}
+    >
+      <SyncValueColumn
+        field={change.field}
+        side="local"
+        value={change.local_value}
+        isRichText={isRichText}
+        expanded={expanded}
+        onTruncatedChange={setMineTruncated}
+        t={t}
+      />
+    </SyncOption>
+  ) : null;
 
   return (
     <Box sx={ROW_SX} data-testid={`public-crop-sync-row-${change.field}`}>
-      <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>{label}</Typography>
+      <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>
+        {label}
+        {allowLocal && change.pinned ? (
+          <Typography
+            component="span"
+            variant="caption"
+            data-testid={`public-crop-sync-pinned-hint-${change.field}`}
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, ml: 1, color: 'libraryLocal.main', fontWeight: 400 }}
+          >
+            <PushPinIcon aria-hidden sx={{ fontSize: '0.875rem' }} />
+            {t('library.sync.previouslyPinned')}
+          </Typography>
+        ) : null}
+      </Typography>
       <Box
         component="dd"
         role="radiogroup"
         aria-label={t('library.sync.choiceAriaLabel', { field: label })}
-        sx={{ ...VALUE_COLUMNS_SX, m: 0 }}
+        sx={{ ...(allowLocal ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX), m: 0 }}
       >
         <SyncOption
           name={radioName}
@@ -375,6 +487,11 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
             {mineOption}
           </DisabledActionTooltip>
         )}
+        {localOption && !canKeepLocally ? (
+          <DisabledActionTooltip fullWidth title={t(`library.sync.${notPinnableReasonKey(change)}`)}>
+            {localOption}
+          </DisabledActionTooltip>
+        ) : localOption}
       </Box>
       {showExpandToggle ? (
         <Box component="dd" sx={{ m: 0 }}>
@@ -394,8 +511,10 @@ function SyncFieldRow({ change, choice, disabled, t, onChoiceChange }: SyncField
 /**
  * Field-by-field sync between a crop and a public library entry, shared by
  * the link confirmation and the "Bibliothek aktualisieren" flow of the
- * publishing wizard. Every differing field gets one row whose two values are
- * the choice itself; see `publicCropSync.ts` for the preselection rules.
+ * publishing wizard. Every differing field gets one row whose values are the
+ * choice itself — two (library / mine), or three with "Nur lokal" for the sync
+ * of a linked crop (`allowLocal`), where already pinned fields are listed too
+ * so they can be released; see `publicCropSync.ts` for the preselection rules.
  */
 export function PublicCropSyncPanel({
   changes,
@@ -405,6 +524,7 @@ export function PublicCropSyncPanel({
   loadError,
   disabled = false,
   keepMineLocally = false,
+  allowLocal = false,
 }: PublicCropSyncPanelProps) {
   const { t } = useTranslation(['crops', 'common']);
 
@@ -423,7 +543,8 @@ export function PublicCropSyncPanel({
     return <Alert severity="info">{t('library.sync.noChanges')}</Alert>;
   }
 
-  const { pullFields, pushFields } = splitSyncChoices(changes, choices);
+  const choiceOptions = { allowLocal };
+  const { pullFields, pushFields, pinFields } = splitSyncChoices(changes, choices, choiceOptions);
   const setChoice = (field: string, choice: PublicCropSyncChoice) => {
     onChoicesChange({ ...choices, [field]: choice });
   };
@@ -433,10 +554,15 @@ export function PublicCropSyncPanel({
   const summaryParts = [
     pullFields.length ? t('library.sync.summaryPull', { count: pullFields.length }) : null,
     pushFields.length ? t(mineSummaryKey, { count: pushFields.length }) : null,
+    pinFields.length ? t('library.sync.summaryLocal', { count: pinFields.length }) : null,
   ].filter((part): part is string => part !== null);
-  const summary = summaryParts.length === 2
-    ? t('library.sync.summaryBoth', { pull: summaryParts[0], push: summaryParts[1] })
-    : t('library.sync.summarySingle', { part: summaryParts[0] });
+  const summary = summaryParts.length === 3
+    ? t('library.sync.summaryThree', { first: summaryParts[0], second: summaryParts[1], third: summaryParts[2] })
+    : summaryParts.length === 2
+      ? t('library.sync.summaryBoth', { pull: summaryParts[0], push: summaryParts[1] })
+      : t('library.sync.summarySingle', { part: summaryParts[0] });
+
+  const setAll = (choice: PublicCropSyncChoice) => onChoicesChange(buildUniformSyncChoices(changes, choice));
 
   return (
     <Stack spacing={1}>
@@ -444,33 +570,68 @@ export function PublicCropSyncPanel({
         aria-label={t('library.sync.ariaLabel')}
         sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
       >
-        <Box sx={{ ...VALUE_COLUMNS_SX, px: 1, py: 0.75, bgcolor: 'action.hover' }}>
+        <Box
+          sx={{
+            ...(allowLocal ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX),
+            px: allowLocal ? { xs: 0.5, sm: 1 } : 1,
+            py: 0.75,
+            bgcolor: 'action.hover',
+          }}
+        >
           <SyncColumnHeading
             label={t('library.sync.columnLibrary')}
             actionLabel={t('library.sync.allLibrary')}
             disabled={disabled}
-            onAction={() => onChoicesChange(buildUniformSyncChoices(changes, 'library'))}
+            onAction={() => setAll('library')}
+            {...(allowLocal ? {
+              icon: ArrowDownwardIcon,
+              description: t('library.sync.columnLibraryDescription'),
+              testId: 'public-crop-sync-heading-library',
+            } : {})}
           />
           <SyncColumnHeading
             label={t('library.sync.columnMine')}
-            actionLabel={t('library.sync.allMine')}
+            actionLabel={t(allowLocal ? 'library.sync.allShare' : 'library.sync.allMine')}
             disabled={disabled}
-            onAction={() => onChoicesChange(buildUniformSyncChoices(changes, 'mine'))}
+            onAction={() => setAll('mine')}
+            {...(allowLocal ? {
+              icon: ArrowUpwardIcon,
+              description: t('library.sync.columnMineDescription'),
+              testId: 'public-crop-sync-heading-mine',
+            } : {})}
           />
+          {allowLocal ? (
+            <SyncColumnHeading
+              label={t('library.sync.columnLocal')}
+              actionLabel={t('library.sync.allLocal')}
+              disabled={disabled}
+              onAction={() => setAll('local')}
+              icon={PushPinOutlinedIcon}
+              description={t('library.sync.columnLocalDescription')}
+              testId="public-crop-sync-heading-local"
+            />
+          ) : null}
         </Box>
         <Box component="dl" sx={{ m: 0 }}>
           {changes.map((change) => (
             <SyncFieldRow
               key={change.field}
               change={change}
-              choice={choices[change.field] ?? getDefaultSyncChoice(change)}
+              choice={choices[change.field] ?? getDefaultSyncChoice(change, choiceOptions)}
               disabled={disabled}
+              allowLocal={allowLocal}
               t={t}
               onChoiceChange={(choice) => setChoice(change.field, choice)}
             />
           ))}
         </Box>
       </Box>
+
+      {allowLocal ? (
+        <Alert severity="info" icon={<PushPinOutlinedIcon fontSize="inherit" />} data-testid="public-crop-sync-local-info">
+          {t('library.sync.localInfo')}
+        </Alert>
+      ) : null}
 
       <Typography variant="body2" color="text.secondary" data-testid="public-crop-sync-summary" aria-live="polite">
         {summary}

@@ -705,7 +705,7 @@ describe('Crops action area', () => {
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
     expect(publicCropListMock).not.toHaveBeenCalled();
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Alle meine Werte' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Alle teilen' }));
     const submit = within(dialog).getByRole('button', { name: 'Abgleichen' });
     await waitFor(() => expect(submit).toBeEnabled());
     fireEvent.click(submit);

@@ -111,7 +111,7 @@ describe('PublicCropUpdateDialog', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
 
-    await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(42, 'update'));
+    await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(42, 'update', []));
     await waitFor(() => expect(onUpdated).toHaveBeenCalled());
   });
 
@@ -142,5 +142,47 @@ describe('PublicCropUpdateDialog', () => {
     expect(screen.getByTestId('crop-public-update-rejected-hint')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.publicUpdate.reject })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.publicUpdate.apply })).toBeEnabled();
+  });
+
+  describe('pinned fields', () => {
+    const pinnedUpdate: CropPublicUpdate = {
+      ...varietyRenameUpdate,
+      changes: [{ field: 'growth_duration_days', local_value: 70, public_value: 80 }],
+      pinned_changes: [{
+        field: 'harvest_duration_days', local_value: 30, previous_public_value: 20, public_value: 25,
+      }],
+    };
+
+    it('lists a pinned field the library changed as unchanged, with the library move', async () => {
+      await openDialog(pinnedUpdate);
+
+      const block = screen.getByTestId('crop-public-update-pinned');
+      expect(block).toHaveTextContent('Lokal fixiert – bleibt unverändert');
+      expect(block).toHaveTextContent('Dein Wert: 30');
+      expect(block).toHaveTextContent('Bibliothek: 20 → 25');
+      expect(screen.getByTestId('crop-public-update-summary')).toHaveTextContent(
+        '1 Wert wird in deine Kultur übernommen, 1 fixierter Wert bleibt erhalten.',
+      );
+    });
+
+    it('keeps pins by default and releases only the ones the user ticks', async () => {
+      apiMocks.importToProject.mockResolvedValue({ data: { operation: 'updated' } });
+      await openDialog(pinnedUpdate);
+
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Fixierung lösen und 25 übernehmen' }));
+      expect(screen.getByTestId('crop-public-update-summary')).toHaveTextContent(
+        '2 Werte werden in deine Kultur übernommen.',
+      );
+      await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.apply }));
+
+      await waitFor(() => expect(apiMocks.importToProject).toHaveBeenCalledWith(42, 'update', ['harvest_duration_days']));
+    });
+
+    it('shows no pinned block when no pinned field changed', async () => {
+      await openDialog();
+
+      expect(screen.queryByTestId('crop-public-update-pinned')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('crop-public-update-summary')).not.toBeInTheDocument();
+    });
   });
 });

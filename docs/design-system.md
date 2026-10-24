@@ -65,7 +65,11 @@ topbar, content and surface backgrounds, borders), a `navigation` group
 `brandDark` group (background, eyebrow and body-text tones for a dark
 forest-green marketing section set apart from the app chrome, e.g. the public
 landing page's Open Source section; AA-checked against `brandDark.background`
-— headings on it use plain white instead). Read it before introducing a
+— headings on it use plain white instead), and `libraryLocal` (a full palette
+colour, violet, for a crop-library value kept locally against the library —
+the pin in the sync dialog, the crop form and the crop list; it stays apart
+from pull `info`, push `warning` and in-sync `success`, and `main` is ≥ 4.5:1
+against white). Read it before introducing a
 colour — there is very likely already a token for what you need.
 
 **Breakpoints** are MUI's defaults: `sm` 600, `md` 900, `lg` 1200, `xl` 1536.
