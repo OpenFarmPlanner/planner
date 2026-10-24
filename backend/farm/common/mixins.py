@@ -17,6 +17,7 @@ from farm.history import (
 )
 from farm.models import EntityRevision, Location
 from farm.project_context import get_active_project_or_400
+from farm.services.default_location import default_location_name_for_request
 
 
 class ProjectRevisionMixin:
@@ -112,13 +113,14 @@ class ProjectScopedMixin:
         it.
         """
         project = self.request.active_project
+        name = default_location_name_for_request(self.request)
         attempts = 8
         for attempt in range(attempts):
             try:
                 with transaction.atomic():
                     if Location.objects.filter(project=project).exists():
                         return
-                    Location.objects.create(project=project, name='Hauptstandort')
+                    Location.objects.create(project=project, name=name)
                 return
             except OperationalError as exc:
                 if attempt == attempts - 1 or 'locked' not in str(exc).lower():

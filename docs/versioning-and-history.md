@@ -139,8 +139,8 @@ Two restore paths, both admin-only (`require_project_admin`):
     A row whose restorable parent wasn't restored is skipped; a dangling
     nullable non-restorable FK is nulled; snapshot fields the model has since
     dropped are ignored.
-  - **Left untouched:** rows with no revision at all — the auto
-    `"Hauptstandort"` default
+  - **Left untouched:** rows with no revision at all — the auto-created
+    default location ("Hauptstandort"/"Main location"/…)
     (`ProjectScopedMixin.ensure_active_project_location`), demo-seeder rows
     (`demo_project.py` uses plain `Model.objects.create`), pre-history data —
     **and** entities merely *created after* `target_time`. Recovering old

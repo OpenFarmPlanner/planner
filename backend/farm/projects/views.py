@@ -21,6 +21,7 @@ from config.frontend_urls import build_public_frontend_url
 from config.responses import api_error_response
 from farm.models import AgentLoginToken, Location, Project, ProjectInvitation, ProjectMembership
 from farm.project_context import require_project_admin, resolve_project_for_user
+from farm.services.default_location import default_location_name_for_request
 from farm.services.demo_project import create_personal_demo_project, resolve_demo_request_language
 from farm.services.project_invitations import (
     InvitationFlowError,
@@ -223,7 +224,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not Location.objects.filter(project=project).exists():
             Location.objects.create(
                 project=project,
-                name='Hauptstandort',
+                name=default_location_name_for_request(self.request),
             )
         ProjectMembership.objects.get_or_create(
             user=self.request.user,
