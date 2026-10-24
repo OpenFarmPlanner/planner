@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=200)),
                 (
                     "name_normalized",
-                    models.CharField(db_index=True, editable=False, max_length=200),
+                    models.CharField(db_index=True, editable=False, max_length=400),
                 ),
                 ("source_url", models.URLField(blank=True, max_length=500)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),

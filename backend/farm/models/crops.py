@@ -1236,7 +1236,8 @@ class PublicCropTradeName(models.Model):
     )
     language_code = models.CharField(max_length=10, db_index=True)
     name = models.CharField(max_length=200)
-    name_normalized = models.CharField(max_length=200, db_index=True, editable=False)
+    # Folding expands ß/œ/æ, so the key can outgrow the 200-character name.
+    name_normalized = models.CharField(max_length=400, db_index=True, editable=False)
     source_url = models.URLField(max_length=500, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -215,6 +215,14 @@ class VarietyTradeNameTest(ProjectApiTestCase):
         self.assertEqual(trade_name.name, 'Cœur de bœuf')
         self.assertEqual(trade_name.name_normalized, 'coeur de boeuf')
 
+    def test_normalized_key_fits_a_maximum_length_name_that_expands_when_folded(self):
+        trade_name = PublicCropTradeName.objects.create(
+            public_crop=self._entry('Ochsenherz'), language_code='de', name='ß' * 200,
+        )
+
+        trade_name.refresh_from_db()
+        self.assertEqual(trade_name.name_normalized, 'ss' * 200)
+
     def test_display_uses_the_trade_name_of_the_request_language_then_the_original(self):
         self.assertEqual(self.gelbe_birne.variety_display('fr'), 'Poire jaune (Gelbe Birne)')
         self.assertEqual(self.gelbe_birne.variety_trade_name('fr'), 'Poire jaune')
