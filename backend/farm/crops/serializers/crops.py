@@ -1,6 +1,7 @@
 """Serializer for crops (unit conversion, seed rates, supplier rows)."""
 
 import copy
+from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
@@ -120,8 +121,12 @@ class LibraryPinnedFieldsInvalid(APIException):
     status_code = 400
     default_code = 'library_pin_field_not_allowed'
 
-    def __init__(self, error: LibraryPinnedFieldsError) -> None:
-        super().__init__({'code': error.code, 'detail': error.message, 'fields': error.fields})
+    def __init__(self, *, code: str, fields: Sequence[str]) -> None:
+        super().__init__({
+            'code': code,
+            'detail': LibraryPinnedFieldsError.MESSAGES[code],
+            'fields': sorted(fields),
+        })
 
 
 # The inheritable model fields whose API name differs from the model field name
@@ -1115,9 +1120,7 @@ class CropSerializer(serializers.ModelSerializer):
             # The create-time link is recorded inside the create transaction;
             # pins are set afterwards, on the linked crop.
             if requested:
-                raise LibraryPinnedFieldsInvalid(
-                    LibraryPinnedFieldsError(requested, code='library_pin_requires_link'),
-                )
+                raise LibraryPinnedFieldsInvalid(code='library_pin_requires_link', fields=requested)
             return
         candidate = copy.copy(self.instance)
         model_fields = {field.name for field in Crop._meta.fields}
@@ -1131,7 +1134,7 @@ class CropSerializer(serializers.ModelSerializer):
                 previous_fields=sorted(get_library_pinned_fields(self.instance)),
             )
         except LibraryPinnedFieldsError as error:
-            raise LibraryPinnedFieldsInvalid(error) from error
+            raise LibraryPinnedFieldsInvalid(code=error.code, fields=error.fields) from error
 
     def _resolve_project(self, attrs, *, instance_first: bool):
         """Resolve the project the way the original inline blocks did.
