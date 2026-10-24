@@ -29,6 +29,11 @@ Query and record text are compared in a normalized form:
 3. Unicode NFD decomposition, then every combining mark is removed, so
    diacritics do not matter: "rube" finds "Rübe", "creme" finds "Crème".
    Umlauts fold to their base letter (`ü` → `u`), **not** to `ue`.
+4. The ligatures `œ` and `æ`, which NFD leaves intact, become `oe` and `ae`:
+   "coeur de boeuf" finds "Cœur de bœuf". The backend helper
+   `farm.utils.normalize_search_text` applies the same rules; the crop
+   library's variety trade names are stored in that form
+   ([RFC](./rfc-variety-trade-names.md)).
 
 ## Terms and AND
 

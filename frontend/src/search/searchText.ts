@@ -14,17 +14,23 @@ export interface MatchRange {
 const COMBINING_MARKS = /[̀-ͯ]/g;
 const WHITESPACE = /\s+/;
 
-/** Normalizes one code point: lower case, `ß` → `ss`, diacritics removed. */
+/**
+ * Normalizes one code point: lower case, `ß` → `ss`, the ligatures `œ`/`æ`
+ * (which NFD leaves intact) → `oe`/`ae`, diacritics removed.
+ */
 const normalizeCodePoint = (codePoint: string): string =>
   codePoint
     .toLowerCase()
     .replace(/ß/g, 'ss')
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
     .normalize('NFD')
     .replace(COMBINING_MARKS, '');
 
 /**
- * Case-, diacritic- and `ß`/`ss`-insensitive form of `text`, so "Rübe",
- * "RUBE" and "rube" compare equal and "Straße" equals "strasse".
+ * Case-, diacritic-, ligature- and `ß`/`ss`-insensitive form of `text`, so
+ * "Rübe", "RUBE" and "rube" compare equal, "Straße" equals "strasse" and
+ * "Cœur de bœuf" equals "coeur de boeuf".
  */
 export function normalizeSearchText(text: string): string {
   let normalized = '';

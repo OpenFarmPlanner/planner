@@ -982,9 +982,9 @@ class CropLibraryQueryCountTest(DRFAPITestCase):
         self.assertEqual(count_queries(), baseline)
 
     def test_crops_list_query_count(self):
-        """Published crops resolve a species name, a description and a
-        contributor label per row."""
-        with self.assertNumQueries(7):
+        """Published crops resolve a species name, a description, the variety
+        trade names and a contributor label per row, each prefetched once."""
+        with self.assertNumQueries(8):
             response = self.client.get('/openfarmplanner/api/crop-library/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

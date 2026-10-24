@@ -983,6 +983,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 'published_at': item.published_at,
                 'created_by_label': item.created_by_label,
                 'is_mine': item.is_mine,
+                'matched_trade_name': item.matched_trade_name,
             }
             for item in duplicates
         ]

@@ -122,6 +122,19 @@ edit/publish behavior.
 | API token, any trust level | Queued as a `PublicCropChangeProposal` |
 | Anonymous | Rejected earlier by authentication, never reaches this check |
 
+**Exception: variety trade names are never queued.** Adding, changing,
+removing or reverting a trade name
+(`/api/public-crops/{id}/trade-names/`) applies live for every signed-in
+session user, `new` accounts included, and never consults
+`requires_moderation_queue()`. That is a deliberate product decision
+([rfc-variety-trade-names.md](./rfc-variety-trade-names.md), D4). The
+safeguards act afterwards instead: an append-only history with revert, a
+report action that notifies moderators, and the per-user
+`public_crop_trade_name_write` / `public_crop_report` throttles (on top of
+`TrustAwareWriteRateThrottle`). `ProjectApiToken` cannot reach these
+actions at all, so "a token never writes the public library live" still
+holds.
+
 **Owning the entry is not a way around this.** `publish_crop_to_public_library`
 resolves `find_owned_public_crop_for_update` before it publishes, and that
 branch used to return `'updated'` without ever consulting `require_moderation`
@@ -513,6 +526,8 @@ All are read from the environment in `backend/config/settings.py`.
 | `THROTTLE_API_TOKEN_WRITE` | `300/hour` | Write ceiling per `ProjectApiToken` (not declared as an agent) |
 | `THROTTLE_API_TOKEN_WRITE_DECLARED_AGENT` | `600/hour` | Write ceiling per `ProjectApiToken` declared as an agent |
 | `PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER` | `20` | Cap on one account's standing moderation-queue backlog |
+| `THROTTLE_PUBLIC_CROP_TRADE_NAME_WRITE` | `30/hour` | Trade-name edits and reverts per user (every trust level) |
+| `THROTTLE_PUBLIC_CROP_REPORT` | `20/hour` | Library reports per user |
 | `TRUSTED_PROXY_CIDRS` | *(empty)* | CIDR ranges of reverse proxies allowed to report the real client IP |
 | `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Header read for the real client IP, once the peer is trusted |
 | `TURNSTILE_SITE_KEY` | *(empty)* | This deployment's Turnstile widget key; must match the frontend's `VITE_TURNSTILE_SITE_KEY` |

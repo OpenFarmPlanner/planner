@@ -1,9 +1,10 @@
 # Crop Taxonomy Guidelines
 
 Scope: the official crop-species suggestion list — `CropSpecies` /
-`CropSpeciesTranslation` in the database, which is its only source — and every
+`CropSpeciesTranslation` in the database, which is its only source — every
 moderation decision on a user-proposed species or on a name, synonym or
-regional name added through the API.
+regional name added through the API, and the variety trade names of the
+public library (§5).
 
 This document answers one recurring question: **is this name a crop species of
 its own, an alias of an existing one, or a variety?** Answer it the same way
@@ -80,6 +81,8 @@ Examples:
   part of this group — different cultivation and harvest logic — and stay
   species of their own.
 
+Whether two variety names are one variety or two is §5.
+
 ## Rule of thumb
 
 A crop species is the **lowest sensible category that matters for growing
@@ -128,6 +131,37 @@ Rules:
    (*Brassica napus*), which the library does not contain yet, so it is
    deliberately not aliased onto `Kohlrabi` — that would merge two different
    crops.
+
+## 5. Varieties: one variety, several names
+
+Two names denote **the same variety** when the trade lists them as the same
+variety: seed catalogues, seed banks or retailers sell the one under the
+other's name, or name both as equivalents. Then one public entry exists, and
+the second name is a **trade name** in its language
+(`PublicCropTradeName`), not a second entry. Example: `Gelbe Birne` =
+`Yellow Pear` = `Poire jaune`.
+
+Strains, selections and populations sold under the same name are **not**
+split into separate entries, unless sources clearly document different
+properties (for example a different ripening time, fruit colour or growth
+habit). If they do, they are separate varieties with distinguishable original
+names.
+
+A trade name is entered only when the variety is actually sold under it in
+that language area, preferably with a source. It is never:
+
+- the user's own translation of the original name;
+- a supplier's article title (`Tomate Poire jaune – Bio, 20 Korn`);
+- a type or group name the trade uses for several different varieties in that
+  language. This is the variety-level analogue of the `Peperoni` rule in §4:
+  such a name stays searchable through the varieties' own names and is not
+  attached to any one of them.
+
+If a trade name in one language collides with another entry's original name in
+the same species, the two entries are duplicates. Resolve them by removing one
+(reason `duplicate`), not by leaving both in place. The library refuses to
+store a trade name that already identifies another entry of the same species.
+Design: [rfc-variety-trade-names.md](./rfc-variety-trade-names.md).
 
 ## Working on the suggestion list
 

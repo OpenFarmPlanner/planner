@@ -1410,7 +1410,8 @@ export type NotificationType =
   | 'moderator_request_submitted'
   | 'public_crop_removed'
   | 'public_crop_change_proposal_submitted'
-  | 'public_crop_change_proposal_reviewed';
+  | 'public_crop_change_proposal_reviewed'
+  | 'public_crop_trade_name_reported';
 
 export type NotificationTargetType = 'crop' | 'public_crop' | 'crop_species' | 'public_library_moderation' | '';
 

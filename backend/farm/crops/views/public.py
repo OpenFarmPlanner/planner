@@ -31,11 +31,23 @@ from farm.models import (
     PublicCrop,
     PublicCropChangeProposal,
     PublicCropDiscussionComment,
+    PublicCropReport,
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
 from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
 from farm.services.public_discussions import delete_comment_by_author, remove_comment_by_moderation
+from farm.services.public_crop_trade_names import (
+    TradeNameConflictError,
+    TradeNameEditConflictError,
+    TradeNameError,
+    matched_trade_name,
+    replace_trade_names,
+    report_trade_name,
+    resolve_public_crop_report,
+    revert_trade_name_event,
+    variety_search_query,
+)
 from farm.services.public_crops import (
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
@@ -67,10 +79,15 @@ from ..serializers.public import (
     PublicCropChangeProposalSerializer,
     PublicCropDiscussionCommentSerializer,
     PublicCropDiscussionTopicSerializer,
+    PublicCropReportResolveSerializer,
+    PublicCropReportSerializer,
     PublicCropRevertSerializer,
     PublicCropRevisionSerializer,
     PublicCropSpeciesRelinkRequestSerializer,
     PublicCropSpeciesRelinkSerializer,
+    PublicCropTradeNameEventSerializer,
+    PublicCropTradeNameReportCreateSerializer,
+    PublicCropTradeNamesUpdateSerializer,
     PublicCropTranslationsUpdateSerializer,
     PublicCropUpdateSerializer,
 )
@@ -127,6 +144,20 @@ class PublicCropViewSet(viewsets.ModelViewSet):
     # not just the opted-in update/partial_update) would be reachable.
     permission_classes = [permissions.IsAuthenticated, ApiTokenAccessPermission]
 
+    # Trade names are edited without prior moderation (docs/rfc-variety-
+    # trade-names.md, D4); a per-user write ceiling is one of the
+    # after-the-fact safeguards. Reads are never throttled here.
+    _WRITE_THROTTLE_SCOPES = {
+        'trade_names': 'public_crop_trade_name_write',
+        'revert_trade_name': 'public_crop_trade_name_write',
+        'report_trade_name': 'public_crop_report',
+    }
+
+    def get_throttles(self):
+        if self.request.method not in permissions.SAFE_METHODS:
+            self.throttle_scope = self._WRITE_THROTTLE_SCOPES.get(self.action)
+        return super().get_throttles()
+
     def get_permissions(self):
         if self.action in {'discussion_topics', 'topic_comments'} and self.request.method == 'GET':
             return [permissions.AllowAny()]
@@ -172,6 +203,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 ),
             )
         )
+        if self.action in {'list', 'retrieve'}:
+            # Only the serialized entries read `variety_display`/`trade_names`;
+            # detail actions (discussions, versions, …) never need them.
+            queryset = queryset.prefetch_related('trade_names')
         active_project = get_active_project_optional(self.request)
         if active_project is not None:
             queryset = queryset.prefetch_related(
@@ -193,8 +228,8 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         if name:
             queryset = queryset.filter(build_public_crop_search_query(name, include_variety=False)).distinct()
         if variety:
-            # Variety names are proper names — matched verbatim, not translated.
-            queryset = queryset.filter(variety__icontains=variety)
+            # The original name is never translated; trade names are matched too.
+            queryset = queryset.filter(variety_search_query(variety)).distinct()
         if crop_species_param:
             try:
                 queryset = queryset.filter(crop_species_id=int(crop_species_param))
@@ -412,6 +447,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 'id': crop.id,
                 'name': crop.name,
                 'variety': crop.variety,
+                'matched_trade_name': matched_trade_name(crop, request.query_params.get('variety')),
             },
         })
 
@@ -455,6 +491,169 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             'original_language_code': updated.original_language_code,
             'translations': updated.descriptions_by_language(),
         })
+
+    @staticmethod
+    def _trade_names_payload(public_crop: PublicCrop) -> dict[str, Any]:
+        public_crop = PublicCrop.objects.prefetch_related('trade_names').get(pk=public_crop.pk)
+        return {
+            'variety': public_crop.variety,
+            'trade_names': public_crop.trade_names_by_language(),
+        }
+
+    @staticmethod
+    def _trade_name_error_response(error: TradeNameError) -> Response:
+        if isinstance(error, TradeNameConflictError):
+            return api_error_response(
+                code=error.code,
+                detail=error.detail,
+                status_code=status.HTTP_409_CONFLICT,
+                language_code=error.language_code,
+                conflicting_public_crop_id=error.conflicting_public_crop.id,
+            )
+        if isinstance(error, TradeNameEditConflictError):
+            return api_error_response(
+                code=error.code,
+                detail=error.detail,
+                status_code=status.HTTP_409_CONFLICT,
+                language_code=error.language_code,
+                current_name=error.current_name,
+            )
+        response_status = (
+            status.HTTP_404_NOT_FOUND
+            if error.code in {'trade_name_event_not_found', 'trade_name_not_found'}
+            else status.HTTP_400_BAD_REQUEST
+        )
+        return api_error_response(code=error.code, detail=error.detail, status_code=response_status)
+
+    def _trade_name_write_forbidden(
+        self, request: Request, public_crop: PublicCrop,
+    ) -> Response | None:
+        if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
+            return forbidden
+        return self._crop_species_pending_forbidden(public_crop)
+
+    @action(detail=True, methods=['get', 'put'], url_path='trade-names')
+    def trade_names(self, request: Request, pk: int | None = None) -> Response:
+        """Read or edit the variety's trade names, one per language.
+
+        Any signed-in user may edit, live and without a moderation queue,
+        whatever their trust level (docs/rfc-variety-trade-names.md, D4). PUT
+        upserts the languages it names and leaves the others untouched; a
+        blank or null value removes one. Every change lands in the history.
+        """
+        public_crop = self.get_object()
+        if request.method == 'GET':
+            return Response(self._trade_names_payload(public_crop))
+
+        if (forbidden := self._trade_name_write_forbidden(request, public_crop)) is not None:
+            return forbidden
+        serializer = PublicCropTradeNamesUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            replace_trade_names(
+                public_crop=public_crop,
+                user=request.user,
+                trade_names=serializer.validated_data['trade_names'],
+                expected=serializer.validated_data.get('expected'),
+            )
+        except TradeNameError as error:
+            return self._trade_name_error_response(error)
+        return Response(self._trade_names_payload(public_crop))
+
+    @action(detail=True, methods=['get'], url_path='trade-names/history')
+    def trade_name_history(self, request: Request, pk: int | None = None) -> Response:
+        public_crop = self.get_object()
+        events = list(public_crop.trade_name_events.select_related('created_by__public_profile'))
+        oldest_first = sorted(events, key=lambda event: (event.created_at, event.id))
+        anonymous_numbers = number_anonymous_authors(event.created_by for event in oldest_first)
+        serializer = PublicCropTradeNameEventSerializer(
+            events, many=True, context={'anonymous_numbers': anonymous_numbers},
+        )
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path=r'trade-names/history/(?P<event_id>[0-9]+)/revert',
+    )
+    def revert_trade_name(
+        self, request: Request, pk: int | None = None, event_id: str | None = None,
+    ) -> Response:
+        """Restore the value one history event replaced; any signed-in user may."""
+        public_crop = self.get_object()
+        if (forbidden := self._trade_name_write_forbidden(request, public_crop)) is not None:
+            return forbidden
+        try:
+            revert_trade_name_event(
+                public_crop=public_crop, event_id=int(event_id), user=request.user,
+            )
+        except TradeNameError as error:
+            return self._trade_name_error_response(error)
+        return Response(self._trade_names_payload(public_crop))
+
+    @action(detail=True, methods=['post'], url_path='reports')
+    def report_trade_name(self, request: Request, pk: int | None = None) -> Response:
+        """Report one language's trade name to the library moderators."""
+        public_crop = self.get_object()
+        if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
+            return forbidden
+        serializer = PublicCropTradeNameReportCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            report, created = report_trade_name(
+                public_crop=public_crop, user=request.user, **serializer.validated_data,
+            )
+        except TradeNameError as error:
+            return self._trade_name_error_response(error)
+        return Response(
+            PublicCropReportSerializer(report).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def _moderator_required_response(self, request: Request) -> Response | None:
+        if self._is_moderator(request.user):
+            return None
+        return api_error_response(
+            code='moderator_required',
+            detail='Moderator privileges are required.',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+    @action(detail=False, methods=['get'], url_path='reports')
+    def reports(self, request: Request) -> Response:
+        """Moderator queue of reports; ``?status=`` defaults to ``open``."""
+        if (forbidden := self._moderator_required_response(request)) is not None:
+            return forbidden
+        report_status = (request.query_params.get('status') or PublicCropReport.STATUS_OPEN).strip()
+        reports = (
+            PublicCropReport.objects
+            .filter(status=report_status)
+            .select_related('public_crop', 'reported_by__public_profile')
+            .prefetch_related('public_crop__trade_names')
+            .order_by('created_at', 'id')
+        )
+        page = self.paginate_queryset(reports)
+        if page is not None:
+            return self.get_paginated_response(PublicCropReportSerializer(page, many=True).data)
+        return Response(PublicCropReportSerializer(reports, many=True).data)
+
+    @action(detail=False, methods=['post'], url_path=r'reports/(?P<report_id>[0-9]+)/resolve')
+    def resolve_report(self, request: Request, report_id: str | None = None) -> Response:
+        if (forbidden := self._moderator_required_response(request)) is not None:
+            return forbidden
+        report = get_object_or_404(
+            PublicCropReport.objects.select_related('public_crop', 'reported_by__public_profile'),
+            pk=report_id,
+        )
+        serializer = PublicCropReportResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            resolve_public_crop_report(
+                report=report, user=request.user, **serializer.validated_data,
+            )
+        except TradeNameError as error:
+            return self._trade_name_error_response(error)
+        return Response(PublicCropReportSerializer(report).data)
 
     @action(detail=True, methods=['post'], url_path='import')
     def import_to_project(self, request, pk=None):

@@ -30,6 +30,8 @@ from farm.models import (
     ProjectInvitation,
     ProjectMembership,
     PublicCrop,
+    PublicCropReport,
+    PublicCropTradeNameEvent,
     SeedPackage,
     Supplier,
     Task,
@@ -61,6 +63,20 @@ def build_personal_data_export(user: User) -> dict[str, Any]:
         'public_library_contributions': _serialize_queryset(
             PublicCrop.objects.filter(created_by=user).order_by('name', 'variety', 'id')
         ),
+        'public_library_trade_name_changes': _serialize_queryset(
+            PublicCropTradeNameEvent.objects.filter(created_by=user).order_by('created_at', 'id')
+        ),
+        'public_library_reports': [
+            # Who resolved a report is the moderator's data, not the reporter's.
+            {
+                key: value
+                for key, value in _serialize_instance(report).items()
+                if key != 'resolved_by_id'
+            }
+            for report in (
+                PublicCropReport.objects.filter(reported_by=user).order_by('created_at', 'id')
+            )
+        ],
     }
 
 
