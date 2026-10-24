@@ -104,6 +104,8 @@ interface CropsPublishingWizardDialogProps {
     baseVersion: number;
     pullFields: string[];
     pushFields: string[];
+    /** Fields kept locally ("Nur lokal"). */
+    pinFields: string[];
   }) => Promise<boolean>;
 }
 
@@ -270,6 +272,7 @@ export function CropsPublishingWizardDialog({
     crop?.id,
     isSyncFlow ? linkedPublicCropId : selectedPublicCrop?.id,
     open && (isSyncFlow || (showLinkConfirmation && Boolean(selectedPublicCrop))),
+    isSyncFlow,
   );
 
   useEffect(() => {
@@ -564,6 +567,7 @@ export function CropsPublishingWizardDialog({
         baseVersion: syncPreview.preview.public_version,
         pullFields: syncSelection.pullFields,
         pushFields: syncSelection.pushFields,
+        pinFields: syncSelection.pinFields,
       });
       if (!success) {
         // The entry may have changed meanwhile: show the current differences.
@@ -668,6 +672,7 @@ export function CropsPublishingWizardDialog({
       requiresModeration={Boolean(syncPreview.preview?.requires_moderation)}
       loadError={syncPreview.loadError}
       disabled={linkConfirmSubmitting || syncSubmitting || publishing}
+      allowLocal={isSyncFlow}
     />
   );
 

@@ -8,22 +8,30 @@
  * ("Ablehnen", which changes nothing locally and retires the "Kultur
  * aktualisieren" button until the public entry changes again), and closing
  * without deciding ("Abbrechen", which stores nothing at all).
+ *
+ * Locally pinned fields are never part of the update. When the library changed
+ * one of them in this version, a separate block names it with the library's old
+ * and new value and lets the user release the pin and take the new value too.
  */
 
+import { useState } from 'react';
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Typography,
 } from '@mui/material';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
-import type { Crop, PublicCropUpdateFieldChange } from '../api/types';
+import type { Crop, PublicCropPinnedFieldChange, PublicCropUpdateFieldChange } from '../api/types';
 import {
   formatPublicCropValue,
   getPublicCropComparisonFieldLabel,
@@ -63,9 +71,26 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
   } = controller;
 
   const changes: PublicCropUpdateFieldChange[] = update?.changes ?? [];
+  const pinnedChanges: PublicCropPinnedFieldChange[] = update?.pinned_changes ?? [];
   const varietyChange = changes.find((change) => change.field === 'variety');
   const otherChanges = changes.filter((change) => change.field !== 'variety');
   const isBusy = isApplying || isRejecting;
+  // Pins the user chose to release, per loaded diff: a reopened dialog starts
+  // with every pin kept again.
+  const [released, setReleased] = useState<{ update: typeof update; fields: string[] }>({ update: null, fields: [] });
+  const releasedFields = released.update === update ? released.fields : [];
+  const toggleReleased = (field: string, checked: boolean) => {
+    const next = checked
+      ? [...releasedFields, field]
+      : releasedFields.filter((releasedField) => releasedField !== field);
+    setReleased({ update, fields: next });
+  };
+  const keptPinnedCount = pinnedChanges.length - releasedFields.length;
+  const applyCount = changes.length + releasedFields.length;
+  const summaryParts = [
+    applyCount ? t('library.publicUpdate.summaryApply', { count: applyCount }) : null,
+    keptPinnedCount ? t('library.publicUpdate.summaryPinned', { count: keptPinnedCount }) : null,
+  ].filter((part): part is string => part !== null);
 
   return (
     <Dialog open={update !== null} onClose={closeDiff} maxWidth="sm" fullWidth>
@@ -124,6 +149,68 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
           </Box>
         ) : null}
 
+        {pinnedChanges.length ? (
+          <Box
+            data-testid="crop-public-update-pinned"
+            sx={{ mt: 2, border: 1, borderColor: 'libraryLocal.main', borderRadius: 1, px: 2, py: 1.5 }}
+          >
+            <Typography
+              variant="subtitle2"
+              component="h3"
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'libraryLocal.main', mb: 1 }}
+            >
+              <PushPinIcon fontSize="small" aria-hidden />
+              {t('library.publicUpdate.pinnedTitle')}
+            </Typography>
+            {pinnedChanges.map((change) => {
+              const newValue = formatPublicCropValue(change.field, change.public_value, t);
+              return (
+                <Box key={change.field} data-testid={`crop-public-update-pinned-${change.field}`} sx={{ '& + &': { mt: 1.5 } }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {getPublicCropComparisonFieldLabel(change.field, t)}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t('library.publicUpdate.pinnedOwnValue', {
+                      value: formatPublicCropValue(change.field, change.local_value, t),
+                    })}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('library.publicUpdate.pinnedLibraryChange', {
+                      from: formatPublicCropValue(change.field, change.previous_public_value, t),
+                      to: newValue,
+                    })}
+                  </Typography>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        size="small"
+                        checked={releasedFields.includes(change.field)}
+                        disabled={isBusy}
+                        onChange={(event) => toggleReleased(change.field, event.target.checked)}
+                      />
+                    )}
+                    label={t('library.publicUpdate.pinnedRelease', { value: newValue })}
+                  />
+                </Box>
+              );
+            })}
+          </Box>
+        ) : null}
+
+        {pinnedChanges.length && summaryParts.length ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 2 }}
+            data-testid="crop-public-update-summary"
+            aria-live="polite"
+          >
+            {summaryParts.length === 2
+              ? t('library.publicUpdate.summaryBoth', { apply: summaryParts[0], pinned: summaryParts[1] })
+              : t('library.publicUpdate.summarySingle', { part: summaryParts[0] })}
+          </Typography>
+        ) : null}
+
         {update?.has_local_changes ? (
           <Alert severity="warning" sx={{ mt: 2 }}>
             {t('library.importConflictDialog.updateWarning')}
@@ -158,7 +245,7 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
           <Button
             variant="contained"
             color={update?.has_local_changes ? 'error' : 'primary'}
-            onClick={applyUpdate}
+            onClick={() => applyUpdate(releasedFields)}
             disabled={isBusy}
             startIcon={isApplying ? <CircularProgress size={16} color="inherit" /> : undefined}
           >

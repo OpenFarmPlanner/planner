@@ -8,6 +8,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import SyncDisabledOutlinedIcon from '@mui/icons-material/SyncDisabledOutlined';
 import LinkOffOutlinedIcon from '@mui/icons-material/LinkOffOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import type { Crop } from '../api/types';
@@ -18,6 +19,7 @@ import {
   type CropLibraryTrigger,
 } from './cropLibraryAction';
 import { CROP_LIBRARY_STATUS_ICON_SLOT } from './cropHierarchyRowSx';
+import { getPinnedFieldLabels } from './libraryFieldPin';
 
 const CIRCLE_SIZE = 18;
 
@@ -89,9 +91,36 @@ export function CropLibraryStatusIcon({ crop, onActivate }: CropLibraryStatusIco
   const label = t(`library.${action.labelKey}`);
   const tooltip = action.tooltipKey ? t(`library.${action.tooltipKey}`) : label;
   const Glyph = GLYPHS[visual];
+  const pinnedCount = crop.source_public_crop ? getPinnedFieldLabels(crop, t).length : 0;
+  const pinnedLabel = pinnedCount > 0 ? t('library.pin.listIconLabel', { count: pinnedCount }) : '';
+  // The outer control's name hides nested labels, so it carries the pin too.
+  const accessibleLabel = pinnedLabel ? `${tooltip} ${pinnedLabel}` : tooltip;
   const circle = (
-    <Box component="span" sx={circleSx(visual)}>
-      {Glyph ? <Glyph sx={{ fontSize: 12 }} /> : null}
+    <Box component="span" sx={{ position: 'relative', display: 'inline-flex' }}>
+      <Box component="span" sx={circleSx(visual)}>
+        {Glyph ? <Glyph sx={{ fontSize: 12 }} /> : null}
+      </Box>
+      {pinnedCount > 0 ? (
+        // A corner marker inside the fixed-width slot, so pinned rows keep the
+        // list's columns aligned.
+        <Box
+          component="span"
+          role="img"
+          aria-label={pinnedLabel}
+          data-testid="crop-list-library-pinned"
+          sx={{
+            position: 'absolute',
+            right: (theme) => theme.spacing(-0.75),
+            bottom: (theme) => theme.spacing(-0.5),
+            display: 'inline-flex',
+            color: 'libraryLocal.main',
+            bgcolor: 'background.paper',
+            borderRadius: '50%',
+          }}
+        >
+          <PushPinIcon sx={{ fontSize: '0.625rem' }} />
+        </Box>
+      ) : null}
     </Box>
   );
   const dataProps = {
@@ -110,7 +139,7 @@ export function CropLibraryStatusIcon({ crop, onActivate }: CropLibraryStatusIco
         <Box
           component="span"
           role="img"
-          aria-label={tooltip}
+          aria-label={accessibleLabel}
           aria-disabled={action.disabled || undefined}
           tabIndex={action.disabled ? 0 : undefined}
           onClick={(event) => event.stopPropagation()}
@@ -139,7 +168,7 @@ export function CropLibraryStatusIcon({ crop, onActivate }: CropLibraryStatusIco
     <AppTooltip title={tooltip}>
       <IconButton
         size="small"
-        aria-label={tooltip}
+        aria-label={accessibleLabel}
         {...dataProps}
         // Keeps focus on the row instead of moving it to the icon on click,
         // like the row's chevron.

@@ -31,7 +31,11 @@ export interface PublicCropUpdateController {
   isRejecting: boolean;
   openDiff: () => void;
   closeDiff: () => void;
-  applyUpdate: () => void;
+  /**
+   * Takes the update over. `unpinFields` releases those locally pinned fields
+   * so they take the new library value too; other pins keep the local value.
+   */
+  applyUpdate: (unpinFields?: string[]) => void;
   rejectUpdate: () => void;
 }
 
@@ -78,13 +82,13 @@ export function usePublicCropUpdate(
     setUpdate(null);
   }, [isApplying, isRejecting]);
 
-  const applyUpdate = useCallback((): void => {
+  const applyUpdate = useCallback((unpinFields: string[] = []): void => {
     const publicCropId = update?.public_crop_id;
     if (!publicCropId) {
       return;
     }
     setIsApplying(true);
-    void publicCropAPI.importToProject(publicCropId, 'update')
+    void publicCropAPI.importToProject(publicCropId, 'update', unpinFields)
       .then(() => {
         showGlobalSnackbar({
           message: t('library.publicUpdate.applied', {

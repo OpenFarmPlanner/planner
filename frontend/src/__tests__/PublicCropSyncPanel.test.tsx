@@ -65,14 +65,16 @@ const CHANGES: PublicCropSyncFieldChange[] = [
 function Harness({
   changes = CHANGES,
   requiresModeration = false,
-}: { changes?: PublicCropSyncFieldChange[] | null; requiresModeration?: boolean }) {
-  const [choices, setChoices] = useState(() => buildDefaultSyncChoices(changes ?? []));
+  allowLocal = false,
+}: { changes?: PublicCropSyncFieldChange[] | null; requiresModeration?: boolean; allowLocal?: boolean }) {
+  const [choices, setChoices] = useState(() => buildDefaultSyncChoices(changes ?? [], { allowLocal }));
   return (
     <PublicCropSyncPanel
       changes={changes}
       choices={choices}
       onChoicesChange={setChoices}
       requiresModeration={requiresModeration}
+      allowLocal={allowLocal}
     />
   );
 }
@@ -216,5 +218,66 @@ describe('PublicCropSyncPanel', () => {
 
     fireEvent.click(within(row).getByTestId('public-crop-sync-toggle-notes'));
     expect(within(row).getByTestId('public-crop-sync-toggle-notes')).toHaveTextContent('Ganzen Text anzeigen');
+  });
+
+  describe('with "Nur lokal"', () => {
+    const PINNABLE_CHANGES: PublicCropSyncFieldChange[] = [
+      { field: 'growth_duration_days', local_value: 60, public_value: 50, pushable: true, pinnable: true },
+      {
+        field: 'harvest_duration_days', local_value: 20, public_value: 25, pushable: true, pinned: true, pinnable: true,
+      },
+      { field: 'notes', local_value: '', public_value: 'Text', pushable: true, pinnable: false },
+    ];
+
+    it('offers three choices with direction headings and keeps a pinned field on "Nur lokal"', () => {
+      render(<Harness changes={PINNABLE_CHANGES} allowLocal />);
+
+      expect(screen.getByTestId('public-crop-sync-heading-library')).toHaveTextContent('in meine Kultur übernehmen');
+      expect(screen.getByTestId('public-crop-sync-heading-mine')).toHaveTextContent('in der Bibliothek teilen');
+      expect(screen.getByTestId('public-crop-sync-heading-local')).toHaveTextContent('behalten, nicht teilen');
+      const pinnedRow = screen.getByTestId('public-crop-sync-row-harvest_duration_days');
+      expect(within(pinnedRow).getByRole('radio', { name: 'Nur lokal behalten' })).toBeChecked();
+      expect(within(pinnedRow).getByTestId('public-crop-sync-pinned-hint-harvest_duration_days'))
+        .toHaveTextContent('bisher lokal fixiert');
+      expect(screen.getByTestId('public-crop-sync-local-info')).toHaveTextContent(
+        'Lokal fixierte Werte gelten nur für deinen Betrieb',
+      );
+      expect(summary()).toHaveTextContent(
+        '2 Werte werden in deine Kultur übernommen, 1 Wert bleibt nur lokal.',
+      );
+    });
+
+    it('disables "Nur lokal" for a field without a local value', () => {
+      render(<Harness changes={PINNABLE_CHANGES} allowLocal />);
+
+      const row = screen.getByTestId('public-crop-sync-row-notes');
+      expect(within(row).getByRole('radio', { name: 'Nur lokal behalten' })).toBeDisabled();
+    });
+
+    it('sets every row at once with the bulk actions and counts all three parts', () => {
+      render(<Harness changes={PINNABLE_CHANGES} allowLocal />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle nur lokal' }));
+      expect(summary()).toHaveTextContent('1 Wert wird in deine Kultur übernommen, 2 Werte bleiben nur lokal.');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle teilen' }));
+      expect(summary()).toHaveTextContent('3 Werte werden in der Kulturbibliothek aktualisiert.');
+
+      const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
+      fireEvent.click(within(row).getByRole('radio', { name: 'Nur lokal behalten' }));
+      fireEvent.click(within(screen.getByTestId('public-crop-sync-row-notes'))
+        .getByRole('radio', { name: 'Aus Bibliothek übernehmen' }));
+      expect(summary()).toHaveTextContent(
+        '1 Wert wird in deine Kultur übernommen, 1 Wert wird in der Kulturbibliothek aktualisiert, 1 Wert bleibt nur lokal.',
+      );
+    });
+
+    it('keeps the two-option layout without "Nur lokal" (link confirmation)', () => {
+      render(<Harness changes={PINNABLE_CHANGES} />);
+
+      expect(screen.queryByRole('radio', { name: 'Nur lokal behalten' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('public-crop-sync-local-info')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('public-crop-sync-pinned-hint-harvest_duration_days')).not.toBeInTheDocument();
+    });
   });
 });

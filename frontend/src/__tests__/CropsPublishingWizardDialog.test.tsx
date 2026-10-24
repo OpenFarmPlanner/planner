@@ -900,6 +900,36 @@ describe('CropsPublishingWizardDialog', () => {
       });
     });
 
+    it('keeps an already pinned field locally and sends it as a pin', async () => {
+      publicSyncPreviewMock.mockResolvedValue({
+        data: {
+          public_crop_id: 55,
+          public_version: 6,
+          requires_moderation: false,
+          changes: [
+            { field: 'thousand_kernel_weight_g', local_value: 472, public_value: 400, pushable: true, pinnable: true },
+            {
+              field: 'harvest_duration_days', local_value: 60, public_value: 45, pushable: true,
+              pinned: true, pinnable: true,
+            },
+          ],
+        },
+      });
+      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
+
+      expect(await screen.findByText('bisher lokal fixiert')).toBeInTheDocument();
+      const submit = screen.getByRole('button', { name: 'Abgleichen' });
+      await waitFor(() => expect(submit).toBeEnabled());
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
+        pullFields: ['thousand_kernel_weight_g'],
+        pushFields: [],
+        pinFields: ['harvest_duration_days'],
+      })));
+    });
+
     it('offers the field-by-field sync instead of pushing every difference', async () => {
       const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
       renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
@@ -919,6 +949,7 @@ describe('CropsPublishingWizardDialog', () => {
         baseVersion: 6,
         pullFields: ['thousand_kernel_weight_g', 'harvest_duration_days'],
         pushFields: [],
+        pinFields: [],
       }));
       expect(publishPreviewMock).not.toHaveBeenCalled();
     });
@@ -927,7 +958,7 @@ describe('CropsPublishingWizardDialog', () => {
       const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
       renderWizard({ ...CROP, variety: '', source_public_crop: 55 }, { onSyncPublicCrop });
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Alle meine Werte' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Alle teilen' }));
       const submit = screen.getByRole('button', { name: 'Abgleichen' });
       await waitFor(() => expect(submit).toBeEnabled());
       fireEvent.click(submit);

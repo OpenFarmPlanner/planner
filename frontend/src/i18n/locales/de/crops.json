@@ -937,7 +937,17 @@
         "update_pending": "Für diese Kultur steht eine Änderung aus der Bibliothek aus. Bitte entscheide zuerst über die Änderungen, bevor du die Kulturbibliothek aktualisierst.",
         "update_rejected": "Du hast eine neuere Version abgelehnt. Übernimm sie über das Update-Symbol bei der Sorte, um wieder veröffentlichen zu können.",
         "no_local_changes": "Deine lokale Kopie entspricht der aktuellen öffentlichen Version. Bearbeite sie zuerst lokal, um eine Aktualisierung zu veröffentlichen."
-      }
+      },
+      "pinnedTitle": "Lokal fixiert – bleibt unverändert",
+      "pinnedOwnValue": "Dein Wert: {{value}}",
+      "pinnedLibraryChange": "Bibliothek: {{from}} → {{to}}",
+      "pinnedRelease": "Fixierung lösen und {{value}} übernehmen",
+      "summaryApply_one": "{{count}} Wert wird in deine Kultur übernommen",
+      "summaryApply_other": "{{count}} Werte werden in deine Kultur übernommen",
+      "summaryPinned_one": "{{count}} fixierter Wert bleibt erhalten",
+      "summaryPinned_other": "{{count}} fixierte Werte bleiben erhalten",
+      "summaryBoth": "{{apply}}, {{pinned}}.",
+      "summarySingle": "{{part}}."
     },
     "publishButton": "Veröffentlichen",
     "publishing": "Veröffentliche…",
@@ -1376,7 +1386,22 @@
       "linkPushFailed": "„{{name}}“ wurde verknüpft, aber deine Werte konnten nicht in die Kulturbibliothek übernommen werden. Über „Bibliothek aktualisieren“ kannst du es erneut versuchen.",
       "staleError": "Der öffentliche Eintrag wurde inzwischen geändert. Bitte prüfe die Abweichungen erneut.",
       "proposalLimitError": "Es warten bereits zu viele deiner Beiträge auf Freigabe. Bitte versuche es später erneut.",
-      "error": "Der Abgleich mit der Kulturbibliothek ist fehlgeschlagen. Bitte versuche es erneut."
+      "error": "Der Abgleich mit der Kulturbibliothek ist fehlgeschlagen. Bitte versuche es erneut.",
+      "chooseLocal": "Nur lokal behalten",
+      "columnLibraryDescription": "in meine Kultur übernehmen",
+      "columnMineDescription": "in der Bibliothek teilen",
+      "columnLocal": "Nur lokal",
+      "columnLocalDescription": "behalten, nicht teilen",
+      "allShare": "Alle teilen",
+      "allLocal": "Alle nur lokal",
+      "previouslyPinned": "bisher lokal fixiert",
+      "notPinnableIdentity": "Name und Sorte gehören zum öffentlichen Eintrag und können nicht lokal fixiert werden.",
+      "notPinnableEmpty": "Deine Kultur hat hier keinen eigenen Wert, den sie lokal behalten könnte.",
+      "notPinnableSpeciesInvariant": "Dieser Wert gilt für die ganze Kulturart und kann nur bei der allgemeinen Kultur lokal fixiert werden.",
+      "summaryLocal_one": "{{count}} Wert bleibt nur lokal",
+      "summaryLocal_other": "{{count}} Werte bleiben nur lokal",
+      "summaryThree": "{{first}}, {{second}}, {{third}}.",
+      "localInfo": "Lokal fixierte Werte gelten nur für deinen Betrieb, etwa weil Klima oder Höhenlage abweichen. Sie werden nicht geteilt und bei Updates der Kulturbibliothek nicht überschrieben."
     },
     "unlink": {
       "menuItem": "Verknüpfung aufheben",
@@ -1402,7 +1427,28 @@
       "speciesRequired": "Dieser Kultur ist keine offizielle Kulturart zugeordnet, die veröffentlicht werden kann. Bitte wähle eine aus.",
       "checkError": "Die Veröffentlichung konnte nicht geprüft werden. Bitte versuche es erneut."
     },
-    "anonymousAuthorNumbered": "Anonym {{number}}"
+    "anonymousAuthorNumbered": "Anonym {{number}}",
+    "pin": {
+      "pin": "Lokal fixieren",
+      "pinTooltip": "Lokal fixieren: Der Wert gilt nur für deinen Betrieb und wird nicht mehr mit der Kulturbibliothek abgeglichen.",
+      "unpin": "Fixierung lösen",
+      "unpinTooltip": "Fixierung lösen: Feld wird wieder mit der Kulturbibliothek abgeglichen.",
+      "pinDisabledEmpty": "Nur ein Feld mit Wert kann lokal fixiert werden.",
+      "helper": "Lokal fixiert · Bibliothek: {{value}}",
+      "helperPending": "Lokal fixiert · wird beim Speichern übernommen",
+      "chip_one": "{{count}} Feld lokal fixiert",
+      "chip_other": "{{count}} Felder lokal fixiert",
+      "chipTooltip": "Diese Werte gelten nur für deinen Betrieb und werden nicht mit der Kulturbibliothek abgeglichen: {{fields}}",
+      "statusTooltip": "Lokal fixiert: {{fields}}.",
+      "listIconLabel_one": "{{count}} Feld lokal fixiert",
+      "listIconLabel_other": "{{count}} Felder lokal fixiert",
+      "errors": {
+        "library_pin_requires_link": "Nur eine mit der Kulturbibliothek verknüpfte Kultur kann Werte lokal fixieren.",
+        "library_pin_field_not_allowed": "Dieser Wert kann bei dieser Kultur nicht lokal fixiert werden.",
+        "library_pin_field_empty": "Ein Feld ohne Wert kann nicht lokal fixiert werden.",
+        "library_unpin_field_not_pinned": "Dieser Wert ist nicht lokal fixiert. Bitte lade die Aktualisierung neu."
+      }
+    }
   },
   "commands": {
     "focusSearch": "Kultursuche fokussieren (/)",

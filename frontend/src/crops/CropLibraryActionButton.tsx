@@ -10,6 +10,7 @@ import { AppTooltip } from '../components/AppTooltip';
 import type { Crop } from '../api/types';
 import type { PublicCropUpdateController } from './usePublicCropUpdate';
 import { resolveCropLibraryAction, type CropLibraryActionKind } from './cropLibraryAction';
+import { getPinnedFieldLabels } from './libraryFieldPin';
 
 function chipIcon(kind: CropLibraryActionKind) {
   if (kind === 'updateRejected') return <SyncDisabledOutlinedIcon fontSize="small" />;
@@ -44,7 +45,12 @@ export function CropLibraryActionButton({
   const { t } = useTranslation('crops');
   const action = resolveCropLibraryAction(crop, controller);
   const label = t(`library.${action.labelKey}`);
-  const tooltip = action.tooltipKey ? t(`library.${action.tooltipKey}`) : '';
+  const baseTooltip = action.tooltipKey ? t(`library.${action.tooltipKey}`) : '';
+  const pinnedLabels = getPinnedFieldLabels(crop, t);
+  // "Aktuell" with pins: the pinned differences are deliberate, so say which.
+  const tooltip = action.kind === 'upToDate' && pinnedLabels.length > 0
+    ? `${baseTooltip} ${t('library.pin.statusTooltip', { fields: pinnedLabels.join(', ') })}`
+    : baseTooltip;
 
   const handleClick = () => {
     if (action.trigger === 'publish') {

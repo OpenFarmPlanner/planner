@@ -937,7 +937,17 @@
         "update_pending": "There is a pending library change for this crop. Decide on the changes before updating the crop library.",
         "update_rejected": "You declined a newer version from the library. Edit the public crop directly first to align the versions.",
         "no_local_changes": "Your local copy matches the current public version. Edit it locally first to publish an update."
-      }
+      },
+      "pinnedTitle": "Pinned locally – stays unchanged",
+      "pinnedOwnValue": "Your value: {{value}}",
+      "pinnedLibraryChange": "Library: {{from}} → {{to}}",
+      "pinnedRelease": "Unpin and take {{value}}",
+      "summaryApply_one": "{{count}} value will be taken into your crop",
+      "summaryApply_other": "{{count}} values will be taken into your crop",
+      "summaryPinned_one": "{{count}} pinned value is kept",
+      "summaryPinned_other": "{{count}} pinned values are kept",
+      "summaryBoth": "{{apply}}, {{pinned}}.",
+      "summarySingle": "{{part}}."
     },
     "publishButton": "Publish",
     "publishing": "Publishing…",
@@ -1376,7 +1386,22 @@
       "linkPushFailed": "\"{{name}}\" was linked, but your values could not be applied to the crop library. You can try again via \"Update library\".",
       "staleError": "The public entry has changed in the meantime. Please review the differences again.",
       "proposalLimitError": "Too many of your contributions are already awaiting approval. Please try again later.",
-      "error": "Syncing with the crop library failed. Please try again."
+      "error": "Syncing with the crop library failed. Please try again.",
+      "chooseLocal": "Keep locally only",
+      "columnLibraryDescription": "take into my crop",
+      "columnMineDescription": "share in the library",
+      "columnLocal": "Local only",
+      "columnLocalDescription": "keep, do not share",
+      "allShare": "Share all",
+      "allLocal": "All local only",
+      "previouslyPinned": "pinned locally so far",
+      "notPinnableIdentity": "Name and variety belong to the public entry and cannot be pinned locally.",
+      "notPinnableEmpty": "Your crop has no value of its own here that it could keep locally.",
+      "notPinnableSpeciesInvariant": "This value applies to the whole crop species and can only be pinned locally on the general crop.",
+      "summaryLocal_one": "{{count}} value stays local only",
+      "summaryLocal_other": "{{count}} values stay local only",
+      "summaryThree": "{{first}}, {{second}}, {{third}}.",
+      "localInfo": "Values pinned locally apply only to your farm, for example because the climate or altitude differs. They are not shared and are not overwritten by crop library updates."
     },
     "unlink": {
       "menuItem": "Remove link",
@@ -1402,7 +1427,28 @@
       "speciesRequired": "This crop has no official crop species that can be published. Please select one.",
       "checkError": "Publishing could not be checked. Please try again."
     },
-    "anonymousAuthorNumbered": "Anonymous {{number}}"
+    "anonymousAuthorNumbered": "Anonymous {{number}}",
+    "pin": {
+      "pin": "Pin locally",
+      "pinTooltip": "Pin locally: the value applies only to your farm and is no longer synced with the crop library.",
+      "unpin": "Unpin",
+      "unpinTooltip": "Unpin: the field is synced with the crop library again.",
+      "pinDisabledEmpty": "Only a field with a value can be pinned locally.",
+      "helper": "Pinned locally · Library: {{value}}",
+      "helperPending": "Pinned locally · applied when you save",
+      "chip_one": "{{count}} field pinned locally",
+      "chip_other": "{{count}} fields pinned locally",
+      "chipTooltip": "These values apply only to your farm and are not synced with the crop library: {{fields}}",
+      "statusTooltip": "Pinned locally: {{fields}}.",
+      "listIconLabel_one": "{{count}} field pinned locally",
+      "listIconLabel_other": "{{count}} fields pinned locally",
+      "errors": {
+        "library_pin_requires_link": "Only a crop linked to the crop library can pin values locally.",
+        "library_pin_field_not_allowed": "This value cannot be pinned locally on this crop.",
+        "library_pin_field_empty": "A field without a value cannot be pinned locally.",
+        "library_unpin_field_not_pinned": "This value is not pinned locally. Please reload the update."
+      }
+    }
   },
   "commands": {
     "focusSearch": "Focus crop search (/)",

@@ -951,7 +951,19 @@
         "update_pending": "Une modification de la bibliothèque est en attente pour cette culture. Décidez des modifications avant de mettre à jour la bibliothèque de cultures.",
         "update_rejected": "Vous avez refusé une version plus récente de la bibliothèque. Modifiez d'abord directement la culture publique pour aligner les versions.",
         "no_local_changes": "Votre copie locale correspond à la version publique actuelle. Modifiez-la d'abord localement pour publier une mise à jour."
-      }
+      },
+      "pinnedTitle": "Épinglé localement – reste inchangé",
+      "pinnedOwnValue": "Votre valeur : {{value}}",
+      "pinnedLibraryChange": "Bibliothèque : {{from}} → {{to}}",
+      "pinnedRelease": "Désépingler et reprendre {{value}}",
+      "summaryApply_one": "{{count}} valeur sera reprise dans votre culture",
+      "summaryApply_other": "{{count}} valeurs seront reprises dans votre culture",
+      "summaryApply_many": "{{count}} valeurs seront reprises dans votre culture",
+      "summaryPinned_one": "{{count}} valeur épinglée est conservée",
+      "summaryPinned_other": "{{count}} valeurs épinglées sont conservées",
+      "summaryPinned_many": "{{count}} valeurs épinglées sont conservées",
+      "summaryBoth": "{{apply}}, {{pinned}}.",
+      "summarySingle": "{{part}}."
     },
     "publishButton": "Publier",
     "publishing": "Publication…",
@@ -1398,7 +1410,23 @@
       "linkPushFailed": "« {{name}} » a été liée, mais vos valeurs n'ont pas pu être reprises dans la bibliothèque de cultures. Vous pouvez réessayer via « Mettre à jour la bibliothèque ».",
       "staleError": "La fiche publique a été modifiée entre-temps. Veuillez examiner à nouveau les différences.",
       "proposalLimitError": "Trop de vos contributions attendent déjà d'être approuvées. Veuillez réessayer plus tard.",
-      "error": "La synchronisation avec la bibliothèque de cultures a échoué. Veuillez réessayer."
+      "error": "La synchronisation avec la bibliothèque de cultures a échoué. Veuillez réessayer.",
+      "chooseLocal": "Garder uniquement en local",
+      "columnLibraryDescription": "reprendre dans ma culture",
+      "columnMineDescription": "partager dans la bibliothèque",
+      "columnLocal": "Local uniquement",
+      "columnLocalDescription": "garder, ne pas partager",
+      "allShare": "Tout partager",
+      "allLocal": "Tout en local uniquement",
+      "previouslyPinned": "épinglé localement jusqu’ici",
+      "notPinnableIdentity": "Le nom et la variété appartiennent à la fiche publique et ne peuvent pas être épinglés localement.",
+      "notPinnableEmpty": "Votre culture n’a pas de valeur propre ici qu’elle pourrait garder en local.",
+      "notPinnableSpeciesInvariant": "Cette valeur s’applique à toute l’espèce cultivée et ne peut être épinglée localement que sur la culture générale.",
+      "summaryLocal_one": "{{count}} valeur reste uniquement locale",
+      "summaryLocal_other": "{{count}} valeurs restent uniquement locales",
+      "summaryLocal_many": "{{count}} valeurs restent uniquement locales",
+      "summaryThree": "{{first}}, {{second}}, {{third}}.",
+      "localInfo": "Les valeurs épinglées localement ne s’appliquent qu’à votre exploitation, par exemple parce que le climat ou l’altitude diffèrent. Elles ne sont pas partagées et ne sont pas écrasées par les mises à jour de la bibliothèque de cultures."
     },
     "unlink": {
       "menuItem": "Supprimer le lien",
@@ -1424,7 +1452,30 @@
       "speciesRequired": "Cette culture n'a pas d'espèce cultivée officielle pouvant être publiée. Veuillez en choisir une.",
       "checkError": "La publication n'a pas pu être vérifiée. Veuillez réessayer."
     },
-    "anonymousAuthorNumbered": "Anonyme {{number}}"
+    "anonymousAuthorNumbered": "Anonyme {{number}}",
+    "pin": {
+      "pin": "Épingler localement",
+      "pinTooltip": "Épingler localement : la valeur ne s’applique qu’à votre exploitation et n’est plus synchronisée avec la bibliothèque de cultures.",
+      "unpin": "Désépingler",
+      "unpinTooltip": "Désépingler : le champ est de nouveau synchronisé avec la bibliothèque de cultures.",
+      "pinDisabledEmpty": "Seul un champ renseigné peut être épinglé localement.",
+      "helper": "Épinglé localement · Bibliothèque : {{value}}",
+      "helperPending": "Épinglé localement · appliqué à l’enregistrement",
+      "chip_one": "{{count}} champ épinglé localement",
+      "chip_other": "{{count}} champs épinglés localement",
+      "chip_many": "{{count}} champs épinglés localement",
+      "chipTooltip": "Ces valeurs ne s’appliquent qu’à votre exploitation et ne sont pas synchronisées avec la bibliothèque de cultures : {{fields}}",
+      "statusTooltip": "Épinglé localement : {{fields}}.",
+      "listIconLabel_one": "{{count}} champ épinglé localement",
+      "listIconLabel_other": "{{count}} champs épinglés localement",
+      "listIconLabel_many": "{{count}} champs épinglés localement",
+      "errors": {
+        "library_pin_requires_link": "Seule une culture liée à la bibliothèque de cultures peut épingler des valeurs localement.",
+        "library_pin_field_not_allowed": "Cette valeur ne peut pas être épinglée localement sur cette culture.",
+        "library_pin_field_empty": "Un champ sans valeur ne peut pas être épinglé localement.",
+        "library_unpin_field_not_pinned": "Cette valeur n’est pas épinglée localement. Veuillez recharger la mise à jour."
+      }
+    }
   },
   "commands": {
     "focusSearch": "Aller à la recherche de cultures (/)",
