@@ -83,6 +83,9 @@ exactly one section below; don't restate rules here.
 - Prefer extending existing test files before creating new test structures.
 - Follow existing test patterns used in the repository.
 - Run targeted tests when appropriate unless the user explicitly says not to run tests.
+- Locally, run only the tests relevant to the change (plus lint and typecheck
+  for the touched code); leave the full suite to CI instead of running it
+  before every push.
 - Typical commands:
   - Backend: `cd backend && pdm run test` (plus `pdm run makemigrations` / `pdm run migrate` if models changed).
   - Frontend: `cd frontend && npm run lint && npm run test` (add `npm run test:e2e` for user-facing flows with existing E2E coverage).
