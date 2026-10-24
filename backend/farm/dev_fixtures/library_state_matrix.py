@@ -25,6 +25,7 @@ from farm.models import (
     PublicCrop,
     PublicCropChangeProposal,
 )
+from farm.services.public_crops import ensure_public_crop_revision
 
 User = get_user_model()
 
@@ -92,9 +93,9 @@ def _expected(
 # Cell key -> (owner of the entry, entry status, entry version, crop state, expectation).
 # owner: 'self' (the crop's user), 'other' (the publisher account) or None (no link).
 # state: 'aligned', 'local_changes', 'baseline_withheld', 'library_ahead',
-# 'library_ahead_rejected', 'proposal', and the pinned states 'pinned_aligned',
-# 'pinned_library_ahead', 'pinned_library_pinned_only', 'pinned_local_changes',
-# 'pinned_sorte'.
+# 'library_ahead_rejected', 'library_ahead_local_changes', 'proposal', and the
+# pinned states 'pinned_aligned', 'pinned_library_ahead', 'pinned_library_pinned_only',
+# 'pinned_local_changes', 'pinned_sorte'.
 CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     'unlinked': (None, '', '', _expected(status=None, blocked=None, can_unlink=False)),
     'own_published_aligned': (
@@ -131,6 +132,14 @@ CELL_SPECS: dict[str, tuple[str | None, str, str, dict[str, Any]]] = {
     ),
     'foreign_library_ahead': (
         'other', 'published', 'library_ahead',
+        _expected(status='published', blocked=None, can_unlink=True, update_available=True),
+    ),
+    # A local edit of one field while the library moved on in another: the
+    # pull wins over the push, so its dialog offers "Nur lokal behalten" for
+    # the local edit. The entry keeps its baseline revision so the two
+    # differences can be told apart.
+    'foreign_library_ahead_local_changes': (
+        'other', 'published', 'library_ahead_local_changes',
         _expected(status='published', blocked=None, can_unlink=True, update_available=True),
     ),
     'foreign_library_ahead_rejected': (
@@ -260,6 +269,12 @@ def _apply_state(crop: Crop, entry: PublicCrop, state: str, owner: User, user: U
         updates.update(growth_duration_days=BASE_DURATION_DAYS + 7, is_modified_from_source=True)
     if state == 'baseline_withheld':
         updates['source_public_version'] = None
+    if state == 'library_ahead_local_changes':
+        ensure_public_crop_revision(entry)
+        PublicCrop.objects.filter(pk=entry.pk).update(
+            version=2, harvest_duration_days=LIBRARY_HARVEST_DAYS,
+        )
+        updates.update(growth_duration_days=BASE_DURATION_DAYS + 7, is_modified_from_source=True)
     if state in {'library_ahead', 'library_ahead_rejected'}:
         PublicCrop.objects.filter(pk=entry.pk).update(
             version=2, growth_duration_days=LIBRARY_DURATION_DAYS,

@@ -663,13 +663,22 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return blocked
         request.active_project = get_active_project_or_400(request)
         mode = request.data.get('mode') or 'auto'
-        unpin_fields = request.data.get('unpin_fields', [])
-        if not isinstance(unpin_fields, list) or not all(
-            isinstance(item, str) for item in unpin_fields
-        ):
+        field_lists: dict[str, list[str]] = {}
+        for key in ('unpin_fields', 'pin_fields'):
+            value = request.data.get(key, [])
+            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                return api_error_response(
+                    code=f'invalid_{key}',
+                    detail=f'{key} must be a list of field names.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            field_lists[key] = value
+        base_version = request.data.get('base_version')
+        is_int = isinstance(base_version, int) and not isinstance(base_version, bool)
+        if base_version is not None and not is_int:
             return api_error_response(
-                code='invalid_unpin_fields',
-                detail='unpin_fields must be a list of field names.',
+                code='invalid_base_version',
+                detail='base_version must be an integer.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -677,8 +686,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 public_crop=public_crop,
                 project=request.active_project,
                 mode=mode,
-                unpin_fields=unpin_fields,
+                unpin_fields=field_lists['unpin_fields'],
+                pin_fields=field_lists['pin_fields'],
+                base_version=base_version,
             )
+        except PublicCropEditConflictError as error:
+            return self._edit_conflict_response(error)
         except LibraryPinnedFieldsError as error:
             return api_error_response(
                 code=error.code,

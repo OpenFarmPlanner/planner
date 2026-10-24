@@ -2198,7 +2198,10 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(response.data['has_local_changes'])
         self.assertEqual(
             [change for change in response.data['changes'] if change['field'] == 'variety'],
-            [{'field': 'variety', 'local_value': 'Nantes', 'public_value': 'Nantes II'}],
+            [{
+                'field': 'variety', 'local_value': 'Nantes', 'public_value': 'Nantes II',
+                'locally_changed': False, 'can_keep_local': False,
+            }],
         )
         imported.refresh_from_db()
         self.assertEqual(imported.variety, 'Nantes', 'the preview must not apply anything')
@@ -2316,7 +2319,10 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertTrue(response.data['is_rejected'])
         self.assertEqual(
             [change for change in response.data['changes'] if change['field'] == 'variety'],
-            [{'field': 'variety', 'local_value': 'Nantes', 'public_value': 'Nantes II'}],
+            [{
+                'field': 'variety', 'local_value': 'Nantes', 'public_value': 'Nantes II',
+                'locally_changed': False, 'can_keep_local': False,
+            }],
         )
 
     def test_a_newer_public_version_surfaces_the_notice_again_after_a_rejection(self):
@@ -6161,6 +6167,117 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(response.data['code'], 'library_unpin_field_not_pinned')
         self.kultur.refresh_from_db()
         self.assertEqual(self.kultur.harvest_duration_days, 30)
+
+    def _pull(self, **data):
+        return self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/',
+            {'mode': 'update', **data},
+            format='json',
+        )
+
+    def test_pull_marks_locally_changed_fields_as_keepable(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(harvest_duration_days=40)
+
+        preview = self.client.get(self._crop_url(self.kultur, 'public-update/')).data
+
+        changes = {change['field']: change for change in preview['changes']}
+        self.assertEqual(set(changes), {'growth_duration_days', 'harvest_duration_days'})
+        self.assertTrue(changes['growth_duration_days']['locally_changed'])
+        self.assertTrue(changes['growth_duration_days']['can_keep_local'])
+        # Only the library changed this one: a plain update.
+        self.assertFalse(changes['harvest_duration_days']['locally_changed'])
+        self.assertFalse(changes['harvest_duration_days']['can_keep_local'])
+
+    def test_pull_field_changed_on_both_sides_is_keepable(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(growth_duration_days=90)
+
+        preview = self.client.get(self._crop_url(self.kultur, 'public-update/')).data
+
+        self.assertEqual(preview['changes'], [{
+            'field': 'growth_duration_days',
+            'local_value': 75,
+            'public_value': 90,
+            'locally_changed': True,
+            'can_keep_local': True,
+        }])
+
+    def test_pull_keep_local_pins_the_field_and_does_not_overwrite_it(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(growth_duration_days=90, harvest_duration_days=40)
+        revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
+        before = revisions.count()
+
+        response = self._pull(pin_fields=['growth_duration_days'], base_version=self.entry.version)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 75)
+        self.assertEqual(self.kultur.harvest_duration_days, 40)
+        self.assertEqual(self.kultur.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertFalse(self.kultur.is_modified_from_source)
+        self.assertEqual(
+            response.data['crop']['library_pinned_values'], {'growth_duration_days': 90},
+        )
+        self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertEqual(revisions.count(), before + 1)
+        self.assertIn('library_pinned_fields', revisions.order_by('-id').first().changed_fields)
+
+    def test_pull_without_keep_local_overwrites_the_local_change(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(harvest_duration_days=40)
+
+        response = self._pull(base_version=self.entry.version)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 60)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    def test_pull_keep_local_rejects_a_field_only_the_library_changed(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(harvest_duration_days=40)
+
+        response = self._pull(pin_fields=['harvest_duration_days'], base_version=self.entry.version)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_not_local_change')
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 75)
+        self.assertEqual(self.kultur.harvest_duration_days, 30)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    def test_pull_keep_local_rejects_identity_fields(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(harvest_duration_days=40)
+
+        response = self._pull(pin_fields=['name'], base_version=self.entry.version)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+
+    def test_pull_refuses_a_stale_dialog_and_changes_nothing(self):
+        self._patch(self.kultur, {'growth_duration_days': 75})
+        self._library_edit(harvest_duration_days=40)
+        shown_version = self.entry.version
+        self._library_edit(harvest_duration_days=50)
+
+        response = self._pull(pin_fields=['growth_duration_days'], base_version=shown_version)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'stale_public_crop_version')
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 75)
+        self.assertEqual(self.kultur.harvest_duration_days, 30)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+
+    def test_pull_rejects_malformed_pin_fields_and_base_version(self):
+        self.assertEqual(
+            self._pull(pin_fields='growth_duration_days').data['code'], 'invalid_pin_fields',
+        )
+        self.assertEqual(self._pull(base_version='3').data['code'], 'invalid_base_version')
 
     def test_local_change_in_an_unpinned_field_still_offers_the_push(self):
         self._pin(self.kultur, ['growth_duration_days'])
