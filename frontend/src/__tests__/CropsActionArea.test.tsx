@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import type { ReactElement } from 'react';
 import type { AxiosError } from 'axios';
 import Crops from '../pages/Crops';
@@ -116,6 +116,7 @@ vi.mock('../crops/CropDetail', () => ({
     onEditCrop,
     onDeleteCrop,
     canCreatePlan,
+    createPlanDisabledTooltip,
     selectedCropId,
     isLoading,
   }: {
@@ -127,6 +128,7 @@ vi.mock('../crops/CropDetail', () => ({
     onEditCrop?: (crop: { id?: number; name: string }) => void;
     onDeleteCrop?: (crop: { id?: number; name: string; variety?: string; cultivation_type?: string }) => void;
     canCreatePlan?: boolean;
+    createPlanDisabledTooltip?: string;
     selectedCropId?: number;
     isLoading?: boolean;
   }): ReactElement => {
@@ -141,6 +143,7 @@ vi.mock('../crops/CropDetail', () => ({
         <button type="button" onClick={() => onCreateCrop?.()}>Kultur hinzufügen</button>
         <button type="button" onClick={() => onPublishCrop?.()}>Veröffentlichen</button>
         <button type="button" onClick={() => onCreatePlan?.()} disabled={!canCreatePlan}>Anbauplan erstellen</button>
+        {createPlanDisabledTooltip ? <span data-testid="create-plan-disabled-tooltip">{createPlanDisabledTooltip}</span> : null}
         <button type="button" onClick={() => onEditCrop?.(crops[0])}>Kultur bearbeiten</button>
         <button type="button" onClick={() => onDeleteCrop?.(crops[0])}>Kultur löschen</button>
         <button type="button" onClick={() => onCropSelect(crops[0] ?? null)}>select-crop</button>
@@ -187,6 +190,24 @@ function renderCrops(initialPath = '/crops'): ReturnType<typeof render> {
 // rather than `within(dialog)` — the `dialog` param is unused for the
 // lookup but keeps this call site self-documenting about which dialog it
 // belongs to.
+function renderCropsWithoutSeason(): ReturnType<typeof render> {
+  const outletContext = { activeSeason: null, activeSeasonLoaded: true, requestSeasonCreation: vi.fn() };
+  return render(
+    <MemoryRouter initialEntries={['/crops?cropId=1']}>
+      <Routes>
+        <Route element={<Outlet context={outletContext} />}>
+          <Route
+            path="/crops"
+            element={(
+              <FocusManagerProvider><CommandProvider><Crops /></CommandProvider></FocusManagerProvider>
+            )}
+          />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 const selectSpeciesOption = async (_dialog: HTMLElement, name: string): Promise<void> => {
   fireEvent.click(await screen.findByRole('option', { name }));
 };
@@ -1015,5 +1036,15 @@ describe('Crops action area', () => {
     renderCrops('/crops?cropId=1');
     const createPlanButton = await screen.findByRole('button', { name: 'Anbauplan erstellen' });
     await waitFor(() => expect(createPlanButton).toBeEnabled());
+  });
+
+  it('disables create planting plan without a season and shows no season empty state', async () => {
+    renderCropsWithoutSeason();
+
+    const createPlanButton = await screen.findByRole('button', { name: 'Anbauplan erstellen' });
+    expect(createPlanButton).toBeDisabled();
+    expect(screen.getByTestId('create-plan-disabled-tooltip')).toHaveTextContent('Lege zuerst eine Saison an.');
+    expect(screen.queryByText('Noch keine Saison angelegt')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Saison anlegen' })).not.toBeInTheDocument();
   });
 });

@@ -294,7 +294,10 @@ The public Crop Library follows an open-data model:
      fields do not count: a crop that differs only there is case 5, and the
      tooltip adds "Lokal fixiert: {fields}." A second chip "{n} Felder lokal
      fixiert" (violet, pin icon, `CropLibraryPinnedChip`) sits next to the
-     status and lists the fields in its tooltip. The crop list deliberately
+     status and lists the fields in its tooltip ("Diese Werte gelten nur für
+     deinen Betrieb und werden bei Updates der Kulturbibliothek nicht
+     überschrieben: {fields}."); each pinned value in the detail itself
+     carries its own pin (see *Read view* under "Locally pinned fields"). The crop list deliberately
      shows no pin: its status icon (`CropLibraryStatusIcon`) says whether a
      crop needs an action, and a pinned field is a decision already made, so
      a synced crop with pins shows the plain check like any other, and neither
@@ -443,7 +446,7 @@ The public Crop Library follows an open-data model:
     summary "… Werte werden in deine Kultur übernommen, … Werte bleiben nur
     lokal, … fixierte Werte bleiben erhalten." There is deliberately no other
     hint when a pinned field's library value changes; the value is only shown
-    passively (the pin's tooltip in the form).
+    passively (the pin's tooltip in the form and in the read view).
   - *Push.* `build_public_crop_payload` drops pinned fields, so no publish,
     republish, owned-entry update or moderated proposal shares them. In the
     sync, a pinned field is shared only when the decision names it under
@@ -477,6 +480,19 @@ The public Crop Library follows an open-data model:
     cultivation picker covers `cultivation_types` and `cultivation_type`
     together). A pin on a field the form clears is dropped on save. Unlinked
     crops show no pin at all.
+  - *Read view.* The crop detail (read mode of the crops page) marks each
+    pinned value with the same filled pin in the "local" colour right after
+    the value, e.g. after "35 Tage" (`LibraryPinIndicator`, laid out by
+    `ValueWithLibraryPin`; for `notes` the pin sits next to the section
+    heading). It follows the form's rule (`isLibraryFieldPinned`: a pinned
+    field with a value, on a linked crop) and reads the library value from the
+    same `library_pinned_values`, formatted by the same helper, so the detail
+    makes no extra request. The pin is passive: tooltip and accessible name
+    are the form's "Lokal fixiert. Bibliothek: {Wert}.", it is
+    keyboard-focusable so the tooltip opens on focus, and a tap opens the
+    tooltip on touch; there is no popover and no release here. Unpinned values
+    render exactly as before, and the green own-value marking of a Sorte is
+    unchanged — the pin only adds to it, with no background of its own.
   - *Lifecycle.* `Crop.save()` normalizes the list on every save
     (`normalize_library_pinned_fields`): it is empty without a sync link,
     and a pinned field whose *effective* value is cleared loses its pin

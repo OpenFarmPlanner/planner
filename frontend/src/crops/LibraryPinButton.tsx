@@ -3,6 +3,7 @@ import { Box, Button, IconButton, Popover, Typography } from '@mui/material';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import type { TFunction } from 'i18next';
 import { AppTooltip } from '../components/AppTooltip';
+import { getLibraryPinTooltip } from './libraryFieldPin';
 
 interface LibraryPinButtonProps {
   /** The linked library entry's value, formatted; absent when it is not known. */
@@ -23,9 +24,7 @@ export function LibraryPinButton({ libraryValue, onUnpin, t }: LibraryPinButtonP
   const popoverId = useId();
   const unpinButtonRef = useRef<HTMLButtonElement>(null);
   const hasValue = libraryValue !== undefined;
-  const tooltip = hasValue
-    ? t('library.pin.tooltip', { value: libraryValue })
-    : t('library.pin.tooltipPending');
+  const tooltip = getLibraryPinTooltip(libraryValue, t);
   const ariaLabel = hasValue
     ? t('library.pin.ariaLabel', { value: libraryValue })
     : t('library.pin.ariaLabelPending');

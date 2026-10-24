@@ -611,15 +611,13 @@
       "fields": "You first need at least one plot to create a planting plan.",
       "beds": "You first need at least one bed. Beds are added inside a plot on the growing areas page.",
       "crops": "You first need at least one crop to create a planting plan.",
-      "seasons": "Create a season before adding a planting plan from a crop.",
       "null": "Add planting plan"
     },
-    "createPlantingPlanMissingSeasonTitle": "No season created yet",
     "createPlantingPlanMissingFieldsTitle": "To create a planting plan you need at least one plot.",
     "createPlantingPlanMissingBedsTitle": "To create a planting plan you need at least one bed.",
     "createPlantingPlanMissingBedsHint": "For a planting plan you first need at least one bed.",
     "createPlantingPlanMissingBedsTooltip": "You first need at least one bed. Beds are added inside a plot on the growing areas page.",
-    "createPlantingPlanMissingSeasonTooltip": "Planting plans require an active season first."
+    "createPlantingPlanMissingSeasonTooltip": "Create a season first."
   },
   "import": {
     "menuLabel": "Import from file",
@@ -1447,7 +1445,7 @@
       "popoverLibraryValue": "Library: {{value}}",
       "chip_one": "{{count}} field pinned locally",
       "chip_other": "{{count}} fields pinned locally",
-      "chipTooltip": "These values apply only to your farm and are not synced with the crop library: {{fields}}",
+      "chipTooltip": "These values apply only to your farm and are not overwritten by crop library updates: {{fields}}.",
       "statusTooltip": "Pinned locally: {{fields}}.",
       "errors": {
         "library_pin_requires_link": "Only a crop linked to the crop library can pin values locally.",

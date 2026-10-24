@@ -15,6 +15,7 @@ import {
   formatSeedUnitLabel,
 } from './cropDetailFormatters';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
+import { ValueWithLibraryPin } from './LibraryPinIndicator';
 
 export interface CropSeedRateRow {
   method: CultivationType;
@@ -31,6 +32,8 @@ export type ValueSource = 'fromCrop' | 'ownValue';
 interface CropSeedDetailsProps {
   activeCultivationTypes: CultivationType[];
   cultivationTypeSource?: ValueSource | null;
+  /** The locally-pinned marker after the value (crop detail read view only). */
+  cultivationTypePin?: ReactNode;
   seedRateRows: CropSeedRateRow[];
   /**
    * The seed safety margin is a farm-specific planning decision, so views on
@@ -46,6 +49,7 @@ interface CropSeedDetailsProps {
   seedingRequirementTypeSource?: ValueSource | null;
   thousandKernelWeightG?: number | null;
   thousandKernelWeightSource?: ValueSource | null;
+  thousandKernelWeightPin?: ReactNode;
   emptyValueLabel: string;
   locale: string;
   t: (key: string) => string;
@@ -69,20 +73,25 @@ function getOwnValueSx(source?: ValueSource | null) {
 function ValueWithSource({
   children,
   source,
+  pin,
 }: {
   children: ReactNode;
   source?: ValueSource | null;
+  pin?: ReactNode;
 }) {
   return (
-    <Typography variant="body1" sx={getOwnValueSx(source)}>
-      {children}
-    </Typography>
+    <ValueWithLibraryPin pin={pin}>
+      <Typography variant="body1" sx={getOwnValueSx(source)}>
+        {children}
+      </Typography>
+    </ValueWithLibraryPin>
   );
 }
 
 export function CropSeedDetails({
   activeCultivationTypes,
   cultivationTypeSource = null,
+  cultivationTypePin,
   seedRateRows,
   showSeedSafetyMargin = true,
   sowingSafetyPercent,
@@ -93,6 +102,7 @@ export function CropSeedDetails({
   seedingRequirementTypeSource = null,
   thousandKernelWeightG,
   thousandKernelWeightSource = null,
+  thousandKernelWeightPin,
   emptyValueLabel,
   locale,
   t,
@@ -107,7 +117,7 @@ export function CropSeedDetails({
           <Typography variant="body2" color="text.secondary">
             {t('form.cultivationType')}
           </Typography>
-          <ValueWithSource source={cultivationTypeSource}>
+          <ValueWithSource source={cultivationTypeSource} pin={cultivationTypePin}>
             {activeCultivationTypes
               .map((item) => (
                 item === 'pre_cultivation'
@@ -217,7 +227,7 @@ export function CropSeedDetails({
         <Typography variant="body2" color="text.secondary">
           {t('form.thousandKernelWeightLabel')}
         </Typography>
-        <ValueWithSource source={thousandKernelWeightSource}>
+        <ValueWithSource source={thousandKernelWeightSource} pin={thousandKernelWeightPin}>
           {thousandKernelWeightG !== null && thousandKernelWeightG !== undefined
             ? `${formatNumber(thousandKernelWeightG, t, locale)} ${t('detail.units.grams')}`
             : emptyValueLabel}

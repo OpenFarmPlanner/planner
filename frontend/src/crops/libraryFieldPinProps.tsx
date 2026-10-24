@@ -5,10 +5,9 @@ import type { TFunction } from 'i18next';
 import type { Crop } from '../api/types';
 import { LibraryPinButton } from './LibraryPinButton';
 import {
-  formatLibraryPinnedValue,
   getLibraryPinModelFields,
-  hasLibraryPinFormValue,
-  isLibraryPinGroupPinned,
+  getLibraryPinnedValueLabel,
+  isLibraryFieldPinned,
   libraryPinnedFieldSx,
   setLibraryPinGroup,
   type LibraryPinFormField,
@@ -60,14 +59,11 @@ export function buildLibraryFieldPinProps({
   if (inheritedFields.includes(field)) {
     return null;
   }
-  const pinnedFields = formData.library_pinned_fields ?? [];
-  if (!hasLibraryPinFormValue(formData, field) || !isLibraryPinGroupPinned(pinnedFields, field)) {
+  if (!isLibraryFieldPinned(formData, field)) {
     return null;
   }
-  const primaryModelField = modelFields[0];
-  const libraryValue = primaryModelField in pinnedLibraryValues
-    ? formatLibraryPinnedValue(primaryModelField, pinnedLibraryValues[primaryModelField], t)
-    : undefined;
+  const pinnedFields = formData.library_pinned_fields ?? [];
+  const libraryValue = getLibraryPinnedValueLabel(pinnedLibraryValues, field, t);
   const button = (
     <LibraryPinButton
       libraryValue={libraryValue}

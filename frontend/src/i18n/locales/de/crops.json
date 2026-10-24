@@ -611,15 +611,13 @@
       "fields": "Du brauchst zuerst mindestens eine Parzelle, um einen Anbauplan zu erstellen.",
       "beds": "Du brauchst zuerst mindestens ein Beet. Beete werden innerhalb einer Parzelle auf der Seite Anbauflächen hinzugefügt.",
       "crops": "Du brauchst zuerst mindestens eine Kultur, um einen Anbauplan zu erstellen.",
-      "seasons": "Lege zuerst eine Saison an, bevor du aus einer Kultur einen Anbauplan erstellst.",
       "null": "Anbauplan hinzufügen"
     },
-    "createPlantingPlanMissingSeasonTitle": "Noch keine Saison angelegt",
     "createPlantingPlanMissingFieldsTitle": "Um einen Anbauplan zu erstellen, brauchst du mindestens eine Parzelle.",
     "createPlantingPlanMissingBedsTitle": "Um einen Anbauplan zu erstellen, brauchst du mindestens ein Beet.",
     "createPlantingPlanMissingBedsHint": "Für einen Anbauplan brauchst du zuerst mindestens ein Beet.",
     "createPlantingPlanMissingBedsTooltip": "Du brauchst zuerst mindestens ein Beet. Beete werden innerhalb einer Parzelle auf der Seite Anbauflächen hinzugefügt.",
-    "createPlantingPlanMissingSeasonTooltip": "Für Anbaupläne brauchst du zuerst eine aktive Saison."
+    "createPlantingPlanMissingSeasonTooltip": "Lege zuerst eine Saison an."
   },
   "import": {
     "menuLabel": "Aus Datei importieren",
@@ -1447,7 +1445,7 @@
       "popoverLibraryValue": "Bibliothek: {{value}}",
       "chip_one": "{{count}} Feld lokal fixiert",
       "chip_other": "{{count}} Felder lokal fixiert",
-      "chipTooltip": "Diese Werte gelten nur für deinen Betrieb und werden nicht mit der Kulturbibliothek abgeglichen: {{fields}}",
+      "chipTooltip": "Diese Werte gelten nur für deinen Betrieb und werden bei Updates der Kulturbibliothek nicht überschrieben: {{fields}}.",
       "statusTooltip": "Lokal fixiert: {{fields}}.",
       "errors": {
         "library_pin_requires_link": "Nur eine mit der Kulturbibliothek verknüpfte Kultur kann Werte lokal fixieren.",

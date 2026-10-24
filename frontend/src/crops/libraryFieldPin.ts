@@ -124,6 +124,36 @@ export function formatLibraryPinnedValue(modelField: string, value: unknown, t: 
   return formatPublicCropValue(modelField, value, t);
 }
 
+/**
+ * Whether `field` is pinned on `crop` and carries a value — the only case in
+ * which the form and the read view show the pin.
+ */
+export function isLibraryFieldPinned(crop: Partial<Crop>, field: LibraryPinFormField): boolean {
+  return isLibraryPinGroupPinned(crop.library_pinned_fields ?? [], field) && hasLibraryPinFormValue(crop, field);
+}
+
+/**
+ * The linked entry's current value for a pinned form field, formatted, from the
+ * serializer's `library_pinned_values`; undefined when it is not known.
+ */
+export function getLibraryPinnedValueLabel(
+  pinnedLibraryValues: Readonly<Record<string, unknown>>,
+  field: LibraryPinFormField,
+  t: TFunction,
+): string | undefined {
+  const primaryModelField = getLibraryPinModelFields(field)[0];
+  return primaryModelField in pinnedLibraryValues
+    ? formatLibraryPinnedValue(primaryModelField, pinnedLibraryValues[primaryModelField], t)
+    : undefined;
+}
+
+/** The pin's tooltip ("Lokal fixiert. Bibliothek: …"), shared by the form and the read view. */
+export function getLibraryPinTooltip(libraryValue: string | undefined, t: TFunction): string {
+  return libraryValue !== undefined
+    ? t('library.pin.tooltip', { value: libraryValue })
+    : t('library.pin.tooltipPending');
+}
+
 /** The crop's pinned fields as labels, deduplicated by form control, in a stable order. */
 export function getPinnedFieldLabels(crop: Pick<Crop, 'library_pinned_fields'> | null | undefined, t: TFunction): string[] {
   const pinned = crop?.library_pinned_fields ?? [];
