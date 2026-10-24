@@ -624,15 +624,13 @@
       "fields": "Il vous faut d'abord au moins une parcelle pour créer une série.",
       "beds": "Il vous faut d'abord au moins une planche. Les planches s'ajoutent à l'intérieur d'une parcelle, sur la page Surfaces de culture.",
       "crops": "Il vous faut d'abord au moins une culture pour créer une série.",
-      "seasons": "Créez une saison avant d'ajouter une série à partir d'une culture.",
       "null": "Ajouter une série"
     },
-    "createPlantingPlanMissingSeasonTitle": "Aucune saison créée pour l'instant",
     "createPlantingPlanMissingFieldsTitle": "Pour créer une série, il vous faut au moins une parcelle.",
     "createPlantingPlanMissingBedsTitle": "Pour créer une série, il vous faut au moins une planche.",
     "createPlantingPlanMissingBedsHint": "Pour une série, il vous faut d'abord au moins une planche.",
     "createPlantingPlanMissingBedsTooltip": "Il vous faut d'abord au moins une planche. Les planches s'ajoutent à l'intérieur d'une parcelle, sur la page Surfaces de culture.",
-    "createPlantingPlanMissingSeasonTooltip": "Les séries nécessitent d'abord une saison active."
+    "createPlantingPlanMissingSeasonTooltip": "Créez d’abord une saison."
   },
   "import": {
     "menuLabel": "Importer depuis un fichier",
@@ -1474,7 +1472,7 @@
       "chip_one": "{{count}} champ épinglé localement",
       "chip_other": "{{count}} champs épinglés localement",
       "chip_many": "{{count}} champs épinglés localement",
-      "chipTooltip": "Ces valeurs ne s’appliquent qu’à votre exploitation et ne sont pas synchronisées avec la bibliothèque de cultures : {{fields}}",
+      "chipTooltip": "Ces valeurs ne s’appliquent qu’à votre exploitation et ne sont pas écrasées par les mises à jour de la bibliothèque de cultures : {{fields}}.",
       "statusTooltip": "Épinglé localement : {{fields}}.",
       "errors": {
         "library_pin_requires_link": "Seule une culture liée à la bibliothèque de cultures peut épingler des valeurs localement.",

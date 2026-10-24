@@ -21,6 +21,8 @@ import { CropHierarchyRow } from './CropHierarchyRow';
 import { PublicCropUpdateDialog } from './PublicCropUpdateDialog';
 import { CropLibraryActionButton } from './CropLibraryActionButton';
 import { CropLibraryPinnedChip } from './CropLibraryPinnedChip';
+import { LibraryPinIndicator, ValueWithLibraryPin } from './LibraryPinIndicator';
+import { getLibraryPinnedValueLabel, isLibraryFieldPinned, type LibraryPinFormField } from './libraryFieldPin';
 import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
 import { canUnlinkPublicCrop, type CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
@@ -558,6 +560,17 @@ const detailSectionGridSx = {
       : undefined
   );
 
+  const getLibraryPin = (field: LibraryPinFormField) => (
+    selectedCrop?.source_public_crop && isLibraryFieldPinned(selectedCrop, field)
+      ? (
+        <LibraryPinIndicator
+          libraryValue={getLibraryPinnedValueLabel(selectedCrop.library_pinned_values ?? {}, field, t)}
+          t={t}
+        />
+      )
+      : null
+  );
+
   const showVarietyValueLegend = Boolean(!isSpeciesView && selectedCrop?.variety && selectedSpeciesCrop);
 
   const supplierRows = useMemo(
@@ -1085,13 +1098,15 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('form.nutrientDemand')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('nutrient_demand')}>
-                      {getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'low'
-                        ? t('form.nutrientDemandLow')
-                        : getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'medium'
-                          ? t('form.nutrientDemandMedium')
-                          : t('form.nutrientDemandHigh')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('nutrient_demand')}>
+                      <Typography variant="body1" sx={getOwnValueSx('nutrient_demand')}>
+                        {getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'low'
+                          ? t('form.nutrientDemandLow')
+                          : getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'medium'
+                            ? t('form.nutrientDemandMedium')
+                            : t('form.nutrientDemandHigh')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
                 <Box>
@@ -1120,26 +1135,32 @@ const detailSectionGridSx = {
                   <Typography variant="body2" color="text.secondary">
                     {t('form.growthDurationDays')}
                   </Typography>
-                  <Typography variant="body1" sx={getOwnValueSx('growth_duration_days')}>
-                    {formatNumber(getCropValue('growth_duration_days', selectedCrop.growth_duration_days), t, locale)} {t('detail.units.days')}
-                  </Typography>
+                  <ValueWithLibraryPin pin={getLibraryPin('growth_duration_days')}>
+                    <Typography variant="body1" sx={getOwnValueSx('growth_duration_days')}>
+                      {formatNumber(getCropValue('growth_duration_days', selectedCrop.growth_duration_days), t, locale)} {t('detail.units.days')}
+                    </Typography>
+                  </ValueWithLibraryPin>
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     {t('form.harvestDurationDays')}
                   </Typography>
-                  <Typography variant="body1" sx={getOwnValueSx('harvest_duration_days')}>
-                    {formatNumber(getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days), t, locale)} {t('detail.units.days')}
-                  </Typography>
+                  <ValueWithLibraryPin pin={getLibraryPin('harvest_duration_days')}>
+                    <Typography variant="body1" sx={getOwnValueSx('harvest_duration_days')}>
+                      {formatNumber(getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days), t, locale)} {t('detail.units.days')}
+                    </Typography>
+                  </ValueWithLibraryPin>
                 </Box>
                 {getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.propagationDurationDays')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('propagation_duration_days')}>
-                      {formatNumber(getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days), t, locale)} {t('detail.units.days')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('propagation_duration_days')}>
+                      <Typography variant="body1" sx={getOwnValueSx('propagation_duration_days')}>
+                        {formatNumber(getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days), t, locale)} {t('detail.units.days')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
               </Box>
@@ -1158,9 +1179,11 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('detail.fields.distanceWithinRow')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('distance_within_row_cm')}>
-                      {formatDistance(getCropValue('distance_within_row_cm', selectedCrop.distance_within_row_cm), t, locale)} {t('detail.units.centimeters')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('distance_within_row_cm')}>
+                      <Typography variant="body1" sx={getOwnValueSx('distance_within_row_cm')}>
+                        {formatDistance(getCropValue('distance_within_row_cm', selectedCrop.distance_within_row_cm), t, locale)} {t('detail.units.centimeters')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
                 {getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm) !== null && getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm) !== undefined && (
@@ -1168,9 +1191,11 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('detail.fields.rowSpacing')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('row_spacing_cm')}>
-                      {formatDistance(getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm), t, locale)} {t('detail.units.centimeters')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('row_spacing_cm')}>
+                      <Typography variant="body1" sx={getOwnValueSx('row_spacing_cm')}>
+                        {formatDistance(getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm), t, locale)} {t('detail.units.centimeters')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
                 {getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm) !== null && getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm) !== undefined && (
@@ -1178,9 +1203,11 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('detail.fields.sowingDepth')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm')}>
-                      {formatDistance(getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm), t, locale, 1)} {t('detail.units.centimeters')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('sowing_depth_cm')}>
+                      <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm')}>
+                        {formatDistance(getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm), t, locale, 1)} {t('detail.units.centimeters')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
               </Box>
@@ -1195,6 +1222,8 @@ const detailSectionGridSx = {
               </Typography>
               <CropSeedDetails
                 activeCultivationTypes={activeCultivationTypes}
+                cultivationTypePin={getLibraryPin('cultivation_types')}
+                thousandKernelWeightPin={getLibraryPin('thousand_kernel_weight_g')}
                 cultivationTypeSource={
                   getCropValueSource('cultivation_types') === 'ownValue' || getCropValueSource('cultivation_type') === 'ownValue'
                     ? 'ownValue'
@@ -1282,9 +1311,11 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('form.yieldUnit')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('harvest_method')}>
-                      {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('form.yieldUnitPerPlant') : t('form.yieldUnitPerSqm')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('harvest_method')}>
+                      <Typography variant="body1" sx={getOwnValueSx('harvest_method')}>
+                        {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('form.yieldUnitPerPlant') : t('form.yieldUnitPerSqm')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
                 {getCropValue('expected_yield', selectedCrop.expected_yield) && (
@@ -1292,9 +1323,11 @@ const detailSectionGridSx = {
                     <Typography variant="body2" color="text.secondary">
                       {t('form.expectedYield')}
                     </Typography>
-                    <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
-                      {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {t('detail.units.kilograms')}
-                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('expected_yield')}>
+                      <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
+                        {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {t('detail.units.kilograms')}
+                      </Typography>
+                    </ValueWithLibraryPin>
                   </Box>
                 )}
               </Box>
@@ -1304,9 +1337,11 @@ const detailSectionGridSx = {
 
             {/* Notes Section */}
             <Box component="section">
-              <Typography variant="h6" gutterBottom>
-                {t('detail.sections.notes')}
-              </Typography>
+              <ValueWithLibraryPin pin={getLibraryPin('notes')}>
+                <Typography variant="h6" gutterBottom>
+                  {t('detail.sections.notes')}
+                </Typography>
+              </ValueWithLibraryPin>
               <Box sx={{ p: { xs: 1.5, sm: 2.5 }, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: { xs: '100%', xl: 1180 } }}>
                   {selectedCrop.notes && (

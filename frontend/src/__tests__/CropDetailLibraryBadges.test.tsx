@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropDetail } from '../crops/CropDetail';
@@ -219,5 +219,92 @@ describe('CropDetail list library status icons', () => {
   it('renders no list icons when no publish handler is wired', () => {
     renderDetail(localCrop, { withPublishHandler: false });
     expect(screen.queryByTestId('crop-list-library-status')).not.toBeInTheDocument();
+  });
+});
+
+describe('CropDetail locally pinned fields', () => {
+  const pinnedCrop: Crop = {
+    ...importedInSync,
+    id: 5,
+    growth_duration_days: 35,
+    harvest_duration_days: 21,
+    library_pinned_fields: ['growth_duration_days'],
+    library_pinned_values: { growth_duration_days: 45 },
+  };
+
+  beforeEach(async () => {
+    await i18n.changeLanguage('de');
+  });
+
+  it('shows the pin only after the pinned value', () => {
+    renderDetail(pinnedCrop);
+    const pins = screen.getAllByTestId('crop-detail-library-pin');
+    expect(pins).toHaveLength(1);
+    expect(pins[0].parentElement).toHaveTextContent('35 Tage');
+    expect(pins[0].parentElement).not.toHaveTextContent('21 Tage');
+  });
+
+  it('renders no pin for a crop without pinned fields', () => {
+    renderDetail(importedInSync);
+    expect(screen.queryByTestId('crop-detail-library-pin')).not.toBeInTheDocument();
+  });
+
+  it('labels the pin with the library value and opens its tooltip on keyboard focus', async () => {
+    renderDetail(pinnedCrop);
+    const pin = screen.getByRole('img', { name: 'Lokal fixiert. Bibliothek: 45.' });
+    expect(pin).toHaveAttribute('tabindex', '0');
+
+    // A keystroke first, so the focus counts as keyboard focus (focus-visible).
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => pin.focus());
+    expect(pin).toHaveFocus();
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 }))
+      .toHaveTextContent('Lokal fixiert. Bibliothek: 45.');
+  });
+
+  it('opens the pin tooltip on a tap, without any action', async () => {
+    renderDetail(pinnedCrop);
+    const pin = screen.getByTestId('crop-detail-library-pin');
+
+    fireEvent.touchStart(pin);
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 }))
+      .toHaveTextContent('Lokal fixiert. Bibliothek: 45.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('explains in the chip tooltip that pinned values survive library updates', async () => {
+    renderDetail(pinnedCrop);
+    const chip = screen.getByTestId('crop-detail-library-pinned');
+    expect(chip).toHaveTextContent('1 Feld lokal fixiert');
+
+    fireEvent.mouseOver(chip);
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 })).toHaveTextContent(
+      'Diese Werte gelten nur für deinen Betrieb und werden bei Updates der Kulturbibliothek nicht überschrieben: Wachstumszeit (Tage).',
+    );
+  });
+});
+
+describe('CropDetail create planting plan without a season', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('de');
+  });
+
+  it('disables the action and explains it in a tooltip', async () => {
+    render(
+      <CropDetail
+        crops={[localCrop]}
+        selectedCropId={localCrop.id}
+        onCropSelect={() => {}}
+        onCreatePlan={vi.fn()}
+        canCreatePlan={false}
+        createPlanDisabledTooltip={i18n.t('crops:buttons.createPlantingPlanMissingSeasonTooltip')}
+      />,
+      { wrapper: MemoryRouter },
+    );
+
+    const button = screen.getByRole('button', { name: 'Anbauplan hinzufügen' });
+    expect(button).toBeDisabled();
+    fireEvent.mouseOver(button.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip', {}, { timeout: 4000 })).toHaveTextContent('Lege zuerst eine Saison an.');
   });
 });

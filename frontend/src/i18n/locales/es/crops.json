@@ -624,15 +624,13 @@
       "fields": "Primero necesitas al menos una parcela para crear una serie.",
       "beds": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
       "crops": "Primero necesitas al menos un cultivo para crear una serie.",
-      "seasons": "Crea una temporada antes de añadir una serie a partir de un cultivo.",
       "null": "Añadir serie"
     },
-    "createPlantingPlanMissingSeasonTitle": "Todavía no se ha creado ninguna temporada",
     "createPlantingPlanMissingFieldsTitle": "Para crear una serie necesitas al menos una parcela.",
     "createPlantingPlanMissingBedsTitle": "Para crear una serie necesitas al menos un bancal.",
     "createPlantingPlanMissingBedsHint": "Para una serie necesitas primero al menos un bancal.",
     "createPlantingPlanMissingBedsTooltip": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
-    "createPlantingPlanMissingSeasonTooltip": "Las series requieren primero una temporada activa."
+    "createPlantingPlanMissingSeasonTooltip": "Crea primero una temporada."
   },
   "import": {
     "menuLabel": "Importar desde archivo",
@@ -1474,7 +1472,7 @@
       "chip_one": "{{count}} campo fijado localmente",
       "chip_other": "{{count}} campos fijados localmente",
       "chip_many": "{{count}} campos fijados localmente",
-      "chipTooltip": "Estos valores solo se aplican a tu explotación y no se sincronizan con la biblioteca de cultivos: {{fields}}",
+      "chipTooltip": "Estos valores solo se aplican a tu explotación y no se sobrescriben con las actualizaciones de la biblioteca de cultivos: {{fields}}.",
       "statusTooltip": "Fijado localmente: {{fields}}.",
       "errors": {
         "library_pin_requires_link": "Solo un cultivo vinculado a la biblioteca de cultivos puede fijar valores localmente.",
