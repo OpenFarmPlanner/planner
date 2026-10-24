@@ -1,6 +1,7 @@
 """Serializer for the public crop library."""
 
 from typing import Any
+from urllib.parse import urlparse
 
 from rest_framework import serializers
 
@@ -19,8 +20,10 @@ from farm.models import (
     PublicCropChangeProposal,
     PublicCropDiscussionComment,
     PublicCropDiscussionTopic,
+    PublicCropReport,
     PublicCropRevision,
     PublicCropSpeciesRelinkRequest,
+    PublicCropTradeNameEvent,
     SeedPackage,
     format_crop_display_name,
 )
@@ -434,6 +437,149 @@ class PublicCropTranslationsUpdateSerializer(serializers.Serializer):
         if not cleaned:
             raise serializers.ValidationError('At least one language version is required.')
         return cleaned
+
+
+def _supported_language_code(value: str) -> str:
+    normalized = normalize_language_tag(value)
+    if not normalized:
+        allowed = ', '.join(SUPPORTED_LANGUAGE_CODES)
+        raise serializers.ValidationError(
+            f'Unsupported language code "{value}". Allowed values: {allowed}.',
+        )
+    return normalized
+
+
+class PublicCropTradeNameValueSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200, allow_blank=True)
+    source_url = serializers.URLField(max_length=500, allow_blank=True, required=False, default='')
+
+    def validate_source_url(self, value: str) -> str:
+        # URLField also accepts ftp:// and friends; a source link is rendered
+        # as a clickable link for every library user, so only web links pass.
+        if value and urlparse(value).scheme not in {'http', 'https'}:
+            raise serializers.ValidationError('Only http and https links are allowed.')
+        return value
+
+
+class PublicCropTradeNamesUpdateSerializer(serializers.Serializer):
+    """``{language_code: {name, source_url} | null}`` plus optional ``expected`` names.
+
+    Omitted languages stay untouched; ``null`` or a blank name removes one.
+    """
+
+    trade_names = serializers.DictField(
+        child=PublicCropTradeNameValueSerializer(allow_null=True),
+        allow_empty=False,
+    )
+    expected = serializers.DictField(
+        child=serializers.CharField(allow_null=True, allow_blank=True, max_length=200),
+        required=False,
+    )
+
+    def validate_trade_names(self, value: dict[str, Any]) -> dict[str, dict[str, str] | None]:
+        cleaned: dict[str, dict[str, str] | None] = {}
+        for language_code, entry in value.items():
+            normalized = _supported_language_code(language_code)
+            if normalized in cleaned:
+                raise serializers.ValidationError(f'Duplicate language "{normalized}".')
+            cleaned[normalized] = dict(entry) if entry is not None else None
+        return cleaned
+
+    def validate_expected(self, value: dict[str, str | None]) -> dict[str, str | None]:
+        return {
+            _supported_language_code(language_code): name
+            for language_code, name in value.items()
+        }
+
+
+class PublicCropTradeNameEventSerializer(serializers.ModelSerializer):
+    """Expects ``anonymous_numbers`` (see ``public_pseudonyms``) in the context."""
+
+    created_by_label = serializers.SerializerMethodField()
+    created_by_anonymous_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PublicCropTradeNameEvent
+        fields = [
+            'id',
+            'language_code',
+            'action',
+            'old_name',
+            'new_name',
+            'old_source_url',
+            'new_source_url',
+            'reverted_event',
+            'origin_api',
+            'created_by_label',
+            'created_by_anonymous_number',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_created_by_label(self, obj: PublicCropTradeNameEvent) -> str:
+        return get_public_user_label(obj.created_by)
+
+    def get_created_by_anonymous_number(self, obj: PublicCropTradeNameEvent) -> int | None:
+        return _anonymous_number(self.context.get('anonymous_numbers', {}), obj.created_by_id)
+
+
+class PublicCropTradeNameReportCreateSerializer(serializers.Serializer):
+    language_code = serializers.CharField(max_length=10)
+    reason = serializers.ChoiceField(choices=PublicCropReport.REASON_CHOICES)
+    note = serializers.CharField(max_length=2000, allow_blank=True, required=False, default='')
+
+    def validate_language_code(self, value: str) -> str:
+        return _supported_language_code(value)
+
+
+class PublicCropReportResolveSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[PublicCropReport.STATUS_RESOLVED, PublicCropReport.STATUS_DISMISSED],
+    )
+    note = serializers.CharField(max_length=2000, allow_blank=True, required=False, default='')
+
+
+class PublicCropReportSerializer(serializers.ModelSerializer):
+    """A report as the moderation queue shows it, with the name it is about now.
+
+    Reporter identity stays as private as everywhere else in the library: the
+    public display name only, never an email address or username.
+    """
+
+    public_crop_name = serializers.CharField(source='public_crop.name', read_only=True)
+    public_crop_variety = serializers.CharField(source='public_crop.variety', read_only=True)
+    current_name = serializers.SerializerMethodField()
+    reported_by_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PublicCropReport
+        fields = [
+            'id',
+            'public_crop',
+            'public_crop_name',
+            'public_crop_variety',
+            'subject',
+            'language_code',
+            'reported_name',
+            'current_name',
+            'reason',
+            'note',
+            'status',
+            'reported_by_label',
+            'resolution_note',
+            'resolved_at',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_current_name(self, obj: PublicCropReport) -> str | None:
+        for trade_name in obj.public_crop.trade_names.all():
+            if trade_name.language_code == obj.language_code:
+                return trade_name.name
+        return None
+
+    def get_reported_by_label(self, obj: PublicCropReport) -> str:
+        return get_public_user_label(obj.reported_by)
 
 
 class PublicCropRevertSerializer(serializers.Serializer):

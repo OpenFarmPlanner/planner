@@ -33,6 +33,7 @@
     "public_crop_change_proposal_submitted": "A contribution to \"{{name}}\" is waiting for review.",
     "public_crop_change_proposal_reviewed_approved": "Your contribution to \"{{name}}\" was approved.",
     "public_crop_change_proposal_reviewed_rejected": "Your contribution to \"{{name}}\" was rejected.",
-    "public_crop_change_proposal_reviewed": "Your contribution to \"{{name}}\" was reviewed."
+    "public_crop_change_proposal_reviewed": "Your contribution to \"{{name}}\" was reviewed.",
+    "public_crop_trade_name_reported": "The trade name \"{{name}}\" of the variety \"{{variety}}\" was reported."
   }
 }

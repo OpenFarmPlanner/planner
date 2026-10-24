@@ -1,7 +1,7 @@
 # RFC: Language-specific trade names for varieties in the public crop library
 
-**Status:** design decided (2026-10-20); phases 0 and 1 implemented
-(2026-10-20), phases 2–5 not yet. §2 lists the decisions that were fixed
+**Status:** design decided (2026-10-20); phases 0–2 implemented
+(2026-10-20 / 2026-10-24), phases 3–5 not yet. §2 lists the decisions that were fixed
 before analysis began, and §13 records the decisions made on review. §3
 describes the state *before* this work and is kept as the baseline the design
 was derived from. Implementation notes for the shipped phases are in §12.
@@ -572,8 +572,24 @@ duplicate detection and identity conflicts (rename, restore, relink); and the
 `œ`/`æ` folding in `search.md`, `frontend/src/search/searchText.ts` and
 `farm.utils.normalize_search_text`. A variety rename, restore or relink that
 makes a trade name invalid (equal to the new original, or the entry became a
-species-level entry) removes it and records a `removed` event. Phase 1 has no
-write endpoint: trade names can only be created in the database until phase 2.
+species-level entry) removes it and records a `removed` event. 
+**Shipped in phase 2:** the write API of §5.2 on `PublicCropViewSet`
+(`trade_names` GET/PUT, `trade_name_history`, `revert_trade_name`,
+`report_trade_name`, and the moderator-only `reports` list and
+`resolve_report`), with the service functions in
+`farm/services/public_crop_trade_names.py`; `PublicCropReport` (migration
+`farm.0116`) with one open report per user, entry and language and a
+`reported_name` snapshot; the moderator notification
+`public_crop_trade_name_reported` (notifications `0007`, texts in all four
+languages); the `public_crop_trade_name_write` (30/h) and
+`public_crop_report` (20/h) throttles; and the user's own trade-name changes
+and reports in the personal data export (without the resolving moderator's
+id). Writes apply live for every signed-in session user, `new` accounts
+included (D4); guest demo users get `403`, entries under a still-`proposed`
+species `409 crop_species_pending`, `ProjectApiToken` and
+`CropLibraryApiToken` requests `403`. A PUT applies all its languages or
+none; `expected` compares against the stored name. A revert passes the same
+checks as a fresh edit. Trade names have no UI yet (phase 3).
 
 Suggested effort: **high** for phases 1–2 (identity, duplicate detection,
 permission and token surface) and **medium** for phase 3.

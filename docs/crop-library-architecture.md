@@ -17,7 +17,7 @@ two disagree about what exists, this file wins.
 | `crops` Django app with `CropSpecies` (+ translations) and a moderator-request model | **implemented** |
 | Publishing wizard (species mapping, original language, duplicate gate, species proposals) | **implemented** |
 | Duplicate detection on `crop_species` + normalized `variety` (cross-language) | **implemented** |
-| Per-language variety trade names (`PublicCropTradeName`): read API, search, duplicate detection | **implemented** (phase 1 of [rfc-variety-trade-names.md](./rfc-variety-trade-names.md)); editing, history UI, reports and the frontend follow in later phases |
+| Per-language variety trade names (`PublicCropTradeName`): read API, search, duplicate detection, unmoderated editing API with history, revert, reports and throttles | **implemented** (phases 1–2 of [rfc-variety-trade-names.md](./rfc-variety-trade-names.md)); the frontend follows in phase 3 |
 | Direct wiki-style editing of public entries + immutable `PublicCropRevision` history + revert | **implemented** |
 | Threaded discussions (`PublicCropDiscussionTopic` → `…Comment`, soft delete) | **implemented** |
 | Non-destructive lifecycle (`draft`/`published`/`withdrawn`/`removed`) + status events + staff hard delete | **implemented** |

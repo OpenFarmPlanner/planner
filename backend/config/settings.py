@@ -686,6 +686,12 @@ REST_FRAMEWORK = {
         'invitation_accept': _env_str('THROTTLE_INVITATION_ACCEPT', '20/hour'),
         'agent_login_consume': _env_str('THROTTLE_AGENT_LOGIN_CONSUME', '30/hour'),
         'feedback_submit': _env_str('THROTTLE_FEEDBACK_SUBMIT', '20/hour'),
+        # Unmoderated crop-library trade-name edits and reports
+        # (docs/rfc-variety-trade-names.md §8.4), per user.
+        'public_crop_trade_name_write': _env_str(
+            'THROTTLE_PUBLIC_CROP_TRADE_NAME_WRITE', '30/hour',
+        ),
+        'public_crop_report': _env_str('THROTTLE_PUBLIC_CROP_REPORT', '20/hour'),
         'client_error_report': _env_str('THROTTLE_CLIENT_ERROR_REPORT', '10/hour'),
         'client_error_report_global': _env_str('THROTTLE_CLIENT_ERROR_REPORT_GLOBAL', '60/hour'),
         'write_new_account': _env_str('THROTTLE_WRITE_NEW_ACCOUNT', '100/hour'),

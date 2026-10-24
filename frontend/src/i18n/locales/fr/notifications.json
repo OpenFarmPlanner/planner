@@ -33,6 +33,7 @@
     "public_crop_change_proposal_submitted": "Une contribution à « {{name}} » attend d'être examinée.",
     "public_crop_change_proposal_reviewed_approved": "Votre contribution à « {{name}} » a été approuvée.",
     "public_crop_change_proposal_reviewed_rejected": "Votre contribution à « {{name}} » a été refusée.",
-    "public_crop_change_proposal_reviewed": "Votre contribution à « {{name}} » a été examinée."
+    "public_crop_change_proposal_reviewed": "Votre contribution à « {{name}} » a été examinée.",
+    "public_crop_trade_name_reported": "Le nom commercial « {{name}} » de la variété « {{variety}} » a été signalé."
   }
 }

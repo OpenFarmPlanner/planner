@@ -1332,6 +1332,86 @@ class PublicCropTradeNameEvent(models.Model):
         ordering = ['-created_at', '-id']
 
 
+class PublicCropReport(models.Model):
+    """A signed-in user's report that something on a library entry is wrong.
+
+    Trade names are edited without prior moderation; reports are the
+    after-the-fact signal that sends moderators to a name worth checking.
+    ``subject`` keeps the model open for other report targets later.
+    """
+
+    SUBJECT_TRADE_NAME = 'trade_name'
+    SUBJECT_CHOICES = [
+        (SUBJECT_TRADE_NAME, 'Trade name'),
+    ]
+
+    REASON_NOT_SOLD_UNDER_THIS_NAME = 'not_sold_under_this_name'
+    REASON_SELF_TRANSLATED = 'self_translated'
+    REASON_WRONG_VARIETY = 'wrong_variety'
+    REASON_SPAM = 'spam'
+    REASON_OTHER = 'other'
+    REASON_CHOICES = [
+        (REASON_NOT_SOLD_UNDER_THIS_NAME, 'Not sold under this name'),
+        (REASON_SELF_TRANSLATED, 'Self-translated'),
+        (REASON_WRONG_VARIETY, 'Wrong variety'),
+        (REASON_SPAM, 'Spam'),
+        (REASON_OTHER, 'Other'),
+    ]
+
+    STATUS_OPEN = 'open'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_DISMISSED = 'dismissed'
+    STATUS_CHOICES = [
+        (STATUS_OPEN, 'Open'),
+        (STATUS_RESOLVED, 'Resolved'),
+        (STATUS_DISMISSED, 'Dismissed'),
+    ]
+
+    public_crop = models.ForeignKey(
+        PublicCrop,
+        on_delete=models.CASCADE,
+        related_name='reports',
+    )
+    subject = models.CharField(max_length=20, choices=SUBJECT_CHOICES, default=SUBJECT_TRADE_NAME)
+    language_code = models.CharField(max_length=10, blank=True)
+    reported_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='The trade name as it read when the report was made.',
+    )
+    reason = models.CharField(max_length=40, choices=REASON_CHOICES)
+    note = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='public_crop_reports',
+    )
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='resolved_public_crop_reports',
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolution_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['public_crop', 'subject', 'language_code', 'reported_by'],
+                condition=Q(status='open'),
+                name='unique_open_public_crop_report_per_user',
+            ),
+        ]
+
+
 class PublicCropStatusEvent(models.Model):
     """Audit trail for public crop publication and moderation status changes."""
 

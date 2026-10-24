@@ -1,4 +1,4 @@
-"""Trade names of public-library varieties: identity lookups and invariants.
+"""Trade names of public-library varieties: identity lookups, edits and reports.
 
 A trade name is a lookup key into a variety's identity, never part of it: the
 identity stays the ``PublicCrop`` row (species plus original ``variety``).
@@ -11,9 +11,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Iterable
 
+from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
-from farm.models import PublicCrop, PublicCropTradeName, PublicCropTradeNameEvent
+from farm.models import PublicCrop, PublicCropReport, PublicCropTradeName, PublicCropTradeNameEvent
 from farm.utils import normalize_search_text
 
 if TYPE_CHECKING:
@@ -174,3 +176,267 @@ def record_trade_name_event(
         origin_api=origin_api,
         created_by=user if user is not None and user.is_authenticated else None,
     )
+
+
+class TradeNameError(Exception):
+    """A trade-name edit, revert or report that cannot be applied as asked."""
+
+    code = 'trade_name_invalid'
+
+    def __init__(self, detail: str, *, code: str | None = None) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        if code is not None:
+            self.code = code
+
+
+class TradeNameConflictError(TradeNameError):
+    """The name already identifies another entry of the same species."""
+
+    code = 'trade_name_conflict'
+
+    def __init__(self, *, language_code: str, conflicting_public_crop: PublicCrop) -> None:
+        super().__init__(
+            'This trade name already identifies another entry of the same crop species.',
+        )
+        self.language_code = language_code
+        self.conflicting_public_crop = conflicting_public_crop
+
+
+class TradeNameEditConflictError(TradeNameError):
+    """Someone changed this language since the editor loaded it."""
+
+    code = 'trade_name_edit_conflict'
+
+    def __init__(self, *, language_code: str, current: PublicCropTradeName | None) -> None:
+        super().__init__('This trade name has changed since it was loaded.')
+        self.language_code = language_code
+        self.current_name = current.name if current is not None else None
+
+
+def _origin_api_flag(user: AbstractBaseUser | None, origin_api: bool) -> bool:
+    return bool(origin_api and user is not None and user.is_authenticated)
+
+
+def _apply_trade_name(
+    *,
+    public_crop: PublicCrop,
+    language_code: str,
+    current: PublicCropTradeName | None,
+    value: dict[str, str] | None,
+    user: AbstractBaseUser | None,
+    action: str,
+    origin_api: bool,
+    reverted_event: PublicCropTradeNameEvent | None = None,
+) -> PublicCropTradeNameEvent | None:
+    """Set or remove one language's trade name; ``None`` when nothing changed."""
+    name = ' '.join(((value or {}).get('name') or '').split())
+    source_url = ((value or {}).get('source_url') or '').strip()
+    if not name:
+        if current is None:
+            return None
+        if action == PublicCropTradeNameEvent.ACTION_SET:
+            action = PublicCropTradeNameEvent.ACTION_REMOVED
+        event = record_trade_name_event(
+            public_crop=public_crop, language_code=language_code, action=action,
+            old=current, new=None, user=user, origin_api=origin_api, reverted_event=reverted_event,
+        )
+        current.delete()
+        return event
+
+    if normalize_search_text(name) == normalize_search_text(public_crop.variety):
+        raise TradeNameError(
+            'A trade name must differ from the original variety name.',
+            code='trade_name_equals_original',
+        )
+    if current is not None and current.name == name and current.source_url == source_url:
+        return None
+    conflict = find_trade_name_conflict(public_crop, name)
+    if conflict is not None:
+        raise TradeNameConflictError(language_code=language_code, conflicting_public_crop=conflict)
+
+    previous = (
+        {'name': current.name, 'source_url': current.source_url} if current is not None else None
+    )
+    actor = user if user is not None and user.is_authenticated else None
+    if current is None:
+        current = PublicCropTradeName(
+            public_crop=public_crop, language_code=language_code, created_by=actor,
+        )
+    current.name = name
+    current.source_url = source_url
+    current.updated_by = actor
+    current.save()
+    return record_trade_name_event(
+        public_crop=public_crop, language_code=language_code, action=action,
+        old=previous, new=current, user=user, origin_api=origin_api, reverted_event=reverted_event,
+    )
+
+
+def _lock_variety_entry(public_crop: PublicCrop) -> PublicCrop:
+    locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+    if not (locked.variety or '').strip():
+        raise TradeNameError(
+            'Only variety entries carry trade names; name a crop species through its synonyms.',
+            code='trade_name_general_entry',
+        )
+    return locked
+
+
+def replace_trade_names(
+    *,
+    public_crop: PublicCrop,
+    user: AbstractBaseUser | None,
+    trade_names: dict[str, dict[str, str] | None],
+    expected: dict[str, str | None] | None = None,
+    origin_api: bool = False,
+) -> list[PublicCropTradeNameEvent]:
+    """Upsert or remove the trade names of the given languages.
+
+    Languages left out are untouched, the same rule as description
+    translations, so a sync job that only knows French never wipes Spanish. A
+    blank or null value removes that language. ``expected`` maps a language
+    to the name the editor last saw (``None`` for "none"); a mismatch raises
+    :class:`TradeNameEditConflictError` instead of silently overwriting
+    someone else's edit. All languages apply or none do.
+    """
+    origin_api = _origin_api_flag(user, origin_api)
+    with transaction.atomic():
+        locked = _lock_variety_entry(public_crop)
+        current_by_language = {
+            row.language_code: row
+            for row in PublicCropTradeName.objects.filter(public_crop=locked)
+        }
+        for language_code, expected_name in (expected or {}).items():
+            current = current_by_language.get(language_code)
+            if (current.name if current is not None else None) != (expected_name or None):
+                raise TradeNameEditConflictError(language_code=language_code, current=current)
+        events = []
+        for language_code, value in trade_names.items():
+            event = _apply_trade_name(
+                public_crop=locked,
+                language_code=language_code,
+                current=current_by_language.get(language_code),
+                value=value,
+                user=user,
+                action=PublicCropTradeNameEvent.ACTION_SET,
+                origin_api=origin_api,
+            )
+            if event is not None:
+                events.append(event)
+        return events
+
+
+def revert_trade_name_event(
+    *,
+    public_crop: PublicCrop,
+    event_id: int,
+    user: AbstractBaseUser | None,
+) -> PublicCropTradeNameEvent | None:
+    """Restore the value a history event replaced, as a new ``reverted`` event.
+
+    Returns ``None`` when that value is already current. The restored name
+    passes the same checks as a fresh edit, so a revert can never reintroduce
+    a duplicate that appeared since.
+    """
+    with transaction.atomic():
+        locked = _lock_variety_entry(public_crop)
+        event = PublicCropTradeNameEvent.objects.filter(public_crop=locked, pk=event_id).first()
+        if event is None:
+            raise TradeNameError(
+                'This history entry does not exist.', code='trade_name_event_not_found',
+            )
+        current = PublicCropTradeName.objects.filter(
+            public_crop=locked, language_code=event.language_code,
+        ).first()
+        return _apply_trade_name(
+            public_crop=locked,
+            language_code=event.language_code,
+            current=current,
+            value={'name': event.old_name, 'source_url': event.old_source_url},
+            user=user,
+            action=PublicCropTradeNameEvent.ACTION_REVERTED,
+            origin_api=False,
+            reverted_event=event,
+        )
+
+
+def report_trade_name(
+    *,
+    public_crop: PublicCrop,
+    user: AbstractBaseUser,
+    language_code: str,
+    reason: str,
+    note: str = '',
+) -> tuple[PublicCropReport, bool]:
+    """Record a report on one language's trade name; ``(report, created)``.
+
+    A user has at most one open report per entry and language: reporting the
+    same name again updates the note and reason instead of adding noise to the
+    moderators' queue. The report never hides the name — moderators decide.
+    """
+    current = PublicCropTradeName.objects.filter(
+        public_crop=public_crop, language_code=language_code,
+    ).first()
+    if current is None:
+        raise TradeNameError(
+            'There is no trade name in this language to report.',
+            code='trade_name_not_found',
+        )
+    report, created = PublicCropReport.objects.update_or_create(
+        public_crop=public_crop,
+        subject=PublicCropReport.SUBJECT_TRADE_NAME,
+        language_code=language_code,
+        reported_by=user,
+        status=PublicCropReport.STATUS_OPEN,
+        defaults={'reason': reason, 'note': note, 'reported_name': current.name},
+    )
+    if created:
+        notify_moderators_of_trade_name_report(report)
+    return report, created
+
+
+def resolve_public_crop_report(
+    *,
+    report: PublicCropReport,
+    user: AbstractBaseUser,
+    status: str,
+    note: str = '',
+) -> PublicCropReport:
+    """Close an open report as ``resolved`` (acted on) or ``dismissed``."""
+    if report.status != PublicCropReport.STATUS_OPEN:
+        raise TradeNameError('Only open reports can be resolved.', code='report_not_open')
+    if status not in {PublicCropReport.STATUS_RESOLVED, PublicCropReport.STATUS_DISMISSED}:
+        raise TradeNameError('Unsupported report resolution.', code='report_status_invalid')
+    report.status = status
+    report.resolution_note = note
+    report.resolved_by = user
+    report.resolved_at = timezone.now()
+    report.save(
+        update_fields=['status', 'resolution_note', 'resolved_by', 'resolved_at', 'updated_at'],
+    )
+    return report
+
+
+def notify_moderators_of_trade_name_report(report: PublicCropReport) -> None:
+    """Tell every public library moderator that a trade name was reported."""
+    from crops.permissions import public_library_moderator_users
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    public_crop = report.public_crop
+    for recipient in public_library_moderator_users().exclude(pk=report.reported_by_id):
+        create_notification(
+            recipient=recipient,
+            notification_type=Notification.TYPE_PUBLIC_CROP_TRADE_NAME_REPORTED,
+            message=(
+                f'The trade name "{report.reported_name}" of "{public_crop.variety}" was reported.'
+            ),
+            context={
+                'name': report.reported_name,
+                'variety': public_crop.variety,
+                'language_code': report.language_code,
+            },
+            target_type=Notification.TARGET_PUBLIC_CROP,
+            target_id=public_crop.id,
+        )

@@ -39,6 +39,7 @@ from farm.models import (
     ProjectMembership,
     PublicCrop,
     PublicCropChangeProposal,
+    PublicCropReport,
     PublicCropTradeName,
     Season,
     SeedPackage,
@@ -486,6 +487,25 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assert_list_query_count(
             '/openfarmplanner/api/public-crops/pending-change-proposals/', 6,
         )
+
+    def test_public_crop_reports_list_query_count(self):
+        """Each open report resolves its entry, the reporter's public profile
+        and the entry's current trade names (`current_name`): the first two are
+        `select_related`, the trade names one prefetch per page. The moderator
+        gate reads permissions once per request, as for the proposal queue."""
+        grant_public_library_moderator_access(self.user)
+        for index, public_crop in enumerate(self.public_crops):
+            reporter = User.objects.create_user(
+                username=f'trade-reporter-{index}',
+                email=f'trade-reporter-{index}@example.com',
+                password='pw',
+            )
+            PublicCropReport.objects.create(
+                public_crop=public_crop, language_code='fr', reason='spam',
+                reported_name=f'Sorte fr {index}', reported_by=reporter,
+            )
+
+        self.assert_list_query_count('/openfarmplanner/api/public-crops/reports/', 7)
 
     def test_projects_bootstrap_query_count(self):
         """`/projects-bootstrap/` serialises one entry per membership and reads

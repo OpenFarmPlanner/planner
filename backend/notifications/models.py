@@ -28,6 +28,7 @@ class Notification(models.Model):
     TYPE_CROP_SPECIES_REASSIGNED = 'crop_species_reassigned'
     TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_SUBMITTED = 'public_crop_change_proposal_submitted'
     TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_REVIEWED = 'public_crop_change_proposal_reviewed'
+    TYPE_PUBLIC_CROP_TRADE_NAME_REPORTED = 'public_crop_trade_name_reported'
     TYPE_CHOICES = [
         (TYPE_CROP_SPECIES_PROPOSAL_ACCEPTED, 'Crop species proposal accepted'),
         (TYPE_CROP_SPECIES_PROPOSAL_REJECTED, 'Crop species proposal rejected'),
@@ -38,6 +39,7 @@ class Notification(models.Model):
         (TYPE_CROP_SPECIES_REASSIGNED, 'Crop species reassigned'),
         (TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_SUBMITTED, 'Public crop change proposal submitted'),
         (TYPE_PUBLIC_CROP_CHANGE_PROPOSAL_REVIEWED, 'Public crop change proposal reviewed'),
+        (TYPE_PUBLIC_CROP_TRADE_NAME_REPORTED, 'Public crop trade name reported'),
     ]
 
     TARGET_CROP = 'crop'

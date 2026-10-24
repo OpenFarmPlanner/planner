@@ -6,13 +6,25 @@ species, not through whichever localized name a user happened to type. The
 same holds for a variety's trade names: "Poire jaune" is "Gelbe Birne".
 """
 
-from django.contrib.auth import get_user_model
+from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.test import override_settings
+from rest_framework.test import APIClient
+from rest_framework.throttling import ScopedRateThrottle
+
+from accounts.data_export import build_personal_data_export
+from accounts.guest_demo import create_guest_demo_session
 from crops.models import CropSpecies, CropSpeciesTranslation
 from crops.services import find_exact_crop_match
+from farm.crops.views.public import PublicCropViewSet
 from farm.models import (
     Crop,
+    ProjectApiToken,
     PublicCrop,
+    PublicCropChangeProposal,
+    PublicCropReport,
     PublicCropTradeName,
     PublicCropTradeNameEvent,
     PublicCropTranslation,
@@ -28,6 +40,7 @@ from farm.services.public_crops import (
     update_public_crop_directly,
 )
 from farm.tests.api_base import ProjectApiTestCase
+from notifications.models import Notification
 
 
 class CrossLanguageDuplicateDetectionTest(ProjectApiTestCase):
@@ -326,6 +339,299 @@ class VarietyTradeNameTest(ProjectApiTestCase):
         PublicCropTradeName.objects.create(public_crop=general, language_code='fr', name='Tomate')
 
         self.assertEqual(general.variety_display('fr'), '')
+
+
+class VarietyTradeNameEditingApiTest(ProjectApiTestCase):
+    """Phase 2: unmoderated editing with history, revert, reports and throttling."""
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.species = CropSpecies.objects.get(name_normalized='tomate')
+        self.entry = PublicCrop.objects.create(
+            name='Tomate', variety='Gelbe Birne', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, original_language_code='de', version=3,
+            created_by=self.user,
+        )
+        self.url = f'/openfarmplanner/api/public-crops/{self.entry.id}/trade-names/'
+        self.moderator = get_user_model().objects.create_user(
+            username='trade-moderator', email='trade-moderator@example.com',
+            password='pw', is_staff=True,
+        )
+
+    def _put(self, trade_names, **extra):
+        return self.client.put(self.url, {'trade_names': trade_names, **extra}, format='json')
+
+    def _set_fr(self, name='Poire jaune'):
+        response = self._put({'fr': {'name': name, 'source_url': 'https://example.com/poire'}})
+        self.assertEqual(response.status_code, 200, response.data)
+        return response
+
+    def test_any_signed_in_user_sets_a_trade_name_live_and_it_is_recorded(self):
+        # The fixture user is a brand-new account: no moderation queue (D4).
+        response = self._set_fr()
+
+        self.assertEqual(response.data, {
+            'variety': 'Gelbe Birne',
+            'trade_names': {'fr': {'name': 'Poire jaune', 'source_url': 'https://example.com/poire'}},
+        })
+        trade_name = PublicCropTradeName.objects.get(public_crop=self.entry)
+        self.assertEqual((trade_name.created_by, trade_name.updated_by), (self.user, self.user))
+        event = PublicCropTradeNameEvent.objects.get(public_crop=self.entry)
+        self.assertEqual(
+            (event.action, event.language_code, event.old_name, event.new_name, event.created_by),
+            (PublicCropTradeNameEvent.ACTION_SET, 'fr', '', 'Poire jaune', self.user),
+        )
+        self.assertFalse(PublicCropChangeProposal.objects.exists())
+
+    def test_trade_name_edits_never_bump_the_entry_version(self):
+        self._set_fr()
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.version, 3)
+
+    def test_omitted_languages_stay_and_null_removes_one(self):
+        self._set_fr()
+        self._put({'en': {'name': 'Yellow Pear'}})
+
+        response = self._put({'en': None})
+
+        self.assertEqual(list(response.data['trade_names']), ['fr'])
+        removal = PublicCropTradeNameEvent.objects.filter(public_crop=self.entry).first()
+        self.assertEqual(
+            (removal.action, removal.language_code, removal.old_name),
+            (PublicCropTradeNameEvent.ACTION_REMOVED, 'en', 'Yellow Pear'),
+        )
+
+    def test_an_unchanged_value_records_no_event(self):
+        self._set_fr()
+        self._set_fr()
+
+        self.assertEqual(PublicCropTradeNameEvent.objects.filter(public_crop=self.entry).count(), 1)
+
+    def test_a_trade_name_equal_to_the_original_is_rejected(self):
+        response = self._put({'de': {'name': 'gelbe  BIRNE'}})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'trade_name_equals_original')
+
+    def test_a_species_level_entry_rejects_trade_names(self):
+        general = PublicCrop.objects.create(
+            name='Tomate', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+        )
+
+        response = self.client.put(
+            f'/openfarmplanner/api/public-crops/{general.id}/trade-names/',
+            {'trade_names': {'fr': {'name': 'Tomate'}}}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'trade_name_general_entry')
+
+    def test_a_name_identifying_another_entry_is_a_conflict_and_nothing_is_saved(self):
+        other = PublicCrop.objects.create(
+            name='Tomate', variety='Poire jaune', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species,
+        )
+
+        response = self._put({'en': {'name': 'Yellow Pear'}, 'fr': {'name': 'Poire Jaune'}})
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data['code'], 'trade_name_conflict')
+        self.assertEqual(response.data['conflicting_public_crop_id'], other.id)
+        self.assertFalse(PublicCropTradeName.objects.exists())
+        self.assertFalse(PublicCropTradeNameEvent.objects.exists())
+
+    def test_expected_names_guard_against_overwriting_a_concurrent_edit(self):
+        self._set_fr()
+
+        stale = self._put({'fr': {'name': 'Poire jaune longue'}}, expected={'fr': None})
+        fresh = self._put({'fr': {'name': 'Poire jaune longue'}}, expected={'fr': 'Poire jaune'})
+
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(
+            (stale.data['code'], stale.data['current_name']),
+            ('trade_name_edit_conflict', 'Poire jaune'),
+        )
+        self.assertEqual(fresh.status_code, 200, fresh.data)
+
+    def test_invalid_language_codes_and_source_links_are_rejected(self):
+        for payload in (
+            {'xx': {'name': 'Nome'}},
+            {'fr': {'name': 'Poire jaune', 'source_url': 'ftp://example.com/x'}},
+            {'fr': {'name': 'Poire jaune', 'source_url': 'javascript:alert(1)'}},
+        ):
+            with self.subTest(payload=payload):
+                self.assertEqual(self._put(payload).status_code, 400)
+
+    def test_history_lists_events_with_pseudonymous_authors(self):
+        self._set_fr()
+        self._set_fr('Poire jaune longue')
+
+        response = self.client.get(f'{self.url}history/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [row['new_name'] for row in response.data], ['Poire jaune longue', 'Poire jaune'],
+        )
+        self.assertEqual(response.data[0]['created_by_label'], '')
+        self.assertEqual(response.data[0]['created_by_anonymous_number'], 1)
+        self.assertNotIn('created_by', response.data[0])
+
+    def test_revert_restores_the_replaced_value_as_a_new_event(self):
+        self._set_fr()
+        self._set_fr('Spam')
+        vandalism = PublicCropTradeNameEvent.objects.filter(public_crop=self.entry).first()
+        self.client.force_authenticate(self.moderator)
+
+        response = self.client.post(f'{self.url}history/{vandalism.id}/revert/')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['trade_names']['fr']['name'], 'Poire jaune')
+        revert = PublicCropTradeNameEvent.objects.filter(public_crop=self.entry).first()
+        self.assertEqual(
+            (revert.action, revert.reverted_event_id, revert.created_by),
+            (PublicCropTradeNameEvent.ACTION_REVERTED, vandalism.id, self.moderator),
+        )
+
+    def test_reverting_the_first_entry_removes_the_name(self):
+        self._set_fr()
+        creation = PublicCropTradeNameEvent.objects.get(public_crop=self.entry)
+
+        response = self.client.post(f'{self.url}history/{creation.id}/revert/')
+
+        self.assertEqual(response.data['trade_names'], {})
+
+    def test_reverting_an_unknown_event_is_not_found(self):
+        response = self.client.post(f'{self.url}history/999999/revert/')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_report_notifies_moderators_once_and_updates_on_repeat(self):
+        self._set_fr()
+        report_url = f'/openfarmplanner/api/public-crops/{self.entry.id}/reports/'
+
+        first = self.client.post(
+            report_url, {'language_code': 'fr', 'reason': 'self_translated'}, format='json',
+        )
+        again = self.client.post(
+            report_url,
+            {'language_code': 'fr', 'reason': 'spam', 'note': 'Still wrong'},
+            format='json',
+        )
+
+        self.assertEqual((first.status_code, again.status_code), (201, 200))
+        report = PublicCropReport.objects.get()
+        self.assertEqual(
+            (report.reported_name, report.reason, report.note, report.reported_by),
+            ('Poire jaune', 'spam', 'Still wrong', self.user),
+        )
+        notification = Notification.objects.get(recipient=self.moderator)
+        self.assertEqual(
+            notification.notification_type, Notification.TYPE_PUBLIC_CROP_TRADE_NAME_REPORTED,
+        )
+        self.assertEqual(notification.context['name'], 'Poire jaune')
+        self.assertFalse(Notification.objects.filter(recipient=self.user).exists())
+
+    def test_reporting_a_language_without_a_trade_name_is_not_found(self):
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/reports/',
+            {'language_code': 'es', 'reason': 'other'}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data['code'], 'trade_name_not_found')
+
+    def test_only_moderators_see_and_resolve_reports(self):
+        self._set_fr()
+        report, _ = PublicCropReport.objects.get_or_create(
+            public_crop=self.entry, language_code='fr', reason='spam',
+            reported_name='Poire jaune', reported_by=self.user,
+        )
+        list_url = '/openfarmplanner/api/public-crops/reports/'
+        resolve_url = f'{list_url}{report.id}/resolve/'
+
+        self.assertEqual(self.client.get(list_url).status_code, 403)
+        denied = self.client.post(resolve_url, {'status': 'dismissed'}, format='json')
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.force_authenticate(self.moderator)
+        listing = self.client.get(list_url)
+        resolved = self.client.post(
+            resolve_url, {'status': 'dismissed', 'note': 'Correct'}, format='json',
+        )
+
+        self.assertEqual([row['id'] for row in listing.data['results']], [report.id])
+        self.assertEqual(listing.data['results'][0]['current_name'], 'Poire jaune')
+        self.assertEqual(resolved.status_code, 200, resolved.data)
+        self.assertEqual(resolved.data['status'], 'dismissed')
+        self.assertEqual(self.client.get(list_url).data['results'], [])
+        self.assertEqual(
+            self.client.post(resolve_url, {'status': 'resolved'}, format='json').data['code'],
+            'report_not_open',
+        )
+
+    def test_guest_demo_users_cannot_edit_or_report(self):
+        self._set_fr()
+        self.client.force_authenticate(create_guest_demo_session().user)
+
+        edit = self._put({'es': {'name': 'Pera amarilla'}})
+        report = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/reports/',
+            {'language_code': 'fr', 'reason': 'spam'}, format='json',
+        )
+
+        self.assertEqual((edit.status_code, report.status_code), (403, 403))
+        self.assertEqual(edit.data['code'], 'guest_demo_restricted')
+
+    def test_project_api_tokens_cannot_write_trade_names(self):
+        _token, raw_token = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name='Agent', scope=ProjectApiToken.SCOPE_WRITE,
+        )
+        token_client = APIClient()
+        token_client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_token}')
+
+        response = token_client.put(
+            self.url, {'trade_names': {'fr': {'name': 'Poire jaune'}}}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(PublicCropTradeName.objects.exists())
+
+    @override_settings(
+        CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+    )
+    def test_trade_name_writes_are_rate_limited_per_user(self):
+        rates = {'public_crop_trade_name_write': '2/hour', 'public_crop_report': '20/hour'}
+        with (
+            patch.object(ScopedRateThrottle, 'THROTTLE_RATES', rates),
+            patch.object(PublicCropViewSet, 'throttle_classes', [ScopedRateThrottle]),
+        ):
+            statuses = [
+                self._put({'fr': {'name': name}}).status_code
+                for name in ('Poire jaune', 'Poire jaune 2', 'Poire jaune 3')
+            ]
+            read = self.client.get(self.url).status_code
+
+        self.assertEqual(statuses, [200, 200, 429])
+        self.assertEqual(read, 200)
+
+    def test_personal_data_export_contains_own_changes_and_reports(self):
+        self._set_fr()
+        PublicCropReport.objects.create(
+            public_crop=self.entry, language_code='fr', reason='spam', reported_by=self.user,
+            resolved_by=self.moderator,
+        )
+
+        export = build_personal_data_export(self.user)
+
+        self.assertEqual(
+            [row['new_name'] for row in export['public_library_trade_name_changes']],
+            ['Poire jaune'],
+        )
+        self.assertEqual(len(export['public_library_reports']), 1)
+        self.assertNotIn('resolved_by_id', export['public_library_reports'][0])
 
 
 class PublicCropTranslationTest(ProjectApiTestCase):

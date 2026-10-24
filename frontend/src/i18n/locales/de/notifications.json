@@ -33,6 +33,7 @@
     "public_crop_change_proposal_submitted": "Ein Beitrag zu „{{name}}“ wartet auf Prüfung.",
     "public_crop_change_proposal_reviewed_approved": "Dein Beitrag zu „{{name}}“ wurde angenommen.",
     "public_crop_change_proposal_reviewed_rejected": "Dein Beitrag zu „{{name}}“ wurde abgelehnt.",
-    "public_crop_change_proposal_reviewed": "Dein Beitrag zu „{{name}}“ wurde geprüft."
+    "public_crop_change_proposal_reviewed": "Dein Beitrag zu „{{name}}“ wurde geprüft.",
+    "public_crop_trade_name_reported": "Der Handelsname „{{name}}“ der Sorte „{{variety}}“ wurde gemeldet."
   }
 }
