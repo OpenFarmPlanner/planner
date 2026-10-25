@@ -299,7 +299,14 @@
       "noFamily": "{{culture}} has no plant family. Without a family we cannot check a rotation break.",
       "addFamily": "Add a family to {{culture}}",
       "noBreak": "Neither {{family}} nor {{culture}} has a rotation break. Without a break we cannot check the crop rotation.",
-      "incomplete": "Choose a crop, bed and planting date so we can check the crop rotation."
+      "incomplete": "Choose a crop, bed and planting date so we can check the crop rotation.",
+      "missingData": {
+        "heading": "Crop rotation cannot be checked:",
+        "noFamily": "No plant family is set for {{crop}}.",
+        "noBreak": "No rotation break is set for {{crop}}.",
+        "previousNoFamily": "No plant family is set for the previous crop {{crop}} ({{year}}).",
+        "closing": "You can add the missing information in the crop library."
+      }
     },
     "ok": {
       "text": "Crop rotation fits: {{reason}}",

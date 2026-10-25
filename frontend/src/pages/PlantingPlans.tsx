@@ -134,7 +134,10 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
-import { isFlaggedRotationStatus } from "../components/planting-plans/rotation/rotationCopy";
+import {
+  getTableRotationStatus,
+  isFlaggedRotationStatus,
+} from "../components/planting-plans/rotation/rotationCopy";
 import {
   buildRotationKey,
   useRotationAcceptanceDraft,
@@ -1373,7 +1376,7 @@ function PlantingPlans() {
       sowingDate: getRowSowingSchedule(row)?.sowingDate ?? null,
       harvestDate: toIsoDateString(row.harvest_date),
       harvestEndDate: toIsoDateString(row.harvest_end_date),
-      rotationStatus: row.isNew ? null : row.rotation_status ?? null,
+      rotationStatus: row.isNew ? null : getTableRotationStatus(row.rotation_status, row.rotation_findings),
     };
   }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule]);
   const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
@@ -2091,21 +2094,24 @@ function PlantingPlans() {
               expandedIds={expandedCardIds}
               onToggleExpanded={toggleCardExpanded}
               renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
-              renderSecondary={(item) => (
-                <>
-                  <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} />
-                  {" · "}
-                  <SearchHighlightedText text={getBedLabelForRow(item)} />
-                  {isFlaggedRotationStatus(item.rotation_status) ? (
-                    <RotationStatusIcon
-                      status={item.rotation_status}
-                      fontSize="inherit"
-                      titleAccess={t(`plantingPlans:rotation.status.${item.rotation_status}`)}
-                      sx={{ ml: 0.5, verticalAlign: "middle" }}
-                    />
-                  ) : null}
-                </>
-              )}
+              renderSecondary={(item) => {
+                const rotationStatus = getTableRotationStatus(item.rotation_status, item.rotation_findings);
+                return (
+                  <>
+                    <SearchHighlightedText text={formatDateForDisplay(item.planting_date)} />
+                    {" · "}
+                    <SearchHighlightedText text={getBedLabelForRow(item)} />
+                    {isFlaggedRotationStatus(rotationStatus) ? (
+                      <RotationStatusIcon
+                        status={rotationStatus}
+                        fontSize="inherit"
+                        titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
+                        sx={{ ml: 0.5, verticalAlign: "middle" }}
+                      />
+                    ) : null}
+                  </>
+                );
+              }}
               renderHeaderAction={(item) => (
                 <AppTooltip title={t("common:actions.actions")}>
                   <IconButton

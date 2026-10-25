@@ -75,6 +75,25 @@ test.describe('planting plan crop rotation in the table', () => {
     await expect(rows(page).getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' })).toHaveCount(count);
   });
 
+  test('explains in the tooltip why the rotation cannot be checked, matching the filter', async ({ page }) => {
+    await page.getByRole('button', { name: 'Filter' }).click();
+    await page.getByRole('group', { name: 'Fruchtfolge' }).getByRole('button', { name: 'Nicht prüfbar' }).click();
+    await page.keyboard.press('Escape');
+
+    const count = await rows(page).count();
+    expect(count).toBeGreaterThan(0);
+    const infoButtons = rows(page).getByRole('button', { name: 'Fruchtfolge nicht prüfbar, Anbaufläche ändern' });
+    await expect(infoButtons).toHaveCount(count);
+
+    await searchBox(page).fill('Erdbeere');
+    await expect(rows(page)).toHaveCount(1);
+    await infoButtons.hover();
+    const tooltip = page.getByRole('tooltip');
+    await expect(tooltip).toContainText('Fruchtfolge nicht prüfbar:');
+    await expect(tooltip).toContainText(/Für Erdbeere.* ist keine Pflanzenfamilie hinterlegt\./);
+    await expect(tooltip).toContainText('Du kannst die fehlenden Angaben in der Kulturbibliothek ergänzen.');
+  });
+
   test('shows no icon for an accepted conflict, which the filter still finds', async ({ page }) => {
     await page.getByRole('button', { name: 'Filter' }).click();
     await page.getByRole('group', { name: 'Fruchtfolge' }).getByRole('button', { name: 'Akzeptiert' }).click();

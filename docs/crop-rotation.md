@@ -21,7 +21,8 @@ The data foundation — the curated plant-family list, `Crop.crop_family`,
 
 **Scope is the bed.** Only planting plans on the same `Bed` are compared,
 across all seasons of the project. A plan without a bed, crop or planting date
-cannot be checked (status `info`, finding `incomplete`).
+cannot be checked yet (status `info`, finding `incomplete`); the table does
+not flag it, since there is nothing to fix in the crop data.
 
 **Year occupancy.** A plan occupies every calendar year from its planting date
 to its last date: the harvest end, else the harvest start, else the effective
@@ -64,19 +65,39 @@ A culture counts as green manure when its crop species carries the
 `green_manure` category (`CropSpecies.categories`); the seeded species list
 does not tag any yet, so today only legumes interrupt the sequence.
 
-**Info — "not checkable".** Only for missing culture data, so "no warning" is
-never mistaken for "checked and fine":
+**Info — "not checkable".** Only when missing culture data actually blocks a
+check, so "no warning" is never mistaken for "checked and fine" and a bed
+without history never raises noise. Both have to hold:
 
-- the culture has no plant family (`no_family`);
-- neither the culture nor its family (nor the other culture) has a break
-  (`no_break`).
+1. The bed has at least one *relevant earlier plan*: a plan that started
+   before the checked one and whose last year lies inside the culture's
+   break window (`last year >= first year - break`). Without a known break
+   every earlier plan on the bed counts.
+2. At least one of these reasons applies; every one that applies becomes a
+   finding of its own:
+   - the culture has no plant family (`no_family`, with `crop_label`);
+   - the culture has a family, but neither it, its family nor another
+     culture of that family on the bed has a break (`no_break`, with
+     `crop_label`);
+   - a relevant earlier plan's culture has no plant family
+     (`previous_no_family`, one finding per such plan, oldest first, with
+     `previous_crop_label`, `previous_plan_id`, its last year as `year` and
+     its `settings_crop_id`).
+
+A bed without a relevant earlier plan is never "not checkable", whatever data
+the culture lacks: it is ok with the kind `no_history` (see below). A
+conflict or nutrient hint wins over missing data, as before. Findings carry
+only reason codes and the names and years the copy needs; the frontend builds
+every sentence through i18n.
 
 **Ok.** Checked, no conflict, no hint. The finding still carries the last year
 of the family on the bed and the previous culture ("Vorkultur"). A bed with no
 planting plans in the years the check needs to look at (the break window
 before the plan plus the plan's own years) is ok too: nothing recorded there
 can conflict. Its finding has the kind `no_history` and reads "Fruchtfolge
-passt: auf diesem Beet sind keine früheren Anbaupläne erfasst." In the
+passt: auf diesem Beet sind keine früheren Anbaupläne erfasst." A culture
+without plant family whose bed has no relevant earlier plan gets the same
+finding. In the
 suggestions and bed options it ranks like any other ok bed.
 
 Status priority: `conflict` (or `accepted`) > `hint` > `info` > `ok`.
@@ -159,15 +180,21 @@ harmless and is reset on the next move.
 - **Table**: there is no rotation column. The rotation status sits as a small
   icon button at the right end of the "Standort | Parzelle | Beet" cell, only
   where the user still has something to do: `conflict` (warning triangle)
-  and `info` (question circle, missing culture data). Accepted conflicts and
-  nutrient hints show no icon in the table; they stay visible in
+  and `info` (question circle, missing culture data that blocks a check, see
+  the rules above; `incomplete` drafts are not flagged). Accepted conflicts
+  and nutrient hints show no icon in the table; they stay visible in
   "Anbaufläche ändern", and accepted ones can be found through the filter.
   The button has an aria-label ("Fruchtfolge-Konflikt,
-  Anbaufläche ändern") and a tooltip with the finding title only; a click
+  Anbaufläche ändern") and a tooltip. For a conflict it shows the finding
+  title; for "nicht prüfbar" it lists the reasons, one per line, between
+  "Fruchtfolge nicht prüfbar:" and "Du kannst die fehlenden Angaben in der
+  Kulturbibliothek ergänzen." (`getMissingDataLines`). A click
   opens the same "Anbaufläche ändern" dialog as a click on the cell. It stays
   out of the grid's tab order, since Enter on the cell opens the dialog too.
   The "Filter" menu has a "Fruchtfolge" filter (multi-select "Konflikt",
-  "Akzeptiert", "Nicht prüfbar"), shown in the active filter chips like the
+  "Akzeptiert", "Nicht prüfbar"); icon, cards and filter all read the status
+  through `getTableRotationStatus`, so they never disagree. It is shown in
+  the active filter chips like the
   others and kept in memory only ([search.md](./search.md#filters)). Mobile
   cards follow the table and show the icon for conflict and not checkable
   only.
@@ -176,7 +203,8 @@ harmless and is reset on the next move.
   when the bed changes: the warning Alert with the "Bewusst so planen
   (Konflikt akzeptieren)" checkbox for a conflict, the outlined Alert with
   "Akzeptieren zurücknehmen" for an accepted one, the hint and "nicht
-  prüfbar" Alerts, and the one-line "Fruchtfolge passt: …" note. An
+  prüfbar" Alerts (one line and crop link per missing value), and the
+  one-line "Fruchtfolge passt: …" note. An
   acceptance only holds for the bed it was given for and is sent with the
   bed on "Übernehmen" (`rotation_conflict_accepted`).
   - The Beet options come from one `bed-suggestions` batch (with the plan's
