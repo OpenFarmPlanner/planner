@@ -118,6 +118,7 @@ export function PublicCropTranslationDialog({
                   {t('library.translation.originalSectionTitle', { language: originalLanguageName })}
                 </Typography>
                 <Box
+                  lang={originalLanguageCode || undefined}
                   sx={{
                     mt: 0.5,
                     p: 1.5,
@@ -141,6 +142,7 @@ export function PublicCropTranslationDialog({
               value={editedText}
               onChange={(event) => setEditedText(event.target.value)}
               placeholder={t('library.translation.descriptionPlaceholder')}
+              slotProps={{ htmlInput: { lang: language } }}
             />
           </Stack>
         )}

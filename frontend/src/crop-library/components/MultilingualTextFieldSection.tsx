@@ -57,6 +57,7 @@ export function MultilingualTextFieldSection({
           value={originalValue}
           onChange={(event) => onOriginalValueChange(event.target.value)}
           helperText={t('library.translation.originalLanguageLabel', { language: originalLanguageName })}
+          slotProps={{ htmlInput: { lang: originalCode } }}
         />
         {editsTranslation ? (
           <>
@@ -78,6 +79,7 @@ export function MultilingualTextFieldSection({
               value={translationValue}
               onChange={(event) => onTranslationValueChange(event.target.value)}
               placeholder={translationPlaceholder}
+              slotProps={{ htmlInput: { lang: currentCode } }}
             />
           </>
         ) : null}

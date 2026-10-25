@@ -28,15 +28,24 @@ export function stripCitationMarkers(text: string): string {
 const INVISIBLE_AFTER_DELIMITER_RE = /([*_])[\u200B\u2060\uFEFF\u00AD]+/g;
 const INVISIBLE_BEFORE_DELIMITER_RE = /[\u200B\u2060\uFEFF\u00AD]+([*_])/g;
 
+// Whitespace (including no-break spaces) just inside one side of a same-line
+// `**…**`/`__…__` pair: `**Hülsen. **` cannot close and `** Hülsen.**` cannot
+// open. Only one loose side is tightened, so `a ** b ** c` stays as it is.
+const LOOSE_CLOSING_STRONG_RE = /(\*\*|__)(?![\s*_])([^*_\n]*?[^\s*_])[ \t\u00A0\u202F]+\1/g;
+const LOOSE_OPENING_STRONG_RE = /(\*\*|__)[ \t\u00A0\u202F]+([^\s*_](?:[^*_\n]*?[^\s*_])?)\1/g;
+
 /**
- * Prepare stored notes text for markdown rendering: drop citation markers and
- * invisible characters that would break `**bold**`/`_emphasis_` delimiters.
+ * Prepare stored notes text for markdown rendering: drop citation markers,
+ * invisible characters and stray inner whitespace that would break
+ * `**bold**`/`_emphasis_` delimiters.
  */
 export function normalizeMarkdownSource(text: string): string {
   if (!text) return text;
   return stripCitationMarkers(text)
     .replace(INVISIBLE_AFTER_DELIMITER_RE, '$1')
-    .replace(INVISIBLE_BEFORE_DELIMITER_RE, '$1');
+    .replace(INVISIBLE_BEFORE_DELIMITER_RE, '$1')
+    .replace(LOOSE_CLOSING_STRONG_RE, '$1$2$1')
+    .replace(LOOSE_OPENING_STRONG_RE, '$1$2$1');
 }
 
 /**

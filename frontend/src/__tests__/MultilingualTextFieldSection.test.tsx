@@ -48,6 +48,8 @@ describe('MultilingualTextFieldSection', () => {
 
     expect(screen.getByText('Originaltext auf Deutsch wird angezeigt')).toBeInTheDocument();
     expect(screen.getByLabelText('Englisch-Übersetzung')).toHaveValue('');
+    expect(screen.getByLabelText('Englisch-Übersetzung')).toHaveAttribute('lang', 'en');
+    expect(screen.getByLabelText('Notizen')).toHaveAttribute('lang', 'de');
   });
 
   it('loads an existing current-language translation into the inline editor', () => {

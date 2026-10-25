@@ -253,6 +253,19 @@ describe('normalizeMarkdownSource', () => {
     expect(normalizeMarkdownSource('Bohnen\u00ADhülsen')).toBe('Bohnen\u00ADhülsen');
   });
 
+  it('tightens whitespace just inside one side of a bold pair', () => {
+    expect(normalizeMarkdownSource('- Ernte der **Hülsen. **')).toBe('- Ernte der **Hülsen.**');
+    expect(normalizeMarkdownSource('- Ernte der **Hülsen.\u00A0**')).toBe('- Ernte der **Hülsen.**');
+    expect(normalizeMarkdownSource('- Ernte der ** Hülsen.**')).toBe('- Ernte der **Hülsen.**');
+    expect(normalizeMarkdownSource('__Hülsen. __')).toBe('__Hülsen.__');
+  });
+
+  it('leaves well-formed and ambiguous delimiter runs untouched', () => {
+    expect(normalizeMarkdownSource('**a** b **c**')).toBe('**a** b **c**');
+    expect(normalizeMarkdownSource('2 ** 3 ** 4')).toBe('2 ** 3 ** 4');
+    expect(normalizeMarkdownSource('**eins**\n\n** zwei **')).toBe('**eins**\n\n** zwei **');
+  });
+
   it('also strips citation markers', () => {
     expect(normalizeMarkdownSource('**Fakt.**【1†L1-L2】')).toBe('**Fakt.**');
   });
