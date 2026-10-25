@@ -57,8 +57,9 @@ describe('PublicCropTranslationDialog', () => {
     await waitFor(() => expect(mocks.getTranslations).toHaveBeenCalledWith(1));
 
     expect(await screen.findByLabelText('Englisch – Übersetzung')).toHaveValue('');
+    expect(screen.getByLabelText('Englisch – Übersetzung')).toHaveAttribute('lang', 'en');
     expect(screen.getByText('Deutsch – Original')).toBeInTheDocument();
-    expect(screen.getByText('Robuste Sorte.')).toBeInTheDocument();
+    expect(screen.getByText('Robuste Sorte.').closest('[lang]')).toHaveAttribute('lang', 'de');
   });
 
   it('loads an existing English translation into the editor while keeping the original visible', async () => {
