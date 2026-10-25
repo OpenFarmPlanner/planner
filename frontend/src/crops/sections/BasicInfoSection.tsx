@@ -88,6 +88,35 @@ const identityFieldSx = {
 } as const;
 
 /** A family key the list does not (yet) contain, shown as its botanical name. */
+/**
+ * A small focusable info icon whose tooltip explains a heading or a field; a
+ * tap opens it on touch. Inside a field label it keeps the click from
+ * focusing the input (and opening the keyboard on a phone).
+ */
+function FieldInfoIcon({ title }: { title: string }) {
+  return (
+    <AppTooltip title={title} enterTouchDelay={0}>
+      <Box
+        component="span"
+        role="img"
+        tabIndex={0}
+        aria-label={title}
+        onClick={(event) => event.preventDefault()}
+        sx={{
+          display: 'inline-flex',
+          verticalAlign: 'middle',
+          color: 'text.secondary',
+          cursor: 'help',
+          borderRadius: '50%',
+          '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
+        }}
+      >
+        <InfoOutlinedIcon fontSize="small" />
+      </Box>
+    </AppTooltip>
+  );
+}
+
 function unlistedPlantFamily(botanicalName: string): PlantFamily {
   return {
     botanical_name: botanicalName,
@@ -155,15 +184,22 @@ export function BasicInfoSection({
     ? plantFamilies.getFamily(formData.crop_family) ?? unlistedPlantFamily(formData.crop_family)
     : null;
   const legacyCropFamily = !formData.crop_family ? formData.legacy_crop_family?.trim() : '';
-  const familyDefaultBreakYears = formData.rotation_break_years === null || formData.rotation_break_years === undefined
-    ? plantFamilies.getDefaultBreakYears(formData.crop_family)
-    : null;
-  const rotationBreakDefaultHint = familyDefaultBreakYears !== null
-    ? t('form.rotationBreakYearsFamilyDefault', {
-      family: plantFamilies.getName(formData.crop_family),
-      count: familyDefaultBreakYears,
-    })
-    : null;
+  const familyDefaultBreakYears = plantFamilies.getDefaultBreakYears(formData.crop_family);
+  const hasRotationBreakValue = formData.rotation_break_years !== null && formData.rotation_break_years !== undefined;
+  const rotationBreakPlaceholder = !hasRotationBreakValue && familyDefaultBreakYears !== null
+    ? String(familyDefaultBreakYears)
+    : undefined;
+  const rotationBreakTooltip = [
+    t('form.rotationBreakYearsTooltip'),
+    familyDefaultBreakYears !== null
+      ? t('form.rotationBreakYearsFamilyDefault', {
+        family: plantFamilies.getName(formData.crop_family),
+        count: familyDefaultBreakYears,
+      })
+      : null,
+  ].filter(Boolean).join(' ');
+  // A read-only field (linked Sorte) gets no info icon: the heading's icon explains it.
+  const showRotationBreakInfo = !speciesInvariantFieldsReadOnly;
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
@@ -394,23 +430,7 @@ export function BasicInfoSection({
         {speciesInvariantFieldsReadOnly ? (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
             {'\u00A0'}
-            <AppTooltip title={t('form.cropRotationInheritedTooltip')}>
-              <Box
-                component="span"
-                tabIndex={0}
-                aria-label={t('form.cropRotationInheritedTooltip')}
-                sx={{
-                  display: 'inline-flex',
-                  verticalAlign: 'middle',
-                  color: 'text.secondary',
-                  cursor: 'help',
-                  borderRadius: '50%',
-                  '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
-                }}
-              >
-                <InfoOutlinedIcon fontSize="small" />
-              </Box>
-            </AppTooltip>
+            <FieldInfoIcon title={t('form.cropRotationInheritedTooltip')} />
           </Box>
         ) : null}
       </Box>
@@ -473,21 +493,21 @@ export function BasicInfoSection({
           <TextField
             type="number"
             sx={mergeVarietyFieldSx(smallFieldSx, rotationBreakYearsVariety?.sx)}
-            label={t('form.rotationBreakYears')}
+            label={showRotationBreakInfo ? (
+              <>
+                {t('form.rotationBreakYears')}
+                {'\u00A0'}
+                <FieldInfoIcon title={rotationBreakTooltip} />
+              </>
+            ) : t('form.rotationBreakYears')}
             value={formData.rotation_break_years ?? ''}
             onChange={e => onChange('rotation_break_years', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-            placeholder={familyDefaultBreakYears !== null ? String(familyDefaultBreakYears) : undefined}
-            helperText={(
-              <>
-                {rotationBreakDefaultHint ? (
-                  <Box component="span" sx={{ display: 'block' }}>{rotationBreakDefaultHint}</Box>
-                ) : null}
-                {t('form.rotationBreakYearsHelper')}
-              </>
-            )}
+            placeholder={rotationBreakPlaceholder}
             slotProps={{
-              htmlInput: { min: 0, inputMode: 'numeric' },
-              inputLabel: familyDefaultBreakYears !== null ? { shrink: true } : undefined,
+              // The icon in the label must not become part of the input's name.
+              htmlInput: { min: 0, inputMode: 'numeric', 'aria-label': t('form.rotationBreakYears') },
+              // A floating label ignores the pointer, so the icon needs the shrunk one.
+              inputLabel: showRotationBreakInfo || rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
             }}
             disabled={speciesInvariantFieldsReadOnly}
           />

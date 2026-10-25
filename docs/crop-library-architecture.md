@@ -1166,6 +1166,12 @@ mirrored by `resolveEffectiveRotationBreakYears()` in
 `frontend/src/crops/plantFamilies.ts`, and exposed read-only as
 `CropSerializer.effective_rotation_break_years`. The bed-level rotation check
 that uses these values is described in [crop-rotation.md](./crop-rotation.md).
+In the crop form the definition lives in the tooltip of an info icon next to
+the "Anbaupause (Jahre)" label (plus "Standard für {Familie}: {n} Jahre."
+when the family has a default), not in a helper text under the field; the
+family default stays the placeholder of an empty field. A read-only field (a
+linked Sorte) shows no icon of its own — the section heading's icon explains
+it.
 
 **API.** `crop_family` is read and written as the botanical name
 (`PlantFamilyField`: case/whitespace-insensitive, `""`/`null` clear it, any

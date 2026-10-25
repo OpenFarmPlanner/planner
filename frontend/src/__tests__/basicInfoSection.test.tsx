@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BasicInfoSection } from '../crops/sections/BasicInfoSection';
 import type { PlantFamily } from '../api/types';
@@ -111,7 +111,7 @@ describe('BasicInfoSection', () => {
     expect(onChange).toHaveBeenCalledWith('crop_family', 'Asteraceae');
   });
 
-  it('shows the family default and the break definition for a crop without its own break', async () => {
+  it('moves the break definition and the family default into the label info tooltip', async () => {
     render(
       <BasicInfoSection
         formData={{ crop_family: 'Apiaceae', rotation_break_years: null }}
@@ -120,27 +120,24 @@ describe('BasicInfoSection', () => {
         t={t}
       />
     );
+    await screen.findByDisplayValue('Doldenblütler');
 
-    expect(await screen.findByText(
-      'form.rotationBreakYearsFamilyDefault:{"family":"Doldenblütler","count":3}',
-    )).toBeInTheDocument();
-    expect(screen.getByLabelText('form.rotationBreakYears')).toHaveAttribute('placeholder', '3');
-    expect(screen.getByText('form.rotationBreakYearsHelper')).toBeInTheDocument();
+    const input = screen.getByRole('spinbutton', { name: 'form.rotationBreakYears' });
+    expect(input).toHaveAttribute('placeholder', '3');
+    // No helper text below the field any more.
+    expect(screen.queryByText('form.rotationBreakYearsTooltip')).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute('aria-describedby');
+
+    const expected = 'form.rotationBreakYearsTooltip form.rotationBreakYearsFamilyDefault:{"family":"Doldenblütler","count":3}';
+    const icon = screen.getByRole('img', { name: expected });
+    expect(icon).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => icon.focus());
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(expected);
   });
 
-  it('omits the family default once the crop has its own break or the family has none', async () => {
+  it('drops the default sentence from the tooltip when the family has none or none is chosen', async () => {
     const { rerender } = render(
-      <BasicInfoSection
-        formData={{ crop_family: 'Apiaceae', rotation_break_years: 5 }}
-        errors={{}}
-        onChange={vi.fn()}
-        t={t}
-      />
-    );
-    await screen.findByDisplayValue('Doldenblütler');
-    expect(screen.queryByText(/form\.rotationBreakYearsFamilyDefault/)).not.toBeInTheDocument();
-
-    rerender(
       <BasicInfoSection
         formData={{ crop_family: 'Poaceae', rotation_break_years: null }}
         errors={{}}
@@ -149,8 +146,35 @@ describe('BasicInfoSection', () => {
       />
     );
     await screen.findByDisplayValue('Süßgräser');
-    expect(screen.queryByText(/form\.rotationBreakYearsFamilyDefault/)).not.toBeInTheDocument();
-    expect(screen.getByText('form.rotationBreakYearsHelper')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'form.rotationBreakYearsTooltip' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'form.rotationBreakYears' })).not.toHaveAttribute('placeholder');
+
+    rerender(
+      <BasicInfoSection
+        formData={{ crop_family: null, rotation_break_years: 2 }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+    expect(screen.getByRole('img', { name: 'form.rotationBreakYearsTooltip' })).toBeInTheDocument();
+  });
+
+  it('shows no field info icon when the rotation fields are read-only', async () => {
+    render(
+      <BasicInfoSection
+        formData={{ crop_family: 'Apiaceae', rotation_break_years: null }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        speciesInvariantFieldsReadOnly
+      />
+    );
+    await screen.findByDisplayValue('Doldenblütler');
+    expect(screen.queryByRole('img', { name: /form\.rotationBreakYearsTooltip/ })).not.toBeInTheDocument();
+    // The heading's info icon still explains the read-only fields.
+    expect(screen.getByRole('img', { name: 'form.cropRotationInheritedTooltip' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'form.rotationBreakYears' })).toHaveAttribute('placeholder', '3');
   });
 
   it('points at the old free text when a migrated crop has no family yet', () => {
