@@ -52,9 +52,9 @@ describe('i18n Configuration', () => {
     expect(harvestWindow).toContain('90');
   });
 
-  it('interpolates values into the publish-instruction hint', () => {
-    const withPublish = i18n.t('crops:library.importDialog.emptyInstructionAria', { publish: 'Veröffentlichen' });
-    expect(withPublish).toContain('Veröffentlichen');
+  it('interpolates the share action into the import dialog sharing hint', () => {
+    const hint = i18n.t('crops:library.importDialog.shareHint', { shareAction: 'In Bibliothek teilen' });
+    expect(hint).toContain('„In Bibliothek teilen“');
   });
 
   it('should have all required namespaces', () => {

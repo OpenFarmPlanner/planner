@@ -139,8 +139,8 @@
           "title": "Utilisation",
           "points": [
             "Sélectionnez une culture pour consulter ou modifier ses détails.",
-            "L'icône {{moreIcon}} ouvre d'autres actions, comme les versions, la publication dans la bibliothèque de cultures ou la suppression de la culture sélectionnée.",
-            "Utilisez la bibliothèque de cultures pour partager ou importer des cultures."
+            "L'icône {{moreIcon}} ouvre d'autres actions, comme les versions, l'export ou la suppression de la culture sélectionnée.",
+            "Partagez vos propres cultures avec « Partager dans la bibliothèque » dans la culture, ou avec l'icône à côté de la culture dans la liste des cultures. Dans la bibliothèque de cultures, vous trouvez les cultures des autres et les importez dans votre projet."
           ]
         },
         {

@@ -679,11 +679,10 @@
     "dialogTitle": "Importer depuis la bibliothèque de cultures",
     "openFullPage": "Ouvrir la bibliothèque de cultures",
     "importDialog": {
-      "emptyMotivation": "Partagez vos cultures éprouvées avec d'autres.",
-      "emptyInstructionStep": "Comment faire :",
-      "emptyInstructionContext": "Cliquez",
-      "emptyInstructionAction": "sur une culture",
-      "emptyInstructionAria": "Comment faire : ouvrez le menu à trois points d'une culture et choisissez {{publish}}."
+      "noSelectionTitle": "Sélectionnez une entrée",
+      "noSelectionDescriptionLeft": "Sélectionnez à gauche une culture ou une variété pour voir ses valeurs et l'ajouter à votre projet.",
+      "noSelectionDescription": "Sélectionnez une culture ou une variété pour voir ses valeurs et l'ajouter à votre projet.",
+      "shareHint": "La bibliothèque de cultures grandit avec la communauté. Partagez vos propres cultures avec l'icône <statusIcon/> à côté de la culture dans votre liste des cultures, ou avec « {{shareAction}} » dans la culture."
     },
     "page": {
       "title": "Bibliothèque de cultures",
@@ -975,7 +974,6 @@
       "summaryTriple": "{{first}}, {{second}}, {{third}}.",
       "staleError": "La culture de la bibliothèque de cultures a de nouveau été modifiée entre-temps. Rien n’a été appliqué ; veuillez vérifier à nouveau les modifications."
     },
-    "publishButton": "Publier",
     "publishing": "Publication…",
     "libraryAction": {
       "publish": "Partager dans la bibliothèque",
@@ -1520,7 +1518,7 @@
   "disabledReasons": {
     "requiredSpeciesNames": "Saisissez d'abord les noms allemand et anglais.",
     "requiredComment": "Saisissez d'abord un commentaire.",
-    "selectCrop": "Sélectionnez d'abord une culture.",
+    "selectEntry": "Sélectionnez d'abord une entrée.",
     "selectRemovalReason": "Choisissez d'abord un motif.",
     "alreadyRejected": "Cette mise à jour a déjà été refusée."
   }

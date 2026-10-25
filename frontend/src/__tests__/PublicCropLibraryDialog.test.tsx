@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -182,7 +182,7 @@ describe('PublicCropLibraryDialog', () => {
     expect(paper).not.toHaveStyle({ backgroundColor: 'transparent' });
   });
 
-  it('shows a community invitation in the desktop detail empty state', async () => {
+  it('asks for a selection in the detail empty state and keeps the sharing hint secondary', async () => {
     mockDesktopViewport();
 
     renderDialog(
@@ -200,15 +200,64 @@ describe('PublicCropLibraryDialog', () => {
 
     await screen.findByRole('dialog');
 
-    expect(screen.getByText('Die Kulturbibliothek wächst mit der Community')).toBeInTheDocument();
-    expect(screen.getByText('Teile deine bewährten Kulturen mit anderen.')).toBeInTheDocument();
-    expect(screen.getByText('So geht’s:').tagName).toBe('STRONG');
-    expect(screen.getByTestId('MoreVertIcon')).toBeInTheDocument();
-    expect(screen.getByTestId('MoreVertIcon').closest('button')).toBeNull();
-    expect(screen.getByText('Veröffentlichen').tagName).toBe('STRONG');
-    expect(screen.queryByText(/⋮/)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('So geht’s: Bei einer Kultur das Drei-Punkte-Menü öffnen und Veröffentlichen wählen.')).toHaveTextContent('So geht’s:Bei einer Kultur aufklicken→Veröffentlichen');
-    expect(screen.queryByText(/Eigene Kulturen können später direkt aus den Kulturdetails veröffentlicht werden/)).not.toBeInTheDocument();
+    expect(screen.getByText('Wähle einen Eintrag aus')).toBeInTheDocument();
+    expect(screen.getByText('Wähle links eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.')).toBeInTheDocument();
+    const shareHint = screen.getByText(/Die Kulturbibliothek wächst mit der Community\./);
+    expect(shareHint).toHaveTextContent(
+      'Die Kulturbibliothek wächst mit der Community. Teile eigene Kulturen über das Symbol neben der Kultur in deiner Kulturliste oder mit „In Bibliothek teilen“ in der Kultur.',
+    );
+    expect(shareHint).toHaveClass('MuiTypography-caption');
+    const statusCircle = within(shareHint).getByTestId('crop-library-status-circle');
+    expect(statusCircle).toHaveAttribute('data-status', 'notLinked');
+    expect(statusCircle).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('MoreVertIcon')).not.toBeInTheDocument();
+    expect(screen.queryByText(/⋮|Drei-Punkte|So geht/)).not.toBeInTheDocument();
+  });
+
+  it('drops the direction from the empty-state text in the single-column layout', async () => {
+    mockMobileViewport();
+
+    renderDialog(
+      {
+        open: true,
+        loading: false,
+        error: null,
+        crops: [crop],
+        importingId: null,
+        initialSelectedId: 999,
+        onClose: vi.fn(),
+        onSearch: vi.fn(),
+        onImport: vi.fn(),
+      },
+    );
+
+    await screen.findByRole('dialog');
+
+    expect(await screen.findByText('Wähle eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.')).toBeInTheDocument();
+    expect(screen.queryByText(/Wähle links/)).not.toBeInTheDocument();
+  });
+
+  it('explains the disabled import button while nothing is selected', async () => {
+    mockDesktopViewport();
+    const user = userEvent.setup();
+
+    renderDialog(
+      {
+        open: true,
+        loading: false,
+        error: null,
+        crops: [crop],
+        importingId: null,
+        onClose: vi.fn(),
+        onSearch: vi.fn(),
+        onImport: vi.fn(),
+      },
+    );
+
+    const importButton = await screen.findByRole('button', { name: 'In Projekt importieren' });
+    expect(importButton).toBeDisabled();
+    await user.hover(importButton.parentElement as HTMLElement);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Wähle zuerst einen Eintrag aus.');
   });
 
   it('presents the picker as an import dialog and imports the selected crop', async () => {
@@ -415,7 +464,7 @@ describe('PublicCropLibraryDialog', () => {
 
     await user.keyboard('{ArrowDown}');
 
-    expect(screen.getByText('Die Kulturbibliothek wächst mit der Community')).toBeInTheDocument();
+    expect(screen.getByText('Wähle einen Eintrag aus')).toBeInTheDocument();
     expect(searchInput).toHaveFocus();
   });
 

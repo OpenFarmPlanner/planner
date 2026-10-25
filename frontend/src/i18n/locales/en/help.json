@@ -139,8 +139,8 @@
           "title": "How to use it",
           "points": [
             "Select a crop to view or edit details.",
-            "The {{moreIcon}} opens further actions such as versions, publishing to the crop library, or deleting the selected crop.",
-            "Use the crop library to share or import crops."
+            "The {{moreIcon}} opens further actions such as versions, export, or deleting the selected crop.",
+            "Share your own crops with “Share to library” in the crop, or with the icon next to the crop in the crop list. In the crop library you find other people's crops and import them into your project."
           ]
         },
         {

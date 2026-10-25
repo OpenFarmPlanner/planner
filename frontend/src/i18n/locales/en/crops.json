@@ -666,11 +666,10 @@
     "dialogTitle": "Import from crop library",
     "openFullPage": "Open crop library",
     "importDialog": {
-      "emptyMotivation": "Share your proven crops with others.",
-      "emptyInstructionStep": "How it works:",
-      "emptyInstructionContext": "Click",
-      "emptyInstructionAction": "on a crop",
-      "emptyInstructionAria": "How it works: open the three-dot menu on a crop and choose {{publish}}."
+      "noSelectionTitle": "Select an entry",
+      "noSelectionDescriptionLeft": "Select a crop or variety on the left to see its values and add it to your project.",
+      "noSelectionDescription": "Select a crop or variety to see its values and add it to your project.",
+      "shareHint": "The crop library grows with the community. Share your own crops with the icon <statusIcon/> next to the crop in your crop list, or with “{{shareAction}}” in the crop."
     },
     "page": {
       "title": "Crop library",
@@ -958,7 +957,6 @@
       "summaryTriple": "{{first}}, {{second}}, {{third}}.",
       "staleError": "The crop in the crop library has changed again in the meantime. Nothing was applied; please review the changes again."
     },
-    "publishButton": "Publish",
     "publishing": "Publishing…",
     "libraryAction": {
       "publish": "Share to library",
@@ -1493,7 +1491,7 @@
   "disabledReasons": {
     "requiredSpeciesNames": "Enter the German and English names first.",
     "requiredComment": "Enter a comment first.",
-    "selectCrop": "Select a crop first.",
+    "selectEntry": "Select an entry first.",
     "selectRemovalReason": "Select a reason first.",
     "alreadyRejected": "This update has already been declined."
   }

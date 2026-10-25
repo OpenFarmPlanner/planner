@@ -666,11 +666,10 @@
     "dialogTitle": "Aus Kulturbibliothek importieren",
     "openFullPage": "Kulturbibliothek öffnen",
     "importDialog": {
-      "emptyMotivation": "Teile deine bewährten Kulturen mit anderen.",
-      "emptyInstructionStep": "So geht’s:",
-      "emptyInstructionContext": "Bei einer Kultur auf",
-      "emptyInstructionAction": "klicken",
-      "emptyInstructionAria": "So geht’s: Bei einer Kultur das Drei-Punkte-Menü öffnen und {{publish}} wählen."
+      "noSelectionTitle": "Wähle einen Eintrag aus",
+      "noSelectionDescriptionLeft": "Wähle links eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.",
+      "noSelectionDescription": "Wähle eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.",
+      "shareHint": "Die Kulturbibliothek wächst mit der Community. Teile eigene Kulturen über das Symbol <statusIcon/> neben der Kultur in deiner Kulturliste oder mit „{{shareAction}}“ in der Kultur."
     },
     "page": {
       "title": "Kulturbibliothek",
@@ -958,7 +957,6 @@
       "summaryTriple": "{{first}}, {{second}}, {{third}}.",
       "staleError": "Die Kultur in der Kulturbibliothek wurde inzwischen erneut geändert. Es wurde nichts übernommen; bitte prüfe die Änderungen noch einmal."
     },
-    "publishButton": "Veröffentlichen",
     "publishing": "Veröffentliche…",
     "libraryAction": {
       "publish": "In Bibliothek teilen",
@@ -1493,7 +1491,7 @@
   "disabledReasons": {
     "requiredSpeciesNames": "Bitte zuerst den deutschen und englischen Namen eingeben.",
     "requiredComment": "Bitte zuerst einen Kommentar eingeben.",
-    "selectCrop": "Bitte zuerst eine Kultur auswählen.",
+    "selectEntry": "Wähle zuerst einen Eintrag aus.",
     "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
     "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
   }
