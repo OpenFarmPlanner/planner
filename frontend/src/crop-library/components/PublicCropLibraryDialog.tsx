@@ -253,9 +253,8 @@ export function PublicCropLibraryDialog({
   const listEmptyTitle = hasLibraryEntries ? t('library.emptyState.noResultsTitle') : t('library.emptyState.emptyLibraryTitle');
   const listEmptyDescription = hasLibraryEntries ? t('library.empty') : t('library.emptyState.emptyLibraryDescription');
   const detailEmptyTitle = hasLibraryEntries ? t('library.importDialog.noSelectionTitle') : t('library.emptyState.emptyLibraryTitle');
-  // The list sits to the left of the detail pane only in the two-column layout.
   const detailEmptyDescription = hasLibraryEntries
-    ? t(useMobileFilterLayout ? 'library.importDialog.noSelectionDescription' : 'library.importDialog.noSelectionDescriptionLeft')
+    ? t('library.importDialog.noSelectionDescription')
     : t('library.emptyState.emptyLibraryDescription');
   const detailEmptySecondaryDescription = hasLibraryEntries ? (
     <Trans

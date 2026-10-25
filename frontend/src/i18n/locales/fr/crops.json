@@ -677,10 +677,9 @@
     "dialogTitle": "Importer depuis la bibliothèque de cultures",
     "openFullPage": "Ouvrir la bibliothèque de cultures",
     "importDialog": {
-      "noSelectionTitle": "Sélectionnez une entrée",
-      "noSelectionDescriptionLeft": "Sélectionnez à gauche une culture ou une variété pour voir ses valeurs et l'ajouter à votre projet.",
-      "noSelectionDescription": "Sélectionnez une culture ou une variété pour voir ses valeurs et l'ajouter à votre projet.",
-      "shareHint": "La bibliothèque de cultures grandit avec la communauté. Partagez vos propres cultures avec l'icône <statusIcon/> à côté de la culture dans votre liste des cultures, ou avec « {{shareAction}} » dans la culture."
+      "noSelectionTitle": "La bibliothèque de cultures grandit avec la communauté",
+      "noSelectionDescription": "Partagez vos cultures et variétés éprouvées avec les autres. Plus il y a d'exploitations qui participent, meilleure devient la bibliothèque pour tous.",
+      "shareHint": "Partagez vos propres cultures avec l'icône <statusIcon/> à côté de la culture dans votre liste des cultures, ou avec « {{shareAction}} » dans la culture."
     },
     "page": {
       "title": "Bibliothèque de cultures",
