@@ -200,11 +200,11 @@ describe('PublicCropLibraryDialog', () => {
 
     await screen.findByRole('dialog');
 
-    expect(screen.getByText('Wähle einen Eintrag aus')).toBeInTheDocument();
-    expect(screen.getByText('Wähle links eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.')).toBeInTheDocument();
-    const shareHint = screen.getByText(/Die Kulturbibliothek wächst mit der Community\./);
+    expect(screen.getByText('Die Kulturbibliothek wächst mit der Community')).toBeInTheDocument();
+    expect(screen.getByText('Teile deine bewährten Kulturen und Sorten mit anderen. Je mehr Betriebe mitmachen, desto besser wird die Bibliothek für alle.')).toBeInTheDocument();
+    const shareHint = screen.getByText(/^Teile eigene Kulturen/);
     expect(shareHint).toHaveTextContent(
-      'Die Kulturbibliothek wächst mit der Community. Teile eigene Kulturen über das Symbol neben der Kultur in deiner Kulturliste oder mit „In Bibliothek teilen“ in der Kultur.',
+      'Teile eigene Kulturen über das Symbol neben der Kultur in deiner Kulturliste oder mit „In Bibliothek teilen“ in der Kultur.',
     );
     expect(shareHint).toHaveClass('MuiTypography-caption');
     const statusCircle = within(shareHint).getByTestId('crop-library-status-circle');
@@ -214,7 +214,7 @@ describe('PublicCropLibraryDialog', () => {
     expect(screen.queryByText(/⋮|Drei-Punkte|So geht/)).not.toBeInTheDocument();
   });
 
-  it('drops the direction from the empty-state text in the single-column layout', async () => {
+  it('shows the empty-state text in the single-column layout', async () => {
     mockMobileViewport();
 
     renderDialog(
@@ -233,8 +233,7 @@ describe('PublicCropLibraryDialog', () => {
 
     await screen.findByRole('dialog');
 
-    expect(await screen.findByText('Wähle eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.')).toBeInTheDocument();
-    expect(screen.queryByText(/Wähle links/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Teile deine bewährten Kulturen und Sorten mit anderen. Je mehr Betriebe mitmachen, desto besser wird die Bibliothek für alle.')).toBeInTheDocument();
   });
 
   it('explains the disabled import button while nothing is selected', async () => {
@@ -464,7 +463,7 @@ describe('PublicCropLibraryDialog', () => {
 
     await user.keyboard('{ArrowDown}');
 
-    expect(screen.getByText('Wähle einen Eintrag aus')).toBeInTheDocument();
+    expect(screen.getByText('Die Kulturbibliothek wächst mit der Community')).toBeInTheDocument();
     expect(searchInput).toHaveFocus();
   });
 

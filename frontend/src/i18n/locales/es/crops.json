@@ -679,10 +679,9 @@
     "dialogTitle": "Importar desde la biblioteca de cultivos",
     "openFullPage": "Abrir la biblioteca de cultivos",
     "importDialog": {
-      "noSelectionTitle": "Selecciona una entrada",
-      "noSelectionDescriptionLeft": "Selecciona a la izquierda un cultivo o una variedad para ver sus valores y añadirlo a tu proyecto.",
-      "noSelectionDescription": "Selecciona un cultivo o una variedad para ver sus valores y añadirlo a tu proyecto.",
-      "shareHint": "La biblioteca de cultivos crece con la comunidad. Comparte tus propios cultivos con el icono <statusIcon/> junto al cultivo en tu lista de cultivos, o con «{{shareAction}}» en el cultivo."
+      "noSelectionTitle": "La biblioteca de cultivos crece con la comunidad",
+      "noSelectionDescription": "Comparte tus cultivos y variedades probados con los demás. Cuantas más fincas participen, mejor será la biblioteca para todos.",
+      "shareHint": "Comparte tus propios cultivos con el icono <statusIcon/> junto al cultivo en tu lista de cultivos, o con «{{shareAction}}» en el cultivo."
     },
     "page": {
       "title": "Biblioteca de cultivos",

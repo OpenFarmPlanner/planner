@@ -1327,10 +1327,10 @@ architecture pass.
 library workspace. The existing
 `PublicCropLibraryDialog` remains the quick import picker from the project
 Crop Library page and links to the full page for details, version history, and
-discussion. Until an entry is selected, its detail pane asks for a selection
-("Wähle einen Eintrag aus", naming the list "links" only in the two-column
-layout) and the import button's disabled tooltip says the same; the sharing
-hint below it is secondary (caption, `text.secondary`) and names the real
+discussion. Until an entry is selected, its detail pane invites users to
+contribute ("Die Kulturbibliothek wächst mit der Community", the same text in
+every layout) and the import button's disabled tooltip asks for a selection;
+the sharing hint below it is secondary (caption, `text.secondary`) and names the real
 publish paths, rendering the list's "not linked" `CropLibraryStatusCircle`
 inline (`aria-hidden`) next to "In Bibliothek teilen". It never points at the
 ⋮ menu, which has no publish entry (see "One control carries all of this").

@@ -666,10 +666,9 @@
     "dialogTitle": "Import from crop library",
     "openFullPage": "Open crop library",
     "importDialog": {
-      "noSelectionTitle": "Select an entry",
-      "noSelectionDescriptionLeft": "Select a crop or variety on the left to see its values and add it to your project.",
-      "noSelectionDescription": "Select a crop or variety to see its values and add it to your project.",
-      "shareHint": "The crop library grows with the community. Share your own crops with the icon <statusIcon/> next to the crop in your crop list, or with “{{shareAction}}” in the crop."
+      "noSelectionTitle": "The crop library grows with the community",
+      "noSelectionDescription": "Share your proven crops and varieties with others. The more farms take part, the better the library becomes for everyone.",
+      "shareHint": "Share your own crops with the icon <statusIcon/> next to the crop in your crop list, or with “{{shareAction}}” in the crop."
     },
     "page": {
       "title": "Crop library",

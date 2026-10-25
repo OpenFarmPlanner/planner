@@ -666,10 +666,9 @@
     "dialogTitle": "Aus Kulturbibliothek importieren",
     "openFullPage": "Kulturbibliothek öffnen",
     "importDialog": {
-      "noSelectionTitle": "Wähle einen Eintrag aus",
-      "noSelectionDescriptionLeft": "Wähle links eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.",
-      "noSelectionDescription": "Wähle eine Kultur oder Sorte, um ihre Werte zu sehen und sie in dein Projekt zu übernehmen.",
-      "shareHint": "Die Kulturbibliothek wächst mit der Community. Teile eigene Kulturen über das Symbol <statusIcon/> neben der Kultur in deiner Kulturliste oder mit „{{shareAction}}“ in der Kultur."
+      "noSelectionTitle": "Die Kulturbibliothek wächst mit der Community",
+      "noSelectionDescription": "Teile deine bewährten Kulturen und Sorten mit anderen. Je mehr Betriebe mitmachen, desto besser wird die Bibliothek für alle.",
+      "shareHint": "Teile eigene Kulturen über das Symbol <statusIcon/> neben der Kultur in deiner Kulturliste oder mit „{{shareAction}}“ in der Kultur."
     },
     "page": {
       "title": "Kulturbibliothek",
