@@ -420,7 +420,12 @@ export interface PublicCropSyncFieldChange {
   pinned?: boolean;
   /** May be kept locally ("Nur lokal"): a pinnable field with a local value. */
   pinnable?: boolean;
+  /** Why it may not (backend `library_pin_blocked_reason`); null exactly when `pinnable`. */
+  pin_blocked_reason?: PublicCropSyncPinBlockedReason | null;
 }
+
+/** `identity`: name/variety; `species_invariant`: a linked Sorte's species fields; `empty`: no local value. */
+export type PublicCropSyncPinBlockedReason = 'identity' | 'species_invariant' | 'empty';
 
 export interface CropPublicSyncPreview {
   public_crop_id: number;

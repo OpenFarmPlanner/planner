@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { expectNoTooltip, tooltipOf } from './helpers/disabledActionTooltip';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { buildDefaultSyncChoices } from '../crops/publicCropSync';
@@ -285,6 +287,82 @@ describe('PublicCropSyncPanel', () => {
       expect(screen.queryByRole('radio', { name: 'Nur lokal behalten' })).not.toBeInTheDocument();
       expect(screen.queryByTestId('public-crop-sync-local-info')).not.toBeInTheDocument();
       expect(screen.queryByTestId('public-crop-sync-pinned-hint-harvest_duration_days')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('"Nur lokal" availability (from the preview\'s `pinnable` / `pin_blocked_reason`)', () => {
+    const localOption = (field: string) => screen.getByTestId(`public-crop-sync-row-${field}`)
+      .querySelector('[data-choice="local"]') as HTMLElement;
+    const localRadio = (field: string) => within(screen.getByTestId(`public-crop-sync-row-${field}`))
+      .getByRole('radio', { name: 'Nur lokal behalten' });
+    const SPECIES_TOOLTIP = 'Dieser Wert gilt für die ganze Kulturart';
+
+    it('offers every field but the name on a general crop, species-invariant fields included', async () => {
+      const user = userEvent.setup();
+      const changes: PublicCropSyncFieldChange[] = [
+        { field: 'name', local_value: 'Mangold lokal', public_value: 'Mangold', pushable: false, pinnable: false, pin_blocked_reason: 'identity' },
+        ...['notes', 'crop_family', 'nutrient_demand', 'cultivation_types', 'cultivation_type', 'growth_duration_days',
+          'expected_yield', 'row_spacing_m', 'thousand_kernel_weight_g'].map((field) => ({
+          field, local_value: 'x', public_value: 'y', pushable: true, pinnable: true, pin_blocked_reason: null,
+        })),
+      ];
+      render(<Harness changes={changes} allowLocal />);
+
+      changes.slice(1).forEach(({ field }) => expect(localRadio(field)).toBeEnabled());
+      expect(localRadio('name')).toBeDisabled();
+      expect(await tooltipOf(user, localOption('name'))).toHaveTextContent(
+        'Name und Sorte gehören zum öffentlichen Eintrag',
+      );
+      expect(screen.queryByText(new RegExp(SPECIES_TOOLTIP))).not.toBeInTheDocument();
+    });
+
+    it('blocks only the species-invariant fields on a linked variety, with their own tooltip', async () => {
+      const user = userEvent.setup();
+      const changes: PublicCropSyncFieldChange[] = [
+        { field: 'nutrient_demand', local_value: 'high', public_value: 'low', pushable: true, pinnable: false, pin_blocked_reason: 'species_invariant' },
+        { field: 'growth_duration_days', local_value: 60, public_value: 50, pushable: true, pinnable: true, pin_blocked_reason: null },
+      ];
+      render(<Harness changes={changes} allowLocal />);
+
+      expect(localRadio('growth_duration_days')).toBeEnabled();
+      await expectNoTooltip(user, localOption('growth_duration_days'));
+      expect(localRadio('nutrient_demand')).toBeDisabled();
+      expect(await tooltipOf(user, localOption('nutrient_demand'))).toHaveTextContent(SPECIES_TOOLTIP);
+    });
+
+    it('never guesses a reason the preview did not name', async () => {
+      const user = userEvent.setup();
+      render(<Harness changes={[{ field: 'notes', local_value: 'x', public_value: 'y', pushable: true }]} allowLocal />);
+
+      expect(localRadio('notes')).toBeDisabled();
+      await expectNoTooltip(user, localOption('notes'));
+    });
+  });
+
+  describe('values as the crop form shows them', () => {
+    it('translates choice values, localizes numbers and shows distances in centimetres', () => {
+      const changes: PublicCropSyncFieldChange[] = [
+        { field: 'cultivation_type', local_value: 'direct_sowing', public_value: 'pre_cultivation', pushable: true },
+        { field: 'expected_yield', local_value: '16.00', public_value: '2.50', pushable: true },
+        { field: 'row_spacing_m', local_value: 0.4, public_value: null, pushable: true },
+        { field: 'sowing_depth_m', local_value: 0.015, public_value: null, pushable: true },
+        { field: 'thousand_kernel_weight_g', local_value: '14.00', public_value: '3.90', pushable: true },
+      ];
+      render(<Harness changes={changes} />);
+
+      const rowText = (field: string) => screen.getByTestId(`public-crop-sync-row-${field}`).textContent;
+      expect(rowText('cultivation_type')).toContain('Pflanzung');
+      expect(rowText('cultivation_type')).toContain('Direktsaat');
+      expect(rowText('cultivation_type')).not.toContain('direct_sowing');
+      expect(rowText('expected_yield')).toContain('16');
+      expect(rowText('expected_yield')).toContain('2,5');
+      expect(rowText('expected_yield')).not.toContain('16.00');
+      expect(rowText('row_spacing_m')).toContain('Reihenabstand (cm)');
+      expect(rowText('row_spacing_m')).toContain('40');
+      expect(rowText('sowing_depth_m')).toContain('Saattiefe (cm)');
+      expect(rowText('sowing_depth_m')).toContain('1,5');
+      expect(rowText('thousand_kernel_weight_g')).toContain('3,9');
+      expect(rowText('thousand_kernel_weight_g')).not.toContain('14.00');
     });
   });
 

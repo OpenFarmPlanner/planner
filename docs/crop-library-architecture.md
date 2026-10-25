@@ -393,8 +393,9 @@ The public Crop Library follows an open-data model:
     (names only, never values; migration `0117_crop_library_pinned_fields`).
     Only compared fields can be pinned (`LIBRARY_PINNABLE_FIELDS`:
     `CROP_COPY_FIELDS` minus `name`, `variety` and `display_color`), and the
-    species-invariant `crop_family` / `nutrient_demand` only on a general
-    Kultur, never on a Sorte (`library_pinnable_fields()`).
+    species-invariant `crop_family` / `nutrient_demand` never on a Sorte
+    linked to its Kultur (`forces_species_invariant_inheritance`); a general
+    Kultur and a free-text Sorte may pin them (`library_pinnable_fields()`).
     `rotation_break_years` is not a compared field and cannot be pinned at
     all. The backend validates every write (`validate_library_pinned_fields`,
     400 `library_pin_requires_link` / `library_pin_field_not_allowed` /
@@ -453,14 +454,24 @@ The public Crop Library follows an open-data model:
     `push_fields`, which releases the pin in the same step (see below) — a
     value is never shared while it is pinned.
   - *Sync.* `GET public-sync/` lists pinned fields too (`pinned: true`), with
-    `pinnable` (a pinnable field with a local value); `POST` takes a third
+    `pinnable` (a pinnable field with a local value) and, when it is not,
+    `pin_blocked_reason` (`identity` for `name`/`variety`,
+    `species_invariant` on a linked Sorte, `empty` without a local value —
+    `library_pin_blocked_reason()`, the one rule the panel's "Nur lokal"
+    column and its tooltips read; the frontend never derives it). `POST`
+    checks `pin_fields` against the same rule first (400
+    `library_pin_field_not_allowed` with `fields`) and takes them as a third
     list `pin_fields` next to `pull_fields` / `push_fields`, in the same
     transaction and under the same `base_version` check. The resulting pins are
     *(previous pins − pull − push) ∪ pin_fields*: choosing "Bibliothek" or
     "Meine Kultur" for a pinned row is the explicit release, and pins the
     decision does not name stay. A field in two lists is rejected. A pin
     change is saved through `Crop.save()`, so it is a normal, visible history
-    entry.
+    entry. The sync links the crop to the entry before that save, so pins
+    also hold on a crop syncing with its own entry it was not linked to yet.
+    The panel shows every value in the crop form's units and the UI locale
+    (`formatPublicCropValueInFormUnits`: distances in cm, decimal comma in
+    German, translated choice values).
   - *Form.* Pinning happens only in the sync dialogs (the sync and the
     pull); the form only shows a pin and lets the user release it, to keep
     the form quiet. An unpinned field renders exactly as on an unlinked crop:

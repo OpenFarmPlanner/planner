@@ -225,7 +225,10 @@ purpose, e.g. a harvest duration that differs because of the local climate:
 `PATCH /api/crops/{id}/` with `library_pinned_fields` (model field names such
 as `growth_duration_days` or `distance_within_row_m`, only from the crop's
 `library_pinnable_fields`; never `name` or `variety`, and the
-plant-family / nutrient-demand fields only on a general crop). A pinned field
+plant-family / nutrient-demand fields never on a variety linked to its general
+crop). `GET /api/crops/{id}/public-sync/` reports per differing field whether it
+can be pinned (`pinnable`) and otherwise why (`pin_blocked_reason`: `identity`,
+`species_invariant` or `empty`). A pinned field
 is never published or overwritten by a library update, and a crop that differs
 from its entry only in pinned fields counts as in sync (case 4).
 `library_pinned_values` returns the entry's current value for each pinned

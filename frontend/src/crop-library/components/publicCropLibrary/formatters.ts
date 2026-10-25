@@ -335,10 +335,49 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
   }
   if (field === 'seed_rate_by_cultivation') return formatSeedRateByCultivation(normalized, t);
   if (typeof normalized === 'object') return JSON.stringify(normalized);
-  if (['nutrient_demand', 'harvest_method', 'seed_rate_unit', 'seeding_requirement_type'].includes(field)) {
+  if (['nutrient_demand', 'cultivation_type', 'harvest_method', 'seed_rate_unit', 'seeding_requirement_type'].includes(field)) {
     return t(`library.publishWizard.comparison.values.${String(normalized)}`, String(normalized));
   }
   return String(normalized);
+}
+
+/** Compared distance fields: stored in metres, entered in the crop form in centimetres. */
+const METER_FIELDS = new Set(['distance_within_row_m', 'row_spacing_m', 'sowing_depth_m']);
+
+/** Compared numeric fields; decimals arrive from the API as strings ("16.00"). */
+const NUMERIC_FIELDS = new Set([
+  'growth_duration_days',
+  'harvest_duration_days',
+  'propagation_duration_days',
+  'expected_yield',
+  'thousand_kernel_weight_g',
+  'seed_rate_value',
+  'seeding_requirement',
+  'rotation_break_years',
+]);
+
+const toFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+/** {@link getPublicCropComparisonFieldLabel} with the crop form's units (distances in cm). */
+export function getPublicCropFormUnitFieldLabel(field: string, t: TFunction): string {
+  return getPublicCropComparisonFieldLabel(METER_FIELDS.has(field) ? field.replace(/_m$/, '_cm') : field, t);
+}
+
+/**
+ * {@link formatPublicCropValue} as the crop form shows the value: distances in
+ * centimetres, numbers in the UI locale (decimal comma in German) without
+ * trailing zeros. Pair it with {@link getPublicCropFormUnitFieldLabel}.
+ */
+export function formatPublicCropValueInFormUnits(field: string, value: unknown, t: TFunction, locale: string): string {
+  const isMeterField = METER_FIELDS.has(field);
+  const numeric = isMeterField || NUMERIC_FIELDS.has(field) ? toFiniteNumber(value) : null;
+  if (numeric === null) return formatPublicCropValue(field, value, t);
+  return formatLocalizedNumber(isMeterField ? numeric * 100 : numeric, locale, '', { maximumFractionDigits: 2 });
 }
 
 /**

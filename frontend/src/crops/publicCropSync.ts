@@ -1,4 +1,4 @@
-import type { PublicCropSyncFieldChange } from '../api/types';
+import type { PublicCropSyncFieldChange, PublicCropSyncPinBlockedReason } from '../api/types';
 import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
 
 /**
@@ -16,9 +16,24 @@ export interface PublicCropSyncChoiceOptions {
   allowLocal?: boolean;
 }
 
-/** Whether "Nur lokal" can be chosen for this field: a pinnable field with a local value. */
+/**
+ * Whether "Nur lokal" can be chosen for this field. The rule lives in the
+ * backend alone (`library_pin_blocked_reason`); the preview reports it per field.
+ */
 export function canKeepSyncFieldLocally(change: PublicCropSyncFieldChange): boolean {
   return change.pinnable === true;
+}
+
+const PIN_BLOCKED_REASON_KEYS: Record<PublicCropSyncPinBlockedReason, string> = {
+  identity: 'library.sync.notPinnableIdentity',
+  species_invariant: 'library.sync.notPinnableSpeciesInvariant',
+  empty: 'library.sync.notPinnableEmpty',
+};
+
+/** The i18n key explaining why "Nur lokal" is unavailable, or null when the backend named no reason. */
+export function getSyncPinBlockedReasonKey(change: PublicCropSyncFieldChange): string | null {
+  if (canKeepSyncFieldLocally(change) || !change.pin_blocked_reason) return null;
+  return PIN_BLOCKED_REASON_KEYS[change.pin_blocked_reason] ?? null;
 }
 
 export type PublicCropSyncChoices = Record<string, PublicCropSyncChoice>;
