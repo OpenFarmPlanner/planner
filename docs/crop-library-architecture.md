@@ -453,7 +453,10 @@ The public Crop Library follows an open-data model:
     `push_fields`, which releases the pin in the same step (see below) — a
     value is never shared while it is pinned.
   - *Sync.* `GET public-sync/` lists pinned fields too (`pinned: true`), with
-    `pinnable` (a pinnable field with a local value); `POST` takes a third
+    `pinnable` (a pinnable field with a local value, and only while the crop
+    is linked to that entry: the owner lookup also opens the sync for the
+    user's own species entry from an unlinked Kultur of another project,
+    which may push but not pin); `POST` takes a third
     list `pin_fields` next to `pull_fields` / `push_fields`, in the same
     transaction and under the same `base_version` check. The resulting pins are
     *(previous pins − pull − push) ∪ pin_fields*: choosing "Bibliothek" or
