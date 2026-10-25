@@ -1703,9 +1703,18 @@ differences from `GET /api/crops/<id>/public-sync/` (which also answers for a
 not-yet-linked candidate, comparing as if the link had set the entry's
 species) and shows one row per differing field: the label, then the
 "Bibliothek" and "Meine Kultur" values side by side, and the values *are* the
-choice. Clicking a value selects that side; the chosen one gets a thin primary
-border, a light primary tint and a check mark, the other stays plain in
-secondary text. This replaced a full-width segmented toggle per row ("Aus
+choice. Clicking a value selects that side. Each column speaks the colour of
+its direction, the same as the crop list's status icon
+(`publicCropSyncStyles.ts`): "Bibliothek" is pull (`info`, blue), "Meine
+Kultur" is push (`warning`, orange), "Nur lokal" is `libraryLocal` (violet);
+green does not appear in the panel. The headings show the direction icon, a
+bold title and the bulk text button in that colour (text uses the palette's
+dark shade, darkened until it reads at ≥ 4.5:1) above a small secondary
+description, and stay visible while a long list scrolls (sticky). A chosen
+value gets a border, a light tint and a check mark in its column colour, the
+same in every column; an unchosen one keeps a thin neutral `divider` frame
+and primary text, with a light column tint on hover, so it reads as
+clickable; a disabled one shows disabled text. This replaced a full-width segmented toggle per row ("Aus
 Bibliothek übernehmen" / "Meinen Wert übernehmen"), which repeated the column
 headings in every row and, with one filled green bar per field, drew more
 attention than the values themselves. Each side is a visually hidden native
@@ -1719,7 +1728,8 @@ carry an icon and a short description ("Bibliothek / in meine Kultur
 übernehmen", "Meine Kultur / in der Bibliothek teilen", "Nur lokal /
 behalten, nicht teilen"), the bulk buttons read "Alle aus Bibliothek", "Alle
 teilen", "Alle nur lokal", already pinned rows start on "Nur lokal" with the
-hint "bisher lokal fixiert", an info line explains what a local value means,
+hint "bisher lokal fixiert", an info line in the violet tint (pin icon)
+explains what a local value means while at least one row is on "Nur lokal",
 and the summary gains "… Werte bleiben nur lokal." "Nur lokal" is disabled
 with a tooltip for `name` / `variety`, for a row without a local value, and
 for species-invariant fields on a Sorte. On phones the three headings put the

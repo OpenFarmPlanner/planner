@@ -4,6 +4,13 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { buildDefaultSyncChoices } from '../crops/publicCropSync';
+import { ThemeProvider, getContrastRatio } from '@mui/material/styles';
+import appTheme from '../theme';
+import {
+  SYNC_COLUMN_PALETTE,
+  syncColumnAccent,
+  syncColumnTextColor,
+} from '../crops/publicCropSyncStyles';
 
 /**
  * `-webkit-line-clamp` truncation is detected via `scrollHeight` vs.
@@ -278,6 +285,69 @@ describe('PublicCropSyncPanel', () => {
       expect(screen.queryByRole('radio', { name: 'Nur lokal behalten' })).not.toBeInTheDocument();
       expect(screen.queryByTestId('public-crop-sync-local-info')).not.toBeInTheDocument();
       expect(screen.queryByTestId('public-crop-sync-pinned-hint-harvest_duration_days')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('column colours', () => {
+    const PINNABLE: PublicCropSyncFieldChange[] = [
+      { field: 'growth_duration_days', local_value: 60, public_value: 50, pushable: true, pinnable: true },
+      { field: 'harvest_duration_days', local_value: 20, public_value: 25, pushable: true, pinnable: true },
+    ];
+    const renderThemed = () => render(
+      <ThemeProvider theme={appTheme}>
+        <Harness changes={PINNABLE} allowLocal />
+      </ThemeProvider>,
+    );
+
+    it('maps library to pull (info), mine to push (warning) and local to the pin colour', () => {
+      expect(SYNC_COLUMN_PALETTE).toEqual({ library: 'info', mine: 'warning', local: 'libraryLocal' });
+      expect(syncColumnAccent(appTheme, 'library')).toBe(appTheme.palette.info.main);
+      expect(syncColumnAccent(appTheme, 'mine')).toBe(appTheme.palette.warning.main);
+      expect(syncColumnAccent(appTheme, 'local')).toBe(appTheme.palette.libraryLocal.main);
+    });
+
+    it('keeps every column text colour at 4.5:1 or more on the panel background', () => {
+      (['library', 'mine', 'local'] as const).forEach((column) => {
+        expect(getContrastRatio(syncColumnTextColor(appTheme, column), appTheme.palette.background.paper))
+          .toBeGreaterThanOrEqual(4.5);
+      });
+    });
+
+    it('colours each heading title and the chosen option in its column colour, never in green', () => {
+      renderThemed();
+      (['library', 'mine', 'local'] as const).forEach((column) => {
+        expect(screen.getByTestId(`public-crop-sync-heading-${column}-title`))
+          .toHaveStyle({ color: syncColumnTextColor(appTheme, column) });
+      });
+
+      const row = screen.getByTestId('public-crop-sync-row-growth_duration_days');
+      const localRadio = within(row).getByRole('radio', { name: 'Nur lokal behalten' });
+      fireEvent.click(localRadio);
+      expect(localRadio.parentElement).toHaveStyle({ borderColor: appTheme.palette.libraryLocal.main });
+      fireEvent.click(within(row).getByRole('radio', { name: 'Aus Bibliothek übernehmen' }));
+      const libraryOption = within(row).getByRole('radio', { name: 'Aus Bibliothek übernehmen' }).parentElement as HTMLElement;
+      expect(libraryOption).toHaveAttribute('data-selected', 'true');
+      expect(libraryOption).toHaveStyle({ borderColor: appTheme.palette.info.main });
+      expect(libraryOption).not.toHaveStyle({ borderColor: appTheme.palette.primary.main });
+    });
+
+    it('shows the "Nur lokal" info only while at least one row is kept locally', () => {
+      renderThemed();
+      expect(screen.queryByTestId('public-crop-sync-local-info')).not.toBeInTheDocument();
+
+      const row = screen.getByTestId('public-crop-sync-row-harvest_duration_days');
+      fireEvent.click(within(row).getByRole('radio', { name: 'Nur lokal behalten' }));
+      expect(screen.getByTestId('public-crop-sync-local-info')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle aus Bibliothek' }));
+      expect(screen.queryByTestId('public-crop-sync-local-info')).not.toBeInTheDocument();
+      PINNABLE.forEach(({ field }) => {
+        expect(within(screen.getByTestId(`public-crop-sync-row-${field}`))
+          .getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle nur lokal' }));
+      expect(screen.getByTestId('public-crop-sync-local-info')).toBeInTheDocument();
     });
   });
 });
