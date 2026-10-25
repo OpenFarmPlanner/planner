@@ -49,6 +49,7 @@ KIND_FAMILY_CONFLICT = 'family_conflict'
 KIND_NUTRIENT_HINT = 'nutrient_hint'
 KIND_NO_FAMILY = 'no_family'
 KIND_NO_BREAK = 'no_break'
+KIND_PREVIOUS_NO_FAMILY = 'previous_no_family'
 KIND_NO_HISTORY = 'no_history'
 KIND_INCOMPLETE = 'incomplete'
 KIND_OK = 'ok'
@@ -288,15 +289,12 @@ def evaluate_rotation(
         previous_is_soil_improver=bool(previous) and previous[0].crop.is_soil_improver,
     )
 
+    relevant_previous = _relevant_previous(candidate, previous)
     if not crop.family_key:
-        result.status = STATUS_INFO
-        result.findings.append(RotationFinding(
-            kind=KIND_NO_FAMILY,
-            crop_label=crop.label,
-            settings_crop_id=crop.settings_crop_id,
-            settings_crop_label=crop.settings_crop_label,
-        ))
-        return result
+        missing = [_missing_crop_data(KIND_NO_FAMILY, crop)]
+        if _report_missing_data(result, missing, relevant_previous):
+            return result
+        return _no_history_or_ok(result, candidate, others, previous, latest_same_family)
 
     conflicts = [
         finding for finding in (_conflict_finding(candidate, other) for other in same_family)
@@ -319,25 +317,89 @@ def evaluate_rotation(
         return result
 
     family_break, _ = _effective_break(*(other.crop for other in same_family))
+    missing: list[RotationFinding] = []
     if crop.break_years is None and family_break is None:
-        result.status = STATUS_INFO
-        result.findings.append(RotationFinding(
-            kind=KIND_NO_BREAK,
-            crop_label=crop.label,
-            family_key=crop.family_key,
-            family_name=crop.family_name,
-            settings_crop_id=crop.settings_crop_id,
-            settings_crop_label=crop.settings_crop_label,
-        ))
+        missing.append(_missing_crop_data(KIND_NO_BREAK, crop))
+    if _report_missing_data(result, missing, relevant_previous):
         return result
+    return _no_history_or_ok(result, candidate, others, previous, latest_same_family)
 
+
+def _relevant_previous(
+    candidate: RotationOccupancy,
+    previous: Sequence[RotationOccupancy],
+) -> list[RotationOccupancy]:
+    """Earlier plans on the bed inside the culture's break window.
+
+    Without a known break every earlier plan counts, since any of them could
+    be the one that blocks the family.
+    """
+    break_years = candidate.crop.break_years
+    if break_years is None:
+        return list(previous)
+    window_start = candidate.first_year - break_years
+    return [other for other in previous if other.last_year >= window_start]
+
+
+def _missing_crop_data(kind: str, crop: RotationCrop) -> RotationFinding:
+    return RotationFinding(
+        kind=kind,
+        crop_label=crop.label,
+        family_key=crop.family_key,
+        family_name=crop.family_name,
+        settings_crop_id=crop.settings_crop_id,
+        settings_crop_label=crop.settings_crop_label,
+    )
+
+
+def _report_missing_data(
+    result: RotationResult,
+    missing: list[RotationFinding],
+    relevant_previous: Sequence[RotationOccupancy],
+) -> bool:
+    """Mark ``result`` "not checkable" when missing data blocks a real check.
+
+    Only an earlier plan in the break window makes the check matter: on a bed
+    without one there is nothing to compare, whatever data is missing. Every
+    such plan whose culture has no family is a reason of its own.
+    """
+    if not relevant_previous:
+        return False
+    findings = list(missing)
+    for other in sorted(relevant_previous, key=_sort_key_latest):
+        if not other.crop.family_key:
+            findings.append(RotationFinding(
+                kind=KIND_PREVIOUS_NO_FAMILY,
+                previous_plan_id=other.plan_id,
+                previous_crop_label=other.crop.label,
+                year=other.last_year,
+                settings_crop_id=other.crop.settings_crop_id,
+                settings_crop_label=other.crop.settings_crop_label,
+            ))
+    if not findings:
+        return False
+    result.status = STATUS_INFO
+    result.findings.extend(findings)
+    return True
+
+
+def _no_history_or_ok(
+    result: RotationResult,
+    candidate: RotationOccupancy,
+    others: Sequence[RotationOccupancy],
+    previous: Sequence[RotationOccupancy],
+    latest_same_family: RotationOccupancy | None,
+) -> RotationResult:
+    """The fitting result: nothing recorded in the checked years, or checked ok."""
+    crop = candidate.crop
     window_start = candidate.first_year - max(crop.break_years or 0, 1)
     has_history = any(
         other.last_year >= window_start and other.first_year <= candidate.last_year
         for other in others
     )
-    if not has_history:
-        # Nothing recorded on the bed in the years that matter: the rotation
+    if not has_history or not crop.family_key:
+        # Nothing recorded on the bed in the years that matter (for a culture
+        # without family: nothing earlier in its break window): the rotation
         # fits; the finding only says why there was nothing to compare.
         result.findings.append(RotationFinding(
             kind=KIND_NO_HISTORY,

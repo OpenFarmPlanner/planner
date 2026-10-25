@@ -55,6 +55,62 @@ const familyOf = (finding: RotationFinding, familyName: FamilyNameResolver): str
   familyName(finding.family_key, finding.family_name)
 );
 
+const MISSING_DATA_KINDS: ReadonlySet<RotationFinding['kind']> = new Set([
+  'no_family',
+  'no_break',
+  'previous_no_family',
+]);
+
+const isMissingDataFinding = (finding: RotationFinding): boolean => MISSING_DATA_KINDS.has(finding.kind);
+
+/**
+ * The status the table and its "Fruchtfolge" filter work with. "Not
+ * checkable" only counts when missing culture data blocks the check; the
+ * backend only reports that when the bed has earlier plans in the break
+ * window. A draft without bed or date (`incomplete`) has nothing to check yet.
+ */
+export const getTableRotationStatus = (
+  status: RotationStatus | null | undefined,
+  findings: RotationFinding[] | null | undefined,
+): RotationStatus | null => {
+  if (!status) {
+    return null;
+  }
+  if (status === 'info' && !(findings ?? []).some(isMissingDataFinding)) {
+    return null;
+  }
+  return status;
+};
+
+/**
+ * Why the check is not possible, one reason per line: the heading line, each
+ * missing value, and the hint where to add it.
+ */
+export function getMissingDataLines(
+  findings: RotationFinding[] | null | undefined,
+  t: TFunction,
+  cultureLabel: string,
+): string[] {
+  const reasons = (findings ?? []).filter(isMissingDataFinding).map((finding) => {
+    switch (finding.kind) {
+      case 'no_family':
+        return t('plantingPlans:rotation.info.missingData.noFamily', { crop: fallback(finding.crop_label) || cultureLabel });
+      case 'no_break':
+        return t('plantingPlans:rotation.info.missingData.noBreak', { crop: fallback(finding.crop_label) || cultureLabel });
+      default:
+        return t('plantingPlans:rotation.info.missingData.previousNoFamily', {
+          crop: fallback(finding.previous_crop_label),
+          year: finding.year,
+        });
+    }
+  });
+  return [
+    t('plantingPlans:rotation.info.missingData.heading'),
+    ...reasons,
+    t('plantingPlans:rotation.info.missingData.closing'),
+  ];
+}
+
 export function getConflictText(
   finding: RotationFinding,
   t: TFunction,
@@ -105,6 +161,11 @@ export function getInfoText(
       return t('plantingPlans:rotation.info.noFamily', { culture });
     case 'no_break':
       return t('plantingPlans:rotation.info.noBreak', { culture, family: familyOf(finding, context.familyName) });
+    case 'previous_no_family':
+      return t('plantingPlans:rotation.info.missingData.previousNoFamily', {
+        crop: fallback(finding.previous_crop_label),
+        year: finding.year,
+      });
     default:
       return t('plantingPlans:rotation.info.incomplete');
   }
@@ -161,6 +222,11 @@ export function getSuggestionReason(
       return t('plantingPlans:rotation.suggestions.reasons.noFamily', { culture: cultureLabel });
     case 'no_break':
       return t('plantingPlans:rotation.suggestions.reasons.noBreak', { family });
+    case 'previous_no_family':
+      return t('plantingPlans:rotation.info.missingData.previousNoFamily', {
+        crop: fallback(finding.previous_crop_label),
+        year: finding.year,
+      });
     case 'no_history':
       return t('plantingPlans:rotation.suggestions.reasons.noHistory');
     case 'ok':

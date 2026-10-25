@@ -22,6 +22,7 @@ from farm.services.crop_rotation import (
     KIND_NO_HISTORY,
     KIND_NUTRIENT_HINT,
     KIND_OK,
+    KIND_PREVIOUS_NO_FAMILY,
     STATUS_ACCEPTED,
     STATUS_CONFLICT,
     STATUS_HINT,
@@ -207,6 +208,108 @@ class RotationRuleTest(SimpleTestCase):
         self.assertEqual(result.status, STATUS_INFO)
         self.assertEqual(result.findings[0].kind, KIND_NO_BREAK)
 
+    def test_bed_without_earlier_plans_is_never_not_checkable(self):
+        unknown = rotation_crop(1, 'Unbekannt', family=None, break_years=None)
+        grass = rotation_crop(2, 'Mais', family='Poaceae', break_years=None)
+
+        for crop in (unknown, grass, CABBAGE):
+            with self.subTest(crop=crop.label):
+                result = evaluate_rotation(occupancy(10, crop, date(2026, 4, 1)), [])
+
+                self.assertEqual(result.status, STATUS_OK)
+                self.assertEqual([finding.kind for finding in result.findings], [KIND_NO_HISTORY])
+
+    def test_missing_family_names_the_culture(self):
+        unknown = rotation_crop(1, 'Erdbeere', family=None, break_years=None)
+
+        result = evaluate_rotation(
+            occupancy(10, unknown, date(2026, 4, 1)),
+            [occupancy(1, CARROT, date(2020, 4, 1))],
+        )
+
+        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(len(result.findings), 1)
+        self.assertEqual(result.findings[0].kind, KIND_NO_FAMILY)
+        self.assertEqual(result.findings[0].crop_label, 'Erdbeere')
+
+    def test_missing_break_with_a_different_family_before_is_info(self):
+        grass = rotation_crop(1, 'Mais', family='Poaceae', break_years=None)
+
+        result = evaluate_rotation(
+            occupancy(10, grass, date(2026, 4, 1)),
+            [occupancy(1, CARROT, date(2019, 4, 1))],
+        )
+
+        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual([finding.kind for finding in result.findings], [KIND_NO_BREAK])
+        self.assertEqual(result.findings[0].crop_label, 'Mais')
+
+    def test_previous_culture_without_family_in_the_window_is_info(self):
+        unknown = rotation_crop(2, 'Erdbeere', family=None, break_years=None)
+
+        result = evaluate_rotation(
+            occupancy(10, CABBAGE, date(2026, 4, 1)),
+            [occupancy(1, unknown, date(2024, 4, 1)), occupancy(2, CARROT, date(2025, 4, 1))],
+        )
+
+        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(len(result.findings), 1)
+        finding = result.findings[0]
+        self.assertEqual(finding.kind, KIND_PREVIOUS_NO_FAMILY)
+        self.assertEqual(finding.previous_crop_label, 'Erdbeere')
+        self.assertEqual(finding.previous_plan_id, 1)
+        self.assertEqual(finding.year, 2024)
+
+    def test_previous_culture_without_family_outside_the_window_is_ignored(self):
+        unknown = rotation_crop(2, 'Erdbeere', family=None, break_years=None)
+
+        result = evaluate_rotation(
+            occupancy(10, CABBAGE, date(2026, 4, 1)),
+            [occupancy(1, unknown, date(2022, 4, 1)), occupancy(2, CARROT, date(2025, 4, 1))],
+        )
+
+        self.assertEqual(result.status, STATUS_OK)
+        self.assertEqual(result.findings[0].kind, KIND_OK)
+
+    def test_missing_family_outside_the_cultures_own_break_is_ok(self):
+        unknown = rotation_crop(
+            1, 'Erdbeere', family=None, break_years=2, break_source=BREAK_SOURCE_CROP,
+        )
+
+        result = evaluate_rotation(
+            occupancy(10, unknown, date(2026, 4, 1)),
+            [occupancy(1, CARROT, date(2023, 4, 1))],
+        )
+
+        self.assertEqual(result.status, STATUS_OK)
+        self.assertEqual(result.findings[0].kind, KIND_NO_HISTORY)
+
+    def test_several_reasons_are_all_reported(self):
+        unknown = rotation_crop(1, 'Erdbeere', family=None, break_years=None)
+        other_unknown = rotation_crop(2, 'Rhabarber', family=None, break_years=None)
+
+        result = evaluate_rotation(
+            occupancy(10, unknown, date(2026, 4, 1)),
+            [
+                occupancy(1, other_unknown, date(2025, 4, 1)),
+                occupancy(2, other_unknown, date(2018, 4, 1)),
+                occupancy(3, CARROT, date(2024, 4, 1)),
+            ],
+        )
+
+        self.assertEqual(result.status, STATUS_INFO)
+        self.assertEqual(
+            [
+                (finding.kind, finding.previous_crop_label, finding.year)
+                for finding in result.findings
+            ],
+            [
+                (KIND_NO_FAMILY, None, None),
+                (KIND_PREVIOUS_NO_FAMILY, 'Rhabarber', 2018),
+                (KIND_PREVIOUS_NO_FAMILY, 'Rhabarber', 2025),
+            ],
+        )
+
     def test_bed_without_history_in_the_checked_years_is_ok(self):
         result = evaluate_rotation(
             occupancy(10, CABBAGE, date(2026, 4, 1)),
@@ -328,7 +431,9 @@ class CropRotationApiTest(ProjectApiTestCase):
         self.assertEqual(finding['settings_crop_id'], general.id)
 
     def test_missing_family_and_incomplete_plan_are_info(self):
+        self.plan(self.carrot, self.bed, date(2025, 4, 1), self.season_2025)
         no_family = self.plan(self.crop, self.bed, date(2026, 4, 1), self.season_2026)
+        without_history = self.plan(self.crop, self.other_bed, date(2026, 4, 1), self.season_2026)
         draft = PlantingPlan.objects.create(crop=self.kale, project=self.project, season=self.season_2026)
 
         response = self.client.get('/openfarmplanner/api/planting-plans/')
@@ -336,6 +441,8 @@ class CropRotationApiTest(ProjectApiTestCase):
         rows = {item['id']: item for item in response.data['results']}
         self.assertEqual(rows[no_family.id]['rotation_status'], STATUS_INFO)
         self.assertEqual(rows[no_family.id]['rotation_findings'][0]['kind'], KIND_NO_FAMILY)
+        self.assertEqual(rows[without_history.id]['rotation_status'], STATUS_OK)
+        self.assertEqual(rows[without_history.id]['rotation_findings'][0]['kind'], KIND_NO_HISTORY)
         self.assertEqual(rows[draft.id]['rotation_status'], STATUS_INFO)
         self.assertEqual(rows[draft.id]['rotation_findings'][0]['kind'], 'incomplete')
 

@@ -1015,6 +1015,7 @@ export type RotationFindingKind =
   | 'nutrient_hint'
   | 'no_family'
   | 'no_break'
+  | 'previous_no_family'
   | 'no_history'
   | 'incomplete'
   | 'ok';

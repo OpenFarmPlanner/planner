@@ -143,6 +143,35 @@ describe('RotationCheckPanel', () => {
     expect(screen.getByRole('link', { name: 'Familie bei Brokkoli ergänzen' })).toBeInTheDocument();
   });
 
+  it('lists every missing value, including earlier cultures without a family', async () => {
+    respond({
+      status: 'info',
+      findings: [
+        { ...conflictFinding, kind: 'no_break', break_years: null, break_source: null },
+        {
+          ...conflictFinding,
+          kind: 'previous_no_family',
+          crop_label: null,
+          family_key: null,
+          family_name: null,
+          previous_crop_label: 'Rhabarber',
+          settings_crop_id: 31,
+          settings_crop_label: 'Rhabarber',
+        },
+      ],
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText('Fruchtfolge nicht prüfbar')).toBeInTheDocument();
+    expect(screen.getByText('Für die Vorkultur Rhabarber (2025) ist keine Pflanzenfamilie hinterlegt.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Familie bei Rhabarber ergänzen' })).toHaveAttribute(
+      'href',
+      '/app/crops?cropId=31&action=edit',
+    );
+    expect(screen.getByRole('link', { name: /Brokkoli/ })).toBeInTheDocument();
+  });
+
   it('shows a one-line success note when the rotation fits', async () => {
     respond({
       status: 'ok',

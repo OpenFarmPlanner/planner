@@ -234,21 +234,23 @@ export function RotationCheckPanel({
   }
 
   if (data.status === 'info') {
-    const showFamilyLink = finding.kind === 'no_family' || finding.kind === 'no_break';
+    const infoFindings = data.findings.filter((item) => item.kind !== 'incomplete');
     return (
       <Alert severity="info" variant="outlined" icon={<HelpOutlineIcon fontSize="inherit" />} sx={neutralAlertSx} data-testid="rotation-check-info">
         <AlertTitle>{t('rotation.info.title')}</AlertTitle>
-        {getInfoText(finding, t, context)}
-        {showFamilyLink ? (
-          <Box sx={linkRowSx}>
-            <CropSettingsLink
-              finding={finding}
-              label={finding.kind === 'no_family'
-                ? t('rotation.info.addFamily', { culture: finding.settings_crop_label ?? cultureLabel })
-                : t('rotation.conflict.setBreak', { culture: finding.settings_crop_label ?? cultureLabel })}
-            />
+        {infoFindings.length === 0 ? getInfoText(finding, t, context) : infoFindings.map((item, index) => (
+          <Box key={`${item.kind}-${item.previous_plan_id ?? index}`} sx={index > 0 ? { mt: 0.5 } : undefined}>
+            {getInfoText(item, t, context)}
+            <Box sx={linkRowSx}>
+              <CropSettingsLink
+                finding={item}
+                label={item.kind === 'no_break'
+                  ? t('rotation.conflict.setBreak', { culture: item.settings_crop_label ?? cultureLabel })
+                  : t('rotation.info.addFamily', { culture: item.settings_crop_label ?? cultureLabel })}
+              />
+            </Box>
           </Box>
-        ) : null}
+        ))}
       </Alert>
     );
   }

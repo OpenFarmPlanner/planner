@@ -49,9 +49,11 @@ import { RotationCheckPanel } from './rotation/RotationCheckPanel';
 import { RotationStatusIcon } from './rotation/RotationStatusIcon';
 import {
   getBedCapacityText,
+  getMissingDataLines,
   getPrimaryFinding,
   getRotationTitle,
   getSuggestionReason,
+  getTableRotationStatus,
   isFlaggedRotationStatus,
 } from './rotation/rotationCopy';
 import { useFamilyNameResolver } from './rotation/useFamilyNameResolver';
@@ -556,9 +558,15 @@ function AreaAssignmentDialogComponent({
 
   useDialogEditCellOpenRequest(rowId, field, handleOpen);
 
-  const flaggedStatus = isFlaggedRotationStatus(savedRotationStatus ?? undefined) ? savedRotationStatus : null;
+  const tableRotationStatus = getTableRotationStatus(savedRotationStatus, rotation?.findings);
+  const flaggedStatus = isFlaggedRotationStatus(tableRotationStatus) ? tableRotationStatus : null;
+  const statusTooltip = flaggedStatus === 'info'
+    ? getMissingDataLines(rotation?.findings, t, rotation?.cultureLabel ?? '').map((line, index) => (
+      <Box component="span" key={index} sx={{ display: 'block' }}>{line}</Box>
+    ))
+    : flaggedStatus && getRotationTitle(flaggedStatus, getPrimaryFinding(rotation?.findings ?? undefined), t, familyName);
   const statusAdornment = flaggedStatus ? (
-    <AppTooltip title={getRotationTitle(flaggedStatus, getPrimaryFinding(rotation?.findings ?? undefined), t, familyName)}>
+    <AppTooltip title={statusTooltip}>
       <IconButton
         size="small"
         // The cell itself is the keyboard entry (Enter opens the same dialog),

@@ -306,7 +306,14 @@
       "noFamily": "{{culture}} n'a pas de famille botanique. Sans famille, nous ne pouvons pas vérifier de délai de retour.",
       "addFamily": "Ajouter une famille à {{culture}}",
       "noBreak": "Ni {{family}} ni {{culture}} n'ont de délai de retour. Sans délai de retour, nous ne pouvons pas vérifier la rotation des cultures.",
-      "incomplete": "Choisissez une culture, une planche et une date de plantation pour que nous puissions vérifier la rotation des cultures."
+      "incomplete": "Choisissez une culture, une planche et une date de plantation pour que nous puissions vérifier la rotation des cultures.",
+      "missingData": {
+        "heading": "La rotation des cultures ne peut pas être vérifiée :",
+        "noFamily": "Aucune famille botanique n'est indiquée pour {{crop}}.",
+        "noBreak": "Aucun délai de retour n'est indiqué pour {{crop}}.",
+        "previousNoFamily": "Aucune famille botanique n'est indiquée pour la culture précédente {{crop}} ({{year}}).",
+        "closing": "Vous pouvez compléter les informations manquantes dans la bibliothèque de cultures."
+      }
     },
     "ok": {
       "text": "La rotation des cultures convient : {{reason}}",

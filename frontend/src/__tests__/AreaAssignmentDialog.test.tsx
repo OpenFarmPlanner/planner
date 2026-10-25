@@ -768,6 +768,80 @@ describe('AreaAssignmentDialog with the crop rotation check', () => {
     expect(screen.getByRole('button', { name: 'Fruchtfolge nicht prüfbar, Anbaufläche ändern' })).toBeInTheDocument();
   });
 
+  it('names every missing value in the "not checkable" tooltip', async () => {
+    const user = userEvent.setup();
+    const previousWithoutFamily = (label: string, year: number, planId: number): RotationFinding => finding({
+      kind: 'previous_no_family',
+      crop_label: null,
+      family_key: null,
+      family_name: null,
+      previous_plan_id: planId,
+      previous_crop_label: label,
+      year,
+      break_years: null,
+      break_source: null,
+    });
+    const cases: Array<{ findings: RotationFinding[]; reasons: string[] }> = [
+      {
+        findings: [finding({ kind: 'no_family', crop_label: 'Erdbeere (Mieze)', family_key: null })],
+        reasons: ['Für Erdbeere (Mieze) ist keine Pflanzenfamilie hinterlegt.'],
+      },
+      {
+        findings: [finding({ kind: 'no_break', crop_label: 'Mais', break_years: null })],
+        reasons: ['Für Mais ist keine Anbaupause hinterlegt.'],
+      },
+      {
+        findings: [previousWithoutFamily('Rhabarber', 2025, 7)],
+        reasons: ['Für die Vorkultur Rhabarber (2025) ist keine Pflanzenfamilie hinterlegt.'],
+      },
+      {
+        findings: [
+          finding({ kind: 'no_family', crop_label: 'Erdbeere', family_key: null }),
+          previousWithoutFamily('Rhabarber', 2024, 7),
+          previousWithoutFamily('Topinambur', 2025, 8),
+        ],
+        reasons: [
+          'Für Erdbeere ist keine Pflanzenfamilie hinterlegt.',
+          'Für die Vorkultur Rhabarber (2024) ist keine Pflanzenfamilie hinterlegt.',
+          'Für die Vorkultur Topinambur (2025) ist keine Pflanzenfamilie hinterlegt.',
+        ],
+      },
+    ];
+
+    for (const { findings, reasons } of cases) {
+      const { unmount } = render(
+        <MemoryRouter>
+          <AreaAssignmentDialog
+            bedId={101}
+            beds={rotationBeds}
+            fields={fields}
+            locations={locations}
+            locale="de-DE"
+            compactLabel="x"
+            onApply={vi.fn()}
+            rotation={rotation({ status: 'info', findings })}
+          />
+        </MemoryRouter>,
+      );
+      await user.hover(screen.getByTestId('rotation-status-button'));
+      const tooltip = await screen.findByRole('tooltip');
+      const lines = Array.from(tooltip.querySelectorAll('span')).map((line) => line.textContent);
+      expect(lines).toEqual([
+        'Fruchtfolge nicht prüfbar:',
+        ...reasons,
+        'Du kannst die fehlenden Angaben in der Kulturbibliothek ergänzen.',
+      ]);
+      await user.unhover(screen.getByTestId('rotation-status-button'));
+      unmount();
+    }
+  });
+
+  it('shows no status in the cell for a draft that cannot be checked yet', () => {
+    renderDialog(rotation({ status: 'info', findings: [finding({ kind: 'incomplete' })] }));
+
+    expect(screen.queryByTestId('rotation-status-button')).not.toBeInTheDocument();
+  });
+
   it('suggests matching beds across locations and fills the selects without saving', async () => {
     const user = userEvent.setup();
     const onApply = renderDialog(rotation());

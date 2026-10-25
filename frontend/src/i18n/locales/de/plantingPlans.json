@@ -299,7 +299,14 @@
       "noFamily": "Bei {{culture}} ist keine Pflanzenfamilie hinterlegt. Ohne Familie können wir keine Anbaupause prüfen.",
       "addFamily": "Familie bei {{culture}} ergänzen",
       "noBreak": "Für {{family}} und bei {{culture}} ist keine Anbaupause hinterlegt. Ohne Anbaupause können wir die Fruchtfolge nicht prüfen.",
-      "incomplete": "Wähle Kultur, Beet und Pflanztermin, damit wir die Fruchtfolge prüfen können."
+      "incomplete": "Wähle Kultur, Beet und Pflanztermin, damit wir die Fruchtfolge prüfen können.",
+      "missingData": {
+        "heading": "Fruchtfolge nicht prüfbar:",
+        "noFamily": "Für {{crop}} ist keine Pflanzenfamilie hinterlegt.",
+        "noBreak": "Für {{crop}} ist keine Anbaupause hinterlegt.",
+        "previousNoFamily": "Für die Vorkultur {{crop}} ({{year}}) ist keine Pflanzenfamilie hinterlegt.",
+        "closing": "Du kannst die fehlenden Angaben in der Kulturbibliothek ergänzen."
+      }
     },
     "ok": {
       "text": "Fruchtfolge passt: {{reason}}",

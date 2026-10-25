@@ -18,6 +18,11 @@ import {
   type PlantingPlanSearchRecordInput,
   type PlantingPlanSortKey,
 } from '../pages/plantingPlanSearch';
+import type { RotationFinding, RotationStatus } from '../api/types';
+import {
+  getTableRotationStatus,
+  isFlaggedRotationStatus,
+} from '../components/planting-plans/rotation/rotationCopy';
 import { tokenizeSearchQuery } from '../search/searchText';
 
 const HOFGARTEN = 1;
@@ -217,6 +222,30 @@ describe('planting plan filters', () => {
     expect(ids(['conflict'])).toEqual([11]);
     expect(ids(['accepted', 'info'])).toEqual([12, 13]);
     expect(ids([])).toEqual([11, 12, 13, 14, 15]);
+  });
+
+  it('matches "not checkable" exactly where the table shows the icon', () => {
+    const missingFamily = [{ kind: 'no_family' }] as RotationFinding[];
+    const rows: Array<{ id: number; status: RotationStatus; findings: RotationFinding[] }> = [
+      { id: 21, status: 'info', findings: missingFamily },
+      { id: 22, status: 'info', findings: [{ kind: 'previous_no_family' }] as RotationFinding[] },
+      { id: 23, status: 'info', findings: [{ kind: 'incomplete' }] as RotationFinding[] },
+      { id: 24, status: 'ok', findings: [{ kind: 'no_history' }] as RotationFinding[] },
+    ];
+    const records = rows.map((row) => makeRecord({
+      id: row.id,
+      rotationStatus: getTableRotationStatus(row.status, row.findings),
+    }));
+
+    const matched = records
+      .filter((record) => matchPlantingPlan(record, [], { ...EMPTY_PLANTING_PLAN_FILTERS, rotationStatuses: ['info'] }).matches)
+      .map((record) => record.id);
+    const flagged = rows
+      .filter((row) => isFlaggedRotationStatus(getTableRotationStatus(row.status, row.findings)))
+      .map((row) => row.id);
+
+    expect(matched).toEqual([21, 22]);
+    expect(flagged).toEqual(matched);
   });
 
   it('ANDs search and filters', () => {

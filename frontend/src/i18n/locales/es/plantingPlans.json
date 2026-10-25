@@ -306,7 +306,14 @@
       "noFamily": "{{culture}} no tiene familia botánica. Sin familia no podemos comprobar ninguna pausa de rotación.",
       "addFamily": "Añadir una familia a {{culture}}",
       "noBreak": "Ni {{family}} ni {{culture}} tienen pausa de rotación. Sin pausa no podemos comprobar la rotación de cultivos.",
-      "incomplete": "Elige un cultivo, un bancal y una fecha de plantación para que podamos comprobar la rotación de cultivos."
+      "incomplete": "Elige un cultivo, un bancal y una fecha de plantación para que podamos comprobar la rotación de cultivos.",
+      "missingData": {
+        "heading": "No se puede comprobar la rotación de cultivos:",
+        "noFamily": "No hay ninguna familia botánica indicada para {{crop}}.",
+        "noBreak": "No hay ninguna pausa de rotación indicada para {{crop}}.",
+        "previousNoFamily": "No hay ninguna familia botánica indicada para el cultivo anterior {{crop}} ({{year}}).",
+        "closing": "Puedes completar los datos que faltan en la biblioteca de cultivos."
+      }
     },
     "ok": {
       "text": "La rotación de cultivos encaja: {{reason}}",
