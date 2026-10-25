@@ -6336,6 +6336,30 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertTrue(changes['growth_duration_days']['pinnable'])
         self.assertFalse(changes['harvest_duration_days']['pinned'])
 
+    def test_sync_preview_offers_no_pin_for_an_owned_but_unlinked_entry(self):
+        # A general Kultur of another project reaches the user's own species
+        # entry through the owner lookup, without a link: the sync may push,
+        # but a pin would be rejected with `library_pin_requires_link`.
+        own_species = CropSpecies.objects.create(name='Carrot')
+        own_entry = PublicCrop.objects.create(
+            name='Karotte', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=own_species, created_by=self.user, growth_duration_days=90,
+            **self.CULTIVATION,
+        )
+        ensure_public_crop_revision(own_entry)
+        unlinked = Crop.objects.create(
+            name='Karotte', variety='', crop_species=own_species, growth_duration_days=100,
+            project=self.project, **self.CULTIVATION,
+        )
+
+        preview = self.client.get(
+            self._crop_url(unlinked, 'public-sync/'), {'public_crop_id': own_entry.id},
+        ).data
+
+        changes = {change['field']: change for change in preview['changes']}
+        self.assertTrue(changes['growth_duration_days']['pushable'])
+        self.assertFalse(changes['growth_duration_days']['pinnable'])
+
     # --- sync -----------------------------------------------------------------
 
     def test_sync_pins_fields_in_the_same_transaction(self):

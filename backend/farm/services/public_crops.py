@@ -1306,13 +1306,16 @@ def build_public_crop_sync_preview(
     Pinned fields are listed too (flagged ``pinned``), so the sync is also where
     a pin can be released. Also answers for an entry the crop is not linked to
     yet (the link confirmation): the comparison then assumes the species the
-    link would set (see :func:`_sync_comparison_crop`).
+    link would set (see :func:`_sync_comparison_crop`). A pin needs the link
+    (:func:`validate_library_pinned_fields`), so nothing is ``pinnable``
+    against an entry the crop only owns or is about to link to.
     """
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
     pinned = get_library_pinned_fields(crop)
-    pinnable = set(library_pinnable_fields(crop))
+    is_linked = crop.source_public_crop_id == public_crop.id
+    pinnable = set(library_pinnable_fields(crop)) if is_linked else set()
     return [
         PublicCropSyncField(
             field=field,
