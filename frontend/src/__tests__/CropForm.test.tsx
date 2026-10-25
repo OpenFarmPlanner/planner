@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createTheme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropForm } from '../crops/CropForm';
@@ -866,6 +867,41 @@ describe('CropForm', () => {
     );
   });
 
+  it('shows no library source hint when editing an already linked Kultur or Sorte', () => {
+    const linked = { ...CROP_A, source_public_crop: 9, source_public_version: 2, origin_type: 'imported' as const };
+    const { unmount } = render(<CropForm formKind="crop" crop={{ ...linked, variety: '' }} onSave={vi.fn()} onCancel={() => {}} />);
+    expect(screen.queryByTestId('crop-library-source-hint')).not.toBeInTheDocument();
+    unmount();
+
+    render(<CropForm formKind="variety" crop={linked} onSave={vi.fn()} onCancel={() => {}} />);
+    expect(screen.queryByTestId('crop-library-source-hint')).not.toBeInTheDocument();
+  });
+
+  it('shows the Kultur source hint after an entry is picked while editing a Kultur', async () => {
+    cropDuplicateCheckMock.mockResolvedValue({ data: { exists: false } });
+    publicCropListMock.mockResolvedValue({
+      data: { results: [{
+        id: 41,
+        status: 'published',
+        name: 'Tomate',
+        display_name: 'Tomate',
+        variety: '',
+        crop_species: 7,
+        version: 3,
+      } as PublicCrop] },
+    });
+
+    render(<CropForm formKind="crop" crop={{ ...CROP_A, name: 'Tomate', variety: '' }} onSave={vi.fn()} onCancel={() => {}} />);
+    expect(screen.queryByTestId('crop-library-source-hint')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Tomaten' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'select-name-option' }));
+
+    const hint = await screen.findByTestId('crop-library-source-hint');
+    expect(hint).toHaveTextContent('form.publicCropSourceHint');
+    expect(hint).not.toHaveTextContent('form.publicCropSourceHintVariety');
+  });
+
   it('copies public crop base values when a suggestion is selected', async () => {
     cropDuplicateCheckMock.mockResolvedValue({ data: { exists: false } });
     publicCropListMock.mockResolvedValue({
@@ -916,7 +952,12 @@ describe('CropForm', () => {
       row_spacing_cm: 50,
       origin_type: 'imported',
     }), undefined);
-    expect(screen.getByText('form.publicCropSourceHint')).toBeInTheDocument();
+    // The Add-variety dialog names the variety, as a neutral info (not the green highlight).
+    const hint = screen.getByTestId('crop-library-source-hint');
+    expect(hint).toHaveTextContent('form.publicCropSourceHintVariety');
+    // Rendered without the app theme here, so the defaults stand in for the tokens.
+    const { palette } = createTheme();
+    expect(hint).toHaveStyle({ backgroundColor: palette.action.hover, color: palette.text.primary });
   });
 
   // Regression guard for the "Add crop" dialog, where no variety field exists

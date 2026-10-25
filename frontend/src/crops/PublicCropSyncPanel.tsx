@@ -14,7 +14,6 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import type { SvgIconComponent } from '@mui/icons-material';
-import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import type { TFunction } from 'i18next';
 import { useTranslation } from '../i18n';
@@ -34,7 +33,7 @@ import {
   type PublicCropSyncChoices,
 } from './publicCropSync';
 import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
-import { libraryLocalTint } from './libraryFieldPin';
+import { syncColumnAccent, syncColumnTextColor, syncColumnTint } from './publicCropSyncStyles';
 
 interface PublicCropSyncPanelProps {
   /** Null while the differences are loading. */
@@ -72,6 +71,8 @@ const ROW_SX = {
   py: 1,
   borderTop: '1px solid',
   borderColor: 'divider',
+  // The sticky heading row already draws the line above the first row.
+  '&:first-of-type': { borderTop: 0 },
 } as const;
 
 const VALUE_COLUMNS_SX = {
@@ -165,6 +166,13 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
   );
 }
 
+const SYNC_CHOICES: PublicCropSyncChoice[] = ['library', 'mine', 'local'];
+
+/**
+ * A value is the choice. Unchosen: thin neutral frame, primary text, hover in
+ * the column tint — so it reads as clickable. Chosen: frame, tint and check
+ * mark in the column colour, built the same way in every column.
+ */
 const OPTION_SX = {
   position: 'relative',
   display: 'flex',
@@ -174,31 +182,30 @@ const OPTION_SX = {
   px: 1,
   py: 0.75,
   border: '1px solid',
-  borderColor: 'transparent',
+  borderColor: 'divider',
   borderRadius: 1,
   cursor: 'pointer',
-  color: 'text.secondary',
+  color: 'text.primary',
   transition: (theme: Theme) => theme.transitions.create(['background-color', 'border-color']),
-  '&:hover': { bgcolor: 'action.hover' },
-  '&:has(input:focus-visible)': {
-    outline: '2px solid',
-    outlineColor: 'primary.main',
-    outlineOffset: 1,
-  },
-  '&[data-selected="true"]': {
-    color: 'text.primary',
-    borderColor: 'primary.main',
-    bgcolor: (theme: Theme) => alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
-  },
-  // "Nur lokal" carries the pin colour, the same one the crop form marks a
-  // pinned field with.
-  '&[data-selected="true"][data-choice="local"]': {
-    borderColor: 'libraryLocal.main',
-    bgcolor: (theme: Theme) => libraryLocalTint(theme),
-    '& [data-check-slot]': { color: 'libraryLocal.main' },
-  },
+  ...Object.fromEntries(SYNC_CHOICES.map((choice) => [
+    `&[data-choice="${choice}"]`,
+    {
+      '&:hover': { bgcolor: (theme: Theme) => syncColumnTint(theme, choice, theme.palette.action.hoverOpacity) },
+      '&:has(input:focus-visible)': {
+        outline: '2px solid',
+        outlineColor: (theme: Theme) => syncColumnTextColor(theme, choice),
+        outlineOffset: 1,
+      },
+      '&[data-selected="true"]': {
+        borderColor: (theme: Theme) => syncColumnAccent(theme, choice),
+        bgcolor: (theme: Theme) => syncColumnTint(theme, choice),
+      },
+      '& [data-check-slot]': { color: (theme: Theme) => syncColumnTextColor(theme, choice) },
+    },
+  ])),
   '&[data-disabled="true"]': {
     cursor: 'default',
+    color: 'text.disabled',
     '&:hover': { bgcolor: 'transparent' },
   },
 } as const;
@@ -222,7 +229,6 @@ const CHECK_SLOT_SX = {
   flexShrink: 0,
   width: '1rem',
   mt: 0.25,
-  color: 'primary.main',
 } as const;
 
 /** Mirrors `OPTION_SX` spacing so a heading lines up with the values below it. */
@@ -244,6 +250,7 @@ const COLUMN_HEADING_CONTENT_SX = {
 } as const;
 
 interface SyncColumnHeadingProps {
+  column: PublicCropSyncChoice;
   label: string;
   actionLabel: string;
   disabled: boolean;
@@ -255,6 +262,7 @@ interface SyncColumnHeadingProps {
 }
 
 function SyncColumnHeading({
+  column,
   label,
   actionLabel,
   disabled,
@@ -266,22 +274,35 @@ function SyncColumnHeading({
   // Three narrow columns on a phone: the icon moves in front of the label
   // (no check-mark slot) and text wraps instead of running into the next column.
   const compact = Boolean(description);
+  const columnTextColor = (theme: Theme) => syncColumnTextColor(theme, column);
   return (
     <Box
       sx={compact ? { ...COLUMN_HEADING_SX, px: { xs: 0.5, sm: 1 }, gap: { xs: 0, sm: 0.75 } } : COLUMN_HEADING_SX}
       data-testid={testId}
+      data-column={column}
     >
       <Box
         component="span"
         aria-hidden
-        sx={{ ...CHECK_SLOT_SX, color: 'text.secondary', ...(compact ? { display: { xs: 'none', sm: 'inline-flex' } } : {}) }}
+        sx={{
+          ...CHECK_SLOT_SX,
+          width: 'auto',
+          mt: 0,
+          color: columnTextColor,
+          ...(compact ? { display: { xs: 'none', sm: 'inline-flex' } } : {}),
+        }}
       >
-        {Icon ? <Icon sx={{ fontSize: '1rem' }} /> : null}
+        {Icon ? <Icon fontSize="small" /> : null}
       </Box>
       <Box sx={{ ...COLUMN_HEADING_CONTENT_SX, ...(compact ? { overflowWrap: 'anywhere', hyphens: 'auto' } : {}) }}>
-        <Typography variant="caption" color="text.secondary" sx={compact ? { fontWeight: 600 } : undefined}>
+        <Typography
+          variant="subtitle2"
+          component="span"
+          data-testid={testId ? `${testId}-title` : undefined}
+          sx={{ color: columnTextColor, lineHeight: 1.3, fontSize: compact ? { xs: '0.8125rem', sm: undefined } : undefined }}
+        >
           {Icon && compact ? (
-            <Icon aria-hidden sx={{ display: { xs: 'inline-block', sm: 'none' }, fontSize: '0.875rem', verticalAlign: 'text-bottom', mr: 0.25 }} />
+            <Icon aria-hidden fontSize="small" sx={{ display: { xs: 'inline-block', sm: 'none' }, verticalAlign: 'text-bottom', mr: 0.25 }} />
           ) : null}
           {label}
         </Typography>
@@ -296,9 +317,13 @@ function SyncColumnHeading({
           disabled={disabled}
           sx={{
             minWidth: 0,
-            px: 0,
-            py: 0,
+            minHeight: (theme) => theme.spacing(5),
+            px: 0.5,
+            ml: -0.5,
+            mt: 0.25,
             textAlign: 'left',
+            color: columnTextColor,
+            '&:hover': { bgcolor: (theme) => syncColumnTint(theme, column, theme.palette.action.hoverOpacity) },
             ...(compact ? { fontSize: { xs: '0.75rem', sm: undefined }, lineHeight: { xs: 1.25, sm: undefined } } : {}),
           }}
           onClick={onAction}
@@ -447,7 +472,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
 
   return (
     <Box sx={ROW_SX} data-testid={`public-crop-sync-row-${change.field}`}>
-      <Typography component="dt" variant="body2" sx={{ fontWeight: 600 }}>
+      <Typography component="dt" variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
         {label}
         {allowLocal && change.pinned ? (
           <Typography
@@ -568,17 +593,31 @@ export function PublicCropSyncPanel({
     <Stack spacing={1}>
       <Box
         aria-label={t('library.sync.ariaLabel')}
-        sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}
+        // `clip`, not `hidden`: it rounds the corners without becoming a scroll
+        // container, so the sticky heading row sticks to the dialog's scroll area.
+        sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'clip' }}
       >
         <Box
+          data-testid="public-crop-sync-headings"
           sx={{
             ...(allowLocal ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX),
             px: allowLocal ? { xs: 0.5, sm: 1 } : 1,
             py: 0.75,
-            bgcolor: 'action.hover',
+            position: 'sticky',
+            // Sticky offsets count from inside the dialog content's padding;
+            // pull the row up by that padding (theme: 12px after a title) so
+            // no row shows through above it.
+            top: (theme) => theme.spacing(-1.5),
+            zIndex: 1,
+            // Opaque, so rows scrolling underneath do not show through.
+            bgcolor: 'background.paper',
+            backgroundImage: (theme) => `linear-gradient(${theme.palette.action.hover}, ${theme.palette.action.hover})`,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
           }}
         >
           <SyncColumnHeading
+            column="library"
             label={t('library.sync.columnLibrary')}
             actionLabel={t('library.sync.allLibrary')}
             disabled={disabled}
@@ -590,6 +629,7 @@ export function PublicCropSyncPanel({
             } : {})}
           />
           <SyncColumnHeading
+            column="mine"
             label={t('library.sync.columnMine')}
             actionLabel={t(allowLocal ? 'library.sync.allShare' : 'library.sync.allMine')}
             disabled={disabled}
@@ -602,6 +642,7 @@ export function PublicCropSyncPanel({
           />
           {allowLocal ? (
             <SyncColumnHeading
+              column="local"
               label={t('library.sync.columnLocal')}
               actionLabel={t('library.sync.allLocal')}
               disabled={disabled}
@@ -627,8 +668,18 @@ export function PublicCropSyncPanel({
         </Box>
       </Box>
 
-      {allowLocal ? (
-        <Alert severity="info" icon={<PushPinOutlinedIcon fontSize="inherit" />} data-testid="public-crop-sync-local-info">
+      {allowLocal && pinFields.length > 0 ? (
+        <Alert
+          severity="info"
+          icon={<PushPinIcon fontSize="inherit" />}
+          data-testid="public-crop-sync-local-info"
+          sx={{
+            bgcolor: (theme) => syncColumnTint(theme, 'local'),
+            color: 'text.primary',
+            boxShadow: 'none',
+            '& .MuiAlert-icon': { color: (theme) => syncColumnTextColor(theme, 'local') },
+          }}
+        >
           {t('library.sync.localInfo')}
         </Alert>
       ) : null}

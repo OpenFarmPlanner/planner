@@ -707,21 +707,14 @@ function Crops() {
   const firstMissingPlanAction = firstMissingPlanRequirement
     ? getTranslatedProjectSetupAction(firstMissingPlanRequirement, t)
     : null;
-  const planRequirementActions = isMissingActiveSeason
-    ? [{ label: t('buttons.createSeason'), onClick: outletContext?.requestSeasonCreation }]
-    : firstMissingPlanAction
-      ? [firstMissingPlanAction]
-      : [];
+  const planRequirementActions = firstMissingPlanAction ? [firstMissingPlanAction] : [];
   const canCreatePlantingPlan = Boolean(selectedCrop) && firstMissingPlanRequirement === null && !isMissingActiveSeason;
   const createPlanDisabledTooltip = isMissingActiveSeason
     ? t('buttons.createPlantingPlanMissingSeasonTooltip')
     : undefined;
-  const planRequirementEmptyState = isMissingActiveSeason
-    ? {
-      title: t('buttons.createPlantingPlanMissingSeasonTitle'),
-      description: t('buttons.createPlantingPlanDisabled.seasons'),
-    }
-    : firstMissingPlanRequirement === 'fields'
+  // A missing season only disables "Anbauplan anlegen" (with a tooltip); the
+  // crop page shows no season empty state, seasons are created elsewhere.
+  const planRequirementEmptyState = firstMissingPlanRequirement === 'fields'
     ? {
       title: t('buttons.createPlantingPlanMissingFieldsTitle'),
       description: t('buttons.createPlantingPlanDisabled.fields'),

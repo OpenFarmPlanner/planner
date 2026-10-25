@@ -35,7 +35,6 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
-import { alpha } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { cropAPI, supplierAPI } from '../api/api';
 import { useActiveSaveShortcut } from '../hooks/useActiveSaveShortcut';
@@ -188,21 +187,22 @@ const EMPTY_CROP: Partial<Crop> = {
   seed_packages: [],
 };
 
-// Same visual treatment as the Name field's green "applied from library"
-// hint, reused wherever a public-library entry got linked in.
+// Neutral info right after a library entry was picked in this dialog. The
+// theme's info Alert is green, as is the variety highlight that marks a
+// Sorte's own values, so this one stays neutral grey.
 const PublicCropSourceHint = ({ text }: { text: string }) => (
-  <Box
-    sx={(theme) => ({
-      px: 1.5,
-      py: 1,
-      borderLeft: `4px solid ${theme.palette.primary.main}`,
-      borderRadius: 1,
-      bgcolor: alpha(theme.palette.primary.light, 0.1),
+  <Alert
+    severity="info"
+    data-testid="crop-library-source-hint"
+    sx={{
+      bgcolor: 'action.hover',
       color: 'text.primary',
-    })}
+      boxShadow: 'none',
+      '& .MuiAlert-icon': { color: 'text.secondary' },
+    }}
   >
-    <Typography variant="body2" sx={{ lineHeight: 1.35 }}>{text}</Typography>
-  </Box>
+    {text}
+  </Alert>
 );
 
 // Dezent hint offered when typed free text matches a library entry exactly
@@ -392,6 +392,9 @@ export function CropForm({
   const [pendingLibraryLink, setPendingLibraryLink] = useState<PublicCrop | null>(null);
   const [libraryLinkFilledCount, setLibraryLinkFilledCount] = useState(0);
   const [libraryLinkConflict, setLibraryLinkConflict] = useState<LibraryLinkConflict | null>(null);
+  // Whether a library entry was picked in this dialog (not merely a crop that
+  // is already linked): only then is the source hint news to the user.
+  const [libraryEntryPickedInDialog, setLibraryEntryPickedInDialog] = useState(false);
 
   // --- Validation now imported from ../crops/validation ---
 
@@ -803,6 +806,7 @@ export function CropForm({
     { preserveVariety = false }: { preserveVariety?: boolean } = {},
   ) => {
     setPublicCropSearchTerm(getPublicCropDraftName(publicCrop));
+    setLibraryEntryPickedInDialog(true);
     setFormData((prev) => {
       const draft = buildDraftFromPublicCrop(publicCrop);
       const updated = {
@@ -821,6 +825,7 @@ export function CropForm({
 
   const handlePublicCropSelect = useCallback((publicCrop: PublicCrop | null) => {
     if (!publicCrop) {
+      setLibraryEntryPickedInDialog(false);
       setFormData((prev) => {
         const updated = {
           ...prev,
@@ -1401,7 +1406,7 @@ export function CropForm({
                 />
               ) : null}
               firstVarietySourceHint={firstVarietyPublicCrop ? (
-                <PublicCropSourceHint text={t('form.firstVarietySourceHint')} />
+                <PublicCropSourceHint text={t('form.publicCropSourceHintVariety')} />
               ) : null}
               existingCropHint={existingPrivateCrop ? (
                 <Alert
@@ -1466,8 +1471,10 @@ export function CropForm({
                   </Box>
                 </AppTooltip>
               ) : null}
-              identityHint={isProjectForm && formData.source_public_crop && !hasFirstVarietyName ? (
-                <PublicCropSourceHint text={t('form.publicCropSourceHint')} />
+              identityHint={isProjectForm && libraryEntryPickedInDialog && formData.source_public_crop && !hasFirstVarietyName ? (
+                <PublicCropSourceHint
+                  text={t(formKind === 'variety' ? 'form.publicCropSourceHintVariety' : 'form.publicCropSourceHint')}
+                />
               ) : null}
             />
             <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />

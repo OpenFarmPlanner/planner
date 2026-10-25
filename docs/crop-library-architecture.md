@@ -294,7 +294,10 @@ The public Crop Library follows an open-data model:
      fields do not count: a crop that differs only there is case 5, and the
      tooltip adds "Lokal fixiert: {fields}." A second chip "{n} Felder lokal
      fixiert" (violet, pin icon, `CropLibraryPinnedChip`) sits next to the
-     status and lists the fields in its tooltip. The crop list deliberately
+     status and lists the fields in its tooltip ("Diese Werte gelten nur für
+     deinen Betrieb und werden bei Updates der Kulturbibliothek nicht
+     überschrieben: {fields}."); each pinned value in the detail itself
+     carries its own pin (see *Read view* under "Locally pinned fields"). The crop list deliberately
      shows no pin: its status icon (`CropLibraryStatusIcon`) says whether a
      crop needs an action, and a pinned field is a decision already made, so
      a synced crop with pins shows the plain check like any other, and neither
@@ -443,7 +446,7 @@ The public Crop Library follows an open-data model:
     summary "… Werte werden in deine Kultur übernommen, … Werte bleiben nur
     lokal, … fixierte Werte bleiben erhalten." There is deliberately no other
     hint when a pinned field's library value changes; the value is only shown
-    passively (the pin's tooltip in the form).
+    passively (the pin's tooltip in the form and in the read view).
   - *Push.* `build_public_crop_payload` drops pinned fields, so no publish,
     republish, owned-entry update or moderated proposal shares them. In the
     sync, a pinned field is shared only when the decision names it under
@@ -477,6 +480,19 @@ The public Crop Library follows an open-data model:
     cultivation picker covers `cultivation_types` and `cultivation_type`
     together). A pin on a field the form clears is dropped on save. Unlinked
     crops show no pin at all.
+  - *Read view.* The crop detail (read mode of the crops page) marks each
+    pinned value with the same filled pin in the "local" colour right after
+    the value, e.g. after "35 Tage" (`LibraryPinIndicator`, laid out by
+    `ValueWithLibraryPin`; for `notes` the pin sits next to the section
+    heading). It follows the form's rule (`isLibraryFieldPinned`: a pinned
+    field with a value, on a linked crop) and reads the library value from the
+    same `library_pinned_values`, formatted by the same helper, so the detail
+    makes no extra request. The pin is passive: tooltip and accessible name
+    are the form's "Lokal fixiert. Bibliothek: {Wert}.", it is
+    keyboard-focusable so the tooltip opens on focus, and a tap opens the
+    tooltip on touch; there is no popover and no release here. Unpinned values
+    render exactly as before, and the green own-value marking of a Sorte is
+    unchanged — the pin only adds to it, with no background of its own.
   - *Lifecycle.* `Crop.save()` normalizes the list on every save
     (`normalize_library_pinned_fields`): it is empty without a sync link,
     and a pinned field whose *effective* value is cleared loses its pin
@@ -777,6 +793,16 @@ entry into the draft — baseline values plus `source_public_crop`/
 `source_public_version` and `origin_type: 'imported'`, the shape the "Import
 from library" button produces. Species-level prefill never overwrites a
 variety the user already typed (`preserveVariety`).
+
+Right after such a pick — and only then, never for a crop that was already
+linked when the dialog opened — the form shows a neutral grey info (an
+`Alert` on `action.hover`; the theme's info Alert and the variety highlight
+are both green): "Werte aus der
+Kulturbibliothek übernommen. Die Kultur bleibt mit dem Eintrag verknüpft.
+Abweichende Werte kannst du später teilen oder nur lokal behalten.", with
+"Sorte" in the Add-variety dialog and for a picked first Sorte. Saving keeps
+`source_public_crop`, so the crop really is linked afterwards. A Kultur being
+created shows its own linked state ("Verknüpft mit …") instead.
 
 Which variety field is shown depends on `formKind`. The Add-**variety** dialog
 renders the real `variety` field, and selecting a suggestion there copies that
@@ -1140,6 +1166,12 @@ mirrored by `resolveEffectiveRotationBreakYears()` in
 `frontend/src/crops/plantFamilies.ts`, and exposed read-only as
 `CropSerializer.effective_rotation_break_years`. The bed-level rotation check
 that uses these values is described in [crop-rotation.md](./crop-rotation.md).
+In the crop form the definition lives in the tooltip of an info icon next to
+the "Anbaupause (Jahre)" label (plus "Standard für {Familie}: {n} Jahre."
+when the family has a default), not in a helper text under the field; the
+family default stays the placeholder of an empty field. A read-only field (a
+linked Sorte) shows no icon of its own — the section heading's icon explains
+it.
 
 **API.** `crop_family` is read and written as the botanical name
 (`PlantFamilyField`: case/whitespace-insensitive, `""`/`null` clear it, any
@@ -1677,9 +1709,18 @@ differences from `GET /api/crops/<id>/public-sync/` (which also answers for a
 not-yet-linked candidate, comparing as if the link had set the entry's
 species) and shows one row per differing field: the label, then the
 "Bibliothek" and "Meine Kultur" values side by side, and the values *are* the
-choice. Clicking a value selects that side; the chosen one gets a thin primary
-border, a light primary tint and a check mark, the other stays plain in
-secondary text. This replaced a full-width segmented toggle per row ("Aus
+choice. Clicking a value selects that side. Each column speaks the colour of
+its direction, the same as the crop list's status icon
+(`publicCropSyncStyles.ts`): "Bibliothek" is pull (`info`, blue), "Meine
+Kultur" is push (`warning`, orange), "Nur lokal" is `libraryLocal` (violet);
+green does not appear in the panel. The headings show the direction icon, a
+bold title and the bulk text button in that colour (text uses the palette's
+dark shade, darkened until it reads at ≥ 4.5:1) above a small secondary
+description, and stay visible while a long list scrolls (sticky). A chosen
+value gets a border, a light tint and a check mark in its column colour, the
+same in every column; an unchosen one keeps a thin neutral `divider` frame
+and primary text, with a light column tint on hover, so it reads as
+clickable; a disabled one shows disabled text. This replaced a full-width segmented toggle per row ("Aus
 Bibliothek übernehmen" / "Meinen Wert übernehmen"), which repeated the column
 headings in every row and, with one filled green bar per field, drew more
 attention than the values themselves. Each side is a visually hidden native
@@ -1693,7 +1734,8 @@ carry an icon and a short description ("Bibliothek / in meine Kultur
 übernehmen", "Meine Kultur / in der Bibliothek teilen", "Nur lokal /
 behalten, nicht teilen"), the bulk buttons read "Alle aus Bibliothek", "Alle
 teilen", "Alle nur lokal", already pinned rows start on "Nur lokal" with the
-hint "bisher lokal fixiert", an info line explains what a local value means,
+hint "bisher lokal fixiert", an info line in the violet tint (pin icon)
+explains what a local value means while at least one row is on "Nur lokal",
 and the summary gains "… Werte bleiben nur lokal." "Nur lokal" is disabled
 with a tooltip for `name` / `variety`, for a row without a local value, and
 for species-invariant fields on a Sorte. On phones the three headings put the
