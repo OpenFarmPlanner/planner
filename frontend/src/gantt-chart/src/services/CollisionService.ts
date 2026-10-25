@@ -128,14 +128,17 @@ export class CollisionService {
    * Calculates a preview of how tasks would be arranged with an updated task
    */
   public static getPreviewArrangement(
-    updatedTask: Task,
+    updatedTask: Task | Task[],
     allTasks: Task[],
     viewMode: ViewMode = ViewMode.MONTH,
   ): Task[][] {
-    // Create updated tasks array
-    const updatedTasks = allTasks.map((task) =>
-      task.id === updatedTask.id ? updatedTask : task,
+    const updatesById = new Map(
+      (Array.isArray(updatedTask) ? updatedTask : [updatedTask]).map((task) => [
+        task.id,
+        task,
+      ]),
     );
+    const updatedTasks = allTasks.map((task) => updatesById.get(task.id) ?? task);
 
     return this.detectOverlaps(updatedTasks, viewMode);
   }

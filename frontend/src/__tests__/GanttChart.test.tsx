@@ -1521,6 +1521,76 @@ describe('GanttChartPage', () => {
     expect(screen.queryByText('Fehler beim Aktualisieren des Anbauplans')).not.toBeInTheDocument();
   });
 
+  describe('moving a planting plan', () => {
+    const initialPlan = {
+      id: 10,
+      crop: 5,
+      crop_name: 'Salat',
+      bed: 3,
+      planting_date: '2026-04-01',
+      harvest_date: '2026-05-01',
+      harvest_end_date: '2026-05-11',
+    };
+    const findPlanTask = (phase: 'growth' | 'harvest') => {
+      const latestProps = mocks.ganttProps.mock.calls.at(-1)?.[0] as {
+        tasks: Array<{ tasks: Array<{ id: string; startDate: Date; endDate: Date }> }>;
+      };
+      return latestProps.tasks
+        .flatMap((group) => group.tasks)
+        .find((task) => task.id === `plan-10-${phase}`);
+    };
+    const isoOf = (date?: Date) => date?.toISOString().slice(0, 10);
+
+    const renderAndDropGrowthBar = async () => {
+      render(
+        <MemoryRouter>
+          <FocusManagerProvider><CommandProvider>
+            <GanttChartPage />
+          </CommandProvider></FocusManagerProvider>
+        </MemoryRouter>,
+      );
+      await screen.findByText('Beet 1');
+      fireEvent.click(screen.getByRole('button', { name: 'Zeitraum verschieben' }));
+      await screen.findByTestId('mock-update-task');
+      // The mock drops the growth bar on 2026-04-05, four days later.
+      fireEvent.click(screen.getByTestId('mock-update-task'));
+    };
+
+    it('moves the harvest bar with the growth bar as soon as it is dropped', async () => {
+      mocks.planList.mockResolvedValue({ data: { results: [initialPlan] } });
+      mocks.cropList.mockResolvedValue({ data: { results: [{ id: 5, name: 'Salat' }] } });
+      mocks.planUpdate.mockReturnValue(new Promise(() => {}));
+
+      await renderAndDropGrowthBar();
+
+      await waitFor(() => expect(isoOf(findPlanTask('growth')?.startDate)).toBe('2026-04-05'));
+      // Optimistic, while the request is still pending: same four-day offset.
+      expect(isoOf(findPlanTask('harvest')?.startDate)).toBe('2026-05-05');
+      expect(isoOf(findPlanTask('harvest')?.endDate)).toBe('2026-05-15');
+      // Only the planting date changes in the payload; the backend derives the harvest.
+      expect(mocks.planUpdate).toHaveBeenCalledWith(10, expect.objectContaining({
+        planting_date: '2026-04-05',
+        harvest_date: '2026-05-01',
+      }));
+    });
+
+    it('returns both bars to their stored dates when the move is rejected', async () => {
+      mocks.planList.mockResolvedValue({ data: { results: [initialPlan] } });
+      mocks.cropList.mockResolvedValue({ data: { results: [{ id: 5, name: 'Salat' }] } });
+      mocks.planUpdate.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 400, data: { planting_date: ['Außerhalb der Saison.'] } },
+      });
+
+      await renderAndDropGrowthBar();
+
+      await waitFor(() => expect(mocks.planList).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(isoOf(findPlanTask('growth')?.startDate)).toBe('2026-04-01'));
+      expect(isoOf(findPlanTask('harvest')?.startDate)).toBe('2026-05-01');
+      expect(isoOf(findPlanTask('harvest')?.endDate)).toBe('2026-05-11');
+    });
+  });
+
   describe('occupancy tree filters and search', () => {
     const setUpMultiLocationFixture = () => {
       mocks.locationList.mockResolvedValue({

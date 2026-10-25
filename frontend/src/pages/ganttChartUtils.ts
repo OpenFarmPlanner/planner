@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
-import { formatIsoDate, parseIsoDate } from '../utils/isoDate';
+import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
 import { getGanttPhaseColors } from '../utils/colorContrast';
 import { getPlanSowingSchedule } from './planSowingDate';
@@ -15,6 +15,8 @@ export interface GanttTask {
   percent?: number;
   dependencies?: string[];
   plantingPlanId?: number;
+  /** Shared by all phase bars of one planting plan so they are dragged as one unit. */
+  linkGroupId?: string;
   cropName?: string;
   cropVariety?: string;
   areaUsage?: number;
@@ -307,29 +309,77 @@ export function getOccupancyTaskPhase(task: Pick<GanttTask, 'id'>): 'growth' | '
   return task.id.endsWith('-harvest') ? 'harvest' : 'growth';
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Whole days between two dates, ignoring a time-of-day/zone offset below half a day. */
+function getDayDelta(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / MS_PER_DAY);
+}
+
+export interface MovedPlanDates {
+  planting_date: string;
+  harvest_date: string;
+  harvest_end_date: string | null;
+}
+
+/**
+ * Dates of a planting plan after one of its phase bars was dropped at
+ * `task.startDate`. Every date shifts by the same number of days, which is
+ * exactly what the drag preview showed for all bars of the plan. Returns null
+ * when the plan has no complete schedule to move.
+ */
+export function getMovedPlanDates(
+  plan: Pick<PlantingPlan, 'planting_date' | 'harvest_date' | 'harvest_end_date'>,
+  task: Pick<GanttTask, 'id' | 'startDate'>,
+): MovedPlanDates | null {
+  const plantingDate = parseIsoDate(plan.planting_date);
+  const harvestDate = parseIsoDate(plan.harvest_date);
+  if (!plantingDate || !harvestDate) {
+    return null;
+  }
+  const storedStart = getOccupancyTaskPhase(task) === 'harvest' ? harvestDate : plantingDate;
+  const dayDelta = getDayDelta(storedStart, task.startDate);
+  const harvestEndDate = parseIsoDate(plan.harvest_end_date);
+  return {
+    planting_date: formatIsoDate(addUtcDays(plantingDate, dayDelta)),
+    harvest_date: formatIsoDate(addUtcDays(harvestDate, dayDelta)),
+    harvest_end_date: harvestEndDate ? formatIsoDate(addUtcDays(harvestEndDate, dayDelta)) : null,
+  };
+}
+
 export function buildOccupancyTooltipDetails(task: Pick<
   GanttTask,
-  'id' | 'startDate' | 'harvestStartDate' | 'harvestEndDate' | 'areaUsage' | 'notes'
+  'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'areaUsage' | 'notes'
 >): OccupancyTooltipDetail[] {
   const isHarvestTask = getOccupancyTaskPhase(task) === 'harvest';
+  // While a bar is being moved its start/end already sit at the preview
+  // position, but the stored harvest dates do not. A growth bar ends where
+  // the harvest starts, so the bar's own offset shifts the harvest dates and
+  // the tooltip describes the plan as it will be after the drop.
+  const harvestAnchor = isHarvestTask ? task.startDate : task.endDate;
+  const harvestShiftDays = task.harvestStartDate
+    ? getDayDelta(task.harvestStartDate, harvestAnchor)
+    : 0;
+  const harvestStartDate = task.harvestStartDate && addUtcDays(task.harvestStartDate, harvestShiftDays);
+  const harvestEndDate = task.harvestEndDate && addUtcDays(task.harvestEndDate, harvestShiftDays);
   const hasHarvestRange = Boolean(
-    task.harvestStartDate
-    && task.harvestEndDate
-    && task.harvestEndDate.getTime() > task.harvestStartDate.getTime(),
+    harvestStartDate
+    && harvestEndDate
+    && harvestEndDate.getTime() > harvestStartDate.getTime(),
   );
 
   const details: Array<OccupancyTooltipDetail | null> = [
     !isHarvestTask
       ? { labelKey: 'plantingDate', value: formatGanttDate(task.startDate) }
       : null,
-    task.harvestStartDate && !hasHarvestRange
-      ? { labelKey: 'harvestDate', value: formatGanttDate(task.harvestStartDate) }
+    harvestStartDate && !hasHarvestRange
+      ? { labelKey: 'harvestDate', value: formatGanttDate(harvestStartDate) }
       : null,
-    task.harvestStartDate && hasHarvestRange
-      ? { labelKey: 'firstHarvest', value: formatGanttDate(task.harvestStartDate) }
+    harvestStartDate && hasHarvestRange
+      ? { labelKey: 'firstHarvest', value: formatGanttDate(harvestStartDate) }
       : null,
-    task.harvestEndDate && hasHarvestRange
-      ? { labelKey: 'lastHarvest', value: formatGanttDate(task.harvestEndDate) }
+    harvestEndDate && hasHarvestRange
+      ? { labelKey: 'lastHarvest', value: formatGanttDate(harvestEndDate) }
       : null,
     typeof task.areaUsage === 'number'
       ? { labelKey: 'areaUsage', value: formatAreaSquareMeters(task.areaUsage) }
@@ -462,6 +512,7 @@ export function buildFieldOccupancyTaskGroups({
             color: phaseColors.growth,
             percent: 100,
             plantingPlanId: plan.id,
+            linkGroupId: `plan-${plan.id}`,
             cropName: cropDisplayName || undefined,
             cropVariety: plan.crop_variety ?? undefined,
             areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
@@ -479,6 +530,7 @@ export function buildFieldOccupancyTaskGroups({
               color: phaseColors.harvest,
               percent: 100,
               plantingPlanId: plan.id,
+              linkGroupId: `plan-${plan.id}`,
               cropName: cropDisplayName || undefined,
               cropVariety: plan.crop_variety ?? undefined,
               areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
@@ -623,6 +675,7 @@ export function buildFieldOccupancyHierarchy({
         color: phaseColors.growth,
         percent: 100,
         plantingPlanId: plan.id,
+        linkGroupId: `plan-${plan.id}`,
         cropName: cropDisplayName || undefined,
         cropVariety: plan.crop_variety ?? undefined,
         areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
@@ -640,6 +693,7 @@ export function buildFieldOccupancyHierarchy({
           color: phaseColors.harvest,
           percent: 100,
           plantingPlanId: plan.id,
+          linkGroupId: `plan-${plan.id}`,
           cropName: cropDisplayName || undefined,
           cropVariety: plan.crop_variety ?? undefined,
           areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,

@@ -3,7 +3,25 @@ import { type Task, ViewMode, type TaskRowProps } from "../../../types";
 import { TaskService, CollisionService } from "../../../services";
 import TaskItem from "../../../components/task/TaskItem";
 import { Tooltip } from "../../../components/ui";
-import { estimateTaskGroupLabelHeight } from "../../../utils";
+import {
+  buildMovePreviewTasks,
+  estimateTaskGroupLabelHeight,
+} from "../../../utils";
+
+type DragType = "move" | "resize-left" | "resize-right";
+
+interface InitialTaskState {
+  left: number;
+  width: number;
+  startDate: Date;
+  endDate: Date;
+}
+
+interface DragListeners {
+  mouseUp: () => void;
+  mouseMove: EventListener;
+  keyDown: (event: KeyboardEvent) => void;
+}
 
 /**
  * TaskRow Component - Displays and manages tasks for a single task group
@@ -58,18 +76,12 @@ const TaskRow: React.FC<TaskRowProps> = ({
   // Task interaction states
   const [hoveredTask, setHoveredTask] = useState<Task | null>(null);
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
-  const [dragType, setDragType] = useState<
-    "move" | "resize-left" | "resize-right" | null
-  >(null);
+  const [dragType, setDragType] = useState<DragType | null>(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
-  const [initialTaskState, setInitialTaskState] = useState<{
-    left: number;
-    width: number;
-    startDate: Date;
-    endDate: Date;
-  } | null>(null);
+  const [initialTaskState, setInitialTaskState] =
+    useState<InitialTaskState | null>(null);
 
   // Animation refs
   const animationFrameRef = useRef<number | null>(null);
@@ -101,6 +113,11 @@ const TaskRow: React.FC<TaskRowProps> = ({
   const draggingTaskRef = useRef<Task | null>(null);
   const previewTaskRef = useRef<Task | null>(null);
   const taskElementRef = useRef<HTMLElement | null>(null);
+  // Refs mirror drag state for the document listeners and the animation
+  // loop, which keep the closure of the render that started the drag.
+  const dragTypeRef = useRef<DragType | null>(null);
+  const initialTaskStateRef = useRef<InitialTaskState | null>(null);
+  const dragListenersRef = useRef<DragListeners | null>(null);
 
   // Instance ID to prevent cross-chart interactions
   const instanceId = useRef(
@@ -131,9 +148,25 @@ const TaskRow: React.FC<TaskRowProps> = ({
     previewTaskRef.current = taskCopy;
   };
 
+  // A moved task carries the tasks linked to it (same `linkGroupId`) along,
+  // so the whole unit previews at the position the drop will produce.
+  const previewTasks = previewTask
+    ? dragType === "move" && draggingTask
+      ? [
+          previewTask,
+          ...buildMovePreviewTasks(
+            draggingTask,
+            previewTask.startDate,
+            groupTasks,
+          ).slice(1),
+        ]
+      : [previewTask]
+    : [];
+  const draggingTaskIds = new Set(previewTasks.map((task) => task.id));
+
   // Calculate task rows directly in the component using state
   const taskRows = previewTask
-    ? CollisionService.getPreviewArrangement(previewTask, groupTasks, viewMode)
+    ? CollisionService.getPreviewArrangement(previewTasks, groupTasks, viewMode)
     : CollisionService.detectOverlaps(groupTasks, viewMode);
 
   // Calculate row height based on task arrangement
@@ -202,6 +235,17 @@ const TaskRow: React.FC<TaskRowProps> = ({
     animationFrameRef.current = requestAnimationFrame(animateTaskMovement);
   };
 
+  // A move never changes the task's duration; only resizes take the end
+  // date from the bar's width.
+  const toPreviewTask = (
+    original: Task,
+    newStartDate: Date,
+    newEndDate: Date,
+  ): Task =>
+    dragTypeRef.current === "move"
+      ? buildMovePreviewTasks(original, newStartDate, [])[0]
+      : { ...original, startDate: newStartDate, endDate: newEndDate };
+
   // Update dates based on visual position with special Day view handling
   const updateDatesFromPosition = (left: number, width: number) => {
     if (!draggingTaskRef.current) return;
@@ -238,15 +282,13 @@ const TaskRow: React.FC<TaskRowProps> = ({
           Math.min(endTime, newEndDate.getTime()),
         );
 
-        // Create updated task with the new dates
-        const updatedTask = {
-          ...draggingTaskRef.current,
-          startDate: constrainedStartDate,
-          endDate: constrainedEndDate,
-        };
-
-        // Update preview state
-        updatePreviewTask(updatedTask);
+        updatePreviewTask(
+          toPreviewTask(
+            draggingTaskRef.current,
+            constrainedStartDate,
+            constrainedEndDate,
+          ),
+        );
       } else {
         // Use TaskService for regular calculation
         const { newStartDate, newEndDate } =
@@ -260,13 +302,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
             viewMode,
           );
 
-        const updatedTask = {
-          ...draggingTaskRef.current,
-          startDate: newStartDate,
-          endDate: newEndDate,
-        };
-
-        updatePreviewTask(updatedTask);
+        updatePreviewTask(
+          toPreviewTask(draggingTaskRef.current, newStartDate, newEndDate),
+        );
       }
     } catch (error) {
       console.error("Error updating dates:", error);
@@ -528,7 +566,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   const handleMouseDown = (
     event: React.MouseEvent,
     task: Task,
-    type: "move" | "resize-left" | "resize-right",
+    type: DragType,
   ) => {
     if (!editMode) return;
 
@@ -547,12 +585,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
     const initialLeft = parseFloat(taskEl.style.left || "0");
     const initialWidth = parseFloat(taskEl.style.width || "0");
 
-    setInitialTaskState({
+    const initialState: InitialTaskState = {
       left: initialLeft,
       width: initialWidth,
       startDate: new Date(task.startDate),
       endDate: new Date(task.endDate),
-    });
+    };
+    setInitialTaskState(initialState);
+    initialTaskStateRef.current = initialState;
+    dragTypeRef.current = type;
 
     // Initialize animation refs
     targetPositionRef.current = { left: initialLeft, width: initialWidth };
@@ -585,11 +626,70 @@ const TaskRow: React.FC<TaskRowProps> = ({
     }
 
     // Add global event listeners
-    document.addEventListener("mouseup", handleMouseUp);
-    document.addEventListener(
-      "mousemove",
-      handleMouseMove as unknown as EventListener,
-    );
+    const listeners: DragListeners = {
+      mouseUp: handleMouseUp,
+      mouseMove: handleMouseMove as unknown as EventListener,
+      keyDown: handleDragKeyDown,
+    };
+    dragListenersRef.current = listeners;
+    document.addEventListener("mouseup", listeners.mouseUp);
+    document.addEventListener("mousemove", listeners.mouseMove);
+    // Capture phase so Escape cancels the drag before page-level shortcuts see it.
+    window.addEventListener("keydown", listeners.keyDown, true);
+  };
+
+  const removeDragListeners = () => {
+    const listeners = dragListenersRef.current;
+    if (!listeners) return;
+    document.removeEventListener("mouseup", listeners.mouseUp);
+    document.removeEventListener("mousemove", listeners.mouseMove);
+    window.removeEventListener("keydown", listeners.keyDown, true);
+    dragListenersRef.current = null;
+  };
+
+  const resetDragState = () => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    stopAutoScroll();
+    if (onAutoScrollChange) onAutoScrollChange(false);
+
+    setDraggingTask(null);
+    setDragType(null);
+    setPreviewTask(null);
+    setInitialTaskState(null);
+    draggingTaskRef.current = null;
+    previewTaskRef.current = null;
+    taskElementRef.current = null;
+    targetPositionRef.current = null;
+    currentPositionRef.current = null;
+    dragTypeRef.current = null;
+    initialTaskStateRef.current = null;
+    removeDragListeners();
+  };
+
+  // Escape abandons the drag: the grabbed bar returns to where it started and,
+  // with the preview cleared, every linked bar re-renders at its stored dates.
+  const cancelDrag = () => {
+    const taskEl = taskElementRef.current;
+    const initialState = initialTaskStateRef.current;
+    if (taskEl) {
+      taskEl.style.transition = "";
+      if (initialState) {
+        taskEl.style.left = `${initialState.left}px`;
+        taskEl.style.width = `${initialState.width}px`;
+      }
+      taskEl.setAttribute("data-dragging", "false");
+    }
+    resetDragState();
+  };
+
+  const handleDragKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !draggingTaskRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelDrag();
   };
 
   const handleMouseMove = (e: React.MouseEvent | MouseEvent) => {
@@ -815,27 +915,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     } catch (error) {
       console.error("Error in handleMouseUp:", error);
     } finally {
-      // Stop auto-scrolling
-      stopAutoScroll();
-      if (onAutoScrollChange) onAutoScrollChange(false);
-
-      // Reset all drag states
-      setDraggingTask(null);
-      setDragType(null);
-      setPreviewTask(null);
-      setInitialTaskState(null);
-      draggingTaskRef.current = null;
-      previewTaskRef.current = null;
-      taskElementRef.current = null;
-      targetPositionRef.current = null;
-      currentPositionRef.current = null;
-
-      // Remove global event listeners
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener(
-        "mousemove",
-        handleMouseMove as unknown as EventListener,
-      );
+      resetDragState();
     }
   };
 
@@ -860,11 +940,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   // Clean up event listeners and animations on unmount
   useEffect(() => {
     return () => {
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener(
-        "mousemove",
-        handleMouseMove as unknown as EventListener,
-      );
+      removeDragListeners();
       stopAutoScroll();
 
       if (animationFrameRef.current !== null) {
@@ -960,7 +1036,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                 );
 
               const isHovered = hoveredTask?.id === task.id;
-              const isDragging = draggingTask?.id === task.id;
+              const isDragging = draggingTaskIds.has(task.id);
               const topPx = rowIndex * laneHeight + 6;
 
               return (
