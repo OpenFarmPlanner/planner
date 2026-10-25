@@ -139,8 +139,8 @@
           "title": "Cómo se usa",
           "points": [
             "Selecciona un cultivo para ver o editar sus detalles.",
-            "El icono {{moreIcon}} abre más acciones, como las versiones, la publicación en la biblioteca de cultivos o la eliminación del cultivo seleccionado.",
-            "Usa la biblioteca de cultivos para compartir o importar cultivos."
+            "El icono {{moreIcon}} abre más acciones, como las versiones, la exportación o la eliminación del cultivo seleccionado.",
+            "Comparte tus propios cultivos con «Compartir en la biblioteca» en el cultivo, o con el icono junto al cultivo en la lista de cultivos. En la biblioteca de cultivos encuentras los cultivos de otras personas y los importas a tu proyecto."
           ]
         },
         {

@@ -71,6 +71,29 @@ function circleSx(visual: CropLibraryStatusVisual): SxProps<Theme> {
   };
 }
 
+/**
+ * The bare status circle, without tooltip or click target. Also rendered
+ * inline in help text (e.g. the import dialog's sharing hint), where it is
+ * decorative and the surrounding text carries the meaning.
+ */
+export function CropLibraryStatusCircle({ visual, decorative = false }: {
+  visual: CropLibraryStatusVisual;
+  decorative?: boolean;
+}) {
+  const Glyph = GLYPHS[visual];
+  return (
+    <Box
+      component="span"
+      aria-hidden={decorative || undefined}
+      data-testid={decorative ? 'crop-library-status-circle' : undefined}
+      data-status={decorative ? visual : undefined}
+      sx={circleSx(visual)}
+    >
+      {Glyph ? <Glyph sx={{ fontSize: 12 }} /> : null}
+    </Box>
+  );
+}
+
 interface CropLibraryStatusIconProps {
   crop: Crop;
   /** Opens the same dialog the detail badge row's button would for this crop. */
@@ -88,12 +111,7 @@ export function CropLibraryStatusIcon({ crop, onActivate }: CropLibraryStatusIco
   const visual = resolveCropLibraryStatusVisual(action);
   const label = t(`library.${action.labelKey}`);
   const tooltip = action.tooltipKey ? t(`library.${action.tooltipKey}`) : label;
-  const Glyph = GLYPHS[visual];
-  const circle = (
-    <Box component="span" sx={circleSx(visual)}>
-      {Glyph ? <Glyph sx={{ fontSize: 12 }} /> : null}
-    </Box>
-  );
+  const circle = <CropLibraryStatusCircle visual={visual} />;
   const dataProps = {
     'data-testid': 'crop-list-library-status',
     'data-status': visual,

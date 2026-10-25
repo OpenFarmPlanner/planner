@@ -68,7 +68,7 @@ describe('PageHelp', () => {
     expect(await screen.findByText('Weitere Aktionen öffnen')).toBeInTheDocument();
     expect(screen.getAllByTestId('MoreVertIcon').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Über', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('erreichst du weitere Aktionen wie Versionen, Veröffentlichung in der Kulturbibliothek oder das Löschen der ausgewählten Kultur.', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('erreichst du weitere Aktionen wie Versionen, Export oder das Löschen der ausgewählten Kultur.', { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(/⋯/)).not.toBeInTheDocument();
     expect(screen.queryByText('Kultur entfernen')).not.toBeInTheDocument();
   });

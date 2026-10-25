@@ -139,8 +139,8 @@
           "title": "Bedienung",
           "points": [
             "Wähle eine Kultur aus, um Details anzuzeigen, zu bearbeiten oder Anbaupläne dafür zu erstellen.",
-            "Über {{moreIcon}} erreichst du weitere Aktionen wie Versionen, Veröffentlichung in der Kulturbibliothek oder das Löschen der ausgewählten Kultur.",
-            "Nutze die Kulturbibliothek, um Kulturen zu entdecken, zu verwenden oder zu veröffentlichen."
+            "Über {{moreIcon}} erreichst du weitere Aktionen wie Versionen, Export oder das Löschen der ausgewählten Kultur.",
+            "Teile eigene Kulturen mit „In Bibliothek teilen“ in der Kultur oder mit dem Symbol neben der Kultur in der Kulturliste. In der Kulturbibliothek findest du Kulturen anderer und importierst sie in dein Projekt."
           ]
         },
         {
