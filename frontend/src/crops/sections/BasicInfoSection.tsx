@@ -87,7 +87,6 @@ const identityFieldSx = {
   minWidth: 0,
 } as const;
 
-/** A family key the list does not (yet) contain, shown as its botanical name. */
 /**
  * A small focusable info icon whose tooltip explains a heading or a field; a
  * tap opens it on touch. Inside a field label it keeps the click from
@@ -117,6 +116,7 @@ function FieldInfoIcon({ title }: { title: string }) {
   );
 }
 
+/** A family key the list does not (yet) contain, shown as its botanical name. */
 function unlistedPlantFamily(botanicalName: string): PlantFamily {
   return {
     botanical_name: botanicalName,
