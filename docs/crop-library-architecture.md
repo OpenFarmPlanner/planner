@@ -794,6 +794,16 @@ entry into the draft — baseline values plus `source_public_crop`/
 from library" button produces. Species-level prefill never overwrites a
 variety the user already typed (`preserveVariety`).
 
+Right after such a pick — and only then, never for a crop that was already
+linked when the dialog opened — the form shows a neutral grey info (an
+`Alert` on `action.hover`; the theme's info Alert and the variety highlight
+are both green): "Werte aus der
+Kulturbibliothek übernommen. Die Kultur bleibt mit dem Eintrag verknüpft.
+Abweichende Werte kannst du später teilen oder nur lokal behalten.", with
+"Sorte" in the Add-variety dialog and for a picked first Sorte. Saving keeps
+`source_public_crop`, so the crop really is linked afterwards. A Kultur being
+created shows its own linked state ("Verknüpft mit …") instead.
+
 Which variety field is shown depends on `formKind`. The Add-**variety** dialog
 renders the real `variety` field, and selecting a suggestion there copies that
 concrete `PublicCrop` row. The Add-**crop** dialog has no `variety` field at

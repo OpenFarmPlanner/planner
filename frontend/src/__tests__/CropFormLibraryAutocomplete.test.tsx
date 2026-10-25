@@ -137,7 +137,7 @@ describe('CropForm library autocomplete (real BasicInfoSection)', () => {
     fireEvent.change(firstVarietyInput, { target: { value: 'Custom' } });
 
     expect(screen.getByText('form.publicCropLinkedHint')).toBeInTheDocument();
-    expect(screen.queryByText('form.firstVarietySourceHint')).not.toBeInTheDocument();
+    expect(screen.queryByText('form.publicCropSourceHintVariety')).not.toBeInTheDocument();
   });
 
   it('labels suggestions as coming from the public crop library while typing', async () => {
@@ -167,7 +167,7 @@ describe('CropForm library autocomplete (real BasicInfoSection)', () => {
     fireEvent.change(firstVarietyInput, { target: { value: 'Mo' } });
     fireEvent.click(await screen.findByRole('option', { name: 'Moneymaker' }));
 
-    await waitFor(() => expect(screen.getByText('form.firstVarietySourceHint')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('form.publicCropSourceHintVariety')).toBeInTheDocument());
     expect(screen.queryByText('form.publicCropSourceHint')).not.toBeInTheDocument();
   });
 
@@ -186,10 +186,10 @@ describe('CropForm library autocomplete (real BasicInfoSection)', () => {
     fireEvent.change(firstVarietyInput, { target: { value: 'Moneymaker' } });
     fireEvent.keyDown(firstVarietyInput, { key: 'Escape' });
 
-    expect(screen.queryByText('form.firstVarietySourceHint')).not.toBeInTheDocument();
+    expect(screen.queryByText('form.publicCropSourceHintVariety')).not.toBeInTheDocument();
     fireEvent.click(await screen.findByText('form.publicCropApplyAction'));
 
-    await waitFor(() => expect(screen.getByText('form.firstVarietySourceHint')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('form.publicCropSourceHintVariety')).toBeInTheDocument());
   });
 
   it('prefills the general crop fields when a Sorte is picked without ever explicitly linking the Name', async () => {
