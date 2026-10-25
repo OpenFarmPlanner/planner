@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import i18n from '../i18n';
 import {
+  buildOccupancyTooltipDetails,
   buildFieldOccupancyHierarchy,
   buildFieldOccupancyTaskGroups,
   buildSeedlingTaskGroups,
   buildSeedlingTooltipDetails,
   createGanttTaskLabels,
   formatCropDisplayLabel,
+  formatGanttDate,
   getOccupancyCalendarRange,
+  getMovedPlanDates,
   getOccupancyTaskPhase,
   getSeedlingCalendarRange,
 } from '../pages/ganttChartUtils';
+import { parseIsoDate } from '../utils/isoDate';
 
 const locations = [{ id: 1, name: 'Hof' }];
 const fields = [{ id: 10, name: 'Nordfeld', location: 1 }];
@@ -24,6 +28,98 @@ describe('getOccupancyTaskPhase', () => {
 
   it('identifies harvest tasks by id suffix', () => {
     expect(getOccupancyTaskPhase({ id: 'plan-1-harvest' })).toBe('harvest');
+  });
+});
+
+describe('getMovedPlanDates', () => {
+  const plan = {
+    planting_date: '2026-04-01',
+    harvest_date: '2026-05-20',
+    harvest_end_date: '2026-06-10',
+  };
+
+  it('shifts all plan dates by the days the growth bar moved', () => {
+    expect(getMovedPlanDates(plan, {
+      id: 'plan-1-growth',
+      startDate: parseIsoDate('2026-04-11')!,
+    })).toEqual({
+      planting_date: '2026-04-11',
+      harvest_date: '2026-05-30',
+      harvest_end_date: '2026-06-20',
+    });
+  });
+
+  it('shifts all plan dates by the days the harvest bar moved', () => {
+    expect(getMovedPlanDates(plan, {
+      id: 'plan-1-harvest',
+      startDate: parseIsoDate('2026-05-13')!,
+    })).toEqual({
+      planting_date: '2026-03-25',
+      harvest_date: '2026-05-13',
+      harvest_end_date: '2026-06-03',
+    });
+  });
+
+  it('ignores a time-of-day offset below half a day, e.g. a local-midnight drop position', () => {
+    const localMidnight = new Date(parseIsoDate('2026-04-11')!.getTime() - 2 * 60 * 60 * 1000);
+    expect(getMovedPlanDates(plan, { id: 'plan-1-growth', startDate: localMidnight })?.planting_date)
+      .toBe('2026-04-11');
+  });
+
+  it('keeps a missing harvest end empty and rejects plans without a schedule', () => {
+    expect(getMovedPlanDates(
+      { ...plan, harvest_end_date: null },
+      { id: 'plan-1-growth', startDate: parseIsoDate('2026-04-02')! },
+    )?.harvest_end_date).toBeNull();
+    expect(getMovedPlanDates(
+      { ...plan, harvest_date: null },
+      { id: 'plan-1-growth', startDate: parseIsoDate('2026-04-02')! },
+    )).toBeNull();
+  });
+});
+
+describe('buildOccupancyTooltipDetails', () => {
+  const storedTask = {
+    startDate: parseIsoDate('2026-04-01')!,
+    endDate: parseIsoDate('2026-05-20')!,
+    harvestStartDate: parseIsoDate('2026-05-20')!,
+    harvestEndDate: parseIsoDate('2026-06-10')!,
+  };
+  const valueOf = (details: ReturnType<typeof buildOccupancyTooltipDetails>, key: string) => (
+    details.find((detail) => detail.labelKey === key)?.value
+  );
+  const formatted = (iso: string) => formatGanttDate(parseIsoDate(iso)!);
+
+  it('describes the plan at its previewed position while the growth bar is dragged', () => {
+    const details = buildOccupancyTooltipDetails({
+      ...storedTask,
+      id: 'plan-1-growth',
+      startDate: parseIsoDate('2026-04-11')!,
+      endDate: parseIsoDate('2026-05-30')!,
+    });
+
+    expect(valueOf(details, 'plantingDate')).toBe(formatted('2026-04-11'));
+    expect(valueOf(details, 'firstHarvest')).toBe(formatted('2026-05-30'));
+    expect(valueOf(details, 'lastHarvest')).toBe(formatted('2026-06-20'));
+  });
+
+  it('describes the plan at its previewed position while the harvest bar is dragged', () => {
+    const details = buildOccupancyTooltipDetails({
+      ...storedTask,
+      id: 'plan-1-harvest',
+      startDate: parseIsoDate('2026-05-13')!,
+      endDate: parseIsoDate('2026-06-03')!,
+    });
+
+    expect(valueOf(details, 'firstHarvest')).toBe(formatted('2026-05-13'));
+    expect(valueOf(details, 'lastHarvest')).toBe(formatted('2026-06-03'));
+  });
+
+  it('shows the stored dates when the bar is not moved', () => {
+    const details = buildOccupancyTooltipDetails({ ...storedTask, id: 'plan-1-growth' });
+
+    expect(valueOf(details, 'firstHarvest')).toBe(formatted('2026-05-20'));
+    expect(valueOf(details, 'lastHarvest')).toBe(formatted('2026-06-10'));
   });
 });
 
@@ -452,6 +548,29 @@ describe('buildSeedlingTaskGroups', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].tasks).toHaveLength(2);
     expect(groups[0].tasks[0].name).toBe('Salat (Bijella)');
+  });
+
+  it('links the growth and harvest bars of a plan so they are dragged together', () => {
+    const groups = buildFieldOccupancyTaskGroups({
+      labels,
+      locations,
+      fields,
+      beds,
+      crops: [],
+      plantingPlans: [
+        {
+          id: 21,
+          crop: 42,
+          crop_name: 'Salat',
+          bed: 100,
+          planting_date: '2026-03-01',
+          harvest_date: '2026-04-15',
+          harvest_end_date: '2026-04-30',
+        },
+      ],
+    });
+
+    expect(groups[0].tasks.map((task) => task.linkGroupId)).toEqual(['plan-21', 'plan-21']);
   });
 
   it('prefers localized planting plan crop names in occupancy labels', () => {

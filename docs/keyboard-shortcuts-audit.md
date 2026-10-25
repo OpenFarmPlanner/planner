@@ -48,6 +48,7 @@ Scope: `frontend/src`
 | `Ctrl+Enter` / `Cmd+Enter` | Save notes drawer | `components/data-grid/NotesDrawer.tsx` |
 | `Ctrl+S` / `Cmd+S` | Save grid row while editing | `components/data-grid/DataGrid.tsx` |
 | `Esc` | Close dialogs / cancel edit in many places | `CommandPalette.tsx`, `App.tsx`, `pages/Crops.tsx`, several dialogs/components |
+| `Esc` (while dragging a bar) | Cancel the calendar drag; all bars of the planting plan return to their stored dates | `gantt-chart/src/components/task/TaskRow/index.tsx` (`handleDragKeyDown`) |
 
 ---
 

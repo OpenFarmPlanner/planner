@@ -95,10 +95,10 @@ import {
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
   formatPlantCount,
+  getMovedPlanDates,
   getOccupancyTaskPhase,
   getOccupancyCalendarRange,
   getSeedlingCalendarRange,
-  parseDateString,
   type CalendarDateRange,
   type GanttTask,
   type GanttTaskGroup,
@@ -564,39 +564,27 @@ function GanttChartPage() {
         return;
       }
 
-      let newPlantingDate: string;
-      const isGrowthTask = updatedTask.id.endsWith('-growth');
-
-      if (isGrowthTask) {
-        newPlantingDate = formatDateToAPI(updatedTask.startDate);
-      } else {
-        if (!plan.planting_date || !plan.harvest_date) {
-          console.error('Cannot move harvest task for incomplete planting plan:', planId);
-          return;
-        }
-        const originalPlantingDate = parseDateString(plan.planting_date);
-        const originalHarvestDate = parseDateString(plan.harvest_date);
-        const daysDifference = Math.round(
-          (originalHarvestDate.getTime() - originalPlantingDate.getTime()) / (1000 * 60 * 60 * 24),
-        );
-
-        const newPlantingDateObj = new Date(updatedTask.startDate);
-        newPlantingDateObj.setDate(newPlantingDateObj.getDate() - daysDifference);
-        newPlantingDate = formatDateToAPI(newPlantingDateObj);
+      const movedDates = getMovedPlanDates(plan, updatedTask);
+      if (!movedDates) {
+        console.error('Cannot move incomplete planting plan:', planId);
+        return;
       }
 
+      // Only the planting date is sent; the backend derives the harvest dates.
       const updatedPlan: Partial<PlantingPlan> = {
         ...plan,
-        planting_date: newPlantingDate,
+        planting_date: movedDates.planting_date,
       };
 
-      // Apply the new date optimistically before awaiting the API response.
+      // Apply the new dates optimistically before awaiting the API response.
       // TaskRow clears its local drag/preview state as soon as the mouse is
-      // released, so without this the bar would immediately re-render from
-      // the still-stale `plantingPlans` prop (briefly snapping back to its
-      // pre-drag position) until the request resolves and moving again.
+      // released, so without this the bars would immediately re-render from
+      // the still-stale `plantingPlans` prop (briefly snapping back to their
+      // pre-drag position) until the request resolves. The harvest dates are
+      // shifted along with the planting date so the harvest bar stays where
+      // the drag preview put it instead of jumping after the response.
       setPlantingPlans((previous) => previous.map((entry) => (
-        entry.id === planId ? { ...entry, ...updatedPlan } as PlantingPlan : entry
+        entry.id === planId ? { ...entry, ...movedDates } : entry
       )));
 
       const response = await plantingPlanAPI.update(planId, updatedPlan as PlantingPlan);
