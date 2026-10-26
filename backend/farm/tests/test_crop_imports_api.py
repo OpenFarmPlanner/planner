@@ -10,6 +10,8 @@ from farm.models import (
     ProjectMembership,
     Supplier,
 )
+from farm.crops.serializers import CropSerializer
+from farm.services.demo_project import populate_demo_project
 from farm.tests.api_base import User
 
 
@@ -417,3 +419,87 @@ class CropImportProjectBoundaryTest(DRFAPITestCase):
         crop = Crop.objects.get(project=self.project, name='Boundary Probe')
         self.assertEqual(crop.supplier_id, own_supplier.id)
         self.assertEqual(crop.image_file_id, own_media.id)
+
+
+# The keys of CROP_COLUMNS in frontend/src/crops/spreadsheetColumns.ts: what a
+# spreadsheet export writes and the import sends back.
+SPREADSHEET_COLUMN_KEYS = (
+    'name', 'variety', 'supplier_name', 'crop_family', 'nutrient_demand', 'cultivation_type',
+    'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+    'harvest_method', 'expected_yield', 'distance_within_row_cm', 'row_spacing_cm',
+    'sowing_depth_cm', 'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
+    'seed_rate_direct_value', 'seed_rate_direct_unit',
+    'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit', 'notes',
+)
+# The columns of type 'number' there: a sheet cell comes back as a number, not
+# as the API's decimal string ("5.60").
+SPREADSHEET_NUMBER_KEYS = frozenset({
+    'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+    'expected_yield', 'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',
+    'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
+    'seed_rate_direct_value', 'seed_rate_pre_cultivation_value',
+})
+
+
+class CropSpreadsheetRoundTripTest(DRFAPITestCase):
+    """The demo project's crops, exported as a sheet, import back without loss.
+
+    The demo crops are the realistic case: they are what a new user exports
+    first, and they cover species, varieties, suppliers and every seed unit.
+    """
+
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            username='roundtrip', email='roundtrip@example.com', password='testpass', is_active=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.source = Project.objects.create(name='Solawi Sonnenacker', slug='roundtrip-source')
+        self.target = Project.objects.create(name='Test', slug='roundtrip-target')
+        for project in (self.source, self.target):
+            ProjectMembership.objects.create(user=self.user, project=project, role='admin')
+        populate_demo_project(self.source, owner=self.user, language_code='de')
+
+    def _export_rows(self) -> list[dict]:
+        rows = []
+        for crop in Crop.objects.filter(project=self.source).select_related('supplier').order_by('id'):
+            data = dict(CropSerializer(crop).data)
+            data['supplier_name'] = crop.supplier.name if crop.supplier else crop.seed_supplier
+            # Empty cells are left out on import, exactly like here.
+            rows.append({
+                key: float(data[key]) if key in SPREADSHEET_NUMBER_KEYS else data[key]
+                for key in SPREADSHEET_COLUMN_KEYS
+                if data.get(key) not in (None, '')
+            })
+        return rows
+
+    def _post(self, project: Project, path: str, payload: object):
+        return self.client.post(
+            f'/openfarmplanner/api/crops/import/{path}/',
+            payload,
+            format='json',
+            HTTP_X_PROJECT_ID=str(project.id),
+        )
+
+    def test_exported_demo_crops_import_into_an_empty_project_without_errors(self) -> None:
+        rows = self._export_rows()
+        self.assertGreater(len(rows), 20)
+
+        response = self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['errors'], [])
+        self.assertEqual(response.data['created_count'], len(rows))
+
+    def test_re_importing_the_export_into_its_own_project_changes_nothing(self) -> None:
+        rows = self._export_rows()
+
+        response = self._post(self.source, 'preview', rows)
+
+        self.assertEqual(response.status_code, 200)
+        problems = [
+            (result['import_data']['name'], result.get('variety'), result.get('error') or result.get('diff'))
+            for result in response.data['results']
+            if result.get('status') != 'update_candidate' or result.get('diff')
+        ]
+        self.assertEqual(problems, [])
+
