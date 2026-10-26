@@ -6336,6 +6336,35 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertTrue(changes['growth_duration_days']['pinnable'])
         self.assertFalse(changes['harvest_duration_days']['pinned'])
 
+    def test_sync_pins_fields_against_an_owned_but_unlinked_entry(self):
+        # A general Kultur of another project reaches the user's own species
+        # entry through the owner lookup, without a link. The sync links it,
+        # so "Nur lokal" is offered there and the pin holds after the sync
+        # (instead of failing with `library_pin_requires_link`).
+        own_species = CropSpecies.objects.create(name='Carrot')
+        own_entry = PublicCrop.objects.create(
+            name='Karotte', variety='', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=own_species, created_by=self.user, growth_duration_days=90,
+            **self.CULTIVATION,
+        )
+        ensure_public_crop_revision(own_entry)
+        unlinked = Crop.objects.create(
+            name='Karotte', variety='', crop_species=own_species, growth_duration_days=100,
+            project=self.project, **self.CULTIVATION,
+        )
+
+        changes = self._sync_preview(unlinked, own_entry)
+
+        self.assertTrue(changes['growth_duration_days']['pushable'])
+        self.assertTrue(changes['growth_duration_days']['pinnable'])
+        own_entry.refresh_from_db()
+        response = self._sync_entry(unlinked, own_entry, pin_fields=['growth_duration_days'])
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        unlinked.refresh_from_db()
+        self.assertEqual(unlinked.source_public_crop_id, own_entry.id)
+        self.assertEqual(unlinked.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(unlinked.growth_duration_days, 100)
+
     # --- sync -----------------------------------------------------------------
 
     def test_sync_pins_fields_in_the_same_transaction(self):
