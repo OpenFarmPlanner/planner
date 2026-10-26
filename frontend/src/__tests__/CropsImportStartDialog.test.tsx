@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '@mui/material/styles';
 import { describe, expect, it, vi } from 'vitest';
 import { CropsImportStartDialog } from '../pages/CropsImportStartDialog';
+import { downloadCropImportTemplate } from '../crops/importTemplate';
 import i18n from '../i18n';
 import theme from '../theme';
 
@@ -10,6 +11,8 @@ import theme from '../theme';
 const PRIMARY_COLOR = 'rgb(37, 111, 42)';
 /** How jsdom reports `transparent`, which the zone sits at while idle. */
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+
+vi.mock('../crops/importTemplate', () => ({ downloadCropImportTemplate: vi.fn() }));
 
 const t = i18n.getFixedT('de', 'crops') as unknown as (
   key: string,
@@ -251,6 +254,30 @@ describe('CropsImportStartDialog', () => {
       const event = new Event('dragover', { bubbles: true, cancelable: true });
       const notCancelled = fireEvent(dropZone(), event);
       expect(notCancelled).toBe(false);
+    });
+  });
+
+  describe('format help', () => {
+    it('downloads the template', async () => {
+      renderDialog();
+
+      await userEvent.click(screen.getByRole('button', { name: /Vorlage herunterladen/ }));
+
+      expect(downloadCropImportTemplate).toHaveBeenCalledWith(t);
+    });
+
+    it('keeps the allowed values collapsed until asked, then lists them', async () => {
+      renderDialog();
+      const toggle = screen.getByRole('button', { name: 'Welche Werte sind erlaubt?' });
+
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('Starkzehrer', { exact: false })).not.toBeInTheDocument();
+
+      await userEvent.click(toggle);
+
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('Schwachzehrer, Mittelzehrer, Starkzehrer')).toBeInTheDocument();
+      expect(screen.getByText('Bei „Korn / Pflanze“ sind nur ganze Zahlen möglich.')).toBeInTheDocument();
     });
   });
 });

@@ -2,6 +2,7 @@ import i18n from '../i18n/config';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import type { Crop } from '../api/types';
 import { buildSheetData } from '../crops/spreadsheetExport';
+import { buildCropImportTemplateRows } from '../crops/importTemplate';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
 import { buildSpreadsheetFile } from '../crops/spreadsheetFile';
 import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
@@ -152,5 +153,21 @@ describe('crop spreadsheet export → import round trip', () => {
     const roundTripped = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, entry?.[key]]));
     const expected = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, EXPECTED_IMPORT[key]]));
     expect(roundTripped).toEqual(expected);
+  });
+
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('imports its own template without warnings (%s)', async (language) => {
+    await i18n.changeLanguage(language);
+    const csv = buildSpreadsheetFile(buildCropImportTemplateRows(i18n.getFixedT(language, 'crops')), 'csv') as string;
+
+    const result = await parseSpreadsheetFile(csvFile(csv));
+
+    expect(result.warnings).toEqual([]);
+    expect(result.skippedRows).toBe(0);
+    expect(result.entries).toHaveLength(3);
+    expect(result.entries[0]).toMatchObject({
+      nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], seed_rate_pre_cultivation_unit: 'seeds_per_plant',
+    });
+    expect(result.entries[1]).toMatchObject({ variety: 'Roma', supplier_name: expect.any(String) });
+    expect(result.entries[2]).toMatchObject({ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' });
   });
 });

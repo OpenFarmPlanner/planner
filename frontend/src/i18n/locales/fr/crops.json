@@ -41,7 +41,7 @@
   },
   "emptyOnboarding": {
     "title": "Aucune culture pour l'instant",
-    "description": "Les cultures sont la base de votre planification. Créez votre première culture ou importez des cultures depuis la bibliothèque de cultures.",
+    "description": "Les cultures sont la base de votre planification. Créez votre première culture ou importez des cultures depuis la bibliothèque de cultures ou depuis un fichier.",
     "createAction": "Ajouter une culture",
     "openLibraryAction": "Importer depuis la bibliothèque"
   },
@@ -687,6 +687,28 @@
       "network": "Erreur réseau pendant l'import.",
       "someFailures": "{{failed}} entrées n'ont pas pu être importées.",
       "rowFailed": "Cette entrée n’a pas pu être enregistrée."
+    },
+    "template": {
+      "speciesName": "Tomate",
+      "varietyName": "Roma",
+      "supplierName": "Semences Exemple",
+      "speciesNotes": "Ligne d’exemple : une variété reprend de sa culture les champs qu’elle laisse vides.",
+      "directSownName": "Carotte"
+    },
+    "help": {
+      "templateHint": "Pas encore de fichier adapté ?",
+      "templateButton": "Télécharger le modèle (.xlsx)",
+      "toggle": "Quelles valeurs sont autorisées ?",
+      "valuesTitle": "Valeurs autorisées",
+      "rules": {
+        "required": "Seule la colonne « {{name}} » est obligatoire. Toutes les autres colonnes peuvent rester vides ou manquer, et leur ordre n’a pas d’importance.",
+        "numbers": "Nombres avec une virgule ou un point, par ex. 1,5 ou 1.5.",
+        "cultivationTypes": "Séparez plusieurs modes de culture par des virgules, par ex. « {{example}} ».",
+        "wholeSeeds": "Pour « {{unit}} », seuls les nombres entiers sont acceptés.",
+        "color": "« {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est choisie.",
+        "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} ».",
+        "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle."
+      }
     }
   },
   "library": {

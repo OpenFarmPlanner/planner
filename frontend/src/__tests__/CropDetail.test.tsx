@@ -146,6 +146,23 @@ describe('CropDetail Component', () => {
     expect(screen.queryByRole('button', { name: 'Suche und Filter zurücksetzen' })).not.toBeInTheDocument();
   });
 
+  it('offers a file import in the onboarding empty-state', () => {
+    const onImportFile = vi.fn();
+    renderCropDetail(
+      <CropDetail
+        crops={[]}
+        onCropSelect={vi.fn()}
+        onCreateCrop={vi.fn()}
+        onOpenPublicLibrary={vi.fn()}
+        onImportFile={onImportFile}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Datei importieren' }));
+
+    expect(onImportFile).toHaveBeenCalled();
+  });
+
   it('shows filter empty-state when crops exist but filters have no matches', () => {
     renderCropDetail(
       <CropDetail

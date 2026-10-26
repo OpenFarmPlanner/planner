@@ -40,7 +40,7 @@
   },
   "emptyOnboarding": {
     "title": "Noch keine Kulturen vorhanden",
-    "description": "Kulturen sind die Grundlage für deine Anbauplanung. Lege deine erste Kultur an oder übernimm Kulturen aus der Kulturbibliothek.",
+    "description": "Kulturen sind die Grundlage für deine Anbauplanung. Lege deine erste Kultur an oder übernimm Kulturen aus der Kulturbibliothek oder aus einer Datei.",
     "createAction": "Kultur hinzufügen",
     "openLibraryAction": "Aus Bibliothek importieren"
   },
@@ -667,6 +667,28 @@
       "network": "Netzwerkfehler beim Import.",
       "someFailures": "{{failed}} Einträge konnten nicht importiert werden.",
       "rowFailed": "Dieser Eintrag konnte nicht gespeichert werden."
+    },
+    "template": {
+      "speciesName": "Tomate",
+      "varietyName": "Roma",
+      "supplierName": "Beispiel Saatgut",
+      "speciesNotes": "Beispielzeile: Leere Felder einer Sorte übernimmt sie von ihrer Kultur.",
+      "directSownName": "Karotte"
+    },
+    "help": {
+      "templateHint": "Noch keine passende Datei?",
+      "templateButton": "Vorlage herunterladen (.xlsx)",
+      "toggle": "Welche Werte sind erlaubt?",
+      "valuesTitle": "Erlaubte Werte",
+      "rules": {
+        "required": "Nur die Spalte „{{name}}“ ist Pflicht. Alle anderen Spalten können leer bleiben oder fehlen, die Reihenfolge ist egal.",
+        "numbers": "Zahlen mit Komma oder Punkt, z. B. 1,5 oder 1.5.",
+        "cultivationTypes": "Mehrere Anbauarten durch Komma trennen, z. B. „{{example}}“.",
+        "wholeSeeds": "Bei „{{unit}}“ sind nur ganze Zahlen möglich.",
+        "color": "„{{column}}“ als Hex-Code, z. B. #2E7D32. Ohne Angabe wird eine Farbe gewählt.",
+        "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“.",
+        "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage."
+      }
     }
   },
   "library": {

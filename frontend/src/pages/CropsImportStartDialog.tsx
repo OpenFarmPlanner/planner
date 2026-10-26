@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { useRef, useState } from 'react';
+import { CropImportFormatHelp } from './CropImportFormatHelp';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
@@ -84,7 +85,7 @@ export function CropsImportStartDialog({
               {t('import.supportedFormats')}
             </Typography>
           </Box>
-
+          <CropImportFormatHelp t={t} />
         </Box>
       </DialogContent>
       <DialogActions>

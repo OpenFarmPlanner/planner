@@ -838,6 +838,7 @@ function Crops() {
           onNavigateToVariety={handleVarietyRowNavigate}
           searchInputRef={searchInputRef}
           onCreateCrop={handleAddNew}
+          onImportFile={handleImportFileTrigger}
           onOpenPublicLibrary={() => {
             void handleOpenPublicLibrary();
           }}
