@@ -11,11 +11,15 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import type { SpreadsheetExportFormat } from '../crops/spreadsheetExport';
+import {
+  readStoredExportFormat,
+  storeExportFormat,
+  type CropExportFormat,
+} from '../crops/exportFormatPreference';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 type ExportScope = 'current' | 'all';
-type ExportFormat = SpreadsheetExportFormat | 'json';
+type ExportFormat = CropExportFormat;
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
@@ -39,7 +43,7 @@ export function CropsExportDialog({
   t,
 }: CropsExportDialogProps) {
   const [scope, setScope] = useState<ExportScope>(initialScope);
-  const [format, setFormat] = useState<ExportFormat>('xlsx');
+  const [format, setFormat] = useState<ExportFormat>(readStoredExportFormat);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -52,6 +56,7 @@ export function CropsExportDialog({
     setExporting(true);
     try {
       await onExport(scope, format);
+      storeExportFormat(format);
       onClose();
     } finally {
       setExporting(false);
@@ -99,14 +104,14 @@ export function CropsExportDialog({
               onChange={(e) => setFormat(e.target.value as ExportFormat)}
             >
               <FormControlLabel
-                value="xlsx"
-                control={<Radio size="small" />}
-                label={t('export.formatXlsx')}
-              />
-              <FormControlLabel
                 value="ods"
                 control={<Radio size="small" />}
                 label={t('export.formatOds')}
+              />
+              <FormControlLabel
+                value="xlsx"
+                control={<Radio size="small" />}
+                label={t('export.formatXlsx')}
               />
               <FormControlLabel
                 value="csv"
