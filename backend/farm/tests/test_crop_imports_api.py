@@ -443,6 +443,16 @@ SPREADSHEET_NUMBER_KEYS = frozenset({
 })
 
 
+def _same_value(left: object, right: object) -> bool:
+    """Equal, with numbers compared by value ("5.60" == 5.6) and empty == missing."""
+    if left in (None, '', []) and right in (None, '', []):
+        return True
+    try:
+        return float(left) == float(right)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return left == right
+
+
 class CropSpreadsheetRoundTripTest(DRFAPITestCase):
     """The demo project's crops, exported as a sheet, import back without loss.
 
@@ -491,6 +501,32 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['errors'], [])
         self.assertEqual(response.data['created_count'], len(rows))
+
+    @staticmethod
+    def _effective_columns(project: Project) -> dict[tuple[str, str], dict]:
+        """Per crop, each sheet column's value as the app shows it, inheritance included."""
+        result = {}
+        for crop in Crop.objects.filter(project=project).select_related('supplier'):
+            data = dict(CropSerializer(crop).data)
+            data['supplier_name'] = crop.supplier.name if crop.supplier else crop.seed_supplier
+            effective = data.get('effective_values') or {}
+            result[(crop.name, crop.variety or '')] = {
+                key: effective.get(key, data.get(key)) for key in SPREADSHEET_COLUMN_KEYS
+            }
+        return result
+
+    def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
+        rows = self._export_rows()
+        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        source = self._effective_columns(self.source)
+        target = self._effective_columns(self.target)
+        differences = {
+            crop: {key: (value, target.get(crop, {}).get(key)) for key, value in values.items()
+                   if not _same_value(value, target.get(crop, {}).get(key))}
+            for crop, values in source.items()
+        }
+        self.assertEqual({crop: diff for crop, diff in differences.items() if diff}, {})
 
     def test_re_importing_the_export_into_its_own_project_changes_nothing(self) -> None:
         rows = self._export_rows()

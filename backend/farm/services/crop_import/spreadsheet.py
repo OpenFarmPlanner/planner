@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from crops.plant_families import coerce_plant_family_key
+from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
 from farm.utils import normalize_supplier_name, normalize_text
@@ -45,6 +46,20 @@ def _normalize_crop_family(crop_data: dict) -> None:
     raw_family = crop_data.get('crop_family')
     if isinstance(raw_family, str) and raw_family.strip():
         crop_data['crop_family'] = coerce_plant_family_key(raw_family) or raw_family
+
+
+def _resolve_crop_species(crop_data: dict) -> None:
+    """Link a new row to the species its name names, as the crop form does.
+
+    A sheet has no species column, so without this an imported Sorte had no
+    species, hence no general Kultur to inherit from, and lost every value it
+    inherits (nutrient demand, family, cultivation type, ...).
+    """
+    if crop_data.get('crop_species'):
+        return
+    species = find_species_by_common_name(crop_data.get('name'))
+    if species is not None:
+        crop_data['crop_species'] = species.pk
 
 
 def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
@@ -255,6 +270,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # checks on `image_file_id`/`supplier_id`/
                 # `selected_seed_demand_supplier` have no project to compare
                 # against on a create (there is no bound instance either).
+                _resolve_crop_species(crop_data)
                 serializer = CropSerializer(data=crop_data, context={'project': project})
                 if serializer.is_valid():
                     serializer.save(project=project)
