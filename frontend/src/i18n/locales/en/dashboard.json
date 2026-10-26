@@ -5,7 +5,7 @@
   },
   "emptyState": {
     "title": "Start your crop planning",
-    "description": "Open Fields & Beds and add a field there. Afterwards you can record cultures and planting plans.",
+    "description": "Open Fields & Beds and add a field there. Afterwards you can record crops and planting plans.",
     "shortDescription": "Add a field on the Fields & Beds page.",
     "action": "Add field"
   },
@@ -17,10 +17,10 @@
   },
   "checklist": {
     "title": "Project start",
-    "intro": "OpenFarmPlanner helps you structure the planning of areas, cultures, and growing cycles. Start with your first field.",
+    "intro": "OpenFarmPlanner helps you structure the planning of areas, crops, and growing cycles. Start with your first field.",
     "field": "Add field",
     "bed": "Add bed",
-    "crop": "Add culture",
+    "crop": "Add crop",
     "plan": "Add planting plan"
   }
 }

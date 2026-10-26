@@ -47,7 +47,7 @@
     "successionLimit_other": "Bed area exceeded. A follow-up crop can follow {{crop}} no earlier than {{count}} days after its harvest start ({{date}})."
   },
   "placeholders": {
-    "selectCrop": "Select culture",
+    "selectCrop": "Select crop",
     "selectCultivationType": "Select cultivation type",
     "selectArea": "Select growing area",
     "plantsCount": "Enter quantity",
@@ -59,11 +59,11 @@
     "areaInputTitle": "Area occupied by this planting plan",
     "areaInputDescription": "The area of the bed occupied by this planting plan. Changes to the area or plant count automatically update the other value. Empty or \"max\" uses the maximum available remaining area.",
     "plantsFromSpacing": "Plant count: coupled with area used. Changes automatically update the other value.",
-    "calculatedHarvestStartDate": "Calculated automatically from the planting date and the culture's growth duration.",
-    "calculatedHarvestEndDate": "Calculated automatically from the harvest start and the culture's harvest duration.",
-    "missingGrowthDuration": "Cannot be calculated because this culture has no growth duration.",
-    "missingHarvestDuration": "Cannot be calculated because this culture has no harvest duration.",
-    "missingGrowthAndHarvestDuration": "Cannot be calculated because this culture has neither a growth duration nor a harvest duration.",
+    "calculatedHarvestStartDate": "Calculated automatically from the planting date and the crop's growth duration.",
+    "calculatedHarvestEndDate": "Calculated automatically from the harvest start and the crop's harvest duration.",
+    "missingGrowthDuration": "Cannot be calculated because this crop has no growth duration.",
+    "missingHarvestDuration": "Cannot be calculated because this crop has no harvest duration.",
+    "missingGrowthAndHarvestDuration": "Cannot be calculated because this crop has neither a growth duration nor a harvest duration.",
     "sowingDateTitle": "Sowing date",
     "sowingDateDescription": "Coupled with the planting date: planting date minus the crop's propagation duration. Changes update the other value automatically. Equal to the planting date for direct sowing.",
     "plantingDateTitle": "Planting date",
@@ -86,12 +86,12 @@
   },
   "validation": {
     "plantingDateRequired": "Planting date is required",
-    "cropRequired": "Culture is required",
+    "cropRequired": "Crop is required",
     "bedRequired": "Bed is required",
     "cultivationTypeRequired": "Cultivation type is required",
     "plantingDateOutsideSeason": "Planting date must fall within the season ({{start}} – {{end}}).",
     "requiredFields": "The following required fields must be filled in: {{fields}}",
-    "cropOrBedRequired": "Culture or bed is required",
+    "cropOrBedRequired": "Crop or bed is required",
     "areaExceedsRemaining": "The specified area exceeds this bed's available remaining area.",
     "areaExceedsBedArea": "The specified area exceeds this bed's size.",
     "bedArea": "Bed area",
@@ -133,7 +133,7 @@
     "fabLabel": "Add planting plan",
     "fabAria": "Add planting plan",
     "emptyTitle": "No planting plans yet",
-    "emptyDescription": "Create your first planting plan to manage culture, cultivation type, and time periods clearly on mobile.",
+    "emptyDescription": "Create your first planting plan to manage crop, cultivation type, and time periods clearly on mobile.",
     "emptyCta": "Add planting plan",
     "createTitle": "Add planting plan",
     "editTitle": "Edit planting plan",
@@ -154,8 +154,8 @@
         "description": "Beds are the foundation for planting plans. Open Fields & Beds and add a bed via a field."
       },
       "crops": {
-        "title": "You haven't created any cultures yet.",
-        "description": "Cultures are required to create planting plans."
+        "title": "You haven't created any crops yet.",
+        "description": "Crops are required to create planting plans."
       },
       "seasons": {
         "title": "No season created yet",
@@ -169,8 +169,8 @@
     "actions": {
       "createField": "Add field",
       "createAreas": "Go to Fields & Beds",
-      "openCropLibrary": "Open culture library",
-      "addCrop": "Add culture",
+      "openCropLibrary": "Open crop library",
+      "addCrop": "Add crop",
       "createSeason": "Create season"
     }
   },

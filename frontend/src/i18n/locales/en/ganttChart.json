@@ -35,7 +35,7 @@
     "render": "The calendar view could not be loaded."
   },
   "tooltip": {
-    "crop": "Culture",
+    "crop": "Crop",
     "plantingDate": "Planting date",
     "harvestDate": "Harvest date",
     "firstHarvest": "First harvest",
@@ -75,7 +75,7 @@
     "titleOccupancy": "Field planning",
     "titleSeedlings": "Propagation planning",
     "resources": "Areas",
-    "resourcesSeedlings": "Cultures",
+    "resourcesSeedlings": "Crops",
     "today": "Today",
     "actions": "Actions",
     "adjustProgress": "Drag to adjust progress",
@@ -101,8 +101,8 @@
     "seedlings": "Propagation"
   },
   "modeTooltips": {
-    "occupancy": "Shows bed occupancy over the year. The displayed periods are calculated from the planting plans and culture-specific timing (e.g. sowing, planting, and harvest).",
-    "seedlings": "Shows the propagation phase of cultures before planting. The displayed periods are calculated from the planting plans and culture-specific propagation duration data."
+    "occupancy": "Shows bed occupancy over the year. The displayed periods are calculated from the planting plans and crop-specific timing (e.g. sowing, planting, and harvest).",
+    "seedlings": "Shows the propagation phase of crops before planting. The displayed periods are calculated from the planting plans and crop-specific propagation duration data."
   },
   "shortcuts": {
     "today": "Jump to the current period",
@@ -121,7 +121,7 @@
   },
   "modeDescriptions": {
     "occupancy": "Occupancy of fields and beds throughout the year. This view still supports moving existing planting plans.",
-    "seedlings": "Propagation periods by culture. This view is read-only and only shows relevant propagations in the current year."
+    "seedlings": "Propagation periods by crop. This view is read-only and only shows relevant propagations in the current year."
   },
   "seedlings": {
     "emptyState": "No propagation periods available for this year.",
@@ -134,9 +134,9 @@
       "done": "Field available"
     },
     "crop": {
-      "label": "Culture",
-      "missing": "Culture missing",
-      "done": "Culture available"
+      "label": "Crop",
+      "missing": "Crop missing",
+      "done": "Crop available"
     },
     "bed": {
       "label": "Bed",
@@ -151,19 +151,19 @@
   },
   "emptyStates": {
     "requirementsTitle": "No crop planning possible yet",
-    "requirementsDescription": "Open Fields & Beds and add a field to the appropriate location there. Afterwards you can record beds, cultures, and planting plans.",
+    "requirementsDescription": "Open Fields & Beds and add a field to the appropriate location there. Afterwards you can record beds, crops, and planting plans.",
     "states": {
       "crops": {
-        "title": "No cultures yet",
-        "description": "Create your first culture now or import one from the culture library. Afterwards you can create planting plans."
+        "title": "No crops yet",
+        "description": "Create your first crop now or import one from the crop library. Afterwards you can create planting plans."
       },
       "plans": {
         "title": "No planting plans yet",
-        "description": "No planting plans have been created for the existing growing areas yet. Create a planting plan to show cultures and dates in the crop calendar."
+        "description": "No planting plans have been created for the existing growing areas yet. Create a planting plan to show crops and dates in the crop calendar."
       }
     },
     "actions": {
-      "createCrop": "Add culture",
+      "createCrop": "Add crop",
       "createField": "Add field",
       "createAreas": "Go to Fields & Beds",
       "createPlan": "Add planting plan"
@@ -181,8 +181,8 @@
     "occupiedBeds_other": "{{count}} occupied"
   },
   "treeFilters": {
-    "searchPlaceholder": "Search by culture, bed, field, or location…",
-    "searchPlaceholderSeedlings": "Search by culture…",
+    "searchPlaceholder": "Search by crop, bed, field, or location…",
+    "searchPlaceholderSeedlings": "Search by crop…",
     "allLocations": "All locations",
     "allFields": "All fields",
     "onlyOccupiedBeds": "Only occupied beds",
@@ -195,7 +195,7 @@
   },
   "contextMenu": {
     "openPlan": "Open planting plan",
-    "openCrop": "Open culture",
+    "openCrop": "Open crop",
     "openBed": "Open bed",
     "openField": "Open field",
     "openLocation": "Open location",
