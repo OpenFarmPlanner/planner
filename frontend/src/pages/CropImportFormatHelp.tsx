@@ -24,6 +24,11 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
 
   const rules = [
     t('import.help.rules.required', { name: header('name') }),
+    t('import.help.rules.varietyRows', {
+      variety: header('variety'),
+      nutrient: header('nutrient_demand'),
+      cultivation: header('cultivation_types'),
+    }),
     t('import.help.rules.numbers'),
     t('import.help.rules.cultivationTypes', { example: cultivationLabels.join(', ') }),
     t('import.help.rules.wholeSeeds', { unit: seedUnitLabels.seeds_per_plant ?? 'seeds_per_plant' }),

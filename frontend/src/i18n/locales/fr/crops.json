@@ -692,7 +692,6 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Semences Exemple",
-      "speciesNotes": "Ligne d’exemple : une variété reprend de sa culture les champs qu’elle laisse vides.",
       "directSownName": "Carotte"
     },
     "help": {
@@ -702,6 +701,7 @@
       "valuesTitle": "Valeurs autorisées",
       "rules": {
         "required": "Seule la colonne « {{name}} » est obligatoire. Toutes les autres colonnes peuvent rester vides ou manquer, et leur ordre n’a pas d’importance.",
+        "varietyRows": "Une ligne sans « {{variety}} » décrit la culture elle-même. Une ligne avec une variété appartient à cette culture et en reprend tout ce qu’elle laisse vide, par ex. « {{nutrient}} » ou « {{cultivation}} ».",
         "numbers": "Nombres avec une virgule ou un point, par ex. 1,5 ou 1.5.",
         "cultivationTypes": "Séparez plusieurs modes de culture par des virgules, par ex. « {{example}} ».",
         "wholeSeeds": "Pour « {{unit}} », seuls les nombres entiers sont acceptés.",

@@ -692,7 +692,6 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Semillas Ejemplo",
-      "speciesNotes": "Fila de ejemplo: una variedad toma de su cultivo los campos que deja vacíos.",
       "directSownName": "Zanahoria"
     },
     "help": {
@@ -702,6 +701,7 @@
       "valuesTitle": "Valores permitidos",
       "rules": {
         "required": "Solo la columna «{{name}}» es obligatoria. Las demás columnas pueden quedar vacías o faltar, y su orden no importa.",
+        "varietyRows": "Una fila sin «{{variety}}» describe el cultivo en sí. Una fila con variedad pertenece a ese cultivo y toma de él todo lo que deja vacío, p. ej. «{{nutrient}}» o «{{cultivation}}».",
         "numbers": "Números con coma o punto, p. ej. 1,5 o 1.5.",
         "cultivationTypes": "Separa varios tipos de cultivo con comas, p. ej. «{{example}}».",
         "wholeSeeds": "Para «{{unit}}» solo se permiten números enteros.",

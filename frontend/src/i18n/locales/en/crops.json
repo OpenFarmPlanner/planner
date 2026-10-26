@@ -672,7 +672,6 @@
       "speciesName": "Tomato",
       "varietyName": "Roma",
       "supplierName": "Example Seeds",
-      "speciesNotes": "Example row: a variety takes the fields it leaves empty from its crop.",
       "directSownName": "Carrot"
     },
     "help": {
@@ -682,6 +681,7 @@
       "valuesTitle": "Allowed values",
       "rules": {
         "required": "Only the “{{name}}” column is required. All other columns may be empty or missing, and their order does not matter.",
+        "varietyRows": "A row without a “{{variety}}” describes the crop itself. A row with a variety belongs to that crop and takes everything it leaves empty from it, e.g. “{{nutrient}}” or “{{cultivation}}”.",
         "numbers": "Numbers with a comma or a point, e.g. 1,5 or 1.5.",
         "cultivationTypes": "Separate several cultivation types with commas, e.g. “{{example}}”.",
         "wholeSeeds": "For “{{unit}}” only whole numbers are allowed.",
