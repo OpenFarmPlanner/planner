@@ -111,6 +111,10 @@ clipping of the roof peak, leaf tips, or field lines. iOS ignores manifest
 icons for "Add to Home Screen", so `pwa-192x192.png` is also linked as
 `apple-touch-icon` in `index.html`.
 
+The brand mark and every icon derived from it are excluded from the AGPL-3.0
+and listed in [`TRADEMARKS.md`](../TRADEMARKS.md); add any new derived icon
+to that list.
+
 Regenerate them after a brand change with:
 
 ```bash

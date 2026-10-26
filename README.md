@@ -409,6 +409,10 @@ This project is licensed under the GNU Affero General Public License v3.0 (AGPL-
 
 `frontend/src/gantt-chart/` is vendored from [react-modern-gantt](https://github.com/MikaStiebitz/React-Modern-Gantt) by Mika Stiebitz, MIT License. The original license text and copyright notice are preserved at [frontend/src/gantt-chart/LICENSE](frontend/src/gantt-chart/LICENSE); see [frontend/src/gantt-chart/README.md](frontend/src/gantt-chart/README.md) for provenance details.
 
+### Logo
+
+The OpenFarmPlanner logo (`frontend/public/favicon.png` and the PWA icons derived from it) is not covered by the AGPL-3.0: © 2026 Martin Stipsitz, all rights reserved, and the license grants no trademark rights to it. Forks and modified versions must replace it. See [TRADEMARKS.md](TRADEMARKS.md) for what is allowed and for earlier versions.
+
 ## Developer Quality Checks
 
 Run the shared quality script before opening a PR:
