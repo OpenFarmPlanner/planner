@@ -8,6 +8,7 @@ import {
   normalizeEnumValueForLookup,
   normalizeHeaderForLookup,
   CROP_COLUMNS,
+  type SpreadsheetColumnDef,
 } from './spreadsheetColumns';
 import { parseSpreadsheetRows } from './spreadsheetFile';
 import type { SpreadsheetFormat } from './spreadsheetTypes';
@@ -28,10 +29,18 @@ const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> =>
 
 const parseRawValue = (
   value: unknown,
-  type: 'string' | 'number' | 'boolean',
+  type: SpreadsheetColumnDef['type'],
   enumImport?: Record<string, string>,
 ): unknown => {
   if (value === null || value === undefined || value === '') return undefined;
+
+  if (type === 'list') {
+    const items = String(value)
+      .split(/[,;]/)
+      .map((item) => parseRawValue(item, 'string', enumImport))
+      .filter((item): item is string => typeof item === 'string');
+    return items.length > 0 ? items : undefined;
+  }
 
   if (type === 'number') {
     const n = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));

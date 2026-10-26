@@ -15,6 +15,7 @@ export interface PortableCrop {
   crop_family?: string;
   nutrient_demand?: Crop['nutrient_demand'];
   cultivation_type?: Crop['cultivation_type'];
+  cultivation_types?: Crop['cultivation_types'];
   growth_duration_days?: number;
   harvest_duration_days?: number;
   propagation_duration_days?: number;
@@ -60,6 +61,15 @@ export const slugifyFilenamePart = (value: string): string => {
   return normalized || 'unbekannt';
 };
 
+/** The primary cultivation type first, so an importer that reads one value gets it. */
+const primaryFirst = (
+  types: Crop['cultivation_types'],
+  primary: Crop['cultivation_type'],
+): Crop['cultivation_types'] => {
+  if (!types?.length || !primary || !types.includes(primary)) return types;
+  return [primary, ...types.filter((type) => type !== primary)];
+};
+
 export const toPortableCrop = (crop: Crop): PortableCrop => {
   const portableCrop: PortableCrop = {
     name: crop.name,
@@ -70,6 +80,7 @@ export const toPortableCrop = (crop: Crop): PortableCrop => {
     crop_family: crop.crop_family ?? undefined,
     nutrient_demand: crop.nutrient_demand,
     cultivation_type: crop.cultivation_type,
+    cultivation_types: primaryFirst(crop.cultivation_types, crop.cultivation_type),
     growth_duration_days: crop.growth_duration_days,
     harvest_duration_days: crop.harvest_duration_days,
     propagation_duration_days: crop.propagation_duration_days,

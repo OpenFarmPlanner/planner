@@ -424,7 +424,7 @@ class CropImportProjectBoundaryTest(DRFAPITestCase):
 # The keys of CROP_COLUMNS in frontend/src/crops/spreadsheetColumns.ts: what a
 # spreadsheet export writes and the import sends back.
 SPREADSHEET_COLUMN_KEYS = (
-    'name', 'variety', 'supplier_name', 'crop_family', 'nutrient_demand', 'cultivation_type',
+    'name', 'variety', 'supplier_name', 'crop_family', 'nutrient_demand', 'cultivation_types',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield', 'distance_within_row_cm', 'row_spacing_cm',
     'sowing_depth_cm', 'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
@@ -480,7 +480,7 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             rows.append({
                 key: float(data[key]) if key in SPREADSHEET_NUMBER_KEYS else data[key]
                 for key in SPREADSHEET_COLUMN_KEYS
-                if data.get(key) not in (None, '')
+                if data.get(key) not in (None, '', [])
             })
         return rows
 

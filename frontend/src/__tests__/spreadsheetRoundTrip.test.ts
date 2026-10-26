@@ -16,7 +16,7 @@ const ENUM_CROPS = [
   {
     name: 'Tomate',
     nutrient_demand: 'high',
-    cultivation_type: 'pre_cultivation',
+    cultivation_types: ['pre_cultivation', 'direct_sowing'],
     harvest_method: 'per_plant',
     seed_rate_pre_cultivation_value: 1.2,
     seed_rate_pre_cultivation_unit: 'seeds_per_plant',
@@ -24,7 +24,7 @@ const ENUM_CROPS = [
   {
     name: 'Karotte',
     nutrient_demand: 'medium',
-    cultivation_type: 'direct_sowing',
+    cultivation_types: ['direct_sowing'],
     harvest_method: 'per_sqm',
     seed_rate_direct_value: 0.7,
     seed_rate_direct_unit: 'g_per_m2',
@@ -41,7 +41,7 @@ const ENUM_CROPS = [
 
 const ENUM_KEYS = [
   'nutrient_demand',
-  'cultivation_type',
+  'cultivation_types',
   'harvest_method',
   'seed_rate_direct_unit',
   'seed_rate_pre_cultivation_unit',
@@ -85,12 +85,12 @@ describe('crop spreadsheet export → import round trip', () => {
     const result = await parseSpreadsheetFile(csvFile(csv));
 
     expect(result.entries.map(pickEnums)).toEqual([
-      { nutrient_demand: 'high', cultivation_type: 'pre_cultivation', harvest_method: 'per_sqm' },
-      { nutrient_demand: 'medium', cultivation_type: 'direct_sowing', harvest_method: 'per_sqm', seed_rate_direct_unit: 'g_per_m2' },
-      { nutrient_demand: 'low', cultivation_type: 'direct_sowing', seed_rate_direct_unit: 'g_per_m2' },
+      { nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], harvest_method: 'per_sqm' },
+      { nutrient_demand: 'medium', cultivation_types: ['direct_sowing'], harvest_method: 'per_sqm', seed_rate_direct_unit: 'g_per_m2' },
+      { nutrient_demand: 'low', cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' },
       {
         nutrient_demand: 'high',
-        cultivation_type: 'pre_cultivation',
+        cultivation_types: ['pre_cultivation'],
         harvest_method: 'per_plant',
         seed_rate_direct_unit: 'seeds_per_plant',
         seed_rate_pre_cultivation_unit: 'seeds_per_plant',
@@ -109,6 +109,7 @@ describe('crop spreadsheet export → import round trip', () => {
     crop_family: 'Solanaceae',
     nutrient_demand: 'high',
     cultivation_type: 'pre_cultivation',
+    cultivation_types: ['pre_cultivation', 'direct_sowing'],
     growth_duration_days: 72,
     harvest_duration_days: 50,
     propagation_duration_days: 45,
