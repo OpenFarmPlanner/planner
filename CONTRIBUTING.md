@@ -10,6 +10,10 @@ make setup
 
 This configures the pre-commit hook that warns you when an unusually large number of files are staged for deletion — which catches the common mistake of silently losing source files after a `git stash pop` conflict during a rebase.
 
+## Logo and brand assets
+
+The OpenFarmPlanner logo is excluded from the AGPL-3.0 (see [TRADEMARKS.md](TRADEMARKS.md)). Contributions to the logo or other brand assets are not accepted under the AGPL; they need prior agreement via info@openfarmplanner.org.
+
 ## Conventional Commits
 
 This project uses Conventional Commits for automated versioning and releases.
