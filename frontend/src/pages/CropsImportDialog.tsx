@@ -149,7 +149,7 @@ export function CropsImportDialog({
                   <ListItem key={index}>
                     <ListItemText
                       primary={entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : `${t('import.invalidEntry')} ${entry.index + 1}`}
-                      secondary={formatImportFailure(entry, cropsT)}
+                      secondary={formatImportFailure(entry, cropsT, importState.seedRateConstraints)}
                     />
                   </ListItem>
                 ))}
