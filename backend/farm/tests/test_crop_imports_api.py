@@ -93,6 +93,25 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertIsInstance(result['diff'], list)
         self.assertGreater(len(result['diff']), 0)
 
+    def test_import_preview_ignores_numbers_that_only_differ_in_notation(self):
+        """A re-imported export reports no change for "5.60" vs 5.6 or 55 cm vs 0.55 m."""
+        self.existing_crop.expected_yield = '5.60'
+        self.existing_crop.distance_within_row_m = 0.55
+        self.existing_crop.save()
+        data = [{
+            'name': 'Tomato',
+            'variety': 'Cherry',
+            'supplier_id': self.supplier.id,
+            'expected_yield': 5.6,
+            'distance_within_row_cm': 55,
+            'growth_duration_days': 60,
+        }]
+
+        response = self.client.post('/openfarmplanner/api/crops/import/preview/', data, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['results'][0]['diff'], [])
+
     def test_import_preview_supplier_by_name(self):
         """Test preview resolves supplier by name."""
         data = [{

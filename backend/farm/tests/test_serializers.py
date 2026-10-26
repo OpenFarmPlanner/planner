@@ -34,6 +34,7 @@ class SerializerBranchCoverageTest(TestCase):
     def test_centimeters_field_conversion(self):
         field = CentimetersField()
         self.assertEqual(field.to_representation(0.25), 25.0)
+        self.assertEqual(field.to_representation(0.55), 55.0)
         self.assertIsNone(field.to_representation(None))
         self.assertEqual(field.to_internal_value('15'), 0.15)
 

@@ -1,5 +1,7 @@
 """Shared DRF serializer fields and helpers used across farm domain serializers."""
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from farm.models import Project
@@ -52,7 +54,8 @@ class CentimetersField(serializers.FloatField):
     def to_representation(self, value):
         if value is None:
             return None
-        return float(value) * 100.0
+        # Via Decimal so 0.55 m reads as 55.0 cm, not 55.00000000000001.
+        return float(Decimal(str(value)) * 100)
 
     def to_internal_value(self, data):
         cm_value = super().to_internal_value(data)

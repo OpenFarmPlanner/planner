@@ -5,6 +5,7 @@ draft-based import: this one takes already-parsed rows straight from the
 spreadsheet the user uploaded and reports, or applies, one outcome per row.
 """
 
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from crops.plant_families import coerce_plant_family_key
@@ -119,6 +120,22 @@ def find_matching_crop(
     return base_queryset.filter(supplier__isnull=True).first()
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float | Decimal) and not isinstance(value, bool)
+
+
+def _values_equal(import_value: Any, existing_value: Any) -> bool:
+    """Equal, treating a number and its decimal string as one value ("5.60" == 5.6)."""
+    if import_value == existing_value:
+        return True
+    if not (_is_number(import_value) or _is_number(existing_value)):
+        return False
+    try:
+        return Decimal(str(import_value)) == Decimal(str(existing_value))
+    except (InvalidOperation, ValueError):
+        return False
+
+
 def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
     """Field-by-field differences the import row would apply to the crop."""
     diff = []
@@ -129,7 +146,7 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
             import_value = import_data[field]
             existing_value = existing_data.get(field)
 
-            if import_value != existing_value:
+            if not _values_equal(import_value, existing_value):
                 # An empty string and a missing value mean the same thing here.
                 if (import_value == '' and existing_value is None) or \
                    (import_value is None and existing_value == ''):
