@@ -1018,6 +1018,13 @@ planning calculations and the UI resolve it identically:
   empty collection. `0` and `False` are real values and are never replaced.
 - Nothing is copied onto the Sorte. Clearing a field removes the override, and
   the Sorte follows later edits of the general Kultur automatically.
+  `CropSerializer` therefore leaves `cultivation_types` empty when a new linked
+  Sorte is created without any (instead of the `pre_cultivation` default every
+  other new crop gets), so it inherits them.
+- The crops page's spreadsheet import (`services/crop_import/spreadsheet.py`)
+  has no species column: a new row is linked to the species its name resolves
+  to through `find_species_by_common_name`, as the crop form and the demo
+  template do, so an imported Sorte inherits like one created in the form.
 - The three species-invariant fields (`CROP_SPECIES_INVARIANT_FIELDS`:
   `crop_family`, `nutrient_demand`, `rotation_break_years`; `crop_family` is a
   reference to the plant-family list, unset = `NULL`, see "Plant families"
