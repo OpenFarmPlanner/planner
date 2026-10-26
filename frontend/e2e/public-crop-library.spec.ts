@@ -135,7 +135,14 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await page.getByRole('button', { name: 'Absenden' }).click();
     await expect(page.getByText('E2E-Antwort.')).toBeVisible();
 
-    await page.getByRole('tab', { name: /Details/ }).click();
+    // Posting focuses the new reply, which can scroll the page while the tab
+    // is clicked; a click that lands mid-scroll is lost (seen in CI only), so
+    // retry until the tab is actually selected.
+    const detailsTab = page.getByRole('tab', { name: /Details/ });
+    await expect(async () => {
+      await detailsTab.click();
+      await expect(detailsTab).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
+    }).toPass();
     await expect(page.getByRole('heading', { name: 'Allgemeine Informationen' })).toBeVisible();
     await page.getByTestId('public-crop-detail-header').getByRole('button', { name: 'Bearbeiten' }).click();
     const editDialog = page.getByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });
