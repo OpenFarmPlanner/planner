@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useReducer } from 'react';
+import type { SeedRateUnitConstraints } from '../api/types';
 import type { ImportFailedEntry, ImportPreviewResult } from './cropsPageUtils';
 
 type ImportStatus = 'idle' | 'ready' | 'uploading' | 'success' | 'error';
@@ -13,6 +14,8 @@ type CropImportState = {
   error: string | null;
   success: string | null;
   failedEntries: ImportFailedEntry[];
+  /** The seed-rate rules, to explain a failed row like the crop form would. */
+  seedRateConstraints: Partial<SeedRateUnitConstraints> | null;
 };
 
 type SetErrorPayload = {
@@ -35,6 +38,7 @@ type SetPartialFailurePayload = {
   failedEntries: ImportFailedEntry[];
   /** What did go through ("21 neue Kulturen erstellt"), if anything. */
   summary?: string;
+  seedRateConstraints?: Partial<SeedRateUnitConstraints> | null;
 };
 
 type ImportAction =
@@ -55,6 +59,7 @@ const INITIAL_IMPORT_STATE: CropImportState = {
   error: null,
   success: null,
   failedEntries: [],
+  seedRateConstraints: null,
 };
 
 const cropImportReducer = (state: CropImportState, action: ImportAction): CropImportState => {
@@ -100,6 +105,7 @@ const cropImportReducer = (state: CropImportState, action: ImportAction): CropIm
         error: action.payload.error,
         success: action.payload.summary || null,
         failedEntries: action.payload.failedEntries,
+        seedRateConstraints: action.payload.seedRateConstraints ?? null,
       };
     case 'set_success':
       return {

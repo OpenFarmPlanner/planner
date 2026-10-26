@@ -15,6 +15,7 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
   error: null,
   success: null,
   failedEntries: [],
+  seedRateConstraints: null,
   ...overrides,
 });
 
@@ -149,5 +150,31 @@ describe('CropsImportDialog', () => {
     const alert = screen.getByText('import.errors.someFailures');
     const list = screen.getByText('import.newCrops', { exact: false });
     expect(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('explains a fractional seeds-per-plant value with the crop form\'s rule', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          status: 'error',
+          failedEntries: [{
+            index: 0,
+            name: 'Gurke',
+            error: { seed_rate_pre_cultivation_value: ['Seed rate value must be a whole number for this unit.'] },
+            importData: { name: 'Gurke', seed_rate_pre_cultivation_value: 1.2, seed_rate_pre_cultivation_unit: 'seeds_per_plant' },
+          }],
+          seedRateConstraints: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } },
+        })}
+        hasImportableEntries={false}
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByText('Pflanzung Menge: Die Menge muss für diese Einheit eine ganze Zahl sein.')).toBeInTheDocument();
   });
 });

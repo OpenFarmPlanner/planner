@@ -196,10 +196,14 @@ export function useCropImportExport({
       }
 
       if (errors.length > 0) {
+        const seedRateConstraints = await cropAPI.seedRateConstraints()
+          .then((constraintsResponse) => constraintsResponse.data.units)
+          .catch(() => null);
         setImportPartialFailure({
           failedEntries: mapImportErrors(errors, importState.payload),
           error: t('import.errors.someFailures', { failed: errors.length }),
           summary,
+          seedRateConstraints,
         });
         return;
       }

@@ -1,5 +1,7 @@
 import type { TFunction } from 'i18next';
 import { parseCropImportJson } from '../crops/importUtils';
+import type { SeedRateUnit, SeedRateUnitConstraints } from '../api/types';
+import { seedRateValueViolatesConstraint } from '../crops/seedRateConstraints';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
 import type { ImportFailedEntry, ImportPreviewResult } from './cropsPageUtils';
 import { formatHistoryChangeValue, getCropFieldLabel } from './cropsHistoryUtils';
@@ -119,17 +121,48 @@ export const formatImportDiffChange = (change: ImportDiffChange, t: TFunction<'c
   + ` → ${formatImportValue(change.new, change.field, t)}`
 );
 
+const SEED_RATE_UNIT_FIELD_BY_VALUE_FIELD: Record<string, string> = {
+  seed_rate_direct_value: 'seed_rate_direct_unit',
+  seed_rate_pre_cultivation_value: 'seed_rate_pre_cultivation_unit',
+};
+
+/** The crop form's own message when its rule explains the rejection, else none. */
+const knownRuleMessage = (
+  field: string,
+  importData: Record<string, unknown>,
+  t: TFunction<'crops'>,
+  seedRateConstraints?: Partial<SeedRateUnitConstraints> | null,
+): string | null => {
+  const unitField = SEED_RATE_UNIT_FIELD_BY_VALUE_FIELD[field];
+  if (
+    unitField
+    && seedRateValueViolatesConstraint(importData[field], importData[unitField] as SeedRateUnit, seedRateConstraints)
+  ) {
+    return t('form.seedRateValueWholeNumberRequired');
+  }
+  return null;
+};
+
 /**
  * One localized line per rejected field. Backend validation messages are
- * technical English, so only the field and the rejected value are shown.
+ * technical English, so a line names the field and either the rule it broke
+ * (when the crop form knows it) or the rejected value.
  */
-export const formatImportFailure = (entry: ImportFailedEntry, t: TFunction<'crops'>): string => {
+export const formatImportFailure = (
+  entry: ImportFailedEntry,
+  t: TFunction<'crops'>,
+  seedRateConstraints?: Partial<SeedRateUnitConstraints> | null,
+): string => {
+  const importData = entry.importData ?? {};
   const fieldErrors = typeof entry.error === 'object' && entry.error !== null ? Object.keys(entry.error) : [];
   const lines = fieldErrors
-    .filter((field) => field in (entry.importData ?? {}))
-    .map((field) => t('import.invalidFieldValue', {
-      field: getCropFieldLabel(field, t),
-      value: formatImportValue(entry.importData?.[field], field, t),
-    }));
+    .filter((field) => field in importData)
+    .map((field) => {
+      const label = getCropFieldLabel(field, t);
+      const rule = knownRuleMessage(field, importData, t, seedRateConstraints);
+      return rule
+        ? `${label}: ${rule}`
+        : t('import.invalidFieldValue', { field: label, value: formatImportValue(importData[field], field, t) });
+    });
   return lines.length > 0 ? lines.join('; ') : t('import.errors.rowFailed');
 };
