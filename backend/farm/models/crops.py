@@ -41,9 +41,9 @@ LEGACY_CROP_FAMILY_HELP_TEXT = (
 # snapshot code reads and writes them through their raw key (the botanical
 # name, ``<field>_id``) so the value stays a plain string and no related row is
 # loaded; see crop_field_attname().
-DISPLAY_COLOR_PATTERN = re.compile(r'^#[0-9A-Fa-f]{6}$')
-
 PLANT_FAMILY_REFERENCE_FIELDS = frozenset({'crop_family'})
+
+DISPLAY_COLOR_PATTERN = re.compile(r'^#[0-9A-Fa-f]{6}$')
 
 
 def crop_field_attname(field: str) -> str:
