@@ -528,6 +528,20 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         }
         self.assertEqual({crop: diff for crop, diff in differences.items() if diff}, {})
 
+    def test_re_importing_into_an_imported_project_changes_nothing(self) -> None:
+        """Second import of the same sheet: the first one moved the Sorten's
+        family and nutrient demand onto their Kultur, which must not read as a change."""
+        rows = self._export_rows()
+        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        response = self._post(self.target, 'preview', self._export_rows())
+
+        changes = [
+            (result['import_data']['name'], result['import_data'].get('variety'), result.get('diff'))
+            for result in response.data['results'] if result.get('diff')
+        ]
+        self.assertEqual(changes, [])
+
     def test_re_importing_the_export_into_its_own_project_changes_nothing(self) -> None:
         rows = self._export_rows()
 

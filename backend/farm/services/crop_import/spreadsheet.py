@@ -12,6 +12,7 @@ from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
+from farm.services.crop_inheritance import CROP_SPECIES_INVARIANT_FIELDS
 from farm.utils import normalize_supplier_name, normalize_text
 
 _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
@@ -155,11 +156,16 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
     """Field-by-field differences the import row would apply to the crop."""
     diff = []
     existing_data = CropSerializer(existing_crop).data
+    effective_values = existing_data.get('effective_values') or {}
 
     for field in _COMPARABLE_FIELDS:
         if field in import_data:
             import_value = import_data[field]
             existing_value = existing_data.get(field)
+            # A linked Sorte keeps family and nutrient demand on its Kultur and
+            # the import routes them there, so its own column is not the value.
+            if field in CROP_SPECIES_INVARIANT_FIELDS and field in effective_values:
+                existing_value = effective_values[field]
 
             if not _values_equal(import_value, existing_value):
                 # An empty string and a missing value mean the same thing here.
