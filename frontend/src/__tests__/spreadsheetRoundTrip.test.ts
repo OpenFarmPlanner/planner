@@ -126,6 +126,7 @@ describe('crop spreadsheet export → import round trip', () => {
     seed_rate_pre_cultivation_value: 2,
     seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     sowing_calculation_safety_percent_pre_cultivation: 20,
+    display_color: '#d64192',
     notes: 'Stäben, ausgeizen; "Freiland", spät',
   } as unknown as Crop;
 

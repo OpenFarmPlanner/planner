@@ -230,6 +230,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'number',
   },
   {
+    key: 'display_color',
+    headerKey: 'form.displayColor',
+    aliases: ['farbe', 'color', 'colour', 'display_color'],
+    type: 'string',
+  },
+  {
     key: 'notes',
     headerKey: 'form.notes',
     aliases: ['anmerkungen', 'kommentar', 'notiz', 'hinweise'],

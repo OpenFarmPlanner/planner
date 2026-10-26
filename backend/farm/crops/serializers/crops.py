@@ -37,6 +37,7 @@ from farm.models import (
     is_supplier_domain,
 )
 from farm.models.crops import (
+    DISPLAY_COLOR_PATTERN,
     PLANT_FAMILY_REFERENCE_FIELDS,
     crop_field_attname,
     get_crop_field_value,
@@ -1030,6 +1031,12 @@ class CropSerializer(serializers.ModelSerializer):
         if normalized == Crop.ORIGIN_IMPORTED or normalized.startswith('import'):
             return Crop.ORIGIN_IMPORTED
         return Crop.ORIGIN_MANUAL
+
+    def validate_display_color(self, value: str | None) -> str | None:
+        """Reject what the model's clean() rejects; the serializer never calls clean()."""
+        if value and not DISPLAY_COLOR_PATTERN.match(value):
+            raise serializers.ValidationError('Display color must be in hex format (#RRGGBB).')
+        return value
 
     def validate_seed_rate_unit(self, value):
         """Normalize legacy seed rate unit values and validate supported units."""

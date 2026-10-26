@@ -114,6 +114,15 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['diff'], [])
 
+    def test_import_rejects_a_display_color_that_is_not_hex(self):
+        data = {'items': [{'name': 'Spinat', 'display_color': 'rot'}], 'confirm_updates': False}
+
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', data, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertIn('display_color', response.data['errors'][0]['error'])
+
     def test_import_preview_supplier_by_name(self):
         """Test preview resolves supplier by name."""
         data = [{
@@ -430,7 +439,7 @@ SPREADSHEET_COLUMN_KEYS = (
     'sowing_depth_cm', 'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
     'seed_rate_direct_value', 'seed_rate_direct_unit', 'sowing_calculation_safety_percent_direct',
     'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit',
-    'sowing_calculation_safety_percent_pre_cultivation', 'notes',
+    'sowing_calculation_safety_percent_pre_cultivation', 'display_color', 'notes',
 )
 # The columns of type 'number' there: a sheet cell comes back as a number, not
 # as the API's decimal string ("5.60").
