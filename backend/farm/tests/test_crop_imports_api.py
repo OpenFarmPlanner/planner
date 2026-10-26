@@ -123,6 +123,16 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.data['created_count'], 0)
         self.assertIn('display_color', response.data['errors'][0]['error'])
 
+    def test_import_preview_creates_no_supplier(self):
+        """A preview only reports; cancelling it must leave no new supplier behind."""
+        data = [{'name': 'Spinat', 'supplier_name': 'Neuer Lieferant'}]
+
+        response = self.client.post('/openfarmplanner/api/crops/import/preview/', data, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['results'][0]['status'], 'create')
+        self.assertFalse(Supplier.objects.filter(project=self.project, name='Neuer Lieferant').exists())
+
     def test_import_preview_supplier_by_name(self):
         """Test preview resolves supplier by name."""
         data = [{

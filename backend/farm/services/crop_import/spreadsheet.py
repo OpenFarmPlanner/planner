@@ -63,8 +63,12 @@ def _resolve_crop_species(crop_data: dict) -> None:
         crop_data['crop_species'] = species.pk
 
 
-def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
-    """Resolve the row's supplier from `supplier_id`, or create it by name."""
+def resolve_supplier(project: Project, crop_data: dict, *, create: bool = True) -> Supplier | None:
+    """Resolve the row's supplier from `supplier_id`, or by name (created when `create`).
+
+    The preview passes ``create=False``: it only reports what an import would
+    do, so it must not leave suppliers behind when the user cancels.
+    """
     supplier_id = crop_data.get('supplier_id')
     supplier_name = crop_data.get('supplier_name')
 
@@ -77,6 +81,8 @@ def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
             return None
     elif supplier_name:
         normalized = normalize_supplier_name(supplier_name)
+        if normalized and not create:
+            return Supplier.objects.filter(name_normalized=normalized, project=project).first()
         if normalized:
             supplier, _ = Supplier.objects.get_or_create(
                 name_normalized=normalized,
@@ -186,8 +192,13 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
     return diff
 
 
-def _match_import_row(project: Project, crop_data: dict) -> tuple[Supplier | None, Crop | None]:
-    supplier = resolve_supplier(project, crop_data)
+def _match_import_row(
+    project: Project,
+    crop_data: dict,
+    *,
+    create_supplier: bool = True,
+) -> tuple[Supplier | None, Crop | None]:
+    supplier = resolve_supplier(project, crop_data, create=create_supplier)
     return supplier, find_matching_crop(
         project,
         crop_data['name'],
@@ -212,7 +223,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
 
         try:
             _normalize_crop_family(crop_data)
-            _supplier, matching_crop = _match_import_row(project, crop_data)
+            _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
 
             if matching_crop:
                 results.append({
