@@ -33,7 +33,7 @@ import {
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
 } from './publicCropSync';
-import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 import { syncColumnAccent, syncColumnTextColor, syncColumnTint } from './publicCropSyncStyles';
 
 interface PublicCropSyncPanelProps {
@@ -555,8 +555,8 @@ export function PublicCropSyncPanel({
   keepMineLocally = false,
   allowLocal = false,
 }: PublicCropSyncPanelProps) {
-  const { t, i18n } = useTranslation(['crops', 'common']);
-  const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
+  const { t } = useTranslation(['crops', 'common']);
+  const locale = getActiveFormattingLocale();
 
   if (loadError) {
     return <Alert severity="error">{loadError}</Alert>;
