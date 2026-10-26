@@ -13,7 +13,7 @@ const MIME_TYPES: Record<SpreadsheetExportFormat, string> = {
   csv: 'text/csv;charset=utf-8',
 };
 
-const buildSheetData = (crops: Crop[], t: (key: string) => string): (string | number | null)[][] => {
+export const buildSheetData = (crops: Crop[], t: (key: string) => string): (string | number | null)[][] => {
   const cropColumns = getLocalizedCropColumns(t);
   const headers = cropColumns.map((col) => col.header);
   const rows = crops.map((crop) => {
