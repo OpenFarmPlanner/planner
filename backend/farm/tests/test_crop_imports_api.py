@@ -114,6 +114,30 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['diff'], [])
 
+    def test_a_row_naming_another_supplier_updates_the_variety(self):
+        """One crop per name and variety: another supplier is a change, not a new crop
+        (which the serializer would reject as a duplicate)."""
+        row = {'name': 'Tomato', 'variety': 'Cherry', 'supplier_name': 'Other Seeds'}
+
+        preview = self.client.post('/openfarmplanner/api/crops/import/preview/', [dict(row)], format='json')
+        applied = self.client.post(
+            '/openfarmplanner/api/crops/import/apply/',
+            {'items': [dict(row)], 'confirm_updates': True},
+            format='json',
+        )
+
+        result = preview.data['results'][0]
+        self.assertEqual(result['status'], 'update_candidate')
+        self.assertEqual(result['matched_crop_id'], self.existing_crop.id)
+        self.assertIn(
+            {'field': 'supplier_name', 'current': 'Test Supplier', 'new': 'Other Seeds'},
+            result['diff'],
+        )
+        self.assertEqual(applied.data['errors'], [])
+        self.assertEqual(applied.data['updated_count'], 1)
+        self.existing_crop.refresh_from_db()
+        self.assertEqual(self.existing_crop.supplier.name, 'Other Seeds')
+
     def test_import_rejects_a_display_color_that_is_not_hex(self):
         data = {'items': [{'name': 'Spinat', 'display_color': 'rot'}], 'confirm_updates': False}
 

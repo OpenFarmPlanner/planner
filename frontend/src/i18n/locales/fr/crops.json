@@ -685,7 +685,9 @@
       "parse": "Le fichier n'a pas pu être lu.",
       "server": "L'import a échoué.",
       "network": "Erreur réseau pendant l'import.",
-      "someFailures": "{{failed}} entrées n'ont pas pu être importées.",
+      "someFailures_one": "{{count}} entrée n’a pas pu être importée.",
+      "someFailures_many": "{{count}} entrées n’ont pas pu être importées.",
+      "someFailures_other": "{{count}} entrées n’ont pas pu être importées.",
       "rowFailed": "Cette entrée n’a pas pu être enregistrée."
     },
     "template": {

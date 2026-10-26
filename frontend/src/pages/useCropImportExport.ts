@@ -201,7 +201,7 @@ export function useCropImportExport({
           .catch(() => null);
         setImportPartialFailure({
           failedEntries: mapImportErrors(errors, importState.payload),
-          error: t('import.errors.someFailures', { failed: errors.length }),
+          error: t('import.errors.someFailures', { count: errors.length }),
           summary,
           seedRateConstraints,
         });
