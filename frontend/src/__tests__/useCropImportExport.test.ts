@@ -5,13 +5,19 @@ import type { Crop } from '../api/api';
 const api = vi.hoisted(() => ({
   importPreview: vi.fn(),
   importApply: vi.fn(),
+  seedRateConstraints: vi.fn(),
   listAll: vi.fn(),
 }));
 const spreadsheet = vi.hoisted(() => ({ parse: vi.fn(), exportToSpreadsheet: vi.fn() }));
 const json = vi.hoisted(() => ({ downloadJson: vi.fn(), readFileAsText: vi.fn(), analyze: vi.fn() }));
 
 vi.mock('../api/api', () => ({
-  cropAPI: { importPreview: api.importPreview, importApply: api.importApply, listAll: api.listAll },
+  cropAPI: {
+    importPreview: api.importPreview,
+    importApply: api.importApply,
+    listAll: api.listAll,
+    seedRateConstraints: api.seedRateConstraints,
+  },
 }));
 vi.mock('../i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../crops/spreadsheetImport', () => ({ parseSpreadsheetFile: spreadsheet.parse }));
@@ -55,6 +61,7 @@ describe('useCropImportExport', () => {
     api.importPreview.mockResolvedValue({ data: { results: [] } });
     api.importApply.mockResolvedValue({ data: { created_count: 1, updated_count: 0, skipped_count: 0, errors: [] } });
     api.listAll.mockResolvedValue({ results: [CROP] });
+    api.seedRateConstraints.mockResolvedValue({ data: { units: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } } } });
     spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'Tomate' }], skippedRows: 0, warnings: [] });
     json.readFileAsText.mockResolvedValue('[]');
     json.analyze.mockReturnValue({ status: 'ok', validEntries: [{ name: 'Tomate' }], originalCount: 1, invalidEntries: [] });
@@ -198,6 +205,47 @@ describe('useCropImportExport', () => {
 
       expect(view.fetchCrops).toHaveBeenCalled();
       expect(view.result.current.importState.status).toBe('success');
+    });
+
+    it('closes the dialog and reports the result in a snackbar once everything went through', async () => {
+      const view = setup();
+      await reachPreview(view);
+
+      await act(async () => { await view.result.current.handleImportStart(); });
+
+      expect(view.result.current.importDialogOpen).toBe(false);
+      expect(view.showSnackbar).toHaveBeenCalledWith(expect.any(String), 'success');
+    });
+
+    it('keeps the dialog open, reloads and summarises what went through when some rows failed', async () => {
+      api.importApply.mockResolvedValue({
+        data: { created_count: 2, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }] },
+      });
+      const view = setup();
+      await reachPreview(view);
+
+      await act(async () => { await view.result.current.handleImportStart(); });
+
+      expect(view.fetchCrops).toHaveBeenCalled();
+      expect(view.result.current.importDialogOpen).toBe(true);
+      expect(view.result.current.importState.success).toBeTruthy();
+      expect(view.result.current.importState.failedEntries).toHaveLength(1);
+      expect(view.showSnackbar).not.toHaveBeenCalled();
+    });
+
+    it('loads the seed-rate rules to explain failed rows, and still reports when that fails', async () => {
+      api.importApply.mockResolvedValue({
+        data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }] },
+      });
+      api.seedRateConstraints.mockRejectedValue(new Error('offline'));
+      const view = setup();
+      await reachPreview(view);
+
+      await act(async () => { await view.result.current.handleImportStart(); });
+
+      expect(api.seedRateConstraints).toHaveBeenCalled();
+      expect(view.result.current.importState.failedEntries).toHaveLength(1);
+      expect(view.result.current.importState.seedRateConstraints).toBeNull();
     });
 
     it('does not reload when some entries failed', async () => {

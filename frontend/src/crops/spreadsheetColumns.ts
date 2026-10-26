@@ -2,7 +2,8 @@ export type SpreadsheetColumnDef = {
   headerKey: string;
   key: string;
   aliases: string[];
-  type: 'string' | 'number' | 'boolean';
+  /** `list`: several enum values in one cell, comma-separated. */
+  type: 'string' | 'number' | 'boolean' | 'list';
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
@@ -119,10 +120,10 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     enumImport: NUTRIENT_DEMAND_IMPORT,
   },
   {
-    key: 'cultivation_type',
+    key: 'cultivation_types',
     headerKey: 'form.cultivationType',
-    aliases: ['anbaumethode', 'saatmethode', 'cultivation_type'],
-    type: 'string',
+    aliases: ['anbaumethode', 'saatmethode', 'cultivation_type', 'cultivation_types'],
+    type: 'list',
     enumExport: CULTIVATION_TYPE_EXPORT,
     enumImport: CULTIVATION_TYPE_IMPORT,
   },
@@ -229,6 +230,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'number',
   },
   {
+    key: 'display_color',
+    headerKey: 'form.displayColor',
+    aliases: ['farbe', 'color', 'colour', 'display_color'],
+    type: 'string',
+  },
+  {
     key: 'notes',
     headerKey: 'form.notes',
     aliases: ['anmerkungen', 'kommentar', 'notiz', 'hinweise'],
@@ -262,7 +269,7 @@ const buildSeedRateUnitExport = (t: SpreadsheetT): Record<string, string> => ({
 
 const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<string, string> | undefined => {
   if (columnKey === 'nutrient_demand') return buildNutrientDemandExport(t);
-  if (columnKey === 'cultivation_type') return buildCultivationTypeExport(t);
+  if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);
   if (columnKey === 'seed_rate_direct_unit' || columnKey === 'seed_rate_pre_cultivation_unit') {
     return buildSeedRateUnitExport(t);

@@ -189,18 +189,28 @@ export function useCropImportExport({
       });
 
       const { created_count, updated_count, skipped_count, errors } = response.data;
+      const summary = buildImportSuccessMessage(created_count, updated_count, skipped_count, t);
+      // Rows that went through are saved even when others failed.
+      if (created_count + updated_count > 0) {
+        await fetchCrops();
+      }
 
       if (errors.length > 0) {
+        const seedRateConstraints = await cropAPI.seedRateConstraints()
+          .then((constraintsResponse) => constraintsResponse.data.units)
+          .catch(() => null);
         setImportPartialFailure({
           failedEntries: mapImportErrors(errors, importState.payload),
           error: t('import.errors.someFailures', { failed: errors.length }),
+          summary,
+          seedRateConstraints,
         });
         return;
       }
 
-      const successMessage = buildImportSuccessMessage(created_count, updated_count, skipped_count, t);
-      setImportSuccessState(successMessage || t('import.success'));
-      await fetchCrops();
+      setImportSuccessState(summary || t('import.success'));
+      setImportDialogOpen(false);
+      showSnackbar(summary || t('import.success'), 'success');
     } catch (error) {
       console.error('Error importing crops:', error);
       setImportErrorState({ error: t('import.errors.network') });

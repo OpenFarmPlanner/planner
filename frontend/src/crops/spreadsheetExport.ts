@@ -23,6 +23,9 @@ export const buildSheetData = (crops: Crop[], t: (key: string) => string): (stri
     return cropColumns.map((col) => {
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;
+      if (Array.isArray(raw)) {
+        return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(', ') : null;
+      }
       if (col.enumExport && typeof raw === 'string') return col.enumExport[raw] ?? raw;
       if (typeof raw === 'number') return raw;
       if (typeof raw === 'boolean') return raw ? t('detail.boolean.yes') : t('detail.boolean.no');

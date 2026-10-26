@@ -43,6 +43,8 @@ LEGACY_CROP_FAMILY_HELP_TEXT = (
 # loaded; see crop_field_attname().
 PLANT_FAMILY_REFERENCE_FIELDS = frozenset({'crop_family'})
 
+DISPLAY_COLOR_PATTERN = re.compile(r'^#[0-9A-Fa-f]{6}$')
+
 
 def crop_field_attname(field: str) -> str:
     """The attribute holding ``field``'s raw value on a Crop or PublicCrop."""
@@ -693,7 +695,7 @@ class Crop(TimestampedModel):
             errors['selected_seed_demand_supplier'] = 'Selected seed demand supplier must belong to the same project.'
 
     def _clean_display_color(self, errors: dict[str, str]) -> None:
-        if self.display_color and not re.match(r'^#[0-9A-Fa-f]{6}$', self.display_color):
+        if self.display_color and not DISPLAY_COLOR_PATTERN.match(self.display_color):
             errors['display_color'] = 'Display color must be in hex format (#RRGGBB).'
 
     # Fields whose change marks an imported crop as diverged from its source.

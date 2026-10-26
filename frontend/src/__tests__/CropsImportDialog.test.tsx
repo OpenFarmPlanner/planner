@@ -15,6 +15,7 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
   error: null,
   success: null,
   failedEntries: [],
+  seedRateConstraints: null,
   ...overrides,
 });
 
@@ -123,5 +124,57 @@ describe('CropsImportDialog', () => {
     expect(screen.getByText('Nährstoffbedarf: „Sehr hoch“ ist kein gültiger Wert')).toBeInTheDocument();
     expect(screen.getByText('Dieser Eintrag konnte nicht gespeichert werden.')).toBeInTheDocument();
     expect(screen.queryByText(/is not a valid choice/)).not.toBeInTheDocument();
+  });
+
+  it('offers only "close" once the import has a result, with the result above the list', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          status: 'error',
+          error: 'import.errors.someFailures',
+          success: 'import.created',
+          failedEntries: [{ index: 0, name: 'Senf', error: 'boom' }],
+        })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'import.start' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'import.close' })).toBeEnabled();
+    const alert = screen.getByText('import.errors.someFailures');
+    const list = screen.getByText('import.newCrops', { exact: false });
+    expect(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('explains a fractional seeds-per-plant value with the crop form\'s rule', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          status: 'error',
+          failedEntries: [{
+            index: 0,
+            name: 'Gurke',
+            error: { seed_rate_pre_cultivation_value: ['Seed rate value must be a whole number for this unit.'] },
+            importData: { name: 'Gurke', seed_rate_pre_cultivation_value: 1.2, seed_rate_pre_cultivation_unit: 'seeds_per_plant' },
+          }],
+          seedRateConstraints: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } },
+        })}
+        hasImportableEntries={false}
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByText('Pflanzung Menge: Die Menge muss für diese Einheit eine ganze Zahl sein.')).toBeInTheDocument();
   });
 });

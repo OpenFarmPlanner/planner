@@ -9,8 +9,10 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from crops.plant_families import coerce_plant_family_key
+from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
+from farm.services.crop_inheritance import CROP_SPECIES_INVARIANT_FIELDS
 from farm.utils import normalize_supplier_name, normalize_text
 
 _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
@@ -19,7 +21,7 @@ _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
 # values the import could actually change.
 _COMPARABLE_FIELDS = [
     'name', 'variety', 'notes', 'seed_supplier',
-    'crop_family', 'nutrient_demand', 'cultivation_type',
+    'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',
@@ -45,6 +47,20 @@ def _normalize_crop_family(crop_data: dict) -> None:
     raw_family = crop_data.get('crop_family')
     if isinstance(raw_family, str) and raw_family.strip():
         crop_data['crop_family'] = coerce_plant_family_key(raw_family) or raw_family
+
+
+def _resolve_crop_species(crop_data: dict) -> None:
+    """Link a new row to the species its name names, as the crop form does.
+
+    A sheet has no species column, so without this an imported Sorte had no
+    species, hence no general Kultur to inherit from, and lost every value it
+    inherits (nutrient demand, family, cultivation type, ...).
+    """
+    if crop_data.get('crop_species'):
+        return
+    species = find_species_by_common_name(crop_data.get('name'))
+    if species is not None:
+        crop_data['crop_species'] = species.pk
 
 
 def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
@@ -140,11 +156,20 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
     """Field-by-field differences the import row would apply to the crop."""
     diff = []
     existing_data = CropSerializer(existing_crop).data
+    effective_values = existing_data.get('effective_values') or {}
 
     for field in _COMPARABLE_FIELDS:
         if field in import_data:
             import_value = import_data[field]
             existing_value = existing_data.get(field)
+            # A linked Sorte keeps family and nutrient demand on its Kultur and
+            # the import routes them there, so its own column is not the value.
+            if field in CROP_SPECIES_INVARIANT_FIELDS and field in effective_values:
+                # An empty value cannot clear it either (a JSON export writes
+                # "" for every field the Sorte does not set itself).
+                if import_value in (None, ''):
+                    continue
+                existing_value = effective_values[field]
 
             if not _values_equal(import_value, existing_value):
                 # An empty string and a missing value mean the same thing here.
@@ -255,6 +280,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # checks on `image_file_id`/`supplier_id`/
                 # `selected_seed_demand_supplier` have no project to compare
                 # against on a create (there is no bound instance either).
+                _resolve_crop_species(crop_data)
                 serializer = CropSerializer(data=crop_data, context={'project': project})
                 if serializer.is_valid():
                     serializer.save(project=project)

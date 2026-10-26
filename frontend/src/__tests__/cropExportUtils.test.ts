@@ -37,6 +37,20 @@ describe('crop export mapping', () => {
     expect(portable).not.toHaveProperty('supplier');
   });
 
+  it('writes all cultivation types, the primary one first', () => {
+    const portable = toPortableCrop({
+      ...crop, cultivation_type: 'direct_sowing', cultivation_types: ['pre_cultivation', 'direct_sowing'],
+    });
+
+    expect(portable.cultivation_types).toEqual(['direct_sowing', 'pre_cultivation']);
+  });
+
+  it('leaves out an empty cultivation type list, which the import API rejects', () => {
+    const portable = toPortableCrop({ ...crop, cultivation_types: [] }) as Record<string, unknown>;
+
+    expect(portable).not.toHaveProperty('cultivation_types');
+  });
+
   it('buildSingleCropFilename uses crop name and variety, not supplier', () => {
     const date = new Date('2026-06-29T00:00:00Z');
     expect(buildSingleCropFilename(crop, date)).toBe('kultur_tomate_roma_2026-06-29.json');

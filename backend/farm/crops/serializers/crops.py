@@ -37,6 +37,7 @@ from farm.models import (
     is_supplier_domain,
 )
 from farm.models.crops import (
+    DISPLAY_COLOR_PATTERN,
     PLANT_FAMILY_REFERENCE_FIELDS,
     crop_field_attname,
     get_crop_field_value,
@@ -1031,6 +1032,12 @@ class CropSerializer(serializers.ModelSerializer):
             return Crop.ORIGIN_IMPORTED
         return Crop.ORIGIN_MANUAL
 
+    def validate_display_color(self, value: str | None) -> str | None:
+        """Reject what the model's clean() rejects; the serializer never calls clean()."""
+        if value and not DISPLAY_COLOR_PATTERN.match(value):
+            raise serializers.ValidationError('Display color must be in hex format (#RRGGBB).')
+        return value
+
     def validate_seed_rate_unit(self, value):
         """Normalize legacy seed rate unit values and validate supported units."""
         return _normalize_seed_rate_unit_value(value)
@@ -1288,6 +1295,13 @@ class CropSerializer(serializers.ModelSerializer):
         if 'unique_general_crop_name_per_project' in str(exc):
             raise CropNameConflict() from exc
 
+    def _creates_inheriting_variety(self, attrs: dict[str, Any]) -> bool:
+        return (
+            self.instance is None
+            and attrs.get('crop_species') is not None
+            and bool((attrs.get('variety') or '').strip())
+        )
+
     def _validate_cultivation_types(self, attrs, errors):
         """Normalize cultivation_types; returns the resolved raw value."""
         cultivation_types = attrs.get(
@@ -1305,6 +1319,11 @@ class CropSerializer(serializers.ModelSerializer):
             return cultivation_types
         normalized_types = [str(item).strip() for item in cultivation_types if str(item).strip()]
         allowed_types = {'pre_cultivation', 'direct_sowing'}
+        if not normalized_types and self._creates_inheriting_variety(attrs):
+            # Left empty, a new linked Sorte inherits its Kultur's cultivation
+            # types; the default below would override them (e.g. a carrot
+            # variety imported from a sheet without that column).
+            return cultivation_types
         if not normalized_types:
             normalized_types = ['pre_cultivation']
         if len(set(normalized_types)) != len(normalized_types):

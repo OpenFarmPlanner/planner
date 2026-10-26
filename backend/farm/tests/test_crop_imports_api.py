@@ -114,6 +114,15 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['diff'], [])
 
+    def test_import_rejects_a_display_color_that_is_not_hex(self):
+        data = {'items': [{'name': 'Spinat', 'display_color': 'rot'}], 'confirm_updates': False}
+
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', data, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertIn('display_color', response.data['errors'][0]['error'])
+
     def test_import_preview_supplier_by_name(self):
         """Test preview resolves supplier by name."""
         data = [{
@@ -424,13 +433,13 @@ class CropImportProjectBoundaryTest(DRFAPITestCase):
 # The keys of CROP_COLUMNS in frontend/src/crops/spreadsheetColumns.ts: what a
 # spreadsheet export writes and the import sends back.
 SPREADSHEET_COLUMN_KEYS = (
-    'name', 'variety', 'supplier_name', 'crop_family', 'nutrient_demand', 'cultivation_type',
+    'name', 'variety', 'supplier_name', 'crop_family', 'nutrient_demand', 'cultivation_types',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield', 'distance_within_row_cm', 'row_spacing_cm',
     'sowing_depth_cm', 'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
     'seed_rate_direct_value', 'seed_rate_direct_unit', 'sowing_calculation_safety_percent_direct',
     'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit',
-    'sowing_calculation_safety_percent_pre_cultivation', 'notes',
+    'sowing_calculation_safety_percent_pre_cultivation', 'display_color', 'notes',
 )
 # The columns of type 'number' there: a sheet cell comes back as a number, not
 # as the API's decimal string ("5.60").
@@ -441,6 +450,16 @@ SPREADSHEET_NUMBER_KEYS = frozenset({
     'seed_rate_direct_value', 'seed_rate_pre_cultivation_value',
     'sowing_calculation_safety_percent_direct', 'sowing_calculation_safety_percent_pre_cultivation',
 })
+
+
+def _same_value(left: object, right: object) -> bool:
+    """Equal, with numbers compared by value ("5.60" == 5.6) and empty == missing."""
+    if left in (None, '', []) and right in (None, '', []):
+        return True
+    try:
+        return float(left) == float(right)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return left == right
 
 
 class CropSpreadsheetRoundTripTest(DRFAPITestCase):
@@ -470,9 +489,32 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             rows.append({
                 key: float(data[key]) if key in SPREADSHEET_NUMBER_KEYS else data[key]
                 for key in SPREADSHEET_COLUMN_KEYS
-                if data.get(key) not in (None, '')
+                if data.get(key) not in (None, '', [])
             })
         return rows
+
+    def _export_json_rows(self) -> list[dict]:
+        """Rows as the JSON export writes them: every field, empty ones included."""
+        rows = []
+        for crop in Crop.objects.filter(project=self.source).select_related('supplier').order_by('id'):
+            data = dict(CropSerializer(crop).data)
+            row = {key: data.get(key) for key in SPREADSHEET_COLUMN_KEYS}
+            # What importUtils.normalizeImportCropEntry sends for `supplierName`.
+            row['supplier_name'] = crop.supplier.name if crop.supplier else None
+            if not row.get('cultivation_types'):
+                row.pop('cultivation_types', None)
+            rows.append(row)
+        return rows
+
+    def test_a_json_export_imports_like_a_sheet(self) -> None:
+        rows = self._export_json_rows()
+
+        applied = self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+        preview = self._post(self.target, 'preview', self._export_json_rows())
+
+        self.assertEqual(applied.data['errors'], [])
+        self.assertEqual(self._differences(self.source, self.target), {})
+        self.assertEqual([r.get('diff') for r in preview.data['results'] if r.get('diff')], [])
 
     def _post(self, project: Project, path: str, payload: object):
         return self.client.post(
@@ -491,6 +533,49 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['errors'], [])
         self.assertEqual(response.data['created_count'], len(rows))
+
+    @staticmethod
+    def _effective_columns(project: Project) -> dict[tuple[str, str], dict]:
+        """Per crop, each sheet column's value as the app shows it, inheritance included."""
+        result = {}
+        for crop in Crop.objects.filter(project=project).select_related('supplier'):
+            data = dict(CropSerializer(crop).data)
+            data['supplier_name'] = crop.supplier.name if crop.supplier else crop.seed_supplier
+            effective = data.get('effective_values') or {}
+            result[(crop.name, crop.variety or '')] = {
+                key: effective.get(key, data.get(key)) for key in SPREADSHEET_COLUMN_KEYS
+            }
+        return result
+
+    def _differences(self, source_project: Project, target_project: Project) -> dict:
+        source = self._effective_columns(source_project)
+        target = self._effective_columns(target_project)
+        differences = {
+            crop: {key: (value, target.get(crop, {}).get(key)) for key, value in values.items()
+                   if not _same_value(value, target.get(crop, {}).get(key))}
+            for crop, values in source.items()
+        }
+        return {crop: diff for crop, diff in differences.items() if diff}
+
+    def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
+        rows = self._export_rows()
+        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        self.assertEqual(self._differences(self.source, self.target), {})
+
+    def test_re_importing_into_an_imported_project_changes_nothing(self) -> None:
+        """Second import of the same sheet: the first one moved the Sorten's
+        family and nutrient demand onto their Kultur, which must not read as a change."""
+        rows = self._export_rows()
+        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        response = self._post(self.target, 'preview', self._export_rows())
+
+        changes = [
+            (result['import_data']['name'], result['import_data'].get('variety'), result.get('diff'))
+            for result in response.data['results'] if result.get('diff')
+        ]
+        self.assertEqual(changes, [])
 
     def test_re_importing_the_export_into_its_own_project_changes_nothing(self) -> None:
         rows = self._export_rows()
