@@ -685,7 +685,9 @@
       "parse": "No se ha podido leer el archivo.",
       "server": "La importación ha fallado.",
       "network": "Error de red durante la importación.",
-      "someFailures": "No se han podido importar {{failed}} entradas.",
+      "someFailures_one": "No se ha podido importar {{count}} entrada.",
+      "someFailures_many": "No se han podido importar {{count}} entradas.",
+      "someFailures_other": "No se han podido importar {{count}} entradas.",
       "rowFailed": "No se ha podido guardar esta entrada."
     },
     "template": {

@@ -665,7 +665,8 @@
       "parse": "The file could not be read.",
       "server": "Import failed.",
       "network": "Network error during import.",
-      "someFailures": "{{failed}} entries could not be imported.",
+      "someFailures_one": "{{count}} entry could not be imported.",
+      "someFailures_other": "{{count}} entries could not be imported.",
       "rowFailed": "This entry could not be saved."
     },
     "template": {

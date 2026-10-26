@@ -32,6 +32,7 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   variety: 'form.variety',
   notes: 'form.notes',
   seed_supplier: 'form.supplier',
+  supplier_name: 'form.supplier',
   crop_family: 'form.cropFamily',
   // Revisions store the plant-family reference under its attname.
   crop_family_id: 'form.cropFamily',
