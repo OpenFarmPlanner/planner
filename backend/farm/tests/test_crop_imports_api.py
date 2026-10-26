@@ -493,6 +493,29 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             })
         return rows
 
+    def _export_json_rows(self) -> list[dict]:
+        """Rows as the JSON export writes them: every field, empty ones included."""
+        rows = []
+        for crop in Crop.objects.filter(project=self.source).select_related('supplier').order_by('id'):
+            data = dict(CropSerializer(crop).data)
+            row = {key: data.get(key) for key in SPREADSHEET_COLUMN_KEYS}
+            # What importUtils.normalizeImportCropEntry sends for `supplierName`.
+            row['supplier_name'] = crop.supplier.name if crop.supplier else None
+            if not row.get('cultivation_types'):
+                row.pop('cultivation_types', None)
+            rows.append(row)
+        return rows
+
+    def test_a_json_export_imports_like_a_sheet(self) -> None:
+        rows = self._export_json_rows()
+
+        applied = self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+        preview = self._post(self.target, 'preview', self._export_json_rows())
+
+        self.assertEqual(applied.data['errors'], [])
+        self.assertEqual(self._differences(self.source, self.target), {})
+        self.assertEqual([r.get('diff') for r in preview.data['results'] if r.get('diff')], [])
+
     def _post(self, project: Project, path: str, payload: object):
         return self.client.post(
             f'/openfarmplanner/api/crops/import/{path}/',
@@ -524,18 +547,21 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             }
         return result
 
-    def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
-        rows = self._export_rows()
-        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
-
-        source = self._effective_columns(self.source)
-        target = self._effective_columns(self.target)
+    def _differences(self, source_project: Project, target_project: Project) -> dict:
+        source = self._effective_columns(source_project)
+        target = self._effective_columns(target_project)
         differences = {
             crop: {key: (value, target.get(crop, {}).get(key)) for key, value in values.items()
                    if not _same_value(value, target.get(crop, {}).get(key))}
             for crop, values in source.items()
         }
-        self.assertEqual({crop: diff for crop, diff in differences.items() if diff}, {})
+        return {crop: diff for crop, diff in differences.items() if diff}
+
+    def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
+        rows = self._export_rows()
+        self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
+
+        self.assertEqual(self._differences(self.source, self.target), {})
 
     def test_re_importing_into_an_imported_project_changes_nothing(self) -> None:
         """Second import of the same sheet: the first one moved the Sorten's

@@ -61,12 +61,16 @@ export const slugifyFilenamePart = (value: string): string => {
   return normalized || 'unbekannt';
 };
 
-/** The primary cultivation type first, so an importer that reads one value gets it. */
+/**
+ * The primary cultivation type first, so an importer that reads one value gets
+ * it. Empty means "inherited" and is left out: the API rejects an empty list.
+ */
 const primaryFirst = (
   types: Crop['cultivation_types'],
   primary: Crop['cultivation_type'],
 ): Crop['cultivation_types'] => {
-  if (!types?.length || !primary || !types.includes(primary)) return types;
+  if (!types?.length) return undefined;
+  if (!primary || !types.includes(primary)) return types;
   return [primary, ...types.filter((type) => type !== primary)];
 };
 

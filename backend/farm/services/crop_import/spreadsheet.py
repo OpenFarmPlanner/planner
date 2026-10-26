@@ -165,6 +165,10 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
             # A linked Sorte keeps family and nutrient demand on its Kultur and
             # the import routes them there, so its own column is not the value.
             if field in CROP_SPECIES_INVARIANT_FIELDS and field in effective_values:
+                # An empty value cannot clear it either (a JSON export writes
+                # "" for every field the Sorte does not set itself).
+                if import_value in (None, ''):
+                    continue
                 existing_value = effective_values[field]
 
             if not _values_equal(import_value, existing_value):
