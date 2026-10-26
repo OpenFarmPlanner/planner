@@ -87,6 +87,7 @@ interface CropDetailProps {
   onNavigateToVariety?: (crop: Crop) => void;
   onCreateCrop?: () => void;
   onOpenPublicLibrary?: () => void;
+  onImportFile?: () => void;
   onEditCrop?: (crop: Crop) => void;
   onAddVariety?: (speciesCrop: Crop) => void;
   onCreatePlan?: () => void;
@@ -122,6 +123,7 @@ export function CropDetail({
   onNavigateToVariety,
   onCreateCrop,
   onOpenPublicLibrary,
+  onImportFile,
   onEditCrop,
   onAddVariety,
   onCreatePlan,
@@ -1418,6 +1420,7 @@ const detailSectionGridSx = {
           description={t('emptyOnboarding.description')}
           actions={[
             { label: t('emptyOnboarding.openLibraryAction'), onClick: onOpenPublicLibrary },
+            ...(onImportFile ? [{ label: t('import.menuLabel'), onClick: onImportFile }] : []),
             { label: t('emptyOnboarding.createAction'), onClick: onCreateCrop },
           ]}
         />

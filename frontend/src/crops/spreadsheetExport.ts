@@ -47,15 +47,21 @@ const triggerDownload = (data: Uint8Array | string, filename: string, mimeType: 
   URL.revokeObjectURL(url);
 };
 
+export const downloadSpreadsheet = (
+  rows: (string | number | null)[][],
+  format: SpreadsheetExportFormat,
+  filename: string,
+): void => {
+  triggerDownload(buildSpreadsheetFile(rows, format), filename, MIME_TYPES[format]);
+};
+
 export const exportCropsToSpreadsheet = (
   crops: Crop[],
   format: SpreadsheetExportFormat,
   filename: string,
   t: (key: string) => string,
 ): void => {
-  const sheetData = buildSheetData(crops, t);
-  const output = buildSpreadsheetFile(sheetData, format);
-  triggerDownload(output, filename, MIME_TYPES[format]);
+  downloadSpreadsheet(buildSheetData(crops, t), format, filename);
 };
 
 export const buildSpreadsheetFilename = (

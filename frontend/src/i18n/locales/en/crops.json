@@ -40,7 +40,7 @@
   },
   "emptyOnboarding": {
     "title": "No crops yet",
-    "description": "Crops are the basis of your planting planning. Create your first crop or import crops from the crop library.",
+    "description": "Crops are the basis of your planting planning. Create your first crop or import crops from the crop library or from a file.",
     "createAction": "Add crop",
     "openLibraryAction": "Import from library"
   },
@@ -667,6 +667,28 @@
       "network": "Network error during import.",
       "someFailures": "{{failed}} entries could not be imported.",
       "rowFailed": "This entry could not be saved."
+    },
+    "template": {
+      "speciesName": "Tomato",
+      "varietyName": "Roma",
+      "supplierName": "Example Seeds",
+      "speciesNotes": "Example row: a variety takes the fields it leaves empty from its crop.",
+      "directSownName": "Carrot"
+    },
+    "help": {
+      "templateHint": "No suitable file yet?",
+      "templateButton": "Download template (.xlsx)",
+      "toggle": "Which values are allowed?",
+      "valuesTitle": "Allowed values",
+      "rules": {
+        "required": "Only the “{{name}}” column is required. All other columns may be empty or missing, and their order does not matter.",
+        "numbers": "Numbers with a comma or a point, e.g. 1,5 or 1.5.",
+        "cultivationTypes": "Separate several cultivation types with commas, e.g. “{{example}}”.",
+        "wholeSeeds": "For “{{unit}}” only whole numbers are allowed.",
+        "color": "“{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is chosen.",
+        "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”.",
+        "exportTip": "Easiest: export your crops and use the file as a template."
+      }
     }
   },
   "library": {
