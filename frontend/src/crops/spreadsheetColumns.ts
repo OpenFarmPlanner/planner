@@ -203,6 +203,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     enumImport: SEED_RATE_UNIT_IMPORT,
   },
   {
+    key: 'sowing_calculation_safety_percent_direct',
+    headerKey: 'export.columns.safetyPercentDirect',
+    aliases: ['sicherheitszuschlag direktsaat', 'sowing_calculation_safety_percent_direct'],
+    type: 'number',
+  },
+  {
     key: 'seed_rate_pre_cultivation_value',
     headerKey: 'form.seedRatePreCultivationValue',
     aliases: ['pflanzung menge', 'pflanzung saatgut', 'seed_rate_pre_cultivation_value'],
@@ -215,6 +221,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'string',
     enumExport: SEED_RATE_UNIT_EXPORT,
     enumImport: SEED_RATE_UNIT_IMPORT,
+  },
+  {
+    key: 'sowing_calculation_safety_percent_pre_cultivation',
+    headerKey: 'export.columns.safetyPercentPreCultivation',
+    aliases: ['sicherheitszuschlag pflanzung', 'sowing_calculation_safety_percent_pre_cultivation'],
+    type: 'number',
   },
   {
     key: 'notes',

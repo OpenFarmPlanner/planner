@@ -592,7 +592,9 @@
     "cancel": "Cancel",
     "success": "Export complete",
     "columns": {
-      "expectedYieldKgPerSqm": "Expected yield (kg/m²)"
+      "expectedYieldKgPerSqm": "Expected yield (kg/m²)",
+      "safetyPercentDirect": "Direct sowing seed safety margin (%)",
+      "safetyPercentPreCultivation": "Transplanting seed safety margin (%)"
     }
   },
   "buttons": {

@@ -592,7 +592,9 @@
     "cancel": "Abbrechen",
     "success": "Export abgeschlossen",
     "columns": {
-      "expectedYieldKgPerSqm": "Erwarteter Ertrag (kg/m²)"
+      "expectedYieldKgPerSqm": "Erwarteter Ertrag (kg/m²)",
+      "safetyPercentDirect": "Sicherheitszuschlag Direktsaat (%)",
+      "safetyPercentPreCultivation": "Sicherheitszuschlag Pflanzung (%)"
     }
   },
   "buttons": {

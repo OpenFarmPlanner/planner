@@ -2,6 +2,7 @@ import i18n from '../i18n/config';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import type { Crop } from '../api/types';
 import { buildSheetData } from '../crops/spreadsheetExport';
+import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
 import { buildSpreadsheetFile } from '../crops/spreadsheetFile';
 import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
 
@@ -95,5 +96,59 @@ describe('crop spreadsheet export → import round trip', () => {
         seed_rate_pre_cultivation_unit: 'seeds_per_plant',
       },
     ]);
+  });
+
+  // A crop with a value in every exported column. A column added to
+  // CROP_COLUMNS without a value here fails the coverage check below, so a new
+  // column cannot silently skip the round trip.
+  const FULL_CROP = {
+    name: 'Tomate',
+    variety: 'Roma',
+    supplier: { id: 7, name: 'Bingenheimer Saatgut' },
+    seed_supplier: 'Bingenheimer Saatgut',
+    crop_family: 'Solanaceae',
+    nutrient_demand: 'high',
+    cultivation_type: 'pre_cultivation',
+    growth_duration_days: 72,
+    harvest_duration_days: 50,
+    propagation_duration_days: 45,
+    harvest_method: 'per_plant',
+    expected_yield: 4.2,
+    distance_within_row_cm: 45,
+    row_spacing_cm: 70,
+    sowing_depth_cm: 0.5,
+    thousand_kernel_weight_g: 3.2,
+    sowing_calculation_safety_percent: 15,
+    seed_rate_direct_value: 0.25,
+    seed_rate_direct_unit: 'g_per_m2',
+    sowing_calculation_safety_percent_direct: 10,
+    seed_rate_pre_cultivation_value: 2,
+    seed_rate_pre_cultivation_unit: 'seeds_per_plant',
+    sowing_calculation_safety_percent_pre_cultivation: 20,
+    notes: 'Stäben, ausgeizen; "Freiland", spät',
+  } as unknown as Crop;
+
+  const EXPECTED_IMPORT: Record<string, unknown> = {
+    ...(FULL_CROP as unknown as Record<string, unknown>),
+    supplier_name: 'Bingenheimer Saatgut',
+  };
+
+  it('has a test value for every exported column', () => {
+    const missing = CROP_COLUMNS.map((column) => column.key).filter((key) => EXPECTED_IMPORT[key] === undefined);
+    expect(missing).toEqual([]);
+  });
+
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('reads back every column unchanged (%s)', async (language) => {
+    await i18n.changeLanguage(language);
+    const sheet = buildSheetData([FULL_CROP], i18n.getFixedT(language, 'crops'));
+    const csv = buildSpreadsheetFile(sheet, 'csv') as string;
+
+    const result = await parseSpreadsheetFile(csvFile(csv));
+
+    expect(result.warnings).toEqual([]);
+    const [entry] = result.entries;
+    const roundTripped = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, entry?.[key]]));
+    const expected = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, EXPECTED_IMPORT[key]]));
+    expect(roundTripped).toEqual(expected);
   });
 });

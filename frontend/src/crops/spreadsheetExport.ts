@@ -17,7 +17,9 @@ export const buildSheetData = (crops: Crop[], t: (key: string) => string): (stri
   const cropColumns = getLocalizedCropColumns(t);
   const headers = cropColumns.map((col) => col.header);
   const rows = crops.map((crop) => {
-    const portable = toPortableCrop(crop) as unknown as Record<string, unknown>;
+    const portableCrop = toPortableCrop(crop);
+    // The JSON format names the supplier `supplierName`; the sheet column is `supplier_name`.
+    const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;

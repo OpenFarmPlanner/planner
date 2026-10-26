@@ -605,7 +605,9 @@
     "cancel": "Annuler",
     "success": "Export terminé",
     "columns": {
-      "expectedYieldKgPerSqm": "Rendement prévu (kg/m²)"
+      "expectedYieldKgPerSqm": "Rendement prévu (kg/m²)",
+      "safetyPercentDirect": "Marge de sécurité des semences, semis direct (%)",
+      "safetyPercentPreCultivation": "Marge de sécurité des semences, plantation (%)"
     }
   },
   "buttons": {
