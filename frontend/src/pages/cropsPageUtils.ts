@@ -21,6 +21,7 @@ export type ImportFailedEntry = {
   name?: string;
   variety?: string;
   error: string | Record<string, unknown>;
+  importData?: Record<string, unknown>;
 };
 
 export type SnackbarState = {
@@ -74,6 +75,7 @@ export const mapImportErrors = (
     index: err.index,
     name: originalData?.name as string | undefined,
     variety: originalData?.variety as string | undefined,
+    importData: originalData,
     error: typeof err.error === 'string' || typeof err.error === 'object' ? err.error as string | Record<string, unknown> : String(err.error),
   };
 });

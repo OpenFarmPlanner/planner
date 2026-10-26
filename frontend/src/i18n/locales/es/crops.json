@@ -661,6 +661,7 @@
     "noChanges": "Sin cambios",
     "confirmUpdates": "Confirmar sobrescritura",
     "unrecognizedColumns": "Las columnas no reconocidas se ignoran: {{columns}}",
+    "invalidFieldValue": "{{field}}: «{{value}}» no es un valor válido",
     "errors": {
       "notArray": "El archivo debe contener un array JSON.",
       "noValidEntries": "No se han encontrado entradas válidas.",
@@ -669,7 +670,8 @@
       "parse": "No se ha podido leer el archivo.",
       "server": "La importación ha fallado.",
       "network": "Error de red durante la importación.",
-      "someFailures": "No se han podido importar {{failed}} entradas."
+      "someFailures": "No se han podido importar {{failed}} entradas.",
+      "rowFailed": "No se ha podido guardar esta entrada."
     }
   },
   "library": {

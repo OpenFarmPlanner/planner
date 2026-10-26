@@ -46,6 +46,10 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   distance_within_row_m: 'form.distanceWithinRowCm',
   row_spacing_m: 'form.rowSpacingCm',
   sowing_depth_m: 'form.sowingDepthCm',
+  // The import preview diffs the API's centimeter fields.
+  distance_within_row_cm: 'form.distanceWithinRowCm',
+  row_spacing_cm: 'form.rowSpacingCm',
+  sowing_depth_cm: 'form.sowingDepthCm',
   seed_rate_value: 'form.seedRateValue',
   seed_rate_unit: 'form.seedRateUnit',
   seed_rate_by_cultivation: 'form.seedRateSectionTitle',
@@ -66,13 +70,18 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   selected_seed_demand_supplier_id: 'history.fieldLabels.selectedSeedDemandSupplier',
 };
 
-const SEED_RATE_UNIT_LABELS: Record<string, string> = {
-  g_per_m2: 'g / m²',
-  g_per_lfm: 'g / lfm',
-  seeds_per_m2: 'Korn / m²',
-  seeds_per_lfm: 'Korn / lfm',
-  seeds_per_plant: 'Korn / Pflanze',
+const SEED_RATE_UNIT_LABEL_KEYS: Record<string, string> = {
+  g_per_m2: 'detail.seedUnits.gPerSqm',
+  g_per_lfm: 'detail.seedUnits.gPerRunningMeter',
+  seeds_per_m2: 'detail.seedUnits.seedsPerSqm',
+  seeds_per_lfm: 'detail.seedUnits.seedsPerRunningMeter',
+  seeds_per_plant: 'detail.seedUnits.seedsPerPlant',
 };
+
+function formatSeedRateUnit(unit: string, t: TFunction<'crops'>): string {
+  const unitKey = SEED_RATE_UNIT_LABEL_KEYS[unit];
+  return unitKey ? t(unitKey) : unit;
+}
 
 export function getHistoryObjectTypeLabel(objectType: string | undefined, t: TFunction<'crops'>): string {
   if (!objectType) {
@@ -173,7 +182,7 @@ export function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'
       }
       const methodLabel = formatCultivationType(method, t);
       const unitLabel = typeof payload.unit === 'string'
-        ? SEED_RATE_UNIT_LABELS[payload.unit] ?? payload.unit
+        ? formatSeedRateUnit(payload.unit, t)
         : '';
       return `${methodLabel}: ${formatNumberValue(payload.value)}${unitLabel ? ` ${unitLabel}` : ''}`;
     })
@@ -197,7 +206,7 @@ export function formatHistoryChangeValue(
     return formatSeedRateByCultivation(value, t);
   }
   if (field.endsWith('_unit') && typeof value === 'string') {
-    return SEED_RATE_UNIT_LABELS[value] ?? value;
+    return formatSeedRateUnit(value, t);
   }
   if (field === 'cultivation_type') {
     return formatCultivationType(value, t);
