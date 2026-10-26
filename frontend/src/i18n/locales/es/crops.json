@@ -655,7 +655,6 @@
     "warnings": "Avisos",
     "start": "Iniciar importación",
     "close": "Cerrar",
-    "done": "Listo",
     "success": "Importación correcta",
     "created_one": "{{count}} cultivo nuevo creado",
     "created_many": "{{count}} cultivos nuevos creados",

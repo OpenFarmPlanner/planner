@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
@@ -117,14 +118,45 @@ export function CropsImportDialog({
   t,
 }: CropsImportDialogProps) {
   const { t: cropsT } = useTranslation('crops');
+  const contentRef = useRef<HTMLDivElement>(null);
+  const hasResult = importState.success !== null || importState.failedEntries.length > 0;
+  const isFinished = importState.status === 'success' || importState.failedEntries.length > 0;
+
+  // The result sits at the top; bring it into view after an import.
+  useEffect(() => {
+    if (hasResult) {
+      contentRef.current?.scrollTo?.({ top: 0 });
+    }
+  }, [hasResult]);
+
   const newCrops = importState.previewResults.filter((result) => result.status === 'create');
   const updateCandidates = importState.previewResults.filter((result) => result.status === 'update_candidate');
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{t('import.title')}</DialogTitle>
-      <DialogContent>
+      <DialogContent ref={contentRef}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          {importState.error && <Alert severity="error">{importState.error}</Alert>}
+          {importState.success && <Alert severity="success">{importState.success}</Alert>}
+          {importState.failedEntries.length > 0 && (
+            <Box>
+              <Typography variant="h6" color="error.main">
+                {t('import.failedEntries')} ({importState.failedEntries.length})
+              </Typography>
+              <List dense>
+                {importState.failedEntries.map((entry, index) => (
+                  <ListItem key={index}>
+                    <ListItemText
+                      primary={entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : `${t('import.invalidEntry')} ${entry.index + 1}`}
+                      secondary={formatImportFailure(entry, cropsT)}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+
           <Typography variant="body1">
             {t('import.foundCount', { count: importState.validCount || importState.previewCount })}
           </Typography>
@@ -159,37 +191,23 @@ export function CropsImportDialog({
             </Box>
           )}
 
-          {importState.failedEntries.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" color="error.main">
-                {t('import.failedEntries')} ({importState.failedEntries.length})
-              </Typography>
-              <List dense>
-                {importState.failedEntries.map((entry, index) => (
-                  <ListItem key={index}>
-                    <ListItemText
-                      primary={entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : `${t('import.invalidEntry')} ${entry.index + 1}`}
-                      secondary={formatImportFailure(entry, cropsT)}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {importState.error && <Alert severity="error">{importState.error}</Alert>}
-          {importState.success && <Alert severity="success">{importState.success}</Alert>}
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>{t('import.close')}</Button>
-        <Button
-          variant="contained"
-          onClick={onImportStart}
-          disabled={!hasImportableEntries || importState.status === 'uploading' || importState.status === 'success'}
-        >
-          {importState.status === 'success' ? t('import.done') : t('import.start')}
-        </Button>
+        {isFinished ? (
+          <Button variant="contained" onClick={onClose}>{t('import.close')}</Button>
+        ) : (
+          <>
+            <Button onClick={onClose}>{t('import.close')}</Button>
+            <Button
+              variant="contained"
+              onClick={onImportStart}
+              disabled={!hasImportableEntries || importState.status === 'uploading'}
+            >
+              {t('import.start')}
+            </Button>
+          </>
+        )}
       </DialogActions>
     </Dialog>
   );

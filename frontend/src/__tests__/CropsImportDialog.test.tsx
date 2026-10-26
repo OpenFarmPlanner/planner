@@ -124,4 +124,30 @@ describe('CropsImportDialog', () => {
     expect(screen.getByText('Dieser Eintrag konnte nicht gespeichert werden.')).toBeInTheDocument();
     expect(screen.queryByText(/is not a valid choice/)).not.toBeInTheDocument();
   });
+
+  it('offers only "close" once the import has a result, with the result above the list', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          status: 'error',
+          error: 'import.errors.someFailures',
+          success: 'import.created',
+          failedEntries: [{ index: 0, name: 'Senf', error: 'boom' }],
+        })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'import.start' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'import.close' })).toBeEnabled();
+    const alert = screen.getByText('import.errors.someFailures');
+    const list = screen.getByText('import.newCrops', { exact: false });
+    expect(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

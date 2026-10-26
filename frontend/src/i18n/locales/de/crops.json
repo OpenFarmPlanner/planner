@@ -639,7 +639,6 @@
     "warnings": "Hinweise",
     "start": "Import starten",
     "close": "Schließen",
-    "done": "Fertig",
     "success": "Import erfolgreich",
     "created_one": "{{count}} neue Kultur erstellt",
     "created_other": "{{count}} neue Kulturen erstellt",

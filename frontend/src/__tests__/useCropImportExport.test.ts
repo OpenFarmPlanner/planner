@@ -200,6 +200,32 @@ describe('useCropImportExport', () => {
       expect(view.result.current.importState.status).toBe('success');
     });
 
+    it('closes the dialog and reports the result in a snackbar once everything went through', async () => {
+      const view = setup();
+      await reachPreview(view);
+
+      await act(async () => { await view.result.current.handleImportStart(); });
+
+      expect(view.result.current.importDialogOpen).toBe(false);
+      expect(view.showSnackbar).toHaveBeenCalledWith(expect.any(String), 'success');
+    });
+
+    it('keeps the dialog open, reloads and summarises what went through when some rows failed', async () => {
+      api.importApply.mockResolvedValue({
+        data: { created_count: 2, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }] },
+      });
+      const view = setup();
+      await reachPreview(view);
+
+      await act(async () => { await view.result.current.handleImportStart(); });
+
+      expect(view.fetchCrops).toHaveBeenCalled();
+      expect(view.result.current.importDialogOpen).toBe(true);
+      expect(view.result.current.importState.success).toBeTruthy();
+      expect(view.result.current.importState.failedEntries).toHaveLength(1);
+      expect(view.showSnackbar).not.toHaveBeenCalled();
+    });
+
     it('does not reload when some entries failed', async () => {
       api.importApply.mockResolvedValue({
         data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, message: 'nope' }] },

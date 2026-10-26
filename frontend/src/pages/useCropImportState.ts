@@ -33,6 +33,8 @@ type SetPreviewReadyPayload = {
 type SetPartialFailurePayload = {
   error: string;
   failedEntries: ImportFailedEntry[];
+  /** What did go through ("21 neue Kulturen erstellt"), if anything. */
+  summary?: string;
 };
 
 type ImportAction =
@@ -96,7 +98,7 @@ const cropImportReducer = (state: CropImportState, action: ImportAction): CropIm
         ...state,
         status: 'error',
         error: action.payload.error,
-        success: null,
+        success: action.payload.summary || null,
         failedEntries: action.payload.failedEntries,
       };
     case 'set_success':

@@ -655,7 +655,6 @@
     "warnings": "Remarques",
     "start": "Lancer l'import",
     "close": "Fermer",
-    "done": "Terminé",
     "success": "Import réussi",
     "created_one": "{{count}} nouvelle culture créée",
     "created_many": "{{count}} nouvelles cultures créées",

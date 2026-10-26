@@ -639,7 +639,6 @@
     "warnings": "Notes",
     "start": "Start import",
     "close": "Close",
-    "done": "Done",
     "success": "Import successful",
     "created_one": "{{count}} new crop created",
     "created_other": "{{count}} new crops created",
