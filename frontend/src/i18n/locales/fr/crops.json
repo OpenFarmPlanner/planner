@@ -1425,7 +1425,7 @@
       "allLocal": "Tout en local uniquement",
       "previouslyPinned": "épinglé localement jusqu’ici",
       "notPinnableIdentity": "Le nom et la variété appartiennent à la fiche publique et ne peuvent pas être épinglés localement.",
-      "notPinnableEmpty": "Votre culture n’a pas de valeur propre ici qu’elle pourrait garder en local.",
+      "emptyLocalValue": "Votre culture n’a pas de valeur ici. Les valeurs vides ne sont ni partagées ni gardées en local. Pour supprimer une valeur de la bibliothèque de cultures, modifiez directement la fiche.",
       "notPinnableSpeciesInvariant": "Cette valeur s’applique à toute l’espèce cultivée et ne peut être épinglée localement que sur la culture générale.",
       "summaryLocal_one": "{{count}} valeur reste uniquement locale",
       "summaryLocal_other": "{{count}} valeurs restent uniquement locales",

@@ -1400,7 +1400,7 @@
       "allLocal": "Alle nur lokal",
       "previouslyPinned": "bisher lokal fixiert",
       "notPinnableIdentity": "Name und Sorte gehören zum öffentlichen Eintrag und können nicht lokal fixiert werden.",
-      "notPinnableEmpty": "Deine Kultur hat hier keinen eigenen Wert, den sie lokal behalten könnte.",
+      "emptyLocalValue": "Deine Kultur hat hier keinen eigenen Wert. Leere Werte werden weder geteilt noch lokal behalten. Um einen Wert in der Kulturbibliothek zu entfernen, bearbeite den Eintrag direkt.",
       "notPinnableSpeciesInvariant": "Dieser Wert gilt für die ganze Kulturart und kann nur bei der allgemeinen Kultur lokal fixiert werden.",
       "summaryLocal_one": "{{count}} Wert bleibt nur lokal",
       "summaryLocal_other": "{{count}} Werte bleiben nur lokal",

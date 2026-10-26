@@ -4,8 +4,11 @@ import {
   buildDefaultSyncChoices,
   buildUniformSyncChoices,
   getDefaultSyncChoice,
+  getSyncPinBlockedReasonKey,
+  getSyncPushBlockedReasonKey,
   splitSyncChoices,
 } from '../crops/publicCropSync';
+import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
 
 const change = (over: Partial<PublicCropSyncFieldChange>): PublicCropSyncFieldChange => ({
   field: 'growth_duration_days',
@@ -27,8 +30,24 @@ describe('getDefaultSyncChoice', () => {
       .toBe('mine');
   });
 
-  it('prefers the library value when both are set and differ', () => {
+  it('prefers the library value when both are set and differ, when linking and when syncing a linked crop', () => {
     expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50 }))).toBe('library');
+    expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50, pinnable: true }), { allowLocal: true }))
+      .toBe('library');
+  });
+
+  it('keeps an already pinned field on "Nur lokal"', () => {
+    expect(getDefaultSyncChoice(
+      change({ local_value: 60, public_value: 50, pinned: true, pinnable: true }),
+      { allowLocal: true },
+    )).toBe('local');
+  });
+
+  it('reads a blank, whitespace-only or language-less local value as empty', () => {
+    for (const localValue of ['  \n', {}, '-']) {
+      expect(getDefaultSyncChoice(change({ field: 'notes', local_value: localValue, public_value: 'Text' })))
+        .toBe('library');
+    }
   });
 
   it('never preselects pushing a field that cannot be pushed', () => {
@@ -109,5 +128,38 @@ describe('"Nur lokal" (pinned fields)', () => {
       pushFields: [],
       pinFields: [],
     });
+  });
+});
+
+describe('empty values (backend `is_unset_crop_value`)', () => {
+  it('treats nothing, blank text, the unit placeholder and empty lists or objects as empty, never 0 or false', () => {
+    [null, undefined, '', '  ', '-', [], {}].forEach((value) => expect(isEmptyPublicValue(value)).toBe(true));
+    [0, false, 'Text', ['direct_sowing'], { de: 'Text' }].forEach((value) => expect(isEmptyPublicValue(value)).toBe(false));
+  });
+
+  const libraryOnly = change({
+    field: 'propagation_duration_days',
+    local_value: null,
+    public_value: 14,
+    pushable: false,
+    push_blocked_reason: 'empty',
+    pinnable: false,
+    pin_blocked_reason: 'empty',
+  });
+
+  it('keeps a row without a local value on the library side for every bulk action', () => {
+    (['library', 'mine', 'local'] as const).forEach((choice) => {
+      const choices = buildUniformSyncChoices([libraryOnly], choice);
+      expect(choices).toEqual({ propagation_duration_days: 'library' });
+      expect(splitSyncChoices([libraryOnly], choices, { allowLocal: true }).pullFields)
+        .toEqual(['propagation_duration_days']);
+    });
+  });
+
+  it('explains both disabled options with the same tooltip', () => {
+    expect(getSyncPushBlockedReasonKey(libraryOnly)).toBe('library.sync.emptyLocalValue');
+    expect(getSyncPinBlockedReasonKey(libraryOnly)).toBe('library.sync.emptyLocalValue');
+    expect(getSyncPushBlockedReasonKey(change({ field: 'name', pushable: false, push_blocked_reason: 'identity' })))
+      .toBe('library.sync.notPushableName');
   });
 });

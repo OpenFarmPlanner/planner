@@ -1,4 +1,4 @@
-import type { PublicCropSyncFieldChange } from '../api/types';
+import type { PublicCropSyncFieldChange, PublicCropSyncPinBlockedReason } from '../api/types';
 import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
 
 /**
@@ -16,9 +16,41 @@ export interface PublicCropSyncChoiceOptions {
   allowLocal?: boolean;
 }
 
-/** Whether "Nur lokal" can be chosen for this field: a pinnable field with a local value. */
+/**
+ * Whether "Nur lokal" can be chosen for this field. The rule lives in the
+ * backend alone (`library_pin_blocked_reason`); the preview reports it per field.
+ */
 export function canKeepSyncFieldLocally(change: PublicCropSyncFieldChange): boolean {
   return change.pinnable === true;
+}
+
+/** One tooltip for both disabled options of a row without a local value. */
+const EMPTY_LOCAL_VALUE_KEY = 'library.sync.emptyLocalValue';
+
+const PIN_BLOCKED_REASON_KEYS: Record<PublicCropSyncPinBlockedReason, string> = {
+  identity: 'library.sync.notPinnableIdentity',
+  species_invariant: 'library.sync.notPinnableSpeciesInvariant',
+  empty: EMPTY_LOCAL_VALUE_KEY,
+};
+
+/**
+ * The i18n key explaining why "Meine Kultur" is unavailable. A row the backend
+ * flags `empty`, or one whose local value is empty when no reason came along
+ * (the add-crop link conflicts are built in the frontend), shares the "Nur
+ * lokal" tooltip.
+ */
+export function getSyncPushBlockedReasonKey(change: PublicCropSyncFieldChange): string | null {
+  if (change.pushable) return null;
+  if (change.push_blocked_reason === 'empty' || isEmptyPublicValue(change.local_value)) {
+    return EMPTY_LOCAL_VALUE_KEY;
+  }
+  return change.field === 'name' ? 'library.sync.notPushableName' : 'library.sync.notPushable';
+}
+
+/** The i18n key explaining why "Nur lokal" is unavailable, or null when the backend named no reason. */
+export function getSyncPinBlockedReasonKey(change: PublicCropSyncFieldChange): string | null {
+  if (canKeepSyncFieldLocally(change) || !change.pin_blocked_reason) return null;
+  return PIN_BLOCKED_REASON_KEYS[change.pin_blocked_reason] ?? null;
 }
 
 export type PublicCropSyncChoices = Record<string, PublicCropSyncChoice>;

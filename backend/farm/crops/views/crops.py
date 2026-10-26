@@ -846,8 +846,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                     'local_value': change.local_value,
                     'public_value': change.public_value,
                     'pushable': change.pushable,
+                    'push_blocked_reason': change.push_blocked_reason,
                     'pinned': change.pinned,
                     'pinnable': change.pinnable,
+                    'pin_blocked_reason': change.pin_blocked_reason,
                 }
                 for change in changes
             ],

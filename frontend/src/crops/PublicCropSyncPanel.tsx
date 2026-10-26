@@ -21,18 +21,20 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { RichTextViewer } from '../components/data-grid/RichTextViewer';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import {
-  formatPublicCropValue,
-  getPublicCropComparisonFieldLabel,
+  formatPublicCropValueInFormUnits,
+  getPublicCropFormUnitFieldLabel,
 } from '../crop-library/components/publicCropLibrary/formatters';
 import {
   buildUniformSyncChoices,
   canKeepSyncFieldLocally,
   getDefaultSyncChoice,
+  getSyncPinBlockedReasonKey,
+  getSyncPushBlockedReasonKey,
   splitSyncChoices,
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
 } from './publicCropSync';
-import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary/formatters';
+import { getActiveFormattingLocale } from '../utils/numberLocalization';
 import { syncColumnAccent, syncColumnTextColor, syncColumnTint } from './publicCropSyncStyles';
 
 interface PublicCropSyncPanelProps {
@@ -62,6 +64,8 @@ const RICH_TEXT_SYNC_FIELDS = new Set(['notes']);
 const isRichTextSyncField = (field: string): boolean => RICH_TEXT_SYNC_FIELDS.has(field);
 
 const COLLAPSED_LINE_CLAMP = 4;
+
+const SHORT_VIEWPORT_QUERY = '@media (max-height: 599.95px)';
 
 const ROW_SX = {
   display: 'flex',
@@ -111,17 +115,19 @@ interface SyncValueColumnProps {
   expanded: boolean;
   onTruncatedChange: (truncated: boolean) => void;
   t: TFunction;
+  locale: string;
 }
 
 /**
- * One value column of a diff row. Plain fields render straight through
- * `formatPublicCropValue`. Rich-text fields render as Markdown and, while
- * collapsed, clamp to `COLLAPSED_LINE_CLAMP` lines; truncation is measured via
+ * One value column of a diff row. Plain fields render through
+ * `formatPublicCropValueInFormUnits` (the crop form's units, the UI locale).
+ * Rich-text fields render as Markdown and, while collapsed, clamp to
+ * `COLLAPSED_LINE_CLAMP` lines; truncation is measured via
  * `scrollHeight`/`clientHeight` (the same technique as `OverflowTooltip`), and
  * only while collapsed — once expanded the clamp is removed, so measuring
  * would always report "not truncated" and could hide the collapse control.
  */
-function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncatedChange, t }: SyncValueColumnProps) {
+function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncatedChange, t, locale }: SyncValueColumnProps) {
   const [measureElement, setMeasureElement] = useState<HTMLDivElement | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -146,7 +152,7 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
   if (!isRichText) {
     return (
       <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-        {formatPublicCropValue(field, value, t)}
+        {formatPublicCropValueInFormUnits(field, value, t, locale)}
       </Typography>
     );
   }
@@ -392,20 +398,12 @@ interface SyncFieldRowProps {
   disabled: boolean;
   allowLocal: boolean;
   t: TFunction;
+  locale: string;
   onChoiceChange: (choice: PublicCropSyncChoice) => void;
 }
 
-const IDENTITY_FIELDS = new Set(['name', 'variety']);
-
-/** Why "Nur lokal" is unavailable for a field, as an i18n key under `library.sync`. */
-function notPinnableReasonKey(change: PublicCropSyncFieldChange): string {
-  if (IDENTITY_FIELDS.has(change.field)) return 'notPinnableIdentity';
-  if (isEmptyPublicValue(change.local_value)) return 'notPinnableEmpty';
-  return 'notPinnableSpeciesInvariant';
-}
-
-function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange }: SyncFieldRowProps) {
-  const label = getPublicCropComparisonFieldLabel(change.field, t);
+function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoiceChange }: SyncFieldRowProps) {
+  const label = getPublicCropFormUnitFieldLabel(change.field, t);
   const isRichText = isRichTextSyncField(change.field);
   const [expanded, setExpanded] = useState(false);
   const [libraryTruncated, setLibraryTruncated] = useState(false);
@@ -423,6 +421,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
       expanded={expanded}
       onTruncatedChange={setLibraryTruncated}
       t={t}
+      locale={locale}
     />
   );
   const mineValue = (
@@ -434,6 +433,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
       expanded={expanded}
       onTruncatedChange={setMineTruncated}
       t={t}
+      locale={locale}
     />
   );
   const mineOption = (
@@ -449,6 +449,8 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
     </SyncOption>
   );
   const canKeepLocally = canKeepSyncFieldLocally(change);
+  const pinBlockedReasonKey = getSyncPinBlockedReasonKey(change);
+  const pushBlockedReasonKey = getSyncPushBlockedReasonKey(change);
   const localOption = allowLocal ? (
     <SyncOption
       name={radioName}
@@ -466,6 +468,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
         expanded={expanded}
         onTruncatedChange={setMineTruncated}
         t={t}
+        locale={locale}
       />
     </SyncOption>
   ) : null;
@@ -502,26 +505,24 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, onChoiceChange 
         >
           {libraryValue}
         </SyncOption>
-        {change.pushable ? mineOption : (
-          <DisabledActionTooltip
-            fullWidth
-            title={t(change.field === 'name'
-              ? 'library.sync.notPushableName'
-              : 'library.sync.notPushable')}
-          >
+        {pushBlockedReasonKey ? (
+          <DisabledActionTooltip fullWidth title={t(pushBlockedReasonKey)}>
             {mineOption}
           </DisabledActionTooltip>
-        )}
-        {localOption && !canKeepLocally ? (
-          <DisabledActionTooltip fullWidth title={t(`library.sync.${notPinnableReasonKey(change)}`)}>
+        ) : mineOption}
+        {localOption && pinBlockedReasonKey ? (
+          <DisabledActionTooltip fullWidth title={t(pinBlockedReasonKey)}>
             {localOption}
           </DisabledActionTooltip>
         ) : localOption}
       </Box>
       {showExpandToggle ? (
         <Box component="dd" sx={{ m: 0 }}>
+          {/* Neutral: the only colours in the panel are the three column colours. */}
           <Button
             size="small"
+            color="inherit"
+            sx={{ color: 'text.secondary' }}
             onClick={() => setExpanded((previous) => !previous)}
             data-testid={`public-crop-sync-toggle-${change.field}`}
           >
@@ -552,6 +553,7 @@ export function PublicCropSyncPanel({
   allowLocal = false,
 }: PublicCropSyncPanelProps) {
   const { t } = useTranslation(['crops', 'common']);
+  const locale = getActiveFormattingLocale();
 
   if (loadError) {
     return <Alert severity="error">{loadError}</Alert>;
@@ -662,6 +664,7 @@ export function PublicCropSyncPanel({
               disabled={disabled}
               allowLocal={allowLocal}
               t={t}
+              locale={locale}
               onChoiceChange={(choice) => setChoice(change.field, choice)}
             />
           ))}
@@ -684,7 +687,29 @@ export function PublicCropSyncPanel({
         </Alert>
       ) : null}
 
-      <Typography variant="body2" color="text.secondary" data-testid="public-crop-sync-summary" aria-live="polite">
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        data-testid="public-crop-sync-summary"
+        aria-live="polite"
+        sx={{
+          // Pinned above the dialog footer while the rows scroll, so the totals
+          // stay fully readable. The negative offset (the dialog content's
+          // bottom padding, theme: 20px) keeps no row peeking out below it.
+          position: 'sticky',
+          bottom: (theme) => theme.spacing(-2.5),
+          zIndex: 1,
+          bgcolor: 'background.paper',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          pt: 1,
+          pb: 2.5,
+          mb: -2.5,
+          // A phone in landscape has no height to spare next to the sticky
+          // heading row: there the totals close the scrolled content instead.
+          [SHORT_VIEWPORT_QUERY]: { position: 'static', pb: 0, mb: 0 },
+        }}
+      >
         {summary}
       </Typography>
     </Stack>

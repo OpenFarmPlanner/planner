@@ -57,6 +57,7 @@ from farm.services.crop_inheritance import (
     build_effective_crop_values,
     build_general_crop_index,
     crop_group_rows_to_sync,
+    forces_species_invariant_inheritance,
     get_general_crop,
     is_unset_crop_value,
     resolve_crop_field,
@@ -412,15 +413,37 @@ def get_library_pinned_fields(crop: Crop) -> set[str]:
 def library_pinnable_fields(crop: Crop) -> list[str]:
     """The compared fields ``crop`` may keep locally, in ``CROP_COPY_FIELDS`` order.
 
-    Species-invariant fields describe the crop species, so only the general
-    Kultur may pin them; a Sorte resolves them from its Kultur (or, free-text,
-    has no species entry to differ from) and never pins them.
+    Every compared field except the entry's identity (``name``, ``variety``).
+    Species-invariant fields describe the crop species, so a Sorte linked to
+    its Kultur resolves them from there and never pins them; a general Kultur
+    (and a free-text Sorte, which compares them) may.
     """
-    is_variety = bool((crop.variety or '').strip())
     return [
         field for field in LIBRARY_PINNABLE_FIELDS
-        if not (is_variety and field in CROP_SPECIES_INVARIANT_FIELDS)
+        if not forces_species_invariant_inheritance(crop, field)
     ]
+
+
+# Why a compared field cannot be kept locally, as the sync preview reports it.
+PIN_BLOCKED_IDENTITY = 'identity'
+PIN_BLOCKED_SPECIES_INVARIANT = 'species_invariant'
+PIN_BLOCKED_EMPTY = 'empty'
+
+
+def library_pin_blocked_reason(crop: Crop, field: str, local_value: Any) -> str | None:
+    """Why ``crop`` cannot keep ``field`` (holding ``local_value``) locally, or ``None``.
+
+    The single rule behind :func:`library_pinnable_fields` and
+    :func:`validate_library_pinned_fields`, spelled out per field so the UI
+    can explain a blocked "Nur lokal" without re-implementing it.
+    """
+    if field not in LIBRARY_PINNABLE_FIELDS:
+        return PIN_BLOCKED_IDENTITY
+    if forces_species_invariant_inheritance(crop, field):
+        return PIN_BLOCKED_SPECIES_INVARIANT
+    if is_unset_crop_value(local_value):
+        return PIN_BLOCKED_EMPTY
+    return None
 
 
 def _has_effective_value(crop: Crop, field: str) -> bool:
@@ -1194,6 +1217,10 @@ class PublicCropSyncField:
     pinned: bool = False
     # May be kept locally: a pinnable field with a local value.
     pinnable: bool = False
+    # Why it may not be shared (``PUSH_BLOCKED_*``); ``None`` exactly when ``pushable``.
+    push_blocked_reason: str | None = None
+    # Why it may not (``PIN_BLOCKED_*``); ``None`` exactly when ``pinnable``.
+    pin_blocked_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1255,6 +1282,31 @@ def _public_crop_sync_changes(
     ]
 
 
+# Why a compared field cannot be shared, as the sync preview reports it.
+PUSH_BLOCKED_IDENTITY = 'identity'
+PUSH_BLOCKED_EMPTY = 'empty'
+
+
+def _sync_local_values(crop: Crop, public_crop: PublicCrop) -> dict[str, Any]:
+    """``crop``'s effective value per compared field, exactly as the sync compares it."""
+    return _comparable_copy_fields(_resolved_copy_fields(_sync_comparison_crop(crop, public_crop)))
+
+
+def _sync_unset_local_fields(
+    crop: Crop, public_crop: PublicCrop, fields: Sequence[str],
+) -> list[str]:
+    """The ``fields`` for which ``crop`` holds no (effective) value of its own.
+
+    An empty local value is never shared or kept locally: pushing it would
+    clear the library's value, pinning it would keep nothing. Removing a value
+    from the library is an edit of the entry itself.
+    """
+    if not fields:
+        return []
+    local = _sync_local_values(crop, public_crop)
+    return sorted(field for field in set(fields) if is_unset_crop_value(local.get(field)))
+
+
 def _validate_sync_fields(
     crop: Crop, public_crop: PublicCrop, fields: Sequence[str], *, include_pinned: bool = False,
 ) -> None:
@@ -1306,29 +1358,37 @@ def build_public_crop_sync_preview(
     Pinned fields are listed too (flagged ``pinned``), so the sync is also where
     a pin can be released. Also answers for an entry the crop is not linked to
     yet (the link confirmation): the comparison then assumes the species the
-    link would set (see :func:`_sync_comparison_crop`). A pin needs the link
-    (:func:`validate_library_pinned_fields`), so nothing is ``pinnable``
-    against an entry the crop only owns or is about to link to.
+    link would set (see :func:`_sync_comparison_crop`). An entry the crop only
+    owns and is not linked to yet still offers pins: the sync links the crop
+    before it saves them (see :func:`sync_crop_with_public_entry`). A field
+    without a local value can only take the library's value: it is neither
+    ``pushable`` nor ``pinnable`` (reason ``empty``).
     """
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
     pinned = get_library_pinned_fields(crop)
-    is_linked = crop.source_public_crop_id == public_crop.id
-    pinnable = set(library_pinnable_fields(crop)) if is_linked else set()
-    return [
-        PublicCropSyncField(
+    preview = []
+    for field, local_value, public_value in _public_crop_sync_changes(
+        crop, public_crop, include_pinned=True,
+    ):
+        pin_blocked_reason = library_pin_blocked_reason(crop, field, local_value)
+        push_blocked_reason = (
+            PUSH_BLOCKED_IDENTITY if field not in pushable
+            else PUSH_BLOCKED_EMPTY if is_unset_crop_value(local_value)
+            else None
+        )
+        preview.append(PublicCropSyncField(
             field=field,
             local_value=_json_safe(local_value),
             public_value=_json_safe(public_value),
-            pushable=field in pushable,
+            pushable=push_blocked_reason is None,
+            push_blocked_reason=push_blocked_reason,
             pinned=field in pinned,
-            pinnable=field in pinnable and not is_unset_crop_value(local_value),
-        )
-        for field, local_value, public_value in _public_crop_sync_changes(
-            crop, public_crop, include_pinned=True,
-        )
-    ]
+            pinnable=pin_blocked_reason is None,
+            pin_blocked_reason=pin_blocked_reason,
+        ))
+    return preview
 
 
 def _pull_public_crop_fields(
@@ -1406,6 +1466,11 @@ def sync_crop_with_public_entry(
     version; a pin change is saved through :meth:`Crop.save`, so it shows in
     the project history.
     """
+    # Pins first, so a field that may never be kept locally on this crop is
+    # rejected with the pin code even where the sync does not compare it.
+    not_pinnable = set(pin_fields) - set(library_pinnable_fields(crop))
+    if not_pinnable:
+        raise LibraryPinnedFieldsError(not_pinnable, code='library_pin_field_not_allowed')
     _validate_sync_fields(
         crop, public_crop, [*pull_fields, *push_fields, *pin_fields], include_pinned=True,
     )
@@ -1415,9 +1480,19 @@ def sync_crop_with_public_entry(
     )
     if overlap:
         raise PublicCropSyncFieldsError(overlap)
+    empty_pins = _sync_unset_local_fields(crop, public_crop, pin_fields)
+    if empty_pins:
+        raise LibraryPinnedFieldsError(empty_pins, code='library_pin_field_empty')
+    empty_pushes = _sync_unset_local_fields(crop, public_crop, push_fields)
+    if empty_pushes:
+        raise PublicCropSyncFieldsError(empty_pushes, code='public_crop_sync_field_empty')
     previous_pins = get_library_pinned_fields(crop)
     next_pins = (previous_pins - set(pull_fields) - set(push_fields)) | set(pin_fields)
-    validate_library_pinned_fields(crop, sorted(next_pins), previous_fields=sorted(previous_pins))
+    # The sync links the crop to ``public_crop`` (an owned entry it was not
+    # linked to yet included), so its pins hold from this step on.
+    validate_library_pinned_fields(
+        crop, sorted(next_pins), previous_fields=sorted(previous_pins), is_linked=True,
+    )
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
@@ -1431,6 +1506,8 @@ def sync_crop_with_public_entry(
         _validate_base_version(locked, base_version)
         pins_changed = next_pins != previous_pins
         crop.library_pinned_fields = sorted(next_pins)
+        # Before the save: it normalizes the pins and drops them on an unlinked crop.
+        crop.source_public_crop = locked
         if pull_fields:
             _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
         if pull_fields or pins_changed:

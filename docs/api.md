@@ -117,7 +117,8 @@ Branch on `code`, never on `detail`. Messages may be reworded; codes are stable
 | `crop_species_pending` | 409 | public crop update | The entry's species is awaiting moderation. |
 | `library_pin_requires_link` | 400 | `PATCH /api/crops/` | `library_pinned_fields` was set on a crop without a library link. |
 | `library_pin_field_not_allowed` | 400 | `PATCH /api/crops/` | A named field cannot be pinned on this crop (see `library_pinnable_fields`); `fields` lists them. |
-| `library_pin_field_empty` | 400 | `PATCH /api/crops/` | A newly pinned field has no value; `fields` lists them. |
+| `library_pin_field_empty` | 400 | `PATCH /api/crops/`, `POST /api/crops/{id}/public-sync/` | A newly pinned field has no value; `fields` lists them. |
+| `public_crop_sync_field_empty` | 400 | `POST /api/crops/{id}/public-sync/` | `push_fields` names a field without a local value (it would clear the library's value); `fields` lists them. |
 | `library_pin_field_not_local_change` | 400 | `POST /api/public-crops/{id}/import/` | `pin_fields` names a field that is not a local change of the pending update (`can_keep_local` in `public-update`); `fields` lists them. |
 | `pending_proposal_limit_exceeded` | 429 | library writes | Too many of your contributions are awaiting moderation. |
 | `invalid_payload` | 400 | public crop update | The body must be a JSON object. |
@@ -225,7 +226,14 @@ purpose, e.g. a harvest duration that differs because of the local climate:
 `PATCH /api/crops/{id}/` with `library_pinned_fields` (model field names such
 as `growth_duration_days` or `distance_within_row_m`, only from the crop's
 `library_pinnable_fields`; never `name` or `variety`, and the
-plant-family / nutrient-demand fields only on a general crop). A pinned field
+plant-family / nutrient-demand fields never on a variety linked to its general
+crop). `GET /api/crops/{id}/public-sync/` reports per differing field whether it
+can be pinned (`pinnable`) and otherwise why (`pin_blocked_reason`: `identity`,
+`species_invariant` or `empty`), and likewise whether it can be shared
+(`pushable`, `push_blocked_reason`: `identity` or `empty`). A field without a
+local value only takes the library's value: `POST` rejects it under
+`push_fields` (`public_crop_sync_field_empty`) and `pin_fields`
+(`library_pin_field_empty`). A pinned field
 is never published or overwritten by a library update, and a crop that differs
 from its entry only in pinned fields counts as in sync (case 4).
 `library_pinned_values` returns the entry's current value for each pinned

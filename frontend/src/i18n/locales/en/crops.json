@@ -1400,7 +1400,7 @@
       "allLocal": "All local only",
       "previouslyPinned": "pinned locally so far",
       "notPinnableIdentity": "Name and variety belong to the public entry and cannot be pinned locally.",
-      "notPinnableEmpty": "Your crop has no value of its own here that it could keep locally.",
+      "emptyLocalValue": "Your crop has no value here. Empty values are neither shared nor kept locally. To remove a value from the crop library, edit the entry directly.",
       "notPinnableSpeciesInvariant": "This value applies to the whole crop species and can only be pinned locally on the general crop.",
       "summaryLocal_one": "{{count}} value stays local only",
       "summaryLocal_other": "{{count}} values stay local only",

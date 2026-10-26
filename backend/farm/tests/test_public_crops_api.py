@@ -6336,10 +6336,11 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertTrue(changes['growth_duration_days']['pinnable'])
         self.assertFalse(changes['harvest_duration_days']['pinned'])
 
-    def test_sync_preview_offers_no_pin_for_an_owned_but_unlinked_entry(self):
+    def test_sync_pins_fields_against_an_owned_but_unlinked_entry(self):
         # A general Kultur of another project reaches the user's own species
-        # entry through the owner lookup, without a link: the sync may push,
-        # but a pin would be rejected with `library_pin_requires_link`.
+        # entry through the owner lookup, without a link. The sync links it,
+        # so "Nur lokal" is offered there and the pin holds after the sync
+        # (instead of failing with `library_pin_requires_link`).
         own_species = CropSpecies.objects.create(name='Carrot')
         own_entry = PublicCrop.objects.create(
             name='Karotte', variety='', status=PublicCrop.STATUS_PUBLISHED,
@@ -6352,13 +6353,17 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
             project=self.project, **self.CULTIVATION,
         )
 
-        preview = self.client.get(
-            self._crop_url(unlinked, 'public-sync/'), {'public_crop_id': own_entry.id},
-        ).data
+        changes = self._sync_preview(unlinked, own_entry)
 
-        changes = {change['field']: change for change in preview['changes']}
         self.assertTrue(changes['growth_duration_days']['pushable'])
-        self.assertFalse(changes['growth_duration_days']['pinnable'])
+        self.assertTrue(changes['growth_duration_days']['pinnable'])
+        own_entry.refresh_from_db()
+        response = self._sync_entry(unlinked, own_entry, pin_fields=['growth_duration_days'])
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        unlinked.refresh_from_db()
+        self.assertEqual(unlinked.source_public_crop_id, own_entry.id)
+        self.assertEqual(unlinked.library_pinned_fields, ['growth_duration_days'])
+        self.assertEqual(unlinked.growth_duration_days, 100)
 
     # --- sync -----------------------------------------------------------------
 
@@ -6443,6 +6448,146 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+
+    def _local_kultur_edits(self):
+        Crop.objects.filter(pk=self.kultur.pk).update(
+            name='Mangold lokal',
+            notes='Local notes',
+            nutrient_demand='high',
+            cultivation_types=['direct_sowing', 'pre_cultivation'],
+            cultivation_type='direct_sowing',
+            growth_duration_days=75,
+            harvest_duration_days=45,
+            propagation_duration_days=20,
+            harvest_method='per_sqm',
+            expected_yield=Decimal('16.00'),
+            row_spacing_m=0.4,
+            thousand_kernel_weight_g=Decimal('14.00'),
+        )
+        self.kultur.refresh_from_db()
+
+    def _sync_preview(self, crop, public_crop=None):
+        response = self.client.get(
+            self._crop_url(crop, 'public-sync/'),
+            {'public_crop_id': (public_crop or self.entry).id},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        return {change['field']: change for change in response.data['changes']}
+
+    def test_sync_preview_offers_every_field_but_the_identity_on_a_kultur(self):
+        self._local_kultur_edits()
+
+        changes = self._sync_preview(self.kultur)
+
+        self.assertIn('nutrient_demand', changes)
+        self.assertIn('row_spacing_m', changes)
+        self.assertFalse(changes['name']['pinnable'])
+        self.assertEqual(changes['name']['pin_blocked_reason'], 'identity')
+        for field, change in changes.items():
+            if field == 'name':
+                continue
+            with self.subTest(field=field):
+                self.assertTrue(change['pinnable'])
+                self.assertIsNone(change['pin_blocked_reason'])
+
+    def _clear_local_notes_and_propagation(self, notes=''):
+        PublicCrop.objects.filter(pk=self.entry.pk).update(propagation_duration_days=14)
+        Crop.objects.filter(pk=self.kultur.pk).update(notes=notes, propagation_duration_days=None)
+        self.kultur.refresh_from_db()
+
+    def test_sync_preview_offers_only_the_library_value_for_an_empty_local_value(self):
+        # Whitespace-only text is as empty as a blank (`is_unset_crop_value`).
+        self._clear_local_notes_and_propagation(notes='  \n ')
+
+        changes = self._sync_preview(self.kultur)
+
+        for field in ('notes', 'propagation_duration_days'):
+            with self.subTest(field=field):
+                self.assertFalse(changes[field]['pushable'])
+                self.assertEqual(changes[field]['push_blocked_reason'], 'empty')
+                self.assertFalse(changes[field]['pinnable'])
+                self.assertEqual(changes[field]['pin_blocked_reason'], 'empty')
+
+    def test_sync_rejects_sharing_or_pinning_an_empty_local_value(self):
+        self._clear_local_notes_and_propagation()
+
+        pushed = self._sync(self.kultur, push_fields=['notes', 'propagation_duration_days'])
+        pinned = self._sync(self.kultur, pin_fields=['propagation_duration_days'])
+
+        self.assertEqual(pushed.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(pushed.data['code'], 'public_crop_sync_field_empty')
+        self.assertEqual(pushed.data['fields'], ['notes', 'propagation_duration_days'])
+        self.assertEqual(pinned.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(pinned.data['code'], 'library_pin_field_empty')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.notes, 'Public notes')
+        self.assertEqual(self.entry.propagation_duration_days, 14)
+
+    def test_sync_takes_the_library_value_for_an_empty_local_value(self):
+        self._clear_local_notes_and_propagation()
+
+        response = self._sync(self.kultur, pull_fields=['notes', 'propagation_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.notes, 'Public notes')
+        self.assertEqual(self.kultur.propagation_duration_days, 14)
+
+    def test_sync_pins_every_field_but_the_identity_on_a_kultur(self):
+        self._local_kultur_edits()
+        fields = sorted(set(self._sync_preview(self.kultur)) - {'name'})
+
+        response = self._sync(self.kultur, pull_fields=['name'], pin_fields=fields)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.library_pinned_fields, fields)
+        self.assertIn('nutrient_demand', fields)
+
+    def _linked_sorte(self):
+        variety_entry = PublicCrop.objects.create(
+            name='Mangold', variety='Bright Lights', status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.other_user, growth_duration_days=55,
+        )
+        ensure_public_crop_revision(variety_entry)
+        sorte = Crop.objects.create(
+            name='Mangold', variety='Bright Lights', crop_species=self.species,
+            growth_duration_days=55, project=self.project,
+        )
+        link_project_crop_to_public_reference(crop=sorte, public_crop=variety_entry, pull_fields=[])
+        Crop.objects.filter(pk=sorte.pk).update(
+            growth_duration_days=70, nutrient_demand='high', notes='Sorte notes',
+        )
+        sorte.refresh_from_db()
+        variety_entry.refresh_from_db()
+        return sorte, variety_entry
+
+    def _sync_entry(self, crop, public_crop, **fields):
+        return self.client.post(
+            self._crop_url(crop, 'public-sync/'),
+            {'public_crop_id': public_crop.id, 'base_version': public_crop.version, **fields},
+            format='json',
+        )
+
+    def test_sync_rejects_only_species_invariant_pins_on_a_linked_sorte(self):
+        sorte, variety_entry = self._linked_sorte()
+
+        for field in ('crop_family', 'nutrient_demand', 'rotation_break_years'):
+            with self.subTest(field=field):
+                response = self._sync_entry(sorte, variety_entry, pin_fields=[field])
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data['code'], 'library_pin_field_not_allowed')
+                self.assertEqual(response.data['fields'], [field])
+
+        changes = self._sync_preview(sorte, variety_entry)
+        self.assertTrue(changes['growth_duration_days']['pinnable'])
+        self.assertTrue(changes['notes']['pinnable'])
+        response = self._sync_entry(
+            sorte, variety_entry, pin_fields=['growth_duration_days', 'notes'],
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        sorte.refresh_from_db()
+        self.assertEqual(sorte.library_pinned_fields, ['growth_duration_days', 'notes'])
 
     def test_pinned_fields_are_never_part_of_a_publish_payload(self):
         self._pin(self.kultur, ['growth_duration_days', 'notes'])

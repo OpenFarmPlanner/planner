@@ -1425,7 +1425,7 @@
       "allLocal": "Todo solo local",
       "previouslyPinned": "fijado localmente hasta ahora",
       "notPinnableIdentity": "El nombre y la variedad pertenecen a la ficha pública y no se pueden fijar localmente.",
-      "notPinnableEmpty": "Tu cultivo no tiene aquí un valor propio que pueda mantener en local.",
+      "emptyLocalValue": "Tu cultivo no tiene ningún valor aquí. Los valores vacíos no se comparten ni se mantienen en local. Para eliminar un valor de la biblioteca de cultivos, edita la ficha directamente.",
       "notPinnableSpeciesInvariant": "Este valor se aplica a toda la especie de cultivo y solo se puede fijar localmente en el cultivo general.",
       "summaryLocal_one": "{{count}} valor queda solo en local",
       "summaryLocal_other": "{{count}} valores quedan solo en local",
