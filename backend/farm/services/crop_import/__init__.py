@@ -14,6 +14,8 @@ The package is split so each concern stays independently testable:
 """
 
 from .analysis import analyze_import_payload
-from .apply import apply_import_draft
 
-__all__ = ['analyze_import_payload', 'apply_import_draft']
+# `.apply` is deliberately not re-exported: it imports `farm.crops.serializers`,
+# which imports `.field_specs` and thereby this package, so loading it here made
+# importing the serializers first a circular import. Use `crop_import.apply`.
+__all__ = ['analyze_import_payload']
