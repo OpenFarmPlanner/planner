@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildSpreadsheetFile, parseSpreadsheetRows, type SpreadsheetRows } from '../crops/spreadsheetFile';
+import { unzipSync } from 'fflate';
+import {
+  buildSpreadsheetFile,
+  computeColumnWidths,
+  parseSpreadsheetRows,
+  type SpreadsheetRows,
+} from '../crops/spreadsheetFile';
 
 const rows: SpreadsheetRows = [
   ['Name', 'Sorte', 'Wachstumszeit', 'Mehrjährig'],
@@ -31,5 +37,31 @@ describe('spreadsheetFile', () => {
       ['Name', 'Sorte', 'Wachstumszeit'],
       ['Tomate', 'Roma', '70'],
     ]);
+  });
+
+  describe('column widths', () => {
+    it('fits each column to its longest cell, header included', () => {
+      expect(computeColumnWidths(rows)).toEqual([8, 10, 15, 12]);
+    });
+
+    it('caps a very long cell and keeps short columns readable', () => {
+      expect(computeColumnWidths([['Notizen', 'x'], ['a'.repeat(500), null]])).toEqual([50, 6]);
+    });
+
+    const unzipText = (file: Uint8Array | string, path: string): string =>
+      new TextDecoder().decode(unzipSync(file as Uint8Array)[path]);
+
+    it('writes the widths into an xlsx sheet', () => {
+      const sheet = unzipText(buildSpreadsheetFile(rows, 'xlsx'), 'xl/worksheets/sheet1.xml');
+
+      expect(sheet).toContain('<col min="3" max="3" width="15" customWidth="1"/>');
+    });
+
+    it('writes the widths into an ods table', () => {
+      const content = unzipText(buildSpreadsheetFile(rows, 'ods'), 'content.xml');
+
+      expect(content).toContain('style:column-width="3.00cm"');
+      expect(content).toContain('<table:table-column table:style-name="co3"/>');
+    });
   });
 });

@@ -264,6 +264,37 @@ function parseOds(buffer: ArrayBuffer): SpreadsheetRows {
   return rows.filter((row) => row.some((cell) => cell !== null && cell !== ''));
 }
 
+// Column widths in characters: fitted to the longest cell (header included),
+// but capped so one long note does not make a column screen-wide.
+const MIN_COLUMN_WIDTH = 6;
+const MAX_COLUMN_WIDTH = 50;
+const COLUMN_PADDING = 2;
+// An average character at the default 11pt font, for ODS lengths.
+const CENTIMETERS_PER_CHARACTER = 0.2;
+
+function cellDisplayLength(value: SpreadsheetCell): number {
+  if (value === null) {
+    return 0;
+  }
+  const text = typeof value === 'boolean' ? (value ? 'ja' : 'nein') : String(value);
+  return Math.max(...text.split('\n').map((line) => line.length));
+}
+
+export function computeColumnWidths(rows: SpreadsheetRows): number[] {
+  const columnCount = Math.max(0, ...rows.map((row) => row.length));
+  return Array.from({ length: columnCount }, (_, columnIndex) => {
+    const longest = Math.max(0, ...rows.map((row) => cellDisplayLength(row[columnIndex] ?? null)));
+    return Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, longest + COLUMN_PADDING));
+  });
+}
+
+function xlsxColumnsXml(rows: SpreadsheetRows): string {
+  const columns = computeColumnWidths(rows).map((width, index) => (
+    `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`
+  )).join('');
+  return columns ? `<cols>${columns}</cols>` : '';
+}
+
 function xlsxCellXml(value: SpreadsheetCell, rowIndex: number, columnIndex: number): string {
   if (value === null) {
     return '';
@@ -282,7 +313,7 @@ function buildXlsx(rows: SpreadsheetRows): Uint8Array {
   const sheetRows = rows.map((row, rowIndex) => (
     `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => xlsxCellXml(value, rowIndex, columnIndex)).join('')}</row>`
   )).join('');
-  const sheetXml = `${XML_DECLARATION}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`;
+  const sheetXml = `${XML_DECLARATION}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${xlsxColumnsXml(rows)}<sheetData>${sheetRows}</sheetData></worksheet>`;
 
   return zipSync({
     '[Content_Types].xml': encodeUtf8(`${XML_DECLARATION}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`),
@@ -306,11 +337,23 @@ function odsCellXml(value: SpreadsheetCell): string {
   return `<table:table-cell office:value-type="string"><text:p>${escapeXml(value)}</text:p></table:table-cell>`;
 }
 
+function odsColumnsXml(rows: SpreadsheetRows): { styles: string; columns: string } {
+  const widths = computeColumnWidths(rows);
+  const styles = widths.map((width, index) => (
+    `<style:style style:name="co${index + 1}" style:family="table-column">`
+    + `<style:table-column-properties style:column-width="${(width * CENTIMETERS_PER_CHARACTER).toFixed(2)}cm"/>`
+    + '</style:style>'
+  )).join('');
+  const columns = widths.map((_, index) => `<table:table-column table:style-name="co${index + 1}"/>`).join('');
+  return { styles, columns };
+}
+
 function buildOds(rows: SpreadsheetRows): Uint8Array {
+  const { styles: columnStyles, columns: tableColumns } = odsColumnsXml(rows);
   const tableRows = rows.map((row) => (
     `<table:table-row>${row.map(odsCellXml).join('')}</table:table-row>`
   )).join('');
-  const contentXml = `<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2"><office:body><office:spreadsheet><table:table table:name="Kulturen">${tableRows}</table:table></office:spreadsheet></office:body></office:document-content>`;
+  const contentXml = `<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" office:version="1.2"><office:automatic-styles>${columnStyles}</office:automatic-styles><office:body><office:spreadsheet><table:table table:name="Kulturen">${tableColumns}${tableRows}</table:table></office:spreadsheet></office:body></office:document-content>`;
   return zipSync({
     mimetype: strToU8('application/vnd.oasis.opendocument.spreadsheet'),
     'META-INF/manifest.xml': encodeUtf8('<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>'),
