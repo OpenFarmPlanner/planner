@@ -121,8 +121,10 @@ describe('crop spreadsheet export → import round trip', () => {
     sowing_calculation_safety_percent: 15,
     seed_rate_direct_value: 0.25,
     seed_rate_direct_unit: 'g_per_m2',
+    sowing_calculation_safety_percent_direct: 10,
     seed_rate_pre_cultivation_value: 2,
     seed_rate_pre_cultivation_unit: 'seeds_per_plant',
+    sowing_calculation_safety_percent_pre_cultivation: 20,
     notes: 'Stäben, ausgeizen; "Freiland", spät',
   } as unknown as Crop;
 

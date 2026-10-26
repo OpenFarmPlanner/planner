@@ -428,8 +428,9 @@ SPREADSHEET_COLUMN_KEYS = (
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield', 'distance_within_row_cm', 'row_spacing_cm',
     'sowing_depth_cm', 'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
-    'seed_rate_direct_value', 'seed_rate_direct_unit',
-    'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit', 'notes',
+    'seed_rate_direct_value', 'seed_rate_direct_unit', 'sowing_calculation_safety_percent_direct',
+    'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit',
+    'sowing_calculation_safety_percent_pre_cultivation', 'notes',
 )
 # The columns of type 'number' there: a sheet cell comes back as a number, not
 # as the API's decimal string ("5.60").
@@ -438,6 +439,7 @@ SPREADSHEET_NUMBER_KEYS = frozenset({
     'expected_yield', 'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',
     'thousand_kernel_weight_g', 'sowing_calculation_safety_percent',
     'seed_rate_direct_value', 'seed_rate_pre_cultivation_value',
+    'sowing_calculation_safety_percent_direct', 'sowing_calculation_safety_percent_pre_cultivation',
 })
 
 
