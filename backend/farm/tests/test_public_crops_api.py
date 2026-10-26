@@ -6490,14 +6490,48 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
                 self.assertTrue(change['pinnable'])
                 self.assertIsNone(change['pin_blocked_reason'])
 
-    def test_sync_preview_explains_a_field_without_a_local_value(self):
-        Crop.objects.filter(pk=self.kultur.pk).update(notes='')
+    def _clear_local_notes_and_propagation(self, notes=''):
+        PublicCrop.objects.filter(pk=self.entry.pk).update(propagation_duration_days=14)
+        Crop.objects.filter(pk=self.kultur.pk).update(notes=notes, propagation_duration_days=None)
         self.kultur.refresh_from_db()
 
-        change = self._sync_preview(self.kultur)['notes']
+    def test_sync_preview_offers_only_the_library_value_for_an_empty_local_value(self):
+        # Whitespace-only text is as empty as a blank (`is_unset_crop_value`).
+        self._clear_local_notes_and_propagation(notes='  \n ')
 
-        self.assertFalse(change['pinnable'])
-        self.assertEqual(change['pin_blocked_reason'], 'empty')
+        changes = self._sync_preview(self.kultur)
+
+        for field in ('notes', 'propagation_duration_days'):
+            with self.subTest(field=field):
+                self.assertFalse(changes[field]['pushable'])
+                self.assertEqual(changes[field]['push_blocked_reason'], 'empty')
+                self.assertFalse(changes[field]['pinnable'])
+                self.assertEqual(changes[field]['pin_blocked_reason'], 'empty')
+
+    def test_sync_rejects_sharing_or_pinning_an_empty_local_value(self):
+        self._clear_local_notes_and_propagation()
+
+        pushed = self._sync(self.kultur, push_fields=['notes', 'propagation_duration_days'])
+        pinned = self._sync(self.kultur, pin_fields=['propagation_duration_days'])
+
+        self.assertEqual(pushed.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(pushed.data['code'], 'public_crop_sync_field_empty')
+        self.assertEqual(pushed.data['fields'], ['notes', 'propagation_duration_days'])
+        self.assertEqual(pinned.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(pinned.data['code'], 'library_pin_field_empty')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.notes, 'Public notes')
+        self.assertEqual(self.entry.propagation_duration_days, 14)
+
+    def test_sync_takes_the_library_value_for_an_empty_local_value(self):
+        self._clear_local_notes_and_propagation()
+
+        response = self._sync(self.kultur, pull_fields=['notes', 'propagation_duration_days'])
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.notes, 'Public notes')
+        self.assertEqual(self.kultur.propagation_duration_days, 14)
 
     def test_sync_pins_every_field_but_the_identity_on_a_kultur(self):
         self._local_kultur_edits()

@@ -414,8 +414,10 @@ export interface PublicCropSyncFieldChange {
   field: string;
   local_value: unknown;
   public_value: unknown;
-  /** Whether this user may write the local value into the entry (e.g. not the fixed `name`). */
+  /** Whether this user may write the local value into the entry (e.g. not the fixed `name`, not an empty value). */
   pushable: boolean;
+  /** Why it may not (backend preview); null exactly when `pushable`. */
+  push_blocked_reason?: PublicCropSyncPushBlockedReason | null;
   /** Kept locally right now; choosing the library or the local value releases the pin. */
   pinned?: boolean;
   /** May be kept locally ("Nur lokal"): a pinnable field with a local value. */
@@ -423,6 +425,9 @@ export interface PublicCropSyncFieldChange {
   /** Why it may not (backend `library_pin_blocked_reason`); null exactly when `pinnable`. */
   pin_blocked_reason?: PublicCropSyncPinBlockedReason | null;
 }
+
+/** `identity`: the fixed name or a variety this user may not rename; `empty`: no local value. */
+export type PublicCropSyncPushBlockedReason = 'identity' | 'empty';
 
 /** `identity`: name/variety; `species_invariant`: a linked Sorte's species fields; `empty`: no local value. */
 export type PublicCropSyncPinBlockedReason = 'identity' | 'species_invariant' | 'empty';

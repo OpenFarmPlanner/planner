@@ -339,6 +339,55 @@ describe('PublicCropSyncPanel', () => {
     });
   });
 
+  describe('a row without a local value (only the library has one)', () => {
+    const EMPTY_TOOLTIP = 'Deine Kultur hat hier keinen eigenen Wert. Leere Werte werden weder geteilt noch lokal behalten.';
+    const changes: PublicCropSyncFieldChange[] = [
+      {
+        field: 'notes', local_value: '', public_value: 'Bibliothekstext', pushable: false,
+        push_blocked_reason: 'empty', pinnable: false, pin_blocked_reason: 'empty',
+      },
+      {
+        field: 'propagation_duration_days', local_value: null, public_value: 14, pushable: false,
+        push_blocked_reason: 'empty', pinnable: false, pin_blocked_reason: 'empty',
+      },
+      {
+        field: 'growth_duration_days', local_value: 60, public_value: 50, pushable: true,
+        push_blocked_reason: null, pinnable: true, pin_blocked_reason: null,
+      },
+    ];
+    const row = (field: string) => screen.getByTestId(`public-crop-sync-row-${field}`);
+    const option = (field: string, choice: string) => row(field).querySelector(`[data-choice="${choice}"]`) as HTMLElement;
+
+    it('preselects the library, disables both other options with one tooltip and counts the row as taken over', async () => {
+      const user = userEvent.setup();
+      render(<Harness changes={changes} allowLocal />);
+
+      const propagation = within(row('propagation_duration_days'));
+      expect(propagation.getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
+      expect(propagation.getByRole('radio', { name: 'Meinen Wert übernehmen' })).toBeDisabled();
+      expect(propagation.getByRole('radio', { name: 'Nur lokal behalten' })).toBeDisabled();
+      expect(await tooltipOf(user, option('propagation_duration_days', 'mine'))).toHaveTextContent(EMPTY_TOOLTIP);
+      await user.unhover(option('propagation_duration_days', 'mine').parentElement as HTMLElement);
+      expect(await tooltipOf(user, option('propagation_duration_days', 'local'))).toHaveTextContent(EMPTY_TOOLTIP);
+      expect(summary()).toHaveTextContent('3 Werte werden in deine Kultur übernommen.');
+    });
+
+    it('stays on the library side for "Alle teilen" and "Alle nur lokal"', () => {
+      render(<Harness changes={changes} allowLocal />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle teilen' }));
+      expect(within(row('notes')).getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
+      expect(summary()).toHaveTextContent(
+        '2 Werte werden in deine Kultur übernommen, 1 Wert wird in der Kulturbibliothek aktualisiert.',
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alle nur lokal' }));
+      expect(within(row('propagation_duration_days')).getByRole('radio', { name: 'Aus Bibliothek übernehmen' }))
+        .toBeChecked();
+      expect(summary()).toHaveTextContent('2 Werte werden in deine Kultur übernommen, 1 Wert bleibt nur lokal.');
+    });
+  });
+
   describe('values as the crop form shows them', () => {
     it('translates choice values, localizes numbers and shows distances in centimetres', () => {
       const changes: PublicCropSyncFieldChange[] = [

@@ -419,12 +419,25 @@ export function getRevisionValueLabel(value: unknown, fallback: string): string 
   return String(value);
 }
 
-export const isEmptyPublicValue = (value: unknown): boolean => (
-  value === null
-  || value === undefined
-  || value === ''
-  || (Array.isArray(value) && value.length === 0)
-);
+/** The placeholder a unit field stores for "no unit" (backend `_EMPTY_UNIT_PLACEHOLDER`). */
+const EMPTY_UNIT_PLACEHOLDER = '-';
+
+/**
+ * Whether a field holds no value — the backend's `is_unset_crop_value`:
+ * nothing, blank or whitespace-only text, the unit placeholder, an empty list
+ * or object (e.g. a multilingual text without any language). `0` and `false`
+ * are values.
+ */
+export const isEmptyPublicValue = (value: unknown): boolean => {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string') {
+    const text = value.trim();
+    return text === '' || text === EMPTY_UNIT_PLACEHOLDER;
+  }
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') return Object.keys(value).length === 0;
+  return false;
+};
 
 export function arePublicValuesEqual(left: unknown, right: unknown): boolean {
   if (isEmptyPublicValue(left) && isEmptyPublicValue(right)) {

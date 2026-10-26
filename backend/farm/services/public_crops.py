@@ -1217,6 +1217,8 @@ class PublicCropSyncField:
     pinned: bool = False
     # May be kept locally: a pinnable field with a local value.
     pinnable: bool = False
+    # Why it may not be shared (``PUSH_BLOCKED_*``); ``None`` exactly when ``pushable``.
+    push_blocked_reason: str | None = None
     # Why it may not (``PIN_BLOCKED_*``); ``None`` exactly when ``pinnable``.
     pin_blocked_reason: str | None = None
 
@@ -1280,6 +1282,31 @@ def _public_crop_sync_changes(
     ]
 
 
+# Why a compared field cannot be shared, as the sync preview reports it.
+PUSH_BLOCKED_IDENTITY = 'identity'
+PUSH_BLOCKED_EMPTY = 'empty'
+
+
+def _sync_local_values(crop: Crop, public_crop: PublicCrop) -> dict[str, Any]:
+    """``crop``'s effective value per compared field, exactly as the sync compares it."""
+    return _comparable_copy_fields(_resolved_copy_fields(_sync_comparison_crop(crop, public_crop)))
+
+
+def _sync_unset_local_fields(
+    crop: Crop, public_crop: PublicCrop, fields: Sequence[str],
+) -> list[str]:
+    """The ``fields`` for which ``crop`` holds no (effective) value of its own.
+
+    An empty local value is never shared or kept locally: pushing it would
+    clear the library's value, pinning it would keep nothing. Removing a value
+    from the library is an edit of the entry itself.
+    """
+    if not fields:
+        return []
+    local = _sync_local_values(crop, public_crop)
+    return sorted(field for field in set(fields) if is_unset_crop_value(local.get(field)))
+
+
 def _validate_sync_fields(
     crop: Crop, public_crop: PublicCrop, fields: Sequence[str], *, include_pinned: bool = False,
 ) -> None:
@@ -1333,7 +1360,9 @@ def build_public_crop_sync_preview(
     yet (the link confirmation): the comparison then assumes the species the
     link would set (see :func:`_sync_comparison_crop`). An entry the crop only
     owns and is not linked to yet still offers pins: the sync links the crop
-    before it saves them (see :func:`sync_crop_with_public_entry`).
+    before it saves them (see :func:`sync_crop_with_public_entry`). A field
+    without a local value can only take the library's value: it is neither
+    ``pushable`` nor ``pinnable`` (reason ``empty``).
     """
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
@@ -1344,11 +1373,17 @@ def build_public_crop_sync_preview(
         crop, public_crop, include_pinned=True,
     ):
         pin_blocked_reason = library_pin_blocked_reason(crop, field, local_value)
+        push_blocked_reason = (
+            PUSH_BLOCKED_IDENTITY if field not in pushable
+            else PUSH_BLOCKED_EMPTY if is_unset_crop_value(local_value)
+            else None
+        )
         preview.append(PublicCropSyncField(
             field=field,
             local_value=_json_safe(local_value),
             public_value=_json_safe(public_value),
-            pushable=field in pushable,
+            pushable=push_blocked_reason is None,
+            push_blocked_reason=push_blocked_reason,
             pinned=field in pinned,
             pinnable=pin_blocked_reason is None,
             pin_blocked_reason=pin_blocked_reason,
@@ -1445,6 +1480,12 @@ def sync_crop_with_public_entry(
     )
     if overlap:
         raise PublicCropSyncFieldsError(overlap)
+    empty_pins = _sync_unset_local_fields(crop, public_crop, pin_fields)
+    if empty_pins:
+        raise LibraryPinnedFieldsError(empty_pins, code='library_pin_field_empty')
+    empty_pushes = _sync_unset_local_fields(crop, public_crop, push_fields)
+    if empty_pushes:
+        raise PublicCropSyncFieldsError(empty_pushes, code='public_crop_sync_field_empty')
     previous_pins = get_library_pinned_fields(crop)
     next_pins = (previous_pins - set(pull_fields) - set(push_fields)) | set(pin_fields)
     # The sync links the crop to ``public_crop`` (an owned entry it was not

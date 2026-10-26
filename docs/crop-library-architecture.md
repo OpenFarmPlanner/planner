@@ -373,6 +373,20 @@ The public Crop Library follows an open-data model:
   decided live sync resolves to case 5. Choosing "Aus Bibliothek" for every
   field pushes nothing and creates no public version. This also repairs crops
   linked before the sync existed, with no migration.
+  **Empty local values only take the library's value.** A field the crop
+  holds no effective value for (`is_unset_crop_value`: nothing, blank or
+  whitespace-only text, the unit placeholder, an empty list or object) is
+  neither shared nor kept locally: pushing it would clear the library's
+  value, pinning it would keep nothing. The preview reports it with
+  `pushable: false` / `push_blocked_reason: "empty"` and `pinnable: false` /
+  `pin_blocked_reason: "empty"`; `POST` rejects it under `push_fields` (400
+  `public_crop_sync_field_empty`) or `pin_fields` (400
+  `library_pin_field_empty`), each with `fields`. The row stays in the dialog
+  with "Bibliothek" chosen, "Meine Kultur" and "Nur lokal" disabled under one
+  tooltip ("…Um einen Wert in der Kulturbibliothek zu entfernen, bearbeite den
+  Eintrag direkt."), and the bulk buttons leave it on the library side. The
+  frontend's `isEmptyPublicValue` follows the same definition. Removing a
+  library value is an edit of the entry itself, never a side effect of a sync.
   `name` is never pushable (fixed after publication); `variety` only for the
   entry's publisher or a library admin and never through the queue
   (`public_crop_pushable_sync_fields`; `update_public_crop_directly` takes
@@ -1748,25 +1762,23 @@ teilen", "Alle nur lokal", already pinned rows start on "Nur lokal" with the
 hint "bisher lokal fixiert", an info line in the violet tint (pin icon)
 explains what a local value means while at least one row is on "Nur lokal",
 and the summary gains "… Werte bleiben nur lokal." "Nur lokal" is disabled
-with a tooltip for `name` / `variety`, for a row without a local value, and
+with a tooltip for `name` / `variety`, for a row without a local value (which
+also disables "Meine Kultur", see the empty-value rule above), and
 for species-invariant fields on a Sorte. On phones the three headings put the
 icon in front of the label. The link confirmation and the add-crop dialog
 keep the two choices.
-Preselection (`crops/publicCropSync.ts`, `PublicCropSyncMode`): only the
-library has a value -> library; only the local crop has one -> mine; both set
-and different -> library when linking (`link`: the two sides share no
-history, so it is a genuine choice) but mine in "Bibliothek aktualisieren"
-(`update`: that flow is only offered while the copy is on the entry's current
-version (the pull case 2 wins otherwise), so every difference is a local edit
-the user came to contribute, and a library default would discard it on a
-quick confirm). Update mode therefore relies on the baseline being valid —
-set only where the copy's values were the entry's at link time. Whenever a
-link is recorded for values that differ from the entry (a link without
+Preselection (`getDefaultSyncChoice` in `crops/publicCropSync.ts`), the same
+when linking and in the sync of a linked crop: only the library has a value
+-> library; only the local crop has one -> mine; both set and different ->
+library (library entries are reviewed data, #730, which replaced an earlier
+link/update mode that preselected mine in the update flow); an already
+pinned field -> "Nur lokal". A field the user may not push (`name`, a
+foreign `variety`, an empty local value) always starts on, and stays on, the
+library side with a tooltip on the disabled option. Whenever a link is
+recorded for values that differ from the entry (a link without
 `pull_fields`, or the general Kultur linked alongside a Sorte publish to the
 entry created from the Sorte's values), the baseline is withheld, the pull
-case 2 opens instead, and the library values are what that dialog applies. A field the user may not push (`name`, a foreign `variety`)
-always starts on, and stays on, the library side with a tooltip on the
-disabled option. "Alle aus Bibliothek" / "Alle meine Werte" sit as text
+case 2 opens instead, and the library values are what that dialog applies. "Alle aus Bibliothek" / "Alle meine Werte" sit as text
 buttons under the column headings and set every row at once, and a live summary below counts both directions with i18n plurals
 ("… werden in deine Kultur übernommen, … werden in der Kulturbibliothek
 aktualisiert.", a part is dropped when its count is 0; for a moderated

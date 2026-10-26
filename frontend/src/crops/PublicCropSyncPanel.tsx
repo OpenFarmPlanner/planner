@@ -29,6 +29,7 @@ import {
   canKeepSyncFieldLocally,
   getDefaultSyncChoice,
   getSyncPinBlockedReasonKey,
+  getSyncPushBlockedReasonKey,
   splitSyncChoices,
   type PublicCropSyncChoice,
   type PublicCropSyncChoices,
@@ -449,6 +450,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoic
   );
   const canKeepLocally = canKeepSyncFieldLocally(change);
   const pinBlockedReasonKey = getSyncPinBlockedReasonKey(change);
+  const pushBlockedReasonKey = getSyncPushBlockedReasonKey(change);
   const localOption = allowLocal ? (
     <SyncOption
       name={radioName}
@@ -503,16 +505,11 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoic
         >
           {libraryValue}
         </SyncOption>
-        {change.pushable ? mineOption : (
-          <DisabledActionTooltip
-            fullWidth
-            title={t(change.field === 'name'
-              ? 'library.sync.notPushableName'
-              : 'library.sync.notPushable')}
-          >
+        {pushBlockedReasonKey ? (
+          <DisabledActionTooltip fullWidth title={t(pushBlockedReasonKey)}>
             {mineOption}
           </DisabledActionTooltip>
-        )}
+        ) : mineOption}
         {localOption && pinBlockedReasonKey ? (
           <DisabledActionTooltip fullWidth title={t(pinBlockedReasonKey)}>
             {localOption}
