@@ -366,7 +366,15 @@ export const plantingPlanAPI = {
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/planting-plans/${id}/`),
-  remainingArea: (params: { bed_id: number; start_date: string; end_date?: string; crop_id?: number; exclude_plan_id?: number }) =>
+  remainingArea: (params: {
+    bed_id: number;
+    start_date: string;
+    end_date?: string;
+    harvest_start_date?: string;
+    crop_id?: number;
+    exclude_plan_id?: number;
+    area_sqm?: number;
+  }) =>
     http.get<RemainingAreaResponse>('/planting-plans/remaining-area/', { params }),
   rotationCheck: (params: RotationQueryParams & { bed_id: number }) =>
     http.get<RotationCheckResponse>('/planting-plans/rotation-check/', { params }),
@@ -503,7 +511,14 @@ export interface ProjectPayload {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  allow_succession_during_harvest: boolean;
+  succession_min_days_after_harvest_start: number;
 }
+
+export type ProjectSchedulingSettings = Pick<
+  ProjectPayload,
+  'allow_succession_during_harvest' | 'succession_min_days_after_harvest_start'
+>;
 
 export type ProjectRegion = 'germany' | 'austria' | 'switzerland';
 
@@ -559,7 +574,9 @@ export const projectAPI = {
     http.post<ProjectPayload>('/projects/', data),
   createDemo: () =>
     http.post<ProjectPayload>('/projects/create-demo/', {}),
-  update: (projectId: number, data: { name?: string; region?: ProjectRegion }) =>
+  get: (projectId: number) =>
+    http.get<ProjectPayload>(`/projects/${projectId}/`),
+  update: (projectId: number, data: { name?: string; region?: ProjectRegion } & Partial<ProjectSchedulingSettings>) =>
     http.patch<ProjectPayload>(`/projects/${projectId}/`, data),
   delete: (projectId: number) =>
     http.delete(`/projects/${projectId}/`),

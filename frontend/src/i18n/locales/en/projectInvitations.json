@@ -114,5 +114,17 @@
     "redirectingBack": "Sign in successful. Processing invitation now…",
     "addedToProject": "You have been added to the project."
   },
-  "memberManagementNoAccess": "You are viewing this page as a member. Managing members requires admin rights."
+  "memberManagementNoAccess": "You are viewing this page as a member. Managing members requires admin rights.",
+  "scheduling": {
+    "title": "Crop planning",
+    "allowSuccession": "Allow a follow-up crop during the harvest phase",
+    "minDays": "Minimum gap after harvest start",
+    "daysUnit": "days",
+    "minDaysHelp": "A follow-up crop can take over the same bed this many days after the harvest start of the previous crop at the earliest. The time covers harvesting, clearing and bed preparation.",
+    "minDaysDisabled": "Only applies when you allow a follow-up crop during the harvest phase.",
+    "minDaysInvalid": "Enter a whole number from 0 to 365.",
+    "loadError": "The crop planning settings could not be loaded.",
+    "saveAriaLabel": "Save crop planning",
+    "cancelAriaLabel": "Discard crop planning changes"
+  }
 }

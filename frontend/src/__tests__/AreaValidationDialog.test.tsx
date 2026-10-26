@@ -58,6 +58,27 @@ const commitButton = (): HTMLElement | null =>
  * pointed at the neighbouring area still renders a plausible figure.
  */
 describe('AreaValidationDialog', () => {
+  describe('the succession limit', () => {
+    const successionLimit = {
+      crop_label: 'Salat',
+      harvest_start_date: '2026-05-01',
+      min_days_after_harvest_start: 14,
+      earliest_date: '2026-05-15',
+    };
+
+    it('names the minimum gap after the previous crop\'s harvest start', () => {
+      renderDialog(state('remainingLimit', { successionLimit }));
+      expect(screen.getByTestId('area-validation-succession-limit')).toHaveTextContent(
+        'Beetfläche überschritten. Auf Salat kann frühestens 14 Tage nach Erntebeginn (1.5.2026) eine Folgekultur folgen.',
+      );
+    });
+
+    it('stays out of the bed-limit mode', () => {
+      renderDialog(state('bedLimit', { successionLimit }));
+      expect(screen.queryByTestId('area-validation-succession-limit')).toBeNull();
+    });
+  });
+
   describe('the bed-limit mode', () => {
     it('says the area exceeds the bed itself', () => {
       renderDialog(state('bedLimit'));

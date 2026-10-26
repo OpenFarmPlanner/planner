@@ -18,6 +18,7 @@ import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { ProjectSettingsMembersSection } from './projectSettingsMembersSection';
+import { ProjectSettingsSchedulingSection } from './projectSettingsSchedulingSection';
 import type { MembersFeedback, ProjectRole } from './projectSettingsMembers';
 
 const showSuccess = (message: string): void => showGlobalSnackbar({ message, severity: 'success' });
@@ -280,6 +281,7 @@ export default function ProjectSettingsPage() {
   const sections: SettingsLayoutSection[] = [
     { id: 'general', label: t('general.title') },
     { id: 'season-pattern', label: t('navigation:seasonPattern.title') },
+    { id: 'scheduling', label: t('scheduling.title') },
     { id: 'members', label: t('membersSectionTitle') },
     ...(isProjectAdmin ? [{ id: 'delete-project', label: t('projectDelete.title'), tone: 'danger' as const }] : []),
   ];
@@ -372,6 +374,12 @@ export default function ProjectSettingsPage() {
         </SettingsSection>
 
         <SeasonPatternCard id="season-pattern" onSaved={() => outletContext?.reloadActiveSeason()} />
+
+        <ProjectSettingsSchedulingSection
+          id="scheduling"
+          projectId={activeMembership.project_id}
+          canEdit={isProjectAdmin}
+        />
 
         <ProjectSettingsMembersSection
           currentUserId={user?.id}

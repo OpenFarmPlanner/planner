@@ -55,7 +55,8 @@
     "phase": {
       "growth": "Wachstumsphase",
       "harvest": "Erntephase"
-    }
+    },
+    "actualHarvestEnd": "Ernte endet spätestens"
   },
   "noData": "Keine Anbaupläne vorhanden",
   "modeLabel": "Modus",

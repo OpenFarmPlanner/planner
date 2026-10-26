@@ -224,6 +224,20 @@ describe('planting plan filters', () => {
     expect(ids([])).toEqual([11, 12, 13, 14, 15]);
   });
 
+  it('filters by harvest overlap, covering previous and follow-up crops alike', () => {
+    const records = [
+      makeRecord({ id: 31, hasHarvestOverlap: true }),
+      makeRecord({ id: 32, hasHarvestOverlap: false }),
+      makeRecord({ id: 33 }),
+    ];
+    const ids = (occupancy: PlantingPlanFilters['occupancy']): number[] => records
+      .filter((record) => matchPlantingPlan(record, [], { ...EMPTY_PLANTING_PLAN_FILTERS, occupancy }).matches)
+      .map((record) => record.id);
+
+    expect(ids(['harvestOverlap'])).toEqual([31]);
+    expect(ids([])).toEqual([31, 32, 33]);
+  });
+
   it('matches "not checkable" exactly where the table shows the icon', () => {
     const missingFamily = [{ kind: 'no_family' }] as RotationFinding[];
     const rows: Array<{ id: number; status: RotationStatus; findings: RotationFinding[] }> = [

@@ -107,6 +107,11 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   rotation check: the definition of the break, year occupancy, why the
   stricter break wins, the `conflict`/`accepted`/`hint`/`info`/`ok` statuses,
   accepting a conflict, bed suggestions, and the check when copying a season.
+- **[Bed Occupancy (Beetbelegung)](./bed-occupancy.md)** — the planting-plan
+  area check: firm and soft occupancy, when a follow-up crop may take over a
+  bed during the previous crop's harvest phase (project setting
+  "Anbauplanung"), errors vs. harvest-overlap infos, and where the UI shows
+  them.
 - **[Seed Demand Calculation](./seed-demand-calculation.md)** — how
   required seed amounts and package suggestions are computed, with worked
   examples.

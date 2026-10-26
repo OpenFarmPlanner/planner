@@ -41,9 +41,10 @@ test.describe('planting plan crop rotation in the table', () => {
     await dialog.getByRole('combobox', { name: 'Beet' }).click();
     const listbox = page.getByRole('listbox');
     await expect(listbox.getByRole('option', { name: /Zuckermais/ })).toContainText('12 von 24 m² frei im Zeitraum');
+    // The leek follows the bush beans during their harvest phase
+    // (docs/bed-occupancy.md), so their bed stays selectable.
     const beans = listbox.getByRole('option', { name: /Bohnen/ });
-    await expect(beans).toHaveAttribute('aria-disabled', 'true');
-    await expect(beans).toContainText(/Nur 4 m² frei im Zeitraum \(Buschbohne bis .+\), benötigt 8 m²/);
+    await expect(beans).not.toHaveAttribute('aria-disabled', 'true');
     await page.keyboard.press('Escape');
 
     const locationName = (await otherLocation.innerText()).split(' | ')[0];

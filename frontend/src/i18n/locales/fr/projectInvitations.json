@@ -114,5 +114,17 @@
     "redirectingBack": "Connexion réussie. Traitement de l'invitation en cours…",
     "addedToProject": "Vous avez été ajouté au projet."
   },
-  "memberManagementNoAccess": "Vous consultez cette page en tant que membre. La gestion des membres nécessite des droits d'administrateur."
+  "memberManagementNoAccess": "Vous consultez cette page en tant que membre. La gestion des membres nécessite des droits d'administrateur.",
+  "scheduling": {
+    "title": "Planification des cultures",
+    "allowSuccession": "Autoriser une culture suivante pendant la phase de récolte",
+    "minDays": "Délai minimal après le début de récolte",
+    "daysUnit": "jours",
+    "minDaysHelp": "Une culture suivante peut occuper la même planche au plus tôt ce nombre de jours après le début de récolte de la culture précédente. Ce délai comprend la récolte, le débarrassage et la préparation de la planche.",
+    "minDaysDisabled": "Ne s’applique que si tu autorises une culture suivante pendant la phase de récolte.",
+    "minDaysInvalid": "Saisis un nombre entier de 0 à 365.",
+    "loadError": "Les paramètres de planification des cultures n’ont pas pu être chargés.",
+    "saveAriaLabel": "Enregistrer la planification des cultures",
+    "cancelAriaLabel": "Annuler les modifications de la planification des cultures"
+  }
 }

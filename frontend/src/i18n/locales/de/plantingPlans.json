@@ -42,7 +42,9 @@
     "requestedArea": "Angefragt: {{area}}",
     "acceptedArea": "Übernommen wird: {{area}}",
     "applyRemainingArea": "Restfläche übernehmen",
-    "applyBedArea": "Beetfläche übernehmen"
+    "applyBedArea": "Beetfläche übernehmen",
+    "successionLimit_one": "Beetfläche überschritten. Auf {{crop}} kann frühestens {{count}} Tag nach Erntebeginn ({{date}}) eine Folgekultur folgen.",
+    "successionLimit_other": "Beetfläche überschritten. Auf {{crop}} kann frühestens {{count}} Tage nach Erntebeginn ({{date}}) eine Folgekultur folgen."
   },
   "placeholders": {
     "selectCrop": "Kultur wählen",
@@ -204,7 +206,8 @@
       "plantingDate": "Pflanzzeitraum",
       "harvestStartDate": "Erntebeginn",
       "harvestEndDate": "Ernteende",
-      "rotation": "Fruchtfolge"
+      "rotation": "Fruchtfolge",
+      "occupancy": "Belegung"
     },
     "monthFrom": "Von",
     "monthTo": "Bis",
@@ -254,6 +257,9 @@
       "conflict": "Konflikt",
       "accepted": "Akzeptiert",
       "info": "Nicht prüfbar"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Ernteüberlappung"
     }
   },
   "rotation": {
@@ -364,5 +370,10 @@
       "insufficient": "Nur {{free}} m² frei im Zeitraum ({{blockingCulture}} bis {{date}}), benötigt {{needed}} m²",
       "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²"
     }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} folgt ab {{date}} auf diesem Beet. Die Ernte muss bis dahin abgeschlossen sein.",
+    "successor": "Beginnt vor dem geplanten Ernteende von {{crop}} ({{date}}).",
+    "iconAria": "Ernteüberlappung"
   }
 }

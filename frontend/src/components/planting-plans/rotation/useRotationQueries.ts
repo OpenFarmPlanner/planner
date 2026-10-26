@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { plantingPlanAPI } from '../../../api/api';
 import type {
   BedSuggestionsResponse,
+  RemainingAreaResponse,
   RotationCheckResponse,
   RotationQueryParams,
 } from '../../../api/types';
@@ -75,6 +76,9 @@ function useDebouncedRotationQuery<P extends object, T>(
 
 const fetchRotationCheck = (params: RotationQueryParams & { bed_id: number }) => plantingPlanAPI.rotationCheck(params);
 const fetchBedSuggestions = (params: RotationQueryParams) => plantingPlanAPI.bedSuggestions(params);
+const fetchRemainingArea = (params: Parameters<typeof plantingPlanAPI.remainingArea>[0]) => (
+  plantingPlanAPI.remainingArea(params)
+);
 
 export interface RotationInput {
   cropId: number | null;
@@ -131,4 +135,26 @@ export function useBedSuggestions(
     return base && areaSqm && areaSqm > 0 ? { ...base, area_sqm: areaSqm } : base;
   }, [areaSqm, cropId, enabled, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchBedSuggestions);
+}
+
+/**
+ * The bed capacity of the plan as entered, live: its harvest overlaps with
+ * other plans on the bed (docs/bed-occupancy.md). Needs crop, bed, planting
+ * date and an area; the backend derives the harvest phase from the crop.
+ */
+export function useHarvestOverlapCheck(input: RotationInput): RotationQueryResult<RemainingAreaResponse> {
+  const { cropId, bedId, plantingDate, planId, areaSqm } = input;
+  const request = useMemo(() => {
+    if (!cropId || !bedId || !plantingDate || !areaSqm || areaSqm <= 0) {
+      return null;
+    }
+    return {
+      bed_id: bedId,
+      start_date: plantingDate,
+      crop_id: cropId,
+      area_sqm: areaSqm,
+      ...(planId ? { exclude_plan_id: planId } : {}),
+    };
+  }, [areaSqm, bedId, cropId, planId, plantingDate]);
+  return useDebouncedRotationQuery(request, fetchRemainingArea);
 }

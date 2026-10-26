@@ -42,7 +42,10 @@
     "requestedArea": "Solicitada: {{area}}",
     "acceptedArea": "Aplicada: {{area}}",
     "applyRemainingArea": "Usar la superficie restante",
-    "applyBedArea": "Usar la superficie del bancal"
+    "applyBedArea": "Usar la superficie del bancal",
+    "successionLimit_one": "Superficie del bancal superada. Un cultivo siguiente puede seguir a {{crop}} como pronto {{count}} día después del inicio de cosecha ({{date}}).",
+    "successionLimit_other": "Superficie del bancal superada. Un cultivo siguiente puede seguir a {{crop}} como pronto {{count}} días después del inicio de cosecha ({{date}}).",
+    "successionLimit_many": "Superficie del bancal superada. Un cultivo siguiente puede seguir a {{crop}} como pronto {{count}} días después del inicio de cosecha ({{date}})."
   },
   "placeholders": {
     "selectCrop": "Seleccionar cultivo",
@@ -205,7 +208,8 @@
       "plantingDate": "Periodo de plantación",
       "harvestStartDate": "Inicio de cosecha",
       "harvestEndDate": "Fin de cosecha",
-      "rotation": "Rotación de cultivos"
+      "rotation": "Rotación de cultivos",
+      "occupancy": "Ocupación"
     },
     "monthFrom": "Desde",
     "monthTo": "Hasta",
@@ -259,6 +263,9 @@
       "conflict": "Conflicto",
       "accepted": "Aceptado",
       "info": "No comprobable"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Solapamiento de cosecha"
     }
   },
   "rotation": {
@@ -371,5 +378,10 @@
       "insufficient": "Solo {{free}} m² libres en este periodo ({{blockingCulture}} hasta el {{date}}), se necesitan {{needed}} m²",
       "insufficientWithoutBlocker": "Solo {{free}} m² libres en este periodo, se necesitan {{needed}} m²"
     }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} sigue en este bancal a partir del {{date}}. La cosecha debe estar terminada para entonces.",
+    "successor": "Empieza antes del fin de cosecha previsto de {{crop}} ({{date}}).",
+    "iconAria": "Solapamiento de cosecha"
   }
 }

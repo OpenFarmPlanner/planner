@@ -30,7 +30,7 @@ from typing import Any
 
 from farm.models import Bed, Crop, PlantingPlan
 from farm.services.bed_capacity import BedCapacity, calculate_bed_capacities
-from farm.services.crop_display import resolve_crop_display_name
+from farm.services.crop_display import format_crop_label
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
@@ -488,10 +488,7 @@ class RotationService:
         return self._families.get(family_key, (family_key, None))
 
     def _crop_label(self, crop: Crop) -> str:
-        display_name, _ = resolve_crop_display_name(crop, self.language_code, self.region)
-        name = display_name or crop.name
-        variety = (crop.variety or '').strip()
-        return f'{name} ({variety})' if name and variety else (name or variety)
+        return format_crop_label(crop, self.language_code, self.region)
 
     def rotation_crop(self, crop: Crop) -> RotationCrop:
         """Effective rotation values of ``crop``, cached per crop id."""
@@ -722,8 +719,12 @@ def suggest_beds(
         .select_related('field', 'field__location')
         .order_by('field__location__name', 'field__name', 'name', 'pk')
     )
+    # The plan's own harvest phase from the crop's timing: during its soft
+    # stage a follow-up crop may already take over (farm/services/bed_capacity.py).
+    draft = PlantingPlan(crop=crop, planting_date=start)
+    harvest_start, _ = draft.calculate_effective_harvest_dates(service.general_crop_index)
     capacities = calculate_bed_capacities(
-        beds, start=start, end=end, exclude_plan_id=exclude_plan_id,
+        beds, start=start, end=end, harvest_start=harvest_start, exclude_plan_id=exclude_plan_id,
     )
     rotation_crop = service.rotation_crop(crop)
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []

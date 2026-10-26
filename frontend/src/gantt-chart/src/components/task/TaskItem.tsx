@@ -272,6 +272,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
         />
       )}
 
+      {typeof task.fadedTailFraction === "number" && task.fadedTailFraction > 0 && (
+        <div
+          className="rmg-task-faded-tail"
+          style={{ width: `${Math.min(task.fadedTailFraction, 1) * 100}%` }}
+          aria-hidden="true"
+          data-rmg-component="faded-tail"
+        />
+      )}
+
       {/* Task name */}
       <div className={`rmg-task-item-name${onContextMenu ? " rmg-task-item-name-maskable" : ""}`}>
         {task.name || "Unnamed Task"}

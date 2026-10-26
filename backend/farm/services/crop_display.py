@@ -26,3 +26,11 @@ def resolve_crop_display_name(
     if species.status != CropSpecies.STATUS_PUBLISHED:
         return crop.name, ''
     return species.localized_name(language_code, region)
+
+
+def format_crop_label(crop: Crop, language_code: str, region: str | None = None) -> str:
+    """The localized display name with the variety, as findings name a culture."""
+    display_name, _ = resolve_crop_display_name(crop, language_code, region)
+    name = display_name or crop.name
+    variety = (crop.variety or '').strip()
+    return f'{name} ({variety})' if name and variety else (name or variety)

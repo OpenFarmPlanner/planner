@@ -41,6 +41,8 @@ import {
 } from "../forms/formLayout";
 import { BedSuggestionsPanel } from "./rotation/BedSuggestionsPanel";
 import { RotationCheckPanel, type RotationAcceptanceControls } from "./rotation/RotationCheckPanel";
+import { useHarvestOverlapCheck } from "./rotation/useRotationQueries";
+import { HarvestOverlapAlert } from "./HarvestOverlapInfo";
 
 export interface MobilePlanRotationProps {
   /** The edited plan, excluded from its own bed history; null when creating. */
@@ -133,6 +135,7 @@ export function MobilePlanFormDialog({
     areaSqm: toAreaNumericValue(form.area_m2, numberLocale),
   };
   const showSuggestions = Boolean(rotation) && isSuggestionsOpen;
+  const harvestOverlapCheck = useHarvestOverlapCheck(rotationInput);
 
   const pickerValue = toIsoDateString(parseGermanDateText(form.planting_date)) ?? "";
   const openPlantingDatePicker = (): void => {
@@ -427,6 +430,7 @@ export function MobilePlanFormDialog({
               sx={compactFieldSx}
             />
           </Box>
+          <HarvestOverlapAlert overlaps={harvestOverlapCheck.data?.harvest_overlaps} />
           {rotation ? (
             <RotationCheckPanel
               input={rotationInput}

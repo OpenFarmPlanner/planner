@@ -13,6 +13,7 @@ import {
   getMovedPlanDates,
   getOccupancyTaskPhase,
   getSeedlingCalendarRange,
+  getHarvestCutShort,
 } from '../pages/ganttChartUtils';
 import { parseIsoDate } from '../utils/isoDate';
 
@@ -120,6 +121,31 @@ describe('buildOccupancyTooltipDetails', () => {
 
     expect(valueOf(details, 'firstHarvest')).toBe(formatted('2026-05-20'));
     expect(valueOf(details, 'lastHarvest')).toBe(formatted('2026-06-10'));
+  });
+});
+
+describe('getHarvestCutShort', () => {
+  const harvestStart = parseIsoDate('2026-05-01')!;
+  const harvestEnd = parseIsoDate('2026-07-01')!;
+
+  it('fades the harvest a follow-up crop cuts short and names the actual end', () => {
+    const cut = getHarvestCutShort({ actual_harvest_end_date: '2026-06-15' }, harvestStart, harvestEnd);
+
+    expect(cut.actualHarvestEndDate).toEqual(parseIsoDate('2026-06-15'));
+    // 16 of the 61 harvest days are cut short.
+    expect(cut.fadedTailFraction).toBeCloseTo(16 / 61);
+    const details = buildOccupancyTooltipDetails({
+      id: 'plan-1-harvest', startDate: harvestStart, endDate: harvestEnd,
+      harvestStartDate: harvestStart, harvestEndDate: harvestEnd, ...cut,
+    });
+    expect(details.find((detail) => detail.labelKey === 'actualHarvestEnd')?.value)
+      .toBe(formatGanttDate(parseIsoDate('2026-06-15')!));
+  });
+
+  it('leaves the bar alone without an overlap or outside the harvest phase', () => {
+    expect(getHarvestCutShort({ actual_harvest_end_date: null }, harvestStart, harvestEnd)).toEqual({});
+    expect(getHarvestCutShort({ actual_harvest_end_date: '2026-07-01' }, harvestStart, harvestEnd)).toEqual({});
+    expect(getHarvestCutShort({ actual_harvest_end_date: '2026-04-01' }, harvestStart, harvestEnd)).toEqual({});
   });
 });
 

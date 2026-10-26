@@ -152,6 +152,10 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Ernteende | Harvest end | Fin de récolte | Fin de cosecha |
 | Ernte | Harvest | Récolte | Cosecha |
 | Satz (Folgesatz) | Succession | Série | Serie |
+| Vorkultur | Previous crop | Culture précédente | Cultivo anterior |
+| Folgekultur | Follow-up crop | Culture suivante | Cultivo siguiente |
+| Ernteüberlappung | Harvest overlap | Chevauchement de récolte | Solapamiento de cosecha |
+| Anbauplanung (Einstellungen) | Crop planning | Planification des cultures | Planificación de cultivos |
 | Pflanzen (Anzahl) | Plants | Plants | Plantas |
 | Aufgabe | Task | Tâche | Tarea |
 

@@ -1010,6 +1010,11 @@ export interface PlantingPlan {
   // Read-only crop rotation check (see docs/crop-rotation.md).
   rotation_status?: RotationStatus;
   rotation_findings?: RotationFinding[];
+  // Read-only, calculated: allowed overlaps with a follow-up crop during a
+  // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
+  harvest_overlaps?: HarvestOverlap[];
+  // Read-only, calculated: the earliest follow-up's first day; null without one.
+  actual_harvest_end_date?: string | null;
   // Writable flag; true records the current user and time on the server.
   rotation_conflict_accepted?: boolean;
   rotation_conflict_accepted_at?: string | null;
@@ -1277,15 +1282,40 @@ export interface SeasonSetupApplyResponse {
   start_month: number;
 }
 
+/**
+ * A follow-up crop planted during the harvest phase of a previous crop on the
+ * same bed. `role` is the plan's own part: as the `predecessor` its harvest
+ * ends on `date` at the latest (the follow-up's first day); as the `successor`
+ * `date` is the predecessor's planned harvest end.
+ */
+export interface HarvestOverlap {
+  role: 'predecessor' | 'successor';
+  other_plan_id: number | null;
+  other_crop_label: string;
+  date: string;
+}
+
+/** When a follow-up may take over the bed, for the "Beetfläche überschritten" message. */
+export interface SuccessionLimit {
+  crop_label: string;
+  harvest_start_date: string;
+  min_days_after_harvest_start: number;
+  earliest_date: string;
+}
+
 export interface RemainingAreaResponse {
   bed_id: number;
   bed_area_sqm: number;
   /** False when the bed has no area recorded; the area check is skipped then. */
   has_bed_area: boolean;
+  /** Peak area other plans occupy firmly during the plan's firm stage. */
   overlapping_used_area_sqm: number;
   remaining_area_sqm: number;
   start_date: string;
   end_date: string;
+  harvest_start_date?: string | null;
+  harvest_overlaps?: HarvestOverlap[];
+  succession_limit?: SuccessionLimit | null;
 }
 
 export interface YieldCalendarCrop {

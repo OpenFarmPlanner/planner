@@ -636,6 +636,23 @@
   box-shadow: 0 5px 10px var(--rmg-shadow-drag);
   opacity: 0.95;
 }
+/* The faded end of a bar (`Task.fadedTailFraction`); the host app styles
+   its look, the library only places it. */
+.rmg-task-faded-tail {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+/* Keeps the bar's label above its faded end. */
+.rmg-task-faded-tail ~ .rmg-task-item-name {
+  position: relative;
+}
+
 .rmg-task-item-name {
   white-space: nowrap;
   overflow: hidden;

@@ -42,7 +42,10 @@
     "requestedArea": "Demandée : {{area}}",
     "acceptedArea": "Appliquée : {{area}}",
     "applyRemainingArea": "Utiliser la surface restante",
-    "applyBedArea": "Utiliser la surface de la planche"
+    "applyBedArea": "Utiliser la surface de la planche",
+    "successionLimit_one": "Surface de la planche dépassée. Une culture suivante peut succéder à {{crop}} au plus tôt {{count}} jour après le début de récolte ({{date}}).",
+    "successionLimit_other": "Surface de la planche dépassée. Une culture suivante peut succéder à {{crop}} au plus tôt {{count}} jours après le début de récolte ({{date}}).",
+    "successionLimit_many": "Surface de la planche dépassée. Une culture suivante peut succéder à {{crop}} au plus tôt {{count}} jours après le début de récolte ({{date}})."
   },
   "placeholders": {
     "selectCrop": "Choisir une culture",
@@ -205,7 +208,8 @@
       "plantingDate": "Période de plantation",
       "harvestStartDate": "Début de récolte",
       "harvestEndDate": "Fin de récolte",
-      "rotation": "Rotation des cultures"
+      "rotation": "Rotation des cultures",
+      "occupancy": "Occupation"
     },
     "monthFrom": "De",
     "monthTo": "À",
@@ -259,6 +263,9 @@
       "conflict": "Conflit",
       "accepted": "Accepté",
       "info": "Non vérifiable"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Chevauchement de récolte"
     }
   },
   "rotation": {
@@ -371,5 +378,10 @@
       "insufficient": "Seulement {{free}} m² libres pendant cette période ({{blockingCulture}} jusqu'au {{date}}), {{needed}} m² nécessaires",
       "insufficientWithoutBlocker": "Seulement {{free}} m² libres pendant cette période, {{needed}} m² nécessaires"
     }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} suit sur cette planche à partir du {{date}}. La récolte doit être terminée d'ici là.",
+    "successor": "Commence avant la fin de récolte prévue de {{crop}} ({{date}}).",
+    "iconAria": "Chevauchement de récolte"
   }
 }

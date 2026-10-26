@@ -114,5 +114,17 @@
     "redirectingBack": "Sesión iniciada correctamente. Procesando la invitación…",
     "addedToProject": "Se te ha añadido al proyecto."
   },
-  "memberManagementNoAccess": "Estás viendo esta página como miembro. Para gestionar miembros se necesitan derechos de administrador."
+  "memberManagementNoAccess": "Estás viendo esta página como miembro. Para gestionar miembros se necesitan derechos de administrador.",
+  "scheduling": {
+    "title": "Planificación de cultivos",
+    "allowSuccession": "Permitir un cultivo siguiente durante la fase de cosecha",
+    "minDays": "Intervalo mínimo tras el inicio de cosecha",
+    "daysUnit": "días",
+    "minDaysHelp": "Un cultivo siguiente puede ocupar el mismo bancal como pronto tantos días después del inicio de cosecha del cultivo anterior. El tiempo incluye la cosecha, el desbroce y la preparación del bancal.",
+    "minDaysDisabled": "Solo se aplica si permites un cultivo siguiente durante la fase de cosecha.",
+    "minDaysInvalid": "Introduce un número entero de 0 a 365.",
+    "loadError": "No se pudieron cargar los ajustes de planificación de cultivos.",
+    "saveAriaLabel": "Guardar la planificación de cultivos",
+    "cancelAriaLabel": "Descartar los cambios de la planificación de cultivos"
+  }
 }

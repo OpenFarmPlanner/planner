@@ -58,6 +58,21 @@ class Project(TimestampedModel):
             'so only revisions after this point are user changes.'
         ),
     )
+    allow_succession_during_harvest = models.BooleanField(
+        default=True,
+        help_text=(
+            'Whether a follow-up crop may take over a bed during the harvest phase of the '
+            'previous crop. Off, the whole harvest phase occupies the bed firmly.'
+        ),
+    )
+    succession_min_days_after_harvest_start = models.PositiveIntegerField(
+        default=14,
+        help_text=(
+            'Days after the harvest start of a crop before a follow-up crop may take over '
+            'its bed (harvest, clearing and bed preparation); only used while '
+            'allow_succession_during_harvest is on.'
+        ),
+    )
 
     class Meta:
         ordering = ['name']

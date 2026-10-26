@@ -56,6 +56,15 @@ export function AreaValidationDialog({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={1}>
+          {dialog.mode !== "bedLimit" && dialog.successionLimit ? (
+            <Typography data-testid="area-validation-succession-limit">
+              {t("plantingPlans:areaValidation.successionLimit", {
+                count: dialog.successionLimit.min_days_after_harvest_start,
+                crop: dialog.successionLimit.crop_label,
+                date: new Date(`${dialog.successionLimit.harvest_start_date}T00:00:00`).toLocaleDateString(numberLocale),
+              })}
+            </Typography>
+          ) : null}
           {dialog.mode !== "bedLimit" && (
             <Typography sx={{ whiteSpace: "nowrap" }}>{t("plantingPlans:areaValidation.availableArea", { area: formatAreaM2(dialog.availableArea, numberLocale) })}</Typography>
           )}

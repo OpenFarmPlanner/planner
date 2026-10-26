@@ -254,6 +254,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
         response_status = status.HTTP_201_CREATED if result.created_project else status.HTTP_200_OK
         return Response(ProjectSerializer(result.project).data, status=response_status)
 
+    def perform_update(self, serializer) -> None:
+        # Name, region and the crop-planning settings are admin-only, as in the UI.
+        require_project_admin(self.request.user, serializer.instance.id, self.request)
+        serializer.save()
+
     def destroy(self, request: Request, *args: object, **kwargs: object) -> Response:
         project = self.get_object()
         require_project_admin(request.user, project.id, request)
