@@ -372,8 +372,8 @@
     }
   },
   "harvestOverlap": {
-    "predecessor": "Harvest ends on {{date}} at the latest (follow-up crop {{crop}}).",
-    "successor": "Planted during the harvest phase of {{crop}} (planned harvest end {{date}}).",
+    "predecessor": "{{crop}} follows on this bed from {{date}}. The harvest must be finished by then.",
+    "successor": "Starts before the planned harvest end of {{crop}} ({{date}}).",
     "iconAria": "Harvest overlap"
   }
 }

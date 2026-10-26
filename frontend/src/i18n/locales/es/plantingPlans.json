@@ -380,8 +380,8 @@
     }
   },
   "harvestOverlap": {
-    "predecessor": "La cosecha termina a más tardar el {{date}} (cultivo siguiente {{crop}}).",
-    "successor": "Se planta durante la fase de cosecha de {{crop}} (fin de cosecha previsto el {{date}}).",
+    "predecessor": "{{crop}} sigue en este bancal a partir del {{date}}. La cosecha debe estar terminada para entonces.",
+    "successor": "Empieza antes del fin de cosecha previsto de {{crop}} ({{date}}).",
     "iconAria": "Solapamiento de cosecha"
   }
 }

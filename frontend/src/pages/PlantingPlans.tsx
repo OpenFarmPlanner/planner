@@ -134,7 +134,8 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
-import { HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
+import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
+import { getPredecessorOverlaps } from "../components/planting-plans/useHarvestOverlapLines";
 import {
   getTableRotationStatus,
   isFlaggedRotationStatus,
@@ -694,10 +695,9 @@ function PlantingPlans() {
 
     const overlaps = params.field === "harvest_end_date" ? getRowHarvestOverlaps(row) : null;
     return (
-      <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+      <HarvestOverlapDateCell overlaps={overlaps} cellHasFocus={params.hasFocus}>
         <SearchHighlightedText text={formatDateForDisplay(value)} />
-        <HarvestOverlapIcon overlaps={overlaps} fontSize="small" />
-      </Box>
+      </HarvestOverlapDateCell>
     );
   }, [crops, formatDateForDisplay, getRowHarvestOverlaps, t]);
 
@@ -1039,9 +1039,11 @@ function PlantingPlans() {
         }),
         type: "date",
         valueGetter: (value) => toGridDateValue(value),
-        cellClassName: (params) => params.value
-          ? CALCULATED_COLUMN_CELL_CLASS
-          : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`,
+        cellClassName: (params) => (
+          params.value && getPredecessorOverlaps(getRowHarvestOverlaps(params.row as PlantingPlanRow)).length === 0
+            ? CALCULATED_COLUMN_CELL_CLASS
+            : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`
+        ),
         renderCell: renderCalculatedHarvestDateCell,
       },
       {
@@ -1171,6 +1173,7 @@ function PlantingPlans() {
       crops,
       dynamicWidths,
       getBedLabelForRow,
+      getRowHarvestOverlaps,
       renderCalculatedHarvestDateCell,
       getRowSowingSchedule,
       areaColumnLabel,

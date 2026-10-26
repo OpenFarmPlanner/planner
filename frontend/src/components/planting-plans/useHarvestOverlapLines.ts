@@ -5,8 +5,8 @@ import { useTranslation } from '../../i18n';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 
 /**
- * One line per affected plan: "Ernte endet spätestens am …" on the previous
- * crop, "Wird während der Erntephase von … gesetzt" on the follow-up crop
+ * One line per affected plan: "… folgt ab … auf diesem Beet" on the previous
+ * crop, "Beginnt vor dem geplanten Ernteende von …" on the follow-up crop
  * (docs/bed-occupancy.md). These overlaps are allowed planning, so they are
  * infos, never warnings.
  */
@@ -21,4 +21,9 @@ export function useHarvestOverlapLines(overlaps: readonly HarvestOverlap[] | nul
     date: formatDate(overlap.date),
     crop: overlap.other_crop_label,
   }));
+}
+
+/** Overlaps in which this plan is the previous crop, i.e. its harvest has to end early. */
+export function getPredecessorOverlaps(overlaps: readonly HarvestOverlap[] | null | undefined): HarvestOverlap[] {
+  return (overlaps ?? []).filter((overlap) => overlap.role === 'predecessor');
 }

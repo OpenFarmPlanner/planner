@@ -101,9 +101,13 @@ Only project admins can change it, like the other general project settings.
 
 ## UI
 
-- **Planting-plan table:** a small info icon (theme `info` colour) with the
-  overlap lines as tooltip in the "Ernteende" cell of every affected row, and
-  in the secondary line of the mobile cards. No chips or badges above the
+- **Planting-plan table:** only previous crops are marked, because only their
+  harvest has to end early: the "Ernteende" date gets a dotted underline in
+  the theme `info` colour, and the whole cell shows the overlap lines as
+  tooltip (`HarvestOverlapDateCell`, a `FullCellTooltip`). Follow-up crops
+  stay unmarked in the table, so it stays calm; their line shows in the
+  planting-plan dialog and the filter. The mobile cards keep a small info
+  icon in the secondary line, for both roles. No chips or badges above the
   table. The filter panel's "Belegung" group offers "Ernteüberlappung", which
   shows previous and follow-up crops of allowed overlaps (kept in memory only,
   like the rotation filter). After every write in the table the overlaps of
@@ -121,10 +125,10 @@ Only project admins can change it, like the other general project settings.
   theme in `GanttChart.tsx`), and the tooltip adds "Ernte endet spätestens".
   After a drag the plans are refetched so other bars follow.
 
-Texts: "Ernte endet spätestens am {Datum} (Folgekultur {Kultur})." on the
-previous crop, "Wird während der Erntephase von {Kultur} gesetzt (geplantes
-Ernteende {Datum})." on the follow-up crop, one line per plan. Severity info,
-not warning: the overlap is deliberate, allowed planning.
+Texts: "{Folgekultur} folgt ab {Datum} auf diesem Beet. Die Ernte muss bis
+dahin abgeschlossen sein." on the previous crop, "Beginnt vor dem geplanten
+Ernteende von {Vorkultur} ({Datum})." on the follow-up crop, one line per
+plan. Severity info, not warning: the overlap is deliberate, allowed planning.
 
 ## Tests
 

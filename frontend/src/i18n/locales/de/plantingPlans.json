@@ -372,8 +372,8 @@
     }
   },
   "harvestOverlap": {
-    "predecessor": "Ernte endet spätestens am {{date}} (Folgekultur {{crop}}).",
-    "successor": "Wird während der Erntephase von {{crop}} gesetzt (geplantes Ernteende {{date}}).",
+    "predecessor": "{{crop}} folgt ab {{date}} auf diesem Beet. Die Ernte muss bis dahin abgeschlossen sein.",
+    "successor": "Beginnt vor dem geplanten Ernteende von {{crop}} ({{date}}).",
     "iconAria": "Ernteüberlappung"
   }
 }
