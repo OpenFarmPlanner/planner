@@ -177,4 +177,33 @@ describe('CropsImportDialog', () => {
 
     expect(screen.getByText('Pflanzung Menge: Die Menge muss für diese Einheit eine ganze Zahl sein.')).toBeInTheDocument();
   });
+
+  it('shows a color change as swatches next to the codes', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          previewResults: [{
+            index: 0,
+            status: 'update_candidate',
+            import_data: { name: 'Tomate' },
+            diff: [{ field: 'display_color', current: '#b91c1c', new: 'rot' }],
+          }],
+        })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    const line = screen.getByText(/Anzeigefarbe:/);
+    expect(line).toHaveTextContent('Anzeigefarbe: #b91c1c → rot');
+    const swatches = line.querySelectorAll('[aria-hidden="true"]');
+    // Only the valid code gets a swatch; "rot" is shown as text alone.
+    expect(swatches).toHaveLength(1);
+    expect(swatches[0]).toHaveStyle({ backgroundColor: '#b91c1c' });
+  });
 });

@@ -113,7 +113,7 @@ const toDisplayValue = (value: unknown, field: string): unknown => {
   return value;
 };
 
-const formatImportValue = (value: unknown, field: string, t: TFunction<'crops'>): string =>
+export const formatImportValue = (value: unknown, field: string, t: TFunction<'crops'>): string =>
   formatHistoryChangeValue(toDisplayValue(value, field), field, t);
 
 export const formatImportDiffChange = (change: ImportDiffChange, t: TFunction<'crops'>): string => (
