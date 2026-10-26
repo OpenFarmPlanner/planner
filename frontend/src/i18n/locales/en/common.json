@@ -139,12 +139,12 @@
     "bedNotFound": "The bed was not found.",
     "fileTooLarge": "The file is too large (maximum 10 MB).",
     "invalidImage": "The uploaded file is not a valid image.",
-    "supplierDataDuplicate": "This supplier already has data for this culture.",
+    "supplierDataDuplicate": "This supplier already has data for this crop.",
     "supplierDataMissingSupplier": "Select a supplier or remove the supplier data.",
     "supplierSpecificTkgUnsupported": "Supplier-specific thousand-kernel weight is no longer supported.",
     "supplierProjectMismatch": "The supplier does not belong to the active project.",
     "selectedSupplierProjectMismatch": "The selected seed supplier does not belong to the active project.",
-    "cropProjectMismatch": "The culture does not belong to the active project."
+    "cropProjectMismatch": "The crop does not belong to the active project."
   },
   "validation": {
     "required": "This field is required.",

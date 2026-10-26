@@ -21,20 +21,20 @@
   "restoreDeleteError": "Failed to restore supplier.",
   "messages": {
     "deleted": "Supplier deleted.",
-    "deletedWithUnlinkedCrops_one": "Supplier deleted. The supplier link was removed from {{count}} culture.",
-    "deletedWithUnlinkedCrops_other": "Supplier deleted. The supplier link was removed from {{count}} cultures."
+    "deletedWithUnlinkedCrops_one": "Supplier deleted. The supplier link was removed from {{count}} crop.",
+    "deletedWithUnlinkedCrops_other": "Supplier deleted. The supplier link was removed from {{count}} crops."
   },
   "deleteUsageDialog": {
     "title": "Supplier is still in use",
-    "summary_one": "This supplier is still used by {{count}} culture.",
-    "summary_other": "This supplier is still used by {{count}} cultures.",
-    "cropUsage_one": "{{count}} culture uses this supplier directly.",
-    "cropUsage_other": "{{count}} cultures use this supplier directly.",
-    "supplierDataUsage": "{{cropCount}} cultures have seed or supplier data with {{rowCount}} entries.",
-    "seedDemandUsage_one": "{{count}} culture uses this supplier in seed demand planning.",
-    "seedDemandUsage_other": "{{count}} cultures use this supplier in seed demand planning.",
-    "unlinkExplanation": "Cultures are not deleted. Only their supplier relationship is removed before the supplier is deleted.",
-    "openAffectedCrops": "Go to affected cultures",
+    "summary_one": "This supplier is still used by {{count}} crop.",
+    "summary_other": "This supplier is still used by {{count}} crops.",
+    "cropUsage_one": "{{count}} crop uses this supplier directly.",
+    "cropUsage_other": "{{count}} crops use this supplier directly.",
+    "supplierDataUsage": "{{cropCount}} crops have seed or supplier data with {{rowCount}} entries.",
+    "seedDemandUsage_one": "{{count}} crop uses this supplier in seed demand planning.",
+    "seedDemandUsage_other": "{{count}} crops use this supplier in seed demand planning.",
+    "unlinkExplanation": "Crops are not deleted. Only their supplier relationship is removed before the supplier is deleted.",
+    "openAffectedCrops": "Go to affected crops",
     "unlinkAndDelete": "Delete supplier"
   },
   "invalidDomain": "Invalid domain: {{domain}}. Domains must be valid hostnames without a scheme or path (e.g. example.com).",

@@ -126,12 +126,12 @@
     "cropNameUnique": "A crop with this name already exists."
   },
   "errors": {
-    "supplierDataDuplicate": "This supplier already has data for this culture.",
+    "supplierDataDuplicate": "This supplier already has data for this crop.",
     "supplierDataMissingSupplier": "Select a supplier or remove the supplier data.",
     "supplierSpecificTkgUnsupported": "Supplier-specific thousand-kernel weight is no longer supported.",
     "supplierProjectMismatch": "The supplier does not belong to the active project.",
     "selectedSupplierProjectMismatch": "The selected seed supplier does not belong to the active project.",
-    "cropProjectMismatch": "The culture does not belong to the active project."
+    "cropProjectMismatch": "The crop does not belong to the active project."
   },
   "sections": {
     "growthHarvest": "Growth & harvest",
@@ -322,7 +322,7 @@
     "createError": "Error creating the crop",
     "updateError": "Error updating the crop",
     "deleteError": "Error deleting the crop",
-    "restoreDeleteError": "Culture could not be restored.",
+    "restoreDeleteError": "Crop could not be restored.",
     "fetchError": "Error loading the crops",
     "loadingCrops": "Loading crops…",
     "saving": "Saving...",
@@ -336,8 +336,8 @@
     "restoreError": "Version could not be restored"
   },
   "deleteDialog": {
-    "title": "Delete project culture?",
-    "confirmation": "Do you really want to delete the project culture \"{{name}}\"?",
+    "title": "Delete project crop?",
+    "confirmation": "Do you really want to delete the project crop \"{{name}}\"?",
     "cascadeConfirmation_one": "\"{{name}}\" will be deleted with {{count}} variety: {{varieties}}.",
     "cascadeConfirmation_other": "\"{{name}}\" will be deleted with {{count}} varieties: {{varieties}}.",
     "groupOnlyConfirmation_one": "{{count}} variety will be deleted: {{varieties}}.",
@@ -522,7 +522,7 @@
       "restored": "restored"
     },
     "fieldLabels": {
-      "created": "Culture",
+      "created": "Crop",
       "fallback": "Field",
       "sowingCalculationSafetyPercentDirect": "Direct sowing safety surcharge",
       "sowingCalculationSafetyPercentPreCultivation": "Transplanting safety surcharge",
@@ -574,7 +574,7 @@
     "aiCompleteAll": "AI: complete all crops"
   },
   "export": {
-    "menuLabel": "Export all cultures",
+    "menuLabel": "Export all crops",
     "current": "Download current crop as JSON",
     "all": "Download all crops as JSON",
     "dialogTitle": "Export crops",
@@ -601,7 +601,7 @@
     "addNew": "Add crop",
     "edit": "Edit",
     "versions": "Versions",
-    "exportCrop": "Export culture",
+    "exportCrop": "Export crop",
     "delete": "Delete",
     "moreActions": "More actions",
     "deleteConfirm": "Do you really want to delete this crop?",
@@ -878,7 +878,7 @@
     },
     "searchLabel": "Search public crops",
     "selectPrompt": "Select a public crop to see its details and import it.",
-    "empty": "No public cultures found.",
+    "empty": "No public crops found.",
     "emptyState": {
       "noSelectionTitle": "The crop library grows with the community",
       "noSelectionDescription": "Share your proven crops with others.",
@@ -888,9 +888,9 @@
       "importDescription": "Import matching crops as your own project copy. Later changes to the public crop are never applied automatically — you are notified and decide yourself.",
       "improveTitle": "Improve",
       "improveDescription": "Edit public crops directly. Every change is saved as a version.",
-      "emptyLibraryTitle": "No public cultures yet",
-      "emptyLibraryDescription": "The crop library lives from community contributions. Once suitable project cultures are published, everyone can use and improve them here.",
-      "noResultsTitle": "No matching public culture found"
+      "emptyLibraryTitle": "No public crops yet",
+      "emptyLibraryDescription": "The crop library lives from community contributions. Once suitable project crops are published, everyone can use and improve them here.",
+      "noResultsTitle": "No matching public crop found"
     },
     "importButton": "Import into project",
     "importUpdateButton": "Update in project",
@@ -991,14 +991,14 @@
     "publishError": "The crop could not be published.",
     "removeAction": "Remove from library",
     "removeSuccess": "\"{{name}}\" was removed from the crop library.",
-    "removeError": "The culture could not be removed from the library.",
+    "removeError": "The crop could not be removed from the library.",
     "hardDeleteAction": "Permanently delete",
     "hardDeleteSuccess": "\"{{name}}\" was permanently deleted.",
-    "hardDeleteError": "The culture could not be permanently deleted. There are probably still references or provenance data.",
+    "hardDeleteError": "The crop could not be permanently deleted. There are probably still references or provenance data.",
     "removeDialog": {
       "title": "Remove from library?",
-      "message": "\"{{name}}\" disappears from the crop library. Cultures already imported into projects remain fully intact. You can publish the culture again later.",
-      "moderationMessage": "Are you sure you want to remove \"{{name}}\" from the crop library? It will be removed for all users. Already imported project cultures remain unchanged. Please select the moderation reason.",
+      "message": "\"{{name}}\" disappears from the crop library. Crops already imported into projects remain fully intact. You can publish the crop again later.",
+      "moderationMessage": "Are you sure you want to remove \"{{name}}\" from the crop library? It will be removed for all users. Already imported project crops remain unchanged. Please select the moderation reason.",
       "reasonLabel": "Reason"
     },
     "hardDeleteDialog": {
@@ -1132,7 +1132,7 @@
       "confirmButton": "Publish"
     },
     "publishWizard": {
-      "title": "Publish culture",
+      "title": "Publish crop",
       "intro": "First choose the matching public crop species. Your variety is published under it; if the species has no general entry yet, one is created automatically from your current values.",
       "introGeneral": "Choose the matching public crop species. Only its general data is published, not a variety.",
       "introGeneralWithVarieties": "The general data of this crop species is published. Selected varieties are published along with it.",
@@ -1231,9 +1231,9 @@
       "translationAvailable": "Available",
       "translationMissingOptional": "Missing, optional",
       "requiredComplete": "All required fields are complete.",
-      "requiredFieldsBlocking": "Required fields are still missing before publication: {{fields}}. Please complete them in the culture details and try again.",
+      "requiredFieldsBlocking": "Required fields are still missing before publication: {{fields}}. Please complete them in the crop details and try again.",
       "noDuplicates": "No possible duplicate found.",
-      "duplicateBlockingIntro": "This culture appears to already exist publicly. Please review the existing entry first:",
+      "duplicateBlockingIntro": "This crop appears to already exist publicly. Please review the existing entry first:",
       "duplicateBlockingLinkHint": "You can link your crop to the existing entry instead of creating a new one.",
       "duplicateViewLink": "View entry",
       "duplicateLinkAction": "Link to this entry",

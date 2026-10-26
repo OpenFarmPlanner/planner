@@ -17,10 +17,10 @@
     "success": "Data export was created."
   },
   "publicProfile": {
-    "description": "This name belongs to your account and is shown as the author on every culture you have published, or will publish, to the crop library.",
+    "description": "This name belongs to your account and is shown as the author on every crop you have published, or will publish, to the crop library.",
     "publicDisplayName": "Name on publications",
     "noPublicDisplayName": "Anonymous",
-    "helperText": "Without a name, your publications appear anonymous. If you set a name later, it automatically appears as the author on all cultures you already published – if you remove it again, those cultures appear anonymous once more. The name must be unique and not already used by someone else.",
+    "helperText": "Without a name, your publications appear anonymous. If you set a name later, it automatically appears as the author on all crops you already published – if you remove it again, those crops appear anonymous once more. The name must be unique and not already used by someone else.",
     "actions": {
       "setPublicDisplayName": "Set name",
       "editPublicDisplayName": "Change name"
@@ -121,8 +121,8 @@
     },
     "scopeHelp": {
       "read": "May read the project's data. Cannot change anything.",
-      "write": "May read the project's data and create or update cultures. Cannot delete.",
-      "delete": "May additionally delete and restore cultures. Project members, invitations, account settings, and other administrative areas stay blocked."
+      "write": "May read the project's data and create or update crops. Cannot delete.",
+      "delete": "May additionally delete and restore crops. Project members, invitations, account settings, and other administrative areas stay blocked."
     },
     "columns": {
       "name": "Name",

@@ -81,7 +81,7 @@
       "endBeforeStart": "The end date must be after the start date.",
       "save": "Save",
       "error": "The period could not be changed.",
-      "unknownCrop": "Unknown culture",
+      "unknownCrop": "Unknown crop",
       "plantingConflictIntro": "These planting plans have a planting date outside the new period. Adjust or move them first before changing the period:",
       "plantingConflictItem": "{{crop}} – planting date {{date}}",
       "overlapConflictIntro": "The new period overlaps another season:",
