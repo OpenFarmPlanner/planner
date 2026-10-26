@@ -627,8 +627,8 @@
     "title": "Import crops",
     "selectFileTitle": "Import crops",
     "selectFileButton": "Choose file",
-    "supportedFormats": "Supported formats: JSON, CSV, Excel (.xlsx), OpenDocument (.ods)",
-    "formatHintTable": "Excel, ODS, CSV: easy editing in spreadsheets such as LibreOffice or Excel.",
+    "supportedFormats": "Supported formats: OpenDocument (.ods), Excel (.xlsx), CSV, JSON",
+    "formatHintTable": "ODS, Excel, CSV: easy editing in spreadsheets such as LibreOffice or Excel.",
     "formatHintJson": "JSON: lossless exchange and backup format.",
     "foundCount_one": "{{count}} entry found",
     "foundCount_other": "{{count}} entries found",
@@ -678,7 +678,8 @@
     },
     "help": {
       "templateHint": "No suitable file yet?",
-      "templateButton": "Download template (.xlsx)",
+      "templateButton": "Download template (.ods)",
+      "templateButtonXlsx": "or as Excel (.xlsx)",
       "toggle": "Which values are allowed?",
       "valuesTitle": "Allowed values",
       "rules": {

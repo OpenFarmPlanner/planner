@@ -627,8 +627,8 @@
     "title": "Kulturen importieren",
     "selectFileTitle": "Kulturen importieren",
     "selectFileButton": "Datei auswählen",
-    "supportedFormats": "Unterstützte Formate: JSON, CSV, Excel (.xlsx), OpenDocument (.ods)",
-    "formatHintTable": "Excel, ODS, CSV: einfache Bearbeitung in Tabellenkalkulationen wie LibreOffice oder Excel.",
+    "supportedFormats": "Unterstützte Formate: OpenDocument (.ods), Excel (.xlsx), CSV, JSON",
+    "formatHintTable": "ODS, Excel, CSV: einfache Bearbeitung in Tabellenkalkulationen wie LibreOffice oder Excel.",
     "formatHintJson": "JSON: verlustfreies Austausch- und Backup-Format.",
     "foundCount_one": "{{count}} Eintrag gefunden",
     "foundCount_other": "{{count}} Einträge gefunden",
@@ -678,7 +678,8 @@
     },
     "help": {
       "templateHint": "Noch keine passende Datei?",
-      "templateButton": "Vorlage herunterladen (.xlsx)",
+      "templateButton": "Vorlage herunterladen (.ods)",
+      "templateButtonXlsx": "oder als Excel (.xlsx)",
       "toggle": "Welche Werte sind erlaubt?",
       "valuesTitle": "Erlaubte Werte",
       "rules": {

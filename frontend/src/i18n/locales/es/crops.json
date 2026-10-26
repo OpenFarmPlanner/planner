@@ -640,8 +640,8 @@
     "title": "Importar cultivos",
     "selectFileTitle": "Importar cultivos",
     "selectFileButton": "Elegir archivo",
-    "supportedFormats": "Formatos admitidos: JSON, CSV, Excel (.xlsx), OpenDocument (.ods)",
-    "formatHintTable": "Excel, ODS, CSV: edición sencilla en hojas de cálculo como LibreOffice o Excel.",
+    "supportedFormats": "Formatos admitidos: OpenDocument (.ods), Excel (.xlsx), CSV, JSON",
+    "formatHintTable": "ODS, Excel, CSV: edición sencilla en hojas de cálculo como LibreOffice o Excel.",
     "formatHintJson": "JSON: formato de intercambio y copia de seguridad sin pérdidas.",
     "foundCount_one": "{{count}} entrada encontrada",
     "foundCount_many": "{{count}} entradas encontradas",
@@ -699,7 +699,8 @@
     },
     "help": {
       "templateHint": "¿Todavía no tienes un archivo adecuado?",
-      "templateButton": "Descargar plantilla (.xlsx)",
+      "templateButton": "Descargar plantilla (.ods)",
+      "templateButtonXlsx": "o como Excel (.xlsx)",
       "toggle": "¿Qué valores se permiten?",
       "valuesTitle": "Valores permitidos",
       "rules": {
