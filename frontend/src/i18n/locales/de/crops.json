@@ -673,7 +673,6 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Beispiel Saatgut",
-      "speciesNotes": "Beispielzeile: Leere Felder einer Sorte übernimmt sie von ihrer Kultur.",
       "directSownName": "Karotte"
     },
     "help": {
@@ -684,6 +683,7 @@
       "valuesTitle": "Erlaubte Werte",
       "rules": {
         "required": "Nur die Spalte „{{name}}“ ist Pflicht. Alle anderen Spalten können leer bleiben oder fehlen, die Reihenfolge ist egal.",
+        "varietyRows": "Eine Zeile ohne „{{variety}}“ beschreibt die Kultur selbst. Eine Zeile mit Sorte gehört zu dieser Kultur und übernimmt alles, was sie leer lässt, von ihr, z. B. „{{nutrient}}“ oder „{{cultivation}}“.",
         "numbers": "Zahlen mit Komma oder Punkt, z. B. 1,5 oder 1.5.",
         "cultivationTypes": "Mehrere Anbauarten durch Komma trennen, z. B. „{{example}}“.",
         "wholeSeeds": "Bei „{{unit}}“ sind nur ganze Zahlen möglich.",

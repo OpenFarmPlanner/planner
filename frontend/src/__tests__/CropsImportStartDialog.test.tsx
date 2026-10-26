@@ -280,6 +280,10 @@ describe('CropsImportStartDialog', () => {
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByText('Schwachzehrer, Mittelzehrer, Starkzehrer')).toBeInTheDocument();
       expect(screen.getByText('Bei „Korn / Pflanze“ sind nur ganze Zahlen möglich.')).toBeInTheDocument();
+      expect(screen.getByText(
+        'Eine Zeile ohne „Sorte“ beschreibt die Kultur selbst. Eine Zeile mit Sorte gehört zu dieser Kultur '
+        + 'und übernimmt alles, was sie leer lässt, von ihr, z. B. „Nährstoffbedarf“ oder „Anbauart“.',
+      )).toBeInTheDocument();
     });
   });
 });

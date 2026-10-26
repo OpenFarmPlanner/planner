@@ -31,7 +31,6 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
     seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     sowing_calculation_safety_percent_pre_cultivation: 20,
     display_color: '#dc2626',
-    notes: t('import.template.speciesNotes'),
   },
   {
     name: t('import.template.speciesName'),
