@@ -204,8 +204,10 @@ describe('dates', () => {
   });
 
   it('uses a stored reference date inside the season', () => {
+    // ISO dates parse to UTC midnight (parseIsoDate); a local-midnight
+    // expectation only matched where the test ran in UTC.
     expect(getStoredReferenceDate({ referenceDate: '2026-06-01' }, start, end))
-      .toEqual(new Date('2026-06-01T00:00:00'));
+      .toEqual(new Date(Date.UTC(2026, 5, 1)));
   });
 
   it('falls back to today, clamped into the season', () => {
