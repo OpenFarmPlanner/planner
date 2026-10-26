@@ -131,7 +131,7 @@ export function CropsImportDialog({
           {importState.previewCount !== importState.validCount && (
             <Typography variant="body2" color="warning.main">
               {t('import.invalidCount', {
-                invalid: importState.previewCount - importState.validCount,
+                count: importState.previewCount - importState.validCount,
               })}
             </Typography>
           )}
