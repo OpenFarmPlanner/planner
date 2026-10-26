@@ -114,5 +114,17 @@
     "redirectingBack": "Anmeldung erfolgreich. Einladung wird jetzt verarbeitet…",
     "addedToProject": "Du wurdest dem Projekt hinzugefügt."
   },
-  "memberManagementNoAccess": "Du siehst diese Seite als Mitglied. Für die Mitgliederverwaltung benötigst du Admin-Rechte."
+  "memberManagementNoAccess": "Du siehst diese Seite als Mitglied. Für die Mitgliederverwaltung benötigst du Admin-Rechte.",
+  "scheduling": {
+    "title": "Anbauplanung",
+    "allowSuccession": "Folgekultur während der Erntephase erlauben",
+    "minDays": "Mindestabstand ab Erntebeginn",
+    "daysUnit": "Tage",
+    "minDaysHelp": "Frühestens so viele Tage nach Erntebeginn der Vorkultur kann eine Folgekultur auf dasselbe Beet. Die Zeit umfasst Ernte, Räumen und Beetvorbereitung.",
+    "minDaysDisabled": "Nur wirksam, wenn du eine Folgekultur während der Erntephase erlaubst.",
+    "minDaysInvalid": "Gib eine ganze Zahl von 0 bis 365 ein.",
+    "loadError": "Die Einstellungen zur Anbauplanung konnten nicht geladen werden.",
+    "saveAriaLabel": "Anbauplanung speichern",
+    "cancelAriaLabel": "Änderungen an der Anbauplanung verwerfen"
+  }
 }

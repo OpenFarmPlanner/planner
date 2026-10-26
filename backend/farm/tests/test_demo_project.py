@@ -576,7 +576,17 @@ class DemoRotationCasesTests(TestCase):
         self.assertEqual(option['free_area_sqm'], 12.0)
         self.assertEqual(option['bed_area_sqm'], 24.0)
 
+    def test_leek_may_follow_the_beans_in_their_harvest_phase(self) -> None:
+        """The leek starts on the first day after the beans' firm stage."""
+        option = self.bed_options(self.plan('Lauch', 'Knoblauch & Lauch'))['Bohnen']
+
+        self.assertTrue(option['has_enough_area'])
+        self.assertEqual(option['free_area_sqm'], 24.0)
+
     def test_bed_without_enough_room_names_the_blocking_plan(self) -> None:
+        self.project.allow_succession_during_harvest = False
+        self.project.save(update_fields=['allow_succession_during_harvest'])
+
         option = self.bed_options(self.plan('Lauch', 'Knoblauch & Lauch'))['Bohnen']
 
         self.assertFalse(option['has_enough_area'])

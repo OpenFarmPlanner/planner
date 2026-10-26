@@ -112,15 +112,21 @@ so a bed that is suggested or selectable is never rejected on save:
 
 - Another plan occupies its bed from its planting date to its harvest end,
   else its harvest start, else its planting date. Two periods overlap when
-  they share at least one day; there is no tolerance for short overlaps.
+  they share at least one day.
+- Only the *firm* stage of an occupancy counts: up to the minimum gap after
+  harvest start (project setting, default 14 days). A follow-up crop may take
+  over the bed during the rest of the harvest phase; that overlap is an info,
+  not an error. The rules are in [bed-occupancy.md](./bed-occupancy.md).
 - The plan being edited never counts against itself (`exclude_plan_id`).
 - A plan without an area skips the check, and so does a bed without an area.
 
 The save check asks `GET /planting-plans/remaining-area/` with the row's
-bed, planting date, period end (harvest end, else harvest start, unless it
-lies before the planting date) and crop; without an end the backend derives
-it from the crop's timing, like the rotation endpoints. The bed options send
-the same period to `bed-suggestions`. A failed check never blocks a save.
+bed, planting date, harvest start, period end (harvest end, else harvest
+start, unless it lies before the planting date) and crop; without them the
+backend derives them from the crop's timing, like the rotation endpoints. The
+bed options send the same period to `bed-suggestions`, whose `blocking_plan`
+names the last day of the blocker's firm stage. A failed check never blocks
+a save.
 
 ## Statuses and findings in the API
 

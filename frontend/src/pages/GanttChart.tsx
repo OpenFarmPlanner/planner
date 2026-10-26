@@ -24,6 +24,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
 import {
   bedAPI,
@@ -592,6 +593,11 @@ function GanttChartPage() {
         entry.id === planId ? response.data : entry
       )));
       setError(null);
+      // Moving a plan can start or end a harvest overlap with other plans on
+      // its bed, whose faded harvest bars come from the server.
+      void refreshPlantingPlans().catch((refreshError: unknown) => {
+        console.error('Error reloading planting plans after an update:', refreshError);
+      });
     } catch (err) {
       console.error('Error updating planting plan:', err);
       setError(extractApiErrorMessage(err, t, t('ganttChart:errors.updatePlan')));
@@ -1719,6 +1725,10 @@ function GanttChartPage() {
               borderColor: 'surface.surfaceSoftBorder',
               borderRadius: 2,
               bgcolor: 'surface.surfaceBackground',
+              // The harvest a follow-up crop cuts short (docs/bed-occupancy.md).
+              '& .rmg-task-faded-tail': {
+                backgroundImage: `repeating-linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.6)} 0 ${theme.spacing(0.5)}, transparent ${theme.spacing(0.5)} ${theme.spacing(1)})`,
+              },
               '& .rmg-task-group-tree-row[data-clickable="true"]:hover': {
                 bgcolor: 'action.hover',
               },

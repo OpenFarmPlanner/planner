@@ -1,7 +1,7 @@
 """API endpoints for the planning domain (planting plans, tasks, yield calendar)."""
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import Count
@@ -18,7 +18,13 @@ from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
 from farm.models import Bed, Crop, EntityRevision, PlantingPlan, Season, Task
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
-from farm.services.bed_capacity import calculate_bed_capacity
+from farm.services.bed_capacity import (
+    BedCapacity,
+    HarvestOverlapIndex,
+    SuccessionRule,
+    calculate_bed_capacity,
+)
+from farm.services.crop_display import format_crop_label
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
@@ -32,7 +38,9 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
 
     ``bed_id`` and ``start_date`` are required. Without ``end_date`` the period
     ends where a saved plan of ``crop_id`` would end (its effective harvest
-    end), else on ``start_date``.
+    end), else on ``start_date``; without ``harvest_start_date`` the harvest
+    starts where it would for ``crop_id``. ``area_sqm`` (the plan's area) is
+    only needed for the harvest overlaps.
 
     Returns (params, None) on success or (None, error_detail) on failure.
     """
@@ -53,10 +61,18 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
     if start_date is None or (end_date_param and end_date is None):
         return None, 'start_date and end_date must use YYYY-MM-DD format.'
 
+    harvest_start_param = query_params.get('harvest_start_date')
+    harvest_start_date = parse_date(harvest_start_param) if harvest_start_param else None
+    if harvest_start_param and harvest_start_date is None:
+        return None, 'harvest_start_date must use YYYY-MM-DD format.'
+
     exclude_plan_id, error = _parse_optional_int(query_params.get('exclude_plan_id'), 'exclude_plan_id')
     if error:
         return None, error
     crop_id, error = _parse_optional_int(query_params.get('crop_id'), 'crop_id')
+    if error:
+        return None, error
+    area_sqm, error = _parse_optional_decimal(query_params.get('area_sqm'), 'area_sqm')
     if error:
         return None, error
 
@@ -64,8 +80,10 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
         'bed_id': bed_id,
         'start_date': start_date,
         'end_date': end_date,
+        'harvest_start_date': harvest_start_date,
         'exclude_plan_id': exclude_plan_id,
         'crop_id': crop_id,
+        'area_sqm': area_sqm,
     }, None
 
 
@@ -81,6 +99,19 @@ def _parse_optional_decimal(value: str | None, name: str) -> tuple[Decimal | Non
     return parsed, None
 
 
+def _derive_harvest_dates(
+    crop: Crop | None,
+    planting_date: date,
+    project,
+    general_crop_index=None,
+) -> tuple[date | None, date | None]:
+    """Harvest start and end of a saved plan of ``crop`` planted on ``planting_date``."""
+    if crop is None:
+        return None, None
+    draft = PlantingPlan(crop=crop, planting_date=planting_date, project=project)
+    return draft.calculate_effective_harvest_dates(general_crop_index)
+
+
 def _derive_plan_end(
     crop: Crop | None,
     planting_date: date,
@@ -88,11 +119,53 @@ def _derive_plan_end(
     general_crop_index=None,
 ) -> date | None:
     """Where a saved plan of ``crop`` planted on ``planting_date`` would end."""
-    if crop is None:
-        return None
-    draft = PlantingPlan(crop=crop, planting_date=planting_date, project=project)
-    harvest_start, harvest_end = draft.calculate_effective_harvest_dates(general_crop_index)
+    harvest_start, harvest_end = _derive_harvest_dates(
+        crop, planting_date, project, general_crop_index,
+    )
     return harvest_end or harvest_start
+
+
+def _succession_limit_payload(
+    capacity: BedCapacity,
+    rule: SuccessionRule,
+    *,
+    crop: Crop | None,
+    start: date,
+    harvest_start: date | None,
+    language_code: str,
+    region: str,
+) -> dict | None:
+    """When a follow-up may take over the bed, for the "Beetfläche überschritten" message.
+
+    Of the checked plan and the plan whose firm stage frees its area last, the
+    one that starts first is the predecessor; ``None`` when it has no harvest
+    start or the project does not allow a follow-up during the harvest phase.
+    """
+    blocker = capacity.last_ending_plan()
+    if blocker is None or not rule.allow_during_harvest:
+        return None
+    if blocker.start is not None and blocker.start <= start:
+        predecessor_crop = (
+            Crop.objects.filter(pk=blocker.crop_id)
+            .select_related('crop_species')
+            .prefetch_related('crop_species__translations')
+            .first()
+            if blocker.crop_id else None
+        )
+        predecessor_harvest_start = blocker.harvest_start
+    else:
+        predecessor_crop, predecessor_harvest_start = crop, harvest_start
+    if predecessor_harvest_start is None:
+        return None
+    min_days = rule.min_days_after_harvest_start
+    return {
+        'crop_label': (
+            format_crop_label(predecessor_crop, language_code, region) if predecessor_crop else ''
+        ),
+        'harvest_start_date': predecessor_harvest_start.isoformat(),
+        'min_days_after_harvest_start': min_days,
+        'earliest_date': (predecessor_harvest_start + timedelta(days=min_days)).isoformat(),
+    }
 
 
 def _parse_optional_int(value: str | None, name: str) -> tuple[int | None, str | None]:
@@ -236,7 +309,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if error_detail:
             return api_error_response(code='invalid_remaining_area_parameters', detail=error_detail, status_code=status.HTTP_400_BAD_REQUEST)
 
-        bed = Bed.objects.filter(id=params['bed_id'], project=active_project).only('id', 'area_sqm').first()
+        bed = Bed.objects.filter(id=params['bed_id'], project=active_project).only('id', 'area_sqm', 'project_id').first()
         if bed is None:
             return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
 
@@ -251,16 +324,37 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             if crop is None:
                 return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
         start_date = params['start_date']
-        end_date = params['end_date'] or _derive_plan_end(crop, start_date, active_project) or start_date
+        derived_harvest_start, derived_harvest_end = _derive_harvest_dates(crop, start_date, active_project)
+        end_date = params['end_date'] or derived_harvest_end or derived_harvest_start or start_date
         if end_date < start_date:
             if params['end_date'] is not None:
                 return api_error_response(code='invalid_remaining_area_interval', detail='end_date must be greater than or equal to start_date.', status_code=status.HTTP_400_BAD_REQUEST)
             end_date = start_date
+        harvest_start_date = params['harvest_start_date'] or derived_harvest_start
 
+        language_code = resolve_request_language(request)
+        region = getattr(active_project, 'region', '') or ''
+        rule = SuccessionRule.for_project(active_project)
         capacity = calculate_bed_capacity(
             bed,
             start=start_date,
             end=end_date,
+            harvest_start=harvest_start_date,
+            exclude_plan_id=params['exclude_plan_id'],
+            rule=rule,
+        )
+        overlap_index = HarvestOverlapIndex(
+            active_project.pk,
+            crop_label=lambda item: format_crop_label(item, language_code, region),
+            rule=rule,
+            bed_ids=[bed.pk],
+        )
+        harvest_overlaps = overlap_index.candidate_overlaps(
+            bed,
+            start=start_date,
+            harvest_start=harvest_start_date,
+            end=end_date,
+            area_sqm=params['area_sqm'],
             exclude_plan_id=params['exclude_plan_id'],
         )
         free_area = capacity.free_area_sqm
@@ -272,6 +366,12 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             'remaining_area_sqm': float(free_area if free_area is not None else 0),
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat(),
+            'harvest_start_date': harvest_start_date.isoformat() if harvest_start_date else None,
+            'harvest_overlaps': [overlap.as_dict() for overlap in harvest_overlaps],
+            'succession_limit': _succession_limit_payload(
+                capacity, rule, crop=crop, start=start_date, harvest_start=harvest_start_date,
+                language_code=language_code, region=region,
+            ),
         })
 
     def _rotation_request_context(self, request) -> tuple[dict, Crop, RotationService] | Response:

@@ -52,7 +52,7 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { PlanCultivationType } from "../api/types";
+import type { HarvestOverlap, PlanCultivationType, SuccessionLimit } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
 import {
   formatLocalizedNumberForInput,
@@ -134,6 +134,7 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
+import { HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
 import {
   getTableRotationStatus,
   isFlaggedRotationStatus,
@@ -259,13 +260,53 @@ function PlantingPlans() {
   // Rotation acceptances chosen in "Anbaufläche ändern", sent with the row's
   // next save only (an acceptance holds for the bed it was given for).
   const pendingRotationAcceptanceRef = useRef<Map<string, boolean>>(new Map());
-  const plantingPlanGridAPI = useMemo<DataGridAPI<PlantingPlanRow>>(() => ({
-    ...plantingPlanAPI,
-    list: async () => {
-      const data = await plantingPlanAPI.listAll();
-      return { data };
-    },
-  }) as unknown as DataGridAPI<PlantingPlanRow>, []);
+  // A write can add or remove harvest overlaps on other plans of the same bed
+  // (docs/bed-occupancy.md), which the grid's rows do not refetch. After every
+  // grid write the overlaps of all plans are reloaded into this map, which
+  // takes precedence over the rows' own values until the next full reload.
+  const [harvestOverlapsById, setHarvestOverlapsById] = useState<ReadonlyMap<number, HarvestOverlap[]> | null>(null);
+  const refreshHarvestOverlaps = useCallback(async (): Promise<void> => {
+    try {
+      const { results: plans } = await plantingPlanAPI.listAll();
+      setHarvestOverlapsById(new Map(
+        plans
+          .filter((plan): plan is PlantingPlan & { id: number } => typeof plan.id === "number")
+          .map((plan) => [plan.id, plan.harvest_overlaps ?? []]),
+      ));
+    } catch (error) {
+      console.error("Error refreshing the harvest overlaps:", error);
+    }
+  }, []);
+  const getRowHarvestOverlaps = useCallback(
+    (row: PlantingPlanRow): HarvestOverlap[] | undefined => (
+      row.isNew ? undefined : harvestOverlapsById?.get(row.id) ?? row.harvest_overlaps
+    ),
+    [harvestOverlapsById],
+  );
+  const reloadPlans = useCallback(async (): Promise<void> => {
+    setHarvestOverlapsById(null);
+    await gridCommandApiRef.current?.reload();
+  }, []);
+  const plantingPlanGridAPI = useMemo<DataGridAPI<PlantingPlanRow>>(() => {
+    const withOverlapRefresh = <A extends unknown[], R>(write: (...args: A) => Promise<R>) =>
+      async (...args: A): Promise<R> => {
+        const result = await write(...args);
+        void refreshHarvestOverlaps();
+        return result;
+      };
+    return {
+      ...plantingPlanAPI,
+      create: withOverlapRefresh(plantingPlanAPI.create),
+      update: withOverlapRefresh(plantingPlanAPI.update),
+      patch: withOverlapRefresh(plantingPlanAPI.patch),
+      delete: withOverlapRefresh(plantingPlanAPI.delete),
+      list: async () => {
+        const data = await plantingPlanAPI.listAll();
+        setHarvestOverlapsById(null);
+        return { data };
+      },
+    } as unknown as DataGridAPI<PlantingPlanRow>;
+  }, [refreshHarvestOverlaps]);
   const [selectedPlan, setSelectedPlan] = useState<PlantingPlanRow | null>(
     null,
   );
@@ -303,7 +344,7 @@ function PlantingPlans() {
     onSave: async ({ row, value }) => {
       try {
         await plantingPlanAPI.patch(row.id, { notes: value } as PlantingPlan);
-        await gridCommandApiRef.current?.reload();
+        await reloadPlans();
       } catch (error) {
         throw new Error(extractApiErrorMessage(error, t, t("plantingPlans:errors.save")), { cause: error });
       }
@@ -651,8 +692,14 @@ function PlantingPlans() {
       );
     }
 
-    return <Box component="span"><SearchHighlightedText text={formatDateForDisplay(value)} /></Box>;
-  }, [crops, formatDateForDisplay, t]);
+    const overlaps = params.field === "harvest_end_date" ? getRowHarvestOverlaps(row) : null;
+    return (
+      <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+        <SearchHighlightedText text={formatDateForDisplay(value)} />
+        <HarvestOverlapIcon overlaps={overlaps} fontSize="small" />
+      </Box>
+    );
+  }, [crops, formatDateForDisplay, getRowHarvestOverlaps, t]);
 
   // Read as primitive booleans, not the `columnVisibilityModel` object
   // itself, in the columns useMemo's dependency array below: the model's
@@ -1377,8 +1424,9 @@ function PlantingPlans() {
       harvestDate: toIsoDateString(row.harvest_date),
       harvestEndDate: toIsoDateString(row.harvest_end_date),
       rotationStatus: row.isNew ? null : getTableRotationStatus(row.rotation_status, row.rotation_findings),
+      hasHarvestOverlap: (getRowHarvestOverlaps(row)?.length ?? 0) > 0,
     };
-  }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule]);
+  }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule, getRowHarvestOverlaps]);
   const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
   const search = usePlantingPlanSearch({
     rows: persistedRows,
@@ -1623,6 +1671,7 @@ function PlantingPlans() {
     bedArea: number;
     occupiedArea: number;
     availableArea: number;
+    successionLimit?: SuccessionLimit | null;
   } | null> => {
     const rowBedId = getPlanBedId(row);
     if (rowBedId === null) {
@@ -1635,12 +1684,14 @@ function PlantingPlans() {
       return bedArea === null ? null : { bedArea, occupiedArea: 0, availableArea: bedArea };
     }
     const endDate = getPlanOccupancyEndIso(row);
+    const harvestStartDate = toPlanIsoDate(row.harvest_date);
     const cropId = typeof row.crop === "number" && row.crop > 0 ? row.crop : null;
     try {
       const { data } = await plantingPlanAPI.remainingArea({
         bed_id: rowBedId,
         start_date: plantingDate,
         ...(endDate ? { end_date: endDate } : {}),
+        ...(endDate && harvestStartDate && harvestStartDate >= plantingDate ? { harvest_start_date: harvestStartDate } : {}),
         ...(cropId ? { crop_id: cropId } : {}),
         ...(!row.isNew && typeof row.id === "number" ? { exclude_plan_id: row.id } : {}),
       });
@@ -1651,6 +1702,7 @@ function PlantingPlans() {
         bedArea: data.bed_area_sqm,
         occupiedArea: data.overlapping_used_area_sqm,
         availableArea: data.remaining_area_sqm,
+        successionLimit: data.succession_limit ?? null,
       };
     } catch (error) {
       console.error("Error checking the remaining bed area:", error);
@@ -1797,7 +1849,7 @@ function PlantingPlans() {
         ...getRotationAcceptancePayload(mobileRotationKey),
       } as PlantingPlan);
       closeMobileCreateDialog();
-      await gridCommandApiRef.current?.reload();
+      await reloadPlans();
     } catch (error) {
       showMobileSaveError(error);
     }
@@ -1946,7 +1998,7 @@ function PlantingPlans() {
         ...getRotationAcceptancePayload(mobileRotationKey),
       } as PlantingPlan);
       closeMobileCreateDialog();
-      await gridCommandApiRef.current?.reload();
+      await reloadPlans();
     } catch (error) {
       showMobileSaveError(error);
     }
@@ -2109,6 +2161,11 @@ function PlantingPlans() {
                         sx={{ ml: 0.5, verticalAlign: "middle" }}
                       />
                     ) : null}
+                    <HarvestOverlapIcon
+                      overlaps={getRowHarvestOverlaps(item)}
+                      fontSize="inherit"
+                      sx={{ ml: 0.5, verticalAlign: "middle" }}
+                    />
                   </>
                 );
               }}
@@ -2468,6 +2525,7 @@ function PlantingPlans() {
                 cropId: row.crop ?? undefined,
                 plantsCount: row.plants_count,
                 mode: "noRemainingArea",
+                successionLimit: capacity.successionLimit,
               });
               return false;
             }
@@ -2481,6 +2539,7 @@ function PlantingPlans() {
                 cropId: row.crop ?? undefined,
                 plantsCount: row.plants_count,
                 mode: "remainingLimit",
+                successionLimit: capacity.successionLimit,
               });
               return false;
             }

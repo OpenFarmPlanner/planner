@@ -324,6 +324,22 @@ class ProjectsApiTests(APITestCase):
         )
         self.assertEqual(membership['project_region'], Project.REGION_AUSTRIA)
 
+    def test_members_cannot_change_project_settings(self) -> None:
+        """Name, region and the crop-planning settings are admin-only, as in the UI."""
+        ProjectMembership.objects.create(user=self.other, project=self.project, role='member')
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/projects/{self.project.id}/',
+            {'allow_succession_during_harvest': False, 'name': 'Renamed'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.project.refresh_from_db()
+        self.assertTrue(self.project.allow_succession_during_harvest)
+        self.assertEqual(self.project.name, 'P1')
+
     def test_create_project_with_duplicate_name_assigns_unique_slug(self) -> None:
         Project.objects.create(name='Neues Projekt', slug='neues-projekt')
 

@@ -26,6 +26,9 @@ const removeMemberMock = vi.fn(async () => ({}));
 const revokeInvitationMock = vi.fn();
 const updateProjectMock = vi.fn(async () => ({ data: { id: 1, name: 'Beta' } }));
 const deleteProjectMock = vi.fn(async () => ({}));
+const getProjectMock = vi.fn(async () => ({
+  data: { id: 1, name: 'Alpha', allow_succession_during_harvest: true, succession_min_days_after_harvest_start: 14 },
+}));
 const restoreProjectMock = vi.fn(async () => ({ data: { id: 1, name: 'Alpha' } }));
 const refreshUserMock = vi.fn(async () => null);
 const seasonPatternGetMock = vi.fn(async () => ({ data: { start_day: 1, start_month: 1 } }));
@@ -59,6 +62,7 @@ vi.mock('../api/api', async () => {
       removeMember: (...args: unknown[]) => removeMemberMock(...args),
       revokeInvitation: (...args: unknown[]) => revokeInvitationMock(...args),
       update: (...args: unknown[]) => updateProjectMock(...args),
+      get: (...args: unknown[]) => getProjectMock(...args),
       delete: (...args: unknown[]) => deleteProjectMock(...args),
       restore: (...args: unknown[]) => restoreProjectMock(...args),
     },
@@ -101,6 +105,7 @@ describe('ProjectSettingsPage', () => {
     revokeInvitationMock.mockClear();
     updateProjectMock.mockClear();
     deleteProjectMock.mockClear();
+    getProjectMock.mockClear();
     restoreProjectMock.mockClear();
     refreshUserMock.mockClear();
     seasonPatternGetMock.mockClear();
@@ -129,6 +134,7 @@ describe('ProjectSettingsPage', () => {
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
       'Allgemein',
       'Saison-Muster',
+      'Anbauplanung',
       'Mitglieder',
       'Projekt löschen',
     ]);
@@ -136,6 +142,7 @@ describe('ProjectSettingsPage', () => {
     expect(within(nav).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '#general',
       '#season-pattern',
+      '#scheduling',
       '#members',
       '#delete-project',
     ]);
@@ -602,5 +609,43 @@ describe('ProjectSettingsPage', () => {
     expect(screen.getByText('(zuletzt bestehende Saison)')).toBeInTheDocument();
     expect(screen.getByText('Lücke')).toBeInTheDocument();
     expect(screen.getByText('Optionen beim Anlegen wählbar')).toBeInTheDocument();
+  });
+  it('saves the crop-planning succession settings and disables the gap while switched off', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    const section = await screen.findByRole('region', { name: 'Anbauplanung' });
+    const toggle = within(section).getByRole('switch', { name: 'Folgekultur während der Erntephase erlauben' });
+    const minDays = within(section).getByRole('textbox', { name: 'Mindestabstand ab Erntebeginn' });
+    await waitFor(() => expect(minDays).toHaveValue('14'));
+    expect(toggle).toBeChecked();
+    expect(within(section).getByText(/Frühestens so viele Tage nach Erntebeginn der Vorkultur/)).toBeInTheDocument();
+
+    fireEvent.change(minDays, { target: { value: '21' } });
+    fireEvent.click(within(section).getByRole('button', { name: 'Anbauplanung speichern' }));
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, {
+      allow_succession_during_harvest: true,
+      succession_min_days_after_harvest_start: 21,
+    }));
+    await expectSuccessSnackbar('Projekteinstellungen gespeichert.');
+    await waitFor(() => expect(toggle).toBeEnabled());
+
+    fireEvent.click(toggle);
+    expect(minDays).toBeDisabled();
+    fireEvent.click(within(section).getByRole('button', { name: 'Anbauplanung speichern' }));
+    await waitFor(() => expect(updateProjectMock).toHaveBeenLastCalledWith(1, {
+      allow_succession_during_harvest: false,
+      succession_min_days_after_harvest_start: 21,
+    }));
+  });
+
+  it('rejects a negative succession gap at the field', async () => {
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    const section = await screen.findByRole('region', { name: 'Anbauplanung' });
+    const minDays = within(section).getByRole('textbox', { name: 'Mindestabstand ab Erntebeginn' });
+    await waitFor(() => expect(minDays).toHaveValue('14'));
+
+    fireEvent.change(minDays, { target: { value: '-1' } });
+
+    expect(within(section).getByText('Gib eine ganze Zahl von 0 bis 365 ein.')).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Anbauplanung speichern' })).toBeDisabled();
   });
 });

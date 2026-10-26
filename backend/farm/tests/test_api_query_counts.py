@@ -320,8 +320,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         one page-wide lookup of the general Kulturen the plans' Sorten inherit
         their timing from, plus the page-wide crop rotation check: the plant
         families and their translations, and the project's bed history with
-        its species translations (farm/services/crop_rotation.py)."""
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 11)
+        its species translations (farm/services/crop_rotation.py), plus the
+        page-wide harvest-overlap check: the project's bed occupancies with
+        their species translations (farm/services/bed_capacity.py)."""
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 13)
 
     def test_planting_plans_list_query_count_with_rotation_findings(self):
         """Conflicts and accepted conflicts (with their accepting user) on every
@@ -335,8 +337,32 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 11, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 13, expected_rows=2 * ROW_COUNT,
         )
+
+    def test_planting_plans_list_query_count_with_harvest_overlaps(self):
+        """A follow-up crop in the harvest phase of a full-bed plan on every bed
+        must cost the same queries as plans without overlaps."""
+        for index in range(ROW_COUNT):
+            predecessor = PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2027, 3, 1),
+                area_usage_sqm=20, project=self.project, season=self.seasons[index],
+            )
+            PlantingPlan.objects.filter(pk=predecessor.pk).update(
+                harvest_date=date(2027, 5, 1), harvest_end_date=date(2027, 7, 1),
+            )
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2027, 6, 1),
+                area_usage_sqm=10, project=self.project, season=self.seasons[index],
+            )
+
+        with self.assertNumQueries(13):
+            response = self.client.get('/openfarmplanner/api/planting-plans/')
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results']
+        self.assertEqual(len(rows), 3 * ROW_COUNT)
+        predecessors = [row for row in rows if row['actual_harvest_end_date'] == date(2027, 6, 1)]
+        self.assertEqual(len(predecessors), ROW_COUNT)
 
     def test_young_plant_demand_list_query_count(self):
         """Crop, species translations and the bed/field/location of every plan

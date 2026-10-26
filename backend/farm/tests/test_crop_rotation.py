@@ -5,7 +5,7 @@ occupancies; the API tests below go through the real plant-family list that
 the migrations seed (Brassicaceae 4 years, Amaryllidaceae 3, Poaceae none).
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import SimpleTestCase
 from django.utils import timezone
@@ -556,7 +556,11 @@ class CropRotationApiTest(ProjectApiTestCase):
         self.assertEqual(full['bed_area_sqm'], 5.0)
         self.assertEqual(full['blocking_plan']['plan_id'], blocker.id)
         self.assertEqual(full['blocking_plan']['crop_label'], 'Karotte')
-        self.assertEqual(full['blocking_plan']['end_date'], blocker.harvest_end_date.isoformat())
+        # The blocker frees its area after its firm stage, the default 14 days
+        # after its harvest start (farm/services/bed_capacity.py).
+        self.assertEqual(
+            full['blocking_plan']['end_date'], (blocker.harvest_date + timedelta(days=13)).isoformat(),
+        )
 
     def test_bed_suggestions_skip_the_area_check_without_an_area(self):
         full_bed = Bed.objects.create(name='Belegt', field=self.field, area_sqm=5, project=self.project)

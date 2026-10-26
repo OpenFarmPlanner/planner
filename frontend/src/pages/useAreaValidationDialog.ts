@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { SuccessionLimit } from "../api/types";
+
 /**
  * State and timer lifecycle for the planting-plan area-validation dialog.
  *
@@ -23,6 +25,8 @@ export interface AreaValidationDialogState {
   cropId?: number;
   plantsCount?: number | null;
   mode: "bedLimit" | "remainingLimit" | "noRemainingArea";
+  /** When a follow-up may take over the bed; named in the remaining-area modes. */
+  successionLimit?: SuccessionLimit | null;
 }
 
 export interface UseAreaValidationDialogResult {

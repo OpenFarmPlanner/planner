@@ -12,6 +12,12 @@ export interface Task {
    * of them by the same number of days, live during the drag.
    */
   linkGroupId?: string;
+  /**
+   * Share of the bar (0–1), counted back from its end, that is drawn faded
+   * (e.g. the part of a harvest phase that a follow-up crop cuts short). The
+   * look comes from the host's `.rmg-task-faded-tail` style.
+   */
+  fadedTailFraction?: number;
 }
 
 export interface TaskGroup {

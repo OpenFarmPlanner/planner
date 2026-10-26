@@ -42,7 +42,9 @@
     "requestedArea": "Requested: {{area}}",
     "acceptedArea": "Applied: {{area}}",
     "applyRemainingArea": "Use remaining area",
-    "applyBedArea": "Use bed area"
+    "applyBedArea": "Use bed area",
+    "successionLimit_one": "Bed area exceeded. A follow-up crop can follow {{crop}} no earlier than {{count}} day after its harvest start ({{date}}).",
+    "successionLimit_other": "Bed area exceeded. A follow-up crop can follow {{crop}} no earlier than {{count}} days after its harvest start ({{date}})."
   },
   "placeholders": {
     "selectCrop": "Select culture",
@@ -204,7 +206,8 @@
       "plantingDate": "Planting period",
       "harvestStartDate": "Harvest start",
       "harvestEndDate": "Harvest end",
-      "rotation": "Crop rotation"
+      "rotation": "Crop rotation",
+      "occupancy": "Bed occupancy"
     },
     "monthFrom": "From",
     "monthTo": "To",
@@ -254,6 +257,9 @@
       "conflict": "Conflict",
       "accepted": "Accepted",
       "info": "Not checkable"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Harvest overlap"
     }
   },
   "rotation": {
@@ -364,5 +370,10 @@
       "insufficient": "Only {{free}} m² free in this period ({{blockingCulture}} until {{date}}), {{needed}} m² needed",
       "insufficientWithoutBlocker": "Only {{free}} m² free in this period, {{needed}} m² needed"
     }
+  },
+  "harvestOverlap": {
+    "predecessor": "Harvest ends on {{date}} at the latest (follow-up crop {{crop}}).",
+    "successor": "Planted during the harvest phase of {{crop}} (planned harvest end {{date}}).",
+    "iconAria": "Harvest overlap"
   }
 }

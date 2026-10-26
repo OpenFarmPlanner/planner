@@ -55,7 +55,8 @@
     "phase": {
       "growth": "Fase de crecimiento",
       "harvest": "Fase de cosecha"
-    }
+    },
+    "actualHarvestEnd": "La cosecha termina a más tardar"
   },
   "noData": "No hay series disponibles",
   "modeLabel": "Modo",

@@ -15,7 +15,13 @@ from farm.common.serializer_fields import (
 )
 from farm.models import Crop, PlantingPlan, Season, Task
 from farm.project_context import resolve_season_id_from_request
-from farm.services.crop_display import resolve_crop_display_name
+from farm.services.bed_capacity import (
+    HarvestOverlap,
+    HarvestOverlapIndex,
+    SuccessionRule,
+    actual_harvest_end,
+)
+from farm.services.crop_display import format_crop_label, resolve_crop_display_name
 from farm.services.crop_inheritance import (
     build_general_crop_index,
     resolve_crop_field,
@@ -50,6 +56,20 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     updated_by_user = AuditUserSerializer(source='updated_by', read_only=True)
     rotation_status = serializers.SerializerMethodField(read_only=True)
     rotation_findings = serializers.SerializerMethodField(read_only=True)
+    harvest_overlaps = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Allowed bed overlaps with a follow-up crop planted during the harvest phase of a '
+            'previous crop (infos, never errors); one entry per affected plan, sorted by date.'
+        ),
+    )
+    actual_harvest_end_date = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'The day the harvest ends at the latest because a follow-up crop takes over the bed '
+            '(its first day); null without such an overlap. Calculated, never stored.'
+        ),
+    )
     rotation_conflict_accepted = serializers.BooleanField(
         required=False,
         help_text=(
@@ -130,6 +150,34 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_rotation_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
         return [finding.as_dict() for finding in self._rotation_result(obj).findings]
+
+    def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
+        """The plan's harvest overlaps, from one project-wide index per request."""
+        indexes = self.context.setdefault('_harvest_overlap_index_by_project', {})
+        if obj.project_id not in indexes:
+            language_code = self._request_language()
+            region = self._request_region()
+            request = self.context.get('request')
+            active_project = getattr(request, 'active_project', None) if request is not None else None
+            indexes[obj.project_id] = HarvestOverlapIndex(
+                obj.project_id,
+                crop_label=lambda crop: format_crop_label(crop, language_code, region),
+                rule=(
+                    SuccessionRule.for_project(active_project)
+                    if active_project is not None and active_project.pk == obj.project_id else None
+                ),
+            )
+        results = self.context.setdefault('_harvest_overlaps_by_plan', {})
+        cache_key = obj.pk or id(obj)
+        if cache_key not in results:
+            results[cache_key] = indexes[obj.project_id].plan_overlaps(obj)
+        return results[cache_key]
+
+    def get_harvest_overlaps(self, obj: PlantingPlan) -> list[dict[str, Any]]:
+        return [overlap.as_dict() for overlap in self._harvest_overlaps(obj)]
+
+    def get_actual_harvest_end_date(self, obj: PlantingPlan) -> date | None:
+        return actual_harvest_end(self._harvest_overlaps(obj))
 
     def _request_language(self) -> str:
         request = self.context.get('request')

@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from '../../../i18n';
 import {
   DATE_FILTER_FIELDS,
+  OCCUPANCY_FILTER_OPTIONS,
   ROTATION_FILTER_STATUSES,
   type DateFilterField,
   type FilterOption,
@@ -37,6 +38,11 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
     label: t(`plantingPlans:search.rotationOptions.${status}`),
   }));
 
+  const occupancyOptions = OCCUPANCY_FILTER_OPTIONS.map((option) => ({
+    value: option,
+    label: t(`plantingPlans:search.occupancyOptions.${option}`),
+  }));
+
   return search.activeFilterGroups.map((group) => {
     if (isDateFilterField(group)) {
       const { from, to } = filters.monthRanges[group];
@@ -57,6 +63,7 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
       cultivationType: { key: 'cultivationType', values: joinLabels(options.cultivationTypes, filters.cultivationTypes) },
       crop: { key: 'crop', values: joinLabels(options.crops, filters.cropKeys) },
       rotation: { key: 'rotation', values: joinLabels(rotationOptions, filters.rotationStatuses) },
+      occupancy: { key: 'occupancy', values: joinLabels(occupancyOptions, filters.occupancy) },
     } as const;
     const { key, values } = byGroup[group];
     const filterLabel = t(`plantingPlans:search.fields.${key}`);

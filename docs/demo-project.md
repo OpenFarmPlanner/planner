@@ -53,7 +53,10 @@ full list, with culture, bed and expected status for a manual check, is the
   (no break; copied into next season it becomes the hint of the copy dialog)
   and zucchini back after the Cucurbitaceae break (the one plan three seasons
   back). The leek row's "Anbaufläche ändern" shows a partly occupied bed
-  ("Zuckermais") and a bed without enough room ("Bohnen").
+  ("Zuckermais") and "Bohnen", where the leek starts on the first day after
+  the bush beans' firm stage (harvest overlap, see
+  [bed-occupancy.md](./bed-occupancy.md)); with "Folgekultur während der
+  Erntephase erlauben" off, "Bohnen" is the bed without enough room.
 
 ### Bought-in young plants
 

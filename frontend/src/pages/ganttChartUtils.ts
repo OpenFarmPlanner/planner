@@ -23,6 +23,10 @@ export interface GanttTask {
   notes?: string;
   harvestStartDate?: Date;
   harvestEndDate?: Date;
+  /** The day a follow-up crop takes over the bed, before the planned harvest end. */
+  actualHarvestEndDate?: Date;
+  /** Share of the bar drawn faded from its end; see the Gantt library's `Task`. */
+  fadedTailFraction?: number;
   propagationStartDate?: Date;
   propagationDurationDays?: number;
   transplantDate?: Date;
@@ -122,8 +126,29 @@ interface SeedlingTooltipDetail {
 }
 
 export interface OccupancyTooltipDetail {
-  labelKey: 'plantingDate' | 'harvestDate' | 'firstHarvest' | 'lastHarvest' | 'areaUsage' | 'notes';
+  labelKey: 'plantingDate' | 'harvestDate' | 'firstHarvest' | 'lastHarvest' | 'actualHarvestEnd' | 'areaUsage' | 'notes';
   value: string;
+}
+
+/**
+ * When a follow-up crop takes over the bed during the harvest phase
+ * (`actual_harvest_end_date`, docs/bed-occupancy.md), the rest of the harvest
+ * bar is drawn faded and the tooltip names the actual end.
+ */
+export function getHarvestCutShort(
+  plan: Pick<PlantingPlan, 'actual_harvest_end_date'>,
+  harvestStartDate: Date,
+  harvestEndDate: Date,
+): Pick<GanttTask, 'actualHarvestEndDate' | 'fadedTailFraction'> {
+  const actualEnd = parseIsoDate(plan.actual_harvest_end_date ?? null);
+  const span = harvestEndDate.getTime() - harvestStartDate.getTime();
+  if (!actualEnd || span <= 0 || actualEnd >= harvestEndDate || actualEnd < harvestStartDate) {
+    return {};
+  }
+  return {
+    actualHarvestEndDate: actualEnd,
+    fadedTailFraction: (harvestEndDate.getTime() - actualEnd.getTime()) / span,
+  };
 }
 
 export function parseDateString(dateStr: string): Date {
@@ -349,7 +374,7 @@ export function getMovedPlanDates(
 
 export function buildOccupancyTooltipDetails(task: Pick<
   GanttTask,
-  'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'areaUsage' | 'notes'
+  'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'actualHarvestEndDate' | 'areaUsage' | 'notes'
 >): OccupancyTooltipDetail[] {
   const isHarvestTask = getOccupancyTaskPhase(task) === 'harvest';
   // While a bar is being moved its start/end already sit at the preview
@@ -380,6 +405,9 @@ export function buildOccupancyTooltipDetails(task: Pick<
       : null,
     harvestEndDate && hasHarvestRange
       ? { labelKey: 'lastHarvest', value: formatGanttDate(harvestEndDate) }
+      : null,
+    task.actualHarvestEndDate
+      ? { labelKey: 'actualHarvestEnd', value: formatGanttDate(addUtcDays(task.actualHarvestEndDate, harvestShiftDays)) }
       : null,
     typeof task.areaUsage === 'number'
       ? { labelKey: 'areaUsage', value: formatAreaSquareMeters(task.areaUsage) }
@@ -537,6 +565,7 @@ export function buildFieldOccupancyTaskGroups({
               notes: plan.notes,
               harvestStartDate,
               harvestEndDate,
+              ...getHarvestCutShort(plan, harvestStartDate, harvestEndDate),
             });
           }
         });
@@ -700,6 +729,7 @@ export function buildFieldOccupancyHierarchy({
           notes: plan.notes,
           harvestStartDate,
           harvestEndDate,
+          ...getHarvestCutShort(plan, harvestStartDate, harvestEndDate),
         });
       }
     });

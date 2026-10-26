@@ -55,7 +55,8 @@
     "phase": {
       "growth": "Growth phase",
       "harvest": "Harvest phase"
-    }
+    },
+    "actualHarvestEnd": "Harvest ends at the latest"
   },
   "noData": "No planting plans available",
   "modeLabel": "Mode",
