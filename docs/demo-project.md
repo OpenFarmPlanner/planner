@@ -194,7 +194,12 @@ Seeding records a "created" revision per crop through `Crop.save()`; the
 marker lets usage statistics tell those apart from later user changes.
 
 To adjust the template, update the specs in `demo_project.py` and extend the
-focused backend tests in `backend/farm/tests/test_demo_project.py`. The project
+focused backend tests in `backend/farm/tests/test_demo_project.py`. A template
+change reaches only newly seeded projects; if the old values break a rule
+(e.g. fractional seeds per plant, repaired by migration
+`farm/0119_repair_demo_fractional_seeds_per_plant`), add a data migration that
+matches the exact old values in projects with `demo_seeded_at` set, so nothing
+a user typed is rewritten. The project
 API behavior is covered in `backend/farm/tests/test_projects_api.py`; the
 frontend onboarding choice is covered in
 `frontend/src/__tests__/ProjectSelectionPage.test.tsx` and
