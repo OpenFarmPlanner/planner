@@ -1,9 +1,9 @@
 import type { Crop } from '../api/types';
-import { buildSheetData, downloadSpreadsheet } from './spreadsheetExport';
+import { buildSheetData, downloadSpreadsheet, type SpreadsheetExportFormat } from './spreadsheetExport';
 
 type TemplateT = (key: string) => string;
 
-const TEMPLATE_FILENAME = 'kulturen_vorlage.xlsx';
+const TEMPLATE_FILENAME_STEM = 'kulturen_vorlage';
 
 /**
  * Example rows for the import template: a species, one of its varieties
@@ -31,7 +31,6 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
     seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     sowing_calculation_safety_percent_pre_cultivation: 20,
     display_color: '#dc2626',
-    notes: t('import.template.speciesNotes'),
   },
   {
     name: t('import.template.speciesName'),
@@ -63,6 +62,6 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
 
 export const buildCropImportTemplateRows = (t: TemplateT) => buildSheetData(buildTemplateCrops(t), t);
 
-export const downloadCropImportTemplate = (t: TemplateT): void => {
-  downloadSpreadsheet(buildCropImportTemplateRows(t), 'xlsx', TEMPLATE_FILENAME);
+export const downloadCropImportTemplate = (t: TemplateT, format: SpreadsheetExportFormat = 'ods'): void => {
+  downloadSpreadsheet(buildCropImportTemplateRows(t), format, `${TEMPLATE_FILENAME_STEM}.${format}`);
 };

@@ -24,6 +24,11 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
 
   const rules = [
     t('import.help.rules.required', { name: header('name') }),
+    t('import.help.rules.varietyRows', {
+      variety: header('variety'),
+      nutrient: header('nutrient_demand'),
+      cultivation: header('cultivation_types'),
+    }),
     t('import.help.rules.numbers'),
     t('import.help.rules.cultivationTypes', { example: cultivationLabels.join(', ') }),
     t('import.help.rules.wholeSeeds', { unit: seedUnitLabels.seeds_per_plant ?? 'seeds_per_plant' }),
@@ -37,15 +42,25 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
       <Typography variant="body2" color="text.secondary">
         {t('import.help.templateHint')}
       </Typography>
-      <Button
-        type="button"
-        variant="text"
-        startIcon={<FileDownloadOutlinedIcon />}
-        onClick={() => downloadCropImportTemplate(t)}
-        sx={linkButtonSx}
-      >
-        {t('import.help.templateButton')}
-      </Button>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1 }}>
+        <Button
+          type="button"
+          variant="text"
+          startIcon={<FileDownloadOutlinedIcon />}
+          onClick={() => downloadCropImportTemplate(t, 'ods')}
+          sx={linkButtonSx}
+        >
+          {t('import.help.templateButton')}
+        </Button>
+        <Button
+          type="button"
+          variant="text"
+          size="small"
+          onClick={() => downloadCropImportTemplate(t, 'xlsx')}
+        >
+          {t('import.help.templateButtonXlsx')}
+        </Button>
+      </Box>
       <Button
         type="button"
         variant="text"

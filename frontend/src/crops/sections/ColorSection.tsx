@@ -6,6 +6,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
+import { DISPLAY_COLOR_PATTERN } from '../displayColor';
 
 interface ColorSectionProps {
   formData: Partial<Crop>;
@@ -15,12 +16,11 @@ interface ColorSectionProps {
   defaultColor: string;
 }
 
-const COLOR_VALUE_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 
 export function ColorSection({ formData, errors, onChange, t, defaultColor }: ColorSectionProps) {
   const displayColor = formData.display_color || defaultColor;
-  const swatchColor = COLOR_VALUE_PATTERN.test(displayColor) ? displayColor : defaultColor;
-  const displayValue = COLOR_VALUE_PATTERN.test(displayColor) ? displayColor.toUpperCase() : displayColor;
+  const swatchColor = DISPLAY_COLOR_PATTERN.test(displayColor) ? displayColor : defaultColor;
+  const displayValue = DISPLAY_COLOR_PATTERN.test(displayColor) ? displayColor.toUpperCase() : displayColor;
 
   return (
     <>

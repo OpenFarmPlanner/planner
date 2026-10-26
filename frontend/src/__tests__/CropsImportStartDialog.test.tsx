@@ -66,7 +66,7 @@ describe('CropsImportStartDialog', () => {
       renderDialog();
       expect(screen.getByText('Kulturen importieren')).toBeInTheDocument();
       expect(
-        screen.getByText('Unterstützte Formate: JSON, CSV, Excel (.xlsx), OpenDocument (.ods)'),
+        screen.getByText('Unterstützte Formate: OpenDocument (.ods), Excel (.xlsx), CSV, JSON'),
       ).toBeInTheDocument();
     });
 
@@ -258,12 +258,14 @@ describe('CropsImportStartDialog', () => {
   });
 
   describe('format help', () => {
-    it('downloads the template', async () => {
+    it('downloads the template as OpenDocument, or as Excel on request', async () => {
       renderDialog();
 
-      await userEvent.click(screen.getByRole('button', { name: /Vorlage herunterladen/ }));
+      await userEvent.click(screen.getByRole('button', { name: 'Vorlage herunterladen (.ods)' }));
+      await userEvent.click(screen.getByRole('button', { name: 'oder als Excel (.xlsx)' }));
 
-      expect(downloadCropImportTemplate).toHaveBeenCalledWith(t);
+      expect(downloadCropImportTemplate).toHaveBeenNthCalledWith(1, t, 'ods');
+      expect(downloadCropImportTemplate).toHaveBeenNthCalledWith(2, t, 'xlsx');
     });
 
     it('keeps the allowed values collapsed until asked, then lists them', async () => {
@@ -278,6 +280,10 @@ describe('CropsImportStartDialog', () => {
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByText('Schwachzehrer, Mittelzehrer, Starkzehrer')).toBeInTheDocument();
       expect(screen.getByText('Bei „Korn / Pflanze“ sind nur ganze Zahlen möglich.')).toBeInTheDocument();
+      expect(screen.getByText(
+        'Eine Zeile ohne „Sorte“ beschreibt die Kultur selbst. Eine Zeile mit Sorte gehört zu dieser Kultur '
+        + 'und übernimmt alles, was sie leer lässt, von ihr, z. B. „Nährstoffbedarf“ oder „Anbauart“.',
+      )).toBeInTheDocument();
     });
   });
 });

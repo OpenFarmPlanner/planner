@@ -138,8 +138,14 @@ def find_matching_crop(
             if candidate_supplier_normalized == supplier_name_normalized:
                 return candidate
 
-    # Final fallback: legacy behavior when no supplier information is available.
-    return base_queryset.filter(supplier__isnull=True).first()
+    # A project holds one crop per name and variety (the serializer rejects a
+    # second one whatever its supplier; suppliers hang off it as
+    # CropSupplierData). So a row naming another supplier still updates that
+    # crop, its preferred supplier included, instead of failing as a "new" one.
+    return (
+        base_queryset.filter(supplier__isnull=True).first()
+        or base_queryset.order_by('id').first()
+    )
 
 
 def _is_number(value: Any) -> bool:
@@ -189,7 +195,22 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
                     'new': import_value,
                 })
 
+    supplier_diff = _supplier_diff(existing_crop, import_data)
+    if supplier_diff is not None:
+        diff.append(supplier_diff)
+
     return diff
+
+
+def _supplier_diff(existing_crop: Crop, import_data: dict) -> dict | None:
+    """The preferred-supplier change a row would make, if it names another one."""
+    import_supplier = import_data.get('supplier_name') or import_data.get('seed_supplier')
+    if not normalize_supplier_name(import_supplier):
+        return None
+    current = existing_crop.supplier.name if existing_crop.supplier else existing_crop.seed_supplier
+    if normalize_supplier_name(import_supplier) == normalize_supplier_name(current):
+        return None
+    return {'field': 'supplier_name', 'current': current or None, 'new': import_supplier}
 
 
 def _match_import_row(

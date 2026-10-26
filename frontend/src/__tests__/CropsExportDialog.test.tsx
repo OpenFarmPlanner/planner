@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropsExportDialog } from '../pages/CropsExportDialog';
 import i18n from '../i18n';
 import { expectNoTooltip, tooltipOf } from './helpers/disabledActionTooltip';
@@ -53,6 +53,10 @@ const cancelButton = (): HTMLElement => screen.getByRole('button', { name: 'Abbr
  * Neither is observable from outside, and neither is worth changing.
  */
 describe('CropsExportDialog', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem('ofp.crops.exportFormat');
+  });
+
   describe('chrome', () => {
     it('titles itself and labels both groups of choices', () => {
       renderDialog();
@@ -161,10 +165,10 @@ describe('CropsExportDialog', () => {
   });
 
   describe('format', () => {
-    it('offers the three spreadsheet formats and JSON, starting on xlsx', () => {
+    it('offers the three spreadsheet formats and JSON, starting on ods', () => {
       renderDialog();
-      expect(radio('Excel (.xlsx)')).toBeChecked();
-      ['OpenDocument Tabelle (.ods)', 'CSV (.csv)', 'JSON (.json)'].forEach((label) => {
+      expect(radio('OpenDocument Tabelle (.ods)')).toBeChecked();
+      ['Excel (.xlsx)', 'CSV (.csv)', 'JSON (.json)'].forEach((label) => {
         expect(radio(label)).toBeEnabled();
         expect(radio(label)).not.toBeChecked();
       });
@@ -195,7 +199,33 @@ describe('CropsExportDialog', () => {
       const { onExport } = renderDialog({ initialScope: 'all' });
       await user.click(radio('Aktuelle Kultur'));
       await user.click(submitButton());
-      expect(onExport).toHaveBeenCalledWith('current', 'xlsx');
+      expect(onExport).toHaveBeenCalledWith('current', 'ods');
+    });
+
+    it('preselects the open OpenDocument format and lists it first', () => {
+      renderDialog();
+      const formats = screen.getAllByRole('radio').map((input) => input.getAttribute('value'))
+        .filter((value) => ['ods', 'xlsx', 'csv', 'json'].includes(value ?? ''));
+      expect(formats).toEqual(['ods', 'xlsx', 'csv', 'json']);
+      expect(radio('OpenDocument Tabelle (.ods)')).toBeChecked();
+    });
+
+    it('remembers the format this browser exported last', async () => {
+      const user = userEvent.setup();
+      const first = renderDialog();
+      await user.click(radio('Excel (.xlsx)'));
+      await user.click(submitButton());
+      first.unmount();
+
+      renderDialog();
+
+      expect(radio('Excel (.xlsx)')).toBeChecked();
+    });
+
+    it('falls back to OpenDocument when the stored format is unknown', () => {
+      window.localStorage.setItem('ofp.crops.exportFormat', 'pdf');
+      renderDialog();
+      expect(radio('OpenDocument Tabelle (.ods)')).toBeChecked();
     });
 
     it('closes once the export resolves', async () => {
