@@ -1,7 +1,14 @@
 import i18n from 'i18next';
 
 import { normalizeImportCropEntry } from './importUtils';
-import { buildHeaderToKeyMap, normalizeHeaderForLookup, CROP_COLUMNS } from './spreadsheetColumns';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
+import {
+  buildEnumImportMaps,
+  buildHeaderToKeyMap,
+  normalizeEnumValueForLookup,
+  normalizeHeaderForLookup,
+  CROP_COLUMNS,
+} from './spreadsheetColumns';
 import { parseSpreadsheetRows } from './spreadsheetFile';
 import type { SpreadsheetFormat } from './spreadsheetTypes';
 
@@ -42,7 +49,7 @@ const parseRawValue = (
   if (!s) return undefined;
 
   if (enumImport) {
-    const mapped = enumImport[normalizeHeaderForLookup(s)];
+    const mapped = enumImport[normalizeEnumValueForLookup(s)];
     return mapped ?? s;
   }
 
@@ -61,8 +68,14 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   }
 
   const headerRow = rows[0] as (string | null)[];
-  const t = i18n.getFixedT(i18n.resolvedLanguage ?? i18n.language, 'crops');
-  const headerToKey = buildHeaderToKeyMap(t);
+  // The current language goes last so its labels win any cross-language clash.
+  const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
+  const translators = [
+    ...SUPPORTED_LANGUAGES.map(({ code }) => code).filter((code) => code !== currentLanguage),
+    currentLanguage,
+  ].map((code) => i18n.getFixedT(code, 'crops'));
+  const headerToKey = buildHeaderToKeyMap(...translators);
+  const enumImportMaps = buildEnumImportMaps(...translators);
   const columnMap: (string | null)[] = headerRow.map((h) => {
     if (!h) return null;
     return headerToKey.get(normalizeHeaderForLookup(String(h))) ?? null;
@@ -90,7 +103,7 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
       const colDef = keyToColDef.get(key);
       if (!colDef) continue;
       const raw = i < row.length ? row[i] : null;
-      const parsed = parseRawValue(raw, colDef.type, colDef.enumImport);
+      const parsed = parseRawValue(raw, colDef.type, enumImportMaps.get(key));
       if (parsed !== undefined) {
         entry[key] = parsed;
       }

@@ -268,13 +268,19 @@ export const getLocalizedCropColumns = (t: SpreadsheetT): LocalizedSpreadsheetCo
 export const normalizeHeaderForLookup = (header: string): string =>
   header.trim().toLowerCase().replace(/\s+/g, ' ');
 
-export const buildHeaderToKeyMap = (t?: SpreadsheetT): Map<string, string> => {
+/** Like the header lookup, but also ignores spacing around "/" ("g / m²" = "g/m²"). */
+export const normalizeEnumValueForLookup = (value: string): string =>
+  normalizeHeaderForLookup(value).replace(/\s*\/\s*/g, '/');
+
+/**
+ * Header lookup for an imported sheet. Pass one translator per UI language so
+ * a file exported in any language imports regardless of the current one.
+ */
+export const buildHeaderToKeyMap = (...translators: SpreadsheetT[]): Map<string, string> => {
   const map = new Map<string, string>();
-  const columns = t ? getLocalizedCropColumns(t) : [];
-  for (const col of columns) {
-    map.set(normalizeHeaderForLookup(col.header), col.key);
-    for (const alias of col.aliases) {
-      map.set(normalizeHeaderForLookup(alias), col.key);
+  for (const t of translators) {
+    for (const col of getLocalizedCropColumns(t)) {
+      map.set(normalizeHeaderForLookup(col.header), col.key);
     }
   }
   for (const col of CROP_COLUMNS) {
@@ -284,4 +290,28 @@ export const buildHeaderToKeyMap = (t?: SpreadsheetT): Map<string, string> => {
     }
   }
   return map;
+};
+
+/**
+ * Enum label lookup per column key: the static aliases plus the inverse of the
+ * localized export labels for every translator, later translators winning.
+ * Without the latter a sheet exported by the app ("Starkzehrer", "g / m²")
+ * would not import back.
+ */
+export const buildEnumImportMaps = (...translators: SpreadsheetT[]): Map<string, Record<string, string>> => {
+  const maps = new Map<string, Record<string, string>>();
+  for (const col of CROP_COLUMNS) {
+    if (!col.enumImport) continue;
+    const map: Record<string, string> = {};
+    for (const [label, value] of Object.entries(col.enumImport)) {
+      map[normalizeEnumValueForLookup(label)] = value;
+    }
+    for (const t of translators) {
+      for (const [value, label] of Object.entries(getLocalizedEnumExport(col.key, t) ?? {})) {
+        map[normalizeEnumValueForLookup(label)] = value;
+      }
+    }
+    maps.set(col.key, map);
+  }
+  return maps;
 };

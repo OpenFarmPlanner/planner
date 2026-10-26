@@ -13,7 +13,9 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
+import { useTranslation } from '../i18n';
 import type { ImportPreviewResult } from './cropsPageUtils';
+import { formatImportDiffChange, formatImportFailure } from './cropsImportUtils';
 import type { CropImportState } from './useCropImportState';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
@@ -65,6 +67,8 @@ function UpdateCandidatesSection({
   onConfirmUpdatesChange: (value: boolean) => void;
   t: Translator;
 }) {
+  const { t: cropsT } = useTranslation('crops');
+
   if (!entries.length) {
     return null;
   }
@@ -85,7 +89,7 @@ function UpdateCandidatesSection({
               <Box sx={{ ml: 2, fontSize: '0.875rem' }}>
                 {result.diff.map((change, index) => (
                   <Typography key={index} variant="caption" sx={{ display: "block", }} >
-                    {change.field}: {JSON.stringify(change.current)} → {JSON.stringify(change.new)}
+                    {formatImportDiffChange(change, cropsT)}
                   </Typography>
                 ))}
               </Box>
@@ -112,6 +116,7 @@ export function CropsImportDialog({
   onImportStart,
   t,
 }: CropsImportDialogProps) {
+  const { t: cropsT } = useTranslation('crops');
   const newCrops = importState.previewResults.filter((result) => result.status === 'create');
   const updateCandidates = importState.previewResults.filter((result) => result.status === 'update_candidate');
 
@@ -164,7 +169,7 @@ export function CropsImportDialog({
                   <ListItem key={index}>
                     <ListItemText
                       primary={entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : `${t('import.invalidEntry')} ${entry.index + 1}`}
-                      secondary={typeof entry.error === 'string' ? entry.error : JSON.stringify(entry.error)}
+                      secondary={formatImportFailure(entry, cropsT)}
                     />
                   </ListItem>
                 ))}

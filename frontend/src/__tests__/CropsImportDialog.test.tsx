@@ -63,4 +63,65 @@ describe('CropsImportDialog', () => {
 
     expect(onConfirmUpdatesChange).toHaveBeenCalledWith(true);
   });
+
+  it('shows changed fields and values with their labels, not raw API values', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          previewResults: [{
+            index: 0,
+            status: 'update_candidate',
+            import_data: { name: 'Buschbohne' },
+            diff: [
+              { field: 'nutrient_demand', current: 'medium', new: 'low' },
+              { field: 'expected_yield', current: '1.30', new: 1.2 },
+              { field: 'row_spacing_cm', current: 50, new: 40 },
+            ],
+          }],
+        })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByText('Nährstoffbedarf: Mittelzehrer → Schwachzehrer')).toBeInTheDocument();
+    expect(screen.getByText(/: 1,3 kg → 1,2 kg$/)).toBeInTheDocument();
+    expect(screen.getByText(/\(cm\): 50 → 40$/)).toBeInTheDocument();
+    expect(screen.queryByText(/nutrient_demand/)).not.toBeInTheDocument();
+  });
+
+  it('names the rejected field and value instead of the raw validation payload', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          status: 'error',
+          failedEntries: [
+            {
+              index: 0,
+              name: 'Brokkoli',
+              error: { nutrient_demand: ['"Sehr hoch" is not a valid choice.'] },
+              importData: { name: 'Brokkoli', nutrient_demand: 'Sehr hoch' },
+            },
+            { index: 1, name: 'Senf', error: 'Unexpected failure' },
+          ],
+        })}
+        hasImportableEntries={false}
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByText('Nährstoffbedarf: „Sehr hoch“ ist kein gültiger Wert')).toBeInTheDocument();
+    expect(screen.getByText('Dieser Eintrag konnte nicht gespeichert werden.')).toBeInTheDocument();
+    expect(screen.queryByText(/is not a valid choice/)).not.toBeInTheDocument();
+  });
 });

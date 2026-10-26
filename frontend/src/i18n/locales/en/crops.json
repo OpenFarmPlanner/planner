@@ -648,6 +648,7 @@
     "noChanges": "No changes",
     "confirmUpdates": "Confirm overwrite",
     "unrecognizedColumns": "Unrecognized columns are ignored: {{columns}}",
+    "invalidFieldValue": "{{field}}: “{{value}}” is not a valid value",
     "errors": {
       "notArray": "The file must contain a JSON array.",
       "noValidEntries": "No valid entries found.",
@@ -656,7 +657,8 @@
       "parse": "The file could not be read.",
       "server": "Import failed.",
       "network": "Network error during import.",
-      "someFailures": "{{failed}} entries could not be imported."
+      "someFailures": "{{failed}} entries could not be imported.",
+      "rowFailed": "This entry could not be saved."
     }
   },
   "library": {

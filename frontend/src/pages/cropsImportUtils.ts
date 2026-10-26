@@ -1,4 +1,8 @@
+import type { TFunction } from 'i18next';
 import { parseCropImportJson } from '../crops/importUtils';
+import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
+import type { ImportFailedEntry, ImportPreviewResult } from './cropsPageUtils';
+import { formatHistoryChangeValue, getCropFieldLabel } from './cropsHistoryUtils';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
@@ -91,3 +95,41 @@ export const readFileAsText = (file: File): Promise<string> => (
     reader.readAsText(file);
   })
 );
+
+type ImportDiffChange = NonNullable<ImportPreviewResult['diff']>[number];
+
+const NUMERIC_IMPORT_FIELDS = new Set(
+  CROP_COLUMNS.filter((column) => column.type === 'number').map((column) => column.key),
+);
+
+/** Decimal fields come back as strings ("1.30"); show them like the imported numbers. */
+const toDisplayValue = (value: unknown, field: string): unknown => {
+  if (NUMERIC_IMPORT_FIELDS.has(field) && typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+};
+
+const formatImportValue = (value: unknown, field: string, t: TFunction<'crops'>): string =>
+  formatHistoryChangeValue(toDisplayValue(value, field), field, t);
+
+export const formatImportDiffChange = (change: ImportDiffChange, t: TFunction<'crops'>): string => (
+  `${getCropFieldLabel(change.field, t)}: ${formatImportValue(change.current, change.field, t)}`
+  + ` → ${formatImportValue(change.new, change.field, t)}`
+);
+
+/**
+ * One localized line per rejected field. Backend validation messages are
+ * technical English, so only the field and the rejected value are shown.
+ */
+export const formatImportFailure = (entry: ImportFailedEntry, t: TFunction<'crops'>): string => {
+  const fieldErrors = typeof entry.error === 'object' && entry.error !== null ? Object.keys(entry.error) : [];
+  const lines = fieldErrors
+    .filter((field) => field in (entry.importData ?? {}))
+    .map((field) => t('import.invalidFieldValue', {
+      field: getCropFieldLabel(field, t),
+      value: formatImportValue(entry.importData?.[field], field, t),
+    }));
+  return lines.length > 0 ? lines.join('; ') : t('import.errors.rowFailed');
+};

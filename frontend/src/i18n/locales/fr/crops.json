@@ -661,6 +661,7 @@
     "noChanges": "Aucune modification",
     "confirmUpdates": "Confirmer l'écrasement",
     "unrecognizedColumns": "Les colonnes non reconnues sont ignorées : {{columns}}",
+    "invalidFieldValue": "{{field}} : « {{value}} » n’est pas une valeur valide",
     "errors": {
       "notArray": "Le fichier doit contenir un tableau JSON.",
       "noValidEntries": "Aucune entrée valide trouvée.",
@@ -669,7 +670,8 @@
       "parse": "Le fichier n'a pas pu être lu.",
       "server": "L'import a échoué.",
       "network": "Erreur réseau pendant l'import.",
-      "someFailures": "{{failed}} entrées n'ont pas pu être importées."
+      "someFailures": "{{failed}} entrées n'ont pas pu être importées.",
+      "rowFailed": "Cette entrée n’a pas pu être enregistrée."
     }
   },
   "library": {

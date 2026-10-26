@@ -648,6 +648,7 @@
     "noChanges": "Keine Änderungen",
     "confirmUpdates": "Überschreiben bestätigen",
     "unrecognizedColumns": "Nicht erkannte Spalten werden ignoriert: {{columns}}",
+    "invalidFieldValue": "{{field}}: „{{value}}“ ist kein gültiger Wert",
     "errors": {
       "notArray": "Die Datei muss ein JSON-Array enthalten.",
       "noValidEntries": "Keine gültigen Einträge gefunden.",
@@ -656,7 +657,8 @@
       "parse": "Die Datei konnte nicht gelesen werden.",
       "server": "Import fehlgeschlagen.",
       "network": "Netzwerkfehler beim Import.",
-      "someFailures": "{{failed}} Einträge konnten nicht importiert werden."
+      "someFailures": "{{failed}} Einträge konnten nicht importiert werden.",
+      "rowFailed": "Dieser Eintrag konnte nicht gespeichert werden."
     }
   },
   "library": {
