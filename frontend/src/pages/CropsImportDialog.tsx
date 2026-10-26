@@ -16,7 +16,10 @@ import {
 } from '@mui/material';
 import { useTranslation } from '../i18n';
 import type { ImportPreviewResult } from './cropsPageUtils';
-import { formatImportDiffChange, formatImportFailure } from './cropsImportUtils';
+import type { TFunction } from 'i18next';
+import { DISPLAY_COLOR_PATTERN } from '../crops/displayColor';
+import { getCropFieldLabel } from './cropsHistoryUtils';
+import { formatImportDiffChange, formatImportFailure, formatImportValue } from './cropsImportUtils';
 import type { CropImportState } from './useCropImportState';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
@@ -31,6 +34,45 @@ type CropsImportDialogProps = {
   onImportStart: () => void;
   t: Translator;
 };
+
+type ImportDiffChange = NonNullable<ImportPreviewResult['diff']>[number];
+
+/** A color value with a small swatch in front, so "#b91c1c" reads as a color. */
+function ColorValue({ value, t }: { value: unknown; t: TFunction<'crops'> }) {
+  const text = formatImportValue(value, 'display_color', t);
+  if (typeof value !== 'string' || !DISPLAY_COLOR_PATTERN.test(value)) {
+    return <>{text}</>;
+  }
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, verticalAlign: 'middle' }}>
+      <Box
+        component="span"
+        aria-hidden
+        sx={{
+          width: 12,
+          height: 12,
+          borderRadius: 0.5,
+          border: 1,
+          borderColor: 'divider',
+          bgcolor: value,
+          flexShrink: 0,
+        }}
+      />
+      {text}
+    </Box>
+  );
+}
+
+function ImportDiffLine({ change, t }: { change: ImportDiffChange; t: TFunction<'crops'> }) {
+  if (change.field !== 'display_color') {
+    return <>{formatImportDiffChange(change, t)}</>;
+  }
+  return (
+    <>
+      {getCropFieldLabel(change.field, t)}: <ColorValue value={change.current} t={t} /> → <ColorValue value={change.new} t={t} />
+    </>
+  );
+}
 
 const renderCropLabel = (result: ImportPreviewResult): string => (
   `${result.import_data.name}${result.import_data.variety ? ` (${result.import_data.variety})` : ''}`
@@ -90,7 +132,7 @@ function UpdateCandidatesSection({
               <Box sx={{ ml: 2, fontSize: '0.875rem' }}>
                 {result.diff.map((change, index) => (
                   <Typography key={index} variant="caption" sx={{ display: "block", }} >
-                    {formatImportDiffChange(change, cropsT)}
+                    <ImportDiffLine change={change} t={cropsT} />
                   </Typography>
                 ))}
               </Box>
