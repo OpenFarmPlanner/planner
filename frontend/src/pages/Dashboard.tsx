@@ -41,13 +41,13 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const [locationsRes, fieldsRes, bedsRes, cropsRes, plansRes] = await Promise.all([
-          locationAPI.list(), fieldAPI.list(), bedAPI.list(), cropAPI.list(), plantingPlanAPI.list(),
+          locationAPI.listAll(), fieldAPI.listAll(), bedAPI.listAll(), cropAPI.listAll(), plantingPlanAPI.listAll(),
         ]);
-        setLocations(locationsRes.data.results);
-        setFields(fieldsRes.data.results);
-        setBeds(bedsRes.data.results);
-        setCrops(cropsRes.data.results);
-        setPlans(plansRes.data.results);
+        setLocations(locationsRes.results);
+        setFields(fieldsRes.results);
+        setBeds(bedsRes.results);
+        setCrops(cropsRes.results);
+        setPlans(plansRes.results);
         setError(null);
       } catch {
         setError(t('dashboard:errors.load'));

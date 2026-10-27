@@ -64,13 +64,13 @@ export default function YieldOverviewPage() {
         setLoading(true);
         setError(null);
         const [plansRes, weeklyYieldRes] = await Promise.all([
-          plantingPlanAPI.list(),
+          plantingPlanAPI.listAll(),
           yieldCalendarAPI.list(),
         ]);
         if (ignore) {
           return;
         }
-        setPlantingPlans(plansRes.data.results);
+        setPlantingPlans(plansRes.results);
         setWeeklyYield(weeklyYieldRes.data);
       } catch (err) {
         if (ignore) {

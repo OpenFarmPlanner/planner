@@ -8,10 +8,12 @@ import { FocusManagerProvider } from '../focus/FocusManager';
 
 const {
   formCropIdHistory,
+  listAllMock,
   listMock,
   selectedIdHistory,
 } = vi.hoisted(() => ({
   formCropIdHistory: [] as Array<number | undefined>,
+  listAllMock: vi.fn(),
   listMock: vi.fn(),
   selectedIdHistory: [] as Array<number | undefined>,
 }));
@@ -23,6 +25,7 @@ vi.mock('../api/api', async () => {
     cropAPI: {
       ...actual.cropAPI,
       list: listMock,
+      listAll: listAllMock,
     },
   };
 });
@@ -118,6 +121,24 @@ describe('Crops selection persistence', () => {
         ],
       },
     });
+    listAllMock.mockImplementation(async () => (await listMock()).data);
+  });
+
+  it('loads crops beyond the first API page', async () => {
+    const crops = Array.from({ length: 150 }, (_, index) => ({
+      id: index + 1, name: `Kultur ${index + 1}`, growth_duration_days: 1, harvest_duration_days: 1,
+    }));
+    listMock.mockResolvedValue({
+      data: { count: 150, next: '/crops/?page=2', previous: null, results: crops.slice(0, 100) },
+    });
+    listAllMock.mockResolvedValue({ count: 150, next: null, previous: null, results: crops });
+
+    renderCrops('/crops?cropId=150');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-crop-id')).toHaveTextContent('150');
+    }, { timeout: 3000 });
+    expect(listAllMock).toHaveBeenCalled();
   });
 
   it('restores initial selection from query parameter once', async () => {

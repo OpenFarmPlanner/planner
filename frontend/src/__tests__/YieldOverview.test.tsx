@@ -22,7 +22,7 @@ vi.mock("../api/api", async () => {
     await vi.importActual<typeof import("../api/api")>("../api/api");
   return {
     ...actual,
-    plantingPlanAPI: { list: mocks.planList },
+    plantingPlanAPI: { list: mocks.planList, listAll: async () => (await mocks.planList()).data },
     yieldCalendarAPI: { list: mocks.yieldList },
   };
 });

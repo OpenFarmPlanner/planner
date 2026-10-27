@@ -17,6 +17,7 @@ vi.mock('../api/api', async () => {
     cropAPI: {
       ...actual.cropAPI,
       list: listMock,
+      listAll: async () => (await listMock()).data,
     },
   };
 });

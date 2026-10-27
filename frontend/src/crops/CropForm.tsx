@@ -533,8 +533,7 @@ export function CropForm({
 
   const loadSuppliers = useCallback(async (): Promise<Supplier[]> => {
     try {
-      const response = await supplierAPI.list();
-      const nextSuppliers = response.data.results || [];
+      const { results: nextSuppliers } = await supplierAPI.listAll();
       const previousIds = new Set(supplierOptionsRef.current.map((supplier) => supplier.id).filter((id): id is number => typeof id === 'number'));
       const newestSupplier = [...nextSuppliers].reverse().find((supplier) => typeof supplier.id === 'number' && !previousIds.has(supplier.id));
 

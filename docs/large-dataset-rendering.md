@@ -39,7 +39,10 @@ result.
 ## Fix
 
 - Analysis pages use `fetchAllPaginated` (`frontend/src/api/api.ts`) to follow
-  every backend `next` link.
+  every backend `next` link. So does every other view that shows or derives
+  from a complete list (crops, suppliers, dashboard, seed demand, yield
+  overview), through each API's `listAll()`. A bare `list()` returns only the
+  first page of 100 and silently drops the rest.
 - Bulk reads request up to 1,000 records per response through a bounded DRF
   page-size override; normal API lists still default to 100. Both numbers live
   in `backend/config/pagination.py`

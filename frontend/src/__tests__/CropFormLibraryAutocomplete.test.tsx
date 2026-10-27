@@ -29,7 +29,7 @@ vi.mock('../api/api', async () => {
     ...actual,
     cropAPI: { ...actual.cropAPI, duplicateCheck: cropDuplicateCheckMock },
     publicCropAPI: { ...actual.publicCropAPI, list: publicCropListMock },
-    supplierAPI: { list: supplierListMock, create: vi.fn() },
+    supplierAPI: { list: supplierListMock, listAll: async () => (await supplierListMock()).data, create: vi.fn() },
   };
 });
 

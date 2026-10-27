@@ -20,11 +20,11 @@ vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
     ...actual,
-    locationAPI: { ...actual.locationAPI, list: mocks.locationList },
-    fieldAPI: { ...actual.fieldAPI, list: mocks.fieldList },
-    bedAPI: { ...actual.bedAPI, list: mocks.bedList },
-    cropAPI: { ...actual.cropAPI, list: mocks.cropList },
-    plantingPlanAPI: { ...actual.plantingPlanAPI, list: mocks.planList },
+    locationAPI: { ...actual.locationAPI, list: mocks.locationList, listAll: async () => (await mocks.locationList()).data },
+    fieldAPI: { ...actual.fieldAPI, list: mocks.fieldList, listAll: async () => (await mocks.fieldList()).data },
+    bedAPI: { ...actual.bedAPI, list: mocks.bedList, listAll: async () => (await mocks.bedList()).data },
+    cropAPI: { ...actual.cropAPI, list: mocks.cropList, listAll: async () => (await mocks.cropList()).data },
+    plantingPlanAPI: { ...actual.plantingPlanAPI, list: mocks.planList, listAll: async () => (await mocks.planList()).data },
   };
 });
 

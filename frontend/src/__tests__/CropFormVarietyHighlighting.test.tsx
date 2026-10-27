@@ -38,6 +38,7 @@ vi.mock('../api/api', async () => {
     },
     supplierAPI: {
       list: supplierListMock,
+      listAll: async () => (await supplierListMock()).data,
     },
   };
 });
