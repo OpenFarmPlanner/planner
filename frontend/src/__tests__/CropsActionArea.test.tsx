@@ -63,6 +63,7 @@ vi.mock('../api/api', async () => {
     cropAPI: {
       ...actual.cropAPI,
       list: listMock,
+      listAll: async () => (await listMock()).data,
       publishPreview: publishPreviewMock,
       publishPublic: publishPublicMock,
       publicSyncPreview: publicSyncPreviewMock,
@@ -74,14 +75,17 @@ vi.mock('../api/api', async () => {
     locationAPI: {
       ...actual.locationAPI,
       list: locationListMock,
+      listAll: async () => (await locationListMock()).data,
     },
     fieldAPI: {
       ...actual.fieldAPI,
       list: fieldListMock,
+      listAll: async () => (await fieldListMock()).data,
     },
     bedAPI: {
       ...actual.bedAPI,
       list: bedListMock,
+      listAll: async () => (await bedListMock()).data,
     },
     cropSpeciesAPI: {
       ...actual.cropSpeciesAPI,

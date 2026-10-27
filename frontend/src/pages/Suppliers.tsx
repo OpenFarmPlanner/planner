@@ -128,8 +128,8 @@ export default function Suppliers() {
     setSupplierLoadStatus('loading');
     setLoadError('');
     try {
-      const response = await supplierAPI.list();
-      setSuppliers(response.data.results || []);
+      const { results } = await supplierAPI.listAll();
+      setSuppliers(results);
       setSupplierLoadStatus('success');
     } catch (loadSuppliersError) {
       console.error('Error loading suppliers', loadSuppliersError);

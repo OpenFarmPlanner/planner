@@ -21,6 +21,7 @@ vi.mock('../api/api', async () => {
     supplierAPI: {
       ...actual.supplierAPI,
       list: mocks.list,
+      listAll: async () => (await mocks.list()).data,
       create: mocks.create,
       update: mocks.update,
       delete: mocks.delete,

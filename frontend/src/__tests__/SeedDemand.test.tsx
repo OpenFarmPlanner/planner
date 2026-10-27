@@ -29,18 +29,23 @@ vi.mock('../api/api', async () => {
     },
     cropAPI: {
       list: cropListMock,
+      listAll: async () => (await cropListMock()).data,
     },
     plantingPlanAPI: {
       list: planListMock,
+      listAll: async () => (await planListMock()).data,
     },
     locationAPI: {
       list: locationListMock,
+      listAll: async () => (await locationListMock()).data,
     },
     fieldAPI: {
       list: fieldListMock,
+      listAll: async () => (await fieldListMock()).data,
     },
     bedAPI: {
       list: bedListMock,
+      listAll: async () => (await bedListMock()).data,
     },
   };
 });

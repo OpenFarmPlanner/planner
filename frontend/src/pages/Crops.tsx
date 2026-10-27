@@ -215,9 +215,8 @@ function Crops() {
       setIsCropsLoading(true);
     }
     try {
-      const response = await cropAPI.list();
+      const { results: fetchedCrops } = await cropAPI.listAll();
       hasLoadedCropsRef.current = true;
-      const fetchedCrops = response.data.results;
       if (!preservedCrop?.id) {
         setCrops(fetchedCrops);
         return;

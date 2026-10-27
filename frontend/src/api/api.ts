@@ -330,6 +330,7 @@ export const supplierAPI = {
     const params = query ? { q: query } : {};
     return http.get<PaginatedResponse<Supplier>>('/suppliers/', { params });
   },
+  listAll: () => fetchAllPaginated<Supplier>('/suppliers/'),
   get: (id: number) => http.get<Supplier>(`/suppliers/${id}/`),
   create: (name: string, homepage_url: string, allowed_domains: string[] = []) => http.post<Supplier>('/suppliers/', { name, homepage_url, allowed_domains }),
   update: (id: number, data: Partial<Supplier>) => http.put<Supplier>(`/suppliers/${id}/`, data),

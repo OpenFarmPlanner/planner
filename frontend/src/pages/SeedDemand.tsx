@@ -175,13 +175,13 @@ export default function SeedDemandPage() {
       const response = await seedDemandAPI.list();
       setRows(response.data.results ?? []);
       const [cropsResponse, plansResponse, locationsResponse, fieldsResponse, bedsResponse] = await Promise.all([
-        cropAPI.list(),
+        cropAPI.listAll(),
         plantingPlanAPI.list(),
         locationAPI.list(),
         fieldAPI.list(),
         bedAPI.list(),
       ]);
-      const crops = cropsResponse.data.results;
+      const crops = cropsResponse.results;
       setSetupCounts({
         crops: crops.length,
         plans: plansResponse.data.results.length,
