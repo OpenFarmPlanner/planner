@@ -18,13 +18,18 @@ import type { CropSpecies, PublicCrop, PublicCropSpeciesRelinkResponse } from '.
 import { CropSpeciesPicker } from '../../crops/CropSpeciesPicker';
 import {
   getCropSpeciesOptionLabel,
+  buildSpeciesApprovalPayload,
+  createEmptySpeciesApprovalTranslations,
   getInitialSpeciesApprovalTranslations,
-  REQUIRED_SPECIES_LANGUAGES,
+  isSpeciesApprovalComplete,
+  type RequiredSpeciesLanguage,
+  type SpeciesApprovalTranslation,
   type SpeciesApprovalTranslations,
 } from '../../crops/cropSpeciesMatching';
 import { AppTooltip } from '../../components/AppTooltip';
 import { useCropSpeciesOptions } from '../../crops/useCropSpeciesOptions';
 import { useTranslation } from '../../i18n';
+import { SpeciesApprovalFields } from './SpeciesApprovalFields';
 
 interface PublicCropSpeciesRelinkDialogProps {
   open: boolean;
@@ -89,7 +94,9 @@ export function PublicCropSpeciesRelinkDialog({
   const [speciesInputValue, setSpeciesInputValue] = useState('');
   const [proposalName, setProposalName] = useState<string | null>(null);
   const [varietyDraft, setVarietyDraft] = useState('');
-  const [approvalTranslations, setApprovalTranslations] = useState<SpeciesApprovalTranslations>({ de: '', en: '' });
+  const [approvalTranslations, setApprovalTranslations] = useState<SpeciesApprovalTranslations>(
+    createEmptySpeciesApprovalTranslations,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [errorText, setErrorText] = useState('');
   // Guards the species-prefill effect below so it runs exactly once per open
@@ -103,7 +110,7 @@ export function PublicCropSpeciesRelinkDialog({
     setSelectedSpecies(null);
     setSpeciesInputValue('');
     setProposalName(null);
-    setApprovalTranslations({ de: '', en: '' });
+    setApprovalTranslations(createEmptySpeciesApprovalTranslations());
     setErrorText('');
     /* eslint-enable react-hooks/set-state-in-effect */
     prefilledSpeciesRef.current = false;
@@ -146,7 +153,7 @@ export function PublicCropSpeciesRelinkDialog({
     setApprovalTranslations(
       value?.status === 'proposed'
         ? getInitialSpeciesApprovalTranslations(value, value.name, languageCodeOf(i18n.language))
-        : { de: '', en: '' },
+        : createEmptySpeciesApprovalTranslations(),
     );
   }, [i18n.language]);
 
@@ -167,8 +174,13 @@ export function PublicCropSpeciesRelinkDialog({
     setErrorText('');
   }, []);
 
-  const handleApprovalTranslationChange = useCallback((languageCode: 'de' | 'en', value: string) => {
-    setApprovalTranslations((previous) => ({ ...previous, [languageCode]: value }));
+  const handleApprovalTranslationChange = useCallback((
+    languageCode: RequiredSpeciesLanguage, patch: Partial<SpeciesApprovalTranslation>,
+  ) => {
+    setApprovalTranslations((previous) => ({
+      ...previous,
+      [languageCode]: { ...previous[languageCode], ...patch },
+    }));
     setErrorText('');
   }, []);
 
@@ -199,10 +211,7 @@ export function PublicCropSpeciesRelinkDialog({
         const approved = await cropSpeciesAPI.approve(
           target.id,
           '',
-          REQUIRED_SPECIES_LANGUAGES.map((languageCode) => ({
-            language_code: languageCode,
-            common_name: approvalTranslations[languageCode].trim(),
-          })),
+          buildSpeciesApprovalPayload(approvalTranslations),
         );
         target = approved.data;
         addSpecies(target);
@@ -240,10 +249,10 @@ export function PublicCropSpeciesRelinkDialog({
   const isUnchanged = Boolean(crop)
     && selectedSpecies?.id === crop?.crop_species
     && (!varietyIsSubmitted || varietyDraft.trim() === (crop?.variety ?? ''));
-  const approvalTranslationsComplete = Boolean(approvalTranslations.de.trim() && approvalTranslations.en.trim());
+  const approvalTranslationsComplete = isSpeciesApprovalComplete(approvalTranslations);
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth={needsApproval ? 'md' : 'sm'} fullWidth>
       <DialogTitle>{t('library.relinkSpecies.title')}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -276,21 +285,10 @@ export function PublicCropSpeciesRelinkDialog({
                     name: selectedSpecies ? getCropSpeciesOptionLabel(selectedSpecies) : '',
                   })}
               </Typography>
-              <TextField
-                label={t('library.moderation.species.germanName')}
-                value={approvalTranslations.de}
-                required
-                fullWidth
+              <SpeciesApprovalFields
+                translations={approvalTranslations}
+                onChange={handleApprovalTranslationChange}
                 disabled={submitting}
-                onChange={(event) => handleApprovalTranslationChange('de', event.target.value)}
-              />
-              <TextField
-                label={t('library.moderation.species.englishName')}
-                value={approvalTranslations.en}
-                required
-                fullWidth
-                disabled={submitting}
-                onChange={(event) => handleApprovalTranslationChange('en', event.target.value)}
               />
             </>
           ) : null}

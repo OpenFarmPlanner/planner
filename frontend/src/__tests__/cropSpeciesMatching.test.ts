@@ -1,5 +1,9 @@
 import {
+  buildSpeciesApprovalPayload,
+  createEmptySpeciesApprovalTranslations,
   getInitialSpeciesApprovalTranslations,
+  isSpeciesApprovalComplete,
+  type SpeciesApprovalTranslations,
   findMatchedCropSpeciesAlias,
   formatCropSpeciesMatchLabel,
   getCropSpeciesCanonicalName,
@@ -272,26 +276,51 @@ describe('getCropSpeciesSearchMatch', () => {
 });
 
 describe('getInitialSpeciesApprovalTranslations', () => {
-  it('puts a newly typed name under the current UI language when it is a required one', () => {
-    expect(getInitialSpeciesApprovalTranslations(null, 'Tomate', 'de')).toEqual({ de: 'Tomate', en: '' });
-    expect(getInitialSpeciesApprovalTranslations(null, 'Tomato', 'en-GB')).toEqual({ de: '', en: 'Tomato' });
+  const names = (translations: SpeciesApprovalTranslations) => Object.fromEntries(
+    Object.entries(translations).map(([code, translation]) => [code, translation.commonName]),
+  );
+
+  it('puts a newly typed name under the current UI language', () => {
+    expect(names(getInitialSpeciesApprovalTranslations(null, 'Tomate', 'de')))
+      .toEqual({ de: 'Tomate', en: '', fr: '', es: '' });
+    expect(names(getInitialSpeciesApprovalTranslations(null, 'Tomato', 'en-GB')))
+      .toEqual({ de: '', en: 'Tomato', fr: '', es: '' });
+    expect(names(getInitialSpeciesApprovalTranslations(null, 'Poireau', 'fr')))
+      .toEqual({ de: '', en: '', fr: 'Poireau', es: '' });
+    expect(names(getInitialSpeciesApprovalTranslations(null, 'Puerro', 'es-419')))
+      .toEqual({ de: '', en: '', fr: '', es: 'Puerro' });
   });
 
-  it('never puts a name typed in French or Spanish into the German or English field', () => {
-    expect(getInitialSpeciesApprovalTranslations(null, 'Poireau', 'fr')).toEqual({ de: '', en: '' });
-    expect(getInitialSpeciesApprovalTranslations(null, 'Puerro', 'es-419')).toEqual({ de: '', en: '' });
-  });
-
-  it('keeps existing German and English translations and ignores other languages', () => {
+  it('keeps every stored translation with its synonyms and regional names', () => {
     const species = {
       name: 'Lauch',
       display_name: 'Poireau',
       display_language_code: 'fr',
       translations: [
-        { language_code: 'de', common_name: 'Lauch' },
+        { language_code: 'de', common_name: 'Lauch', synonyms: ['Porree'], regional_names: { austria: 'Lauch' } },
         { language_code: 'fr', common_name: 'Poireau' },
       ],
     } as unknown as Parameters<typeof getInitialSpeciesApprovalTranslations>[0];
-    expect(getInitialSpeciesApprovalTranslations(species, 'Lauch', 'fr')).toEqual({ de: 'Lauch', en: '' });
+    const translations = getInitialSpeciesApprovalTranslations(species, 'Lauch', 'fr');
+    expect(names(translations)).toEqual({ de: 'Lauch', en: '', fr: 'Poireau', es: '' });
+    expect(translations.de).toEqual({ commonName: 'Lauch', synonyms: 'Porree', regionalNames: { austria: 'Lauch' } });
+  });
+});
+
+describe('buildSpeciesApprovalPayload', () => {
+  it('sends every language with parsed synonyms and only non-empty regional names', () => {
+    const translations = createEmptySpeciesApprovalTranslations();
+    translations.de = { commonName: ' Lauch ', synonyms: 'Porree, porree,  Breitlauch ', regionalNames: { austria: '', switzerland: ' Lauch ' } };
+    translations.en = { commonName: 'Leek', synonyms: '', regionalNames: {} };
+    expect(isSpeciesApprovalComplete(translations)).toBe(false);
+    translations.fr.commonName = 'Poireau';
+    translations.es.commonName = 'Puerro';
+    expect(isSpeciesApprovalComplete(translations)).toBe(true);
+    expect(buildSpeciesApprovalPayload(translations)).toEqual([
+      { language_code: 'de', common_name: 'Lauch', synonyms: ['Porree', 'Breitlauch'], regional_names: { switzerland: 'Lauch' } },
+      { language_code: 'en', common_name: 'Leek', synonyms: [], regional_names: {} },
+      { language_code: 'fr', common_name: 'Poireau', synonyms: [], regional_names: {} },
+      { language_code: 'es', common_name: 'Puerro', synonyms: [], regional_names: {} },
+    ]);
   });
 });

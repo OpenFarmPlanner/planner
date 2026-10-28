@@ -194,6 +194,12 @@ describe('PublicLibraryModerationPage', () => {
     expect(await screen.findByText('Keine offenen Beiträge.')).toBeInTheDocument();
   });
 
+  const nameField = (language: string): HTMLElement => screen.getByLabelText(new RegExp(`^Name \\(${language}\\)`));
+  const synonymField = (language: string): HTMLElement => screen.getByLabelText(new RegExp(`^Synonyme \\(${language}\\)`));
+  const emptyTranslation = (languageCode: string, commonName: string) => ({
+    language_code: languageCode, common_name: commonName, synonyms: [], regional_names: {},
+  });
+
   it('reviews crop species proposals and admin moderator requests', async () => {
     const user = userEvent.setup();
     render(<PublicLibraryModerationPage />);
@@ -203,25 +209,33 @@ describe('PublicLibraryModerationPage', () => {
     expect(screen.getByText('Spinat')).toBeInTheDocument();
     expect(screen.getByText('Moderator-Anfragen')).toBeInTheDocument();
     expect(screen.getByText('Jonas')).toBeInTheDocument();
+    const speciesTable = screen.getByRole('table', { name: 'Kulturart-Vorschläge' });
+    expect(within(speciesTable).getByLabelText('Deutsch')).toBeInTheDocument();
+    expect(within(speciesTable).getByLabelText('Englisch fehlt')).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: 'Annehmen' })[0]);
 
     expect(await screen.findByRole('dialog', { name: 'Kulturart annehmen' })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Deutscher Name/)).toHaveValue('Baumspinat');
+    expect(nameField('Deutsch')).toHaveValue('Baumspinat');
     const approveButtons = screen.getAllByRole('button', { name: 'Annehmen' });
     const approveButton = approveButtons[approveButtons.length - 1];
     expect(approveButton).toBeDisabled();
     await user.hover(approveButton.parentElement as HTMLElement);
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Bitte zuerst den deutschen und englischen Namen eingeben.',
+      'Bitte zuerst in jeder Sprache einen Namen eingeben.',
     );
 
-    await user.type(screen.getByLabelText(/Englischer Name/), 'Tree spinach');
+    await user.type(nameField('Englisch'), 'Tree spinach');
+    await user.type(nameField('Französisch'), 'Chénopode géant');
+    expect(approveButton).toBeDisabled();
+    await user.type(nameField('Spanisch'), 'Cenizo gigante');
     await user.click(approveButton);
 
     await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledWith(7, '', [
-      { language_code: 'de', common_name: 'Baumspinat' },
-      { language_code: 'en', common_name: 'Tree spinach' },
+      emptyTranslation('de', 'Baumspinat'),
+      emptyTranslation('en', 'Tree spinach'),
+      emptyTranslation('fr', 'Chénopode géant'),
+      emptyTranslation('es', 'Cenizo gigante'),
     ]));
   });
 
@@ -247,16 +261,77 @@ describe('PublicLibraryModerationPage', () => {
     const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
     await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
 
-    expect(screen.getByLabelText(/Englischer Name/)).toHaveValue('Tree onion');
-    expect(screen.getByLabelText(/Deutscher Name/)).toHaveValue('');
+    expect(nameField('Englisch')).toHaveValue('Tree onion');
+    expect(nameField('Deutsch')).toHaveValue('');
 
-    await user.type(screen.getByLabelText(/Deutscher Name/), 'Baumzwiebel');
+    await user.type(nameField('Deutsch'), 'Baumzwiebel');
+    await user.type(nameField('Französisch'), 'Oignon rocambole');
+    await user.type(nameField('Spanisch'), 'Cebolla egipcia');
     const approveButtons = screen.getAllByRole('button', { name: 'Annehmen' });
     await user.click(approveButtons[approveButtons.length - 1]);
 
     await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledWith(8, '', [
-      { language_code: 'de', common_name: 'Baumzwiebel' },
-      { language_code: 'en', common_name: 'Tree onion' },
+      emptyTranslation('de', 'Baumzwiebel'),
+      emptyTranslation('en', 'Tree onion'),
+      emptyTranslation('fr', 'Oignon rocambole'),
+      emptyTranslation('es', 'Cebolla egipcia'),
+    ]));
+  });
+
+  it('shows and sends the stored synonyms and regional names of every language', async () => {
+    const user = userEvent.setup();
+    apiMocks.cropSpeciesList.mockResolvedValue({
+      data: {
+        results: [
+          {
+            id: 9,
+            name: 'Erdmandel',
+            scientific_name: 'Cyperus esculentus',
+            family: 'Cyperaceae',
+            status: 'proposed',
+            proposed_by_label: 'Mara',
+            translations: [
+              {
+                language_code: 'de', common_name: 'Erdmandel', synonyms: ['Tigernuss'],
+                regional_names: { switzerland: 'Erdmandeli' },
+              },
+              { language_code: 'en', common_name: 'Tiger nut', synonyms: ['Chufa'], regional_names: {} },
+              { language_code: 'fr', common_name: 'Souchet comestible', synonyms: [], regional_names: {} },
+              { language_code: 'es', common_name: 'Chufa', synonyms: ['Juncia avellanada'], regional_names: {} },
+            ],
+            similar_species: [],
+          },
+        ],
+      },
+    });
+
+    render(<PublicLibraryModerationPage />);
+
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    expect(within(speciesTable).getByText('Cyperus esculentus')).toBeInTheDocument();
+    for (const language of ['Deutsch', 'Englisch', 'Französisch', 'Spanisch']) {
+      expect(within(speciesTable).getByLabelText(language)).toBeInTheDocument();
+    }
+    await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
+
+    expect(screen.getByText('Cyperus esculentus · Cyperaceae')).toBeInTheDocument();
+    expect(nameField('Spanisch')).toHaveValue('Chufa');
+    expect(synonymField('Deutsch')).toHaveValue('Tigernuss');
+    expect(screen.getByLabelText('Name in der Schweiz')).toHaveValue('Erdmandeli');
+
+    await user.type(synonymField('Deutsch'), ', Chufa');
+    await user.type(screen.getByLabelText('Name in Österreich'), 'Erdmandel');
+    const approveButtons = screen.getAllByRole('button', { name: 'Annehmen' });
+    await user.click(approveButtons[approveButtons.length - 1]);
+
+    await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledWith(9, '', [
+      {
+        language_code: 'de', common_name: 'Erdmandel', synonyms: ['Tigernuss', 'Chufa'],
+        regional_names: { switzerland: 'Erdmandeli', austria: 'Erdmandel' },
+      },
+      { language_code: 'en', common_name: 'Tiger nut', synonyms: ['Chufa'], regional_names: {} },
+      { language_code: 'fr', common_name: 'Souchet comestible', synonyms: [], regional_names: {} },
+      { language_code: 'es', common_name: 'Chufa', synonyms: ['Juncia avellanada'], regional_names: {} },
     ]));
   });
 

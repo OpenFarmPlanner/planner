@@ -1062,6 +1062,7 @@
       "none": "Keine",
       "columns": {
         "name": "Name",
+        "languages": "Sprachen",
         "proposer": "Vorgeschlagen von",
         "similar": "Ähnliche Kulturarten",
         "actions": "Aktionen",
@@ -1073,9 +1074,14 @@
         "title": "Kulturart-Vorschläge",
         "empty": "Keine offenen Kulturart-Vorschläge.",
         "approveDialogTitle": "Kulturart annehmen",
-        "approveDialogIntro": "Lege die öffentlichen Namen für „{{name}}“ fest. Deutsch und Englisch sind Pflicht, bevor die Kulturart veröffentlicht wird.",
-        "germanName": "Deutscher Name",
-        "englishName": "Englischer Name",
+        "approveDialogIntro": "Prüfe die öffentlichen Namen für „{{name}}“. Ein Name ist in jeder Sprache Pflicht, bevor die Kulturart veröffentlicht wird.",
+        "commonNameLabel": "Name ({{language}})",
+        "regionalName": {
+          "austria": "Name in Österreich",
+          "switzerland": "Name in der Schweiz"
+        },
+        "approvalHelper": "Mehrere Synonyme mit Komma trennen. Regionale Namen nur eintragen, wenn die Kulturart dort üblicherweise anders heißt.",
+        "languageMissing": "{{language}} fehlt",
         "approveSuccess": "Die Kulturart wurde angenommen.",
         "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt."
       },
@@ -1520,7 +1526,7 @@
     "confirm": "Version wiederherstellen"
   },
   "disabledReasons": {
-    "requiredSpeciesNames": "Bitte zuerst den deutschen und englischen Namen eingeben.",
+    "requiredSpeciesNames": "Bitte zuerst in jeder Sprache einen Namen eingeben.",
     "requiredComment": "Bitte zuerst einen Kommentar eingeben.",
     "selectEntry": "Wähle zuerst einen Eintrag aus.",
     "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",

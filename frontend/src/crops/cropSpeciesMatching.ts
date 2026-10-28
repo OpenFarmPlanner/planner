@@ -1,6 +1,7 @@
 import type {
   CropSpecies,
   CropSpeciesMatchSource,
+  CropSpeciesTranslation,
   CropSpeciesSearchMatch,
   PublicCrop,
 } from '../api/types';
@@ -245,40 +246,80 @@ export const getCropSpeciesSearchMatch = (
 };
 
 /**
- * Both required common names for approving a species proposal — must mirror
- * the backend's `REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES`
+ * Languages a species proposal needs a common name in before approval — must
+ * mirror the backend's `REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES`
  * (`config/languages.py`). Shared by the moderation queue's own approval
  * dialog and anywhere else a moderator can approve a species inline.
  */
-export type RequiredSpeciesLanguage = 'de' | 'en';
-export type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, string>;
-export const REQUIRED_SPECIES_LANGUAGES: RequiredSpeciesLanguage[] = ['de', 'en'];
+export type RequiredSpeciesLanguage = 'de' | 'en' | 'fr' | 'es';
+export const REQUIRED_SPECIES_LANGUAGES: RequiredSpeciesLanguage[] = ['de', 'en', 'fr', 'es'];
+
+/**
+ * Regions with a displayed regional name. Only the German translation carries
+ * them (see the planner's `docs/crop-taxonomy-guidelines.md`), so the approval
+ * form edits them there; stored values on other languages are passed through.
+ */
+export const SPECIES_REGIONAL_NAME_KEYS = ['austria', 'switzerland'] as const;
+export type SpeciesRegionalNameKey = (typeof SPECIES_REGIONAL_NAME_KEYS)[number];
+export const SPECIES_REGIONAL_NAME_LANGUAGE: RequiredSpeciesLanguage = 'de';
+
+/** One language of the approval form, as the moderator edits it. */
+export interface SpeciesApprovalTranslation {
+  commonName: string;
+  /** Comma-separated, as typed; see `parseSpeciesAliasInput`. */
+  synonyms: string;
+  regionalNames: Record<string, string>;
+}
+export type SpeciesApprovalTranslations = Record<RequiredSpeciesLanguage, SpeciesApprovalTranslation>;
 
 const isRequiredSpeciesLanguage = (code: string | null | undefined): code is RequiredSpeciesLanguage => (
   REQUIRED_SPECIES_LANGUAGES.includes(code as RequiredSpeciesLanguage)
 );
 
+/** Splits a comma-separated alias input into trimmed, case-insensitively unique entries. */
+export const parseSpeciesAliasInput = (value: string): string[] => {
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value.split(',')) {
+    const alias = entry.split(/\s+/).filter(Boolean).join(' ');
+    const key = alias.toLocaleLowerCase('de');
+    if (alias && !seen.has(key)) {
+      aliases.push(alias);
+      seen.add(key);
+    }
+  }
+  return aliases;
+};
+
+export const createEmptySpeciesApprovalTranslations = (): SpeciesApprovalTranslations => (
+  Object.fromEntries(
+    REQUIRED_SPECIES_LANGUAGES.map((code) => [code, { commonName: '', synonyms: '', regionalNames: {} }]),
+  ) as SpeciesApprovalTranslations
+);
+
 /**
- * Seeds the two-language approval form: existing translations for a species
- * that already has some, or — for a name that was only just typed and has no
- * `CropSpecies` yet — the typed name under the current UI language, leaving
- * the other language blank so the moderator has to consciously fill it
- * rather than silently getting a duplicate of the same text. A name typed in
- * a language that is not a required one (e.g. French) is never put into the
- * German or English field.
+ * Seeds the approval form: the stored names, synonyms and regional names of a
+ * species that already has translations, or — for a name that was only just
+ * typed and has no `CropSpecies` yet — the typed name under the current UI
+ * language, leaving the other languages blank so the moderator has to
+ * consciously fill them rather than silently getting a copy of the same text.
  */
 export const getInitialSpeciesApprovalTranslations = (
   species: Pick<CropSpecies, 'translations' | 'display_name' | 'display_language_code' | 'name'> | null,
   fallbackName: string,
   currentLanguageCode: string,
 ): SpeciesApprovalTranslations => {
-  const translations: SpeciesApprovalTranslations = { de: '', en: '' };
+  const translations = createEmptySpeciesApprovalTranslations();
   for (const translation of species?.translations ?? []) {
     if (isRequiredSpeciesLanguage(translation.language_code)) {
-      translations[translation.language_code] = translation.common_name;
+      translations[translation.language_code] = {
+        commonName: translation.common_name,
+        synonyms: (translation.synonyms ?? []).join(', '),
+        regionalNames: { ...(translation.regional_names ?? {}) },
+      };
     }
   }
-  if (translations.de || translations.en) {
+  if (REQUIRED_SPECIES_LANGUAGES.some((code) => translations[code].commonName)) {
     return translations;
   }
   const currentLanguage = currentLanguageCode.split('-')[0];
@@ -286,7 +327,29 @@ export const getInitialSpeciesApprovalTranslations = (
     ? species.display_language_code
     : isRequiredSpeciesLanguage(currentLanguage) ? currentLanguage : null;
   if (fallbackLanguage) {
-    translations[fallbackLanguage] = species?.display_name || species?.name || fallbackName;
+    translations[fallbackLanguage].commonName = species?.display_name || species?.name || fallbackName;
   }
   return translations;
 };
+
+export const isSpeciesApprovalComplete = (translations: SpeciesApprovalTranslations): boolean => (
+  REQUIRED_SPECIES_LANGUAGES.every((code) => translations[code].commonName.trim())
+);
+
+/**
+ * The `translations` payload for the approve endpoint. Every language is sent
+ * with its synonyms and regional names, so approving never drops aliases the
+ * moderator did not see.
+ */
+export const buildSpeciesApprovalPayload = (
+  translations: SpeciesApprovalTranslations,
+): CropSpeciesTranslation[] => REQUIRED_SPECIES_LANGUAGES.map((code) => ({
+  language_code: code,
+  common_name: translations[code].commonName.trim(),
+  synonyms: parseSpeciesAliasInput(translations[code].synonyms),
+  regional_names: Object.fromEntries(
+    Object.entries(translations[code].regionalNames)
+      .map(([region, name]): [string, string] => [region, name.split(/\s+/).filter(Boolean).join(' ')])
+      .filter(([, name]) => name),
+  ),
+}));
