@@ -409,6 +409,74 @@ describe('PublicLibraryModerationPage', () => {
     }
   });
 
+  const erdmandelProposal = {
+    id: 21,
+    name: 'Erdmandel',
+    status: 'proposed',
+    proposed_by_label: 'Mara',
+    translations: [
+      {
+        language_code: 'de', common_name: 'Erdmandel', synonyms: ['Tigernuss', 'Chufa'],
+        regional_names: { switzerland: 'Erdmandeli' },
+      },
+      { language_code: 'en', common_name: 'Tiger nut', synonyms: [], regional_names: {} },
+      { language_code: 'fr', common_name: 'Souchet comestible', synonyms: ['Amande de terre'], regional_names: {} },
+    ],
+    similar_species: [],
+  };
+
+  it('shows the translation of a language in the tooltip of its chip', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('moderationSpeciesAllLanguages');
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => Promise.resolve({
+      data: { results: params?.status === 'proposed' ? [erdmandelProposal] : [] },
+    }));
+    render(<PublicLibraryModerationPage />);
+
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    await user.hover(within(speciesTable).getByLabelText('Französisch'));
+    const frenchTooltip = await screen.findByRole('tooltip');
+    expect(frenchTooltip).toHaveTextContent('Souchet comestible');
+    expect(frenchTooltip).toHaveTextContent('Synonyme: Amande de terre');
+    await user.unhover(within(speciesTable).getByLabelText('Französisch'));
+
+    await user.hover(within(speciesTable).getByLabelText('Deutsch'));
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Name in der Schweiz: Erdmandeli'));
+    await user.unhover(within(speciesTable).getByLabelText('Deutsch'));
+
+    await user.hover(within(speciesTable).getByLabelText('Spanisch fehlt'));
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Spanisch fehlt'));
+  });
+
+  it('switches the proposal table to one column per language and remembers the choice', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('moderationSpeciesAllLanguages');
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => Promise.resolve({
+      data: { results: params?.status === 'proposed' ? [erdmandelProposal] : [] },
+    }));
+    const { unmount } = render(<PublicLibraryModerationPage />);
+
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    expect(within(speciesTable).getByRole('columnheader', { name: 'Sprachen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: 'Alle Sprachen anzeigen' }));
+
+    for (const language of ['Deutsch', 'Englisch', 'Französisch', 'Spanisch']) {
+      expect(within(speciesTable).getByRole('columnheader', { name: language })).toBeInTheDocument();
+    }
+    expect(within(speciesTable).queryByRole('columnheader', { name: 'Sprachen' })).not.toBeInTheDocument();
+    expect(within(speciesTable).getByText('Souchet comestible')).toBeInTheDocument();
+    expect(within(speciesTable).getByText('Synonyme: Tigernuss, Chufa')).toBeInTheDocument();
+    expect(within(speciesTable).getByText('Name in der Schweiz: Erdmandeli')).toBeInTheDocument();
+    expect(within(speciesTable).getByText('fehlt')).toBeInTheDocument();
+    expect(window.localStorage.getItem('moderationSpeciesAllLanguages')).toBe('true');
+
+    unmount();
+    render(<PublicLibraryModerationPage />);
+    const reloadedTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    expect(within(reloadedTable).getByRole('columnheader', { name: 'Spanisch' })).toBeInTheDocument();
+    window.localStorage.removeItem('moderationSpeciesAllLanguages');
+  });
+
   it('lists removed public crops and restores one', async () => {
     const user = userEvent.setup();
     apiMocks.publicCropList.mockResolvedValue({

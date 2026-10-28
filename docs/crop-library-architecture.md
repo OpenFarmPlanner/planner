@@ -1636,7 +1636,11 @@ translation, all prefilled from the proposal and editable. The form sends
 every language with its synonyms and regional names, so approving never drops
 aliases a proposal already carries. The queue's proposal table shows one chip
 per required language, so a moderator sees missing translations before
-opening a proposal.
+opening a proposal; hovering, focusing or tapping a chip shows that
+language's name, synonyms and regional names. A "show all languages" switch
+(remembered in the browser under `moderationSpeciesAllLanguages`) replaces the
+chips with one column per language, so a large batch of proposals can be
+checked language by language before approving them together.
 
 The queue can also approve several proposals at once. Only proposals that
 already have a name in every required language are selectable; after a

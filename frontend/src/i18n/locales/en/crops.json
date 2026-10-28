@@ -1097,7 +1097,10 @@
         "bulkApproveSuccess_one": "{{count}} crop species was approved.",
         "bulkApproveSuccess_other": "{{count}} crop species were approved.",
         "bulkApprovePartial_one": "{{count}} crop species approved, {{failed}} failed: {{names}}",
-        "bulkApprovePartial_other": "{{count}} crop species approved, {{failed}} failed: {{names}}"
+        "bulkApprovePartial_other": "{{count}} crop species approved, {{failed}} failed: {{names}}",
+        "showAllLanguages": "Show all languages",
+        "previewSynonyms": "Synonyms: {{synonyms}}",
+        "previewMissing": "missing"
       },
       "contributions": {
         "title": "Crop library contributions",

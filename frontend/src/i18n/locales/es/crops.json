@@ -1130,7 +1130,10 @@
         "bulkApproveSuccess_many": "Se aceptaron {{count}} especies de cultivo.",
         "bulkApprovePartial_one": "{{count}} especie de cultivo aceptada, {{failed}} con error: {{names}}",
         "bulkApprovePartial_other": "{{count}} especies de cultivo aceptadas, {{failed}} con error: {{names}}",
-        "bulkApprovePartial_many": "{{count}} especies de cultivo aceptadas, {{failed}} con error: {{names}}"
+        "bulkApprovePartial_many": "{{count}} especies de cultivo aceptadas, {{failed}} con error: {{names}}",
+        "showAllLanguages": "Mostrar todos los idiomas",
+        "previewSynonyms": "Sinónimos: {{synonyms}}",
+        "previewMissing": "falta"
       },
       "contributions": {
         "title": "Contribuciones a la biblioteca de cultivos",

@@ -1130,7 +1130,10 @@
         "bulkApproveSuccess_many": "{{count}} espèces cultivées ont été acceptées.",
         "bulkApprovePartial_one": "{{count}} espèce cultivée acceptée, {{failed}} en échec : {{names}}",
         "bulkApprovePartial_other": "{{count}} espèces cultivées acceptées, {{failed}} en échec : {{names}}",
-        "bulkApprovePartial_many": "{{count}} espèces cultivées acceptées, {{failed}} en échec : {{names}}"
+        "bulkApprovePartial_many": "{{count}} espèces cultivées acceptées, {{failed}} en échec : {{names}}",
+        "showAllLanguages": "Afficher toutes les langues",
+        "previewSynonyms": "Synonymes : {{synonyms}}",
+        "previewMissing": "manquant"
       },
       "contributions": {
         "title": "Contributions à la bibliothèque de cultures",
