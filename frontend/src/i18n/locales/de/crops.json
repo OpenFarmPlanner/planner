@@ -1083,7 +1083,21 @@
         "approvalHelper": "Mehrere Synonyme mit Komma trennen. Regionale Namen nur eintragen, wenn die Kulturart dort üblicherweise anders heißt.",
         "languageMissing": "{{language}} fehlt",
         "approveSuccess": "Die Kulturart wurde angenommen.",
-        "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt."
+        "rejectSuccess": "Der Kulturart-Vorschlag wurde abgelehnt.",
+        "bulkApprove_one": "{{count}} ausgewählte annehmen",
+        "bulkApprove_other": "{{count}} ausgewählte annehmen",
+        "bulkHint": "Nur Vorschläge mit Namen in allen Sprachen lassen sich gesammelt annehmen.",
+        "bulkNoneSelected": "Wähle zuerst Vorschläge aus.",
+        "bulkIncomplete": "Für das gesammelte Annehmen fehlt ein Name in mindestens einer Sprache. Öffne den Vorschlag einzeln.",
+        "bulkSelect": "„{{name}}“ auswählen",
+        "bulkSelectAll": "Alle vollständigen Vorschläge auswählen",
+        "bulkConfirmTitle": "Kulturarten annehmen",
+        "bulkConfirmMessage_one": "Diese Kulturart wird mit ihren gespeicherten Namen und Synonymen veröffentlicht:",
+        "bulkConfirmMessage_other": "Diese {{count}} Kulturarten werden mit ihren gespeicherten Namen und Synonymen veröffentlicht:",
+        "bulkApproveSuccess_one": "{{count}} Kulturart wurde angenommen.",
+        "bulkApproveSuccess_other": "{{count}} Kulturarten wurden angenommen.",
+        "bulkApprovePartial_one": "{{count}} Kulturart angenommen, {{failed}} fehlgeschlagen: {{names}}",
+        "bulkApprovePartial_other": "{{count}} Kulturarten angenommen, {{failed}} fehlgeschlagen: {{names}}"
       },
       "contributions": {
         "title": "Beiträge zur Kulturbibliothek",

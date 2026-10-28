@@ -1083,7 +1083,21 @@
         "approvalHelper": "Separate several synonyms with commas. Only enter a regional name if the crop species is usually called differently there.",
         "languageMissing": "{{language}} missing",
         "approveSuccess": "The crop species was approved.",
-        "rejectSuccess": "The crop species proposal was rejected."
+        "rejectSuccess": "The crop species proposal was rejected.",
+        "bulkApprove_one": "Approve {{count}} selected",
+        "bulkApprove_other": "Approve {{count}} selected",
+        "bulkHint": "Only proposals with names in every language can be approved together.",
+        "bulkNoneSelected": "Select proposals first.",
+        "bulkIncomplete": "A name is missing in at least one language, so this proposal cannot be approved together with others. Open it on its own.",
+        "bulkSelect": "Select \"{{name}}\"",
+        "bulkSelectAll": "Select all complete proposals",
+        "bulkConfirmTitle": "Approve crop species",
+        "bulkConfirmMessage_one": "This crop species is published with its stored names and synonyms:",
+        "bulkConfirmMessage_other": "These {{count}} crop species are published with their stored names and synonyms:",
+        "bulkApproveSuccess_one": "{{count}} crop species was approved.",
+        "bulkApproveSuccess_other": "{{count}} crop species were approved.",
+        "bulkApprovePartial_one": "{{count}} crop species approved, {{failed}} failed: {{names}}",
+        "bulkApprovePartial_other": "{{count}} crop species approved, {{failed}} failed: {{names}}"
       },
       "contributions": {
         "title": "Crop library contributions",
