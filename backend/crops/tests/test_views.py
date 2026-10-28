@@ -527,6 +527,52 @@ class CropViewSetTest(DRFAPITestCase):
         self.assertEqual(notification.target_id, proposal.id)
         self.assertFalse(notification.is_read)
 
+    def test_species_approval_keeps_stored_synonyms_and_regional_names(self):
+        """The approval dialog sends only common names; stored aliases must survive."""
+        moderator = User.objects.create_user(
+            username='species-alias-moderator',
+            email='species-alias-moderator@example.com',
+            password='testpass',
+            is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        proposal = CropSpecies.objects.create(
+            name='Tree onion', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=proposal, language_code='de', common_name='Etagenzwiebel',
+            synonyms=['Luftzwiebel'], regional_names={'austria': 'Etagenzwiebel'},
+        )
+        CropSpeciesTranslation.objects.create(
+            species=proposal, language_code='en', common_name='Tree onion',
+            synonyms=['Walking onion'],
+        )
+        CropSpeciesTranslation.objects.create(
+            species=proposal, language_code='fr', common_name='Oignon rocambole',
+            synonyms=['Oignon égyptien'],
+        )
+        self.client.force_authenticate(user=moderator)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            {
+                'translations': [
+                    {'language_code': 'de', 'common_name': 'Baumzwiebel'},
+                    {'language_code': 'en', 'common_name': 'Tree onion', 'synonyms': []},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        translations = {item.language_code: item for item in proposal.translations.all()}
+        self.assertEqual(translations['de'].common_name, 'Baumzwiebel')
+        self.assertEqual(translations['de'].synonyms, ['Luftzwiebel'])
+        self.assertEqual(translations['de'].regional_names, {'austria': 'Etagenzwiebel'})
+        # A field that is sent still replaces, even when empty.
+        self.assertEqual(translations['en'].synonyms, [])
+        self.assertEqual(translations['fr'].synonyms, ['Oignon égyptien'])
+
     def test_species_approval_notification_uses_proposers_ui_language(self):
         UserProjectSettings.objects.create(user=self.user, ui_language='de')
         moderator = User.objects.create_user(

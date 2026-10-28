@@ -218,7 +218,17 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
                 }
                 for translation in species.translations.all()
             }
-            approved_translations = {**existing_translations, **translation_payload}
+            # Merge per field, not per language: the approval dialog sends only
+            # the common names, and a language entry without `synonyms` /
+            # `regional_names` must keep the stored ones instead of clearing
+            # them. A field that is sent (even empty) still replaces.
+            approved_translations = {
+                **existing_translations,
+                **{
+                    code: {**existing_translations.get(code, {}), **item}
+                    for code, item in translation_payload.items()
+                },
+            }
             missing_languages = [
                 code
                 for code in REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
