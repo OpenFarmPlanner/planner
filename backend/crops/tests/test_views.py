@@ -36,6 +36,8 @@ class CropViewSetTest(DRFAPITestCase):
             'translations': [
                 {'language_code': 'de', 'common_name': german_name},
                 {'language_code': 'en', 'common_name': english_name},
+                {'language_code': 'fr', 'common_name': f'{english_name} (fr)'},
+                {'language_code': 'es', 'common_name': f'{english_name} (es)'},
             ],
         }
 
@@ -512,7 +514,7 @@ class CropViewSetTest(DRFAPITestCase):
         self.assertEqual(proposal.name, 'Tree onion')
         self.assertEqual(
             proposal.translations_by_language(),
-            {'de': 'Baumzwiebel', 'en': 'Tree onion'},
+            {'de': 'Baumzwiebel', 'en': 'Tree onion', 'fr': 'Tree onion (fr)', 'es': 'Tree onion (es)'},
         )
         self.assertEqual(proposal.reviewed_by, moderator)
         self.assertEqual(proposal.review_note, 'Good addition.')
@@ -614,7 +616,7 @@ class CropViewSetTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'missing_required_translations')
         self.assertEqual(response.data['detail'], 'Required crop species translations are missing.')
-        self.assertEqual(response.data['missing_languages'], ['de'])
+        self.assertEqual(response.data['missing_languages'], ['de', 'fr', 'es'])
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
 

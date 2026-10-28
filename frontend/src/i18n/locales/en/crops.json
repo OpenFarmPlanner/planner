@@ -1062,6 +1062,7 @@
       "none": "None",
       "columns": {
         "name": "Name",
+        "languages": "Languages",
         "proposer": "Proposed by",
         "similar": "Similar crop species",
         "actions": "Actions",
@@ -1073,9 +1074,14 @@
         "title": "Crop species proposals",
         "empty": "No open crop species proposals.",
         "approveDialogTitle": "Approve crop species",
-        "approveDialogIntro": "Set the public names for \"{{name}}\". German and English are required before the crop species is published.",
-        "germanName": "German name",
-        "englishName": "English name",
+        "approveDialogIntro": "Check the public names for \"{{name}}\". A name is required in every language before the crop species is published.",
+        "commonNameLabel": "Name ({{language}})",
+        "regionalName": {
+          "austria": "Name in Austria",
+          "switzerland": "Name in Switzerland"
+        },
+        "approvalHelper": "Separate several synonyms with commas. Only enter a regional name if the crop species is usually called differently there.",
+        "languageMissing": "{{language}} missing",
         "approveSuccess": "The crop species was approved.",
         "rejectSuccess": "The crop species proposal was rejected."
       },
@@ -1520,7 +1526,7 @@
     "confirm": "Restore version"
   },
   "disabledReasons": {
-    "requiredSpeciesNames": "Enter the German and English names first.",
+    "requiredSpeciesNames": "Enter a name in every language first.",
     "requiredComment": "Enter a comment first.",
     "selectEntry": "Select an entry first.",
     "selectRemovalReason": "Select a reason first.",

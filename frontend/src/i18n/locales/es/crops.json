@@ -1091,6 +1091,7 @@
       "none": "Ninguno",
       "columns": {
         "name": "Nombre",
+        "languages": "Idiomas",
         "proposer": "Propuesto por",
         "similar": "Especies de cultivo similares",
         "actions": "Acciones",
@@ -1102,9 +1103,14 @@
         "title": "Propuestas de especies de cultivo",
         "empty": "No hay propuestas de especies de cultivo abiertas.",
         "approveDialogTitle": "Aprobar especie de cultivo",
-        "approveDialogIntro": "Define los nombres públicos de «{{name}}». El alemán y el inglés son obligatorios antes de publicar la especie de cultivo.",
-        "germanName": "Nombre en alemán",
-        "englishName": "Nombre en inglés",
+        "approveDialogIntro": "Revisa los nombres públicos de «{{name}}». Se necesita un nombre en cada idioma antes de publicar la especie de cultivo.",
+        "commonNameLabel": "Nombre ({{language}})",
+        "regionalName": {
+          "austria": "Nombre en Austria",
+          "switzerland": "Nombre en Suiza"
+        },
+        "approvalHelper": "Separa varios sinónimos con comas. Indica un nombre regional solo si la especie de cultivo suele llamarse de otra forma allí.",
+        "languageMissing": "Falta {{language}}",
         "approveSuccess": "Se ha aprobado la especie de cultivo.",
         "rejectSuccess": "Se ha rechazado la propuesta de especie de cultivo."
       },
@@ -1555,7 +1561,7 @@
     "confirm": "Restaurar versión"
   },
   "disabledReasons": {
-    "requiredSpeciesNames": "Introduce primero los nombres en alemán e inglés.",
+    "requiredSpeciesNames": "Introduce primero un nombre en cada idioma.",
     "requiredComment": "Introduce primero un comentario.",
     "selectEntry": "Selecciona primero una entrada.",
     "selectRemovalReason": "Selecciona primero un motivo.",

@@ -68,14 +68,26 @@ const pickSpecies = async (typed: string, optionName: RegExp) => {
   return user;
 };
 
-const fillApprovalTranslations = async (user: ReturnType<typeof userEvent.setup>, de: string, en: string) => {
-  const deField = screen.getByLabelText(/Deutscher Name/);
-  await user.clear(deField);
-  await user.type(deField, de);
-  const enField = screen.getByLabelText(/Englischer Name/);
-  await user.clear(enField);
-  await user.type(enField, en);
+const approvalNameField = (language: string): HTMLElement => (
+  screen.getByLabelText(new RegExp(`^Name \\(${language}\\)`))
+);
+
+const fillApprovalTranslations = async (
+  user: ReturnType<typeof userEvent.setup>, de: string, en: string, fr: string, es: string,
+) => {
+  for (const [language, value] of [['Deutsch', de], ['Englisch', en], ['Französisch', fr], ['Spanisch', es]]) {
+    const field = approvalNameField(language);
+    await user.clear(field);
+    await user.type(field, value);
+  }
 };
+
+const approvalPayload = (de: string, en: string, fr: string, es: string) => [
+  { language_code: 'de', common_name: de, synonyms: [], regional_names: {} },
+  { language_code: 'en', common_name: en, synonyms: [], regional_names: {} },
+  { language_code: 'fr', common_name: fr, synonyms: [], regional_names: {} },
+  { language_code: 'es', common_name: es, synonyms: [], regional_names: {} },
+];
 
 describe('PublicCropSpeciesRelinkDialog', () => {
   beforeEach(() => {
@@ -191,9 +203,9 @@ describe('PublicCropSpeciesRelinkDialog', () => {
 
     const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
     // Only the current UI language is preseeded; the moderator still has to
-    // consciously provide the other one before submitting is possible.
+    // consciously provide the other languages before submitting is possible.
     expect(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ })).toBeDisabled();
-    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean', 'Haricot à rames', 'Judía de enrame');
     await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
 
     await waitFor(() => expect(cropSpeciesProposeMock).toHaveBeenCalled());
@@ -201,10 +213,7 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     await waitFor(() => expect(cropSpeciesApproveMock).toHaveBeenCalledWith(
       9,
       '',
-      [
-        { language_code: 'de', common_name: 'Stangenbohne' },
-        { language_code: 'en', common_name: 'Pole bean' },
-      ],
+      approvalPayload('Stangenbohne', 'Pole bean', 'Haricot à rames', 'Judía de enrame'),
     ));
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 9, { variety: 'Neckarkönigin' }));
     expect(onRelinked).toHaveBeenCalledWith(
@@ -220,7 +229,7 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     renderDialog();
 
     const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
-    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean', 'Haricot à rames', 'Judía de enrame');
     await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
 
     expect(await screen.findByText('Die Kulturart konnte nicht geändert werden.')).toBeInTheDocument();
@@ -237,7 +246,7 @@ describe('PublicCropSpeciesRelinkDialog', () => {
     renderDialog();
 
     const user = await pickSpecies('Stangenbohne', /als neue Kulturart vorschlagen/);
-    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean');
+    await fillApprovalTranslations(user, 'Stangenbohne', 'Pole bean', 'Haricot à rames', 'Judía de enrame');
     await user.click(screen.getByRole('button', { name: /Kulturart anlegen, freigeben und übernehmen/ }));
 
     expect(await screen.findByText(/konnte nicht freigegeben werden/)).toBeInTheDocument();
@@ -273,19 +282,16 @@ describe('PublicCropSpeciesRelinkDialog', () => {
 
     const user = await pickSpecies('Schlangengurke', /Schlangengurke/);
     // The German name is pre-filled from the existing pending species; only
-    // the missing English one still has to be provided.
-    expect(screen.getByLabelText(/Deutscher Name/)).toHaveValue('Schlangengurke');
-    await fillApprovalTranslations(user, 'Schlangengurke', 'Snake cucumber');
+    // the missing languages still have to be provided.
+    expect(approvalNameField('Deutsch')).toHaveValue('Schlangengurke');
+    await fillApprovalTranslations(user, 'Schlangengurke', 'Snake cucumber', 'Concombre serpent', 'Pepino serpiente');
     await user.click(screen.getByRole('button', { name: /Kulturart freigeben und übernehmen/ }));
 
     expect(cropSpeciesProposeMock).not.toHaveBeenCalled();
     await waitFor(() => expect(cropSpeciesApproveMock).toHaveBeenCalledWith(
       5,
       '',
-      [
-        { language_code: 'de', common_name: 'Schlangengurke' },
-        { language_code: 'en', common_name: 'Snake cucumber' },
-      ],
+      approvalPayload('Schlangengurke', 'Snake cucumber', 'Concombre serpent', 'Pepino serpiente'),
     ));
     await waitFor(() => expect(relinkSpeciesMock).toHaveBeenCalledWith(7, 5, { variety: 'Neckarkönigin' }));
   });

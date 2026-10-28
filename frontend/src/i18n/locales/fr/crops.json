@@ -1091,6 +1091,7 @@
       "none": "Aucun",
       "columns": {
         "name": "Nom",
+        "languages": "Langues",
         "proposer": "Proposé par",
         "similar": "Espèces cultivées similaires",
         "actions": "Actions",
@@ -1102,9 +1103,14 @@
         "title": "Propositions d'espèces cultivées",
         "empty": "Aucune proposition d'espèce cultivée ouverte.",
         "approveDialogTitle": "Approuver l'espèce cultivée",
-        "approveDialogIntro": "Définissez les noms publics de « {{name}} ». L'allemand et l'anglais sont obligatoires avant la publication de l'espèce cultivée.",
-        "germanName": "Nom allemand",
-        "englishName": "Nom anglais",
+        "approveDialogIntro": "Vérifiez les noms publics de « {{name}} ». Un nom est obligatoire dans chaque langue avant la publication de l'espèce cultivée.",
+        "commonNameLabel": "Nom ({{language}})",
+        "regionalName": {
+          "austria": "Nom en Autriche",
+          "switzerland": "Nom en Suisse"
+        },
+        "approvalHelper": "Séparez plusieurs synonymes par des virgules. N'indiquez un nom régional que si l'espèce cultivée y porte habituellement un autre nom.",
+        "languageMissing": "{{language}} manquant",
         "approveSuccess": "L'espèce cultivée a été approuvée.",
         "rejectSuccess": "La proposition d'espèce cultivée a été refusée."
       },
@@ -1555,7 +1561,7 @@
     "confirm": "Restaurer la version"
   },
   "disabledReasons": {
-    "requiredSpeciesNames": "Saisissez d'abord les noms allemand et anglais.",
+    "requiredSpeciesNames": "Saisissez d'abord un nom dans chaque langue.",
     "requiredComment": "Saisissez d'abord un commentaire.",
     "selectEntry": "Sélectionnez d'abord une entrée.",
     "selectRemovalReason": "Choisissez d'abord un motif.",

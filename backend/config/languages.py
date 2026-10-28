@@ -26,10 +26,11 @@ from __future__ import annotations
 # Ordered by preference for the "any other translation" fallback step.
 SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es')
 
-# Public crop species become shared lookup data once approved. Keep this list
-# explicit so adding a UI language does not silently make every old proposal
-# unapprovable until its translations are backfilled.
-REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES: tuple[str, ...] = ('de', 'en')
+# Public crop species become shared lookup data once approved, so a species
+# needs a common name in every UI language before it is published. Keep this
+# list explicit so adding a UI language does not silently make every old
+# proposal unapprovable until its translations are backfilled.
+REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES: tuple[str, ...] = ('de', 'en', 'fr', 'es')
 
 # Last-resort UI language, and the second step of the content fallback chain.
 DEFAULT_LANGUAGE_CODE = 'en'

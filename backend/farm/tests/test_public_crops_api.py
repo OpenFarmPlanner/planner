@@ -4926,6 +4926,8 @@ class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
             {'translations': [
                 {'language_code': 'de', 'common_name': 'Wirsingblatt'},
                 {'language_code': 'en', 'common_name': 'Vertusleaf kale'},
+                {'language_code': 'fr', 'common_name': 'Chou Vertus'},
+                {'language_code': 'es', 'common_name': 'Col Vertus'},
             ]},
             format='json',
         )

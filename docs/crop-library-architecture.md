@@ -1615,12 +1615,23 @@ creates a proposal it stores the typed name as a `CropSpeciesTranslation` in
 the currently selected original language, so an English publication pre-fills
 the English name and a German publication pre-fills the German name. A
 moderator cannot approve the proposal until all
-`REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES` (`de`, `en` today) have
-non-empty names; `CropSpeciesViewSet.approve()` writes those translations in
-the same transaction as the status change and uses the English common name as
-the canonical `CropSpecies.name`. That keeps approved species immediately
-usable in every supported UI language instead of publishing a single-language
-lookup row that has to be cleaned up later.
+`REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES` (`de`, `en`, `fr`, `es`, every UI
+language today) have non-empty names; `CropSpeciesViewSet.approve()` writes
+those translations in the same transaction as the status change and uses the
+English common name as the canonical `CropSpecies.name`. That keeps approved
+species immediately usable in every supported UI language instead of
+publishing a single-language lookup row that has to be cleaned up later. The
+list stays explicit rather than following `SUPPORTED_LANGUAGE_CODES`, so a new
+UI language does not silently block every older proposal.
+
+Both approval forms (the moderation queue's dialog and the relink dialog
+below) use the shared `SpeciesApprovalFields`: per language the common name and
+the synonyms, plus the Austrian and Swiss regional names on the German
+translation, all prefilled from the proposal and editable. The form sends
+every language with its synonyms and regional names, so approving never drops
+aliases a proposal already carries (for example ones written through the crop
+library API). The queue's proposal table shows one chip per required language,
+so a moderator sees missing translations before opening a proposal.
 
 ### While a species is `PROPOSED`
 
@@ -1993,7 +2004,7 @@ own action:
   selectable the same way. Either way, the *frontend* self-approves it right
   there: a moderator who can open this dialog already has authority to
   approve a proposal through `CropSpeciesViewSet.approve()` (that action has
-  no self-approval ban), so the dialog collects the same two required
+  no self-approval ban), so the dialog collects the same required
   translations the moderation queue's own approval dialog asks for, calls
   `propose()` (only for a brand-new name) then `approve()`, and only then
   calls `relink-species` — three existing, unchanged endpoints chained by the
