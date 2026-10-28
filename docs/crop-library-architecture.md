@@ -1621,6 +1621,11 @@ the same transaction as the status change and uses the English common name as
 the canonical `CropSpecies.name`. That keeps approved species immediately
 usable in every supported UI language instead of publishing a single-language
 lookup row that has to be cleaned up later.
+The approval merges each sent language field by field into the stored
+translation: the dialog sends only common names, so `synonyms` and
+`regional_names` that are not sent keep their stored values (for example
+aliases written through the crop library API before review), while a field
+that is sent, even empty, replaces the stored one.
 
 ### While a species is `PROPOSED`
 
