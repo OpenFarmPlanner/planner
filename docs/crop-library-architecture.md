@@ -1623,15 +1623,20 @@ species immediately usable in every supported UI language instead of
 publishing a single-language lookup row that has to be cleaned up later. The
 list stays explicit rather than following `SUPPORTED_LANGUAGE_CODES`, so a new
 UI language does not silently block every older proposal.
+The approval merges each sent language field by field into the stored
+translation: `synonyms` and `regional_names` that a request leaves out keep
+their stored values (for example aliases written through the crop library API
+before review), while a field that is sent, even empty, replaces the stored
+one.
 
 Both approval forms (the moderation queue's dialog and the relink dialog
 below) use the shared `SpeciesApprovalFields`: per language the common name and
 the synonyms, plus the Austrian and Swiss regional names on the German
 translation, all prefilled from the proposal and editable. The form sends
 every language with its synonyms and regional names, so approving never drops
-aliases a proposal already carries (for example ones written through the crop
-library API). The queue's proposal table shows one chip per required language,
-so a moderator sees missing translations before opening a proposal.
+aliases a proposal already carries. The queue's proposal table shows one chip
+per required language, so a moderator sees missing translations before
+opening a proposal.
 
 The queue can also approve several proposals at once. Only proposals that
 already have a name in every required language are selectable; after a
