@@ -10,8 +10,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Paper,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -45,6 +47,7 @@ import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog';
 import ChangeProposalQueue from '../components/ChangeProposalQueue';
 import { SpeciesApprovalFields } from '../components/SpeciesApprovalFields';
+import { SpeciesLanguageChips, SpeciesTranslationCell } from '../components/SpeciesTranslationPreview';
 import {
   buildSpeciesApprovalPayload,
   createEmptySpeciesApprovalTranslations,
@@ -58,6 +61,8 @@ import {
 } from '../../crops/cropSpeciesMatching';
 
 const ALIAS_SEARCH_DEBOUNCE_MS = 250;
+// Browser-storage key of the "show all languages" toggle; keep the spelling stable.
+const SPECIES_ALL_LANGUAGES_STORAGE_KEY = 'moderationSpeciesAllLanguages';
 const ALIAS_SPECIES_PAGE_SIZE = 20;
 
 /** Whether a proposal already has every required common name, i.e. can be approved as stored. */
@@ -66,36 +71,6 @@ const isSpeciesProposalComplete = (species: CropSpecies): boolean => REQUIRED_SP
     (translation) => translation.language_code === languageCode && translation.common_name.trim(),
   ),
 );
-
-/** One chip per required language; a missing common name shows as a faded outline. */
-function SpeciesLanguageChips({ species }: { species: CropSpecies }) {
-  const { t, i18n } = useTranslation('crops');
-  const present = new Set(
-    (species.translations ?? [])
-      .filter((translation) => translation.common_name.trim())
-      .map((translation) => translation.language_code),
-  );
-  return (
-    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
-      {REQUIRED_SPECIES_LANGUAGES.map((languageCode) => {
-        const language = getLanguageDisplayName(languageCode, i18n.resolvedLanguage ?? i18n.language);
-        const available = present.has(languageCode);
-        return (
-          <Chip
-            key={languageCode}
-            size="small"
-            label={languageCode.toUpperCase()}
-            variant={available ? 'filled' : 'outlined'}
-            color={available ? 'success' : 'default'}
-            title={available ? language : t('library.moderation.species.languageMissing', { language })}
-            aria-label={available ? language : t('library.moderation.species.languageMissing', { language })}
-            sx={available ? undefined : { opacity: 0.6, borderStyle: 'dashed' }}
-          />
-        );
-      })}
-    </Stack>
-  );
-}
 
 const getSpeciesAliases = (species: CropSpecies, languageCode: string): string[] => (
   species.translations?.find((translation) => translation.language_code === languageCode)?.synonyms ?? []
@@ -108,6 +83,9 @@ export default function PublicLibraryModerationPage() {
   const [speciesProposals, setSpeciesProposals] = useState<CropSpecies[]>([]);
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<Set<number>>(new Set());
   const [bulkApprovalOpen, setBulkApprovalOpen] = useState(false);
+  const [showAllSpeciesLanguages, setShowAllSpeciesLanguages] = useState(
+    () => window.localStorage.getItem(SPECIES_ALL_LANGUAGES_STORAGE_KEY) === 'true',
+  );
   const [moderatorRequests, setModeratorRequests] = useState<PublicLibraryModeratorRequest[]>([]);
   const [removedCrops, setRemovedCrops] = useState<PublicCrop[]>([]);
   const [changeProposals, setChangeProposals] = useState<PublicCropChangeProposal[]>([]);
@@ -209,6 +187,11 @@ export default function PublicLibraryModerationPage() {
   const selectedSpeciesProposals = speciesProposals.filter((proposal) => selectedSpeciesIds.has(proposal.id));
   const allCompleteSelected = completeSpeciesProposals.length > 0
     && completeSpeciesProposals.every((proposal) => selectedSpeciesIds.has(proposal.id));
+
+  const changeShowAllSpeciesLanguages = (show: boolean): void => {
+    setShowAllSpeciesLanguages(show);
+    window.localStorage.setItem(SPECIES_ALL_LANGUAGES_STORAGE_KEY, String(show));
+  };
 
   const toggleSpeciesSelection = (proposalId: number): void => {
     setSelectedSpeciesIds((previous) => {
@@ -474,9 +457,19 @@ export default function PublicLibraryModerationPage() {
                         : t('library.moderation.species.bulkApprove', { count: selectedSpeciesProposals.length })}
                     </Button>
                   </DisabledActionTooltip>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
                     {t('library.moderation.species.bulkHint')}
                   </Typography>
+                  <FormControlLabel
+                    control={(
+                      <Switch
+                        size="small"
+                        checked={showAllSpeciesLanguages}
+                        onChange={(event) => changeShowAllSpeciesLanguages(event.target.checked)}
+                      />
+                    )}
+                    label={t('library.moderation.species.showAllLanguages')}
+                  />
                 </Stack>
               ) : null}
               {speciesProposals.length === 0 ? (
@@ -496,7 +489,13 @@ export default function PublicLibraryModerationPage() {
                           />
                         </TableCell>
                         <TableCell>{t('library.moderation.columns.name')}</TableCell>
-                        <TableCell>{t('library.moderation.columns.languages')}</TableCell>
+                        {showAllSpeciesLanguages
+                          ? REQUIRED_SPECIES_LANGUAGES.map((languageCode) => (
+                            <TableCell key={languageCode} sx={{ minWidth: 160 }}>
+                              {getLanguageDisplayName(languageCode, i18n.resolvedLanguage ?? i18n.language)}
+                            </TableCell>
+                          ))
+                          : <TableCell>{t('library.moderation.columns.languages')}</TableCell>}
                         <TableCell>{t('library.moderation.columns.proposer')}</TableCell>
                         <TableCell>{t('library.moderation.columns.similar')}</TableCell>
                         <TableCell align="right">{t('library.moderation.columns.actions')}</TableCell>
@@ -529,9 +528,17 @@ export default function PublicLibraryModerationPage() {
                               </Typography>
                             ) : null}
                           </TableCell>
-                          <TableCell>
-                            <SpeciesLanguageChips species={proposal} />
-                          </TableCell>
+                          {showAllSpeciesLanguages
+                            ? REQUIRED_SPECIES_LANGUAGES.map((languageCode) => (
+                              <TableCell key={languageCode} sx={{ verticalAlign: 'top' }}>
+                                <SpeciesTranslationCell species={proposal} languageCode={languageCode} />
+                              </TableCell>
+                            ))
+                            : (
+                              <TableCell>
+                                <SpeciesLanguageChips species={proposal} />
+                              </TableCell>
+                            )}
                           <TableCell>{proposal.proposed_by_label || t('library.anonymousAuthor')}</TableCell>
                           <TableCell>
                             {(proposal.similar_species ?? []).length > 0

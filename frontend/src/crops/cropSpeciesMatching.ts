@@ -332,6 +332,14 @@ export const getInitialSpeciesApprovalTranslations = (
   return translations;
 };
 
+/** The stored translation of one language, or null when it has no common name. */
+export const getSpeciesTranslation = (
+  species: CropSpecies, languageCode: RequiredSpeciesLanguage,
+): CropSpeciesTranslation | null => {
+  const translation = species.translations?.find((item) => item.language_code === languageCode);
+  return translation && translation.common_name.trim() ? translation : null;
+};
+
 export const isSpeciesApprovalComplete = (translations: SpeciesApprovalTranslations): boolean => (
   REQUIRED_SPECIES_LANGUAGES.every((code) => translations[code].commonName.trim())
 );
