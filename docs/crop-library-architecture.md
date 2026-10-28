@@ -1633,6 +1633,15 @@ aliases a proposal already carries (for example ones written through the crop
 library API). The queue's proposal table shows one chip per required language,
 so a moderator sees missing translations before opening a proposal.
 
+The queue can also approve several proposals at once. Only proposals that
+already have a name in every required language are selectable; after a
+confirmation listing the names, the frontend calls the unchanged `approve()`
+endpoint once per proposal with its stored names, synonyms and regional names
+(the payload the single dialog would send unedited). Calls run one after the
+other so a failure, such as a duplicate name, only affects that species; the
+result snackbar names the failed ones and they stay selected in the reloaded
+queue. There is no bulk endpoint.
+
 ### While a species is `PROPOSED`
 
 Publishing under an unreviewed species is allowed, but everything that treats

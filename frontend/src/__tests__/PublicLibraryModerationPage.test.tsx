@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 import PublicLibraryModerationPage from '../crop-library/pages/PublicLibraryModerationPage';
 
 const authUser = vi.hoisted(() => ({
@@ -333,6 +334,79 @@ describe('PublicLibraryModerationPage', () => {
       { language_code: 'fr', common_name: 'Souchet comestible', synonyms: [], regional_names: {} },
       { language_code: 'es', common_name: 'Chufa', synonyms: ['Juncia avellanada'], regional_names: {} },
     ]));
+  });
+
+  it('approves several complete proposals at once and reports failures per species', async () => {
+    const user = userEvent.setup();
+    const snackbars: GlobalSnackbarDetail[] = [];
+    const recordSnackbar = (event: Event) => snackbars.push((event as CustomEvent<GlobalSnackbarDetail>).detail);
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
+    const complete = (id: number, de: string, en: string, synonyms: string[] = []) => ({
+      id,
+      name: de,
+      status: 'proposed',
+      proposed_by_label: 'Mara',
+      translations: [
+        { language_code: 'de', common_name: de, synonyms, regional_names: {} },
+        { language_code: 'en', common_name: en, synonyms: [], regional_names: {} },
+        { language_code: 'fr', common_name: `${en} (fr)`, synonyms: [], regional_names: {} },
+        { language_code: 'es', common_name: `${en} (es)`, synonyms: [], regional_names: {} },
+      ],
+      similar_species: [],
+    });
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => Promise.resolve({
+      data: {
+        results: params?.status === 'proposed'
+          ? [
+            complete(11, 'Erdmandel', 'Tiger nut', ['Tigernuss']),
+            complete(12, 'Akelei', 'Columbine'),
+            {
+              id: 13, name: 'Baumspinat', status: 'proposed', proposed_by_label: 'Mara',
+              translations: [{ language_code: 'de', common_name: 'Baumspinat' }], similar_species: [],
+            },
+          ]
+          : [],
+      },
+    }));
+    apiMocks.cropSpeciesApprove.mockImplementation((id: number) => (
+      id === 12 ? Promise.reject(new Error('duplicate')) : Promise.resolve({ data: { id, status: 'published' } })
+    ));
+
+    try {
+      render(<PublicLibraryModerationPage />);
+      const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+      expect(within(speciesTable).getByRole('checkbox', { name: '„Baumspinat“ auswählen' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '0 ausgewählte annehmen' })).toBeDisabled();
+
+      await user.click(within(speciesTable).getByRole('checkbox', { name: 'Alle vollständigen Vorschläge auswählen' }));
+      expect(within(speciesTable).getByRole('checkbox', { name: '„Erdmandel“ auswählen' })).toBeChecked();
+      expect(within(speciesTable).getByRole('checkbox', { name: '„Akelei“ auswählen' })).toBeChecked();
+      expect(within(speciesTable).getByRole('checkbox', { name: '„Baumspinat“ auswählen' })).not.toBeChecked();
+
+      await user.click(screen.getByRole('button', { name: '2 ausgewählte annehmen' }));
+      const confirmDialog = await screen.findByRole('dialog', { name: 'Kulturarten annehmen' });
+      expect(within(confirmDialog).getByText('Erdmandel')).toBeInTheDocument();
+      expect(within(confirmDialog).getByText('Akelei')).toBeInTheDocument();
+      expect(within(confirmDialog).queryByText('Baumspinat')).not.toBeInTheDocument();
+      await user.click(within(confirmDialog).getByRole('button', { name: 'Annehmen' }));
+
+      await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledTimes(2));
+      expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledWith(11, '', [
+        { language_code: 'de', common_name: 'Erdmandel', synonyms: ['Tigernuss'], regional_names: {} },
+        { language_code: 'en', common_name: 'Tiger nut', synonyms: [], regional_names: {} },
+        { language_code: 'fr', common_name: 'Tiger nut (fr)', synonyms: [], regional_names: {} },
+        { language_code: 'es', common_name: 'Tiger nut (es)', synonyms: [], regional_names: {} },
+      ]);
+      await waitFor(() => expect(snackbars).toContainEqual(expect.objectContaining({
+        severity: 'error',
+        message: '1 Kulturart angenommen, 1 fehlgeschlagen: Akelei',
+      })));
+      // The failed proposal is still in the queue and stays selected for a retry.
+      const reloadedTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+      expect(within(reloadedTable).getByRole('checkbox', { name: '„Akelei“ auswählen' })).toBeChecked();
+    } finally {
+      window.removeEventListener(GLOBAL_SNACKBAR_EVENT, recordSnackbar);
+    }
   });
 
   it('lists removed public crops and restores one', async () => {

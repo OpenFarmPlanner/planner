@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -41,6 +42,7 @@ import { getLanguageDisplayName, SUPPORTED_LANGUAGES } from '../../i18n/language
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
+import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog';
 import ChangeProposalQueue from '../components/ChangeProposalQueue';
 import { SpeciesApprovalFields } from '../components/SpeciesApprovalFields';
 import {
@@ -57,6 +59,13 @@ import {
 
 const ALIAS_SEARCH_DEBOUNCE_MS = 250;
 const ALIAS_SPECIES_PAGE_SIZE = 20;
+
+/** Whether a proposal already has every required common name, i.e. can be approved as stored. */
+const isSpeciesProposalComplete = (species: CropSpecies): boolean => REQUIRED_SPECIES_LANGUAGES.every(
+  (languageCode) => species.translations?.some(
+    (translation) => translation.language_code === languageCode && translation.common_name.trim(),
+  ),
+);
 
 /** One chip per required language; a missing common name shows as a faded outline. */
 function SpeciesLanguageChips({ species }: { species: CropSpecies }) {
@@ -97,6 +106,8 @@ export default function PublicLibraryModerationPage() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation('crops');
   const [speciesProposals, setSpeciesProposals] = useState<CropSpecies[]>([]);
+  const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<Set<number>>(new Set());
+  const [bulkApprovalOpen, setBulkApprovalOpen] = useState(false);
   const [moderatorRequests, setModeratorRequests] = useState<PublicLibraryModeratorRequest[]>([]);
   const [removedCrops, setRemovedCrops] = useState<PublicCrop[]>([]);
   const [changeProposals, setChangeProposals] = useState<PublicCropChangeProposal[]>([]);
@@ -135,6 +146,13 @@ export default function PublicLibraryModerationPage() {
     try {
       const speciesResponse = await cropSpeciesAPI.list({ status: 'proposed', include_proposed: true });
       setSpeciesProposals(speciesResponse.data.results);
+      // Drop selections of proposals that are gone (approved, rejected) or
+      // no longer complete, so the bulk action never acts on a stale row.
+      setSelectedSpeciesIds((previous) => new Set(
+        speciesResponse.data.results
+          .filter((proposal) => previous.has(proposal.id) && isSpeciesProposalComplete(proposal))
+          .map((proposal) => proposal.id),
+      ));
       if (canManageRequests) {
         const requestsResponse = await publicLibraryModeratorRequestAPI.list({ status: 'pending' });
         setModeratorRequests(requestsResponse.data.results);
@@ -185,6 +203,66 @@ export default function PublicLibraryModerationPage() {
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const completeSpeciesProposals = speciesProposals.filter(isSpeciesProposalComplete);
+  const selectedSpeciesProposals = speciesProposals.filter((proposal) => selectedSpeciesIds.has(proposal.id));
+  const allCompleteSelected = completeSpeciesProposals.length > 0
+    && completeSpeciesProposals.every((proposal) => selectedSpeciesIds.has(proposal.id));
+
+  const toggleSpeciesSelection = (proposalId: number): void => {
+    setSelectedSpeciesIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(proposalId)) next.delete(proposalId);
+      else next.add(proposalId);
+      return next;
+    });
+  };
+
+  const toggleAllSpeciesSelection = (): void => {
+    setSelectedSpeciesIds(allCompleteSelected
+      ? new Set()
+      : new Set(completeSpeciesProposals.map((proposal) => proposal.id)));
+  };
+
+  /**
+   * Approves the selected proposals one by one with their stored names,
+   * synonyms and regional names — the same payload the single dialog would
+   * send unchanged — so one failure (e.g. a duplicate name) never blocks the
+   * others. Failed proposals stay selected for a retry or a closer look.
+   */
+  const approveSelectedSpecies = async (): Promise<void> => {
+    setBulkApprovalOpen(false);
+    setBusyAction('species-bulk-approve');
+    const languageCode = i18n.resolvedLanguage ?? i18n.language;
+    const failed: string[] = [];
+    for (const proposal of selectedSpeciesProposals) {
+      try {
+        await cropSpeciesAPI.approve(
+          proposal.id,
+          '',
+          buildSpeciesApprovalPayload(getInitialSpeciesApprovalTranslations(proposal, proposal.name, languageCode)),
+        );
+      } catch {
+        failed.push(proposal.name);
+      }
+    }
+    const approvedCount = selectedSpeciesProposals.length - failed.length;
+    if (failed.length === 0) {
+      showGlobalSnackbar({
+        message: t('library.moderation.species.bulkApproveSuccess', { count: approvedCount }),
+        severity: 'success',
+      });
+    } else {
+      showGlobalSnackbar({
+        message: t('library.moderation.species.bulkApprovePartial', {
+          count: approvedCount, failed: failed.length, names: failed.join(', '),
+        }),
+        severity: 'error',
+      });
+    }
+    await loadQueues();
+    setBusyAction(null);
   };
 
   const reviewSpecies = async (proposal: CropSpecies, action: 'reject'): Promise<void> => {
@@ -375,6 +453,32 @@ export default function PublicLibraryModerationPage() {
                 <GavelOutlinedIcon color="primary" />
                 <Typography variant="h6">{t('library.moderation.species.title')}</Typography>
               </Stack>
+              {speciesProposals.length > 0 ? (
+                <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <DisabledActionTooltip
+                    title={busyAction !== null
+                      ? t('common:disabledReasons.busy')
+                      : selectedSpeciesProposals.length === 0
+                        ? t('library.moderation.species.bulkNoneSelected')
+                        : ''}
+                  >
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<CheckOutlinedIcon />}
+                      disabled={busyAction !== null || selectedSpeciesProposals.length === 0}
+                      onClick={() => setBulkApprovalOpen(true)}
+                    >
+                      {busyAction === 'species-bulk-approve'
+                        ? t('library.moderation.saving')
+                        : t('library.moderation.species.bulkApprove', { count: selectedSpeciesProposals.length })}
+                    </Button>
+                  </DisabledActionTooltip>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('library.moderation.species.bulkHint')}
+                  </Typography>
+                </Stack>
+              ) : null}
               {speciesProposals.length === 0 ? (
                 <Typography color="text.secondary">{t('library.moderation.species.empty')}</Typography>
               ) : (
@@ -382,6 +486,15 @@ export default function PublicLibraryModerationPage() {
                   <Table size="small" aria-label={t('library.moderation.species.title')}>
                     <TableHead>
                       <TableRow>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={allCompleteSelected}
+                            indeterminate={!allCompleteSelected && selectedSpeciesProposals.length > 0}
+                            disabled={busyAction !== null || completeSpeciesProposals.length === 0}
+                            onChange={toggleAllSpeciesSelection}
+                            slotProps={{ input: { 'aria-label': t('library.moderation.species.bulkSelectAll') } }}
+                          />
+                        </TableCell>
                         <TableCell>{t('library.moderation.columns.name')}</TableCell>
                         <TableCell>{t('library.moderation.columns.languages')}</TableCell>
                         <TableCell>{t('library.moderation.columns.proposer')}</TableCell>
@@ -391,7 +504,23 @@ export default function PublicLibraryModerationPage() {
                     </TableHead>
                     <TableBody>
                       {speciesProposals.map((proposal) => (
-                        <TableRow key={proposal.id}>
+                        <TableRow key={proposal.id} selected={selectedSpeciesIds.has(proposal.id)}>
+                          <TableCell padding="checkbox">
+                            <DisabledActionTooltip
+                              title={isSpeciesProposalComplete(proposal)
+                                ? ''
+                                : t('library.moderation.species.bulkIncomplete')}
+                            >
+                              <Checkbox
+                                checked={selectedSpeciesIds.has(proposal.id)}
+                                disabled={busyAction !== null || !isSpeciesProposalComplete(proposal)}
+                                onChange={() => toggleSpeciesSelection(proposal.id)}
+                                slotProps={{
+                                  input: { 'aria-label': t('library.moderation.species.bulkSelect', { name: proposal.name }) },
+                                }}
+                              />
+                            </DisabledActionTooltip>
+                          </TableCell>
                           <TableCell>
                             {proposal.name}
                             {proposal.scientific_name ? (
@@ -618,6 +747,27 @@ export default function PublicLibraryModerationPage() {
           </>
         )}
       </Stack>
+      <ConfirmationDialog
+        open={bulkApprovalOpen}
+        title={t('library.moderation.species.bulkConfirmTitle')}
+        message={(
+          <>
+            {t('library.moderation.species.bulkConfirmMessage', { count: selectedSpeciesProposals.length })}
+            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 3, maxHeight: 280, overflowY: 'auto' }}>
+              {selectedSpeciesProposals.map((proposal) => (
+                <li key={proposal.id}>{proposal.name}</li>
+              ))}
+            </Box>
+          </>
+        )}
+        messageTypographyProps={{ component: 'div' }}
+        cancelLabel={t('library.moderation.cancel')}
+        confirmLabel={t('library.moderation.approve')}
+        onCancel={() => setBulkApprovalOpen(false)}
+        onConfirm={() => void approveSelectedSpecies()}
+        maxWidth="sm"
+        fullWidth
+      />
       <Dialog open={Boolean(approvalProposal)} onClose={closeSpeciesApproval} maxWidth="md" fullWidth>
         <DialogTitle>{t('library.moderation.species.approveDialogTitle')}</DialogTitle>
         <DialogContent dividers>
