@@ -551,6 +551,9 @@ class CropViewSetTest(DRFAPITestCase):
             species=proposal, language_code='fr', common_name='Oignon rocambole',
             synonyms=['Oignon égyptien'],
         )
+        CropSpeciesTranslation.objects.create(
+            species=proposal, language_code='es', common_name='Cebolla egipcia',
+        )
         self.client.force_authenticate(user=moderator)
 
         response = self.client.post(
