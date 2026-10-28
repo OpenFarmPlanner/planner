@@ -9,7 +9,8 @@ describe('PageHelp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
 
     expect(await screen.findByText('Hier planst du, welche Kultur wann auf welchem Beet angebaut wird.')).toBeInTheDocument();
-    expect(screen.getByText('Einträge können direkt in der Tabelle erstellt und bearbeitet werden.')).toBeInTheDocument();
+    expect(screen.getByText('Einträge können direkt in der Tabelle erstellt und bearbeitet werden.', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Mit „Passende Beete anzeigen“ siehst du Beete, die im Zeitraum frei sind und zur Fruchtfolge passen.', { exact: false })).toBeInTheDocument();
 
     expect(screen.queryByText('Bedienung')).not.toBeInTheDocument();
     expect(screen.queryByText('Zusammenhang mit anderen Seiten')).not.toBeInTheDocument();
@@ -23,7 +24,7 @@ describe('PageHelp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
 
-    expect(await screen.findByText('Sobald Anbaupläne vorhanden sind, erscheinen hier anstehende Termine für Aussaat, Pflanzung, Anzucht und Ernte.')).toBeInTheDocument();
+    expect(await screen.findByText('Sobald Anbaupläne vorhanden sind, erscheinen hier anstehende Aufgaben für Aussaat, Pflanzung, Anzucht und Ernte.')).toBeInTheDocument();
     expect(screen.queryByText('Bedienung')).not.toBeInTheDocument();
     expect(screen.queryByText('Hinweis')).not.toBeInTheDocument();
     expect(screen.queryByText(/•/)).not.toBeInTheDocument();
@@ -67,10 +68,15 @@ describe('PageHelp', () => {
 
     expect(await screen.findByText('Weitere Aktionen öffnen')).toBeInTheDocument();
     expect(screen.getAllByTestId('MoreVertIcon').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText('Über', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(/^•\s*Über\s+erreichst du weitere Aktionen/)).toBeInTheDocument();
     expect(screen.getByText('erreichst du weitere Aktionen wie Versionen, Export oder das Löschen der ausgewählten Kultur.', { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(/⋯/)).not.toBeInTheDocument();
     expect(screen.queryByText('Kultur entfernen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kulturbibliothek öffnen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('PublicIcon')).not.toBeInTheDocument();
+    expect(screen.getByText('Entspricht dem aktuellen Stand in der Kulturbibliothek')).toBeInTheDocument();
+    expect(screen.getAllByTestId('crop-library-status-circle')).toHaveLength(5);
+    expect(screen.getByTestId('PushPinIcon')).toBeInTheDocument();
   });
 
   it('renders compact calendar help without controls or icon guidance', async () => {

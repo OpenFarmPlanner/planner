@@ -8,7 +8,7 @@
     {
       "title": "Resumen",
       "points": [
-        "Consulta de un vistazo las próximas fechas de siembra, plantación, semillero y cosecha."
+        "Consulta de un vistazo las próximas tareas de siembra, trasplante, semillero y cosecha."
       ]
     },
     {
@@ -44,7 +44,13 @@
     {
       "title": "Necesidad de semillas",
       "points": [
-        "Aquí se calcula cuántas semillas necesitas."
+        "Consulta cuántas semillas necesitas para tus series."
+      ]
+    },
+    {
+      "title": "Necesidad de plantel",
+      "points": [
+        "Consulta cuánto plantel debes pedir para los trasplantes de plantel comprado."
       ]
     },
     {
@@ -52,14 +58,20 @@
       "points": [
         "Registra aquí tus proveedores para poder vincularlos a los cultivos."
       ]
+    },
+    {
+      "title": "Temporadas",
+      "points": [
+        "Las series siempre pertenecen a una temporada. Con el selector de temporada cambias la temporada activa o creas una nueva."
+      ]
     }
   ],
   "workflowTitle": "Flujo de trabajo",
-  "workflow": "Superficies de cultivo → Cultivos → Plan de cultivos → Calendario de cultivos → Necesidad de semillas",
+  "workflow": "Superficies de cultivo → Cultivos → Plan de cultivos → Calendario de cultivos → Necesidad de semillas y de plantel",
   "pages": {
     "dashboard": {
       "title": "Ayuda: Resumen",
-      "intro": "En cuanto existan series, aquí aparecerán las próximas tareas de siembra, trasplante, semillero y cosecha."
+      "intro": "Al empezar un proyecto, una lista de comprobación te guía por los primeros pasos: añadir una parcela, un bancal, un cultivo y una serie.\n\nEn cuanto existan series, aquí aparecerán las próximas tareas de siembra, trasplante, semillero y cosecha."
     },
     "locations": {
       "title": "Ayuda: Ubicaciones",
@@ -121,7 +133,7 @@
     },
     "areas": {
       "title": "Ayuda: Superficies de cultivo - vista de lista",
-      "intro": "Gestiona aquí la estructura de superficies de tu explotación: desde las ubicaciones, pasando por las parcelas, hasta cada bancal.\n\nLas nuevas ubicaciones, parcelas y bancales se añaden con el icono {{addIcon}} que aparece al pasar el ratón sobre un elemento.\n\nLas entradas se pueden editar directamente en la tabla. El icono {{createPlanIcon}} de un bancal crea al instante una serie para él. Otras acciones, como cambiar el nombre o eliminar, están en el menú contextual del clic derecho.",
+      "intro": "Gestiona aquí la estructura de superficies de tu explotación: desde las ubicaciones, pasando por las parcelas, hasta cada bancal.\n\nLas nuevas ubicaciones, parcelas y bancales se añaden con el icono {{addIcon}} que aparece al pasar el ratón sobre un elemento.\n\nLas entradas se pueden editar directamente en la tabla. El icono {{createPlanIcon}} de un bancal crea al instante una serie para él. Otras acciones, como cambiar el nombre o eliminar, están en el menú contextual del clic derecho.\n\nEn el menú contextual de una parcela, «Añadir varios bancales» crea de una vez bancales del mismo tamaño, y «Duplicar parcela» la copia junto con sus bancales.",
       "symbolsTitle": "Iconos y controles",
       "symbols": {
         "expandToggle": "Desplegar o contraer la sección",
@@ -138,8 +150,10 @@
         {
           "title": "Cómo se usa",
           "points": [
-            "Selecciona un cultivo para ver o editar sus detalles.",
+            "Selecciona un cultivo para ver o editar sus detalles, o para crear series.",
+            "Añade variedades a un cultivo. Lo que no introduzcas para una variedad se toma del cultivo.",
             "El icono {{moreIcon}} abre más acciones, como las versiones, la exportación o la eliminación del cultivo seleccionado.",
+            "Con «Importación/Exportación» intercambias cultivos como hoja de cálculo. Puedes descargar una plantilla en el diálogo de importación.",
             "Comparte tus propios cultivos con «Compartir en la biblioteca» en el cultivo, o con el icono junto al cultivo en la lista de cultivos. En la biblioteca de cultivos encuentras los cultivos de otras personas y los importas a tu proyecto."
           ]
         },
@@ -147,17 +161,23 @@
           "title": "Relación con otras páginas",
           "points": [
             "En las series asignas cultivos a bancales y periodos concretos.",
-            "El calendario de cultivos y la necesidad de semillas usan estos datos para planificar fechas y cantidades."
+            "La familia botánica y la pausa de rotación, en «Propiedades de rotación de cultivos», se usan para comprobar la rotación de cultivos en las series.",
+            "El calendario de cultivos, la necesidad de semillas y la necesidad de plantel usan estos datos para planificar fechas y cantidades."
           ]
         }
       ],
       "symbolsTitle": "Iconos y controles",
       "symbols": {
-        "add": "Crear un cultivo",
-        "library": "Abrir la biblioteca de cultivos",
+        "add": "Añadir un cultivo o una variedad",
         "createPlan": "Crear una serie para este cultivo",
+        "edit": "Editar los datos del cultivo",
         "more": "Abrir más acciones",
-        "edit": "Editar los datos del cultivo"
+        "libraryNotLinked": "Aún no está en la biblioteca de cultivos: haz clic para compartirlo",
+        "libraryUpToDate": "Coincide con la versión actual de la biblioteca de cultivos",
+        "libraryPull": "Hay una versión más reciente en la biblioteca de cultivos: revisa y adopta los cambios",
+        "libraryPush": "Tu cultivo difiere de la biblioteca de cultivos: comparte los valores o mantenlos localmente",
+        "libraryPending": "Tus cambios en la biblioteca de cultivos esperan aprobación",
+        "pinned": "Valor fijado localmente: no se sobrescribe con las actualizaciones de la biblioteca de cultivos"
       }
     },
     "cropLibrary": {
@@ -169,21 +189,23 @@
           "points": [
             "Los usuarios con sesión iniciada pueden editar juntos los cultivos públicos.",
             "Cada cambio se guarda como versión con fecha y autor.",
-            "Las versiones anteriores se pueden restaurar sin borrar el historial de versiones."
+            "Las versiones anteriores se pueden restaurar sin borrar el historial de versiones.",
+            "En «Debates» hablas con otras personas sobre una entrada."
           ]
         },
         {
           "title": "Usar cultivos",
           "points": [
             "Importa cultivos útiles al proyecto actual como copia propia del proyecto.",
-            "Los cultivos ya importados al proyecto no se ven afectados por cambios posteriores en la biblioteca de cultivos."
+            "Cuando un cultivo importado cambia en la biblioteca de cultivos, lo ves en tu cultivo y decides qué valores adoptas.",
+            "Puedes fijar localmente tus propios valores. Así no se sobrescriben con las actualizaciones de la biblioteca de cultivos."
           ]
         }
       ]
     },
     "plantingPlans": {
       "title": "Ayuda: Plan de cultivos",
-      "intro": "Planifica qué cultivo se siembra o planta en qué bancal y cuándo.",
+      "intro": "Planifica qué cultivo se siembra o planta en qué bancal y cuándo.\n\nLas entradas se pueden crear y editar directamente en la tabla. Se muestran las series de la temporada activa. Con el campo de búsqueda y «Filtrar» encuentras rápido cada entrada, y con el clic derecho puedes duplicar una serie.\n\nLa fecha de siembra y la fecha de plantación están vinculadas: si cambias una, la otra se ajusta. Si compras el plantel, elige el tipo de cultivo «Trasplante de plantel comprado». Entonces aparece en la necesidad de plantel en lugar de la necesidad de semillas.\n\nAl asignar un bancal se comprueba la rotación de cultivos. Si la misma familia botánica vuelve demasiado pronto al bancal, aparece un aviso. «Mostrar bancales adecuados» lista los bancales libres en el periodo que encajan con la rotación de cultivos.",
       "symbolsTitle": "Iconos y controles",
       "symbols": {
         "add": "Crear una serie",
@@ -194,7 +216,7 @@
     },
     "calendar": {
       "title": "Ayuda: Calendario de cultivos",
-      "intro": "El calendario de cultivos muestra la evolución en el tiempo de tus series. Te ayuda a ver la ocupación, las fases de semillero y los posibles solapamientos.",
+      "intro": "El calendario de cultivos muestra la evolución en el tiempo de tus series. Te ayuda a ver la ocupación, las fases de semillero, los periodos de cosecha y los posibles solapamientos.\n\nPasa el ratón sobre las entradas para ver más detalles.\n\nCon «Mover periodo» arrastras una serie a la izquierda o a la derecha. Todas las fases de la serie se mueven juntas.",
       "symbolsTitle": "Iconos y controles",
       "symbols": {
         "tabs": "Cambiar entre la vista de ocupación y la de semillero",
@@ -203,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Ayuda: Necesidad de semillas",
-      "intro": "Consulta cuántas semillas necesitas para los cultivos planificados. Las cantidades se calculan a partir de los datos de los cultivos, las superficies y las series.",
+      "intro": "Consulta cuántas semillas necesitas para los cultivos planificados. Las cantidades se calculan a partir de los datos de los cultivos, las superficies y las series.\n\nLos trasplantes de plantel comprado no se incluyen aquí; los encuentras en la necesidad de plantel.",
       "symbolsTitle": "Iconos y controles",
       "symbols": {
         "supplierSelect": "Definir el proveedor por cultivo",
@@ -260,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Ayuda: Resumen de rendimientos",
-      "intro": "El resumen de rendimientos muestra las cantidades de cosecha previstas según tus series.",
+      "intro": "El resumen de rendimientos muestra las cantidades de cosecha previstas según tus series de la temporada activa.\n\nLimita la vista a un cultivo o cambia entre semanas y meses en «Vista». Pasa el ratón sobre una barra para ver el periodo, el cultivo y la cantidad de cosecha.",
       "points": []
     }
   }

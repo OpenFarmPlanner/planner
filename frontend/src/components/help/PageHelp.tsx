@@ -17,7 +17,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
-import PublicIcon from '@mui/icons-material/Public';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RoomOutlinedIcon from '@mui/icons-material/RoomOutlined';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
@@ -44,6 +44,7 @@ import { useTranslation } from '../../i18n';
 import HelpIconRow from './HelpIconRow';
 import { HierarchyAddIcon } from '../hierarchy/HierarchyAddIcon';
 import { AppTooltip } from '../AppTooltip';
+import { CropLibraryStatusCircle } from '../../crops/CropLibraryStatusIcon';
 
 export type HelpPageKey =
   | 'dashboard'
@@ -109,10 +110,15 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
   ],
   crops: [
     { key: 'add', icon: <AddIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
-    { key: 'library', icon: <PublicIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
     { key: 'createPlan', icon: <AgricultureIcon fontSize="small" sx={{ color: 'primary.main' }} /> },
     { key: 'edit', icon: <EditIcon fontSize="small" sx={{ color: (theme: Theme) => alpha(theme.palette.primary.main, 0.86) }} /> },
     { key: 'more', icon: <MoreVertIcon fontSize="small" sx={{ color: 'text.secondary' }} /> },
+    { key: 'libraryNotLinked', icon: <CropLibraryStatusCircle visual="notLinked" decorative /> },
+    { key: 'libraryUpToDate', icon: <CropLibraryStatusCircle visual="upToDate" decorative /> },
+    { key: 'libraryPull', icon: <CropLibraryStatusCircle visual="pull" decorative /> },
+    { key: 'libraryPush', icon: <CropLibraryStatusCircle visual="push" decorative /> },
+    { key: 'libraryPending', icon: <CropLibraryStatusCircle visual="pending" decorative /> },
+    { key: 'pinned', icon: <PushPinIcon fontSize="small" sx={{ color: 'libraryLocal.main' }} /> },
   ],
   plantingPlans: [
     { key: 'add', icon: <AddIcon fontSize="small" sx={{ color: 'primary.main' }} /> },

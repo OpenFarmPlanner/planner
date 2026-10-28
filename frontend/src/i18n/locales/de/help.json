@@ -8,7 +8,7 @@
     {
       "title": "Übersicht",
       "points": [
-        "Hier siehst du anstehende Termine für Aussaat, Pflanzung, Anzucht und Ernte auf einen Blick."
+        "Hier siehst du anstehende Aufgaben für Aussaat, Pflanzung, Anzucht und Ernte auf einen Blick."
       ]
     },
     {
@@ -44,7 +44,13 @@
     {
       "title": "Saatgutbedarf",
       "points": [
-        "Daraus wird berechnet, wie viel Saatgut du brauchst."
+        "Hier siehst du, wie viel Saatgut du für deine Anbaupläne brauchst."
+      ]
+    },
+    {
+      "title": "Jungpflanzenbedarf",
+      "points": [
+        "Hier siehst du, wie viele Jungpflanzen du für Pflanzungen mit gekauften Pflanzen bestellen musst."
       ]
     },
     {
@@ -52,14 +58,20 @@
       "points": [
         "Hier trägst du deine Lieferanten ein, um sie bei Kulturen zu hinterlegen."
       ]
+    },
+    {
+      "title": "Saisons",
+      "points": [
+        "Anbaupläne gehören immer zu einer Saison. Über die Saisonauswahl wechselst du die aktive Saison oder legst eine neue an."
+      ]
     }
   ],
   "workflowTitle": "Workflow",
-  "workflow": "Anbauflächen → Kulturen → Anbaupläne → Anbaukalender → Saatgutbedarf",
+  "workflow": "Anbauflächen → Kulturen → Anbaupläne → Anbaukalender → Saatgut- und Jungpflanzenbedarf",
   "pages": {
     "dashboard": {
       "title": "Hilfe: Übersicht",
-      "intro": "Sobald Anbaupläne vorhanden sind, erscheinen hier anstehende Termine für Aussaat, Pflanzung, Anzucht und Ernte."
+      "intro": "Beim Projektstart führt dich eine Checkliste durch die ersten Schritte: Parzelle, Beet, Kultur und Anbauplan anlegen.\n\nSobald Anbaupläne vorhanden sind, erscheinen hier anstehende Aufgaben für Aussaat, Pflanzung, Anzucht und Ernte."
     },
     "locations": {
       "title": "Hilfe: Standorte",
@@ -121,7 +133,7 @@
     },
     "areas": {
       "title": "Hilfe: Anbauflächen – Listenansicht",
-      "intro": "Hier verwaltest du die Flächenstruktur deines Betriebs – vom Standort über Parzellen bis zu einzelnen Beeten.\n\nNeue Standorte, Parzellen und Beete können über das {{addIcon}} hinzugefügt werden, das beim Überfahren eines Elements mit der Maus erscheint.\n\nEinträge können direkt in der Tabelle bearbeitet werden. Über das {{createPlanIcon}} bei einem Beet legst du direkt einen Anbauplan dafür an. Weitere Aktionen wie Umbenennen oder Löschen findest du im Kontextmenü per Rechtsklick.",
+      "intro": "Hier verwaltest du die Flächenstruktur deines Betriebs – vom Standort über Parzellen bis zu einzelnen Beeten.\n\nNeue Standorte, Parzellen und Beete können über das {{addIcon}} hinzugefügt werden, das beim Überfahren eines Elements mit der Maus erscheint.\n\nEinträge können direkt in der Tabelle bearbeitet werden. Über das {{createPlanIcon}} bei einem Beet legst du direkt einen Anbauplan dafür an. Weitere Aktionen wie Umbenennen oder Löschen findest du im Kontextmenü per Rechtsklick.\n\nIm Kontextmenü einer Parzelle legst du mit „Mehrere Beete anlegen“ gleich große Beete auf einmal an oder kopierst sie mit „Parzelle duplizieren“ samt ihren Beeten.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "expandToggle": "Abschnitt auf- oder zuklappen",
@@ -139,7 +151,9 @@
           "title": "Bedienung",
           "points": [
             "Wähle eine Kultur aus, um Details anzuzeigen, zu bearbeiten oder Anbaupläne dafür zu erstellen.",
+            "Lege zu einer Kultur Sorten an. Was du bei einer Sorte nicht selbst einträgst, gilt wie bei der Kultur.",
             "Über {{moreIcon}} erreichst du weitere Aktionen wie Versionen, Export oder das Löschen der ausgewählten Kultur.",
+            "Mit „Import/Export“ tauschst du Kulturen als Tabelle aus. Eine Vorlage dafür kannst du im Import-Dialog herunterladen.",
             "Teile eigene Kulturen mit „In Bibliothek teilen“ in der Kultur oder mit dem Symbol neben der Kultur in der Kulturliste. In der Kulturbibliothek findest du Kulturen anderer und importierst sie in dein Projekt."
           ]
         },
@@ -147,17 +161,23 @@
           "title": "Zusammenhang mit anderen Seiten",
           "points": [
             "In den Anbauplänen ordnest du Kulturen konkreten Beeten und Zeiträumen zu.",
-            "Anbaukalender und Saatgutbedarf nutzen diese Daten für Zeit- und Mengenplanung."
+            "Pflanzenfamilie und Anbaupause unter „Fruchtfolge-Eigenschaften“ werden für die Fruchtfolge-Prüfung in den Anbauplänen verwendet.",
+            "Anbaukalender, Saatgut- und Jungpflanzenbedarf nutzen diese Daten für Zeit- und Mengenplanung."
           ]
         }
       ],
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
-        "add": "Kultur hinzufügen",
-        "library": "Kulturbibliothek öffnen",
+        "add": "Kultur oder Sorte hinzufügen",
         "createPlan": "Anbauplan für diese Kultur hinzufügen",
+        "edit": "Kulturdaten bearbeiten",
         "more": "Weitere Aktionen öffnen",
-        "edit": "Kulturdaten bearbeiten"
+        "libraryNotLinked": "Noch nicht in der Kulturbibliothek – zum Teilen anklicken",
+        "libraryUpToDate": "Entspricht dem aktuellen Stand in der Kulturbibliothek",
+        "libraryPull": "Neuere Version in der Kulturbibliothek – Änderungen ansehen und übernehmen",
+        "libraryPush": "Deine Kultur weicht von der Kulturbibliothek ab – Werte teilen oder lokal behalten",
+        "libraryPending": "Deine Änderungen an der Kulturbibliothek warten auf Freigabe",
+        "pinned": "Lokal fixierter Wert – wird bei Updates aus der Kulturbibliothek nicht überschrieben"
       }
     },
     "cropLibrary": {
@@ -169,21 +189,23 @@
           "points": [
             "Angemeldete Nutzer können öffentliche Kulturen gemeinsam bearbeiten.",
             "Jede Änderung wird als Version gespeichert und bleibt mit Zeitpunkt und Autor nachvollziehbar.",
-            "Ältere Versionen können wiederhergestellt werden, ohne den Versionsverlauf zu löschen."
+            "Ältere Versionen können wiederhergestellt werden, ohne den Versionsverlauf zu löschen.",
+            "Unter „Diskussionen“ tauschst du dich mit anderen über einen Eintrag aus."
           ]
         },
         {
           "title": "Verwendung",
           "points": [
             "Importiere passende Kulturen als eigene Projektkopie in dein aktuelles Projekt.",
-            "Bereits importierte Projektkulturen bleiben unabhängig von späteren Änderungen in der Kulturbibliothek."
+            "Ändert sich eine importierte Kultur in der Kulturbibliothek, siehst du das bei deiner Kultur und entscheidest, welche Werte du übernimmst.",
+            "Eigene Werte kannst du lokal fixieren. Sie werden dann bei Updates aus der Kulturbibliothek nicht überschrieben."
           ]
         }
       ]
     },
     "plantingPlans": {
       "title": "Hilfe: Anbaupläne",
-      "intro": "Hier planst du, welche Kultur wann auf welchem Beet angebaut wird.\n\nEinträge können direkt in der Tabelle erstellt und bearbeitet werden.",
+      "intro": "Hier planst du, welche Kultur wann auf welchem Beet angebaut wird.\n\nEinträge können direkt in der Tabelle erstellt und bearbeitet werden. Angezeigt werden die Anbaupläne der aktiven Saison. Über das Suchfeld und „Filter“ findest du einzelne Einträge schnell wieder, per Rechtsklick kannst du einen Anbauplan duplizieren.\n\nAussaattermin und Pflanztermin sind gekoppelt: Änderst du einen, wird der andere mitgeführt. Kaufst du Jungpflanzen zu, wähle die Anbauart „Pflanzung mit gekauften Pflanzen“. Sie erscheinen dann im Jungpflanzenbedarf statt im Saatgutbedarf.\n\nBeim Zuordnen eines Beets wird die Fruchtfolge geprüft. Steht dieselbe Pflanzenfamilie zu früh wieder auf dem Beet, erscheint ein Hinweis. Mit „Passende Beete anzeigen“ siehst du Beete, die im Zeitraum frei sind und zur Fruchtfolge passen.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "add": "Neuen Anbauplan erstellen",
@@ -194,7 +216,7 @@
     },
     "calendar": {
       "title": "Hilfe: Anbaukalender",
-      "intro": "Der Anbaukalender visualisiert die zeitliche Planung deiner Anbaupläne. So erkennst du Belegungen, Anzuchtphasen, Erntezeiträume und mögliche Überschneidungen.\n\nFahre über Einträge, um weitere Details anzuzeigen.",
+      "intro": "Der Anbaukalender visualisiert die zeitliche Planung deiner Anbaupläne. So erkennst du Belegungen, Anzuchtphasen, Erntezeiträume und mögliche Überschneidungen.\n\nFahre über Einträge, um weitere Details anzuzeigen.\n\nMit „Zeitraum verschieben“ ziehst du einen Anbauplan nach links oder rechts. Alle Phasen des Anbauplans werden dabei gemeinsam verschoben.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "tabs": "Zwischen Belegungs- und Anzuchtansicht wechseln",
@@ -203,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Hilfe: Saatgutbedarf",
-      "intro": "Hier siehst du den berechneten Saatgutbedarf deiner Anbaupläne.",
+      "intro": "Hier siehst du den berechneten Saatgutbedarf deiner Anbaupläne.\n\nPflanzungen mit gekauften Pflanzen sind hier nicht enthalten, sie findest du im Jungpflanzenbedarf.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "supplierSelect": "Lieferant pro Kultur festlegen",
@@ -260,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Hilfe: Ertragsübersicht",
-      "intro": "Die Ertragsübersicht bündelt erwartete Erntemengen aus deinen Anbauplänen.",
+      "intro": "Die Ertragsübersicht bündelt erwartete Erntemengen aus deinen Anbauplänen der aktiven Saison.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken, um Zeitraum, Kultur und Erntemenge anzuzeigen.",
       "points": []
     }
   }
