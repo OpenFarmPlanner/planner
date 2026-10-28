@@ -8,7 +8,7 @@
     {
       "title": "Overview",
       "points": [
-        "See upcoming sowing, planting, propagation and harvest dates at a glance."
+        "See upcoming sowing, planting, propagation and harvest tasks at a glance."
       ]
     },
     {
@@ -44,7 +44,13 @@
     {
       "title": "Seed demand",
       "points": [
-        "This calculates how much seed you need."
+        "See how much seed you need for your planting plans."
+      ]
+    },
+    {
+      "title": "Young plant demand",
+      "points": [
+        "See how many young plants you need to order for transplants with bought-in plants."
       ]
     },
     {
@@ -52,14 +58,20 @@
       "points": [
         "Record your suppliers here so you can link them to crops."
       ]
+    },
+    {
+      "title": "Seasons",
+      "points": [
+        "Planting plans always belong to a season. Use the season selector to switch the active season or create a new one."
+      ]
     }
   ],
   "workflowTitle": "Workflow",
-  "workflow": "Growing areas → Crops → Planting plans → Planting calendar → Seed demand",
+  "workflow": "Growing areas → Crops → Planting plans → Planting calendar → Seed and young plant demand",
   "pages": {
     "dashboard": {
       "title": "Help: Overview",
-      "intro": "Once planting plans exist, upcoming tasks for sowing, transplanting, propagation, and harvest appear here."
+      "intro": "When you start a project, a checklist guides you through the first steps: add a field, a bed, a crop and a planting plan.\n\nOnce planting plans exist, upcoming tasks for sowing, transplanting, propagation, and harvest appear here."
     },
     "locations": {
       "title": "Help: Locations",
@@ -121,7 +133,7 @@
     },
     "areas": {
       "title": "Help: Growing areas - list view",
-      "intro": "Manage your farm's area structure here — from locations through plots down to individual beds.\n\nNew locations, plots and beds are added with the {{addIcon}} that appears when you hover over an element.\n\nEntries can be edited directly in the table. The {{createPlanIcon}} on a bed creates a planting plan for it straight away. Further actions such as renaming or deleting are in the right-click context menu.",
+      "intro": "Manage your farm's area structure here — from locations through plots down to individual beds.\n\nNew locations, plots and beds are added with the {{addIcon}} that appears when you hover over an element.\n\nEntries can be edited directly in the table. The {{createPlanIcon}} on a bed creates a planting plan for it straight away. Further actions such as renaming or deleting are in the right-click context menu.\n\nIn a field's context menu, “Add multiple beds” creates beds of the same size in one go, and “Duplicate field” copies the field together with its beds.",
       "symbolsTitle": "Icons and controls",
       "symbols": {
         "expandToggle": "Expand or collapse section",
@@ -132,14 +144,16 @@
       }
     },
     "crops": {
-      "title": "Help: Crop library",
+      "title": "Help: Crops",
       "intro": "Manage crops and their key properties here. These data are used in planting plans, calendar, and seed demand.",
       "sections": [
         {
           "title": "How to use it",
           "points": [
-            "Select a crop to view or edit details.",
+            "Select a crop to view or edit details, or to create planting plans for it.",
+            "Add varieties to a crop. Whatever you don't enter for a variety is taken from the crop.",
             "The {{moreIcon}} opens further actions such as versions, export, or deleting the selected crop.",
+            "Use “Import/Export” to exchange crops as a spreadsheet. You can download a template in the import dialog.",
             "Share your own crops with “Share to library” in the crop, or with the icon next to the crop in the crop list. In the crop library you find other people's crops and import them into your project."
           ]
         },
@@ -147,17 +161,23 @@
           "title": "How this connects to other pages",
           "points": [
             "In planting plans, you assign crops to specific beds and time periods.",
-            "The planting calendar and seed demand use these data for timing and quantity planning."
+            "The crop family and rotation break under “Crop rotation properties” are used for the crop rotation check in planting plans.",
+            "The planting calendar, seed demand and young plant demand use these data for timing and quantity planning."
           ]
         }
       ],
       "symbolsTitle": "Icons and controls",
       "symbols": {
-        "add": "Create a new crop",
-        "library": "Open crop library",
+        "add": "Add a crop or variety",
         "createPlan": "Create a planting plan for this crop",
+        "edit": "Edit crop data",
         "more": "Open more actions",
-        "edit": "Edit crop data"
+        "libraryNotLinked": "Not in the crop library yet – click to share",
+        "libraryUpToDate": "Matches the current version in the crop library",
+        "libraryPull": "Newer version in the crop library – review and apply the changes",
+        "libraryPush": "Your crop differs from the crop library – share the values or keep them locally",
+        "libraryPending": "Your changes to the crop library are awaiting approval",
+        "pinned": "Value pinned locally – not overwritten by updates from the crop library"
       }
     },
     "cropLibrary": {
@@ -169,21 +189,23 @@
           "points": [
             "Signed-in users can edit public crops together.",
             "Every change is saved as a version with time and author.",
-            "Older versions can be restored without deleting the version history."
+            "Older versions can be restored without deleting the version history.",
+            "Under “Discussions” you can talk with others about an entry."
           ]
         },
         {
           "title": "Using crops",
           "points": [
             "Import useful crops as your own project copy into the current project.",
-            "Already imported project crops stay independent from later changes in the crop library."
+            "When an imported crop changes in the crop library, you see it on your crop and decide which values to take over.",
+            "You can pin your own values locally. They are then not overwritten by updates from the crop library."
           ]
         }
       ]
     },
     "plantingPlans": {
       "title": "Help: Planting plans",
-      "intro": "Plan which crop is grown in which bed and when.",
+      "intro": "Plan which crop is grown in which bed and when.\n\nEntries can be created and edited directly in the table. The planting plans of the active season are shown. Use the search field and “Filter” to find entries quickly, and right-click to duplicate a planting plan.\n\nSowing date and planting date are linked: when you change one, the other follows. If you buy in young plants, choose the cultivation type “Transplant with bought-in plants”. They then appear in the young plant demand instead of the seed demand.\n\nWhen you assign a bed, the crop rotation is checked. If the same crop family returns to the bed too early, a notice appears. “Show suitable beds” lists beds that are free in the period and fit the crop rotation.",
       "symbolsTitle": "Icons and controls",
       "symbols": {
         "add": "Create a new planting plan",
@@ -194,7 +216,7 @@
     },
     "calendar": {
       "title": "Help: Planting calendar",
-      "intro": "The planting calendar shows the timeline of your planting plans. It helps you spot occupancy, propagation phases, and possible overlaps.",
+      "intro": "The planting calendar shows the timeline of your planting plans. It helps you spot occupancy, propagation phases, harvest periods, and possible overlaps.\n\nHover over entries to see more details.\n\nWith “Move period” you drag a planting plan to the left or right. All phases of the planting plan move together.",
       "symbolsTitle": "Icons and controls",
       "symbols": {
         "tabs": "Switch between occupancy and propagation views",
@@ -203,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Help: Seed demand",
-      "intro": "See how much seed you need for your planned crops. Quantities are calculated from crop data, areas, and planting plan entries.",
+      "intro": "See how much seed you need for your planned crops. Quantities are calculated from crop data, areas, and planting plan entries.\n\nTransplants with bought-in plants are not included here; you find them in the young plant demand.",
       "symbolsTitle": "Icons and controls",
       "symbols": {
         "supplierSelect": "Set supplier per crop",
@@ -260,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Help: Yield overview",
-      "intro": "The yield overview shows expected harvest quantities from your planting plans.",
+      "intro": "The yield overview shows expected harvest quantities from your planting plans in the active season.\n\nNarrow the view down to one crop, or switch between weeks and months under “Display”. Hover over a bar to see the period, crop and harvest quantity.",
       "points": []
     }
   }

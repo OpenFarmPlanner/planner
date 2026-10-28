@@ -8,7 +8,7 @@
     {
       "title": "Vue d'ensemble",
       "points": [
-        "Voyez d'un coup d'œil les prochaines dates de semis, de plantation, de mise en pépinière et de récolte."
+        "Voyez d'un coup d'œil les tâches à venir pour le semis, la plantation, la mise en pépinière et la récolte."
       ]
     },
     {
@@ -44,7 +44,13 @@
     {
       "title": "Besoin en semences",
       "points": [
-        "Calcule la quantité de semences dont vous avez besoin."
+        "Voyez de combien de semences vous avez besoin pour vos séries."
+      ]
+    },
+    {
+      "title": "Besoin en plants",
+      "points": [
+        "Voyez combien de plants vous devez commander pour les plantations de plants achetés."
       ]
     },
     {
@@ -52,14 +58,20 @@
       "points": [
         "Enregistrez ici vos fournisseurs afin de pouvoir les associer aux cultures."
       ]
+    },
+    {
+      "title": "Saisons",
+      "points": [
+        "Les séries appartiennent toujours à une saison. Avec le sélecteur de saison, vous changez de saison active ou en créez une nouvelle."
+      ]
     }
   ],
   "workflowTitle": "Déroulement",
-  "workflow": "Surfaces de culture → Cultures → Plan de culture → Calendrier de culture → Besoin en semences",
+  "workflow": "Surfaces de culture → Cultures → Plan de culture → Calendrier de culture → Besoin en semences et en plants",
   "pages": {
     "dashboard": {
       "title": "Aide : Vue d'ensemble",
-      "intro": "Dès que des séries existent, les tâches à venir pour le semis, la plantation, la mise en pépinière et la récolte apparaissent ici."
+      "intro": "Au démarrage du projet, une liste de contrôle vous guide dans les premières étapes : ajouter une parcelle, une planche, une culture et une série.\n\nDès que des séries existent, les tâches à venir pour le semis, la plantation, la mise en pépinière et la récolte apparaissent ici."
     },
     "locations": {
       "title": "Aide : Sites",
@@ -121,7 +133,7 @@
     },
     "areas": {
       "title": "Aide : Surfaces de culture - vue liste",
-      "intro": "Gérez ici la structure des surfaces de votre ferme — des sites aux parcelles jusqu'aux planches individuelles.\n\nLes nouveaux sites, parcelles et planches s'ajoutent avec l'icône {{addIcon}} qui apparaît lorsque vous survolez un élément.\n\nLes entrées peuvent être modifiées directement dans le tableau. L'icône {{createPlanIcon}} sur une planche crée immédiatement une série pour celle-ci. D'autres actions, comme renommer ou supprimer, se trouvent dans le menu contextuel du clic droit.",
+      "intro": "Gérez ici la structure des surfaces de votre ferme — des sites aux parcelles jusqu'aux planches individuelles.\n\nLes nouveaux sites, parcelles et planches s'ajoutent avec l'icône {{addIcon}} qui apparaît lorsque vous survolez un élément.\n\nLes entrées peuvent être modifiées directement dans le tableau. L'icône {{createPlanIcon}} sur une planche crée immédiatement une série pour celle-ci. D'autres actions, comme renommer ou supprimer, se trouvent dans le menu contextuel du clic droit.\n\nDans le menu contextuel d'une parcelle, « Ajouter plusieurs planches » crée en une fois des planches de même taille, et « Dupliquer la parcelle » la copie avec ses planches.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "expandToggle": "Déplier ou replier la section",
@@ -138,8 +150,10 @@
         {
           "title": "Utilisation",
           "points": [
-            "Sélectionnez une culture pour consulter ou modifier ses détails.",
+            "Sélectionnez une culture pour consulter ou modifier ses détails, ou pour créer des séries.",
+            "Ajoutez des variétés à une culture. Ce que vous ne saisissez pas pour une variété est repris de la culture.",
             "L'icône {{moreIcon}} ouvre d'autres actions, comme les versions, l'export ou la suppression de la culture sélectionnée.",
+            "Avec « Import/Export », vous échangez des cultures sous forme de tableau. Un modèle est téléchargeable dans la boîte de dialogue d'import.",
             "Partagez vos propres cultures avec « Partager dans la bibliothèque » dans la culture, ou avec l'icône à côté de la culture dans la liste des cultures. Dans la bibliothèque de cultures, vous trouvez les cultures des autres et les importez dans votre projet."
           ]
         },
@@ -147,17 +161,23 @@
           "title": "Lien avec les autres pages",
           "points": [
             "Dans les séries, vous affectez des cultures à des planches et à des périodes précises.",
-            "Le calendrier de culture et le besoin en semences utilisent ces données pour planifier les dates et les quantités."
+            "La famille botanique et le délai de retour, sous « Propriétés de rotation des cultures », servent à la vérification de la rotation des cultures dans les séries.",
+            "Le calendrier de culture, le besoin en semences et le besoin en plants utilisent ces données pour planifier les dates et les quantités."
           ]
         }
       ],
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
-        "add": "Créer une culture",
-        "library": "Ouvrir la bibliothèque de cultures",
+        "add": "Ajouter une culture ou une variété",
         "createPlan": "Créer une série pour cette culture",
+        "edit": "Modifier les données de la culture",
         "more": "Ouvrir d'autres actions",
-        "edit": "Modifier les données de la culture"
+        "libraryNotLinked": "Pas encore dans la bibliothèque de cultures – cliquez pour partager",
+        "libraryUpToDate": "Correspond à la version actuelle de la bibliothèque de cultures",
+        "libraryPull": "Version plus récente dans la bibliothèque de cultures – consulter et reprendre les modifications",
+        "libraryPush": "Votre culture diffère de la bibliothèque de cultures – partager les valeurs ou les garder localement",
+        "libraryPending": "Vos modifications de la bibliothèque de cultures attendent leur validation",
+        "pinned": "Valeur figée localement – non écrasée par les mises à jour de la bibliothèque de cultures"
       }
     },
     "cropLibrary": {
@@ -169,21 +189,23 @@
           "points": [
             "Les utilisateurs connectés peuvent modifier ensemble les cultures publiques.",
             "Chaque modification est enregistrée comme version, avec la date et l'auteur.",
-            "Les versions plus anciennes peuvent être restaurées sans supprimer l'historique des versions."
+            "Les versions plus anciennes peuvent être restaurées sans supprimer l'historique des versions.",
+            "Sous « Discussions », vous échangez avec d'autres à propos d'une entrée."
           ]
         },
         {
           "title": "Utiliser des cultures",
           "points": [
             "Importez des cultures utiles dans le projet actuel sous forme de copie propre au projet.",
-            "Les cultures déjà importées dans le projet restent indépendantes des modifications ultérieures de la bibliothèque de cultures."
+            "Lorsqu'une culture importée change dans la bibliothèque de cultures, vous le voyez sur votre culture et décidez quelles valeurs reprendre.",
+            "Vous pouvez figer localement vos propres valeurs. Elles ne sont alors pas écrasées par les mises à jour de la bibliothèque de cultures."
           ]
         }
       ]
     },
     "plantingPlans": {
       "title": "Aide : Plan de culture",
-      "intro": "Planifiez quelle culture est cultivée sur quelle planche, et quand.",
+      "intro": "Planifiez quelle culture est cultivée sur quelle planche, et quand.\n\nLes entrées peuvent être créées et modifiées directement dans le tableau. Les séries de la saison active sont affichées. Le champ de recherche et « Filtrer » vous aident à retrouver rapidement une entrée ; un clic droit permet de dupliquer une série.\n\nLa date de semis et la date de plantation sont liées : si vous modifiez l'une, l'autre suit. Si vous achetez vos plants, choisissez le mode de culture « Plantation de plants achetés ». Ils apparaissent alors dans le besoin en plants au lieu du besoin en semences.\n\nLorsque vous affectez une planche, la rotation des cultures est vérifiée. Si la même famille botanique revient trop tôt sur la planche, un avertissement s'affiche. « Afficher les planches adaptées » liste les planches libres sur la période et compatibles avec la rotation des cultures.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "add": "Créer une série",
@@ -194,7 +216,7 @@
     },
     "calendar": {
       "title": "Aide : Calendrier de culture",
-      "intro": "Le calendrier de culture montre le déroulement dans le temps de vos séries. Il vous aide à repérer l'occupation, les phases de pépinière et les éventuels chevauchements.",
+      "intro": "Le calendrier de culture montre le déroulement dans le temps de vos séries. Il vous aide à repérer l'occupation, les phases de pépinière, les périodes de récolte et les éventuels chevauchements.\n\nSurvolez les entrées pour afficher plus de détails.\n\nAvec « Déplacer la période », vous faites glisser une série vers la gauche ou la droite. Toutes les phases de la série se déplacent ensemble.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "tabs": "Basculer entre la vue occupation et la vue pépinière",
@@ -203,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Aide : Besoin en semences",
-      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des séries.",
+      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des séries.\n\nLes plantations de plants achetés n'y figurent pas ; vous les trouvez dans le besoin en plants.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "supplierSelect": "Définir le fournisseur par culture",
@@ -260,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Aide : Aperçu des rendements",
-      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos séries.",
+      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos séries de la saison active.\n\nLimitez la vue à une culture ou passez des semaines aux mois sous « Affichage ». Survolez une barre pour voir la période, la culture et la quantité récoltée.",
       "points": []
     }
   }
