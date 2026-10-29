@@ -106,10 +106,14 @@ export function useSpreadsheetCellEditing<Row extends GridValidRowModel>({
       && canStartEdit(params)
       && (isHintEligible?.(params) ?? true);
     cancelPendingHint();
-    if (isHintCandidate) {
+    if (isHintCandidate && event.currentTarget instanceof HTMLElement) {
+      // Captured now: React clears `currentTarget` once the handler returns.
+      const cellElement = event.currentTarget;
       pendingHintTimerRef.current = window.setTimeout(() => {
         pendingHintTimerRef.current = null;
-        requestHint();
+        if (cellElement.isConnected) {
+          requestHint(cellElement);
+        }
       }, EDIT_HINT_DELAY_MS);
     }
     return false;

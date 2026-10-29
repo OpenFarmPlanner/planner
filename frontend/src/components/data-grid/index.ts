@@ -68,7 +68,7 @@ export type { DialogEditCellContextValue, DialogEditCellRequest } from './Dialog
 
 export { handleEditableCellClick, handleRowEditStop } from './handlers';
 
-export { EditHintSnackbar } from './EditHintSnackbar';
+export { EditHintPopper } from './EditHintPopper';
 export { useEditHint, TABLE_EDIT_HINT_MAX_SHOWN } from './useEditHint';
 export type { EditHintControls } from './useEditHint';
 export { useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';

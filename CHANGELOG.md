@@ -23,9 +23,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
   spreadsheet on desktop: a single click only selects a cell, editing starts
   with a double click, Enter, F2 or by just typing (date and select cells:
   double click, Enter or F2). Editable cells show a text cursor. A single
-  click on an editable cell shows a short hint, at most three times and
-  never again once the user edited a cell or closed it, on every device. Touch
-  devices and narrow screens keep tap-to-edit.
+  click on an editable cell shows a short hint right at that cell, once per
+  page visit and at most three times in total, and never again once the user
+  edited a cell or closed it, on every device. Touch devices and narrow
+  screens keep tap-to-edit.
 
 ### Fixes
 

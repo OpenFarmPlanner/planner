@@ -55,6 +55,8 @@ const createAuthValue = (hint?: TableEditHintState): AuthContextValue => ({
   refreshUser: vi.fn(),
 });
 
+const cellElement = (): HTMLElement => document.createElement('div');
+
 const renderEditHint = (hint?: TableEditHintState) => {
   const authValue = createAuthValue(hint);
   const wrapper = ({ children }: { children: ReactNode }) => createElement(AuthContext.Provider, { value: authValue }, children);
@@ -68,76 +70,86 @@ describe('useEditHint', () => {
     mockRecordTableEditHintEvent.mockImplementation(() => new Promise(() => {}));
   });
 
-  it('shows the hint on request and reports the display', () => {
+  it('shows the hint at the given cell and reports the display', () => {
     const { result } = renderEditHint();
+    const cell = document.createElement('div');
 
-    act(() => result.current.requestHint());
+    act(() => result.current.requestHint(cell));
 
     expect(result.current.open).toBe(true);
+    expect(result.current.anchorEl).toBe(cell);
     expect(mockRecordTableEditHintEvent).toHaveBeenCalledWith('shown');
   });
 
-  it('does not count a second request while the hint is visible', () => {
+  it('shows the hint only once per page visit, even on other cells', () => {
     const { result } = renderEditHint();
 
-    act(() => result.current.requestHint());
-    act(() => result.current.requestHint());
+    act(() => result.current.requestHint(cellElement()));
+    act(() => result.current.close());
+    act(() => result.current.requestHint(cellElement()));
 
+    expect(result.current.open).toBe(false);
     expect(mockRecordTableEditHintEvent).toHaveBeenCalledTimes(1);
   });
 
-  it(`stops after ${TABLE_EDIT_HINT_MAX_SHOWN} displays`, () => {
-    const { result } = renderEditHint();
-
-    for (let display = 0; display < TABLE_EDIT_HINT_MAX_SHOWN; display += 1) {
-      act(() => result.current.requestHint());
+  it(`stops after ${TABLE_EDIT_HINT_MAX_SHOWN} page visits with the hint`, () => {
+    for (let visit = 0; visit < TABLE_EDIT_HINT_MAX_SHOWN; visit += 1) {
+      const { result, unmount } = renderEditHint();
+      act(() => result.current.requestHint(cellElement()));
       expect(result.current.open).toBe(true);
-      act(() => result.current.close());
+      unmount();
     }
-    act(() => result.current.requestHint());
+    const { result } = renderEditHint();
+    act(() => result.current.requestHint(cellElement()));
 
     expect(result.current.open).toBe(false);
     expect(mockRecordTableEditHintEvent).toHaveBeenCalledTimes(TABLE_EDIT_HINT_MAX_SHOWN);
   });
 
   it('starts from the count stored on the server', () => {
-    const { result } = renderEditHint({ done: false, shown_count: TABLE_EDIT_HINT_MAX_SHOWN - 1 });
+    const firstVisit = renderEditHint({ done: false, shown_count: TABLE_EDIT_HINT_MAX_SHOWN - 1 });
+    act(() => firstVisit.result.current.requestHint(cellElement()));
+    expect(firstVisit.result.current.open).toBe(true);
+    firstVisit.unmount();
 
-    act(() => result.current.requestHint());
-    act(() => result.current.close());
-    act(() => result.current.requestHint());
+    const nextVisit = renderEditHint({ done: false, shown_count: TABLE_EDIT_HINT_MAX_SHOWN - 1 });
+    act(() => nextVisit.result.current.requestHint(cellElement()));
 
-    expect(result.current.open).toBe(false);
+    expect(nextVisit.result.current.open).toBe(false);
   });
 
   it('never shows for a user who already retired it on another device', () => {
     const { result } = renderEditHint({ done: true, shown_count: 1 });
 
-    act(() => result.current.requestHint());
+    act(() => result.current.requestHint(cellElement()));
 
     expect(result.current.open).toBe(false);
     expect(mockRecordTableEditHintEvent).not.toHaveBeenCalled();
   });
 
   it('retires the hint for good when the close button dismisses it', () => {
-    const { result } = renderEditHint();
+    const firstVisit = renderEditHint();
+    act(() => firstVisit.result.current.requestHint(cellElement()));
+    act(() => firstVisit.result.current.dismiss());
+    firstVisit.unmount();
 
-    act(() => result.current.requestHint());
-    act(() => result.current.dismiss());
-    act(() => result.current.requestHint());
+    const nextVisit = renderEditHint();
+    act(() => nextVisit.result.current.requestHint(cellElement()));
 
-    expect(result.current.open).toBe(false);
+    expect(nextVisit.result.current.open).toBe(false);
     expect(mockRecordTableEditHintEvent).toHaveBeenLastCalledWith('dismissed');
   });
 
-  it('keeps the hint available after it only timed out', () => {
-    const { result } = renderEditHint();
+  it('comes back on the next page visit after it only timed out', () => {
+    const firstVisit = renderEditHint();
+    act(() => firstVisit.result.current.requestHint(cellElement()));
+    act(() => firstVisit.result.current.close());
+    firstVisit.unmount();
 
-    act(() => result.current.requestHint());
-    act(() => result.current.close());
-    act(() => result.current.requestHint());
+    const nextVisit = renderEditHint();
+    act(() => nextVisit.result.current.requestHint(cellElement()));
 
-    expect(result.current.open).toBe(true);
+    expect(nextVisit.result.current.open).toBe(true);
   });
 
   it('retires the hint in every table once the user edited a cell in one of them', () => {
@@ -145,7 +157,7 @@ describe('useEditHint', () => {
     const growingAreasTable = renderEditHint();
 
     act(() => plantingPlansTable.result.current.markEdited());
-    act(() => growingAreasTable.result.current.requestHint());
+    act(() => growingAreasTable.result.current.requestHint(cellElement()));
 
     expect(growingAreasTable.result.current.open).toBe(false);
     expect(mockRecordTableEditHintEvent).toHaveBeenCalledTimes(1);
@@ -164,7 +176,7 @@ describe('useEditHint', () => {
   it('works without a signed-in user, without reaching the server', () => {
     const { result } = renderHook(() => useEditHint());
 
-    act(() => result.current.requestHint());
+    act(() => result.current.requestHint(cellElement()));
 
     expect(result.current.open).toBe(true);
     expect(mockRecordTableEditHintEvent).not.toHaveBeenCalled();

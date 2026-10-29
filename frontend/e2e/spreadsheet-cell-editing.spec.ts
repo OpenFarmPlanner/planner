@@ -86,11 +86,19 @@ test.describe('spreadsheet edit model in the Anbauflächen table', () => {
   });
 
   test('a single click on a bed cell shows the edit hint until it is dismissed', async ({ page }) => {
-    await nameCell(page, 'Tabellenbeet Eins').click();
+    const cell = nameCell(page, 'Tabellenbeet Eins');
+    await cell.click();
 
     const hint = page.getByRole('status').filter({ hasText: EDIT_HINT });
     await expect(hint).toBeVisible();
     await expect(editingRows(page)).toHaveCount(0);
+    // The hint points at the clicked cell instead of sitting at the page bottom.
+    const cellBox = await cell.boundingBox();
+    const hintBox = await hint.boundingBox();
+    expect(cellBox && hintBox).toBeTruthy();
+    expect(Math.abs(hintBox!.x - cellBox!.x)).toBeLessThan(40);
+    expect(hintBox!.y - (cellBox!.y + cellBox!.height)).toBeGreaterThanOrEqual(0);
+    expect(hintBox!.y - (cellBox!.y + cellBox!.height)).toBeLessThan(24);
 
     await page.getByRole('button', { name: 'Hinweis schließen' }).click();
     await expect(hint).toHaveCount(0);

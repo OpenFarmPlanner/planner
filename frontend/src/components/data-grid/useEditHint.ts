@@ -4,7 +4,7 @@
 // hint is retired on every device at once. The module-level store carries
 // changes across tables within the session without waiting for a /me reload;
 // it is read only when the hint is about to show, so nothing subscribes to it.
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useRef, useState } from 'react';
 import { AuthContext } from '../../auth/authContextShared';
 import { recordTableEditHintEvent } from '../../auth/authApi';
 import type { TableEditHintEvent, TableEditHintState } from '../../auth/types';
@@ -40,11 +40,17 @@ export function resetTableEditHintSessionState(): void {
 
 export interface EditHintControls {
   open: boolean;
-  /** Show the hint unless it is retired or already visible. */
-  requestHint: () => void;
+  /** The cell the visible hint points at. */
+  anchorEl: HTMLElement | null;
+  /**
+   * Show the hint at `anchorEl` unless it is retired or was already shown
+   * since this table mounted: once per page visit, so moving on to other
+   * cells does not bring it back and use up its displays.
+   */
+  requestHint: (anchorEl: HTMLElement) => void;
   /** The user started an edit by double click, Enter, F2 or typing. */
   markEdited: () => void;
-  /** Hidden by the timeout or Escape; does not retire the hint. */
+  /** Hidden by the timeout, the next click, scrolling or Escape; does not retire the hint. */
   close: () => void;
   /** The close button: retires the hint for good. */
   dismiss: () => void;
@@ -54,7 +60,9 @@ export function useEditHint(): EditHintControls {
   const user = useContext(AuthContext)?.user ?? null;
   const key = user ? `user:${user.id}` : ANONYMOUS_KEY;
   const seed = user?.table_edit_hint ?? NEVER_SHOWN;
-  const [open, setOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = anchorEl !== null;
+  const shownSinceMountRef = useRef(false);
 
   const report = useCallback((event: TableEditHintEvent): void => {
     if (key === ANONYMOUS_KEY) {
@@ -66,22 +74,23 @@ export function useEditHint(): EditHintControls {
       .catch(() => undefined);
   }, [key]);
 
-  const requestHint = useCallback((): void => {
+  const requestHint = useCallback((nextAnchorEl: HTMLElement): void => {
     const current = sessionStates.get(key) ?? seed;
-    if (open || isTableEditHintRetired(current)) {
+    if (shownSinceMountRef.current || isTableEditHintRetired(current)) {
       return;
     }
+    shownSinceMountRef.current = true;
     const shownCount = current.shown_count + 1;
     writeState(key, {
       done: shownCount >= TABLE_EDIT_HINT_MAX_SHOWN,
       shown_count: shownCount,
     });
-    setOpen(true);
+    setAnchorEl(nextAnchorEl);
     report('shown');
-  }, [key, open, report, seed]);
+  }, [key, report, seed]);
 
   const retire = useCallback((event: Exclude<TableEditHintEvent, 'shown'>): void => {
-    setOpen(false);
+    setAnchorEl(null);
     const current = sessionStates.get(key) ?? seed;
     if (current.done) {
       return;
@@ -92,10 +101,11 @@ export function useEditHint(): EditHintControls {
 
   const markEdited = useCallback((): void => retire('edited'), [retire]);
   const dismiss = useCallback((): void => retire('dismissed'), [retire]);
-  const close = useCallback((): void => setOpen(false), []);
+  const close = useCallback((): void => setAnchorEl(null), []);
 
   return {
     open,
+    anchorEl,
     requestHint,
     markEdited,
     close,
