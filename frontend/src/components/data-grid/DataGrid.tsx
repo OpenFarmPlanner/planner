@@ -31,7 +31,7 @@ import {
   useGridApiRef,
 } from '@mui/x-data-grid';
 import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx } from './styles';
-import { handleRowEditStop, handleEditableCellClick } from './handlers';
+import { handleRowEditStop } from './handlers';
 import {
   editModeEditorArrowKeys,
   getRowIdFromElement,
@@ -76,7 +76,7 @@ import { useDataGridRowCommands } from './hooks/useDataGridRowCommands';
 import { useScrollDrivenRowWindow } from './hooks/useScrollDrivenRowWindow';
 import { useStableDataGridScrollbar } from './hooks/useStableDataGridScrollbar';
 import { StableScrollbarTrack } from './StableScrollbarTrack';
-import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
+import { isContextMenuDismissGestureInProgress, useIsCoarsePointer } from '../../utils/contextMenu';
 import {
   EditCellNavigationContext,
   type EditCellKeyboardEvent,
@@ -138,7 +138,9 @@ import {
   resolveFocusedCellFromEvent,
   scrollCellIntoView,
 } from './keyboardNavigation';
-import { useSpreadsheetEditStarter } from './keyboardEditing';
+import type { SpreadsheetEditTrigger } from './keyboardEditing';
+import { useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';
+import { EditHintSnackbar } from './EditHintSnackbar';
 import type {
   EditableDataGridClipboardColumn,
   EditableDataGridProps,
@@ -1742,33 +1744,29 @@ export function EditableDataGrid<T extends EditableRow>({
     }
   }, [rowsById]);
 
-  const handleStartCellEditFromKeyboard = useCallback((params: GridCellParams<T>): void => {
-    if (!params.isEditable || rowModesModel[params.id]?.mode === GridRowModes.Edit) {
-      return;
-    }
-
+  const isCoarsePointer = useIsCoarsePointer();
+  const handleBeforeCellEdit = useCallback((params: GridCellParams<T>, trigger: SpreadsheetEditTrigger): void => {
     rememberRowSnapshotForCellEdit(params);
-
-    const api = gridApiRef.current;
-    if (!api) {
+    if (trigger !== 'doubleClick') {
       return;
     }
+    // A double click is the pointer way into a cell, as the single click was
+    // before: the row turns dirty and a select opens its dropdown right away.
+    markRowDirty(String(params.id));
+    if (params.colDef?.type === 'singleSelect') {
+      requestSelectEditOpenForCell(params.id, params.field);
+    }
+  }, [markRowDirty, rememberRowSnapshotForCellEdit, requestSelectEditOpenForCell]);
 
-    api.setCellFocus(params.id, params.field);
-    setRowModesModel((oldModel) => ({
-      ...oldModel,
-      [params.id]: { mode: GridRowModes.Edit, fieldToFocus: params.field },
-    }));
-  }, [gridApiRef, rememberRowSnapshotForCellEdit, rowModesModel]);
-
-  const spreadsheetEditStarter = useSpreadsheetEditStarter<T>({
+  const cellEditing = useSpreadsheetCellEditing<T>({
+    spreadsheetMode: !isMobile && !isCoarsePointer,
     apiRef: gridApiRef,
     rowModesModel,
     setRowModesModel,
-    // Notes and dialog cells own their editor, so neither F2 nor "just start
-    // typing" may pull them into the inline edit mode they never leave through.
+    // Notes and dialog cells own their editor, so no entry point may pull
+    // them into the inline edit mode they never leave through.
     isCellEditable: (params) => !hasDedicatedEditor(params.field),
-    onBeforeEdit: rememberRowSnapshotForCellEdit,
+    onBeforeEdit: handleBeforeCellEdit,
     onReplaceValue: (params) => markRowDirty(String(params.id)),
   });
 
@@ -2740,13 +2738,10 @@ export function EditableDataGrid<T extends EditableRow>({
           getCellClassName={(params) => {
             const rowKey = String(params.id);
             const errorText = activeValidationErrors[rowKey]?.[params.field] ?? rowValidationErrors[rowKey]?.[params.field];
-            if (errorText) {
-              return 'ofp-cell-error';
-            }
-            if (dirtyRowIds.has(rowKey)) {
-              return 'ofp-cell-dirty';
-            }
-            return '';
+            const stateClassName = errorText
+              ? 'ofp-cell-error'
+              : dirtyRowIds.has(rowKey) ? 'ofp-cell-dirty' : '';
+            return [stateClassName, cellEditing.getEditableCellClassName(params)].filter(Boolean).join(' ');
           }}
           onCellClick={(params, event) => {
             if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
@@ -2778,16 +2773,26 @@ export function EditableDataGrid<T extends EditableRow>({
                 rowSnapshotRef.current.set(rowKey, row as T);
               }
             }
-            markRowDirty(rowKey);
             if (hasDedicatedEditor(params.field)) {
               // The cell's own popover/dialog is the editor and the click has
               // already opened it — never layer inline edit mode on top.
+              markRowDirty(rowKey);
               return;
             }
-            if (isInlineSingleSelectCell(params)) {
-              requestSelectEditOpenForCell(params.id, params.field);
+            if (cellEditing.handleCellClick(params, event)) {
+              // Touch/narrow layouts only: the tap opened the row for editing.
+              markRowDirty(rowKey);
+              if (isInlineSingleSelectCell(params)) {
+                requestSelectEditOpenForCell(params.id, params.field);
+              }
             }
-            handleEditableCellClick(params, rowModesModel, setRowModesModel);
+          }}
+          onCellDoubleClick={(params, event) => {
+            if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
+              event.defaultMuiPrevented = true;
+              return;
+            }
+            cellEditing.handleCellDoubleClick(params, event);
           }}
           onCellKeyDown={(params: GridCellParams<T>, event) => {
             activeEditCellRef.current = { id: params.id, field: params.field };
@@ -2852,27 +2857,7 @@ export function EditableDataGrid<T extends EditableRow>({
               return;
             }
 
-            if (spreadsheetEditStarter.startEditFromF2(params, event)) {
-              return;
-            }
-
-            if (spreadsheetEditStarter.startEditFromPrintableKey(params, event)) {
-              return;
-            }
-
-            const shouldStartCellEdit =
-              event.key === 'Enter' &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey &&
-              !event.shiftKey &&
-              params.isEditable &&
-              rowModesModel[params.id]?.mode !== GridRowModes.Edit;
-
-            if (shouldStartCellEdit) {
-              event.preventDefault();
-              event.defaultMuiPrevented = true;
-              handleStartCellEditFromKeyboard(params);
+            if (cellEditing.handleCellKeyDown(params, event)) {
               return;
             }
             if (
@@ -2994,6 +2979,8 @@ export function EditableDataGrid<T extends EditableRow>({
           }}
         />
       )) : null}
+
+      <EditHintSnackbar {...cellEditing.editHint} />
 
       {/* Notes Editor Drawer */}
       {notes && notes.fields && notes.fields.length > 0 && (

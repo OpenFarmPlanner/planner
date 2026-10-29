@@ -107,7 +107,7 @@
           "title": "Cómo se usa",
           "points": [
             "Usa «Nuevo» para crear una parcela.",
-            "Haz clic en las filas de la tabla para editar las entradas."
+            "Haz doble clic en una celda, pulsa Intro o empieza a escribir para editar una entrada. En dispositivos táctiles basta con tocarla."
           ]
         }
       ]
@@ -120,7 +120,7 @@
           "title": "Cómo se usa",
           "points": [
             "Usa «Nuevo» para crear un bancal.",
-            "Haz clic en las filas de la tabla para editar las entradas."
+            "Haz doble clic en una celda, pulsa Intro o empieza a escribir para editar una entrada. En dispositivos táctiles basta con tocarla."
           ]
         },
         {

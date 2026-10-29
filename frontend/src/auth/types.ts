@@ -36,7 +36,17 @@ export interface AuthUser {
   has_password: boolean;
   /** Personal UI language: 'auto' (follow the browser) or a supported code ('de', 'en', 'fr', 'es'). */
   ui_language?: string;
+  /** Shared state of the inline table edit hint, the same for every table and device. */
+  table_edit_hint?: TableEditHintState;
 }
+
+export interface TableEditHintState {
+  /** True once the user edited a cell the spreadsheet way or dismissed the hint. */
+  done: boolean;
+  shown_count: number;
+}
+
+export type TableEditHintEvent = 'shown' | 'edited' | 'dismissed';
 
 export interface AuthenticatedMeResponse extends AuthUser {
   authenticated: true;

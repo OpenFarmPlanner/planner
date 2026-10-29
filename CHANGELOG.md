@@ -19,8 +19,19 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
   policy now names all four languages (the English version still prevails).
   Dates and numbers that were always formatted the German way now follow the
   active language.
+- Editing in the tables (Anbauflächen, Anbaupläne) now works like a
+  spreadsheet on desktop: a single click only selects a cell, editing starts
+  with a double click, Enter, F2 or by just typing (date and select cells:
+  double click, Enter or F2). Editable cells show a text cursor. Users who
+  click the same cell twice get a short hint, shown at most three times and
+  never again once they edited a cell or closed it, on every device. Touch
+  devices and narrow screens keep tap-to-edit.
 
 ### Fixes
+
+- Anbauflächen: clicking a cell in another row while a row was being edited
+  no longer makes the focus jump back to the saved row; the clicked cell
+  stays selected. In edit mode the name keeps its hierarchy indentation.
 
 - Emails to users (activation, password reset, email change, project
   invitation) are now sent in the recipient's language instead of always in

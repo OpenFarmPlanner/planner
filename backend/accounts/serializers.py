@@ -22,6 +22,7 @@ from farm.services.demo_project import is_demo_project_description
 from .consent import get_pending_consent_documents, has_accepted_current, record_acceptance
 from .disposable_domains import is_disposable_email_domain
 from .models import AccountDeletionRequest, DocumentConsent, PublicProfile, UserProjectSettings
+from .table_edit_hint import TABLE_EDIT_HINT_EVENTS, TableEditHintState, serialize_table_edit_hint
 
 User = get_user_model()
 _username_validator = UnicodeUsernameValidator()
@@ -78,6 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
     guest_demo_session_id = serializers.SerializerMethodField()
     has_password = serializers.SerializerMethodField()
     ui_language = serializers.SerializerMethodField()
+    table_edit_hint = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -104,6 +106,7 @@ class UserSerializer(serializers.ModelSerializer):
             'guest_demo_session_id',
             'has_password',
             'ui_language',
+            'table_edit_hint',
         )
         read_only_fields = fields
 
@@ -111,6 +114,10 @@ class UserSerializer(serializers.ModelSerializer):
         """Stored UI language preference: 'auto', 'de' or 'en'."""
         settings_row = getattr(obj, 'project_settings', None)
         return getattr(settings_row, 'ui_language', UI_LANGUAGE_AUTO) or UI_LANGUAGE_AUTO
+
+    def get_table_edit_hint(self, obj: User) -> TableEditHintState:
+        """Shared state of the inline table edit hint (see accounts/table_edit_hint.py)."""
+        return serialize_table_edit_hint(getattr(obj, 'project_settings', None))
 
     def get_display_name(self, obj: User) -> str:
         full_name = f'{obj.first_name} {obj.last_name}'.strip()
@@ -291,6 +298,12 @@ class AccountRestoreSerializer(serializers.Serializer):
 
 class AccountProfileSerializer(serializers.Serializer):
     display_name = serializers.CharField(max_length=255, allow_blank=True, required=True)
+
+
+class TableEditHintEventSerializer(serializers.Serializer):
+    """Validates one event reported for the inline table edit hint."""
+
+    event = serializers.ChoiceField(choices=TABLE_EDIT_HINT_EVENTS)
 
 
 class AccountLanguageSerializer(serializers.Serializer):

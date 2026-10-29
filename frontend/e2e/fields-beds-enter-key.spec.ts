@@ -38,9 +38,9 @@ test.describe('fields-beds Enter key behavior', () => {
     await page.waitForTimeout(800);
     await expect(page.getByText('FeldOhneMasse')).toBeVisible({ timeout: 5000 });
 
-    // Click the field name to edit it
+    // Double-click the field name to edit it
     const fieldRow = page.locator('[role="row"][data-id]').filter({ hasText: 'FeldOhneMasse' }).first();
-    await fieldRow.locator('[data-field="name"]').click();
+    await fieldRow.locator('[data-field="name"]').dblclick();
     await page.waitForTimeout(400);
 
     const editInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
@@ -93,9 +93,9 @@ test.describe('fields-beds Enter key behavior', () => {
     console.log('Total data rows:', totalRows);
     expect(totalRows).toBe(2);
 
-    // Click the field's name cell to enter edit mode
+    // Double-click the field's name cell to enter edit mode
     await page.locator('[role="row"][data-id]').filter({ hasText: 'FeldMitMasse' }).first()
-      .locator('[data-field="name"]').click();
+      .locator('[data-field="name"]').dblclick();
     await page.waitForTimeout(400);
 
     const editInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();

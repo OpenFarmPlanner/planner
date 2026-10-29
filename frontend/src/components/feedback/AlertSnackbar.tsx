@@ -26,6 +26,10 @@ interface AlertSnackbarProps {
   action?: AlertProps['action'];
   snackbarSx?: SxProps<Theme>;
   alertSx?: SxProps<Theme>;
+  /** Announce politely (role="status") instead of as an alert. */
+  polite?: boolean;
+  /** Keep the snackbar open when the user clicks elsewhere on the page. */
+  ignoreClickAway?: boolean;
 }
 
 export function AlertSnackbar({
@@ -40,8 +44,13 @@ export function AlertSnackbar({
   action,
   snackbarSx,
   alertSx,
+  polite = false,
+  ignoreClickAway = false,
 }: AlertSnackbarProps) {
-  const handleSnackbarClose: NonNullable<SnackbarProps['onClose']> = () => {
+  const handleSnackbarClose: NonNullable<SnackbarProps['onClose']> = (_event, reason) => {
+    if (ignoreClickAway && reason === 'clickaway') {
+      return;
+    }
     onClose();
   };
 
@@ -64,6 +73,7 @@ export function AlertSnackbar({
         closeText={closeText}
         sx={alertSx}
         action={action}
+        {...(polite ? { role: 'status', 'aria-live': 'polite' as const } : {})}
       >
         {message}
       </Alert>

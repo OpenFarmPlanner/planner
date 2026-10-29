@@ -107,7 +107,7 @@
           "title": "How to use it",
           "points": [
             "Use “New” to create a field.",
-            "Click table rows to edit entries."
+            "Double-click a cell, press Enter or just start typing to edit an entry. On touch devices, a tap is enough."
           ]
         }
       ]
@@ -120,7 +120,7 @@
           "title": "How to use it",
           "points": [
             "Use “New” to create a bed.",
-            "Click table rows to edit entries."
+            "Double-click a cell, press Enter or just start typing to edit an entry. On touch devices, a tap is enough."
           ]
         },
         {

@@ -68,7 +68,13 @@ export type { DialogEditCellContextValue, DialogEditCellRequest } from './Dialog
 
 export { handleEditableCellClick, handleRowEditStop } from './handlers';
 
+export { EditHintSnackbar } from './EditHintSnackbar';
+export { useEditHint, TABLE_EDIT_HINT_MAX_SHOWN } from './useEditHint';
+export type { EditHintControls } from './useEditHint';
+export { useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';
+export type { SpreadsheetCellEditing } from './useSpreadsheetCellEditing';
+
 export { StableScrollbarTrack } from './StableScrollbarTrack';
 export type { StableScrollbarTrackProps } from './StableScrollbarTrack';
 
-export { dataGridSx, dataGridFooterSx, deleteIconButtonSx } from './styles';
+export { dataGridSx, dataGridFooterSx, deleteIconButtonSx, EDITABLE_CELL_CLASS } from './styles';

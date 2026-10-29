@@ -21,7 +21,7 @@ import {
   type DimensionCellType,
 } from './utils/dimensionCellState';
 import { NotesCell } from '../data-grid/NotesCell';
-import { renderNameCell } from './hierarchyNameCell';
+import { getHierarchyNameTextOffsetPx, renderNameCell } from './hierarchyNameCell';
 import {
   NON_BLOCKING_TOOLTIP_PROPS,
   type HierarchyColumnOptions,
@@ -76,9 +76,18 @@ const selectPrefilledValueOnFocus = (params: GridRenderEditCellParams<HierarchyR
   };
 };
 
-const renderImmediateEditInputCell = (
+// Keeps the tree indentation while the name is edited, so the input text
+// starts where the name stood in view mode instead of at the cell edge.
+const renderNameEditInputCell = (
   params: GridRenderEditCellParams<HierarchyRow>,
-): ReactElement => <GridEditInputCell {...params} debounceMs={0} onFocus={selectPrefilledValueOnFocus(params)} />;
+): ReactElement => (
+  <GridEditInputCell
+    {...params}
+    debounceMs={0}
+    onFocus={selectPrefilledValueOnFocus(params)}
+    sx={{ pl: `${getHierarchyNameTextOffsetPx(params.row.level ?? 0)}px` }}
+  />
+);
 const renderDecimalEditInputCell = (
   params: GridRenderEditCellParams<HierarchyRow>,
 ): ReactElement => (
@@ -244,7 +253,7 @@ export function createHierarchyColumns(
       headerName: t('hierarchy:columns.name'),
       width: widths.name,
       editable: true,
-      renderEditCell: renderImmediateEditInputCell,
+      renderEditCell: renderNameEditInputCell,
       renderCell: (params) => renderNameCell(params, callbacks, t, options),
       preProcessEditCellProps: (params) => {
         const hasError = !params.props.value || params.props.value.trim() === '';

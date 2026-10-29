@@ -107,7 +107,7 @@
           "title": "Utilisation",
           "points": [
             "Utilisez « Nouveau » pour créer une parcelle.",
-            "Cliquez sur les lignes du tableau pour modifier les entrées."
+            "Double-cliquez sur une cellule, appuyez sur Entrée ou commencez à taper pour modifier une entrée. Sur les appareils tactiles, il suffit de toucher la cellule."
           ]
         }
       ]
@@ -120,7 +120,7 @@
           "title": "Utilisation",
           "points": [
             "Utilisez « Nouveau » pour créer une planche.",
-            "Cliquez sur les lignes du tableau pour modifier les entrées."
+            "Double-cliquez sur une cellule, appuyez sur Entrée ou commencez à taper pour modifier une entrée. Sur les appareils tactiles, il suffit de toucher la cellule."
           ]
         },
         {

@@ -112,7 +112,7 @@ test.describe('fields-beds mobile create focus', () => {
 });
 
 test.describe('fields-beds desktop cross-row editing', () => {
-  test('clicking another row still saves the current row and immediately edits the clicked row', async ({ page, request }) => {
+  test('clicking another row saves the current row and only selects the clicked cell', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-desktop-cross-row-edit', { loginAsAdmin: true });
     const { firstField, secondField } = await createTwoParcelRows(page, 'Desktop Cross Row');
 
@@ -122,7 +122,7 @@ test.describe('fields-beds desktop cross-row editing', () => {
     await expect(firstNameCell).toBeVisible();
     await expect(secondNameCell).toBeVisible();
 
-    await firstNameCell.click();
+    await firstNameCell.dblclick();
     const firstInput = page.locator('.MuiDataGrid-row--editing [data-field="name"] input').first();
     await expect(firstInput).toBeFocused();
     await replaceFocusedInputText(page, 'Desktop Cross Row Parzelle A edited');
@@ -136,9 +136,14 @@ test.describe('fields-beds desktop cross-row editing', () => {
     await secondNameCell.click();
     await saveFirstRow;
 
-    const secondEditingRow = page.locator(`[role="row"][data-id="field-${secondField.id}"].MuiDataGrid-row--editing`);
-    await expect(secondEditingRow).toBeVisible();
-    const secondInput = secondEditingRow.locator('[data-field="name"] input');
+    // Spreadsheet model: the click selects, it does not edit, and the focus
+    // stays on the clicked cell after the save resolved.
+    await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(0);
+    await page.waitForTimeout(500);
+    await expect(secondNameCell).toBeFocused();
+
+    await secondNameCell.dblclick();
+    const secondInput = page.locator(`[role="row"][data-id="field-${secondField.id}"].MuiDataGrid-row--editing [data-field="name"] input`);
     await expect(secondInput).toHaveValue(secondField.name);
   });
 });

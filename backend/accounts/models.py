@@ -63,6 +63,17 @@ class UserProjectSettings(models.Model):
         blank=True,
         related_name='last_for_users',
     )
+    table_edit_hint_done = models.BooleanField(
+        default=False,
+        help_text=(
+            'True once the user edited a table cell by double click, Enter, F2 or typing, '
+            'or dismissed the table edit hint; the hint is then never shown again.'
+        ),
+    )
+    table_edit_hint_shown_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='How often the table edit hint was shown, across all tables and devices.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

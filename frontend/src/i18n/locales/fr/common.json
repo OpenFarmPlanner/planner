@@ -31,6 +31,8 @@
     "contextMenuTableHint": "Astuce : faites un clic droit sur une ligne pour plus d'actions.",
     "contextMenuTableHintTouch": "Astuce : appuyez longuement sur une ligne pour plus d'actions.",
     "contextMenuHintKeyboard": "Sinon : touche Menu contextuel ou Maj+F10.",
+    "tableEditHint": "Double-cliquez, appuyez sur Entrée ou commencez à taper pour modifier",
+    "tableEditHintDismiss": "Fermer l'indication",
     "confirmation": "Confirmation",
     "rowChanged": "Modifiée",
     "unsavedChanges": "Le tableau contient des modifications non enregistrées. Un clic en dehors d'une ligne les enregistre. Voulez-vous vraiment continuer ?",

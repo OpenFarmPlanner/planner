@@ -138,7 +138,7 @@ async function expectFocusedCell(page: Page, rowId: number, text: string): Promi
 async function editBedNameWithEnter(page: Page, currentName: string, nextName: string): Promise<void> {
   const row = page.locator('[role="row"][data-id]').filter({ hasText: currentName }).first();
   await expect(row).toBeVisible();
-  await row.locator('[data-field="name"]').click();
+  await row.locator('[data-field="name"]').dblclick();
 
   const input = page.locator('.MuiDataGrid-row--editing [data-field="name"] input').first();
   await expect(input).toBeVisible();
