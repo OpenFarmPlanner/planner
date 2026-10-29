@@ -31,6 +31,8 @@
     "contextMenuTableHint": "Consejo: haz clic derecho en una fila para ver más acciones.",
     "contextMenuTableHintTouch": "Consejo: mantén pulsada una fila para ver más acciones.",
     "contextMenuHintKeyboard": "También: tecla de menú contextual o Mayús+F10.",
+    "tableEditHint": "Haz doble clic, pulsa Intro o empieza a escribir para editar",
+    "tableEditHintDismiss": "Cerrar aviso",
     "confirmation": "Confirmación",
     "rowChanged": "Modificada",
     "unsavedChanges": "Hay cambios sin guardar en la tabla. Al hacer clic fuera de una fila se guardarán. ¿Seguro que quieres continuar?",

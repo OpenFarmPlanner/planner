@@ -15,6 +15,13 @@ import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 
 const EXPAND_ICON_SLOT_SIZE = 32;
+const LEVEL_INDENT_PX = 24;
+// The expand slot's right margin (`mr: 1`).
+const EXPAND_ICON_SLOT_GAP_PX = 8;
+
+/** Where the name text starts inside the cell, so the edit input can line up with it. */
+export const getHierarchyNameTextOffsetPx = (level: number): number =>
+  level * LEVEL_INDENT_PX + EXPAND_ICON_SLOT_SIZE + EXPAND_ICON_SLOT_GAP_PX;
 
 export function renderNameCell(
   params: GridRenderCellParams<HierarchyRow>,
@@ -23,7 +30,7 @@ export function renderNameCell(
   options: HierarchyColumnOptions,
 ) {
   const row = params.row;
-  const baseIndent = row.level * 24;
+  const baseIndent = row.level * LEVEL_INDENT_PX;
   const hasChildren = row.hasChildren === true;
   const hasExpandToggle = (row.type === 'location' || row.type === 'field') && hasChildren;
   const isStandaloneRender = params.api === undefined;

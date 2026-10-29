@@ -39,6 +39,23 @@ interface UseHierarchyGridFocusResult {
 
 const DEFAULT_FOCUS_FIELD = "name";
 
+/**
+ * Whether DOM focus sits on a cell of a row other than `rowId` and
+ * `allowedRowId`. A mouse press on another row's cell moves focus there
+ * before the edited row's save runs; the post-edit focus restore (meant for
+ * Enter and Escape) must then leave it alone instead of pulling focus back.
+ */
+export const isFocusOnOtherRowCell = (rowId: GridRowId, allowedRowId?: GridRowId): boolean => {
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLElement) || !activeElement.closest('[role="gridcell"]')) {
+    return false;
+  }
+  const focusedRowId = activeElement.closest<HTMLElement>('[role="row"][data-id]')?.dataset.id;
+  return focusedRowId !== undefined
+    && focusedRowId !== String(rowId)
+    && (allowedRowId === undefined || focusedRowId !== String(allowedRowId));
+};
+
 const hasEditingRow = (rowModesModel: GridRowModesModel): boolean =>
   Object.values(rowModesModel).some((mode) => mode.mode === GridRowModes.Edit);
 
@@ -147,6 +164,11 @@ export function useHierarchyGridFocus({
     const queuedTarget = postEditFocusTargetRef.current;
     postEditFocusTargetRef.current = null;
     const targetRowId = queuedTarget?.rowId ?? fallbackRowId;
+    const sourceRowId = queuedTarget?.sourceRowId ?? fallbackRowId;
+    if (sourceRowId != null && isFocusOnOtherRowCell(sourceRowId, targetRowId ?? undefined)) {
+      lastPostEditFocusTargetRef.current = null;
+      return;
+    }
     if (targetRowId != null) {
       applyFocusTarget({
         rowId: targetRowId,
@@ -166,7 +188,11 @@ export function useHierarchyGridFocus({
     }
 
     const lastTarget = lastPostEditFocusTargetRef.current;
-    if (lastTarget && String(lastTarget.sourceRowId) === String(sourceRowId)) {
+    if (
+      lastTarget
+      && String(lastTarget.sourceRowId) === String(sourceRowId)
+      && !isFocusOnOtherRowCell(sourceRowId, lastTarget.rowId)
+    ) {
       applyFocusTarget(lastTarget);
     }
   }, [applyFocusTarget, applyPostEditFocus]);

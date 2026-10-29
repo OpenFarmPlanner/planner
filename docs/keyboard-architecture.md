@@ -192,9 +192,11 @@ there.
 
 Like the arrow keys, these are **view-mode keys**: a row that is in edit mode
 keeps its own Tab/arrow/editor handling, so the paging handler bails out for
-it. In `EditableDataGrid` a single click starts row edit mode, which is why
-the e2e coverage clicks a cell and then presses Escape to get a view-mode
-focused cell before pressing Ctrl+End or PageDown.
+it. On desktop a single click only selects a cell (see "Spreadsheet edit
+model" in `datagrid-architecture.md`), so a clicked cell already is a
+view-mode focused cell for Ctrl+End or PageDown. Some e2e coverage still
+presses Escape after the click; that dates from single-click editing and is
+harmless on a cell that is only selected.
 
 **Focusing a cell whose page is still mounting.** `setCellFocus` only updates
 the grid's own focus state; the cell element takes DOM focus when MUI renders

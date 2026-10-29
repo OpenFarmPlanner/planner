@@ -46,7 +46,13 @@ frontend/src/components/data-grid/
     useDataGridDelete.ts         immediate delete + optional undo-snackbar flow
     useDataGridRowActionMenu.ts  right-click / long-press / keyboard row menu
   StableScrollbarTrack.tsx       shared track/thumb overlay for useStableDataGridScrollbar
-  keyboardEditing.ts       "just start typing" / F2 spreadsheet-edit-start behavior
+  keyboardEditing.ts       spreadsheet edit entry points: typing, F2, Enter,
+                           double click
+  useSpreadsheetCellEditing.ts  the desktop spreadsheet edit model shared by
+                           EditableDataGrid and the Anbauflächen hierarchy
+                           (see "Spreadsheet edit model")
+  useEditHint.ts, EditHintSnackbar.tsx  the shared "double-click, Enter or
+                           just start typing" hint and its server-side state
   keyboardNavigation.ts    Tab/Arrow cell navigation rules, grid-API-agnostic
   AreaM2EditCell.tsx, DateEditCell.tsx, PlantsCountEditCell.tsx,
   SearchableSelectEditCell.tsx                            custom edit cells
@@ -460,10 +466,10 @@ MUI's stock edit cells didn't fit a few OpenFarmPlanner-specific needs:
   through `StandardSingleSelectEditCell`, which reuses the shared closed
   Select typeahead hook from `components/inputs/selectTypeahead.ts` so typing
   on a focused closed editor selects by the localized visible label just like
-  form-level Selects. A primary click on an inline `singleSelect` cell opens
-  row edit mode and immediately requests the mounted select editor to open its
-  dropdown via `SelectEditCellContext`; keyboard entry into the same cell only
-  focuses the editor, so Tab/F2/type-to-edit behavior stays unchanged. When a
+  form-level Selects. A double click on an inline `singleSelect` cell (a tap
+  on touch layouts) opens row edit mode and immediately requests the mounted
+  select editor to open its dropdown via `SelectEditCellContext`; keyboard
+  entry into the same cell (Enter, F2) only focuses the editor. When a
   controlled select menu closes from a pointer click outside the edited row,
   `selectEditMenuClose.ts` routes that close back through the grid's normal
   save-and-exit-row path. Escape closes reuse the row cancel path. If keyboard
@@ -472,6 +478,75 @@ MUI's stock edit cells didn't fit a few OpenFarmPlanner-specific needs:
   inline row edit mode before the dialog opens; new draft rows keep their row
   edit session so the final create save can still validate the full row.
   Closes caused by choosing an option stay inside the current row edit session.
+
+## Spreadsheet edit model
+
+Both inline-editing tables — Anbaupläne (`EditableDataGrid`) and
+Anbauflächen (`FieldsBedsHierarchy.tsx`) — edit like a spreadsheet on
+desktop, through one shared hook, `useSpreadsheetCellEditing.ts`:
+
+- **A single click only selects the cell.** It never starts edit mode.
+- **Editing starts** with a double click, Enter, F2, or by typing a
+  printable character, which replaces the value. All four go through
+  `useSpreadsheetEditStarter` (`keyboardEditing.ts`), so every start takes
+  the same snapshot/selection path (`onBeforeEdit`) and is reported through
+  `onEditStarted`. The double click is handled by us rather than by MUI's
+  default (`defaultMuiPrevented`) for exactly that reason; a double click on
+  a control inside the cell (expand toggle, row actions) starts nothing.
+- **Date and select cells do not start by typing**
+  (`acceptsTypedStartValue`): a single typed character is neither a date nor
+  an option. They open with double click, Enter or F2, and their editors
+  then take typed input themselves (segmented date entry, select typeahead).
+  A double click on an inline select also opens its dropdown, as the single
+  click did before.
+- **Clicking another cell while a row is edited** saves the row (MUI's
+  `rowFocusOut`) and only selects the clicked cell. Clicking another cell of
+  the *same* row keeps the row in edit mode and moves the editor there — this
+  is row editing, so the row is saved once, when it is left.
+- Enter saves and selects the cell below, Escape discards, Tab moves to the
+  next editable cell — unchanged.
+- **Editable cells** get the `ofp-cell-editable` class
+  (`getEditableCellClassName`) and with it `cursor: text` from `dataGridSx`.
+  Read-only and calculated cells, and notes/dialog cells, don't.
+- **Touch and narrow layouts keep tap-to-edit.** `spreadsheetMode` is
+  `!(max-width:900px) && !(pointer: coarse)`; outside it a tap still starts
+  editing through `handleEditableCellClick`, and the hint is never shown.
+  The mobile Anbauflächen view has its own edit sheet anyway.
+
+**Focus after a cross-row click (Anbauflächen).** The hierarchy restores
+focus after a save (`useHierarchyGridFocus`: a queued post-edit target, a
+layout effect on the Edit→View transition, and a re-apply once the async
+save resolves). That restore was written for Enter and Escape but also ran
+after a click into another row: focus jumped back to the saved row, which
+blurred and closed the edit the click had just started in the new row.
+`isFocusOnOtherRowCell` now leaves focus alone when DOM focus already sits
+on a cell of another row — the mouse press put it there before the save ran.
+`EditableDataGrid` never moved focus after a blur save, so the Anbaupläne
+table did not have the bug.
+
+### The edit hint
+
+A user who clicks the same editable cell twice with single mouse clicks
+(not the two clicks of a double click, not keyboard-generated clicks, no key
+pressed in between) probably wants to edit it. `useSpreadsheetCellEditing`
+then asks `useEditHint` to show `EditHintSnackbar` ("Doppelklick, Enter oder
+einfach lostippen zum Bearbeiten"): an info `AlertSnackbar` at the bottom
+with `role="status"`/`aria-live="polite"`, hidden after 6 s, with a close
+button. Clicks elsewhere don't close it (`ignoreClickAway`), since the user
+is clicking cells, and a request while it is visible does nothing. Group rows
+(Standort, Parzelle) never trigger it.
+
+The hint is retired for good — in both tables and on every device — once
+the user started an edit by double click, Enter, F2 or typing, closed the
+hint with its button, or saw it three times. The state is one flag and one
+counter on `accounts.UserProjectSettings` (`table_edit_hint_done`,
+`table_edit_hint_shown_count`), exposed in `/api/auth/me/` as
+`table_edit_hint` and updated through `POST
+/api/auth/account/table-edit-hint/` with an event (`shown`, `edited`,
+`dismissed`); the server applies the retirement rules
+(`accounts/table_edit_hint.py`). Within a session a module-level store in
+`useEditHint.ts` carries the state from one table to the other without
+waiting for a `/me` reload. The timeout and Escape only hide the snackbar.
 
 ## Keyboard editing/navigation inside the grid
 
@@ -511,9 +586,10 @@ that's still true. But cell-level Tab/Arrow/Enter/F2 navigation
   Excel-like "just start typing" (a printable keydown on a non-editing
   cell immediately opens edit mode and *replaces* the cell's value with the
   typed character, buffering rapid keystrokes typed before the edit-cell
-  component has actually mounted) and F2 (opens edit mode *without*
-  altering the value — the standard spreadsheet distinction between the
-  two). The same starter also handles the row-edit edge case where Tab or
+  component has actually mounted) and F2, Enter and double click (open
+  edit mode *without* altering the value — the standard spreadsheet
+  distinction between the two). Date and select cells are left out of "just
+  start typing"; see "Spreadsheet edit model". The same starter also handles the row-edit edge case where Tab or
   Shift+Tab has visibly focused another editable cell but DOM focus is still
   on the cell container rather than the mounted editor input: the first
   printable key is still captured, buffered, and written into that target
@@ -524,7 +600,8 @@ that's still true. But cell-level Tab/Arrow/Enter/F2 navigation
   because row-level validation across rapidly edited fields can otherwise
   complete out of order and restore an older value after a focus change.
 - Notes cells and `dialogEditFields` cells (both below) are deliberately
-  excluded from spreadsheet auto-edit-start, the F2 flow, and click-to-edit —
+  excluded from spreadsheet auto-edit-start, the F2/Enter flow, and
+  double-click/tap-to-edit —
   Enter/Space opens their own editor instead. They remain Tab/arrow stops via
   the `isActionCell` hook, since `editable: false` alone would skip them.
 

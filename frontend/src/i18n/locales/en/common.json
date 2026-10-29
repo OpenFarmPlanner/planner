@@ -31,6 +31,8 @@
     "contextMenuTableHint": "Tip: Right-click a row for more actions.",
     "contextMenuTableHintTouch": "Tip: Press and hold a row for more actions.",
     "contextMenuHintKeyboard": "Alternatively: context menu key or Shift+F10.",
+    "tableEditHint": "Double-click, press Enter or just start typing to edit",
+    "tableEditHintDismiss": "Dismiss hint",
     "confirmation": "Confirmation",
     "rowChanged": "Changed",
     "unsavedChanges": "You have unsaved changes in the table. Clicking outside a row will save them. Do you really want to continue?",

@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { GridColDef } from '@mui/x-data-grid';
 import { AxiosError } from 'axios';
 import { EditableDataGrid, type EditableDataGridCommandApi } from '../components/data-grid/DataGrid';
 import { createGridApiMock, createGridRow, type TestGridRow } from './helpers/factories';
 import { mockT } from './helpers/testI18n';
+import {
+  resetTableEditHintSessionState,
+  TABLE_EDIT_HINT_MAX_SHOWN,
+  useEditHint,
+} from '../components/data-grid/useEditHint';
 
 const mockUseNavigationBlocker = vi.fn();
 const mockStopRowEditMode = vi.hoisted(() => vi.fn());
@@ -48,6 +53,7 @@ vi.mock('@mui/x-data-grid', async () => {
     processRowUpdate,
     onProcessRowUpdateError,
     onCellClick,
+    onCellDoubleClick,
     onCellKeyDown,
     onRowEditStop,
     onRowSelectionModelChange,
@@ -202,12 +208,15 @@ vi.mock('@mui/x-data-grid', async () => {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(event) => {
                       if (apiRef?.current) {
                         apiRef.current.state.focus.cell = { id: row.id, field: col.field };
                       }
                       onRowSelectionModelChange?.({ type: 'include', ids: new Set([row.id]) });
-                      onCellClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false });
+                      onCellClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false }, event);
+                    }}
+                    onDoubleClick={(event) => {
+                      onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false, row }, event);
                     }}
                     onKeyDown={(event) => {
                       onCellKeyDown?.(
@@ -367,6 +376,7 @@ describe('EditableDataGrid', () => {
     renderGridWithKeyboardRows();
     const editedCell = await screen.findByRole('button', { name: 'Zelle 2-name' });
     fireEvent.click(editedCell);
+    fireEvent.doubleClick(editedCell);
     await waitFor(() => expect(screen.getByTestId('mode-2')).toHaveTextContent('edit'));
     fireEvent.click(screen.getByRole('button', { name: 'Eingabe per Return 2' }));
     await waitFor(() => {
@@ -546,7 +556,7 @@ describe('EditableDataGrid', () => {
     render(<EditableDataGrid {...props} commandApiRef={commandApiRef} showDeleteAction={false} />);
 
     await waitFor(() => expect(commandApiRef.current).not.toBeNull());
-    fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
     await commandApiRef.current?.commitDraftValues(1, { area_sqm: 5 });
@@ -564,6 +574,7 @@ describe('EditableDataGrid', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('focused-cell')).toHaveTextContent('1-name'));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
@@ -641,7 +652,7 @@ describe('EditableDataGrid', () => {
 
     render(<EditableDataGrid {...baseProps()} showDeleteAction={false} />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
 
     await waitFor(() => {
       expect(mockUseNavigationBlocker).toHaveBeenLastCalledWith(
@@ -707,11 +718,11 @@ describe('EditableDataGrid', () => {
     expect(screen.getByTestId('edit-input-1-name')).toHaveValue('Beet A');
   });
 
-  it('starts editing from a click without replacing the existing value', async () => {
+  it('starts editing from a double click without replacing the existing value', async () => {
     render(<EditableDataGrid {...baseProps()} showDeleteAction={false} />);
 
     const cell = await screen.findByRole('button', { name: 'Zelle 1-name' });
-    fireEvent.click(cell);
+    fireEvent.doubleClick(cell);
 
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
     expect(mockSetEditCellValue).not.toHaveBeenCalled();
@@ -816,7 +827,7 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
     fireEvent.click(screen.getByRole('button', { name: 'Blur speichern 1' }));
 
@@ -832,7 +843,7 @@ describe('EditableDataGrid', () => {
     render(<EditableDataGrid {...props} showDeleteAction={false} />);
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Blur speichern 1' }));
@@ -855,7 +866,7 @@ describe('EditableDataGrid', () => {
       render(<EditableDataGrid {...props} showDeleteAction={false} />);
 
       await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-      fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+      fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
       await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
       fireEvent.pointerDown(dialogButton);
@@ -887,7 +898,7 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
     fireEvent.click(screen.getByRole('button', { name: 'Eingabe per Return 1' }));
 
@@ -958,6 +969,7 @@ describe('EditableDataGrid', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
     await waitFor(() => expect(screen.getByTestId('row-1')).toHaveAttribute('data-selected', 'true'));
     fireEvent.click(screen.getByRole('button', { name: 'ESC 1' }));
@@ -1085,7 +1097,7 @@ describe('EditableDataGrid', () => {
     );
 
     const dateCell = await screen.findByRole('button', { name: 'Zelle 1-planting_date' });
-    fireEvent.click(dateCell);
+    fireEvent.doubleClick(dateCell);
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
     fireEvent.keyDown(dateCell, { key: 'Tab' });
@@ -1180,7 +1192,7 @@ describe('EditableDataGrid', () => {
       const updateSpy = vi.spyOn(props.api, 'update');
 
       await waitFor(() => expect(commandApiRef.current).not.toBeNull());
-      fireEvent.click(await screen.findByRole('button', { name: 'Zelle 1-name' }));
+      fireEvent.doubleClick(await screen.findByRole('button', { name: 'Zelle 1-name' }));
       await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
       await act(async () => {
@@ -1210,7 +1222,7 @@ describe('EditableDataGrid', () => {
     render(<EditableDataGrid {...props} showDeleteAction={false} />);
 
     const lastEditableCell = await screen.findByRole('button', { name: 'Zelle 1-area_sqm' });
-    fireEvent.click(lastEditableCell);
+    fireEvent.doubleClick(lastEditableCell);
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
     mockSetCellFocus.mockClear();
@@ -1264,7 +1276,7 @@ describe('EditableDataGrid', () => {
 
   it('keeps keyboard navigation anchored after Escape cancels an edit', async () => {
     renderGridWithKeyboardRows();
-    fireEvent.click(await screen.findByRole('button', { name: 'Zelle 2-name' }));
+    fireEvent.doubleClick(await screen.findByRole('button', { name: 'Zelle 2-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-2')).toHaveTextContent('edit'));
 
     fireEvent.click(screen.getByRole('button', { name: 'ESC 2' }));
@@ -1293,7 +1305,7 @@ describe('EditableDataGrid', () => {
 
   it('keeps focus on the first row when Enter saves it and ArrowUp is pressed', async () => {
     renderGridWithKeyboardRows();
-    fireEvent.click(await screen.findByRole('button', { name: 'Zelle 1-name' }));
+    fireEvent.doubleClick(await screen.findByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Eingabe per Return 1' }));
@@ -1305,7 +1317,7 @@ describe('EditableDataGrid', () => {
 
   it('keeps focus on the last row when Enter saves it without a following row', async () => {
     renderGridWithKeyboardRows();
-    fireEvent.click(await screen.findByRole('button', { name: 'Zelle 4-name' }));
+    fireEvent.doubleClick(await screen.findByRole('button', { name: 'Zelle 4-name' }));
     await waitFor(() => expect(screen.getByTestId('mode-4')).toHaveTextContent('edit'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Eingabe per Return 4' }));
@@ -1368,7 +1380,7 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.queryByRole('button', { name: 'actions.save' })).not.toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'actions.save' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'actions.cancel' })).toBeInTheDocument();
@@ -1387,7 +1399,7 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'actions.cancel' })).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: 'ESC 1' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'actions.cancel' })).not.toBeInTheDocument());
@@ -1407,7 +1419,7 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'actions.save' })).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId('row-1')).toHaveAttribute('data-selected', 'true'));
     await user.click(screen.getByRole('button', { name: /Tab speichern 1/i }));
@@ -1512,14 +1524,14 @@ describe('EditableDataGrid', () => {
     expect(outsideTap.defaultPrevented).toBe(true);
     expect(screen.queryByTestId('mode-1')).not.toHaveTextContent('edit');
 
-    // A further, separate tap on that same cell now behaves completely
+    // A further interaction with that same cell now behaves completely
     // normally — the menu is closed, so nothing intercepts it.
-    fireEvent.click(otherCell);
+    fireEvent.doubleClick(otherCell);
 
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
   });
 
-  it('a left click outside the open row-action menu only closes it before a second click can edit the cell', async () => {
+  it('a left click outside the open row-action menu only closes it before a double click can edit the cell', async () => {
     render(
       <EditableDataGrid
         {...baseProps()}
@@ -1549,7 +1561,7 @@ describe('EditableDataGrid', () => {
     expect(clickEvent.defaultPrevented).toBe(true);
     expect(screen.queryByTestId('mode-1')).not.toHaveTextContent('edit');
 
-    fireEvent.click(otherCell);
+    fireEvent.doubleClick(otherCell);
 
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
   });
@@ -1993,8 +2005,126 @@ describe('EditableDataGrid', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Zelle 1-name' })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Zelle 1-name' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Zelle 1-name' }));
 
     await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
+  });
+
+  describe('spreadsheet edit model', () => {
+    const cellButton = (rowId: number, field = 'name') => screen.getByRole('button', { name: `Zelle ${rowId}-${field}` });
+    const singleClick = (rowId: number, field = 'name') => fireEvent.click(cellButton(rowId, field), { detail: 1 });
+
+    beforeEach(() => {
+      resetTableEditHintSessionState();
+    });
+
+    it('selects a cell on a single click without starting the edit', async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      singleClick(1);
+
+      expect(screen.getByTestId('focused-cell')).toHaveTextContent('1-name');
+      expect(screen.getByTestId('row-1')).toHaveAttribute('data-selected', 'true');
+      expect(screen.getByTestId('mode-1')).toHaveTextContent('view');
+    });
+
+    it.each([
+      ['a double click', () => fireEvent.doubleClick(cellButton(1))],
+      ['Enter', () => fireEvent.keyDown(cellButton(1), { key: 'Enter' })],
+      ['F2', () => fireEvent.keyDown(cellButton(1), { key: 'F2' })],
+      ['typing', () => fireEvent.keyDown(cellButton(1), { key: 'K' })],
+    ])('starts the edit with %s', async (_trigger, startEdit) => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      startEdit();
+
+      await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
+    });
+
+    it('saves on a click into another row without pulling focus back to the saved row', async () => {
+      const props = renderGridWithKeyboardRows();
+      const updateSpy = vi.spyOn(props.api, 'update');
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+      fireEvent.doubleClick(cellButton(1));
+      await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('edit'));
+
+      singleClick(2);
+      mockSetCellFocus.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: 'Blur speichern 1' }));
+
+      await waitFor(() => expect(updateSpy).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('mode-1')).toHaveTextContent('view'));
+      expect(screen.getByTestId('mode-2')).toHaveTextContent('view');
+      expect(screen.getByTestId('focused-cell')).toHaveTextContent('2-name');
+      expect(mockSetCellFocus).not.toHaveBeenCalledWith(1, expect.anything());
+    });
+
+    it('shows the edit hint on the second single click on the same editable cell', async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      singleClick(1);
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+      singleClick(1);
+
+      expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('does not show the edit hint once a cell was edited in this table', async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      fireEvent.keyDown(cellButton(2), { key: 'F2' });
+      singleClick(1);
+      singleClick(1);
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('does not show the edit hint once a cell was edited in another table', async () => {
+      const growingAreasTable = renderHook(() => useEditHint());
+      act(() => growingAreasTable.result.current.markEdited());
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      singleClick(1);
+      singleClick(1);
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('stops showing the edit hint after it was dismissed', async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+      singleClick(1);
+      singleClick(1);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
+      await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      singleClick(2);
+      singleClick(2);
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it(`stops showing the edit hint after ${TABLE_EDIT_HINT_MAX_SHOWN} displays`, async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      for (let display = 0; display < TABLE_EDIT_HINT_MAX_SHOWN; display += 1) {
+        singleClick(1);
+        singleClick(1);
+        expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
+        fireEvent.keyDown(document, { key: 'Escape' });
+        await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      }
+      singleClick(1);
+      singleClick(1);
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
   });
 });

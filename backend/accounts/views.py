@@ -35,6 +35,7 @@ from .emails import (
     _uses_local_non_delivery_email_backend,
 )
 from .guest_demo import create_guest_demo_session, delete_guest_demo_session
+from .table_edit_hint import record_table_edit_hint_event, serialize_table_edit_hint
 from .models import (
     AccountDeletionRequest,
     AccountEmailChangeRequest,
@@ -59,6 +60,7 @@ from .serializers import (
     PasswordResetRequestSerializer,
     RegisterSerializer,
     ResendActivationSerializer,
+    TableEditHintEventSerializer,
     UserSerializer,
 )
 from .registration_abuse import record_registration_success, registration_ip_limit_exceeded
@@ -431,6 +433,25 @@ class AccountLanguageView(APIView):
         )
         request.user.refresh_from_db()
         return Response({'ui_language': ui_language, 'user': UserSerializer(request.user).data})
+
+
+class AccountTableEditHintView(APIView):
+    """Reads and updates the shared state of the inline table edit hint.
+
+    One flag and one counter for all inline-editing tables, stored per user so
+    the hint does not come back on every device.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        return Response(serialize_table_edit_hint(getattr(request.user, 'project_settings', None)))
+
+    def post(self, request: Request) -> Response:
+        serializer = TableEditHintEventSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        state = record_table_edit_hint_event(request.user, serializer.validated_data['event'])
+        return Response(state)
 
 
 class AccountEmailChangeRequestView(APIView):

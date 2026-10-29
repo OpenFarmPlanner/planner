@@ -11,7 +11,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { GridRowModes } from '@mui/x-data-grid';
 import type { GridRowModesModel } from '@mui/x-data-grid';
-import { useHierarchyGridFocus } from '../components/hierarchy/hooks/useHierarchyGridFocus';
+import { isFocusOnOtherRowCell, useHierarchyGridFocus } from '../components/hierarchy/hooks/useHierarchyGridFocus';
 import type { HierarchyRow } from '../components/hierarchy/utils/types';
 
 const makeRow = (id: string, type: HierarchyRow['type'] = 'field'): HierarchyRow => ({
@@ -266,5 +266,39 @@ describe('useHierarchyGridFocus', () => {
     expect(setCellFocus).toHaveBeenCalledWith(2, 'name');
     expect(setCellFocus).not.toHaveBeenCalledWith('2', 'name');
     expect(selectRow).toHaveBeenCalledWith(2);
+  });
+});
+
+describe('isFocusOnOtherRowCell', () => {
+  const renderRowWithCell = (rowId: string): HTMLElement => {
+    const row = document.createElement('div');
+    row.setAttribute('role', 'row');
+    row.dataset.id = rowId;
+    const cell = document.createElement('div');
+    cell.setAttribute('role', 'gridcell');
+    cell.tabIndex = -1;
+    row.appendChild(cell);
+    document.body.appendChild(row);
+    return cell;
+  };
+
+  it('is true when a cell of another row holds the focus', () => {
+    renderRowWithCell('field-1');
+    const otherCell = renderRowWithCell('field-2');
+    otherCell.focus();
+
+    expect(isFocusOnOtherRowCell('field-1')).toBe(true);
+    expect(isFocusOnOtherRowCell('field-1', 'field-2')).toBe(false);
+    expect(isFocusOnOtherRowCell('field-2')).toBe(false);
+    document.body.innerHTML = '';
+  });
+
+  it('is false when the focus is outside the grid', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.focus();
+
+    expect(isFocusOnOtherRowCell('field-1')).toBe(false);
+    document.body.innerHTML = '';
   });
 });

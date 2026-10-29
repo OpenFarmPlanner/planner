@@ -77,6 +77,7 @@ describe("PlantingPlans keyboard focus after cancelling a row edit", () => {
     await waitFor(() => expect(screen.getByTestId("row-10")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Zelle 10-cultivation_type" }));
+    fireEvent.doubleClick(screen.getByRole("button", { name: "Zelle 10-cultivation_type" }));
     await waitFor(() => expect(screen.getByTestId("mode-10")).toHaveTextContent("edit"));
 
     fireEvent.click(screen.getByRole("button", { name: "ESC 10" }));

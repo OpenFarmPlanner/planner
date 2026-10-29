@@ -107,7 +107,7 @@
           "title": "Bedienung",
           "points": [
             "Lege mit „Neu“ eine Parzelle an.",
-            "Klicke Tabellenzeilen an, um Einträge zu bearbeiten."
+            "Doppelklicke auf eine Zelle, drücke Enter oder tippe einfach los, um einen Eintrag zu bearbeiten. Auf Touch-Geräten genügt Antippen."
           ]
         }
       ]
@@ -120,7 +120,7 @@
           "title": "Bedienung",
           "points": [
             "Lege mit „Neu“ ein Beet an.",
-            "Klicke Tabellenzeilen an, um Einträge zu bearbeiten."
+            "Doppelklicke auf eine Zelle, drücke Enter oder tippe einfach los, um einen Eintrag zu bearbeiten. Auf Touch-Geräten genügt Antippen."
           ]
         },
         {

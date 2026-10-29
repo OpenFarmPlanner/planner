@@ -6,14 +6,16 @@ import type {
   GridRowId,
   GridRowModesModel,
 } from "@mui/x-data-grid";
-import { handleEditableCellClick } from "../../data-grid/handlers";
 import {
   focusKeyboardNavigableCell,
   getDatasetEdgeKeyboardNavigationTarget,
   getKeyboardNavigationTarget,
   getPagingKeyboardNavigationTarget,
 } from "../../data-grid/keyboardNavigation";
-import { useSpreadsheetEditStarter } from "../../data-grid/keyboardEditing";
+import {
+  useSpreadsheetCellEditing,
+  type SpreadsheetCellEditing,
+} from "../../data-grid/useSpreadsheetCellEditing";
 import type { HierarchyRow } from "../utils/types";
 
 type HierarchyKeyboardEvent = React.KeyboardEvent & {
@@ -70,6 +72,8 @@ interface UseHierarchyGridKeyboardParams {
   selectRow: (rowId: GridRowId) => void;
   setRowModesModel: React.Dispatch<React.SetStateAction<GridRowModesModel>>;
   setTreeActive: (active: boolean) => void;
+  /** Desktop spreadsheet edit model; see useSpreadsheetCellEditing. */
+  spreadsheetMode: boolean;
   // Ends a row's edit session the same way clicking outside the grid does:
   // MUI's real stopRowEditMode never reaches processRowUpdate for a row with
   // an empty required "name" cell (the column's preProcessEditCellProps
@@ -89,6 +93,7 @@ interface UseHierarchyGridKeyboardResult {
     params: GridCellParams<HierarchyRow>,
     event: React.KeyboardEvent,
   ) => void;
+  cellEditing: SpreadsheetCellEditing<HierarchyRow>;
 }
 
 const isRowEditing = (rowModesModel: GridRowModesModel, rowId: GridRowId): boolean =>
@@ -126,10 +131,12 @@ export function useHierarchyGridKeyboard({
   selectRow,
   setRowModesModel,
   setTreeActive,
+  spreadsheetMode,
   stopEditingRow,
   toggleExpand,
 }: UseHierarchyGridKeyboardParams): UseHierarchyGridKeyboardResult {
-  const spreadsheetEditStarter = useSpreadsheetEditStarter<HierarchyRow>({
+  const cellEditing = useSpreadsheetCellEditing<HierarchyRow>({
+    spreadsheetMode,
     apiRef: gridApiRef,
     rowModesModel,
     setRowModesModel,
@@ -148,6 +155,8 @@ export function useHierarchyGridKeyboard({
       selectRow(params.id);
       setTreeActive(true);
     },
+    // Standort and Parzelle rows group the tree; the hint is for bed-level data entry.
+    isHintEligible: (params) => params.row?.type === "bed",
   });
 
   const navigateCell = useCallback((
@@ -319,11 +328,12 @@ export function useHierarchyGridKeyboard({
       });
       return;
     }
-    if (isChangingEditedRow && deferCrossRowEditOnClick) {
+    if (isChangingEditedRow && deferCrossRowEditOnClick && !spreadsheetMode) {
       return;
     }
-    handleEditableCellClick(params, rowModesModel, setRowModesModel);
+    cellEditing.handleCellClick(params, event);
   }, [
+    cellEditing,
     deferCrossRowEditOnClick,
     gridApiRef,
     isCellFocusable,
@@ -334,6 +344,7 @@ export function useHierarchyGridKeyboard({
     selectRow,
     setRowModesModel,
     setTreeActive,
+    spreadsheetMode,
     stopEditingRow,
   ]);
 
@@ -406,11 +417,7 @@ export function useHierarchyGridKeyboard({
       keyboardEvent.defaultMuiPrevented = true;
     }
 
-    if (spreadsheetEditStarter.startEditFromF2(params, keyboardEvent)) {
-      return;
-    }
-
-    if (spreadsheetEditStarter.startEditFromPrintableKey(params, keyboardEvent)) {
+    if (cellEditing.handleCellKeyDown(params, keyboardEvent)) {
       return;
     }
 
@@ -434,6 +441,7 @@ export function useHierarchyGridKeyboard({
       }
     }
   }, [
+    cellEditing,
     discardRowEdit,
     navigateCell,
     navigateEdgeOrPage,
@@ -442,12 +450,12 @@ export function useHierarchyGridKeyboard({
     rememberFocusedField,
     rowModesModel,
     rows,
-    spreadsheetEditStarter,
     toggleExpand,
   ]);
 
   return {
     handleCellClick,
     handleCellKeyDown,
+    cellEditing,
   };
 }

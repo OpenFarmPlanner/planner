@@ -35,6 +35,10 @@ export function createMuiDataGridEscapeFocusMock() {
       params: { id: string | number; field: string; isEditable: boolean },
       event: { preventDefault: () => void; stopPropagation: () => void; defaultMuiPrevented?: boolean },
     ) => void;
+    onCellDoubleClick?: (
+      params: { id: string | number; field: string; isEditable: boolean },
+      event: React.MouseEvent,
+    ) => void;
     onCellKeyDown?: (
       params: { id: string | number; field: string; isEditable?: boolean; row?: MockRow },
       event: { key: string; preventDefault: () => void; defaultMuiPrevented?: boolean },
@@ -42,7 +46,7 @@ export function createMuiDataGridEscapeFocusMock() {
     onRowSelectionModelChange?: (model: { type: string; ids: Set<string | number> }) => void;
     rowModesModel?: Record<string | number, { mode: string; fieldToFocus?: string }>;
   }) => {
-    const { apiRef, rows, columns, onCellClick, onCellKeyDown, onRowSelectionModelChange, rowModesModel } = props;
+    const { apiRef, rows, columns, onCellClick, onCellDoubleClick, onCellKeyDown, onRowSelectionModelChange, rowModesModel } = props;
     const [, forceFocusRender] = React.useState(0);
     const [focusedCell, setFocusedCell] = React.useState('none');
 
@@ -96,6 +100,9 @@ export function createMuiDataGridEscapeFocusMock() {
                       { id: row.id, field: col.field, isEditable: col.editable !== false },
                       { preventDefault: () => {}, stopPropagation: () => {}, defaultMuiPrevented: false },
                     );
+                  }}
+                  onDoubleClick={(event) => {
+                    onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false }, event);
                   }}
                 >
                   Zelle {row.id}-{col.field}

@@ -1,4 +1,12 @@
-import type { AccountActionResponse, AccountDeleteResponse, AuthUser, MeResponse, ProjectSwitchResponse } from './types';
+import type {
+  AccountActionResponse,
+  AccountDeleteResponse,
+  AuthUser,
+  MeResponse,
+  ProjectSwitchResponse,
+  TableEditHintEvent,
+  TableEditHintState,
+} from './types';
 import i18n, { getCurrentUiLanguage } from '../i18n';
 import { computeBaseURL } from '../api/httpClient';
 import { GUEST_DEMO_RESTRICTED_CODE } from '../api/errors';
@@ -413,6 +421,16 @@ export async function updateUiLanguage(uiLanguage: string): Promise<{ ui_languag
     method: 'PUT',
     headers: csrfHeader(),
     body: JSON.stringify({ ui_language: uiLanguage }),
+  });
+}
+
+/** Report one event of the inline table edit hint; returns the stored state. */
+export async function recordTableEditHintEvent(event: TableEditHintEvent): Promise<TableEditHintState> {
+  await ensureCsrfCookie();
+  return request<TableEditHintState>('/auth/account/table-edit-hint/', {
+    method: 'POST',
+    headers: csrfHeader(),
+    body: JSON.stringify({ event }),
   });
 }
 

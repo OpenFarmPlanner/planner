@@ -76,7 +76,8 @@ docs/                  # This documentation
     stored row.
 - **`accounts`** owns the Django `User` lifecycle: registration/activation,
   password reset, per-user project settings (`UserProjectSettings`:
-  default/last project), account deletion with a grace period, self-service
+  default/last project, UI language, the state of the table edit hint),
+  account deletion with a grace period, self-service
   personal data export, and document-consent tracking. There is no custom
   `AUTH_USER_MODEL`. Sign-in with Google/Microsoft is layered on top via
   django-allauth, which contributes only the provider handshake and the

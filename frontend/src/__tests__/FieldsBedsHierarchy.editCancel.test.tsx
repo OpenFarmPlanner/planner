@@ -128,6 +128,7 @@ vi.mock('@mui/x-data-grid', async () => {
     columns,
     isCellEditable,
     onCellClick,
+    onCellDoubleClick,
     onCellKeyDown,
     onProcessRowUpdateError,
     onRowEditStop,
@@ -146,6 +147,10 @@ vi.mock('@mui/x-data-grid', async () => {
     columns: GridColDef[];
     isCellEditable?: (params: { row: Record<string, unknown>; field: string }) => boolean;
     onCellClick?: (params: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> }) => void;
+    onCellDoubleClick?: (
+      params: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> },
+      event: React.MouseEvent,
+    ) => void;
     onCellKeyDown?: (params: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> }, event: React.KeyboardEvent) => void;
     onProcessRowUpdateError?: (error: Error) => void;
     onRowEditStop?: (params: { id: string | number; reason: string }, event: { defaultMuiPrevented: boolean }) => void;
@@ -226,10 +231,13 @@ vi.mock('@mui/x-data-grid', async () => {
               })}
               <button
                 type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  // Stands for a double click: the click that selects, then the edit start.
                   const nameColumn = columns.find((column) => column.field === 'name');
                   const nameEditable = Boolean(nameColumn?.editable) && (isCellEditable?.({ row, field: 'name' }) ?? true);
-                  onCellClick?.({ id: row.id, field: 'name', isEditable: nameEditable, row });
+                  const params = { id: row.id, field: 'name', isEditable: nameEditable, row };
+                  onCellClick?.(params);
+                  onCellDoubleClick?.(params, event);
                 }}
               >
                 {`Edit ${row.id}`}
@@ -237,10 +245,12 @@ vi.mock('@mui/x-data-grid', async () => {
               <div data-field="length_m" role="gridcell">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(event) => {
                     const lengthColumn = columns.find((column) => column.field === 'length_m');
                     const lengthEditable = Boolean(lengthColumn?.editable) && (isCellEditable?.({ row, field: 'length_m' }) ?? true);
-                    onCellClick?.({ id: row.id, field: 'length_m', isEditable: lengthEditable, row });
+                    const params = { id: row.id, field: 'length_m', isEditable: lengthEditable, row };
+                    onCellClick?.(params);
+                    onCellDoubleClick?.(params, event);
                   }}
                 >
                   {`Edit length ${row.id}`}
@@ -450,7 +460,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(fieldCreateMock).not.toHaveBeenCalled();
   });
 
-  it('enters inline edit mode when a Standort name is clicked', async () => {
+  it('enters inline edit mode when a Standort name is double-clicked', async () => {
     const user = userEvent.setup();
     useMultipleLocations();
     renderHierarchy();

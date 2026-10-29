@@ -12,9 +12,8 @@ import type { GridEventListener, GridRowModesModel, GridCellParams } from '@mui/
 /**
  * Handler for cell click events that enables edit mode on editable cells.
  * 
- * This handler automatically switches a row to edit mode when a user clicks
- * on an editable cell, focusing the clicked field. This provides Excel-like
- * inline editing behavior.
+ * Tap-to-edit for touch and narrow layouts only: on desktop a single click
+ * just selects (see useSpreadsheetCellEditing), which calls this otherwise.
  * 
  * @param params - The cell click event parameters
  * @param rowModesModel - Current row modes model state

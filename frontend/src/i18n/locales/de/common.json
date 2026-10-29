@@ -31,6 +31,8 @@
     "contextMenuTableHint": "Tipp: Rechtsklick auf eine Tabellenzeile öffnet weitere Aktionen.",
     "contextMenuTableHintTouch": "Tipp: Zeile länger gedrückt halten für weitere Aktionen.",
     "contextMenuHintKeyboard": "Alternativ: Kontextmenütaste oder Shift+F10.",
+    "tableEditHint": "Doppelklick, Enter oder einfach lostippen zum Bearbeiten",
+    "tableEditHintDismiss": "Hinweis schließen",
     "confirmation": "Bestätigung",
     "rowChanged": "Geändert",
     "unsavedChanges": "Sie haben ungespeicherte Änderungen in der Tabelle. Wenn Sie außerhalb einer Zeile klicken, wird gespeichert. Möchten Sie wirklich fortfahren?",

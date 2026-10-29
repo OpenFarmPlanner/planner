@@ -16,11 +16,12 @@
  */
 
 import React, { Profiler } from 'react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import FieldsBedsHierarchy from '../pages/FieldsBedsHierarchy';
 import { mockT } from './helpers/testI18n';
+import { resetTableEditHintSessionState, useEditHint } from '../components/data-grid/useEditHint';
 
 // ── mocks (mirrors FieldsBedsHierarchy.editCancel.test.tsx) ─────────────────
 
@@ -134,6 +135,7 @@ vi.mock('@mui/x-data-grid', async () => {
       getSelectRowImpl()?.(id, isSelected, resetOtherRows);
     }),
     setRowSelectionModel: vi.fn(),
+    stopRowEditMode: vi.fn(),
   }));
 
   const DataGrid = ({
@@ -141,6 +143,7 @@ vi.mock('@mui/x-data-grid', async () => {
     columns,
     isCellEditable,
     onCellClick,
+    onCellDoubleClick,
     onCellKeyDown,
     onRowEditStop,
     processRowUpdate,
@@ -152,7 +155,14 @@ vi.mock('@mui/x-data-grid', async () => {
     };
     columns: Array<{ field: string; renderCell?: (p: unknown) => unknown; editable?: boolean }>;
     isCellEditable?: (p: { row: Record<string, unknown>; field: string }) => boolean;
-    onCellClick?: (p: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> }) => void;
+    onCellClick?: (
+      p: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> },
+      event?: React.MouseEvent,
+    ) => void;
+    onCellDoubleClick?: (
+      p: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> },
+      event: React.MouseEvent,
+    ) => void;
     onCellKeyDown?: (params: unknown, event: unknown) => void;
     onRowEditStop?: (params: unknown, event: { defaultMuiPrevented: boolean }) => void;
     processRowUpdate?: (row: unknown) => Promise<unknown>;
@@ -231,12 +241,15 @@ vi.mock('@mui/x-data-grid', async () => {
                 const editable = isCellEditable?.({ row, field: col.field }) ?? true;
                 if (typeof col.renderCell === 'function') {
                   return (
-                    <div key={`${row.id}-${col.field}`}>
+                    <div key={`${row.id}-${col.field}`} role="gridcell" data-field={col.field}>
                       <button
                         type="button"
                         data-testid={`select-${row.id}-${col.field}`}
-                        onClick={() => {
-                          onCellClick?.({ id: row.id, field: col.field, isEditable: editable, row });
+                        onClick={(event) => {
+                          onCellClick?.({ id: row.id, field: col.field, isEditable: editable, row }, event);
+                        }}
+                        onDoubleClick={(event) => {
+                          onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: editable, row }, event);
                         }}
                       >
                         {`Select ${row.id} ${col.field}`}
@@ -253,16 +266,20 @@ vi.mock('@mui/x-data-grid', async () => {
                   );
                 }
                 return (
-                  <button
-                    type="button"
-                    data-testid={`select-${row.id}-${col.field}`}
-                    key={`${row.id}-${col.field}`}
-                    onClick={() => {
-                      onCellClick?.({ id: row.id, field: col.field, isEditable: editable, row });
-                    }}
-                  >
-                    {`Select ${row.id} ${col.field}`}
-                  </button>
+                  <div key={`${row.id}-${col.field}`} role="gridcell" data-field={col.field}>
+                    <button
+                      type="button"
+                      data-testid={`select-${row.id}-${col.field}`}
+                      onClick={(event) => {
+                        onCellClick?.({ id: row.id, field: col.field, isEditable: editable, row }, event);
+                      }}
+                      onDoubleClick={(event) => {
+                        onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: editable, row }, event);
+                      }}
+                    >
+                      {`Select ${row.id} ${col.field}`}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -672,7 +689,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     await waitFor(() => expect(screen.getByTestId('row-field-1')).toBeInTheDocument());
 
     // Click field-1 to select it and activate tree navigation.
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); fireEvent.doubleClick(screen.getByTestId('select-field-1-name')); });
     expect(screen.getByTestId('row-field-1')).toHaveAttribute('data-focused', 'true');
     expect(screen.getByTestId('mode-field-1')).toHaveTextContent('edit');
 
@@ -724,7 +741,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     await waitFor(() => expect(screen.getByTestId('row-field-2')).toBeInTheDocument());
 
     // Click field-2 (not the first row) to select and start editing it.
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-name')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-name')); fireEvent.doubleClick(screen.getByTestId('select-field-2-name')); });
     expect(screen.getByTestId('row-field-2')).toHaveAttribute('data-focused', 'true');
     expect(screen.getByTestId('mode-field-2')).toHaveTextContent('edit');
 
@@ -762,7 +779,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     renderHierarchy();
     await waitFor(() => expect(screen.getByTestId('row-field-2')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-width_m')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-width_m')); fireEvent.doubleClick(screen.getByTestId('select-field-2-width_m')); });
     expect(screen.getByTestId('mode-field-2')).toHaveTextContent('edit');
 
     const onRowEditStop = getCapturedOnRowEditStop();
@@ -786,7 +803,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     renderHierarchy();
     await waitFor(() => expect(screen.getByTestId('row-field-3')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-name')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-2-name')); fireEvent.doubleClick(screen.getByTestId('select-field-2-name')); });
     expect(screen.getByTestId('mode-field-2')).toHaveTextContent('edit');
 
     const onRowEditStop = getCapturedOnRowEditStop();
@@ -846,7 +863,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     renderHierarchy();
     await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); fireEvent.doubleClick(screen.getByTestId('select-field-1-name')); });
     expect(screen.getByTestId('mode-field-1')).toHaveTextContent('edit');
 
     const onRowEditStop = getCapturedOnRowEditStop();
@@ -1006,7 +1023,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     await waitFor(() => expect(screen.getByTestId('row-field-1')).toBeInTheDocument());
 
     // Click field-1 to start editing.
-    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); fireEvent.doubleClick(screen.getByTestId('select-field-1-name')); });
     expect(screen.getByTestId('mode-field-1')).toHaveTextContent('edit');
 
     const onCellKeyDown = getCapturedOnCellKeyDown();
@@ -1073,5 +1090,177 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
 
     expect(event.defaultMuiPrevented).toBe(true);
     expect(event.preventDefault).toHaveBeenCalled();
+  });
+
+  describe('spreadsheet edit model', () => {
+    const withBeds = () => {
+      fieldListMock.mockResolvedValue({
+        data: {
+          results: [
+            { id: 1, name: 'Parzelle 1', location: 1, area_sqm: 10 },
+            { id: 2, name: 'Parzelle 2', location: 1, area_sqm: 10 },
+          ],
+        },
+      });
+      bedListMock.mockResolvedValue({
+        data: {
+          results: [
+            { id: 101, name: 'Beet 1', field: 1, area_sqm: 5 },
+            { id: 102, name: 'Beet 2', field: 1, area_sqm: 5 },
+          ],
+        },
+      });
+    };
+
+    const singleClick = async (testId: string) => {
+      await act(async () => { fireEvent.click(screen.getByTestId(testId), { detail: 1 }); });
+    };
+
+    const cellKeyDown = (rowId: string | number, field: string, key: string) => {
+      const event = {
+        key,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        target: document.createElement('div'),
+        nativeEvent: { isComposing: false },
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        defaultMuiPrevented: false,
+      };
+      const row = { id: rowId, type: 'bed', name: 'Beet 1', level: 2 };
+      act(() => {
+        getCapturedOnCellKeyDown()!({ id: rowId, field, isEditable: true, row }, event);
+      });
+    };
+
+    beforeEach(() => {
+      resetTableEditHintSessionState();
+      withBeds();
+    });
+
+    it('selects a cell on a single click without starting the edit', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+
+      await singleClick('select-101-name');
+
+      expect(screen.getByTestId('row-101')).toHaveAttribute('data-focused', 'true');
+      expect(screen.getByTestId('mode-101')).toHaveTextContent('view');
+    });
+
+    it('starts the edit with a double click', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+
+      await act(async () => { fireEvent.doubleClick(screen.getByTestId('select-101-name')); });
+
+      expect(screen.getByTestId('mode-101')).toHaveTextContent('edit');
+    });
+
+    it.each(['Enter', 'F2', 'B'])('starts the edit with the %s key', async (key) => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+      await singleClick('select-101-name');
+
+      cellKeyDown(101, 'name', key);
+
+      await waitFor(() => expect(screen.getByTestId('mode-101')).toHaveTextContent('edit'));
+    });
+
+    it('saves on a click into another row without pulling focus back to the saved row', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-field-2')).toBeInTheDocument());
+      await act(async () => { fireEvent.doubleClick(screen.getByTestId('select-field-2-name')); });
+      expect(screen.getByTestId('mode-field-2')).toHaveTextContent('edit');
+      fieldUpdateMock.mockResolvedValue({ data: { id: 2, name: 'Parzelle 2b', location: 1, area_sqm: 10 } });
+
+      // A mouse press moves DOM focus onto the clicked cell before the edited
+      // row loses its edit session and MUI hands it to processRowUpdate.
+      const clickedCell = screen.getByTestId('select-101-name');
+      clickedCell.focus();
+      await singleClick('select-101-name');
+      getSetCellFocusMock().mockClear();
+      await act(async () => {
+        await getCapturedProcessRowUpdate()!({
+          id: 'field-2',
+          type: 'field',
+          name: 'Parzelle 2b',
+          fieldId: 2,
+          locationId: 1,
+          area_sqm: 10,
+          level: 1,
+          parentId: 'location-1',
+          hasChildren: false,
+        });
+      });
+      await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 0)); });
+
+      expect(fieldUpdateMock).toHaveBeenCalled();
+      expect(getSetCellFocusMock()).not.toHaveBeenCalledWith('field-2', expect.anything());
+      expect(screen.getByTestId('mode-field-2')).toHaveTextContent('view');
+      expect(screen.getByTestId('mode-101')).toHaveTextContent('view');
+      expect(document.activeElement).toBe(clickedCell);
+    });
+
+    it('shows the edit hint on the second single click on an editable bed cell', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+
+      await singleClick('select-101-name');
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+      await singleClick('select-101-name');
+
+      expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('does not show the edit hint on group rows', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-field-2')).toBeInTheDocument());
+
+      await singleClick('select-field-2-name');
+      await singleClick('select-field-2-name');
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('does not show the edit hint once a cell was edited in this table', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+
+      await act(async () => { fireEvent.doubleClick(screen.getByTestId('select-102-name')); });
+      await singleClick('select-101-name');
+      await singleClick('select-101-name');
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('does not show the edit hint once a cell was edited in another table', async () => {
+      const plantingPlansTable = renderHook(() => useEditHint());
+      act(() => plantingPlansTable.result.current.markEdited());
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+
+      await singleClick('select-101-name');
+      await singleClick('select-101-name');
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('stops showing the edit hint after it was dismissed', async () => {
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
+      await singleClick('select-101-name');
+      await singleClick('select-101-name');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
+      await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      await singleClick('select-102-name');
+      await singleClick('select-102-name');
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
   });
 });

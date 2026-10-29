@@ -94,6 +94,9 @@ const NORMAL_EDITING_CELL_SELECTOR = [
   '& .MuiDataGrid-cell--editing.Mui-error:focus-within',
 ].join(', ');
 
+/** Marks a cell that a double click, Enter, F2 or typing would edit (desktop only). */
+export const EDITABLE_CELL_CLASS = 'ofp-cell-editable';
+
 /**
  * Common styles for MUI DataGrid components
  */
@@ -137,6 +140,9 @@ export const dataGridSx = {
   },
   '& .MuiDataGrid-row:hover': {
     backgroundColor: 'surface.surfaceHoverBackground',
+  },
+  [`& .MuiDataGrid-cell.${EDITABLE_CELL_CLASS}`]: {
+    cursor: 'text',
   },
   '& .MuiDataGrid-row:hover .MuiDataGrid-cell': {
     backgroundColor: 'surface.surfaceHoverBackground',

@@ -59,6 +59,7 @@ import {
 import { useAvailableTableHeight } from "./useAvailableTableHeight";
 import {
   DeleteUndoSnackbar,
+  EditHintSnackbar,
   ContextMenuHint,
   TableCopyMenuItems,
   useNotesEditor,
@@ -83,7 +84,7 @@ import { useHierarchyStableScrollbar } from "../components/hierarchy/hooks/useHi
 import { hasPersistedEntityId } from "../components/hierarchy/utils/hierarchyUtils";
 import { useBedOperations } from "../components/hierarchy/hooks/useBedOperations";
 import { useHierarchyDelete } from "../components/hierarchy/hooks/useHierarchyDelete";
-import { useHierarchyGridFocus } from "../components/hierarchy/hooks/useHierarchyGridFocus";
+import { isFocusOnOtherRowCell, useHierarchyGridFocus } from "../components/hierarchy/hooks/useHierarchyGridFocus";
 import { useHierarchyNavigationState } from "../components/hierarchy/hooks/useHierarchyNavigationState";
 import { tagHierarchyRowUpdateError, useHierarchyRowUpdate } from "../components/hierarchy/hooks/useHierarchyRowUpdate";
 import { useHierarchyContextMenu } from "../components/hierarchy/hooks/useHierarchyContextMenu";
@@ -1188,7 +1189,9 @@ function FieldsBedsHierarchy({
       // here if that hasn't happened yet — otherwise this would yank focus back onto
       // the just-saved row for an instant, causing a visible focus flash/flicker.
       if (rowModesModelRef.current[newRow.id]?.mode === GridRowModes.Edit) {
-        preFocusEditCell(newRow.id);
+        if (!isFocusOnOtherRowCell(newRow.id)) {
+          preFocusEditCell(newRow.id);
+        }
         setRowModesModel((previousModel) => ({
           ...previousModel,
           [newRow.id]: { mode: GridRowModes.View, ignoreModifications: true },
@@ -1677,6 +1680,7 @@ function FieldsBedsHierarchy({
   const {
     handleCellClick: handleHierarchyCellClick,
     handleCellKeyDown: handleHierarchyCellKeyDown,
+    cellEditing: hierarchyCellEditing,
   } = useHierarchyGridKeyboard({
     columns,
     deferCrossRowEditOnClick: isTouchLikePointer,
@@ -1696,6 +1700,7 @@ function FieldsBedsHierarchy({
     selectRow,
     setRowModesModel,
     setTreeActive,
+    spreadsheetMode: !isMobileViewport && !isTouchLikePointer,
     stopEditingRow: stopRowEditModeSafely,
     toggleExpand,
   });
@@ -2003,6 +2008,8 @@ function FieldsBedsHierarchy({
               }
               disableRowSelectionOnClick
               onCellClick={handleHierarchyCellClick}
+              onCellDoubleClick={hierarchyCellEditing.handleCellDoubleClick}
+              getCellClassName={hierarchyCellEditing.getEditableCellClassName}
               onCellKeyDown={handleHierarchyCellKeyDown}
               localeText={getDataGridLocaleText()}
               apiRef={gridApiRef}
@@ -2019,6 +2026,8 @@ function FieldsBedsHierarchy({
           </Box>
         ) : null}
       </Box>
+
+      <EditHintSnackbar {...hierarchyCellEditing.editHint} />
 
       {/* Notes Editor Drawer */}
       <NotesDrawer

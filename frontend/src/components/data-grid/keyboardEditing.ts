@@ -1,6 +1,7 @@
-// Excel-like "just start typing" (replace cell value) and F2 (edit in place)
-// entry points for EditableDataGrid. See docs/datagrid-architecture.md
-// ("Keyboard editing/navigation inside the grid") for the broader picture.
+// Excel-like edit entry points shared by every inline-editing grid: "just
+// start typing" (replace the cell value), F2 and Enter (edit in place) and
+// double click. See docs/datagrid-architecture.md ("Spreadsheet edit model")
+// for the broader picture.
 import { useCallback, useEffect, useRef } from 'react';
 import type React from 'react';
 import { flushSync } from 'react-dom';
@@ -11,6 +12,21 @@ import { EDIT_CELL_FOCUS_TARGET_SELECTOR } from './keyboardNavigation';
 type DataGridKeyboardEvent = React.KeyboardEvent & {
   defaultMuiPrevented?: boolean;
 };
+
+type DataGridMouseEvent = React.MouseEvent & {
+  defaultMuiPrevented?: boolean;
+};
+
+export type SpreadsheetEditTrigger = 'typing' | 'f2' | 'enter' | 'doubleClick';
+
+// Typing a character into a date or select cell would replace its value with
+// that single character, which neither editor can make sense of. Those cells
+// start editing only by double click, Enter or F2; once open, their editors
+// take typed input (segmented date entry, select typeahead) themselves.
+const COLUMN_TYPES_WITHOUT_TYPED_START = new Set(['date', 'dateTime', 'singleSelect']);
+
+export const acceptsTypedStartValue = (params: Pick<GridCellParams, 'colDef'>): boolean =>
+  !COLUMN_TYPES_WITHOUT_TYPED_START.has(params.colDef?.type ?? 'string');
 
 interface SpreadsheetEditApi {
   getCellElement?: (id: GridRowId, field: string) => HTMLElement | null;
@@ -32,11 +48,15 @@ interface UseSpreadsheetEditStarterParams<Row extends GridValidRowModel> {
   rowModesModel: GridRowModesModel;
   setRowModesModel: React.Dispatch<React.SetStateAction<GridRowModesModel>>;
   isCellEditable?: (params: GridCellParams<Row>) => boolean;
-  onBeforeEdit?: (params: GridCellParams<Row>) => void;
+  onBeforeEdit?: (params: GridCellParams<Row>, trigger: SpreadsheetEditTrigger) => void;
   onReplaceValue?: (params: GridCellParams<Row>, value: string) => void;
+  /** Runs after an edit was started by any of the entry points. */
+  onEditStarted?: (params: GridCellParams<Row>, trigger: SpreadsheetEditTrigger) => void;
 }
 
 interface UseSpreadsheetEditStarterResult<Row extends GridValidRowModel> {
+  /** Whether a view-mode cell may be opened for editing at all. */
+  canStartEdit: (params: GridCellParams<Row>) => boolean;
   startEditFromPrintableKey: (
     params: GridCellParams<Row>,
     event: React.KeyboardEvent,
@@ -44,6 +64,14 @@ interface UseSpreadsheetEditStarterResult<Row extends GridValidRowModel> {
   startEditFromF2: (
     params: GridCellParams<Row>,
     event: React.KeyboardEvent,
+  ) => boolean;
+  startEditFromEnter: (
+    params: GridCellParams<Row>,
+    event: React.KeyboardEvent,
+  ) => boolean;
+  startEditFromDoubleClick: (
+    params: GridCellParams<Row>,
+    event: React.MouseEvent,
   ) => boolean;
 }
 
@@ -80,6 +108,7 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
   isCellEditable,
   onBeforeEdit,
   onReplaceValue,
+  onEditStarted,
 }: UseSpreadsheetEditStarterParams<Row>): UseSpreadsheetEditStarterResult<Row> {
   const pendingValuesRef = useRef<Map<string, PendingEditValue>>(new Map());
   const clearTimersRef = useRef<Map<string, number>>(new Map());
@@ -246,15 +275,19 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
     focusEditInput(params.id, params.field);
   }, [apiRef, focusEditInput, setRowModesModel]);
 
-  const startEdit = useCallback((params: GridCellParams<Row>): boolean => {
+  const startEdit = useCallback((
+    params: GridCellParams<Row>,
+    trigger: SpreadsheetEditTrigger,
+  ): boolean => {
     if (!canStartEdit(params)) {
       return false;
     }
 
-    onBeforeEdit?.(params);
+    onBeforeEdit?.(params, trigger);
     focusCellForEdit(params);
+    onEditStarted?.(params, trigger);
     return true;
-  }, [canStartEdit, focusCellForEdit, onBeforeEdit]);
+  }, [canStartEdit, focusCellForEdit, onBeforeEdit, onEditStarted]);
 
   const startEditFromPrintableKey = useCallback((
     params: GridCellParams<Row>,
@@ -267,7 +300,7 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
 
     const pendingKey = getPendingKey(params.id, params.field);
     const pendingValue = pendingValuesRef.current.get(pendingKey);
-    const canEditFromView = canStartEdit(params);
+    const canEditFromView = canStartEdit(params) && acceptsTypedStartValue(params);
     const canEditFocusedCell = canReplaceEditingCell(params, keyboardEvent);
     if (!pendingValue && !canEditFromView && !canEditFocusedCell) {
       return false;
@@ -275,8 +308,9 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
 
     markMuiEventHandled(keyboardEvent);
     if (!pendingValue && canEditFromView) {
-      onBeforeEdit?.(params);
+      onBeforeEdit?.(params, 'typing');
       focusCellForEdit(params);
+      onEditStarted?.(params, 'typing');
     }
 
     const previousValue = pendingValue?.value ?? '';
@@ -297,6 +331,7 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
     focusCellForEdit,
     flushPendingValue,
     onBeforeEdit,
+    onEditStarted,
     onReplaceValue,
   ]);
 
@@ -310,7 +345,7 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
       || keyboardEvent.altKey
       || keyboardEvent.ctrlKey
       || keyboardEvent.metaKey
-      || !startEdit(params)
+      || !startEdit(params, 'f2')
     ) {
       return false;
     }
@@ -319,8 +354,57 @@ export function useSpreadsheetEditStarter<Row extends GridValidRowModel>({
     return true;
   }, [startEdit]);
 
+  const startEditFromEnter = useCallback((
+    params: GridCellParams<Row>,
+    event: React.KeyboardEvent,
+  ): boolean => {
+    const keyboardEvent = event as DataGridKeyboardEvent;
+    if (
+      keyboardEvent.key !== 'Enter'
+      || keyboardEvent.altKey
+      || keyboardEvent.ctrlKey
+      || keyboardEvent.metaKey
+      || keyboardEvent.shiftKey
+      || !startEdit(params, 'enter')
+    ) {
+      return false;
+    }
+
+    // Not stopped from propagating: the grid's own capture handlers still
+    // need to see Enter, only MUI's default edit start is replaced.
+    keyboardEvent.preventDefault();
+    keyboardEvent.defaultMuiPrevented = true;
+    return true;
+  }, [startEdit]);
+
+  const startEditFromDoubleClick = useCallback((
+    params: GridCellParams<Row>,
+    event: React.MouseEvent,
+  ): boolean => {
+    const mouseEvent = event as DataGridMouseEvent;
+    if (mouseEvent.button !== 0 || !canStartEdit(params)) {
+      return false;
+    }
+
+    mouseEvent.defaultMuiPrevented = true;
+    onBeforeEdit?.(params, 'doubleClick');
+    // The pointer already focused the cell, and MUI focuses `fieldToFocus`
+    // once the editor mounts. The keyboard path's repeated focus attempts
+    // must not run here: they would pull focus back out of a select menu the
+    // double click opens.
+    setRowModesModel((oldModel) => ({
+      ...oldModel,
+      [params.id]: { mode: GridRowModes.Edit, fieldToFocus: params.field },
+    }));
+    onEditStarted?.(params, 'doubleClick');
+    return true;
+  }, [canStartEdit, onBeforeEdit, onEditStarted, setRowModesModel]);
+
   return {
+    canStartEdit,
     startEditFromPrintableKey,
     startEditFromF2,
+    startEditFromEnter,
+    startEditFromDoubleClick,
   };
 }
