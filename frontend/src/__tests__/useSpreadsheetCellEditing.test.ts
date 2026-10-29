@@ -31,6 +31,7 @@ const makeMouseEvent = (
   overrides: { detail?: number; pointerType?: string; target?: Element } = {},
 ): React.MouseEvent => {
   const cell = document.createElement('div');
+  document.body.appendChild(cell);
   return {
     detail: overrides.detail ?? 1,
     button: 0,
@@ -193,11 +194,24 @@ describe('useSpreadsheetCellEditing', () => {
     it('appears shortly after a single click on an editable cell', () => {
       const { result } = renderCellEditing();
 
-      click(result);
+      const event = makeMouseEvent();
+      click(result, makeCellParams(), event);
       expect(result.current.cellEditing.editHint.open).toBe(false);
       waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(true);
+      expect(result.current.cellEditing.editHint.anchorEl).toBe(event.currentTarget);
+    });
+
+    it('does not appear when the clicked cell is gone by then', () => {
+      const { result } = renderCellEditing();
+
+      const event = makeMouseEvent();
+      click(result, makeCellParams(), event);
+      (event.currentTarget as Element).remove();
+      waitOutDoubleClickInterval();
+
+      expect(result.current.cellEditing.editHint.open).toBe(false);
     });
 
     it('does not appear when the click turns out to be a double click', () => {

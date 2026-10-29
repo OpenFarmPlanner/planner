@@ -10,6 +10,8 @@ interface ContextMenuHintProps {
   message: ReactNode;
   secondary?: ReactNode;
   onClose?: () => void;
+  /** Accessible name of the close button; defaults to the generic "Schließen". */
+  closeLabel?: string;
   compact?: boolean;
   prominent?: boolean;
   sx?: SxProps<Theme>;
@@ -27,6 +29,7 @@ export function ContextMenuHint({
   message,
   secondary,
   onClose,
+  closeLabel,
   compact = false,
   prominent = false,
   sx,
@@ -99,7 +102,7 @@ export function ContextMenuHint({
       {onClose ? (
         <IconButton
           size="small"
-          aria-label={t('actions.close')}
+          aria-label={closeLabel ?? t('actions.close')}
           onClick={onClose}
           sx={{
             flex: '0 0 auto',

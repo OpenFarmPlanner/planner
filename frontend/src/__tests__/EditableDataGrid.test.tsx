@@ -369,8 +369,8 @@ describe('EditableDataGrid', () => {
       createGridRow({ id: 3, name: 'Kürbis', area_sqm: 13 }),
       createGridRow({ id: 4, name: 'Melone', area_sqm: 14 }),
     ]);
-    render(<EditableDataGrid {...props} showDeleteAction={false} />);
-    return props;
+    const view = render(<EditableDataGrid {...props} showDeleteAction={false} />);
+    return Object.assign(props, { unmount: view.unmount });
   };
 
   const editSecondRowAndSaveWithEnter = async () => {
@@ -2111,29 +2111,45 @@ describe('EditableDataGrid', () => {
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
 
-    it('stops showing the edit hint after it was dismissed', async () => {
+    it('closes the edit hint on the next click and does not bring it back in this visit', async () => {
       renderGridWithKeyboardRows();
       await screen.findByRole('button', { name: 'Zelle 1-name' });
       singleClick(1);
+      expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
 
+      fireEvent.click(cellButton(2), { detail: 1 });
+      await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      await waitOutHintDelay();
+
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
+    });
+
+    it('stops showing the edit hint after it was dismissed', async () => {
+      const firstVisit = renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+      singleClick(1);
       fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
       await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      firstVisit.unmount();
+
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
       singleClick(2);
       await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
 
-    it(`stops showing the edit hint after ${TABLE_EDIT_HINT_MAX_SHOWN} displays`, async () => {
-      renderGridWithKeyboardRows();
-      await screen.findByRole('button', { name: 'Zelle 1-name' });
-
-      for (let display = 0; display < TABLE_EDIT_HINT_MAX_SHOWN; display += 1) {
+    it(`stops showing the edit hint after ${TABLE_EDIT_HINT_MAX_SHOWN} page visits with it`, async () => {
+      for (let visit = 0; visit < TABLE_EDIT_HINT_MAX_SHOWN; visit += 1) {
+        const view = renderGridWithKeyboardRows();
+        await screen.findByRole('button', { name: 'Zelle 1-name' });
         singleClick(1);
         expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
-        fireEvent.keyDown(document, { key: 'Escape' });
-        await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+        view.unmount();
       }
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
       singleClick(1);
       await waitOutHintDelay();
 

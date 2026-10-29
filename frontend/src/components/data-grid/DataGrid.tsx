@@ -140,7 +140,7 @@ import {
 } from './keyboardNavigation';
 import type { SpreadsheetEditTrigger } from './keyboardEditing';
 import { useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';
-import { EditHintSnackbar } from './EditHintSnackbar';
+import { EditHintPopper } from './EditHintPopper';
 import type {
   EditableDataGridClipboardColumn,
   EditableDataGridProps,
@@ -2980,7 +2980,7 @@ export function EditableDataGrid<T extends EditableRow>({
         />
       )) : null}
 
-      <EditHintSnackbar {...cellEditing.editHint} />
+      <EditHintPopper {...cellEditing.editHint} />
 
       {/* Notes Editor Drawer */}
       {notes && notes.fields && notes.fields.length > 0 && (

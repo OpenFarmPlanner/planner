@@ -1254,12 +1254,15 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     });
 
     it('stops showing the edit hint after it was dismissed', async () => {
-      renderHierarchy();
+      const firstVisit = renderHierarchy();
       await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
       await singleClick('select-101-name');
-
       fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
       await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
+      firstVisit.unmount();
+
+      renderHierarchy();
+      await waitFor(() => expect(screen.getByTestId('row-102')).toBeInTheDocument());
       await singleClick('select-102-name');
       await waitOutHintDelay();
 

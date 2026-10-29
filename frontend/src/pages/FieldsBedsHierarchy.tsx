@@ -59,7 +59,7 @@ import {
 import { useAvailableTableHeight } from "./useAvailableTableHeight";
 import {
   DeleteUndoSnackbar,
-  EditHintSnackbar,
+  EditHintPopper,
   ContextMenuHint,
   TableCopyMenuItems,
   useNotesEditor,
@@ -2027,7 +2027,7 @@ function FieldsBedsHierarchy({
         ) : null}
       </Box>
 
-      <EditHintSnackbar {...hierarchyCellEditing.editHint} />
+      <EditHintPopper {...hierarchyCellEditing.editHint} />
 
       {/* Notes Editor Drawer */}
       <NotesDrawer

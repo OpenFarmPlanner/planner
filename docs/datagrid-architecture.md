@@ -51,7 +51,7 @@ frontend/src/components/data-grid/
   useSpreadsheetCellEditing.ts  the desktop spreadsheet edit model shared by
                            EditableDataGrid and the Anbauflächen hierarchy
                            (see "Spreadsheet edit model")
-  useEditHint.ts, EditHintSnackbar.tsx  the shared "double-click, Enter or
+  useEditHint.ts, EditHintPopper.tsx  the shared "double-click, Enter or
                            just start typing" hint and its server-side state
   keyboardNavigation.ts    Tab/Arrow cell navigation rules, grid-API-agnostic
   AreaM2EditCell.tsx, DateEditCell.tsx, PlantsCountEditCell.tsx,
@@ -527,17 +527,23 @@ table did not have the bug.
 ### The edit hint
 
 A single mouse click on an editable cell (not a keyboard-generated click,
-not the second click of a double click) shows `EditHintSnackbar`
+not the second click of a double click) shows `EditHintPopper`
 ("Doppelklick, Enter oder einfach lostippen zum Bearbeiten") through
-`useEditHint`: an info `AlertSnackbar` at the bottom with
-`role="status"`/`aria-live="polite"`, hidden after 6 s, with a close button.
+`useEditHint`. It is a small bubble right below the clicked cell (above it
+when there is no room), with an arrow pointing at the cell, styled like the
+right-click tip above the tables (`ContextMenuHint`, on an opaque surface
+because it floats over cells), with `role="status"`/`aria-live="polite"` and
+a close button. It is a popper anchored to the cell, not a snackbar at the
+page bottom: a snackbar is feedback about an action, while this explains the
+element the user is looking at, so it belongs where the attention already
+is. It leaves after 6 s, on the next click, on scrolling and on Escape, and
+it shows at most once per page visit (per table mount), so moving on to
+other cells neither brings it back nor uses up its displays.
 `useSpreadsheetCellEditing` waits `EDIT_HINT_DELAY_MS` (500 ms, about the
 usual double-click interval) before showing it and cancels the wait on a
 double click, a key press or the next click, since a double click begins
 with a lone click: without the wait the hint would flash up and use up one
-of its displays right before the double click starts the edit. Clicks
-elsewhere don't close it (`ignoreClickAway`), since the user is clicking
-cells, and a request while it is visible does nothing. Group rows
+of its displays right before the double click starts the edit. Group rows
 (Standort, Parzelle) never trigger it.
 
 An earlier version showed the hint only on a second single click on the same
@@ -554,7 +560,8 @@ counter on `accounts.UserProjectSettings` (`table_edit_hint_done`,
 `dismissed`); the server applies the retirement rules
 (`accounts/table_edit_hint.py`). Within a session a module-level store in
 `useEditHint.ts` carries the state from one table to the other without
-waiting for a `/me` reload. The timeout and Escape only hide the snackbar.
+waiting for a `/me` reload. The timeout, the next click, scrolling and
+Escape only hide the bubble.
 
 ## Keyboard editing/navigation inside the grid
 
