@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { useState } from 'react';
 import type React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GridCellParams, GridColDef, GridRowModesModel } from '@mui/x-data-grid';
 import { resetTableEditHintSessionState } from '../components/data-grid/useEditHint';
-import { useSpreadsheetCellEditing } from '../components/data-grid/useSpreadsheetCellEditing';
+import { EDIT_HINT_DELAY_MS, useSpreadsheetCellEditing } from '../components/data-grid/useSpreadsheetCellEditing';
 import { EDITABLE_CELL_CLASS } from '../components/data-grid/styles';
 
 interface TestRow {
@@ -166,79 +166,72 @@ describe('useSpreadsheetCellEditing', () => {
   });
 
   describe('edit hint', () => {
-    const clickTwice = (
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const click = (
       result: ReturnType<typeof renderCellEditing>['result'],
       params = makeCellParams(),
-      event: () => React.MouseEvent = () => makeMouseEvent(),
+      event = makeMouseEvent(),
     ) => {
       act(() => {
-        result.current.cellEditing.handleCellClick(params, event());
-      });
-      act(() => {
-        result.current.cellEditing.handleCellClick(params, event());
+        result.current.cellEditing.handleCellClick(params, event);
       });
     };
 
-    it('appears on the second single click on the same editable cell', () => {
+    const waitOutDoubleClickInterval = () => {
+      act(() => {
+        vi.advanceTimersByTime(EDIT_HINT_DELAY_MS);
+      });
+    };
+
+    it('appears shortly after a single click on an editable cell', () => {
       const { result } = renderCellEditing();
 
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent());
-      });
+      click(result);
       expect(result.current.cellEditing.editHint.open).toBe(false);
+      waitOutDoubleClickInterval();
 
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent());
-      });
       expect(result.current.cellEditing.editHint.open).toBe(true);
     });
 
-    it('does not appear for single clicks on two different cells', () => {
+    it('does not appear when the click turns out to be a double click', () => {
       const { result } = renderCellEditing();
 
+      click(result);
       act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent());
+        result.current.cellEditing.handleCellDoubleClick(makeCellParams(), makeMouseEvent({ detail: 2 }));
       });
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams({ field: 'length' }), makeMouseEvent());
-      });
+      waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(false);
+      expect(result.current.rowModesModel[1]?.mode).toBe('edit');
     });
 
-    it('does not appear for the clicks of a double click', () => {
+    it('does not appear when a key is pressed right after the click', () => {
       const { result } = renderCellEditing();
 
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent({ detail: 1 }));
-      });
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent({ detail: 2 }));
-      });
-
-      expect(result.current.cellEditing.editHint.open).toBe(false);
-    });
-
-    it('does not appear for keyboard-generated clicks', () => {
-      const { result } = renderCellEditing();
-
-      clickTwice(result, makeCellParams(), () => makeMouseEvent({ detail: 0 }));
-
-      expect(result.current.cellEditing.editHint.open).toBe(false);
-    });
-
-    it('does not appear when a key was pressed between the clicks', () => {
-      const { result } = renderCellEditing();
-
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent());
-      });
+      click(result);
       act(() => {
         result.current.cellEditing.handleCellKeyDown(makeCellParams(), makeKeyEvent('ArrowRight'));
       });
-      act(() => {
-        result.current.cellEditing.handleCellClick(makeCellParams(), makeMouseEvent());
-      });
+      waitOutDoubleClickInterval();
+
+      expect(result.current.cellEditing.editHint.open).toBe(false);
+    });
+
+    it('does not appear for keyboard-generated clicks or the second click of a double click', () => {
+      const { result } = renderCellEditing();
+
+      click(result, makeCellParams(), makeMouseEvent({ detail: 0 }));
+      waitOutDoubleClickInterval();
+      click(result, makeCellParams(), makeMouseEvent({ detail: 2 }));
+      waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(false);
     });
@@ -246,20 +239,28 @@ describe('useSpreadsheetCellEditing', () => {
     it('does not appear on read-only cells or group rows', () => {
       const { result } = renderCellEditing();
 
-      clickTwice(result, makeCellParams({ field: 'area', isEditable: false }));
-      clickTwice(result, makeCellParams({ field: 'notes' }));
-      clickTwice(result, makeCellParams({ row: { id: 1, name: 'Hof', type: 'group' } }));
+      click(result, makeCellParams({ field: 'area', isEditable: false }));
+      waitOutDoubleClickInterval();
+      click(result, makeCellParams({ field: 'notes' }));
+      waitOutDoubleClickInterval();
+      click(result, makeCellParams({ row: { id: 1, name: 'Hof', type: 'group' } }));
+      waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(false);
     });
 
-    it('does not appear after the user once edited a cell', () => {
+    it.each([
+      ['Enter', 'Enter'],
+      ['F2', 'F2'],
+      ['typing', 'B'],
+    ])('does not appear after the user once started an edit with %s', (_trigger, key) => {
       const { result } = renderCellEditing();
 
       act(() => {
-        result.current.cellEditing.handleCellKeyDown(makeCellParams({ id: 2 }), makeKeyEvent('F2'));
+        result.current.cellEditing.handleCellKeyDown(makeCellParams({ id: 2 }), makeKeyEvent(key));
       });
-      clickTwice(result);
+      click(result);
+      waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(false);
     });
@@ -267,7 +268,8 @@ describe('useSpreadsheetCellEditing', () => {
     it('does not appear outside the spreadsheet mode', () => {
       const { result } = renderCellEditing(false);
 
-      clickTwice(result, makeCellParams({ isEditable: false }));
+      click(result, makeCellParams({ isEditable: false }));
+      waitOutDoubleClickInterval();
 
       expect(result.current.cellEditing.editHint.open).toBe(false);
     });

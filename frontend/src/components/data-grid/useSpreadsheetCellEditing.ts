@@ -1,12 +1,12 @@
 // The spreadsheet edit model shared by every inline-editing grid (desktop):
 // a single click only selects, editing starts by double click, Enter, F2 or
-// typing, and repeated single clicks on an editable cell bring up the edit
-// hint. Touch and narrow layouts keep tap-to-edit. See
+// typing, and a single click on an editable cell brings up the edit hint
+// until the user once started an edit. Touch and narrow layouts keep tap-to-edit. See
 // docs/datagrid-architecture.md ("Spreadsheet edit model").
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type React from 'react';
 import { GridRowModes } from '@mui/x-data-grid';
-import type { GridCellParams, GridRowId, GridValidRowModel } from '@mui/x-data-grid';
+import type { GridCellParams, GridValidRowModel } from '@mui/x-data-grid';
 import { useSpreadsheetEditStarter, type SpreadsheetEditTrigger } from './keyboardEditing';
 import { handleEditableCellClick } from './handlers';
 import { EDITABLE_CELL_CLASS } from './styles';
@@ -35,10 +35,10 @@ export interface SpreadsheetCellEditing<Row extends GridValidRowModel> {
   editHint: EditHintControls;
 }
 
-interface ClickedCell {
-  id: GridRowId;
-  field: string;
-}
+// A double click begins with a lone click; waiting out the usual
+// double-click interval keeps the hint from flashing up (and using up one of
+// its displays) right before the double click starts the edit.
+export const EDIT_HINT_DELAY_MS = 500;
 
 const CONTROL_INSIDE_CELL_SELECTOR = 'a[href], button, input, select, textarea, [role="button"], [role="menuitem"]';
 
@@ -69,14 +69,23 @@ export function useSpreadsheetCellEditing<Row extends GridValidRowModel>({
 }: UseSpreadsheetCellEditingParams<Row>): SpreadsheetCellEditing<Row> {
   const editHint = useEditHint();
   const { markEdited, requestHint } = editHint;
-  const lastClickedCellRef = useRef<ClickedCell | null>(null);
+  const pendingHintTimerRef = useRef<number | null>(null);
   const { rowModesModel, setRowModesModel, isCellEditable } = starterParams;
 
+  const cancelPendingHint = useCallback((): void => {
+    if (pendingHintTimerRef.current !== null) {
+      window.clearTimeout(pendingHintTimerRef.current);
+      pendingHintTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cancelPendingHint, [cancelPendingHint]);
+
   const handleEditStarted = useCallback((params: GridCellParams<Row>, trigger: SpreadsheetEditTrigger): void => {
-    lastClickedCellRef.current = null;
+    cancelPendingHint();
     markEdited();
     onEditStarted?.(params, trigger);
-  }, [markEdited, onEditStarted]);
+  }, [cancelPendingHint, markEdited, onEditStarted]);
 
   const starter = useSpreadsheetEditStarter<Row>({
     ...starterParams,
@@ -96,25 +105,21 @@ export function useSpreadsheetCellEditing<Row extends GridValidRowModel>({
       && !isOnControlInsideCell(event)
       && canStartEdit(params)
       && (isHintEligible?.(params) ?? true);
-    if (!isHintCandidate) {
-      lastClickedCellRef.current = null;
-      return false;
+    cancelPendingHint();
+    if (isHintCandidate) {
+      pendingHintTimerRef.current = window.setTimeout(() => {
+        pendingHintTimerRef.current = null;
+        requestHint();
+      }, EDIT_HINT_DELAY_MS);
     }
-
-    const lastClickedCell = lastClickedCellRef.current;
-    if (lastClickedCell && String(lastClickedCell.id) === String(params.id) && lastClickedCell.field === params.field) {
-      lastClickedCellRef.current = null;
-      requestHint();
-      return false;
-    }
-    lastClickedCellRef.current = { id: params.id, field: params.field };
     return false;
-  }, [canStartEdit, isHintEligible, requestHint, rowModesModel, setRowModesModel, spreadsheetMode]);
+  }, [cancelPendingHint, canStartEdit, isHintEligible, requestHint, rowModesModel, setRowModesModel, spreadsheetMode]);
 
   const handleCellDoubleClick = useCallback((params: GridCellParams<Row>, event: React.MouseEvent): void => {
     if (!spreadsheetMode) {
       return;
     }
+    cancelPendingHint();
     // Whatever the double click does not start, MUI must not start either:
     // a double click on a button inside the cell (expand toggle, row
     // actions) belongs to that button.
@@ -122,14 +127,14 @@ export function useSpreadsheetCellEditing<Row extends GridValidRowModel>({
     if (!isOnControlInsideCell(event)) {
       starter.startEditFromDoubleClick(params, event);
     }
-  }, [spreadsheetMode, starter]);
+  }, [cancelPendingHint, spreadsheetMode, starter]);
 
   const handleCellKeyDown = useCallback((params: GridCellParams<Row>, event: React.KeyboardEvent): boolean => {
-    lastClickedCellRef.current = null;
+    cancelPendingHint();
     return starter.startEditFromF2(params, event)
       || starter.startEditFromEnter(params, event)
       || starter.startEditFromPrintableKey(params, event);
-  }, [starter]);
+  }, [cancelPendingHint, starter]);
 
   const getEditableCellClassName = useCallback((params: GridCellParams<Row>): string => (
     spreadsheetMode && params.isEditable && (isCellEditable?.(params) ?? true) ? EDITABLE_CELL_CLASS : ''

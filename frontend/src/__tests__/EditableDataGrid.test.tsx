@@ -11,6 +11,7 @@ import {
   TABLE_EDIT_HINT_MAX_SHOWN,
   useEditHint,
 } from '../components/data-grid/useEditHint';
+import { EDIT_HINT_DELAY_MS } from '../components/data-grid/useSpreadsheetCellEditing';
 
 const mockUseNavigationBlocker = vi.fn();
 const mockStopRowEditMode = vi.hoisted(() => vi.fn());
@@ -2013,6 +2014,9 @@ describe('EditableDataGrid', () => {
   describe('spreadsheet edit model', () => {
     const cellButton = (rowId: number, field = 'name') => screen.getByRole('button', { name: `Zelle ${rowId}-${field}` });
     const singleClick = (rowId: number, field = 'name') => fireEvent.click(cellButton(rowId, field), { detail: 1 });
+    const waitOutHintDelay = () => act(() => new Promise<void>((resolve) => {
+      window.setTimeout(resolve, EDIT_HINT_DELAY_MS + 50);
+    }));
 
     beforeEach(() => {
       resetTableEditHintSessionState();
@@ -2061,25 +2065,36 @@ describe('EditableDataGrid', () => {
       expect(mockSetCellFocus).not.toHaveBeenCalledWith(1, expect.anything());
     });
 
-    it('shows the edit hint on the second single click on the same editable cell', async () => {
+    it('shows the edit hint shortly after a single click on an editable cell', async () => {
       renderGridWithKeyboardRows();
       await screen.findByRole('button', { name: 'Zelle 1-name' });
 
       singleClick(1);
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
-      singleClick(1);
 
       expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('does not show the edit hint for a double click, which starts the edit instead', async () => {
+      renderGridWithKeyboardRows();
+      await screen.findByRole('button', { name: 'Zelle 1-name' });
+
+      singleClick(1);
+      fireEvent.doubleClick(cellButton(1));
+      await waitOutHintDelay();
+
+      expect(screen.getByTestId('mode-1')).toHaveTextContent('edit');
+      expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
 
     it('does not show the edit hint once a cell was edited in this table', async () => {
       renderGridWithKeyboardRows();
       await screen.findByRole('button', { name: 'Zelle 1-name' });
 
-      fireEvent.keyDown(cellButton(2), { key: 'F2' });
+      fireEvent.keyDown(cellButton(2), { key: 'Enter' });
       singleClick(1);
-      singleClick(1);
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -2091,7 +2106,7 @@ describe('EditableDataGrid', () => {
       await screen.findByRole('button', { name: 'Zelle 1-name' });
 
       singleClick(1);
-      singleClick(1);
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -2100,12 +2115,11 @@ describe('EditableDataGrid', () => {
       renderGridWithKeyboardRows();
       await screen.findByRole('button', { name: 'Zelle 1-name' });
       singleClick(1);
-      singleClick(1);
 
       fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
       await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
       singleClick(2);
-      singleClick(2);
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -2116,13 +2130,12 @@ describe('EditableDataGrid', () => {
 
       for (let display = 0; display < TABLE_EDIT_HINT_MAX_SHOWN; display += 1) {
         singleClick(1);
-        singleClick(1);
         expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
         fireEvent.keyDown(document, { key: 'Escape' });
         await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
       }
       singleClick(1);
-      singleClick(1);
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });

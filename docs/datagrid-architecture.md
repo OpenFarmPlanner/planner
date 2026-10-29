@@ -526,15 +526,23 @@ table did not have the bug.
 
 ### The edit hint
 
-A user who clicks the same editable cell twice with single mouse clicks
-(not the two clicks of a double click, not keyboard-generated clicks, no key
-pressed in between) probably wants to edit it. `useSpreadsheetCellEditing`
-then asks `useEditHint` to show `EditHintSnackbar` ("Doppelklick, Enter oder
-einfach lostippen zum Bearbeiten"): an info `AlertSnackbar` at the bottom
-with `role="status"`/`aria-live="polite"`, hidden after 6 s, with a close
-button. Clicks elsewhere don't close it (`ignoreClickAway`), since the user
-is clicking cells, and a request while it is visible does nothing. Group rows
+A single mouse click on an editable cell (not a keyboard-generated click,
+not the second click of a double click) shows `EditHintSnackbar`
+("Doppelklick, Enter oder einfach lostippen zum Bearbeiten") through
+`useEditHint`: an info `AlertSnackbar` at the bottom with
+`role="status"`/`aria-live="polite"`, hidden after 6 s, with a close button.
+`useSpreadsheetCellEditing` waits `EDIT_HINT_DELAY_MS` (500 ms, about the
+usual double-click interval) before showing it and cancels the wait on a
+double click, a key press or the next click, since a double click begins
+with a lone click: without the wait the hint would flash up and use up one
+of its displays right before the double click starts the edit. Clicks
+elsewhere don't close it (`ignoreClickAway`), since the user is clicking
+cells, and a request while it is visible does nothing. Group rows
 (Standort, Parzelle) never trigger it.
+
+An earlier version showed the hint only on a second single click on the same
+cell. Users who clicked twice quickly produced a double click instead, which
+started the edit and retired the hint before they ever saw it.
 
 The hint is retired for good — in both tables and on every device — once
 the user started an edit by double click, Enter, F2 or typing, closed the
