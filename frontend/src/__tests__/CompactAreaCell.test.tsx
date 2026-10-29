@@ -17,7 +17,7 @@ describe('CompactAreaCell', () => {
 
     render(<CompactAreaCell label={label} />);
 
-    mockElementOverflow(screen.getByText(label).closest('div') as HTMLElement, {
+    mockElementOverflow(screen.getByText(label), {
       clientWidth: 120,
       scrollWidth: 420,
     });
@@ -32,7 +32,7 @@ describe('CompactAreaCell', () => {
 
     render(<CompactAreaCell label={label} />);
 
-    mockElementOverflow(screen.getByText(label).closest('div') as HTMLElement, {
+    mockElementOverflow(screen.getByText(label), {
       clientWidth: 420,
       scrollWidth: 420,
     });

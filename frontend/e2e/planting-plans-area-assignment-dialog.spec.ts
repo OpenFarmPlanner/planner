@@ -387,4 +387,19 @@ test.describe('planting plans area assignment dialog', () => {
       name: 'Sonnenacker mit sehr langer Standortbezeichnung am Nordhang',
     })).toBeVisible();
   });
+
+  test('reveals a truncated growing area in a tooltip on hover', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await createAreaDialogFixture(page, request, 'planting-plans-area-cell-tooltip', { longNames: true });
+
+    await page.goto('/app/planting-plans');
+    await expect(page.getByRole('heading', { name: 'Anbaupläne' })).toBeVisible();
+    const bedCell = page.locator('[role="gridcell"][data-field="bed"]').first();
+    const label = bedCell.getByText('Tomatenreihe mit besonders langer Beetbezeichnung 2026', { exact: false });
+    await expect(label).toBeVisible();
+    expect(await label.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+
+    await label.hover();
+    await expect(page.getByRole('tooltip')).toContainText('Tomatenreihe mit besonders langer Beetbezeichnung 2026');
+  });
 });

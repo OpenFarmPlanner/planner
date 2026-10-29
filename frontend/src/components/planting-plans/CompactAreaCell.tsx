@@ -85,41 +85,44 @@ export function CompactAreaCell({
   }, [clearFocusRestore, focusRequest, scheduleTriggerFocus, suppressFocus]);
 
   const trigger = (
-    <OverflowTooltip title={displayText}>
-      <Box
-        ref={triggerRef}
-        role={onOpen ? 'button' : undefined}
-        aria-label={onOpen ? triggerLabel : undefined}
-        aria-haspopup={onOpen ? 'dialog' : undefined}
-        onClick={onOpen}
-        onKeyDown={onOpen ? (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            event.stopPropagation();
-            onOpen();
+    <Box
+      ref={triggerRef}
+      role={onOpen ? 'button' : undefined}
+      aria-label={onOpen ? triggerLabel : undefined}
+      aria-haspopup={onOpen ? 'dialog' : undefined}
+      onClick={onOpen}
+      onKeyDown={onOpen ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          event.stopPropagation();
+          onOpen();
+        }
+      } : undefined}
+      sx={{
+        width: '100%',
+        minWidth: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        height: '100%',
+        ...(onOpen
+          ? {
+            cursor: 'pointer',
+            borderRadius: 0.5,
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: '1px',
+            },
           }
-        } : undefined}
-        sx={{
-          width: '100%',
-          minWidth: 0,
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          height: '100%',
-          ...(onOpen
-            ? {
-              cursor: 'pointer',
-              borderRadius: 0.5,
-              '&:focus-visible': {
-                outline: '2px solid',
-                outlineColor: 'primary.main',
-                outlineOffset: '1px',
-              },
-            }
-            : {}),
-        }}
-        tabIndex={hasFocus ? 0 : -1}
-      >
+          : {}),
+      }}
+      tabIndex={hasFocus ? 0 : -1}
+    >
+      {/* The tooltip measures the text itself: as a flex item with
+          `overflow: hidden` it shrinks to the cell, so only the text — never
+          the trigger box — reports the overflow. */}
+      <OverflowTooltip title={displayText}>
         <Typography
           variant="body2"
           noWrap
@@ -132,8 +135,8 @@ export function CompactAreaCell({
         >
           {label ? <SearchHighlightedText text={label} /> : displayText}
         </Typography>
-      </Box>
-    </OverflowTooltip>
+      </OverflowTooltip>
+    </Box>
   );
 
   if (!endAdornment) {
