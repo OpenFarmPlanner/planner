@@ -98,7 +98,7 @@ export function EditHintPopper({ anchorEl, close, dismiss }: EditHintPopperProps
             prominent
             // Unlike the banner above the table, this one floats over cells,
             // so it needs an opaque surface and a lift.
-            sx={{ bgcolor: 'background.paper', boxShadow: 3, whiteSpace: 'nowrap' }}
+            sx={{ bgcolor: 'background.paper', boxShadow: 3, whiteSpace: { xs: 'normal', sm: 'nowrap' } }}
           />
         </Box>
       </ClickAwayListener>
