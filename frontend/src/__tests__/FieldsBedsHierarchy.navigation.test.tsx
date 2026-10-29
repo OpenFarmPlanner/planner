@@ -135,6 +135,7 @@ vi.mock('@mui/x-data-grid', async () => {
       getSelectRowImpl()?.(id, isSelected, resetOtherRows);
     }),
     setRowSelectionModel: vi.fn(),
+    stopRowEditMode: vi.fn(),
   }));
 
   const DataGrid = ({
