@@ -22,9 +22,9 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 - Editing in the tables (Anbauflächen, Anbaupläne) now works like a
   spreadsheet on desktop: a single click only selects a cell, editing starts
   with a double click, Enter, F2 or by just typing (date and select cells:
-  double click, Enter or F2). Editable cells show a text cursor. Users who
-  click the same cell twice get a short hint, shown at most three times and
-  never again once they edited a cell or closed it, on every device. Touch
+  double click, Enter or F2). Editable cells show a text cursor. A single
+  click on an editable cell shows a short hint, at most three times and
+  never again once the user edited a cell or closed it, on every device. Touch
   devices and narrow screens keep tap-to-edit.
 
 ### Fixes

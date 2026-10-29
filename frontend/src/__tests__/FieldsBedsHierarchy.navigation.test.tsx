@@ -22,6 +22,7 @@ import { MemoryRouter } from 'react-router';
 import FieldsBedsHierarchy from '../pages/FieldsBedsHierarchy';
 import { mockT } from './helpers/testI18n';
 import { resetTableEditHintSessionState, useEditHint } from '../components/data-grid/useEditHint';
+import { EDIT_HINT_DELAY_MS } from '../components/data-grid/useSpreadsheetCellEditing';
 
 // ── mocks (mirrors FieldsBedsHierarchy.editCancel.test.tsx) ─────────────────
 
@@ -1112,6 +1113,10 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       });
     };
 
+    const waitOutHintDelay = () => act(() => new Promise<void>((resolve) => {
+      window.setTimeout(resolve, EDIT_HINT_DELAY_MS + 50);
+    }));
+
     const singleClick = async (testId: string) => {
       await act(async () => { fireEvent.click(screen.getByTestId(testId), { detail: 1 }); });
     };
@@ -1204,13 +1209,12 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       expect(document.activeElement).toBe(clickedCell);
     });
 
-    it('shows the edit hint on the second single click on an editable bed cell', async () => {
+    it('shows the edit hint shortly after a single click on an editable bed cell', async () => {
       renderHierarchy();
       await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
 
       await singleClick('select-101-name');
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
-      await singleClick('select-101-name');
 
       expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
@@ -1221,7 +1225,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       await waitFor(() => expect(screen.getByTestId('row-field-2')).toBeInTheDocument());
 
       await singleClick('select-field-2-name');
-      await singleClick('select-field-2-name');
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -1232,7 +1236,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
 
       await act(async () => { fireEvent.doubleClick(screen.getByTestId('select-102-name')); });
       await singleClick('select-101-name');
-      await singleClick('select-101-name');
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -1244,7 +1248,7 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
 
       await singleClick('select-101-name');
-      await singleClick('select-101-name');
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });
@@ -1253,12 +1257,11 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       renderHierarchy();
       await waitFor(() => expect(screen.getByTestId('row-101')).toBeInTheDocument());
       await singleClick('select-101-name');
-      await singleClick('select-101-name');
 
       fireEvent.click(await screen.findByRole('button', { name: 'messages.tableEditHintDismiss' }));
       await waitFor(() => expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument());
       await singleClick('select-102-name');
-      await singleClick('select-102-name');
+      await waitOutHintDelay();
 
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
     });

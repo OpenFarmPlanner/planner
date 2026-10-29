@@ -8,8 +8,8 @@ import { apiRequest, loginWithDeterministicProject } from './utils';
 // post-save focus restore of the hierarchy could pull it back.
 
 const EDIT_HINT = 'Doppelklick, Enter oder einfach lostippen zum Bearbeiten';
-// Longer than the OS double-click interval, so two clicks stay two single clicks.
-const BETWEEN_SINGLE_CLICKS_MS = 700;
+// The hint waits out the double-click interval before it shows.
+const HINT_DELAY_MS = 700;
 
 const editingRows = (page: Page): Locator => page.locator('.MuiDataGrid-row--editing');
 const nameCell = (page: Page, rowName: string): Locator =>
@@ -85,11 +85,8 @@ test.describe('spreadsheet edit model in the Anbauflächen table', () => {
     await expect(editingRows(page).locator('[data-field="name"] input')).toHaveValue('Hochbeet');
   });
 
-  test('two single clicks on a bed cell show the edit hint until it is dismissed', async ({ page }) => {
-    const cell = nameCell(page, 'Tabellenbeet Eins');
-    await cell.click();
-    await page.waitForTimeout(BETWEEN_SINGLE_CLICKS_MS);
-    await cell.click();
+  test('a single click on a bed cell shows the edit hint until it is dismissed', async ({ page }) => {
+    await nameCell(page, 'Tabellenbeet Eins').click();
 
     const hint = page.getByRole('status').filter({ hasText: EDIT_HINT });
     await expect(hint).toBeVisible();
@@ -101,9 +98,14 @@ test.describe('spreadsheet edit model in the Anbauflächen table', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
     await nameCell(page, 'Tabellenbeet Zwei').click();
-    await page.waitForTimeout(BETWEEN_SINGLE_CLICKS_MS);
-    await nameCell(page, 'Tabellenbeet Zwei').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(HINT_DELAY_MS);
+    await expect(page.getByText(EDIT_HINT)).toHaveCount(0);
+  });
+
+  test('a double click edits without flashing the edit hint', async ({ page }) => {
+    await nameCell(page, 'Tabellenbeet Eins').dblclick();
+    await expect(editingRows(page)).toHaveCount(1);
+    await page.waitForTimeout(HINT_DELAY_MS);
     await expect(page.getByText(EDIT_HINT)).toHaveCount(0);
   });
 });
