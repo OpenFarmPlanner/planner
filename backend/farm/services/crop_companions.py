@@ -318,6 +318,83 @@ def _apply_import_item(
     report.created += 1
 
 
+# --- Crop library ---------------------------------------------------------------
+# The library knows no projects: a published neighbour names a crop species or a
+# plant family, never a project crop (docs/crop-library-architecture.md §3).
+
+
+def library_companions(kultur: Crop) -> tuple[list[dict[str, Any]], int]:
+    """The Kultur's neighbours as library items, and how many cannot be shared.
+
+    A neighbouring Kultur is shared through its crop species, a family as is;
+    free text and Kulturen without a species stay in the project.
+    """
+    relations = (
+        active_relations(kultur.project_id)
+        .filter(Q(crop=kultur) | Q(companion_crop=kultur))
+        .select_related('crop', 'companion_crop')
+    )
+    items: list[dict[str, Any]] = []
+    skipped = 0
+    for relation in relations:
+        target = target_from(relation, kultur.id)
+        item = {'kind': relation.kind, 'reason': relation.reason, 'note': relation.note}
+        if target.type == TARGET_FAMILY:
+            items.append({'species': None, 'species_name': '', 'family': target.family_key, **item})
+        elif target.type == TARGET_CROP and target.crop is not None and target.crop.crop_species_id:
+            items.append({
+                'species': target.crop.crop_species_id,
+                'species_name': target.crop.name,
+                'family': None,
+                **item,
+            })
+        else:
+            skipped += 1
+    items.sort(key=lambda entry: (entry['kind'], entry['family'] or '', entry['species'] or 0))
+    return items, skipped
+
+
+def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> int:
+    """Add a library entry's neighbours to a project Kultur; returns how many were added.
+
+    A species becomes the project's Kultur of that species, else free text with
+    the name the entry carries; existing relations are kept.
+    """
+    added = 0
+    for item in items:
+        kind = item.get('kind')
+        if kind not in KINDS:
+            continue
+        target = _library_item_target(kultur, item)
+        if target is None or (target.crop is not None and target.crop.id == kultur.id):
+            continue
+        if find_relation(kultur, target) is not None:
+            continue
+        CropCompanion.objects.create(
+            project_id=kultur.project_id,
+            kind=kind,
+            reason=item['reason'] if item.get('reason') in REASONS else CropCompanion.REASON_OTHER,
+            note=str(item.get('note') or '')[:500],
+            **relation_kwargs(kultur, target),
+        )
+        added += 1
+    return added
+
+
+def _library_item_target(kultur: Crop, item: dict[str, Any]) -> CompanionTarget | None:
+    family_key = item.get('family')
+    if family_key:
+        resolved = coerce_plant_family_key(family_key)
+        return CompanionTarget(type=TARGET_FAMILY, family_key=resolved) if resolved else None
+    species_id = item.get('species')
+    if species_id:
+        neighbour = find_general_crop(kultur.project_id, species_id)
+        if neighbour is not None:
+            return CompanionTarget(type=TARGET_CROP, crop=neighbour)
+    name = str(item.get('species_name') or '').strip()[:200]
+    return CompanionTarget(type=TARGET_TEXT, text=name) if name else None
+
+
 # --- Planning check -------------------------------------------------------------
 
 

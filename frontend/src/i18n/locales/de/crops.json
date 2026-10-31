@@ -1250,7 +1250,8 @@
           "seed_rate_direct_value": "Direktsaat Menge",
           "seed_rate_direct_unit": "Direktsaat Einheit",
           "seed_rate_pre_cultivation_value": "Pflanzung Menge",
-          "seed_rate_pre_cultivation_unit": "Pflanzung Einheit"
+          "seed_rate_pre_cultivation_unit": "Pflanzung Einheit",
+          "companions": "Mischkultur"
         },
         "values": {
           "low": "Niedrig",
@@ -1603,6 +1604,8 @@
       "unresolved_other": "{{count}} Nachbarn passen zu keiner Kultur und keiner Pflanzenfamilie und werden als Text übernommen: {{names}}",
       "conflicts_one": "{{count}} Nachbar ist bereits mit der anderen Art erfasst und bleibt unverändert.",
       "conflicts_other": "{{count}} Nachbarn sind bereits mit der anderen Art erfasst und bleiben unverändert."
-    }
+    },
+    "publishSkipped_one": "{{count}} Nachbar bleibt im Projekt: Er ist freier Text oder eine Kultur ohne Kulturart.",
+    "publishSkipped_other": "{{count}} Nachbarn bleiben im Projekt: Sie sind freier Text oder Kulturen ohne Kulturart."
   }
 }

@@ -1106,6 +1106,15 @@ class PublicCrop(TimestampedModel):
     seeding_requirement_type = models.CharField(max_length=30, blank=True)
     display_color = models.CharField(max_length=7, blank=True)
     seed_packages = models.JSONField(default=list, blank=True)
+    companions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Good and bad neighbours of the species-level entry: one object per neighbour '
+            'with species (id) and species_name, or family (botanical name), plus kind, '
+            'reason and note. See docs/crop-companions.md.'
+        ),
+    )
 
     class Meta:
         ordering = ['name', 'variety']

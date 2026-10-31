@@ -591,8 +591,8 @@ function AreaAssignmentDialogComponent({
   ) : null;
   const statusAdornment = hasBadCompanions ? (
     <>
-      <CompanionWarningIcon findings={rotation?.companionFindings} sx={{ mx: 0.5, verticalAlign: 'middle' }} />
       {rotationAdornment}
+      <CompanionWarningIcon findings={rotation?.companionFindings} sx={{ mx: 0.5, verticalAlign: 'middle' }} />
     </>
   ) : rotationAdornment;
 

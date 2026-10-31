@@ -359,6 +359,8 @@ export interface PublicCrop {
   seeding_requirement_type?: 'per_sqm' | 'per_plant' | '';
   display_color?: string;
   seed_packages?: SeedPackage[];
+  /** Only on the species-level entry; see docs/crop-companions.md. */
+  companions?: PublicCropCompanion[];
   version: number;
   published_at?: string | null;
   created_at?: string;
@@ -775,6 +777,16 @@ export type PublishBlockingReason =
   | 'missing_required_fields'
   | 'duplicates';
 
+/** A neighbour in the crop library: a crop species (with its name at publishing) or a family. */
+export interface PublicCropCompanion {
+  species: number | null;
+  species_name: string;
+  family: string | null;
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+}
+
 export interface PublishPublicCropPreview {
   crop_species: Pick<CropSpecies, 'id' | 'name'> | null;
   original_language_code: string;
@@ -785,6 +797,8 @@ export interface PublishPublicCropPreview {
   /** Empty exactly when `can_publish` is true. */
   blocking_reasons: PublishBlockingReason[];
   general_crop_notice: GeneralCropNotice | null;
+  /** Neighbours of the crop's Kultur that stay in the project (free text, or no crop species). */
+  unpublishable_companion_count?: number;
 }
 
 export interface PublishPublicCropResponse {

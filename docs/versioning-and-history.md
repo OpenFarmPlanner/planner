@@ -174,7 +174,8 @@ list — parents before children, because restore deletes in reverse order and
 recreates in forward order:
 
 `Location` → `Field` → `Bed` → `BedLayout` → `FieldLayout` → `Supplier` →
-`Crop` → `Season` → `PlantingPlan` → `Task` → `NoteAttachment`.
+`Crop` → `CropCompanion` → `Season` → `PlantingPlan` → `Task` →
+`NoteAttachment`.
 
 Three more entity types get revision rows but are **not** part of
 whole-project restore (they are in `_ENTITY_TYPE_LABELS` only):

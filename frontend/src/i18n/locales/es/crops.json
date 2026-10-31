@@ -1283,7 +1283,8 @@
           "seed_rate_direct_value": "Cantidad para siembra directa",
           "seed_rate_direct_unit": "Unidad para siembra directa",
           "seed_rate_pre_cultivation_value": "Cantidad para trasplante",
-          "seed_rate_pre_cultivation_unit": "Unidad para trasplante"
+          "seed_rate_pre_cultivation_unit": "Unidad para trasplante",
+          "companions": "Asociación de cultivos"
         },
         "values": {
           "low": "Bajas",
@@ -1645,6 +1646,9 @@
       "conflicts_one": "{{count}} vecino ya está registrado con el otro tipo y no cambia.",
       "conflicts_many": "{{count}} vecinos ya están registrados con el otro tipo y no cambian.",
       "conflicts_other": "{{count}} vecinos ya están registrados con el otro tipo y no cambian."
-    }
+    },
+    "publishSkipped_one": "{{count}} vecino se queda en el proyecto: es texto libre o un cultivo sin especie de cultivo.",
+    "publishSkipped_many": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo.",
+    "publishSkipped_other": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo."
   }
 }

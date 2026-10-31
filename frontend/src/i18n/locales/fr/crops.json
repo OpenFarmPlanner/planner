@@ -1283,7 +1283,8 @@
           "seed_rate_direct_value": "Quantité pour le semis direct",
           "seed_rate_direct_unit": "Unité pour le semis direct",
           "seed_rate_pre_cultivation_value": "Quantité pour la plantation",
-          "seed_rate_pre_cultivation_unit": "Unité pour la plantation"
+          "seed_rate_pre_cultivation_unit": "Unité pour la plantation",
+          "companions": "Association de cultures"
         },
         "values": {
           "low": "Faibles",
@@ -1645,6 +1646,9 @@
       "conflicts_one": "{{count}} voisin est déjà enregistré avec l'autre type et reste inchangé.",
       "conflicts_many": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés.",
       "conflicts_other": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés."
-    }
+    },
+    "publishSkipped_one": "{{count}} voisin reste dans le projet : c'est du texte libre ou une culture sans espèce cultivée.",
+    "publishSkipped_many": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
+    "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée."
   }
 }

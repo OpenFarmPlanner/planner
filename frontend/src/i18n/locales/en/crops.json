@@ -1250,7 +1250,8 @@
           "seed_rate_direct_value": "Direct sowing quantity",
           "seed_rate_direct_unit": "Direct sowing unit",
           "seed_rate_pre_cultivation_value": "Transplanting quantity",
-          "seed_rate_pre_cultivation_unit": "Transplanting unit"
+          "seed_rate_pre_cultivation_unit": "Transplanting unit",
+          "companions": "Companion planting"
         },
         "values": {
           "low": "Low",
@@ -1603,6 +1604,8 @@
       "unresolved_other": "{{count}} neighbors match no crop and no crop family and are imported as text: {{names}}",
       "conflicts_one": "{{count}} neighbor is already listed with the other type and stays unchanged.",
       "conflicts_other": "{{count}} neighbors are already listed with the other type and stay unchanged."
-    }
+    },
+    "publishSkipped_one": "{{count}} neighbor stays in the project: it is free text or a crop without a crop species.",
+    "publishSkipped_other": "{{count}} neighbors stay in the project: they are free text or crops without a crop species."
   }
 }

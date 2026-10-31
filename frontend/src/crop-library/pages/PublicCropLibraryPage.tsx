@@ -44,6 +44,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import { cropSpeciesAPI, publicCropAPI, publicLibraryModeratorRequestAPI } from '../../api/api';
 import type {
   CultivationType,
+  PublicCropCompanion,
   Crop,
   ImportPublicCropConfirmationRequiredError,
   PublicCrop,
@@ -101,6 +102,7 @@ import {
   matchesPublicCropFilters,
   type PublicCropFilterState,
 } from '../publicCropFilters';
+import { COMPANION_KINDS, companionReasonLabelKey } from '../../crops/companions';
 import { DetailGrid, DetailRow, DetailSection } from '../components/publicCropLibrary/DetailPrimitives';
 import { VersionCard } from '../components/publicCropLibrary/VersionCard';
 import { CommentForm } from '../components/publicCropLibrary/CommentForm';
@@ -517,6 +519,18 @@ export default function PublicCropLibraryPage() {
     }
     return value;
   }, [isSpeciesView, selectedCrop?.variety, selectedSpeciesCrop]);
+  // A variety entry shows its species entry's neighbours (only that one carries them).
+  const selectedCompanions = selectedCrop
+    ? getPublicFieldValue('companions', selectedCrop.companions) ?? []
+    : [];
+  const formatLibraryCompanion = (item: PublicCropCompanion): string => {
+    const name = item.family
+      ? t('companions.familyLabel', { name: plantFamilies.getName(item.family) })
+      : item.species_name;
+    const reason = item.reason === 'other' ? '' : t(companionReasonLabelKey(item.reason));
+    const detail = [reason, item.note].filter(Boolean).join(': ');
+    return detail ? `${name} (${detail})` : name;
+  };
   const getPublicFieldSource = useCallback((field: keyof PublicCrop): ValueSource | null => {
     if (isSpeciesView || !selectedCrop?.variety || !selectedSpeciesCrop) {
       return null;
@@ -1869,6 +1883,26 @@ export default function PublicCropLibraryPage() {
                           />
                         </DetailGrid>
                       </DetailSection>
+
+                      {selectedCompanions.length > 0 ? (
+                        <>
+                          <Divider />
+                          <DetailSection title={t('companions.title')}>
+                            <DetailGrid>
+                              {COMPANION_KINDS.map((kind) => {
+                                const items = selectedCompanions.filter((item) => item.kind === kind);
+                                return items.length > 0 ? (
+                                  <DetailRow
+                                    key={kind}
+                                    label={t(kind === 'good' ? 'companions.goodColumn' : 'companions.badColumn')}
+                                    value={items.map(formatLibraryCompanion).join('; ')}
+                                  />
+                                ) : null;
+                              })}
+                            </DetailGrid>
+                          </DetailSection>
+                        </>
+                      ) : null}
 
                       <Divider />
 

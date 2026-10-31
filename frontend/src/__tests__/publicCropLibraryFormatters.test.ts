@@ -525,6 +525,18 @@ describe('formatPublicCropValue', () => {
     expect(formatPublicCropValue('notes', value, t)).toBe('Nicht angegeben');
   });
 
+  it('names the neighbours of a companion list by kind instead of printing JSON', () => {
+    const companions = [
+      { species: 4, species_name: 'Kartoffel', family: null, kind: 'bad', reason: 'other', note: '' },
+      { species: null, species_name: '', family: 'Brassicaceae', kind: 'good', reason: 'other', note: '' },
+      { species: 5, species_name: 'Basilikum', family: null, kind: 'good', reason: 'pest_control', note: '' },
+    ];
+
+    expect(formatPublicCropValue('companions', companions, t)).toBe(
+      'Gute Nachbarn: Brassicaceae, Basilikum; Schlechte Nachbarn: Kartoffel',
+    );
+  });
+
   it('renders booleans as Ja and Nein, never as true/false', () => {
     expect(formatPublicCropValue('needs_support', true, t)).toBe('Ja');
     expect(formatPublicCropValue('needs_support', false, t)).toBe('Nein');

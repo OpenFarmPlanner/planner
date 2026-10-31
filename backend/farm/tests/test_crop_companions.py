@@ -4,7 +4,9 @@ from datetime import date
 
 from django.utils import timezone
 
-from farm.models import Bed, Crop, CropCompanion, PlantingPlan, Project
+from accounts.trust import grant_established_trust
+from crops.models import CropSpecies
+from farm.models import Bed, Crop, CropCompanion, PlantingPlan, Project, PublicCrop
 from farm.tests.api_base import ProjectApiTestCase
 
 COMPANIONS_URL = '/openfarmplanner/api/crop-companions/'
@@ -240,3 +242,85 @@ class CompanionImportTests(CropCompanionTestCase):
         companions = response.data['results'][0]['companions']
         self.assertEqual(companions, {'count': 2, 'unresolved': ['Unbekanntes Kraut']})
         self.assertEqual(CropCompanion.objects.count(), 0)
+
+
+class CompanionLibraryTests(CropCompanionTestCase):
+    """Publishing shares neighbours by crop species or family; importing maps them back."""
+
+    def setUp(self):
+        super().setUp()
+        grant_established_trust(self.user)
+        self.tomato_species = CropSpecies.objects.create(name='Companion test tomato')
+        self.potato_species = CropSpecies.objects.create(name='Companion test potato')
+        for crop, species in ((self.tomato, self.tomato_species), (self.potato, self.potato_species)):
+            crop.crop_species = species
+            crop.growth_duration_days = 90
+            crop.harvest_duration_days = 30
+            crop.save()
+
+    def publish(self, crop: Crop):
+        return self.client.post(f'/openfarmplanner/api/crops/{crop.id}/publish-public/', {
+            'accepted_public_library_terms': True,
+            'crop_species_id': crop.crop_species_id,
+            'original_language_code': 'de',
+            'publish_as_general': True,
+        }, format='json')
+
+    def test_publishing_shares_species_and_family_neighbours_and_counts_the_rest(self):
+        self.relate(self.tomato, self.potato)
+        CropCompanion.objects.create(
+            project=self.project, crop=self.tomato, companion_family_id='Brassicaceae', kind='good',
+        )
+        CropCompanion.objects.create(project=self.project, crop=self.tomato, companion_text='Salbei', kind='bad')
+
+        preview = self.client.get(
+            f'/openfarmplanner/api/crops/{self.tomato.id}/publish-public/preview/',
+            {'crop_species_id': self.tomato_species.id, 'original_language_code': 'de', 'publish_as_general': 'true'},
+        )
+        response = self.publish(self.tomato)
+
+        self.assertEqual(preview.data['unpublishable_companion_count'], 1)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(PublicCrop.objects.get(variety='').companions, [
+            {'species': self.potato_species.id, 'species_name': 'Kartoffel', 'family': None,
+             'kind': 'bad', 'reason': 'other', 'note': ''},
+            {'species': None, 'species_name': '', 'family': 'Brassicaceae',
+             'kind': 'good', 'reason': 'other', 'note': ''},
+        ])
+
+    def test_importing_maps_species_to_the_projects_kultur_and_keeps_others_as_text(self):
+        sage_species = CropSpecies.objects.create(name='Companion test sage')
+        entry = PublicCrop.objects.create(
+            name='Paprika', variety='', status=PublicCrop.STATUS_PUBLISHED, created_by=self.user,
+            crop_species=CropSpecies.objects.create(name='Companion test pepper'),
+            growth_duration_days=90, harvest_duration_days=30,
+            companions=[
+                {'species': self.potato_species.id, 'species_name': 'Kartoffel', 'family': None,
+                 'kind': 'bad', 'reason': 'shared_pests_diseases', 'note': 'Krautfäule'},
+                {'species': sage_species.id, 'species_name': 'Salbei', 'family': None,
+                 'kind': 'good', 'reason': 'other', 'note': ''},
+                {'species': None, 'species_name': '', 'family': 'Brassicaceae',
+                 'kind': 'good', 'reason': 'other', 'note': ''},
+            ],
+        )
+
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.id}/import/', {}, format='json')
+
+        self.assertEqual(response.status_code, 201, response.data)
+        imported = Crop.objects.get(id=response.data['crop']['id'])
+        relations = CropCompanion.objects.filter(project=self.project)
+        self.assertTrue(relations.filter(kind='bad', reason='shared_pests_diseases', note='Krautfäule').filter(
+            crop__in=[imported, self.potato], companion_crop__in=[imported, self.potato],
+        ).exists())
+        self.assertTrue(relations.filter(crop=imported, companion_text='Salbei', kind='good').exists())
+        self.assertTrue(relations.filter(crop=imported, companion_family_id='Brassicaceae').exists())
+
+    def test_a_direct_edit_rejects_a_neighbour_naming_both_species_and_family(self):
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+
+        response = self.client.patch(f'/openfarmplanner/api/public-crops/{entry.id}/', {
+            'companions': [{'species': self.potato_species.id, 'family': 'Brassicaceae', 'kind': 'bad'}],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)

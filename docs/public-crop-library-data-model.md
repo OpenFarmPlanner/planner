@@ -341,6 +341,7 @@ the species baseline; a private crop value is a project-specific override.
 | `notes` on `Crop` | remains project-local | Farm observations must not become public text or translations. |
 | `seed_supplier`, `supplier`, `selected_seed_demand_supplier`, `supplier_product_url`, `CropSupplierData` | remain project-owned | Supplier availability, prices, germination, product URLs, and selection are local/commercial facts. A future public supplier-offering model requires its own provenance and update policy. |
 | `SeedPackage` / public `seed_packages` JSON | retain project package observations; do not copy to canonical variety | Package sizes and availability vary by supplier, market, and time. |
+| `CropCompanion` / public `companions` JSON | species-level entry only, neighbours as crop species or plant family | Project crops are unknown to the library; see [crop-companions.md](./crop-companions.md). |
 | `image_file` | remains project-owned until rights/provenance are designed | A public image needs separate licensing, attribution, moderation, and localized alt text. |
 | `display_color` | remains project-owned | Calendar color is UI preference. |
 | `sowing_calculation_safety_percent` and direct/pre-cultivation variants | remain project-owned | The seed safety margin is a farm-specific planning decision (germination expectations, local risk appetite, seeding technique), not a property of the crop or the cultivar. It is therefore neither published nor served as library data. |

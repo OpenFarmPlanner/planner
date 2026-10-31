@@ -104,6 +104,7 @@ docs/                  # This documentation
 - Views follow a thin-view convention (CLAUDE.md): business logic goes into
   `backend/farm/services/*.py` (e.g. `bed_capacity.py` for bed-area
   math, `services/seed_packages.py` for the seed-package optimizer,
+  `services/crop_companions.py` for companion planting,
   `services/public_crops.py` for the publish/import bridge) rather than
   living in view methods.
 - Physical measurements (area, spacing, seed rates) are stored in SI units

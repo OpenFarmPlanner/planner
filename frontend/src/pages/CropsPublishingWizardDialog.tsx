@@ -977,6 +977,12 @@ export function CropsPublishingWizardDialog({
             </Alert>
           ) : null}
 
+          {validationResult?.unpublishable_companion_count ? (
+            <Alert severity="info" data-testid="publish-unpublishable-companions">
+              {t('companions.publishSkipped', { count: validationResult.unpublishable_companion_count })}
+            </Alert>
+          ) : null}
+
           {otherBlockingMessages.map((message) => (
             <Alert key={message} severity="warning">{message}</Alert>
           ))}

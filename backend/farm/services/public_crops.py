@@ -50,6 +50,7 @@ from farm.models.crops import (
 # The local Kultur/Sorte grouping is a farm-app concern this module deliberately
 # does not re-implement: it only calls the service that owns it whenever
 # publishing links a project crop to a crop species.
+from farm.services.crop_companions import apply_library_companions, library_companions
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
@@ -126,6 +127,7 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'seeding_requirement_type',
     'display_color',
     'seed_packages',
+    'companions',
 ]
 
 # Kept as a module-level name for existing importers; the supported set
@@ -166,6 +168,9 @@ class PublishingCheckResult:
     duplicates: list[DuplicateCandidate]
     blocking_reasons: list[str]
     general_crop_notice: GeneralCropNotice | None = None
+    # Neighbours of the crop's Kultur that cannot go into the library (free
+    # text, or a neighbouring Kultur without a crop species).
+    unpublishable_companion_count: int = 0
 
     @property
     def can_publish(self) -> bool:
@@ -815,6 +820,8 @@ def build_public_crop_payload(
     is_general_entry = not (payload['variety'] or '').strip()
     if is_general_entry:
         general_source = source_crop or get_general_crop(crop) or crop
+        # Only the species-level entry carries neighbours, taken from the Kultur.
+        payload['companions'], _skipped = library_companions(general_source)
         for field in PUBLIC_SPECIES_INVARIANT_FIELDS:
             if field in get_library_pinned_fields(general_source):
                 payload.pop(field, None)
@@ -1771,6 +1778,7 @@ def build_publishing_check_result(
     general_crop_notice = (
         build_general_crop_notice(crop_species) if crop_species and not publish_as_general else None
     )
+    kultur = crop if not (crop.variety or '').strip() else get_general_crop(crop)
     return PublishingCheckResult(
         crop_species=crop_species,
         original_language_code=language_code,
@@ -1779,6 +1787,7 @@ def build_publishing_check_result(
         duplicates=duplicates,
         blocking_reasons=blocking_reasons,
         general_crop_notice=general_crop_notice,
+        unpublishable_companion_count=library_companions(kultur)[1] if kultur else 0,
     )
 
 
@@ -2973,6 +2982,8 @@ def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, uniqu
             project=project,
         )
     crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
+    if not (crop.variety or '').strip() and public_crop.companions:
+        apply_library_companions(crop, public_crop.companions)
     for package in public_crop.seed_packages or []:
         crop.seed_packages.create(
             project=project,
