@@ -391,6 +391,27 @@ or changing a public page:
 - Use `feat` or `fix` only for user-visible changes.
 - Use `refactor` for structural changes without behavior changes.
 - Keep commit and PR titles concise.
+- There is no long-lived `develop` branch. `main` is the integration branch:
+  merge a PR, deploy its release tag to staging, test there, then deploy the
+  same tag to production (see the next section).
+
+### Testing several open PRs together
+When the user wants to try several unmerged PRs at once before merging them,
+build a throwaway local integration branch; never a shared branch:
+
+1. Create it in its own worktree from the current `main`, so the main checkout
+   and its running dev servers stay untouched:
+   `git fetch origin && git worktree add -b test/<topic> ../worktrees/test-<topic> origin/main`.
+2. Merge each PR branch into it (`git merge --no-edit origin/<branch>`). A
+   conflict, or two migrations with the same number, is a finding about those
+   PRs: resolve it only well enough to test, and report it so the fix lands on
+   the PR branch.
+3. Run it with `DB_ENGINE=sqlite` (a database of the worktree's own) and on
+   ports other than the dev servers'. Use the local PostgreSQL database only
+   when the user asks for their own data, and say which migrations it
+   applies: a PR's migration may still be renumbered before it merges.
+4. Never push the branch, open a PR from it or deploy it. Remove the worktree
+   and the branch once the user is done testing.
 
 ## Release and Production Deploy Workflow
 - Production deploys must use an exact release tag in the `planner`
