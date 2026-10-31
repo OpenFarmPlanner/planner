@@ -12,6 +12,7 @@ type SupplierDataDraft = CropSupplierData | CropSupplierDataInput;
 const textFields = [
   'name',
   'variety',
+  'botanical_name',
   'crop_family',
   'notes',
 ] as const satisfies readonly (keyof Crop)[];
@@ -29,6 +30,7 @@ const numberFields = [
   'growth_duration_days',
   'harvest_duration_days',
   'propagation_duration_days',
+  'rotation_break_years',
   'expected_yield',
   'distance_within_row_cm',
   'row_spacing_cm',
