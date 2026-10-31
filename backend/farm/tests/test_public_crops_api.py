@@ -1585,6 +1585,46 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general.growth_duration_days, 110)
         self.assertEqual(general.origin_type, Crop.ORIGIN_IMPORTED)
 
+    def test_import_general_public_crop_whose_name_is_taken_gets_a_free_name(self):
+        """A project has one general crop per name, whatever its species: the
+        import used to fail on that constraint instead of creating the crop."""
+        Crop.objects.create(project=self.project, name='Paprika', variety='')
+        other_species = CropSpecies.objects.create(name='Name collision pepper')
+        entry = PublicCrop.objects.create(
+            name='Paprika', variety='', status='published', created_by=self.user,
+            crop_species=other_species, growth_duration_days=90, harvest_duration_days=30,
+        )
+
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.id}/import/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        imported = Crop.objects.get(id=response.data['crop']['id'])
+        self.assertEqual(imported.name, 'Paprika (2)')
+        self.assertEqual(imported.crop_species, other_species)
+        self.assertEqual(Crop.objects.filter(project=self.project, name='Paprika').count(), 1)
+
+    def test_import_variety_skips_its_general_crop_when_the_name_is_taken(self):
+        own_species = CropSpecies.objects.create(name='Name collision own pepper')
+        other_species = CropSpecies.objects.create(name='Name collision other pepper')
+        own_general = Crop.objects.create(project=self.project, name='Paprika', variety='', crop_species=own_species)
+        PublicCrop.objects.create(
+            name='Paprika', variety='', status='published', created_by=self.user,
+            crop_species=other_species, growth_duration_days=90, harvest_duration_days=30,
+        )
+        variety_entry = PublicCrop.objects.create(
+            name='Paprika', variety='Frühzauber', status='published', created_by=self.user,
+            crop_species=other_species, growth_duration_days=90, harvest_duration_days=30,
+        )
+
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{variety_entry.id}/import/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Crop.objects.get(id=response.data['crop']['id']).variety, 'Frühzauber')
+        self.assertEqual(
+            list(Crop.objects.filter(project=self.project, variety='').values_list('id', flat=True)),
+            [own_general.id],
+        )
+
     def test_import_variety_public_crop_does_not_touch_existing_local_general_crop(self):
         bean_species = CropSpecies.objects.create(name='Bean')
         PublicCrop.objects.create(

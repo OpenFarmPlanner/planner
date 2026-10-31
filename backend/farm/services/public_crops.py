@@ -3009,6 +3009,18 @@ def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> 
     general_public = find_general_public_crop(public_crop.crop_species)
     if general_public is None:
         return
+    # The name already belongs to a general crop of another species (or of
+    # none): adding a second one is impossible, and a renamed copy would only
+    # confuse. The variety is imported without it, as when no entry exists.
+    from farm.utils import normalize_text
+
+    name_taken = Crop.objects.filter(
+        project=project,
+        name_normalized=normalize_text(general_public.name) or '',
+        variety_normalized__isnull=True,
+    ).exists()
+    if name_taken:
+        return
     _create_crop_from_public(public_crop=general_public, project=project)
 
 
@@ -3490,7 +3502,14 @@ def import_public_crop_into_project(
     ).order_by('-id').first()
 
     if existing is None:
-        crop = _create_crop_from_public(public_crop=public_crop, project=project)
+        # A project holds one general crop per name, whatever its species: a
+        # general entry whose name is already taken (by an own crop, or one of
+        # another species) is imported under a free name, as with mode 'new'.
+        crop = _create_crop_from_public(
+            public_crop=public_crop,
+            project=project,
+            unique_name=not public_crop.variety_normalized,
+        )
         _ensure_local_general_crop(public_crop=public_crop, project=project)
         return crop, 'created'
 
