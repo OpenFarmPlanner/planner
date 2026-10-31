@@ -95,6 +95,7 @@ vi.mock('../api/api', async () => {
     publicCropAPI: {
       ...actual.publicCropAPI,
       list: publicCropListMock,
+      listAll: async (params?: unknown) => (await publicCropListMock(params)).data,
       get: publicCropGetMock,
       importToProject: publicCropImportToProjectMock,
     },
