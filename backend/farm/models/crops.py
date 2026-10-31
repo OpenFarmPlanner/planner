@@ -708,7 +708,7 @@ class Crop(TimestampedModel):
 
     # Fields whose change marks an imported crop as diverged from its source.
     _SOURCE_DIVERGENCE_TRACKED_FIELDS = {
-        'name', 'variety', 'notes', 'crop_family_id', 'nutrient_demand', 'cultivation_types',
+        'name', 'variety', 'notes', 'botanical_name', 'crop_family_id', 'nutrient_demand', 'cultivation_types',
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'seed_rate_value', 'seed_rate_unit', 'seed_rate_by_cultivation',

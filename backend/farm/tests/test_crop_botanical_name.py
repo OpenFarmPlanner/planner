@@ -72,3 +72,20 @@ class CropBotanicalNameTests(ProjectApiTestCase):
 
         self.assertEqual(imported.status_code, 201, imported.data)
         self.assertEqual(Crop.objects.get(id=imported.data['crop']['id']).botanical_name, 'Beta vulgaris')
+
+    def test_editing_it_on_an_imported_crop_marks_it_modified_from_source(self):
+        entry = PublicCrop.objects.create(
+            name='Mangold', variety='', crop_species=self.species, botanical_name='Beta vulgaris',
+        )
+        crop = Crop.objects.create(
+            project=self.project, name='Mangold', variety='Bright Lights', crop_species=self.species,
+            source_public_crop=entry,
+        )
+
+        response = self.client.patch(
+            f'{CROPS_URL}{crop.id}/', {'botanical_name': 'Beta vulgaris var. cicla'}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        crop.refresh_from_db()
+        self.assertTrue(crop.is_modified_from_source)
