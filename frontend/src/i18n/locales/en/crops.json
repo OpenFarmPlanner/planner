@@ -1556,20 +1556,17 @@
     "goodColumn": "Good neighbors",
     "badColumn": "Bad neighbors",
     "add": "Add neighbor",
-    "empty": "No neighbors recorded yet. Note which crops grow well together and which do not.",
+    "editAction": "Edit neighbors",
+    "empty": "No neighbors recorded yet. In the crop form, note which crops grow well together and which do not.",
     "sharedHint": "Applies to all varieties of {{name}}.",
     "noKulturHint": "Neighbors are recorded on the crop entry without a variety. {{name}} has no such entry yet.",
     "familyLabel": "{{name}} (crop family)",
-    "edit": "Edit neighbor",
     "delete": "Remove neighbor",
-    "deleted": "{{name}} removed as a neighbor.",
-    "saveError": "The neighbor could not be saved.",
+    "saveError": "The crop was saved, but its neighbors could not be saved.",
     "loadError": "The neighbors could not be loaded.",
-    "deleteError": "The neighbor could not be removed.",
     "duplicate": "This neighbor is already listed.",
-    "dialog": {
-      "addTitle": "Add neighbor for {{name}}",
-      "editTitle": "Edit neighbor of {{name}}",
+    "syncReplaceHint": "Taking the library's list replaces this crop's neighbors. A pair that is dropped is also removed from the other crop. Free text is kept.",
+    "form": {
       "kind": "Type",
       "kindGood": "Good neighbor",
       "kindBad": "Bad neighbor",
@@ -1579,7 +1576,11 @@
       "groupFamilies": "Crop families",
       "reason": "Reason",
       "note": "Note",
-      "neighborRequired": "Choose a neighbor."
+      "neighborRequired": "Choose a neighbor.",
+      "description": "Note which crops grow well together and which do not. The neighbors apply to all varieties.",
+      "sharedPair": "Also applies to {{name}}.",
+      "libraryNeighborHelper": "Crop species from the library or crop family",
+      "varietyReadOnly": "The neighbors apply to all varieties of {{name}} and are edited in the form of {{name}}."
     },
     "reasons": {
       "competition": "Competition",

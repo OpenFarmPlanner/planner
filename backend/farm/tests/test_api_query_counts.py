@@ -309,6 +309,30 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         for row in pinned_rows:
             self.assertIn('notes', row['library_pinned_values'])
 
+    def test_crops_list_query_count_is_flat_for_pending_neighbour_updates(self):
+        """A Kultur's library comparison includes its neighbours. With an update
+        pending on every linked Kultur, the project's relations are loaded once
+        for the page (one query), not once per row."""
+        imported = list(Crop.objects.filter(project=self.project, source_public_crop__isnull=False))
+        for index, crop in enumerate(imported):
+            PublicCrop.objects.filter(pk=crop.source_public_crop_id).update(
+                variety='', version=2, companions=[{
+                    'species': None, 'species_name': '', 'family': 'Brassicaceae',
+                    'kind': 'good', 'reason': 'other', 'note': '',
+                }],
+            )
+            Crop.objects.filter(pk=crop.pk).update(variety='', source_public_version=1)
+            CropCompanion.objects.create(
+                project=self.project, crop_id=crop.pk, companion_text=f'Neighbour {index}', kind='bad',
+            )
+
+        with self.assertNumQueries(16):
+            response = self.client.get('/openfarmplanner/api/crops/')
+        self.assertEqual(response.status_code, 200)
+        rows_by_id = {row['id']: row for row in response.data['results']}
+        for crop in imported:
+            self.assertTrue(rows_by_id[crop.pk]['public_update_available'])
+
     def test_crop_supplier_data_list_query_count(self):
         """Rows embed a full nested `SupplierSerializer`."""
         self.assert_list_query_count('/openfarmplanner/api/crop-supplier-data/', 5)
@@ -526,6 +550,29 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         species translations and variety trade names resolved for the whole page."""
         # +2: the plant-family list behind `crop_family_display_name`, once per page.
         self.assert_list_query_count('/openfarmplanner/api/crop-library/', 11)
+
+    def test_crop_library_list_query_count_is_flat_for_behind_kultur_copies(self):
+        """`is_up_to_date` compares a pristine copy that is behind its entry
+        field by field, a Kultur's neighbours included: the project's relations
+        are loaded once for the page (one query), next to the Kultur index."""
+        for index, public_crop in enumerate(self.public_crops):
+            PublicCrop.objects.filter(pk=public_crop.pk).update(variety='', version=2, companions=[{
+                'species': None, 'species_name': '', 'family': 'Brassicaceae',
+                'kind': 'good', 'reason': 'other', 'note': '',
+            }])
+            copy = Crop.objects.get(project=self.project, source_public_crop=public_crop)
+            Crop.objects.filter(pk=copy.pk).update(variety='', source_public_version=1)
+            CropCompanion.objects.create(
+                project=self.project, crop_id=copy.pk, companion_text=f'Neighbour {index}', kind='bad',
+            )
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+
+        with self.assertNumQueries(13):
+            response = self.client.get('/openfarmplanner/api/public-crops/')
+        self.assertEqual(response.status_code, 200)
+        statuses = [row['project_import_status'] for row in response.data['results']]
+        self.assertEqual(len(statuses), ROW_COUNT)
+        self.assertTrue(all(status and status['is_up_to_date'] is False for status in statuses))
 
     def test_moderator_requests_list_query_count(self):
         """Each request resolves the requesting and reviewing user plus both

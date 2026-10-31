@@ -52,7 +52,14 @@ list to one Kultur, from either side of a pair). Writes are validated by
 `CropCompanionSerializer`: both crops must be active Kulturen of the project, a
 pair may be sent in either order and is stored canonically, a duplicate is
 rejected with `{"companion": [...]}`. Project API tokens can read the list
-(see [agent-api.md](./agent-api.md)). Creates, updates and deletes are recorded
+(see [agent-api.md](./agent-api.md)). `PUT /api/crop-companions/replace/` with
+`{crop, relations}` saves one Kultur's whole list, as the crop form does: each
+item names the neighbour from the Kultur's side; a listed neighbour updates its
+relation, a new one is created, and every relation the list leaves out is
+deleted, a shared pair included. It validates the whole list first (errors under
+`relations.<position>`) and records only rows that change. Every write flags a
+Kultur linked to the crop library as changed locally (`is_modified_from_source`),
+since `Crop.save` never sees neighbour rows. Creates, updates and deletes are recorded
 in the project history and take part in whole-project restore
 ([versioning-and-history.md](./versioning-and-history.md)); the personal data
 export lists them under `crop_companions`.
@@ -81,13 +88,31 @@ warning below the rotation result and good ones as a one-line note
 (`CompanionCheckAlert`); the table's area cell and the mobile cards mark bad
 neighbours with a leaf icon whose tooltip names them.
 
+## Crop form
+
+Neighbours are edited in the Kultur's crop form, in a "Mischkultur" section
+after the crop rotation fields (`sections/CompanionsSection.tsx`,
+`useCompanionFormRows`). One row per neighbour: kind, neighbour (a Kultur of the
+project, a plant family, or typed free text), reason and note, with a delete
+button; "Nachbar hinzufügen" adds a row. A neighbouring Kultur's row says
+"Gilt auch für …", because the pair is shared. A row without a neighbour or a
+neighbour listed twice blocks saving. The rows are saved with the form
+(`PUT replace/` after the crop; a failure is reported once the crop is saved,
+because saving again would create a new crop twice); changed rows count as
+unsaved changes. A Sorte's form shows its Kultur's list read-only.
+
+The library's edit form uses the same section on a species-level entry. Its
+neighbours are library crop species (the entries' species) or families, never
+free text, and are saved with the entry's other fields (direct edit or change
+proposal).
+
 ## Crop details
 
-The crop details have a "Mischkultur" section (`CropCompanionsSection`): good
-and bad neighbours with reason and note, a neighbouring crop as a link, an
-"Nachbar hinzufügen" button and per-entry edit and delete (with undo).
-Changes are saved immediately through the API. A Sorte shows its Kultur's
-list with "Gilt für alle Sorten von …".
+The crop details have a read-only "Mischkultur" section
+(`CropCompanionsSection`): good and bad neighbours with reason and note, a
+neighbouring crop as a link. Without neighbours it offers "Nachbarn bearbeiten",
+which opens the Kultur's form. A Sorte shows its Kultur's list with "Gilt für
+alle Sorten von …".
 
 ## Spreadsheet and JSON import/export
 
@@ -129,13 +154,36 @@ so a published neighbour names a **crop species** or a **plant family**:
 - **Importing** a species-level entry into a project adds its neighbours to the
   new Kultur: a species becomes the project's Kultur of that species, else free
   text with the stored name; a family stays a family.
-- The library page shows the neighbours of the species entry, also on its
-  varieties.
+- **Sync and library updates.** A Kultur linked to a species-level entry
+  compares its neighbours like a copy field (`companions` in the sync dialog,
+  the library update dialog and the pin list; `public_crops.COMPANIONS_FIELD`).
+  The local side is what the library could hold, measured against the entry
+  (`library_companion_view`): species and family neighbours, the stored names
+  taken from the entry, and a free-text neighbour named like one of the entry's
+  species counts as that species (it is what importing a species the project
+  has no Kultur for leaves behind). Item order, the stored names and a
+  neighbour of the Kultur's own species never read as a difference.
+  - *Take the library's value* replaces those neighbours with the entry's list
+    (`replace_library_companions`); free text and Kulturen without a species
+    stay. A pair that is dropped also leaves the other Kultur, which the sync
+    row says. Applying a library update does the same unless the neighbours
+    are pinned.
+  - *Share mine* writes the Kultur's list into the entry (direct edit or
+    proposal); publishing again does the same.
+  - *Keep locally* pins `companions`; the list then stays out of updates and
+    publishing.
+  The crop and library list serializers attach one `CompanionRelationIndex`
+  per request, so the comparison costs one query per list (pinned in
+  `farm/tests/test_api_query_counts.py`).
+- **The library page** shows the neighbours of the species entry, also on its
+  varieties (`buildLibraryCompanionRows`). A species neighbour links to that
+  species' published entry. The other side of a pair is shown too: an entry
+  listing this entry's species appears here, unless this entry already lists
+  that species. Family neighbours are not mirrored, or every crop of the
+  family would list them.
 
 ## Known limits
 
-- Pulling library updates into an already linked project crop does not touch
-  its neighbours; republishing updates the entry's list.
-- The library page shows neighbours but has no editor for them yet; the
-  update API accepts them.
 - Neighbouring beds are not checked (beds have no position).
+- The project history records each neighbour change on its own, not as one
+  entry per form save.

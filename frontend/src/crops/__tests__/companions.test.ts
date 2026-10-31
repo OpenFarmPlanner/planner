@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Crop, CropCompanion } from '../../api/types';
+import type { Crop, CropCompanion, PublicCrop, PublicCropCompanion } from '../../api/types';
 import {
   buildCompanionItemsByCrop,
+  buildLibraryCompanionRows,
   buildCompanionReasonLookup,
   findKulturId,
   formatCompanionCell,
@@ -110,5 +111,46 @@ describe('export items', () => {
 
     expect(relationPartner(pair, 1)).toEqual({ type: 'crop', cropId: 2 });
     expect(relationPartner(pair, 2)).toEqual({ type: 'crop', cropId: 1 });
+  });
+});
+
+describe('buildLibraryCompanionRows', () => {
+  const item = (overrides: Partial<PublicCropCompanion>): PublicCropCompanion => ({
+    species: null, species_name: '', family: null, kind: 'bad', reason: 'other', note: '', ...overrides,
+  });
+  const entry = (id: number, name: string, species: number, companions: PublicCropCompanion[] = [], extra: Partial<PublicCrop> = {}) => (
+    { id, name, display_name: name, variety: '', crop_species: species, status: 'published', companions, ...extra } as PublicCrop
+  );
+  const familyLabel = (key: string) => `${key} (Pflanzenfamilie)`;
+
+  it("links a species neighbour to its entry and shows the other side of a pair", () => {
+    const tomato = entry(1, 'Tomate', 10, [
+      item({ species: 20, species_name: 'Kartoffel' }),
+      item({ species: 30, species_name: 'Fenchel', kind: 'good' }),
+      item({ family: 'Brassicaceae', kind: 'good' }),
+    ]);
+    const potato = entry(2, 'Kartoffel', 20);
+    const basil = entry(3, 'Basilikum', 40, [item({ species: 10, kind: 'good', reason: 'pest_control' })]);
+    const romaVariety = entry(4, 'Tomate', 10, [], { variety: 'Roma' });
+
+    const rows = buildLibraryCompanionRows(tomato, [tomato, potato, basil, romaVariety], familyLabel);
+
+    expect(rows.map((row) => [row.label, row.kind, row.entry?.id ?? null])).toEqual([
+      ['Kartoffel', 'bad', 2],
+      ['Fenchel', 'good', null],
+      ['Brassicaceae (Pflanzenfamilie)', 'good', null],
+      ['Basilikum', 'good', 3],
+    ]);
+    expect(rows[3].reason).toBe('pest_control');
+  });
+
+  it("does not mirror a pair the entry already lists, nor a removed entry's neighbours", () => {
+    const tomato = entry(1, 'Tomate', 10, [item({ species: 20, species_name: 'Kartoffel', kind: 'bad' })]);
+    const potato = entry(2, 'Kartoffel', 20, [item({ species: 10, kind: 'good' })]);
+    const removed = entry(3, 'Basilikum', 40, [item({ species: 10 })], { status: 'removed' });
+
+    const rows = buildLibraryCompanionRows(tomato, [tomato, potato, removed], familyLabel);
+
+    expect(rows.map((row) => [row.label, row.kind])).toEqual([['Kartoffel', 'bad']]);
   });
 });

@@ -2,8 +2,11 @@ import type {
   CompanionImportItem,
   CompanionKind,
   CompanionReason,
+  CompanionReplaceItem,
   Crop,
   CropCompanion,
+  PublicCrop,
+  PublicCropCompanion,
 } from '../api/types';
 
 export const COMPANION_KINDS: readonly CompanionKind[] = ['good', 'bad'];
@@ -179,4 +182,200 @@ export const parseCompanionCell = (
     }
   }
   return items;
+};
+
+// --- Crop form ----------------------------------------------------------------
+
+/** A neighbour picked in the crop form: a project Kultur, a library crop species, a family or text. */
+export type CompanionFormTarget =
+  | { type: 'crop'; cropId: number; label: string }
+  | { type: 'species'; speciesId: number; label: string }
+  | { type: 'family'; familyKey: string; label: string }
+  | { type: 'text'; text: string; label: string };
+
+/** One row of the form's "Mischkultur" section; `target` is null until a neighbour is picked. */
+export interface CompanionFormRow {
+  key: string;
+  kind: CompanionKind;
+  target: CompanionFormTarget | null;
+  reason: CompanionReason;
+  note: string;
+}
+
+export type CompanionFormRowError = 'required' | 'duplicate';
+
+let nextRowKey = 0;
+export const newCompanionRowKey = (): string => {
+  nextRowKey += 1;
+  return `companion-row-${nextRowKey}`;
+};
+
+export const emptyCompanionFormRow = (kind: CompanionKind = 'good'): CompanionFormRow => ({
+  key: newCompanionRowKey(),
+  kind,
+  target: null,
+  reason: 'other',
+  note: '',
+});
+
+/** Two rows naming the same neighbour share this key. */
+export const companionTargetKey = (target: CompanionFormTarget): string => {
+  if (target.type === 'crop') return `crop:${target.cropId}`;
+  if (target.type === 'species') return `species:${target.speciesId}`;
+  if (target.type === 'family') return `family:${target.familyKey}`;
+  return `text:${normalizeName(target.text)}`;
+};
+
+export const relationToFormRow = (
+  relation: CropCompanion,
+  kulturId: number,
+  cropLabel: (cropId: number) => string,
+  familyName: (familyKey: string) => string,
+): CompanionFormRow => {
+  const partner = relationPartner(relation, kulturId);
+  const target: CompanionFormTarget = partner.type === 'crop'
+    ? { type: 'crop', cropId: partner.cropId, label: cropLabel(partner.cropId) }
+    : partner.type === 'family'
+      ? { type: 'family', familyKey: partner.familyKey, label: familyName(partner.familyKey) }
+      : { type: 'text', text: partner.text, label: partner.text };
+  return { key: newCompanionRowKey(), kind: relation.kind, target, reason: relation.reason, note: relation.note };
+};
+
+export const libraryItemToFormRow = (
+  item: PublicCropCompanion,
+  familyName: (familyKey: string) => string,
+): CompanionFormRow => ({
+  key: newCompanionRowKey(),
+  kind: item.kind,
+  target: item.family
+    ? { type: 'family', familyKey: item.family, label: familyName(item.family) }
+    : { type: 'species', speciesId: item.species as number, label: item.species_name },
+  reason: item.reason,
+  note: item.note,
+});
+
+/** Why a row cannot be saved, by row key: no neighbour picked, or the neighbour is listed twice. */
+export const findCompanionRowErrors = (
+  rows: readonly CompanionFormRow[],
+): Record<string, CompanionFormRowError> => {
+  const errors: Record<string, CompanionFormRowError> = {};
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!row.target) {
+      errors[row.key] = 'required';
+      continue;
+    }
+    const key = companionTargetKey(row.target);
+    if (seen.has(key)) errors[row.key] = 'duplicate';
+    seen.add(key);
+  }
+  return errors;
+};
+
+/** The rows as `PUT /crop-companions/replace/` takes them (project form). */
+export const formRowsToReplaceItems = (rows: readonly CompanionFormRow[]): CompanionReplaceItem[] => rows
+  .flatMap((row) => {
+    const { target } = row;
+    if (!target || target.type === 'species') return [];
+    return [{
+      companion_crop: target.type === 'crop' ? target.cropId : null,
+      companion_family: target.type === 'family' ? target.familyKey : null,
+      companion_text: target.type === 'text' ? target.text.trim() : '',
+      kind: row.kind,
+      reason: row.reason,
+      note: row.note.trim(),
+    }];
+  });
+
+/** The rows as a library entry stores them (library form): crop species and families only. */
+export const formRowsToLibraryItems = (rows: readonly CompanionFormRow[]): PublicCropCompanion[] => rows
+  .flatMap((row) => {
+    const { target } = row;
+    if (target?.type !== 'species' && target?.type !== 'family') return [];
+    return [{
+      species: target.type === 'species' ? target.speciesId : null,
+      species_name: target.type === 'species' ? target.label : '',
+      family: target.type === 'family' ? target.familyKey : null,
+      kind: row.kind,
+      reason: row.reason,
+      note: row.note.trim(),
+    }];
+  });
+
+/** Whether two row lists save the same neighbours (order and row keys aside). */
+export const sameCompanionRows = (
+  first: readonly CompanionFormRow[],
+  second: readonly CompanionFormRow[],
+): boolean => {
+  const signature = (rows: readonly CompanionFormRow[]): string => rows
+    .map((row) => [
+      row.target ? companionTargetKey(row.target) : '',
+      row.kind,
+      row.reason,
+      row.note.trim(),
+    ].join('|'))
+    .sort()
+    .join('\n');
+  return signature(first) === signature(second);
+};
+
+// --- Crop library page ------------------------------------------------------------
+
+/** One neighbour of a library entry as the library page lists it. */
+export interface LibraryCompanionRow {
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+  label: string;
+  /** The neighbour's species-level entry, linked from the row; null for a family or an unpublished species. */
+  entry: PublicCrop | null;
+}
+
+const isPublishedSpeciesEntry = (entry: PublicCrop): boolean => (
+  !(entry.variety || '').trim() && entry.status === 'published' && Boolean(entry.crop_species)
+);
+
+const entryLabel = (entry: PublicCrop): string => entry.display_name || entry.name;
+
+/**
+ * The neighbours of a species-level entry, each linked to its neighbour's
+ * entry, plus the other side of a pair: an entry listing this one's species
+ * shows here too, as a pair does in a project (docs/crop-companions.md).
+ * Family neighbours are not mirrored; every crop of the family would list them.
+ */
+export const buildLibraryCompanionRows = (
+  speciesEntry: PublicCrop,
+  entries: readonly PublicCrop[],
+  familyLabel: (familyKey: string) => string,
+): LibraryCompanionRow[] => {
+  const entriesBySpecies = new Map<number, PublicCrop>();
+  for (const entry of entries) {
+    if (isPublishedSpeciesEntry(entry) && !entriesBySpecies.has(entry.crop_species as number)) {
+      entriesBySpecies.set(entry.crop_species as number, entry);
+    }
+  }
+  const rows: LibraryCompanionRow[] = [];
+  const listedSpecies = new Set<number>();
+  const row = (item: PublicCropCompanion, label: string, entry: PublicCrop | null): LibraryCompanionRow => ({
+    kind: item.kind, reason: item.reason, note: item.note, label, entry,
+  });
+  for (const item of speciesEntry.companions ?? []) {
+    if (item.family) {
+      rows.push(row(item, familyLabel(item.family), null));
+      continue;
+    }
+    if (item.species === null) continue;
+    listedSpecies.add(item.species);
+    const entry = entriesBySpecies.get(item.species) ?? null;
+    rows.push(row(item, entry ? entryLabel(entry) : item.species_name, entry));
+  }
+  const ownSpecies = speciesEntry.crop_species;
+  if (ownSpecies) {
+    for (const entry of entriesBySpecies.values()) {
+      if (entry.id === speciesEntry.id || listedSpecies.has(entry.crop_species as number)) continue;
+      const item = (entry.companions ?? []).find((candidate) => candidate.species === ownSpecies);
+      if (item) rows.push(row(item, entryLabel(entry), entry));
+    }
+  }
+  return rows;
 };

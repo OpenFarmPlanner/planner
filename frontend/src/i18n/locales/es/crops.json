@@ -1595,20 +1595,17 @@
     "goodColumn": "Buenos vecinos",
     "badColumn": "Malos vecinos",
     "add": "Añadir vecino",
-    "empty": "Todavía no hay vecinos registrados. Anota qué cultivos se llevan bien y cuáles no.",
+    "editAction": "Editar vecinos",
+    "empty": "Todavía no hay vecinos registrados. En el formulario del cultivo, anota qué cultivos se llevan bien y cuáles no.",
     "sharedHint": "Se aplica a todas las variedades de {{name}}.",
     "noKulturHint": "Los vecinos se registran en la ficha del cultivo sin variedad. {{name}} todavía no tiene una ficha así.",
     "familyLabel": "{{name}} (familia botánica)",
-    "edit": "Editar vecino",
     "delete": "Quitar vecino",
-    "deleted": "{{name}} quitado de los vecinos.",
-    "saveError": "No se pudo guardar el vecino.",
+    "saveError": "El cultivo se guardó, pero no se pudieron guardar sus vecinos.",
     "loadError": "No se pudieron cargar los vecinos.",
-    "deleteError": "No se pudo quitar el vecino.",
     "duplicate": "Este vecino ya está registrado.",
-    "dialog": {
-      "addTitle": "Añadir vecino a {{name}}",
-      "editTitle": "Editar vecino de {{name}}",
+    "syncReplaceHint": "Al tomar la lista de la biblioteca se reemplazan los vecinos de este cultivo. Un par que se elimina también desaparece del otro cultivo. El texto libre se conserva.",
+    "form": {
       "kind": "Tipo",
       "kindGood": "Buen vecino",
       "kindBad": "Mal vecino",
@@ -1618,7 +1615,11 @@
       "groupFamilies": "Familias botánicas",
       "reason": "Motivo",
       "note": "Nota",
-      "neighborRequired": "Elige un vecino."
+      "neighborRequired": "Elige un vecino.",
+      "description": "Anota qué cultivos se llevan bien y cuáles no. Los vecinos se aplican a todas las variedades.",
+      "sharedPair": "También se aplica a {{name}}.",
+      "libraryNeighborHelper": "Especie de cultivo de la biblioteca o familia botánica",
+      "varietyReadOnly": "Los vecinos se aplican a todas las variedades de {{name}} y se editan en el formulario de {{name}}."
     },
     "reasons": {
       "competition": "Competencia",

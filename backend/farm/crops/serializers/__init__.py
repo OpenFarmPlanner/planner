@@ -5,7 +5,7 @@ serializer names so `farm.crops.serializers` keeps working as an import
 path.
 """
 
-from .companions import CropCompanionSerializer
+from .companions import CropCompanionReplaceSerializer, CropCompanionSerializer
 from .crops import CropSerializer
 from .imports import (
     CropImportApplySummarySerializer,
@@ -31,6 +31,7 @@ from .suppliers import CropSupplierDataSerializer, SupplierSerializer
 from .young_plant_demand import YoungPlantDemandSerializer
 
 __all__ = [
+    'CropCompanionReplaceSerializer',
     'CropCompanionSerializer',
     'CropImportApplySummarySerializer',
     'CropImportPreviewItemSerializer',

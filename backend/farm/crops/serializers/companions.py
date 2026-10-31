@@ -2,11 +2,13 @@
 
 from typing import Any
 
+from django.db.models import Q
 from rest_framework import serializers
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
 from farm.models import Crop, CropCompanion
-from farm.services.crop_companions import is_kultur
+from farm.services.crop_companions import active_relations, is_kultur
+from farm.utils import normalize_text
 
 
 class CropCompanionSerializer(serializers.ModelSerializer):
@@ -104,3 +106,84 @@ class CropCompanionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'companion': 'This neighbour is already listed.'}, code='duplicate_companion',
             )
+
+
+def _target_key(item: dict[str, Any]) -> tuple[str, Any] | None:
+    """What one relation points at, seen from the Kultur, as a comparable key."""
+    companion_crop = item.get('companion_crop')
+    if companion_crop is not None:
+        return ('crop', getattr(companion_crop, 'pk', companion_crop))
+    family = item.get('companion_family')
+    if family is not None:
+        return ('family', getattr(family, 'pk', family))
+    text = normalize_text(item.get('companion_text') or '')
+    return ('text', text) if text else None
+
+
+def relation_target_key(relation: CropCompanion, kultur_id: int) -> tuple[str, Any]:
+    if relation.companion_crop_id is not None:
+        other = relation.companion_crop_id if relation.crop_id == kultur_id else relation.crop_id
+        return ('crop', other)
+    if relation.companion_family_id is not None:
+        return ('family', relation.companion_family_id)
+    return ('text', normalize_text(relation.companion_text))
+
+
+class CropCompanionReplaceSerializer(serializers.Serializer):
+    """A Kultur's whole neighbour list, as the crop form saves it.
+
+    Each item names the neighbour from the Kultur's side (``companion_crop``,
+    ``companion_family`` or ``companion_text``). An item whose neighbour is
+    already listed updates that relation, a new one is created, and every
+    relation of the Kultur the list leaves out is deleted, a shared pair
+    included.
+    """
+
+    crop = serializers.PrimaryKeyRelatedField(queryset=Crop.objects.all())
+    relations = serializers.ListField(
+        child=serializers.DictField(), allow_empty=True, max_length=200,
+    )
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        kultur: Crop = attrs['crop']
+        CropCompanionSerializer(context=self.context)._validate_kultur('crop', kultur)
+        existing = {
+            relation_target_key(relation, kultur.id): relation
+            for relation in active_relations(kultur.project_id).filter(
+                Q(crop=kultur) | Q(companion_crop=kultur),
+            )
+        }
+        children: list[CropCompanionSerializer] = []
+        errors: dict[int, Any] = {}
+        seen: set[tuple[str, Any]] = set()
+        for position, item in enumerate(attrs['relations']):
+            data = {
+                'companion_crop': item.get('companion_crop'),
+                'companion_family': item.get('companion_family'),
+                'companion_text': item.get('companion_text') or '',
+                'kind': item.get('kind'),
+                'reason': item.get('reason', CropCompanion.REASON_OTHER),
+                'note': item.get('note') or '',
+                'crop': kultur.id,
+            }
+            key = _target_key(data)
+            if key is not None and key in seen:
+                errors[position] = {'companion': ['This neighbour is already listed.']}
+                continue
+            if key is not None:
+                seen.add(key)
+            child = CropCompanionSerializer(
+                instance=existing.get(key) if key is not None else None,
+                data=data,
+                context=self.context,
+            )
+            if not child.is_valid():
+                errors[position] = child.errors
+                continue
+            children.append(child)
+        if errors:
+            raise serializers.ValidationError({'relations': errors})
+        attrs['children'] = children
+        kept = {id(child.instance) for child in children if child.instance is not None}
+        attrs['removed'] = [relation for relation in existing.values() if id(relation) not in kept]
+        return attrs

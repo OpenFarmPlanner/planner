@@ -1128,7 +1128,12 @@ const detailSectionGridSx = {
 
             <Divider sx={{ mb: 2.5 }} />
 
-            <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} />
+            <CropCompanionsSection
+              crop={selectedCrop}
+              crops={crops}
+              onCropSelect={onCropSelect}
+              onEditKultur={onEditCrop}
+            />
 
             <Divider sx={{ mb: 2.5 }} />
 

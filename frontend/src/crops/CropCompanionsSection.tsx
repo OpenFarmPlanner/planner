@@ -1,22 +1,9 @@
-import { useMemo, useState } from 'react';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import { useMemo } from 'react';
 import EditIcon from '@mui/icons-material/Edit';
-import {
-  Alert,
-  Box,
-  Button,
-  IconButton,
-  Link,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 
 import type { CompanionKind, Crop, CropCompanion } from '../api/types';
-import { AppTooltip } from '../components/AppTooltip';
 import { useTranslation } from '../i18n';
-import { showGlobalSnackbar } from '../utils/globalSnackbar';
-import { CropCompanionDialog, type CompanionDraft } from './CropCompanionDialog';
 import {
   COMPANION_KINDS,
   companionReasonLabelKey,
@@ -31,9 +18,9 @@ interface CropCompanionsSectionProps {
   crop: Crop;
   crops: Crop[];
   onCropSelect: (crop: Crop) => void;
+  /** Opens the Kultur's crop form, where neighbours are edited. */
+  onEditKultur?: (kultur: Crop) => void;
 }
-
-type DialogState = { relation?: CropCompanion; kind: CompanionKind } | null;
 
 const KIND_TITLE_KEYS: Record<CompanionKind, string> = {
   good: 'companions.goodColumn',
@@ -41,15 +28,15 @@ const KIND_TITLE_KEYS: Record<CompanionKind, string> = {
 };
 
 /**
- * "Mischkultur" in the crop details: the Kultur's good and bad neighbours.
- * A Sorte shows its Kultur's list, which every Sorte shares; changes are
- * saved right away (see docs/crop-companions.md).
+ * "Mischkultur" in the crop details: the Kultur's good and bad neighbours,
+ * read-only. They are edited in the Kultur's crop form; a Sorte shows its
+ * Kultur's list (see docs/crop-companions.md).
  */
-export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompanionsSectionProps) {
+export function CropCompanionsSection({ crop, crops, onCropSelect, onEditKultur }: CropCompanionsSectionProps) {
   const { t } = useTranslation(['crops', 'common']);
   const families = usePlantFamilies();
-  const { relations, loaded, failed, create, update, remove } = useCropCompanions(crops.length);
-  const [dialog, setDialog] = useState<DialogState>(null);
+  // Reloaded whenever the crop list is refetched, e.g. after the form saved.
+  const { relations, loaded, failed } = useCropCompanions(crops);
 
   const cropsById = useMemo(
     () => new Map(crops.flatMap((entry) => (entry.id === undefined ? [] : [[entry.id, entry] as const]))),
@@ -68,41 +55,6 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
     return partner.text;
   };
 
-  const handleSave = async (draft: CompanionDraft): Promise<void> => {
-    if (dialog?.relation?.id !== undefined) {
-      await update(dialog.relation.id, draft);
-    } else {
-      await create(draft);
-    }
-  };
-
-  const handleDelete = async (relation: CropCompanion): Promise<void> => {
-    if (relation.id === undefined) return;
-    const name = partnerLabel(relation);
-    try {
-      await remove(relation.id);
-    } catch (error) {
-      console.error('Error deleting crop companion:', error);
-      showGlobalSnackbar({ message: t('companions.deleteError'), severity: 'error' });
-      return;
-    }
-    const restorable: CompanionDraft = {
-      crop: relation.crop,
-      companion_crop: relation.companion_crop,
-      companion_family: relation.companion_family,
-      companion_text: relation.companion_text,
-      kind: relation.kind,
-      reason: relation.reason,
-      note: relation.note,
-    };
-    showGlobalSnackbar({
-      message: t('companions.deleted', { name }),
-      severity: 'success',
-      actionLabel: t('common:actions.undo'),
-      onAction: async () => { await create(restorable); },
-    });
-  };
-
   const renderRelation = (relation: CropCompanion) => {
     const partner = kulturId !== null ? relationPartner(relation, kulturId) : null;
     const partnerCrop = partner?.type === 'crop' ? cropsById.get(partner.cropId) : undefined;
@@ -110,58 +62,26 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
     const reasonLabel = relation.reason === 'other' ? '' : t(companionReasonLabelKey(relation.reason));
     const detail = [reasonLabel, relation.note].filter(Boolean).join(': ');
     return (
-      <Stack
-        key={relation.id}
-        direction="row"
-        spacing={1}
-        data-testid="crop-companion-row"
-        sx={{ alignItems: 'flex-start', justifyContent: 'space-between', py: 0.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          {partnerCrop ? (
-            <Link component="button" type="button" variant="body1" underline="hover" onClick={() => onCropSelect(partnerCrop)}>
-              {label}
-            </Link>
-          ) : (
-            <Typography variant="body1">{label}</Typography>
-          )}
-          {detail ? (
-            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-              {detail}
-            </Typography>
-          ) : null}
-        </Box>
-        <Stack direction="row" sx={{ flexShrink: 0 }}>
-          <AppTooltip title={t('companions.edit')}>
-            <IconButton size="small" aria-label={t('companions.edit')} onClick={() => setDialog({ relation, kind: relation.kind })}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </AppTooltip>
-          <AppTooltip title={t('companions.delete')}>
-            <IconButton size="small" aria-label={t('companions.delete')} onClick={() => { void handleDelete(relation); }}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </AppTooltip>
-        </Stack>
-      </Stack>
+      <Box key={relation.id} data-testid="crop-companion-row" sx={{ py: 0.5, minWidth: 0 }}>
+        {partnerCrop ? (
+          <Link component="button" type="button" variant="body1" underline="hover" onClick={() => onCropSelect(partnerCrop)}>
+            {label}
+          </Link>
+        ) : (
+          <Typography variant="body1">{label}</Typography>
+        )}
+        {detail ? (
+          <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+            {detail}
+          </Typography>
+        ) : null}
+      </Box>
     );
   };
 
   return (
     <Box sx={{ mb: 3 }} data-testid="crop-companions-section">
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1 }}>
-        <Typography variant="h6">{t('companions.title')}</Typography>
-        {kultur ? (
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={() => setDialog({ kind: 'good' })}
-          >
-            {t('companions.add')}
-          </Button>
-        ) : null}
-      </Stack>
+      <Typography variant="h6" sx={{ mb: 1 }}>{t('companions.title')}</Typography>
       {failed ? <Alert severity="error">{t('companions.loadError')}</Alert> : null}
       {!kultur ? (
         <Typography variant="body2" color="text.secondary">
@@ -174,7 +94,19 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
         </Typography>
       ) : null}
       {kultur && loaded && !failed && ownRelations.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">{t('companions.empty')}</Typography>
+        <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+          <Typography variant="body2" color="text.secondary">{t('companions.empty')}</Typography>
+          {onEditKultur ? (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<EditIcon fontSize="small" />}
+              onClick={() => onEditKultur(kultur)}
+            >
+              {t('companions.editAction')}
+            </Button>
+          ) : null}
+        </Stack>
       ) : null}
       {kultur && ownRelations.length > 0 ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 1.5, md: 3 } }}>
@@ -189,18 +121,6 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
             );
           })}
         </Box>
-      ) : null}
-      {kultur && dialog ? (
-        <CropCompanionDialog
-          open
-          kultur={kultur}
-          crops={crops}
-          families={families}
-          relation={dialog.relation}
-          initialKind={dialog.kind}
-          onClose={() => setDialog(null)}
-          onSave={handleSave}
-        />
       ) : null}
     </Box>
   );

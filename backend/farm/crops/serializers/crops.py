@@ -48,6 +48,7 @@ from farm.seed_units import (
     SEED_PACKAGE_UNIT_SEEDS,
     SEED_RATE_UNITS,
 )
+from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
@@ -496,6 +497,17 @@ class CropSerializer(serializers.ModelSerializer):
             cache[obj.project_id] = build_general_crop_index(obj.project_id)
         return cache[obj.project_id]
 
+    def _with_companion_index(self, obj: Crop) -> Crop:
+        """``obj`` with the project's neighbour relations attached, loaded once per request.
+
+        The library comparisons below include a Kultur's neighbours; the index
+        is only queried when one of them gets that far.
+        """
+        cache = self.context.setdefault('_companion_relation_index_by_project', {})
+        if obj.project_id not in cache:
+            cache[obj.project_id] = CompanionRelationIndex(obj.project_id)
+        return attach_relation_index(obj, cache[obj.project_id])
+
     def _resolve_general_crop(self, obj: Crop) -> Crop | None:
         cached = getattr(obj, '_serialized_general_crop', _UNRESOLVED)
         if cached is not _UNRESOLVED:
@@ -675,11 +687,15 @@ class CropSerializer(serializers.ModelSerializer):
         notice is gone, but `public_update_rejected` keeps the divergence
         visible so the diff stays reachable.
         """
-        return has_open_public_crop_update(obj, self._general_crop_index(obj))
+        return has_open_public_crop_update(
+            self._with_companion_index(obj), self._general_crop_index(obj),
+        )
 
     def get_public_update_rejected(self, obj: Crop) -> bool:
         """Whether the pending library version was explicitly declined by the user."""
-        return is_public_crop_update_rejected(obj, self._general_crop_index(obj))
+        return is_public_crop_update_rejected(
+            self._with_companion_index(obj), self._general_crop_index(obj),
+        )
 
     def get_public_crop_species_pending(self, obj: Crop) -> bool:
         """Whether this crop's own public entry sits under an unreviewed species.
@@ -733,7 +749,9 @@ class CropSerializer(serializers.ModelSerializer):
     def get_public_publish_blocked_reason(self, obj: Crop) -> str | None:
         """Why publishing/updating the public entry from this copy is blocked, if it is."""
         return resolve_public_publish_block(
-            obj, self._resolve_owned_public_crop(obj), self._general_crop_index(obj),
+            self._with_companion_index(obj),
+            self._resolve_owned_public_crop(obj),
+            self._general_crop_index(obj),
         )
 
     def get_library_pinnable_fields(self, obj: Crop) -> list[str]:
@@ -741,7 +759,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(child=serializers.JSONField()))
     def get_library_pinned_values(self, obj: Crop) -> dict[str, Any]:
-        return library_pinned_public_values(obj)
+        return library_pinned_public_values(self._with_companion_index(obj))
 
     def get_source_public_crop_status(self, obj: Crop) -> str | None:
         """Lifecycle status of the linked entry, so the client never needs the

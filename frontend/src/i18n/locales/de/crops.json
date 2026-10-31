@@ -1556,20 +1556,17 @@
     "goodColumn": "Gute Nachbarn",
     "badColumn": "Schlechte Nachbarn",
     "add": "Nachbar hinzufügen",
-    "empty": "Noch keine Nachbarn erfasst. Halte fest, welche Kulturen sich gut vertragen und welche nicht.",
+    "editAction": "Nachbarn bearbeiten",
+    "empty": "Noch keine Nachbarn erfasst. Im Formular der Kultur hältst du fest, welche Kulturen sich gut vertragen und welche nicht.",
     "sharedHint": "Gilt für alle Sorten von {{name}}.",
     "noKulturHint": "Nachbarn werden bei der Kultur ohne Sorte erfasst. Für {{name}} gibt es noch keinen solchen Eintrag.",
     "familyLabel": "{{name}} (Pflanzenfamilie)",
-    "edit": "Nachbar bearbeiten",
     "delete": "Nachbar entfernen",
-    "deleted": "{{name}} als Nachbar entfernt.",
-    "saveError": "Der Nachbar konnte nicht gespeichert werden.",
+    "saveError": "Die Kultur ist gespeichert, die Nachbarn konnten aber nicht gespeichert werden.",
     "loadError": "Die Nachbarn konnten nicht geladen werden.",
-    "deleteError": "Der Nachbar konnte nicht entfernt werden.",
     "duplicate": "Dieser Nachbar ist bereits erfasst.",
-    "dialog": {
-      "addTitle": "Nachbar für {{name}} hinzufügen",
-      "editTitle": "Nachbar von {{name}} bearbeiten",
+    "syncReplaceHint": "Übernimmst du die Bibliothek, ersetzt ihre Liste die Nachbarn dieser Kultur. Ein Paar, das dabei wegfällt, fehlt danach auch bei der anderen Kultur. Freier Text bleibt erhalten.",
+    "form": {
       "kind": "Art",
       "kindGood": "Guter Nachbar",
       "kindBad": "Schlechter Nachbar",
@@ -1579,7 +1576,11 @@
       "groupFamilies": "Pflanzenfamilien",
       "reason": "Grund",
       "note": "Notiz",
-      "neighborRequired": "Bitte wähle einen Nachbarn."
+      "neighborRequired": "Bitte wähle einen Nachbarn.",
+      "description": "Halte fest, welche Kulturen sich gut vertragen und welche nicht. Die Nachbarn gelten für alle Sorten.",
+      "sharedPair": "Gilt auch für {{name}}.",
+      "libraryNeighborHelper": "Kulturart der Bibliothek oder Pflanzenfamilie",
+      "varietyReadOnly": "Die Nachbarn gelten für alle Sorten von {{name}} und werden im Formular von {{name}} bearbeitet."
     },
     "reasons": {
       "competition": "Konkurrenz",

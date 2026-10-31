@@ -29,6 +29,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional
+from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
 from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 from farm.services.public_crops import (
@@ -335,6 +336,10 @@ class PublicCropSerializer(serializers.ModelSerializer):
         if not crops:
             return None
         crop = crops[0]
+        relation_indexes = self.context.setdefault('_companion_relation_index_by_project', {})
+        if crop.project_id not in relation_indexes:
+            relation_indexes[crop.project_id] = CompanionRelationIndex(crop.project_id)
+        attach_relation_index(crop, relation_indexes[crop.project_id])
         # `is_project_crop_up_to_date` answers from these two fields alone
         # unless the copy is pristine *and* behind the library version, so the
         # index query is only worth paying for in that case.

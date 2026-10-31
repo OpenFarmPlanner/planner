@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from accounts.trust import grant_established_trust
 from crops.models import CropSpecies
-from farm.models import Bed, Crop, CropCompanion, PlantingPlan, Project, PublicCrop
+from farm.models import Bed, Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop
 from farm.tests.api_base import ProjectApiTestCase
 
 COMPANIONS_URL = '/openfarmplanner/api/crop-companions/'
@@ -253,9 +253,7 @@ class CompanionImportTests(CropCompanionTestCase):
         self.assertEqual(CropCompanion.objects.count(), 0)
 
 
-class CompanionLibraryTests(CropCompanionTestCase):
-    """Publishing shares neighbours by crop species or family; importing maps them back."""
-
+class CompanionLibraryTestCase(CropCompanionTestCase):
     def setUp(self):
         super().setUp()
         grant_established_trust(self.user)
@@ -274,6 +272,10 @@ class CompanionLibraryTests(CropCompanionTestCase):
             'original_language_code': 'de',
             'publish_as_general': True,
         }, format='json')
+
+
+class CompanionLibraryTests(CompanionLibraryTestCase):
+    """Publishing shares neighbours by crop species or family; importing maps them back."""
 
     def test_publishing_shares_species_and_family_neighbours_and_counts_the_rest(self):
         self.relate(self.tomato, self.potato)
@@ -333,3 +335,185 @@ class CompanionLibraryTests(CropCompanionTestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, 400)
+
+
+class CompanionReplaceApiTests(CropCompanionTestCase):
+    """The crop form saves a Kultur's whole list through ``replace``."""
+
+    url = f'{COMPANIONS_URL}replace/'
+
+    def test_creates_updates_and_deletes_to_match_the_list(self):
+        kept = self.relate(self.tomato, self.potato)
+        dropped = CropCompanion.objects.create(
+            project=self.project, crop=self.tomato, companion_text='Salbei', kind='bad',
+        )
+
+        response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
+            {'companion_crop': self.potato.id, 'kind': 'bad', 'reason': 'shared_pests_diseases', 'note': 'Fäule'},
+            {'companion_family': 'Brassicaceae', 'kind': 'good'},
+        ]}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(len(response.data), 2)
+        kept.refresh_from_db()
+        self.assertEqual((kept.reason, kept.note), ('shared_pests_diseases', 'Fäule'))
+        self.assertFalse(CropCompanion.objects.filter(pk=dropped.pk).exists())
+        self.assertTrue(CropCompanion.objects.filter(crop=self.tomato, companion_family_id='Brassicaceae').exists())
+
+    def test_a_pair_saved_from_the_other_side_stays_one_relation(self):
+        pair = self.relate(self.tomato, self.potato)
+
+        response = self.client.put(self.url, {'crop': self.potato.id, 'relations': [
+            {'companion_crop': self.tomato.id, 'kind': 'good'},
+        ]}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(CropCompanion.objects.filter(project=self.project).count(), 1)
+        pair.refresh_from_db()
+        self.assertEqual(pair.kind, 'good')
+
+    def test_a_neighbour_listed_twice_is_rejected_at_its_position(self):
+        response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
+            {'companion_text': 'Salbei', 'kind': 'good'},
+            {'companion_text': ' salbei ', 'kind': 'bad'},
+        ]}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('companion', response.data['relations'][1])
+        self.assertFalse(CropCompanion.objects.exists())
+
+    def test_an_invalid_item_saves_nothing(self):
+        self.relate(self.tomato, self.potato)
+
+        response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
+            {'companion_family': 'Brassicaceae', 'kind': 'good'},
+            {'companion_crop': self.tomato.id, 'kind': 'bad'},
+        ]}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(1, response.data['relations'])
+        self.assertEqual(CropCompanion.objects.filter(project=self.project).count(), 1)
+
+    def test_a_variety_cannot_be_saved_to(self):
+        roma = Crop.objects.create(name='Tomate', variety='Roma', project=self.project)
+
+        response = self.client.put(self.url, {'crop': roma.id, 'relations': []}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_an_unchanged_list_records_no_history(self):
+        self.relate(self.tomato, self.potato)
+        revisions = EntityRevision.objects.count()
+
+        response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
+            {'companion_crop': self.potato.id, 'kind': 'bad', 'reason': 'other', 'note': ''},
+        ]}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(EntityRevision.objects.count(), revisions)
+
+
+class CompanionLibrarySyncTests(CompanionLibraryTestCase):
+    """Neighbours take part in the library sync and update like a copy field."""
+
+    def setUp(self):
+        super().setUp()
+        self.fennel_species = CropSpecies.objects.create(name='Companion test fennel')
+        self.relate(self.tomato, self.potato)
+        self.assertEqual(self.publish(self.tomato).status_code, 201)
+        self.entry = PublicCrop.objects.get(variety='', crop_species=self.tomato_species)
+        self.tomato.refresh_from_db()
+
+    def entry_changes(self, companions):
+        self.entry.companions = companions
+        self.entry.version += 1
+        self.entry.save()
+
+    def preview_fields(self):
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.tomato.id}/public-sync/', {'public_crop_id': self.entry.id},
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        return {change['field']: change for change in response.data['changes']}
+
+    def sync(self, **fields):
+        return self.client.post(f'/openfarmplanner/api/crops/{self.tomato.id}/public-sync/', {
+            'public_crop_id': self.entry.id, 'base_version': self.entry.version,
+            'pull_fields': [], 'push_fields': [], 'pin_fields': [], **fields,
+        }, format='json')
+
+    CABBAGES = [
+        {'species': None, 'species_name': '', 'family': 'Brassicaceae', 'kind': 'good', 'reason': 'other', 'note': ''},
+    ]
+
+    def fennel(self):
+        return {'species': self.fennel_species.id, 'species_name': 'Fenchel', 'family': None,
+                'kind': 'bad', 'reason': 'allelopathy', 'note': ''}
+
+    def test_publishing_links_the_kultur_with_nothing_left_to_sync(self):
+        self.assertTrue(self.tomato.source_public_crop_id)
+        self.assertNotIn('companions', self.preview_fields())
+
+    def test_taking_the_library_value_replaces_the_shareable_neighbours(self):
+        CropCompanion.objects.create(project=self.project, crop=self.tomato, companion_text='Salbei', kind='bad')
+        self.entry_changes([self.fennel(), *self.CABBAGES])
+
+        change = self.preview_fields()['companions']
+        response = self.sync(pull_fields=['companions'])
+
+        self.assertEqual([item['kind'] for item in change['public_value']], ['bad', 'good'])
+        self.assertEqual([item['kind'] for item in change['local_value']], ['bad'])
+        self.assertEqual(response.status_code, 200, response.data)
+        relations = CropCompanion.objects.filter(project=self.project)
+        # The pair is gone from both Kulturen, free text stays, the species the
+        # project has no Kultur for becomes free text with the stored name.
+        self.assertFalse(relations.filter(companion_crop__isnull=False).exists())
+        self.assertTrue(relations.filter(crop=self.tomato, companion_text='Salbei').exists())
+        self.assertTrue(relations.filter(crop=self.tomato, companion_text='Fenchel', reason='allelopathy').exists())
+        self.assertTrue(relations.filter(crop=self.tomato, companion_family_id='Brassicaceae').exists())
+        self.assertNotIn('companions', self.preview_fields())
+
+    def test_sharing_mine_writes_the_kulturs_list_into_the_entry(self):
+        response = self.client.post(COMPANIONS_URL, {
+            'crop': self.tomato.id, 'companion_family': 'Brassicaceae', 'kind': 'good',
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.tomato.refresh_from_db()
+        self.assertTrue(self.tomato.is_modified_from_source)
+
+        self.assertTrue(self.preview_fields()['companions']['pushable'])
+        response = self.sync(push_fields=['companions'])
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.entry.refresh_from_db()
+        self.assertEqual([item['family'] or item['species'] for item in self.entry.companions],
+                         [self.potato_species.id, 'Brassicaceae'])
+
+    def test_a_pinned_list_is_kept_by_a_library_update(self):
+        CropCompanion.objects.create(
+            project=self.project, crop=self.tomato, companion_family_id='Brassicaceae', kind='good',
+        )
+        self.assertEqual(self.sync(pin_fields=['companions']).status_code, 200)
+        self.entry_changes([self.fennel()])
+
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/', {'mode': 'update'}, format='json',
+        )
+
+        self.assertIn(response.status_code, (200, 201), response.data)
+        self.assertTrue(CropCompanion.objects.filter(crop=self.tomato, companion_family_id='Brassicaceae').exists())
+        self.assertFalse(CropCompanion.objects.filter(companion_text='Fenchel').exists())
+
+    def test_a_library_update_lists_and_applies_the_neighbours(self):
+        self.entry_changes([self.fennel()])
+
+        status_response = self.client.get(f'/openfarmplanner/api/crops/{self.tomato.id}/public-update/')
+        response = self.client.post(
+            f'/openfarmplanner/api/public-crops/{self.entry.id}/import/', {'mode': 'update'}, format='json',
+        )
+
+        self.assertEqual(status_response.status_code, 200, status_response.data)
+        self.assertIn('companions', [change['field'] for change in status_response.data['changes']])
+        self.assertIn(response.status_code, (200, 201), response.data)
+        relations = CropCompanion.objects.filter(project=self.project)
+        self.assertEqual(list(relations.values_list('companion_text', flat=True)), ['Fenchel'])

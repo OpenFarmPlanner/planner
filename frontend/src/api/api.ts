@@ -56,6 +56,7 @@ import type {
   LocationLayoutsResponse,
   CompanionImportPreview,
   CompanionImportSummary,
+  CompanionReplaceItem,
   CropCompanion,
   CropSupplierData,
   SupplierDeleteResponse,
@@ -358,9 +359,15 @@ export const cropCompanionAPI = {
   // Unpaginated: a project's whole neighbour list, a relation between two
   // Kulturen once (see docs/crop-companions.md).
   list: () => http.get<CropCompanion[]>('/crop-companions/'),
+  /** One Kultur's relations, from both sides of a pair. */
+  listForCrop: (crop: number) => http.get<CropCompanion[]>('/crop-companions/', { params: { crop } }),
   create: (data: Omit<CropCompanion, 'id'>) => http.post<CropCompanion>('/crop-companions/', data),
   update: (id: number, data: Partial<CropCompanion>) => http.patch<CropCompanion>(`/crop-companions/${id}/`, data),
   delete: (id: number) => http.delete(`/crop-companions/${id}/`),
+  /** Saves a Kultur's whole list (the crop form); returns the Kultur's relations afterwards. */
+  replace: (crop: number, relations: CompanionReplaceItem[]) => http.put<CropCompanion[]>(
+    '/crop-companions/replace/', { crop, relations },
+  ),
 };
 
 export const bedAPI = {

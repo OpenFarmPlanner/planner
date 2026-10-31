@@ -323,35 +323,186 @@ def _apply_import_item(
 # plant family, never a project crop (docs/crop-library-architecture.md §3).
 
 
-def library_companions(kultur: Crop) -> tuple[list[dict[str, Any]], int]:
-    """The Kultur's neighbours as library items, and how many cannot be shared.
+class CompanionRelationIndex:
+    """Every active relation of a project by Kultur, loaded on first use.
 
-    A neighbouring Kultur is shared through its crop species, a family as is;
-    free text and Kulturen without a species stay in the project.
+    The crop list and library list serializers attach one per request to the
+    crops they render (:func:`attach_relation_index`), so comparing a Kultur's
+    neighbours with its library entry costs one query for the whole list.
     """
-    relations = (
-        active_relations(kultur.project_id)
-        .filter(Q(crop=kultur) | Q(companion_crop=kultur))
-        .select_related('crop', 'companion_crop')
+
+    def __init__(self, project_id: int) -> None:
+        self.project_id = project_id
+        self._by_kultur: dict[int, list[CropCompanion]] | None = None
+
+    def relations_of(self, kultur_id: int) -> list[CropCompanion]:
+        if self._by_kultur is None:
+            by_kultur: dict[int, list[CropCompanion]] = defaultdict(list)
+            for relation in active_relations(self.project_id):
+                by_kultur[relation.crop_id].append(relation)
+                if relation.companion_crop_id is not None:
+                    by_kultur[relation.companion_crop_id].append(relation)
+            self._by_kultur = by_kultur
+        return self._by_kultur.get(kultur_id, [])
+
+
+_RELATION_INDEX_ATTR = '_companion_relation_index'
+
+
+def attach_relation_index(crop: Crop, index: CompanionRelationIndex) -> Crop:
+    setattr(crop, _RELATION_INDEX_ATTR, index)
+    return crop
+
+
+def kultur_relations(kultur: Crop) -> list[CropCompanion]:
+    """The Kultur's relations, from both sides of a pair."""
+    index: CompanionRelationIndex | None = getattr(kultur, _RELATION_INDEX_ATTR, None)
+    if index is not None and index.project_id == kultur.project_id:
+        return index.relations_of(kultur.id)
+    return list(
+        active_relations(kultur.project_id).filter(Q(crop=kultur) | Q(companion_crop=kultur)),
     )
+
+
+def canonical_library_items(items: Iterable[Any] | None) -> list[dict[str, Any]]:
+    """Library neighbour items with every default filled in, in one stable order.
+
+    Both sides of a comparison go through here, so a missing ``note`` or an
+    item order does not read as a difference.
+    """
+    canonical: list[dict[str, Any]] = []
+    for item in items or []:
+        if not isinstance(item, dict) or item.get('kind') not in KINDS:
+            continue
+        family = item.get('family') or None
+        species = None if family else item.get('species') or None
+        if family is None and species is None:
+            continue
+        canonical.append({
+            'species': species,
+            'species_name': '' if family else str(item.get('species_name') or '').strip(),
+            'family': family,
+            'kind': item['kind'],
+            'reason': (
+                item['reason'] if item.get('reason') in REASONS else CropCompanion.REASON_OTHER
+            ),
+            'note': str(item.get('note') or '').strip(),
+        })
+    canonical.sort(key=lambda entry: (
+        entry['kind'], entry['family'] or '', entry['species'] or 0, entry['reason'], entry['note'],
+    ))
+    return canonical
+
+
+@dataclass(frozen=True)
+class LibraryCompanionView:
+    """A Kultur's neighbours as its library entry holds them."""
+
+    items: list[dict[str, Any]]
+    # The relations behind ``items``: the ones a pull from the library replaces.
+    relation_ids: list[int]
+    # Relations the library cannot hold (free text, a Kultur without a species).
+    skipped: int
+
+
+def library_companion_view(
+    kultur: Crop, entry_items: Iterable[Any] | None = (),
+) -> LibraryCompanionView:
+    """The Kultur's neighbours as library items, measured against ``entry_items``.
+
+    A neighbouring Kultur is shared through its crop species, a family as is.
+    ``entry_items`` are the linked entry's current neighbours: a species
+    neighbour takes the name stored there, and a free-text neighbour named like
+    one of them counts as that species (it is what importing a species the
+    project has no Kultur for leaves behind). Other free text and Kulturen
+    without a species stay in the project.
+    """
+    entry = canonical_library_items(entry_items)
+    names_by_species = {item['species']: item['species_name'] for item in entry if item['species']}
+    species_by_name = {
+        normalize_text(item['species_name']): item['species']
+        for item in entry if item['species'] and normalize_text(item['species_name'])
+    }
     items: list[dict[str, Any]] = []
+    relation_ids: list[int] = []
     skipped = 0
-    for relation in relations:
+    for relation in kultur_relations(kultur):
         target = target_from(relation, kultur.id)
-        item = {'kind': relation.kind, 'reason': relation.reason, 'note': relation.note}
+        detail = {'kind': relation.kind, 'reason': relation.reason, 'note': relation.note}
+        species_id: int | None = None
+        fallback_name = ''
         if target.type == TARGET_FAMILY:
-            items.append({'species': None, 'species_name': '', 'family': target.family_key, **item})
-        elif target.type == TARGET_CROP and target.crop is not None and target.crop.crop_species_id:
             items.append({
-                'species': target.crop.crop_species_id,
-                'species_name': target.crop.name,
-                'family': None,
-                **item,
+                'species': None, 'species_name': '', 'family': target.family_key, **detail,
             })
-        else:
+            relation_ids.append(relation.id)
+            continue
+        if target.type == TARGET_CROP and target.crop is not None:
+            species_id = target.crop.crop_species_id
+            fallback_name = target.crop.name
+        elif target.type == TARGET_TEXT:
+            species_id = species_by_name.get(normalize_text(target.text))
+            fallback_name = target.text
+        if species_id is None:
             skipped += 1
-    items.sort(key=lambda entry: (entry['kind'], entry['family'] or '', entry['species'] or 0))
-    return items, skipped
+            continue
+        items.append({
+            'species': species_id,
+            'species_name': names_by_species.get(species_id) or fallback_name,
+            'family': None,
+            **detail,
+        })
+        relation_ids.append(relation.id)
+    return LibraryCompanionView(
+        items=canonical_library_items(items), relation_ids=relation_ids, skipped=skipped,
+    )
+
+
+def library_companions(
+    kultur: Crop, entry_items: Iterable[Any] | None = (),
+) -> tuple[list[dict[str, Any]], int]:
+    """The Kultur's neighbours as library items, and how many cannot be shared."""
+    view = library_companion_view(kultur, entry_items)
+    return view.items, view.skipped
+
+
+def entry_companions_for(kultur: Crop, entry_items: Iterable[Any] | None) -> list[dict[str, Any]]:
+    """An entry's neighbours as ``kultur`` can hold them: never the Kultur's own species."""
+    return [
+        item for item in canonical_library_items(entry_items)
+        if item['species'] is None or item['species'] != kultur.crop_species_id
+    ]
+
+
+def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) -> bool:
+    """Make the Kultur's shareable neighbours exactly the entry's; returns whether anything changed.
+
+    "Take the library's value" for neighbours: the relations the library can
+    hold are replaced, free text and Kulturen without a species stay. A pair
+    that is removed is gone from the other Kultur as well, because a pair is
+    shared (docs/crop-companions.md).
+    """
+    entry = entry_companions_for(kultur, entry_items)
+    view = library_companion_view(kultur, entry)
+    if view.items == entry:
+        return False
+    with transaction.atomic():
+        CropCompanion.objects.filter(pk__in=view.relation_ids).delete()
+        apply_library_companions(kultur, entry)
+    return True
+
+
+def mark_library_copies_modified(kultur_ids: Iterable[int | None]) -> None:
+    """Flag linked Kulturen whose neighbours were edited as changed locally.
+
+    Neighbours are rows of their own, so ``Crop.save``'s divergence check never
+    sees them; without the flag a publish would report "nothing to contribute".
+    """
+    ids = {kultur_id for kultur_id in kultur_ids if kultur_id is not None}
+    if ids:
+        Crop.objects.filter(
+            pk__in=ids, source_public_crop__isnull=False, variety_normalized__isnull=True,
+        ).update(is_modified_from_source=True)
 
 
 def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> int:
