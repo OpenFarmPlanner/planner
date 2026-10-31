@@ -29,6 +29,7 @@ from crops.models import (
 from farm.models import (
     Bed,
     Crop,
+    CropCompanion,
     CropSupplierData,
     EntityRevision,
     Field,
@@ -322,8 +323,11 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         families and their translations, and the project's bed history with
         its species translations (farm/services/crop_rotation.py), plus the
         page-wide harvest-overlap check: the project's bed occupancies with
-        their species translations (farm/services/bed_capacity.py)."""
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 13)
+        their species translations (farm/services/bed_capacity.py), plus the
+        page-wide companion check's relation lookup
+        (farm/services/crop_companions.py), which stops there when the
+        project lists no neighbours."""
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 14)
 
     def test_planting_plans_list_query_count_with_rotation_findings(self):
         """Conflicts and accepted conflicts (with their accepting user) on every
@@ -337,7 +341,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 13, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
         )
 
     def test_planting_plans_list_query_count_with_harvest_overlaps(self):
@@ -356,13 +360,60 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=10, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(13):
+        with self.assertNumQueries(14):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
         self.assertEqual(len(rows), 3 * ROW_COUNT)
         predecessors = [row for row in rows if row['actual_harvest_end_date'] == date(2027, 6, 1)]
         self.assertEqual(len(predecessors), ROW_COUNT)
+
+    def _add_bad_neighbours_on_every_bed(self) -> None:
+        """Give every fixture crop a Kultur with a bad neighbour family, and put a
+        crop of that family next to it on its bed in the same period."""
+        for index in range(ROW_COUNT):
+            crop = self.crops[index]
+            kultur = crop if not crop.variety else Crop.objects.create(
+                name=crop.name, project=self.project, crop_species=crop.crop_species,
+            )
+            neighbour = self.crops[(index + 1) % ROW_COUNT]
+            CropCompanion.objects.create(
+                project=self.project, crop=kultur, kind=CropCompanion.KIND_BAD,
+                companion_family_id=PLANT_FAMILY_KEYS[(index + 1) % ROW_COUNT],
+            )
+            PlantingPlan.objects.create(
+                crop=neighbour, bed=self.beds[index], planting_date=date(2026, 4, 1),
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+            )
+
+    def test_planting_plans_list_query_count_with_companion_findings(self):
+        """Bad neighbours on every bed add a constant cost: the Kultur index and
+        the project's bed occupancies, each loaded once per page. The species-
+        linked Kulturen this fixture adds also make the page-wide general-crop
+        lookups load their species (two queries each for rotation and timing),
+        independent of the plan count."""
+        self._add_bad_neighbours_on_every_bed()
+
+        with self.assertNumQueries(20):
+            response = self.client.get('/openfarmplanner/api/planting-plans/')
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results']
+        self.assertEqual(len(rows), 2 * ROW_COUNT)
+        self.assertEqual(sum(1 for row in rows if row['companion_findings']), 2 * ROW_COUNT)
+
+    def test_crop_companions_list_query_count(self):
+        """Unpaginated; both crops of a pair come from one join, after the
+        membership and project lookups every project-scoped request makes."""
+        self._add_bad_neighbours_on_every_bed()
+        CropCompanion.objects.create(
+            project=self.project, crop=self.crop, companion_crop=self.crops[1],
+            kind=CropCompanion.KIND_GOOD,
+        )
+
+        with self.assertNumQueries(4):
+            response = self.client.get('/openfarmplanner/api/crop-companions/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), ROW_COUNT + 1)
 
     def test_young_plant_demand_list_query_count(self):
         """Crop, species translations and the bed/field/location of every plan

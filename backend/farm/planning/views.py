@@ -25,6 +25,7 @@ from farm.services.bed_capacity import (
     calculate_bed_capacity,
 )
 from farm.services.crop_display import format_crop_label
+from farm.services.crop_companions import CompanionService
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
@@ -425,9 +426,17 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             end=params['end_date'],
             plan_id=params['exclude_plan_id'],
         )
+        companion_findings = CompanionService(request.active_project.id).check(
+            crop=crop,
+            bed_id=params['bed_id'],
+            start=candidate.start,
+            end=candidate.end,
+            exclude_plan_id=params['exclude_plan_id'],
+        )
         return Response({
             **service.check(candidate).as_dict(),
             'bed_history': service.bed_history(params['bed_id'], exclude_plan_id=params['exclude_plan_id']),
+            'companion_findings': [finding.as_dict() for finding in companion_findings],
         })
 
     @action(detail=False, methods=['get'], url_path='bed-suggestions')

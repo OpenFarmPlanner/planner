@@ -32,6 +32,7 @@ from .agent_api import (  # noqa: E402
 from .crops import (  # noqa: E402
     ActiveCropManager,
     Crop,
+    CropCompanion,
     CropSupplierData,
     PublicCrop,
     PublicCropChangeProposal,
@@ -72,6 +73,7 @@ __all__ = [
     'Bed',
     'BedLayout',
     'Crop',
+    'CropCompanion',
     'CropImportDraft',
     'CropRevision',
     'CropSupplierData',

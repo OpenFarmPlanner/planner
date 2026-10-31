@@ -19,6 +19,7 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    CropCompanion,
     CropSupplierData,
     EntityRevision,
     Field,
@@ -152,6 +153,9 @@ def _build_projects_export(
             ),
             'crop_supplier_data': _serialize_queryset(
                 CropSupplierData.objects.filter(project=project).order_by('crop_id', 'supplier_id', 'id')
+            ),
+            'crop_companions': _serialize_queryset(
+                CropCompanion.objects.filter(project=project).order_by('crop_id', 'id')
             ),
             'seed_packages': _serialize_queryset(
                 SeedPackage.objects.filter(project=project).order_by('crop_id', 'size_unit', 'size_value', 'id')

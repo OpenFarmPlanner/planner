@@ -12,10 +12,21 @@ from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
+from farm.services.crop_companions import (
+    CompanionNameResolver,
+    apply_import_companions,
+    preview_row_companions,
+)
 from farm.services.crop_inheritance import CROP_SPECIES_INVARIANT_FIELDS
 from farm.utils import normalize_supplier_name, normalize_text
 
 _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
+_COMPANION_FIELDS = ('good_companions', 'bad_companions')
+
+
+def _pop_companions(crop_data: dict) -> dict[str, Any]:
+    """Take the neighbour columns off a row; they are applied once every row exists."""
+    return {name: crop_data.pop(name) for name in _COMPANION_FIELDS if name in crop_data}
 
 # Read-only and auto-generated fields are excluded: a diff is only useful for
 # values the import could actually change.
@@ -230,8 +241,16 @@ def _match_import_row(
 
 
 def preview_crop_import(project: Project, rows: list) -> list[dict]:
-    """One outcome per row — `create`, `update_candidate` (with a diff), or an error."""
+    """One outcome per row — `create`, `update_candidate` (with a diff), or an error.
+
+    A row naming neighbours also reports which of them would stay free text
+    (`companions`); names of rows in the same file count as known.
+    """
     results: list[dict] = []
+    resolver = CompanionNameResolver(
+        project.id,
+        extra_names=[row.get('name') for row in rows if _is_importable_row(row)],
+    )
 
     for idx, crop_data in enumerate(rows):
         if not _is_importable_row(crop_data):
@@ -245,21 +264,25 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
         try:
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
+            companions = preview_row_companions(resolver, crop_data)
 
             if matching_crop:
-                results.append({
+                result = {
                     'index': idx,
                     'status': 'update_candidate',
                     'matched_crop_id': matching_crop.id,
                     'diff': compute_crop_diff(matching_crop, crop_data),
                     'import_data': crop_data,
-                })
+                }
             else:
-                results.append({
+                result = {
                     'index': idx,
                     'status': 'create',
                     'import_data': crop_data,
-                })
+                }
+            if companions is not None:
+                result['companions'] = companions
+            results.append(result)
         except Exception as error:
             results.append({
                 'index': idx,
@@ -271,11 +294,16 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
 
 
 def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) -> dict[str, Any]:
-    """Create the rows that are new and, when confirmed, update the ones that match."""
+    """Create the rows that are new and, when confirmed, update the ones that match.
+
+    Neighbours named by the imported rows are added afterwards, so a neighbour
+    created by a later row of the same file is found.
+    """
     created_count = 0
     updated_count = 0
     skipped_count = 0
     errors: list[dict] = []
+    companion_rows: list[tuple[Crop, dict[str, Any]]] = []
 
     for idx, crop_data in enumerate(rows):
         if not _is_importable_row(crop_data):
@@ -283,6 +311,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
             continue
 
         try:
+            companions = _pop_companions(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
             if supplier:
@@ -297,8 +326,10 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                     context={'project': project},
                 )
                 if serializer.is_valid():
-                    serializer.save()
+                    saved = serializer.save()
                     updated_count += 1
+                    if companions:
+                        companion_rows.append((saved, companions))
                 else:
                     errors.append({'index': idx, 'error': serializer.errors})
             else:
@@ -315,16 +346,21 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 _resolve_crop_species(crop_data)
                 serializer = CropSerializer(data=crop_data, context={'project': project})
                 if serializer.is_valid():
-                    serializer.save(project=project)
+                    saved = serializer.save(project=project)
                     created_count += 1
+                    if companions:
+                        companion_rows.append((saved, companions))
                 else:
                     errors.append({'index': idx, 'error': serializer.errors})
         except Exception as error:
             errors.append({'index': idx, 'error': str(error)})
 
-    return {
+    summary: dict[str, Any] = {
         'created_count': created_count,
         'updated_count': updated_count,
         'skipped_count': skipped_count,
         'errors': errors,
     }
+    if companion_rows:
+        summary['companions'] = apply_import_companions(project.id, companion_rows).as_dict()
+    return summary

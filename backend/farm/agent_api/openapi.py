@@ -573,6 +573,7 @@ def _read_only_collection_paths() -> dict[str, Any]:
         '/suppliers/': 'Seed suppliers of the bound project.',
         '/seed-packages/': 'Seed package sizes of the bound project.',
         '/crop-supplier-data/': 'Supplier-specific seed data of the bound project.',
+        '/crop-companions/': "Good and bad neighbours of the bound project's crops.",
         '/locations/': 'Locations of the bound project.',
         '/fields/': 'Fields of the bound project.',
         '/beds/': 'Beds of the bound project.',

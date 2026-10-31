@@ -27,6 +27,7 @@ from .structure.views import (
     LocationViewSet,
 )
 from .crops.views import (
+    CropCompanionViewSet,
     CropSupplierDataViewSet,
     CropViewSet,
     PublicCropViewSet,
@@ -70,6 +71,7 @@ router.register(r'fields', FieldViewSet)
 router.register(r'beds', BedViewSet)
 router.register(r'crops', CropViewSet)
 router.register(r'crop-supplier-data', CropSupplierDataViewSet)
+router.register(r'crop-companions', CropCompanionViewSet)
 router.register(r'public-crops', PublicCropViewSet, basename='public-crops')
 router.register(r'seed-packages', SeedPackageViewSet)
 router.register(r'planting-plans', PlantingPlanViewSet)

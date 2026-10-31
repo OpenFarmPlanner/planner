@@ -27,6 +27,7 @@ from farm.services.crop_inheritance import (
     resolve_crop_field,
     resolve_plants_per_m2,
 )
+from farm.services.crop_companions import CompanionService
 from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
@@ -56,6 +57,13 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     updated_by_user = AuditUserSerializer(source='updated_by', read_only=True)
     rotation_status = serializers.SerializerMethodField(read_only=True)
     rotation_findings = serializers.SerializerMethodField(read_only=True)
+    companion_findings = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Other plans on the same bed with an overlapping period whose crop is listed as a '
+            'good or bad neighbour (companion planting); bad ones first. Never blocks saving.'
+        ),
+    )
     harvest_overlaps = serializers.SerializerMethodField(
         read_only=True,
         help_text=(
@@ -150,6 +158,13 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_rotation_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
         return [finding.as_dict() for finding in self._rotation_result(obj).findings]
+
+    def get_companion_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
+        """The plan's neighbour findings, from one project-wide service per request."""
+        services = self.context.setdefault('_companion_service_by_project', {})
+        if obj.project_id not in services:
+            services[obj.project_id] = CompanionService(obj.project_id)
+        return [finding.as_dict() for finding in services[obj.project_id].check_plan(obj)]
 
     def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
         """The plan's harvest overlaps, from one project-wide index per request."""
