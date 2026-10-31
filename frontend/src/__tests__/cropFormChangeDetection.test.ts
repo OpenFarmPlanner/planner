@@ -17,6 +17,12 @@ describe('hasEffectiveCropFormChanges', () => {
     expect(unchanged({ name: 'Salat' }, { name: 'Spinat' })).toBe(true);
   });
 
+  it('reports an edit of only the groups', () => {
+    expect(unchanged({ name: 'Dill' }, { name: 'Dill', tags: ['Kräuter'] })).toBe(true);
+    expect(unchanged({ tags: ['Kräuter'] }, { tags: [] })).toBe(true);
+    expect(unchanged({ tags: ['Kräuter'] }, { tags: [' Kräuter '] })).toBe(false);
+  });
+
   describe('edits that only look like edits', () => {
     it('ignores surrounding whitespace', () => {
       expect(unchanged({ name: 'Salat' }, { name: '  Salat  ' })).toBe(false);

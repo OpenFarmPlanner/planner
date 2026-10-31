@@ -5,6 +5,7 @@ import type {
   SeedPackage,
   SeedRateByCultivation,
 } from '../api/types';
+import { normalizeCropTags } from './cropTags';
 import { isEmptySupplierDataRow } from './supplierDataRows';
 
 type SupplierDataDraft = CropSupplierData | CropSupplierDataInput;
@@ -160,6 +161,7 @@ export function normalizeCropFormData(crop: Partial<Crop>): Record<string, unkno
   normalized.display_color = normalizeColor(crop.display_color);
   normalized.seed_rate_by_cultivation = normalizeSeedRateByCultivation(crop.seed_rate_by_cultivation);
   normalized.supplier_data = normalizeSupplierRows(crop.supplier_data);
+  normalized.tags = normalizeCropTags(crop.tags ?? []);
   normalized.library_pinned_fields = [...(crop.library_pinned_fields ?? [])].sort();
 
   return normalized;
