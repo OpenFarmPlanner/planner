@@ -317,7 +317,9 @@
     "packageUnitLabel": "Unité du conditionnement",
     "packageUnitGram": "g",
     "packageUnitSeeds": "graines",
-    "displayColorAria": "Couleur de la culture"
+    "displayColorAria": "Couleur de la culture",
+    "botanicalName": "Nom latin",
+    "botanicalNamePlaceholder": "p. ex. Beta vulgaris var. flavescens"
   },
   "messages": {
     "createSuccess": "Culture créée avec succès",
@@ -1282,7 +1284,8 @@
           "seed_rate_direct_value": "Quantité pour le semis direct",
           "seed_rate_direct_unit": "Unité pour le semis direct",
           "seed_rate_pre_cultivation_value": "Quantité pour la plantation",
-          "seed_rate_pre_cultivation_unit": "Unité pour la plantation"
+          "seed_rate_pre_cultivation_unit": "Unité pour la plantation",
+          "botanical_name": "Nom latin"
         },
         "values": {
           "low": "Faibles",

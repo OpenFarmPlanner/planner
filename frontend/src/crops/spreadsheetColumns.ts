@@ -106,6 +106,15 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'string',
   },
   {
+    key: 'botanical_name',
+    headerKey: 'form.botanicalName',
+    aliases: [
+      'lateinische bezeichnung', 'lateinischer name', 'botanischer name', 'wissenschaftlicher name',
+      'latin name', 'botanical name', 'scientific name',
+    ],
+    type: 'string',
+  },
+  {
     key: 'crop_family',
     headerKey: 'form.cropFamily',
     aliases: ['familie', 'pflanzenart', 'pfanzenfamilie'],

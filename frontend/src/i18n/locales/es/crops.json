@@ -317,7 +317,9 @@
     "packageUnitLabel": "Unidad del envase",
     "packageUnitGram": "g",
     "packageUnitSeeds": "semillas",
-    "displayColorAria": "Color del cultivo"
+    "displayColorAria": "Color del cultivo",
+    "botanicalName": "Nombre latino",
+    "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens"
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",
@@ -1282,7 +1284,8 @@
           "seed_rate_direct_value": "Cantidad para siembra directa",
           "seed_rate_direct_unit": "Unidad para siembra directa",
           "seed_rate_pre_cultivation_value": "Cantidad para trasplante",
-          "seed_rate_pre_cultivation_unit": "Unidad para trasplante"
+          "seed_rate_pre_cultivation_unit": "Unidad para trasplante",
+          "botanical_name": "Nombre latino"
         },
         "values": {
           "low": "Bajas",

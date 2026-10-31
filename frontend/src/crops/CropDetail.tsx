@@ -1085,6 +1085,18 @@ const detailSectionGridSx = {
                 {t('detail.sections.cropRotation')}
               </Typography>
               <Box sx={detailSectionGridSx}>
+                {getCropValue('botanical_name', selectedCrop.botanical_name) && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {t('form.botanicalName')}
+                    </Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
+                      <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
+                        {getCropValue('botanical_name', selectedCrop.botanical_name)}
+                      </Typography>
+                    </ValueWithLibraryPin>
+                  </Box>
+                )}
                 {getCropValue('crop_family', selectedCrop.crop_family) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">

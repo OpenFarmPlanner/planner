@@ -73,6 +73,16 @@ describe('crop spreadsheet export → import round trip', () => {
     );
   });
 
+  it("reads a user's own Latin-name column (\"Lateinische Bezeichnung\")", async () => {
+    await i18n.changeLanguage('de');
+    const csv = 'Name;Sorte;Lateinische Bezeichnung\nMangold;Glatter Silber;Beta vulgaris var. flavescens';
+
+    const result = await parseSpreadsheetFile(csvFile(csv));
+
+    expect(result.warnings).toEqual([]);
+    expect(result.entries[0]).toMatchObject({ name: 'Mangold', botanical_name: 'Beta vulgaris var. flavescens' });
+  });
+
   it('imports a German export reported by a user (enum labels with spaced slashes)', async () => {
     await i18n.changeLanguage('de');
     const csv = [
@@ -107,6 +117,7 @@ describe('crop spreadsheet export → import round trip', () => {
     variety: 'Roma',
     supplier: { id: 7, name: 'Bingenheimer Saatgut' },
     seed_supplier: 'Bingenheimer Saatgut',
+    botanical_name: 'Solanum lycopersicum var. cerasiforme',
     crop_family: 'Solanaceae',
     nutrient_demand: 'high',
     cultivation_type: 'pre_cultivation',

@@ -6,7 +6,7 @@ import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
-import { fieldRowSx, mediumFieldSx, smallFieldSx } from './styles.tsx';
+import { fieldRowSx, mediumFieldSx, smallFieldSx, wideFieldSx } from './styles.tsx';
 import type { Crop, PlantFamily } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { AppTooltip } from '../../components/AppTooltip';
@@ -201,6 +201,8 @@ export function BasicInfoSection({
   // A read-only field (linked Sorte) gets no info icon: the heading's icon explains it.
   const showRotationBreakInfo = !speciesInvariantFieldsReadOnly;
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
+  const botanicalNameVariety = getFieldTooltipProps?.('botanical_name');
+  const botanicalNamePin = getFieldPinProps?.('botanical_name');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
   const rotationBreakYearsVariety = getFieldTooltipProps?.('rotation_break_years');
@@ -419,6 +421,21 @@ export function BasicInfoSection({
         <Box sx={fieldRowSx}>{firstVarietySourceHint}</Box>
       ) : null}
       {identityHint}
+      <Box sx={fieldRowSx}>
+        <VarietyFieldTooltip tooltipTitle={botanicalNameVariety?.tooltipTitle}>
+          <TextField
+            sx={mergeVarietyFieldSx(wideFieldSx, botanicalNameVariety?.sx, botanicalNamePin?.fieldSx)}
+            label={t('form.botanicalName')}
+            placeholder={t('form.botanicalNamePlaceholder')}
+            value={formData.botanical_name ?? ''}
+            onChange={(event) => onChange('botanical_name', event.target.value)}
+            slotProps={{
+              input: { endAdornment: botanicalNamePin?.endAdornment, sx: { fontStyle: 'italic' } },
+              htmlInput: { maxLength: 200 },
+            }}
+          />
+        </VarietyFieldTooltip>
+      </Box>
       {/* The heading is inline and the info icon follows it in an unbreakable
           span (a line may otherwise break before an inline-flex box despite the
           no-break space): on a narrow phone the heading wraps at its hyphen and

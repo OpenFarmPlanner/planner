@@ -20,7 +20,7 @@ _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
 # Read-only and auto-generated fields are excluded: a diff is only useful for
 # values the import could actually change.
 _COMPARABLE_FIELDS = [
-    'name', 'variety', 'notes', 'seed_supplier',
+    'name', 'variety', 'notes', 'seed_supplier', 'botanical_name',
     'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield',

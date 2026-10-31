@@ -37,6 +37,7 @@ from farm.services.public_crops import (
 
 PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'notes',
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'cultivation_type',
@@ -185,6 +186,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'description_language_code',
             'translations',
             'original_language_code',
+            'botanical_name',
             'crop_family',
             'crop_family_display_name',
             'nutrient_demand',

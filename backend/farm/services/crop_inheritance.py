@@ -41,6 +41,7 @@ from farm.models.crops import (
 # read and written through get_crop_field_value()/set_crop_field_value(), so
 # ``crop_family`` resolves to its botanical-name key, never to a PlantFamily row.
 CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'rotation_break_years',

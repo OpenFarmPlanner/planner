@@ -82,6 +82,7 @@ CROP_COPY_FIELDS = [
     'name',
     'variety',
     'notes',
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'cultivation_types',
@@ -106,6 +107,7 @@ CROP_COPY_FIELDS = [
 PUBLIC_CROP_EDITABLE_FIELDS = [
     'variety',
     'notes',
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'cultivation_types',

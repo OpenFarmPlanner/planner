@@ -34,6 +34,7 @@ export const areCropValuesEqual = (left: unknown, right: unknown): boolean => {
  * should never default to the crop's own (color, supplier/seed packaging).
  */
 export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
+  'botanical_name',
   'crop_family',
   'nutrient_demand',
   'rotation_break_years',

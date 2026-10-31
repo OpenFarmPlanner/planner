@@ -396,6 +396,14 @@ class Crop(TimestampedModel):
     )
     
     # Manual planning fields.
+    botanical_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text=(
+            'Latin (botanical) name as the grower writes it, e.g. "Beta vulgaris var. flavescens"; '
+            'a Sorte without its own inherits the Kultur\'s. Free text, not validated.'
+        ),
+    )
     crop_family = models.ForeignKey(
         'crops.PlantFamily',
         null=True,
@@ -1073,6 +1081,14 @@ class PublicCrop(TimestampedModel):
     published_at = models.DateTimeField(null=True, blank=True)
     name_normalized = models.CharField(max_length=200, db_index=True, editable=False)
     variety_normalized = models.CharField(max_length=200, blank=True, db_index=True, editable=False)
+    botanical_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text=(
+            'Latin (botanical) name as the grower writes it, e.g. "Beta vulgaris var. flavescens"; '
+            'a Sorte without its own inherits the Kultur\'s. Free text, not validated.'
+        ),
+    )
     crop_family = models.ForeignKey(
         'crops.PlantFamily',
         null=True,

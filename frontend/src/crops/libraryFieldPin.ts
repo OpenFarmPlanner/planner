@@ -17,6 +17,7 @@ import {
  * sets `cultivation_types` and `cultivation_type` together).
  */
 export const LIBRARY_PIN_FORM_FIELDS = {
+  botanical_name: ['botanical_name'],
   nutrient_demand: ['nutrient_demand'],
   cultivation_types: ['cultivation_types', 'cultivation_type'],
   growth_duration_days: ['growth_duration_days'],

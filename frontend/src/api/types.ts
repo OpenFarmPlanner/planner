@@ -188,6 +188,8 @@ export interface Crop {
   notes?: string;
 
   /** Botanical name of a plant family from `/plant-families/` (e.g. "Brassicaceae"); null when unset. */
+  /** Latin name as the grower writes it; a Sorte without its own inherits the Kultur's. */
+  botanical_name?: string;
   crop_family?: string | null;
   /** Localized name of the row's own `crop_family` (read-only). */
   crop_family_display_name?: string | null;
@@ -330,6 +332,8 @@ export interface PublicCrop {
   translations?: Record<string, string>;
   original_language_code?: string;
   /** Botanical name of a plant family; null when unset. */
+  /** Latin name as the grower writes it; a Sorte without its own inherits the Kultur's. */
+  botanical_name?: string;
   crop_family?: string | null;
   crop_family_display_name?: string | null;
   nutrient_demand?: 'low' | 'medium' | 'high' | '';

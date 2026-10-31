@@ -230,6 +230,13 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         input_aliases={'notes': None},
     ),
     FieldSpec(
+        name='botanical_name',
+        kind=KIND_STRING,
+        description='Latin (botanical) name, e.g. "Beta vulgaris var. flavescens".',
+        example='Solanum lycopersicum',
+        input_aliases={'botanical_name': None, 'latin_name': None, 'scientific_name': None},
+    ),
+    FieldSpec(
         name='supplier_name',
         kind=KIND_STRING,
         description=(

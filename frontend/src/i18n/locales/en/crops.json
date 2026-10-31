@@ -312,7 +312,9 @@
     "packageUnitLabel": "Package unit",
     "packageUnitGram": "g",
     "packageUnitSeeds": "seeds",
-    "displayColorAria": "Crop colour"
+    "displayColorAria": "Crop colour",
+    "botanicalName": "Latin name",
+    "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens"
   },
   "messages": {
     "createSuccess": "Crop created successfully",
@@ -1249,7 +1251,8 @@
           "seed_rate_direct_value": "Direct sowing quantity",
           "seed_rate_direct_unit": "Direct sowing unit",
           "seed_rate_pre_cultivation_value": "Transplanting quantity",
-          "seed_rate_pre_cultivation_unit": "Transplanting unit"
+          "seed_rate_pre_cultivation_unit": "Transplanting unit",
+          "botanical_name": "Latin name"
         },
         "values": {
           "low": "Low",
