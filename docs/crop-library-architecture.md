@@ -101,6 +101,11 @@ The public Crop Library follows an open-data model:
   edits (the 409 response there also flags `variety_changed` so the frontend
   can call the identity change out explicitly instead of blending it into a
   generic warning).
+- A first import never collides with the project's names: a project holds
+  one general crop per name, whatever its species, so a general entry whose
+  name is already taken is created under a free name ("Paprika (2)"), as the
+  conflict dialog's "import as new" does. Importing a variety leaves out its
+  general crop in that case and imports the variety alone.
 - Nothing about that model is automatic, but it is no longer invisible.
   `CropSerializer.public_update_available` is true when the linked entry's
   `version` moved past the copy's `source_public_version` **and**
