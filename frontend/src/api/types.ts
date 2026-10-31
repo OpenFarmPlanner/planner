@@ -202,6 +202,8 @@ export interface Crop {
   effective_rotation_break_years?: number | null;
   cultivation_type?: CultivationType | '';
   cultivation_types?: CultivationType[];
+  /** The user's own groups ("Gruppen"); project data, never published. */
+  tags?: string[];
   
   growth_duration_days?: number;
   harvest_duration_days?: number;
@@ -264,7 +266,8 @@ export type CropInheritableField =
   | 'seed_rate_direct_value'
   | 'seed_rate_direct_unit'
   | 'seed_rate_pre_cultivation_value'
-  | 'seed_rate_pre_cultivation_unit';
+  | 'seed_rate_pre_cultivation_unit'
+  | 'tags';
 
 export interface CropSupplierData {
   id?: number;

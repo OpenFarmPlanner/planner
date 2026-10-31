@@ -19,6 +19,7 @@ from typing import Any
 from crops.plant_families import coerce_plant_family_key
 from farm.enum_normalization import normalize_choice_value
 from farm.models import Crop
+from farm.services.crop_tags import normalize_tags
 
 from .field_specs import (
     DIMENSION_LENGTH,
@@ -28,6 +29,7 @@ from .field_specs import (
     KIND_ENUM_LIST,
     KIND_INTEGER,
     KIND_STRING,
+    KIND_STRING_LIST,
     SEED_RATE_PLAUSIBILITY,
     FieldSpec,
     seed_rate_value_constraint_error,
@@ -227,6 +229,23 @@ def _analyze_enum_list(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any)
     analysis.confidence = CONFIDENCE_EXACT if list(raw_items) == normalized_items else 'converted'
 
 
+def _analyze_string_list(analysis: FieldAnalysis, raw_value: Any) -> None:
+    """Normalize free-text names given as a list or as one separated text."""
+    if raw_value is None:
+        analysis.api_value = None
+        return
+    if isinstance(raw_value, dict):
+        analysis.errors.append(_issue('not_a_list'))
+        analysis.confidence = CONFIDENCE_INVALID
+        return
+    raw_items = raw_value if isinstance(raw_value, list | tuple) else str(raw_value)
+    analysis.api_value = normalize_tags(raw_items)
+    analysis.confidence = (
+        CONFIDENCE_EXACT if isinstance(raw_value, list) and raw_value == analysis.api_value
+        else 'converted'
+    )
+
+
 def _analyze_color(analysis: FieldAnalysis, raw_value: Any) -> None:
     """Validate a hex colour string."""
     if raw_value is None or str(raw_value).strip() == '':
@@ -361,6 +380,8 @@ def analyze_field(
         _analyze_enum(spec, analysis, raw_value)
     elif spec.kind == KIND_ENUM_LIST:
         _analyze_enum_list(spec, analysis, raw_value)
+    elif spec.kind == KIND_STRING_LIST:
+        _analyze_string_list(analysis, raw_value)
     elif spec.kind == KIND_COLOR:
         _analyze_color(analysis, raw_value)
     else:

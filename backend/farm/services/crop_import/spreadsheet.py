@@ -33,7 +33,7 @@ def _pop_companions(crop_data: dict) -> dict[str, Any]:
 # values the import could actually change.
 _COMPARABLE_FIELDS = [
     'name', 'variety', 'notes', 'seed_supplier', 'botanical_name',
-    'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types',
+    'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types', 'tags',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',

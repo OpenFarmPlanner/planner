@@ -30,7 +30,8 @@
     "toggle": "Filters",
     "reset": "Reset filters",
     "openAdvanced": "Open advanced filters",
-    "title": "Filters"
+    "title": "Filters",
+    "tag": "Group"
   },
   "emptySearch": {
     "title": "No crops found",
@@ -76,6 +77,7 @@
   },
   "detail": {
     "sections": {
+      "general": "General information",
       "cropRotation": "Crop Rotation Properties",
       "spacing": "Spacing",
       "seed": "Seed",
@@ -313,7 +315,10 @@
     "packageUnitSeeds": "seeds",
     "displayColorAria": "Crop colour",
     "botanicalName": "Latin name",
-    "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens"
+    "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens",
+    "tags": "Groups",
+    "tagsPlaceholder": "e.g. Herbs",
+    "tagsHelper": "Your own groups for filtering. Pick an existing one or type a new one."
   },
   "messages": {
     "createSuccess": "Crop created successfully",

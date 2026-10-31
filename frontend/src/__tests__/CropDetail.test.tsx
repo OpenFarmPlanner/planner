@@ -7,6 +7,7 @@ import { CropDetail } from '../crops/CropDetail';
 import type { Crop } from '../api/api';
 import translations from '@/test-utils/translations';
 import i18n from '../i18n/config';
+import { CROP_FILTERS_STORAGE_KEY } from '../crops/cropDetailFormatters';
 
 describe('CropDetail Component', () => {
   const renderCropDetail = (ui: Parameters<typeof render>[0]) =>
@@ -176,6 +177,23 @@ describe('CropDetail Component', () => {
 
     expect(screen.getByText('Keine Kulturen gefunden')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suche und Filter zurücksetzen' })).toBeInTheDocument();
+  });
+
+  it('filters by group, a Kultur staying visible for its matching Sorte', () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({ selectedTagFilter: 'Blumen' }));
+    const crops = [
+      { id: 21, name: 'Kamille', variety: '', tags: ['Kräuter'] },
+      { id: 22, name: 'Kamille', variety: 'Zierkamille', tags: ['Blumen'], general_crop: 21 },
+      { id: 23, name: 'Salbei', variety: '', tags: ['Kräuter'] },
+      { id: 24, name: 'Ringelblume', variety: '', tags: ['blumen'] },
+    ] as Crop[];
+
+    renderCropDetail(<CropDetail crops={crops} onCropSelect={vi.fn()} />);
+
+    // Kamille's own group is "Kräuter"; it stays listed because Zierkamille matches.
+    expect(screen.getByText('Kamille')).toBeInTheDocument();
+    expect(screen.getByText('Ringelblume')).toBeInTheDocument();
+    expect(screen.queryByText('Salbei')).not.toBeInTheDocument();
   });
 
   it('keeps variety matches in the embedded crop search list', async () => {

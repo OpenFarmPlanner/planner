@@ -111,6 +111,9 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   neighbours of a Kultur (shared pairs, plant families, free text), the
   same-bed planning warning, the spreadsheet columns and how neighbours go
   through the crop library.
+- **[Crop Groups (Gruppen)](./crop-groups.md)** — the user's own groups on
+  crops for filtering: normalization, inheritance by Sorten, the spreadsheet
+  column, and why they stay out of the crop library.
 - **[Bed Occupancy (Beetbelegung)](./bed-occupancy.md)** — the planting-plan
   area check: firm and soft occupancy, when a follow-up crop may take over a
   bed during the previous crop's harvest phase (project setting
