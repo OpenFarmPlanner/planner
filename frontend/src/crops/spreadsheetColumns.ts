@@ -2,8 +2,11 @@ export type SpreadsheetColumnDef = {
   headerKey: string;
   key: string;
   aliases: string[];
-  /** `list`: several enum values in one cell, comma-separated. */
-  type: 'string' | 'number' | 'boolean' | 'list';
+  /**
+   * `list`: several enum values in one cell, comma-separated.
+   * `companions`: one neighbour per line (see crops/companions.ts).
+   */
+  type: 'string' | 'number' | 'boolean' | 'list' | 'companions';
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
@@ -240,6 +243,18 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     headerKey: 'form.notes',
     aliases: ['anmerkungen', 'kommentar', 'notiz', 'hinweise'],
     type: 'string',
+  },
+  {
+    key: 'good_companions',
+    headerKey: 'companions.goodColumn',
+    aliases: ['good companions', 'good neighbours', 'gute nachbarn', 'mischkultur gut'],
+    type: 'companions',
+  },
+  {
+    key: 'bad_companions',
+    headerKey: 'companions.badColumn',
+    aliases: ['bad companions', 'bad neighbours', 'schlechte nachbarn', 'mischkultur schlecht'],
+    type: 'companions',
   },
 ];
 

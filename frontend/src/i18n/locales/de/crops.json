@@ -545,7 +545,8 @@
       "project": "Projekt",
       "fallback": "Eintrag",
       "openTarget": "Öffnen",
-      "season": "Saison"
+      "season": "Saison",
+      "cropCompanion": "Nachbar (Mischkultur)"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} erstellt",
@@ -1548,5 +1549,61 @@
     "selectEntry": "Wähle zuerst einen Eintrag aus.",
     "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
     "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
+  },
+  "companions": {
+    "title": "Mischkultur",
+    "goodColumn": "Gute Nachbarn",
+    "badColumn": "Schlechte Nachbarn",
+    "add": "Nachbar hinzufügen",
+    "empty": "Noch keine Nachbarn erfasst. Halte fest, welche Kulturen sich gut vertragen und welche nicht.",
+    "sharedHint": "Gilt für alle Sorten von {{name}}.",
+    "noKulturHint": "Nachbarn werden bei der Kultur ohne Sorte erfasst. Für {{name}} gibt es noch keinen solchen Eintrag.",
+    "familyLabel": "{{name}} (Pflanzenfamilie)",
+    "edit": "Nachbar bearbeiten",
+    "delete": "Nachbar entfernen",
+    "deleted": "{{name}} als Nachbar entfernt.",
+    "saveError": "Der Nachbar konnte nicht gespeichert werden.",
+    "loadError": "Die Nachbarn konnten nicht geladen werden.",
+    "deleteError": "Der Nachbar konnte nicht entfernt werden.",
+    "duplicate": "Dieser Nachbar ist bereits erfasst.",
+    "dialog": {
+      "addTitle": "Nachbar für {{name}} hinzufügen",
+      "editTitle": "Nachbar von {{name}} bearbeiten",
+      "kind": "Art",
+      "kindGood": "Guter Nachbar",
+      "kindBad": "Schlechter Nachbar",
+      "neighbor": "Nachbar",
+      "neighborHelper": "Kultur, Pflanzenfamilie oder freier Text",
+      "groupCrops": "Kulturen",
+      "groupFamilies": "Pflanzenfamilien",
+      "freeText": "„{{text}}“ als Text übernehmen",
+      "reason": "Grund",
+      "note": "Notiz",
+      "neighborRequired": "Bitte wähle einen Nachbarn."
+    },
+    "reasons": {
+      "competition": "Konkurrenz",
+      "allelopathy": "Hemmt das Wachstum",
+      "pest_control": "Schädlingsabwehr",
+      "soil": "Bodenverbesserung",
+      "shared_pests_diseases": "Gleiche Schädlinge oder Krankheiten",
+      "other": "Sonstiges"
+    },
+    "planning": {
+      "badTitle": "Schlechte Nachbarn auf diesem Beet",
+      "goodTitle": "Gute Nachbarn auf diesem Beet",
+      "period": "{{crop}} ({{start}} bis {{end}})",
+      "viaFamily": "gehört zu: {{family}}",
+      "tableTooltip": "Schlechter Nachbar auf dem Beet: {{names}}",
+      "tableAriaLabel": "Schlechte Nachbarn, Anbaufläche ändern"
+    },
+    "import": {
+      "created_one": "{{count}} Nachbar übernommen.",
+      "created_other": "{{count}} Nachbarn übernommen.",
+      "unresolved_one": "{{count}} Nachbar passt zu keiner Kultur und keiner Pflanzenfamilie und wird als Text übernommen: {{names}}",
+      "unresolved_other": "{{count}} Nachbarn passen zu keiner Kultur und keiner Pflanzenfamilie und werden als Text übernommen: {{names}}",
+      "conflicts_one": "{{count}} Nachbar ist bereits mit der anderen Art erfasst und bleibt unverändert.",
+      "conflicts_other": "{{count}} Nachbarn sind bereits mit der anderen Art erfasst und bleiben unverändert."
+    }
   }
 }

@@ -16,6 +16,7 @@ const OBJECT_TYPE_TRANSLATION_KEYS: Record<string, string> = {
   note_attachment: 'history.objectTypes.noteAttachment',
   media_file: 'history.objectTypes.mediaFile',
   seed_package: 'history.objectTypes.seedPackage',
+  crop_companion: 'history.objectTypes.cropCompanion',
   project: 'history.objectTypes.project',
 };
 

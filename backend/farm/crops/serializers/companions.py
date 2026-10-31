@@ -36,21 +36,10 @@ class CropCompanionSerializer(serializers.ModelSerializer):
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         attrs = super().validate(attrs)
         merged = self._merged_values(attrs)
-        project = _resolve_active_project_from_serializer(self)
         crop: Crop | None = merged['crop']
         companion_crop: Crop | None = merged['companion_crop']
-
         for field_name, value in (('crop', crop), ('companion_crop', companion_crop)):
-            if value is None:
-                continue
-            if project is not None and value.project_id != project.id:
-                raise serializers.ValidationError({field_name: 'Crop does not belong to the active project.'})
-            if value.deleted_at is not None:
-                raise serializers.ValidationError({field_name: 'Crop has been deleted.'})
-            if not is_kultur(value):
-                raise serializers.ValidationError(
-                    {field_name: 'Neighbours belong to the general crop, not to a variety.'},
-                )
+            self._validate_kultur(field_name, value)
 
         targets = [
             companion_crop is not None,
@@ -63,7 +52,9 @@ class CropCompanionSerializer(serializers.ModelSerializer):
             )
         if companion_crop is not None and crop is not None:
             if companion_crop.id == crop.id:
-                raise serializers.ValidationError({'companion_crop': 'A crop cannot be its own neighbour.'})
+                raise serializers.ValidationError(
+                    {'companion_crop': 'A crop cannot be its own neighbour.'},
+                )
             if companion_crop.id < crop.id:
                 attrs['crop'], attrs['companion_crop'] = companion_crop, crop
         if 'companion_text' in attrs:
@@ -71,6 +62,22 @@ class CropCompanionSerializer(serializers.ModelSerializer):
 
         self._reject_duplicate({**merged, **attrs})
         return attrs
+
+    def _validate_kultur(self, field_name: str, crop: Crop | None) -> None:
+        """A relation's crop must be an active Kultur of the active project."""
+        if crop is None:
+            return
+        project = _resolve_active_project_from_serializer(self)
+        if project is not None and crop.project_id != project.id:
+            raise serializers.ValidationError(
+                {field_name: 'Crop does not belong to the active project.'},
+            )
+        if crop.deleted_at is not None:
+            raise serializers.ValidationError({field_name: 'Crop has been deleted.'})
+        if not is_kultur(crop):
+            raise serializers.ValidationError(
+                {field_name: 'Neighbours belong to the general crop, not to a variety.'},
+            )
 
     def _merged_values(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """The values after this write: the payload over the instance's current ones."""

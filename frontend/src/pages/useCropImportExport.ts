@@ -1,5 +1,7 @@
 import { useState, useCallback, type ChangeEvent } from 'react';
-import { cropAPI, type Crop } from '../api/api';
+import { cropAPI, cropCompanionAPI, type Crop } from '../api/api';
+import { buildCompanionItemsByCrop, type CompanionItemsByKind } from '../crops/companions';
+import { usePlantFamilies } from '../crops/plantFamilies';
 import { useTranslation } from '../i18n';
 import {
   buildAllCropsExport,
@@ -10,7 +12,12 @@ import {
 } from '../crops/exportUtils';
 import { exportCropsToSpreadsheet, buildSpreadsheetFilename, type SpreadsheetExportFormat } from '../crops/spreadsheetExport';
 import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
-import { buildImportSuccessMessage, mapImportErrors } from './cropsPageUtils';
+import {
+  buildCompanionImportMessages,
+  buildCompanionPreviewWarning,
+  buildImportSuccessMessage,
+  mapImportErrors,
+} from './cropsPageUtils';
 import { analyzeCropImportJson, readFileAsText } from './cropsImportUtils';
 import { useCropImportState } from './useCropImportState';
 
@@ -29,6 +36,7 @@ export function useCropImportExport({
   showSnackbar,
 }: UseCropImportExportConfig) {
   const { t } = useTranslation(['crops', 'common']);
+  const plantFamilies = usePlantFamilies();
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importStartDialogOpen, setImportStartDialogOpen] = useState(false);
@@ -76,6 +84,8 @@ export function useCropImportExport({
           const invalidEntries: string[] = [];
           if (skippedRows > 0) invalidEntries.push(t('import.skippedRows', { count: skippedRows }));
           warnings.forEach((w) => invalidEntries.push(w));
+          const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
+          if (companionWarning) invalidEntries.push(companionWarning);
           setPreviewReadyState({
             previewCount: entries.length + skippedRows,
             validCount: entries.length,
@@ -116,10 +126,13 @@ export function useCropImportExport({
         setImportUploading();
         try {
           const response = await cropAPI.importPreview(importAnalysis.validEntries);
+          const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
             validCount: importAnalysis.validEntries.length,
-            invalidEntries: importAnalysis.invalidEntries,
+            invalidEntries: companionWarning
+              ? [...importAnalysis.invalidEntries, companionWarning]
+              : importAnalysis.invalidEntries,
             payload: importAnalysis.validEntries,
             previewResults: response.data.results,
           });
@@ -150,32 +163,44 @@ export function useCropImportExport({
   const handleExportCurrentCrop = useCallback(() => handleOpenExportDialog('current'), [handleOpenExportDialog]);
   const handleExportAllCrops = useCallback(() => handleOpenExportDialog('all'), [handleOpenExportDialog]);
 
+  // Neighbours name their crops, so the whole crop list is needed even when
+  // exporting a single Kultur.
+  const loadCompanionsByCrop = useCallback(async (): Promise<{
+    allCrops: Crop[];
+    companionsByCrop: Map<number, CompanionItemsByKind>;
+  }> => {
+    const [allCrops, relations] = await Promise.all([
+      cropAPI.listAll().then((response) => response.results),
+      cropCompanionAPI.list().then((response) => response.data),
+    ]);
+    return { allCrops, companionsByCrop: buildCompanionItemsByCrop(allCrops, relations, plantFamilies.getName) };
+  }, [plantFamilies.getName]);
+
   const handleExport = useCallback(async (scope: ExportScope, format: ExportFormat) => {
     try {
+      const { allCrops, companionsByCrop } = await loadCompanionsByCrop();
+      const exportsSingleCrop = scope === 'current' && selectedCrop;
       if (format === 'json') {
-        if (scope === 'current' && selectedCrop) {
-          const exportPayload = buildSingleCropExport(selectedCrop);
+        if (exportsSingleCrop) {
+          const exportPayload = buildSingleCropExport(selectedCrop, undefined, companionsByCrop);
           const filename = buildSingleCropFilename(selectedCrop);
           downloadJsonFile(exportPayload, filename);
         } else {
-          const { results: allCrops } = await cropAPI.listAll();
-          const exportPayload = buildAllCropsExport(allCrops);
+          const exportPayload = buildAllCropsExport(allCrops, undefined, companionsByCrop);
           const filename = buildAllCropsFilename();
           downloadJsonFile(exportPayload, filename);
         }
       } else {
-        const cropsToExport: Crop[] = scope === 'current' && selectedCrop
-          ? [selectedCrop]
-          : (await cropAPI.listAll()).results;
+        const cropsToExport: Crop[] = exportsSingleCrop ? [selectedCrop] : allCrops;
         const filename = buildSpreadsheetFilename(format, scope === 'current' ? 'single' : 'all', selectedCrop ?? undefined);
-        exportCropsToSpreadsheet(cropsToExport, format, filename, t);
+        exportCropsToSpreadsheet(cropsToExport, format, filename, t, companionsByCrop);
       }
       showSnackbar(t('export.success'), 'success');
     } catch (error) {
       console.error('Error exporting crops:', error);
       showSnackbar(t('messages.fetchError'), 'error');
     }
-  }, [selectedCrop, showSnackbar, t]);
+  }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t]);
 
   const handleImportStart = async () => {
     if (!hasImportableEntries || importState.status === 'uploading') return;
@@ -188,8 +213,11 @@ export function useCropImportExport({
         confirm_updates: confirmUpdates,
       });
 
-      const { created_count, updated_count, skipped_count, errors } = response.data;
-      const summary = buildImportSuccessMessage(created_count, updated_count, skipped_count, t);
+      const { created_count, updated_count, skipped_count, errors, companions } = response.data;
+      const summary = [
+        buildImportSuccessMessage(created_count, updated_count, skipped_count, t),
+        ...buildCompanionImportMessages(companions, t),
+      ].filter(Boolean).join(' ');
       // Rows that went through are saved even when others failed.
       if (created_count + updated_count > 0) {
         await fetchCrops();

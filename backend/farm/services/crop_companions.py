@@ -17,7 +17,6 @@ documented in docs/crop-companions.md; in short:
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -155,55 +154,12 @@ def find_relation(kultur: Crop, target: CompanionTarget) -> CropCompanion | None
 
 # --- Spreadsheet import ---------------------------------------------------------
 
-_LINE_SPLIT = re.compile(r'[\n\r  ]+')
-# The name part ends at the first dash surrounded by spaces ("Tomate – Konkurrenz").
-_NAME_NOTE_SPLIT = re.compile(r'\s+[–—-]\s+')
-
-
-def _split_names(names: str) -> list[str]:
-    """Split "Tomate, Kartoffel" at commas outside parentheses."""
-    parts: list[str] = []
-    depth = 0
-    current = ''
-    for char in names:
-        if char in '([':
-            depth += 1
-        elif char in ')]' and depth:
-            depth -= 1
-        if char == ',' and depth == 0:
-            parts.append(current)
-            current = ''
-            continue
-        current += char
-    parts.append(current)
-    return [part.strip() for part in parts if part.strip()]
-
-
-def parse_companion_cell(text: str | None) -> list[dict[str, str]]:
-    """One ``{name, note}`` per neighbour named in a spreadsheet cell.
-
-    One entry per line, ``Name(s) – note``; several names before the dash share
-    the note. The frontend maps a leading reason label to ``reason`` before the
-    rows reach the backend; this is the fallback for raw text.
-    """
-    if not text or not isinstance(text, str):
-        return []
-    items: list[dict[str, str]] = []
-    for line in _LINE_SPLIT.split(text):
-        line = line.strip().strip(';').strip()
-        if not line:
-            continue
-        parts = _NAME_NOTE_SPLIT.split(line, maxsplit=1)
-        note = parts[1].strip() if len(parts) > 1 else ''
-        for name in _split_names(parts[0]):
-            items.append({'name': name, 'note': note})
-    return items
-
-
 def normalize_import_items(raw: Any) -> list[dict[str, str]]:
-    """Validated ``{name, reason, note}`` items from an import row's companion field."""
-    if isinstance(raw, str):
-        raw = parse_companion_cell(raw)
+    """Validated ``{name, reason, note}`` items from an import row's companion field.
+
+    The frontend parses spreadsheet cells into these items
+    (frontend/src/crops/companions.ts); the JSON export writes them as is.
+    """
     if not isinstance(raw, list):
         return []
     items: list[dict[str, str]] = []

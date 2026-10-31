@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   importApply: vi.fn(),
   seedRateConstraints: vi.fn(),
   listAll: vi.fn(),
+  listCompanions: vi.fn(),
 }));
 const spreadsheet = vi.hoisted(() => ({ parse: vi.fn(), exportToSpreadsheet: vi.fn() }));
 const json = vi.hoisted(() => ({ downloadJson: vi.fn(), readFileAsText: vi.fn(), analyze: vi.fn() }));
@@ -18,6 +19,10 @@ vi.mock('../api/api', () => ({
     listAll: api.listAll,
     seedRateConstraints: api.seedRateConstraints,
   },
+  cropCompanionAPI: { list: api.listCompanions },
+}));
+vi.mock('../crops/plantFamilies', () => ({
+  usePlantFamilies: () => ({ getName: (key: string) => key }),
 }));
 vi.mock('../i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../crops/spreadsheetImport', () => ({ parseSpreadsheetFile: spreadsheet.parse }));
@@ -61,6 +66,7 @@ describe('useCropImportExport', () => {
     api.importPreview.mockResolvedValue({ data: { results: [] } });
     api.importApply.mockResolvedValue({ data: { created_count: 1, updated_count: 0, skipped_count: 0, errors: [] } });
     api.listAll.mockResolvedValue({ results: [CROP] });
+    api.listCompanions.mockResolvedValue({ data: [] });
     api.seedRateConstraints.mockResolvedValue({ data: { units: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } } } });
     spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'Tomate' }], skippedRows: 0, warnings: [] });
     json.readFileAsText.mockResolvedValue('[]');
@@ -282,12 +288,13 @@ describe('useCropImportExport', () => {
   });
 
   describe('exporting', () => {
-    it('exports only the selected crop as JSON, without fetching the list', async () => {
+    it('exports only the selected crop as JSON, loading the list for its neighbours\' names', async () => {
       const view = setup();
 
       await act(async () => { await view.result.current.handleExport('current', 'json'); });
 
-      expect(api.listAll).not.toHaveBeenCalled();
+      expect(api.listAll).toHaveBeenCalled();
+      expect(api.listCompanions).toHaveBeenCalled();
       expect(json.downloadJson).toHaveBeenCalledWith({ crop: CROP }, 'one.json');
     });
 

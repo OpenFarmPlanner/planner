@@ -5,7 +5,6 @@ from datetime import date
 from django.utils import timezone
 
 from farm.models import Bed, Crop, CropCompanion, PlantingPlan, Project
-from farm.services.crop_companions import parse_companion_cell
 from farm.tests.api_base import ProjectApiTestCase
 
 COMPANIONS_URL = '/openfarmplanner/api/crop-companions/'
@@ -180,20 +179,6 @@ class CompanionPlanningCheckTests(CropCompanionTestCase):
         self.assertEqual([f['kind'] for f in response.data['companion_findings']], ['bad'])
 
 
-class CompanionCellParsingTests(ProjectApiTestCase):
-    def test_one_entry_per_line_with_shared_note(self):
-        cell = 'Tomate, Kartoffel – gleiche Krankheiten (Verticillium) Kräuter (Dill, Basilikum) – Geschmack'
-
-        self.assertEqual(parse_companion_cell(cell), [
-            {'name': 'Tomate', 'note': 'gleiche Krankheiten (Verticillium)'},
-            {'name': 'Kartoffel', 'note': 'gleiche Krankheiten (Verticillium)'},
-            {'name': 'Kräuter (Dill, Basilikum)', 'note': 'Geschmack'},
-        ])
-
-    def test_a_name_without_note(self):
-        self.assertEqual(parse_companion_cell('Salbei'), [{'name': 'Salbei', 'note': ''}])
-
-
 class CompanionImportTests(CropCompanionTestCase):
     def test_apply_links_names_to_kulturen_families_or_free_text(self):
         rows = [
@@ -227,7 +212,7 @@ class CompanionImportTests(CropCompanionTestCase):
         self.relate(self.tomato, self.potato, kind=CropCompanion.KIND_GOOD)
 
         response = self.client.post(APPLY_URL, {
-            'items': [{'name': 'Tomate', 'bad_companions': 'Kartoffel – Krankheiten'}],
+            'items': [{'name': 'Tomate', 'bad_companions': [{'name': 'Kartoffel', 'note': 'Krankheiten'}]}],
             'confirm_updates': True,
         }, format='json')
 
@@ -237,7 +222,7 @@ class CompanionImportTests(CropCompanionTestCase):
 
     def test_a_variety_row_gets_its_neighbours_on_the_kultur(self):
         response = self.client.post(APPLY_URL, {
-            'items': [{'name': 'Paprika', 'variety': 'Frühzauber', 'bad_companions': 'Kartoffel'}],
+            'items': [{'name': 'Paprika', 'variety': 'Frühzauber', 'bad_companions': [{'name': 'Kartoffel'}]}],
         }, format='json')
 
         self.assertEqual(response.status_code, 200, response.data)

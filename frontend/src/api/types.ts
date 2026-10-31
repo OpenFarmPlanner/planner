@@ -1010,6 +1010,9 @@ export interface PlantingPlan {
   // Read-only crop rotation check (see docs/crop-rotation.md).
   rotation_status?: RotationStatus;
   rotation_findings?: RotationFinding[];
+  // Read-only companion-planting check (see docs/crop-companions.md): other
+  // plans on the same bed in an overlapping period that are listed neighbours.
+  companion_findings?: CompanionFinding[];
   // Read-only, calculated: allowed overlaps with a follow-up crop during a
   // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
   harvest_overlaps?: HarvestOverlap[];
@@ -1073,6 +1076,68 @@ export interface RotationCheckResponse {
   status: RotationStatus;
   findings: RotationFinding[];
   bed_history: RotationBedHistoryEntry[];
+  companion_findings?: CompanionFinding[];
+}
+
+export type CompanionKind = 'good' | 'bad';
+
+export type CompanionReason =
+  | 'competition'
+  | 'allelopathy'
+  | 'pest_control'
+  | 'soil'
+  | 'shared_pests_diseases'
+  | 'other';
+
+/**
+ * A good or bad neighbour of a general crop (Kultur). Between two Kulturen it
+ * is one shared pair: `crop` holds the lower id and the relation applies to
+ * both. Exactly one of `companion_crop`, `companion_family`, `companion_text`
+ * is set.
+ */
+export interface CropCompanion {
+  id?: number;
+  crop: number;
+  companion_crop: number | null;
+  /** Botanical key; render it through the plant-family catalog. */
+  companion_family: string | null;
+  companion_text: string;
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+}
+
+export interface CompanionImportPreview {
+  count: number;
+  unresolved: string[];
+}
+
+export interface CompanionImportSummary {
+  created: number;
+  /** Names kept as free text because they match no crop or crop family. */
+  unresolved: string[];
+  /** Pairs already listed with the other kind; the existing one was kept. */
+  conflicts: Array<{ crop: string; neighbour: string; kept: CompanionKind }>;
+}
+
+/** A neighbour as named in an import/export cell or JSON entry. */
+export interface CompanionImportItem {
+  name: string;
+  reason: CompanionReason;
+  note: string;
+}
+
+export interface CompanionFinding {
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+  other_plan_id: number;
+  other_crop_id: number;
+  other_crop_label: string;
+  other_start: string;
+  other_end: string;
+  /** Set when the relation names a plant family rather than the crop itself. */
+  via_family_key: string | null;
 }
 
 export type BedSuggestionCategory = 'good' | 'fits' | 'hint' | 'no_data' | 'conflict';

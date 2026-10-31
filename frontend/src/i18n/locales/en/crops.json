@@ -545,7 +545,8 @@
       "project": "Project",
       "fallback": "Entry",
       "openTarget": "Open",
-      "season": "Season"
+      "season": "Season",
+      "cropCompanion": "Neighbor (companion planting)"
     },
     "batch": {
       "seasonCreate": "Season {{season}} created",
@@ -1548,5 +1549,61 @@
     "selectEntry": "Select an entry first.",
     "selectRemovalReason": "Select a reason first.",
     "alreadyRejected": "This update has already been declined."
+  },
+  "companions": {
+    "title": "Companion planting",
+    "goodColumn": "Good neighbors",
+    "badColumn": "Bad neighbors",
+    "add": "Add neighbor",
+    "empty": "No neighbors recorded yet. Note which crops grow well together and which do not.",
+    "sharedHint": "Applies to all varieties of {{name}}.",
+    "noKulturHint": "Neighbors are recorded on the crop entry without a variety. {{name}} has no such entry yet.",
+    "familyLabel": "{{name}} (crop family)",
+    "edit": "Edit neighbor",
+    "delete": "Remove neighbor",
+    "deleted": "{{name}} removed as a neighbor.",
+    "saveError": "The neighbor could not be saved.",
+    "loadError": "The neighbors could not be loaded.",
+    "deleteError": "The neighbor could not be removed.",
+    "duplicate": "This neighbor is already listed.",
+    "dialog": {
+      "addTitle": "Add neighbor for {{name}}",
+      "editTitle": "Edit neighbor of {{name}}",
+      "kind": "Type",
+      "kindGood": "Good neighbor",
+      "kindBad": "Bad neighbor",
+      "neighbor": "Neighbor",
+      "neighborHelper": "Crop, crop family or free text",
+      "groupCrops": "Crops",
+      "groupFamilies": "Crop families",
+      "freeText": "Use “{{text}}” as text",
+      "reason": "Reason",
+      "note": "Note",
+      "neighborRequired": "Choose a neighbor."
+    },
+    "reasons": {
+      "competition": "Competition",
+      "allelopathy": "Inhibits growth",
+      "pest_control": "Pest control",
+      "soil": "Soil improvement",
+      "shared_pests_diseases": "Shared pests or diseases",
+      "other": "Other"
+    },
+    "planning": {
+      "badTitle": "Bad neighbors on this bed",
+      "goodTitle": "Good neighbors on this bed",
+      "period": "{{crop}} ({{start}} to {{end}})",
+      "viaFamily": "belongs to: {{family}}",
+      "tableTooltip": "Bad neighbor on the bed: {{names}}",
+      "tableAriaLabel": "Bad neighbors, change growing area"
+    },
+    "import": {
+      "created_one": "{{count}} neighbor imported.",
+      "created_other": "{{count}} neighbors imported.",
+      "unresolved_one": "{{count}} neighbor matches no crop and no crop family and is imported as text: {{names}}",
+      "unresolved_other": "{{count}} neighbors match no crop and no crop family and are imported as text: {{names}}",
+      "conflicts_one": "{{count}} neighbor is already listed with the other type and stays unchanged.",
+      "conflicts_other": "{{count}} neighbors are already listed with the other type and stay unchanged."
+    }
   }
 }
