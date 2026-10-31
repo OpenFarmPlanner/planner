@@ -2,7 +2,8 @@
 
 from accounts.trust import grant_established_trust
 from crops.models import CropSpecies
-from farm.models import Crop, Project, ProjectMembership, PublicCrop
+from farm.models import Crop, Project, ProjectMembership, PublicCrop, PublicCropRevision
+from farm.services.public_crops import build_public_crop_snapshot, restore_public_crop_version
 from farm.tests.api_base import ProjectApiTestCase
 
 CROPS_URL = '/openfarmplanner/api/crops/'
@@ -89,3 +90,18 @@ class CropBotanicalNameTests(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         crop.refresh_from_db()
         self.assertTrue(crop.is_modified_from_source)
+
+    def test_restoring_a_version_saved_before_the_field_existed_blanks_it(self) -> None:
+        entry = PublicCrop.objects.create(
+            name='Mangold', variety='', botanical_name='Beta vulgaris', version=2, created_by=self.user,
+        )
+        old_snapshot = build_public_crop_snapshot(entry)
+        del old_snapshot['botanical_name']
+        PublicCropRevision.objects.create(
+            public_crop=entry, version=1, action='created', snapshot=old_snapshot,
+        )
+
+        restored = restore_public_crop_version(public_crop=entry, user=self.user, version=1)
+
+        restored.refresh_from_db()
+        self.assertEqual(restored.botanical_name, '')
