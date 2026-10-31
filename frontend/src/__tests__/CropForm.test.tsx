@@ -1235,7 +1235,7 @@ describe('CropForm', () => {
     render(<CropForm crop={kultur} crops={[kultur]} formKind="crop" onSave={onSave} onCancel={() => {}} />);
 
     await waitFor(() => expect(companionListMock).toHaveBeenCalledWith(1));
-    fireEvent.click(await screen.findByRole('button', { name: 'companions.add' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'companions.form.addGood' }));
     fireEvent.change(screen.getByRole('combobox', { name: /companions\.form\.neighbor/ }), { target: { value: 'Salbei' } });
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
 

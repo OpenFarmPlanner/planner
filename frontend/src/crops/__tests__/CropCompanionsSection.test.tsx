@@ -61,8 +61,8 @@ describe('CropCompanionsSection', () => {
     const { onCropSelect } = renderSection();
 
     const potatoLink = await screen.findByRole('button', { name: 'Kartoffel' });
-    expect(screen.getByText('Gleiche Schädlinge oder Krankheiten: Kraut- und Braunfäule')).toBeInTheDocument();
-    expect(screen.getByText('Schädlingsabwehr')).toBeInTheDocument();
+    expect(screen.getByText('· Gleiche Schädlinge oder Krankheiten: Kraut- und Braunfäule')).toBeInTheDocument();
+    expect(screen.getByText('· Schädlingsabwehr')).toBeInTheDocument();
     expect(await screen.findByText('Kreuzblütler (Pflanzenfamilie)')).toBeInTheDocument();
     expect(screen.getByText('Gute Nachbarn')).toBeInTheDocument();
     expect(screen.getByText('Schlechte Nachbarn')).toBeInTheDocument();
@@ -84,14 +84,12 @@ describe('CropCompanionsSection', () => {
     expect(screen.getByText('Gilt für alle Sorten von Tomate.')).toBeInTheDocument();
   });
 
-  it('points to the Kultur form when nothing is recorded yet', async () => {
+  it('says "Keine Angabe" without an edit button when nothing is recorded yet', async () => {
     api.list.mockResolvedValue({ data: [] });
-    const onEditKultur = vi.fn();
-    render(<CropCompanionsSection crop={ROMA} crops={CROPS} onCropSelect={vi.fn()} onEditKultur={onEditKultur} />);
+    renderSection(ROMA);
 
-    expect(await screen.findByText(/Noch keine Nachbarn erfasst/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Nachbarn bearbeiten' }));
-    expect(onEditKultur).toHaveBeenCalledWith(TOMATO);
+    expect(await screen.findByText('Keine Angabe')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('has no edit controls of its own', async () => {
