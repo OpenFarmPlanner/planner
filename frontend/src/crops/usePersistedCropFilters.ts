@@ -20,7 +20,6 @@ export const EMPTY_CROP_FILTERS: PersistedCropFilters = {
   growthDaysMax: '',
   yieldMin: '',
   yieldMax: '',
-  selectedSowingMonths: [],
 };
 
 function readStoredFilters(supplierIdFromQuery: string): PersistedCropFilters {
@@ -46,7 +45,6 @@ function readStoredFilters(supplierIdFromQuery: string): PersistedCropFilters {
       growthDaysMax: parsed.growthDaysMax ?? '',
       yieldMin: parsed.yieldMin ?? '',
       yieldMax: parsed.yieldMax ?? '',
-      selectedSowingMonths: Array.isArray(parsed.selectedSowingMonths) ? parsed.selectedSowingMonths : [],
     };
   } catch {
     removeWithLegacyKey(

@@ -23,7 +23,6 @@ const emptyPrivateFilters: PersistedCropFilters = {
   growthDaysMax: '',
   yieldMin: '',
   yieldMax: '',
-  selectedSowingMonths: [],
 };
 
 const emptyPublicFilters: PublicCropFilterState = {
@@ -36,12 +35,6 @@ const emptyPublicFilters: PublicCropFilterState = {
   yieldMin: '',
   yieldMax: '',
 };
-
-const monthOptions = [
-  { value: 3, label: 'März' },
-  { value: 4, label: 'April' },
-  { value: 9, label: 'September' },
-];
 
 const renderPrivate = (filters: Partial<PersistedCropFilters> = {}) => {
   const onFilterChange = vi.fn();
@@ -58,7 +51,6 @@ const renderPrivate = (filters: Partial<PersistedCropFilters> = {}) => {
         { id: '7', name: 'Reinsaat' },
         { id: '9', name: 'Bingenheimer' },
       ]}
-      monthOptions={monthOptions}
       onReset={onReset}
     />,
   );
@@ -118,7 +110,6 @@ describe('CropFiltersPopover', () => {
       'Lieferant',
       'Wachstumsdauer min',
       'Wachstumsdauer max',
-      'Aussaatzeitraum',
       'Ertrag/m² min',
       'Ertrag/m² max',
     ].forEach((label) => expect(screen.getByLabelText(label)).toBeInTheDocument());
@@ -249,58 +240,6 @@ describe('CropFiltersPopover', () => {
       expect(numberField('Ertrag/m² max')).toHaveValue(4.25);
     });
   });
-
-  describe('the sowing-month filter', () => {
-    it('lists the months the parent supplied, without an "all" entry', async () => {
-      const user = userEvent.setup();
-      renderPrivate();
-      await user.click(select('Aussaatzeitraum'));
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-        'März',
-        'April',
-        'September',
-      ]);
-    });
-
-    it('reports month numbers, not labels', async () => {
-      const user = userEvent.setup();
-      const { onFilterChange } = renderPrivate();
-      await user.click(select('Aussaatzeitraum'));
-      await user.click(screen.getByRole('option', { name: 'April' }));
-      expect(onFilterChange).toHaveBeenCalledWith('selectedSowingMonths', [4]);
-    });
-
-    it('adds to the months already picked instead of replacing them', async () => {
-      const user = userEvent.setup();
-      const { onFilterChange } = renderPrivate({ selectedSowingMonths: [3] });
-      await user.click(select('Aussaatzeitraum'));
-      await user.click(screen.getByRole('option', { name: 'September' }));
-      expect(onFilterChange).toHaveBeenCalledWith('selectedSowingMonths', [3, 9]);
-    });
-
-    it('removes a month that is picked again', async () => {
-      const user = userEvent.setup();
-      const { onFilterChange } = renderPrivate({ selectedSowingMonths: [3, 9] });
-      await user.click(select('Aussaatzeitraum'));
-      await user.click(screen.getByRole('option', { name: 'März' }));
-      expect(onFilterChange).toHaveBeenCalledWith('selectedSowingMonths', [9]);
-    });
-
-    it('summarises the picked months by label, in the order they were picked', () => {
-      renderPrivate({ selectedSowingMonths: [9, 3] });
-      expect(select('Aussaatzeitraum')).toHaveTextContent('September, März');
-    });
-
-    /**
-     * A month that is no longer offered still has to render as something: the
-     * parent builds `monthOptions` from the current locale, so a persisted
-     * filter can outlive the list it was picked from.
-     */
-    it('falls back to the raw number for a month it cannot label', () => {
-      renderPrivate({ selectedSowingMonths: [3, 12] });
-      expect(select('Aussaatzeitraum')).toHaveTextContent('März, 12');
-    });
-  });
 });
 
 describe('PublicCropFiltersPopover', () => {
@@ -417,7 +356,6 @@ describe('both popovers', () => {
         onFilterChange={vi.fn()}
         familyOptions={[]}
         supplierOptions={[]}
-        monthOptions={[]}
         onReset={vi.fn()}
       />,
     );
