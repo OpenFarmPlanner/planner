@@ -24,6 +24,7 @@ const emptyPrivateFilters: PersistedCropFilters = {
   yieldMin: '',
   yieldMax: '',
   selectedSowingMonths: [],
+  selectedTagFilter: '',
 };
 
 const emptyPublicFilters: PublicCropFilterState = {
@@ -43,7 +44,7 @@ const monthOptions = [
   { value: 9, label: 'September' },
 ];
 
-const renderPrivate = (filters: Partial<PersistedCropFilters> = {}) => {
+const renderPrivate = (filters: Partial<PersistedCropFilters> = {}, tagOptions: string[] = ['Blumen', 'Kräuter']) => {
   const onFilterChange = vi.fn();
   const onClose = vi.fn();
   const onReset = vi.fn();
@@ -54,6 +55,7 @@ const renderPrivate = (filters: Partial<PersistedCropFilters> = {}) => {
       filters={{ ...emptyPrivateFilters, ...filters }}
       onFilterChange={onFilterChange}
       familyOptions={['Brassicaceae', 'Fabaceae']}
+      tagOptions={tagOptions}
       supplierOptions={[
         { id: '7', name: 'Reinsaat' },
         { id: '9', name: 'Bingenheimer' },
@@ -113,6 +115,7 @@ describe('CropFiltersPopover', () => {
     renderPrivate();
     [
       'Familie',
+      'Gruppe',
       'Anbauart',
       'Nährstoffbedarf',
       'Lieferant',
@@ -150,6 +153,22 @@ describe('CropFiltersPopover', () => {
     it('shows the family already filtered on', () => {
       renderPrivate({ selectedFamilyFilter: 'Brassicaceae' });
       expect(select('Familie')).toHaveTextContent('Brassicaceae');
+    });
+  });
+
+  describe('the group filter', () => {
+    it("lists the project's groups behind an \"all\" entry and writes the pick", async () => {
+      const user = userEvent.setup();
+      const { onFilterChange } = renderPrivate();
+      await user.click(select('Gruppe'));
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Alle', 'Blumen', 'Kräuter']);
+      await user.click(screen.getByRole('option', { name: 'Kräuter' }));
+      expect(onFilterChange).toHaveBeenCalledWith('selectedTagFilter', 'Kräuter');
+    });
+
+    it('is left out while the project has no groups', () => {
+      renderPrivate({}, []);
+      expect(screen.queryByLabelText('Gruppe')).not.toBeInTheDocument();
     });
   });
 
@@ -416,6 +435,7 @@ describe('both popovers', () => {
         filters={emptyPrivateFilters}
         onFilterChange={vi.fn()}
         familyOptions={[]}
+        tagOptions={[]}
         supplierOptions={[]}
         monthOptions={[]}
         onReset={vi.fn()}

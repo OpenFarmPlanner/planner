@@ -32,7 +32,8 @@
     "toggle": "Filtres",
     "reset": "Réinitialiser les filtres",
     "openAdvanced": "Ouvrir les filtres avancés",
-    "title": "Filtres"
+    "title": "Filtres",
+    "tag": "Groupe"
   },
   "emptySearch": {
     "title": "Aucune culture trouvée",
@@ -319,7 +320,10 @@
     "packageUnitSeeds": "graines",
     "displayColorAria": "Couleur de la culture",
     "botanicalName": "Nom latin",
-    "botanicalNamePlaceholder": "p. ex. Beta vulgaris var. flavescens"
+    "botanicalNamePlaceholder": "p. ex. Beta vulgaris var. flavescens",
+    "tags": "Groupes",
+    "tagsPlaceholder": "p. ex. Aromatiques",
+    "tagsHelper": "Vos propres groupes pour filtrer. Choisissez-en un existant ou saisissez-en un nouveau."
   },
   "messages": {
     "createSuccess": "Culture créée avec succès",

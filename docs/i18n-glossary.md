@@ -106,6 +106,7 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Kulturbibliothek | Crop library | Bibliothèque de cultures | Biblioteca de cultivos |
 | Pflanzenfamilie | Crop family | Famille botanique | Familia botánica |
 | Lateinischer Name | Latin name | Nom latin | Nombre latino |
+| Gruppe (eigene Gruppe einer Kultur, code: tag) | Group | Groupe | Grupo |
 | Lieferant | Supplier | Fournisseur | Proveedor |
 | Anbauart | Cultivation type | Mode de culture | Tipo de cultivo |
 | Direktsaat | Direct sowing | Semis direct | Siembra directa |

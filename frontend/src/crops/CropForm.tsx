@@ -55,6 +55,7 @@ import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
+import { collectProjectTags } from './cropTags';
 import { useCompanionFormRows } from './useCompanionFormRows';
 import type { CompanionFormRow } from './companions';
 import { hasSupplierDataRowMissingSupplier, hasSupplierInformation } from './supplierDataRows';
@@ -384,6 +385,11 @@ export function CropForm({
   const { t } = useTranslation('crops');
   const isEdit = Boolean(crop);
   const isProjectForm = variant === 'project';
+  // Groups are the project's own labels; the library form has none.
+  const tagOptions = useMemo(
+    () => (isProjectForm ? collectProjectTags(crops ?? []) : undefined),
+    [crops, isProjectForm],
+  );
   const showSupplierDataSection = isProjectForm;
   const showVarietyField = !isProjectForm || formKind === 'variety';
   const requireVariety = isProjectForm && formKind === 'variety';
@@ -1408,6 +1414,7 @@ export function CropForm({
             ) : null}
             <BasicInfoSection
               formData={formData}
+              tagOptions={tagOptions}
               errors={displayErrors}
               onChange={handleChange}
               t={t}

@@ -13,6 +13,7 @@ import { isBotanicalFamilyKey } from './plantFamilies';
 export const EMPTY_CROP_FILTERS: PersistedCropFilters = {
   searchQuery: '',
   selectedFamilyFilter: '',
+  selectedTagFilter: '',
   selectedCultivationFilter: '',
   selectedNutrientFilter: '',
   selectedSupplierFilter: '',
@@ -39,6 +40,7 @@ function readStoredFilters(supplierIdFromQuery: string): PersistedCropFilters {
       searchQuery: parsed.searchQuery ?? '',
       // A filter stored before the plant-family list held free text, not a key.
       selectedFamilyFilter: isBotanicalFamilyKey(parsed.selectedFamilyFilter) ? parsed.selectedFamilyFilter : '',
+      selectedTagFilter: typeof parsed.selectedTagFilter === 'string' ? parsed.selectedTagFilter : '',
       selectedCultivationFilter: parsed.selectedCultivationFilter ?? '',
       selectedNutrientFilter: parsed.selectedNutrientFilter ?? '',
       selectedSupplierFilter: supplierIdFromQuery || parsed.selectedSupplierFilter || '',

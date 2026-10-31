@@ -430,6 +430,14 @@ class Crop(TimestampedModel):
         help_text="Recommended crop rotation break in years before growing this crop family again",
     )
     cultivation_types = models.JSONField(default=list, blank=True)
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'The user\'s own groups ("Gruppen") as a list of names; a Sorte without its own '
+            'uses its Kultur\'s. Project data only, never published to the crop library.'
+        ),
+    )
     cultivation_type = models.CharField(
         max_length=30,
         choices=CULTIVATION_TYPE_CHOICES,

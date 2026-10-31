@@ -37,7 +37,7 @@ const parseRawValue = (
 
   if (type === 'list') {
     const items = String(value)
-      .split(/[,;]/)
+      .split(/[,;\n\r]/)
       .map((item) => parseRawValue(item, 'string', enumImport))
       .filter((item): item is string => typeof item === 'string');
     return items.length > 0 ? items : undefined;
