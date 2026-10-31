@@ -168,6 +168,15 @@ class CompanionPlanningCheckTests(CropCompanionTestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]['via_family_key'], 'Brassicaceae')
 
+    def test_a_family_relation_is_reported_once_for_two_plans_of_the_same_kultur(self):
+        CropCompanion.objects.create(
+            project=self.project, crop=self.potato, companion_family_id='Solanaceae', kind='bad',
+        )
+        first = self.plan(self.potato, date(2026, 5, 1), date(2026, 8, 31))
+        self.plan(self.potato, date(2026, 6, 1), date(2026, 9, 30))
+
+        self.assertEqual(len(self.findings_of(first)), 1)
+
     def test_the_live_check_reports_neighbours_of_an_unsaved_plan(self):
         self.relate(self.tomato, self.potato)
         self.plan(self.potato, date(2026, 4, 1), date(2026, 7, 31))

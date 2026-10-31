@@ -565,8 +565,10 @@ class CompanionService:
         own_family = self.kultur_index.family(crop)
         for relation in self._family_relations_of(kultur_id, other_family):
             relations.append((relation, other_family))
-        for relation in self._family_relations_of(other_kultur_id, own_family):
-            relations.append((relation, own_family))
+        if other_kultur_id != kultur_id:
+            # The same Kultur on both plans would report its family relation twice.
+            for relation in self._family_relations_of(other_kultur_id, own_family):
+                relations.append((relation, own_family))
         return [
             CompanionFinding(
                 kind=relation.kind,
