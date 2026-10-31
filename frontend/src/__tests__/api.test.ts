@@ -35,6 +35,7 @@ import api, {
   notificationAPI,
   plantingPlanAPI,
   projectAPI,
+  publicCropAPI,
   publicLibraryModeratorRequestAPI,
   seasonAPI,
   seasonPatternAPI,
@@ -110,6 +111,25 @@ describe('API Client', () => {
     });
     expect(getMock).toHaveBeenNthCalledWith(1, '/planting-plans/?page_size=1000');
     expect(getMock).toHaveBeenNthCalledWith(2, '/planting-plans/?page=2&page_size=1000');
+  });
+
+  it('keeps a filter on every page without repeating the query separator', async () => {
+    getMock
+      .mockResolvedValueOnce({
+        data: {
+          count: 2,
+          next: 'http://127.0.0.1:8000/api/public-crops/?page=2&page_size=1000&q=Tomate',
+          previous: null,
+          results: [{ id: 1 }],
+        },
+      })
+      .mockResolvedValueOnce({ data: { count: 2, next: null, previous: null, results: [{ id: 2 }] } });
+
+    await expect(publicCropAPI.listAll({ q: 'Tomate', variety: '' })).resolves.toMatchObject({
+      results: [{ id: 1 }, { id: 2 }],
+    });
+    expect(getMock).toHaveBeenNthCalledWith(1, '/public-crops/?q=Tomate&page_size=1000');
+    expect(getMock).toHaveBeenNthCalledWith(2, '/public-crops/?page=2&page_size=1000&q=Tomate');
   });
 
   it('calls all crop endpoints with expected URLs and payloads', () => {

@@ -58,8 +58,8 @@ export function usePublicCropLibrary({
       const params = exactMatch
         ? { name: exactMatch.name, variety: exactMatch.variety || '' }
         : query ? { q: query } : undefined;
-      const response = await publicCropAPI.list(params);
-      setPublicCrops(dedupePublicCrops(response.data.results));
+      const { results } = await publicCropAPI.listAll(params);
+      setPublicCrops(dedupePublicCrops(results));
     } catch (error) {
       console.error('Error fetching public crops:', error);
       setPublicLibraryError(t('library.loadError'));

@@ -137,8 +137,8 @@ export default function PublicLibraryModerationPage() {
       } else {
         setModeratorRequests([]);
       }
-      const removedResponse = await publicCropAPI.list({ status: 'removed' });
-      setRemovedCrops(removedResponse.data.results);
+      const { results: removed } = await publicCropAPI.listAll({ status: 'removed' });
+      setRemovedCrops(removed);
       const proposalsResponse = await publicCropAPI.pendingChangeProposals();
       setChangeProposals(proposalsResponse.data.results);
     } catch {

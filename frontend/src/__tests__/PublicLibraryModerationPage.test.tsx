@@ -43,6 +43,7 @@ vi.mock('../api/api', () => ({
   },
   publicCropAPI: {
     list: apiMocks.publicCropList,
+    listAll: async (params?: unknown) => (await apiMocks.publicCropList(params)).data,
     restore: apiMocks.publicCropRestore,
     pendingChangeProposals: apiMocks.pendingChangeProposals,
     approveChangeProposal: apiMocks.approveChangeProposal,
