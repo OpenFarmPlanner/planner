@@ -3,7 +3,6 @@
  * crop detail view. Extracted verbatim from crops/CropDetail.tsx.
  */
 
-import type { Crop } from '../api/types';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 export const CROP_FILTERS_STORAGE_KEY = 'cropsDetailFiltersV1';
@@ -20,7 +19,6 @@ export interface PersistedCropFilters {
   growthDaysMax: string;
   yieldMin: string;
   yieldMax: string;
-  selectedSowingMonths: number[];
 }
 
 /**
@@ -78,31 +76,6 @@ export function formatDistance(
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(rounded);
-}
-
-/**
- * Derives the set of sowing months (1-12) for a crop, supporting the
- * month-array, single-month, and start/end-range shapes the API may provide.
- */
-export function getSowingMonths(crop: Crop): number[] {
-  const dynamicCrop = crop as Crop & {
-    sowing_month?: number | null;
-    sowing_months?: number[] | null;
-    sowing_start_month?: number | null;
-    sowing_end_month?: number | null;
-  };
-  if (Array.isArray(dynamicCrop.sowing_months)) {
-    return dynamicCrop.sowing_months.filter((month) => Number.isInteger(month) && month >= 1 && month <= 12);
-  }
-  if (typeof dynamicCrop.sowing_month === 'number') {
-    return dynamicCrop.sowing_month >= 1 && dynamicCrop.sowing_month <= 12 ? [dynamicCrop.sowing_month] : [];
-  }
-  if (typeof dynamicCrop.sowing_start_month === 'number' && typeof dynamicCrop.sowing_end_month === 'number') {
-    const start = Math.min(dynamicCrop.sowing_start_month, dynamicCrop.sowing_end_month);
-    const end = Math.max(dynamicCrop.sowing_start_month, dynamicCrop.sowing_end_month);
-    return Array.from({ length: end - start + 1 }, (_, index) => start + index).filter((month) => month >= 1 && month <= 12);
-  }
-  return [];
 }
 
 export function formatSeedUnitLabel(unit: string | null | undefined, t: (key: string) => string): string {

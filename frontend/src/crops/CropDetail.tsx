@@ -110,7 +110,6 @@ import {
   formatDistance,
   formatNumber,
   formatPackageSizes,
-  getSowingMonths,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
 import { usePlantFamilies } from './plantFamilies';
@@ -217,7 +216,6 @@ const detailSectionGridSx = {
         filters.growthDaysMax,
         filters.yieldMin,
         filters.yieldMax,
-        filters.selectedSowingMonths.length > 0 ? 'months' : '',
       ];
       return filterValues.filter((v) => typeof v === 'string' && v.length > 0).length;
     },
@@ -273,19 +271,6 @@ const detailSectionGridSx = {
     [crops, filters.selectedSupplierFilter, t],
   );
 
-  const monthFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale, { month: 'short' }),
-    [locale],
-  );
-
-  const monthOptions = useMemo(
-    () => Array.from({ length: 12 }, (_, index) => ({
-      value: index + 1,
-      label: monthFormatter.format(new Date(2026, index, 1)),
-    })),
-    [monthFormatter],
-  );
-
   const normalizedSearchQuery = normalizeCropSearchQuery(filters.searchQuery);
 
   // Every filter except the search term. The search runs on top of this
@@ -326,9 +311,6 @@ const detailSectionGridSx = {
         (parsedYieldMin === null || (yieldValue !== null && yieldValue >= parsedYieldMin))
         && (parsedYieldMax === null || (yieldValue !== null && yieldValue <= parsedYieldMax))
       );
-      const sowingMonths = getSowingMonths(crop);
-      const sowingMatches = filters.selectedSowingMonths.length === 0
-        || filters.selectedSowingMonths.some((month) => sowingMonths.includes(month));
       const supplierIds = [
         crop.supplier?.id,
         crop.selected_seed_demand_supplier,
@@ -342,7 +324,6 @@ const detailSectionGridSx = {
         && growthMatches
         && nutrientMatches
         && yieldMatches
-        && sowingMatches
         && supplierMatches;
     });
   }, [
@@ -761,7 +742,6 @@ const detailSectionGridSx = {
           onFilterChange={updateFilter}
           familyOptions={familyOptions}
           supplierOptions={supplierOptions}
-          monthOptions={monthOptions}
           onReset={() => {
             resetFilters();
             setFilterAnchorEl(null);

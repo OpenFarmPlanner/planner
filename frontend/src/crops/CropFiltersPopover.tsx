@@ -21,7 +21,6 @@ interface CropFiltersPopoverProps {
   /** Botanical names of the plant families present in the list. */
   familyOptions: string[];
   supplierOptions: Array<{ id: string; name: string }>;
-  monthOptions: Array<{ value: number; label: string }>;
   /** Clears all filters and closes the popover — handled by the parent. */
   onReset: () => void;
 }
@@ -29,7 +28,7 @@ interface CropFiltersPopoverProps {
 /**
  * Presentational advanced-filters popover for the crop selector
  * (family, cultivation type, nutrient demand, supplier, growth days,
- * sowing months, yield). All filter state lives in CropDetail.tsx.
+ * yield). All filter state lives in CropDetail.tsx.
  */
 export function CropFiltersPopover({
   anchorEl,
@@ -38,7 +37,6 @@ export function CropFiltersPopover({
   onFilterChange,
   familyOptions,
   supplierOptions,
-  monthOptions,
   onReset,
 }: CropFiltersPopoverProps): ReactElement {
   const { t, i18n } = useTranslation('crops');
@@ -110,23 +108,6 @@ export function CropFiltersPopover({
         onValueChange={(value) => onFilterChange('growthDaysMax', value)}
         inputMode="numeric"
       />
-      <FilterSelectField
-        id="crop-sowing-month-filter"
-        label={t('filters.sowingMonths')}
-        multiple
-        value={filters.selectedSowingMonths}
-        onChange={(event) => onFilterChange('selectedSowingMonths', event.target.value as number[])}
-        renderValue={(selected) => (
-          (selected as number[])
-            .map((value) => monthOptions.find((option) => option.value === value)?.label ?? value)
-            .join(', ')
-        )}
-        sx={FULL_WIDTH_ROW}
-      >
-        {monthOptions.map((month) => (
-          <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
-        ))}
-      </FilterSelectField>
       <FilterNumberField
         label={t('filters.yieldMin')}
         value={filters.yieldMin}
