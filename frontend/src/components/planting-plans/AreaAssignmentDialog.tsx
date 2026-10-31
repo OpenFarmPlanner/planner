@@ -21,6 +21,7 @@ import {
 import type { GridRowId } from '@mui/x-data-grid';
 import { useTranslation } from '../../i18n';
 import type {
+  CompanionFinding,
   Bed,
   BedSuggestion,
   Field,
@@ -45,6 +46,7 @@ import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
 import { AreaBedSuggestions } from './rotation/AreaBedSuggestions';
 import { getMatchingBeds } from './rotation/bedSuggestionFilters';
+import { CompanionWarningIcon } from './rotation/CompanionCheckAlert';
 import { RotationCheckPanel } from './rotation/RotationCheckPanel';
 import { RotationStatusIcon } from './rotation/RotationStatusIcon';
 import {
@@ -80,6 +82,8 @@ export interface AreaAssignmentRotationContext {
   status: RotationStatus | null;
   findings: RotationFinding[] | null;
   acceptance: StoredRotationAcceptance | null;
+  /** The saved plan's bad and good neighbours on its bed (companion planting). */
+  companionFindings?: CompanionFinding[] | null;
 }
 
 /** What "Übernehmen" hands back besides the bed. */
@@ -565,7 +569,8 @@ function AreaAssignmentDialogComponent({
       <Box component="span" key={index} sx={{ display: 'block' }}>{line}</Box>
     ))
     : flaggedStatus && getRotationTitle(flaggedStatus, getPrimaryFinding(rotation?.findings ?? undefined), t, familyName);
-  const statusAdornment = flaggedStatus ? (
+  const hasBadCompanions = (rotation?.companionFindings ?? []).some((finding) => finding.kind === 'bad');
+  const rotationAdornment = flaggedStatus ? (
     <AppTooltip title={statusTooltip}>
       <IconButton
         size="small"
@@ -584,6 +589,12 @@ function AreaAssignmentDialogComponent({
       </IconButton>
     </AppTooltip>
   ) : null;
+  const statusAdornment = hasBadCompanions ? (
+    <>
+      <CompanionWarningIcon findings={rotation?.companionFindings} sx={{ mx: 0.5, verticalAlign: 'middle' }} />
+      {rotationAdornment}
+    </>
+  ) : rotationAdornment;
 
   return (
     <>

@@ -1615,7 +1615,6 @@
       "neighborHelper": "Culture, famille botanique ou texte libre",
       "groupCrops": "Cultures",
       "groupFamilies": "Familles botaniques",
-      "freeText": "Utiliser « {{text}} » comme texte",
       "reason": "Raison",
       "note": "Note",
       "neighborRequired": "Choisissez un voisin."
@@ -1634,7 +1633,7 @@
       "period": "{{crop}} (du {{start}} au {{end}})",
       "viaFamily": "appartient à : {{family}}",
       "tableTooltip": "Mauvais voisin sur la planche : {{names}}",
-      "tableAriaLabel": "Mauvais voisins, modifier la surface de culture"
+      "tableAriaLabel": "Mauvais voisins sur la planche"
     },
     "import": {
       "created_one": "{{count}} voisin importé.",

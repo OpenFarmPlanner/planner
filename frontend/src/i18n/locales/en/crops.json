@@ -1576,7 +1576,6 @@
       "neighborHelper": "Crop, crop family or free text",
       "groupCrops": "Crops",
       "groupFamilies": "Crop families",
-      "freeText": "Use “{{text}}” as text",
       "reason": "Reason",
       "note": "Note",
       "neighborRequired": "Choose a neighbor."
@@ -1595,7 +1594,7 @@
       "period": "{{crop}} ({{start}} to {{end}})",
       "viaFamily": "belongs to: {{family}}",
       "tableTooltip": "Bad neighbor on the bed: {{names}}",
-      "tableAriaLabel": "Bad neighbors, change growing area"
+      "tableAriaLabel": "Bad neighbors on the bed"
     },
     "import": {
       "created_one": "{{count}} neighbor imported.",

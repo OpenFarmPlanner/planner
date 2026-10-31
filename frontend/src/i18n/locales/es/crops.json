@@ -1615,7 +1615,6 @@
       "neighborHelper": "Cultivo, familia botánica o texto libre",
       "groupCrops": "Cultivos",
       "groupFamilies": "Familias botánicas",
-      "freeText": "Usar «{{text}}» como texto",
       "reason": "Motivo",
       "note": "Nota",
       "neighborRequired": "Elige un vecino."
@@ -1634,7 +1633,7 @@
       "period": "{{crop}} (del {{start}} al {{end}})",
       "viaFamily": "pertenece a: {{family}}",
       "tableTooltip": "Mal vecino en el bancal: {{names}}",
-      "tableAriaLabel": "Malos vecinos, cambiar superficie de cultivo"
+      "tableAriaLabel": "Malos vecinos en el bancal"
     },
     "import": {
       "created_one": "{{count}} vecino importado.",

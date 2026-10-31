@@ -1576,7 +1576,6 @@
       "neighborHelper": "Kultur, Pflanzenfamilie oder freier Text",
       "groupCrops": "Kulturen",
       "groupFamilies": "Pflanzenfamilien",
-      "freeText": "„{{text}}“ als Text übernehmen",
       "reason": "Grund",
       "note": "Notiz",
       "neighborRequired": "Bitte wähle einen Nachbarn."
@@ -1595,7 +1594,7 @@
       "period": "{{crop}} ({{start}} bis {{end}})",
       "viaFamily": "gehört zu: {{family}}",
       "tableTooltip": "Schlechter Nachbar auf dem Beet: {{names}}",
-      "tableAriaLabel": "Schlechte Nachbarn, Anbaufläche ändern"
+      "tableAriaLabel": "Schlechte Nachbarn auf dem Beet"
     },
     "import": {
       "created_one": "{{count}} Nachbar übernommen.",
