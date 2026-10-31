@@ -78,6 +78,7 @@
   },
   "detail": {
     "sections": {
+      "general": "Allgemeine Informationen",
       "cropRotation": "Fruchtfolge-Eigenschaften",
       "spacing": "Abstände",
       "seed": "Saatgut",

@@ -80,6 +80,7 @@
   },
   "detail": {
     "sections": {
+      "general": "Informations générales",
       "cropRotation": "Propriétés de rotation des cultures",
       "spacing": "Espacements",
       "seed": "Semences",

@@ -1087,36 +1087,50 @@ const detailSectionGridSx = {
             </>
             ) : null}
 
+            {/* General Information: the crop's identity details, shown when it has any */}
+            {getCropValue('botanical_name', selectedCrop.botanical_name) || getEffectiveCropTags(selectedCrop).length > 0 ? (
+              <>
+                <Box sx={{ mb: 3 }} data-testid="crop-detail-general">
+                  <Typography variant="h6" gutterBottom>
+                    {t('detail.sections.general')}
+                  </Typography>
+                  <Box sx={detailSectionGridSx}>
+                    {getCropValue('botanical_name', selectedCrop.botanical_name) && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('form.botanicalName')}
+                        </Typography>
+                        <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
+                          <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
+                            {getCropValue('botanical_name', selectedCrop.botanical_name)}
+                          </Typography>
+                        </ValueWithLibraryPin>
+                      </Box>
+                    )}
+                    {getEffectiveCropTags(selectedCrop).length > 0 && (
+                      <Box data-testid="crop-detail-tags">
+                        <Typography variant="body2" color="text.secondary">
+                          {t('form.tags')}
+                        </Typography>
+                        <Box sx={[{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }, getOwnValueSx('tags') ?? {}]}>
+                          {getEffectiveCropTags(selectedCrop).map((tag) => (
+                            <Chip key={tag} size="small" label={tag} />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+                <Divider sx={{ mb: 2.5 }} />
+              </>
+            ) : null}
+
             {/* Crop Rotation Properties Section */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 {t('detail.sections.cropRotation')}
               </Typography>
               <Box sx={detailSectionGridSx}>
-                {getCropValue('botanical_name', selectedCrop.botanical_name) && (
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {t('form.botanicalName')}
-                    </Typography>
-                    <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
-                      <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
-                        {getCropValue('botanical_name', selectedCrop.botanical_name)}
-                      </Typography>
-                    </ValueWithLibraryPin>
-                  </Box>
-                )}
-                {getEffectiveCropTags(selectedCrop).length > 0 && (
-                  <Box data-testid="crop-detail-tags">
-                    <Typography variant="body2" color="text.secondary">
-                      {t('form.tags')}
-                    </Typography>
-                    <Box sx={[{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }, getOwnValueSx('tags') ?? {}]}>
-                      {getEffectiveCropTags(selectedCrop).map((tag) => (
-                        <Chip key={tag} size="small" label={tag} />
-                      ))}
-                    </Box>
-                  </Box>
-                )}
                 {getCropValue('crop_family', selectedCrop.crop_family) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">

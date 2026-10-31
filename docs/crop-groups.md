@@ -33,7 +33,9 @@ user's list, Kamille is in "Kräuter" and in "Blumen").
 - **Crop form:** "Gruppen" next to the Latin name; existing groups are offered,
   a new one is typed (Enter or leaving the field adds it). The library form has
   no such field.
-- **Crop details:** the effective groups as chips.
+- **Crop details:** the effective groups as chips, with the Latin name in a
+  "General information" section above the crop rotation properties (shown only
+  when the crop has either).
 - **Filter:** "Gruppe" in the crop filter, offering the project's groups; a crop
   matches when its effective groups contain the selected one. A Kultur stays
   visible when one of its Sorten matches, as with the other filters.

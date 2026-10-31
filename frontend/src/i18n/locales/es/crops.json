@@ -80,6 +80,7 @@
   },
   "detail": {
     "sections": {
+      "general": "Información general",
       "cropRotation": "Propiedades de rotación de cultivos",
       "spacing": "Distancias",
       "seed": "Semillas",

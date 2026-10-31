@@ -78,6 +78,7 @@
   },
   "detail": {
     "sections": {
+      "general": "General information",
       "cropRotation": "Crop Rotation Properties",
       "spacing": "Spacing",
       "seed": "Seed",
