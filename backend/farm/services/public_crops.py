@@ -50,6 +50,15 @@ from farm.models.crops import (
 # The local Kultur/Sorte grouping is a farm-app concern this module deliberately
 # does not re-implement: it only calls the service that owns it whenever
 # publishing links a project crop to a crop species.
+from farm.services.crop_companions import (
+    apply_library_companions,
+    entry_companions_for,
+    is_kultur,
+    kultur_relations,
+    library_companion_view,
+    library_companions,
+    replace_library_companions,
+)
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
@@ -104,6 +113,11 @@ CROP_COPY_FIELDS = [
     'display_color',
 ]
 
+# A Kultur's neighbours (CropCompanion rows, not a Crop column), compared,
+# pulled, pushed and pinned like a copy field against a species-level entry.
+# See docs/crop-companions.md#crop-library.
+COMPANIONS_FIELD = 'companions'
+
 PUBLIC_CROP_EDITABLE_FIELDS = [
     'variety',
     'notes',
@@ -128,6 +142,7 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'seeding_requirement_type',
     'display_color',
     'seed_packages',
+    'companions',
 ]
 
 # Kept as a module-level name for existing importers; the supported set
@@ -168,6 +183,9 @@ class PublishingCheckResult:
     duplicates: list[DuplicateCandidate]
     blocking_reasons: list[str]
     general_crop_notice: GeneralCropNotice | None = None
+    # Neighbours of the crop's Kultur that cannot go into the library (free
+    # text, or a neighbouring Kultur without a crop species).
+    unpublishable_companion_count: int = 0
 
     @property
     def can_publish(self) -> bool:
@@ -377,8 +395,9 @@ def _json_safe(value: Any) -> Any:
 # the entry's identity, ``display_color`` is never compared in the first place.
 _NEVER_PINNABLE_FIELDS = frozenset({'name', 'variety', 'display_color'})
 
-LIBRARY_PINNABLE_FIELDS: tuple[str, ...] = tuple(
-    field for field in CROP_COPY_FIELDS if field not in _NEVER_PINNABLE_FIELDS
+LIBRARY_PINNABLE_FIELDS: tuple[str, ...] = (
+    *(field for field in CROP_COPY_FIELDS if field not in _NEVER_PINNABLE_FIELDS),
+    COMPANIONS_FIELD,
 )
 
 
@@ -423,6 +442,7 @@ def library_pinnable_fields(crop: Crop) -> list[str]:
     return [
         field for field in LIBRARY_PINNABLE_FIELDS
         if not forces_species_invariant_inheritance(crop, field)
+        and (field != COMPANIONS_FIELD or is_kultur(crop))
     ]
 
 
@@ -449,6 +469,8 @@ def library_pin_blocked_reason(crop: Crop, field: str, local_value: Any) -> str 
 
 
 def _has_effective_value(crop: Crop, field: str) -> bool:
+    if field == COMPANIONS_FIELD:
+        return is_kultur(crop) and bool(kultur_relations(crop))
     if not is_unset_crop_value(get_crop_field_value(crop, field)):
         return True
     return not is_unset_crop_value(resolve_crop_field(crop, field))
@@ -508,7 +530,43 @@ def library_pinned_public_values(crop: Crop) -> dict[str, Any]:
     if public_crop is None or not pinned:
         return {}
     remote = _copy_fields(public_crop)
+    if COMPANIONS_FIELD in pinned and _compares_companions(crop, public_crop):
+        _add_companion_values({}, remote, crop, public_crop)
     return {field: _json_safe(remote[field]) for field in sorted(pinned) if field in remote}
+
+
+def _compares_companions(crop: Crop, public_crop: PublicCrop) -> bool:
+    """Neighbours are compared between a Kultur and a species-level entry only."""
+    return is_kultur(crop) and not (public_crop.variety or '').strip()
+
+
+def _linked_entry_companions(kultur: Crop) -> list[Any]:
+    """The neighbours of the species-level entry ``kultur`` is linked to, if any."""
+    entry = kultur.source_public_crop if kultur.source_public_crop_id else None
+    if entry is None or (entry.variety or '').strip():
+        return []
+    return entry.companions or []
+
+
+def _add_companion_values(
+    local: dict[str, Any], remote: dict[str, Any], crop: Crop, public_crop: PublicCrop,
+) -> None:
+    """Put the neighbours into a comparison's ``local`` and ``remote`` values.
+
+    Both sides in the canonical item form, the local one measured against the
+    entry (see :func:`library_companion_view`), so plain equality compares them.
+    """
+    remote[COMPANIONS_FIELD] = entry_companions_for(crop, public_crop.companions)
+    local[COMPANIONS_FIELD] = library_companion_view(crop, remote[COMPANIONS_FIELD]).items
+
+
+def _companion_key(items: Any) -> list[tuple[Any, ...]]:
+    """Neighbour items without the stored display names, for a comparison with a snapshot."""
+    return [
+        (item['species'], item['family'], item['kind'], item['reason'], item['note'])
+        for item in (items if isinstance(items, list) else [])
+        if isinstance(item, dict) and {'species', 'family', 'kind', 'reason', 'note'} <= set(item)
+    ]
 
 
 def build_public_crop_snapshot(public_crop: PublicCrop) -> dict[str, Any]:
@@ -821,6 +879,12 @@ def build_public_crop_payload(
     is_general_entry = not (payload['variety'] or '').strip()
     if is_general_entry:
         general_source = source_crop or get_general_crop(crop) or crop
+        # Only the species-level entry carries neighbours, taken from the Kultur;
+        # pinned ones stay local (an update keeps the entry's list).
+        if COMPANIONS_FIELD not in get_library_pinned_fields(general_source):
+            payload[COMPANIONS_FIELD], _skipped = library_companions(
+                general_source, _linked_entry_companions(general_source),
+            )
         for field in PUBLIC_SPECIES_INVARIANT_FIELDS:
             if field in get_library_pinned_fields(general_source):
                 payload.pop(field, None)
@@ -1270,6 +1334,8 @@ def _sync_compared_fields(
     )
     if not (public_crop.variety or '').strip():
         fields = [field for field in fields if field != 'variety']
+    if not _compares_companions(crop, public_crop):
+        fields = [field for field in fields if field != COMPANIONS_FIELD]
     return fields
 
 
@@ -1295,7 +1361,11 @@ PUSH_BLOCKED_EMPTY = 'empty'
 
 def _sync_local_values(crop: Crop, public_crop: PublicCrop) -> dict[str, Any]:
     """``crop``'s effective value per compared field, exactly as the sync compares it."""
-    return _comparable_copy_fields(_resolved_copy_fields(_sync_comparison_crop(crop, public_crop)))
+    comparison_crop = _sync_comparison_crop(crop, public_crop)
+    values = _comparable_copy_fields(_resolved_copy_fields(comparison_crop))
+    if _compares_companions(comparison_crop, public_crop):
+        _add_companion_values(values, {}, comparison_crop, public_crop)
+    return values
 
 
 def _sync_unset_local_fields(
@@ -1412,10 +1482,17 @@ def _pull_public_crop_fields(
     pinned = get_library_pinned_fields(crop)
     written = [
         field for field in fields
-        if field not in pinned and effective[field] != remote[field]
+        if field != COMPANIONS_FIELD and field not in pinned and effective[field] != remote[field]
     ]
     for field in written:
         set_crop_field_value(crop, field, remote[field])
+    if (
+        COMPANIONS_FIELD in fields
+        and COMPANIONS_FIELD not in pinned
+        and _compares_companions(crop, public_crop)
+        and replace_library_companions(crop, public_crop.companions)
+    ):
+        written.append(COMPANIONS_FIELD)
     return written
 
 
@@ -1569,6 +1646,11 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     fields = _compared_public_update_fields(local_crop)
     if not (entry.variety or '').strip():
         fields = [field for field in fields if field != 'variety']
+    if COMPANIONS_FIELD in fields:
+        if _compares_companions(local_crop, entry):
+            _add_companion_values(local, remote, local_crop, entry)
+        else:
+            fields = [field for field in fields if field != COMPANIONS_FIELD]
     return any(local[field] != remote[field] for field in fields)
 
 
@@ -1777,6 +1859,7 @@ def build_publishing_check_result(
     general_crop_notice = (
         build_general_crop_notice(crop_species) if crop_species and not publish_as_general else None
     )
+    kultur = crop if not (crop.variety or '').strip() else get_general_crop(crop)
     return PublishingCheckResult(
         crop_species=crop_species,
         original_language_code=language_code,
@@ -1785,6 +1868,9 @@ def build_publishing_check_result(
         duplicates=duplicates,
         blocking_reasons=blocking_reasons,
         general_crop_notice=general_crop_notice,
+        unpublishable_companion_count=(
+            library_companions(kultur, _linked_entry_companions(kultur))[1] if kultur else 0
+        ),
     )
 
 
@@ -2979,6 +3065,8 @@ def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, uniqu
             project=project,
         )
     crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
+    if not (crop.variety or '').strip() and public_crop.companions:
+        apply_library_companions(crop, public_crop.companions)
     for package in public_crop.seed_packages or []:
         crop.seed_packages.create(
             project=project,
@@ -3014,6 +3102,18 @@ def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> 
         return
     general_public = find_general_public_crop(public_crop.crop_species)
     if general_public is None:
+        return
+    # The name already belongs to a general crop of another species (or of
+    # none): adding a second one is impossible, and a renamed copy would only
+    # confuse. The variety is imported without it, as when no entry exists.
+    from farm.utils import normalize_text
+
+    name_taken = Crop.objects.filter(
+        project=project,
+        name_normalized=normalize_text(general_public.name) or '',
+        variety_normalized__isnull=True,
+    ).exists()
+    if name_taken:
         return
     _create_crop_from_public(public_crop=general_public, project=project)
 
@@ -3056,6 +3156,8 @@ def _apply_public_crop_update(
     for field, value in payload.items():
         set_crop_field_value(crop, field, value)
     crop.save()
+    if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
+        replace_library_companions(crop, public_crop.companions)
     # Crop._flag_source_divergence() runs inside save() and, seeing the tracked
     # fields differ from the pre-update row, may have just flipped this back to True —
     # wrong here, since syncing to a newer library version isn't a local edit. A
@@ -3130,7 +3232,8 @@ def _compared_public_update_fields(crop: Crop, *, include_pinned: bool = False) 
         excluded |= set(PUBLIC_SPECIES_INVARIANT_FIELDS)
     if not include_pinned:
         excluded |= get_library_pinned_fields(crop)
-    return [field for field in CROP_COPY_FIELDS if field not in excluded]
+    fields = [*CROP_COPY_FIELDS, COMPANIONS_FIELD] if is_kultur(crop) else CROP_COPY_FIELDS
+    return [field for field in fields if field not in excluded]
 
 
 def public_crop_field_changes(
@@ -3151,9 +3254,15 @@ def public_crop_field_changes(
     """
     local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(public_crop))
+    fields = _compared_public_update_fields(crop, include_pinned=include_pinned)
+    if COMPANIONS_FIELD in fields:
+        if _compares_companions(crop, public_crop):
+            _add_companion_values(local, remote, crop, public_crop)
+        else:
+            fields = [field for field in fields if field != COMPANIONS_FIELD]
     return [
         (field, local[field], remote[field])
-        for field in _compared_public_update_fields(crop, include_pinned=include_pinned)
+        for field in fields
         if local[field] != remote[field]
     ]
 
@@ -3368,10 +3477,17 @@ def public_update_local_changes(crop: Crop, public_crop: PublicCrop) -> set[str]
     if baseline is None:
         return differing
     local = _resolved_copy_fields(crop)
+    if COMPANIONS_FIELD in differing:
+        _add_companion_values(local, {}, crop, public_crop)
     return {
         field for field in differing
         if field not in baseline
-        or not _same_snapshot_value(_json_safe(local[field]), baseline[field])
+        or (
+            _companion_key(local[field])
+            != _companion_key(entry_companions_for(crop, baseline[field]))
+            if field == COMPANIONS_FIELD
+            else not _same_snapshot_value(_json_safe(local[field]), baseline[field])
+        )
     }
 
 
@@ -3432,13 +3548,20 @@ def _pinned_public_crop_changes(
         return []
     local = _resolved_copy_fields(crop)
     remote = _copy_fields(public_crop)
+    if COMPANIONS_FIELD in pinned and _compares_companions(crop, public_crop):
+        _add_companion_values(local, remote, crop, public_crop)
     changes = []
-    for field in CROP_COPY_FIELDS:
-        if field not in pinned or field not in baseline:
+    for field in [*CROP_COPY_FIELDS, COMPANIONS_FIELD]:
+        if field not in pinned or field not in baseline or field not in remote:
             continue
         previous_value = baseline[field]
         public_value = _json_safe(remote[field])
-        if previous_value != public_value:
+        if field == COMPANIONS_FIELD:
+            previous_value = entry_companions_for(crop, previous_value)
+            changed = _companion_key(previous_value) != _companion_key(public_value)
+        else:
+            changed = previous_value != public_value
+        if changed:
             changes.append(PublicCropPinnedFieldChange(
                 field=field,
                 local_value=_json_safe(local[field]),
@@ -3496,7 +3619,14 @@ def import_public_crop_into_project(
     ).order_by('-id').first()
 
     if existing is None:
-        crop = _create_crop_from_public(public_crop=public_crop, project=project)
+        # A project holds one general crop per name, whatever its species: a
+        # general entry whose name is already taken (by an own crop, or one of
+        # another species) is imported under a free name, as with mode 'new'.
+        crop = _create_crop_from_public(
+            public_crop=public_crop,
+            project=project,
+            unique_name=not public_crop.variety_normalized,
+        )
         _ensure_local_general_crop(public_crop=public_crop, project=project)
         return crop, 'created'
 

@@ -39,6 +39,28 @@ describe('spreadsheetFile', () => {
     ]);
   });
 
+  it('keeps line breaks inside quoted CSV cells in their cell', () => {
+    const csv = 'Name;Gute Nachbarn;Schlechte Nachbarn\r\n'
+      + 'Kartoffel;"Kapuzinerkresse – lockt Blattläuse ab\nKlee";"Tomate – Krankheiten"\r\n'
+      + 'Gurke;"Dill ""Tetra""";\r\n';
+    const buffer = new TextEncoder().encode(csv).buffer;
+
+    expect(parseSpreadsheetRows(buffer, 'csv')).toEqual([
+      ['Name', 'Gute Nachbarn', 'Schlechte Nachbarn'],
+      ['Kartoffel', 'Kapuzinerkresse – lockt Blattläuse ab\nKlee', 'Tomate – Krankheiten'],
+      ['Gurke', 'Dill "Tetra"', ''],
+    ]);
+  });
+
+  it('round-trips a multi-line cell through CSV', () => {
+    const file = buildSpreadsheetFile([['Name', 'Notizen'], ['Tomate', 'Zeile 1\nZeile 2']], 'csv') as string;
+
+    expect(parseSpreadsheetRows(new TextEncoder().encode(file).buffer, 'csv')).toEqual([
+      ['Name', 'Notizen'],
+      ['Tomate', 'Zeile 1\nZeile 2'],
+    ]);
+  });
+
   describe('column widths', () => {
     it('fits each column to its longest cell, header included', () => {
       expect(computeColumnWidths(rows)).toEqual([8, 10, 15, 12]);

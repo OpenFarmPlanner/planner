@@ -107,6 +107,10 @@ For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.
   rotation check: the definition of the break, year occupancy, why the
   stricter break wins, the `conflict`/`accepted`/`hint`/`info`/`ok` statuses,
   accepting a conflict, bed suggestions, and the check when copying a season.
+- **[Companion Planting (Mischkultur)](./crop-companions.md)** — good and bad
+  neighbours of a Kultur (shared pairs, plant families, free text), the
+  same-bed planning warning, the spreadsheet columns and how neighbours go
+  through the crop library.
 - **[Bed Occupancy (Beetbelegung)](./bed-occupancy.md)** — the planting-plan
   area check: firm and soft occupancy, when a follow-up crop may take over a
   bed during the previous crop's harvest phase (project setting

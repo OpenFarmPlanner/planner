@@ -68,6 +68,7 @@ import { usePreservedScrollPosition } from '../hooks/usePreservedScrollPosition'
 import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from './CropSeedDetails';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { CropVarietiesOverview } from './CropVarietiesOverview';
+import { CropCompanionsSection } from './CropCompanionsSection';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
 import { getEffectiveCropValue, isEmptyCropValue, getVarietyOwnValueSource } from './varietyValueSource';
 import { buildLocalizedText } from '../crop-library/publicCropDisplay';
@@ -1136,6 +1137,15 @@ const detailSectionGridSx = {
                 </Box>
               </Box>
             </Box>
+
+            <Divider sx={{ mb: 2.5 }} />
+
+            <CropCompanionsSection
+              crop={selectedCrop}
+              crops={crops}
+              onCropSelect={onCropSelect}
+              onEditKultur={onEditCrop}
+            />
 
             <Divider sx={{ mb: 2.5 }} />
 

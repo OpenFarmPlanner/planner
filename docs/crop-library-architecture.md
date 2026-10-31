@@ -101,6 +101,11 @@ The public Crop Library follows an open-data model:
   edits (the 409 response there also flags `variety_changed` so the frontend
   can call the identity change out explicitly instead of blending it into a
   generic warning).
+- A first import never collides with the project's names: a project holds
+  one general crop per name, whatever its species, so a general entry whose
+  name is already taken is created under a free name ("Paprika (2)"), as the
+  conflict dialog's "import as new" does. Importing a variety leaves out its
+  general crop in that case and imports the variety alone.
 - Nothing about that model is automatic, but it is no longer invisible.
   `CropSerializer.public_update_available` is true when the linked entry's
   `version` moved past the copy's `source_public_version` **and**
@@ -114,7 +119,10 @@ The public Crop Library follows an open-data model:
   included, so a rename can never be applied without appearing in the preview;
   `display_color` is popped from the apply too, matching the diff.
   Fields the user pinned locally (`Crop.library_pinned_fields`, see "Locally
-  pinned fields" below) drop out of this set as well.
+  pinned fields" below) drop out of this set as well. A Kultur compared with a
+  species-level entry adds the virtual field `companions`, its good and bad
+  neighbours (`COMPANIONS_FIELD`; rules in
+  [crop-companions.md](./crop-companions.md#crop-library)).
   `GET /api/crops/<id>/public-update/` returns that diff and is read-only:
   confirming in the dialog calls `public-crops/<id>/import/` with
   `mode=update`, so the private crop page and the library page share one
@@ -406,7 +414,8 @@ The public Crop Library follows an open-data model:
   - *Data.* `Crop.library_pinned_fields` is a JSON list of model field names
     (names only, never values; migration `0117_crop_library_pinned_fields`).
     Only compared fields can be pinned (`LIBRARY_PINNABLE_FIELDS`:
-    `CROP_COPY_FIELDS` minus `name`, `variety` and `display_color`), and the
+    `CROP_COPY_FIELDS` minus `name`, `variety` and `display_color`, plus
+    `companions` on a Kultur), and the
     species-invariant `crop_family` / `nutrient_demand` never on a Sorte
     linked to its Kultur (`forces_species_invariant_inheritance`); a general
     Kultur and a free-text Sorte may pin them (`library_pinnable_fields()`).

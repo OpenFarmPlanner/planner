@@ -160,6 +160,13 @@ describe('PublicCropSyncPanel', () => {
     expect(summary()).toHaveTextContent('1 Wert wird in deine Kultur übernommen.');
   });
 
+  it('explains that taking the library neighbours replaces them, shared pairs included', () => {
+    const neighbour = { species: null, species_name: '', family: 'Brassicaceae', kind: 'good', reason: 'other', note: '' };
+    render(<Harness changes={[{ field: 'companions', local_value: [], public_value: [neighbour], pushable: false }]} />);
+
+    expect(screen.getByTestId('public-crop-sync-companions-hint')).toBeInTheDocument();
+  });
+
   it('shows no choice UI without differences', () => {
     render(<Harness changes={[]} />);
 

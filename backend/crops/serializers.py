@@ -518,6 +518,7 @@ class CropSerializer(serializers.ModelSerializer):
             'seeding_requirement_type',
             'display_color',
             'seed_packages',
+            'companions',
             'version',
             'published_at',
             'created_at',

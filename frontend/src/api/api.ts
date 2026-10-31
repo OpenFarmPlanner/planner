@@ -54,6 +54,10 @@ import type {
   BedLayoutEntry,
   FieldLayoutEntry,
   LocationLayoutsResponse,
+  CompanionImportPreview,
+  CompanionImportSummary,
+  CompanionReplaceItem,
+  CropCompanion,
   CropSupplierData,
   SupplierDeleteResponse,
   SupplierDeleteUsage,
@@ -158,6 +162,8 @@ export const cropAPI = {
       diff?: Array<{ field: string; current: unknown; new: unknown }>;
       import_data: Record<string, unknown>;
       error?: string;
+      /** Only for rows naming neighbours: the names that would stay free text. */
+      companions?: CompanionImportPreview;
     }>;
   }>('/crops/import/preview/', data),
   importApply: (data: {
@@ -168,6 +174,7 @@ export const cropAPI = {
     updated_count: number;
     skipped_count: number;
     errors: Array<{ index: number; error: unknown }>;
+    companions?: CompanionImportSummary;
   }>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
@@ -346,6 +353,21 @@ export const cropSupplierDataAPI = {
   create: (data: CropSupplierData) => http.post<CropSupplierData>('/crop-supplier-data/', withActiveProject(data)),
   update: (id: number, data: CropSupplierData) => http.put<CropSupplierData>(`/crop-supplier-data/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/crop-supplier-data/${id}/`),
+};
+
+export const cropCompanionAPI = {
+  // Unpaginated: a project's whole neighbour list, a relation between two
+  // Kulturen once (see docs/crop-companions.md).
+  list: () => http.get<CropCompanion[]>('/crop-companions/'),
+  /** One Kultur's relations, from both sides of a pair. */
+  listForCrop: (crop: number) => http.get<CropCompanion[]>('/crop-companions/', { params: { crop } }),
+  create: (data: Omit<CropCompanion, 'id'>) => http.post<CropCompanion>('/crop-companions/', data),
+  update: (id: number, data: Partial<CropCompanion>) => http.patch<CropCompanion>(`/crop-companions/${id}/`, data),
+  delete: (id: number) => http.delete(`/crop-companions/${id}/`),
+  /** Saves a Kultur's whole list (the crop form); returns the Kultur's relations afterwards. */
+  replace: (crop: number, relations: CompanionReplaceItem[]) => http.put<CropCompanion[]>(
+    '/crop-companions/replace/', { crop, relations },
+  ),
 };
 
 export const bedAPI = {
@@ -702,6 +724,7 @@ export type {
   BedLayoutEntry,
   FieldLayoutEntry,
   LocationLayoutsResponse,
+  CropCompanion,
   CropSupplierData,
 };
 
@@ -712,6 +735,7 @@ export default {
   publicCrops: publicCropAPI,
   suppliers: supplierAPI,
   cropSupplierData: cropSupplierDataAPI,
+  cropCompanions: cropCompanionAPI,
   beds: bedAPI,
   plantingPlans: plantingPlanAPI,
   fields: fieldAPI,

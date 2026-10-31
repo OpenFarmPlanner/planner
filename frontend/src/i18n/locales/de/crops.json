@@ -547,7 +547,8 @@
       "project": "Projekt",
       "fallback": "Eintrag",
       "openTarget": "Öffnen",
-      "season": "Saison"
+      "season": "Saison",
+      "cropCompanion": "Nachbar (Mischkultur)"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} erstellt",
@@ -1252,6 +1253,7 @@
           "seed_rate_direct_unit": "Direktsaat Einheit",
           "seed_rate_pre_cultivation_value": "Pflanzung Menge",
           "seed_rate_pre_cultivation_unit": "Pflanzung Einheit",
+          "companions": "Mischkultur",
           "botanical_name": "Lateinischer Name"
         },
         "values": {
@@ -1551,5 +1553,63 @@
     "selectEntry": "Wähle zuerst einen Eintrag aus.",
     "selectRemovalReason": "Bitte zuerst einen Grund auswählen.",
     "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
+  },
+  "companions": {
+    "title": "Mischkultur",
+    "goodColumn": "Gute Nachbarn",
+    "badColumn": "Schlechte Nachbarn",
+    "add": "Nachbar hinzufügen",
+    "editAction": "Nachbarn bearbeiten",
+    "empty": "Noch keine Nachbarn erfasst. Im Formular der Kultur hältst du fest, welche Kulturen sich gut vertragen und welche nicht.",
+    "sharedHint": "Gilt für alle Sorten von {{name}}.",
+    "noKulturHint": "Nachbarn werden bei der Kultur ohne Sorte erfasst. Für {{name}} gibt es noch keinen solchen Eintrag.",
+    "familyLabel": "{{name}} (Pflanzenfamilie)",
+    "delete": "Nachbar entfernen",
+    "saveError": "Die Kultur ist gespeichert, die Nachbarn konnten aber nicht gespeichert werden.",
+    "loadError": "Die Nachbarn konnten nicht geladen werden.",
+    "duplicate": "Dieser Nachbar ist bereits erfasst.",
+    "syncReplaceHint": "Übernimmst du die Bibliothek, ersetzt ihre Liste die Nachbarn dieser Kultur. Ein Paar, das dabei wegfällt, fehlt danach auch bei der anderen Kultur. Freier Text bleibt erhalten.",
+    "form": {
+      "kind": "Art",
+      "kindGood": "Guter Nachbar",
+      "kindBad": "Schlechter Nachbar",
+      "neighbor": "Nachbar",
+      "neighborHelper": "Kultur, Pflanzenfamilie oder freier Text",
+      "groupCrops": "Kulturen",
+      "groupFamilies": "Pflanzenfamilien",
+      "reason": "Grund",
+      "note": "Notiz",
+      "neighborRequired": "Bitte wähle einen Nachbarn.",
+      "description": "Halte fest, welche Kulturen sich gut vertragen und welche nicht. Die Nachbarn gelten für alle Sorten.",
+      "sharedPair": "Gilt auch für {{name}}.",
+      "libraryNeighborHelper": "Kulturart der Bibliothek oder Pflanzenfamilie",
+      "varietyReadOnly": "Die Nachbarn gelten für alle Sorten von {{name}} und werden im Formular von {{name}} bearbeitet."
+    },
+    "reasons": {
+      "competition": "Konkurrenz",
+      "allelopathy": "Hemmt das Wachstum",
+      "pest_control": "Schädlingsabwehr",
+      "soil": "Bodenverbesserung",
+      "shared_pests_diseases": "Gleiche Schädlinge oder Krankheiten",
+      "other": "Sonstiges"
+    },
+    "planning": {
+      "badTitle": "Schlechte Nachbarn auf diesem Beet",
+      "goodTitle": "Gute Nachbarn auf diesem Beet",
+      "period": "{{crop}} ({{start}} bis {{end}})",
+      "viaFamily": "gehört zu: {{family}}",
+      "tableTooltip": "Schlechter Nachbar auf dem Beet: {{names}}",
+      "tableAriaLabel": "Schlechte Nachbarn auf dem Beet"
+    },
+    "import": {
+      "created_one": "{{count}} Nachbar übernommen.",
+      "created_other": "{{count}} Nachbarn übernommen.",
+      "unresolved_one": "{{count}} Nachbar passt zu keiner Kultur und keiner Pflanzenfamilie und wird als Text übernommen: {{names}}",
+      "unresolved_other": "{{count}} Nachbarn passen zu keiner Kultur und keiner Pflanzenfamilie und werden als Text übernommen: {{names}}",
+      "conflicts_one": "{{count}} Nachbar ist bereits mit der anderen Art erfasst und bleibt unverändert.",
+      "conflicts_other": "{{count}} Nachbarn sind bereits mit der anderen Art erfasst und bleiben unverändert."
+    },
+    "publishSkipped_one": "{{count}} Nachbar bleibt im Projekt: Er ist freier Text oder eine Kultur ohne Kulturart.",
+    "publishSkipped_other": "{{count}} Nachbarn bleiben im Projekt: Sie sind freier Text oder Kulturen ohne Kulturart."
   }
 }

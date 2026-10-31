@@ -31,6 +31,10 @@ const { cropDuplicateCheckMock, seedRateConstraintsMock, publicCropListMock, sup
   supplierListMock: vi.fn().mockResolvedValue({ data: { results: [] } }),
 }));
 
+const { companionListMock } = vi.hoisted(() => ({
+  companionListMock: vi.fn().mockResolvedValue({ data: [] }),
+}));
+
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
@@ -49,6 +53,7 @@ vi.mock('../api/api', async () => {
       listAll: async () => (await supplierListMock()).data,
       create: supplierCreateMock,
     },
+    cropCompanionAPI: { listForCrop: companionListMock },
   };
 });
 
@@ -1221,6 +1226,23 @@ describe('CropForm', () => {
       variety: 'Nantaise',
       supplier: { id: 10, name: 'Bingenheimer' },
     }), undefined);
+  });
+
+  it("hands the Kultur's changed neighbours to onSave with the crop", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const kultur = { ...CROP_A, variety: '' };
+
+    render(<CropForm crop={kultur} crops={[kultur]} formKind="crop" onSave={onSave} onCancel={() => {}} />);
+
+    await waitFor(() => expect(companionListMock).toHaveBeenCalledWith(1));
+    fireEvent.click(await screen.findByRole('button', { name: 'companions.add' }));
+    fireEvent.change(screen.getByRole('combobox', { name: /companions\.form\.neighbor/ }), { target: { value: 'Salbei' } });
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][2]).toEqual([
+      expect.objectContaining({ kind: 'good', target: { type: 'text', text: 'Salbei', label: 'Salbei' } }),
+    ]);
   });
 
   it('hides the variety field and saves without one when formKind is crop', async () => {

@@ -101,6 +101,8 @@ import {
   matchesPublicCropFilters,
   type PublicCropFilterState,
 } from '../publicCropFilters';
+import { buildLibraryCompanionRows, formRowsToLibraryItems, type CompanionFormRow } from '../../crops/companions';
+import { LibraryCompanionsSection } from '../components/publicCropLibrary/LibraryCompanionsSection';
 import { DetailGrid, DetailRow, DetailSection } from '../components/publicCropLibrary/DetailPrimitives';
 import { VersionCard } from '../components/publicCropLibrary/VersionCard';
 import { CommentForm } from '../components/publicCropLibrary/CommentForm';
@@ -517,6 +519,20 @@ export default function PublicCropLibraryPage() {
     }
     return value;
   }, [isSpeciesView, selectedCrop?.variety, selectedSpeciesCrop]);
+  // A variety entry shows its species entry's neighbours (only that one carries them).
+  const companionSourceCrop = selectedCrop && (selectedCrop.variety || '').trim()
+    ? selectedSpeciesCrop
+    : selectedCrop;
+  const selectedCompanionRows = useMemo(
+    () => (companionSourceCrop
+      ? buildLibraryCompanionRows(
+        companionSourceCrop,
+        crops,
+        (familyKey) => t('companions.familyLabel', { name: plantFamilies.getName(familyKey) }),
+      )
+      : []),
+    [companionSourceCrop, crops, plantFamilies, t],
+  );
   const getPublicFieldSource = useCallback((field: keyof PublicCrop): ValueSource | null => {
     if (isSpeciesView || !selectedCrop?.variety || !selectedSpeciesCrop) {
       return null;
@@ -1191,7 +1207,11 @@ export default function PublicCropLibraryPage() {
     showGlobalSnackbar({ message: t('library.translation.saveSuccess'), severity: 'success' });
   };
 
-  const handleEditSave = async (draft: Crop): Promise<void> => {
+  const handleEditSave = async (
+    draft: Crop,
+    _firstVariety?: unknown,
+    companions?: CompanionFormRow[],
+  ): Promise<void> => {
     if (!selectedCrop) {
       return;
     }
@@ -1200,10 +1220,10 @@ export default function PublicCropLibraryPage() {
         ...draft,
         notes: descriptionDrafts[selectedCropOriginalLanguageCode] ?? '',
       };
-      const response = await publicCropAPI.update(
-        selectedCrop.id,
-        buildPublicCropUpdatePayload(draftWithOriginalNotes, selectedCrop.version),
-      );
+      const response = await publicCropAPI.update(selectedCrop.id, {
+        ...buildPublicCropUpdatePayload(draftWithOriginalNotes, selectedCrop.version),
+        ...(companions ? { companions: formRowsToLibraryItems(companions) } : {}),
+      });
 
       let updatedCrop = response.data;
       const initialDrafts = buildPublicCropDescriptionDrafts(selectedCrop);
@@ -1875,6 +1895,16 @@ export default function PublicCropLibraryPage() {
                         </DetailGrid>
                       </DetailSection>
 
+                      {selectedCompanionRows.length > 0 ? (
+                        <>
+                          <Divider />
+                          <LibraryCompanionsSection
+                            rows={selectedCompanionRows}
+                            onSelectEntry={(entry) => updateSelectedCropId(entry.id)}
+                          />
+                        </>
+                      ) : null}
+
                       <Divider />
 
                       <DetailSection title={t('library.page.sections.timing')}>
@@ -2207,6 +2237,7 @@ export default function PublicCropLibraryPage() {
           hasExternalChanges={hasDescriptionDraftChanges}
           importedCopiesCount={selectedCrop.imported_crops_count}
           publicIdentityReadOnly={!canManageModeratorRequests}
+          libraryCompanions={selectedCrop.companions}
           extraSections={(
             <MultilingualTextFieldSection
               title={t('form.notes')}

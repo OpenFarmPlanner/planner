@@ -1,4 +1,5 @@
 import { readWithLegacyKey, removeWithLegacyKey } from '../compat/legacyCropNames';
+import type { CompanionImportPreview, CompanionImportSummary } from '../api/types';
 
 export const SELECTED_CROP_STORAGE_KEY = 'selectedCropId';
 /** Pre-"Crop" spelling, still present for users who last visited before the rename. */
@@ -14,6 +15,7 @@ export type ImportPreviewResult = {
   diff?: Array<{ field: string; current: unknown; new: unknown }>;
   import_data: Record<string, unknown>;
   error?: string;
+  companions?: CompanionImportPreview;
 };
 
 export type ImportFailedEntry = {
@@ -64,6 +66,38 @@ export const buildImportSuccessMessage = (
   }
 
   return segments.join(', ');
+};
+
+const formatNames = (names: string[]): string => names.join(', ');
+
+/** The preview's warning about neighbours that would be kept as free text. */
+export const buildCompanionPreviewWarning = (
+  results: ImportPreviewResult[],
+  t: Translator,
+): string | null => {
+  const unresolved = Array.from(new Set(results.flatMap((result) => result.companions?.unresolved ?? [])));
+  if (unresolved.length === 0) return null;
+  return t('companions.import.unresolved', { count: unresolved.length, names: formatNames(unresolved) });
+};
+
+/** One sentence per outcome of the imported neighbours: created, kept as text, conflicts. */
+export const buildCompanionImportMessages = (
+  summary: CompanionImportSummary | undefined,
+  t: Translator,
+): string[] => {
+  if (!summary) return [];
+  const messages: string[] = [];
+  if (summary.created > 0) messages.push(t('companions.import.created', { count: summary.created }));
+  if (summary.unresolved.length > 0) {
+    messages.push(t('companions.import.unresolved', {
+      count: summary.unresolved.length,
+      names: formatNames(summary.unresolved),
+    }));
+  }
+  if (summary.conflicts.length > 0) {
+    messages.push(t('companions.import.conflicts', { count: summary.conflicts.length }));
+  }
+  return messages;
 };
 
 export const mapImportErrors = (

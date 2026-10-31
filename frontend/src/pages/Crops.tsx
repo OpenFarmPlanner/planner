@@ -13,7 +13,7 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
-import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
+import { bedAPI, cropAPI, cropCompanionAPI, fieldAPI, type Crop } from '../api/api';
 import type { CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
 import { CropForm, type FirstVarietyDraft } from '../crops/CropForm';
@@ -66,6 +66,7 @@ import { getCropSpeciesKey } from '../crops/cropHierarchy';
 import type { PublishVarietySelection } from '../crops/publishVarieties';
 import { buildVarietyInheritanceBaseline } from '../crops/varietyValueSource';
 import { normalizeCropIdentityValue } from '../crops/cropIdentity';
+import { formRowsToReplaceItems, type CompanionFormRow } from '../crops/companions';
 
 // Stable identity so the memos downstream do not see a new array on every
 // render while no project is selected.
@@ -607,7 +608,22 @@ function Crops() {
   };
 
 
-  const handleSave = async (crop: Crop, firstVariety?: FirstVarietyDraft) => {
+  /**
+   * Saves the form's "Mischkultur" rows on the Kultur once the crop exists. The
+   * crop is already saved at that point, so a failure only reports itself
+   * instead of keeping the form open (saving again would create the crop twice).
+   */
+  const saveCompanionRows = async (kulturId: number | undefined, companions?: CompanionFormRow[]) => {
+    if (!companions || kulturId === undefined) return;
+    try {
+      await cropCompanionAPI.replace(kulturId, formRowsToReplaceItems(companions));
+    } catch (error) {
+      console.error('Error saving crop companions:', error);
+      showSnackbar(t('companions.saveError'), 'error');
+    }
+  };
+
+  const handleSave = async (crop: Crop, firstVariety?: FirstVarietyDraft, companions?: CompanionFormRow[]) => {
     try {
       const savePayload = buildCropSavePayload(crop);
       const normalizedCropName = normalizeCropIdentityValue(crop.name);
@@ -619,10 +635,13 @@ function Crops() {
         : undefined;
 
       let savedCrop: Crop;
+      // The Kultur the form's neighbours belong to; a first variety is created after it.
+      let kulturId: number | undefined;
       if (editingCrop) {
         const response = await cropAPI.update(editingCrop.id!, savePayload as Crop);
         savedCrop = response.data;
         showSnackbar(t('messages.updateSuccess'), 'success');
+        kulturId = savedCrop.id;
       } else {
         if (existingGeneralCrop) {
           savedCrop = existingGeneralCrop;
@@ -643,6 +662,7 @@ function Crops() {
           // Auto-select the newly created crop
           updateSelectedCropId(savedCrop.id, 'internal');
         }
+        kulturId = savedCrop.id;
 
         if (firstVariety) {
           try {
@@ -671,6 +691,7 @@ function Crops() {
           showSnackbar(t('messages.createSuccess'), 'success');
         }
       }
+      await saveCompanionRows(kulturId, companions);
       replaceSavedCrop(savedCrop);
       setShowForm(false);
       setEditingCrop(undefined);

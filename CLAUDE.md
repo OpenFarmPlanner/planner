@@ -363,6 +363,12 @@ or changing a public page:
   the `conflict`/`accepted`/`hint`/`info`/`ok` statuses) lives in one service,
   `farm/services/crop_rotation.py`; never re-implement a rule in a view or the
   frontend. Details: [`docs/crop-rotation.md`](docs/crop-rotation.md).
+- Companion planting (good/bad neighbours, `CropCompanion`) belongs to the
+  Kultur; a relation between two Kulturen is one shared pair, and the crop
+  library stores neighbours only as crop species or plant family. The rules
+  (Kultur lookup, name resolution, same-bed planning check, library mapping)
+  live in `farm/services/crop_companions.py`. Details:
+  [`docs/crop-companions.md`](docs/crop-companions.md).
 - The seeded family defaults are initial reference values still to be verified
   against LfL Bayern / Bio Austria via the crop-data workflow. Details:
   [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).

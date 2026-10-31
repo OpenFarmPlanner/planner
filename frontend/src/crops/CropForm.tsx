@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
-import type { Crop, PublicCrop, SeedRateUnitConstraints, Supplier } from '../api/types';
+import type { Crop, PublicCrop, PublicCropCompanion, SeedRateUnitConstraints, Supplier } from '../api/types';
 import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import {
   Dialog,
@@ -54,6 +54,9 @@ import { SpacingSection } from './sections/SpacingSection';
 import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
 import { NotesSection } from './sections/NotesSection';
+import { CompanionsSection } from './sections/CompanionsSection';
+import { useCompanionFormRows } from './useCompanionFormRows';
+import type { CompanionFormRow } from './companions';
 import { hasSupplierDataRowMissingSupplier, hasSupplierInformation } from './supplierDataRows';
 import { stripCitationMarkers } from '../components/data-grid/markdown';
 import { SupplierFormDialog } from '../components/suppliers/SupplierFormDialog';
@@ -111,7 +114,11 @@ interface CropFormProps {
    * mapped to the project `Crop` shape) as long as field names/units line up.
    */
   crops?: Partial<Crop>[];
-  onSave: (crop: Crop, firstVariety?: FirstVarietyDraft) => Promise<void>;
+  /**
+   * `companions` is the "Mischkultur" section's rows when they changed, else
+   * undefined; the caller saves them after the crop (see docs/crop-companions.md#crop-form).
+   */
+  onSave: (crop: Crop, firstVariety?: FirstVarietyDraft, companions?: CompanionFormRow[]) => Promise<void>;
   onCancel: () => void;
   /**
    * Offered when the typed crop name already exists as a private crop in
@@ -123,6 +130,8 @@ interface CropFormProps {
   title?: string;
   variant?: 'project' | 'publicLibrary';
   extraSections?: ReactNode;
+  /** The library entry's neighbours, edited in the library form's "Mischkultur" section. */
+  libraryCompanions?: readonly PublicCropCompanion[];
   hasExternalChanges?: boolean;
   /**
    * Whether this form edits a crop-level entry (no variety, the species'
@@ -365,6 +374,7 @@ export function CropForm({
   title,
   variant = 'project',
   extraSections,
+  libraryCompanions,
   hasExternalChanges = false,
   formKind = 'variety',
   initialDraft,
@@ -378,6 +388,13 @@ export function CropForm({
   const showVarietyField = !isProjectForm || formKind === 'variety';
   const requireVariety = isProjectForm && formKind === 'variety';
   const showFirstVarietyField = isProjectForm && formKind === 'crop' && !isEdit;
+  const companionRows = useCompanionFormRows({
+    variant,
+    crop,
+    crops,
+    isKulturForm: isProjectForm ? formKind === 'crop' : !(crop?.variety || '').trim(),
+    libraryCompanions,
+  });
   const [saveError, setSaveError] = useState<string>('');
   const [firstVarietyName, setFirstVarietyName] = useState<string>('');
   const [copyValuesToCrop, setCopyValuesToCrop] = useState(false);
@@ -431,7 +448,11 @@ export function CropForm({
           : {}),
       }
       : undefined;
-    await onSave(dataToSave, firstVariety);
+    if (companionRows.dirty) {
+      await onSave(dataToSave, firstVariety, companionRows.rows);
+    } else {
+      await onSave(dataToSave, firstVariety);
+    }
     return dataToSave;
   };
 
@@ -520,7 +541,7 @@ export function CropForm({
   // auto-selecting a public crop template); userInteracted is set at every
   // real edit site, so pairing it here keeps "unsaved changes" tied to an
   // actual user edit instead of any isDirty(true) call.
-  const hasUnsavedChanges = (isDirty && userInteracted) || hasExternalChanges;
+  const hasUnsavedChanges = (isDirty && userInteracted) || hasExternalChanges || companionRows.dirty;
 
   // Move focus to the first input after MUI's FocusTrap has settled
   useEffect(() => {
@@ -1131,12 +1152,18 @@ export function CropForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSavingRef.current) return;
-    if (isEdit && !hasExternalChanges && !hasEffectiveCropFormChanges(buildInitialFormData(crop, initialDraft), formData)) {
+    if (
+      isEdit
+      && !hasExternalChanges
+      && !companionRows.dirty
+      && !hasEffectiveCropFormChanges(buildInitialFormData(crop, initialDraft), formData)
+    ) {
       onCancel();
       return;
     }
     setHasSubmitted(true);
-    if (!validateAndSet(formData, 'submit')) return;
+    const companionsValid = companionRows.validate();
+    if (!validateAndSet(formData, 'submit') || !companionsValid) return;
     if (showSupplierDataSection && hasSupplierDataRowMissingSupplier(formData.supplier_data)) {
       setSaveError(t('form.supplierDataMissingSupplier'));
       return;
@@ -1476,6 +1503,7 @@ export function CropForm({
                 />
               ) : null}
             />
+            <CompanionsSection state={companionRows} disabled={isSaving} />
             <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <SpacingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />

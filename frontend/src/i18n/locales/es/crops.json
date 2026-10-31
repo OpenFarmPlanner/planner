@@ -556,7 +556,8 @@
       "project": "Proyecto",
       "fallback": "Entrada",
       "openTarget": "Abrir",
-      "season": "Temporada"
+      "season": "Temporada",
+      "cropCompanion": "Vecino (asociación de cultivos)"
     },
     "batch": {
       "seasonCreate": "Temporada {{season}} creada",
@@ -1285,6 +1286,7 @@
           "seed_rate_direct_unit": "Unidad para siembra directa",
           "seed_rate_pre_cultivation_value": "Cantidad para trasplante",
           "seed_rate_pre_cultivation_unit": "Unidad para trasplante",
+          "companions": "Asociación de cultivos",
           "botanical_name": "Nombre latino"
         },
         "values": {
@@ -1590,5 +1592,67 @@
     "selectEntry": "Selecciona primero una entrada.",
     "selectRemovalReason": "Selecciona primero un motivo.",
     "alreadyRejected": "Esta actualización ya ha sido rechazada."
+  },
+  "companions": {
+    "title": "Asociación de cultivos",
+    "goodColumn": "Buenos vecinos",
+    "badColumn": "Malos vecinos",
+    "add": "Añadir vecino",
+    "editAction": "Editar vecinos",
+    "empty": "Todavía no hay vecinos registrados. En el formulario del cultivo, anota qué cultivos se llevan bien y cuáles no.",
+    "sharedHint": "Se aplica a todas las variedades de {{name}}.",
+    "noKulturHint": "Los vecinos se registran en la ficha del cultivo sin variedad. {{name}} todavía no tiene una ficha así.",
+    "familyLabel": "{{name}} (familia botánica)",
+    "delete": "Quitar vecino",
+    "saveError": "El cultivo se guardó, pero no se pudieron guardar sus vecinos.",
+    "loadError": "No se pudieron cargar los vecinos.",
+    "duplicate": "Este vecino ya está registrado.",
+    "syncReplaceHint": "Al tomar la lista de la biblioteca se reemplazan los vecinos de este cultivo. Un par que se elimina también desaparece del otro cultivo. El texto libre se conserva.",
+    "form": {
+      "kind": "Tipo",
+      "kindGood": "Buen vecino",
+      "kindBad": "Mal vecino",
+      "neighbor": "Vecino",
+      "neighborHelper": "Cultivo, familia botánica o texto libre",
+      "groupCrops": "Cultivos",
+      "groupFamilies": "Familias botánicas",
+      "reason": "Motivo",
+      "note": "Nota",
+      "neighborRequired": "Elige un vecino.",
+      "description": "Anota qué cultivos se llevan bien y cuáles no. Los vecinos se aplican a todas las variedades.",
+      "sharedPair": "También se aplica a {{name}}.",
+      "libraryNeighborHelper": "Especie de cultivo de la biblioteca o familia botánica",
+      "varietyReadOnly": "Los vecinos se aplican a todas las variedades de {{name}} y se editan en el formulario de {{name}}."
+    },
+    "reasons": {
+      "competition": "Competencia",
+      "allelopathy": "Inhibe el crecimiento",
+      "pest_control": "Control de plagas",
+      "soil": "Mejora del suelo",
+      "shared_pests_diseases": "Plagas o enfermedades comunes",
+      "other": "Otro"
+    },
+    "planning": {
+      "badTitle": "Malos vecinos en este bancal",
+      "goodTitle": "Buenos vecinos en este bancal",
+      "period": "{{crop}} (del {{start}} al {{end}})",
+      "viaFamily": "pertenece a: {{family}}",
+      "tableTooltip": "Mal vecino en el bancal: {{names}}",
+      "tableAriaLabel": "Malos vecinos en el bancal"
+    },
+    "import": {
+      "created_one": "{{count}} vecino importado.",
+      "created_many": "{{count}} vecinos importados.",
+      "created_other": "{{count}} vecinos importados.",
+      "unresolved_one": "{{count}} vecino no coincide con ningún cultivo ni familia botánica y se importa como texto: {{names}}",
+      "unresolved_many": "{{count}} vecinos no coinciden con ningún cultivo ni familia botánica y se importan como texto: {{names}}",
+      "unresolved_other": "{{count}} vecinos no coinciden con ningún cultivo ni familia botánica y se importan como texto: {{names}}",
+      "conflicts_one": "{{count}} vecino ya está registrado con el otro tipo y no cambia.",
+      "conflicts_many": "{{count}} vecinos ya están registrados con el otro tipo y no cambian.",
+      "conflicts_other": "{{count}} vecinos ya están registrados con el otro tipo y no cambian."
+    },
+    "publishSkipped_one": "{{count}} vecino se queda en el proyecto: es texto libre o un cultivo sin especie de cultivo.",
+    "publishSkipped_many": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo.",
+    "publishSkipped_other": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo."
   }
 }

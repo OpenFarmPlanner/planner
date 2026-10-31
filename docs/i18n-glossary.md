@@ -134,6 +134,8 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Ertragsübersicht | Yield overview | Aperçu des rendements | Resumen de rendimientos |
 | Fruchtfolge | Crop rotation | Rotation des cultures | Rotación de cultivos |
 | Anbaupause / Familienpause | Rotation break | Délai de retour | Pausa de rotación † |
+| Mischkultur | Companion planting | Association de cultures | Asociación de cultivos |
+| Guter / schlechter Nachbar | Good / bad neighbor | Bon / mauvais voisin | Buen / mal vecino |
 | Kulturbibliothek-Eintrag | Library entry | Fiche de la bibliothèque | Ficha de la biblioteca |
 | Synonym | Synonym | Synonyme | Sinónimo |
 
