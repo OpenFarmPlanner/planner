@@ -516,6 +516,19 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoic
           </DisabledActionTooltip>
         ) : localOption}
       </Box>
+      {change.field === 'companions' ? (
+        // Neighbours are rows of their own: taking the library's list replaces
+        // them, and a shared pair it drops leaves the other Kultur too.
+        <Typography
+          component="dd"
+          variant="caption"
+          color="text.secondary"
+          sx={{ m: 0 }}
+          data-testid="public-crop-sync-companions-hint"
+        >
+          {t('companions.syncReplaceHint')}
+        </Typography>
+      ) : null}
       {showExpandToggle ? (
         <Box component="dd" sx={{ m: 0 }}>
           {/* Neutral: the only colours in the panel are the three column colours. */}

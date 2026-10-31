@@ -13,7 +13,8 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 
-import type { RotationBedHistoryEntry, RotationFinding } from '../../../api/types';
+import type { RotationBedHistoryEntry, RotationCheckResponse, RotationFinding } from '../../../api/types';
+import { CompanionCheckAlert } from './CompanionCheckAlert';
 import { useTranslation } from '../../../i18n';
 import { RotationStatusIcon } from './RotationStatusIcon';
 import {
@@ -111,17 +112,10 @@ function CropSettingsLink({ finding, label }: { finding: RotationFinding; label:
  * when the check is not possible, and a one-line success note otherwise.
  * Never blocks saving.
  */
-export function RotationCheckPanel({
-  input,
-  bedLabel,
-  cultureLabel,
-  acceptance,
-  onShowSuggestions,
-}: RotationCheckPanelProps) {
-  const { t, i18n } = useTranslation('plantingPlans');
+export function RotationCheckPanel(props: RotationCheckPanelProps) {
+  const { input } = props;
+  const { t } = useTranslation('plantingPlans');
   const { data, isLoading, isError } = useRotationCheck(input);
-  const familyName = useFamilyNameResolver();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   if (!input.cropId || !input.bedId || !input.plantingDate) {
     return null;
@@ -140,6 +134,30 @@ export function RotationCheckPanel({
       </Typography>
     );
   }
+
+  const companionFindings = data.companion_findings ?? [];
+  const rotation = <RotationResult {...props} data={data} />;
+  if (companionFindings.length === 0) {
+    return rotation;
+  }
+  return (
+    <Stack spacing={1}>
+      {rotation}
+      <CompanionCheckAlert findings={companionFindings} />
+    </Stack>
+  );
+}
+
+function RotationResult({
+  bedLabel,
+  cultureLabel,
+  acceptance,
+  onShowSuggestions,
+  data,
+}: RotationCheckPanelProps & { data: RotationCheckResponse }) {
+  const { t, i18n } = useTranslation('plantingPlans');
+  const familyName = useFamilyNameResolver();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const context = { bedLabel, cultureLabel, familyName };
   const finding = getPrimaryFinding(data.findings);

@@ -22,6 +22,13 @@ class CropImportPreviewItemSerializer(serializers.Serializer):
     import_data = serializers.DictField(
         help_text='The crop data that would be imported'
     )
+    companions = serializers.DictField(
+        required=False,
+        help_text=(
+            'Only for rows naming neighbours: `count` and the `unresolved` names that would '
+            'be kept as free text because they match no crop or plant family'
+        ),
+    )
 
 
 class CropImportApplySummarySerializer(serializers.Serializer):
@@ -32,4 +39,11 @@ class CropImportApplySummarySerializer(serializers.Serializer):
     errors = serializers.ListField(
         child=serializers.DictField(),
         help_text='List of errors encountered during import'
+    )
+    companions = serializers.DictField(
+        required=False,
+        help_text=(
+            'Only when rows named neighbours: `created` relations, `unresolved` names kept as '
+            'free text, and `conflicts` (a pair already listed with the other kind, kept as is)'
+        ),
     )

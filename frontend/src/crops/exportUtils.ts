@@ -1,4 +1,5 @@
-import type { Crop } from '../api/types';
+import type { CompanionImportItem, Crop } from '../api/types';
+import type { CompanionItemsByKind } from './companions';
 import { formatIsoDate } from '../utils/isoDate';
 
 interface ExportEnvelopeBase {
@@ -38,6 +39,9 @@ export interface PortableCrop {
   package_size_g?: number;
   seeding_requirement?: number;
   seeding_requirement_type?: Crop['seeding_requirement_type'];
+  /** Only on a Kultur (no variety); see docs/crop-companions.md. */
+  good_companions?: CompanionImportItem[];
+  bad_companions?: CompanionImportItem[];
 }
 
 export interface SingleCropExport extends ExportEnvelopeBase {
@@ -74,7 +78,7 @@ const primaryFirst = (
   return [primary, ...types.filter((type) => type !== primary)];
 };
 
-export const toPortableCrop = (crop: Crop): PortableCrop => {
+export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): PortableCrop => {
   const portableCrop: PortableCrop = {
     name: crop.name,
     variety: crop.variety ?? '',
@@ -107,23 +111,33 @@ export const toPortableCrop = (crop: Crop): PortableCrop => {
     package_size_g: crop.package_size_g,
     seeding_requirement: crop.seeding_requirement,
     seeding_requirement_type: crop.seeding_requirement_type,
+    good_companions: companions?.good.length ? companions.good : undefined,
+    bad_companions: companions?.bad.length ? companions.bad : undefined,
   };
 
   return Object.fromEntries(Object.entries(portableCrop).filter(([, value]) => value !== undefined)) as PortableCrop;
 };
 
-export const buildSingleCropExport = (crop: Crop, date = new Date()): SingleCropExport => ({
+export const buildSingleCropExport = (
+  crop: Crop,
+  date = new Date(),
+  companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
+): SingleCropExport => ({
   schemaVersion: 1,
   exportedAt: formatIsoDate(date),
   type: 'crop',
-  crop: toPortableCrop(crop),
+  crop: toPortableCrop(crop, crop.id === undefined ? undefined : companionsByCrop?.get(crop.id)),
 });
 
-export const buildAllCropsExport = (crops: Crop[], date = new Date()): AllCropsExport => ({
+export const buildAllCropsExport = (
+  crops: Crop[],
+  date = new Date(),
+  companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
+): AllCropsExport => ({
   schemaVersion: 1,
   exportedAt: formatIsoDate(date),
   type: 'crops',
-  crops: crops.map(toPortableCrop),
+  crops: crops.map((crop) => toPortableCrop(crop, crop.id === undefined ? undefined : companionsByCrop?.get(crop.id))),
 });
 
 export const downloadJsonFile = (data: object, filename: string): void => {

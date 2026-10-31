@@ -554,7 +554,8 @@
       "project": "Projet",
       "fallback": "Entrée",
       "openTarget": "Ouvrir",
-      "season": "Saison"
+      "season": "Saison",
+      "cropCompanion": "Voisin (association de cultures)"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} créée",
@@ -1282,7 +1283,8 @@
           "seed_rate_direct_value": "Quantité pour le semis direct",
           "seed_rate_direct_unit": "Unité pour le semis direct",
           "seed_rate_pre_cultivation_value": "Quantité pour la plantation",
-          "seed_rate_pre_cultivation_unit": "Unité pour la plantation"
+          "seed_rate_pre_cultivation_unit": "Unité pour la plantation",
+          "companions": "Association de cultures"
         },
         "values": {
           "low": "Faibles",
@@ -1587,5 +1589,67 @@
     "selectEntry": "Sélectionnez d'abord une entrée.",
     "selectRemovalReason": "Choisissez d'abord un motif.",
     "alreadyRejected": "Cette mise à jour a déjà été refusée."
+  },
+  "companions": {
+    "title": "Association de cultures",
+    "goodColumn": "Bons voisins",
+    "badColumn": "Mauvais voisins",
+    "add": "Ajouter un voisin",
+    "editAction": "Modifier les voisins",
+    "empty": "Aucun voisin enregistré. Dans le formulaire de la culture, notez quelles cultures s'associent bien et lesquelles non.",
+    "sharedHint": "S'applique à toutes les variétés de {{name}}.",
+    "noKulturHint": "Les voisins sont enregistrés sur la fiche de la culture sans variété. {{name}} n'a pas encore de fiche de ce type.",
+    "familyLabel": "{{name}} (famille botanique)",
+    "delete": "Retirer le voisin",
+    "saveError": "La culture est enregistrée, mais ses voisins n'ont pas pu être enregistrés.",
+    "loadError": "Impossible de charger les voisins.",
+    "duplicate": "Ce voisin est déjà enregistré.",
+    "syncReplaceHint": "Reprendre la bibliothèque remplace les voisins de cette culture par sa liste. Une paire retirée disparaît aussi de l'autre culture. Le texte libre est conservé.",
+    "form": {
+      "kind": "Type",
+      "kindGood": "Bon voisin",
+      "kindBad": "Mauvais voisin",
+      "neighbor": "Voisin",
+      "neighborHelper": "Culture, famille botanique ou texte libre",
+      "groupCrops": "Cultures",
+      "groupFamilies": "Familles botaniques",
+      "reason": "Raison",
+      "note": "Note",
+      "neighborRequired": "Choisissez un voisin.",
+      "description": "Notez quelles cultures s'associent bien et lesquelles non. Les voisins s'appliquent à toutes les variétés.",
+      "sharedPair": "S'applique aussi à {{name}}.",
+      "libraryNeighborHelper": "Espèce cultivée de la bibliothèque ou famille botanique",
+      "varietyReadOnly": "Les voisins s'appliquent à toutes les variétés de {{name}} et se modifient dans le formulaire de {{name}}."
+    },
+    "reasons": {
+      "competition": "Concurrence",
+      "allelopathy": "Inhibe la croissance",
+      "pest_control": "Protection contre les ravageurs",
+      "soil": "Amélioration du sol",
+      "shared_pests_diseases": "Ravageurs ou maladies communs",
+      "other": "Autre"
+    },
+    "planning": {
+      "badTitle": "Mauvais voisins sur cette planche",
+      "goodTitle": "Bons voisins sur cette planche",
+      "period": "{{crop}} (du {{start}} au {{end}})",
+      "viaFamily": "appartient à : {{family}}",
+      "tableTooltip": "Mauvais voisin sur la planche : {{names}}",
+      "tableAriaLabel": "Mauvais voisins sur la planche"
+    },
+    "import": {
+      "created_one": "{{count}} voisin importé.",
+      "created_many": "{{count}} voisins importés.",
+      "created_other": "{{count}} voisins importés.",
+      "unresolved_one": "{{count}} voisin ne correspond à aucune culture ni famille botanique et est importé comme texte : {{names}}",
+      "unresolved_many": "{{count}} voisins ne correspondent à aucune culture ni famille botanique et sont importés comme texte : {{names}}",
+      "unresolved_other": "{{count}} voisins ne correspondent à aucune culture ni famille botanique et sont importés comme texte : {{names}}",
+      "conflicts_one": "{{count}} voisin est déjà enregistré avec l'autre type et reste inchangé.",
+      "conflicts_many": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés.",
+      "conflicts_other": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés."
+    },
+    "publishSkipped_one": "{{count}} voisin reste dans le projet : c'est du texte libre ou une culture sans espèce cultivée.",
+    "publishSkipped_many": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
+    "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée."
   }
 }

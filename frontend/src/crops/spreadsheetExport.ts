@@ -1,5 +1,6 @@
 import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
+import { formatCompanionCell, type CompanionItemsByKind } from './companions';
 import { getLocalizedCropColumns } from './spreadsheetColumns';
 import { formatIsoDate } from '../utils/isoDate';
 import { buildSpreadsheetFile } from './spreadsheetFile';
@@ -13,16 +14,21 @@ const MIME_TYPES: Record<SpreadsheetExportFormat, string> = {
   csv: 'text/csv;charset=utf-8',
 };
 
-export const buildSheetData = (crops: Crop[], t: (key: string) => string): (string | number | null)[][] => {
+export const buildSheetData = (
+  crops: Crop[],
+  t: (key: string) => string,
+  companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
+): (string | number | null)[][] => {
   const cropColumns = getLocalizedCropColumns(t);
   const headers = cropColumns.map((col) => col.header);
   const rows = crops.map((crop) => {
-    const portableCrop = toPortableCrop(crop);
+    const portableCrop = toPortableCrop(crop, crop.id === undefined ? undefined : companionsByCrop?.get(crop.id));
     // The JSON format names the supplier `supplierName`; the sheet column is `supplier_name`.
     const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;
+      if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], t);
       if (Array.isArray(raw)) {
         return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(', ') : null;
       }
@@ -60,8 +66,9 @@ export const exportCropsToSpreadsheet = (
   format: SpreadsheetExportFormat,
   filename: string,
   t: (key: string) => string,
+  companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
 ): void => {
-  downloadSpreadsheet(buildSheetData(crops, t), format, filename);
+  downloadSpreadsheet(buildSheetData(crops, t, companionsByCrop), format, filename);
 };
 
 export const buildSpreadsheetFilename = (

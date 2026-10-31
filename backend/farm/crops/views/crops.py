@@ -1031,6 +1031,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 for item in result.missing_required_fields
             ],
             'duplicates': self._serialize_duplicates(result.duplicates),
+            'unpublishable_companion_count': result.unpublishable_companion_count,
             'can_publish': result.can_publish,
             'blocking_reasons': result.blocking_reasons,
             'general_crop_notice': (

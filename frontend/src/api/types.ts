@@ -359,6 +359,8 @@ export interface PublicCrop {
   seeding_requirement_type?: 'per_sqm' | 'per_plant' | '';
   display_color?: string;
   seed_packages?: SeedPackage[];
+  /** Only on the species-level entry; see docs/crop-companions.md. */
+  companions?: PublicCropCompanion[];
   version: number;
   published_at?: string | null;
   created_at?: string;
@@ -775,6 +777,16 @@ export type PublishBlockingReason =
   | 'missing_required_fields'
   | 'duplicates';
 
+/** A neighbour in the crop library: a crop species (with its name at publishing) or a family. */
+export interface PublicCropCompanion {
+  species: number | null;
+  species_name: string;
+  family: string | null;
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+}
+
 export interface PublishPublicCropPreview {
   crop_species: Pick<CropSpecies, 'id' | 'name'> | null;
   original_language_code: string;
@@ -785,6 +797,8 @@ export interface PublishPublicCropPreview {
   /** Empty exactly when `can_publish` is true. */
   blocking_reasons: PublishBlockingReason[];
   general_crop_notice: GeneralCropNotice | null;
+  /** Neighbours of the crop's Kultur that stay in the project (free text, or no crop species). */
+  unpublishable_companion_count?: number;
 }
 
 export interface PublishPublicCropResponse {
@@ -1010,6 +1024,9 @@ export interface PlantingPlan {
   // Read-only crop rotation check (see docs/crop-rotation.md).
   rotation_status?: RotationStatus;
   rotation_findings?: RotationFinding[];
+  // Read-only companion-planting check (see docs/crop-companions.md): other
+  // plans on the same bed in an overlapping period that are listed neighbours.
+  companion_findings?: CompanionFinding[];
   // Read-only, calculated: allowed overlaps with a follow-up crop during a
   // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
   harvest_overlaps?: HarvestOverlap[];
@@ -1073,6 +1090,74 @@ export interface RotationCheckResponse {
   status: RotationStatus;
   findings: RotationFinding[];
   bed_history: RotationBedHistoryEntry[];
+  companion_findings?: CompanionFinding[];
+}
+
+export type CompanionKind = 'good' | 'bad';
+
+export type CompanionReason =
+  | 'competition'
+  | 'allelopathy'
+  | 'pest_control'
+  | 'soil'
+  | 'shared_pests_diseases'
+  | 'other';
+
+/**
+ * A good or bad neighbour of a general crop (Kultur). Between two Kulturen it
+ * is one shared pair: `crop` holds the lower id and the relation applies to
+ * both. Exactly one of `companion_crop`, `companion_family`, `companion_text`
+ * is set.
+ */
+export interface CropCompanion {
+  id?: number;
+  crop: number;
+  companion_crop: number | null;
+  /** Botanical key; render it through the plant-family catalog. */
+  companion_family: string | null;
+  companion_text: string;
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+}
+
+/** One neighbour of `PUT /crop-companions/replace/`, named from the Kultur's side. */
+export type CompanionReplaceItem = Pick<
+  CropCompanion,
+  'companion_crop' | 'companion_family' | 'companion_text' | 'kind' | 'reason' | 'note'
+>;
+
+export interface CompanionImportPreview {
+  count: number;
+  unresolved: string[];
+}
+
+export interface CompanionImportSummary {
+  created: number;
+  /** Names kept as free text because they match no crop or crop family. */
+  unresolved: string[];
+  /** Pairs already listed with the other kind; the existing one was kept. */
+  conflicts: Array<{ crop: string; neighbour: string; kept: CompanionKind }>;
+}
+
+/** A neighbour as named in an import/export cell or JSON entry. */
+export interface CompanionImportItem {
+  name: string;
+  reason: CompanionReason;
+  note: string;
+}
+
+export interface CompanionFinding {
+  kind: CompanionKind;
+  reason: CompanionReason;
+  note: string;
+  other_plan_id: number;
+  other_crop_id: number;
+  other_crop_label: string;
+  other_start: string;
+  other_end: string;
+  /** Set when the relation names a plant family rather than the crop itself. */
+  via_family_key: string | null;
 }
 
 export type BedSuggestionCategory = 'good' | 'fits' | 'hint' | 'no_data' | 'conflict';

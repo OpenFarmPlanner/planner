@@ -83,13 +83,13 @@ describe('exportCropsToSpreadsheet', () => {
   });
 
   it('exports only the declared columns, ignoring other crop fields', () => {
-    // `CROP_COLUMNS` declares only string, number and list columns, so
+    // `CROP_COLUMNS` declares only string, number, list and companion columns, so
     // `buildSheetData`'s `typeof raw === 'boolean'` branch is unreachable —
     // the same dead branch `parseRawValue` has on the import side. Asserting
     // a yes/no label here would only be testing a line that never runs.
     const types = new Set(getLocalizedCropColumns(t).map((column) => column.type));
 
-    expect(types).toEqual(new Set(['string', 'number', 'list']));
+    expect(types).toEqual(new Set(['string', 'number', 'list', 'companions']));
   });
 
   it('leaves a missing value empty instead of writing null or undefined', async () => {

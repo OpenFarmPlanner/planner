@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 
+import { buildCompanionReasonLookup, parseCompanionCell } from './companions';
 import { normalizeImportCropEntry } from './importUtils';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import {
@@ -85,6 +86,7 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   ].map((code) => i18n.getFixedT(code, 'crops'));
   const headerToKey = buildHeaderToKeyMap(...translators);
   const enumImportMaps = buildEnumImportMaps(...translators);
+  const companionReasons = buildCompanionReasonLookup(...translators);
   const columnMap: (string | null)[] = headerRow.map((h) => {
     if (!h) return null;
     return headerToKey.get(normalizeHeaderForLookup(String(h))) ?? null;
@@ -112,6 +114,11 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
       const colDef = keyToColDef.get(key);
       if (!colDef) continue;
       const raw = i < row.length ? row[i] : null;
+      if (colDef.type === 'companions') {
+        const items = parseCompanionCell(raw, companionReasons);
+        if (items.length > 0) entry[key] = items;
+        continue;
+      }
       const parsed = parseRawValue(raw, colDef.type, enumImportMaps.get(key));
       if (parsed !== undefined) {
         entry[key] = parsed;

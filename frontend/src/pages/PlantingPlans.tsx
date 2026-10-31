@@ -134,6 +134,7 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
+import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
 import { getPredecessorOverlaps } from "../components/planting-plans/useHarvestOverlapLines";
 import {
@@ -869,6 +870,7 @@ function PlantingPlans() {
                 status: row.isNew ? null : row.rotation_status ?? null,
                 findings: row.rotation_findings ?? null,
                 acceptance: row.isNew ? null : row,
+                companionFindings: row.isNew ? null : row.companion_findings ?? null,
               }}
             />
           );
@@ -2166,6 +2168,11 @@ function PlantingPlans() {
                     ) : null}
                     <HarvestOverlapIcon
                       overlaps={getRowHarvestOverlaps(item)}
+                      fontSize="inherit"
+                      sx={{ ml: 0.5, verticalAlign: "middle" }}
+                    />
+                    <CompanionWarningIcon
+                      findings={item.companion_findings}
                       fontSize="inherit"
                       sx={{ ml: 0.5, verticalAlign: "middle" }}
                     />

@@ -750,6 +750,8 @@ SPECTACULAR_SETTINGS = {
     'ENUM_NAME_OVERRIDES': {
         'CropCultivationTypeEnum': 'farm.models.crops.Crop.CULTIVATION_TYPE_CHOICES',
         'PlantingPlanCultivationTypeEnum': 'farm.models.planning.PlantingPlan.CULTIVATION_TYPE_CHOICES',
+        'CompanionKindEnum': 'farm.models.crops.CropCompanion.KIND_CHOICES',
+        'CompanionReasonEnum': 'farm.models.crops.CropCompanion.REASON_CHOICES',
     },
     # Versions must match the SRI hashes in farm/agent_api/schema_views.py.
     'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0',

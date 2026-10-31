@@ -86,15 +86,18 @@ function normalizeZipPath(basePath: string, targetPath: string): string {
   return normalized.join('/');
 }
 
-function parseCsvLine(line: string, delimiter: string): string[] {
-  const result: string[] = [];
+// One pass over the whole text, not line by line: a quoted cell may contain
+// line breaks (multi-line notes, one neighbour per line).
+function parseCsvRecords(text: string, delimiter: string): string[][] {
+  const records: string[][] = [];
+  let record: string[] = [];
   let value = '';
   let quoted = false;
 
-  for (let index = 0; index < line.length; index++) {
-    const char = line[index];
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
     if (char === '"') {
-      if (quoted && line[index + 1] === '"') {
+      if (quoted && text[index + 1] === '"') {
         value += '"';
         index++;
       } else {
@@ -103,25 +106,31 @@ function parseCsvLine(line: string, delimiter: string): string[] {
       continue;
     }
     if (char === delimiter && !quoted) {
-      result.push(value);
+      record.push(value);
+      value = '';
+      continue;
+    }
+    if (char === '\n' && !quoted) {
+      record.push(value);
+      records.push(record);
+      record = [];
       value = '';
       continue;
     }
     value += char;
   }
 
-  result.push(value);
-  return result;
+  record.push(value);
+  records.push(record);
+  return records;
 }
 
 function parseCsv(text: string): SpreadsheetRows {
   const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const firstLine = normalized.split('\n', 1)[0] ?? '';
   const delimiter = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
-  return normalized
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .map((line) => parseCsvLine(line, delimiter));
+  return parseCsvRecords(normalized, delimiter)
+    .filter((record) => record.some((cell) => cell.trim().length > 0));
 }
 
 function formatCsvValue(value: SpreadsheetCell): string {

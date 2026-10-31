@@ -23,6 +23,8 @@ EXPECTED_OPERATIONS = {
     ('/api/agent/openapi.json', 'get'),
     ('/api/beds/', 'get'),
     ('/api/beds/{id}/', 'get'),
+    ('/api/crop-companions/', 'get'),
+    ('/api/crop-companions/{id}/', 'get'),
     ('/api/crop-imports/{draft_id}/', 'get'),
     ('/api/crop-imports/{draft_id}/apply/', 'post'),
     ('/api/crop-imports/preview/', 'post'),

@@ -103,6 +103,7 @@ describe('crop spreadsheet export → import round trip', () => {
   // CROP_COLUMNS without a value here fails the coverage check below, so a new
   // column cannot silently skip the round trip.
   const FULL_CROP = {
+    id: 1,
     name: 'Tomate',
     variety: 'Roma',
     supplier: { id: 7, name: 'Bingenheimer Saatgut' },
@@ -131,9 +132,31 @@ describe('crop spreadsheet export → import round trip', () => {
     notes: 'Stäben, ausgeizen; "Freiland", spät',
   } as unknown as Crop;
 
+  // Neighbours with and without a reason and a note, so the reason label is
+  // read back in every language.
+  const COMPANIONS = {
+    good: [
+      { name: 'Basilikum', reason: 'pest_control', note: '' },
+      { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' },
+    ],
+    bad: [
+      { name: 'Kartoffel, Aubergine', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
+    ],
+  } as const;
+  const COMPANIONS_BY_CROP = new Map([[1, {
+    good: [...COMPANIONS.good],
+    bad: [...COMPANIONS.bad],
+  }]]);
+
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
     supplier_name: 'Bingenheimer Saatgut',
+    good_companions: COMPANIONS.good,
+    // "Kartoffel, Aubergine" names two neighbours that share the reason.
+    bad_companions: [
+      { name: 'Kartoffel', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
+      { name: 'Aubergine', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
+    ],
   };
 
   it('has a test value for every exported column', () => {
@@ -143,7 +166,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
   it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('reads back every column unchanged (%s)', async (language) => {
     await i18n.changeLanguage(language);
-    const sheet = buildSheetData([FULL_CROP], i18n.getFixedT(language, 'crops'));
+    const sheet = buildSheetData([FULL_CROP], i18n.getFixedT(language, 'crops'), COMPANIONS_BY_CROP);
     const csv = buildSpreadsheetFile(sheet, 'csv') as string;
 
     const result = await parseSpreadsheetFile(csvFile(csv));

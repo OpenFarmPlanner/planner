@@ -192,4 +192,31 @@ describe('RotationCheckPanel', () => {
     expect(await screen.findByText('Fruchtfolge passt: auf diesem Beet sind keine früheren Anbaupläne erfasst.')).toBeInTheDocument();
     expect(screen.queryByTestId('rotation-check-info')).not.toBeInTheDocument();
   });
+
+  it('warns about bad neighbours on the bed next to the rotation result and notes good ones', async () => {
+    respond({
+      status: 'ok',
+      findings: [{ ...conflictFinding, kind: 'ok' }],
+      companion_findings: [
+        {
+          kind: 'bad', reason: 'shared_pests_diseases', note: 'Krautfäule', other_plan_id: 8,
+          other_crop_id: 4, other_crop_label: 'Kartoffel', other_start: '2026-04-01', other_end: '2026-07-31',
+          via_family_key: null,
+        },
+        {
+          kind: 'good', reason: 'pest_control', note: '', other_plan_id: 9,
+          other_crop_id: 5, other_crop_label: 'Basilikum', other_start: '2026-05-01', other_end: '2026-09-30',
+          via_family_key: null,
+        },
+      ],
+    });
+
+    renderPanel();
+
+    const bad = await screen.findByTestId('companion-check-bad');
+    expect(bad).toHaveTextContent('Schlechte Nachbarn auf diesem Beet');
+    expect(bad).toHaveTextContent('Kartoffel (01.04.2026 bis 31.07.2026) – Gleiche Schädlinge oder Krankheiten: Krautfäule');
+    expect(screen.getByTestId('companion-check-good')).toHaveTextContent('Gute Nachbarn auf diesem Beet: Basilikum');
+    expect(screen.getByTestId('rotation-check-ok')).toBeInTheDocument();
+  });
 });

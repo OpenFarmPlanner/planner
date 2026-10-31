@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type {
+  PublicCropCompanion,
   PublicCrop,
   PublicCropDiscussionComment,
   PublicCropFieldChange,
@@ -322,6 +323,9 @@ export function getPublicCropComparisonFieldLabel(field: string, t: TFunction): 
  * values, booleans and empty values identically.
  */
 export function formatPublicCropValue(field: string, value: unknown, t: TFunction): string {
+  if (field === 'companions' && Array.isArray(value) && value.length > 0) {
+    return formatCompanionsValue(value as PublicCropCompanion[], t);
+  }
   const normalized = normalizeComparisonValue(value);
   if (normalized === null) return t('library.publishWizard.comparison.empty');
   if (typeof normalized === 'boolean') {
@@ -339,6 +343,22 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
     return t(`library.publishWizard.comparison.values.${String(normalized)}`, String(normalized));
   }
   return String(normalized);
+}
+
+/** "Gute Nachbarn: Basilikum, Brassicaceae; Schlechte Nachbarn: Kartoffel" for a diff row. */
+function formatCompanionsValue(items: PublicCropCompanion[], t: TFunction): string {
+  return (['good', 'bad'] as const)
+    .map((kind) => {
+      const names = items
+        .filter((item) => item.kind === kind)
+        .map((item) => item.species_name || item.family || '')
+        .filter(Boolean);
+      return names.length > 0
+        ? `${t(kind === 'good' ? 'companions.goodColumn' : 'companions.badColumn')}: ${names.join(', ')}`
+        : '';
+    })
+    .filter(Boolean)
+    .join('; ');
 }
 
 /** Compared distance fields: stored in metres, entered in the crop form in centimetres. */

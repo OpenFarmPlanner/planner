@@ -16,6 +16,7 @@ from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
 from farm.models import (
+    CropCompanion,
     PublicCrop,
     PublicCropChangeProposal,
     PublicCropDiscussionComment,
@@ -28,6 +29,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional
+from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
 from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 from farm.services.public_crops import (
@@ -56,6 +58,7 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'seeding_requirement',
     'seeding_requirement_type',
     'seed_packages',
+    'companions',
 }
 
 
@@ -76,6 +79,37 @@ class PublicCropSeedPackageSerializer(serializers.Serializer):
                 f"Unsupported seed package fields: {', '.join(unknown_fields)}",
             )
         return super().to_internal_value(data)
+
+
+class PublicCropCompanionSerializer(serializers.Serializer):
+    """Validate one neighbour embedded in a public entry: a crop species or a family."""
+
+    species = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    species_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=200, default='',
+    )
+    family = PlantFamilyField(required=False, allow_null=True)
+    kind = serializers.ChoiceField(choices=CropCompanion.KIND_CHOICES)
+    reason = serializers.ChoiceField(
+        choices=CropCompanion.REASON_CHOICES, default=CropCompanion.REASON_OTHER,
+    )
+    note = serializers.CharField(required=False, allow_blank=True, max_length=500, default='')
+
+    def to_internal_value(self, data: Any) -> dict[str, Any]:
+        if isinstance(data, dict):
+            unknown_fields = sorted(set(data) - set(self.fields))
+            if unknown_fields:
+                raise serializers.ValidationError(
+                    f"Unsupported neighbour fields: {', '.join(unknown_fields)}",
+                )
+        value = super().to_internal_value(data)
+        if bool(value.get('species')) == bool(value.get('family')):
+            raise serializers.ValidationError('A neighbour names either a species or a family.')
+        value.setdefault('species', None)
+        # Stored as JSON: keep the family's botanical name, not the model instance.
+        family = value.get('family')
+        value['family'] = getattr(family, 'pk', family)
+        return value
 
 
 def get_public_user_label(user: Any) -> str:
@@ -214,6 +248,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'seeding_requirement_type',
             'display_color',
             'seed_packages',
+            'companions',
             'version',
             'published_at',
             'created_at',
@@ -301,6 +336,10 @@ class PublicCropSerializer(serializers.ModelSerializer):
         if not crops:
             return None
         crop = crops[0]
+        relation_indexes = self.context.setdefault('_companion_relation_index_by_project', {})
+        if crop.project_id not in relation_indexes:
+            relation_indexes[crop.project_id] = CompanionRelationIndex(crop.project_id)
+        attach_relation_index(crop, relation_indexes[crop.project_id])
         # `is_project_crop_up_to_date` answers from these two fields alone
         # unless the copy is pristine *and* behind the library version, so the
         # index query is only worth paying for in that case.
@@ -389,6 +428,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
 class PublicCropUpdateSerializer(serializers.ModelSerializer):
     base_version = serializers.IntegerField(required=False, min_value=1, write_only=True)
     seed_packages = PublicCropSeedPackageSerializer(many=True, required=False)
+    companions = PublicCropCompanionSerializer(many=True, required=False)
     crop_family = PlantFamilyField()
 
     class Meta:
@@ -900,6 +940,11 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         if 'seed_packages' in typed_serializer.validated_data:
             cleaned['seed_packages'] = PublicCropSeedPackageSerializer(
                 typed_serializer.validated_data['seed_packages'],
+                many=True,
+            ).data
+        if 'companions' in typed_serializer.validated_data:
+            cleaned['companions'] = PublicCropCompanionSerializer(
+                typed_serializer.validated_data['companions'],
                 many=True,
             ).data
         return cleaned

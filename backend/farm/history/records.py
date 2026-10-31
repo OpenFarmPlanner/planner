@@ -10,6 +10,7 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    CropCompanion,
     CropSupplierData,
     EntityRevision,
     Field,
@@ -36,6 +37,7 @@ _RESTORABLE_ENTITY_TYPES: list[tuple[type, str]] = [
     (FieldLayout, 'field_layout'),
     (Supplier, 'supplier'),
     (Crop, 'crop'),
+    (CropCompanion, 'crop_companion'),
     (Season, 'season'),
     (PlantingPlan, 'planting_plan'),
     (Task, 'task'),
@@ -95,6 +97,11 @@ def _entity_display_name(instance) -> str:
         return ' / '.join(part for part in (crop_label, bed_label) if part)
     if isinstance(instance, (CropSupplierData, SeedPackage)):
         return format_crop_display_name(instance.crop.name, instance.crop.variety) if instance.crop_id else ''
+    if isinstance(instance, CropCompanion):
+        partner = instance.companion_crop.name if instance.companion_crop_id else (
+            instance.companion_family_id or instance.companion_text
+        )
+        return ' / '.join(part for part in (instance.crop.name if instance.crop_id else '', partner) if part)
     if isinstance(instance, Task):
         return instance.title or ''
     if isinstance(instance, Season):

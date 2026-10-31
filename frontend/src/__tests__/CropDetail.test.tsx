@@ -653,6 +653,7 @@ describe('CropDetail Component', () => {
     const sectionTitles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
     expect(sectionTitles).toEqual([
       'Fruchtfolge-Eigenschaften',
+      'Mischkultur',
       'Zeitplanung',
       'Abstände',
       'Saatgut',

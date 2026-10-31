@@ -122,7 +122,7 @@ Reachable endpoints (everything else returns 403 for tokens):
 | `GET /api/crop-imports/{draft_id}/` | ✅ | ✅ | ✅ |
 | `POST /api/crop-imports/{draft_id}/apply/` | ❌ | ✅ | ✅ |
 | `GET /api/agent/context/` | ✅ | ✅ | ✅ |
-| `GET /api/suppliers/`, `/seed-packages/`, `/crop-supplier-data/` | ✅ | ✅ | ✅ |
+| `GET /api/suppliers/`, `/seed-packages/`, `/crop-supplier-data/`, `/crop-companions/` | ✅ | ✅ | ✅ |
 | `GET /api/locations/`, `/fields/`, `/beds/`, `/planting-plans/`, `/tasks/` | ✅ | ✅ | ✅ |
 | `GET /api/agent/openapi.json` | ✅ | ✅ | ✅ |
 

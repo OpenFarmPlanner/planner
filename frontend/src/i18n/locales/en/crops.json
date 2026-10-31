@@ -545,7 +545,8 @@
       "project": "Project",
       "fallback": "Entry",
       "openTarget": "Open",
-      "season": "Season"
+      "season": "Season",
+      "cropCompanion": "Neighbor (companion planting)"
     },
     "batch": {
       "seasonCreate": "Season {{season}} created",
@@ -1249,7 +1250,8 @@
           "seed_rate_direct_value": "Direct sowing quantity",
           "seed_rate_direct_unit": "Direct sowing unit",
           "seed_rate_pre_cultivation_value": "Transplanting quantity",
-          "seed_rate_pre_cultivation_unit": "Transplanting unit"
+          "seed_rate_pre_cultivation_unit": "Transplanting unit",
+          "companions": "Companion planting"
         },
         "values": {
           "low": "Low",
@@ -1548,5 +1550,63 @@
     "selectEntry": "Select an entry first.",
     "selectRemovalReason": "Select a reason first.",
     "alreadyRejected": "This update has already been declined."
+  },
+  "companions": {
+    "title": "Companion planting",
+    "goodColumn": "Good neighbors",
+    "badColumn": "Bad neighbors",
+    "add": "Add neighbor",
+    "editAction": "Edit neighbors",
+    "empty": "No neighbors recorded yet. In the crop form, note which crops grow well together and which do not.",
+    "sharedHint": "Applies to all varieties of {{name}}.",
+    "noKulturHint": "Neighbors are recorded on the crop entry without a variety. {{name}} has no such entry yet.",
+    "familyLabel": "{{name}} (crop family)",
+    "delete": "Remove neighbor",
+    "saveError": "The crop was saved, but its neighbors could not be saved.",
+    "loadError": "The neighbors could not be loaded.",
+    "duplicate": "This neighbor is already listed.",
+    "syncReplaceHint": "Taking the library's list replaces this crop's neighbors. A pair that is dropped is also removed from the other crop. Free text is kept.",
+    "form": {
+      "kind": "Type",
+      "kindGood": "Good neighbor",
+      "kindBad": "Bad neighbor",
+      "neighbor": "Neighbor",
+      "neighborHelper": "Crop, crop family or free text",
+      "groupCrops": "Crops",
+      "groupFamilies": "Crop families",
+      "reason": "Reason",
+      "note": "Note",
+      "neighborRequired": "Choose a neighbor.",
+      "description": "Note which crops grow well together and which do not. The neighbors apply to all varieties.",
+      "sharedPair": "Also applies to {{name}}.",
+      "libraryNeighborHelper": "Crop species from the library or crop family",
+      "varietyReadOnly": "The neighbors apply to all varieties of {{name}} and are edited in the form of {{name}}."
+    },
+    "reasons": {
+      "competition": "Competition",
+      "allelopathy": "Inhibits growth",
+      "pest_control": "Pest control",
+      "soil": "Soil improvement",
+      "shared_pests_diseases": "Shared pests or diseases",
+      "other": "Other"
+    },
+    "planning": {
+      "badTitle": "Bad neighbors on this bed",
+      "goodTitle": "Good neighbors on this bed",
+      "period": "{{crop}} ({{start}} to {{end}})",
+      "viaFamily": "belongs to: {{family}}",
+      "tableTooltip": "Bad neighbor on the bed: {{names}}",
+      "tableAriaLabel": "Bad neighbors on the bed"
+    },
+    "import": {
+      "created_one": "{{count}} neighbor imported.",
+      "created_other": "{{count}} neighbors imported.",
+      "unresolved_one": "{{count}} neighbor matches no crop and no crop family and is imported as text: {{names}}",
+      "unresolved_other": "{{count}} neighbors match no crop and no crop family and are imported as text: {{names}}",
+      "conflicts_one": "{{count}} neighbor is already listed with the other type and stays unchanged.",
+      "conflicts_other": "{{count}} neighbors are already listed with the other type and stay unchanged."
+    },
+    "publishSkipped_one": "{{count}} neighbor stays in the project: it is free text or a crop without a crop species.",
+    "publishSkipped_other": "{{count}} neighbors stay in the project: they are free text or crops without a crop species."
   }
 }

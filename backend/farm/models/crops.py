@@ -1106,6 +1106,15 @@ class PublicCrop(TimestampedModel):
     seeding_requirement_type = models.CharField(max_length=30, blank=True)
     display_color = models.CharField(max_length=7, blank=True)
     seed_packages = models.JSONField(default=list, blank=True)
+    companions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Good and bad neighbours of the species-level entry: one object per neighbour '
+            'with species (id) and species_name, or family (botanical name), plus kind, '
+            'reason and note. See docs/crop-companions.md.'
+        ),
+    )
 
     class Meta:
         ordering = ['name', 'variety']
@@ -1722,3 +1731,92 @@ class SeedPackage(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.crop.name} {self.size_value} {self.size_unit}"
+
+
+class CropCompanion(TimestampedModel):
+    """A good or bad neighbour of a general crop (Kultur) for mixed cropping.
+
+    Between two Kulturen the relation is one shared pair: it is stored once,
+    with the lower crop id in ``crop``, and reads the same from both sides. A
+    relation to a plant family or to a free-text neighbour (an imported name
+    that matched no crop) belongs to ``crop`` alone. Rules and their use in
+    planning: ``docs/crop-companions.md``.
+    """
+
+    KIND_GOOD = 'good'
+    KIND_BAD = 'bad'
+    KIND_CHOICES = [
+        (KIND_GOOD, 'Good neighbour'),
+        (KIND_BAD, 'Bad neighbour'),
+    ]
+
+    REASON_COMPETITION = 'competition'
+    REASON_ALLELOPATHY = 'allelopathy'
+    REASON_PEST_CONTROL = 'pest_control'
+    REASON_SOIL = 'soil'
+    REASON_SHARED_PESTS_DISEASES = 'shared_pests_diseases'
+    REASON_OTHER = 'other'
+    REASON_CHOICES = [
+        (REASON_COMPETITION, 'Competition for space, light, water or nutrients'),
+        (REASON_ALLELOPATHY, 'Inhibits the other plant'),
+        (REASON_PEST_CONTROL, 'Repels or lures away pests'),
+        (REASON_SOIL, 'Improves the soil'),
+        (REASON_SHARED_PESTS_DISEASES, 'Shares pests or diseases'),
+        (REASON_OTHER, 'Other'),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='crop_companions')
+    crop = models.ForeignKey(Crop, on_delete=models.CASCADE, related_name='companion_relations')
+    companion_crop = models.ForeignKey(
+        Crop,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='companion_relations_as_partner',
+    )
+    companion_family = models.ForeignKey(
+        'crops.PlantFamily',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='crop_companions',
+    )
+    companion_text = models.CharField(max_length=200, blank=True)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    reason = models.CharField(max_length=30, choices=REASON_CHOICES, default=REASON_OTHER)
+    note = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ['crop_id', 'id']
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (Q(companion_crop__isnull=False) & Q(companion_family__isnull=True) & Q(companion_text=''))
+                    | (Q(companion_crop__isnull=True) & Q(companion_family__isnull=False) & Q(companion_text=''))
+                    | (Q(companion_crop__isnull=True) & Q(companion_family__isnull=True) & ~Q(companion_text=''))
+                ),
+                name='crop_companion_exactly_one_target',
+            ),
+            models.CheckConstraint(
+                condition=Q(companion_crop__isnull=True) | Q(crop__lt=models.F('companion_crop')),
+                name='crop_companion_pair_ordered',
+            ),
+            models.UniqueConstraint(
+                fields=['crop', 'companion_crop'],
+                condition=Q(companion_crop__isnull=False),
+                name='unique_crop_companion_pair',
+            ),
+            models.UniqueConstraint(
+                fields=['crop', 'companion_family'],
+                condition=Q(companion_family__isnull=False),
+                name='unique_crop_companion_family',
+            ),
+            models.UniqueConstraint(
+                fields=['crop', 'companion_text'],
+                condition=~Q(companion_text=''),
+                name='unique_crop_companion_text',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.crop} {self.kind} {self.companion_crop or self.companion_family_id or self.companion_text}"
