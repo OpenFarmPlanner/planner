@@ -17,6 +17,7 @@ from rest_framework import serializers
 
 from farm.crops.serializers import CropSerializer
 from farm.models import CropImportDraft
+from farm.services.crop_companions import link_free_text_companions
 
 from .analysis import ACTION_CREATE, ACTION_SKIP, ACTION_UPDATE
 
@@ -165,7 +166,7 @@ def apply_import_draft(
         acknowledge_warnings=acknowledge_warnings,
     )
 
-    context = {'request': request}
+    context = {'request': request, 'defer_companion_linking': True}
     rows: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
 
@@ -183,6 +184,9 @@ def apply_import_draft(
             except serializers.ValidationError as exc:
                 errors.append({'index': item['index'], 'detail': exc.detail})
 
+        if not errors:
+            # Once for the whole draft instead of once per row.
+            link_free_text_companions(project.id)
         if errors:
             # Partial imports are worse than none: the user reviewed the batch
             # as a whole, so the whole batch is rolled back.

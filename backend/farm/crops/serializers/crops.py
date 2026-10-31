@@ -49,6 +49,7 @@ from farm.seed_units import (
     SEED_RATE_UNITS,
 )
 from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
+from farm.services.crop_companions import is_kultur, link_free_text_companions
 from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
@@ -915,6 +916,7 @@ class CropSerializer(serializers.ModelSerializer):
         except IntegrityError as exc:
             self._raise_name_conflict_if_general_name_constraint(exc)
             raise
+        self._link_free_text_companions(crop, getattr(crop, '_auto_general_crop', None))
         if isinstance(supplier_data_input, list):
             for row in supplier_data_input:
                 if not isinstance(row, dict):
@@ -966,6 +968,7 @@ class CropSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         supplier_data_input = validated_data.pop('supplier_data_input', None)
         seed_packages = validated_data.pop('seed_packages', None)
+        previous_identity = (instance.name_normalized, instance.variety_normalized)
         try:
             with transaction.atomic():
                 crop = super().update(instance, validated_data)
@@ -980,7 +983,21 @@ class CropSerializer(serializers.ModelSerializer):
             self._sync_supplier_data_rows(crop, supplier_data_input)
         if seed_packages is not None:
             self._replace_seed_packages(crop, seed_packages)
+        if (crop.name_normalized, crop.variety_normalized) != previous_identity:
+            self._link_free_text_companions(crop)
         return crop
+
+    def _link_free_text_companions(self, *crops: Crop | None) -> None:
+        """Link free-text neighbours named like a Kultur this write created or renamed.
+
+        An import defers it (``defer_companion_linking``) and links once for
+        the whole file instead of once per row.
+        """
+        if self.context.get('defer_companion_linking'):
+            return
+        kulturen = [crop for crop in crops if crop is not None and is_kultur(crop)]
+        if kulturen:
+            link_free_text_companions(kulturen[0].project_id, [crop.name for crop in kulturen])
 
     def _sync_supplier_data_rows(self, crop, supplier_data_input):
         """Upsert the supplied supplier-data rows and delete rows no longer present."""

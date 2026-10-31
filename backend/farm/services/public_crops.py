@@ -56,6 +56,7 @@ from farm.services.crop_companions import (
     is_kultur,
     kultur_relations,
     library_companion_view,
+    link_free_text_companions,
     library_companions,
     replace_library_companions,
 )
@@ -3065,8 +3066,10 @@ def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, uniqu
             project=project,
         )
     crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
-    if not (crop.variety or '').strip() and public_crop.companions:
-        apply_library_companions(crop, public_crop.companions)
+    if not (crop.variety or '').strip():
+        if public_crop.companions:
+            apply_library_companions(crop, public_crop.companions)
+        link_free_text_companions(project.id, [crop.name])
     for package in public_crop.seed_packages or []:
         crop.seed_packages.create(
             project=project,

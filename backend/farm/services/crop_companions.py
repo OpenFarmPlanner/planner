@@ -152,6 +152,63 @@ def find_relation(kultur: Crop, target: CompanionTarget) -> CropCompanion | None
     return CropCompanion.objects.filter(**relation_kwargs(kultur, target)).first()
 
 
+# --- Linking free text ----------------------------------------------------------
+
+
+def link_free_text_companions(project_id: int, names: Iterable[str] | None = None) -> int:
+    """Turn free-text neighbours named like a Kultur of the project into links to it.
+
+    A neighbour entered before its crop existed stays free text; once a Kultur
+    with that name (in any case) is created or renamed, the entry becomes a
+    pair with it. A pair that already exists makes the entry redundant, so it
+    is removed. ``names`` limits the run to those Kultur names (one crop
+    saved); ``None`` checks every Kultur (the end of an import). Returns how
+    many entries changed. Two queries when nothing matches.
+    """
+    wanted = None if names is None else {
+        normalize_text(name) for name in names if normalize_text(name)
+    }
+    if wanted is not None and not wanted:
+        return 0
+    text_relations = [
+        relation for relation in CropCompanion.objects.filter(
+            project_id=project_id, companion_crop__isnull=True, companion_family__isnull=True,
+            crop__deleted_at__isnull=True,
+        ).exclude(companion_text='').select_related('crop')
+        if wanted is None or normalize_text(relation.companion_text) in wanted
+    ]
+    if not text_relations:
+        return 0
+    kulturen = Crop.objects.filter(
+        project_id=project_id, variety_normalized__isnull=True, deleted_at__isnull=True,
+    )
+    if wanted is not None:
+        kulturen = kulturen.filter(name_normalized__in=wanted)
+    kultur_by_name = {kultur.name_normalized: kultur for kultur in kulturen.order_by('-pk')}
+    changed = 0
+    touched: set[int] = set()
+    with transaction.atomic():
+        for relation in text_relations:
+            neighbour = kultur_by_name.get(normalize_text(relation.companion_text))
+            if neighbour is None or neighbour.id == relation.crop_id:
+                continue
+            target = CompanionTarget(type=TARGET_CROP, crop=neighbour)
+            if find_relation(relation.crop, target) is not None:
+                relation.delete()
+            else:
+                pair = relation_kwargs(relation.crop, target)
+                relation.crop = pair['crop']
+                relation.companion_crop = pair['companion_crop']
+                relation.companion_text = ''
+                relation.save(
+                    update_fields=['crop', 'companion_crop', 'companion_text', 'updated_at'],
+                )
+            touched.update((relation.crop_id, neighbour.id))
+            changed += 1
+        mark_library_copies_modified(touched)
+    return changed
+
+
 # --- Spreadsheet import ---------------------------------------------------------
 
 def normalize_import_items(raw: Any) -> list[dict[str, str]]:
