@@ -312,7 +312,9 @@
     "packageUnitLabel": "Packungseinheit",
     "packageUnitGram": "g",
     "packageUnitSeeds": "Korn",
-    "displayColorAria": "Kulturfarbe"
+    "displayColorAria": "Kulturfarbe",
+    "botanicalName": "Lateinischer Name",
+    "botanicalNamePlaceholder": "z. B. Beta vulgaris var. flavescens"
   },
   "messages": {
     "createSuccess": "Kultur erfolgreich erstellt",
@@ -1251,7 +1253,8 @@
           "seed_rate_direct_unit": "Direktsaat Einheit",
           "seed_rate_pre_cultivation_value": "Pflanzung Menge",
           "seed_rate_pre_cultivation_unit": "Pflanzung Einheit",
-          "companions": "Mischkultur"
+          "companions": "Mischkultur",
+          "botanical_name": "Lateinischer Name"
         },
         "values": {
           "low": "Niedrig",

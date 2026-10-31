@@ -1005,6 +1005,14 @@ dialog per row. See
 
 ### Sorte → Kultur value inheritance
 
+The crop's **Latin name** (`Crop.botanical_name`, "Lateinischer Name") is one
+of the inheritable fields: free text as the grower writes it, down to
+subspecies or variety ("Beta vulgaris var. flavescens"), so a Sorte may set
+its own. It is separate from the crop species' `scientific_name`, travels
+through publishing, import, the spreadsheet column (also read under
+"Lateinische Bezeichnung") and the library like the other copied fields, and
+can be pinned locally.
+
 The species → variety pairing described above (a general "no variety" row plus
 the rows that carry a variety) is also the **value** fallback for project
 crops, not only a display cue.

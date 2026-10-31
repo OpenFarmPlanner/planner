@@ -91,6 +91,7 @@ CROP_COPY_FIELDS = [
     'name',
     'variety',
     'notes',
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'cultivation_types',
@@ -120,6 +121,7 @@ COMPANIONS_FIELD = 'companions'
 PUBLIC_CROP_EDITABLE_FIELDS = [
     'variety',
     'notes',
+    'botanical_name',
     'crop_family',
     'nutrient_demand',
     'cultivation_types',
@@ -784,6 +786,10 @@ def restore_public_crop_version(
             if field in PLANT_FAMILY_REFERENCE_FIELDS:
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
+            if field == 'botanical_name' and value is None:
+                # Versions saved before the field existed carry no key; the
+                # column is a non-null blank-able string.
+                value = ''
             if previous_snapshot.get(field) == value:
                 continue
             set_crop_field_value(locked, field, value)

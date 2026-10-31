@@ -1872,6 +1872,11 @@ export default function PublicCropLibraryPage() {
                           {!isSpeciesView ? (
                             <DetailRow label={t('library.page.fields.variety')} value={selectedCrop.variety || t('library.page.notSpecified')} />
                           ) : null}
+                          <DetailRow
+                            label={t('form.botanicalName')}
+                            value={getPublicFieldValue('botanical_name', selectedCrop.botanical_name) || t('library.page.notSpecified')}
+                            source={getPublicFieldSource('botanical_name')}
+                          />
                           <DetailRow label={t('library.page.fields.cropFamily')} value={plantFamilies.getName(getPublicFieldValue('crop_family', selectedCrop.crop_family)) || t('library.page.notSpecified')} source={getPublicFieldSource('crop_family')} />
                           <DetailRow
                             label={t('library.page.fields.nutrientDemand')}

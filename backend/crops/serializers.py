@@ -496,6 +496,7 @@ class CropSerializer(serializers.ModelSerializer):
             'crop_species_name',
             'crop_species_status',
             'original_language_code',
+            'botanical_name',
             'crop_family',
             'crop_family_display_name',
             'nutrient_demand',
