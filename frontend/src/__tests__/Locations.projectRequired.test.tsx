@@ -31,6 +31,7 @@ vi.mock("../api/api", async () => {
     locationAPI: {
       ...actual.locationAPI,
       list: apiMocks.locationList,
+      listAll: async () => (await apiMocks.locationList()).data,
     },
     fieldAPI: {
       ...actual.fieldAPI,

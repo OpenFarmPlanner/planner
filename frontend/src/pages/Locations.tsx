@@ -146,8 +146,8 @@ function Locations() {
     setLoading(true);
     setError('');
     try {
-      const [locationsResponse] = await Promise.all([locationAPI.list()]);
-      setLocations(locationsResponse.data.results);
+      const { results } = await locationAPI.listAll();
+      setLocations(results);
     } catch {
       setError(t('locations:errors.load'));
     } finally {

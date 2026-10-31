@@ -84,6 +84,7 @@ export async function fetchAllPaginated<T>(
   initialPath: string,
 ): Promise<PaginatedResponse<T>> {
   const results: T[] = [];
+  const [basePath] = initialPath.split('?');
   const initialSeparator = initialPath.includes('?') ? '&' : '?';
   let nextPath: string | null = `${initialPath}${initialSeparator}page_size=1000`;
   let count = 0;
@@ -98,8 +99,10 @@ export async function fetchAllPaginated<T>(
     // Following it directly would bypass the frontend's dev proxy (and drop
     // same-origin cookies), so only the query string is reused against the
     // original relative path.
+    // The `next` query string carries every filter, so it replaces the
+    // initial path's own query instead of being appended to it.
     const next = response.data.next;
-    nextPath = next ? `${initialPath}?${new URL(next, window.location.origin).searchParams.toString()}` : null;
+    nextPath = next ? `${basePath}?${new URL(next, window.location.origin).searchParams.toString()}` : null;
   }
 
   return {
@@ -254,10 +257,17 @@ export const publicLibraryModeratorRequestAPI = {
 };
 
 
+type PublicCropListFilters = { q?: string; name?: string; variety?: string; crop_species?: number; status?: 'removed' };
+
 export const publicCropAPI = {
-  list: (params?: { q?: string; name?: string; variety?: string; crop_species?: number; status?: 'removed'; page_size?: number }, signal?: AbortSignal) =>
+  list: (params?: PublicCropListFilters & { page_size?: number }, signal?: AbortSignal) =>
     http.get<PaginatedResponse<PublicCrop>>('/public-crops/', { params, signal }),
-  listAll: () => fetchAllPaginated<PublicCrop>('/public-crops/'),
+  listAll: (params?: PublicCropListFilters) => {
+    const query = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => [key, String(value)]),
+    ).toString();
+    return fetchAllPaginated<PublicCrop>(query ? `/public-crops/?${query}` : '/public-crops/');
+  },
   get: (id: number) => http.get<PublicCrop>(`/public-crops/${id}/`),
   update: (id: number, data: Partial<PublicCrop> & { base_version?: number }) =>
     http.patch<PublicCrop>(`/public-crops/${id}/`, data),

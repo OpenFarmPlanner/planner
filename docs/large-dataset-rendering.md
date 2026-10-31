@@ -41,7 +41,9 @@ result.
 - Analysis pages use `fetchAllPaginated` (`frontend/src/api/api.ts`) to follow
   every backend `next` link. So does every other view that shows or derives
   from a complete list (crops, suppliers, dashboard, seed demand, yield
-  overview), through each API's `listAll()`. A bare `list()` returns only the
+  overview, locations, the crop library and its import dialog, removed
+  library entries in moderation), through each API's `listAll()`; filters
+  such as a search term stay on every page. A bare `list()` returns only the
   first page of 100 and silently drops the rest.
 - Bulk reads request up to 1,000 records per response through a bounded DRF
   page-size override; normal API lists still default to 100. Both numbers live
