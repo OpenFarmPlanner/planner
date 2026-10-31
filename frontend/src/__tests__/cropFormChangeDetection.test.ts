@@ -23,6 +23,12 @@ describe('hasEffectiveCropFormChanges', () => {
     expect(unchanged({ tags: ['Kräuter'] }, { tags: [' Kräuter '] })).toBe(false);
   });
 
+  it('reports an edit of only the Latin name or the rotation break', () => {
+    expect(unchanged({ name: 'Salat' }, { name: 'Salat', botanical_name: 'Lactuca sativa' })).toBe(true);
+    expect(unchanged({ rotation_break_years: 2 }, { rotation_break_years: 3 })).toBe(true);
+    expect(unchanged({ rotation_break_years: 2 }, { rotation_break_years: null } as Partial<Crop>)).toBe(true);
+  });
+
   describe('edits that only look like edits', () => {
     it('ignores surrounding whitespace', () => {
       expect(unchanged({ name: 'Salat' }, { name: '  Salat  ' })).toBe(false);

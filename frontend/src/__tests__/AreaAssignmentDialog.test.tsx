@@ -864,12 +864,18 @@ describe('AreaAssignmentDialog with the crop rotation check', () => {
 
     await user.click(rows[0]);
 
-    expect(screen.getByRole('combobox', { name: 'Standort' })).toHaveTextContent('Sonnengarten');
-    expect(screen.getByRole('combobox', { name: 'Parzelle' })).toHaveTextContent('5 Tomate');
-    expect(screen.getByRole('combobox', { name: 'Beet' })).toHaveTextContent('5 (12,50 m²)');
-    expect(await screen.findByTestId('rotation-check-ok')).toHaveTextContent(
+    // Picking a bed in another location loads that location's fields first,
+    // so the field and bed selects fill a moment after the click.
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Standort' })).toHaveTextContent('Sonnengarten');
+      expect(screen.getByRole('combobox', { name: 'Parzelle' })).toHaveTextContent('5 Tomate');
+      expect(screen.getByRole('combobox', { name: 'Beet' })).toHaveTextContent('5 (12,50 m²)');
+    });
+    // The family's localized name arrives with the plant-family list, which
+    // may load after the check result.
+    await waitFor(() => expect(screen.getByTestId('rotation-check-ok')).toHaveTextContent(
       'Fruchtfolge passt: letzte Nachtschattengewächse 2021.',
-    );
+    ));
     expect(onApply).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));

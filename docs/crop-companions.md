@@ -64,6 +64,18 @@ in the project history and take part in whole-project restore
 ([versioning-and-history.md](./versioning-and-history.md)); the personal data
 export lists them under `crop_companions`.
 
+## Free text becomes a link later
+
+A neighbour entered before its crop existed is stored as free text. Once a
+Kultur with exactly that name (case and spacing aside) exists, the entry turns
+into a pair with it (`link_free_text_companions`): when a Kultur is created or
+renamed through the API, when the crop library import creates one, and once at
+the end of a spreadsheet or agent import for the whole project (two queries per
+file, not one per row). If that pair already exists, the free-text entry is
+removed instead. Only names are matched, not crop species, and a Sorte never
+takes over a free-text neighbour, since neighbours belong to the Kultur. A linked
+Kultur affected by the change is flagged as changed locally for the library sync.
+
 ## Planning check
 
 Two planting plans are neighbours when they are on the **same bed** and their

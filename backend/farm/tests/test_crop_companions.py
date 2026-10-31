@@ -517,3 +517,60 @@ class CompanionLibrarySyncTests(CompanionLibraryTestCase):
         self.assertIn(response.status_code, (200, 201), response.data)
         relations = CropCompanion.objects.filter(project=self.project)
         self.assertEqual(list(relations.values_list('companion_text', flat=True)), ['Fenchel'])
+
+
+class FreeTextLinkingTests(CropCompanionTestCase):
+    """A free-text neighbour becomes a link once a Kultur with its name exists."""
+
+    def text(self, owner: Crop, text: str, kind: str = CropCompanion.KIND_GOOD) -> CropCompanion:
+        return CropCompanion.objects.create(project=self.project, crop=owner, companion_text=text, kind=kind)
+
+    def test_creating_a_kultur_links_free_text_with_its_name(self):
+        entry = self.text(self.tomato, 'salbei ', kind='good')
+
+        response = self.client.post('/openfarmplanner/api/crops/', {'name': 'Salbei'}, format='json')
+
+        self.assertEqual(response.status_code, 201, response.data)
+        sage = Crop.objects.get(project=self.project, name='Salbei')
+        entry.refresh_from_db()
+        self.assertEqual((entry.companion_text, entry.kind), ('', 'good'))
+        self.assertEqual({entry.crop_id, entry.companion_crop_id}, {self.tomato.id, sage.id})
+        self.assertLess(entry.crop_id, entry.companion_crop_id)
+
+    def test_renaming_a_kultur_links_free_text_with_the_new_name(self):
+        entry = self.text(self.tomato, 'Erdäpfel')
+
+        response = self.client.patch(f'/openfarmplanner/api/crops/{self.potato.id}/', {'name': 'Erdäpfel'}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        entry.refresh_from_db()
+        self.assertEqual(entry.companion_crop_id, max(self.tomato.id, self.potato.id))
+
+    def test_a_pair_that_already_exists_drops_the_free_text_entry(self):
+        self.relate(self.tomato, self.cabbage, kind='bad')
+        duplicate = self.text(self.cabbage, 'Tomate neu')
+
+        self.client.patch(f'/openfarmplanner/api/crops/{self.tomato.id}/', {'name': 'Tomate neu'}, format='json')
+
+        self.assertFalse(CropCompanion.objects.filter(pk=duplicate.pk).exists())
+        self.assertEqual(CropCompanion.objects.filter(project=self.project).count(), 1)
+
+    def test_a_variety_does_not_take_over_free_text(self):
+        entry = self.text(self.tomato, 'Kartoffel Linda')
+
+        Crop.objects.create(project=self.project, name='Kartoffel', variety='Linda')
+        self.client.post('/openfarmplanner/api/crops/', {'name': 'Kartoffel', 'variety': 'Annabelle'}, format='json')
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.companion_text, 'Kartoffel Linda')
+
+    def test_the_import_links_once_for_the_whole_file(self):
+        entry = self.text(self.tomato, 'Ringelblume')
+
+        response = self.client.post(
+            APPLY_URL, {'items': [{'name': 'Ringelblume'}, {'name': 'Borretsch'}]}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        entry.refresh_from_db()
+        self.assertEqual(entry.companion_crop_id, Crop.objects.get(project=self.project, name='Ringelblume').id)

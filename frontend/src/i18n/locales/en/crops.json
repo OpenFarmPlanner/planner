@@ -25,7 +25,6 @@
     "nutrientHigh": "High",
     "growthDaysMin": "Growth duration min",
     "growthDaysMax": "Growth duration max",
-    "sowingMonths": "Sowing period",
     "yieldMin": "Yield/m² min",
     "yieldMax": "Yield/m² max",
     "toggle": "Filters",

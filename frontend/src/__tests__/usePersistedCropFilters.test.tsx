@@ -35,7 +35,6 @@ const FULL_FILTERS: PersistedCropFilters = {
   growthDaysMax: '90',
   yieldMin: '1',
   yieldMax: '5',
-  selectedSowingMonths: [3, 4],
 };
 
 beforeEach(() => {
@@ -105,22 +104,13 @@ describe('usePersistedCropFilters — reading what was stored', () => {
     expect(setup().result.current.filters[key as keyof PersistedCropFilters]).toBe(fallback);
   });
 
-  it.each([
-    ['missing', {}],
-    ['null', { selectedSowingMonths: null }],
-    ['a string', { selectedSowingMonths: 'März' }],
-    ['an object', { selectedSowingMonths: { 3: true } }],
-  ])('falls back to an empty month list when it is %s', (_label, payload) => {
-    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify(payload));
-
-    expect(setup().result.current.filters.selectedSowingMonths).toEqual([]);
-  });
-
-  it('keeps a stored month list', () => {
+  it('ignores a month selection stored by the removed sowing-period filter', () => {
+    // The filter read crop fields the API never had, so a stored selection
+    // hid every crop; it must not filter the list after the update.
     window.sessionStorage.setItem(
       CROP_FILTERS_STORAGE_KEY, JSON.stringify({ selectedSowingMonths: [3, 4] }),
     );
-    expect(setup().result.current.filters.selectedSowingMonths).toEqual([3, 4]);
+    expect(setup().result.current.filters).not.toHaveProperty('selectedSowingMonths');
   });
 
   it('recovers from corrupt JSON rather than failing to render the page', () => {
@@ -257,14 +247,6 @@ describe('usePersistedCropFilters — updating and resetting', () => {
     act(() => result.current.updateFilter('searchQuery', 'kohl'));
 
     expect(result.current.filters).toEqual({ ...FULL_FILTERS, searchQuery: 'kohl' });
-  });
-
-  it('updates the month list too', () => {
-    const { result } = setup();
-
-    act(() => result.current.updateFilter('selectedSowingMonths', [5]));
-
-    expect(result.current.filters.selectedSowingMonths).toEqual([5]);
   });
 
   it('clears everything on reset, including a supplier from the URL', () => {

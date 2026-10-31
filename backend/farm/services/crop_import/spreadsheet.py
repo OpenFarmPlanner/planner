@@ -15,6 +15,7 @@ from farm.models import Crop, Project, Supplier
 from farm.services.crop_companions import (
     CompanionNameResolver,
     apply_import_companions,
+    link_free_text_companions,
     preview_row_companions,
 )
 from farm.services.crop_inheritance import CROP_SPECIES_INVARIANT_FIELDS
@@ -323,7 +324,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                     continue
                 serializer = CropSerializer(
                     matching_crop, data=crop_data, partial=True,
-                    context={'project': project},
+                    context={'project': project, 'defer_companion_linking': True},
                 )
                 if serializer.is_valid():
                     saved = serializer.save()
@@ -344,7 +345,9 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # `selected_seed_demand_supplier` have no project to compare
                 # against on a create (there is no bound instance either).
                 _resolve_crop_species(crop_data)
-                serializer = CropSerializer(data=crop_data, context={'project': project})
+                serializer = CropSerializer(
+                    data=crop_data, context={'project': project, 'defer_companion_linking': True},
+                )
                 if serializer.is_valid():
                     saved = serializer.save(project=project)
                     created_count += 1
@@ -363,4 +366,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
     }
     if companion_rows:
         summary['companions'] = apply_import_companions(project.id, companion_rows).as_dict()
+    # Once for the whole file: neighbours entered as free text before these
+    # crops existed now link to them.
+    link_free_text_companions(project.id)
     return summary
