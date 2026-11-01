@@ -12,8 +12,8 @@ export const normalizeCropTag = (value: string): string => (
 const tagKey = (value: string): string => normalizeCropTag(value).toLocaleLowerCase();
 
 /**
- * Group names cleaned up and without duplicates; a name in `known` (the
- * project's groups) takes that spelling, so "kräuter" joins "Kräuter".
+ * Tag names cleaned up and without duplicates; a name in `known` (the
+ * project's tags) takes that spelling, so "kräuter" joins "Kräuter".
  */
 export const normalizeCropTags = (values: readonly string[], known: readonly string[] = []): string[] => {
   const spellings = new Map(known.map((tag) => [tagKey(tag), tag] as const));
@@ -29,12 +29,12 @@ export const normalizeCropTags = (values: readonly string[], known: readonly str
   return tags;
 };
 
-/** A crop's groups, a Sorte's inherited from its Kultur when it has none of its own. */
+/** A crop's tags, a Sorte's inherited from its Kultur when it has none of its own. */
 export const getEffectiveCropTags = (crop: Partial<Crop> | null | undefined): string[] => (
   getEffectiveCropValue(crop, 'tags') ?? []
 );
 
-/** Every group used in the project, sorted, each in its first spelling. */
+/** Every tag used in the project, sorted, each in its first spelling. */
 export const collectProjectTags = (crops: readonly Partial<Crop>[]): string[] => {
   const byKey = new Map<string, string>();
   for (const crop of crops) {

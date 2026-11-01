@@ -143,7 +143,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   {
     key: 'tags',
     headerKey: 'form.tags',
-    aliases: ['gruppe', 'gruppen', 'groups', 'group', 'tags', 'groupes', 'grupos'],
+    aliases: ['tags', 'tag'],
     type: 'list',
   },
   {

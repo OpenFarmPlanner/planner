@@ -1,9 +1,9 @@
-"""Crop groups ("Gruppen"): normalization, inheritance, import, and staying out of the library."""
+"""Crop tags: normalization, inheritance, import, and staying out of the library."""
 
 from crops.models import CropSpecies
 from farm.models import Crop
 from farm.services.crop_import.analysis import analyze_field
-from farm.services.crop_import.field_specs import CROP_FIELD_SPECS
+from farm.services.crop_import.field_specs import CROP_FIELD_SPECS, INPUT_KEY_INDEX
 from farm.services.crop_tags import normalize_tags
 from farm.services.public_crops import build_public_crop_payload
 from farm.tests.api_base import ProjectApiTestCase
@@ -32,7 +32,7 @@ class CropTagsApiTests(ProjectApiTestCase):
             project=self.project, name='Kamille', variety='', crop_species=self.species, tags=['Kräuter'],
         )
 
-    def test_the_api_saves_cleaned_up_groups(self):
+    def test_the_api_saves_cleaned_up_tags(self):
         response = self.client.patch(
             f'{CROPS_URL}{self.kultur.id}/', {'tags': ['• Kräuter', 'Blumen ', 'blumen']}, format='json',
         )
@@ -41,7 +41,7 @@ class CropTagsApiTests(ProjectApiTestCase):
         self.kultur.refresh_from_db()
         self.assertEqual(self.kultur.tags, ['Kräuter', 'Blumen'])
 
-    def test_a_known_group_takes_the_projects_spelling(self):
+    def test_a_known_tag_takes_the_projects_spelling(self):
         other = Crop.objects.create(project=self.project, name='Salbei', variety='')
 
         response = self.client.patch(f'{CROPS_URL}{other.id}/', {'tags': ['kräuter']}, format='json')
@@ -50,7 +50,15 @@ class CropTagsApiTests(ProjectApiTestCase):
         other.refresh_from_db()
         self.assertEqual(other.tags, ['Kräuter'])
 
-    def test_a_variety_without_own_groups_uses_the_kulturs(self):
+    def test_a_known_tag_is_reused_on_create_without_a_duplicate(self):
+        response = self.client.post(
+            CROPS_URL, {'name': 'Thymian', 'variety': '', 'tags': ['KRÄUTER', 'kräuter ']}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(Crop.objects.get(pk=response.data['id']).tags, ['Kräuter'])
+
+    def test_a_variety_without_own_tags_uses_the_kulturs(self):
         inheriting = Crop.objects.create(
             project=self.project, name='Kamille', variety='Bodegold', crop_species=self.species,
         )
@@ -77,10 +85,15 @@ class CropTagsApiTests(ProjectApiTestCase):
         self.assertEqual(Crop.objects.get(project=self.project, name='Bartnelke').tags, ['Blumen', 'Mehrjährig'])
 
     def test_the_field_spec_accepts_a_separated_text(self):
-        analysis = analyze_field(TAGS_SPEC, 'Gruppe', 'Kräuter, Blumen', None)
+        analysis = analyze_field(TAGS_SPEC, 'tags', 'Kräuter, Blumen', None)
 
         self.assertEqual(analysis.api_value, ['Kräuter', 'Blumen'])
         self.assertFalse(analysis.errors)
 
-    def test_groups_are_not_published_to_the_library(self):
+    def test_the_former_group_keys_are_no_longer_accepted(self):
+        for old_key in ('groups', 'gruppen', 'gruppe'):
+            self.assertNotIn(old_key, INPUT_KEY_INDEX)
+        self.assertIs(INPUT_KEY_INDEX['tag'][0], TAGS_SPEC)
+
+    def test_tags_are_not_published_to_the_library(self):
         self.assertNotIn('tags', build_public_crop_payload(self.kultur))

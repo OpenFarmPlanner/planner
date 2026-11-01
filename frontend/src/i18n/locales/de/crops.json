@@ -31,7 +31,7 @@
     "reset": "Filter zurücksetzen",
     "openAdvanced": "Erweiterte Filter öffnen",
     "title": "Filter",
-    "tag": "Gruppe"
+    "tag": "Tags"
   },
   "emptySearch": {
     "title": "Keine Kulturen gefunden",
@@ -316,9 +316,9 @@
     "displayColorAria": "Kulturfarbe",
     "botanicalName": "Lateinischer Name",
     "botanicalNamePlaceholder": "z. B. Beta vulgaris var. flavescens",
-    "tags": "Gruppen",
+    "tags": "Tags",
     "tagsPlaceholder": "z. B. Kräuter",
-    "tagsHelper": "Eigene Gruppen zum Filtern. Wähle eine vorhandene oder tippe eine neue ein."
+    "tagsHelper": "Eigene Tags zum Filtern, z. B. „Kräuter“ oder „Lagergemüse“. Wähle einen vorhandenen oder tippe einen neuen ein."
   },
   "messages": {
     "createSuccess": "Kultur erfolgreich erstellt",

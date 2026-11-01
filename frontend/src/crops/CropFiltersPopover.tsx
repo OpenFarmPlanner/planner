@@ -20,7 +20,7 @@ interface CropFiltersPopoverProps {
   ) => void;
   /** Botanical names of the plant families present in the list. */
   familyOptions: string[];
-  /** The project's groups ("Gruppen"). */
+  /** The project's tags. */
   tagOptions: string[];
   supplierOptions: Array<{ id: string; name: string }>;
   /** Clears all filters and closes the popover — handled by the parent. */
@@ -29,7 +29,7 @@ interface CropFiltersPopoverProps {
 
 /**
  * Presentational advanced-filters popover for the crop selector
- * (family, group, cultivation type, nutrient demand, supplier, growth days,
+ * (family, tag, cultivation type, nutrient demand, supplier, growth days,
  * yield). All filter state lives in CropDetail.tsx.
  */
 export function CropFiltersPopover({

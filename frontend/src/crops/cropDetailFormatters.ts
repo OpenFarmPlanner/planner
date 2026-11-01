@@ -12,7 +12,7 @@ export const LEGACY_CROP_FILTERS_STORAGE_KEY = 'culturesDetailFiltersV1';
 export interface PersistedCropFilters {
   searchQuery: string;
   selectedFamilyFilter: string;
-  /** A group name ("Gruppe"); '' for all. */
+  /** A tag name; '' for all. */
   selectedTagFilter: string;
   selectedCultivationFilter: string;
   selectedNutrientFilter: string;

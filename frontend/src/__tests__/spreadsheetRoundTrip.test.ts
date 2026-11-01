@@ -83,9 +83,9 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[0]).toMatchObject({ name: 'Mangold', botanical_name: 'Beta vulgaris var. flavescens' });
   });
 
-  it('reads a "Gruppe" column with several groups in one cell', async () => {
+  it('reads a "Tags" column with several tags in one cell', async () => {
     await i18n.changeLanguage('de');
-    const csv = 'Name;Sorte;Gruppe\nKamille;Bodegold;"Kräuter, Blumen"\nRoggen;;"• Getreide\nGründünger"';
+    const csv = 'Name;Sorte;Tags\nKamille;Bodegold;"Kräuter, Blumen"\nRoggen;;"• Getreide\nGründünger"';
 
     const result = await parseSpreadsheetFile(csvFile(csv));
 
@@ -93,6 +93,15 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[0]).toMatchObject({ name: 'Kamille', tags: ['Kräuter', 'Blumen'] });
     // The list marker is dropped by the backend's normalization, not here.
     expect(result.entries[1]).toMatchObject({ name: 'Roggen', tags: ['• Getreide', 'Gründünger'] });
+  });
+
+  it('no longer reads the former "Gruppe" column as tags', async () => {
+    await i18n.changeLanguage('de');
+
+    const result = await parseSpreadsheetFile(csvFile('Name;Gruppe\nKamille;Kräuter'));
+
+    expect(result.entries[0]).not.toHaveProperty('tags');
+    expect(result.warnings).toHaveLength(1);
   });
 
   it('imports a German export reported by a user (enum labels with spaced slashes)', async () => {

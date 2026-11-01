@@ -32,7 +32,7 @@
     "reset": "Restablecer filtros",
     "openAdvanced": "Abrir filtros avanzados",
     "title": "Filtros",
-    "tag": "Grupo"
+    "tag": "Etiquetas"
   },
   "emptySearch": {
     "title": "No se han encontrado cultivos",
@@ -321,9 +321,9 @@
     "displayColorAria": "Color del cultivo",
     "botanicalName": "Nombre latino",
     "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens",
-    "tags": "Grupos",
+    "tags": "Etiquetas",
     "tagsPlaceholder": "p. ej. Aromáticas",
-    "tagsHelper": "Tus propios grupos para filtrar. Elige uno existente o escribe uno nuevo."
+    "tagsHelper": "Tus propias etiquetas para filtrar, p. ej. «Aromáticas» u «Hortalizas de conserva». Elige una existente o escribe una nueva."
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",

@@ -23,7 +23,7 @@ import { usePlantFamilies } from '../plantFamilies';
 
 interface BasicInfoSectionProps {
   formData: Partial<Crop>;
-  /** The project's groups; the "Gruppen" field shows only when given (never in the library form). */
+  /** The project's tags; the "Tags" field shows only when given (never in the library form). */
   tagOptions?: readonly string[];
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;

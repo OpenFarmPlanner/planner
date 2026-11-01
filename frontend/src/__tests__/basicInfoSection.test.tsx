@@ -294,8 +294,8 @@ describe('BasicInfoSection', () => {
       .toHaveTextContent('form.cropRotationInheritedTooltip');
   });
 
-  describe('the group field', () => {
-    it('adds typed groups, a known one in the project\'s spelling', () => {
+  describe('the tag field', () => {
+    it('adds typed tags, a known one in the project\'s spelling', () => {
       const onChange = vi.fn();
       render(
         <BasicInfoSection
@@ -307,27 +307,38 @@ describe('BasicInfoSection', () => {
         />,
       );
 
-      const groups = screen.getByRole('combobox', { name: 'form.tags' });
-      fireEvent.change(groups, { target: { value: 'kräuter' } });
-      fireEvent.keyDown(groups, { key: 'Enter' });
+      const tags = screen.getByRole('combobox', { name: 'form.tags' });
+      fireEvent.change(tags, { target: { value: 'kräuter' } });
+      fireEvent.keyDown(tags, { key: 'Enter' });
 
       expect(onChange).toHaveBeenLastCalledWith('tags', ['Blumen', 'Kräuter']);
     });
 
-    it('drops a list marker from a new group', () => {
+    it('drops a list marker from a new tag', () => {
       const onChange = vi.fn();
       render(
         <BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={onChange} t={t} tagOptions={[]} />,
       );
 
-      const groups = screen.getByRole('combobox', { name: 'form.tags' });
-      fireEvent.change(groups, { target: { value: '• Getreide' } });
-      fireEvent.keyDown(groups, { key: 'Enter' });
+      const tags = screen.getByRole('combobox', { name: 'form.tags' });
+      fireEvent.change(tags, { target: { value: '• Getreide' } });
+      fireEvent.keyDown(tags, { key: 'Enter' });
 
       expect(onChange).toHaveBeenLastCalledWith('tags', ['Getreide']);
     });
 
-    it('is left out without group options (the library form)', () => {
+    it('suggests a known tag for input in another case', () => {
+      render(
+        <BasicInfoSection formData={{ name: 'Salbei' }} errors={{}} onChange={vi.fn()} t={t} tagOptions={['Kräuter', 'Blumen']} />,
+      );
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'form.tags' }), { target: { value: 'KRÄU' } });
+
+      expect(screen.getByRole('option', { name: 'Kräuter' })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'Blumen' })).not.toBeInTheDocument();
+    });
+
+    it('is left out without tag options (the library form)', () => {
       render(<BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={vi.fn()} t={t} />);
 
       expect(screen.queryByRole('combobox', { name: 'form.tags' })).not.toBeInTheDocument();

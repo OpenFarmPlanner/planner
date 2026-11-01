@@ -202,7 +202,7 @@ export interface Crop {
   effective_rotation_break_years?: number | null;
   cultivation_type?: CultivationType | '';
   cultivation_types?: CultivationType[];
-  /** The user's own groups ("Gruppen"); project data, never published. */
+  /** The user's own tags; project data, never published. */
   tags?: string[];
   
   growth_duration_days?: number;
