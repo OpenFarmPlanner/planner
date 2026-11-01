@@ -39,7 +39,7 @@ KIND_ENUM = 'enum'
 KIND_ENUM_LIST = 'enum_list'
 KIND_BOOLEAN = 'boolean'
 KIND_COLOR = 'color'
-# Free-text names, several per crop (the crop's groups).
+# Free-text names, several per crop (the crop's tags).
 KIND_STRING_LIST = 'string_list'
 
 # Physical dimension used to decide which unit conversions are legal.
@@ -242,11 +242,13 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         name='tags',
         kind=KIND_STRING_LIST,
         description=(
-            "The user's own groups (\"Gruppen\") to filter crops by. A list, or one text "
+            "The user's own tags to filter crops by. A list, or one text "
             'with names separated by commas or line breaks.'
         ),
         example=['Kräuter', 'Mehrjährig'],
-        input_aliases={'tags': None, 'groups': None, 'gruppen': None, 'gruppe': None},
+        # 'groups', 'gruppen' and 'gruppe' are deprecated: the former name, released in 1.125.0.
+        # Remove once no agent integration sends them any more.
+        input_aliases={'tags': None, 'tag': None, 'groups': None, 'gruppen': None, 'gruppe': None},
     ),
     FieldSpec(
         name='supplier_name',

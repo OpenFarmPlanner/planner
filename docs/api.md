@@ -189,6 +189,14 @@ crop's own value, otherwise its family's default, otherwise `null`. The crop
 import (`/api/crop-imports/preview/`) also accepts common German/English names
 and synonyms such as `"Kreuzblütler"` and converts them.
 
+`tags` is a list of the user's own tag names on a crop (project data, never
+published to the crop library). Names are cleaned up on write, and a name the
+project already uses in another case takes that spelling, so `"kräuter"`
+reuses `"Kräuter"`. A Sorte with an empty list uses its Kultur's tags
+(`effective_values.tags`). The crop import accepts the keys `tags` and `tag`;
+the former `groups`/`gruppen`/`gruppe` are deprecated aliases that still work. Details:
+[crop-tags.md](./crop-tags.md).
+
 Each affected field is marked accordingly in the reference.
 
 ## Duplicate rule

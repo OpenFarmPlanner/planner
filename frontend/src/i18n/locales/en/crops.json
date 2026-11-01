@@ -31,7 +31,7 @@
     "reset": "Reset filters",
     "openAdvanced": "Open advanced filters",
     "title": "Filters",
-    "tag": "Group"
+    "tag": "Tags"
   },
   "emptySearch": {
     "title": "No crops found",
@@ -316,9 +316,9 @@
     "displayColorAria": "Crop colour",
     "botanicalName": "Latin name",
     "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens",
-    "tags": "Groups",
+    "tags": "Tags",
     "tagsPlaceholder": "e.g. Herbs",
-    "tagsHelper": "Your own groups for filtering. Pick an existing one or type a new one."
+    "tagsHelper": "Your own tags for filtering, e.g. \"Herbs\" or \"Storage crops\". Pick an existing one or type a new one."
   },
   "messages": {
     "createSuccess": "Crop created successfully",

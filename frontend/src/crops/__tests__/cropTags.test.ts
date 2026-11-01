@@ -8,13 +8,13 @@ describe('normalizeCropTags', () => {
     expect(normalizeCropTags(['• Getreide', '  Baum  /  Sträucher ', 'getreide', ''])).toEqual(['Getreide', 'Baum / Sträucher']);
   });
 
-  it("takes the project's spelling of a known group", () => {
+  it("takes the project's spelling of a known tag", () => {
     expect(normalizeCropTags(['kräuter', 'Neu'], ['Kräuter'])).toEqual(['Kräuter', 'Neu']);
   });
 });
 
 describe('collectProjectTags', () => {
-  it('lists every group once, sorted, in its first spelling', () => {
+  it('lists every tag once, sorted, in its first spelling', () => {
     const crops = [
       { tags: ['Kräuter', 'Blumen'] },
       { tags: ['kräuter'] },
@@ -27,7 +27,7 @@ describe('collectProjectTags', () => {
 });
 
 describe('getEffectiveCropTags', () => {
-  it("uses a variety's inherited groups when it has none of its own", () => {
+  it("uses a variety's inherited tags when it has none of its own", () => {
     const variety = { tags: [], effective_values: { tags: ['Kräuter'] } } as Partial<Crop>;
 
     expect(getEffectiveCropTags(variety)).toEqual(['Kräuter']);

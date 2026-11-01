@@ -276,9 +276,9 @@ class CropSerializer(serializers.ModelSerializer):
         required=False,
         max_length=100,
         help_text=(
-            "The user's own groups (\"Gruppen\"). Names are trimmed, list markers and "
+            "The user's own tags. Names are trimmed, list markers and "
             'duplicates dropped, and a name the project already uses takes its spelling. '
-            "An empty list on a Sorte means it uses its Kultur's groups."
+            "An empty list on a Sorte means it uses its Kultur's tags."
         ),
     )
     sowing_calculation_safety_percent = serializers.FloatField(
@@ -1191,7 +1191,7 @@ class CropSerializer(serializers.ModelSerializer):
             raise LibraryPinnedFieldsInvalid(code=error.code, fields=error.fields) from error
 
     def _normalize_tags(self, attrs: dict[str, Any]) -> None:
-        """Clean up the groups and adopt the project's spelling of a known one."""
+        """Clean up the tags and adopt the project's spelling of a known one (case-insensitive)."""
         if 'tags' not in attrs:
             return
         project = self._resolve_project(attrs, instance_first=True)

@@ -5,14 +5,14 @@ import { normalizeCropTags } from '../cropTags';
 
 interface CropTagsFieldProps {
   value: readonly string[];
-  /** The project's groups, offered for selection. */
+  /** The project's tags, offered for selection (matched case-insensitively). */
   options: readonly string[];
   onChange: (tags: string[]) => void;
   t: TFunction;
   sx?: SxProps<Theme>;
 }
 
-/** "Gruppen": the crop's own groups; existing ones are offered, new ones typed (docs/crop-groups.md). */
+/** "Tags": the crop's own tags; existing ones are offered, new ones typed (docs/crop-tags.md). */
 export function CropTagsField({ value, options, onChange, t, sx }: CropTagsFieldProps) {
   return (
     <Autocomplete<string, true, false, true>

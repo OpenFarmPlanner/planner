@@ -1,9 +1,9 @@
-"""Crop groups: the user's own labels on crops ("Gruppen" in the UI).
+"""Crop tags: the user's own labels on crops ("Tags" in the UI).
 
-A crop row (Kultur or Sorte) holds a list of free-text group names in
-``Crop.tags``; a Sorte without groups of its own uses its Kultur's
+A crop row (Kultur or Sorte) holds a list of free-text tag names in
+``Crop.tags``; a Sorte without tags of its own uses its Kultur's
 (``CROP_INHERITABLE_FIELDS``). The names are the user's, so they stay in the
-project and never reach the crop library. Rules: docs/crop-groups.md.
+project and never reach the crop library. Rules: docs/crop-tags.md.
 """
 
 from __future__ import annotations
@@ -20,28 +20,28 @@ MAX_TAGS_PER_CROP = 20
 # List markers a spreadsheet cell may start with ("• Getreide").
 _LEADING_BULLETS = re.compile(r'^[\s•‣⁃▪●·*\-–—]+')
 _WHITESPACE = re.compile(r'\s+')
-# Several groups in one text cell: commas, semicolons or line breaks.
+# Several tags in one text cell: commas, semicolons or line breaks.
 _SEPARATORS = re.compile(r'[,;\n\r  ]+')
 
 
 def normalize_tag(value: Any) -> str:
-    """One group name as stored: no list marker, single spaces, at most MAX_TAG_LENGTH."""
+    """One tag name as stored: no list marker, single spaces, at most MAX_TAG_LENGTH."""
     text = _LEADING_BULLETS.sub('', str(value or ''))
     return _WHITESPACE.sub(' ', text).strip()[:MAX_TAG_LENGTH].strip()
 
 
 def tag_key(value: str) -> str:
-    """Two names with the same key are the same group ("kräuter" and "Kräuter ")."""
+    """Two names with the same key are the same tag ("kräuter" and "Kräuter ")."""
     return normalize_tag(value).casefold()
 
 
 def split_tag_text(text: str) -> list[str]:
-    """The group names in one text value, e.g. a spreadsheet cell."""
+    """The tag names in one text value, e.g. a spreadsheet cell."""
     return [part for part in _SEPARATORS.split(text) if part.strip()]
 
 
 def normalize_tags(values: Iterable[Any] | str | None) -> list[str]:
-    """Group names cleaned up, without duplicates (first spelling wins), in order."""
+    """Tag names cleaned up, without duplicates (first spelling wins), in order."""
     if values is None:
         return []
     items = split_tag_text(values) if isinstance(values, str) else list(values)
@@ -57,7 +57,7 @@ def normalize_tags(values: Iterable[Any] | str | None) -> list[str]:
 
 
 def project_tag_spellings(project_id: int, *, exclude_crop_id: int | None = None) -> dict[str, str]:
-    """The project's group names by key, in the spelling used first (oldest crop)."""
+    """The project's tag names by key, in the spelling used first (oldest crop)."""
     crops = Crop.objects.filter(project_id=project_id).exclude(tags=[])
     if exclude_crop_id is not None:
         crops = crops.exclude(pk=exclude_crop_id)

@@ -143,7 +143,9 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   {
     key: 'tags',
     headerKey: 'form.tags',
-    aliases: ['gruppe', 'gruppen', 'groups', 'group', 'tags', 'groupes', 'grupos'],
+    // 'gruppe', 'gruppen', 'groups', 'group', 'groupes', 'grupos' are deprecated: the former
+    // column name, released in 1.125.0. Remove once exports with it are no longer in use.
+    aliases: ['tags', 'tag', 'gruppe', 'gruppen', 'groups', 'group', 'groupes', 'grupos'],
     type: 'list',
   },
   {

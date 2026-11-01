@@ -434,7 +434,7 @@ class Crop(TimestampedModel):
         default=list,
         blank=True,
         help_text=(
-            'The user\'s own groups ("Gruppen") as a list of names; a Sorte without its own '
+            'The user\'s own tags as a list of names; a Sorte without its own '
             'uses its Kultur\'s. Project data only, never published to the crop library.'
         ),
     )

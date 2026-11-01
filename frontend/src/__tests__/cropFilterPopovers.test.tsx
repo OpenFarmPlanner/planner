@@ -107,7 +107,7 @@ describe('CropFiltersPopover', () => {
     renderPrivate();
     [
       'Familie',
-      'Gruppe',
+      'Tags',
       'Anbauart',
       'Nährstoffbedarf',
       'Lieferant',
@@ -147,19 +147,19 @@ describe('CropFiltersPopover', () => {
     });
   });
 
-  describe('the group filter', () => {
-    it("lists the project's groups behind an \"all\" entry and writes the pick", async () => {
+  describe('the tag filter', () => {
+    it("lists the project's tags behind an \"all\" entry and writes the pick", async () => {
       const user = userEvent.setup();
       const { onFilterChange } = renderPrivate();
-      await user.click(select('Gruppe'));
+      await user.click(select('Tags'));
       expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Alle', 'Blumen', 'Kräuter']);
       await user.click(screen.getByRole('option', { name: 'Kräuter' }));
       expect(onFilterChange).toHaveBeenCalledWith('selectedTagFilter', 'Kräuter');
     });
 
-    it('is left out while the project has no groups', () => {
+    it('is left out while the project has no tags', () => {
       renderPrivate({}, []);
-      expect(screen.queryByLabelText('Gruppe')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Tags')).not.toBeInTheDocument();
     });
   });
 
