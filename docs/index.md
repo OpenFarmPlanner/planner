@@ -5,7 +5,9 @@ developers and AI coding agents working in this repository. For setup
 instructions and quick start, see the root [`README.md`](../README.md).
 For contribution/commit conventions, see [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 For the logo's licensing and trademark terms, see [`TRADEMARKS.md`](../TRADEMARKS.md).
-For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.md).
+For rules AI agents must follow when changing code, see [`CLAUDE.md`](../CLAUDE.md);
+for step-by-step procedures of recurring tasks, see the skills in
+[`.claude/skills/`](../.claude/skills/).
 
 ## Start here
 

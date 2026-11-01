@@ -11,7 +11,8 @@ backend/.env
 .idea/
 .codex
 .codex/
-.claude/
+.claude/*
+!.claude/skills/
 frontend/dist-production/
 frontend/dist-staging/
 

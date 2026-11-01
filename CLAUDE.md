@@ -66,6 +66,11 @@ exactly one section below; don't restate rules here.
 5. Run the relevant tests/lint before considering the task done — see
    "Testing Rules".
 
+Recurring procedures (migration, release/deploy, public page, UI text in four
+languages, QA sweep, security review, visual review) are skills under
+`.claude/skills/`; they apply the rules below step by step and never replace
+them. A rule changes here or in `docs/`, then the skill that applies it.
+
 ## Testing Rules
 - Write or update appropriate tests for functional changes.
 - New features should include tests for expected behavior.
