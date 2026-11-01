@@ -58,7 +58,7 @@ separated text (`KIND_STRING_LIST` in `crop_import/field_specs.py`).
 
 The former column names and import keys (`groups`, `gruppen`, `gruppe`,
 "Gruppe(n)", "Groupes", "Grupos") are no longer recognized; an import reports
-them as unknown fields. See the CHANGELOG.
+them as unknown fields. The "Gruppen" naming was never released.
 
 ## Crop library
 
