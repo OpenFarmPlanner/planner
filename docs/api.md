@@ -194,7 +194,7 @@ published to the crop library). Names are cleaned up on write, and a name the
 project already uses in another case takes that spelling, so `"kräuter"`
 reuses `"Kräuter"`. A Sorte with an empty list uses its Kultur's tags
 (`effective_values.tags`). The crop import accepts the keys `tags` and `tag`;
-the former `groups`/`gruppen`/`gruppe` are not accepted. Details:
+the former `groups`/`gruppen`/`gruppe` are deprecated aliases that still work. Details:
 [crop-tags.md](./crop-tags.md).
 
 Each affected field is marked accordingly in the reference.

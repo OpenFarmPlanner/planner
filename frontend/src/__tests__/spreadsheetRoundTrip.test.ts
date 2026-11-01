@@ -95,13 +95,13 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[1]).toMatchObject({ name: 'Roggen', tags: ['• Getreide', 'Gründünger'] });
   });
 
-  it('no longer reads the former "Gruppe" column as tags', async () => {
+  it('still reads the former "Gruppe" column as tags (deprecated alias)', async () => {
     await i18n.changeLanguage('de');
 
     const result = await parseSpreadsheetFile(csvFile('Name;Gruppe\nKamille;Kräuter'));
 
-    expect(result.entries[0]).not.toHaveProperty('tags');
-    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings).toEqual([]);
+    expect(result.entries[0]).toMatchObject({ name: 'Kamille', tags: ['Kräuter'] });
   });
 
   it('imports a German export reported by a user (enum labels with spaced slashes)', async () => {

@@ -246,7 +246,9 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
             'with names separated by commas or line breaks.'
         ),
         example=['Kräuter', 'Mehrjährig'],
-        input_aliases={'tags': None, 'tag': None},
+        # 'groups', 'gruppen' and 'gruppe' are deprecated: the former name, released in 1.125.0.
+        # Remove once no agent integration sends them any more.
+        input_aliases={'tags': None, 'tag': None, 'groups': None, 'gruppen': None, 'gruppe': None},
     ),
     FieldSpec(
         name='supplier_name',

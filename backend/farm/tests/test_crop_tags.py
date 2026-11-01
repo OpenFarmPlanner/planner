@@ -90,9 +90,9 @@ class CropTagsApiTests(ProjectApiTestCase):
         self.assertEqual(analysis.api_value, ['Kräuter', 'Blumen'])
         self.assertFalse(analysis.errors)
 
-    def test_the_former_group_keys_are_no_longer_accepted(self):
+    def test_the_former_group_keys_still_map_to_tags(self):
         for old_key in ('groups', 'gruppen', 'gruppe'):
-            self.assertNotIn(old_key, INPUT_KEY_INDEX)
+            self.assertIs(INPUT_KEY_INDEX[old_key][0], TAGS_SPEC)
         self.assertIs(INPUT_KEY_INDEX['tag'][0], TAGS_SPEC)
 
     def test_tags_are_not_published_to_the_library(self):

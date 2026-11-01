@@ -57,8 +57,9 @@ a list. The agent import accepts `tags` (or `tag`) as a list or as one
 separated text (`KIND_STRING_LIST` in `crop_import/field_specs.py`).
 
 The former column names and import keys (`groups`, `gruppen`, `gruppe`,
-"Gruppe(n)", "Groupes", "Grupos") are no longer recognized; an import reports
-them as unknown fields. The "Gruppen" naming was never released.
+"Gruppe(n)", "Groupes", "Grupos") were released in 1.125.0 and are still
+accepted as deprecated aliases (`field_specs.py`, `spreadsheetColumns.ts`).
+They can go once no agent integration or saved export uses them.
 
 ## Crop library
 
