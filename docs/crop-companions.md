@@ -104,14 +104,18 @@ neighbours with a leaf icon whose tooltip names them.
 
 Neighbours are edited in the Kultur's crop form, in a "Mischkultur" section
 after the crop rotation fields (`sections/CompanionsSection.tsx`,
-`useCompanionFormRows`). One row per neighbour: kind, neighbour (a Kultur of the
-project, a plant family, or typed free text), reason and note, with a delete
-button; "Nachbar hinzufügen" adds a row. A neighbouring Kultur's row says
-"Gilt auch für …", because the pair is shared. A row without a neighbour or a
-neighbour listed twice blocks saving. The rows are saved with the form
-(`PUT replace/` after the crop; a failure is reported once the crop is saved,
-because saving again would create a new crop twice); changed rows count as
-unsaved changes. A Sorte's form shows its Kultur's list read-only.
+`useCompanionFormRows`). Good and bad neighbours are two groups, each with its
+heading (icon and colour: green for good, amber for bad, as the planning
+warning) and its own "Hinzufügen" button; the kind follows from the group.
+Each neighbour is one compact row: neighbour (a Kultur of the project, a plant
+family, or typed free text), reason, note, a button that moves it to the other
+group, and delete. A neighbouring Kultur shows an ↔ icon whose tooltip says
+"Gilt auch für …", because the pair is shared; a phone, without hover, spells
+that out below the field. On a phone a row takes two lines. A row without a
+neighbour or a neighbour listed twice blocks saving. The rows are saved with
+the form (`PUT replace/` after the crop; a failure is reported once the crop is
+saved, because saving again would create a new crop twice); changed rows count
+as unsaved changes. A Sorte's form shows its Kultur's list read-only.
 
 The library's edit form uses the same section on a species-level entry. Its
 neighbours are library crop species (the entries' species) or families, never
@@ -121,10 +125,13 @@ proposal).
 ## Crop details
 
 The crop details have a read-only "Mischkultur" section
-(`CropCompanionsSection`): good and bad neighbours with reason and note, a
-neighbouring crop as a link. Without neighbours it offers "Nachbarn bearbeiten",
-which opens the Kultur's form. A Sorte shows its Kultur's list with "Gilt für
-alle Sorten von …".
+(`CropCompanionsSection`), laid out like the library page's
+(`CompanionKindColumns`): the two kinds side by side (one column on a phone),
+each under its coloured heading, one line per neighbour with the name (a
+neighbouring crop as a link) and reason and note in grey. Without neighbours it
+says "Keine Angabe"; there is no edit button, neighbours are edited in the
+crop form only. A Sorte shows its Kultur's list with "Gilt für alle Sorten
+von …".
 
 ## Spreadsheet and JSON import/export
 
