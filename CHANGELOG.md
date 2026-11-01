@@ -6,22 +6,14 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
-### Breaking changes
-
-- Crops: the user's own "groups" (Gruppen) are now called **tags** (Tags)
-  everywhere, matching what they are: any number of free labels to filter by.
-  The API field was already `tags` and is unchanged, but the crop import
-  (`/api/crop-imports/preview/` and the crops `import/preview` and
-  `import/apply` actions) no longer accepts the keys `groups`,
-  `gruppen` or `gruppe` for it; use `tags` (or `tag`). Spreadsheet imports
-  no longer recognize the column names "Gruppe", "Gruppen", "Groups",
-  "Group", "Groupes" or "Grupos"; the column is now "Tags" ("Étiquettes" /
-  "Etiquetas" in French and Spanish exports). Old keys and columns are
-  reported as unknown and ignored. A tag typed in another case than an
-  existing one ("kräuter" vs "Kräuter") reuses the existing tag.
-
 ### Features
 
+- Crops: the user's own labels on crops are called **tags** (Tags) instead of
+  groups, matching what they are: any number of free labels to filter by.
+  The crop import reads them from the key `tags` (or `tag`) and the
+  spreadsheet column "Tags" ("Étiquettes" / "Etiquetas" in French and
+  Spanish exports). A tag typed in another case than an existing one
+  ("kräuter" vs "Kräuter") reuses the existing tag.
 - OpenFarmPlanner is now available in French and Spanish as well as German
   and English: the whole app interface, emails to users, the public pages
   (landing, about, imprint, privacy policy, terms) with their own indexable
