@@ -65,6 +65,7 @@ CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
     'seed_rate_direct_unit',
     'seed_rate_pre_cultivation_value',
     'seed_rate_pre_cultivation_unit',
+    'tags',
 )
 
 CROP_SPECIES_INVARIANT_FIELDS: tuple[str, ...] = (

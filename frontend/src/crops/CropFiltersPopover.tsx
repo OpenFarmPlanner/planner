@@ -20,6 +20,8 @@ interface CropFiltersPopoverProps {
   ) => void;
   /** Botanical names of the plant families present in the list. */
   familyOptions: string[];
+  /** The project's groups ("Gruppen"). */
+  tagOptions: string[];
   supplierOptions: Array<{ id: string; name: string }>;
   /** Clears all filters and closes the popover — handled by the parent. */
   onReset: () => void;
@@ -27,7 +29,7 @@ interface CropFiltersPopoverProps {
 
 /**
  * Presentational advanced-filters popover for the crop selector
- * (family, cultivation type, nutrient demand, supplier, growth days,
+ * (family, group, cultivation type, nutrient demand, supplier, growth days,
  * yield). All filter state lives in CropDetail.tsx.
  */
 export function CropFiltersPopover({
@@ -36,6 +38,7 @@ export function CropFiltersPopover({
   filters,
   onFilterChange,
   familyOptions,
+  tagOptions,
   supplierOptions,
   onReset,
 }: CropFiltersPopoverProps): ReactElement {
@@ -62,6 +65,20 @@ export function CropFiltersPopover({
           <MenuItem key={family.value} value={family.value}>{family.label}</MenuItem>
         ))}
       </FilterSelectField>
+      {tagOptions.length > 0 ? (
+        <FilterSelectField
+          id="crop-tag-filter"
+          label={t('filters.tag')}
+          value={filters.selectedTagFilter}
+          onChange={(event) => onFilterChange('selectedTagFilter', event.target.value as string)}
+          sx={FULL_WIDTH_ROW}
+        >
+          <MenuItem value="">{t('filters.all')}</MenuItem>
+          {tagOptions.map((tag) => (
+            <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+          ))}
+        </FilterSelectField>
+      ) : null}
       <FilterSelectField
         id="crop-method-filter"
         label={t('filters.cultivationType')}

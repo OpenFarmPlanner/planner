@@ -30,7 +30,8 @@
     "toggle": "Filter",
     "reset": "Filter zurücksetzen",
     "openAdvanced": "Erweiterte Filter öffnen",
-    "title": "Filter"
+    "title": "Filter",
+    "tag": "Gruppe"
   },
   "emptySearch": {
     "title": "Keine Kulturen gefunden",
@@ -76,6 +77,7 @@
   },
   "detail": {
     "sections": {
+      "general": "Allgemeine Informationen",
       "cropRotation": "Fruchtfolge-Eigenschaften",
       "spacing": "Abstände",
       "seed": "Saatgut",
@@ -313,7 +315,10 @@
     "packageUnitSeeds": "Korn",
     "displayColorAria": "Kulturfarbe",
     "botanicalName": "Lateinischer Name",
-    "botanicalNamePlaceholder": "z. B. Beta vulgaris var. flavescens"
+    "botanicalNamePlaceholder": "z. B. Beta vulgaris var. flavescens",
+    "tags": "Gruppen",
+    "tagsPlaceholder": "z. B. Kräuter",
+    "tagsHelper": "Eigene Gruppen zum Filtern. Wähle eine vorhandene oder tippe eine neue ein."
   },
   "messages": {
     "createSuccess": "Kultur erfolgreich erstellt",

@@ -293,4 +293,44 @@ describe('BasicInfoSection', () => {
     expect(await screen.findByRole('tooltip'))
       .toHaveTextContent('form.cropRotationInheritedTooltip');
   });
+
+  describe('the group field', () => {
+    it('adds typed groups, a known one in the project\'s spelling', () => {
+      const onChange = vi.fn();
+      render(
+        <BasicInfoSection
+          formData={{ name: 'Kamille', tags: ['Blumen'] }}
+          errors={{}}
+          onChange={onChange}
+          t={t}
+          tagOptions={['Blumen', 'Kräuter']}
+        />,
+      );
+
+      const groups = screen.getByRole('combobox', { name: 'form.tags' });
+      fireEvent.change(groups, { target: { value: 'kräuter' } });
+      fireEvent.keyDown(groups, { key: 'Enter' });
+
+      expect(onChange).toHaveBeenLastCalledWith('tags', ['Blumen', 'Kräuter']);
+    });
+
+    it('drops a list marker from a new group', () => {
+      const onChange = vi.fn();
+      render(
+        <BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={onChange} t={t} tagOptions={[]} />,
+      );
+
+      const groups = screen.getByRole('combobox', { name: 'form.tags' });
+      fireEvent.change(groups, { target: { value: '• Getreide' } });
+      fireEvent.keyDown(groups, { key: 'Enter' });
+
+      expect(onChange).toHaveBeenLastCalledWith('tags', ['Getreide']);
+    });
+
+    it('is left out without group options (the library form)', () => {
+      render(<BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={vi.fn()} t={t} />);
+
+      expect(screen.queryByRole('combobox', { name: 'form.tags' })).not.toBeInTheDocument();
+    });
+  });
 });

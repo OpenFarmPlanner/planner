@@ -19,6 +19,7 @@ from farm.services.crop_import.field_specs import (
     KIND_INTEGER,
     KIND_NUMBER,
     KIND_STRING,
+    KIND_STRING_LIST,
     FieldSpec,
     seed_rate_unit_constraints_payload,
 )
@@ -33,6 +34,7 @@ _JSON_TYPE_BY_KIND = {
     KIND_NUMBER: 'number',
     KIND_BOOLEAN: 'boolean',
     KIND_ENUM_LIST: 'array',
+    KIND_STRING_LIST: 'array',
 }
 
 
@@ -46,6 +48,8 @@ def _field_schema(spec: FieldSpec) -> dict[str, Any]:
     if spec.kind == KIND_ENUM_LIST:
         schema['items'] = {'type': 'string', 'enum': list(spec.enum_values or ())}
         schema['uniqueItems'] = True
+    elif spec.kind == KIND_STRING_LIST:
+        schema['items'] = {'type': 'string'}
     elif spec.enum_values:
         schema['enum'] = list(spec.enum_values)
 

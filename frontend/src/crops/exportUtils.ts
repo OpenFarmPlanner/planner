@@ -18,6 +18,7 @@ export interface PortableCrop {
   nutrient_demand?: Crop['nutrient_demand'];
   cultivation_type?: Crop['cultivation_type'];
   cultivation_types?: Crop['cultivation_types'];
+  tags?: string[];
   growth_duration_days?: number;
   harvest_duration_days?: number;
   propagation_duration_days?: number;
@@ -91,6 +92,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     nutrient_demand: crop.nutrient_demand,
     cultivation_type: crop.cultivation_type,
     cultivation_types: primaryFirst(crop.cultivation_types, crop.cultivation_type),
+    tags: crop.tags?.length ? crop.tags : undefined,
     growth_duration_days: crop.growth_duration_days,
     harvest_duration_days: crop.harvest_duration_days,
     propagation_duration_days: crop.propagation_duration_days,

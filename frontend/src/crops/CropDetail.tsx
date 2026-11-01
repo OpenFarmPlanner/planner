@@ -71,6 +71,7 @@ import { CropVarietiesOverview } from './CropVarietiesOverview';
 import { CropCompanionsSection } from './CropCompanionsSection';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
 import { getEffectiveCropValue, isEmptyCropValue, getVarietyOwnValueSource } from './varietyValueSource';
+import { collectProjectTags, getEffectiveCropTags } from './cropTags';
 import { buildLocalizedText } from '../crop-library/publicCropDisplay';
 import { LocalizedMarkdownNotes } from '../crop-library/components/LocalizedMarkdownNotes';
 
@@ -209,6 +210,7 @@ const detailSectionGridSx = {
     () => {
       const filterValues = [
         filters.selectedFamilyFilter,
+        filters.selectedTagFilter,
         filters.selectedCultivationFilter,
         filters.selectedNutrientFilter,
         filters.selectedSupplierFilter,
@@ -231,6 +233,7 @@ const detailSectionGridSx = {
     [crops]
   );
 
+  const tagOptions = useMemo(() => collectProjectTags(crops), [crops]);
   const supplierOptions = useMemo(
     () => {
       const suppliersById = new Map<string, string>();
@@ -286,6 +289,8 @@ const detailSectionGridSx = {
     return crops.filter((crop) => {
       const familyMatches = filters.selectedFamilyFilter.length === 0
         || getEffectiveCropValue(crop, 'crop_family') === filters.selectedFamilyFilter;
+      const tagMatches = filters.selectedTagFilter.length === 0
+        || getEffectiveCropTags(crop).some((tag) => tag.toLocaleLowerCase() === filters.selectedTagFilter.toLocaleLowerCase());
       const effectiveCultivationTypes = getEffectiveCropValue(crop, 'cultivation_types');
       const effectiveCultivationType = getEffectiveCropValue(crop, 'cultivation_type');
       const cultivationValues = effectiveCultivationTypes?.length
@@ -320,6 +325,7 @@ const detailSectionGridSx = {
         || supplierIds.some((supplierId) => supplierId === selectedSupplierId);
 
       return familyMatches
+        && tagMatches
         && cultivationMatches
         && growthMatches
         && nutrientMatches
@@ -741,6 +747,7 @@ const detailSectionGridSx = {
           filters={filters}
           onFilterChange={updateFilter}
           familyOptions={familyOptions}
+          tagOptions={tagOptions}
           supplierOptions={supplierOptions}
           onReset={() => {
             resetFilters();
@@ -1060,24 +1067,50 @@ const detailSectionGridSx = {
             </>
             ) : null}
 
+            {/* General Information: the crop's identity details, shown when it has any */}
+            {getCropValue('botanical_name', selectedCrop.botanical_name) || getEffectiveCropTags(selectedCrop).length > 0 ? (
+              <>
+                <Box sx={{ mb: 3 }} data-testid="crop-detail-general">
+                  <Typography variant="h6" gutterBottom>
+                    {t('detail.sections.general')}
+                  </Typography>
+                  <Box sx={detailSectionGridSx}>
+                    {getCropValue('botanical_name', selectedCrop.botanical_name) && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('form.botanicalName')}
+                        </Typography>
+                        <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
+                          <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
+                            {getCropValue('botanical_name', selectedCrop.botanical_name)}
+                          </Typography>
+                        </ValueWithLibraryPin>
+                      </Box>
+                    )}
+                    {getEffectiveCropTags(selectedCrop).length > 0 && (
+                      <Box data-testid="crop-detail-tags">
+                        <Typography variant="body2" color="text.secondary">
+                          {t('form.tags')}
+                        </Typography>
+                        <Box sx={[{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }, getOwnValueSx('tags') ?? {}]}>
+                          {getEffectiveCropTags(selectedCrop).map((tag) => (
+                            <Chip key={tag} size="small" label={tag} />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+                <Divider sx={{ mb: 2.5 }} />
+              </>
+            ) : null}
+
             {/* Crop Rotation Properties Section */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 {t('detail.sections.cropRotation')}
               </Typography>
               <Box sx={detailSectionGridSx}>
-                {getCropValue('botanical_name', selectedCrop.botanical_name) && (
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {t('form.botanicalName')}
-                    </Typography>
-                    <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
-                      <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
-                        {getCropValue('botanical_name', selectedCrop.botanical_name)}
-                      </Typography>
-                    </ValueWithLibraryPin>
-                  </Box>
-                )}
                 {getCropValue('crop_family', selectedCrop.crop_family) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">

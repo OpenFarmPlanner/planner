@@ -17,6 +17,12 @@ describe('hasEffectiveCropFormChanges', () => {
     expect(unchanged({ name: 'Salat' }, { name: 'Spinat' })).toBe(true);
   });
 
+  it('reports an edit of only the groups', () => {
+    expect(unchanged({ name: 'Dill' }, { name: 'Dill', tags: ['Kräuter'] })).toBe(true);
+    expect(unchanged({ tags: ['Kräuter'] }, { tags: [] })).toBe(true);
+    expect(unchanged({ tags: ['Kräuter'] }, { tags: [' Kräuter '] })).toBe(false);
+  });
+
   it('reports an edit of only the Latin name or the rotation break', () => {
     expect(unchanged({ name: 'Salat' }, { name: 'Salat', botanical_name: 'Lactuca sativa' })).toBe(true);
     expect(unchanged({ rotation_break_years: 2 }, { rotation_break_years: 3 })).toBe(true);

@@ -27,6 +27,7 @@ const stored = (): PersistedCropFilters | null => {
 const FULL_FILTERS: PersistedCropFilters = {
   searchQuery: 'möhre',
   selectedFamilyFilter: 'Apiaceae',
+  selectedTagFilter: 'Kräuter',
   selectedCultivationFilter: 'direct_sowing',
   selectedNutrientFilter: 'low',
   selectedSupplierFilter: '4',

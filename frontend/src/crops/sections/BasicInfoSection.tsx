@@ -18,10 +18,13 @@ import { libraryPinSelectSx } from '../libraryFieldPin';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import type { PublicCropSpeciesOption } from '../publicCropNameSuggestions';
 import { CropSpeciesOptionContent } from '../CropSpeciesOptionContent';
+import { CropTagsField } from './CropTagsField';
 import { usePlantFamilies } from '../plantFamilies';
 
 interface BasicInfoSectionProps {
   formData: Partial<Crop>;
+  /** The project's groups; the "Gruppen" field shows only when given (never in the library form). */
+  tagOptions?: readonly string[];
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
@@ -158,6 +161,7 @@ export function BasicInfoSection({
   getFieldTooltipProps,
   getFieldPinProps,
   speciesInvariantFieldsReadOnly = false,
+  tagOptions,
 }: BasicInfoSectionProps) {
   const nameAutocomplete = nameOptions && onNameSearchChange && onNameOptionSelect
     ? {
@@ -203,6 +207,7 @@ export function BasicInfoSection({
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
   const botanicalNameVariety = getFieldTooltipProps?.('botanical_name');
   const botanicalNamePin = getFieldPinProps?.('botanical_name');
+  const tagsVariety = getFieldTooltipProps?.('tags');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
   const rotationBreakYearsVariety = getFieldTooltipProps?.('rotation_break_years');
@@ -435,6 +440,17 @@ export function BasicInfoSection({
             }}
           />
         </VarietyFieldTooltip>
+        {tagOptions ? (
+          <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
+            <CropTagsField
+              sx={mergeVarietyFieldSx(wideFieldSx, tagsVariety?.sx)}
+              value={formData.tags ?? []}
+              options={tagOptions}
+              onChange={(tags) => onChange('tags', tags)}
+              t={t}
+            />
+          </VarietyFieldTooltip>
+        ) : null}
       </Box>
       {/* The heading is inline and the info icon follows it in an unbreakable
           span (a line may otherwise break before an inline-flex box despite the

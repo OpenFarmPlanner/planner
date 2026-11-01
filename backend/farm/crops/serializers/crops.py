@@ -51,6 +51,7 @@ from farm.seed_units import (
 from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_companions import is_kultur, link_free_text_companions
 from farm.services.crop_display import resolve_crop_display_name
+from farm.services.crop_tags import canonical_tags
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
@@ -270,6 +271,16 @@ class CropSerializer(serializers.ModelSerializer):
         allow_empty=False,
     )
     seed_rate_by_cultivation = serializers.JSONField(required=False, allow_null=True)
+    tags = serializers.ListField(
+        child=serializers.CharField(allow_blank=True, max_length=200),
+        required=False,
+        max_length=100,
+        help_text=(
+            "The user's own groups (\"Gruppen\"). Names are trimmed, list markers and "
+            'duplicates dropped, and a name the project already uses takes its spelling. '
+            "An empty list on a Sorte means it uses its Kultur's groups."
+        ),
+    )
     sowing_calculation_safety_percent = serializers.FloatField(
         required=False,
         allow_null=True,
@@ -1133,6 +1144,7 @@ class CropSerializer(serializers.ModelSerializer):
         self._validate_supplier_data_rows(attrs, errors)
         self._resolve_supplier_from_name(attrs)
         self._normalize_variety(attrs)
+        self._normalize_tags(attrs)
         if general_name_conflict and set(errors) == {'name'}:
             raise CropNameConflict()
         if errors:
@@ -1177,6 +1189,17 @@ class CropSerializer(serializers.ModelSerializer):
             )
         except LibraryPinnedFieldsError as error:
             raise LibraryPinnedFieldsInvalid(code=error.code, fields=error.fields) from error
+
+    def _normalize_tags(self, attrs: dict[str, Any]) -> None:
+        """Clean up the groups and adopt the project's spelling of a known one."""
+        if 'tags' not in attrs:
+            return
+        project = self._resolve_project(attrs, instance_first=True)
+        attrs['tags'] = canonical_tags(
+            attrs['tags'],
+            getattr(project, 'id', None),
+            exclude_crop_id=getattr(self.instance, 'pk', None),
+        )
 
     def _resolve_project(self, attrs, *, instance_first: bool):
         """Resolve the project the way the original inline blocks did.

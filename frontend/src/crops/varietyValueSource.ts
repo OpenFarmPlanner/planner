@@ -58,6 +58,7 @@ export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
   'seed_rate_direct_unit',
   'seed_rate_pre_cultivation_value',
   'seed_rate_pre_cultivation_unit',
+  'tags',
 ];
 
 /**

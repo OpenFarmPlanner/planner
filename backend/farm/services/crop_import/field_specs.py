@@ -39,6 +39,8 @@ KIND_ENUM = 'enum'
 KIND_ENUM_LIST = 'enum_list'
 KIND_BOOLEAN = 'boolean'
 KIND_COLOR = 'color'
+# Free-text names, several per crop (the crop's groups).
+KIND_STRING_LIST = 'string_list'
 
 # Physical dimension used to decide which unit conversions are legal.
 DIMENSION_LENGTH = 'length'
@@ -235,6 +237,16 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         description='Latin (botanical) name, e.g. "Beta vulgaris var. flavescens".',
         example='Solanum lycopersicum',
         input_aliases={'botanical_name': None, 'latin_name': None, 'scientific_name': None},
+    ),
+    FieldSpec(
+        name='tags',
+        kind=KIND_STRING_LIST,
+        description=(
+            "The user's own groups (\"Gruppen\") to filter crops by. A list, or one text "
+            'with names separated by commas or line breaks.'
+        ),
+        example=['Kräuter', 'Mehrjährig'],
+        input_aliases={'tags': None, 'groups': None, 'gruppen': None, 'gruppe': None},
     ),
     FieldSpec(
         name='supplier_name',

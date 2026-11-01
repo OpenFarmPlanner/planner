@@ -31,7 +31,8 @@
     "toggle": "Filtros",
     "reset": "Restablecer filtros",
     "openAdvanced": "Abrir filtros avanzados",
-    "title": "Filtros"
+    "title": "Filtros",
+    "tag": "Grupo"
   },
   "emptySearch": {
     "title": "No se han encontrado cultivos",
@@ -78,6 +79,7 @@
   },
   "detail": {
     "sections": {
+      "general": "Información general",
       "cropRotation": "Propiedades de rotación de cultivos",
       "spacing": "Distancias",
       "seed": "Semillas",
@@ -318,7 +320,10 @@
     "packageUnitSeeds": "semillas",
     "displayColorAria": "Color del cultivo",
     "botanicalName": "Nombre latino",
-    "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens"
+    "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens",
+    "tags": "Grupos",
+    "tagsPlaceholder": "p. ej. Aromáticas",
+    "tagsHelper": "Tus propios grupos para filtrar. Elige uno existente o escribe uno nuevo."
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",

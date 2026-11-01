@@ -3,7 +3,8 @@ export type SpreadsheetColumnDef = {
   key: string;
   aliases: string[];
   /**
-   * `list`: several enum values in one cell, comma-separated.
+   * `list`: several values in one cell, separated by commas, semicolons or
+   *   line breaks; with `enumExport`/`enumImport` they are enum values.
    * `companions`: one neighbour per line (see crops/companions.ts).
    */
   type: 'string' | 'number' | 'boolean' | 'list' | 'companions';
@@ -138,6 +139,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'list',
     enumExport: CULTIVATION_TYPE_EXPORT,
     enumImport: CULTIVATION_TYPE_IMPORT,
+  },
+  {
+    key: 'tags',
+    headerKey: 'form.tags',
+    aliases: ['gruppe', 'gruppen', 'groups', 'group', 'tags', 'groupes', 'grupos'],
+    type: 'list',
   },
   {
     key: 'growth_duration_days',
