@@ -294,6 +294,66 @@ describe('BasicInfoSection', () => {
       .toHaveTextContent('form.cropRotationInheritedTooltip');
   });
 
+  it('keeps helper texts for validation errors only', () => {
+    const { rerender } = render(
+      <BasicInfoSection
+        formData={{ name: 'Kamille' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        tagOptions={[]}
+        showVarietyField={false}
+        nameOptions={[]}
+        onNameSearchChange={vi.fn()}
+        onNameOptionSelect={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('.MuiFormHelperText-root')).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'form.tags' })).toHaveAttribute('placeholder', 'form.tagsPlaceholder');
+
+    rerender(
+      <BasicInfoSection
+        formData={{ name: '' }}
+        errors={{ name: 'Pflichtfeld' }}
+        onChange={vi.fn()}
+        t={t}
+        tagOptions={[]}
+        showVarietyField={false}
+        nameOptions={[]}
+        onNameSearchChange={vi.fn()}
+        onNameOptionSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Pflichtfeld')).toHaveClass('MuiFormHelperText-root');
+  });
+
+  it('explains the optional first variety in a tooltip on hover and on keyboard focus', async () => {
+    render(
+      <BasicInfoSection
+        formData={{ name: 'Karotte' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        showVarietyField={false}
+        showFirstVarietyField
+        firstVarietyName=""
+        onFirstVarietyNameChange={vi.fn()}
+      />,
+    );
+
+    const firstVariety = screen.getByPlaceholderText('form.firstVarietyPlaceholder');
+    expect(screen.queryByText('form.firstVarietyHelperText')).not.toBeInTheDocument();
+
+    fireEvent.mouseOver(firstVariety);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
+    fireEvent.mouseLeave(firstVariety);
+
+    fireEvent.focus(firstVariety);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
+  });
+
   describe('the tag field', () => {
     it('adds typed tags, a known one in the project\'s spelling', () => {
       const onChange = vi.fn();

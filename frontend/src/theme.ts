@@ -275,6 +275,21 @@ const theme = createTheme({
       }),
     },
 
+    // Compact form fields app-wide: every form shares the 40px small field
+    // height. A field that must stay tall opts out with `size="medium"`.
+    MuiTextField: {
+      defaultProps: { size: 'small' },
+    },
+    MuiFormControl: {
+      defaultProps: { size: 'small' },
+    },
+    MuiSelect: {
+      defaultProps: { size: 'small' },
+    },
+    MuiAutocomplete: {
+      defaultProps: { size: 'small' },
+    },
+
     MuiDialogContent: {
       styleOverrides: {
         root: {

@@ -33,6 +33,8 @@ import {
   IconButton,
   Checkbox,
   FormControlLabel,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -160,6 +162,13 @@ interface CropFormProps {
 
 // Default color for display color picker
 const DEFAULT_DISPLAY_COLOR = '#3498db';
+
+const cropFormLayoutSx = {
+  display: 'flex',
+  flexDirection: 'column',
+  flex: '1 1 auto',
+  minHeight: 0,
+} as const;
 
 // Vertical rhythm of the supplier data section (MUI spacing unit = 8px -> 14px).
 const SUPPLIER_SECTION_GAP = 1.75;
@@ -535,6 +544,8 @@ export function CropForm({
   const [userInteracted, setUserInteracted] = useState(false);
   const createSupplierButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const dialogContentRef = useDialogKeyboardScroll(true);
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const formRef = useRef<HTMLFormElement | null>(null);
   const supplierOptionsRef = useRef<Supplier[]>([]);
   const duplicateCheckSequenceRef = useRef(0);
@@ -1357,10 +1368,13 @@ export function CropForm({
         }
       }}
       aria-labelledby="crop-form-dialog-title"
-      maxWidth="md"
+      maxWidth="lg"
       fullWidth
+      fullScreen={fullScreen}
     >
-      <form ref={formRef} onSubmit={handleSubmit}>
+      {/* A column flexbox, so the content scrolls between the title and the
+          fixed footer also when the dialog fills the screen on a phone. */}
+      <Box component="form" ref={formRef} onSubmit={handleSubmit} sx={cropFormLayoutSx}>
         <DialogTitle id="crop-form-dialog-title">
           {title ?? (
             isProjectForm && formKind === 'variety'
@@ -1372,7 +1386,7 @@ export function CropForm({
           ref={dialogContentRef}
           dividers
           sx={{
-            maxHeight: '70vh',
+            maxHeight: { xs: 'none', sm: '70vh' },
             overscrollBehavior: 'contain',
             '&:focus': {
               outline: 'none',
@@ -1380,7 +1394,7 @@ export function CropForm({
           }}
           tabIndex={-1}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
             <Typography variant="h6">{t('form.generalInfoSectionTitle')}</Typography>
             {!isProjectForm ? (
               <Box
@@ -1714,7 +1728,7 @@ export function CropForm({
                 <Button variant="outlined" onClick={addSupplierRow}>{t('form.addSupplierData')}</Button>
               </Box>
             ) : null}
-          </div>
+          </Box>
         </DialogContent>
         <DialogActions sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
           {saveError ? (
@@ -1752,7 +1766,7 @@ export function CropForm({
             </Box>
           </AppTooltip>
         </DialogActions>
-      </form>
+      </Box>
       <Dialog
         open={libraryLinkConflict !== null}
         onClose={() => setLibraryLinkConflict(null)}

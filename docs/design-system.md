@@ -90,6 +90,22 @@ title column shrink and wrap instead. The switch is plain responsive `sx`, not
 a measured width, so the header renders at its final size on the first paint;
 the media query in the component only picks the tooltip text.
 
+**Form fields** are compact app-wide: `theme.ts` makes `size="small"` the
+default for `TextField`, `FormControl`, `Select` and `Autocomplete`, so every
+form shares the 40px field height. Pass `size="medium"` only where a taller
+field is deliberate. A button sitting beside a field in one row matches that
+height on desktop. Use `helperText` for validation errors only. When a field
+needs explaining, attach an `AppTooltip` to the field itself, so it shows on
+hover and on keyboard focus. Use a placement that keeps an Autocomplete's
+options list visible (`top-start` or `right`).
+
+**Form grids** (`components/forms/formLayout.ts`): `formGridSx` is one column
+on a phone and three equal columns from `sm` up. Unused tracks collapse, so a
+row of two fields splits the width in halves and a lone field spans the whole
+row; no row is left half empty. Fields inside it use `formGridFieldSx`, or
+`formGridDoubleColumnSx` / `formGridFullRowSx` to span columns. The crop form
+uses it for every section, and each section has at most three fields per row.
+
 ## 4. Text that can overflow
 
 Any single-line label that can be longer than its container — a table cell,

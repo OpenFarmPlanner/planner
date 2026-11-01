@@ -5,7 +5,7 @@
 import { Box, Typography, TextField } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { fieldRowSx, smallFieldSx } from './styles.tsx';
+import { formGridFieldSx, formGridSx } from './styles.tsx';
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
@@ -31,11 +31,11 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
 
   return (
     <>
-      <Typography variant="h6" sx={{ mt: 2 }}>{t('form.sectionPlanting')}</Typography>
-      <Box sx={fieldRowSx}>
+      <Typography variant="h6" sx={{ mt: 1 }}>{t('form.sectionPlanting')}</Typography>
+      <Box sx={formGridSx}>
         <VarietyFieldTooltip tooltipTitle={distanceWithinRowVariety?.tooltipTitle}>
           <TextField
-            sx={mergeVarietyFieldSx(smallFieldSx, distanceWithinRowVariety?.sx, distanceWithinRowPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, distanceWithinRowVariety?.sx, distanceWithinRowPin?.fieldSx)}
             type="number"
             label={t('form.distanceWithinRowCm')}
             placeholder={t('form.distanceWithinRowCmPlaceholder')}
@@ -51,7 +51,7 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={rowSpacingVariety?.tooltipTitle}>
           <TextField
-            sx={mergeVarietyFieldSx(smallFieldSx, rowSpacingVariety?.sx, rowSpacingPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, rowSpacingVariety?.sx, rowSpacingPin?.fieldSx)}
             type="number"
             label={t('form.rowSpacingCm')}
             placeholder={t('form.rowSpacingCmPlaceholder')}
@@ -67,7 +67,7 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(smallFieldSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
             label={t('form.sowingDepthCm')}
             placeholder={t('form.sowingDepthCmPlaceholder')}
             value={formData.sowing_depth_cm}

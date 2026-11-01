@@ -24,7 +24,7 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
 
   return (
     <>
-      <Typography variant="h6" sx={{ mt: 2 }}>{t('form.displayColor')}</Typography>
+      <Typography variant="h6" sx={{ mt: 1 }}>{t('form.displayColor')}</Typography>
       <Stack spacing={0.75} sx={{ maxWidth: 360 }}>
         <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", }} >
           <Box

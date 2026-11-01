@@ -37,7 +37,7 @@ user's list, Kamille is tagged "Kräuter" and "Blumen").
 
 ## UI
 
-- **Crop form:** "Tags" next to the Latin name; existing tags are offered and
+- **Crop form:** "Tags" at full width below the Name/Latin name row; existing tags are offered and
   match the input case-insensitively, a new one is typed (Enter or leaving the
   field adds it). The library form has no such field.
 - **Crop details:** the effective tags as chips, with the Latin name in a

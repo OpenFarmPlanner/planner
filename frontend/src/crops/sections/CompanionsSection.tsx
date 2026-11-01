@@ -65,7 +65,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
 
   if (mode === 'readOnly') {
     return (
-      <Box data-testid="crop-companions-form-section" sx={{ mt: 2 }}>
+      <Box data-testid="crop-companions-form-section" sx={{ mt: 1 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>{t('companions.title')}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {t('companions.form.varietyReadOnly', { name: state.kulturName })}
@@ -88,7 +88,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
   };
 
   return (
-    <Box data-testid="crop-companions-form-section" sx={{ mt: 2 }}>
+    <Box data-testid="crop-companions-form-section" sx={{ mt: 1 }}>
       <Typography variant="h6">{t('companions.title')}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {t(allowFreeText ? 'companions.form.description' : 'companions.form.libraryDescription')}

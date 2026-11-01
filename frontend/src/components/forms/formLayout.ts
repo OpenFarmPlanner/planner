@@ -1,3 +1,5 @@
+import type { SxProps, Theme } from '@mui/material/styles';
+
 export const formRowSx = {
   display: 'flex',
   flexWrap: 'wrap',
@@ -61,4 +63,42 @@ export const fullWidthFieldSx = {
   maxWidth: '100%',
   minWidth: 0,
   flex: '1 1 100%',
+} as const;
+
+/**
+ * Responsive form grid: one column on a phone, three equal columns from `sm`
+ * up. `auto-fit` collapses unused tracks, so a row with two fields splits the
+ * width in halves and a lone field spans it instead of leaving a half-empty
+ * row; three fields always line up with the three columns of the other rows.
+ * Children fill their cell (`formGridFieldSx`) instead of keeping a role width.
+ * The minimum track subtracts slightly more than the two gaps so sub-pixel
+ * rounding never drops the third column.
+ */
+export const formGridSx: SxProps<Theme> = (theme) => ({
+  display: 'grid',
+  gap: theme.spacing(1.5),
+  alignItems: 'start',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  [theme.breakpoints.up('sm')]: {
+    gridTemplateColumns: `repeat(auto-fit, minmax(calc((100% - ${theme.spacing(3.5)}) / 3), 1fr))`,
+  },
+});
+
+/** A field inside `formGridSx`: fills its cell. */
+export const formGridFieldSx = {
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
+} as const;
+
+/** A field inside `formGridSx` that spans the full row (e.g. tags, long text). */
+export const formGridFullRowSx = {
+  ...formGridFieldSx,
+  gridColumn: '1 / -1',
+} as const;
+
+/** A field inside `formGridSx` spanning two of the three desktop columns. */
+export const formGridDoubleColumnSx = {
+  ...formGridFieldSx,
+  gridColumn: { xs: 'auto', sm: 'span 2' },
 } as const;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
 import type { Crop, SeedRateUnit, SeedRateUnitConstraints } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { compactFieldSx, fieldRowSx, mediumFieldSx, smallFieldSx } from './styles.tsx';
+import { formGridFieldSx, formGridSx } from './styles.tsx';
 import { DropdownAwareTooltip } from '../../components/DropdownAwareTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
@@ -74,11 +74,11 @@ function SeedRateBlock({
 
   return (
     <>
-      <Typography variant="subtitle1" sx={{ mt: 2 }}>{title}</Typography>
-      <Box sx={fieldRowSx}>
+      <Typography variant="subtitle1">{title}</Typography>
+      <Box sx={formGridSx}>
         <DropdownAwareTooltip title={rateVariety?.tooltipTitle ?? t('form.seedRateHelp')} arrow>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(compactFieldSx, rateVariety?.sx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, rateVariety?.sx)}
             label={t('form.seedAmountLabel')}
             value={formData[valueField]}
             onValueChange={(value) => onChange(valueField, value)}
@@ -89,7 +89,7 @@ function SeedRateBlock({
         </DropdownAwareTooltip>
 
         <DropdownAwareTooltip title={unitSelectOpen ? '' : (rateVariety?.tooltipTitle ?? t('form.seedRateHelp'))} arrow>
-          <FormControl sx={mergeVarietyFieldSx(smallFieldSx, rateVariety?.sx)} error={Boolean(errors[unitField])}>
+          <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, rateVariety?.sx)} error={Boolean(errors[unitField])}>
             <InputLabel shrink>{t('form.seedUnitLabel')}</InputLabel>
             <Select
               fullWidth
@@ -124,7 +124,7 @@ function SeedRateBlock({
         {showSeedSafetyMargin && (
           <DropdownAwareTooltip title={safetyVariety?.tooltipTitle ?? t('form.sowingCalculationSafetyPercentHelp')} arrow>
             <LocalizedDecimalField
-              sx={mergeVarietyFieldSx(mediumFieldSx, safetyVariety?.sx)}
+              sx={mergeVarietyFieldSx(formGridFieldSx, safetyVariety?.sx)}
               label={t('form.sowingCalculationSafetyPercentLabel')}
               value={formData[safetyField]}
               onValueChange={(value) => onChange(safetyField, value)}
@@ -156,7 +156,7 @@ export function SeedingSection({
 
   return (
     <>
-      <Typography variant="h6" sx={{ mt: 2 }}>{t('form.seedRateSectionTitle')}</Typography>
+      <Typography variant="h6" sx={{ mt: 1 }}>{t('form.seedRateSectionTitle')}</Typography>
 
       {showsDirect && (
         <SeedRateBlock
@@ -190,10 +190,10 @@ export function SeedingSection({
         />
       )}
 
-      <Box sx={fieldRowSx}>
+      <Box sx={formGridSx}>
         <DropdownAwareTooltip title={thousandKernelWeightVariety?.tooltipTitle ?? t('form.thousandKernelWeightHelp')} arrow>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(smallFieldSx, thousandKernelWeightVariety?.sx, thousandKernelWeightPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, thousandKernelWeightVariety?.sx, thousandKernelWeightPin?.fieldSx)}
             label={t('form.thousandKernelWeightLabel')}
             value={formData.thousand_kernel_weight_g}
             onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}

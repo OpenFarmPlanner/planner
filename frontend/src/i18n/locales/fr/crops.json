@@ -183,7 +183,6 @@
     "existingCropHint": "La culture « {{name}} » existe déjà dans ce projet. Vous pouvez plutôt lui ajouter une nouvelle variété.",
     "existingCropFirstVarietyHint": "« {{variety}} » sera ajoutée comme nouvelle variété à la culture existante « {{name}} ».",
     "existingCropAddVarietyAction": "Ajouter une variété",
-    "publicCropAutocompleteHelp": "Des cultures publiques sont suggérées ; la saisie libre reste toujours possible.",
     "publicCropSourceHint": "Valeurs reprises de la bibliothèque de cultures. La culture reste liée à l’entrée. Vous pourrez ensuite partager les valeurs divergentes ou les garder uniquement en local.",
     "publicCropSourceHintVariety": "Valeurs reprises de la bibliothèque de cultures. La variété reste liée à l’entrée. Vous pourrez ensuite partager les valeurs divergentes ou les garder uniquement en local.",
     "publicCropSuggestionsGroupLabel": "De la bibliothèque de cultures",
@@ -322,8 +321,7 @@
     "botanicalName": "Nom latin",
     "botanicalNamePlaceholder": "p. ex. Beta vulgaris var. flavescens",
     "tags": "Étiquettes",
-    "tagsPlaceholder": "p. ex. Aromatiques",
-    "tagsHelper": "Vos propres étiquettes pour filtrer, p. ex. « Aromatiques » ou « Légumes de garde ». Choisissez-en une existante ou saisissez-en une nouvelle."
+    "tagsPlaceholder": "p. ex. Aromatiques, Légumes de garde"
   },
   "messages": {
     "createSuccess": "Culture créée avec succès",
@@ -1617,7 +1615,7 @@
       "reason": "Raison",
       "note": "Note",
       "neighborRequired": "Choisissez un voisin.",
-      "description": "Notez quelles cultures s'associent bien et lesquelles non. Un voisin peut être une culture, une famille botanique ou un texte libre. Les voisins s'appliquent à toutes les variétés.",
+      "description": "Les voisins peuvent être des cultures, des familles botaniques ou du texte libre et s'appliquent à toutes les variétés.",
       "sharedPair": "S'applique aussi à {{name}}.",
       "varietyReadOnly": "Les voisins s'appliquent à toutes les variétés de {{name}} et se modifient dans le formulaire de {{name}}.",
       "add": "Ajouter",

@@ -1,11 +1,12 @@
 /**
- * HarvestSection: yield unit and expected yield
+ * HarvestSection: harvest duration, yield unit and expected yield
  * @remarks Presentational, no internal state
  */
-import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, MenuItem, TextField } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { fieldRowSx, smallFieldSx } from './styles.tsx';
+import { formGridFieldSx, formGridSx } from './styles.tsx';
+import { DropdownAwareTooltip } from '../../components/DropdownAwareTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
@@ -24,6 +25,8 @@ interface HarvestSectionProps {
 }
 
 export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipProps, getFieldPinProps }: HarvestSectionProps) {
+  const harvestDurationVariety = getFieldTooltipProps?.('harvest_duration_days', t('form.harvestDurationDaysHelp'));
+  const harvestDurationPin = getFieldPinProps?.('harvest_duration_days');
   const harvestMethodVariety = getFieldTooltipProps?.('harvest_method');
   const expectedYieldVariety = getFieldTooltipProps?.('expected_yield');
   const harvestMethodPin = getFieldPinProps?.('harvest_method');
@@ -31,10 +34,26 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
 
   return (
     <>
-      <Typography variant="h6" sx={{ mt: 2 }}>{t('form.sectionHarvest')}</Typography>
-      <Box sx={fieldRowSx}>
+      <Typography variant="h6" sx={{ mt: 1 }}>{t('form.sectionHarvest')}</Typography>
+      <Box sx={formGridSx}>
+        <DropdownAwareTooltip title={harvestDurationVariety?.tooltipTitle ?? t('form.harvestDurationDaysHelp')} arrow>
+          <TextField
+            sx={mergeVarietyFieldSx(formGridFieldSx, harvestDurationVariety?.sx, harvestDurationPin?.fieldSx)}
+            type="number"
+            label={t('form.harvestDurationDays')}
+            placeholder={t('form.harvestDurationDaysPlaceholder')}
+            value={formData.harvest_duration_days ?? ''}
+            onChange={e => onChange('harvest_duration_days', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+            error={Boolean(errors.harvest_duration_days)}
+            helperText={errors.harvest_duration_days}
+            slotProps={{
+              htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+              input: { endAdornment: harvestDurationPin?.endAdornment },
+            }}
+          />
+        </DropdownAwareTooltip>
         <VarietyFieldTooltip tooltipTitle={harvestMethodVariety?.tooltipTitle}>
-          <FormControl sx={mergeVarietyFieldSx(smallFieldSx, harvestMethodVariety?.sx, harvestMethodPin?.fieldSx)} error={Boolean(errors.harvest_method)}>
+          <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, harvestMethodVariety?.sx, harvestMethodPin?.fieldSx)} error={Boolean(errors.harvest_method)}>
             <InputLabel>{t('form.yieldUnit')}</InputLabel>
             <Select
               fullWidth
@@ -55,7 +74,7 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={expectedYieldVariety?.tooltipTitle}>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(smallFieldSx, expectedYieldVariety?.sx, expectedYieldPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, expectedYieldVariety?.sx, expectedYieldPin?.fieldSx)}
             label={t('form.expectedYieldWithUnit', { defaultValue: `${t('form.expectedYield')} (${t('form.expectedYieldUnit')})` })}
             placeholder={t('form.expectedYieldPlaceholder')}
             value={formData.expected_yield}
