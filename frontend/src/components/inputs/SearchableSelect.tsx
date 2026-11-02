@@ -103,7 +103,7 @@ export function SearchableSelect<T = unknown>({
   label,
   placeholder,
   noOptionsText,
-  size = 'medium',
+  size = 'small',
   fullWidth = true,
   autoFocus = false,
   inputTabIndex,

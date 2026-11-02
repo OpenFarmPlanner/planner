@@ -20,7 +20,7 @@ export function NotesSection({ formData, onChange, t, label, getFieldPinProps }:
 
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2, mb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1 }}>
         <Typography variant="h6">{editorLabel}</Typography>
         {notesPin?.button}
       </Box>

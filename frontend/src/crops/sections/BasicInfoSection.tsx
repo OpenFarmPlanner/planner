@@ -1,12 +1,12 @@
 /**
- * BasicInfoSection: Name, Variety, Crop Family, Nutrient Demand
+ * BasicInfoSection: Name, Variety, Latin name, Tags, crop rotation fields
  */
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel, MenuItem, Typography } from '@mui/material';
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
-import { fieldRowSx, mediumFieldSx, smallFieldSx, wideFieldSx } from './styles.tsx';
+import { fieldRowSx, formGridDoubleColumnSx, formGridFieldSx, formGridSx } from './styles.tsx';
 import type { Crop, PlantFamily } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { AppTooltip } from '../../components/AppTooltip';
@@ -77,18 +77,6 @@ interface BasicInfoSectionProps {
   speciesInvariantFieldsReadOnly?: boolean;
 }
 
-const identityRowSx = {
-  display: 'grid',
-  gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 3fr) minmax(0, 2fr)' },
-  gap: 1,
-  alignItems: 'flex-start',
-} as const;
-
-const identityFieldSx = {
-  width: '100%',
-  maxWidth: '100%',
-  minWidth: 0,
-} as const;
 
 /**
  * A small focusable info icon whose tooltip explains a heading or a field; a
@@ -109,6 +97,8 @@ function FieldInfoIcon({ title }: { title: string }) {
           verticalAlign: 'middle',
           color: 'text.secondary',
           cursor: 'help',
+          // A label inside the empty field ignores the pointer; the icon must not.
+          pointerEvents: 'auto',
           borderRadius: '50%',
           '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
         }}
@@ -211,150 +201,156 @@ export function BasicInfoSection({
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
   const rotationBreakYearsVariety = getFieldTooltipProps?.('rotation_break_years');
+  // Name and Latin name share the identity row; without a variety field the
+  // name takes two of the three columns.
+  const showsVarietyColumn = showVarietyField || showFirstVarietyField;
+  const nameFieldSx = showsVarietyColumn ? formGridFieldSx : formGridDoubleColumnSx;
+  const identityFieldSx = formGridFieldSx;
 
   return (
     <>
-      {showIdentityFields || showVarietyField ? (
-        <Box sx={identityRowSx}>
-          {showIdentityFields ? (
-            nameAutocomplete ? (
-              <Autocomplete<PublicCropSpeciesOption, false, false, true>
-                freeSolo
-                clearOnBlur={false}
-                options={nameAutocomplete.options}
-                value={formData.name ?? ''}
-                inputValue={formData.name ?? ''}
-                loading={nameOptionsLoading}
-                getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
-                isOptionEqualToValue={(option, value) => typeof value !== 'string' && option.key === value.key}
-                filterOptions={(options) => options}
-                groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
-                onInputChange={(_, value, reason) => {
-                  if (reason === 'reset') {
-                    return;
-                  }
-                  nameAutocomplete.onSearchChange(value);
+      <Box sx={formGridSx}>
+        {showIdentityFields ? (
+          nameAutocomplete ? (
+            <Autocomplete<PublicCropSpeciesOption, false, false, true>
+              sx={nameFieldSx}
+              freeSolo
+              clearOnBlur={false}
+              options={nameAutocomplete.options}
+              value={formData.name ?? ''}
+              inputValue={formData.name ?? ''}
+              loading={nameOptionsLoading}
+              getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
+              isOptionEqualToValue={(option, value) => typeof value !== 'string' && option.key === value.key}
+              filterOptions={(options) => options}
+              groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'reset') {
+                  return;
+                }
+                nameAutocomplete.onSearchChange(value);
+                onChange('name', value);
+                nameAutocomplete.onSelect(null);
+              }}
+              onChange={(_, value) => {
+                if (typeof value === 'string') {
                   onChange('name', value);
                   nameAutocomplete.onSelect(null);
-                }}
-                onChange={(_, value) => {
-                  if (typeof value === 'string') {
-                    onChange('name', value);
-                    nameAutocomplete.onSelect(null);
-                    return;
-                  }
-                  if (value) {
-                    onChange('name', value.canonicalName);
-                    nameAutocomplete.onSelect(value);
-                    return;
-                  }
-                  onChange('name', '');
-                  nameAutocomplete.onSelect(null);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    sx={identityFieldSx}
-                    required
-                    label={t('form.name')}
-                    placeholder={t('form.namePlaceholder')}
-                    error={Boolean(errors.name)}
-                    helperText={errors.name || t('form.publicCropAutocompleteHelp')}
-                    slotProps={{
-                      ...params.slotProps,
+                  return;
+                }
+                if (value) {
+                  onChange('name', value.canonicalName);
+                  nameAutocomplete.onSelect(value);
+                  return;
+                }
+                onChange('name', '');
+                nameAutocomplete.onSelect(null);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  required
+                  label={t('form.name')}
+                  placeholder={t('form.namePlaceholder')}
+                  error={Boolean(errors.name)}
+                  helperText={errors.name}
+                  slotProps={{
+                    ...params.slotProps,
 
-                      htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
+                    htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
 
-                      input: {
-                        ...params.slotProps.input,
-                        endAdornment: (
-                          <>
-                            {nameOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.slotProps.input.endAdornment}
-                          </>
-                        ),
-                      }
-                    }} />
-                )}
-              />
-            ) : (
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {nameOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    }
+                  }} />
+              )}
+            />
+          ) : (
+          <TextField
+            sx={nameFieldSx}
+            required
+            label={t('form.name')}
+            placeholder={t('form.namePlaceholder')}
+            value={formData.name}
+            onChange={e => onChange('name', e.target.value)}
+            error={Boolean(errors.name)}
+            helperText={errors.name}
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+          />
+        )
+        ) : null}
+        {showVarietyField ? (
+          varietyAutocomplete ? (
+            <Autocomplete<string, false, false, true>
+              sx={identityFieldSx}
+              disabled={varietyReadOnly}
+              freeSolo
+              clearOnBlur={false}
+              options={varietyAutocomplete.options}
+              value={formData.variety ?? ''}
+              inputValue={formData.variety ?? ''}
+              loading={varietyOptionsLoading}
+              groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'reset') {
+                  return;
+                }
+                onChange('variety', value);
+              }}
+              onChange={(_, value, reason) => {
+                varietyAutocomplete.onCommit(value ?? '', reason);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  required={varietyRequired}
+                  label={t('form.variety')}
+                  placeholder={t('form.varietyPlaceholder')}
+                  error={Boolean(errors.variety)}
+                  helperText={errors.variety}
+                  slotProps={{
+                    ...params.slotProps,
+
+                    htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {varietyOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    }
+                  }} />
+              )}
+            />
+          ) : (
             <TextField
               sx={identityFieldSx}
-              required
-              label={t('form.name')}
-              placeholder={t('form.namePlaceholder')}
-              value={formData.name}
-              onChange={e => onChange('name', e.target.value)}
-              error={Boolean(errors.name)}
-              helperText={errors.name}
+              disabled={varietyReadOnly}
+              required={varietyRequired}
+              label={t('form.variety')}
+              placeholder={t('form.varietyPlaceholder')}
+              value={formData.variety}
+              onChange={e => onChange('variety', e.target.value)}
+              error={Boolean(errors.variety)}
+              helperText={errors.variety}
               slotProps={{ htmlInput: { maxLength: 200 } }}
             />
           )
-          ) : null}
-          {showVarietyField ? (
-            varietyAutocomplete ? (
+        ) : null}
+        {!showVarietyField && showFirstVarietyField ? (
+          firstVarietyAutocomplete ? (
+            <AppTooltip title={t('form.firstVarietyHelperText')} placement="top-start">
               <Autocomplete<string, false, false, true>
-                disabled={varietyReadOnly}
-                freeSolo
-                clearOnBlur={false}
-                options={varietyAutocomplete.options}
-                value={formData.variety ?? ''}
-                inputValue={formData.variety ?? ''}
-                loading={varietyOptionsLoading}
-                groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
-                onInputChange={(_, value, reason) => {
-                  if (reason === 'reset') {
-                    return;
-                  }
-                  onChange('variety', value);
-                }}
-                onChange={(_, value, reason) => {
-                  varietyAutocomplete.onCommit(value ?? '', reason);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    sx={identityFieldSx}
-                    required={varietyRequired}
-                    label={t('form.variety')}
-                    placeholder={t('form.varietyPlaceholder')}
-                    error={Boolean(errors.variety)}
-                    helperText={errors.variety}
-                    slotProps={{
-                      ...params.slotProps,
-
-                      htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
-
-                      input: {
-                        ...params.slotProps.input,
-                        endAdornment: (
-                          <>
-                            {varietyOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.slotProps.input.endAdornment}
-                          </>
-                        ),
-                      }
-                    }} />
-                )}
-              />
-            ) : (
-              <TextField
                 sx={identityFieldSx}
-                disabled={varietyReadOnly}
-                required={varietyRequired}
-                label={t('form.variety')}
-                placeholder={t('form.varietyPlaceholder')}
-                value={formData.variety}
-                onChange={e => onChange('variety', e.target.value)}
-                error={Boolean(errors.variety)}
-                helperText={errors.variety}
-                slotProps={{ htmlInput: { maxLength: 200 } }}
-              />
-            )
-          ) : null}
-          {!showVarietyField && showFirstVarietyField ? (
-            firstVarietyAutocomplete ? (
-              <Autocomplete<string, false, false, true>
                 freeSolo
                 clearOnBlur={false}
                 options={firstVarietyAutocomplete.options}
@@ -374,10 +370,8 @@ export function BasicInfoSection({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    sx={identityFieldSx}
                     label={t('form.firstVarietyLabel')}
                     placeholder={t('form.firstVarietyPlaceholder')}
-                    helperText={t('form.firstVarietyHelperText')}
                     slotProps={{
                       ...params.slotProps,
 
@@ -395,20 +389,34 @@ export function BasicInfoSection({
                     }} />
                 )}
               />
-            ) : (
+            </AppTooltip>
+          ) : (
+            <AppTooltip title={t('form.firstVarietyHelperText')} placement="top-start">
               <TextField
                 sx={identityFieldSx}
                 label={t('form.firstVarietyLabel')}
                 placeholder={t('form.firstVarietyPlaceholder')}
                 value={firstVarietyName ?? ''}
                 onChange={e => onFirstVarietyNameChange?.(e.target.value)}
-                helperText={t('form.firstVarietyHelperText')}
                 slotProps={{ htmlInput: { maxLength: 200 } }}
               />
-            )
-          ) : null}
-        </Box>
-      ) : null}
+            </AppTooltip>
+          )
+        ) : null}
+        <VarietyFieldTooltip tooltipTitle={botanicalNameVariety?.tooltipTitle}>
+          <TextField
+            sx={mergeVarietyFieldSx(formGridFieldSx, botanicalNameVariety?.sx, botanicalNamePin?.fieldSx)}
+            label={t('form.botanicalName')}
+            placeholder={t('form.botanicalNamePlaceholder')}
+            value={formData.botanical_name ?? ''}
+            onChange={(event) => onChange('botanical_name', event.target.value)}
+            slotProps={{
+              input: { endAdornment: botanicalNamePin?.endAdornment, sx: { fontStyle: 'italic' } },
+              htmlInput: { maxLength: 200 },
+            }}
+          />
+        </VarietyFieldTooltip>
+      </Box>
       {identityRowControl}
       {nameApplyHint || varietyApplyHint ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -426,39 +434,24 @@ export function BasicInfoSection({
         <Box sx={fieldRowSx}>{firstVarietySourceHint}</Box>
       ) : null}
       {identityHint}
-      <Box sx={fieldRowSx}>
-        <VarietyFieldTooltip tooltipTitle={botanicalNameVariety?.tooltipTitle}>
-          <TextField
-            sx={mergeVarietyFieldSx(wideFieldSx, botanicalNameVariety?.sx, botanicalNamePin?.fieldSx)}
-            label={t('form.botanicalName')}
-            placeholder={t('form.botanicalNamePlaceholder')}
-            value={formData.botanical_name ?? ''}
-            onChange={(event) => onChange('botanical_name', event.target.value)}
-            slotProps={{
-              input: { endAdornment: botanicalNamePin?.endAdornment, sx: { fontStyle: 'italic' } },
-              htmlInput: { maxLength: 200 },
-            }}
+      {tagOptions ? (
+        <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
+          <CropTagsField
+            sx={mergeVarietyFieldSx(formGridFieldSx, tagsVariety?.sx)}
+            value={formData.tags ?? []}
+            options={tagOptions}
+            onChange={(tags) => onChange('tags', tags)}
+            t={t}
           />
         </VarietyFieldTooltip>
-        {tagOptions ? (
-          <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
-            <CropTagsField
-              sx={mergeVarietyFieldSx(wideFieldSx, tagsVariety?.sx)}
-              value={formData.tags ?? []}
-              options={tagOptions}
-              onChange={(tags) => onChange('tags', tags)}
-              t={t}
-            />
-          </VarietyFieldTooltip>
-        ) : null}
-      </Box>
+      ) : null}
       {/* The heading is inline and the info icon follows it in an unbreakable
           span (a line may otherwise break before an inline-flex box despite the
           no-break space): on a narrow phone the heading wraps at its hyphen and
           the icon stays beside the last word instead of drifting to the right
           edge or onto a line of its own. The icon stays outside the heading's
           accessible name. */}
-      <Box sx={{ mt: 2, typography: 'h6' }}>
+      <Box sx={{ mt: 1, typography: 'h6' }}>
         <Typography variant="h6" sx={{ display: 'inline' }}>{t('form.sectionCropRotation')}</Typography>
         {speciesInvariantFieldsReadOnly ? (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
@@ -467,10 +460,10 @@ export function BasicInfoSection({
           </Box>
         ) : null}
       </Box>
-      <Box sx={fieldRowSx}>
+      <Box sx={formGridSx}>
         <VarietyFieldTooltip tooltipTitle={cropFamilyVariety?.tooltipTitle}>
           <Autocomplete<PlantFamily, false, false, false>
-            sx={mergeVarietyFieldSx(mediumFieldSx, cropFamilyVariety?.sx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, cropFamilyVariety?.sx)}
             options={plantFamilies.families}
             value={selectedFamily}
             onChange={(_, family) => onChange('crop_family', family?.botanical_name ?? null)}
@@ -502,7 +495,7 @@ export function BasicInfoSection({
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={nutrientDemandVariety?.tooltipTitle}>
           <FormControl
-            sx={mergeVarietyFieldSx(smallFieldSx, nutrientDemandVariety?.sx, nutrientDemandPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, nutrientDemandVariety?.sx, nutrientDemandPin?.fieldSx)}
             disabled={speciesInvariantFieldsReadOnly}
           >
             <InputLabel>{t('form.nutrientDemand')}</InputLabel>
@@ -525,7 +518,7 @@ export function BasicInfoSection({
         <VarietyFieldTooltip tooltipTitle={rotationBreakYearsVariety?.tooltipTitle}>
           <TextField
             type="number"
-            sx={mergeVarietyFieldSx(smallFieldSx, rotationBreakYearsVariety?.sx)}
+            sx={mergeVarietyFieldSx(formGridFieldSx, rotationBreakYearsVariety?.sx)}
             label={showRotationBreakInfo ? (
               <>
                 {t('form.rotationBreakYears')}
@@ -539,8 +532,9 @@ export function BasicInfoSection({
             slotProps={{
               // The icon in the label must not become part of the input's name.
               htmlInput: { min: 0, inputMode: 'numeric', 'aria-label': t('form.rotationBreakYears') },
-              // A floating label ignores the pointer, so the icon needs the shrunk one.
-              inputLabel: showRotationBreakInfo || rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
+              // Like every other field the label sits inside the empty field; it
+              // shrinks for a value or for the family default shown as placeholder.
+              inputLabel: rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
             }}
             disabled={speciesInvariantFieldsReadOnly}
           />

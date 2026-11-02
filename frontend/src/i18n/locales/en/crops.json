@@ -181,7 +181,6 @@
     "existingCropHint": "The crop \"{{name}}\" already exists in this project. You can add a new variety to it instead.",
     "existingCropFirstVarietyHint": "\"{{variety}}\" will be added as a new variety to the existing crop \"{{name}}\".",
     "existingCropAddVarietyAction": "Add variety",
-    "publicCropAutocompleteHelp": "Public crops are suggested, free text is always possible.",
     "publicCropSourceHint": "Values taken from the crop library. The crop stays linked to the entry. You can later share differing values or keep them locally only.",
     "publicCropSourceHintVariety": "Values taken from the crop library. The variety stays linked to the entry. You can later share differing values or keep them locally only.",
     "publicCropSuggestionsGroupLabel": "From the crop library",
@@ -317,8 +316,7 @@
     "botanicalName": "Latin name",
     "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens",
     "tags": "Tags",
-    "tagsPlaceholder": "e.g. Herbs",
-    "tagsHelper": "Your own tags for filtering, e.g. \"Herbs\" or \"Storage crops\". Pick an existing one or type a new one."
+    "tagsPlaceholder": "e.g. Herbs, Storage vegetables"
   },
   "messages": {
     "createSuccess": "Crop created successfully",
@@ -1578,7 +1576,7 @@
       "reason": "Reason",
       "note": "Note",
       "neighborRequired": "Choose a neighbor.",
-      "description": "Note which crops grow well together and which do not. A neighbor can be a crop, a crop family or free text. The neighbors apply to all varieties.",
+      "description": "Neighbors can be crops, crop families or free text and apply to all varieties.",
       "sharedPair": "Also applies to {{name}}.",
       "varietyReadOnly": "The neighbors apply to all varieties of {{name}} and are edited in the form of {{name}}.",
       "add": "Add",
@@ -1586,7 +1584,7 @@
       "addBad": "Add bad neighbor",
       "moveToGood": "Move to good neighbors",
       "moveToBad": "Move to bad neighbors",
-      "libraryDescription": "Note which crops grow well together and which do not. A neighbor is a crop species from the library or a crop family."
+      "libraryDescription": "Neighbors can be crop species from the library or crop families and apply to all varieties."
     },
     "reasons": {
       "competition": "Competition",

@@ -33,7 +33,6 @@ export function CropTagsField({ value, options, onChange, t, sx }: CropTagsField
           {...params}
           label={t('form.tags')}
           placeholder={value.length === 0 ? t('form.tagsPlaceholder') : undefined}
-          helperText={t('form.tagsHelper')}
         />
       )}
     />

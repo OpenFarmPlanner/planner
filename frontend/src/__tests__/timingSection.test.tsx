@@ -10,8 +10,6 @@ const translations: Record<string, string> = {
   'form.cultivationTypePreCultivation': 'Pflanzung',
   'form.growthDurationDays': 'Wachstumszeit (Tage)',
   'form.growthDurationDaysHelp': 'Zeit vom Pflanzdatum bis zum Erntebeginn.',
-  'form.harvestDurationDays': 'Erntezeit (Tage)',
-  'form.harvestDurationDaysHelp': 'Zeit vom Erntebeginn bis zum Ernteende.',
   'form.propagationDurationDays': 'Anzuchtdauer (Tage)',
   'form.propagationDurationDaysHelp': 'Zeit vom Beginn der Anzucht bis zum Pflanzdatum.',
 };
@@ -19,7 +17,7 @@ const translations: Record<string, string> = {
 const t = (key: string) => translations[key] ?? key;
 
 describe('TimingSection', () => {
-  it('parses growth and harvest duration inputs', () => {
+  it('parses growth and propagation duration inputs', () => {
     const onChange = vi.fn();
 
     render(
@@ -32,19 +30,15 @@ describe('TimingSection', () => {
     );
 
     const growthInput = screen.getByPlaceholderText('form.growthDurationDaysPlaceholder');
-    const harvestInput = screen.getByPlaceholderText('form.harvestDurationDaysPlaceholder');
     const propagationInput = screen.getByLabelText(/Anzuchtdauer \(Tage\)/);
 
     expect(growthInput).toHaveAttribute('inputmode', 'numeric');
-    expect(harvestInput).toHaveAttribute('inputmode', 'numeric');
     expect(propagationInput).toHaveAttribute('inputmode', 'numeric');
 
     fireEvent.change(growthInput, { target: { value: '30' } });
-    fireEvent.change(harvestInput, { target: { value: '12' } });
     fireEvent.change(propagationInput, { target: { value: '8' } });
 
     expect(onChange).toHaveBeenCalledWith('growth_duration_days', 30);
-    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 12);
     expect(onChange).toHaveBeenCalledWith('propagation_duration_days', 8);
   });
 
@@ -61,7 +55,6 @@ describe('TimingSection', () => {
 
     const assertions = [
       ['Wachstumszeit (Tage)', 'Zeit vom Pflanzdatum bis zum Erntebeginn.'],
-      ['Erntezeit (Tage)', 'Zeit vom Erntebeginn bis zum Ernteende.'],
       ['Anzuchtdauer (Tage)', 'Zeit vom Beginn der Anzucht bis zum Pflanzdatum.'],
     ] as const;
 
@@ -89,11 +82,10 @@ describe('TimingSection', () => {
     expect(screen.getByText('form.propagationDurationDaysTooLong')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('form.growthDurationDaysPlaceholder'), { target: { value: '' } });
-    fireEvent.change(screen.getByPlaceholderText('form.harvestDurationDaysPlaceholder'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText(/Anzuchtdauer \(Tage\)/), { target: { value: '' } });
 
     expect(onChange).toHaveBeenCalledWith('growth_duration_days', 0);
-    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
+    expect(screen.queryByPlaceholderText('form.harvestDurationDaysPlaceholder')).not.toBeInTheDocument();
     expect(onChange).toHaveBeenCalledWith('propagation_duration_days', undefined);
 
     rerender(
@@ -167,7 +159,7 @@ describe('TimingSection', () => {
       const user = userEvent.setup();
       render(
         <TimingSection
-          formData={{ cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'], growth_duration_days: 30, harvest_duration_days: 7 }}
+          formData={{ cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'], growth_duration_days: 30, propagation_duration_days: 7 }}
           errors={{}}
           onChange={vi.fn()}
           t={t}
@@ -175,12 +167,12 @@ describe('TimingSection', () => {
         />
       );
 
-      const harvestField = screen.getByLabelText('Erntezeit (Tage)');
-      await user.hover(harvestField);
+      const propagationField = screen.getByLabelText('Anzuchtdauer (Tage)');
+      await user.hover(propagationField);
       expect(await screen.findByRole('tooltip')).toHaveTextContent(
-        'Zeit vom Erntebeginn bis zum Ernteende. / hierarchy.inheritedFieldTooltip',
+        'Zeit vom Beginn der Anzucht bis zum Pflanzdatum. / hierarchy.inheritedFieldTooltip',
       );
-      expect(harvestField.closest('.MuiFormControl-root')).not.toHaveStyle({ backgroundColor: 'rgb(1, 2, 3)' });
+      expect(propagationField.closest('.MuiFormControl-root')).not.toHaveStyle({ backgroundColor: 'rgb(1, 2, 3)' });
     });
 
     it('keeps the override tooltip on a disabled field (direct sowing propagation)', async () => {

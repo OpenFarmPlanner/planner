@@ -230,6 +230,29 @@ describe('BasicInfoSection', () => {
     expect(onChange).toHaveBeenCalledWith('rotation_break_years', null);
   });
 
+  it('keeps the rotation-break label inside the empty field like the other fields', async () => {
+    const { rerender } = render(
+      <BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={vi.fn()} t={t} />,
+    );
+
+    const label = (): HTMLElement => document.querySelector(
+      `label[for="${screen.getByRole('spinbutton', { name: 'form.rotationBreakYears' }).id}"]`,
+    ) as HTMLElement;
+    expect(label()).toHaveAttribute('data-shrink', 'false');
+    // The info icon stays reachable inside the floating label.
+    const infoIcon = screen.getByRole('img', { name: 'form.rotationBreakYearsTooltip' });
+    expect(infoIcon).toHaveStyle({ pointerEvents: 'auto' });
+    fireEvent.mouseOver(infoIcon);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.rotationBreakYearsTooltip');
+
+    // The family default shown as placeholder counts as content: the label shrinks.
+    rerender(
+      <BasicInfoSection formData={{ name: 'Möhre', crop_family: 'Apiaceae' }} errors={{}} onChange={vi.fn()} t={t} />,
+    );
+    await screen.findByRole('spinbutton', { name: 'form.rotationBreakYears' });
+    await vi.waitFor(() => expect(label()).toHaveAttribute('data-shrink', 'true'));
+  });
+
   it('keeps the crop-rotation fields editable with no info icon by default', () => {
     render(
       <BasicInfoSection
@@ -292,6 +315,66 @@ describe('BasicInfoSection', () => {
     fireEvent.focus(infoIcon);
     expect(await screen.findByRole('tooltip'))
       .toHaveTextContent('form.cropRotationInheritedTooltip');
+  });
+
+  it('keeps helper texts for validation errors only', () => {
+    const { rerender } = render(
+      <BasicInfoSection
+        formData={{ name: 'Kamille' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        tagOptions={[]}
+        showVarietyField={false}
+        nameOptions={[]}
+        onNameSearchChange={vi.fn()}
+        onNameOptionSelect={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('.MuiFormHelperText-root')).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'form.tags' })).toHaveAttribute('placeholder', 'form.tagsPlaceholder');
+
+    rerender(
+      <BasicInfoSection
+        formData={{ name: '' }}
+        errors={{ name: 'Pflichtfeld' }}
+        onChange={vi.fn()}
+        t={t}
+        tagOptions={[]}
+        showVarietyField={false}
+        nameOptions={[]}
+        onNameSearchChange={vi.fn()}
+        onNameOptionSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Pflichtfeld')).toHaveClass('MuiFormHelperText-root');
+  });
+
+  it('explains the optional first variety in a tooltip on hover and on keyboard focus', async () => {
+    render(
+      <BasicInfoSection
+        formData={{ name: 'Karotte' }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+        showVarietyField={false}
+        showFirstVarietyField
+        firstVarietyName=""
+        onFirstVarietyNameChange={vi.fn()}
+      />,
+    );
+
+    const firstVariety = screen.getByPlaceholderText('form.firstVarietyPlaceholder');
+    expect(screen.queryByText('form.firstVarietyHelperText')).not.toBeInTheDocument();
+
+    fireEvent.mouseOver(firstVariety);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
+    fireEvent.mouseLeave(firstVariety);
+
+    fireEvent.focus(firstVariety);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
   });
 
   describe('the tag field', () => {

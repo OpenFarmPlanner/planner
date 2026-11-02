@@ -154,7 +154,7 @@ export function ProjectSettingsMembersSection({
                 type="submit"
                 variant="contained"
                 disabled={sending}
-                sx={{ ...settingsActionButtonSx, minHeight: 56, flexShrink: 0 }}
+                sx={{ ...settingsActionButtonSx, minHeight: { xs: settingsActionButtonSx.minHeight, sm: 40 }, flexShrink: 0 }}
               >
                 {t('sendInvite')}
               </Button>

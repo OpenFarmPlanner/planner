@@ -183,7 +183,6 @@
     "existingCropHint": "El cultivo «{{name}}» ya existe en este proyecto. En su lugar, puedes añadirle una nueva variedad.",
     "existingCropFirstVarietyHint": "«{{variety}}» se añadirá como nueva variedad al cultivo existente «{{name}}».",
     "existingCropAddVarietyAction": "Añadir variedad",
-    "publicCropAutocompleteHelp": "Se sugieren cultivos públicos; el texto libre siempre es posible.",
     "publicCropSourceHint": "Valores tomados de la biblioteca de cultivos. El cultivo sigue vinculado a la entrada. Más adelante puedes compartir los valores distintos o mantenerlos solo en local.",
     "publicCropSourceHintVariety": "Valores tomados de la biblioteca de cultivos. La variedad sigue vinculada a la entrada. Más adelante puedes compartir los valores distintos o mantenerlos solo en local.",
     "publicCropSuggestionsGroupLabel": "De la biblioteca de cultivos",
@@ -322,8 +321,7 @@
     "botanicalName": "Nombre latino",
     "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens",
     "tags": "Etiquetas",
-    "tagsPlaceholder": "p. ej. Aromáticas",
-    "tagsHelper": "Tus propias etiquetas para filtrar, p. ej. «Aromáticas» u «Hortalizas de conserva». Elige una existente o escribe una nueva."
+    "tagsPlaceholder": "p. ej. Aromáticas, Hortalizas de conserva"
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",
@@ -1617,7 +1615,7 @@
       "reason": "Motivo",
       "note": "Nota",
       "neighborRequired": "Elige un vecino.",
-      "description": "Anota qué cultivos se llevan bien y cuáles no. Un vecino puede ser un cultivo, una familia botánica o texto libre. Los vecinos se aplican a todas las variedades.",
+      "description": "Los vecinos pueden ser cultivos, familias botánicas o texto libre y se aplican a todas las variedades.",
       "sharedPair": "También se aplica a {{name}}.",
       "varietyReadOnly": "Los vecinos se aplican a todas las variedades de {{name}} y se editan en el formulario de {{name}}.",
       "add": "Añadir",
@@ -1625,7 +1623,7 @@
       "addBad": "Añadir mal vecino",
       "moveToGood": "Mover a buenos vecinos",
       "moveToBad": "Mover a malos vecinos",
-      "libraryDescription": "Anota qué cultivos se llevan bien y cuáles no. Un vecino es una especie de cultivo de la biblioteca o una familia botánica."
+      "libraryDescription": "Los vecinos pueden ser especies de cultivo de la biblioteca o familias botánicas y se aplican a todas las variedades."
     },
     "reasons": {
       "competition": "Competencia",

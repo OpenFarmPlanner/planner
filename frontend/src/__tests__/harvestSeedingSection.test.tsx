@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HarvestSection } from '../crops/sections/HarvestSection';
 import { SeedingSection } from '../crops/sections/SeedingSection';
 
@@ -28,6 +29,30 @@ describe('HarvestSection and SeedingSection', () => {
     expect(onChange).toHaveBeenCalledWith('harvest_method', 'per_plant');
     expect(screen.getByLabelText('Erwarteter Ertrag (kg)')).toHaveAttribute('inputmode', 'decimal');
     expect(screen.getByText('Ertragseinheit ist bei angegebenem Ertrag erforderlich')).toBeInTheDocument();
+  });
+
+  it('edits the harvest duration and explains it in a tooltip', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <HarvestSection
+        formData={{ harvest_duration_days: 7 }}
+        errors={{}}
+        onChange={onChange}
+        t={t}
+      />
+    );
+
+    const harvestInput = screen.getByLabelText(t('form.harvestDurationDays'));
+    expect(harvestInput).toHaveAttribute('inputmode', 'numeric');
+    fireEvent.change(harvestInput, { target: { value: '12' } });
+    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 12);
+    fireEvent.change(harvestInput, { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
+
+    await user.hover(harvestInput);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(t('form.harvestDurationDaysHelp'));
   });
 
   it('handles seeding unit select and blur callbacks', () => {
