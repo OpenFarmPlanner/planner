@@ -1571,8 +1571,8 @@
     "syncReplaceHint": "Taking the library's list replaces this crop's neighbors. A pair that is dropped is also removed from the other crop. Free text is kept.",
     "form": {
       "neighbor": "Neighbor",
-      "groupCrops": "Crops",
-      "groupFamilies": "Crop families",
+      "wholeFamily": "{{family}} (whole family)",
+      "noFamily": "No crop family",
       "reason": "Reason",
       "note": "Note",
       "neighborRequired": "Choose a neighbor.",

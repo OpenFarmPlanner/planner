@@ -1610,8 +1610,8 @@
     "syncReplaceHint": "Reprendre la bibliothèque remplace les voisins de cette culture par sa liste. Une paire retirée disparaît aussi de l'autre culture. Le texte libre est conservé.",
     "form": {
       "neighbor": "Voisin",
-      "groupCrops": "Cultures",
-      "groupFamilies": "Familles botaniques",
+      "wholeFamily": "{{family}} (toute la famille)",
+      "noFamily": "Sans famille botanique",
       "reason": "Raison",
       "note": "Note",
       "neighborRequired": "Choisissez un voisin.",
