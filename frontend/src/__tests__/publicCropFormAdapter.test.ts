@@ -50,6 +50,14 @@ describe('publicCropToCropFormData', () => {
     expect(form.sowing_depth_cm).toBe(3);
   });
 
+  it('keeps the crop species so the form can tell the entry\'s species apart', () => {
+    const form = publicCropToCropFormData(buildPublicCrop({ crop_species: 70 }));
+
+    expect(form.crop_species).toBe(70);
+    expect(publicCropToCropFormData(buildPublicCrop({})).crop_species).toBeNull();
+    expect(buildPublicCropUpdatePayload(form, 3)).not.toHaveProperty('crop_species');
+  });
+
   it('defaults cultivation types to pre_cultivation when none are set', () => {
     const form = publicCropToCropFormData(buildPublicCrop({}));
 
