@@ -117,6 +117,19 @@ the form (`PUT replace/` after the crop; a failure is reported once the crop is
 saved, because saving again would create a new crop twice); changed rows count
 as unsaved changes. A Sorte's form shows its Kultur's list read-only.
 
+The neighbour field's options are grouped by plant family
+(`groupCompanionFormOptions` in `companions.ts`): one group per family, headed
+by the family name in the UI language, groups sorted alphabetically. Each group
+starts with the family itself, labelled "… (ganze Familie)", followed by that
+family's Kulturen (library: crop species) alphabetically; a crop's family is its
+effective `crop_family` (the library entry's `crop_family`). Every family of the
+catalogue keeps its group even without crops, and crops without a family form a
+last group "Ohne Pflanzenfamilie". The crop's own family stays selectable (a
+potato's bad neighbour can be the nightshade family); only the crop itself (in
+the library, its own species) is left out. Typing filters on crop and family
+names as before, and a matching crop shows under its family heading. A picked
+family shows only its name in the field.
+
 The library's edit form uses the same section on a species-level entry. Its
 neighbours are library crop species (the entries' species) or families, never
 free text, and are saved with the entry's other fields (direct edit or change

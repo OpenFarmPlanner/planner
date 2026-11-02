@@ -1571,8 +1571,8 @@
     "syncReplaceHint": "Übernimmst du die Bibliothek, ersetzt ihre Liste die Nachbarn dieser Kultur. Ein Paar, das dabei wegfällt, fehlt danach auch bei der anderen Kultur. Freier Text bleibt erhalten.",
     "form": {
       "neighbor": "Nachbar",
-      "groupCrops": "Kulturen",
-      "groupFamilies": "Pflanzenfamilien",
+      "wholeFamily": "{{family}} (ganze Familie)",
+      "groupNoFamily": "Ohne Pflanzenfamilie",
       "reason": "Grund",
       "note": "Notiz",
       "neighborRequired": "Bitte wähle einen Nachbarn.",

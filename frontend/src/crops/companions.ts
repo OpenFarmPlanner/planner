@@ -218,6 +218,59 @@ export const emptyCompanionFormRow = (kind: CompanionKind = 'good'): CompanionFo
   note: '',
 });
 
+/** A neighbour the form can offer, with the plant family it is listed under (null: none). */
+export interface CompanionOptionSource {
+  target: CompanionFormTarget;
+  familyKey: string | null;
+}
+
+export interface GroupedCompanionOptions {
+  /** In display order: one group per family, then the neighbours without a family. */
+  options: CompanionFormTarget[];
+  /** The group heading of an option: its family's name, or null for "no family". */
+  groupOf: (option: CompanionFormTarget) => string | null;
+}
+
+/**
+ * Groups the form's neighbour options by plant family (see
+ * docs/crop-companions.md#crop-form): groups sorted by family name, each
+ * starting with the family itself, then its crops alphabetically; every
+ * catalogue family keeps its group even without crops, and crops without a
+ * family come last.
+ */
+export const groupCompanionFormOptions = (
+  sources: readonly CompanionOptionSource[],
+  familyKeys: readonly string[],
+  familyName: (familyKey: string) => string,
+): GroupedCompanionOptions => {
+  const byLabel = (a: CompanionFormTarget, b: CompanionFormTarget) => a.label.localeCompare(b.label);
+  const members = new Map<string, CompanionFormTarget[]>(familyKeys.map((key) => [key, []]));
+  const withoutFamily: CompanionFormTarget[] = [];
+  const groupByTarget = new Map<string, string | null>();
+  sources.forEach(({ target, familyKey }) => {
+    if (!familyKey) {
+      withoutFamily.push(target);
+      groupByTarget.set(companionTargetKey(target), null);
+      return;
+    }
+    members.set(familyKey, [...(members.get(familyKey) ?? []), target]);
+    groupByTarget.set(companionTargetKey(target), familyName(familyKey));
+  });
+  const catalogue = new Set(familyKeys);
+  const groupKeys = [...members.keys()].sort((a, b) => familyName(a).localeCompare(familyName(b)));
+  const options = groupKeys.flatMap((familyKey) => {
+    const crops = [...(members.get(familyKey) ?? [])].sort(byLabel);
+    if (!catalogue.has(familyKey)) return crops;
+    const familyOption: CompanionFormTarget = { type: 'family', familyKey, label: familyName(familyKey) };
+    groupByTarget.set(companionTargetKey(familyOption), familyName(familyKey));
+    return [familyOption, ...crops];
+  });
+  return {
+    options: [...options, ...withoutFamily.sort(byLabel)],
+    groupOf: (option) => groupByTarget.get(companionTargetKey(option)) ?? null,
+  };
+};
+
 /** Two rows naming the same neighbour share this key. */
 export const companionTargetKey = (target: CompanionFormTarget): string => {
   if (target.type === 'crop') return `crop:${target.cropId}`;

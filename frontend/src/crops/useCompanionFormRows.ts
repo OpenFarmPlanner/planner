@@ -5,14 +5,17 @@ import type { Crop, PublicCropCompanion } from '../api/types';
 import {
   findCompanionRowErrors,
   findKulturId,
+  groupCompanionFormOptions,
   libraryItemToFormRow,
   relationToFormRow,
   sameCompanionRows,
   type CompanionFormRow,
+  type CompanionOptionSource,
   type CompanionFormRowError,
   type CompanionFormTarget,
 } from './companions';
 import { usePlantFamilies } from './plantFamilies';
+import { getEffectiveCropValue } from './varietyValueSource';
 
 /**
  * How the form shows neighbours: editable on a Kultur (or a species-level
@@ -34,8 +37,10 @@ export interface CompanionFormRowsState {
   mode: CompanionFormMode;
   rows: CompanionFormRow[];
   setRows: (rows: CompanionFormRow[]) => void;
-  /** Neighbours the user can pick, grouped by `type`. */
+  /** Neighbours the user can pick, in their plant-family groups. */
   options: CompanionFormTarget[];
+  /** The family heading an option is listed under; null for crops without a family. */
+  optionGroup: (option: CompanionFormTarget) => string | null;
   /** Free text is a neighbour only in a project; the library holds species and families. */
   allowFreeText: boolean;
   /** The Kultur a Sorte's read-only list belongs to. */
@@ -105,31 +110,29 @@ export function useCompanionFormRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLibrary, kulturId]);
 
-  const options = useMemo<CompanionFormTarget[]>(() => {
-    const familyOptions = families.families.map((family) => ({
-      type: 'family' as const,
-      familyKey: family.botanical_name,
-      label: families.getName(family.botanical_name),
-    }));
-    const byLabel = (a: CompanionFormTarget, b: CompanionFormTarget) => a.label.localeCompare(b.label);
+  const { options, groupOf: optionGroup } = useMemo(() => {
+    const familyKeys = families.families.map((family) => family.botanical_name);
     if (isLibrary) {
       const seenSpecies = new Set<number>();
-      const speciesOptions = crops.flatMap((entry) => {
+      const speciesSources = crops.flatMap((entry): CompanionOptionSource[] => {
         const speciesId = entry.crop_species;
         if (!speciesId || !isKulturLike(entry) || speciesId === crop?.crop_species || seenSpecies.has(speciesId)) {
           return [];
         }
         seenSpecies.add(speciesId);
-        return [{ type: 'species' as const, speciesId, label: entry.name ?? '' }];
+        return [{ target: { type: 'species', speciesId, label: entry.name ?? '' }, familyKey: entry.crop_family ?? null }];
       });
-      return [...speciesOptions.sort(byLabel), ...familyOptions];
+      return groupCompanionFormOptions(speciesSources, familyKeys, families.getName);
     }
-    const cropOptions = crops.flatMap((entry) => (
+    const cropSources = crops.flatMap((entry): CompanionOptionSource[] => (
       entry.id !== undefined && entry.id !== crop?.id && isKulturLike(entry)
-        ? [{ type: 'crop' as const, cropId: entry.id, label: entry.name ?? '' }]
+        ? [{
+          target: { type: 'crop', cropId: entry.id, label: entry.name ?? '' },
+          familyKey: getEffectiveCropValue(entry, 'crop_family') ?? null,
+        }]
         : []
     ));
-    return [...cropOptions.sort(byLabel), ...familyOptions];
+    return groupCompanionFormOptions(cropSources, familyKeys, families.getName);
   }, [crop?.crop_species, crop?.id, crops, families, isLibrary]);
 
   // Family names arrive with the family catalogue, possibly after the rows.
@@ -149,6 +152,7 @@ export function useCompanionFormRows({
     rows: labelledRows,
     setRows,
     options,
+    optionGroup,
     allowFreeText: !isLibrary,
     kulturName: kulturId !== null ? cropLabel(kulturId) : '',
     loaded,

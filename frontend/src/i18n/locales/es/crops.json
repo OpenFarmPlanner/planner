@@ -1610,8 +1610,8 @@
     "syncReplaceHint": "Al tomar la lista de la biblioteca se reemplazan los vecinos de este cultivo. Un par que se elimina también desaparece del otro cultivo. El texto libre se conserva.",
     "form": {
       "neighbor": "Vecino",
-      "groupCrops": "Cultivos",
-      "groupFamilies": "Familias botánicas",
+      "wholeFamily": "{{family}} (toda la familia)",
+      "groupNoFamily": "Sin familia botánica",
       "reason": "Motivo",
       "note": "Nota",
       "neighborRequired": "Elige un vecino.",

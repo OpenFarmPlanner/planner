@@ -34,13 +34,6 @@ interface CompanionsSectionProps {
   disabled?: boolean;
 }
 
-const GROUP_LABEL_KEYS: Record<CompanionFormTarget['type'], string> = {
-  crop: 'companions.form.groupCrops',
-  species: 'companions.form.groupCrops',
-  family: 'companions.form.groupFamilies',
-  text: 'companions.form.groupCrops',
-};
-
 const ADD_LABEL_KEYS: Record<CompanionKind, string> = {
   good: 'companions.form.addGood',
   bad: 'companions.form.addBad',
@@ -121,6 +114,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
                   row={row}
                   divided={index > 0}
                   options={options}
+                  optionGroup={state.optionGroup}
                   allowFreeText={allowFreeText}
                   error={errors[row.key]}
                   disabled={disabled}
@@ -140,6 +134,7 @@ interface CompanionFormRowFieldsProps {
   row: CompanionFormRow;
   divided: boolean;
   options: CompanionFormTarget[];
+  optionGroup: CompanionFormRowsState['optionGroup'];
   allowFreeText: boolean;
   error?: 'required' | 'duplicate';
   disabled: boolean;
@@ -155,6 +150,7 @@ function CompanionFormRowFields({
   row,
   divided,
   options,
+  optionGroup,
   allowFreeText,
   error,
   disabled,
@@ -187,8 +183,13 @@ function CompanionFormRowFields({
         options={options}
         value={row.target}
         disabled={disabled}
-        groupBy={(option) => t(GROUP_LABEL_KEYS[option.type])}
+        groupBy={(option) => optionGroup(option) ?? t('companions.form.groupNoFamily')}
         getOptionLabel={(option) => (typeof option === 'string' ? option : option.label)}
+        renderOption={({ key, ...optionProps }, option) => (
+          <li key={key} {...optionProps}>
+            {option.type === 'family' ? t('companions.form.wholeFamily', { family: option.label }) : option.label}
+          </li>
+        )}
         isOptionEqualToValue={(option, value) => (
           typeof value !== 'string' && option.type === value.type && option.label === value.label
         )}
