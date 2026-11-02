@@ -194,6 +194,9 @@ export type CompanionFormTarget =
   | { type: 'text'; text: string; label: string };
 
 /** One row of the form's "Mischkultur" section; `target` is null until a neighbour is picked. */
+/** A pickable neighbour with the heading it is listed under. */
+export type CompanionFormOption = CompanionFormTarget & { group: string };
+
 export interface CompanionFormRow {
   key: string;
   kind: CompanionKind;
@@ -224,6 +227,49 @@ export const companionTargetKey = (target: CompanionFormTarget): string => {
   if (target.type === 'species') return `species:${target.speciesId}`;
   if (target.type === 'family') return `family:${target.familyKey}`;
   return `text:${normalizeName(target.text)}`;
+};
+
+/** A crop or species that can be picked as a neighbour, and the plant family it is listed under. */
+export interface CompanionNeighbor {
+  target: CompanionFormTarget;
+  familyKey: string | null | undefined;
+}
+
+/**
+ * The neighbour field's options, one group per plant family in alphabetical
+ * order: the family itself, then its crops or species. Crops without a family
+ * come last. `familyKeys` are the catalogue's families, listed even without a
+ * crop; a crop's family outside the catalogue gets a heading but is not pickable.
+ */
+export const buildCompanionFormOptions = (
+  neighbors: readonly CompanionNeighbor[],
+  familyKeys: readonly string[],
+  familyName: (familyKey: string) => string,
+  noFamilyLabel: string,
+  locale?: string,
+): CompanionFormOption[] => {
+  const targetsByFamily = new Map<string, CompanionFormTarget[]>();
+  for (const { target, familyKey } of neighbors) {
+    const key = familyKey || '';
+    targetsByFamily.set(key, [...(targetsByFamily.get(key) ?? []), target]);
+  }
+  const groupTargets = (key: string, group: string): CompanionFormOption[] => (
+    [...(targetsByFamily.get(key) ?? [])]
+      .sort((first, second) => first.label.localeCompare(second.label, locale))
+      .map((target) => ({ ...target, group }))
+  );
+  const pickable = new Set(familyKeys);
+  const groupedKeys = [...new Set([...familyKeys, ...targetsByFamily.keys()])]
+    .filter(Boolean)
+    .map((familyKey) => ({ familyKey, label: familyName(familyKey) }))
+    .sort((first, second) => first.label.localeCompare(second.label, locale));
+  return [
+    ...groupedKeys.flatMap(({ familyKey, label }): CompanionFormOption[] => [
+      ...(pickable.has(familyKey) ? [{ type: 'family' as const, familyKey, label, group: label }] : []),
+      ...groupTargets(familyKey, label),
+    ]),
+    ...groupTargets('', noFamilyLabel),
+  ];
 };
 
 export const relationToFormRow = (

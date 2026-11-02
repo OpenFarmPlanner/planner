@@ -2,17 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cropCompanionAPI } from '../api/api';
 import type { Crop, PublicCropCompanion } from '../api/types';
+import { useTranslation } from '../i18n';
 import {
+  buildCompanionFormOptions,
   findCompanionRowErrors,
   findKulturId,
   libraryItemToFormRow,
   relationToFormRow,
   sameCompanionRows,
+  type CompanionFormOption,
   type CompanionFormRow,
   type CompanionFormRowError,
-  type CompanionFormTarget,
+  type CompanionNeighbor,
 } from './companions';
 import { usePlantFamilies } from './plantFamilies';
+import { getEffectiveCropValue } from './varietyValueSource';
 
 /**
  * How the form shows neighbours: editable on a Kultur (or a species-level
@@ -34,8 +38,8 @@ export interface CompanionFormRowsState {
   mode: CompanionFormMode;
   rows: CompanionFormRow[];
   setRows: (rows: CompanionFormRow[]) => void;
-  /** Neighbours the user can pick, grouped by `type`. */
-  options: CompanionFormTarget[];
+  /** Neighbours the user can pick, in the order of their plant-family groups. */
+  options: CompanionFormOption[];
   /** Free text is a neighbour only in a project; the library holds species and families. */
   allowFreeText: boolean;
   /** The Kultur a Sorte's read-only list belongs to. */
@@ -58,6 +62,7 @@ export function useCompanionFormRows({
   isKulturForm,
   libraryCompanions,
 }: UseCompanionFormRowsArgs): CompanionFormRowsState {
+  const { t, i18n } = useTranslation('crops');
   const families = usePlantFamilies();
   const isLibrary = variant === 'publicLibrary';
   const kulturId = useMemo(() => {
@@ -105,32 +110,29 @@ export function useCompanionFormRows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLibrary, kulturId]);
 
-  const options = useMemo<CompanionFormTarget[]>(() => {
-    const familyOptions = families.families.map((family) => ({
-      type: 'family' as const,
-      familyKey: family.botanical_name,
-      label: families.getName(family.botanical_name),
-    }));
-    const byLabel = (a: CompanionFormTarget, b: CompanionFormTarget) => a.label.localeCompare(b.label);
-    if (isLibrary) {
-      const seenSpecies = new Set<number>();
-      const speciesOptions = crops.flatMap((entry) => {
+  const options = useMemo<CompanionFormOption[]>(() => {
+    const seenSpecies = new Set<number>();
+    const neighbors = crops.filter(isKulturLike).flatMap((entry): CompanionNeighbor[] => {
+      const familyKey = getEffectiveCropValue(entry, 'crop_family');
+      const label = entry.name ?? '';
+      if (isLibrary) {
         const speciesId = entry.crop_species;
-        if (!speciesId || !isKulturLike(entry) || speciesId === crop?.crop_species || seenSpecies.has(speciesId)) {
-          return [];
-        }
+        if (!speciesId || speciesId === crop?.crop_species || seenSpecies.has(speciesId)) return [];
         seenSpecies.add(speciesId);
-        return [{ type: 'species' as const, speciesId, label: entry.name ?? '' }];
-      });
-      return [...speciesOptions.sort(byLabel), ...familyOptions];
-    }
-    const cropOptions = crops.flatMap((entry) => (
-      entry.id !== undefined && entry.id !== crop?.id && isKulturLike(entry)
-        ? [{ type: 'crop' as const, cropId: entry.id, label: entry.name ?? '' }]
-        : []
-    ));
-    return [...cropOptions.sort(byLabel), ...familyOptions];
-  }, [crop?.crop_species, crop?.id, crops, families, isLibrary]);
+        return [{ target: { type: 'species', speciesId, label }, familyKey }];
+      }
+      return entry.id !== undefined && entry.id !== crop?.id
+        ? [{ target: { type: 'crop', cropId: entry.id, label }, familyKey }]
+        : [];
+    });
+    return buildCompanionFormOptions(
+      neighbors,
+      families.families.map((family) => family.botanical_name),
+      families.getName,
+      t('companions.form.noFamily'),
+      i18n?.resolvedLanguage ?? i18n?.language,
+    );
+  }, [crop?.crop_species, crop?.id, crops, families, i18n?.language, i18n?.resolvedLanguage, isLibrary, t]);
 
   // Family names arrive with the family catalogue, possibly after the rows.
   const labelledRows = useMemo(() => rows.map((row) => (

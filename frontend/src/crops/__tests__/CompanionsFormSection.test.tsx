@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 
-import type { Crop, CropCompanion, PublicCropCompanion } from '../../api/types';
+import type { Crop, CropCompanion, PublicCrop, PublicCropCompanion } from '../../api/types';
 import { formRowsToLibraryItems, formRowsToReplaceItems } from '../companions';
 import { resetPlantFamiliesCache } from '../plantFamilies';
+import { publicCropToCropFormData } from '../publicCropFormAdapter';
 import { CompanionsSection } from '../sections/CompanionsSection';
 import { useCompanionFormRows } from '../useCompanionFormRows';
 
@@ -153,5 +154,151 @@ describe('useCompanionFormRows in the library form', () => {
     expect(formRowsToLibraryItems(result.current.rows)).toEqual(companions);
     act(() => result.current.setRows([]));
     expect(result.current.dirty).toBe(true);
+  });
+});
+
+const FAMILIES = [
+  { botanical_name: 'Solanaceae', translations: { de: 'Nachtschattengewächse' }, default_rotation_break_years: 3 },
+  { botanical_name: 'Brassicaceae', translations: { de: 'Kreuzblütler' }, default_rotation_break_years: 3 },
+  { botanical_name: 'Apiaceae', translations: { de: 'Doldenblütler' }, default_rotation_break_years: 3 },
+];
+
+/** Headings and options of the open list, in their order on screen. */
+const openListLines = () => within(screen.getByRole('listbox'))
+  .getAllByText((_content, element) => (
+    element?.getAttribute('role') === 'option' || Boolean(element?.classList.contains('MuiAutocomplete-groupLabel'))
+  ))
+  .map((element) => element.textContent);
+
+const openNeighborList = async () => {
+  fireEvent.click(await screen.findByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /Nachbar/ }));
+  await screen.findByRole('listbox');
+};
+
+describe('neighbour options grouped by plant family', () => {
+  beforeEach(() => {
+    resetPlantFamiliesCache();
+    api.families.mockResolvedValue({ data: FAMILIES });
+    api.listForCrop.mockResolvedValue({ data: [] });
+  });
+
+  describe('in the project form', () => {
+    const POTATO_PLANT = { id: 1, name: 'Kartoffel', variety: '', crop_family: 'Solanaceae' } as Crop;
+    const PROJECT_CROPS = [
+      POTATO_PLANT,
+      { id: 2, name: 'Tomate', variety: '', crop_family: 'Solanaceae' },
+      { id: 3, name: 'Aubergine', variety: '', crop_family: 'Solanaceae' },
+      { id: 4, name: 'Basilikum', variety: '', crop_family: null },
+      // A Sorte is no neighbour; the neighbours are Kulturen.
+      { id: 5, name: 'Tomate', variety: 'Roma', crop_family: 'Solanaceae', general_crop: 2 },
+      { id: 6, name: 'Rucola', variety: '', crop_family: null, effective_values: { crop_family: 'Brassicaceae' } },
+    ] as Crop[];
+
+    function ProjectHarness() {
+      const state = useCompanionFormRows({ variant: 'project', crop: POTATO_PLANT, crops: PROJECT_CROPS, isKulturForm: true });
+      return (
+        <>
+          <CompanionsSection state={state} />
+          <output data-testid="payload">{JSON.stringify(formRowsToReplaceItems(state.rows))}</output>
+        </>
+      );
+    }
+
+    it('lists each family first, then its crops, and crops without a family last', async () => {
+      render(<ProjectHarness />);
+      await screen.findByText('Mischkultur');
+      await waitFor(() => expect(api.families).toHaveBeenCalled());
+      await openNeighborList();
+
+      await waitFor(() => expect(openListLines()).toEqual([
+        'Doldenblütler',
+        'Doldenblütler (ganze Familie)',
+        'Kreuzblütler',
+        'Kreuzblütler (ganze Familie)',
+        'Rucola',
+        'Nachtschattengewächse',
+        'Nachtschattengewächse (ganze Familie)',
+        'Aubergine',
+        'Tomate',
+        'Ohne Pflanzenfamilie',
+        'Basilikum',
+      ]));
+    });
+
+    it("keeps the crop's own family pickable and shows only its name once chosen", async () => {
+      render(<ProjectHarness />);
+      await openNeighborList();
+
+      fireEvent.click(await screen.findByRole('option', { name: 'Nachtschattengewächse (ganze Familie)' }));
+
+      expect(screen.getByRole('combobox', { name: /Nachbar/ })).toHaveValue('Nachtschattengewächse');
+      expect(payload()).toEqual([expect.objectContaining({ companion_family: 'Solanaceae', companion_crop: null })]);
+    });
+
+    it('shows a typed crop under its family heading', async () => {
+      render(<ProjectHarness />);
+      await openNeighborList();
+      await screen.findByRole('option', { name: 'Tomate' });
+
+      fireEvent.change(screen.getByRole('combobox', { name: /Nachbar/ }), { target: { value: 'Toma' } });
+
+      await waitFor(() => expect(openListLines()).toEqual(['Nachtschattengewächse', 'Tomate']));
+    });
+
+    it('filters on the family name and keeps typed text as free text', async () => {
+      render(<ProjectHarness />);
+      await openNeighborList();
+      await screen.findByRole('option', { name: 'Tomate' });
+      const input = screen.getByRole('combobox', { name: /Nachbar/ });
+
+      fireEvent.change(input, { target: { value: 'Kreuz' } });
+      await waitFor(() => expect(openListLines()).toEqual(['Kreuzblütler', 'Kreuzblütler (ganze Familie)']));
+
+      fireEvent.change(input, { target: { value: 'Salbei' } });
+      expect(payload()).toEqual([expect.objectContaining({ companion_text: 'Salbei', companion_family: null })]);
+    });
+  });
+
+  describe('in the library form', () => {
+    const publicCrop = (overrides: Partial<PublicCrop>) => ({ variety: '', crop_family: null, ...overrides }) as PublicCrop;
+    const OWN = publicCrop({ id: 1, name: 'Kartoffel', crop_species: 10, crop_family: 'Solanaceae' });
+    const ENTRIES = [
+      OWN,
+      publicCrop({ id: 2, name: 'Kartoffel', crop_species: 10, variety: 'Linda', crop_family: 'Solanaceae' }),
+      publicCrop({ id: 3, name: 'Tomate', crop_species: 20, crop_family: 'Solanaceae' }),
+      publicCrop({ id: 4, name: 'Tomate', crop_species: 20, variety: 'Roma', crop_family: 'Solanaceae' }),
+      // A second species-level entry of one species still offers it only once.
+      publicCrop({ id: 5, name: 'Tomate', crop_species: 20, crop_family: 'Solanaceae' }),
+      publicCrop({ id: 6, name: 'Basilikum', crop_species: 30 }),
+      publicCrop({ id: 7, name: 'Ohne Art', crop_species: null, crop_family: 'Solanaceae' }),
+    ];
+
+    function LibraryHarness() {
+      const state = useCompanionFormRows({
+        variant: 'publicLibrary',
+        crop: publicCropToCropFormData(OWN),
+        crops: ENTRIES.map(publicCropToCropFormData),
+        isKulturForm: true,
+      });
+      return <CompanionsSection state={state} />;
+    }
+
+    it("offers the other species once each, grouped by family, without the entry's own", async () => {
+      render(<LibraryHarness />);
+      await openNeighborList();
+
+      await waitFor(() => expect(openListLines()).toEqual([
+        'Doldenblütler',
+        'Doldenblütler (ganze Familie)',
+        'Kreuzblütler',
+        'Kreuzblütler (ganze Familie)',
+        'Nachtschattengewächse',
+        'Nachtschattengewächse (ganze Familie)',
+        'Tomate',
+        'Ohne Pflanzenfamilie',
+        'Basilikum',
+      ]));
+    });
   });
 });

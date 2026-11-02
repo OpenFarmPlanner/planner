@@ -117,10 +117,22 @@ the form (`PUT replace/` after the crop; a failure is reported once the crop is
 saved, because saving again would create a new crop twice); changed rows count
 as unsaved changes. A Sorte's form shows its Kultur's list read-only.
 
+The neighbour field's options are grouped by plant family
+(`buildCompanionFormOptions`): one group per family under its name in the UI
+language, alphabetically, with "Ohne Pflanzenfamilie" last for crops without a
+family. Each group starts with the family itself, "{family} (ganze Familie)",
+followed by its crops alphabetically; a crop counts under its effective family.
+A family without crops stays as a group with just that option, and the crop's
+own family stays pickable (potato: bad neighbour Solanaceae). Typing still
+filters on the crop and family names, and a matching crop appears under its
+family's heading. A chosen family shows its plain name in the field; the
+"(ganze Familie)" suffix belongs to the list only.
+
 The library's edit form uses the same section on a species-level entry. Its
-neighbours are library crop species (the entries' species) or families, never
-free text, and are saved with the entry's other fields (direct edit or change
-proposal).
+neighbours are library crop species (the entries' species, each once, without
+the entry's own) or families, never free text, grouped the same way by the
+`crop_family` of the species' entry, and are saved with the entry's other
+fields (direct edit or change proposal).
 
 ## Crop details
 
