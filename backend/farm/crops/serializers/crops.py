@@ -7,6 +7,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
@@ -65,6 +66,7 @@ from farm.services.crop_inheritance import (
     is_unset_crop_value,
     promote_species_invariant_values,
     resolve_effective_rotation_break_years,
+    resolve_effective_timing_windows,
     resolve_plants_per_m2,
 )
 from farm.services.public_crops import (
@@ -81,8 +83,15 @@ from farm.services.public_crops import (
     resolve_public_publish_block,
     validate_library_pinned_fields,
 )
+from farm.services.timing_windows import (
+    SOWING_KINDS,
+    TimingWindowIndex,
+    load_timing_window_index,
+    months_covered,
+)
 
 from .seed_packages import SeedPackageSerializer
+from .timing_windows import EffectiveTimingWindowSerializer, TimingWindowListField
 from .seed_rates import (
     EMPTY_SEED_RATE_UNIT_VALUES,
     PRE_CULTIVATION_SEED_RATE_UNITS,
@@ -328,6 +337,30 @@ class CropSerializer(serializers.ModelSerializer):
         help_text="Type of seeding requirement (e.g. 'g', 'seeds')"
     )
     seed_packages = SeedPackageSerializer(many=True, required=False)
+    timing_windows = TimingWindowListField(
+        source='pending_timing_windows',
+        required=False,
+        help_text=(
+            "The crop's own Anzucht, Direktsaat, Pflanzung and Ernte windows. A write "
+            'replaces the whole list. Project data only: never published to or synced '
+            "with the crop library. A Sorte without own windows of a kind uses its Kultur's "
+            '(see effective_timing_windows).'
+        ),
+    )
+    effective_timing_windows = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'The windows this crop plans with: per kind its own, otherwise (for a Sorte) '
+            "its general Kultur's, flagged inherited."
+        ),
+    )
+    sowing_months = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            'Months (1-12) of the current year that one of the effective Anzucht or '
+            'Direktsaat windows overlaps; week windows are resolved in the current year.'
+        ),
+    )
     supplier_data = serializers.SerializerMethodField()
     supplier_data_input = serializers.ListField(
         child=serializers.DictField(),
@@ -549,6 +582,36 @@ class CropSerializer(serializers.ModelSerializer):
         if api_field in _SEED_RATE_UNIT_FIELDS:
             return _normalized_seed_rate_unit_representation(representation)
         return representation
+
+    def _timing_window_index(self, obj: Crop) -> TimingWindowIndex:
+        """Every timing window of the crop's project, loaded once per request."""
+        cache = self.context.setdefault('_timing_window_index_by_project', {})
+        if obj.project_id not in cache:
+            cache[obj.project_id] = load_timing_window_index(project_id=obj.project_id)
+        return cache[obj.project_id]
+
+    def own_timing_windows(self, obj: Crop) -> list[dict[str, Any]]:
+        return [window.as_dict() for window in self._timing_window_index(obj).get(obj.pk, [])]
+
+    def _effective_timing_windows(self, obj: Crop):
+        return resolve_effective_timing_windows(
+            obj, self._timing_window_index(obj), self._general_crop_index(obj),
+        )
+
+    @extend_schema_field(EffectiveTimingWindowSerializer(many=True))
+    def get_effective_timing_windows(self, obj: Crop) -> list[dict[str, Any]]:
+        return [
+            {**window.as_dict(), 'inherited': inherited}
+            for window, inherited in self._effective_timing_windows(obj)
+        ]
+
+    @extend_schema_field(serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=12)))
+    def get_sowing_months(self, obj: Crop) -> list[int]:
+        sowing_windows = [
+            window for window, _inherited in self._effective_timing_windows(obj)
+            if window.kind in SOWING_KINDS
+        ]
+        return months_covered(sowing_windows, timezone.localdate().year)
 
     def get_crop_family_display_name(self, obj: Crop) -> str | None:
         return plant_family_display_name(self.context, obj.crop_family_id)

@@ -31,6 +31,7 @@ from farm.models import (
     Crop,
     CropCompanion,
     CropSupplierData,
+    CropTimingWindow,
     EntityRevision,
     Field,
     Location,
@@ -128,6 +129,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             SeedPackage.objects.create(
                 crop=crop, size_value=10, size_unit='g', project=self.project,
             )
+            # One timing window per row: the crop list loads them for the
+            # whole page, never per crop.
+            CropTimingWindow.objects.create(
+                crop=crop, kind='direct_sowing', unit='decade',
+                start_month=3, start_decade=1, end_month=5, end_decade=3,
+            )
             season = Season.objects.create(
                 project=self.project, start_date=date(2020 + index, 1, 1), end_date=date(2020 + index, 12, 31),
             )
@@ -203,7 +210,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         # Each crop created above also has an imported sibling row, so the
         # project holds twice ROW_COUNT crops.
         self.assert_list_query_count(
-            '/openfarmplanner/api/crops/', 15, expected_rows=ROW_COUNT * 2,
+            '/openfarmplanner/api/crops/', 16, expected_rows=ROW_COUNT * 2,
         )
 
     def test_crops_list_carries_species_search_names(self):
@@ -233,7 +240,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 status=PublicCrop.STATUS_REMOVED if index % 2 else PublicCrop.STATUS_WITHDRAWN,
             )
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         linked = [row for row in response.data['results'] if row['source_public_crop']]
@@ -263,7 +270,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 proposed_by=self.user,
             )
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -301,7 +308,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             crop.library_pinned_fields = ['notes']
             crop.save()
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         pinned_rows = [row for row in response.data['results'] if row['library_pinned_fields']]
@@ -326,7 +333,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 project=self.project, crop_id=crop.pk, companion_text=f'Neighbour {index}', kind='bad',
             )
 
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, 200)
         rows_by_id = {row['id']: row for row in response.data['results']}
@@ -350,8 +357,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         their species translations (farm/services/bed_capacity.py), plus the
         page-wide companion check's relation lookup
         (farm/services/crop_companions.py), which stops there when the
-        project lists no neighbours."""
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 14)
+        project lists no neighbours, plus the page-wide timing-window check's
+        window lookup (farm/services/timing_window_check.py)."""
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 15)
 
     def test_planting_plans_list_query_count_with_rotation_findings(self):
         """Conflicts and accepted conflicts (with their accepting user) on every
@@ -365,8 +373,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 15, expected_rows=2 * ROW_COUNT,
         )
+
+    def test_planting_plans_list_query_count_with_timing_window_findings(self):
+        """A planting date outside the crop's Direktsaat window on every plan
+        must cost the same queries as plans without hints."""
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2027, 8, 1),
+                cultivation_type='direct_sowing',
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+            )
+
+        with self.assertNumQueries(15):
+            response = self.client.get('/openfarmplanner/api/planting-plans/')
+        self.assertEqual(response.status_code, 200)
+        flagged = [row for row in response.data['results'] if row['timing_window_findings']]
+        self.assertEqual(len(flagged), ROW_COUNT)
 
     def test_planting_plans_list_query_count_with_harvest_overlaps(self):
         """A follow-up crop in the harvest phase of a full-bed plan on every bed
@@ -384,7 +408,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=10, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(15):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -418,7 +442,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         independent of the plan count."""
         self._add_bad_neighbours_on_every_bed()
 
-        with self.assertNumQueries(20):
+        with self.assertNumQueries(21):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']

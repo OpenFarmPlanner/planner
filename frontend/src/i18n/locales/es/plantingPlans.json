@@ -209,7 +209,8 @@
       "harvestStartDate": "Inicio de cosecha",
       "harvestEndDate": "Fin de cosecha",
       "rotation": "Rotación de cultivos",
-      "occupancy": "Ocupación"
+      "occupancy": "Ocupación",
+      "timing": "Periodos"
     },
     "monthFrom": "Desde",
     "monthTo": "Hasta",
@@ -266,6 +267,9 @@
     },
     "occupancyOptions": {
       "harvestOverlap": "Solapamiento de cosecha"
+    },
+    "timingOptions": {
+      "outsideWindow": "Fuera de los periodos"
     }
   },
   "rotation": {
@@ -383,5 +387,12 @@
     "predecessor": "{{crop}} sigue en este bancal a partir del {{date}}. La cosecha debe estar terminada para entonces.",
     "successor": "Empieza antes del fin de cosecha previsto de {{crop}} ({{date}}).",
     "iconAria": "Solapamiento de cosecha"
+  },
+  "timingWindow": {
+    "direct_sowing": "La fecha de siembra está fuera de los periodos de siembra directa ({{windows}}).",
+    "pre_cultivation": "La fecha de siembra está fuera de los periodos de semillero ({{windows}}).",
+    "planting": "La fecha de plantación está fuera de los periodos de trasplante ({{windows}}).",
+    "harvest": "El inicio de cosecha está fuera de los periodos de cosecha ({{windows}}).",
+    "iconAria": "Fecha fuera de los periodos"
   }
 }

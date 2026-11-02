@@ -16,6 +16,16 @@ export type ImportPreviewResult = {
   import_data: Record<string, unknown>;
   error?: string;
   companions?: CompanionImportPreview;
+  /** Window cells the import drops (one per cell); the rest of the row is imported. */
+  timing_window_issues?: TimingWindowImportIssue[];
+};
+
+export type TimingWindowImportIssue = {
+  /** The column key, `<kind>_windows`. */
+  field: string;
+  /** The part of the cell that was rejected, as written. */
+  value: string;
+  code: string;
 };
 
 export type ImportFailedEntry = {
@@ -69,6 +79,30 @@ export const buildImportSuccessMessage = (
 };
 
 const formatNames = (names: string[]): string => names.join(', ');
+
+// These messages name the value themselves; the others get it in the line.
+const TIMING_WINDOW_MESSAGES_WITH_VALUE = new Set([
+  'timing_window_not_recognized',
+  'timing_window_open_end',
+  'timing_window_ambiguous_slash',
+]);
+
+/**
+ * One line per window cell the import drops: row, column and why, e.g.
+ * "Zeile 4, Ernte: „Frühjahr“ ist keine Zeitangabe. …".
+ */
+export const buildTimingWindowPreviewWarnings = (
+  results: ImportPreviewResult[],
+  rowNumberOf: (index: number) => number,
+  t: Translator,
+): string[] => results.flatMap((result) => (result.timing_window_issues ?? []).map((issue) => {
+  const column = t(`timingWindows.kinds.${issue.field.replace(/_windows$/, '')}`);
+  const message = t(`timingWindows.importErrors.${issue.code}`, { value: issue.value });
+  const key = TIMING_WINDOW_MESSAGES_WITH_VALUE.has(issue.code)
+    ? 'import.timingWindowIssue'
+    : 'import.timingWindowIssueWithValue';
+  return t(key, { row: rowNumberOf(result.index), column, value: issue.value, message });
+}));
 
 /** The preview's warning about neighbours that would be kept as free text. */
 export const buildCompanionPreviewWarning = (

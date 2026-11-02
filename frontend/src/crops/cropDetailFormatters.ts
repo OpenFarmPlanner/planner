@@ -21,6 +21,8 @@ export interface PersistedCropFilters {
   growthDaysMax: string;
   yieldMin: string;
   yieldMax: string;
+  /** "Aussaat möglich im Monat": '1'-'12', or '' for any month. */
+  sowingMonth: string;
 }
 
 /**

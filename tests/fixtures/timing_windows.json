@@ -1,0 +1,745 @@
+{
+  "_comment": "Shared cases for the timing-window rules. Read by backend/farm/tests/test_timing_windows.py and frontend/src/__tests__/timingWindows.test.ts so both implementations stay equivalent. Windows have no kind here; ranges are inclusive ISO dates.",
+  "format": [
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 3,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "März",
+        "en": "March",
+        "fr": "mars",
+        "es": "marzo"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "März bis Mai",
+        "en": "March to May",
+        "fr": "mars à mai",
+        "es": "marzo a mayo"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "mid",
+        "end_month": 3,
+        "end_decade": "mid",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "Mitte März",
+        "en": "mid March",
+        "fr": "mi-mars",
+        "es": "mediados de marzo"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "mid",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "Anfang März bis Mitte Mai",
+        "en": "early March to mid May",
+        "fr": "début mars à mi-mai",
+        "es": "principios de marzo a mediados de mayo"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 8,
+        "start_decade": "mid",
+        "end_month": 8,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "Mitte August bis Ende August",
+        "en": "mid August to late August",
+        "fr": "mi-août à fin août",
+        "es": "mediados de agosto a finales de agosto"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "November bis Februar",
+        "en": "November to February",
+        "fr": "novembre à février",
+        "es": "noviembre a febrero"
+      }
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 4,
+        "start_decade": "early",
+        "end_month": 4,
+        "end_decade": "mid",
+        "start_week": null,
+        "end_week": null
+      },
+      "text": {
+        "de": "Anfang April bis Mitte April",
+        "en": "early April to mid April",
+        "fr": "début avril à mi-avril",
+        "es": "principios de abril a mediados de abril"
+      }
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 10
+      },
+      "text": {
+        "de": "KW 10",
+        "en": "week 10",
+        "fr": "semaine 10",
+        "es": "semana 10"
+      }
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 14
+      },
+      "text": {
+        "de": "KW 10 bis 14",
+        "en": "week 10 to 14",
+        "fr": "semaines 10 à 14",
+        "es": "semanas 10 a 14"
+      }
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 44,
+        "end_week": 8
+      },
+      "text": {
+        "de": "KW 44 bis 8",
+        "en": "week 44 to 8",
+        "fr": "semaines 44 à 8",
+        "es": "semanas 44 a 8"
+      }
+    }
+  ],
+  "formatList": [
+    {
+      "windows": [
+        {
+          "unit": "decade",
+          "start_month": 3,
+          "start_decade": "early",
+          "end_month": 4,
+          "end_decade": "late",
+          "start_week": null,
+          "end_week": null
+        },
+        {
+          "unit": "decade",
+          "start_month": 8,
+          "start_decade": "mid",
+          "end_month": 8,
+          "end_decade": "late",
+          "start_week": null,
+          "end_week": null
+        }
+      ],
+      "text": {
+        "de": "März bis April; Mitte August bis Ende August",
+        "en": "March to April; mid August to late August",
+        "fr": "mars à avril; mi-août à fin août",
+        "es": "marzo a abril; mediados de agosto a finales de agosto"
+      }
+    }
+  ],
+  "resolve": [
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2026-03-01",
+          "2026-05-31"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 2,
+        "start_decade": "late",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2024,
+      "ranges": [
+        [
+          "2024-02-21",
+          "2024-02-29"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 2,
+        "start_decade": "late",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2025,
+      "ranges": [
+        [
+          "2025-02-21",
+          "2025-02-28"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 4,
+        "start_decade": "mid",
+        "end_month": 4,
+        "end_decade": "mid",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2026-04-11",
+          "2026-04-20"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 4,
+        "start_decade": "late",
+        "end_month": 6,
+        "end_decade": "early",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2026-04-21",
+          "2026-06-10"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2025-11-01",
+          "2026-02-28"
+        ],
+        [
+          "2026-11-01",
+          "2027-02-28"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2024,
+      "ranges": [
+        [
+          "2023-11-01",
+          "2024-02-29"
+        ],
+        [
+          "2024-11-01",
+          "2025-02-28"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "mid",
+        "end_month": 3,
+        "end_decade": "early",
+        "start_week": null,
+        "end_week": null
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2025-03-11",
+          "2026-03-10"
+        ],
+        [
+          "2026-03-11",
+          "2027-03-10"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 14
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2026-03-02",
+          "2026-04-05"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 1,
+        "end_week": 1
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2025-12-29",
+          "2026-01-04"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 52,
+        "end_week": 52
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2026-12-21",
+          "2026-12-27"
+        ]
+      ]
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 44,
+        "end_week": 8
+      },
+      "year": 2026,
+      "ranges": [
+        [
+          "2025-10-27",
+          "2026-02-22"
+        ],
+        [
+          "2026-10-26",
+          "2027-02-28"
+        ]
+      ]
+    }
+  ],
+  "contains": [
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-03-01",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-05-31",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 3,
+        "start_decade": "early",
+        "end_month": 5,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-06-01",
+      "expected": false
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 2,
+        "start_decade": "late",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2024-02-29",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-01-15",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-12-24",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "decade",
+        "start_month": 11,
+        "start_decade": "early",
+        "end_month": 2,
+        "end_decade": "late",
+        "start_week": null,
+        "end_week": null
+      },
+      "date": "2026-03-01",
+      "expected": false
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 14
+      },
+      "date": "2026-03-02",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 14
+      },
+      "date": "2026-04-05",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 10,
+        "end_week": 14
+      },
+      "date": "2026-04-06",
+      "expected": false
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 50,
+        "end_week": 52
+      },
+      "date": "2026-12-31",
+      "expected": false
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 50,
+        "end_week": 2
+      },
+      "date": "2026-12-31",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 50,
+        "end_week": 2
+      },
+      "date": "2027-01-05",
+      "expected": true
+    },
+    {
+      "window": {
+        "unit": "iso_week",
+        "start_month": null,
+        "start_decade": null,
+        "end_month": null,
+        "end_decade": null,
+        "start_week": 50,
+        "end_week": 2
+      },
+      "date": "2026-06-01",
+      "expected": false
+    }
+  ],
+  "months": [
+    {
+      "windows": [
+        {
+          "unit": "decade",
+          "start_month": 3,
+          "start_decade": "early",
+          "end_month": 5,
+          "end_decade": "late",
+          "start_week": null,
+          "end_week": null
+        }
+      ],
+      "year": 2026,
+      "months": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "windows": [
+        {
+          "unit": "decade",
+          "start_month": 3,
+          "start_decade": "late",
+          "end_month": 4,
+          "end_decade": "early",
+          "start_week": null,
+          "end_week": null
+        }
+      ],
+      "year": 2026,
+      "months": [
+        3,
+        4
+      ]
+    },
+    {
+      "windows": [
+        {
+          "unit": "decade",
+          "start_month": 11,
+          "start_decade": "early",
+          "end_month": 2,
+          "end_decade": "late",
+          "start_week": null,
+          "end_week": null
+        }
+      ],
+      "year": 2026,
+      "months": [
+        1,
+        2,
+        11,
+        12
+      ]
+    },
+    {
+      "windows": [
+        {
+          "unit": "iso_week",
+          "start_month": null,
+          "start_decade": null,
+          "end_month": null,
+          "end_decade": null,
+          "start_week": 10,
+          "end_week": 14
+        }
+      ],
+      "year": 2026,
+      "months": [
+        3,
+        4
+      ]
+    },
+    {
+      "windows": [
+        {
+          "unit": "iso_week",
+          "start_month": null,
+          "start_decade": null,
+          "end_month": null,
+          "end_decade": null,
+          "start_week": 1,
+          "end_week": 1
+        }
+      ],
+      "year": 2026,
+      "months": [
+        1
+      ]
+    },
+    {
+      "windows": [
+        {
+          "unit": "iso_week",
+          "start_month": null,
+          "start_decade": null,
+          "end_month": null,
+          "end_decade": null,
+          "start_week": 9,
+          "end_week": 9
+        },
+        {
+          "unit": "decade",
+          "start_month": 8,
+          "start_decade": "mid",
+          "end_month": 8,
+          "end_decade": "mid",
+          "start_week": null,
+          "end_week": null
+        }
+      ],
+      "year": 2026,
+      "months": [
+        2,
+        3,
+        8
+      ]
+    }
+  ]
+}

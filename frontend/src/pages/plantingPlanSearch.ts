@@ -41,6 +41,11 @@ export const OCCUPANCY_FILTER_OPTIONS = ['harvestOverlap'] as const;
 
 export type OccupancyFilterOption = (typeof OCCUPANCY_FILTER_OPTIONS)[number];
 
+/** Timing-window hints the "Zeiträume" filter offers (see docs/timing-windows.md). */
+export const TIMING_FILTER_OPTIONS = ['outsideWindow'] as const;
+
+export type TimingFilterOption = (typeof TIMING_FILTER_OPTIONS)[number];
+
 export interface PlantingPlanFilters {
   locationIds: number[];
   fieldIds: number[];
@@ -51,6 +56,8 @@ export interface PlantingPlanFilters {
   rotationStatuses: RotationFilterStatus[];
   /** Kept in memory only, like the rotation filter. */
   occupancy: OccupancyFilterOption[];
+  /** Kept in memory only, like the rotation filter. */
+  timing: TimingFilterOption[];
   monthRanges: Record<DateFilterField, MonthRange>;
 }
 
@@ -61,6 +68,7 @@ export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
   cropKeys: [],
   rotationStatuses: [],
   occupancy: [],
+  timing: [],
   monthRanges: {
     plantingDate: OPEN_MONTH_RANGE,
     harvestStartDate: OPEN_MONTH_RANGE,
@@ -68,7 +76,15 @@ export const EMPTY_PLANTING_PLAN_FILTERS: PlantingPlanFilters = {
   },
 };
 
-export type PlantingPlanFilterGroup = 'location' | 'field' | 'cultivationType' | 'crop' | 'rotation' | 'occupancy' | DateFilterField;
+export type PlantingPlanFilterGroup =
+  | 'location'
+  | 'field'
+  | 'cultivationType'
+  | 'crop'
+  | 'rotation'
+  | 'occupancy'
+  | 'timing'
+  | DateFilterField;
 
 export const isMonthRangeActive = (range: MonthRange): boolean => range.from !== null || range.to !== null;
 
@@ -111,6 +127,8 @@ export interface PlantingPlanSearchRecordInput {
   rotationStatus?: string | null;
   /** Whether the plan is a previous or follow-up crop in an allowed harvest overlap. */
   hasHarvestOverlap?: boolean;
+  /** Whether a plan date lies outside the crop's timing windows. */
+  hasTimingWindowFinding?: boolean;
 }
 
 export interface PlantingPlanSearchRecord extends PlantingPlanSearchRecordInput {
@@ -228,6 +246,7 @@ export function matchesPlantingPlanFilters(record: PlantingPlanSearchRecord, fil
   if (!includesIfSelected(filters.cropKeys, record.cropKey || null)) return false;
   if (!includesIfSelected<string>(filters.rotationStatuses, record.rotationStatus ?? null)) return false;
   if (filters.occupancy.includes('harvestOverlap') && !record.hasHarvestOverlap) return false;
+  if (filters.timing.includes('outsideWindow') && !record.hasTimingWindowFinding) return false;
   return DATE_FILTER_FIELDS.every((field) => (
     matchesMonthRange(record[DATE_FIELD_TO_RECORD_KEY[field]], filters.monthRanges[field])
   ));
@@ -275,6 +294,7 @@ export function getActivePlantingPlanFilterGroups(filters: PlantingPlanFilters):
   if (filters.cropKeys.length > 0) groups.push('crop');
   if (filters.rotationStatuses.length > 0) groups.push('rotation');
   if (filters.occupancy.length > 0) groups.push('occupancy');
+  if (filters.timing.length > 0) groups.push('timing');
   for (const field of DATE_FILTER_FIELDS) {
     if (isMonthRangeActive(filters.monthRanges[field])) groups.push(field);
   }
@@ -298,6 +318,8 @@ export function clearPlantingPlanFilterGroup(
       return { ...filters, rotationStatuses: [] };
     case 'occupancy':
       return { ...filters, occupancy: [] };
+    case 'timing':
+      return { ...filters, timing: [] };
     default:
       return withMonthRange(filters, group, OPEN_MONTH_RANGE);
   }

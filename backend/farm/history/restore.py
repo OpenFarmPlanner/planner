@@ -188,6 +188,9 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                 [instance for _object_id, instance in recreate],
                 [object_id for object_id, _instance in recreate],
             )
+            for object_id, snapshot in states.items():
+                if snapshot is not None and object_id in present_ids[model]:
+                    _restore_snapshot_children(model, object_id, snapshot)
 
 
 def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
@@ -218,6 +221,8 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
             elif key in link_attnames and (value is None or value in existing_public_ids):
                 setattr(crop, key, value)
         _restore_crop_family_from_snapshot(crop, revision.snapshot)
+        if 'timing_windows' in revision.snapshot:
+            crop._pending_timing_windows = revision.snapshot['timing_windows'] or []
         # A snapshot from before local pins existed had none; Crop.save() drops
         # restored pins again when the snapshot's link could not be restored.
         if 'library_pinned_fields' not in revision.snapshot:
@@ -227,6 +232,23 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         crop.save()
 
     return crop
+
+
+def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> None:
+    """Write back the child rows a snapshot carries next to its own columns.
+
+    A crop snapshot holds its own timing windows under ``timing_windows``;
+    one taken before windows existed has no such key and leaves them alone.
+    """
+    if model is not Crop or not isinstance(snapshot, dict) or 'timing_windows' not in snapshot:
+        return
+    from farm.services.timing_windows import TimingWindow, replace_crop_timing_windows
+
+    crop = Crop.all_objects.filter(pk=object_id).first()
+    if crop is not None:
+        replace_crop_timing_windows(
+            crop, [TimingWindow.from_dict(window) for window in snapshot['timing_windows'] or []],
+        )
 
 
 def _with_legacy_crop_family(model: type, snapshot: dict) -> dict:
@@ -311,6 +333,12 @@ def _recreate_rows_deleted_since(
 
     model.objects.bulk_create(recreated)
     recreated_ids = [instance.pk for instance in recreated]
+    snapshots_by_id = {revision.object_id: revision.snapshot for revision in _latest_revision_per_object(
+        project, entity_type, deleted_since,
+    )} if model is Crop else {}
+    for object_id in recreated_ids:
+        if object_id in snapshots_by_id:
+            _restore_snapshot_children(model, object_id, snapshots_by_id[object_id])
     queryset = model.objects.filter(pk__in=recreated_ids)
     if select_related:
         queryset = queryset.select_related(*select_related)
@@ -569,6 +597,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
                 except IntegrityError as exc:
                     raise BatchRevertError(entity_type) from exc
                 action = EntityRevision.ACTION_RESTORED
+            _restore_snapshot_children(model, object_id, snapshot)
             instance = manager.filter(pk=object_id).select_related().first()
             record_entity_revision(
                 project=project, entity_type=entity_type, object_id=object_id,

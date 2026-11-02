@@ -207,7 +207,8 @@
       "harvestStartDate": "Harvest start",
       "harvestEndDate": "Harvest end",
       "rotation": "Crop rotation",
-      "occupancy": "Bed occupancy"
+      "occupancy": "Bed occupancy",
+      "timing": "Time windows"
     },
     "monthFrom": "From",
     "monthTo": "To",
@@ -260,6 +261,9 @@
     },
     "occupancyOptions": {
       "harvestOverlap": "Harvest overlap"
+    },
+    "timingOptions": {
+      "outsideWindow": "Outside the time windows"
     }
   },
   "rotation": {
@@ -375,5 +379,12 @@
     "predecessor": "{{crop}} follows on this bed from {{date}}. The harvest must be finished by then.",
     "successor": "Starts before the planned harvest end of {{crop}} ({{date}}).",
     "iconAria": "Harvest overlap"
+  },
+  "timingWindow": {
+    "direct_sowing": "The sowing date is outside the direct sowing windows ({{windows}}).",
+    "pre_cultivation": "The sowing date is outside the propagation windows ({{windows}}).",
+    "planting": "The planting date is outside the transplanting windows ({{windows}}).",
+    "harvest": "The harvest start is outside the harvest windows ({{windows}}).",
+    "iconAria": "Date outside the time windows"
   }
 }

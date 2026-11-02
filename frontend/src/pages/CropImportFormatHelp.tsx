@@ -3,6 +3,7 @@ import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useState } from 'react';
 import { downloadCropImportTemplate } from '../crops/importTemplate';
 import { getLocalizedCropColumns } from '../crops/spreadsheetColumns';
+import { emptyTimingWindow, formatTimingWindow } from '../crops/timingWindows';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
@@ -33,6 +34,18 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
     t('import.help.rules.cultivationTypes', { example: cultivationLabels.join(', ') }),
     t('import.help.rules.wholeSeeds', { unit: seedUnitLabels.seeds_per_plant ?? 'seeds_per_plant' }),
     t('import.help.rules.color', { column: header('display_color') }),
+    t('import.help.rules.timingWindows', {
+      columns: columns.filter((column) => column.type === 'timingWindows').map((column) => column.header).join(', '),
+      decadeExample: formatTimingWindow(
+        { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 5, end_decade: 'mid' },
+        t,
+      ),
+      monthExample: formatTimingWindow(
+        { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 3, end_decade: 'late' },
+        t,
+      ),
+      weekExample: formatTimingWindow({ ...emptyTimingWindow('planting', 'iso_week'), start_week: 10, end_week: 14 }, t),
+    }),
     t('import.help.rules.matching', { confirm: t('import.confirmUpdates') }),
     t('import.help.rules.exportTip'),
   ];

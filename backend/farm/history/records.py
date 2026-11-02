@@ -78,6 +78,9 @@ def _serialize_instance(instance) -> dict[str, Any]:
         # Instance has already been deleted from the DB (hard delete) — fall back
         # to its still-populated in-memory field values.
         row = {field.attname: getattr(instance, field.attname) for field in instance._meta.concrete_fields}
+    if isinstance(instance, Crop):
+        # The crop's own timing windows are part of its revision (see Crop.save).
+        row['timing_windows'] = instance.timing_window_snapshot()
     return json.loads(json.dumps(row, cls=DjangoJSONEncoder))
 
 

@@ -80,7 +80,8 @@ the visible crop name is not reported as a synonym hit.
 
 ## Filters
 
-- Filters: **Standort, Parzelle, Anbauart, Kultur, Fruchtfolge** (each
+- Filters: **Standort, Parzelle, Anbauart, Kultur, Fruchtfolge, Belegung,
+  Zeiträume** (each
   multi-select) and **Pflanzzeitraum, Erntebeginn, Ernteende** (each month
   from / month to).
 - Values selected **within** one filter combine with **OR**; different
@@ -94,6 +95,11 @@ the visible crop name is not reported as a synonym hit.
   date (e.g. no harvest start because the crop has no growth duration) never
   matches an active range on it. The three ranges combine with AND like all
   filters.
+- **Zeiträume** has one option, "Außerhalb der Zeiträume": plans with a date
+  outside the crop's timing windows (see
+  [timing-windows.md](./timing-windows.md#planning-hints)). Like Fruchtfolge
+  and Belegung it stays in memory only and is never handed over on a season
+  switch.
 - **Fruchtfolge** matches the plan's crop rotation status: "Konflikt",
   "Akzeptiert" (accepted conflicts, which the table shows no icon for) and
   "Nicht prüfbar" (missing culture data). Its three options are fixed, not

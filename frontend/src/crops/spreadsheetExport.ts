@@ -2,6 +2,8 @@ import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
 import { formatCompanionCell, type CompanionItemsByKind } from './companions';
 import { getLocalizedCropColumns } from './spreadsheetColumns';
+import { formatTimingWindows, windowsOfKind } from './timingWindows';
+import type { TimingWindowKind } from '../api/types';
 import { formatIsoDate } from '../utils/isoDate';
 import { buildSpreadsheetFile } from './spreadsheetFile';
 import type { SpreadsheetFormat } from './spreadsheetTypes';
@@ -14,9 +16,18 @@ const MIME_TYPES: Record<SpreadsheetExportFormat, string> = {
   csv: 'text/csv;charset=utf-8',
 };
 
+type SheetT = (key: string, options?: Record<string, unknown>) => string;
+
+/** The canonical text of the crop's own windows of the column's kind (`<kind>_windows`). */
+const formatWindowCell = (crop: Crop, columnKey: string, t: SheetT): string | null => {
+  const kind = columnKey.replace(/_windows$/, '') as TimingWindowKind;
+  const text = formatTimingWindows(windowsOfKind(crop.timing_windows, kind), t);
+  return text || null;
+};
+
 export const buildSheetData = (
   crops: Crop[],
-  t: (key: string) => string,
+  t: SheetT,
   companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
 ): (string | number | null)[][] => {
   const cropColumns = getLocalizedCropColumns(t);
@@ -26,6 +37,7 @@ export const buildSheetData = (
     // The JSON format names the supplier `supplierName`; the sheet column is `supplier_name`.
     const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
+      if (col.type === 'timingWindows') return formatWindowCell(crop, col.key, t);
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;
       if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], t);
@@ -65,7 +77,7 @@ export const exportCropsToSpreadsheet = (
   crops: Crop[],
   format: SpreadsheetExportFormat,
   filename: string,
-  t: (key: string) => string,
+  t: SheetT,
   companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
 ): void => {
   downloadSpreadsheet(buildSheetData(crops, t, companionsByCrop), format, filename);

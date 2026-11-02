@@ -77,6 +77,7 @@ import type {
   SeasonSetupApplyResponse,
   RotationCheckResponse,
   RotationQueryParams,
+  TimingWindowFinding,
   BedSuggestionsResponse,
 } from './types';
 
@@ -413,6 +414,8 @@ export const plantingPlanAPI = {
     http.get<RotationCheckResponse>('/planting-plans/rotation-check/', { params }),
   bedSuggestions: (params: RotationQueryParams) =>
     http.get<BedSuggestionsResponse>('/planting-plans/bed-suggestions/', { params }),
+  timingWindowCheck: (params: { crop_id: number; planting_date: string; cultivation_type?: string }) =>
+    http.get<{ timing_window_findings: TimingWindowFinding[] }>('/planting-plans/timing-window-check/', { params }),
 };
 
 

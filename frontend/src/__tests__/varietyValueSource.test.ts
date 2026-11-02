@@ -1,14 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import {
   areCropValuesEqual,
+  buildDisplayedTimingWindows,
+  buildInheritedTimingWindows,
   buildVarietyInheritanceBaseline,
+  buildVarietyTimingWindowBaseline,
+  getVarietyOwnTimingWindowSource,
+  stripTimingWindowsMatchingBaseline,
   getEffectiveCropValue,
   getVarietyOwnValueSource,
   isEmptyCropValue,
   resolveSpacingEditCropId,
   stripValuesMatchingBaseline,
 } from '../crops/varietyValueSource';
-import type { Crop } from '../api/types';
+import type { Crop, CropTimingWindow } from '../api/types';
 
 describe('isEmptyCropValue', () => {
   it('treats null, undefined, empty string and empty arrays as empty', () => {
@@ -168,5 +173,62 @@ describe('resolveSpacingEditCropId', () => {
 
   it('keeps a Sorte whose own spacing overrides the Kultur with an unusable value', () => {
     expect(resolveSpacingEditCropId({ id: 7, general_crop: 3, distance_within_row_cm: 0 })).toBe(7);
+  });
+});
+
+describe('timing windows inherited per kind', () => {
+  const window = (kind: CropTimingWindow['kind'], startWeek: number, endWeek: number): CropTimingWindow => ({
+    kind,
+    unit: 'iso_week',
+    start_month: null,
+    start_decade: null,
+    end_month: null,
+    end_decade: null,
+    start_week: startWeek,
+    end_week: endWeek,
+  });
+  const ownDirect = window('direct_sowing', 12, 16);
+  const kulturHarvest = window('harvest', 28, 40);
+  const sorte = {
+    id: 2,
+    name: 'Karotte',
+    variety: 'Nantaise',
+    general_crop: 1,
+    timing_windows: [ownDirect],
+    effective_timing_windows: [
+      { ...ownDirect, inherited: false },
+      { ...kulturHarvest, inherited: true },
+    ],
+  } as Crop;
+
+  it('lists only the kinds a Sorte inherits', () => {
+    expect(buildInheritedTimingWindows(sorte)).toEqual([kulturHarvest]);
+    expect(buildInheritedTimingWindows({ ...sorte, general_crop: null })).toEqual([]);
+  });
+
+  it('shows own and inherited windows together, grouped by kind', () => {
+    expect(buildDisplayedTimingWindows(sorte)).toEqual([ownDirect, kulturHarvest]);
+  });
+
+  it('strips a kind that still equals its baseline, keeps a changed one', () => {
+    const changedHarvest = window('harvest', 30, 40);
+    expect(stripTimingWindowsMatchingBaseline([ownDirect, kulturHarvest], [kulturHarvest])).toEqual([ownDirect]);
+    expect(stripTimingWindowsMatchingBaseline([ownDirect, changedHarvest], [kulturHarvest]))
+      .toEqual([ownDirect, changedHarvest]);
+    // A kind without a baseline is the Sorte's own and always kept.
+    expect(stripTimingWindowsMatchingBaseline([ownDirect], [])).toEqual([ownDirect]);
+  });
+
+  it('prefills a new Sorte with the Kultur windows', () => {
+    const kultur = { id: 1, name: 'Karotte', variety: '', timing_windows: [kulturHarvest] } as Crop;
+    expect(buildVarietyTimingWindowBaseline(kultur)).toEqual([kulturHarvest]);
+  });
+
+  it('marks a kind as own only when it differs from the Kultur', () => {
+    const kultur = { id: 1, name: 'Karotte', variety: '', timing_windows: [kulturHarvest] } as Crop;
+    expect(getVarietyOwnTimingWindowSource([kulturHarvest], true, kultur, 'harvest')).toBeNull();
+    expect(getVarietyOwnTimingWindowSource([window('harvest', 30, 40)], true, kultur, 'harvest')).toBe('ownValue');
+    expect(getVarietyOwnTimingWindowSource([], true, kultur, 'harvest')).toBeNull();
+    expect(getVarietyOwnTimingWindowSource([window('harvest', 30, 40)], false, kultur, 'harvest')).toBeNull();
   });
 });

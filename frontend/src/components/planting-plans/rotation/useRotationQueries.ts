@@ -6,6 +6,7 @@ import type {
   RemainingAreaResponse,
   RotationCheckResponse,
   RotationQueryParams,
+  TimingWindowFinding,
 } from '../../../api/types';
 
 const ROTATION_QUERY_DEBOUNCE_MS = 250;
@@ -79,6 +80,31 @@ const fetchBedSuggestions = (params: RotationQueryParams) => plantingPlanAPI.bed
 const fetchRemainingArea = (params: Parameters<typeof plantingPlanAPI.remainingArea>[0]) => (
   plantingPlanAPI.remainingArea(params)
 );
+const fetchTimingWindowCheck = (params: Parameters<typeof plantingPlanAPI.timingWindowCheck>[0]) => (
+  plantingPlanAPI.timingWindowCheck(params)
+);
+
+/**
+ * The plan's timing-window hints as entered, live (docs/timing-windows.md):
+ * needs crop and planting date; the backend derives sowing and harvest dates.
+ */
+export function useTimingWindowCheck(
+  cropId: number | null,
+  plantingDate: string | null,
+  cultivationType: string,
+): RotationQueryResult<{ timing_window_findings: TimingWindowFinding[] }> {
+  const request = useMemo(() => {
+    if (!cropId || !plantingDate) {
+      return null;
+    }
+    return {
+      crop_id: cropId,
+      planting_date: plantingDate,
+      ...(cultivationType ? { cultivation_type: cultivationType } : {}),
+    };
+  }, [cropId, cultivationType, plantingDate]);
+  return useDebouncedRotationQuery(request, fetchTimingWindowCheck);
+}
 
 export interface RotationInput {
   cropId: number | null;

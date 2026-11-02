@@ -6,8 +6,10 @@ export type SpreadsheetColumnDef = {
    * `list`: several values in one cell, separated by commas, semicolons or
    *   line breaks; with `enumExport`/`enumImport` they are enum values.
    * `companions`: one neighbour per line (see crops/companions.ts).
+   * `timingWindows`: the windows of one kind as text ("Anfang März bis Ende
+   *   April; KW 30"); exported canonically, parsed by the backend import.
    */
-  type: 'string' | 'number' | 'boolean' | 'list' | 'companions';
+  type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows';
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
@@ -165,6 +167,36 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     headerKey: 'form.propagationDurationDays',
     aliases: ['anzuchtdauer', 'anzuchttage', 'propagation_duration_days'],
     type: 'number',
+  },
+  {
+    key: 'pre_cultivation_windows',
+    headerKey: 'timingWindows.kinds.pre_cultivation',
+    aliases: [
+      'anzucht', 'vorkultur', 'vorzucht', 'voranzucht', 'vorziehen', 'aussaat vorkultur',
+      'propagation', 'pre_cultivation_windows',
+    ],
+    type: 'timingWindows',
+  },
+  {
+    key: 'direct_sowing_windows',
+    headerKey: 'timingWindows.kinds.direct_sowing',
+    aliases: [
+      'direktsaat', 'aussaat freiland', 'aussaat ins freiland', 'freilandaussaat',
+      'direct sowing', 'direct_sowing_windows',
+    ],
+    type: 'timingWindows',
+  },
+  {
+    key: 'planting_windows',
+    headerKey: 'timingWindows.kinds.planting',
+    aliases: ['pflanzung', 'auspflanzen', 'pflanzzeit', 'transplanting', 'planting', 'planting_windows'],
+    type: 'timingWindows',
+  },
+  {
+    key: 'harvest_windows',
+    headerKey: 'timingWindows.kinds.harvest',
+    aliases: ['ernte', 'harvest', 'harvest_windows'],
+    type: 'timingWindows',
   },
   {
     key: 'harvest_method',

@@ -6,6 +6,7 @@ import type {
   SeedRateByCultivation,
 } from '../api/types';
 import { normalizeCropTags } from './cropTags';
+import { toTimingWindowPayload } from './timingWindows';
 import { isEmptySupplierDataRow } from './supplierDataRows';
 
 type SupplierDataDraft = CropSupplierData | CropSupplierDataInput;
@@ -165,6 +166,7 @@ export function normalizeCropFormData(crop: Partial<Crop>): Record<string, unkno
   normalized.supplier_data = normalizeSupplierRows(crop.supplier_data);
   normalized.tags = normalizeCropTags(crop.tags ?? []);
   normalized.library_pinned_fields = [...(crop.library_pinned_fields ?? [])].sort();
+  normalized.timing_windows = (crop.timing_windows ?? []).map(toTimingWindowPayload);
 
   return normalized;
 }

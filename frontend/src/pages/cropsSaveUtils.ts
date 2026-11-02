@@ -62,6 +62,10 @@ export function buildGeneralCropDraftForFirstVariety(
       (draft as Record<keyof Crop, Crop[keyof Crop]>)[field] = crop[field];
     }
   });
+  // Timing windows follow the inheritable fields (VARIETY_INHERITABLE_TIMING_WINDOW_KINDS).
+  if (copyValuesToCrop && crop.timing_windows?.length) {
+    draft.timing_windows = crop.timing_windows;
+  }
 
   return draft;
 }

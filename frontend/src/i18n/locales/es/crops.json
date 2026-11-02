@@ -32,7 +32,8 @@
     "reset": "Restablecer filtros",
     "openAdvanced": "Abrir filtros avanzados",
     "title": "Filtros",
-    "tag": "Etiquetas"
+    "tag": "Etiquetas",
+    "sowingMonth": "Se puede sembrar en"
   },
   "emptySearch": {
     "title": "No se han encontrado cultivos",
@@ -542,7 +543,8 @@
       "seedingRequirementType": "Tipo de necesidad de semillas",
       "supplier": "Proveedor",
       "image": "Imagen",
-      "selectedSeedDemandSupplier": "Proveedor para la necesidad de semillas"
+      "selectedSeedDemandSupplier": "Proveedor para la necesidad de semillas",
+      "timingWindows": "Periodos"
     },
     "objectTypes": {
       "crop": "Cultivo",
@@ -715,9 +717,12 @@
         "wholeSeeds": "Para «{{unit}}» solo se permiten números enteros.",
         "color": "«{{column}}» como código hexadecimal, p. ej. #2E7D32. Si falta, se elige un color.",
         "matching": "Una fila con el mismo nombre, variedad y proveedor que un cultivo existente solo lo actualiza tras «{{confirm}}».",
-        "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla."
+        "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla.",
+        "timingWindows": "«{{columns}}»: periodos en decenas del mes o en semanas, por ejemplo «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa varios periodos con «;». No se admiten fechas concretas."
       }
-    }
+    },
+    "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
+    "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa."
   },
   "library": {
     "openButton": "Importar desde la biblioteca",
@@ -1655,5 +1660,53 @@
     "publishSkipped_one": "{{count}} vecino se queda en el proyecto: es texto libre o un cultivo sin especie de cultivo.",
     "publishSkipped_many": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo.",
     "publishSkipped_other": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo."
+  },
+  "timingWindows": {
+    "sectionTitle": "Periodos",
+    "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa, el trasplante y la cosecha, en decenas del mes o en semanas. La planificación señala las fechas fuera de ellos.",
+    "kinds": {
+      "pre_cultivation": "Semillero",
+      "direct_sowing": "Siembra directa",
+      "planting": "Trasplante",
+      "harvest": "Cosecha"
+    },
+    "addWindow": "Añadir periodo",
+    "removeWindow": "Quitar periodo",
+    "unitLabel": "Unidad",
+    "unitMonth": "Mes",
+    "unitWeek": "Sem.",
+    "from": "Desde",
+    "to": "Hasta",
+    "month": "Mes",
+    "decade": "Decena del mes",
+    "week": "Semana",
+    "decades": {
+      "early": "Principios",
+      "mid": "Mediados",
+      "late": "Finales"
+    },
+    "weekOption": "Sem. {{week}}",
+    "wrapsYearEnd": "Abarca el cambio de año",
+    "incomplete": "Indica un inicio y un final.",
+    "inheritedFromCrop": "Tomado del cultivo",
+    "yearBarLabel": "Periodos en {{year}}",
+    "text": {
+      "decadeMonth": {
+        "early": "principios de {{month}}",
+        "mid": "mediados de {{month}}",
+        "late": "finales de {{month}}"
+      },
+      "range": "{{start}} a {{end}}",
+      "week": "semana {{week}}",
+      "weekRange": "semanas {{start}} a {{end}}"
+    },
+    "importErrors": {
+      "timing_window_not_recognized": "«{{value}}» no es una época del año. Puedes escribir, por ejemplo, «principios de marzo a finales de abril» o «semanas 10 a 14».",
+      "timing_window_open_end": "«{{value}}»: indica un inicio y un final, por ejemplo «marzo a mayo».",
+      "timing_window_ambiguous_slash": "«{{value}}» es ambiguo. Escribe «marzo a abril» para un periodo y «marzo; abril» para dos.",
+      "timing_window_day_dates": "No se admiten fechas concretas. Usa decenas del mes (por ejemplo «mediados de marzo») o semanas (por ejemplo «semana 11»).",
+      "timing_window_mixed_units": "No mezcles meses y semanas en un mismo periodo.",
+      "timing_window_invalid_week": "Las semanas van de 1 a 52."
+    }
   }
 }

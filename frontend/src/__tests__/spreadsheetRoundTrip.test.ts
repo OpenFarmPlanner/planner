@@ -1,6 +1,7 @@
 import i18n from '../i18n/config';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
-import type { Crop } from '../api/types';
+import type { Crop, CropTimingWindow } from '../api/types';
+import { emptyTimingWindow, formatTimingWindows } from '../crops/timingWindows';
 import { buildSheetData } from '../crops/spreadsheetExport';
 import { buildCropImportTemplateRows } from '../crops/importTemplate';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
@@ -71,6 +72,28 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries.map(pickEnums)).toEqual(
       ENUM_CROPS.map((crop) => pickEnums(crop as unknown as Record<string, unknown>)),
     );
+  });
+
+  it.each(languagePairs)('exports windows canonically in %s and reads them back while the UI is in %s', async (exportLanguage, importLanguage) => {
+    const exportT = i18n.getFixedT(exportLanguage, 'crops');
+    const windows = [
+      { ...emptyTimingWindow('pre_cultivation', 'decade'), start_month: 2, start_decade: 'mid', end_month: 3, end_decade: 'late' },
+      { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 5, end_decade: 'late' },
+      { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 30, end_week: 30 },
+      { ...emptyTimingWindow('harvest', 'iso_week'), start_week: 44, end_week: 8 },
+    ] as CropTimingWindow[];
+    const csv = buildSpreadsheetFile(buildSheetData([{ name: 'Kohl', timing_windows: windows } as Crop], exportT), 'csv') as string;
+    await i18n.changeLanguage(importLanguage);
+
+    const result = await parseSpreadsheetFile(csvFile(csv));
+
+    expect(result.warnings).toEqual([]);
+    expect(result.entries[0]).toMatchObject({
+      pre_cultivation_windows: formatTimingWindows(windows.slice(0, 1), exportT),
+      direct_sowing_windows: formatTimingWindows(windows.slice(1, 3), exportT),
+      harvest_windows: formatTimingWindows(windows.slice(3), exportT),
+    });
+    expect(result.entries[0]).not.toHaveProperty('planting_windows');
   });
 
   it("reads a user's own Latin-name column (\"Lateinische Bezeichnung\")", async () => {
@@ -163,7 +186,22 @@ describe('crop spreadsheet export → import round trip', () => {
     sowing_calculation_safety_percent_pre_cultivation: 20,
     display_color: '#d64192',
     notes: 'Stäben, ausgeizen; "Freiland", spät',
+    timing_windows: [
+      { ...emptyTimingWindow('pre_cultivation', 'decade'), start_month: 2, start_decade: 'mid', end_month: 3, end_decade: 'late' },
+      { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 4, start_decade: 'early', end_month: 4, end_decade: 'late' },
+      { ...emptyTimingWindow('planting', 'iso_week'), start_week: 19, end_week: 21 },
+      { ...emptyTimingWindow('harvest', 'decade'), start_month: 7, start_decade: 'mid', end_month: 10, end_decade: 'late' },
+      { ...emptyTimingWindow('harvest', 'iso_week'), start_week: 50, end_week: 2 },
+    ],
   } as unknown as Crop;
+
+  // The window columns hold the canonical text in the export's language.
+  const windowCells = (t: ReturnType<typeof i18n.getFixedT>): Record<string, string> => Object.fromEntries(
+    (['pre_cultivation', 'direct_sowing', 'planting', 'harvest'] as const).map((kind) => [
+      `${kind}_windows`,
+      formatTimingWindows((FULL_CROP.timing_windows ?? []).filter((window) => window.kind === kind), t),
+    ]),
+  );
 
   // Neighbours with and without a reason and a note, so the reason label is
   // read back in every language.
@@ -183,6 +221,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
+    ...windowCells(i18n.getFixedT('de', 'crops')),
     supplier_name: 'Bingenheimer Saatgut',
     good_companions: COMPANIONS.good,
     // "Kartoffel, Aubergine" names two neighbours that share the reason.
@@ -207,7 +246,8 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.warnings).toEqual([]);
     const [entry] = result.entries;
     const roundTripped = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, entry?.[key]]));
-    const expected = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, EXPECTED_IMPORT[key]]));
+    const expectedImport = { ...EXPECTED_IMPORT, ...windowCells(i18n.getFixedT(language, 'crops')) };
+    const expected = Object.fromEntries(CROP_COLUMNS.map(({ key }) => [key, expectedImport[key]]));
     expect(roundTripped).toEqual(expected);
   });
 

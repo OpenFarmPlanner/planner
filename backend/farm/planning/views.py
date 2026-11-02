@@ -26,6 +26,7 @@ from farm.services.bed_capacity import (
 )
 from farm.services.crop_display import format_crop_label
 from farm.services.crop_companions import CompanionService
+from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
@@ -402,6 +403,39 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 crop, params['planting_date'], active_project, service.general_crop_index,
             )
         return params, crop, service
+
+    @action(detail=False, methods=['get'], url_path='timing-window-check')
+    def timing_window_check(self, request):
+        """Timing-window hints for an unsaved crop/date/cultivation-type combination.
+
+        The planting-plan dialog asks this while the user edits; the same
+        service produces ``timing_window_findings`` on saved plans
+        (farm/services/timing_window_check.py). Hints only, never blocking.
+        """
+        crop_id, error_detail = _parse_optional_int(request.query_params.get('crop_id'), 'crop_id')
+        planting_date = parse_date(request.query_params.get('planting_date') or '')
+        cultivation_type = request.query_params.get('cultivation_type') or ''
+        valid_types = {value for value, _label in PlantingPlan.CULTIVATION_TYPE_CHOICES}
+        if error_detail is None and (crop_id is None or planting_date is None):
+            error_detail = 'crop_id and planting_date (YYYY-MM-DD) are required.'
+        if error_detail is None and cultivation_type and cultivation_type not in valid_types:
+            error_detail = 'Unknown cultivation_type.'
+        if error_detail:
+            return api_error_response(
+                code='invalid_timing_window_parameters', detail=error_detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        crop = Crop.objects.filter(pk=crop_id, project=request.active_project).first()
+        if crop is None:
+            return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
+        checker = TimingWindowChecker(request.active_project.pk)
+        candidate = PlantingPlan(
+            project=request.active_project, crop=crop,
+            planting_date=planting_date, cultivation_type=cultivation_type,
+        )
+        harvest_start, _harvest_end = candidate.calculate_effective_harvest_dates(checker.general_crop_index)
+        findings = checker.check_plan(candidate, harvest_start)
+        return Response({'timing_window_findings': [finding.as_dict() for finding in findings]})
 
     @action(detail=False, methods=['get'], url_path='rotation-check')
     def rotation_check(self, request):

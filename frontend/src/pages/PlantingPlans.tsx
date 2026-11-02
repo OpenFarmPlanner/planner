@@ -52,7 +52,7 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { HarvestOverlap, PlanCultivationType, SuccessionLimit } from "../api/types";
+import type { HarvestOverlap, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
 import {
   formatLocalizedNumberForInput,
@@ -136,6 +136,8 @@ import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanAc
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
+import { TimingWindowDateCell, TimingWindowIcon } from "../components/planting-plans/TimingWindowInfo";
+import { TIMING_WINDOW_KINDS_BY_DATE_FIELD } from "../components/planting-plans/useTimingWindowLines";
 import { getPredecessorOverlaps } from "../components/planting-plans/useHarvestOverlapLines";
 import {
   getTableRotationStatus,
@@ -284,6 +286,20 @@ function PlantingPlans() {
       row.isNew ? undefined : harvestOverlapsById?.get(row.id) ?? row.harvest_overlaps
     ),
     [harvestOverlapsById],
+  );
+  const getRowTimingWindowFindings = useCallback(
+    (row: PlantingPlanRow | undefined): TimingWindowFinding[] | undefined => (
+      !row || row.isNew ? undefined : row.timing_window_findings
+    ),
+    [],
+  );
+  const hasTimingWindowFinding = useCallback(
+    (row: PlantingPlanRow | undefined, field: keyof typeof TIMING_WINDOW_KINDS_BY_DATE_FIELD): boolean => (
+      (getRowTimingWindowFindings(row) ?? []).some((finding) => (
+        TIMING_WINDOW_KINDS_BY_DATE_FIELD[field].includes(finding.kind)
+      ))
+    ),
+    [getRowTimingWindowFindings],
   );
   const reloadPlans = useCallback(async (): Promise<void> => {
     setHarvestOverlapsById(null);
@@ -697,10 +713,16 @@ function PlantingPlans() {
     const overlaps = params.field === "harvest_end_date" ? getRowHarvestOverlaps(row) : null;
     return (
       <HarvestOverlapDateCell overlaps={overlaps} cellHasFocus={params.hasFocus}>
-        <SearchHighlightedText text={formatDateForDisplay(value)} />
+        <TimingWindowDateCell
+          findings={getRowTimingWindowFindings(row)}
+          kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD[params.field] ?? []}
+          cellHasFocus={params.hasFocus}
+        >
+          <SearchHighlightedText text={formatDateForDisplay(value)} />
+        </TimingWindowDateCell>
       </HarvestOverlapDateCell>
     );
-  }, [crops, formatDateForDisplay, getRowHarvestOverlaps, t]);
+  }, [crops, formatDateForDisplay, getRowHarvestOverlaps, getRowTimingWindowFindings, t]);
 
   // Read as primitive booleans, not the `columnVisibilityModel` object
   // itself, in the columns useMemo's dependency array below: the model's
@@ -908,7 +930,10 @@ function PlantingPlans() {
         isCellEditable: (params: GridCellParams<PlantingPlanRow>) =>
           getRowSowingSchedule(params.row)?.sowingDate != null,
         cellClassName: (params) => [
-          getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate ? "" : FULL_CELL_TOOLTIP_CELL_CLASS,
+          getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate
+            && !hasTimingWindowFinding(params.row as PlantingPlanRow, "sowing_date")
+            ? ""
+            : FULL_CELL_TOOLTIP_CELL_CLASS,
           getLinkedPartnerHighlightClassName(params),
         ].filter(Boolean).join(" "),
         renderCell: (params) => {
@@ -924,7 +949,13 @@ function PlantingPlans() {
             );
           }
           return (
-            <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+            <TimingWindowDateCell
+              findings={getRowTimingWindowFindings(params.row as PlantingPlanRow)}
+              kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.sowing_date}
+              cellHasFocus={params.hasFocus}
+            >
+              <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+            </TimingWindowDateCell>
           );
         },
         renderEditCell: (params) => {
@@ -988,9 +1019,18 @@ function PlantingPlans() {
           </AppTooltip>
         ),
         valueGetter: (value) => toGridDateValue(value),
-        cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
+        cellClassName: (params) => [
+          hasTimingWindowFinding(params.row as PlantingPlanRow, "planting_date") ? FULL_CELL_TOOLTIP_CELL_CLASS : "",
+          getLinkedPartnerHighlightClassName(params),
+        ].filter(Boolean).join(" "),
         renderCell: (params) => (
-          <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+          <TimingWindowDateCell
+            findings={getRowTimingWindowFindings(params.row as PlantingPlanRow)}
+            kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.planting_date}
+            cellHasFocus={params.hasFocus}
+          >
+            <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+          </TimingWindowDateCell>
         ),
         renderEditCell: (params) => (
           <DateEditCell
@@ -1023,7 +1063,7 @@ function PlantingPlans() {
         }),
         type: "date",
         valueGetter: (value) => toGridDateValue(value),
-        cellClassName: (params) => params.value
+        cellClassName: (params) => params.value && !hasTimingWindowFinding(params.row as PlantingPlanRow, "harvest_date")
           ? CALCULATED_COLUMN_CELL_CLASS
           : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`,
         renderCell: renderCalculatedHarvestDateCell,
@@ -1430,8 +1470,9 @@ function PlantingPlans() {
       harvestEndDate: toIsoDateString(row.harvest_end_date),
       rotationStatus: row.isNew ? null : getTableRotationStatus(row.rotation_status, row.rotation_findings),
       hasHarvestOverlap: (getRowHarvestOverlaps(row)?.length ?? 0) > 0,
+      hasTimingWindowFinding: (getRowTimingWindowFindings(row)?.length ?? 0) > 0,
     };
-  }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule, getRowHarvestOverlaps]);
+  }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getRowSowingSchedule, getRowHarvestOverlaps, getRowTimingWindowFindings]);
   const persistedRows = useMemo(() => getVisibleMobileRows(mobileRows), [mobileRows]);
   const search = usePlantingPlanSearch({
     rows: persistedRows,
@@ -2173,6 +2214,11 @@ function PlantingPlans() {
                     />
                     <CompanionWarningIcon
                       findings={item.companion_findings}
+                      fontSize="inherit"
+                      sx={{ ml: 0.5, verticalAlign: "middle" }}
+                    />
+                    <TimingWindowIcon
+                      findings={getRowTimingWindowFindings(item)}
                       fontSize="inherit"
                       sx={{ ml: 0.5, verticalAlign: "middle" }}
                     />

@@ -132,3 +132,61 @@ test.describe('crop edit dialog compact layout', () => {
     ]);
   });
 });
+
+/**
+ * The "Zeiträume" section: a row of unit switch, "Von"/"Bis" selects and the
+ * remove button must fit the full-screen phone dialog (wrapping "Bis" below
+ * "Von") and stay on one line on desktop. Functional layout assertions, no
+ * screenshot baseline: the rows are dynamic and the risk is overflow.
+ */
+test.describe('crop form timing windows section', () => {
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, `crop-form-windows-${testInfo.workerIndex}`);
+  });
+
+  async function addDirectSowingRow(dialog: Locator): Promise<Locator> {
+    const group = dialog.getByRole('group', { name: 'Direktsaat' });
+    const addButton = group.getByRole('button', { name: 'Zeitraum hinzufügen' });
+    await addButton.scrollIntoViewIfNeeded();
+    await addButton.click();
+    await group.getByLabel('Von: Monatsdrittel').selectOption({ label: 'Mitte' });
+    await group.getByLabel('Von: Monat', { exact: true }).selectOption({ label: 'November' });
+    await group.getByLabel('Bis: Monatsdrittel').selectOption({ label: 'Ende' });
+    await group.getByLabel('Bis: Monat', { exact: true }).selectOption({ label: 'Februar' });
+    await expect(group.getByText('Über den Jahreswechsel')).toBeVisible();
+    return group;
+  }
+
+  test('wraps "Bis" below "Von" and keeps the row inside the dialog at 375px', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    const dialog = await openEditCropDialog(page);
+    const group = await addDirectSowingRow(dialog);
+
+    const dialogBox = await inputBox(dialog);
+    const fromBox = await inputBox(group.getByLabel('Von: Monat', { exact: true }));
+    const toBox = await inputBox(group.getByLabel('Bis: Monat', { exact: true }));
+    const removeBox = await inputBox(group.getByRole('button', { name: 'Zeitraum entfernen' }));
+    expect(toBox.y).toBeGreaterThan(fromBox.y + fromBox.height - 1);
+    for (const box of [fromBox, toBox, removeBox]) {
+      expect(box.x).toBeGreaterThanOrEqual(dialogBox.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
+    }
+    await page.screenshot({ path: test.info().outputPath('timing-windows-375.png'), fullPage: false });
+  });
+
+  test('keeps switch, "Von", "Bis" and remove button on one line at 1440px', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const dialog = await openEditCropDialog(page);
+    const group = await addDirectSowingRow(dialog);
+
+    // Compare vertical centres: the switch is shorter than the selects.
+    const centre = (box: { y: number; height: number }) => ({ y: box.y + box.height / 2 });
+    await expectOneRow([
+      centre(await inputBox(group.getByRole('button', { name: 'Monat', exact: true }))),
+      centre(await inputBox(group.getByLabel('Von: Monat', { exact: true }))),
+      centre(await inputBox(group.getByLabel('Bis: Monat', { exact: true }))),
+      centre(await inputBox(group.getByRole('button', { name: 'Zeitraum entfernen' }))),
+    ]);
+    await page.screenshot({ path: test.info().outputPath('timing-windows-1440.png'), fullPage: false });
+  });
+});

@@ -113,6 +113,8 @@ import {
   formatPackageSizes,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
+import { CropTimingWindowsDetail } from './CropTimingWindowsDetail';
+import { canBeSownInMonth } from './timingWindows';
 import { usePlantFamilies } from './plantFamilies';
 
 
@@ -218,6 +220,7 @@ const detailSectionGridSx = {
         filters.growthDaysMax,
         filters.yieldMin,
         filters.yieldMax,
+        filters.sowingMonth,
       ];
       return filterValues.filter((v) => typeof v === 'string' && v.length > 0).length;
     },
@@ -323,6 +326,7 @@ const detailSectionGridSx = {
       ];
       const supplierMatches = selectedSupplierId === null
         || supplierIds.some((supplierId) => supplierId === selectedSupplierId);
+      const sowingMatches = canBeSownInMonth(crop, filters.sowingMonth);
 
       return familyMatches
         && tagMatches
@@ -330,7 +334,8 @@ const detailSectionGridSx = {
         && growthMatches
         && nutrientMatches
         && yieldMatches
-        && supplierMatches;
+        && supplierMatches
+        && sowingMatches;
     });
   }, [
     crops,
@@ -1197,6 +1202,10 @@ const detailSectionGridSx = {
                 )}
               </Box>
             </Box>
+
+            <Divider sx={{ mb: 2.5 }} />
+
+            <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
 
             <Divider sx={{ mb: 2.5 }} />
 

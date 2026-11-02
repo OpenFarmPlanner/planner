@@ -24,6 +24,7 @@ const emptyPrivateFilters: PersistedCropFilters = {
   yieldMin: '',
   yieldMax: '',
   selectedTagFilter: '',
+  sowingMonth: '',
 };
 
 const emptyPublicFilters: PublicCropFilterState = {
@@ -113,9 +114,28 @@ describe('CropFiltersPopover', () => {
       'Lieferant',
       'Wachstumsdauer min',
       'Wachstumsdauer max',
+      'Aussaat möglich im Monat',
       'Ertrag/m² min',
       'Ertrag/m² max',
     ].forEach((label) => expect(screen.getByLabelText(label)).toBeInTheDocument());
+  });
+
+  describe('the sowing-month filter', () => {
+    it('lists all twelve months behind an "all" entry', async () => {
+      const user = userEvent.setup();
+      renderPrivate();
+      await user.click(select('Aussaat möglich im Monat'));
+      const options = screen.getAllByRole('option').map((o) => o.textContent);
+      expect(options).toHaveLength(13);
+      expect(options.slice(0, 4)).toEqual(['Alle', 'Januar', 'Februar', 'März']);
+    });
+
+    it('reports the month number, not its label', async () => {
+      const user = userEvent.setup();
+      const { onFilterChange } = renderPrivate();
+      await pick(user, 'Aussaat möglich im Monat', 'April');
+      expect(onFilterChange).toHaveBeenCalledWith('sowingMonth', '4');
+    });
   });
 
   describe('the family filter', () => {

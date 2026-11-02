@@ -19,7 +19,15 @@ from farm.services.crop_companions import (
     preview_row_companions,
 )
 from farm.services.crop_inheritance import CROP_SPECIES_INVARIANT_FIELDS
+from farm.services.timing_windows import (
+    TIMING_WINDOW_KINDS,
+    TimingWindow,
+    load_timing_window_index,
+    sort_windows,
+)
 from farm.utils import normalize_supplier_name, normalize_text
+
+from .timing_windows import PARSE_ERROR_MESSAGES, TimingWindowParseError, parse_timing_window_cell
 
 _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
 _COMPANION_FIELDS = ('good_companions', 'bad_companions')
@@ -28,6 +36,67 @@ _COMPANION_FIELDS = ('good_companions', 'bad_companions')
 def _pop_companions(crop_data: dict) -> dict[str, Any]:
     """Take the neighbour columns off a row; they are applied once every row exists."""
     return {name: crop_data.pop(name) for name in _COMPANION_FIELDS if name in crop_data}
+
+
+# One text column per window kind ("Anfang März bis Ende April; KW 30").
+TIMING_WINDOW_COLUMNS: dict[str, str] = {f'{kind}_windows': kind for kind in TIMING_WINDOW_KINDS}
+
+
+def _own_windows(crop: Crop | None) -> list[TimingWindow]:
+    if crop is None or crop.pk is None:
+        return []
+    return load_timing_window_index([crop.pk]).get(crop.pk, [])
+
+
+def apply_timing_window_cells(crop_data: dict, existing_crop: Crop | None) -> list[dict[str, Any]]:
+    """Turn the window columns of a row into ``timing_windows``; return one issue per rejected cell.
+
+    A cell replaces the windows of its kind only; kinds without a cell keep the
+    crop's windows (an empty cell changes nothing, like for every other
+    column). A rejected cell is dropped with an issue and the rest of the row
+    is imported.
+    """
+    cells = {key: crop_data.pop(key) for key in TIMING_WINDOW_COLUMNS if key in crop_data}
+    parsed: dict[str, list[TimingWindow]] = {}
+    issues: list[dict[str, Any]] = []
+    for column, value in cells.items():
+        if value is None or not str(value).strip():
+            continue
+        try:
+            parsed[TIMING_WINDOW_COLUMNS[column]] = parse_timing_window_cell(
+                TIMING_WINDOW_COLUMNS[column], value,
+            )
+        except TimingWindowParseError as error:
+            issues.append({
+                'field': column,
+                'value': error.value,
+                'code': error.code,
+                'message': PARSE_ERROR_MESSAGES[error.code],
+            })
+    if parsed:
+        if 'timing_windows' in crop_data:
+            base = [TimingWindow.from_dict(window) for window in crop_data['timing_windows'] or []]
+        else:
+            base = _own_windows(existing_crop)
+        kept = [window for window in base if window.kind not in parsed]
+        added = [window for windows in parsed.values() for window in windows]
+        crop_data['timing_windows'] = [window.as_dict() for window in sort_windows(kept + added)]
+    return issues
+
+
+def _timing_window_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
+    """One diff entry per window kind the row changes, under that kind's column name."""
+    if 'timing_windows' not in import_data:
+        return []
+    current = [window.as_dict() for window in _own_windows(existing_crop)]
+    new = list(import_data['timing_windows'] or [])
+    diff = []
+    for column, kind in TIMING_WINDOW_COLUMNS.items():
+        current_kind = [window for window in current if window['kind'] == kind]
+        new_kind = [window for window in new if window['kind'] == kind]
+        if current_kind != new_kind:
+            diff.append({'field': column, 'current': current_kind, 'new': new_kind})
+    return diff
 
 # Read-only and auto-generated fields are excluded: a diff is only useful for
 # values the import could actually change.
@@ -207,6 +276,7 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
                     'new': import_value,
                 })
 
+    diff.extend(_timing_window_diff(existing_crop, import_data))
     supplier_diff = _supplier_diff(existing_crop, import_data)
     if supplier_diff is not None:
         diff.append(supplier_diff)
@@ -266,6 +336,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
             companions = preview_row_companions(resolver, crop_data)
+            timing_window_issues = apply_timing_window_cells(crop_data, matching_crop)
 
             if matching_crop:
                 result = {
@@ -283,6 +354,8 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
                 }
             if companions is not None:
                 result['companions'] = companions
+            if timing_window_issues:
+                result['timing_window_issues'] = timing_window_issues
             results.append(result)
         except Exception as error:
             results.append({
@@ -304,6 +377,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
     updated_count = 0
     skipped_count = 0
     errors: list[dict] = []
+    timing_window_issues: list[dict[str, Any]] = []
     companion_rows: list[tuple[Crop, dict[str, Any]]] = []
 
     for idx, crop_data in enumerate(rows):
@@ -322,6 +396,10 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 if not confirm_updates:
                     skipped_count += 1
                     continue
+                timing_window_issues.extend(
+                    {'index': idx, **issue}
+                    for issue in apply_timing_window_cells(crop_data, matching_crop)
+                )
                 serializer = CropSerializer(
                     matching_crop, data=crop_data, partial=True,
                     context={'project': project, 'defer_companion_linking': True},
@@ -345,6 +423,9 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # `selected_seed_demand_supplier` have no project to compare
                 # against on a create (there is no bound instance either).
                 _resolve_crop_species(crop_data)
+                timing_window_issues.extend(
+                    {'index': idx, **issue} for issue in apply_timing_window_cells(crop_data, None)
+                )
                 serializer = CropSerializer(
                     data=crop_data, context={'project': project, 'defer_companion_linking': True},
                 )
@@ -364,6 +445,8 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
         'skipped_count': skipped_count,
         'errors': errors,
     }
+    if timing_window_issues:
+        summary['timing_window_issues'] = timing_window_issues
     if companion_rows:
         summary['companions'] = apply_import_companions(project.id, companion_rows).as_dict()
     # Once for the whole file: neighbours entered as free text before these

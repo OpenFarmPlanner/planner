@@ -9,6 +9,7 @@ import {
   PLANTING_PLAN_SORT_KEYS,
   OCCUPANCY_FILTER_OPTIONS,
   ROTATION_FILTER_STATUSES,
+  TIMING_FILTER_OPTIONS,
   withMonthRange,
   type FilterOption,
   type MonthRange,
@@ -206,6 +207,15 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
         }))}
         selected={filters.occupancy}
         onChange={(occupancy) => setFilters({ ...filters, occupancy })}
+      />
+      <ChipGroup
+        label={t('plantingPlans:search.fields.timing')}
+        options={TIMING_FILTER_OPTIONS.map((option) => ({
+          value: option,
+          label: t(`plantingPlans:search.timingOptions.${option}`),
+        }))}
+        selected={filters.timing}
+        onChange={(timing) => setFilters({ ...filters, timing })}
       />
       {DATE_FILTER_FIELDS.map((field) => (
         <MonthRangeField

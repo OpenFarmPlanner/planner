@@ -735,6 +735,7 @@ class Crop(TimestampedModel):
         previous = None
         if self.pk:
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
+        previous_windows = self.timing_window_snapshot() if previous else []
 
         self._normalize_library_pinned_fields()
         self._flag_source_divergence(previous)
@@ -753,6 +754,9 @@ class Crop(TimestampedModel):
         super().save(*args, **kwargs)
 
         current = Crop.all_objects.filter(pk=self.pk).values().first() or {}
+        current['timing_windows'] = self._save_pending_timing_windows(previous_windows)
+        if previous:
+            previous['timing_windows'] = previous_windows
         changed_fields = self._compute_changed_fields(previous, current)
         self._record_save_revision(current, previous, changed_fields)
 
@@ -762,6 +766,47 @@ class Crop(TimestampedModel):
         ]
         if timing_changed_fields:
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
+
+    @property
+    def pending_timing_windows(self) -> list[Any] | None:
+        """Timing windows the next ``save()`` writes as the crop's own (``None``: keep them).
+
+        A property so ``Crop(pending_timing_windows=...)``, ``objects.create()``
+        and a serializer's ``setattr`` all hand the list to ``save()``.
+        """
+        return getattr(self, '_pending_timing_windows', None)
+
+    @pending_timing_windows.setter
+    def pending_timing_windows(self, windows: list[Any] | None) -> None:
+        self._pending_timing_windows = windows
+
+    def timing_window_snapshot(self) -> list[dict[str, Any]]:
+        """The crop's own timing windows as stored in a history snapshot."""
+        from farm.services.timing_windows import load_timing_window_index
+
+        if not self.pk:
+            return []
+        windows = load_timing_window_index([self.pk]).get(self.pk, [])
+        return [window.as_dict() for window in windows]
+
+    def _save_pending_timing_windows(self, previous_windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Replace the windows when a write set ``_pending_timing_windows``; return the current ones.
+
+        The serializer and a history restore hand the new list over this way so
+        the crop's revision records the windows together with its fields.
+        """
+        from farm.services.timing_windows import TimingWindow, replace_crop_timing_windows, sort_windows
+
+        pending = getattr(self, '_pending_timing_windows', None)
+        if pending is None:
+            return previous_windows
+        del self._pending_timing_windows
+        windows = sort_windows(
+            window if isinstance(window, TimingWindow) else TimingWindow.from_dict(window)
+            for window in pending
+        )
+        replace_crop_timing_windows(self, windows)
+        return [window.as_dict() for window in windows]
 
     def _normalize_library_pinned_fields(self) -> None:
         """Drop pins that no longer hold: without a sync link, or on a cleared field."""
@@ -1844,3 +1889,89 @@ class CropCompanion(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.crop} {self.kind} {self.companion_crop or self.companion_family_id or self.companion_text}"
+
+
+class CropTimingWindow(models.Model):
+    """One Anzucht, Direktsaat, Pflanzung or Ernte window of a project crop.
+
+    Stored in the unit it was entered in (thirds of a month or ISO weeks) and
+    resolved to dates only for a concrete year, by
+    ``farm/services/timing_windows.py``. A Sorte without own windows of a kind
+    inherits that kind from its Kultur. Project data only: never published to,
+    synced with or compared against the crop library. Details:
+    ``docs/timing-windows.md``.
+    """
+
+    KIND_PRE_CULTIVATION = 'pre_cultivation'
+    KIND_DIRECT_SOWING = 'direct_sowing'
+    KIND_PLANTING = 'planting'
+    KIND_HARVEST = 'harvest'
+    KIND_CHOICES = [
+        (KIND_PRE_CULTIVATION, 'Pre-cultivation (Anzucht)'),
+        (KIND_DIRECT_SOWING, 'Direct sowing'),
+        (KIND_PLANTING, 'Planting out'),
+        (KIND_HARVEST, 'Harvest'),
+    ]
+    UNIT_DECADE = 'decade'
+    UNIT_ISO_WEEK = 'iso_week'
+    UNIT_CHOICES = [
+        (UNIT_DECADE, 'Thirds of a month'),
+        (UNIT_ISO_WEEK, 'ISO calendar weeks'),
+    ]
+
+    crop = models.ForeignKey(Crop, on_delete=models.CASCADE, related_name='timing_windows')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES)
+    start_month = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Month 1-12 (unit decade).')
+    start_decade = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Third of the start month (unit decade): 1 = day 1-10, 2 = day 11-20, 3 = day 21 to month end.',
+    )
+    end_month = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Month 1-12 (unit decade).')
+    end_decade = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text='Third of the end month (unit decade), as start_decade.',
+    )
+    start_week = models.PositiveSmallIntegerField(null=True, blank=True, help_text='ISO week 1-52 (unit iso_week).')
+    end_week = models.PositiveSmallIntegerField(null=True, blank=True, help_text='ISO week 1-52 (unit iso_week).')
+    position = models.PositiveSmallIntegerField(default=0, help_text='Order within the crop and kind.')
+
+    class Meta:
+        ordering = ['crop_id', 'position', 'id']
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(kind__in=['pre_cultivation', 'direct_sowing', 'planting', 'harvest']),
+                name='crop_timing_window_kind_valid',
+            ),
+            models.CheckConstraint(
+                condition=Q(unit__in=['decade', 'iso_week']),
+                name='crop_timing_window_unit_valid',
+            ),
+            models.CheckConstraint(
+                # NULL would pass a CHECK, so the unit's own fields are tested for it explicitly.
+                condition=~Q(unit='decade') | (
+                    Q(
+                        start_month__isnull=False, end_month__isnull=False,
+                        start_decade__isnull=False, end_decade__isnull=False,
+                    )
+                    & Q(start_month__gte=1, start_month__lte=12)
+                    & Q(end_month__gte=1, end_month__lte=12)
+                    & Q(start_decade__gte=1, start_decade__lte=3)
+                    & Q(end_decade__gte=1, end_decade__lte=3)
+                    & Q(start_week__isnull=True, end_week__isnull=True)
+                ),
+                name='crop_timing_window_decade_fields',
+            ),
+            models.CheckConstraint(
+                condition=~Q(unit='iso_week') | (
+                    Q(start_week__isnull=False, end_week__isnull=False)
+                    & Q(start_week__gte=1, start_week__lte=52)
+                    & Q(end_week__gte=1, end_week__lte=52)
+                    & Q(start_month__isnull=True, end_month__isnull=True)
+                    & Q(start_decade__isnull=True, end_decade__isnull=True)
+                ),
+                name='crop_timing_window_iso_week_fields',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.crop_id} {self.kind} {self.unit}'
