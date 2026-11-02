@@ -1623,7 +1623,7 @@
       "addBad": "Añadir mal vecino",
       "moveToGood": "Mover a buenos vecinos",
       "moveToBad": "Mover a malos vecinos",
-      "libraryDescription": "Anota qué cultivos se llevan bien y cuáles no. Un vecino es una especie de cultivo de la biblioteca o una familia botánica."
+      "libraryDescription": "Los vecinos pueden ser especies de cultivo de la biblioteca o familias botánicas y se aplican a todas las variedades."
     },
     "reasons": {
       "competition": "Competencia",

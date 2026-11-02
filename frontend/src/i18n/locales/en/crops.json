@@ -1584,7 +1584,7 @@
       "addBad": "Add bad neighbor",
       "moveToGood": "Move to good neighbors",
       "moveToBad": "Move to bad neighbors",
-      "libraryDescription": "Note which crops grow well together and which do not. A neighbor is a crop species from the library or a crop family."
+      "libraryDescription": "Neighbors can be crop species from the library or crop families and apply to all varieties."
     },
     "reasons": {
       "competition": "Competition",

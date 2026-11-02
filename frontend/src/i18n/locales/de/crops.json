@@ -1584,7 +1584,7 @@
       "addBad": "Schlechten Nachbarn hinzufügen",
       "moveToGood": "Zu den guten Nachbarn verschieben",
       "moveToBad": "Zu den schlechten Nachbarn verschieben",
-      "libraryDescription": "Halte fest, welche Kulturen sich gut vertragen und welche nicht. Ein Nachbar ist eine Kulturart der Bibliothek oder eine Pflanzenfamilie."
+      "libraryDescription": "Nachbarn können Kulturarten der Bibliothek oder Pflanzenfamilien sein und gelten für alle Sorten."
     },
     "reasons": {
       "competition": "Konkurrenz",

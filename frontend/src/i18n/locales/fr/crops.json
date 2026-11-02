@@ -1623,7 +1623,7 @@
       "addBad": "Ajouter un mauvais voisin",
       "moveToGood": "Déplacer vers les bons voisins",
       "moveToBad": "Déplacer vers les mauvais voisins",
-      "libraryDescription": "Notez quelles cultures s'associent bien et lesquelles non. Un voisin est une espèce cultivée de la bibliothèque ou une famille botanique."
+      "libraryDescription": "Les voisins peuvent être des espèces cultivées de la bibliothèque ou des familles botaniques et s'appliquent à toutes les variétés."
     },
     "reasons": {
       "competition": "Concurrence",

@@ -102,6 +102,11 @@ test.describe('crop edit dialog compact layout', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const dialog = await openEditCropDialog(page);
 
+    // md width and a fixed height of the viewport minus the dialog margins.
+    const paperBox = await inputBox(dialog);
+    expect(paperBox.width).toBeLessThanOrEqual(900);
+    expect(Math.abs(paperBox.height - (900 - 64))).toBeLessThan(2);
+
     const nameBox = await fieldBox(dialog.getByLabel(/^Name/));
     const botanicalBox = await fieldBox(dialog.getByLabel('Lateinischer Name'));
     const tagsBox = await fieldBox(dialog.getByRole('combobox', { name: 'Tags' }));

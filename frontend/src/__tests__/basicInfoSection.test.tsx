@@ -230,6 +230,29 @@ describe('BasicInfoSection', () => {
     expect(onChange).toHaveBeenCalledWith('rotation_break_years', null);
   });
 
+  it('keeps the rotation-break label inside the empty field like the other fields', async () => {
+    const { rerender } = render(
+      <BasicInfoSection formData={{ name: 'Roggen' }} errors={{}} onChange={vi.fn()} t={t} />,
+    );
+
+    const label = (): HTMLElement => document.querySelector(
+      `label[for="${screen.getByRole('spinbutton', { name: 'form.rotationBreakYears' }).id}"]`,
+    ) as HTMLElement;
+    expect(label()).toHaveAttribute('data-shrink', 'false');
+    // The info icon stays reachable inside the floating label.
+    const infoIcon = screen.getByRole('img', { name: 'form.rotationBreakYearsTooltip' });
+    expect(infoIcon).toHaveStyle({ pointerEvents: 'auto' });
+    fireEvent.mouseOver(infoIcon);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.rotationBreakYearsTooltip');
+
+    // The family default shown as placeholder counts as content: the label shrinks.
+    rerender(
+      <BasicInfoSection formData={{ name: 'Möhre', crop_family: 'Apiaceae' }} errors={{}} onChange={vi.fn()} t={t} />,
+    );
+    await screen.findByRole('spinbutton', { name: 'form.rotationBreakYears' });
+    await vi.waitFor(() => expect(label()).toHaveAttribute('data-shrink', 'true'));
+  });
+
   it('keeps the crop-rotation fields editable with no info icon by default', () => {
     render(
       <BasicInfoSection

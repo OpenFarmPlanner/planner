@@ -97,6 +97,8 @@ function FieldInfoIcon({ title }: { title: string }) {
           verticalAlign: 'middle',
           color: 'text.secondary',
           cursor: 'help',
+          // A label inside the empty field ignores the pointer; the icon must not.
+          pointerEvents: 'auto',
           borderRadius: '50%',
           '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
         }}
@@ -530,8 +532,9 @@ export function BasicInfoSection({
             slotProps={{
               // The icon in the label must not become part of the input's name.
               htmlInput: { min: 0, inputMode: 'numeric', 'aria-label': t('form.rotationBreakYears') },
-              // A floating label ignores the pointer, so the icon needs the shrunk one.
-              inputLabel: showRotationBreakInfo || rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
+              // Like every other field the label sits inside the empty field; it
+              // shrinks for a value or for the family default shown as placeholder.
+              inputLabel: rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
             }}
             disabled={speciesInvariantFieldsReadOnly}
           />

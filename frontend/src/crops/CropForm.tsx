@@ -163,6 +163,13 @@ interface CropFormProps {
 // Default color for display color picker
 const DEFAULT_DISPLAY_COLOR = '#3498db';
 
+// A fixed height (not only a maximum) keeps the dialog from jumping when
+// sections appear or disappear; only the content between the fixed title and
+// footer scrolls. Below `sm` the dialog is full screen anyway.
+const cropFormPaperSx = {
+  height: { sm: 'calc(100dvh - 64px)' },
+} as const;
+
 const cropFormLayoutSx = {
   display: 'flex',
   flexDirection: 'column',
@@ -1368,9 +1375,10 @@ export function CropForm({
         }
       }}
       aria-labelledby="crop-form-dialog-title"
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
       fullScreen={fullScreen}
+      slotProps={{ paper: { sx: cropFormPaperSx } }}
     >
       {/* A column flexbox, so the content scrolls between the title and the
           fixed footer also when the dialog fills the screen on a phone. */}
@@ -1386,7 +1394,8 @@ export function CropForm({
           ref={dialogContentRef}
           dividers
           sx={{
-            maxHeight: { xs: 'none', sm: '70vh' },
+            flex: '1 1 auto',
+            minHeight: 0,
             overscrollBehavior: 'contain',
             '&:focus': {
               outline: 'none',
@@ -1398,23 +1407,26 @@ export function CropForm({
             <Typography variant="h6">{t('form.generalInfoSectionTitle')}</Typography>
             {!isProjectForm ? (
               <Box
+                data-testid="public-crop-identity"
                 sx={{
                   border: '1px solid',
                   borderColor: 'divider',
                   borderRadius: 1,
                   px: 1.5,
-                  py: 1.25,
+                  py: 0.75,
                   bgcolor: 'action.hover',
                 }}
               >
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                  {t('form.publicCropIdentityLabel')}
-                </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-                  {cropIdentityLabel || t('noData')}
-                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 1 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                    {cropIdentityLabel || t('noData')}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('form.publicCropIdentityLabel')}
+                  </Typography>
+                </Box>
                 {typeof importedCopiesCount === 'number' ? (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     {t('form.publicCropImportedCopiesCount', { count: importedCopiesCount })}
                   </Typography>
                 ) : null}
