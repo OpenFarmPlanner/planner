@@ -1611,7 +1611,7 @@
     "form": {
       "neighbor": "Voisin",
       "wholeFamily": "{{family}} (toute la famille)",
-      "groupNoFamily": "Sans famille botanique",
+      "noFamily": "Sans famille botanique",
       "reason": "Raison",
       "note": "Note",
       "neighborRequired": "Choisissez un voisin.",

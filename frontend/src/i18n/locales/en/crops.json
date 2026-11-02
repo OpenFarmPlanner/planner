@@ -1572,7 +1572,7 @@
     "form": {
       "neighbor": "Neighbor",
       "wholeFamily": "{{family}} (whole family)",
-      "groupNoFamily": "No crop family",
+      "noFamily": "No crop family",
       "reason": "Reason",
       "note": "Note",
       "neighborRequired": "Choose a neighbor.",

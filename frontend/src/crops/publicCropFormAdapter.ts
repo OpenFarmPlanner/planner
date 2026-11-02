@@ -67,8 +67,8 @@ export function publicCropToCropFormData(crop: PublicCrop): Crop {
   return {
     id: crop.id,
     name: crop.name,
-    variety: crop.variety ?? '',
     crop_species: crop.crop_species ?? null,
+    variety: crop.variety ?? '',
     notes: originalNotes,
     crop_family: crop.crop_family ?? null,
     nutrient_demand: crop.nutrient_demand ?? '',

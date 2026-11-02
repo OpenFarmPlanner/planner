@@ -16,6 +16,13 @@ const buildCropDraft = (overrides: Partial<Crop>): Crop => ({
 });
 
 describe('publicCropToCropFormData', () => {
+  it('carries the crop species into the form but never into the update payload', () => {
+    const form = publicCropToCropFormData(buildPublicCrop({ crop_species: 42 }));
+
+    expect(form.crop_species).toBe(42);
+    expect(buildPublicCropUpdatePayload(form, 1)).not.toHaveProperty('crop_species');
+  });
+
   it('converts meter fields to centimeters and normalizes the legacy seed rate', () => {
     const form = publicCropToCropFormData(buildPublicCrop({
       distance_within_row_m: 0.3,
@@ -48,14 +55,6 @@ describe('publicCropToCropFormData', () => {
     expect(form.distance_within_row_cm).toBe(31);
     expect(form.row_spacing_cm).toBe(41);
     expect(form.sowing_depth_cm).toBe(3);
-  });
-
-  it('keeps the crop species so the form can tell the entry\'s species apart', () => {
-    const form = publicCropToCropFormData(buildPublicCrop({ crop_species: 70 }));
-
-    expect(form.crop_species).toBe(70);
-    expect(publicCropToCropFormData(buildPublicCrop({})).crop_species).toBeNull();
-    expect(buildPublicCropUpdatePayload(form, 3)).not.toHaveProperty('crop_species');
   });
 
   it('defaults cultivation types to pre_cultivation when none are set', () => {

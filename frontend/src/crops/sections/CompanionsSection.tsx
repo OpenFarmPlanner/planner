@@ -23,7 +23,9 @@ import {
   COMPANION_KINDS,
   COMPANION_REASONS,
   companionReasonLabelKey,
+  companionTargetKey,
   emptyCompanionFormRow,
+  type CompanionFormOption,
   type CompanionFormRow,
   type CompanionFormTarget,
 } from '../companions';
@@ -114,7 +116,6 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
                   row={row}
                   divided={index > 0}
                   options={options}
-                  optionGroup={state.optionGroup}
                   allowFreeText={allowFreeText}
                   error={errors[row.key]}
                   disabled={disabled}
@@ -133,8 +134,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
 interface CompanionFormRowFieldsProps {
   row: CompanionFormRow;
   divided: boolean;
-  options: CompanionFormTarget[];
-  optionGroup: CompanionFormRowsState['optionGroup'];
+  options: CompanionFormOption[];
   allowFreeText: boolean;
   error?: 'required' | 'duplicate';
   disabled: boolean;
@@ -150,7 +150,6 @@ function CompanionFormRowFields({
   row,
   divided,
   options,
-  optionGroup,
   allowFreeText,
   error,
   disabled,
@@ -176,22 +175,24 @@ function CompanionFormRowFields({
         borderColor: 'divider',
       }}
     >
-      <Autocomplete<CompanionFormTarget, false, false, boolean>
+      {/* The row's value is a plain target; only the options carry their group. */}
+      <Autocomplete<CompanionFormTarget & { group?: string }, false, false, boolean>
         freeSolo={allowFreeText}
         size="small"
         sx={{ flex: { xs: '1 1 0', sm: '1 1 200px' }, minWidth: 0, order: 0 }}
         options={options}
         value={row.target}
         disabled={disabled}
-        groupBy={(option) => optionGroup(option) ?? t('companions.form.groupNoFamily')}
+        groupBy={(option) => option.group ?? ''}
         getOptionLabel={(option) => (typeof option === 'string' ? option : option.label)}
+        getOptionKey={(option) => (typeof option === 'string' ? option : companionTargetKey(option))}
+        isOptionEqualToValue={(option, value) => (
+          typeof value !== 'string' && companionTargetKey(option) === companionTargetKey(value)
+        )}
         renderOption={({ key, ...optionProps }, option) => (
           <li key={key} {...optionProps}>
             {option.type === 'family' ? t('companions.form.wholeFamily', { family: option.label }) : option.label}
           </li>
-        )}
-        isOptionEqualToValue={(option, value) => (
-          typeof value !== 'string' && option.type === value.type && option.label === value.label
         )}
         onChange={(_event, value) => {
           if (typeof value === 'string') {
@@ -205,7 +206,9 @@ function CompanionFormRowFields({
           // Typed text that matches no option is kept as a free-text neighbour.
           if (!allowFreeText || reason !== 'input') return;
           const text = value.trim();
-          const match = options.find((option) => option.label.toLocaleLowerCase() === text.toLocaleLowerCase());
+          const matches = options.filter((option) => option.label.toLocaleLowerCase() === text.toLocaleLowerCase());
+          // A crop wins over a family of the same name.
+          const match = matches.find((option) => option.type !== 'family') ?? matches[0];
           onChange({ target: match ?? (text ? { type: 'text', text, label: text } : null) });
         }}
         renderInput={(params) => (
