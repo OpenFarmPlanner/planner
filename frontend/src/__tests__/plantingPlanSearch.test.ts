@@ -238,6 +238,24 @@ describe('planting plan filters', () => {
     expect(ids([])).toEqual([31, 32, 33]);
   });
 
+  it('filters by a date outside the crop\'s timing windows', () => {
+    const records = [
+      makeRecord({ id: 41, hasTimingWindowFinding: true }),
+      makeRecord({ id: 42, hasTimingWindowFinding: false }),
+      makeRecord({ id: 43 }),
+    ];
+    const ids = (timing: PlantingPlanFilters['timing']): number[] => records
+      .filter((record) => matchPlantingPlan(record, [], { ...EMPTY_PLANTING_PLAN_FILTERS, timing }).matches)
+      .map((record) => record.id);
+
+    expect(ids(['outsideWindow'])).toEqual([41]);
+    expect(ids([])).toEqual([41, 42, 43]);
+    expect(getActivePlantingPlanFilterGroups({ ...EMPTY_PLANTING_PLAN_FILTERS, timing: ['outsideWindow'] }))
+      .toEqual(['timing']);
+    expect(clearPlantingPlanFilterGroup({ ...EMPTY_PLANTING_PLAN_FILTERS, timing: ['outsideWindow'] }, 'timing'))
+      .toEqual(EMPTY_PLANTING_PLAN_FILTERS);
+  });
+
   it('matches "not checkable" exactly where the table shows the icon', () => {
     const missingFamily = [{ kind: 'no_family' }] as RotationFinding[];
     const rows: Array<{ id: number; status: RotationStatus; findings: RotationFinding[] }> = [

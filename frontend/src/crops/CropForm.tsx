@@ -15,7 +15,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
-import type { Crop, PublicCrop, PublicCropCompanion, SeedRateUnitConstraints, Supplier } from '../api/types';
+import type {
+  Crop,
+  PublicCrop,
+  PublicCropCompanion,
+  SeedRateUnitConstraints,
+  Supplier,
+  TimingWindowKind,
+} from '../api/types';
 import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import {
   Dialog,
@@ -57,6 +64,7 @@ import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
+import { TimingWindowsSection, type TimingWindowKindHighlight } from './sections/TimingWindowsSection';
 import { collectProjectTags } from './cropTags';
 import { useCompanionFormRows } from './useCompanionFormRows';
 import type { CompanionFormRow } from './companions';
@@ -70,8 +78,12 @@ import {
 } from './publicCropNameSuggestions';
 import { usePublicCropSuggestions } from './usePublicCropSuggestions';
 import {
+  buildDisplayedTimingWindows,
+  buildInheritedTimingWindows,
   buildInheritedValueBaseline,
+  getVarietyOwnTimingWindowSource,
   getVarietyOwnValueSource,
+  stripTimingWindowsMatchingBaseline,
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
 import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
@@ -184,6 +196,7 @@ const SUPPLIER_SECTION_GAP = 1.75;
 const EMPTY_CROP: Partial<Crop> = {
   name: '',
   variety: '',
+  timing_windows: [],
   crop_family: null,
   nutrient_demand: '',
   cultivation_type: 'pre_cultivation',
@@ -323,7 +336,12 @@ const buildInitialFormData = (crop?: Crop, initialDraft?: Partial<Crop>): Partia
   // displays what the Sorte effectively is instead of a row of empty inputs.
   // The merged-in values carry no override styling (they equal the Kultur's
   // own values, see getVarietyOwnValueSource) and are stripped again on save.
-  const displayedCrop: Crop = { ...crop, ...buildInheritedValueBaseline(crop) };
+  // Timing windows follow the same rule per kind (see buildDisplayedTimingWindows).
+  const displayedCrop: Crop = {
+    ...crop,
+    ...buildInheritedValueBaseline(crop),
+    timing_windows: buildDisplayedTimingWindows(crop),
+  };
 
   const normalizedSpacingValues: Partial<Crop> = {
     distance_within_row_cm:
@@ -517,6 +535,18 @@ export function CropForm({
       tooltipTitle: buildVarietyFieldTooltipTitle(t, active, helpText),
     };
   }, [selectedSpeciesCrop, formData, t]);
+  const getTimingWindowKindHighlight = useCallback((kind: TimingWindowKind): TimingWindowKindHighlight | null => {
+    if (!selectedSpeciesCrop || !formData.variety) {
+      return null;
+    }
+    const active = getVarietyOwnTimingWindowSource(
+      formData.timing_windows, Boolean(formData.variety), selectedSpeciesCrop, kind,
+    ) === 'ownValue';
+    return {
+      sx: active ? varietySpecificFieldHighlightSx : undefined,
+      tooltipTitle: buildVarietyFieldTooltipTitle(t, active),
+    };
+  }, [selectedSpeciesCrop, formData.timing_windows, formData.variety, t]);
   // Locally pinned library fields: only an edited project crop that is linked
   // to a library entry marks its pinned fields (the backend lists what it may pin).
   const libraryPinnableFields = isProjectForm && isEdit && crop?.source_public_crop
@@ -1204,13 +1234,22 @@ export function CropForm({
       // crop (including future crop edits) instead of freezing a duplicate copy
       // of today's crop values.
       const inheritanceBaseline = isEdit ? buildInheritedValueBaseline(crop) : initialDraft;
-      const dataToSave = inheritanceBaseline
+      const strippedData = inheritanceBaseline
         ? stripValuesMatchingBaseline(
           formData,
           inheritanceBaseline,
           (field) => (field in EMPTY_CROP ? EMPTY_CROP[field as keyof typeof EMPTY_CROP] : ''),
         )
         : formData;
+      // Per kind, the same for timing windows: a kind still equal to the
+      // inherited (or prefilled) windows stays inherited.
+      const timingWindowBaseline = isEdit ? buildInheritedTimingWindows(crop) : initialDraft?.timing_windows ?? [];
+      const dataToSave = isProjectForm
+        ? {
+          ...strippedData,
+          timing_windows: stripTimingWindowsMatchingBaseline(formData.timing_windows ?? [], timingWindowBaseline),
+        }
+        : strippedData;
       await saveCrop(libraryPinnableFields.length > 0
         ? { ...dataToSave, library_pinned_fields: libraryPinnedFieldsForSave(formData) }
         : dataToSave);
@@ -1539,6 +1578,15 @@ export function CropForm({
             <CompanionsSection state={companionRows} disabled={isSaving} />
             <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            {isProjectForm ? (
+              <TimingWindowsSection
+                windows={formData.timing_windows ?? []}
+                errors={errors}
+                onChange={(windows) => handleChange('timing_windows', windows)}
+                t={t}
+                getKindHighlight={getTimingWindowKindHighlight}
+              />
+            ) : null}
             <SpacingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <SeedingSection
               formData={formData}

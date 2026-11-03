@@ -8,6 +8,23 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Crops: **time windows** (Zeiträume) for Anzucht, Direktsaat and Pflanzung,
+  any number per kind, in thirds of a month ("Anfang März bis Mitte Mai") or
+  calendar weeks ("KW 10 bis 14"), also across the turn of the year. They are
+  edited in a new "Zeiträume" section of the crop form, shown with a year bar
+  on the crop page (plus a calculated, hatched "Ernte (berechnet)" lane from
+  the windows and the growth and harvest durations), and a Sorte without its
+  own windows of a kind uses its Kultur's. There are no harvest windows: the
+  harvest follows from planting and growth duration. The crop filter "Aussaat
+  möglich im Monat" is back and matches the Anzucht and Direktsaat windows.
+  Planting plans point out (never block) sowing and planting dates outside
+  the windows, one hint per wrong date, with a new filter "Zeiträume" →
+  "Außerhalb der Zeiträume". The spreadsheet import and export have one
+  column per kind and recognise seed-catalogue column names such as
+  "Vorkultur" or "Aussaat Freiland"; the import reads the terms of all four
+  app languages and reports cells it cannot read without dropping the row,
+  including a harvest window put into the "Erntezeitraum" column. Windows
+  stay in the project and are not shared through the crop library.
 - Crops: the user's own labels on crops are called **tags** (Tags) instead of
   groups, matching what they are: any number of free labels to filter by.
   The crop import reads them from the key `tags` (or `tag`) and the

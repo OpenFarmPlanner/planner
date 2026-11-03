@@ -752,6 +752,9 @@ SPECTACULAR_SETTINGS = {
         'PlantingPlanCultivationTypeEnum': 'farm.models.planning.PlantingPlan.CULTIVATION_TYPE_CHOICES',
         'CompanionKindEnum': 'farm.models.crops.CropCompanion.KIND_CHOICES',
         'CompanionReasonEnum': 'farm.models.crops.CropCompanion.REASON_CHOICES',
+        'TimingWindowKindEnum': 'farm.services.timing_windows.TIMING_WINDOW_KINDS',
+        'TimingWindowUnitEnum': 'farm.services.timing_windows.TIMING_WINDOW_UNITS',
+        'TimingWindowDecadeEnum': 'farm.services.timing_windows.DECADES',
     },
     # Versions must match the SRI hashes in farm/agent_api/schema_views.py.
     'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.0',

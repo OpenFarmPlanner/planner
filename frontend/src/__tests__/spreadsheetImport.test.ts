@@ -102,6 +102,17 @@ describe('parseSpreadsheetFile', () => {
       expect(result.entries[0]).not.toHaveProperty(numberColumn.key);
     });
 
+    it('hands text in the harvest-duration column to the backend under its own key', async () => {
+      // The backend's timing-window parser decides whether it is a harvest window to report.
+      const result = await parseSpreadsheetFile(csvFile([
+        [NAME_HEADER, 'erntezeitraum'],
+        ['Kürbis', 'Juli bis September'],
+      ]));
+
+      expect(result.entries[0]).not.toHaveProperty('harvest_duration_days');
+      expect(result.entries[0]).toMatchObject({ harvest_duration_days_text: 'Juli bis September' });
+    });
+
     it('leaves an empty cell absent rather than storing an empty string', async () => {
       const result = await parseSpreadsheetFile(csvFile([
         [NAME_HEADER, numberColumn.headerKey],

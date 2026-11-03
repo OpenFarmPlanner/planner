@@ -6,6 +6,7 @@ import { useTranslation } from '../../../i18n';
 import {
   DATE_FILTER_FIELDS,
   OCCUPANCY_FILTER_OPTIONS,
+  TIMING_FILTER_OPTIONS,
   ROTATION_FILTER_STATUSES,
   type DateFilterField,
   type FilterOption,
@@ -42,6 +43,10 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
     value: option,
     label: t(`plantingPlans:search.occupancyOptions.${option}`),
   }));
+  const timingOptions = TIMING_FILTER_OPTIONS.map((option) => ({
+    value: option,
+    label: t(`plantingPlans:search.timingOptions.${option}`),
+  }));
 
   return search.activeFilterGroups.map((group) => {
     if (isDateFilterField(group)) {
@@ -64,6 +69,7 @@ function useActiveFilterChips(search: PlantingPlanSearchControls): ActiveFilterC
       crop: { key: 'crop', values: joinLabels(options.crops, filters.cropKeys) },
       rotation: { key: 'rotation', values: joinLabels(rotationOptions, filters.rotationStatuses) },
       occupancy: { key: 'occupancy', values: joinLabels(occupancyOptions, filters.occupancy) },
+      timing: { key: 'timing', values: joinLabels(timingOptions, filters.timing) },
     } as const;
     const { key, values } = byGroup[group];
     const filterLabel = t(`plantingPlans:search.fields.${key}`);

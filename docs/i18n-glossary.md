@@ -118,6 +118,11 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Reserve für Ausfälle | Reserve for losses | Réserve pour pertes | Reserva por pérdidas |
 | Pflanzwoche | Planting week | Semaine de plantation | Semana de trasplante |
 | Anzucht | Propagation | Pépinière † | Semillero † |
+| Zeitraum (Anzucht-, Direktsaat-, Pflanzungs-) | Time window | Période | Periodo |
+| Ernte (berechnet) | Harvest (calculated) | Récolte (calculée) | Cosecha (calculada) |
+| Monatsdrittel (Anfang / Mitte / Ende) | Third of the month (early / mid / late) | Décade (début / mi- / fin) | Decena del mes (principios / mediados / finales) |
+| Kalenderwoche (KW) | Calendar week (week) | Semaine (sem.) | Semana (sem.) |
+| Über den Jahreswechsel | Across the turn of the year | À cheval sur deux années | Abarca el cambio de año |
 | Anzuchtdauer | Propagation duration | Durée en pépinière | Duración en semillero |
 | Kulturdauer / Wachstumszeit | Growth duration | Durée de culture | Duración del cultivo |
 | Erntedauer / Erntezeit | Harvest duration | Durée de récolte | Duración de la cosecha |

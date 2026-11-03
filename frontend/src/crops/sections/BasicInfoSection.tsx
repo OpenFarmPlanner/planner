@@ -4,7 +4,6 @@
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { Autocomplete, Box, CircularProgress, TextField, FormControl, InputLabel, MenuItem, Typography } from '@mui/material';
 import { createFilterOptions } from '@mui/material/Autocomplete';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
 import { fieldRowSx, formGridDoubleColumnSx, formGridFieldSx, formGridSx } from './styles.tsx';
 import type { Crop, PlantFamily } from '../../api/types';
@@ -19,6 +18,7 @@ import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import type { PublicCropSpeciesOption } from '../publicCropNameSuggestions';
 import { CropSpeciesOptionContent } from '../CropSpeciesOptionContent';
 import { CropTagsField } from './CropTagsField';
+import { FieldInfoIcon } from '../FieldInfoIcon';
 import { usePlantFamilies } from '../plantFamilies';
 
 interface BasicInfoSectionProps {
@@ -77,37 +77,6 @@ interface BasicInfoSectionProps {
   speciesInvariantFieldsReadOnly?: boolean;
 }
 
-
-/**
- * A small focusable info icon whose tooltip explains a heading or a field; a
- * tap opens it on touch. Inside a field label it keeps the click from
- * focusing the input (and opening the keyboard on a phone).
- */
-function FieldInfoIcon({ title }: { title: string }) {
-  return (
-    <AppTooltip title={title} enterTouchDelay={0}>
-      <Box
-        component="span"
-        role="img"
-        tabIndex={0}
-        aria-label={title}
-        onClick={(event) => event.preventDefault()}
-        sx={{
-          display: 'inline-flex',
-          verticalAlign: 'middle',
-          color: 'text.secondary',
-          cursor: 'help',
-          // A label inside the empty field ignores the pointer; the icon must not.
-          pointerEvents: 'auto',
-          borderRadius: '50%',
-          '&:focus-visible': { outline: (theme) => `2px solid ${theme.palette.primary.main}` },
-        }}
-      >
-        <InfoOutlinedIcon fontSize="small" />
-      </Box>
-    </AppTooltip>
-  );
-}
 
 /** A family key the list does not (yet) contain, shown as its botanical name. */
 function unlistedPlantFamily(botanicalName: string): PlantFamily {

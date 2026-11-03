@@ -10,6 +10,7 @@ from crops.models import CropSpecies, PlantFamily
 from farm.models import (
     Crop,
     CropSupplierData,
+    CropTimingWindow,
     EntityRevision,
     PlantingPlan,
     Project,
@@ -47,7 +48,7 @@ class CropApiTest(ProjectApiTestCase):
         # `seed_packages`, and the owned-public-crop lookup.
         families = ['Brassicaceae', 'Solanaceae', 'Apiaceae', 'Fabaceae', 'Poaceae']
         for index in range(5):
-            Crop.objects.create(
+            crop = Crop.objects.create(
                 name=f'Extra Crop {index}',
                 growth_duration_days=7,
                 harvest_duration_days=2,
@@ -55,12 +56,18 @@ class CropApiTest(ProjectApiTestCase):
                 supplier=self.supplier,
                 crop_family_id=families[index],
             )
+            CropTimingWindow.objects.create(
+                crop=crop, kind='direct_sowing', unit='decade',
+                start_month=3, start_decade=1, end_month=5, end_decade=3,
+            )
 
         # One of the queries resolves the project's general Kulturen for the
         # whole page (see CropSerializer._general_crop_index); two more load
         # the plant-family list with its translations once for the page
-        # (crop_family_display_name, effective_rotation_break_years).
-        with self.assertNumQueries(11):
+        # (crop_family_display_name, effective_rotation_break_years); one
+        # loads the project's timing windows (timing_windows,
+        # effective_timing_windows, sowing_months).
+        with self.assertNumQueries(12):
             response = self.client.get('/openfarmplanner/api/crops/')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 6)
@@ -1460,13 +1467,19 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(general.rotation_break_years, 5)
 
     def test_inheritance_payload_costs_one_query_for_a_whole_list_page(self):
+        CropTimingWindow.objects.create(
+            crop=self.general, kind='planting', unit='iso_week', start_week=20, end_week=30,
+        )
         for index in range(5):
-            Crop.objects.create(
+            crop = Crop.objects.create(
                 name='Karotte', variety=f'Sorte {index}',
                 project=self.project, crop_species=self.species,
             )
-        # +2 for the plant-family list, loaded once per page.
-        with self.assertNumQueries(13):
+            CropTimingWindow.objects.create(
+                crop=crop, kind='direct_sowing', unit='iso_week', start_week=10, end_week=14,
+            )
+        # +2 for the plant-family list, +1 for the timing windows, each loaded once per page.
+        with self.assertNumQueries(14):
             response = self.client.get('/openfarmplanner/api/crops/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         inherited_rows = [

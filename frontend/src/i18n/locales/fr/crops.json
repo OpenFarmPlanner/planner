@@ -32,7 +32,8 @@
     "reset": "Réinitialiser les filtres",
     "openAdvanced": "Ouvrir les filtres avancés",
     "title": "Filtres",
-    "tag": "Étiquettes"
+    "tag": "Étiquettes",
+    "sowingMonth": "Semis possible en"
   },
   "emptySearch": {
     "title": "Aucune culture trouvée",
@@ -542,7 +543,8 @@
       "seedingRequirementType": "Type de besoin en semences",
       "supplier": "Fournisseur",
       "image": "Image",
-      "selectedSeedDemandSupplier": "Fournisseur pour le besoin en semences"
+      "selectedSeedDemandSupplier": "Fournisseur pour le besoin en semences",
+      "timingWindows": "Périodes"
     },
     "objectTypes": {
       "crop": "Culture",
@@ -715,9 +717,13 @@
         "wholeSeeds": "Pour « {{unit}} », seuls les nombres entiers sont acceptés.",
         "color": "« {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est choisie.",
         "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} ».",
-        "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle."
+        "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle.",
+        "timingWindows": "« {{columns}} » : périodes en décades ou en semaines, par exemple « {{decadeExample}} », « {{monthExample}} » ou « {{weekExample}} ». Séparez plusieurs périodes par « ; ». Les dates précises ne sont pas possibles.",
+        "catalogColumns": "Les colonnes des catalogues de semences comme « Semis sous abri » ou « Semis en pleine terre » sont reconnues automatiquement."
       }
-    }
+    },
+    "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",
+    "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée."
   },
   "library": {
     "openButton": "Importer depuis la bibliothèque",
@@ -1655,5 +1661,54 @@
     "publishSkipped_one": "{{count}} voisin reste dans le projet : c'est du texte libre ou une culture sans espèce cultivée.",
     "publishSkipped_many": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
     "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée."
+  },
+  "timingWindows": {
+    "sectionTitle": "Périodes",
+    "sectionHelp": "Quand la pépinière, le semis direct et la plantation ont lieu d’habitude, en décades ou en semaines. La planification signale les dates en dehors de ces périodes.",
+    "kinds": {
+      "pre_cultivation": "Pépinière",
+      "direct_sowing": "Semis direct",
+      "planting": "Plantation"
+    },
+    "addWindow": "Ajouter une période",
+    "removeWindow": "Supprimer la période",
+    "unitLabel": "Unité",
+    "unitMonth": "Mois",
+    "unitWeek": "Sem.",
+    "from": "De",
+    "to": "À",
+    "month": "Mois",
+    "decade": "Décade",
+    "week": "Semaine",
+    "decades": {
+      "early": "Début",
+      "mid": "Milieu",
+      "late": "Fin"
+    },
+    "weekOption": "Sem. {{week}}",
+    "wrapsYearEnd": "À cheval sur deux années",
+    "incomplete": "Veuillez indiquer un début et une fin.",
+    "inheritedFromCrop": "Repris de la culture",
+    "yearBarLabel": "Périodes en {{year}}",
+    "text": {
+      "decadeMonth": {
+        "early": "début {{month}}",
+        "mid": "mi-{{month}}",
+        "late": "fin {{month}}"
+      },
+      "range": "{{start}} à {{end}}",
+      "week": "semaine {{week}}",
+      "weekRange": "semaines {{start}} à {{end}}"
+    },
+    "importErrors": {
+      "timing_window_not_recognized": "« {{value}} » n’est pas une période de l’année. Écrivez par exemple « début mars à fin avril » ou « semaines 10 à 14 ».",
+      "timing_window_open_end": "« {{value}} » : veuillez indiquer un début et une fin, par exemple « mars à mai ».",
+      "timing_window_ambiguous_slash": "« {{value}} » est ambigu. Écrivez « mars à avril » pour une période, « mars; avril » pour deux.",
+      "timing_window_day_dates": "Les dates précises ne sont pas prises en charge. Utilisez des décades (par exemple « mi-mars ») ou des semaines (par exemple « semaine 11 »).",
+      "timing_window_mixed_units": "Ne mélangez pas les mois et les semaines dans une même période.",
+      "timing_window_invalid_week": "Les semaines vont de 1 à 52.",
+      "timing_window_harvest_not_imported": "Les périodes de récolte ne sont pas importées. La récolte découle de la plantation et de la durée de culture. Cette colonne attend la durée de récolte en jours."
+    },
+    "computedHarvest": "Récolte (calculée)"
   }
 }

@@ -16,9 +16,15 @@ import type { SpreadsheetFormat } from './spreadsheetTypes';
 
 export type SpreadsheetParseResult = {
   entries: Record<string, unknown>[];
+  /** The sheet row number (header = 1) of each entry, for messages about a cell. */
+  rowNumbers: number[];
   skippedRows: number;
   warnings: string[];
 };
+
+const HARVEST_DURATION_KEY = 'harvest_duration_days';
+/** Read by the backend import only (`HARVEST_DURATION_TEXT_KEY` in crop_import/spreadsheet.py). */
+const HARVEST_DURATION_TEXT_KEY = 'harvest_duration_days_text';
 
 const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> =>
   new Promise((resolve, reject) => {
@@ -34,6 +40,12 @@ const parseRawValue = (
   enumImport?: Record<string, string>,
 ): unknown => {
   if (value === null || value === undefined || value === '') return undefined;
+
+  if (type === 'timingWindows') {
+    // Kept as written: the backend import parses it and reports what it cannot.
+    const text = String(value).trim();
+    return text || undefined;
+  }
 
   if (type === 'list') {
     const items = String(value)
@@ -70,11 +82,11 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   const buffer = await readFileAsArrayBuffer(file);
   const extension = file.name.split('.').pop()?.toLowerCase() as SpreadsheetFormat | undefined;
   if (extension !== 'xlsx' && extension !== 'ods' && extension !== 'csv') {
-    return { entries: [], skippedRows: 0, warnings: [i18n.t('crops:import.errors.unsupportedFormat')] };
+    return { entries: [], rowNumbers: [], skippedRows: 0, warnings: [i18n.t('crops:import.errors.unsupportedFormat')] };
   }
   const rows = parseSpreadsheetRows(buffer, extension);
   if (rows.length < 1) {
-    return { entries: [], skippedRows: 0, warnings: [i18n.t('crops:import.errors.noSpreadsheetTable')] };
+    return { entries: [], rowNumbers: [], skippedRows: 0, warnings: [i18n.t('crops:import.errors.noSpreadsheetTable')] };
   }
 
   const headerRow = rows[0] as (string | null)[];
@@ -103,8 +115,9 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   const dataRows = rows.slice(1);
   let skippedRows = 0;
   const entries: Record<string, unknown>[] = [];
+  const rowNumbers: number[] = [];
 
-  for (const rawRow of dataRows) {
+  for (const [dataIndex, rawRow] of dataRows.entries()) {
     const row = rawRow as (unknown | null)[];
     const entry: Record<string, unknown> = {};
 
@@ -122,6 +135,10 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
       const parsed = parseRawValue(raw, colDef.type, enumImportMaps.get(key));
       if (parsed !== undefined) {
         entry[key] = parsed;
+      } else if (key === HARVEST_DURATION_KEY && typeof raw === 'string' && raw.trim()) {
+        // Text in the harvest-duration column ("Juli bis September") is no number;
+        // the backend import tells a harvest window from other text.
+        entry[HARVEST_DURATION_TEXT_KEY] = raw.trim();
       }
     }
 
@@ -131,7 +148,8 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
     }
 
     entries.push(normalizeImportCropEntry(entry));
+    rowNumbers.push(dataIndex + 2);
   }
 
-  return { entries, skippedRows, warnings };
+  return { entries, rowNumbers, skippedRows, warnings };
 };

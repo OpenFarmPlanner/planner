@@ -31,7 +31,8 @@
     "reset": "Filter zurücksetzen",
     "openAdvanced": "Erweiterte Filter öffnen",
     "title": "Filter",
-    "tag": "Tags"
+    "tag": "Tags",
+    "sowingMonth": "Aussaat möglich im Monat"
   },
   "emptySearch": {
     "title": "Keine Kulturen gefunden",
@@ -533,7 +534,8 @@
       "seedingRequirementType": "Saatgutbedarf-Typ",
       "supplier": "Lieferant",
       "image": "Bild",
-      "selectedSeedDemandSupplier": "Lieferant für Saatgutbedarf"
+      "selectedSeedDemandSupplier": "Lieferant für Saatgutbedarf",
+      "timingWindows": "Zeiträume"
     },
     "objectTypes": {
       "crop": "Kultur",
@@ -694,9 +696,13 @@
         "wholeSeeds": "Bei „{{unit}}“ sind nur ganze Zahlen möglich.",
         "color": "„{{column}}“ als Hex-Code, z. B. #2E7D32. Ohne Angabe wird eine Farbe gewählt.",
         "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“.",
-        "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage."
+        "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage.",
+        "timingWindows": "„{{columns}}“: Zeiträume in Monatsdritteln oder Kalenderwochen, zum Beispiel „{{decadeExample}}“, „{{monthExample}}“ oder „{{weekExample}}“. Mehrere Zeiträume mit „;“ trennen. Tagesdaten sind nicht möglich.",
+        "catalogColumns": "Spalten wie „Vorkultur“ oder „Aussaat Freiland“ aus Saatgutkatalogen werden automatisch erkannt."
       }
-    }
+    },
+    "timingWindowIssue": "Zeile {{row}}, {{column}}: {{message}} Der Wert wird nicht übernommen.",
+    "timingWindowIssueWithValue": "Zeile {{row}}, {{column}}, „{{value}}“: {{message}} Der Wert wird nicht übernommen."
   },
   "library": {
     "openButton": "Aus Bibliothek importieren",
@@ -1612,5 +1618,54 @@
     },
     "publishSkipped_one": "{{count}} Nachbar bleibt im Projekt: Er ist freier Text oder eine Kultur ohne Kulturart.",
     "publishSkipped_other": "{{count}} Nachbarn bleiben im Projekt: Sie sind freier Text oder Kulturen ohne Kulturart."
+  },
+  "timingWindows": {
+    "sectionTitle": "Zeiträume",
+    "sectionHelp": "Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.",
+    "kinds": {
+      "pre_cultivation": "Anzucht",
+      "direct_sowing": "Direktsaat",
+      "planting": "Pflanzung"
+    },
+    "addWindow": "Zeitraum hinzufügen",
+    "removeWindow": "Zeitraum entfernen",
+    "unitLabel": "Einheit",
+    "unitMonth": "Monat",
+    "unitWeek": "KW",
+    "from": "Von",
+    "to": "Bis",
+    "month": "Monat",
+    "decade": "Monatsdrittel",
+    "week": "Kalenderwoche",
+    "decades": {
+      "early": "Anfang",
+      "mid": "Mitte",
+      "late": "Ende"
+    },
+    "weekOption": "KW {{week}}",
+    "wrapsYearEnd": "Über den Jahreswechsel",
+    "incomplete": "Bitte Anfang und Ende angeben.",
+    "inheritedFromCrop": "Von der Kultur übernommen",
+    "yearBarLabel": "Zeiträume im Jahr {{year}}",
+    "text": {
+      "decadeMonth": {
+        "early": "Anfang {{month}}",
+        "mid": "Mitte {{month}}",
+        "late": "Ende {{month}}"
+      },
+      "range": "{{start}} bis {{end}}",
+      "week": "KW {{week}}",
+      "weekRange": "KW {{start}} bis {{end}}"
+    },
+    "importErrors": {
+      "timing_window_not_recognized": "„{{value}}“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“ oder „KW 10 bis 14“.",
+      "timing_window_open_end": "„{{value}}“: Bitte Anfang und Ende angeben, zum Beispiel „März bis Mai“.",
+      "timing_window_ambiguous_slash": "„{{value}}“ ist mehrdeutig. Für einen Zeitraum „März bis April“ schreiben, für zwei Zeiträume „März; April“.",
+      "timing_window_day_dates": "Tagesdaten werden nicht unterstützt. Bitte Monatsdrittel (zum Beispiel „Mitte März“) oder Kalenderwochen (zum Beispiel „KW 11“) verwenden.",
+      "timing_window_mixed_units": "Monate und Kalenderwochen bitte nicht in einem Zeitraum mischen.",
+      "timing_window_invalid_week": "Kalenderwochen von 1 bis 52 angeben.",
+      "timing_window_harvest_not_imported": "Erntezeiträume werden nicht importiert. Die Ernte ergibt sich aus Pflanzung und Kulturdauer. In dieser Spalte wird die Erntedauer in Tagen erwartet."
+    },
+    "computedHarvest": "Ernte (berechnet)"
   }
 }

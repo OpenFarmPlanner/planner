@@ -9,6 +9,7 @@ import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../components/filters/FilterSelectField';
 
 const FULL_WIDTH_ROW = { gridColumn: '1 / -1' } as const;
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 interface CropFiltersPopoverProps {
   anchorEl: HTMLElement | null;
@@ -30,7 +31,7 @@ interface CropFiltersPopoverProps {
 /**
  * Presentational advanced-filters popover for the crop selector
  * (family, tag, cultivation type, nutrient demand, supplier, growth days,
- * yield). All filter state lives in CropDetail.tsx.
+ * yield, sowing month). All filter state lives in CropDetail.tsx.
  */
 export function CropFiltersPopover({
   anchorEl,
@@ -89,6 +90,17 @@ export function CropFiltersPopover({
         <MenuItem value="direct_sowing">{t('filters.directSowing')}</MenuItem>
         <MenuItem value="pre_cultivation">{t('filters.preCultivation')}</MenuItem>
         <MenuItem value="both">{t('filters.both')}</MenuItem>
+      </FilterSelectField>
+      <FilterSelectField
+        id="crop-sowing-month-filter"
+        label={t('filters.sowingMonth')}
+        value={filters.sowingMonth}
+        onChange={(event) => onFilterChange('sowingMonth', event.target.value as string)}
+      >
+        <MenuItem value="">{t('filters.all')}</MenuItem>
+        {MONTH_KEYS.map((key, index) => (
+          <MenuItem key={key} value={String(index + 1)}>{t(`common:months.${key}`)}</MenuItem>
+        ))}
       </FilterSelectField>
       <FilterSelectField
         id="crop-nutrient-filter"

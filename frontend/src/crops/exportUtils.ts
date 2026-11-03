@@ -1,4 +1,5 @@
-import type { CompanionImportItem, Crop } from '../api/types';
+import type { CompanionImportItem, Crop, CropTimingWindow } from '../api/types';
+import { toTimingWindowPayload } from './timingWindows';
 import type { CompanionItemsByKind } from './companions';
 import { formatIsoDate } from '../utils/isoDate';
 
@@ -41,6 +42,8 @@ export interface PortableCrop {
   package_size_g?: number;
   seeding_requirement?: number;
   seeding_requirement_type?: Crop['seeding_requirement_type'];
+  /** The crop's own windows; a Sorte leaves out the kinds it inherits. */
+  timing_windows?: CropTimingWindow[];
   /** Only on a Kultur (no variety); see docs/crop-companions.md. */
   good_companions?: CompanionImportItem[];
   bad_companions?: CompanionImportItem[];
@@ -115,6 +118,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     package_size_g: crop.package_size_g,
     seeding_requirement: crop.seeding_requirement,
     seeding_requirement_type: crop.seeding_requirement_type,
+    timing_windows: crop.timing_windows?.length ? crop.timing_windows.map(toTimingWindowPayload) : undefined,
     good_companions: companions?.good.length ? companions.good : undefined,
     bad_companions: companions?.bad.length ? companions.bad : undefined,
   };

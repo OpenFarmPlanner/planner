@@ -15,6 +15,7 @@ import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
 import {
   buildCompanionImportMessages,
   buildCompanionPreviewWarning,
+  buildTimingWindowPreviewWarnings,
   buildImportSuccessMessage,
   mapImportErrors,
 } from './cropsPageUtils';
@@ -69,7 +70,7 @@ export function useCropImportExport({
 
     if (isSpreadsheet) {
       try {
-        const { entries, skippedRows, warnings } = await parseSpreadsheetFile(file);
+        const { entries, rowNumbers, skippedRows, warnings } = await parseSpreadsheetFile(file);
 
         if (entries.length === 0) {
           const warningText = warnings.length > 0 ? warnings.join(' ') : t('import.errors.noValidEntries');
@@ -86,6 +87,11 @@ export function useCropImportExport({
           warnings.forEach((w) => invalidEntries.push(w));
           const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
           if (companionWarning) invalidEntries.push(companionWarning);
+          invalidEntries.push(...buildTimingWindowPreviewWarnings(
+            response.data.results,
+            (index) => rowNumbers[index] ?? index + 2,
+            t,
+          ));
           setPreviewReadyState({
             previewCount: entries.length + skippedRows,
             validCount: entries.length,
@@ -130,9 +136,11 @@ export function useCropImportExport({
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
             validCount: importAnalysis.validEntries.length,
-            invalidEntries: companionWarning
-              ? [...importAnalysis.invalidEntries, companionWarning]
-              : importAnalysis.invalidEntries,
+            invalidEntries: [
+              ...importAnalysis.invalidEntries,
+              ...(companionWarning ? [companionWarning] : []),
+              ...buildTimingWindowPreviewWarnings(response.data.results, (index) => index + 1, t),
+            ],
             payload: importAnalysis.validEntries,
             previewResults: response.data.results,
           });

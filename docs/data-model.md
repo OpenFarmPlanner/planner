@@ -122,6 +122,7 @@ erDiagram
     Crop ||--o{ CropSupplierData : "per-supplier seed data"
     Supplier ||--o{ CropSupplierData : supplies
     Crop ||--o{ SeedPackage : "package sizes (supplier-agnostic)"
+    Crop ||--o{ CropTimingWindow : "Anzucht/Direktsaat/Pflanzung windows"
     Supplier ||--o{ Crop : "preferred supplier of (nullable)"
     Supplier ||--o{ Crop : "seed-demand supplier of (nullable)"
     PublicCrop ||--o{ Crop : "import lineage (optional, nullable)"
@@ -150,6 +151,11 @@ erDiagram
   drives which supplier's data feeds the Seed Demand calculation. See
   [seed-demand-calculation.md](./seed-demand-calculation.md) for how these
   pieces combine into an actual quantity.
+- **`CropTimingWindow`** holds a crop's Anzucht, Direktsaat and Pflanzung
+  windows (no harvest windows: the harvest follows from planting and growth
+  duration), each in thirds of a month or ISO weeks, never as dates.
+  Project data only (not in the crop library); a Sorte inherits them per kind
+  from its Kultur. See [timing-windows.md](./timing-windows.md).
 
 ## 4. Planning and operations
 

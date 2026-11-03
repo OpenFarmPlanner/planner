@@ -64,7 +64,7 @@ import {
 import { getCropDisplayName } from '../crops/cropDisplay';
 import { getCropSpeciesKey } from '../crops/cropHierarchy';
 import type { PublishVarietySelection } from '../crops/publishVarieties';
-import { buildVarietyInheritanceBaseline } from '../crops/varietyValueSource';
+import { buildVarietyInheritanceBaseline, buildVarietyTimingWindowBaseline } from '../crops/varietyValueSource';
 import { normalizeCropIdentityValue } from '../crops/cropIdentity';
 import { formRowsToReplaceItems, type CompanionFormRow } from '../crops/companions';
 
@@ -519,6 +519,7 @@ function Crops() {
     setCropFormKind('variety');
     setInitialFormDraft({
       ...buildVarietyInheritanceBaseline(speciesCrop),
+      timing_windows: buildVarietyTimingWindowBaseline(speciesCrop),
       crop_species: speciesCrop.crop_species ?? null,
       name: speciesCrop.name,
       variety: '',

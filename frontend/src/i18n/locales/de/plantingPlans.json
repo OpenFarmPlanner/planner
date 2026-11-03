@@ -207,7 +207,8 @@
       "harvestStartDate": "Erntebeginn",
       "harvestEndDate": "Ernteende",
       "rotation": "Fruchtfolge",
-      "occupancy": "Belegung"
+      "occupancy": "Belegung",
+      "timing": "Zeiträume"
     },
     "monthFrom": "Von",
     "monthTo": "Bis",
@@ -260,6 +261,9 @@
     },
     "occupancyOptions": {
       "harvestOverlap": "Ernteüberlappung"
+    },
+    "timingOptions": {
+      "outsideWindow": "Außerhalb der Zeiträume"
     }
   },
   "rotation": {
@@ -375,5 +379,11 @@
     "predecessor": "{{crop}} folgt ab {{date}} auf diesem Beet. Die Ernte muss bis dahin abgeschlossen sein.",
     "successor": "Beginnt vor dem geplanten Ernteende von {{crop}} ({{date}}).",
     "iconAria": "Ernteüberlappung"
+  },
+  "timingWindow": {
+    "direct_sowing": "Aussaattermin liegt außerhalb der Direktsaat-Zeiträume ({{windows}}).",
+    "pre_cultivation": "Aussaattermin liegt außerhalb der Anzucht-Zeiträume ({{windows}}).",
+    "planting": "Pflanztermin liegt außerhalb der Pflanzungs-Zeiträume ({{windows}}).",
+    "iconAria": "Termin außerhalb der Zeiträume"
   }
 }

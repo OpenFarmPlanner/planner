@@ -1,4 +1,5 @@
-import type { Crop, CropInheritableField } from '../api/types';
+import type { Crop, CropInheritableField, CropTimingWindow, TimingWindowKind } from '../api/types';
+import { TIMING_WINDOW_KINDS, toTimingWindowPayload, windowsOfKind } from './timingWindows';
 
 export type CropValueSource = 'ownValue' | null;
 
@@ -32,6 +33,12 @@ export const areCropValuesEqual = (left: unknown, right: unknown): boolean => {
  * its general crop, when the user opens "Add variety". Deliberately excludes
  * identity/free-text fields (name, variety, notes) and per-variety data that
  * should never default to the crop's own (color, supplier/seed packaging).
+ * Mirrors `CROP_INHERITABLE_FIELDS` in backend/farm/services/crop_inheritance.py.
+ *
+ * Timing windows are inherited as well, but per kind and as a list, so they
+ * are not a scalar field of this list: see
+ * `VARIETY_INHERITABLE_TIMING_WINDOW_KINDS` below, which follows the same
+ * prefill/strip principle separately.
  */
 export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
   'botanical_name',
@@ -185,4 +192,85 @@ export function resolveSpacingEditCropId(
     return !isEmptyCropValue(value) && !(typeof value === 'number' && value > 0);
   });
   return hasInvalidOwnSpacing ? crop.id : crop.general_crop;
+}
+
+/**
+ * Timing-window kinds a Sorte inherits from its general Kultur, each on its
+ * own: per kind, a Sorte without own windows uses the Kultur's, live. The
+ * same prefill-and-strip principle as `VARIETY_INHERITABLE_FIELDS`, kept
+ * separate because a kind holds a list of windows, not one value. Mirrors
+ * `INHERITABLE_TIMING_WINDOW_KINDS` in backend/farm/services/crop_inheritance.py.
+ */
+export const VARIETY_INHERITABLE_TIMING_WINDOW_KINDS: readonly TimingWindowKind[] = TIMING_WINDOW_KINDS;
+
+const sortByKind = (windows: CropTimingWindow[]): CropTimingWindow[] => TIMING_WINDOW_KINDS
+  .flatMap((kind) => windowsOfKind(windows, kind));
+
+/**
+ * The windows a Sorte inherits from its Kultur (kinds it has none of itself),
+ * as the backend resolved them. Empty for a Kultur or a free-text Sorte.
+ */
+export function buildInheritedTimingWindows(crop: Crop | null | undefined): CropTimingWindow[] {
+  if (!crop?.general_crop) {
+    return [];
+  }
+  return (crop.effective_timing_windows ?? [])
+    .filter((window) => window.inherited && VARIETY_INHERITABLE_TIMING_WINDOW_KINDS.includes(window.kind))
+    .map(toTimingWindowPayload);
+}
+
+/**
+ * What the edit form shows: the crop's own windows plus, for a Sorte, the
+ * inherited ones of every kind it has none of itself, so the form displays
+ * what the Sorte effectively plans with (like `buildInheritedValueBaseline`).
+ */
+export function buildDisplayedTimingWindows(crop: Crop | null | undefined): CropTimingWindow[] {
+  const own = (crop?.timing_windows ?? []).map(toTimingWindowPayload);
+  return sortByKind([...own, ...buildInheritedTimingWindows(crop)]);
+}
+
+/** The Kultur's windows a new Sorte's form starts with ("Add variety"). */
+export function buildVarietyTimingWindowBaseline(cropCrop: Crop): CropTimingWindow[] {
+  return buildDisplayedTimingWindows(cropCrop)
+    .filter((window) => VARIETY_INHERITABLE_TIMING_WINDOW_KINDS.includes(window.kind));
+}
+
+/**
+ * Clears every kind whose windows still equal the baseline it was prefilled
+ * from, so the Sorte keeps inheriting that kind instead of freezing a copy
+ * (the window counterpart of `stripValuesMatchingBaseline`).
+ */
+export function stripTimingWindowsMatchingBaseline(
+  windows: readonly CropTimingWindow[],
+  baseline: readonly CropTimingWindow[],
+): CropTimingWindow[] {
+  const keptKinds = VARIETY_INHERITABLE_TIMING_WINDOW_KINDS.filter((kind) => {
+    const baselineOfKind = windowsOfKind(baseline, kind);
+    return baselineOfKind.length === 0
+      || !areCropValuesEqual(windowsOfKind(windows, kind).map(toTimingWindowPayload), baselineOfKind);
+  });
+  return windows
+    .filter((window) => keptKinds.includes(window.kind) || !VARIETY_INHERITABLE_TIMING_WINDOW_KINDS.includes(window.kind))
+    .map(toTimingWindowPayload);
+}
+
+/**
+ * `'ownValue'` when a Sorte's windows of `kind` differ from its Kultur's — the
+ * window counterpart of `getVarietyOwnValueSource`, for the same highlight.
+ */
+export function getVarietyOwnTimingWindowSource(
+  windows: readonly CropTimingWindow[] | undefined,
+  isVariety: boolean,
+  speciesCrop: Partial<Crop> | null | undefined,
+  kind: TimingWindowKind,
+): CropValueSource {
+  if (!isVariety || !speciesCrop) {
+    return null;
+  }
+  const ownOfKind = windowsOfKind(windows, kind).map(toTimingWindowPayload);
+  if (ownOfKind.length === 0) {
+    return null;
+  }
+  const cropOfKind = windowsOfKind(buildDisplayedTimingWindows(speciesCrop as Crop), kind);
+  return areCropValuesEqual(ownOfKind, cropOfKind) ? null : 'ownValue';
 }

@@ -27,6 +27,13 @@ from farm.models.crops import (
     get_crop_field_value,
     set_crop_field_value,
 )
+from farm.services.timing_windows import (
+    TIMING_WINDOW_KINDS,
+    TimingWindow,
+    TimingWindowIndex,
+    sort_windows,
+    windows_by_kind,
+)
 
 # Crop fields a Sorte inherits from its general Kultur. Kept in sync with the
 # frontend's `VARIETY_INHERITABLE_FIELDS` (frontend/src/crops/varietyValueSource.ts),
@@ -40,6 +47,11 @@ from farm.models.crops import (
 # Names are model field names; distances are the SI (meter) fields. Values are
 # read and written through get_crop_field_value()/set_crop_field_value(), so
 # ``crop_family`` resolves to its botanical-name key, never to a PlantFamily row.
+#
+# Timing windows are inherited too, but are rows, not a scalar field, so they
+# live outside this tuple: see INHERITABLE_TIMING_WINDOW_KINDS and
+# resolve_effective_timing_windows() below (frontend:
+# `VARIETY_INHERITABLE_TIMING_WINDOW_KINDS` in varietyValueSource.ts).
 CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
     'botanical_name',
     'crop_family',
@@ -550,3 +562,49 @@ def resolve_effective_rotation_break_years(
 
         family_default_breaks = load_plant_family_default_breaks()
     return family_default_breaks.get(family_key)
+
+
+# The timing-window kinds a Sorte inherits from its general Kultur, each on its
+# own: a Sorte with own Direktsaat windows but none for Pflanzung uses its own
+# Direktsaat windows and the Kultur's Pflanzung windows. Like the scalar fields in
+# CROP_INHERITABLE_FIELDS the fallback is live, never a copy. Kept in sync with
+# the frontend's `VARIETY_INHERITABLE_TIMING_WINDOW_KINDS`
+# (frontend/src/crops/varietyValueSource.ts).
+INHERITABLE_TIMING_WINDOW_KINDS: tuple[str, ...] = TIMING_WINDOW_KINDS
+
+
+def resolve_effective_timing_windows(
+    crop: Crop | None,
+    windows_index: TimingWindowIndex,
+    index: GeneralCropIndex | None = None,
+) -> list[tuple[TimingWindow, bool]]:
+    """The windows a crop plans with, each paired with whether it is inherited.
+
+    Per kind: the crop's own windows when it has any, otherwise its general
+    Kultur's (for a linked Sorte), otherwise none. ``windows_index`` maps crop
+    ids to their own windows (see ``load_timing_window_index``) and must cover
+    the general Kultur too.
+    """
+    if crop is None:
+        return []
+    own = windows_by_kind(windows_index.get(crop.pk, ()))
+    general_crop = get_general_crop(crop, index)
+    inherited = windows_by_kind(windows_index.get(general_crop.pk, ())) if general_crop else {}
+    effective: list[tuple[TimingWindow, bool]] = []
+    for kind in TIMING_WINDOW_KINDS:
+        if own.get(kind):
+            effective.extend((window, False) for window in own[kind])
+        elif kind in INHERITABLE_TIMING_WINDOW_KINDS and inherited.get(kind):
+            effective.extend((window, True) for window in inherited[kind])
+    return effective
+
+
+def resolve_effective_timing_window_list(
+    crop: Crop | None,
+    windows_index: TimingWindowIndex,
+    index: GeneralCropIndex | None = None,
+) -> list[TimingWindow]:
+    """:func:`resolve_effective_timing_windows` without the inherited flags."""
+    return sort_windows(window for window, _inherited in resolve_effective_timing_windows(
+        crop, windows_index, index,
+    ))

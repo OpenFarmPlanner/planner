@@ -1,7 +1,9 @@
+import i18n from '../i18n/config';
 import {
   analyzeCropImportJson,
   partitionImportEntries,
 } from '../pages/cropsImportUtils';
+import { buildTimingWindowPreviewWarnings } from '../pages/cropsPageUtils';
 
 const t = (key: string): string => key;
 
@@ -131,5 +133,29 @@ describe('analyzeCropImportJson', () => {
 
     expect(result.originalCount).toBe(4);
     if (result.status === 'ready') expect(result.validEntries).toHaveLength(2);
+  });
+});
+
+describe('buildTimingWindowPreviewWarnings', () => {
+  const tCrops = i18n.getFixedT('de', 'crops') as unknown as (key: string, options?: Record<string, unknown>) => string;
+
+  it('names row, column and reason for every dropped cell', () => {
+    const lines = buildTimingWindowPreviewWarnings([
+      {
+        index: 0,
+        status: 'create',
+        import_data: { name: 'Salat' },
+        timing_window_issues: [
+          { field: 'planting_windows', value: 'Frühjahr', code: 'timing_window_not_recognized' },
+          { field: 'harvest_duration_days', value: 'Juli bis September', code: 'timing_window_harvest_not_imported' },
+          { field: 'direct_sowing_windows', value: 'KW 53', code: 'timing_window_invalid_week' },
+        ],
+      },
+    ], (index) => index + 2, tCrops);
+    expect(lines).toEqual([
+      'Zeile 2, Pflanzung: „Frühjahr“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“ oder „KW 10 bis 14“. Der Wert wird nicht übernommen.',
+      'Zeile 2, Erntezeit (Tage), „Juli bis September“: Erntezeiträume werden nicht importiert. Die Ernte ergibt sich aus Pflanzung und Kulturdauer. In dieser Spalte wird die Erntedauer in Tagen erwartet. Der Wert wird nicht übernommen.',
+      'Zeile 2, Direktsaat, „KW 53“: Kalenderwochen von 1 bis 52 angeben. Der Wert wird nicht übernommen.',
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
-import type { CropHistoryChange, CropHistoryEntry } from '../api/types';
+import type { CropHistoryChange, CropHistoryEntry, CropTimingWindow } from '../api/types';
+import { TIMING_WINDOW_KINDS, formatTimingWindows, windowsOfKind } from '../crops/timingWindows';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 export type HistoryScope = 'crop' | 'global' | 'project';
@@ -70,7 +71,33 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   supplier_product_url: 'form.supplierHomepage',
   image_file_id: 'history.fieldLabels.image',
   selected_seed_demand_supplier_id: 'history.fieldLabels.selectedSeedDemandSupplier',
+  timing_windows: 'history.fieldLabels.timingWindows',
+  // The import preview diffs the windows per kind, under the sheet's column keys.
+  pre_cultivation_windows: 'timingWindows.kinds.pre_cultivation',
+  direct_sowing_windows: 'timingWindows.kinds.direct_sowing',
+  planting_windows: 'timingWindows.kinds.planting',
 };
+
+const TIMING_WINDOW_FIELDS = new Set([
+  'pre_cultivation_windows',
+  'direct_sowing_windows',
+  'planting_windows',
+]);
+
+/** Windows of one kind as their canonical text; all kinds as "Anzucht: …; Ernte: …". */
+function formatTimingWindowValue(value: unknown[], field: string, t: TFunction<'crops'>): string {
+  const windows = value as CropTimingWindow[];
+  if (windows.length === 0) {
+    return t('history.emptyValue');
+  }
+  if (TIMING_WINDOW_FIELDS.has(field)) {
+    return formatTimingWindows(windows, t);
+  }
+  return TIMING_WINDOW_KINDS
+    .filter((kind) => windowsOfKind(windows, kind).length > 0)
+    .map((kind) => `${t(`timingWindows.kinds.${kind}`)}: ${formatTimingWindows(windowsOfKind(windows, kind), t)}`)
+    .join(' · ');
+}
 
 const SEED_RATE_UNIT_LABEL_KEYS: Record<string, string> = {
   g_per_m2: 'detail.seedUnits.gPerSqm',
@@ -206,6 +233,9 @@ export function formatHistoryChangeValue(
   }
   if (field === 'seed_rate_by_cultivation') {
     return formatSeedRateByCultivation(value, t);
+  }
+  if ((field === 'timing_windows' || TIMING_WINDOW_FIELDS.has(field)) && Array.isArray(value)) {
+    return formatTimingWindowValue(value, field, t);
   }
   if (field.endsWith('_unit') && typeof value === 'string') {
     return formatSeedRateUnit(value, t);

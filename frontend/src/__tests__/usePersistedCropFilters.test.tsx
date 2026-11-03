@@ -35,6 +35,7 @@ const FULL_FILTERS: PersistedCropFilters = {
   growthDaysMax: '90',
   yieldMin: '1',
   yieldMax: '5',
+  sowingMonth: '4',
 };
 
 beforeEach(() => {

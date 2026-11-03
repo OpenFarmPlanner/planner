@@ -1272,6 +1272,23 @@ other foreign keys there.
   (`coerce_plant_family_key()`), and persisted crop-page filters holding free
   text are dropped (`isBotanicalFamilyKey`).
 
+### Project-only crop data
+
+Some crop data deliberately never reaches the crop library: it is left out of
+publishing, the library import, the sync (`public-sync`, pull and push), the
+update diff and the sync dialogs.
+
+- **Timing windows** (`CropTimingWindow`: Anzucht, Direktsaat, Pflanzung).
+  Sowing and planting times depend on the local climate (altitude,
+  last frost date, greenhouse), not on the country, so windows copied from
+  someone else's farm would mislead. They are a related model, not a `Crop`
+  column, so no copy/compare field set (`CROP_COPY_FIELDS`,
+  `public_crop_update_changes()`) ever lists them; keep it that way. Windows
+  relative to the last frost date, which the library could carry, are
+  planned in #872. Rules: [timing-windows.md](./timing-windows.md).
+- **Tags** and **display colour**, see [crop-tags.md](./crop-tags.md) and the
+  compared set above.
+
 ## 1. The current situation (before this pass)
 
 The domain split the long-term vision asks for — a public Crop Library

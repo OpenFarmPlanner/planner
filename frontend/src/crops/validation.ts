@@ -6,6 +6,7 @@
 import type { Crop, SeedRateUnitConstraints } from '../api/types';
 import type { TFunction } from 'i18next';
 import { seedRateValueViolatesConstraint } from './seedRateConstraints';
+import { isTimingWindowComplete } from './timingWindows';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -172,6 +173,15 @@ export function validateCrop(
 
   if (draft.thousand_kernel_weight_g !== undefined && draft.thousand_kernel_weight_g !== null && Number(draft.thousand_kernel_weight_g) <= 0) {
     errors.thousand_kernel_weight_g = t('form.thousandKernelWeightError');
+  }
+
+  // A started window needs both ends; it never saves half-filled.
+  if (mode === 'submit') {
+    (draft.timing_windows ?? []).forEach((window, index) => {
+      if (!isTimingWindowComplete(window)) {
+        errors[`timing_windows.${index}`] = t('timingWindows.incomplete');
+      }
+    });
   }
 
   // Display color validation

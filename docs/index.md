@@ -113,6 +113,11 @@ for step-by-step procedures of recurring tasks, see the skills in
   neighbours of a Kultur (shared pairs, plant families, free text), the
   same-bed planning warning, the spreadsheet columns and how neighbours go
   through the crop library.
+- **[Timing Windows (Zeiträume)](./timing-windows.md)** — Anzucht,
+  Direktsaat, Pflanzung and Ernte windows of a crop in thirds of a month or
+  calendar weeks: resolution per year and across New Year, the canonical
+  text, inheritance by Sorten, the spreadsheet parser, the sowing-month
+  filter, the planting hints, and why they stay out of the crop library.
 - **[Crop Tags](./crop-tags.md)** — the user's own tags on
   crops for filtering: normalization, inheritance by Sorten, the spreadsheet
   column, and why they stay out of the crop library.

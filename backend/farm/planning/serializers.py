@@ -29,6 +29,7 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.crop_companions import CompanionService
 from farm.services.crop_rotation import RotationResult, RotationService
+from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 
@@ -76,6 +77,14 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         help_text=(
             'The day the harvest ends at the latest because a follow-up crop takes over the bed '
             '(its first day); null without such an overlap. Calculated, never stored.'
+        ),
+    )
+    timing_window_findings = serializers.SerializerMethodField(
+        read_only=True,
+        help_text=(
+            "Plan dates outside the crop's effective timing windows: kind (direct_sowing, "
+            'pre_cultivation, planting), the checked date and every window of that kind. '
+            'Only checked when the crop has windows of that kind. Never blocks saving.'
         ),
     )
     rotation_conflict_accepted = serializers.BooleanField(
@@ -165,6 +174,15 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         if obj.project_id not in services:
             services[obj.project_id] = CompanionService(obj.project_id)
         return [finding.as_dict() for finding in services[obj.project_id].check_plan(obj)]
+
+    def get_timing_window_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
+        """The plan's timing-window hints, from one project-wide checker per request."""
+        checkers = self.context.setdefault('_timing_window_checker_by_project', {})
+        if obj.project_id not in checkers:
+            checkers[obj.project_id] = TimingWindowChecker(
+                obj.project_id, general_crop_index=self._general_crop_index(obj),
+            )
+        return [finding.as_dict() for finding in checkers[obj.project_id].check_plan(obj)]
 
     def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
         """The plan's harvest overlaps, from one project-wide index per request."""

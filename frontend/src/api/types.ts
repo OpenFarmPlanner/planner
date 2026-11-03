@@ -235,8 +235,52 @@ export interface Crop {
   inherited_fields?: CropInheritableField[];
   effective_values?: Partial<Crop>;
 
+  /**
+   * The crop's own Anzucht/Direktsaat/Pflanzung/Ernte windows; a write replaces
+   * the whole list. Project data, never synced with the crop library.
+   */
+  timing_windows?: CropTimingWindow[];
+  /** Per kind the own windows, else (for a Sorte) the Kultur's, flagged `inherited` (read-only). */
+  effective_timing_windows?: EffectiveCropTimingWindow[];
+  /** Months (1-12) an effective Anzucht or Direktsaat window overlaps this year (read-only). */
+  sowing_months?: number[];
+
   created_at?: string;
   updated_at?: string;
+}
+
+/** The four kinds of crop timing windows, in display order. */
+/** No harvest kind: the harvest follows from planting date and growth duration. */
+export type TimingWindowKind = 'pre_cultivation' | 'direct_sowing' | 'planting';
+/** `decade`: month plus third of the month; `iso_week`: ISO calendar weeks 1-52. */
+export type TimingWindowUnit = 'decade' | 'iso_week';
+export type TimingWindowDecade = 'early' | 'mid' | 'late';
+
+/**
+ * One timing window in exactly one unit; the other unit's fields are null.
+ * Mirrors `TimingWindow` in backend/farm/services/timing_windows.py.
+ */
+export interface CropTimingWindow {
+  kind: TimingWindowKind;
+  unit: TimingWindowUnit;
+  start_month: number | null;
+  start_decade: TimingWindowDecade | null;
+  end_month: number | null;
+  end_decade: TimingWindowDecade | null;
+  start_week: number | null;
+  end_week: number | null;
+}
+
+export interface EffectiveCropTimingWindow extends CropTimingWindow {
+  inherited: boolean;
+}
+
+/** A plan date outside every window of one kind (see docs/timing-windows.md). */
+export interface TimingWindowFinding {
+  kind: TimingWindowKind;
+  /** ISO date that was checked. */
+  date: string;
+  windows: CropTimingWindow[];
 }
 
 /**
@@ -1037,6 +1081,8 @@ export interface PlantingPlan {
   // Read-only, calculated: allowed overlaps with a follow-up crop during a
   // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
   harvest_overlaps?: HarvestOverlap[];
+  /** Plan dates outside the crop's timing windows; hints only, never blocking. */
+  timing_window_findings?: TimingWindowFinding[];
   // Read-only, calculated: the earliest follow-up's first day; null without one.
   actual_harvest_end_date?: string | null;
   // Writable flag; true records the current user and time on the server.
