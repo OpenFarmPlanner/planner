@@ -8,7 +8,6 @@ import { useTranslation } from '../../i18n';
 export const TIMING_WINDOW_KINDS_BY_DATE_FIELD: Record<string, readonly TimingWindowKind[]> = {
   sowing_date: ['pre_cultivation', 'direct_sowing'],
   planting_date: ['direct_sowing', 'planting'],
-  harvest_date: ['harvest'],
 };
 
 /** One sentence per finding: "Aussaattermin liegt außerhalb der Direktsaat-Zeiträume (März bis Mai)." */

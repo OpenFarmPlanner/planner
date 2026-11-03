@@ -36,7 +36,10 @@ class TimingWindowSerializer(serializers.Serializer):
 
     kind = serializers.ChoiceField(
         choices=TIMING_WINDOW_KINDS,
-        help_text='pre_cultivation (Anzucht), direct_sowing, planting or harvest.',
+        help_text=(
+            'pre_cultivation (Anzucht), direct_sowing or planting. There is no harvest kind: '
+            'the harvest follows from the planting date and the growth duration.'
+        ),
     )
     unit = serializers.ChoiceField(
         choices=TIMING_WINDOW_UNITS,

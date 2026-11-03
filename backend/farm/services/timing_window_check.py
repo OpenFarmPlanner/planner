@@ -5,11 +5,15 @@ windows of the matching kind; without them there is no hint:
 
 - direct sowing: the planting date (which is the sowing date) against the
   Direktsaat windows;
-- transplanting from own propagation: the sowing date (planting date minus the
-  effective propagation duration) against the Anzucht windows, and the
-  planting date against the Pflanzung windows;
-- transplanting bought-in plants: the planting date against the Pflanzung windows;
-- every plan: the harvest start against the Ernte windows.
+- transplanting from own propagation: the planting date against the
+  Pflanzung windows. Only when the crop has no effective Pflanzung windows is
+  the sowing date (planting date minus the effective propagation duration)
+  checked against the Anzucht windows instead, so one wrong planting date
+  gives exactly one hint;
+- transplanting bought-in plants: the planting date against the Pflanzung windows.
+
+There are no harvest windows: the harvest follows from the planting date and
+the growth duration.
 
 Each date is resolved in its own year (see ``farm/services/timing_windows.py``).
 Details: ``docs/timing-windows.md``.
@@ -17,6 +21,7 @@ Details: ``docs/timing-windows.md``.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -30,7 +35,6 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.timing_windows import (
     KIND_DIRECT_SOWING,
-    KIND_HARVEST,
     KIND_PLANTING,
     KIND_PRE_CULTIVATION,
     TimingWindow,
@@ -75,26 +79,27 @@ def plan_uses_own_propagation(
 def dates_to_check(
     plan: PlantingPlan,
     crop: Crop,
-    harvest_start: date | None,
+    kinds_with_windows: Collection[str],
     index: GeneralCropIndex | None = None,
 ) -> list[tuple[str, date]]:
-    """The (window kind, date) pairs the plan is checked with."""
-    checks: list[tuple[str, date]] = []
+    """The (window kind, date) pairs the plan is checked with.
+
+    ``kinds_with_windows`` are the kinds the crop has effective windows of; it
+    decides whether own propagation is checked by planting or by sowing date.
+    """
     planting_date = plan.planting_date
-    if planting_date is not None:
-        if plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT:
-            checks.append((KIND_PLANTING, planting_date))
-        elif plan_uses_own_propagation(plan, crop, index):
-            propagation_days = resolve_crop_field(crop, 'propagation_duration_days', index)
-            if propagation_days:
-                sowing_date = planting_date - timedelta(days=propagation_days)
-                checks.append((KIND_PRE_CULTIVATION, sowing_date))
-            checks.append((KIND_PLANTING, planting_date))
-        else:
-            checks.append((KIND_DIRECT_SOWING, planting_date))
-    if harvest_start is not None:
-        checks.append((KIND_HARVEST, harvest_start))
-    return checks
+    if planting_date is None:
+        return []
+    if plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT:
+        return [(KIND_PLANTING, planting_date)]
+    if not plan_uses_own_propagation(plan, crop, index):
+        return [(KIND_DIRECT_SOWING, planting_date)]
+    if KIND_PLANTING in kinds_with_windows:
+        return [(KIND_PLANTING, planting_date)]
+    propagation_days = resolve_crop_field(crop, 'propagation_duration_days', index)
+    if not propagation_days:
+        return []
+    return [(KIND_PRE_CULTIVATION, planting_date - timedelta(days=propagation_days))]
 
 
 class TimingWindowChecker:
@@ -120,11 +125,7 @@ class TimingWindowChecker:
             self._windows = load_timing_window_index(project_id=self.project_id)
         return self._windows
 
-    def check_plan(
-        self,
-        plan: PlantingPlan,
-        harvest_start: date | None,
-    ) -> list[TimingWindowFinding]:
+    def check_plan(self, plan: PlantingPlan) -> list[TimingWindowFinding]:
         crop = plan.crop
         if crop is None or not self.windows:
             return []
@@ -134,7 +135,7 @@ class TimingWindowChecker:
         if not effective:
             return []
         findings: list[TimingWindowFinding] = []
-        checks = dates_to_check(plan, crop, harvest_start, self.general_crop_index)
+        checks = dates_to_check(plan, crop, effective.keys(), self.general_crop_index)
         for kind, checked_date in checks:
             windows = effective.get(kind)
             if windows and not any_window_contains(windows, checked_date):

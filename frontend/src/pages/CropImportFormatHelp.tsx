@@ -46,6 +46,7 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
       ),
       weekExample: formatTimingWindow({ ...emptyTimingWindow('planting', 'iso_week'), start_week: 10, end_week: 14 }, t),
     }),
+    t('import.help.rules.catalogColumns'),
     t('import.help.rules.matching', { confirm: t('import.confirmUpdates') }),
     t('import.help.rules.exportTip'),
   ];

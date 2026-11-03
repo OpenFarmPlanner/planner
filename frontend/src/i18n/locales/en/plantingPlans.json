@@ -384,7 +384,6 @@
     "direct_sowing": "The sowing date is outside the direct sowing windows ({{windows}}).",
     "pre_cultivation": "The sowing date is outside the propagation windows ({{windows}}).",
     "planting": "The planting date is outside the transplanting windows ({{windows}}).",
-    "harvest": "The harvest start is outside the harvest windows ({{windows}}).",
     "iconAria": "Date outside the time windows"
   }
 }

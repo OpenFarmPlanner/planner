@@ -21,7 +21,7 @@ export type ImportPreviewResult = {
 };
 
 export type TimingWindowImportIssue = {
-  /** The column key, `<kind>_windows`. */
+  /** The column key: `<kind>_windows`, or `harvest_duration_days` for a window there. */
   field: string;
   /** The part of the cell that was rejected, as written. */
   value: string;
@@ -96,7 +96,10 @@ export const buildTimingWindowPreviewWarnings = (
   rowNumberOf: (index: number) => number,
   t: Translator,
 ): string[] => results.flatMap((result) => (result.timing_window_issues ?? []).map((issue) => {
-  const column = t(`timingWindows.kinds.${issue.field.replace(/_windows$/, '')}`);
+  const column = issue.field.endsWith('_windows')
+    ? t(`timingWindows.kinds.${issue.field.replace(/_windows$/, '')}`)
+    // A window in the harvest-duration column ("Erntezeitraum").
+    : t('form.harvestDurationDays');
   const message = t(`timingWindows.importErrors.${issue.code}`, { value: issue.value });
   const key = TIMING_WINDOW_MESSAGES_WITH_VALUE.has(issue.code)
     ? 'import.timingWindowIssue'

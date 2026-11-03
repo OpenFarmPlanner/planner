@@ -1,3 +1,5 @@
+import type { Theme } from '@mui/material/styles';
+
 import type { TimingWindowKind } from '../api/types';
 
 /**
@@ -8,8 +10,19 @@ export const TIMING_WINDOW_LANE_COLORS: Record<TimingWindowKind, string> = {
   pre_cultivation: 'info.main',
   direct_sowing: 'primary.main',
   planting: 'warning.main',
-  harvest: 'error.light',
 };
+
+/**
+ * The derived "Ernte (berechnet)" lane: hatched in a theme colour so it reads
+ * as calculated, not entered, without relying on the colour alone.
+ */
+export const computedHarvestSegmentSx = {
+  backgroundImage: (theme: Theme) => `repeating-linear-gradient(135deg, ${theme.palette.success.main} 0 3px, transparent 3px 6px)`,
+  border: 1,
+  borderColor: 'success.main',
+  borderStyle: 'dashed',
+  boxSizing: 'border-box',
+} as const;
 
 export const timingWindowTrackSx = {
   position: 'relative',

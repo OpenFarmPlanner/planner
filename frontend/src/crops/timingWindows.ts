@@ -18,7 +18,6 @@ export const TIMING_WINDOW_KINDS: readonly TimingWindowKind[] = [
   'pre_cultivation',
   'direct_sowing',
   'planting',
-  'harvest',
 ];
 
 export const TIMING_WINDOW_DECADES: readonly TimingWindowDecade[] = ['early', 'mid', 'late'];
@@ -144,35 +143,87 @@ export function monthsCoveredByTimingWindows(windows: readonly CropTimingWindow[
     .filter((month) => windows.some((window) => timingWindowOverlapsMonth(window, year, month)));
 }
 
-/**
- * The parts of the windows that fall into calendar year `year`, as fractions
- * of the year (0 = 1 January, 1 = end of 31 December), for the detail view's
- * year bar. A window across the year end yields its January and its December part.
- */
-export function timingWindowYearSegments(
-  windows: readonly CropTimingWindow[],
-  year: number,
-): Array<{ start: number; end: number }> {
+export interface YearSegment {
+  start: number;
+  end: number;
+}
+
+/** Inclusive date ranges clipped to calendar year `year`, as fractions of the year (0 = 1 January). */
+function rangesToYearSegments(ranges: readonly IsoDateRange[], year: number): YearSegment[] {
   const yearStart = Date.UTC(year, 0, 1);
   const yearLength = Date.UTC(year + 1, 0, 1) - yearStart;
   const dayLength = 24 * 60 * 60 * 1000;
   const firstDay = `${year}-01-01`;
   const lastDay = `${year}-12-31`;
-  const segments: Array<{ start: number; end: number }> = [];
-  for (const window of windows) {
-    for (const [start, end] of resolveTimingWindow(window, year)) {
-      if (end < firstDay || start > lastDay) {
-        continue;
-      }
-      const clippedStart = Date.parse(start < firstDay ? firstDay : start);
-      const clippedEnd = Date.parse(end > lastDay ? lastDay : end) + dayLength;
-      segments.push({
-        start: (clippedStart - yearStart) / yearLength,
-        end: (clippedEnd - yearStart) / yearLength,
-      });
-    }
+  return ranges
+    .filter(([start, end]) => end >= firstDay && start <= lastDay)
+    .map(([start, end]) => ({
+      start: (Date.parse(start < firstDay ? firstDay : start) - yearStart) / yearLength,
+      end: (Date.parse(end > lastDay ? lastDay : end) + dayLength - yearStart) / yearLength,
+    }));
+}
+
+/**
+ * The parts of the windows that fall into calendar year `year`, as fractions
+ * of the year (0 = 1 January, 1 = end of 31 December), for the detail view's
+ * year bar. A window across the year end yields its January and its December part.
+ */
+export function timingWindowYearSegments(windows: readonly CropTimingWindow[], year: number): YearSegment[] {
+  return rangesToYearSegments(windows.flatMap((window) => resolveTimingWindow(window, year)), year);
+}
+
+export interface CropDurations {
+  growthDurationDays: number | null | undefined;
+  harvestDurationDays: number | null | undefined;
+  propagationDurationDays: number | null | undefined;
+}
+
+const shiftIsoDate = (isoDate: string, days: number): string => {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return toIso(utcDate(year, month, day + days));
+};
+
+const positiveDays = (value: number | null | undefined): number | null => (
+  typeof value === 'number' && value > 0 ? value : null
+);
+
+/**
+ * The calculated harvest of the detail view's "Ernte (berechnet)" lane, from
+ * the effective windows and durations (there are no harvest windows: the
+ * harvest follows from planting and growth duration). Per window: start +
+ * growth duration to end + growth duration + harvest duration, for Direktsaat
+ * and Pflanzung windows; Anzucht windows count, plus the propagation duration,
+ * only when the crop has no Pflanzung windows. Without a growth duration there
+ * is no lane; without a harvest duration it shows the harvest start only.
+ * Windows are resolved like the other lanes, in the previous and the given
+ * year, so a harvest reaching into `year` from last year's sowing shows too.
+ */
+export function computedHarvestYearSegments(
+  windows: readonly CropTimingWindow[],
+  durations: CropDurations,
+  year: number,
+): YearSegment[] {
+  const growth = positiveDays(durations.growthDurationDays);
+  if (growth === null) {
+    return [];
   }
-  return segments;
+  const harvest = positiveDays(durations.harvestDurationDays) ?? 0;
+  const hasPlantingWindows = windowsOfKind(windows, 'planting').length > 0;
+  const sources: Array<{ window: CropTimingWindow; offset: number }> = windows.flatMap((window) => {
+    if (window.kind === 'direct_sowing' || window.kind === 'planting') {
+      return [{ window, offset: growth }];
+    }
+    const propagation = positiveDays(durations.propagationDurationDays);
+    if (window.kind === 'pre_cultivation' && !hasPlantingWindows && propagation !== null) {
+      return [{ window, offset: growth + propagation }];
+    }
+    return [];
+  });
+  const ranges: IsoDateRange[] = sources.flatMap(({ window, offset }) => (
+    [year - 1, year].flatMap((resolveYear) => resolveTimingWindow(window, resolveYear))
+      .map(([start, end]): IsoDateRange => [shiftIsoDate(start, offset), shiftIsoDate(end, offset + harvest)])
+  ));
+  return rangesToYearSegments(ranges, year);
 }
 
 // ---------------------------------------------------------------------------

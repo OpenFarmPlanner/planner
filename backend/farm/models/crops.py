@@ -1892,7 +1892,7 @@ class CropCompanion(TimestampedModel):
 
 
 class CropTimingWindow(models.Model):
-    """One Anzucht, Direktsaat, Pflanzung or Ernte window of a project crop.
+    """One Anzucht, Direktsaat or Pflanzung window of a project crop.
 
     Stored in the unit it was entered in (thirds of a month or ISO weeks) and
     resolved to dates only for a concrete year, by
@@ -1905,12 +1905,11 @@ class CropTimingWindow(models.Model):
     KIND_PRE_CULTIVATION = 'pre_cultivation'
     KIND_DIRECT_SOWING = 'direct_sowing'
     KIND_PLANTING = 'planting'
-    KIND_HARVEST = 'harvest'
+    # No harvest kind: the harvest follows from planting date and growth duration.
     KIND_CHOICES = [
         (KIND_PRE_CULTIVATION, 'Pre-cultivation (Anzucht)'),
         (KIND_DIRECT_SOWING, 'Direct sowing'),
         (KIND_PLANTING, 'Planting out'),
-        (KIND_HARVEST, 'Harvest'),
     ]
     UNIT_DECADE = 'decade'
     UNIT_ISO_WEEK = 'iso_week'
@@ -1939,7 +1938,7 @@ class CropTimingWindow(models.Model):
         ordering = ['crop_id', 'position', 'id']
         constraints = [
             models.CheckConstraint(
-                condition=Q(kind__in=['pre_cultivation', 'direct_sowing', 'planting', 'harvest']),
+                condition=Q(kind__in=['pre_cultivation', 'direct_sowing', 'planting']),
                 name='crop_timing_window_kind_valid',
             ),
             models.CheckConstraint(

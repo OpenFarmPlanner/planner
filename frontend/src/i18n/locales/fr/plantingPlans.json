@@ -392,7 +392,6 @@
     "direct_sowing": "La date de semis est en dehors des périodes de semis direct ({{windows}}).",
     "pre_cultivation": "La date de semis est en dehors des périodes de pépinière ({{windows}}).",
     "planting": "La date de plantation est en dehors des périodes de plantation ({{windows}}).",
-    "harvest": "Le début de récolte est en dehors des périodes de récolte ({{windows}}).",
     "iconAria": "Date en dehors des périodes"
   }
 }

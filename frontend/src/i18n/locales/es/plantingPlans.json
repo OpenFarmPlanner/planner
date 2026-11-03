@@ -392,7 +392,6 @@
     "direct_sowing": "La fecha de siembra está fuera de los periodos de siembra directa ({{windows}}).",
     "pre_cultivation": "La fecha de siembra está fuera de los periodos de semillero ({{windows}}).",
     "planting": "La fecha de plantación está fuera de los periodos de trasplante ({{windows}}).",
-    "harvest": "El inicio de cosecha está fuera de los periodos de cosecha ({{windows}}).",
     "iconAria": "Fecha fuera de los periodos"
   }
 }

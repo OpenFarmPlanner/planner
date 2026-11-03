@@ -1468,7 +1468,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
 
     def test_inheritance_payload_costs_one_query_for_a_whole_list_page(self):
         CropTimingWindow.objects.create(
-            crop=self.general, kind='harvest', unit='iso_week', start_week=20, end_week=30,
+            crop=self.general, kind='planting', unit='iso_week', start_week=20, end_week=30,
         )
         for index in range(5):
             crop = Crop.objects.create(

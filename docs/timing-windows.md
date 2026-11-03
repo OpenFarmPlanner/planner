@@ -1,10 +1,9 @@
 # Timing Windows (Zeiträume)
 
-A crop can carry **windows** for when it is usually raised, sown, planted out
-and harvested, as printed on seed packets and in growing guides
-("Vorkultur Mitte März bis Ende April, Pflanzung Mai, Ernte Mitte Juli bis
-Mitte Oktober"). The crop list filters by them ("Aussaat möglich im Monat")
-and the planting plan points out dates outside them. Issue #858; windows
+A crop can carry **windows** for when it is usually raised, sown and planted
+out, as printed on seed packets and in growing guides ("Vorkultur Mitte März
+bis Ende April, Pflanzung Mai"). The crop list filters by them ("Aussaat
+möglich im Monat") and the planting plan points out dates outside them. Issue #858; windows
 relative to the last frost date are #872 and not part of this.
 
 ## Kinds and terms
@@ -14,11 +13,19 @@ relative to the last frost date are #872 and not part of this.
 | `pre_cultivation` | Anzucht | Propagation | Pépinière | Semillero |
 | `direct_sowing` | Direktsaat | Direct sowing | Semis direct | Siembra directa |
 | `planting` | Pflanzung | Transplanting | Plantation | Trasplante |
-| `harvest` | Ernte | Harvest | Récolte | Cosecha |
+
+**No harvest windows.** A plan's harvest start already follows from its
+planting date plus the growth duration
+(`PlantingPlan.calculate_effective_harvest_dates`); a harvest window would be
+a second, contradicting source, so there is none. The detail view shows a
+calculated harvest lane instead (see below).
 
 "Anzucht", not "Vorkultur": the glossary uses *Vorkultur* for the previous
-crop on a bed. "Vorkultur", "Vorzucht", "Voranzucht", "Vorziehen" and
-"Aussaat (ins) Freiland" are spreadsheet column aliases. A kind holds any
+crop on a bed. Column names from seed catalogues ("Vorkultur", "Voranzucht",
+"Anzuchtzeitraum", "Aussaat Freiland", "Auspflanzung", "Pflanzzeitraum", "start
+indoors", "sow outdoors", "plant out", and French and Spanish equivalents) are
+spreadsheet column aliases; `spreadsheetColumns.test.ts` checks that no alias
+belongs to two columns. A kind holds any
 number of windows (e.g. a spring and a late-summer sowing).
 
 ## Units
@@ -123,9 +130,11 @@ country, so months copied from someone else's farm would mislead. See
 
 ## Crop form and detail view
 
-- Section "Zeiträume" with the groups Anzucht, Direktsaat, Pflanzung, Ernte,
-  each with its rows and "+ Zeitraum hinzufügen". A row has a "Monat"/"KW"
-  switch, native selects for "Von"/"Bis" (third + month, or week 1–52) and a
+- Section "Zeiträume", explained by an info icon with tooltip after the
+  heading (the shared `crops/FieldInfoIcon.tsx`: focusable, opens on tap),
+  with the groups Anzucht, Direktsaat, Pflanzung, each with its rows and
+  "+ Zeitraum hinzufügen". A row has a "Monat"/"KW" switch, native selects for
+  "Von"/"Bis" (third before month, reading like "Anfang April", or week 1–52) and a
   remove button ("Zeitraum entfernen"). Switching the unit clears the row; a
   new row starts in the unit of the row added last in this form, else
   "Monat" (form state only). A start after the end shows "Über den
@@ -135,11 +144,20 @@ country, so months copied from someone else's farm would mislead. See
   (January to December) with one labelled lane per kind; week windows are
   drawn in the current year. Colours come from the theme palette
   (`timingWindowStyles.ts`).
+- Below them the lane **"Ernte (berechnet)"**, hatched and labelled in italics
+  so it reads as derived (`computedHarvestYearSegments` in `timingWindows.ts`),
+  from the effective windows and durations (Sorte before Kultur): per
+  Direktsaat or Pflanzung window, start + growth duration to end + growth
+  duration + harvest duration; Anzucht windows count, plus the propagation
+  duration, only when the crop has no Pflanzung windows. Windows are resolved
+  in the previous and the current year, so a harvest reaching into January
+  from last autumn's sowing shows too. Without a growth duration there is no
+  lane; without a harvest duration it shows only the harvest start.
 
 ## Spreadsheet import and export
 
-One column per kind ("Anzucht", "Direktsaat", "Pflanzung", "Ernte", localized
-like the other headers), several windows in one cell separated by ";". The
+One column per kind ("Anzucht", "Direktsaat", "Pflanzung", localized like the
+other headers), several windows in one cell separated by ";". The
 export writes the canonical text in the UI language; importing it again gives
 the same windows (tested in all four languages, backend and frontend).
 
@@ -170,6 +188,13 @@ of its kind; kinds without a cell keep their windows. Codes and German texts:
 | `timing_window_day_dates` | "15.03. bis 30.04." | Tagesdaten werden nicht unterstützt. … |
 | `timing_window_mixed_units` | "Anfang März bis KW 16" | Monate und Kalenderwochen bitte nicht … mischen. |
 | `timing_window_invalid_week` | "KW 53" | Kalenderwochen von 1 bis 52 angeben. |
+| `timing_window_harvest_not_imported` | "Juli bis September" in the harvest-duration column | Erntezeiträume werden nicht importiert. … |
+
+"Erntezeitraum" is an alias of the harvest duration in days
+(`harvest_duration_days`). When such a cell holds no number, the spreadsheet
+reader sends its text as `harvest_duration_days_text`; the backend reports it
+with `timing_window_harvest_not_imported` when the window parser reads it as
+a window, and drops any other text silently as before.
 
 The JSON export carries the structured `timing_windows` list instead.
 
@@ -179,11 +204,15 @@ Never blocking (`farm/services/timing_window_check.py`). A date is checked only
 when the crop has effective windows of the matching kind:
 
 - direct sowing: the planting date (= sowing date) against Direktsaat;
-- transplanting from own propagation: the sowing date (planting date minus the
-  effective propagation duration, Sorte before Kultur, as in the sowing-date
-  column) against Anzucht, and the planting date against Pflanzung;
-- bought-in plants: the planting date against Pflanzung;
-- every plan: the harvest start against Ernte.
+- transplanting from own propagation: the planting date against Pflanzung.
+  Only when the crop has no effective Pflanzung windows is the sowing date
+  (planting date minus the effective propagation duration, Sorte before
+  Kultur, as in the sowing-date column) checked against Anzucht instead, so a
+  wrong planting date gives exactly one hint;
+- bought-in plants: the planting date against Pflanzung.
+
+The harvest start is never checked (there are no harvest windows). Anzucht
+windows still count fully for the filter, the display and the import.
 
 Each date is resolved in its own year. The findings are
 `PlantingPlanSerializer.timing_window_findings`; the dialog asks

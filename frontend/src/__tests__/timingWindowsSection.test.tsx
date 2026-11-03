@@ -31,12 +31,29 @@ const currentWindows = (): CropTimingWindow[] => JSON.parse(screen.getByTestId('
 const group = (name: string): HTMLElement => screen.getByRole('group', { name });
 
 describe('TimingWindowsSection', () => {
-  it('shows the four kinds in order, each with an add button', () => {
+  it('shows the three kinds in order, each with an add button, and no harvest group', () => {
     render(<Harness initial={[]} />);
     expect(screen.getAllByRole('group').filter((element) => element.getAttribute('aria-labelledby'))
       .map((element) => element.textContent?.split('Zeitraum hinzufügen')[0]))
-      .toEqual(['Anzucht', 'Direktsaat', 'Pflanzung', 'Ernte']);
-    expect(screen.getAllByRole('button', { name: 'Zeitraum hinzufügen' })).toHaveLength(4);
+      .toEqual(['Anzucht', 'Direktsaat', 'Pflanzung']);
+    expect(screen.getAllByRole('button', { name: 'Zeitraum hinzufügen' })).toHaveLength(3);
+  });
+
+  it('explains the section with a focusable info icon instead of a paragraph', () => {
+    render(<Harness initial={[]} />);
+    const help = 'Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. '
+      + 'Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.';
+    const icon = screen.getByRole('img', { name: help });
+    expect(icon).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('heading', { name: 'Zeiträume' })).toBeInTheDocument();
+    expect(screen.queryByText(help)).toBeNull();
+  });
+
+  it('puts the third of the month before the month', () => {
+    render(<Harness initial={[decade('direct_sowing', { start_month: 4, start_decade: 'early', end_month: 5, end_decade: 'late' })]} />);
+    const selects = within(group('Direktsaat')).getAllByRole('combobox');
+    expect(selects.map((select) => select.getAttribute('aria-label')))
+      .toEqual(['Von: Monatsdrittel', 'Von: Monat', 'Bis: Monatsdrittel', 'Bis: Monat']);
   });
 
   it('adds a month row and fills it with native selects', async () => {
@@ -57,11 +74,11 @@ describe('TimingWindowsSection', () => {
 
   it('clears the values when the unit of a row is switched', async () => {
     const user = userEvent.setup();
-    render(<Harness initial={[decade('harvest', { start_month: 7, start_decade: 'early', end_month: 9, end_decade: 'late' })]} />);
-    await user.click(within(group('Ernte')).getByRole('button', { name: 'KW' }));
+    render(<Harness initial={[decade('planting', { start_month: 7, start_decade: 'early', end_month: 9, end_decade: 'late' })]} />);
+    await user.click(within(group('Pflanzung')).getByRole('button', { name: 'KW' }));
 
-    expect(currentWindows()).toEqual([emptyTimingWindow('harvest', 'iso_week')]);
-    const weekSelect = within(group('Ernte')).getByLabelText('Von: Kalenderwoche');
+    expect(currentWindows()).toEqual([emptyTimingWindow('planting', 'iso_week')]);
+    const weekSelect = within(group('Pflanzung')).getByLabelText('Von: Kalenderwoche');
     expect(within(weekSelect).getAllByRole('option')).toHaveLength(53);
     expect(within(weekSelect).getByRole('option', { name: 'KW 52' })).toBeInTheDocument();
     expect(within(weekSelect).queryByRole('option', { name: 'KW 53' })).toBeNull();
@@ -72,11 +89,11 @@ describe('TimingWindowsSection', () => {
     render(<Harness initial={[]} />);
     await user.click(within(group('Anzucht')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
     await user.click(within(group('Anzucht')).getByRole('button', { name: 'KW' }));
-    await user.click(within(group('Ernte')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
+    await user.click(within(group('Pflanzung')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
 
     expect(currentWindows().map((window) => [window.kind, window.unit])).toEqual([
       ['pre_cultivation', 'iso_week'],
-      ['harvest', 'iso_week'],
+      ['planting', 'iso_week'],
     ]);
   });
 
@@ -88,7 +105,7 @@ describe('TimingWindowsSection', () => {
   it('does not note an ordinary or incomplete window', () => {
     render(<Harness initial={[
       decade('direct_sowing', { start_month: 3, start_decade: 'early', end_month: 5, end_decade: 'late' }),
-      decade('harvest', { start_month: 11, start_decade: 'early' }),
+      decade('planting', { start_month: 11, start_decade: 'early' }),
     ]} />);
     expect(screen.queryByText('Über den Jahreswechsel')).toBeNull();
   });
@@ -116,7 +133,7 @@ describe('validateCrop with timing windows', () => {
       name: 'Möhre',
       timing_windows: [
         decade('direct_sowing', { start_month: 3, start_decade: 'early', end_month: 5, end_decade: 'late' }),
-        { ...emptyTimingWindow('harvest', 'iso_week'), start_week: 30 },
+        { ...emptyTimingWindow('planting', 'iso_week'), start_week: 30 },
       ],
     }, tValidation, 'submit', false);
     expect(result.isValid).toBe(false);
@@ -126,7 +143,7 @@ describe('validateCrop with timing windows', () => {
   it('accepts complete rows', () => {
     const result = validateCrop({
       name: 'Möhre',
-      timing_windows: [{ ...emptyTimingWindow('harvest', 'iso_week'), start_week: 30, end_week: 30 }],
+      timing_windows: [{ ...emptyTimingWindow('planting', 'iso_week'), start_week: 30, end_week: 30 }],
     }, tValidation, 'submit', false);
     expect(result.errors).toEqual({});
   });

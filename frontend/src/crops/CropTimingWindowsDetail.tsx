@@ -4,11 +4,19 @@ import type { Crop, CropTimingWindow, TimingWindowKind } from '../api/types';
 import { useTranslation } from '../i18n';
 import {
   TIMING_WINDOW_KINDS,
+  computedHarvestYearSegments,
   formatTimingWindows,
   timingWindowYearSegments,
   windowsOfKind,
+  type YearSegment,
 } from './timingWindows';
-import { TIMING_WINDOW_LANE_COLORS, timingWindowLaneGridSx, timingWindowTrackSx } from './timingWindowStyles';
+import {
+  TIMING_WINDOW_LANE_COLORS,
+  computedHarvestSegmentSx,
+  timingWindowLaneGridSx,
+  timingWindowTrackSx,
+} from './timingWindowStyles';
+import { getEffectiveCropValue } from './varietyValueSource';
 import { varietySpecificValueHighlightSx } from './varietyValueAccent';
 
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -44,8 +52,19 @@ function collectKinds(crop: Crop): KindWindows[] {
     .filter((entry) => entry.windows.length > 0);
 }
 
-/** Year bar, January to December of `year`, one labelled lane per kind with windows. */
-function TimingWindowYearBar({ kinds, year }: { kinds: KindWindows[]; year: number }) {
+const segmentPosition = (segment: YearSegment) => ({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  left: `${segment.start * 100}%`,
+  width: `${(segment.end - segment.start) * 100}%`,
+}) as const;
+
+/**
+ * Year bar, January to December of `year`: one labelled lane per kind with
+ * windows, plus the calculated harvest, hatched as derived.
+ */
+function TimingWindowYearBar({ kinds, harvest, year }: { kinds: KindWindows[]; harvest: YearSegment[]; year: number }) {
   const { t } = useTranslation(['crops', 'common']);
   return (
     <Box role="img" aria-label={t('crops:timingWindows.yearBarLabel', { year })} sx={timingWindowLaneGridSx}>
@@ -70,21 +89,27 @@ function TimingWindowYearBar({ kinds, year }: { kinds: KindWindows[]; year: numb
           </Typography>
           <Box sx={timingWindowTrackSx}>
             {timingWindowYearSegments(windows, year).map((segment, index) => (
-              <Box
-                key={index}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  bottom: 0,
-                  left: `${segment.start * 100}%`,
-                  width: `${(segment.end - segment.start) * 100}%`,
-                  bgcolor: TIMING_WINDOW_LANE_COLORS[kind],
-                }}
-              />
+              <Box key={index} sx={{ ...segmentPosition(segment), bgcolor: TIMING_WINDOW_LANE_COLORS[kind] }} />
             ))}
           </Box>
         </Box>
       ))}
+      {harvest.length > 0 ? (
+        <Box sx={{ display: 'contents' }} data-testid="timing-window-lane-computed-harvest">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {t('crops:timingWindows.computedHarvest')}
+          </Typography>
+          <Box sx={timingWindowTrackSx}>
+            {harvest.map((segment, index) => (
+              <Box key={index} sx={{ ...segmentPosition(segment), ...computedHarvestSegmentSx }} />
+            ))}
+          </Box>
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -97,6 +122,15 @@ export function CropTimingWindowsDetail({ crop, isVarietyView }: CropTimingWindo
   const { t } = useTranslation(['crops', 'common']);
   const kinds = collectKinds(crop);
   const year = new Date().getFullYear();
+  const harvest = computedHarvestYearSegments(
+    kinds.flatMap(({ windows }) => windows),
+    {
+      growthDurationDays: getEffectiveCropValue(crop, 'growth_duration_days'),
+      harvestDurationDays: getEffectiveCropValue(crop, 'harvest_duration_days'),
+      propagationDurationDays: getEffectiveCropValue(crop, 'propagation_duration_days'),
+    },
+    year,
+  );
 
   return (
     <Box sx={{ mb: 3 }} data-testid="crop-timing-windows-detail">
@@ -122,7 +156,7 @@ export function CropTimingWindowsDetail({ crop, isVarietyView }: CropTimingWindo
               </Box>
             ))}
           </Box>
-          <TimingWindowYearBar kinds={kinds} year={year} />
+          <TimingWindowYearBar kinds={kinds} harvest={harvest} year={year} />
         </>
       )}
     </Box>

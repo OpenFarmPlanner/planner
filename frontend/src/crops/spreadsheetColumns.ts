@@ -171,9 +171,13 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   {
     key: 'pre_cultivation_windows',
     headerKey: 'timingWindows.kinds.pre_cultivation',
+    // Seed catalogues name these columns in many ways ("Vorkultur", "Aussaat Freiland").
     aliases: [
-      'anzucht', 'vorkultur', 'vorzucht', 'voranzucht', 'vorziehen', 'aussaat vorkultur',
-      'propagation', 'pre_cultivation_windows',
+      'anzucht', 'anzuchtzeitraum', 'vorkultur', 'vorzucht', 'voranzucht', 'vorziehen', 'aussaat vorkultur',
+      'propagation', 'indoor sowing', 'start indoors', 'sow indoors',
+      'semis sous abri', 'semis en pépinière', 'semis en godets',
+      'semillero', 'siembra en semillero', 'siembra protegida',
+      'pre_cultivation_windows',
     ],
     type: 'timingWindows',
   },
@@ -181,21 +185,24 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     key: 'direct_sowing_windows',
     headerKey: 'timingWindows.kinds.direct_sowing',
     aliases: [
-      'direktsaat', 'aussaat freiland', 'aussaat ins freiland', 'freilandaussaat',
-      'direct sowing', 'direct_sowing_windows',
+      'direktsaat', 'direktsaatzeitraum', 'aussaat freiland', 'aussaat ins freiland', 'freilandaussaat',
+      'direct sowing', 'sow outdoors', 'outdoor sowing',
+      'semis direct', 'semis en pleine terre', 'semis en place',
+      'siembra directa', 'siembra al aire libre', 'siembra en el exterior',
+      'direct_sowing_windows',
     ],
     type: 'timingWindows',
   },
   {
     key: 'planting_windows',
     headerKey: 'timingWindows.kinds.planting',
-    aliases: ['pflanzung', 'auspflanzen', 'pflanzzeit', 'transplanting', 'planting', 'planting_windows'],
-    type: 'timingWindows',
-  },
-  {
-    key: 'harvest_windows',
-    headerKey: 'timingWindows.kinds.harvest',
-    aliases: ['ernte', 'harvest', 'harvest_windows'],
+    aliases: [
+      'pflanzung', 'auspflanzung', 'auspflanzen', 'pflanzung freiland', 'pflanzzeit', 'pflanzzeitraum',
+      'transplanting', 'planting', 'plant out', 'planting out',
+      'plantation', 'repiquage', 'mise en place',
+      'trasplante', 'plantación', 'plantacion',
+      'planting_windows',
+    ],
     type: 'timingWindows',
   },
   {

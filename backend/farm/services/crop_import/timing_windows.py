@@ -34,6 +34,8 @@ ERROR_AMBIGUOUS_SLASH = 'timing_window_ambiguous_slash'
 ERROR_DAY_DATES = 'timing_window_day_dates'
 ERROR_MIXED_UNITS = 'timing_window_mixed_units'
 ERROR_INVALID_WEEK = 'timing_window_invalid_week'
+# A window written into the harvest-duration column ("Erntezeitraum").
+ERROR_HARVEST_NOT_IMPORTED = 'timing_window_harvest_not_imported'
 
 PARSE_ERROR_MESSAGES: dict[str, str] = {
     ERROR_NOT_RECOGNIZED: (
@@ -49,7 +51,19 @@ PARSE_ERROR_MESSAGES: dict[str, str] = {
     ),
     ERROR_MIXED_UNITS: 'Do not mix months and calendar weeks within one window.',
     ERROR_INVALID_WEEK: 'Calendar weeks must be between 1 and 52.',
+    ERROR_HARVEST_NOT_IMPORTED: (
+        'Harvest windows are not imported: the harvest follows from planting and growth '
+        'duration. This column expects the harvest duration in days.'
+    ),
 }
+
+
+def is_timing_window_text(value: object) -> bool:
+    """Whether the text reads as one or more timing windows ("Juli bis September")."""
+    try:
+        return bool(parse_timing_window_cell('planting', value))
+    except TimingWindowParseError:
+        return False
 
 
 class TimingWindowParseError(ValueError):

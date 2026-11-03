@@ -27,7 +27,13 @@ from farm.services.timing_windows import (
 )
 from farm.utils import normalize_supplier_name, normalize_text
 
-from .timing_windows import PARSE_ERROR_MESSAGES, TimingWindowParseError, parse_timing_window_cell
+from .timing_windows import (
+    ERROR_HARVEST_NOT_IMPORTED,
+    PARSE_ERROR_MESSAGES,
+    TimingWindowParseError,
+    is_timing_window_text,
+    parse_timing_window_cell,
+)
 
 _ROW_SHAPE_ERROR = 'Entry must be an object with at least a "name" field.'
 _COMPANION_FIELDS = ('good_companions', 'bad_companions')
@@ -40,6 +46,26 @@ def _pop_companions(crop_data: dict) -> dict[str, Any]:
 
 # One text column per window kind ("Anfang März bis Ende April; KW 30").
 TIMING_WINDOW_COLUMNS: dict[str, str] = {f'{kind}_windows': kind for kind in TIMING_WINDOW_KINDS}
+
+# The sheet's text in the harvest-duration column when it is no number. The
+# spreadsheet reader sends it under this key only, so the row still imports.
+HARVEST_DURATION_TEXT_KEY = 'harvest_duration_days_text'
+
+
+def _harvest_duration_text_issue(crop_data: dict) -> dict[str, Any] | None:
+    """An issue when the harvest-duration column holds a window instead of days.
+
+    Other text there is dropped without a message, as before.
+    """
+    text = crop_data.pop(HARVEST_DURATION_TEXT_KEY, None)
+    if text is None or not is_timing_window_text(text):
+        return None
+    return {
+        'field': 'harvest_duration_days',
+        'value': str(text).strip(),
+        'code': ERROR_HARVEST_NOT_IMPORTED,
+        'message': PARSE_ERROR_MESSAGES[ERROR_HARVEST_NOT_IMPORTED],
+    }
 
 
 def _own_windows(crop: Crop | None) -> list[TimingWindow]:
@@ -58,7 +84,8 @@ def apply_timing_window_cells(crop_data: dict, existing_crop: Crop | None) -> li
     """
     cells = {key: crop_data.pop(key) for key in TIMING_WINDOW_COLUMNS if key in crop_data}
     parsed: dict[str, list[TimingWindow]] = {}
-    issues: list[dict[str, Any]] = []
+    harvest_issue = _harvest_duration_text_issue(crop_data)
+    issues: list[dict[str, Any]] = [harvest_issue] if harvest_issue else []
     for column, value in cells.items():
         if value is None or not str(value).strip():
             continue

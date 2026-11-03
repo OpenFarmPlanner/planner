@@ -378,7 +378,8 @@ or changing a public page:
 - The seeded family defaults are initial reference values still to be verified
   against LfL Bayern / Bio Austria via the crop-data workflow. Details:
   [`docs/crop-library-architecture.md`](docs/crop-library-architecture.md#plant-families-pflanzenfamilien).
-- Timing windows (`CropTimingWindow`: Anzucht, Direktsaat, Pflanzung, Ernte)
+- Timing windows (`CropTimingWindow`: Anzucht, Direktsaat, Pflanzung; no
+  harvest windows, the harvest follows from planting and growth duration)
   are stored in their unit (thirds of a month or ISO weeks 1–52, never as
   dates) and resolved per year only in `farm/services/timing_windows.py`;
   import, planning hints and the sowing-month filter all go through it, the

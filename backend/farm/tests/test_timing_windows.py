@@ -188,11 +188,11 @@ class ParserTest(SimpleTestCase):
 
     def test_several_windows_and_empty_cells(self):
         self.assertEqual(
-            parse_timing_window_cell('harvest', 'Mitte März bis Ende April;KW 30 ; '),
-            [decade(3, 'mid', 4, 'late', kind='harvest'), weeks(30, 30, kind='harvest')],
+            parse_timing_window_cell('planting', 'Mitte März bis Ende April;KW 30 ; '),
+            [decade(3, 'mid', 4, 'late', kind='planting'), weeks(30, 30, kind='planting')],
         )
-        self.assertEqual(parse_timing_window_cell('harvest', '  '), [])
-        self.assertEqual(parse_timing_window_cell('harvest', None), [])
+        self.assertEqual(parse_timing_window_cell('planting', '  '), [])
+        self.assertEqual(parse_timing_window_cell('planting', None), [])
 
     def test_rejected_forms(self):
         cases = {
@@ -242,11 +242,11 @@ class TimingWindowConstraintTest(TestCase):
 
     def assert_rejected(self, **fields):
         with self.assertRaises(IntegrityError), transaction.atomic():
-            CropTimingWindow.objects.create(crop=self.crop, kind=fields.pop('kind', 'harvest'), **fields)
+            CropTimingWindow.objects.create(crop=self.crop, kind=fields.pop('kind', 'planting'), **fields)
 
     def test_valid_rows_are_stored(self):
         CropTimingWindow.objects.create(
-            crop=self.crop, kind='harvest', unit='decade',
+            crop=self.crop, kind='planting', unit='decade',
             start_month=11, start_decade=1, end_month=2, end_decade=3,
         )
         CropTimingWindow.objects.create(crop=self.crop, kind='planting', unit='iso_week', start_week=52, end_week=1)
@@ -266,6 +266,8 @@ class TimingWindowConstraintTest(TestCase):
 
     def test_unknown_kind_or_unit_is_rejected(self):
         self.assert_rejected(kind='sowing', unit='iso_week', start_week=1, end_week=2)
+        # Harvest windows were dropped: the harvest follows from planting and growth duration.
+        self.assert_rejected(kind='harvest', unit='iso_week', start_week=1, end_week=2)
         self.assert_rejected(unit='day', start_week=1, end_week=2)
 
 
@@ -295,7 +297,7 @@ class TimingWindowApiTest(ProjectApiTestCase):
         march_to_may = api_window(start_month=3, start_decade='early', end_month=5, end_decade='late')
         response = self.put_windows(self.general, [
             march_to_may,
-            api_window(kind='harvest', unit='iso_week', start_week=28, end_week=40),
+            api_window(kind='planting', unit='iso_week', start_week=28, end_week=40),
         ])
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(len(response.data['timing_windows']), 2)
@@ -323,7 +325,7 @@ class TimingWindowApiTest(ProjectApiTestCase):
     def test_a_sorte_inherits_per_kind_and_live(self):
         self.put_windows(self.general, [
             api_window(start_month=3, start_decade='early', end_month=5, end_decade='late'),
-            api_window(kind='harvest', start_month=7, start_decade='mid', end_month=9, end_decade='late'),
+            api_window(kind='planting', start_month=7, start_decade='mid', end_month=9, end_decade='late'),
         ])
         own_direct = api_window(unit='iso_week', start_week=12, end_week=16)
         response = self.put_windows(self.variety, [own_direct])
@@ -332,15 +334,15 @@ class TimingWindowApiTest(ProjectApiTestCase):
         effective = response.data['effective_timing_windows']
         self.assertEqual(
             [(window['kind'], window['inherited']) for window in effective],
-            [('direct_sowing', False), ('harvest', True)],
+            [('direct_sowing', False), ('planting', True)],
         )
 
         # A change on the Kultur reaches the Sorte without a copy.
-        self.put_windows(self.general, [api_window(kind='harvest', unit='iso_week', start_week=30, end_week=35)])
+        self.put_windows(self.general, [api_window(kind='planting', unit='iso_week', start_week=30, end_week=35)])
         data = self.client.get(f'{CROPS_URL}{self.variety.id}/').data
         self.assertEqual(
             [(window['kind'], window['start_week'], window['inherited']) for window in data['effective_timing_windows']],
-            [('direct_sowing', 12, False), ('harvest', 30, True)],
+            [('direct_sowing', 12, False), ('planting', 30, True)],
         )
 
     def test_a_kultur_does_not_inherit_and_a_free_text_sorte_has_nothing_to_inherit(self):
@@ -374,6 +376,32 @@ class TimingWindowApiTest(ProjectApiTestCase):
 
 
 class TimingWindowImportTest(ProjectApiTestCase):
+    def test_a_window_in_the_harvest_duration_column_is_reported(self):
+        rows = [
+            {'name': 'Kürbis', 'harvest_duration_days_text': 'Juli bis September'},
+            {'name': 'Zucchini', 'harvest_duration_days_text': 'laufend'},
+            {'name': 'Bohne', 'harvest_duration_days': 21},
+        ]
+        preview = self.preview([dict(row) for row in rows]).data['results']
+        self.assertEqual(preview[0]['timing_window_issues'], [{
+            'field': 'harvest_duration_days',
+            'value': 'Juli bis September',
+            'code': 'timing_window_harvest_not_imported',
+            'message': preview[0]['timing_window_issues'][0]['message'],
+        }])
+        # Other text keeps the old behaviour: dropped without a message.
+        self.assertNotIn('timing_window_issues', preview[1])
+        self.assertNotIn('timing_window_issues', preview[2])
+
+        response = self.apply([dict(row) for row in rows])
+        self.assertEqual(response.data['created_count'], 3)
+        self.assertEqual(
+            [issue['code'] for issue in response.data['timing_window_issues']],
+            ['timing_window_harvest_not_imported'],
+        )
+        self.assertIsNone(Crop.objects.get(name='Kürbis').harvest_duration_days)
+        self.assertEqual(Crop.objects.get(name='Bohne').harvest_duration_days, 21)
+
     def preview(self, rows):
         return self.client.post(f'{CROPS_URL}import/preview/', rows, format='json')
 
@@ -386,13 +414,13 @@ class TimingWindowImportTest(ProjectApiTestCase):
         row = {
             'name': 'Salat',
             'direct_sowing_windows': 'Anfang März bis Ende April; KW 30',
-            'harvest_windows': 'nach den Eisheiligen',
+            'planting_windows': 'nach den Eisheiligen',
         }
         preview = self.preview([dict(row)])
         result = preview.data['results'][0]
         self.assertEqual(result['status'], 'create')
         self.assertEqual(result['timing_window_issues'], [{
-            'field': 'harvest_windows',
+            'field': 'planting_windows',
             'value': 'nach den Eisheiligen',
             'code': ERROR_NOT_RECOGNIZED,
             'message': result['timing_window_issues'][0]['message'],
@@ -409,7 +437,7 @@ class TimingWindowImportTest(ProjectApiTestCase):
 
     def test_an_update_replaces_only_the_kinds_with_a_cell(self):
         CropTimingWindow.objects.create(
-            crop=self.crop, kind='harvest', unit='iso_week', start_week=28, end_week=30,
+            crop=self.crop, kind='planting', unit='iso_week', start_week=28, end_week=30,
         )
         rows = [{'name': self.crop.name, 'direct_sowing_windows': 'März bis Mai'}]
         preview = self.preview([dict(rows[0])]).data['results'][0]
@@ -421,7 +449,7 @@ class TimingWindowImportTest(ProjectApiTestCase):
         self.apply(rows)
         self.assertEqual(
             sorted(self.crop.timing_windows.values_list('kind', flat=True)),
-            ['direct_sowing', 'harvest'],
+            ['direct_sowing', 'planting'],
         )
 
     def test_export_text_imports_back_to_the_same_windows_in_every_language(self):
@@ -429,14 +457,14 @@ class TimingWindowImportTest(ProjectApiTestCase):
             decade(3, 'early', 4, 'late', kind='pre_cultivation'),
             decade(3, 'mid', 5, 'early', kind='direct_sowing'),
             weeks(19, 22, kind='planting'),
-            decade(7, 'mid', 7, 'mid', kind='harvest'),
-            weeks(44, 8, kind='harvest'),
+            decade(7, 'mid', 7, 'mid', kind='planting'),
+            weeks(44, 8, kind='planting'),
         ]
         for language in LANGUAGES:
             with self.subTest(language=language):
                 Crop.objects.filter(name=f'Kohl {language}').delete()
                 row = {'name': f'Kohl {language}'}
-                for kind in ('pre_cultivation', 'direct_sowing', 'planting', 'harvest'):
+                for kind in ('pre_cultivation', 'direct_sowing', 'planting'):
                     row[f'{kind}_windows'] = format_windows(
                         [window for window in windows if window.kind == kind], language,
                     )
@@ -481,20 +509,28 @@ class TimingWindowPlanningHintTest(ProjectApiTestCase):
         self.assertEqual(self.findings_for('direct_sowing', date(2026, 4, 1)), [])
         self.assertEqual(self.findings_for('direct_sowing', date(2026, 8, 1)), [('direct_sowing', '2026-08-01')])
 
-    def test_own_propagation_checks_the_derived_sowing_date_and_the_planting_date(self):
+    def test_own_propagation_checks_only_the_planting_date_when_there_are_planting_windows(self):
         self.add_windows(
             decade(3, 'early', 3, 'late', kind='pre_cultivation'),
             weeks(17, 19, kind='planting'),
         )
-        # Planted 2026-04-29 (week 18): sown 2026-04-01, outside the March Anzucht window.
+        # Planted 2026-04-29 (week 18): fine, although sown 2026-04-01, after the
+        # Anzucht window; the Anzucht window is not checked at all.
+        self.assertEqual(self.findings_for('pre_cultivation', date(2026, 4, 29)), [])
+        # Planted 2026-06-01: one hint, for the planting date only.
+        self.assertEqual(
+            self.findings_for('pre_cultivation', date(2026, 6, 1)),
+            [('planting', '2026-06-01')],
+        )
+
+    def test_own_propagation_checks_the_sowing_date_without_planting_windows(self):
+        self.add_windows(decade(3, 'early', 3, 'late', kind='pre_cultivation'))
+        # Planted 2026-04-15: sown 2026-03-18, inside the Anzucht window.
+        self.assertEqual(self.findings_for('pre_cultivation', date(2026, 4, 15)), [])
+        # Planted 2026-04-29: sown 2026-04-01, outside it.
         self.assertEqual(
             self.findings_for('pre_cultivation', date(2026, 4, 29)),
             [('pre_cultivation', '2026-04-01')],
-        )
-        # Planted 2026-04-15: sown 2026-03-18 (fine), planted in week 16 (too early).
-        self.assertEqual(
-            self.findings_for('pre_cultivation', date(2026, 4, 15)),
-            [('planting', '2026-04-15')],
         )
 
     def test_bought_in_plants_only_check_the_planting_date(self):
@@ -507,12 +543,14 @@ class TimingWindowPlanningHintTest(ProjectApiTestCase):
             self.findings_for('purchased_transplant', date(2026, 6, 1)),
             [('planting', '2026-06-01')],
         )
+        # Without Pflanzung windows bought-in plants get no hint, even with Anzucht windows.
+        self.add_windows(decade(3, 'early', 3, 'late', kind='pre_cultivation'))
+        self.assertEqual(self.findings_for('purchased_transplant', date(2026, 6, 1)), [])
 
-    def test_harvest_start_is_checked_against_the_harvest_windows(self):
-        self.add_windows(decade(7, 'early', 8, 'late', kind='harvest'))
-        # 2026-05-01 + 60 days = 2026-06-30.
-        self.assertEqual(self.findings_for('direct_sowing', date(2026, 5, 1)), [('harvest', '2026-06-30')])
-        self.assertEqual(self.findings_for('direct_sowing', date(2026, 5, 10)), [])
+    def test_the_harvest_start_is_never_checked(self):
+        self.add_windows(decade(3, 'early', 5, 'late'))
+        # 2026-05-01 + 60 days growth = harvest 2026-06-30, outside every window: no hint.
+        self.assertEqual(self.findings_for('direct_sowing', date(2026, 5, 1)), [])
 
     def test_a_window_across_new_year_is_resolved_in_the_dates_year(self):
         self.add_windows(decade(11, 'early', 2, 'late', kind='direct_sowing'))

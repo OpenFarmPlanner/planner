@@ -718,7 +718,8 @@
         "color": "«{{column}}» como código hexadecimal, p. ej. #2E7D32. Si falta, se elige un color.",
         "matching": "Una fila con el mismo nombre, variedad y proveedor que un cultivo existente solo lo actualiza tras «{{confirm}}».",
         "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla.",
-        "timingWindows": "«{{columns}}»: periodos en decenas del mes o en semanas, por ejemplo «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa varios periodos con «;». No se admiten fechas concretas."
+        "timingWindows": "«{{columns}}»: periodos en decenas del mes o en semanas, por ejemplo «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa varios periodos con «;». No se admiten fechas concretas.",
+        "catalogColumns": "Las columnas de los catálogos de semillas como «Semillero» o «Siembra al aire libre» se reconocen automáticamente."
       }
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
@@ -1663,12 +1664,11 @@
   },
   "timingWindows": {
     "sectionTitle": "Periodos",
-    "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa, el trasplante y la cosecha, en decenas del mes o en semanas. La planificación señala las fechas fuera de ellos.",
+    "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa y el trasplante, en decenas del mes o en semanas. La planificación señala las fechas fuera de estos periodos.",
     "kinds": {
       "pre_cultivation": "Semillero",
       "direct_sowing": "Siembra directa",
-      "planting": "Trasplante",
-      "harvest": "Cosecha"
+      "planting": "Trasplante"
     },
     "addWindow": "Añadir periodo",
     "removeWindow": "Quitar periodo",
@@ -1706,7 +1706,9 @@
       "timing_window_ambiguous_slash": "«{{value}}» es ambiguo. Escribe «marzo a abril» para un periodo y «marzo; abril» para dos.",
       "timing_window_day_dates": "No se admiten fechas concretas. Usa decenas del mes (por ejemplo «mediados de marzo») o semanas (por ejemplo «semana 11»).",
       "timing_window_mixed_units": "No mezcles meses y semanas en un mismo periodo.",
-      "timing_window_invalid_week": "Las semanas van de 1 a 52."
-    }
+      "timing_window_invalid_week": "Las semanas van de 1 a 52.",
+      "timing_window_harvest_not_imported": "Los periodos de cosecha no se importan. La cosecha resulta del trasplante y de la duración del cultivo. Esta columna espera la duración de la cosecha en días."
+    },
+    "computedHarvest": "Cosecha (calculada)"
   }
 }

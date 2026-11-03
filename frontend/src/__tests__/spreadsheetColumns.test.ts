@@ -125,3 +125,31 @@ describe('buildHeaderToKeyMap', () => {
     expect(translated.get(normalizeHeaderForLookup(first.headerKey))).toBe(first.key);
   });
 });
+
+describe('seed-catalogue column names', () => {
+  it.each([
+    ['Vorkultur', 'pre_cultivation_windows'],
+    ['Anzuchtzeitraum', 'pre_cultivation_windows'],
+    ['Start indoors', 'pre_cultivation_windows'],
+    ['Semis sous abri', 'pre_cultivation_windows'],
+    ['Semillero', 'pre_cultivation_windows'],
+    ['Aussaat Freiland', 'direct_sowing_windows'],
+    ['Direktsaatzeitraum', 'direct_sowing_windows'],
+    ['Sow outdoors', 'direct_sowing_windows'],
+    ['Semis en pleine terre', 'direct_sowing_windows'],
+    ['Siembra al aire libre', 'direct_sowing_windows'],
+    ['Auspflanzung', 'planting_windows'],
+    ['Pflanzung Freiland', 'planting_windows'],
+    ['Pflanzzeitraum', 'planting_windows'],
+    ['Plant out', 'planting_windows'],
+    ['Repiquage', 'planting_windows'],
+    ['Trasplante', 'planting_windows'],
+    ['Erntezeitraum', 'harvest_duration_days'],
+  ])('reads "%s" as %s', (header, key) => {
+    expect(buildHeaderToKeyMap().get(normalizeHeaderForLookup(header))).toBe(key);
+  });
+
+  it('has no harvest window column', () => {
+    expect(CROP_COLUMNS.map((column) => column.key)).not.toContain('harvest_windows');
+  });
+});

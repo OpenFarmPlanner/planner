@@ -433,8 +433,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             project=request.active_project, crop=crop,
             planting_date=planting_date, cultivation_type=cultivation_type,
         )
-        harvest_start, _harvest_end = candidate.calculate_effective_harvest_dates(checker.general_crop_index)
-        findings = checker.check_plan(candidate, harvest_start)
+        findings = checker.check_plan(candidate)
         return Response({'timing_window_findings': [finding.as_dict() for finding in findings]})
 
     @action(detail=False, methods=['get'], url_path='rotation-check')

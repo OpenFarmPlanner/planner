@@ -22,6 +22,10 @@ export type SpreadsheetParseResult = {
   warnings: string[];
 };
 
+const HARVEST_DURATION_KEY = 'harvest_duration_days';
+/** Read by the backend import only (`HARVEST_DURATION_TEXT_KEY` in crop_import/spreadsheet.py). */
+const HARVEST_DURATION_TEXT_KEY = 'harvest_duration_days_text';
+
 const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -131,6 +135,10 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
       const parsed = parseRawValue(raw, colDef.type, enumImportMaps.get(key));
       if (parsed !== undefined) {
         entry[key] = parsed;
+      } else if (key === HARVEST_DURATION_KEY && typeof raw === 'string' && raw.trim()) {
+        // Text in the harvest-duration column ("Juli bis September") is no number;
+        // the backend import tells a harvest window from other text.
+        entry[HARVEST_DURATION_TEXT_KEY] = raw.trim();
       }
     }
 

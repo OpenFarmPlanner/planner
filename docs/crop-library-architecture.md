@@ -1278,8 +1278,8 @@ Some crop data deliberately never reaches the crop library: it is left out of
 publishing, the library import, the sync (`public-sync`, pull and push), the
 update diff and the sync dialogs.
 
-- **Timing windows** (`CropTimingWindow`: Anzucht, Direktsaat, Pflanzung,
-  Ernte). Sowing and harvest times depend on the local climate (altitude,
+- **Timing windows** (`CropTimingWindow`: Anzucht, Direktsaat, Pflanzung).
+  Sowing and planting times depend on the local climate (altitude,
   last frost date, greenhouse), not on the country, so windows copied from
   someone else's farm would mislead. They are a related model, not a `Crop`
   column, so no copy/compare field set (`CROP_COPY_FIELDS`,

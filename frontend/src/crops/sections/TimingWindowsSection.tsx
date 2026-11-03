@@ -1,6 +1,7 @@
 /**
- * TimingWindowsSection: the crop's Anzucht, Direktsaat, Pflanzung and Ernte
- * windows, one group per kind with any number of rows. A row is in thirds of
+ * TimingWindowsSection: the crop's Anzucht, Direktsaat and Pflanzung windows,
+ * one group per kind with any number of rows (no harvest windows: the harvest
+ * follows from planting and growth duration). A row is in thirds of
  * a month or in calendar weeks (docs/timing-windows.md).
  * @remarks Holds only the unit a new row starts with; the windows live in the form.
  */
@@ -25,6 +26,7 @@ import {
   segmentedToggleButtonGroupSx,
   segmentedToggleButtonSx,
 } from '../../components/buttons/segmentedControlStyles';
+import { FieldInfoIcon } from '../FieldInfoIcon';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import {
   MAX_ISO_WEEK,
@@ -180,8 +182,15 @@ export function TimingWindowsSection({ windows, errors, onChange, t, getKindHigh
 
   return (
     <>
-      <Typography variant="h6" sx={{ mt: 1 }}>{t('timingWindows.sectionTitle')}</Typography>
-      <Typography variant="body2" color="text.secondary">{t('timingWindows.sectionHelp')}</Typography>
+      {/* Heading plus info icon as in BasicInfoSection's crop-rotation heading:
+          the icon stays beside the last word and outside the heading's name. */}
+      <Box sx={{ mt: 1, typography: 'h6' }}>
+        <Typography variant="h6" sx={{ display: 'inline' }}>{t('timingWindows.sectionTitle')}</Typography>
+        <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+          {'\u00A0'}
+          <FieldInfoIcon title={t('timingWindows.sectionHelp')} />
+        </Box>
+      </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {TIMING_WINDOW_KINDS.map((kind) => {
           const highlight = getKindHighlight?.(kind) ?? null;

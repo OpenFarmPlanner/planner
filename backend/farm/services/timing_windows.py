@@ -1,4 +1,9 @@
-"""Timing windows of a crop (Anzucht, Direktsaat, Pflanzung, Ernte).
+"""Timing windows of a crop (Anzucht, Direktsaat, Pflanzung).
+
+There is deliberately no harvest kind: a plan's harvest follows from its
+planting date and the crop's growth duration
+(``PlantingPlan.calculate_effective_harvest_dates``), so a separate harvest
+window would be a second, contradicting source.
 
 A window is stored in the unit it was entered in, never as a converted date:
 
@@ -35,13 +40,11 @@ if TYPE_CHECKING:
 KIND_PRE_CULTIVATION = 'pre_cultivation'
 KIND_DIRECT_SOWING = 'direct_sowing'
 KIND_PLANTING = 'planting'
-KIND_HARVEST = 'harvest'
 # Display, form and export order.
 TIMING_WINDOW_KINDS: tuple[str, ...] = (
     KIND_PRE_CULTIVATION,
     KIND_DIRECT_SOWING,
     KIND_PLANTING,
-    KIND_HARVEST,
 )
 # The kinds the "sowing possible in month" filter reads.
 SOWING_KINDS: tuple[str, ...] = (KIND_PRE_CULTIVATION, KIND_DIRECT_SOWING)

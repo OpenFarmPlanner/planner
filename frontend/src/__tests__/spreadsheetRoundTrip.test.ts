@@ -80,7 +80,7 @@ describe('crop spreadsheet export → import round trip', () => {
       { ...emptyTimingWindow('pre_cultivation', 'decade'), start_month: 2, start_decade: 'mid', end_month: 3, end_decade: 'late' },
       { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 5, end_decade: 'late' },
       { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 30, end_week: 30 },
-      { ...emptyTimingWindow('harvest', 'iso_week'), start_week: 44, end_week: 8 },
+      { ...emptyTimingWindow('planting', 'iso_week'), start_week: 44, end_week: 8 },
     ] as CropTimingWindow[];
     const csv = buildSpreadsheetFile(buildSheetData([{ name: 'Kohl', timing_windows: windows } as Crop], exportT), 'csv') as string;
     await i18n.changeLanguage(importLanguage);
@@ -91,9 +91,8 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[0]).toMatchObject({
       pre_cultivation_windows: formatTimingWindows(windows.slice(0, 1), exportT),
       direct_sowing_windows: formatTimingWindows(windows.slice(1, 3), exportT),
-      harvest_windows: formatTimingWindows(windows.slice(3), exportT),
+      planting_windows: formatTimingWindows(windows.slice(3), exportT),
     });
-    expect(result.entries[0]).not.toHaveProperty('planting_windows');
   });
 
   it("reads a user's own Latin-name column (\"Lateinische Bezeichnung\")", async () => {
@@ -190,14 +189,13 @@ describe('crop spreadsheet export → import round trip', () => {
       { ...emptyTimingWindow('pre_cultivation', 'decade'), start_month: 2, start_decade: 'mid', end_month: 3, end_decade: 'late' },
       { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 4, start_decade: 'early', end_month: 4, end_decade: 'late' },
       { ...emptyTimingWindow('planting', 'iso_week'), start_week: 19, end_week: 21 },
-      { ...emptyTimingWindow('harvest', 'decade'), start_month: 7, start_decade: 'mid', end_month: 10, end_decade: 'late' },
-      { ...emptyTimingWindow('harvest', 'iso_week'), start_week: 50, end_week: 2 },
+      { ...emptyTimingWindow('planting', 'iso_week'), start_week: 50, end_week: 2 },
     ],
   } as unknown as Crop;
 
   // The window columns hold the canonical text in the export's language.
   const windowCells = (t: ReturnType<typeof i18n.getFixedT>): Record<string, string> => Object.fromEntries(
-    (['pre_cultivation', 'direct_sowing', 'planting', 'harvest'] as const).map((kind) => [
+    (['pre_cultivation', 'direct_sowing', 'planting'] as const).map((kind) => [
       `${kind}_windows`,
       formatTimingWindows((FULL_CROP.timing_windows ?? []).filter((window) => window.kind === kind), t),
     ]),

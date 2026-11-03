@@ -76,14 +76,12 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   pre_cultivation_windows: 'timingWindows.kinds.pre_cultivation',
   direct_sowing_windows: 'timingWindows.kinds.direct_sowing',
   planting_windows: 'timingWindows.kinds.planting',
-  harvest_windows: 'timingWindows.kinds.harvest',
 };
 
 const TIMING_WINDOW_FIELDS = new Set([
   'pre_cultivation_windows',
   'direct_sowing_windows',
   'planting_windows',
-  'harvest_windows',
 ]);
 
 /** Windows of one kind as their canonical text; all kinds as "Anzucht: …; Ernte: …". */

@@ -250,7 +250,8 @@ export interface Crop {
 }
 
 /** The four kinds of crop timing windows, in display order. */
-export type TimingWindowKind = 'pre_cultivation' | 'direct_sowing' | 'planting' | 'harvest';
+/** No harvest kind: the harvest follows from planting date and growth duration. */
+export type TimingWindowKind = 'pre_cultivation' | 'direct_sowing' | 'planting';
 /** `decade`: month plus third of the month; `iso_week`: ISO calendar weeks 1-52. */
 export type TimingWindowUnit = 'decade' | 'iso_week';
 export type TimingWindowDecade = 'early' | 'mid' | 'late';

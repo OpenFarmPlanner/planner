@@ -188,7 +188,7 @@ describe('timing windows inherited per kind', () => {
     end_week: endWeek,
   });
   const ownDirect = window('direct_sowing', 12, 16);
-  const kulturHarvest = window('harvest', 28, 40);
+  const kulturHarvest = window('planting', 28, 40);
   const sorte = {
     id: 2,
     name: 'Karotte',
@@ -211,7 +211,7 @@ describe('timing windows inherited per kind', () => {
   });
 
   it('strips a kind that still equals its baseline, keeps a changed one', () => {
-    const changedHarvest = window('harvest', 30, 40);
+    const changedHarvest = window('planting', 30, 40);
     expect(stripTimingWindowsMatchingBaseline([ownDirect, kulturHarvest], [kulturHarvest])).toEqual([ownDirect]);
     expect(stripTimingWindowsMatchingBaseline([ownDirect, changedHarvest], [kulturHarvest]))
       .toEqual([ownDirect, changedHarvest]);
@@ -226,9 +226,9 @@ describe('timing windows inherited per kind', () => {
 
   it('marks a kind as own only when it differs from the Kultur', () => {
     const kultur = { id: 1, name: 'Karotte', variety: '', timing_windows: [kulturHarvest] } as Crop;
-    expect(getVarietyOwnTimingWindowSource([kulturHarvest], true, kultur, 'harvest')).toBeNull();
-    expect(getVarietyOwnTimingWindowSource([window('harvest', 30, 40)], true, kultur, 'harvest')).toBe('ownValue');
-    expect(getVarietyOwnTimingWindowSource([], true, kultur, 'harvest')).toBeNull();
-    expect(getVarietyOwnTimingWindowSource([window('harvest', 30, 40)], false, kultur, 'harvest')).toBeNull();
+    expect(getVarietyOwnTimingWindowSource([kulturHarvest], true, kultur, 'planting')).toBeNull();
+    expect(getVarietyOwnTimingWindowSource([window('planting', 30, 40)], true, kultur, 'planting')).toBe('ownValue');
+    expect(getVarietyOwnTimingWindowSource([], true, kultur, 'planting')).toBeNull();
+    expect(getVarietyOwnTimingWindowSource([window('planting', 30, 40)], false, kultur, 'planting')).toBeNull();
   });
 });

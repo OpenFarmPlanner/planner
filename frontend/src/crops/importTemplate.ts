@@ -35,7 +35,6 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
     timing_windows: [
       { ...emptyTimingWindow('pre_cultivation', 'decade'), start_month: 2, start_decade: 'mid', end_month: 3, end_decade: 'late' },
       { ...emptyTimingWindow('planting', 'iso_week'), start_week: 19, end_week: 22 },
-      { ...emptyTimingWindow('harvest', 'decade'), start_month: 7, start_decade: 'early', end_month: 10, end_decade: 'late' },
     ],
   },
   {
@@ -66,7 +65,6 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
     timing_windows: [
       { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 6, end_decade: 'late' },
       { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 30, end_week: 30 },
-      { ...emptyTimingWindow('harvest', 'decade'), start_month: 7, start_decade: 'mid', end_month: 10, end_decade: 'late' },
     ],
   },
 ] as Crop[];

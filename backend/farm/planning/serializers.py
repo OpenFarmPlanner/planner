@@ -83,8 +83,8 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text=(
             "Plan dates outside the crop's effective timing windows: kind (direct_sowing, "
-            'pre_cultivation, planting, harvest), the checked date and every window of that '
-            'kind. Only checked when the crop has windows of that kind. Never blocks saving.'
+            'pre_cultivation, planting), the checked date and every window of that kind. '
+            'Only checked when the crop has windows of that kind. Never blocks saving.'
         ),
     )
     rotation_conflict_accepted = serializers.BooleanField(
@@ -182,8 +182,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             checkers[obj.project_id] = TimingWindowChecker(
                 obj.project_id, general_crop_index=self._general_crop_index(obj),
             )
-        harvest_start = self.get_harvest_date(obj)
-        return [finding.as_dict() for finding in checkers[obj.project_id].check_plan(obj, harvest_start)]
+        return [finding.as_dict() for finding in checkers[obj.project_id].check_plan(obj)]
 
     def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
         """The plan's harvest overlaps, from one project-wide index per request."""

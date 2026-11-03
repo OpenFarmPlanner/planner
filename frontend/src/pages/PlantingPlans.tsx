@@ -713,16 +713,10 @@ function PlantingPlans() {
     const overlaps = params.field === "harvest_end_date" ? getRowHarvestOverlaps(row) : null;
     return (
       <HarvestOverlapDateCell overlaps={overlaps} cellHasFocus={params.hasFocus}>
-        <TimingWindowDateCell
-          findings={getRowTimingWindowFindings(row)}
-          kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD[params.field] ?? []}
-          cellHasFocus={params.hasFocus}
-        >
-          <SearchHighlightedText text={formatDateForDisplay(value)} />
-        </TimingWindowDateCell>
+        <SearchHighlightedText text={formatDateForDisplay(value)} />
       </HarvestOverlapDateCell>
     );
-  }, [crops, formatDateForDisplay, getRowHarvestOverlaps, getRowTimingWindowFindings, t]);
+  }, [crops, formatDateForDisplay, getRowHarvestOverlaps, t]);
 
   // Read as primitive booleans, not the `columnVisibilityModel` object
   // itself, in the columns useMemo's dependency array below: the model's
@@ -1063,7 +1057,7 @@ function PlantingPlans() {
         }),
         type: "date",
         valueGetter: (value) => toGridDateValue(value),
-        cellClassName: (params) => params.value && !hasTimingWindowFinding(params.row as PlantingPlanRow, "harvest_date")
+        cellClassName: (params) => params.value
           ? CALCULATED_COLUMN_CELL_CLASS
           : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`,
         renderCell: renderCalculatedHarvestDateCell,

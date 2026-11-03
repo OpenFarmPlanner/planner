@@ -384,7 +384,6 @@
     "direct_sowing": "Aussaattermin liegt außerhalb der Direktsaat-Zeiträume ({{windows}}).",
     "pre_cultivation": "Aussaattermin liegt außerhalb der Anzucht-Zeiträume ({{windows}}).",
     "planting": "Pflanztermin liegt außerhalb der Pflanzungs-Zeiträume ({{windows}}).",
-    "harvest": "Erntebeginn liegt außerhalb der Ernte-Zeiträume ({{windows}}).",
     "iconAria": "Termin außerhalb der Zeiträume"
   }
 }

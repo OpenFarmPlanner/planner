@@ -697,7 +697,8 @@
         "color": "“{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is chosen.",
         "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”.",
         "exportTip": "Easiest: export your crops and use the file as a template.",
-        "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible."
+        "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible.",
+        "catalogColumns": "Columns such as “Start indoors” or “Sow outdoors” from seed catalogues are recognized automatically."
       }
     },
     "timingWindowIssue": "Row {{row}}, {{column}}: {{message}} The value is not imported.",
@@ -1620,12 +1621,11 @@
   },
   "timingWindows": {
     "sectionTitle": "Time windows",
-    "sectionHelp": "When propagation, direct sowing, transplanting and harvest usually happen, in thirds of a month or calendar weeks. Planning points out dates outside them.",
+    "sectionHelp": "When propagation, direct sowing and transplanting usually happen, in thirds of a month or calendar weeks. Crop planning points out dates outside these windows.",
     "kinds": {
       "pre_cultivation": "Propagation",
       "direct_sowing": "Direct sowing",
-      "planting": "Transplanting",
-      "harvest": "Harvest"
+      "planting": "Transplanting"
     },
     "addWindow": "Add window",
     "removeWindow": "Remove window",
@@ -1663,7 +1663,9 @@
       "timing_window_ambiguous_slash": "“{{value}}” is ambiguous. Write “March to April” for one window, “March; April” for two.",
       "timing_window_day_dates": "Day dates are not supported. Please use thirds of a month (for example “mid March”) or calendar weeks (for example “week 11”).",
       "timing_window_mixed_units": "Please do not mix months and calendar weeks within one window.",
-      "timing_window_invalid_week": "Calendar weeks run from 1 to 52."
-    }
+      "timing_window_invalid_week": "Calendar weeks run from 1 to 52.",
+      "timing_window_harvest_not_imported": "Harvest windows are not imported. The harvest follows from planting and growth duration. This column expects the harvest duration in days."
+    },
+    "computedHarvest": "Harvest (calculated)"
   }
 }
