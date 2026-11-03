@@ -124,8 +124,22 @@ export function resolveTimingWindow(window: CropTimingWindow, year: number): Iso
 
 /** Whether the ISO date lies in the window, resolved in that date's year. */
 export function timingWindowContains(window: CropTimingWindow, isoDate: string): boolean {
-  const year = Number(isoDate.slice(0, 4));
-  return resolveTimingWindow(window, year).some(([start, end]) => start <= isoDate && isoDate <= end);
+  const years = new Set([Number(isoDate.slice(0, 4))]);
+  if (window.unit === 'iso_week') {
+    years.add(isoWeekYear(isoDate));
+  }
+  return [...years].some((year) =>
+    resolveTimingWindow(window, year).some(([start, end]) => start <= isoDate && isoDate <= end),
+  );
+}
+
+/** The ISO week-numbering year of an ISO date (differs from the calendar year around New Year). */
+function isoWeekYear(isoDate: string): number {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // The Thursday of the date's week lies in the ISO year.
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  return date.getUTCFullYear();
 }
 
 const pad = (value: number): string => String(value).padStart(2, '0');

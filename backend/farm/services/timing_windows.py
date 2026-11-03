@@ -240,8 +240,20 @@ def resolve_window(window: TimingWindow, year: int) -> list[tuple[date, date]]:
 
 
 def window_contains(window: TimingWindow, day: date) -> bool:
-    """Whether ``day`` lies in the window, resolved in ``day``'s year."""
-    return any(start <= day <= end for start, end in resolve_window(window, day.year))
+    """Whether ``day`` lies in the window, resolved in ``day``'s year.
+
+    A week window is also resolved in ``day``'s ISO year, which differs from the
+    calendar year for the first and last days of a year (31 Dec 2025 is in
+    week 1 of 2026).
+    """
+    years = {day.year}
+    if window.unit == UNIT_ISO_WEEK:
+        years.add(day.isocalendar()[0])
+    return any(
+        start <= day <= end
+        for year in years
+        for start, end in resolve_window(window, year)
+    )
 
 
 def any_window_contains(windows: Iterable[TimingWindow], day: date) -> bool:

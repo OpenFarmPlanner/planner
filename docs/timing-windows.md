@@ -52,7 +52,9 @@ Only a check resolves a window to real dates, always for a concrete year
 - Month ends and leap years come from the real calendar (Ende Februar 2024 is
   21–29 February).
 - ISO weeks run from the Monday of the start week to the Sunday of the end
-  week (`date.fromisocalendar`).
+  week (`date.fromisocalendar`). A date is also checked against a week window
+  resolved in its ISO year, which differs from the calendar year around New
+  Year (31 December 2025 lies in week 1 of 2026).
 - A start after the end wraps the year end. For a date in year `Y` both
   candidates count: start in `Y-1` to end in `Y`, and start in `Y` to end in
   `Y+1`. That is how "KW 50 bis 2" contains 31 December 2026, which lies in

@@ -100,6 +100,12 @@ class ResolutionTest(SimpleTestCase):
         self.assertTrue(window_contains(weeks(52, 1), date(2026, 12, 31)))
         self.assertFalse(window_contains(weeks(40, 52), date(2026, 12, 31)))
 
+    def test_a_week_window_uses_the_iso_year_around_new_year(self):
+        # 31 Dec 2025 is in week 1 of 2026.
+        self.assertEqual(date(2025, 12, 31).isocalendar()[:2], (2026, 1))
+        self.assertTrue(window_contains(weeks(1, 5), date(2025, 12, 31)))
+        self.assertFalse(window_contains(weeks(2, 5), date(2025, 12, 31)))
+
     def test_start_equal_to_end_is_one_third_or_one_week(self):
         self.assertTrue(window_contains(decade(6, 'mid', 6, 'mid'), date(2026, 6, 15)))
         self.assertFalse(window_contains(decade(6, 'mid', 6, 'mid'), date(2026, 6, 21)))

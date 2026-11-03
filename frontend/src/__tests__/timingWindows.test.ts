@@ -50,6 +50,18 @@ describe('timing windows (shared fixture)', () => {
   });
 });
 
+describe('timing window containment around New Year', () => {
+  const weeks = (startWeek: number, endWeek: number): CropTimingWindow => ({
+    kind: 'planting', unit: 'iso_week', start_week: startWeek, end_week: endWeek,
+  } as CropTimingWindow);
+
+  it('resolves a week window in the ISO year of the date', () => {
+    // 31 Dec 2025 is in week 1 of 2026.
+    expect(timingWindowContains(weeks(1, 5), '2025-12-31')).toBe(true);
+    expect(timingWindowContains(weeks(2, 5), '2025-12-31')).toBe(false);
+  });
+});
+
 describe('timing window helpers', () => {
   const decade = (startMonth: number, startDecade: 'early' | 'mid' | 'late', endMonth: number, endDecade: 'early' | 'mid' | 'late'): CropTimingWindow => ({
     kind: 'planting',
