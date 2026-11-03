@@ -99,7 +99,10 @@ def dates_to_check(
     propagation_days = resolve_crop_field(crop, 'propagation_duration_days', index)
     if not propagation_days:
         return []
-    return [(KIND_PRE_CULTIVATION, planting_date - timedelta(days=propagation_days))]
+    try:
+        return [(KIND_PRE_CULTIVATION, planting_date - timedelta(days=propagation_days))]
+    except OverflowError:
+        return []
 
 
 class TimingWindowChecker:

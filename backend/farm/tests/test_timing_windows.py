@@ -106,6 +106,12 @@ class ResolutionTest(SimpleTestCase):
         self.assertTrue(window_contains(weeks(1, 5), date(2025, 12, 31)))
         self.assertFalse(window_contains(weeks(2, 5), date(2025, 12, 31)))
 
+    def test_dates_at_the_calendar_limits_do_not_raise(self):
+        for window in (decade(11, 'early', 2, 'late'), weeks(50, 3)):
+            self.assertFalse(window_contains(window, date.min))
+            self.assertFalse(window_contains(window, date(9999, 6, 15)))
+            window_contains(window, date(9999, 12, 31))
+
     def test_start_equal_to_end_is_one_third_or_one_week(self):
         self.assertTrue(window_contains(decade(6, 'mid', 6, 'mid'), date(2026, 6, 15)))
         self.assertFalse(window_contains(decade(6, 'mid', 6, 'mid'), date(2026, 6, 21)))

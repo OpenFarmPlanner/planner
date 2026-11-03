@@ -231,12 +231,15 @@ def resolve_window(window: TimingWindow, year: int) -> list[tuple[date, date]]:
     One range for an ordinary window; two for one across the year end (start in
     ``year - 1`` to end in ``year``, and start in ``year`` to end in ``year + 1``).
     """
+    year_pairs = [(year, year)]
     if window.wraps_year_end:
-        return [
-            (_start_in(window, year - 1), _end_in(window, year)),
-            (_start_in(window, year), _end_in(window, year + 1)),
-        ]
-    return [(_start_in(window, year), _end_in(window, year))]
+        year_pairs = [(year - 1, year), (year, year + 1)]
+    return [
+        (_start_in(window, start_year), _end_in(window, end_year))
+        for start_year, end_year in year_pairs
+        # A date near year 1 or 9999 has no neighbouring year to resolve in.
+        if date.min.year <= start_year and end_year <= date.max.year
+    ]
 
 
 def window_contains(window: TimingWindow, day: date) -> bool:
