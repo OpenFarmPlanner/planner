@@ -565,8 +565,8 @@ def resolve_effective_rotation_break_years(
 
 
 # The timing-window kinds a Sorte inherits from its general Kultur, each on its
-# own: a Sorte with own Direktsaat windows but none for Ernte uses its own
-# Direktsaat windows and the Kultur's Ernte windows. Like the scalar fields in
+# own: a Sorte with own Direktsaat windows but none for Pflanzung uses its own
+# Direktsaat windows and the Kultur's Pflanzung windows. Like the scalar fields in
 # CROP_INHERITABLE_FIELDS the fallback is live, never a copy. Kept in sync with
 # the frontend's `VARIETY_INHERITABLE_TIMING_WINDOW_KINDS`
 # (frontend/src/crops/varietyValueSource.ts).

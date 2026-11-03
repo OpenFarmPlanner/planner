@@ -1,4 +1,4 @@
-"""Serializers for a crop's timing windows (Anzucht, Direktsaat, Pflanzung, Ernte)."""
+"""Serializers for a crop's timing windows (Anzucht, Direktsaat, Pflanzung)."""
 
 from typing import Any
 
