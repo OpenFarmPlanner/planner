@@ -15,6 +15,9 @@ from farm.services.timing_windows import (
     validate_timing_window,
 )
 
+# Upper bound on one write, so a single crop save cannot create unbounded rows.
+MAX_TIMING_WINDOWS_PER_CROP = 50
+
 _UNIT_FIELDS: dict[str, tuple[str, ...]] = {
     UNIT_DECADE: ('start_month', 'start_decade', 'end_month', 'end_decade'),
     UNIT_ISO_WEEK: ('start_week', 'end_week'),
@@ -91,7 +94,9 @@ class TimingWindowListField(serializers.ListField):
     """The crop's own windows: written as a whole list, read from the parent's per-request index."""
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(child=TimingWindowSerializer(), **kwargs)
+        super().__init__(
+            child=TimingWindowSerializer(), max_length=MAX_TIMING_WINDOWS_PER_CROP, **kwargs,
+        )
 
     def get_attribute(self, instance: Any) -> list[dict[str, Any]]:
         return self.parent.own_timing_windows(instance)

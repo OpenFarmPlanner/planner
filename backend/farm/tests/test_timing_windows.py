@@ -299,6 +299,12 @@ class TimingWindowApiTest(ProjectApiTestCase):
     def put_windows(self, crop, windows):
         return self.client.patch(f'{CROPS_URL}{crop.id}/', {'timing_windows': windows}, format='json')
 
+    def test_an_oversized_window_list_is_rejected(self):
+        window = api_window(start_month=3, start_decade='early', end_month=5, end_decade='late')
+        response = self.put_windows(self.general, [window] * 51)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(self.general.timing_windows.count(), 0)
+
     def test_writing_replaces_the_whole_list_and_reads_it_back(self):
         march_to_may = api_window(start_month=3, start_decade='early', end_month=5, end_decade='late')
         response = self.put_windows(self.general, [
