@@ -413,7 +413,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         (farm/services/timing_window_check.py). Hints only, never blocking.
         """
         crop_id, error_detail = _parse_optional_int(request.query_params.get('crop_id'), 'crop_id')
-        planting_date = parse_date(request.query_params.get('planting_date') or '')
+        try:
+            planting_date = parse_date(request.query_params.get('planting_date') or '')
+        except ValueError:  # well-formed but not a calendar date, e.g. 2026-02-30
+            planting_date = None
         cultivation_type = request.query_params.get('cultivation_type') or ''
         valid_types = {value for value, _label in PlantingPlan.CULTIVATION_TYPE_CHOICES}
         if error_detail is None and (crop_id is None or planting_date is None):

@@ -604,6 +604,10 @@ class TimingWindowPlanningHintTest(ProjectApiTestCase):
         )
         self.assertEqual(self.client.get(url, {'crop_id': self.crop.id}).status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
+            self.client.get(url, {'crop_id': self.crop.id, 'planting_date': '2026-02-30'}).status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
             self.client.get(url, {'crop_id': 999999, 'planting_date': '2026-08-01'}).status_code,
             status.HTTP_404_NOT_FOUND,
         )
