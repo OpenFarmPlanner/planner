@@ -673,6 +673,7 @@ describe('CropDetail Component', () => {
       'Fruchtfolge-Eigenschaften',
       'Mischkultur',
       'Zeitplanung',
+      'Keimung',
       'Zeiträume',
       'Abstände',
       'Saatgut',
