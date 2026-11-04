@@ -190,10 +190,11 @@ ALLOWED_HOSTS = _dedupe(
     + DEVELOPMENT_LAN_HOSTS
 )
 
-# CIDR ranges of trusted reverse proxies (e.g. Cloudflare's published edge
-# ranges) allowed to report the real client IP via TRUSTED_PROXY_IP_HEADER —
-# see config/middleware.TrustedProxyRemoteAddrMiddleware. Empty by default:
-# not yet behind such a proxy.
+# Immediate proxy peers allowed to report a client IP via TRUSTED_PROXY_IP_HEADER.
+# Uberspace is the immediate peer even for Cloudflare traffic. Keep empty until
+# the full forwarding chain is validated or direct-origin access is restricted;
+# trusting Uberspace alone would accept forged CF-Connecting-IP headers.
+# See config/middleware.TrustedProxyRemoteAddrMiddleware and account-trust-levels.md.
 TRUSTED_PROXY_NETWORKS = _env_ip_networks('TRUSTED_PROXY_CIDRS')
 TRUSTED_PROXY_IP_HEADER = _env_str('TRUSTED_PROXY_IP_HEADER', 'HTTP_CF_CONNECTING_IP')
 

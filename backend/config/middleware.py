@@ -18,8 +18,10 @@ directly on a request straight to the origin and claim an arbitrary IP,
 which would let it evade every IP-based check downstream rather than merely
 identify itself correctly through a real proxy.
 
-`TRUSTED_PROXY_NETWORKS` is empty by default (not yet behind such a proxy),
-which makes this a no-op. See docs/agent-api.md's rate-limiting section and
+`TRUSTED_PROXY_NETWORKS` is empty by default, making this a no-op until the
+forwarding chain is validated. On Uberspace the immediate peer is Uberspace,
+including for direct-origin requests; trusting it alone does not authenticate
+Cloudflare headers. See docs/agent-api.md's rate-limiting section and
 the deploy runbook in the `ops` repo for how to populate it.
 """
 
