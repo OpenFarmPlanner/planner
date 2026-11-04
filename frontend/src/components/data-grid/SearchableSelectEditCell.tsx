@@ -78,7 +78,17 @@ export function SearchableSelectEditCell({
       size="small"
       autoFocus={hasFocus}
       inputTabIndex={hasFocus ? 0 : -1}
-      textFieldSx={{ '& .MuiInputBase-root': { height: '100%' } }}
+      textFieldSx={{
+        height: '100%',
+        '& .MuiAutocomplete-inputRoot.MuiOutlinedInput-root': {
+          height: '100%',
+          minHeight: 0,
+          paddingBlock: 0,
+        },
+        '& .MuiAutocomplete-inputRoot.MuiOutlinedInput-root .MuiAutocomplete-input': {
+          paddingBlock: 0,
+        },
+      }}
       open={open}
       onOpen={handleOpen}
       onClose={handleClose}
