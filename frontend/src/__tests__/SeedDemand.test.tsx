@@ -243,6 +243,12 @@ describe('SeedDemandPage', () => {
     await waitFor(() => {
       expect(screen.getByText('seedDemand.loadError')).toBeInTheDocument();
     });
+    expect(screen.queryByText('seedDemand.progressive.fields.title')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'runtime.retryAction' }));
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+
   });
 
   it('shows crop with variety in parentheses', async () => {

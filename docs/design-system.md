@@ -205,7 +205,13 @@ can answer with an HTML 5xx page, so every load path has to survive that:
   (`components/LoadRetryButton.tsx`) as its action, and **no** empty state, empty
   table or "add" call to action below it. `EditableDataGrid` does this itself
   through `loadErrorMessage`; pages with their own fetch track a load-failed
-  state (`Locations`, `Crops`, `FieldsBedsPage`, `Suppliers`).
+  state (`Locations`, `Crops`, `FieldsBedsPage`, `Suppliers`, `SeedDemand`,
+  `YoungPlantDemand`, `YieldOverview`, `Dashboard`, and the crop library).
+  Dashboard setup checklists and yield filters also stay hidden on load failure.
+  Retry reloads the page data without reloading the browser or resetting filters.
+  The library shows one page-level error instead of repeating it in narrow
+  panels. Retry alerts use `loadRetryAlertSx` so long translated words wrap
+  beside the action on narrow screens.
 - A failed session check (`/auth/me/`) says nothing about the session:
   `ProtectedRoute` shows `RuntimeErrorState` with a retry instead of sending a
   signed-in user to the login page. Only a 401 or 403 ends the session.

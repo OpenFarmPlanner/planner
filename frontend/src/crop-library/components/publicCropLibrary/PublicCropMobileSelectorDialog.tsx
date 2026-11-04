@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../../../components/loadRetryStyles';
+import LoadRetryButton from '../../../components/LoadRetryButton';
 import { useEffect, useMemo, type FormEvent, type Ref, type UIEvent } from 'react';
 import {
   Alert,
@@ -43,6 +45,7 @@ export interface PublicCropMobileSelectorDialogProps {
   selectedSpeciesViewKey?: string | null;
   listRef: Ref<HTMLUListElement>;
   onClose: () => void;
+  onRetry: () => void;
   onQueryChange: (value: string) => void;
   onSearchSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSelect: (crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string) => void;
@@ -59,6 +62,7 @@ export function PublicCropMobileSelectorDialog({
   selectedSpeciesViewKey = null,
   listRef,
   onClose,
+  onRetry,
   onQueryChange,
   onSearchSubmit,
   onSelect,
@@ -132,7 +136,7 @@ export function PublicCropMobileSelectorDialog({
             </Stack>
           </Box>
         ) : error ? (
-          <Alert severity="error">{error}</Alert>
+          <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={onRetry} />}>{error}</Alert>
         ) : crops.length === 0 ? (
           <Box sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>

@@ -68,6 +68,18 @@ beforeEach(() => {
 });
 
 describe("YieldOverviewPage", () => {
+  it("retries a failed load without showing empty yield content", async () => {
+    mocks.planList.mockRejectedValueOnce(new Error("offline"));
+    render(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+    const retry = await screen.findByRole("button", { name: "Erneut versuchen" });
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    fireEvent.click(retry);
+    await waitFor(() => expect(mocks.planList).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows every label when columns have enough horizontal space", () => {
     expect(getYieldAxisLabelStep(360, 3, "week")).toBe(1);
     expect(getYieldAxisLabelStep(720, 12, "month")).toBe(1);

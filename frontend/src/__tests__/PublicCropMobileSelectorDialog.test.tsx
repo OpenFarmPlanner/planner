@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PublicCrop } from '../api/types';
@@ -32,6 +32,17 @@ function pixelValue(element: Element, property: 'minHeight' | 'width' | 'height'
 }
 
 describe('PublicCropMobileSelectorDialog', () => {
+  it('retries a failed list without rendering options or an empty state', () => {
+    const onRetry = vi.fn();
+    render(<PublicCropMobileSelectorDialog open query="" crops={[]} loading={false}
+      error="Library unavailable" selectedCropId={null} listRef={vi.fn()} onClose={vi.fn()}
+      onRetry={onRetry} onQueryChange={vi.fn()} onSearchSubmit={vi.fn()} onSelect={vi.fn()}
+      onListScroll={vi.fn()} />);
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it('gives every row and the expand toggle a mobile-sized touch target', async () => {
     render(
       <PublicCropMobileSelectorDialog
@@ -43,6 +54,7 @@ describe('PublicCropMobileSelectorDialog', () => {
         selectedCropId={2}
         listRef={vi.fn()}
         onClose={vi.fn()}
+        onRetry={vi.fn()}
         onQueryChange={vi.fn()}
         onSearchSubmit={vi.fn()}
         onSelect={vi.fn()}

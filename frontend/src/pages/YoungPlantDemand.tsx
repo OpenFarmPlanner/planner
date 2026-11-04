@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../components/loadRetryStyles';
+import LoadRetryButton from '../components/LoadRetryButton';
 import { Fragment, useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
 import {
@@ -70,6 +72,7 @@ export default function YoungPlantDemandPage() {
   const [loadedRows, setRows] = useState<YoungPlantDemand[]>([]);
   const [isFetching, setIsLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [reservePercent, setReservePercent] = useState<number>(() => readStoredReservePercent(activeProjectId));
   const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -120,7 +123,7 @@ export default function YoungPlantDemandPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [reservePercent, shouldShowProjectRequiredState, t]);
+  }, [reservePercent, shouldShowProjectRequiredState, t, retryAttempt]);
 
   const handleReserveChange = useCallback((value: number | null): void => {
     const next = clampReservePercent(value);
@@ -340,7 +343,7 @@ export default function YoungPlantDemandPage() {
         ) : null}
 
         {isLoading && rows.length === 0 && <CircularProgress />}
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isLoading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>{error}</Alert>}
 
         {!error && !isLoading && rows.length === 0 ? emptyState : null}
 

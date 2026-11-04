@@ -743,9 +743,15 @@ describe('PublicCropLibraryPage', () => {
     publicCropApiMocks.list.mockRejectedValue(new Error('Network error'));
     renderPage();
 
-    expect(await screen.findAllByText('Die Kulturbibliothek konnte nicht geladen werden.')).toHaveLength(3);
+    expect(await screen.findAllByText('Die Kulturbibliothek konnte nicht geladen werden.')).toHaveLength(1);
     expect(screen.queryByText('Keine öffentlichen Kulturen gefunden.')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Die Kulturbibliothek wächst mit der Community' })).not.toBeInTheDocument();
+    publicCropApiMocks.list.mockResolvedValue(paginated([]));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Erneut versuchen' })[0]);
+    await waitFor(() => expect(screen.queryByText('Die Kulturbibliothek konnte nicht geladen werden.')).not.toBeInTheDocument());
+    expect(publicCropApiMocks.list).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('Keine öffentlichen Kulturen gefunden.')).toBeInTheDocument();
+
   });
 
 
