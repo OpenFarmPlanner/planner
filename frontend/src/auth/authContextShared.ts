@@ -5,6 +5,9 @@ import type { AuthUser } from "./types";
 export interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
+  /** The session could not be checked because the server failed; says nothing about the session. */
+  isAuthUnavailable: boolean;
+  retryAuthCheck: () => Promise<void>;
   activeProjectId: number | null;
   login: (email: string, password: string) => Promise<AuthUser>;
   startGuestDemo: () => Promise<AuthUser>;

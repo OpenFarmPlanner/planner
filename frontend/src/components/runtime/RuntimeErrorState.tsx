@@ -3,27 +3,33 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useTranslation } from '../../i18n';
 import { reloadForManualRecovery } from '../../runtime/chunkLoadErrors';
 
-interface RuntimeErrorStateProps {
-  variant: 'applicationUpdated' | 'routeError';
-}
+type RuntimeErrorStateProps =
+  | { variant: 'applicationUpdated' | 'routeError' }
+  | { variant: 'serverUnavailable'; onRetry: () => void };
 
-export default function RuntimeErrorState({ variant }: RuntimeErrorStateProps) {
+const MESSAGE_KEYS: Record<RuntimeErrorStateProps['variant'], string> = {
+  applicationUpdated: 'runtime.applicationUpdatedFallback',
+  routeError: 'runtime.routeErrorFallback',
+  serverUnavailable: 'runtime.serverUnavailable',
+};
+
+export default function RuntimeErrorState(props: RuntimeErrorStateProps) {
   const { t } = useTranslation('common');
-  const isApplicationUpdated = variant === 'applicationUpdated';
+  const isRetry = props.variant === 'serverUnavailable';
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2 }}>
       <Stack spacing={2} sx={{ maxWidth: 480, alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-          {t(isApplicationUpdated ? 'runtime.applicationUpdatedFallback' : 'runtime.routeErrorFallback')}
+          {t(MESSAGE_KEYS[props.variant])}
         </Typography>
         <Button
           variant="contained"
           startIcon={<RefreshIcon />}
-          onClick={() => reloadForManualRecovery()}
+          onClick={isRetry ? props.onRetry : () => reloadForManualRecovery()}
           sx={{ alignSelf: 'center' }}
         >
-          {t('runtime.reloadAction')}
+          {t(isRetry ? 'runtime.retryAction' : 'runtime.reloadAction')}
         </Button>
       </Stack>
     </Box>

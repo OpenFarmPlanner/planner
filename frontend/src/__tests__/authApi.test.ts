@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { API_REQUEST_TIMEOUT_MS } from '../api/requestTimeout';
 import { AuthApiError, startGuestDemo } from '../auth/authApi';
 
 function jsonResponse(body: Record<string, unknown>, init: ResponseInit = {}): Response {
@@ -66,5 +67,52 @@ describe('authApi guest demo errors', () => {
 
     expect(error.status).toBe(429);
     expect(error.retryAfterSeconds).toBe(2395);
+  });
+});
+
+describe('authApi server failures', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it.each([502, 503, 504])('explains an HTML %i page from the proxy instead of a generic failure', async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response('<!DOCTYPE html><html><body>Gateway time-out</body></html>', { status }),
+    );
+
+    const error = await expectStartGuestDemoError();
+
+    expect(error.status).toBe(status);
+    expect(error.message).toMatch(/nicht erreichbar|can't be reached/);
+    expect(error.message).not.toContain('Gateway');
+  });
+
+  it('reports a request the server never answers as unavailable once it times out', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+    }));
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), ms);
+      return controller.signal;
+    });
+
+    const pending = expectStartGuestDemoError();
+    await vi.advanceTimersByTimeAsync(API_REQUEST_TIMEOUT_MS);
+    const error = await pending;
+
+    expect(error.isNetworkError).toBe(true);
+    expect(error.message).toMatch(/nicht erreichbar|can't be reached/);
+  });
+
+  it('keeps the network message when the request could not be sent at all', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const error = await expectStartGuestDemoError();
+
+    expect(error.isNetworkError).toBe(true);
+    expect(error.message).not.toMatch(/nicht erreichbar|can't be reached/);
   });
 });

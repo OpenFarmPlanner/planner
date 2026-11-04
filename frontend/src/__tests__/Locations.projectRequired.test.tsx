@@ -64,6 +64,27 @@ describe("Locations project requirement state", () => {
     apiMocks.cropList.mockResolvedValue({ data: { results: [] } });
   });
 
+  it("offers a retry instead of the empty state when the locations fail to load", async () => {
+    apiMocks.locationList
+      .mockRejectedValueOnce(new Error("Gateway time-out"))
+      .mockResolvedValueOnce({ data: { results: [] } });
+
+    render(
+      <MemoryRouter>
+        <Locations />
+      </MemoryRouter>,
+    );
+
+    const retry = await screen.findByRole("button", { name: /retryAction|Erneut versuchen|Try again/ });
+    expect(screen.queryByRole("button", { name: /addButton|Standort hinzufügen|Add location/ })).not.toBeInTheDocument();
+
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(apiMocks.locationList).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole("button", { name: /addButton|Standort hinzufügen|Add location/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retryAction|Erneut versuchen|Try again/ })).not.toBeInTheDocument();
+  });
+
   it("shows friendly info instead of an error when the user has no project", async () => {
     projectRequirementState.shouldShowProjectRequiredState = true;
     projectRequirementState.missingProjectReason = "no_projects";

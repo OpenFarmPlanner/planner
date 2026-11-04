@@ -167,6 +167,7 @@ import {
   isSelectEditMenuEscapeClose,
   isSelectEditMenuInternalCloseTarget,
 } from './selectEditMenuClose';
+import LoadRetryButton from '../LoadRetryButton';
 
 type DataGridKeyboardEvent = (KeyboardEvent | EditCellKeyboardEvent) & {
   defaultMuiPrevented?: boolean;
@@ -277,6 +278,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const [saveErrorAction, setSaveErrorAction] = useState<{ message: string; action: ReactNode } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [dataFetched, setDataFetched] = useState<boolean>(false);
+  const [loadFailed, setLoadFailed] = useState<boolean>(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: initialPageSize,
@@ -815,9 +817,11 @@ export function EditableDataGrid<T extends EditableRow>({
       setRows(dataRows);
       refreshStableRowOrder(dataRows);
       setError('');
+      setLoadFailed(false);
       setDataFetched(true);
     } catch (err) {
       setError(loadErrorMessage);
+      setLoadFailed(true);
       console.error('Error fetching data:', err);
       setDataFetched(true);
     } finally {
@@ -2585,13 +2589,17 @@ export function EditableDataGrid<T extends EditableRow>({
     onSelectedRowChange(selectedRow ?? null);
   }, [onSelectedRowChange, selectedRowIds, rows]);
 
+  const showsLoadError = loadFailed && error === loadErrorMessage;
+
   return (
     <>
       {error && (
         <Alert
           severity="error"
           sx={{ mb: 2 }}
-          action={saveErrorAction?.message === error ? saveErrorAction.action : undefined}
+          action={showsLoadError
+            ? <LoadRetryButton disabled={loading} onClick={() => void fetchData()} />
+            : saveErrorAction?.message === error ? saveErrorAction.action : undefined}
         >
           {error}
         </Alert>
@@ -2616,6 +2624,8 @@ export function EditableDataGrid<T extends EditableRow>({
       <Box
         ref={pageContentRef}
         sx={{
+          // An empty table would read as "no data yet" while the rows just failed to load.
+          display: showsLoadError && rows.length === 0 ? 'none' : undefined,
           position: 'relative',
           width: '100%',
           maxWidth: '100%',

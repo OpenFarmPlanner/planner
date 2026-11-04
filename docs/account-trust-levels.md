@@ -416,6 +416,10 @@ it with the `config.logging_filters.SkipRegistrationAlertedRequests` filter:
 `report_registration_failure` marks the request, and the handler skips
 records for a marked request, so one exception never produces both emails.
 
+**Error log.** The `error_console` handler writes the same unhandled exceptions,
+with their traceback, to stderr when `DEBUG=False`, which is Gunicorn's error log
+under Supervisor. It does not depend on `ADMINS` or on outgoing mail.
+
 **Checks and verification.** Outside `development`/`test`, an empty
 `REGISTRATION_ALERT_EMAILS` reports the informational system check
 `accounts.I002` (deliberately not a warning, so deploy checks with

@@ -48,6 +48,7 @@ import {
 } from '../utils/contextMenu';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { createTransientId } from '../utils/transientId';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 type SupplierLoadStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -483,7 +484,15 @@ export default function Suppliers() {
   return (
     <PageContainer variant="compactCenteredPage">
       <PageSurface variant="compact">
-        {loadError ? <Alert severity="error" sx={{ mb: 2, width: '100%', maxWidth: 880 }}>{loadError}</Alert> : null}
+        {loadError ? (
+          <Alert
+            severity="error"
+            sx={{ mb: 2, width: '100%', maxWidth: 880 }}
+            action={<LoadRetryButton onClick={() => void loadSuppliers()} />}
+          >
+            {loadError}
+          </Alert>
+        ) : null}
         {!dialogOpen && error ? <Alert severity="error" sx={{ mb: 2, width: '100%', maxWidth: 880 }}>{error}</Alert> : null}
         {supplierLoadStatus === 'loading' ? (
           <Box

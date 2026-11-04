@@ -195,3 +195,22 @@ request and are the real check that a refactor did not move anything.
 
 Per [`CLAUDE.md`](../CLAUDE.md), baselines are never updated automatically. If
 one fails, first decide whether the change was intended.
+
+## 8. When data fails to load
+
+A failed request is never shown as "no data". The app runs behind a proxy that
+can answer with an HTML 5xx page, so every load path has to survive that:
+
+- A failed first load shows an error `Alert` with `LoadRetryButton`
+  (`components/LoadRetryButton.tsx`) as its action, and **no** empty state, empty
+  table or "add" call to action below it. `EditableDataGrid` does this itself
+  through `loadErrorMessage`; pages with their own fetch track a load-failed
+  state (`Locations`, `Crops`, `FieldsBedsPage`, `Suppliers`).
+- A failed session check (`/auth/me/`) says nothing about the session:
+  `ProtectedRoute` shows `RuntimeErrorState` with a retry instead of sending a
+  signed-in user to the login page. Only a 401 or 403 ends the session.
+- Auth forms get `auth:error.serverUnavailable` for a 5xx without a structured
+  body and for a timeout.
+- Both API clients give up after `API_REQUEST_TIMEOUT_MS`
+  (`api/requestTimeout.ts`), so a spinner cannot run forever. Uploads are exempt,
+  because their duration depends on the file and the connection.

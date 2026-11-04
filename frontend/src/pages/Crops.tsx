@@ -19,6 +19,7 @@ import { CropDetail } from '../crops/CropDetail';
 import { CropForm, type FirstVarietyDraft } from '../crops/CropForm';
 import { PublicCropLibraryDialog } from '../crop-library/components/PublicCropLibraryDialog';
 import {
+  Alert,
   Box,
   type SxProps,
   type Theme,
@@ -67,6 +68,7 @@ import type { PublishVarietySelection } from '../crops/publishVarieties';
 import { buildVarietyInheritanceBaseline, buildVarietyTimingWindowBaseline } from '../crops/varietyValueSource';
 import { normalizeCropIdentityValue } from '../crops/cropIdentity';
 import { formRowsToReplaceItems, type CompanionFormRow } from '../crops/companions';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 // Stable identity so the memos downstream do not see a new array on every
 // render while no project is selected.
@@ -105,6 +107,7 @@ function Crops() {
   // Whether a crop list response has already been rendered. Guards the loading
   // state in fetchCrops below so later refetches keep the list on screen.
   const hasLoadedCropsRef = useRef(false);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCrop, setEditingCrop] = useState<Crop | undefined>(undefined);
   const [cropFormKind, setCropFormKind] = useState<'crop' | 'variety'>('crop');
@@ -214,6 +217,7 @@ function Crops() {
     const isInitialLoad = !hasLoadedCropsRef.current;
     if (isInitialLoad) {
       setIsCropsLoading(true);
+      setInitialLoadFailed(false);
     }
     try {
       const { results: fetchedCrops } = await cropAPI.listAll();
@@ -237,7 +241,11 @@ function Crops() {
       );
     } catch (error) {
       console.error('Error fetching crops:', error);
-      showSnackbar(t('messages.fetchError'), 'error');
+      if (isInitialLoad) {
+        setInitialLoadFailed(true);
+      } else {
+        showSnackbar(t('messages.fetchError'), 'error');
+      }
     } finally {
       if (isInitialLoad) {
         setIsCropsLoading(false);
@@ -850,7 +858,16 @@ function Crops() {
   return (
     <PageContainer variant="xwide">
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+      {initialLoadFailed ? (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={<LoadRetryButton disabled={isCropsLoading} onClick={() => void fetchCrops()} />}
+        >
+          {t('messages.fetchError')}
+        </Alert>
+      ) : null}
+      <Box sx={{ display: initialLoadFailed ? 'none' : 'flex', gap: 2, mb: 2 }}>
         <CropDetail
           crops={crops}
           isLoading={isCropsLoading}

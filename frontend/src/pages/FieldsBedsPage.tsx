@@ -25,6 +25,7 @@ import { useIsMobileHierarchyLayout } from '../components/hierarchy/hooks/useIsM
 import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUtils';
 import { keywordList } from '../commands/keywordList';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
@@ -416,7 +417,11 @@ export default function FieldsBedsPage() {
           </Alert>
         ) : null}
         {!shouldShowProjectRequiredState && areaDataError ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={<LoadRetryButton disabled={isAreaDataLoading} onClick={() => void hierarchyData.fetchData()} />}
+          >
             {areaDataError}
           </Alert>
         ) : null}

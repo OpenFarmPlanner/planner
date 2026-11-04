@@ -35,6 +35,7 @@ import {
   smallFieldSx,
   wideFieldSx,
 } from '../components/forms/formLayout';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 type SoilType = NonNullable<Location['soil_type']>;
 type Exposure = NonNullable<Location['exposure']>;
@@ -129,6 +130,7 @@ function Locations() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isFetching, setLoading] = useState<boolean>(true);
   const [fetchError, setError] = useState<string>('');
+  const [loadFailed, setLoadFailed] = useState<boolean>(false);
 
   // Without a project there is nothing to fetch, so the page is neither
   // loading nor in error. Derived rather than pushed into state from an
@@ -145,10 +147,12 @@ function Locations() {
   const loadData = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError('');
+    setLoadFailed(false);
     try {
       const { results } = await locationAPI.listAll();
       setLocations(results);
     } catch {
+      setLoadFailed(true);
       setError(t('locations:errors.load'));
     } finally {
       setLoading(false);
@@ -299,13 +303,21 @@ function Locations() {
     <PageContainer>
       <Box sx={{ width: '100%', mx: 'auto' }}>
 
-        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        {error ? (
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={loadFailed ? <LoadRetryButton disabled={loading} onClick={() => void loadData()} /> : undefined}
+          >
+            {error}
+          </Alert>
+        ) : null}
         {loading ? <Typography>{t('common:messages.loading')}</Typography> : null}
         {!loading && shouldShowProjectRequiredState && missingProjectReason ? (
           <ProjectRequiredState reason={missingProjectReason} />
         ) : null}
 
-        {!loading && !shouldShowProjectRequiredState && locations.length === 0 ? (
+        {loadFailed ? null : !loading && !shouldShowProjectRequiredState && locations.length === 0 ? (
           <EmptyStateCard
             title={t('locations:emptyState.title')}
             description={t('locations:emptyState.description')}

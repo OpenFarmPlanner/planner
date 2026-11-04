@@ -198,7 +198,9 @@
   "runtime": {
     "applicationUpdatedFallback": "L'application n'a pas pu être mise à jour automatiquement. Veuillez recharger la page.",
     "routeErrorFallback": "La page n'a pas pu être restaurée automatiquement. Veuillez recharger la page.",
-    "reloadAction": "Recharger la page"
+    "serverUnavailable": "Le serveur est actuellement injoignable. Veuillez réessayer dans un instant.",
+    "reloadAction": "Recharger la page",
+    "retryAction": "Réessayer"
   },
   "language": {
     "label": "Langue",

@@ -11,6 +11,7 @@ import i18n, { getCurrentUiLanguage } from '../i18n';
 import { computeBaseURL } from '../api/httpClient';
 import { GUEST_DEMO_RESTRICTED_CODE } from '../api/errors';
 import { readCookie } from '../utils/cookies';
+import { API_REQUEST_TIMEOUT_MS } from '../api/requestTimeout';
 
 const API_BASE = computeBaseURL(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL, import.meta.env.BASE_URL);
 
@@ -84,9 +85,14 @@ function resolveRetryAfterSeconds(
   return typeof payload?.detail === 'string' ? parseRetrySecondsFromDetail(payload.detail) : undefined;
 }
 
+function serverUnavailableMessage(): string {
+  return translateOrFallback('auth:error.serverUnavailable', 'Der Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.');
+}
+
 function extractError(response: Response, raw: string): AuthApiError {
-  const fallbackMessage = translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
-  const looksLikeHtml = /^\s*<!doctype html/i.test(raw) || /^\s*<html/i.test(raw) || /<body[\s>]/i.test(raw);
+  const fallbackMessage = response.status >= 500
+    ? serverUnavailableMessage()
+    : translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const code = typeof parsed.code === 'string' ? parsed.code : undefined;
@@ -102,9 +108,6 @@ function extractError(response: Response, raw: string): AuthApiError {
       payload: parsed,
     });
   } catch {
-    if (looksLikeHtml) {
-      return new AuthApiError(fallbackMessage, { status: response.status });
-    }
     return new AuthApiError(fallbackMessage, { status: response.status });
   }
 }
@@ -234,8 +237,10 @@ function toUserFriendlyErrorMessage(payload: Record<string, unknown>): string {
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
+  let raw = '';
   try {
     response = await fetch(`${API_BASE}${path}`, {
+      signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       ...options,
       credentials: 'include',
       headers: {
@@ -244,15 +249,20 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
         ...(options.headers ?? {}),
       },
     });
-  } catch {
+    if (!response.ok) {
+      raw = await response.text();
+    }
+  } catch (error) {
     throw new AuthApiError(
-      translateOrFallback('auth:error.network', 'Die Anfrage konnte nicht gesendet werden.'),
+      error instanceof DOMException && error.name === 'TimeoutError'
+        ? serverUnavailableMessage()
+        : translateOrFallback('auth:error.network', 'Die Anfrage konnte nicht gesendet werden.'),
       { isNetworkError: true },
     );
   }
 
   if (!response.ok) {
-    throw extractError(response, await response.text());
+    throw extractError(response, raw);
   }
 
   if (response.status === 204) {

@@ -198,7 +198,9 @@
   "runtime": {
     "applicationUpdatedFallback": "No se ha podido actualizar la aplicación automáticamente. Vuelve a cargar la página.",
     "routeErrorFallback": "No se ha podido restaurar la página automáticamente. Vuelve a cargar la página.",
-    "reloadAction": "Volver a cargar la página"
+    "serverUnavailable": "Ahora mismo no se puede acceder al servidor. Inténtalo de nuevo en un momento.",
+    "reloadAction": "Volver a cargar la página",
+    "retryAction": "Reintentar"
   },
   "language": {
     "label": "Idioma",
