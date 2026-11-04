@@ -880,6 +880,13 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'filters': ['require_debug_true'],
         },
+        # Without this a production 500 leaves no trace at all whenever ADMINS is
+        # empty. Gunicorn's stderr is the app's error log (Supervisor keeps it).
+        'error_console': {
+            'class': 'logging.StreamHandler',
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+        },
         # Django's default 'django' logger setup, redeclared so the admin
         # emails skip errors a registration failure alert already reported.
         'mail_admins': {
@@ -890,7 +897,7 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['debug_console', 'mail_admins'],
+            'handlers': ['debug_console', 'error_console', 'mail_admins'],
             'level': 'INFO',
         },
         'accounts': {
