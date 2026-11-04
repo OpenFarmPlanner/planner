@@ -254,7 +254,8 @@ describe('authApi error mapping', () => {
     ]);
 
     await expect(login('demo@example.com', 'secret')).rejects.toMatchObject({
-      message: 'Anfrage fehlgeschlagen.',
+      message: 'Der Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.',
+      status: 500,
     });
   });
 });
