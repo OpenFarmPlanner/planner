@@ -178,6 +178,7 @@ export const parseCompanionCell = (
     const detail = separator ? line.slice(separator.index + separator[0].length).trim() : '';
     const { reason, note } = detail ? parseDetail(detail, reasonLookup) : { reason: 'other' as const, note: '' };
     for (const name of splitNames(names)) {
+      if (!/[\p{L}\p{N}]/u.test(name)) continue;
       items.push({ name, reason, note });
     }
   }
