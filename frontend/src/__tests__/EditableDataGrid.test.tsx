@@ -418,6 +418,26 @@ describe('EditableDataGrid', () => {
     });
   });
 
+  it('offers a retry and hides the empty table when the rows fail to load', async () => {
+    const props = baseProps();
+    const listSpy = vi.spyOn(props.api, 'list')
+      .mockRejectedValueOnce(new Error('Gateway time-out'))
+      .mockResolvedValueOnce({ data: { results: [createGridRow({ id: 1, name: 'Beet 1' })] } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<EditableDataGrid {...props} showDeleteAction={false} />);
+
+    expect(await screen.findByText('Laden fehlgeschlagen')).toBeInTheDocument();
+    expect(screen.getByTestId('row-count')).not.toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: /retryAction|Erneut versuchen/ }));
+
+    await waitFor(() => expect(screen.queryByText('Laden fehlgeschlagen')).not.toBeInTheDocument());
+    expect(listSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('row-count')).toBeVisible();
+    expect(screen.getByTestId('row-count')).toHaveTextContent('1');
+  });
+
   it('configures explicit pagination page sizes when requested', async () => {
     render(
       <EditableDataGrid

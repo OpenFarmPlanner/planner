@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { API_REQUEST_TIMEOUT_MS } from '../api/requestTimeout';
 import { computeBaseURL, computeProdApiPath, normalizeDevApiBaseURL, validateBaseURL } from '../api/httpClient';
 
 describe('httpClient', () => {
@@ -140,6 +141,17 @@ describe('httpClient', () => {
       expect(typeof httpClient.put).toBe('function');
       expect(typeof httpClient.delete).toBe('function');
       expect(typeof httpClient.patch).toBe('function');
+    });
+
+    it('should time out API requests but not uploads', async () => {
+      const { default: httpClient } = await import('../api/httpClient');
+      const adapter = vi.fn(async (config) => ({ data: {}, status: 200, statusText: 'OK', headers: {}, config }));
+
+      await httpClient.get('/fields/', { adapter });
+      await httpClient.post('/notes/attachments/', new FormData(), { adapter });
+
+      expect(adapter.mock.calls[0][0].timeout).toBe(API_REQUEST_TIMEOUT_MS);
+      expect(adapter.mock.calls[1][0].timeout).toBe(0);
     });
 
     it('should have interceptors object', async () => {

@@ -6,6 +6,7 @@ import { createAuthenticationExpiredEvent } from '../auth/authEvents';
 import { FALLBACK_LANGUAGE } from '../i18n/languages';
 import { normalizeBasePath } from '../utils/basePath';
 import { readCookie } from '../utils/cookies';
+import { API_REQUEST_TIMEOUT_MS } from './requestTimeout';
 
 const PROD_API_PATH = '/api';
 
@@ -86,6 +87,7 @@ validateBaseURL(import.meta.env.PROD, baseURL);
 const httpClient = axios.create({
   baseURL,
   withCredentials: true,
+  timeout: API_REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -100,6 +102,8 @@ httpClient.interceptors.request.use((config) => {
     if (config.headers && typeof config.headers === 'object') {
       delete config.headers['Content-Type'];
     }
+    // An upload's duration depends on the file and the user's connection.
+    config.timeout = 0;
   }
 
   // Read fresh from localStorage on every request (not from React state) so a

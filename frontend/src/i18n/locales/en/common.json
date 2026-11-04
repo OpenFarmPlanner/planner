@@ -197,7 +197,9 @@
   "runtime": {
     "applicationUpdatedFallback": "The application could not be updated automatically. Please reload the page.",
     "routeErrorFallback": "The page could not be restored automatically. Please reload the page.",
-    "reloadAction": "Reload page"
+    "serverUnavailable": "The server can't be reached right now. Please try again in a moment.",
+    "reloadAction": "Reload page",
+    "retryAction": "Try again"
   },
   "language": {
     "label": "Language",

@@ -317,6 +317,23 @@ describe('Crops action area', () => {
     vi.useRealTimers();
   });
 
+  it('offers a retry instead of the empty crop list when the first load fails', async () => {
+    const snackbarListener = vi.fn();
+    window.addEventListener(GLOBAL_SNACKBAR_EVENT, snackbarListener);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    listMock.mockRejectedValueOnce(new Error('Gateway time-out'));
+
+    renderCrops();
+
+    const retry = await screen.findByRole('button', { name: /retryAction|Erneut versuchen|Try again/ });
+    expect(snackbarListener).not.toHaveBeenCalled();
+
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /retryAction|Erneut versuchen|Try again/ })).not.toBeInTheDocument());
+    window.removeEventListener(GLOBAL_SNACKBAR_EVENT, snackbarListener);
+  });
+
   it('does not render a public library shortcut in the crops action area', async () => {
     renderCrops('/crops?cropId=1');
 

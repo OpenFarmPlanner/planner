@@ -197,7 +197,9 @@
   "runtime": {
     "applicationUpdatedFallback": "Die Anwendung konnte nicht automatisch aktualisiert werden. Bitte lade die Seite neu.",
     "routeErrorFallback": "Die Seite konnte nicht automatisch wiederhergestellt werden. Bitte lade die Seite neu.",
-    "reloadAction": "Seite neu laden"
+    "serverUnavailable": "Der Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.",
+    "reloadAction": "Seite neu laden",
+    "retryAction": "Erneut versuchen"
   },
   "language": {
     "label": "Sprache",

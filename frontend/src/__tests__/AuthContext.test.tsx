@@ -68,6 +68,17 @@ function LoadingProbe() {
   return <div data-testid="loading-state">{auth?.isLoading ? 'loading' : 'ready'}</div>;
 }
 
+function AuthAvailabilityProbe() {
+  const auth = useContext(AuthContext);
+  return (
+    <>
+      <div data-testid="auth-unavailable">{auth?.isAuthUnavailable ? 'yes' : 'no'}</div>
+      <div data-testid="active-project-id">{auth?.activeProjectId ?? 'none'}</div>
+      <button type="button" onClick={() => { void auth?.retryAuthCheck(); }}>Retry</button>
+    </>
+  );
+}
+
 function GuestDemoStartProbe() {
   const auth = useContext(AuthContext);
   return (
@@ -206,6 +217,29 @@ describe('AuthProvider cross-tab project sync', () => {
 
     await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('none'));
     expect(localStorage.getItem('activeProjectId')).toBeNull();
+  });
+
+  it('reports the session check as unavailable on a server failure and recovers on retry', async () => {
+    getMeMock.mockRejectedValueOnce(Object.assign(new Error('Gateway time-out'), { status: 504 }));
+
+    render(<AuthProvider><AuthAvailabilityProbe /></AuthProvider>);
+
+    await waitFor(() => expect(screen.getByTestId('auth-unavailable')).toHaveTextContent('yes'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(screen.getByTestId('auth-unavailable')).toHaveTextContent('no'));
+    expect(screen.getByTestId('active-project-id')).toHaveTextContent('1');
+  });
+
+  it('does not report a rejected session as unavailable', async () => {
+    getMeMock.mockRejectedValueOnce(Object.assign(new Error('Forbidden'), { status: 403 }));
+
+    render(<AuthProvider><AuthAvailabilityProbe /></AuthProvider>);
+
+    await waitFor(() => expect(getMeMock).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.getByTestId('auth-unavailable')).toHaveTextContent('no');
   });
 
   it('keeps a guest demo login when an older startup refresh fails afterwards', async () => {

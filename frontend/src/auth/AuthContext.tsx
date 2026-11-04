@@ -80,6 +80,7 @@ export function AuthProvider({
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthUnavailable, setIsAuthUnavailable] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
   const authGenerationRef = useRef(0);
   const lastAuthenticatedAtRef = useRef(0);
@@ -91,6 +92,7 @@ export function AuthProvider({
 
   const clearAuthenticatedUser = useCallback((options: { preserveSharedProjectId?: boolean } = {}): void => {
     lastAuthenticatedAtRef.current = 0;
+    setIsAuthUnavailable(false);
     setUser(null);
     setActiveProjectId(null);
     // `activeProjectId` is shared `localStorage`, read fresh per request by
@@ -108,6 +110,7 @@ export function AuthProvider({
 
   const applyAuthenticatedUser = useCallback((me: AuthUser): void => {
     lastAuthenticatedAtRef.current = Date.now();
+    setIsAuthUnavailable(false);
     setUser(me);
     setActiveProjectId(applyResolvedProjectId(me));
   }, []);
@@ -149,12 +152,25 @@ export function AuthProvider({
       // Only the server rejecting the session logs the user out. A network
       // error, a 5xx or an unreadable response says nothing about the session
       // and must not send a signed-in user to the login page.
-      if (requestGeneration === authGenerationRef.current && isSessionRejection(error)) {
-        clearAuthenticatedUser();
+      if (requestGeneration === authGenerationRef.current) {
+        if (isSessionRejection(error)) {
+          clearAuthenticatedUser();
+        } else {
+          setIsAuthUnavailable(true);
+        }
       }
       return null;
     }
   }, [applyAuthenticatedUser, clearAuthenticatedUser]);
+
+  const retryAuthCheck = useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await refreshUser();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshUser]);
 
   useEffect(() => {
     void (async () => {
@@ -219,6 +235,8 @@ export function AuthProvider({
     () => ({
       user,
       isLoading,
+      isAuthUnavailable,
+      retryAuthCheck,
       activeProjectId,
       startGuestDemo: async () => {
         const generation = beginAuthMutation();
@@ -317,8 +335,10 @@ export function AuthProvider({
       applyAuthenticatedUserBeforeNavigation,
       beginAuthMutation,
       clearAuthenticatedUser,
+      isAuthUnavailable,
       isLoading,
       refreshUser,
+      retryAuthCheck,
       user,
     ],
   );
