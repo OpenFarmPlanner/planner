@@ -73,6 +73,26 @@ describe('useCropImportExport', () => {
     json.analyze.mockReturnValue({ status: 'ok', validEntries: [{ name: 'Tomate' }], originalCount: 1, invalidEntries: [] });
   });
 
+  it('preserves spreadsheet source rows and reports duplicate skips separately', async () => {
+    const entries = [{ name: 'Tomate' }, { name: 'Tomate' }];
+    spreadsheet.parse.mockResolvedValue({ entries, rowNumbers: [5, 12], skippedRows: 0, warnings: [] });
+    api.importPreview.mockResolvedValue({ data: { results: [
+      { index: 0, status: 'create', import_data: entries[0] },
+      { index: 1, status: 'duplicate', duplicate_of_index: 0, import_data: entries[1] },
+    ] } });
+    api.importApply.mockResolvedValue({ data: {
+      created_count: 1, updated_count: 0, skipped_count: 1, duplicate_count: 1, errors: [],
+    } });
+    const view = setup();
+    await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
+    expect(view.result.current.importState.previewResults[1]).toMatchObject({
+      status: 'duplicate', row_number: 12, duplicate_of_row_number: 5,
+    });
+    await act(async () => { await view.result.current.handleImportStart(); });
+    expect(api.importApply).toHaveBeenCalledWith({ items: entries, confirm_updates: false });
+    expect(view.showSnackbar).toHaveBeenCalledWith('import.created, import.duplicatesSkipped', 'success');
+  });
+
   describe('choosing a file', () => {
     it.each([['xlsx'], ['ods'], ['csv']])('parses a .%s file as a spreadsheet', async (ext) => {
       const view = setup();

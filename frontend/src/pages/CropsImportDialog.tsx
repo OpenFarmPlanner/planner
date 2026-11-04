@@ -172,6 +172,7 @@ export function CropsImportDialog({
   }, [hasResult]);
 
   const newCrops = importState.previewResults.filter((result) => result.status === 'create');
+  const duplicates = importState.previewResults.filter((result) => result.status === 'duplicate');
   const updateCandidates = importState.previewResults.filter((result) => result.status === 'update_candidate');
 
   return (
@@ -211,6 +212,27 @@ export function CropsImportDialog({
           )}
 
           <NewCropsSection entries={newCrops} t={t} />
+          {duplicates.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" color="warning.main">
+                {t('import.duplicateRows', { count: duplicates.length })}
+              </Typography>
+              <Typography variant="body2">{t('import.duplicatePolicy')}</Typography>
+              <List dense>
+                {duplicates.map((result) => (
+                  <ListItem key={result.index}>
+                    <ListItemText
+                      primary={renderCropLabel(result)}
+                      secondary={t('import.duplicateRow', {
+                        row: result.row_number ?? result.index + 1,
+                        firstRow: result.duplicate_of_row_number ?? (result.duplicate_of_index ?? 0) + 1,
+                      })}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
           <UpdateCandidatesSection
             entries={updateCandidates}
             confirmUpdates={confirmUpdates}

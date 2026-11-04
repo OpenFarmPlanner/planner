@@ -338,19 +338,50 @@ def _match_import_row(
     )
 
 
+def _duplicate_row_indices(rows: list) -> dict[int, int]:
+    """Map later occurrences to the first row, using the project's crop identity.
+
+    Suppliers do not distinguish crops. Keep the first occurrence even when
+    later rows have different data or the first row fails validation.
+    """
+    first_indices: dict[tuple[str, str | None], int] = {}
+    duplicates: dict[int, int] = {}
+    for index, row in enumerate(rows):
+        if not _is_importable_row(row):
+            continue
+        try:
+            key = (normalize_text(row['name']) or '', normalize_text(row.get('variety', '')))
+        except (AttributeError, TypeError):
+            continue  # Malformed identity values are handled by the row's normal error path.
+        if key in first_indices:
+            duplicates[index] = first_indices[key]
+        else:
+            first_indices[key] = index
+    return duplicates
+
+
 def preview_crop_import(project: Project, rows: list) -> list[dict]:
-    """One outcome per row — `create`, `update_candidate` (with a diff), or an error.
+    """One outcome per row — `create`, `update_candidate`, `duplicate`, or an error.
 
     A row naming neighbours also reports which of them would stay free text
     (`companions`); names of rows in the same file count as known.
     """
     results: list[dict] = []
+    duplicates = _duplicate_row_indices(rows)
     resolver = CompanionNameResolver(
         project.id,
         extra_names=[row.get('name') for row in rows if _is_importable_row(row)],
     )
 
     for idx, crop_data in enumerate(rows):
+        if idx in duplicates:
+            results.append({
+                'index': idx,
+                'status': 'duplicate',
+                'duplicate_of_index': duplicates[idx],
+                'import_data': crop_data,
+            })
+            continue
         if not _is_importable_row(crop_data):
             results.append({
                 'index': idx,
@@ -400,14 +431,16 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
     Neighbours named by the imported rows are added afterwards, so a neighbour
     created by a later row of the same file is found.
     """
+    duplicates = _duplicate_row_indices(rows)
     created_count = 0
     updated_count = 0
-    skipped_count = 0
+    skipped_count = len(duplicates)
     errors: list[dict] = []
     timing_window_issues: list[dict[str, Any]] = []
     companion_rows: list[tuple[Crop, dict[str, Any]]] = []
 
-    for idx, crop_data in enumerate(rows):
+    unique_rows = ((idx, row) for idx, row in enumerate(rows) if idx not in duplicates)
+    for idx, crop_data in unique_rows:
         if not _is_importable_row(crop_data):
             errors.append({'index': idx, 'error': _ROW_SHAPE_ERROR})
             continue
@@ -470,6 +503,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
         'created_count': created_count,
         'updated_count': updated_count,
         'skipped_count': skipped_count,
+        'duplicate_count': len(duplicates),
         'errors': errors,
     }
     if timing_window_issues:

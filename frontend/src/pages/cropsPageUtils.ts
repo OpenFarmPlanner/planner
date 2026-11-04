@@ -10,7 +10,10 @@ export const clearStoredCropId = (): void =>
 
 export type ImportPreviewResult = {
   index: number;
-  status: 'create' | 'update_candidate';
+  status: 'create' | 'update_candidate' | 'duplicate';
+  duplicate_of_index?: number;
+  row_number?: number;
+  duplicate_of_row_number?: number;
   matched_crop_id?: number;
   diff?: Array<{ field: string; current: unknown; new: unknown }>;
   import_data: Record<string, unknown>;
@@ -62,6 +65,7 @@ export const buildImportSuccessMessage = (
   updatedCount: number,
   skippedCount: number,
   t: Translator,
+  duplicateCount = 0,
 ): string => {
   const segments: string[] = [];
 
@@ -71,8 +75,11 @@ export const buildImportSuccessMessage = (
   if (updatedCount > 0) {
     segments.push(t('import.updated', { count: updatedCount }));
   }
-  if (skippedCount > 0) {
-    segments.push(t('import.skipped', { count: skippedCount }));
+  if (skippedCount > duplicateCount) {
+    segments.push(t('import.skipped', { count: skippedCount - duplicateCount }));
+  }
+  if (duplicateCount > 0) {
+    segments.push(t('import.duplicatesSkipped', { count: duplicateCount }));
   }
 
   return segments.join(', ');

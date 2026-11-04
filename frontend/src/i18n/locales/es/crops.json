@@ -642,6 +642,12 @@
     "createPlantingPlanMissingSeasonTooltip": "Crea primero una temporada."
   },
   "import": {
+    "duplicateRows": "Filas duplicadas ({{count}})",
+    "duplicateRow": "La fila {{row}} es un duplicado de la fila {{firstRow}}.",
+    "duplicatePolicy": "Solo se tiene en cuenta la primera fila de cada nombre y variedad. Las filas posteriores se omiten aunque los proveedores u otros valores sean distintos.",
+    "duplicatesSkipped_one": "{{count}} fila duplicada omitida",
+    "duplicatesSkipped_other": "{{count}} filas duplicadas omitidas",
+    "duplicatesSkipped_many": "{{count}} filas duplicadas omitidas",
     "menuLabel": "Importar desde archivo",
     "menuItem": "Importar desde JSON…",
     "title": "Importar cultivos",

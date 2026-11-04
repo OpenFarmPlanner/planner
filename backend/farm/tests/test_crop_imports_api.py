@@ -37,6 +37,64 @@ class CropImportAPITest(DRFAPITestCase):
             project=self.project,
         )
 
+    def test_in_file_duplicates_preview_and_apply(self) -> None:
+        for confirm_updates in (False, True):
+            with self.subTest(confirm_updates=confirm_updates):
+                Crop.objects.filter(project=self.project).exclude(pk=self.existing_crop.pk).delete()
+                rows = [
+                    {'name': ' Cucumber ', 'variety': 'Long  Green', 'notes': 'First'},
+                    {'name': 'cucumber', 'variety': ' long green ', 'notes': 'Later',
+                     'supplier_name': 'Duplicate-only supplier', 'good_companions': 'Tomato'},
+                    {'name': 'Tomato', 'variety': 'Cherry', 'notes': 'First update'},
+                    {'name': 'TOMATO', 'variety': 'CHERRY', 'notes': 'Later update'},
+                    {'name': 'Lettuce'},
+                    {'name': 'LETTUCE', 'variety': None},
+                    {'name': 'Cucumber', 'variety': 'Other'},
+                ]
+                preview = self.client.post(
+                    '/openfarmplanner/api/crops/import/preview/', rows, format='json',
+                )
+                self.assertEqual(preview.status_code, 200)
+                results = preview.data['results']
+                self.assertEqual([r['status'] for r in results], [
+                    'create', 'duplicate', 'update_candidate', 'duplicate',
+                    'create', 'duplicate', 'create',
+                ])
+                self.assertEqual([results[i]['duplicate_of_index'] for i in (1, 3, 5)], [0, 2, 4])
+                self.assertFalse(Supplier.objects.filter(name='Duplicate-only supplier').exists())
+                applied = self.client.post(
+                    '/openfarmplanner/api/crops/import/apply/',
+                    {'items': rows, 'confirm_updates': confirm_updates}, format='json',
+                )
+                self.assertEqual(applied.status_code, 200)
+                self.assertEqual(applied.data['errors'], [])
+                self.assertEqual(applied.data['created_count'], 3)
+                self.assertEqual(applied.data['updated_count'], int(confirm_updates))
+                self.assertEqual(applied.data['duplicate_count'], 3)
+                self.assertEqual(applied.data['skipped_count'], 3 + int(not confirm_updates))
+                crop = Crop.objects.get(project=self.project, variety_normalized='long green')
+                self.assertEqual(crop.notes, 'First')
+                self.existing_crop.refresh_from_db()
+                self.assertEqual(self.existing_crop.notes,
+                                 'First update' if confirm_updates else 'Existing notes')
+                self.assertFalse(Supplier.objects.filter(name='Duplicate-only supplier').exists())
+                self.assertNotIn('companions', applied.data)
+
+    def test_duplicate_does_not_replace_a_failed_first_row(self) -> None:
+        rows = [
+            {'name': 'Cucumber', 'growth_duration_days': 'invalid'},
+            {'name': 'CUCUMBER', 'notes': 'Must not replace the first row'},
+        ]
+        response = self.client.post(
+            '/openfarmplanner/api/crops/import/apply/',
+            {'items': rows, 'confirm_updates': True}, format='json',
+        )
+        self.assertEqual(response.data['created_count'], 0)
+        self.assertEqual(response.data['duplicate_count'], 1)
+        self.assertEqual(response.data['skipped_count'], 1)
+        self.assertEqual([error['index'] for error in response.data['errors']], [0])
+        self.assertFalse(Crop.objects.filter(project=self.project, name_normalized='cucumber').exists())
+
     def test_import_preview_new_crop(self):
         """Test preview endpoint for new crop."""
         data = [{

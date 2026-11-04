@@ -629,6 +629,11 @@
     "createPlantingPlanMissingSeasonTooltip": "Lege zuerst eine Saison an."
   },
   "import": {
+    "duplicateRows": "Doppelte Zeilen ({{count}})",
+    "duplicateRow": "Zeile {{row}} ist doppelt (wie Zeile {{firstRow}}).",
+    "duplicatePolicy": "Nur die erste Zeile pro Name und Sorte wird berücksichtigt. Spätere Zeilen werden auch bei abweichenden Lieferanten oder anderen Werten übersprungen.",
+    "duplicatesSkipped_one": "{{count}} doppelte Zeile übersprungen",
+    "duplicatesSkipped_other": "{{count}} doppelte Zeilen übersprungen",
     "menuLabel": "Aus Datei importieren",
     "menuItem": "Aus JSON importieren…",
     "title": "Kulturen importieren",

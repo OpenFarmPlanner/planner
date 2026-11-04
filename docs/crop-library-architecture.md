@@ -1038,6 +1038,15 @@ planning calculations and the UI resolve it identically:
   `CropSerializer` therefore leaves `cultivation_types` empty when a new linked
   Sorte is created without any (instead of the `pre_cultivation` default every
   other new crop gets), so it inherits them.
+- Spreadsheet/JSON imports from the crops page identify in-file duplicates by
+  normalized name and variety (case and whitespace are ignored; supplier is
+  not part of the identity). Preview marks later occurrences as `duplicate`
+  with a zero-based `duplicate_of_index`; the dialog shows source row numbers
+  separately from new crops and updates. Apply always keeps the first row,
+  even if it fails validation, and skips later occurrences, including rows
+  with differing supplier, notes, timing windows or companions. No values are
+  merged. `duplicate_count` is a subset of `skipped_count`; the result message
+  reports duplicates separately from unconfirmed existing-crop updates.
 - The crops page's spreadsheet import (`services/crop_import/spreadsheet.py`)
   has no species column: a new row is linked to the species its name resolves
   to through `find_species_by_common_name`, as the crop form and the demo

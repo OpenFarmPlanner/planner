@@ -629,6 +629,11 @@
     "createPlantingPlanMissingSeasonTooltip": "Create a season first."
   },
   "import": {
+    "duplicateRows": "Duplicate rows ({{count}})",
+    "duplicateRow": "Row {{row}} is a duplicate of row {{firstRow}}.",
+    "duplicatePolicy": "Only the first row for each name and variety is considered. Later rows are skipped even if suppliers or other values differ.",
+    "duplicatesSkipped_one": "{{count}} duplicate row skipped",
+    "duplicatesSkipped_other": "{{count}} duplicate rows skipped",
     "menuLabel": "Import from file",
     "menuItem": "Import from JSON…",
     "title": "Import crops",

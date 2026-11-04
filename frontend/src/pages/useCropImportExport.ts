@@ -97,7 +97,13 @@ export function useCropImportExport({
             validCount: entries.length,
             invalidEntries,
             payload: entries,
-            previewResults: response.data.results,
+            previewResults: response.data.results.map((result) => ({
+              ...result,
+              row_number: rowNumbers?.[result.index] ?? result.index + 2,
+              duplicate_of_row_number: result.duplicate_of_index === undefined
+                ? undefined
+                : rowNumbers?.[result.duplicate_of_index] ?? result.duplicate_of_index + 2,
+            })),
           });
           setImportDialogOpen(true);
         } catch (error) {
@@ -221,9 +227,9 @@ export function useCropImportExport({
         confirm_updates: confirmUpdates,
       });
 
-      const { created_count, updated_count, skipped_count, errors, companions } = response.data;
+      const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = response.data;
       const summary = [
-        buildImportSuccessMessage(created_count, updated_count, skipped_count, t),
+        buildImportSuccessMessage(created_count, updated_count, skipped_count, t, duplicate_count),
         ...buildCompanionImportMessages(companions, t),
       ].filter(Boolean).join(' ');
       // Rows that went through are saved even when others failed.
