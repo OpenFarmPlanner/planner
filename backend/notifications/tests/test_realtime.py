@@ -1,3 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
+from django.db import transaction
+from redis.exceptions import ConnectionError as RedisConnectionError
 from asgiref.sync import async_to_sync, sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
@@ -23,6 +27,18 @@ class NotificationWebSocketTests(TransactionTestCase):
         self.cookie_header = (
             b'cookie', f'sessionid={client.cookies["sessionid"].value}'.encode()
         )
+
+    def test_redis_failure_does_not_fail_committed_write_or_later_callbacks(self) -> None:
+        later_callbacks: list[str] = []
+        with patch('notifications.realtime.get_channel_layer') as get_layer:
+            get_layer.return_value.group_send = AsyncMock(side_effect=RedisConnectionError('Redis unavailable'))
+            with self.assertLogs('django.db.backends.base', level='ERROR') as logs:
+                with transaction.atomic():
+                    notification = create_notification(recipient=self.user, notification_type=Notification.TYPE_CROP_SPECIES_PROPOSAL_ACCEPTED, message='Committed during Redis outage')
+                    transaction.on_commit(lambda: later_callbacks.append('ran'))
+        self.assertTrue(Notification.objects.filter(pk=notification.pk).exists())
+        self.assertEqual(later_callbacks, ['ran'])
+        self.assertIn('Redis unavailable', logs.output[0])
 
     def test_authenticated_connection_receives_only_own_notification_updates(self) -> None:
         async_to_sync(self._assert_isolated_delivery)()

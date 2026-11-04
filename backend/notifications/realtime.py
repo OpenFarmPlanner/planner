@@ -27,5 +27,6 @@ def broadcast_notification_update(recipient_id: int, notification_id: int | None
 
 def schedule_notification_update(recipient_id: int, notification_id: int | None) -> None:
     transaction.on_commit(
-        lambda: broadcast_notification_update(recipient_id, notification_id)
+        lambda: broadcast_notification_update(recipient_id, notification_id),
+        robust=True,
     )

@@ -103,7 +103,8 @@ has no proxy and must reach the ASGI backend directly.
 
 ## Redis-backed channel layer
 
-Multi-process environments must set:
+Multi-process environments must set the same URL in **every producer and
+consumer process**, including both Gunicorn and Daphne:
 
 ```text
 CHANNEL_REDIS_URL=redis://[username:password@]host:port/database
@@ -124,3 +125,28 @@ sibling `ops` repository and are not duplicated here. Application changes in
 this repository should keep the endpoint paths and `CHANNEL_REDIS_URL`
 setting above stable unless the matching ops configuration is updated in the
 same release.
+
+## Redis publication failures
+
+Both Supervisor programs must receive `CHANNEL_REDIS_URL`. Setting it only on
+Daphne leaves HTTP producers on an isolated `InMemoryChannelLayer` and silently
+loses their invalidations even while browser WebSockets appear connected.
+
+Notification and discussion invalidations use robust post-commit callbacks.
+A publication exception is logged by Django (`django.db.backends.base`) and
+later commit callbacks continue. The database write has already committed:
+losing its invalidation must not turn a successful write into an HTTP 500 that
+invites a duplicate submission. This is best-effort delivery, with no queue or
+replay; requests can still wait for Redis connection/time-out handling.
+
+A disconnected browser uses the REST polling fallback described above. A
+socket that remains connected while publication fails does not enable that
+fallback, so refreshing/refetching REST may be necessary to see the committed
+change. Redis recovery does not replay events lost during the outage.
+
+The 2026-11-04 staging probe reproduced both missing cross-process delivery
+with the original Gunicorn environment and `ConnectionError` propagation from
+both post-commit publishers with an absent Redis socket. A synthetic group
+received the event across two processes when both used Daphne's Redis URL;
+no account or discussion data was changed by that probe. Deploy this callback
+handling before enabling Redis on Gunicorn in the matching ops change.
