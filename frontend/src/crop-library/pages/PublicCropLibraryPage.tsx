@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../../components/loadRetryStyles';
+import LoadRetryButton from '../../components/LoadRetryButton';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -1511,9 +1513,9 @@ export default function PublicCropLibraryPage() {
       <Box sx={{ width: '100%' }}>
         <Stack spacing={2}>
           <GuestDemoNotice messageKey="cropLibraryNotice" />
-          {loadError ? <Alert severity="error">{loadError}</Alert> : null}
+          {loadError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isCropLoading} onClick={() => { void loadCrops(); }} />}>{loadError}</Alert> : null}
 
-          <Box
+          {!loadError ? <Box
             ref={libraryAreaRef}
             sx={{
               display: 'flex',
@@ -2208,7 +2210,7 @@ export default function PublicCropLibraryPage() {
                 )}
               </Card>
             </Box>
-          </Box>
+          </Box> : null}
         </Stack>
       </Box>
       <PublicCropMobileSelectorDialog
@@ -2217,6 +2219,7 @@ export default function PublicCropLibraryPage() {
           crops={filteredLibraryCrops}
         loading={isCropLoading}
         error={loadStatus === 'error' ? loadError : ''}
+        onRetry={() => { void loadCrops(); }}
         selectedCropId={selectedCropId}
         selectedSpeciesViewKey={selectedSpeciesViewKey}
         listRef={cropListRef}

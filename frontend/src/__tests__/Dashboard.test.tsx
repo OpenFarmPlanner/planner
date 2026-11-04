@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Dashboard from '../pages/Dashboard';
@@ -40,6 +40,18 @@ describe('Dashboard', () => {
     mocks.bedList.mockResolvedValue({ data: { results: [] } });
     mocks.cropList.mockResolvedValue({ data: { results: [] } });
     mocks.planList.mockResolvedValue({ data: { results: [] } });
+  });
+
+  it('retries a failed load without showing the onboarding checklist', async () => {
+    mocks.locationList.mockRejectedValueOnce(new Error('offline'));
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    const retry = await screen.findByRole('button', { name: 'Erneut versuchen' });
+    expect(screen.queryByText('Projektstart')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
+    fireEvent.click(retry);
+    expect(await screen.findByText('Projektstart')).toBeInTheDocument();
+    await waitFor(() => expect(mocks.locationList).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows unified onboarding checklist for a completely empty project', async () => {

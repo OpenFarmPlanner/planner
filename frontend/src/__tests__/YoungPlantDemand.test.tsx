@@ -84,6 +84,18 @@ describe('YoungPlantDemandPage', () => {
     await i18n.changeLanguage('de');
   });
 
+  it('retries a failed load without showing an empty state', async () => {
+    listMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ data: { results: [lettuceRow] } });
+    renderPage();
+    const retry = await screen.findByRole('button', { name: 'Erneut versuchen' });
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('crops:youngPlantDemand.emptyTitle'))).not.toBeInTheDocument();
+    fireEvent.click(retry);
+    expect(await screen.findByRole('link', { name: 'Salat' })).toBeInTheDocument();
+    expect(listMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('lists crop, variety, planting week, plant count with reserve and plan/bed counts', async () => {
     listMock.mockResolvedValue({ data: { count: 1, next: null, previous: null, results: [lettuceRow] } });
 

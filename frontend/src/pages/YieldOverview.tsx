@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../components/loadRetryStyles';
+import LoadRetryButton from "../components/LoadRetryButton";
 import { useEffect, useMemo, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import { useOutletContext } from "react-router";
@@ -38,6 +40,7 @@ export default function YieldOverviewPage() {
   const [period, setPeriod] = useState<ChartPeriod>("week");
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [plantingPlans, setPlantingPlans] = useState<PlantingPlan[]>([]);
   const [weeklyYield, setWeeklyYield] = useState<YieldCalendarWeek[]>([]);
 
@@ -89,7 +92,7 @@ export default function YieldOverviewPage() {
     return () => {
       ignore = true;
     };
-  }, [shouldShowProjectRequiredState, t]);
+  }, [shouldShowProjectRequiredState, t, retryAttempt]);
 
   const crops = useMemo(() => {
     const cropMap = new Map<number, YieldCropMeta>();
@@ -141,16 +144,21 @@ export default function YieldOverviewPage() {
     );
   }
 
+  if (error) {
+    return (
+      <PageContainer>
+        <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
+          {error}
+        </Alert>
+      </PageContainer>
+    );
+  }
+
   const hasPlantingPlans = plantingPlans.length > 0;
   const hasYieldData = weeklyYield.length > 0;
 
   return (
     <PageContainer variant="workspacePage">
-      {error ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      ) : null}
       <PageSurface variant="fullWorkspace">
         <Stack spacing={2}>
           <YieldFilterBar

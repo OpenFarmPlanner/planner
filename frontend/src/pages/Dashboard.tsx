@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../components/loadRetryStyles';
+import LoadRetryButton from '../components/LoadRetryButton';
 import { Alert, Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [locations, setLocations] = useState<Location[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
@@ -56,7 +59,7 @@ export default function Dashboard() {
       }
     };
     void fetchData();
-  }, [shouldShowProjectRequiredState, t]);
+  }, [shouldShowProjectRequiredState, t, retryAttempt]);
 
   const firstMissingChecklistStep = getFirstMissingProjectSetupStep({
     hasFields: fields.length > 0,
@@ -83,12 +86,21 @@ export default function Dashboard() {
   if (loading) return <PageContainer><PageSurface variant="contentFit"><Typography>{t('common:messages.loading')}</Typography></PageSurface></PageContainer>;
   if (shouldShowProjectRequiredState && missingProjectReason) return <PageContainer><PageSurface variant="contentFit"><ProjectRequiredState reason={missingProjectReason} /></PageSurface></PageContainer>;
 
+  if (error) {
+    return (
+      <PageContainer>
+        <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
+          {error}
+        </Alert>
+      </PageContainer>
+    );
+  }
+
   const isSetupComplete = firstMissingChecklistStep === null;
   const nextSetupActions = firstMissingChecklistStep ? getTranslatedProjectSetupActions(firstMissingChecklistStep, t) : [];
 
   return (
     <PageContainer>
-      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
 
       {!isSetupComplete ? (
         <PageSurface variant="contentFit" sx={{ mb: 2, minWidth: { md: 480 } }}>

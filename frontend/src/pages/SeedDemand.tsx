@@ -1,3 +1,5 @@
+import { loadRetryAlertSx } from '../components/loadRetryStyles';
+import LoadRetryButton from '../components/LoadRetryButton';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
 import {
@@ -481,7 +483,7 @@ export default function SeedDemandPage() {
       <PageSurface variant="contentFit">
 
         {isLoading && <CircularProgress />}
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isLoading} onClick={() => { void loadRows(); }} />}>{error}</Alert>}
 
         {!isLoading && !error && !canCalculateSeedDemand && (
           <EmptyStateCard
