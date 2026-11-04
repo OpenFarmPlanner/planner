@@ -89,7 +89,7 @@ describe('YoungPlantDemandPage', () => {
     renderPage();
     const retry = await screen.findByRole('button', { name: 'Erneut versuchen' });
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByText(i18n.t('crops:youngPlantDemand.emptyTitle'))).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('crops:youngPlantDemand.emptyState.title'))).not.toBeInTheDocument();
     fireEvent.click(retry);
     expect(await screen.findByRole('link', { name: 'Salat' })).toBeInTheDocument();
     expect(listMock).toHaveBeenCalledTimes(2);
