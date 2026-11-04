@@ -26,7 +26,8 @@ def broadcast_discussion_update(public_crop_id: int, discussion_id: int) -> None
 
 def _schedule(public_crop_id: int, discussion_id: int) -> None:
     transaction.on_commit(
-        lambda: broadcast_discussion_update(public_crop_id, discussion_id)
+        lambda: broadcast_discussion_update(public_crop_id, discussion_id),
+        robust=True,
     )
 
 

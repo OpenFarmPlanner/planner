@@ -1,3 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
+from django.db import transaction
+from redis.exceptions import ConnectionError as RedisConnectionError
 from asgiref.sync import async_to_sync, sync_to_async
 from channels.testing import WebsocketCommunicator
 from channels_redis.core import RedisChannelLayer
@@ -42,6 +46,18 @@ class DiscussionWebSocketTests(TransactionTestCase):
         self.cookie_header = (
             b'cookie', f'sessionid={client.cookies["sessionid"].value}'.encode()
         )
+
+    def test_redis_failure_does_not_fail_committed_write_or_later_callbacks(self) -> None:
+        later_callbacks: list[str] = []
+        with patch('farm.realtime.signals.get_channel_layer') as get_layer:
+            get_layer.return_value.group_send = AsyncMock(side_effect=RedisConnectionError('Redis unavailable'))
+            with self.assertLogs('django.db.backends.base', level='ERROR') as logs:
+                with transaction.atomic():
+                    topic = PublicCropDiscussionTopic.objects.create(public_crop=self.first_crop, title='Committed during Redis outage', created_by=self.user)
+                    transaction.on_commit(lambda: later_callbacks.append('ran'))
+        self.assertTrue(PublicCropDiscussionTopic.objects.filter(pk=topic.pk).exists())
+        self.assertEqual(later_callbacks, ['ran'])
+        self.assertIn('Redis unavailable', logs.output[0])
 
     def test_authenticated_connection_receives_only_its_resource_updates(self) -> None:
         async_to_sync(self._assert_isolated_delivery)()
