@@ -1710,5 +1710,30 @@
       "timing_window_harvest_not_imported": "Les périodes de récolte ne sont pas importées. La récolte découle de la plantation et de la durée de culture. Cette colonne attend la durée de récolte en jours."
     },
     "computedHarvest": "Récolte (calculée)"
+  },
+  "germination": {
+    "title": "Germination",
+    "optimalTemperature": "Température optimale de germination (°C)",
+    "days": "Durée de germination (jours)",
+    "from": "De",
+    "to": "À",
+    "fields": {
+      "germination_temperature_optimal_min_c": "Température optimale de germination de (°C)",
+      "germination_temperature_optimal_max_c": "Température optimale de germination à (°C)",
+      "germination_temperature_min_c": "Température minimale de germination (°C)",
+      "germination_days_min": "Durée de germination de (jours)",
+      "germination_days_max": "Durée de germination à (jours)",
+      "germination_types": "Type de germination",
+      "germination_pretreatment": "Prétraitement"
+    },
+    "types": {
+      "cold": "Germination au froid",
+      "frost": "Germination après gel",
+      "light": "Germination à la lumière",
+      "dark": "Germination dans l’obscurité"
+    },
+    "propagationShort": "La durée en pépinière est plus courte que la durée de germination.",
+    "invalidNumber": "Saisissez un nombre valide ; les jours doivent être des entiers positifs ou nuls.",
+    "invalidRange": "Le maximum doit être supérieur ou égal au minimum."
   }
 }

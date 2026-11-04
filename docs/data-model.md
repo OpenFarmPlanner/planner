@@ -281,3 +281,11 @@ powers project history and restore.
   traced end-to-end while writing this doc.
 - Whether any code path other than `require_project_admin()` gates
   behavior by role — a full audit of every view wasn't performed.
+
+## Germination data
+
+`Crop` and `PublicCrop` store optional germination temperatures (°C), day
+ranges, multiple germination requirements and pre-treatment text. These are
+regular inheritable fields on project varieties and participate in library
+sync and local pinning. Planning emergence dates and hints are calculated,
+never stored. See [Germination](./germination.md) for the field contract.

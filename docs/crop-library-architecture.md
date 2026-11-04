@@ -53,6 +53,10 @@ The collaborative editing model is now direct: public entries have discussion
 comments and immutable version history, while the import picker stays optimized
 for quickly copying a crop into the active project.
 
+Germination fields (temperature and day ranges, requirements and pre-treatment)
+are shared library data, including revision, import, field sync and pinning.
+Their contract and planning hints are documented in [Germination](./germination.md).
+
 ## 0. Product and legal model
 
 The public Crop Library follows an open-data model:

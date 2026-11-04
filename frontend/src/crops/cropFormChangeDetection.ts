@@ -17,6 +17,7 @@ const textFields = [
   'botanical_name',
   'crop_family',
   'notes',
+  'germination_pretreatment',
 ] as const satisfies readonly (keyof Crop)[];
 
 const enumFields = [
@@ -32,6 +33,12 @@ const numberFields = [
   'growth_duration_days',
   'harvest_duration_days',
   'propagation_duration_days',
+  'germination_temperature_optimal_min_c',
+  'germination_temperature_optimal_max_c',
+  'germination_temperature_min_c',
+  'germination_days_min',
+  'germination_days_max',
+
   'rotation_break_years',
   'expected_yield',
   'distance_within_row_cm',
@@ -164,6 +171,7 @@ export function normalizeCropFormData(crop: Partial<Crop>): Record<string, unkno
   normalized.display_color = normalizeColor(crop.display_color);
   normalized.seed_rate_by_cultivation = normalizeSeedRateByCultivation(crop.seed_rate_by_cultivation);
   normalized.supplier_data = normalizeSupplierRows(crop.supplier_data);
+  normalized.germination_types = [...(crop.germination_types ?? [])].sort();
   normalized.tags = normalizeCropTags(crop.tags ?? []);
   normalized.library_pinned_fields = [...(crop.library_pinned_fields ?? [])].sort();
   normalized.timing_windows = (crop.timing_windows ?? []).map(toTimingWindowPayload);

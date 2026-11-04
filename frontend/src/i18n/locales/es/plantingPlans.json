@@ -393,5 +393,11 @@
     "pre_cultivation": "La fecha de siembra está fuera de los periodos de semillero ({{windows}}).",
     "planting": "La fecha de plantación está fuera de los periodos de trasplante ({{windows}}).",
     "iconAria": "Fecha fuera de los periodos"
+  },
+  "germination": {
+    "cold_period_required": "Las semillas necesitan un periodo de frío.",
+    "propagation_shorter_than_germination": "La duración en semillero es más corta que el tiempo de germinación.",
+    "emergence": "Emergencia prevista hacia {{from}}–{{to}}",
+    "hints": "Consejos de germinación"
   }
 }

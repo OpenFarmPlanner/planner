@@ -1667,5 +1667,30 @@
       "timing_window_harvest_not_imported": "Erntezeiträume werden nicht importiert. Die Ernte ergibt sich aus Pflanzung und Kulturdauer. In dieser Spalte wird die Erntedauer in Tagen erwartet."
     },
     "computedHarvest": "Ernte (berechnet)"
+  },
+  "germination": {
+    "title": "Keimung",
+    "optimalTemperature": "Keimtemperatur optimal (°C)",
+    "days": "Keimdauer (Tage)",
+    "from": "Von",
+    "to": "Bis",
+    "fields": {
+      "germination_temperature_optimal_min_c": "Optimale Keimtemperatur von (°C)",
+      "germination_temperature_optimal_max_c": "Optimale Keimtemperatur bis (°C)",
+      "germination_temperature_min_c": "Mindestkeimtemperatur (°C)",
+      "germination_days_min": "Keimdauer von (Tage)",
+      "germination_days_max": "Keimdauer bis (Tage)",
+      "germination_types": "Keimverhalten",
+      "germination_pretreatment": "Vorbehandlung"
+    },
+    "types": {
+      "cold": "Kaltkeimer",
+      "frost": "Frostkeimer",
+      "light": "Lichtkeimer",
+      "dark": "Dunkelkeimer"
+    },
+    "propagationShort": "Anzuchtdauer kürzer als die Keimdauer.",
+    "invalidNumber": "Bitte eine gültige Zahl eingeben; Tage müssen ganze, nicht negative Zahlen sein.",
+    "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen."
   }
 }

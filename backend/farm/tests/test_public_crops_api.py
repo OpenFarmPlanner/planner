@@ -6059,6 +6059,40 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
 
     # --- validation ---------------------------------------------------------
 
+    def test_germination_fields_import_sync_diff_and_local_pins(self) -> None:
+        self._library_edit(
+            germination_temperature_optimal_min_c=18,
+            germination_temperature_optimal_max_c=25,
+            germination_temperature_min_c=8,
+            germination_days_min=7, germination_days_max=14,
+            germination_types=['cold', 'light'], germination_pretreatment='Chill four weeks.',
+        )
+        fields = [
+            'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
+            'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
+            'germination_types', 'germination_pretreatment',
+        ]
+        changes = self._sync_preview(self.kultur)
+        self.assertTrue(set(fields).issubset(changes))
+        response = self._sync(self.kultur, pull_fields=fields)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.germination_types, ['cold', 'light'])
+        self.assertEqual(self.kultur.germination_days_max, 14)
+        self._pin(self.kultur, ['germination_days_max'])
+        self._library_edit(germination_days_max=21)
+        self.assertTrue(self._sync_preview(self.kultur)['germination_days_max']['pinned'])
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.germination_days_max, 14)
+        from farm.services.public_crops import import_public_crop_into_project
+
+        imported, _outcome = import_public_crop_into_project(
+            public_crop=self.entry, project=self.project, mode='new',
+        )
+        self.assertEqual(imported.germination_days_max, 21)
+        self.assertEqual(imported.germination_pretreatment, 'Chill four weeks.')
+        self.assertEqual(imported.germination_temperature_min_c, 8)
+
     def test_pinning_is_stored_and_recorded_in_the_history(self):
         revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)
         before = revisions.count()

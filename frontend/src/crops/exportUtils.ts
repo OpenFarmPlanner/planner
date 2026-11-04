@@ -23,6 +23,14 @@ export interface PortableCrop {
   growth_duration_days?: number;
   harvest_duration_days?: number;
   propagation_duration_days?: number;
+  germination_temperature_optimal_min_c?: Crop['germination_temperature_optimal_min_c'];
+  germination_temperature_optimal_max_c?: Crop['germination_temperature_optimal_max_c'];
+  germination_temperature_min_c?: Crop['germination_temperature_min_c'];
+  germination_days_min?: Crop['germination_days_min'];
+  germination_days_max?: Crop['germination_days_max'];
+  germination_types?: Crop['germination_types'];
+  germination_pretreatment?: Crop['germination_pretreatment'];
+
   harvest_method?: Crop['harvest_method'];
   expected_yield?: number;
   distance_within_row_cm?: number;
@@ -99,6 +107,13 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     growth_duration_days: crop.growth_duration_days,
     harvest_duration_days: crop.harvest_duration_days,
     propagation_duration_days: crop.propagation_duration_days,
+    germination_temperature_optimal_min_c: crop.germination_temperature_optimal_min_c ?? undefined,
+    germination_temperature_optimal_max_c: crop.germination_temperature_optimal_max_c ?? undefined,
+    germination_temperature_min_c: crop.germination_temperature_min_c ?? undefined,
+    germination_days_min: crop.germination_days_min ?? undefined,
+    germination_days_max: crop.germination_days_max ?? undefined,
+    germination_types: crop.germination_types ?? [],
+    germination_pretreatment: crop.germination_pretreatment ?? '',
     harvest_method: crop.harvest_method,
     expected_yield: crop.expected_yield,
     distance_within_row_cm: crop.distance_within_row_cm,

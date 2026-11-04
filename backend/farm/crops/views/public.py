@@ -916,7 +916,9 @@ class PublicCropViewSet(viewsets.ModelViewSet):
 
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
-        serializer = PublicCropChangeProposalSerializer(data=request.data)
+        serializer = PublicCropChangeProposalSerializer(
+            data=request.data, context={'public_crop': public_crop},
+        )
         serializer.is_valid(raise_exception=True)
         proposal = serializer.save(public_crop=public_crop, proposed_by=request.user)
         return Response(PublicCropChangeProposalSerializer(proposal).data, status=status.HTTP_201_CREATED)
@@ -949,7 +951,9 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     user=request.user,
                 )
             else:
-                update_serializer = PublicCropUpdateSerializer(data=proposal.proposed_data, partial=True)
+                update_serializer = PublicCropUpdateSerializer(
+                    public_crop, data=proposal.proposed_data, partial=True,
+                )
                 update_serializer.is_valid(raise_exception=True)
                 update_data = dict(update_serializer.validated_data)
                 if 'seed_packages' in update_data:

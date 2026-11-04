@@ -1,3 +1,5 @@
+export type GerminationType = 'cold' | 'frost' | 'light' | 'dark';
+
 export interface SeedPackage {
   id?: number;
   crop?: number;
@@ -208,6 +210,13 @@ export interface Crop {
   growth_duration_days?: number;
   harvest_duration_days?: number;
   propagation_duration_days?: number;
+  germination_temperature_optimal_min_c?: number | null;
+  germination_temperature_optimal_max_c?: number | null;
+  germination_temperature_min_c?: number | null;
+  germination_days_min?: number | null;
+  germination_days_max?: number | null;
+  germination_types?: GerminationType[];
+  germination_pretreatment?: string;
   
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number;
@@ -296,6 +305,13 @@ export type CropInheritableField =
   | 'growth_duration_days'
   | 'harvest_duration_days'
   | 'propagation_duration_days'
+  | 'germination_temperature_optimal_min_c'
+  | 'germination_temperature_optimal_max_c'
+  | 'germination_temperature_min_c'
+  | 'germination_days_min'
+  | 'germination_days_max'
+  | 'germination_types'
+  | 'germination_pretreatment'
   | 'harvest_method'
   | 'expected_yield'
   | 'distance_within_row_cm'
@@ -389,6 +405,13 @@ export interface PublicCrop {
   growth_duration_days?: number | null;
   harvest_duration_days?: number | null;
   propagation_duration_days?: number | null;
+  germination_temperature_optimal_min_c?: number | null;
+  germination_temperature_optimal_max_c?: number | null;
+  germination_temperature_min_c?: number | null;
+  germination_days_min?: number | null;
+  germination_days_max?: number | null;
+  germination_types?: GerminationType[];
+  germination_pretreatment?: string;
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number | null;
   distance_within_row_m?: number | null;
@@ -1082,6 +1105,8 @@ export interface PlantingPlan {
   // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
   harvest_overlaps?: HarvestOverlap[];
   /** Plan dates outside the crop's timing windows; hints only, never blocking. */
+  germination_findings?: { code: 'cold_period_required' | 'propagation_shorter_than_germination' }[];
+  expected_emergence?: { min: string; max: string } | null;
   timing_window_findings?: TimingWindowFinding[];
   // Read-only, calculated: the earliest follow-up's first day; null without one.
   actual_harvest_end_date?: string | null;

@@ -1,3 +1,4 @@
+import { GerminationInfo } from "./GerminationInfo";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useRef, useState } from "react";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -437,6 +438,7 @@ export function MobilePlanFormDialog({
             />
           </Box>
           <HarvestOverlapAlert overlaps={harvestOverlapCheck.data?.harvest_overlaps} />
+          <GerminationInfo germination_findings={timingWindowCheck.data?.germination_findings} expected_emergence={timingWindowCheck.data?.expected_emergence} />
           <TimingWindowAlert findings={timingWindowCheck.data?.timing_window_findings} />
           {rotation ? (
             <RotationCheckPanel

@@ -393,5 +393,11 @@
     "pre_cultivation": "La date de semis est en dehors des périodes de pépinière ({{windows}}).",
     "planting": "La date de plantation est en dehors des périodes de plantation ({{windows}}).",
     "iconAria": "Date en dehors des périodes"
+  },
+  "germination": {
+    "cold_period_required": "Les semences ont besoin d’une période de froid.",
+    "propagation_shorter_than_germination": "La durée en pépinière est plus courte que la durée de germination.",
+    "emergence": "Levée prévue vers le {{from}}–{{to}}",
+    "hints": "Conseils de germination"
   }
 }

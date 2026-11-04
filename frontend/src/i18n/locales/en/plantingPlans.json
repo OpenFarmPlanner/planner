@@ -385,5 +385,11 @@
     "pre_cultivation": "The sowing date is outside the propagation windows ({{windows}}).",
     "planting": "The planting date is outside the transplanting windows ({{windows}}).",
     "iconAria": "Date outside the time windows"
+  },
+  "germination": {
+    "cold_period_required": "The seed needs a cold period.",
+    "propagation_shorter_than_germination": "Propagation duration is shorter than germination time.",
+    "emergence": "Expected emergence around {{from}}–{{to}}",
+    "hints": "Germination hints"
   }
 }

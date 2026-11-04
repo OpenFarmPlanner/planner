@@ -296,6 +296,13 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     growth_duration_days: 'library.page.fields.growthDurationDays',
     harvest_duration_days: 'library.page.fields.harvestDurationDays',
     propagation_duration_days: 'library.page.fields.propagationDurationDays',
+    germination_temperature_optimal_min_c: 'germination.fields.germination_temperature_optimal_min_c',
+    germination_temperature_optimal_max_c: 'germination.fields.germination_temperature_optimal_max_c',
+    germination_temperature_min_c: 'germination.fields.germination_temperature_min_c',
+    germination_days_min: 'germination.fields.germination_days_min',
+    germination_days_max: 'germination.fields.germination_days_max',
+    germination_types: 'germination.fields.germination_types',
+    germination_pretreatment: 'germination.fields.germination_pretreatment',
   };
   const key = fieldLabelKeys[field];
   if (key) {
@@ -326,6 +333,7 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
   if (field === 'companions' && Array.isArray(value) && value.length > 0) {
     return formatCompanionsValue(value as PublicCropCompanion[], t);
   }
+  if (field === 'germination_types' && Array.isArray(value) && value.length) return value.map((kind) => t(`germination.types.${kind}`)).join(', ');
   const normalized = normalizeComparisonValue(value);
   if (normalized === null) return t('library.publishWizard.comparison.empty');
   if (typeof normalized === 'boolean') {
@@ -369,6 +377,11 @@ const NUMERIC_FIELDS = new Set([
   'growth_duration_days',
   'harvest_duration_days',
   'propagation_duration_days',
+  'germination_temperature_optimal_min_c',
+  'germination_temperature_optimal_max_c',
+  'germination_temperature_min_c',
+  'germination_days_min',
+  'germination_days_max',
   'expected_yield',
   'thousand_kernel_weight_g',
   'seed_rate_value',

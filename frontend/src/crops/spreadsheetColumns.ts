@@ -9,7 +9,7 @@ export type SpreadsheetColumnDef = {
    * `timingWindows`: the windows of one kind as text ("Anfang März bis Ende
    *   April; KW 30"); exported canonically, parsed by the backend import.
    */
-  type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows';
+  type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows' | 'range';
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
@@ -162,6 +162,19 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     aliases: ['erntezeit', 'erntezeitraum', 'erntedauer', 'erntedauer tage', 'harvest_duration_days'],
     type: 'number',
   },
+  { key: 'germination_temperature_optimal_min_c', headerKey: 'germination.fields.germination_temperature_optimal_min_c', aliases: ['germination_temperature_optimal_min_c'], type: 'number' },
+  { key: 'germination_temperature_optimal_max_c', headerKey: 'germination.fields.germination_temperature_optimal_max_c', aliases: ['germination_temperature_optimal_max_c'], type: 'number' },
+  { key: 'germination_temperature_min_c', headerKey: 'germination.fields.germination_temperature_min_c', aliases: ['germination_temperature_min_c', 'mindestkeimtemperatur'], type: 'number' },
+  { key: 'germination_days_min', headerKey: 'germination.fields.germination_days_min', aliases: ['germination_days_min'], type: 'number' },
+  { key: 'germination_days_max', headerKey: 'germination.fields.germination_days_max', aliases: ['germination_days_max'], type: 'number' },
+  { key: 'germination_pretreatment', headerKey: 'germination.fields.germination_pretreatment', aliases: ['germination_pretreatment'], type: 'string' },
+  { key: 'germination_temperature_optimal', headerKey: 'germination.optimalTemperature', aliases: ['keimtemperatur', 'keim-temperatur (°C)'], type: 'range' },
+  { key: 'germination_days', headerKey: 'germination.days', aliases: ['keimdauer', 'keim-dauer (Tage)'], type: 'range' },
+  { key: 'germination_types', headerKey: 'germination.fields.germination_types', aliases: ['keimverhalten', 'germination_types'], type: 'list', enumImport: { kaltkeimer: 'cold', frostkeimer: 'frost', lichtkeimer: 'light', dunkelkeimer: 'dark' } },
+  { key: 'germination_cold', headerKey: 'germination.types.cold', aliases: ['kaltkeimer'], type: 'boolean' },
+  { key: 'germination_frost', headerKey: 'germination.types.frost', aliases: ['frostkeimer'], type: 'boolean' },
+  { key: 'germination_light', headerKey: 'germination.types.light', aliases: ['lichtkeimer'], type: 'boolean' },
+  { key: 'germination_dark', headerKey: 'germination.types.dark', aliases: ['dunkelkeimer'], type: 'boolean' },
   {
     key: 'propagation_duration_days',
     headerKey: 'form.propagationDurationDays',
@@ -340,6 +353,7 @@ const buildSeedRateUnitExport = (t: SpreadsheetT): Record<string, string> => ({
 });
 
 const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<string, string> | undefined => {
+  if (columnKey === 'germination_types') return Object.fromEntries(['cold', 'frost', 'light', 'dark'].map((kind) => [kind, t(`germination.types.${kind}`)]));
   if (columnKey === 'nutrient_demand') return buildNutrientDemandExport(t);
   if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);

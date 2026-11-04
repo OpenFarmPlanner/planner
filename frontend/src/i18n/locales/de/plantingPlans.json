@@ -385,5 +385,11 @@
     "pre_cultivation": "Aussaattermin liegt außerhalb der Anzucht-Zeiträume ({{windows}}).",
     "planting": "Pflanztermin liegt außerhalb der Pflanzungs-Zeiträume ({{windows}}).",
     "iconAria": "Termin außerhalb der Zeiträume"
+  },
+  "germination": {
+    "cold_period_required": "Das Saatgut benötigt eine Kälteperiode.",
+    "propagation_shorter_than_germination": "Anzuchtdauer kürzer als die Keimdauer.",
+    "emergence": "Auflaufen ca. {{from}}–{{to}}",
+    "hints": "Hinweise zur Keimung"
   }
 }

@@ -21,17 +21,18 @@ from farm.services.bed_capacity import (
     SuccessionRule,
     actual_harvest_end,
 )
+from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label, resolve_crop_display_name
 from farm.services.crop_inheritance import (
     build_general_crop_index,
     resolve_crop_field,
     resolve_plants_per_m2,
 )
-from farm.services.crop_companions import CompanionService
 from farm.services.crop_rotation import RotationResult, RotationService
-from farm.services.timing_window_check import TimingWindowChecker
-from farm.services.plant_count import compute_plan_plant_count
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
+from farm.services.germination_check import check_germination
+from farm.services.plant_count import compute_plan_plant_count
+from farm.services.timing_window_check import TimingWindowChecker
 
 
 class PlantingPlanSerializer(serializers.ModelSerializer):
@@ -79,6 +80,8 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             '(its first day); null without such an overlap. Calculated, never stored.'
         ),
     )
+    germination_findings = serializers.SerializerMethodField(read_only=True)
+    expected_emergence = serializers.SerializerMethodField(read_only=True)
     timing_window_findings = serializers.SerializerMethodField(
         read_only=True,
         help_text=(
@@ -175,14 +178,29 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             services[obj.project_id] = CompanionService(obj.project_id)
         return [finding.as_dict() for finding in services[obj.project_id].check_plan(obj)]
 
+    def _germination_result(self, obj: PlantingPlan) -> dict[str, Any]:
+        cache = self.context.setdefault('_germination_results', {})
+        key = obj.pk or id(obj)
+        if key not in cache:
+            cache[key] = check_germination(obj, self._timing_window_checker(obj))
+        return cache[key]
+
+    def get_germination_findings(self, obj: PlantingPlan) -> list[dict[str, str]]:
+        return self._germination_result(obj)['germination_findings']
+
+    def get_expected_emergence(self, obj: PlantingPlan) -> dict[str, str] | None:
+        return self._germination_result(obj)['expected_emergence']
+
     def get_timing_window_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
-        """The plan's timing-window hints, from one project-wide checker per request."""
+        return [finding.as_dict() for finding in self._timing_window_checker(obj).check_plan(obj)]
+
+    def _timing_window_checker(self, obj: PlantingPlan) -> TimingWindowChecker:
         checkers = self.context.setdefault('_timing_window_checker_by_project', {})
         if obj.project_id not in checkers:
             checkers[obj.project_id] = TimingWindowChecker(
                 obj.project_id, general_crop_index=self._general_crop_index(obj),
             )
-        return [finding.as_dict() for finding in checkers[obj.project_id].check_plan(obj)]
+        return checkers[obj.project_id]
 
     def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
         """The plan's harvest overlaps, from one project-wide index per request."""

@@ -27,6 +27,7 @@ from farm.services.timing_windows import (
 )
 from farm.utils import normalize_supplier_name, normalize_text
 
+from .germination import apply_germination_cells
 from .timing_windows import (
     ERROR_HARVEST_NOT_IMPORTED,
     PARSE_ERROR_MESSAGES,
@@ -131,6 +132,9 @@ _COMPARABLE_FIELDS = [
     'name', 'variety', 'notes', 'seed_supplier', 'botanical_name',
     'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types', 'tags',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+    'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
+    'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
+    'germination_types', 'germination_pretreatment',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',
     'seed_rate_value', 'seed_rate_unit', 'sowing_calculation_safety_percent',
@@ -360,6 +364,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             continue
 
         try:
+            apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
             companions = preview_row_companions(resolver, crop_data)
@@ -414,6 +419,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
 
         try:
             companions = _pop_companions(crop_data)
+            apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
             if supplier:

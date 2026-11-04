@@ -15,6 +15,7 @@ from crops.models import CropSpecies
 from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
+from farm.germination import germination_errors
 from farm.models import (
     CropCompanion,
     PublicCrop,
@@ -31,11 +32,11 @@ from farm.models import (
 from farm.project_context import get_active_project_optional
 from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
-from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 from farm.services.public_crops import (
     PUBLIC_CROP_EDITABLE_FIELDS,
     is_project_crop_up_to_date,
 )
+from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 
 PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'notes',
@@ -47,6 +48,13 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'growth_duration_days',
     'harvest_duration_days',
     'propagation_duration_days',
+    'germination_temperature_optimal_min_c',
+    'germination_temperature_optimal_max_c',
+    'germination_temperature_min_c',
+    'germination_days_min',
+    'germination_days_max',
+    'germination_types',
+    'germination_pretreatment',
     'harvest_method',
     'expected_yield',
     'distance_within_row_m',
@@ -229,6 +237,13 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'growth_duration_days',
             'harvest_duration_days',
             'propagation_duration_days',
+            'germination_temperature_optimal_min_c',
+            'germination_temperature_optimal_max_c',
+            'germination_temperature_min_c',
+            'germination_days_min',
+            'germination_days_max',
+            'germination_types',
+            'germination_pretreatment',
             'harvest_method',
             'expected_yield',
             'distance_within_row_m',
@@ -447,6 +462,9 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        errors = germination_errors(self.instance, attrs)
+        if errors:
+            raise serializers.ValidationError(errors)
         incoming_fields = set(getattr(self, 'initial_data', {}) or {})
         allowed_fields = set(PUBLIC_CROP_EDITABLE_FIELDS) | {'base_version'}
         unknown_fields = sorted(incoming_fields - allowed_fields)
@@ -934,7 +952,9 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Unsupported proposal fields: {', '.join(unknown_fields)}")
         if not value:
             raise serializers.ValidationError('At least one changed field is required.')
-        typed_serializer = PublicCropUpdateSerializer(data=value, partial=True)
+        typed_serializer = PublicCropUpdateSerializer(
+            self.context.get('public_crop'), data=value, partial=True,
+        )
         typed_serializer.is_valid(raise_exception=True)
         cleaned = dict(value)
         if 'crop_family' in typed_serializer.validated_data:

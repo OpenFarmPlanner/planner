@@ -1,3 +1,4 @@
+import type { PlantingPlan } from '../../../api/types';
 import { useEffect, useMemo, useState } from 'react';
 
 import { plantingPlanAPI } from '../../../api/api';
@@ -92,7 +93,7 @@ export function useTimingWindowCheck(
   cropId: number | null,
   plantingDate: string | null,
   cultivationType: string,
-): RotationQueryResult<{ timing_window_findings: TimingWindowFinding[] }> {
+): RotationQueryResult<{ timing_window_findings: TimingWindowFinding[] } & Pick<PlantingPlan, 'germination_findings' | 'expected_emergence'>> {
   const request = useMemo(() => {
     if (!cropId || !plantingDate) {
       return null;
