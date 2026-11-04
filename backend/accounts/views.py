@@ -633,6 +633,7 @@ class AccountRestoreView(APIView):
     """Restore an account that is pending deletion within the grace period."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'auth_login'
 
     def post(self, request: Request) -> Response:
         serializer = AccountRestoreSerializer(data=request.data)
@@ -651,8 +652,8 @@ class AccountRestoreView(APIView):
         deletion = AccountDeletionRequest.objects.filter(user=user).first()
         if deletion is None or not deletion.is_pending or deletion.scheduled_deletion_at is None:
             return api_error_response(
-                code='no_restorable_deletion_request',
-                detail=_de(_('No restorable deletion request found.')),
+                code='invalid_restore_credentials',
+                detail=_de(_('Invalid credentials.')),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 

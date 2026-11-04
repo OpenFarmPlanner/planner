@@ -28,7 +28,7 @@ from accounts.models import (
     PublicProfile,
 )
 from accounts.throttling import EmailDomainRateThrottle
-from accounts.views import LoginView, RegisterView
+from accounts.views import AccountRestoreView, LoginView, RegisterView
 from farm.models import Crop, Location, Project, ProjectMembership, PublicCrop
 
 User = get_user_model()
@@ -687,6 +687,9 @@ class AuthApiTest(APITestCase):
         deletion = AccountDeletionRequest.objects.get(user=self.user)
         self.assertIsNone(deletion.deletion_requested_at)
         self.assertIsNone(deletion.scheduled_deletion_at)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertEqual(self.client.session['_auth_user_id'], str(self.user.pk))
         self.assertEqual(len(captured.records), 1)
         record = captured.records[0]
         self.assertEqual(record.account_deletion_event, 'restored')
@@ -710,7 +713,66 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(no_request.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(no_request.data['code'], 'no_restorable_deletion_request')
+        self.assertEqual(no_request.data, invalid_credentials.data)
+
+    def test_account_restore_and_login_share_throttle_across_aliases(self) -> None:
+        rates = {**settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'], 'auth_login': '10/minute'}
+        with (
+            patch.object(ScopedRateThrottle, 'THROTTLE_RATES', rates),
+            patch.object(LoginView, 'throttle_classes', [ScopedRateThrottle]),
+            patch.object(AccountRestoreView, 'throttle_classes', [ScopedRateThrottle]),
+        ):
+            for first, second in (('login', 'account/restore'), ('account/restore', 'login')):
+                with self.subTest(first=first):
+                    cache.clear()
+                    self.addCleanup(cache.clear)
+                    for attempt in range(10):
+                        prefix = '/api/auth' if attempt % 2 else '/openfarmplanner/api/auth'
+                        response = self.client.post(
+                            f'{prefix}/{first}/',
+                            {'email': self.user.email.upper(), 'password': 'wrong'},
+                            format='json',
+                        )
+                        self.assertIn(response.status_code, (400, 401))
+                    with patch.object(User, 'check_password') as check_password:
+                        for endpoint in (first, second):
+                            response = self.client.post(
+                                f'/api/auth/{endpoint}/',
+                                {'email': self.user.email, 'password': self.password},
+                                format='json',
+                            )
+                            self.assertEqual(
+                                response.status_code, status.HTTP_429_TOO_MANY_REQUESTS,
+                            )
+                            self.assertIn('Retry-After', response)
+                        check_password.assert_not_called()
+
+    def test_account_restore_non_restorable_states_have_same_error(self) -> None:
+        url = '/api/auth/account/restore/'
+        invalid = self.client.post(
+            url, {'email': self.user.email, 'password': 'wrong'}, format='json',
+        )
+        for fields in (
+            {},
+            {'deletion_requested_at': timezone.now()},
+            {'deletion_requested_at': timezone.now(), 'deleted_at': timezone.now()},
+        ):
+            with self.subTest(fields=fields):
+                AccountDeletionRequest.objects.filter(user=self.user).delete()
+                AccountDeletionRequest.objects.create(user=self.user, **fields)
+                response = self.client.post(
+                    url,
+                    {'email': self.user.email.upper(), 'password': self.password},
+                    format='json',
+                )
+                self.assertEqual(response.status_code, invalid.status_code)
+                self.assertEqual(response.data, invalid.data)
+        unknown = self.client.post(
+            url, {'email': 'unknown@example.com', 'password': self.password}, format='json',
+        )
+        self.assertEqual(unknown.status_code, invalid.status_code)
+        self.assertEqual(unknown.data, invalid.data)
+        self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_account_restore_after_grace_period_fails(self) -> None:
         AccountDeletionRequest.objects.create(
