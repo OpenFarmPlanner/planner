@@ -584,3 +584,31 @@ Stated plainly so nobody re-derives them from the code:
   `Crop`/`PublicCrop` split and the change-proposal queue's history.
 - [`notifications.md`](./notifications.md) — the `Notification` model the
   moderator/proposer messages reuse.
+
+### Uberspace client-IP boundary (verified 2026-11-04)
+
+Production and staging currently leave `TRUSTED_PROXY_CIDRS` unset. The
+successful-registration cap reads `REMOTE_ADDR` and is configured as 3/hour
+in both environments. With the current proxy topology, this merges visitors
+into the Uberspace peer's bucket. This observation is separate from the cause
+of the investigated HTTP 504s.
+
+A temporary staging backend observed peer `100.65.136.1` both through
+Cloudflare and via the direct origin. Cloudflare requests carried
+`CF-Connecting-IP: <visitor>` and `X-Forwarded-For: <visitor>, <Cloudflare edge>`.
+A direct-origin request with a forged `CF-Connecting-IP` preserved that value;
+Uberspace appended the actual caller to `X-Forwarded-For`. Production's origin
+also still answers direct HTTPS requests using the production Host name.
+
+Cloudflare CIDRs alone cannot match this immediate peer. Trusting the Uberspace
+peer alone would let direct-origin callers forge the registration IP. Keep the
+setting unchanged pending the operator's choice: validate the forwarding chain
+from the trusted immediate peer right-to-left, or restrict/authenticate the
+origin before accepting Cloudflare's client-IP header. A bare header or
+`CF-Ray` presence check cannot establish that trust.
+
+DRF's default IP identification separately prefers `X-Forwarded-For`; this
+project does not configure `NUM_PROXIES`. Therefore its attempt throttles do
+**not** necessarily share the successful-registration bucket, and rewriting
+`REMOTE_ADDR` alone would not make all IP-based controls use one verified
+identity. Any implementation must cover both paths and direct-origin spoofing.
