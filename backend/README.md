@@ -175,6 +175,11 @@ The `compilemessages` script uses `config.settings_test` so it can run without p
 
 ### Authentication endpoints
 
+Account restoration (`POST /api/auth/account/restore/`) shares the login
+rate-limit bucket (`auth_login`, default `10/minute`). Invalid credentials and
+accounts without a restorable deletion request return the same HTTP 400 error
+(`invalid_restore_credentials`). The legacy API prefix uses the same limit.
+
 Auth endpoints are available under `/api/auth/`:
 
 - `GET csrf/`
