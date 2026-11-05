@@ -882,3 +882,17 @@ class TaskApiTest(ProjectApiTestCase):
         response = self.client.post(self.url, {'title': 'Linked', 'planting_plan': self.plan.pk})
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(self.client.get(self.url, {'field': self.field.pk}).data['count'], 1)
+
+    def test_field_filter_uses_plan_bed_over_stale_stored_field(self) -> None:
+        self.plan.bed = self.bed
+        self.plan.save()
+        other = Field.objects.create(project=self.project, location=self.location, name='Third')
+        task = Task.objects.create(
+            project=self.project, season=self.season, planting_plan=self.plan,
+            crop=self.plan.crop, title='Stale', field=other,
+        )
+        self.assertEqual(self.client.get(self.url, {'field': other.pk}).data['count'], 0)
+        listed = self.client.get(self.url, {'field': self.field.pk})
+        self.assertIn(task.pk, [row['id'] for row in listed.data['results']])
+        renamed = self.client.patch(f'{self.url}{task.pk}/', {'title': 'Renamed'}, format='json')
+        self.assertEqual(renamed.status_code, 200, renamed.data)

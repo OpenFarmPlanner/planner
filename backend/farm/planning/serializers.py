@@ -556,6 +556,8 @@ class TaskSerializer(serializers.ModelSerializer):
             })
 
     def _validate_task_field(self, attrs: dict[str, Any]) -> None:
+        if self.instance is not None and 'field' not in attrs and 'planting_plan' not in attrs:
+            return
         plan = attrs.get('planting_plan', getattr(self.instance, 'planting_plan', None))
         field = attrs.get('field', getattr(self.instance, 'field', None))
         if plan is not None and field is not None:

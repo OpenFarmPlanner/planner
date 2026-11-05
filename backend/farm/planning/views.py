@@ -540,8 +540,8 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         field_id = filters.validated_data.pop('field', None)
         if field_id is not None:
             queryset = queryset.filter(
-                Q(field_id=field_id)
-                | Q(field__isnull=True, planting_plan__bed__field_id=field_id),
+                Q(planting_plan__isnull=True, field_id=field_id)
+                | Q(planting_plan__bed__field_id=field_id),
             )
         return queryset.filter(**filters.validated_data)
 
