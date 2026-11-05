@@ -49,6 +49,8 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
     setSaving(true);
     setError(false);
     const payload = { ...draft, title: draft.title.trim() };
+    // A linked plan owns the location: storing its field would go stale when the bed moves.
+    if (payload.planting_plan !== null) payload.field = null;
     if (!task) payload.season = seasonId;
     // Merely editing a generated task must not mark its unchanged date as overridden.
     if (task && payload.due_date === task.due_date) delete payload.due_date;
