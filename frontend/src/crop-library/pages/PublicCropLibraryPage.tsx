@@ -1,5 +1,6 @@
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
+import { GERMINATION_FIELDS, formatGerminationValue } from '../../crops/germination';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -1917,6 +1918,13 @@ export default function PublicCropLibraryPage() {
                         </DetailGrid>
                       </DetailSection>
 
+                      <Divider />
+
+                      <DetailSection title={t('germination.title')}>
+                        <DetailGrid>
+                          {GERMINATION_FIELDS.map((field) => <DetailRow key={field} label={t(`germination.fields.${field}`)} value={formatGerminationValue(field, getPublicFieldValue(field, selectedCrop[field]), t, locale)} source={getPublicFieldSource(field)} />)}
+                        </DetailGrid>
+                      </DetailSection>
                       <Divider />
 
                       <DetailSection title={t('library.page.sections.spacing')}>

@@ -41,7 +41,7 @@ const parseRawValue = (
 ): unknown => {
   if (value === null || value === undefined || value === '') return undefined;
 
-  if (type === 'timingWindows') {
+  if (type === 'timingWindows' || type === 'range') {
     // Kept as written: the backend import parses it and reports what it cannot.
     const text = String(value).trim();
     return text || undefined;
@@ -62,8 +62,8 @@ const parseRawValue = (
 
   if (type === 'boolean') {
     const s = String(value).trim().toLowerCase();
-    if (s === 'ja' || s === 'yes' || s === '1' || s === 'true') return true;
-    if (s === 'nein' || s === 'no' || s === '0' || s === 'false') return false;
+    if (s === 'ja' || s === 'oui' || s === 'sí' || s === 'si' || s === 'yes' || s === '1' || s === 'true') return true;
+    if (s === 'nein' || s === 'non' || s === 'no' || s === '0' || s === 'false') return false;
     return undefined;
   }
 

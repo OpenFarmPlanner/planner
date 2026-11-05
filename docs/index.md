@@ -113,6 +113,8 @@ for step-by-step procedures of recurring tasks, see the skills in
   neighbours of a Kultur (shared pairs, plant families, free text), the
   same-bed planning warning, the spreadsheet columns and how neighbours go
   through the crop library.
+- **[Germination](./germination.md)** — germination temperatures and time ranges,
+  seed requirements, inheritance, library/spreadsheet exchange and planning hints.
 - **[Timing Windows (Zeiträume)](./timing-windows.md)** — Anzucht,
   Direktsaat, Pflanzung and Ernte windows of a crop in thirds of a month or
   calendar weeks: resolution per year and across New Year, the canonical

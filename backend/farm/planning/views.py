@@ -24,10 +24,11 @@ from farm.services.bed_capacity import (
     SuccessionRule,
     calculate_bed_capacity,
 )
-from farm.services.crop_display import format_crop_label
 from farm.services.crop_companions import CompanionService
-from farm.services.timing_window_check import TimingWindowChecker
+from farm.services.crop_display import format_crop_label
 from farm.services.crop_rotation import RotationService, suggest_beds
+from farm.services.germination_check import check_germination
+from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
 from .serializers import PlantingPlanSerializer, TaskSerializer
@@ -437,7 +438,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             planting_date=planting_date, cultivation_type=cultivation_type,
         )
         findings = checker.check_plan(candidate)
-        return Response({'timing_window_findings': [finding.as_dict() for finding in findings]})
+        return Response({
+            'timing_window_findings': [finding.as_dict() for finding in findings],
+            **check_germination(candidate, checker),
+        })
 
     @action(detail=False, methods=['get'], url_path='rotation-check')
     def rotation_check(self, request):

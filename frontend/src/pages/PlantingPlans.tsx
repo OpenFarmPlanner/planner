@@ -7,6 +7,7 @@
  * @returns The Planting Plans page component
  */
 
+import { GerminationInfo } from "../components/planting-plans/GerminationInfo";
 import { useCallback, useState, useEffect, useId, useMemo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { isTypingInEditableElement } from "../hooks/useKeyboardShortcuts";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
@@ -743,11 +744,10 @@ function PlantingPlans() {
         }),
         hideable: false,
         renderCell: (params) => (
-          <PlantingPlanCropLabel
-            planId={Number(params.id)}
-            text={String(params.formattedValue ?? "")}
-            truncate
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+            <PlantingPlanCropLabel planId={Number(params.id)} text={String(params.formattedValue ?? "")} truncate />
+            <GerminationInfo {...params.row} icon />
+          </Box>
         ),
         valueSetter: (value, row) => {
           const nextRow = row as PlantingPlanRow;
@@ -2211,6 +2211,7 @@ function PlantingPlans() {
                       fontSize="inherit"
                       sx={{ ml: 0.5, verticalAlign: "middle" }}
                     />
+                    <GerminationInfo {...item} icon />
                     <TimingWindowIcon
                       findings={getRowTimingWindowFindings(item)}
                       fontSize="inherit"
@@ -2238,6 +2239,7 @@ function PlantingPlans() {
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
+                  <GerminationInfo {...item} />
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   {getRowSowingSchedule(item)?.sowingDate ? (

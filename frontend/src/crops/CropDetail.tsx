@@ -2,6 +2,7 @@
  * Crop Detail component with searchable dropdown and detailed crop information view.
  */
 
+import { GERMINATION_FIELDS, formatGerminationValue } from './germination';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ref } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
@@ -1203,6 +1204,23 @@ const detailSectionGridSx = {
               </Box>
             </Box>
 
+            <Divider sx={{ mb: 2.5 }} />
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>{t('germination.title')}</Typography>
+              <Box sx={detailSectionGridSx}>
+                {GERMINATION_FIELDS.map((field) => (
+                  <Box key={field} sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" color="text.secondary">{t(`germination.fields.${field}`)}</Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin(field)}>
+                      <Typography sx={[getOwnValueSx(field) ?? {}, { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }]}>
+                        {formatGerminationValue(field, getCropValue(field, selectedCrop[field]), t, locale)}
+                      </Typography>
+                    </ValueWithLibraryPin>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
             <Divider sx={{ mb: 2.5 }} />
 
             <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />

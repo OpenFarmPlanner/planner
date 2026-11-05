@@ -12,6 +12,7 @@
  * @returns JSX element rendering the crop form
  */
 
+import { GerminationSection } from './sections/GerminationSection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
@@ -205,6 +206,13 @@ const EMPTY_CROP: Partial<Crop> = {
   growth_duration_days: undefined,
   harvest_duration_days: undefined,
   propagation_duration_days: undefined,
+  germination_temperature_optimal_min_c: null,
+  germination_temperature_optimal_max_c: null,
+  germination_temperature_min_c: null,
+  germination_days_min: null,
+  germination_days_max: null,
+  germination_types: [],
+  germination_pretreatment: '',
   expected_yield: undefined,
   distance_within_row_cm: undefined,
   row_spacing_cm: undefined,
@@ -305,6 +313,13 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   growth_duration_days: publicCrop.growth_duration_days ?? undefined,
   harvest_duration_days: publicCrop.harvest_duration_days ?? undefined,
   propagation_duration_days: publicCrop.propagation_duration_days ?? undefined,
+  germination_temperature_optimal_min_c: publicCrop.germination_temperature_optimal_min_c ?? undefined,
+  germination_temperature_optimal_max_c: publicCrop.germination_temperature_optimal_max_c ?? undefined,
+  germination_temperature_min_c: publicCrop.germination_temperature_min_c ?? undefined,
+  germination_days_min: publicCrop.germination_days_min ?? undefined,
+  germination_days_max: publicCrop.germination_days_max ?? undefined,
+  germination_types: publicCrop.germination_types ?? [],
+  germination_pretreatment: publicCrop.germination_pretreatment ?? '',
   harvest_method: publicCrop.harvest_method ?? '',
   expected_yield: publicCrop.expected_yield ?? undefined,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
@@ -1577,6 +1592,7 @@ export function CropForm({
             />
             <CompanionsSection state={companionRows} disabled={isSaving} />
             <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            <GerminationSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             {isProjectForm ? (
               <TimingWindowsSection

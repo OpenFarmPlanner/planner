@@ -132,6 +132,17 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Saatgutbedarf | Seed demand / Seed requirement | Besoin en semences | Necesidad de semillas |
 | Saatgutmenge | Seed quantity | Quantité de semences | Cantidad de semillas |
 | TKG (Tausendkorngewicht) | TKW (thousand-kernel weight) | PMG (poids de mille grains) | PMS (peso de mil semillas) |
+| Keimung | Germination | Germination | Germinación |
+| Keimtemperatur optimal (°C) | Optimal germination temperature (°C) | Température optimale de germination (°C) | Temperatura óptima de germinación (°C) |
+| Mindestkeimtemperatur (°C) | Minimum germination temperature (°C) | Température minimale de germination (°C) | Temperatura mínima de germinación (°C) |
+| Keimdauer (Tage) | Germination time (days) | Durée de germination (jours) | Tiempo de germinación (días) |
+| Keimverhalten | Germination type | Type de germination | Tipo de germinación |
+| Kaltkeimer | Cold germinator | Germination au froid | Germinación en frío |
+| Frostkeimer | Frost germinator | Germination après gel | Germinación tras heladas |
+| Lichtkeimer | Light germinator | Germination à la lumière | Germinación con luz |
+| Dunkelkeimer | Dark germinator | Germination dans l’obscurité | Germinación en oscuridad |
+| Vorbehandlung | Pre-treatment | Prétraitement | Tratamiento previo |
+| Auflaufen | Emergence | Levée | Emergencia |
 | Keimrate | Germination rate | Taux de germination | Tasa de germinación |
 | Nährstoffbedarf | Nutrient demand | Besoins nutritifs | Necesidades de nutrientes |
 | Schwach-/Mittel-/Starkzehrer | Light/medium/heavy feeder | Culture peu / moyennement / très exigeante | Cultivo poco / medianamente / muy exigente |

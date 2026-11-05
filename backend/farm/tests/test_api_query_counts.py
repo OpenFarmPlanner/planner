@@ -361,6 +361,23 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         window lookup (farm/services/timing_window_check.py)."""
         self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 15)
 
+    def test_planting_plans_germination_findings_share_timing_indexes(self) -> None:
+        Crop.objects.filter(project=self.project).update(
+            germination_types=['cold'], germination_days_min=7, germination_days_max=14,
+        )
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2027, 8, 1),
+                cultivation_type='direct_sowing',
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+            )
+        with self.assertNumQueries(15):
+            response = self.client.get('/openfarmplanner/api/planting-plans/')
+        self.assertEqual(response.status_code, 200)
+        flagged = [row for row in response.data['results'] if row['germination_findings']]
+        self.assertEqual(len(flagged), ROW_COUNT)
+        self.assertTrue(all(row['expected_emergence'] for row in flagged))
+
     def test_planting_plans_list_query_count_with_rotation_findings(self):
         """Conflicts and accepted conflicts (with their accepting user) on every
         bed must cost the same queries as plans without findings."""

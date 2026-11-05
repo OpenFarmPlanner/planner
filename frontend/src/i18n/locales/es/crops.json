@@ -1716,5 +1716,30 @@
       "timing_window_harvest_not_imported": "Los periodos de cosecha no se importan. La cosecha resulta del trasplante y de la duración del cultivo. Esta columna espera la duración de la cosecha en días."
     },
     "computedHarvest": "Cosecha (calculada)"
+  },
+  "germination": {
+    "title": "Germinación",
+    "optimalTemperature": "Temperatura óptima de germinación (°C)",
+    "days": "Tiempo de germinación (días)",
+    "from": "Desde",
+    "to": "Hasta",
+    "fields": {
+      "germination_temperature_optimal_min_c": "Temperatura óptima de germinación desde (°C)",
+      "germination_temperature_optimal_max_c": "Temperatura óptima de germinación hasta (°C)",
+      "germination_temperature_min_c": "Temperatura mínima de germinación (°C)",
+      "germination_days_min": "Tiempo de germinación desde (días)",
+      "germination_days_max": "Tiempo de germinación hasta (días)",
+      "germination_types": "Tipo de germinación",
+      "germination_pretreatment": "Tratamiento previo"
+    },
+    "types": {
+      "cold": "Germinación en frío",
+      "frost": "Germinación tras heladas",
+      "light": "Germinación con luz",
+      "dark": "Germinación en oscuridad"
+    },
+    "propagationShort": "La duración en semillero es más corta que el tiempo de germinación.",
+    "invalidNumber": "Introduce un número válido; los días deben ser enteros no negativos.",
+    "invalidRange": "El máximo debe ser mayor o igual que el mínimo."
   }
 }

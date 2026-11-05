@@ -164,6 +164,7 @@ vi.mock('../crops/sections/TimingSection', () => ({
     <>{getFieldPinProps?.('growth_duration_days')?.button ?? null}</>
   ),
 }));
+vi.mock('../crops/sections/GerminationSection', () => ({ GerminationSection: () => null }));
 vi.mock('../crops/sections/HarvestSection', () => ({ HarvestSection: () => null }));
 vi.mock('../crops/sections/SeedingSection', () => ({
   SeedingSection: ({ formData, onChange }: { formData: Partial<Crop>; onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void }) => (

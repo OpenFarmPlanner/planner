@@ -1672,5 +1672,30 @@
       "timing_window_harvest_not_imported": "Harvest windows are not imported. The harvest follows from planting and growth duration. This column expects the harvest duration in days."
     },
     "computedHarvest": "Harvest (calculated)"
+  },
+  "germination": {
+    "title": "Germination",
+    "optimalTemperature": "Optimal germination temperature (°C)",
+    "days": "Germination time (days)",
+    "from": "From",
+    "to": "To",
+    "fields": {
+      "germination_temperature_optimal_min_c": "Optimal germination temperature from (°C)",
+      "germination_temperature_optimal_max_c": "Optimal germination temperature to (°C)",
+      "germination_temperature_min_c": "Minimum germination temperature (°C)",
+      "germination_days_min": "Germination time from (days)",
+      "germination_days_max": "Germination time to (days)",
+      "germination_types": "Germination type",
+      "germination_pretreatment": "Pre-treatment"
+    },
+    "types": {
+      "cold": "Cold germinator",
+      "frost": "Frost germinator",
+      "light": "Light germinator",
+      "dark": "Dark germinator"
+    },
+    "propagationShort": "Propagation duration is shorter than germination time.",
+    "invalidNumber": "Enter a valid number; days must be non-negative whole numbers.",
+    "invalidRange": "The maximum must be at least the minimum."
   }
 }

@@ -1,3 +1,4 @@
+import { GERMINATION_NUMBER_FIELDS } from './germination';
 /**
  * Validation logic for CropForm.
  *
@@ -147,6 +148,19 @@ export function validateCrop(
     if (numValue !== null && numValue < 0) {
       errors.propagation_duration_days = t('form.propagationDurationDaysError');
     }
+  }
+
+  for (const field of GERMINATION_NUMBER_FIELDS) {
+    const value = draft[field];
+    if (value != null && (!Number.isFinite(value) || value < (field.includes('days') ? 0 : -273.15) || (field.includes('days') && !Number.isInteger(value)))) {
+      errors[field] = t('germination.invalidNumber');
+    }
+  }
+  for (const [lower, upper] of [
+    ['germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c'],
+    ['germination_days_min', 'germination_days_max'],
+  ] as const) {
+    if (draft[lower] != null && draft[upper] != null && draft[lower] > draft[upper]) errors[upper] = t('germination.invalidRange');
   }
 
   // Optional numeric fields validation

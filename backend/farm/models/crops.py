@@ -13,6 +13,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from farm.germination import germination_errors
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
     SEED_PACKAGE_UNIT_SEEDS,
@@ -27,7 +28,6 @@ from farm.seed_units import (
 from .base import TimestampedModel
 from .history import EntityRevision
 from .projects import Project
-
 
 # Temporary, read-only copy of the free text ``crop_family`` held before it
 # became a reference to the curated plant-family list (migration 0112). Kept so
@@ -462,6 +462,24 @@ class Crop(TimestampedModel):
         help_text="Propagation duration in days"
     )
     
+    germination_temperature_optimal_min_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_temperature_optimal_max_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_temperature_min_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_days_min = models.IntegerField(
+        null=True, blank=True, help_text="Germination time in days",
+    )
+    germination_days_max = models.IntegerField(
+        null=True, blank=True, help_text="Germination time in days",
+    )
+    germination_types = models.JSONField(default=list, blank=True)
+    germination_pretreatment = models.TextField(blank=True)
+
     # Harvest information.
     harvest_method = models.CharField(
         max_length=20,
@@ -583,6 +601,7 @@ class Crop(TimestampedModel):
         self._normalize_legacy_dash_units()
         self._clean_cultivation_types(errors)
         self._clean_non_negative_numbers(errors)
+        errors.update(germination_errors(self))
         self._clean_seeding_requirement(errors)
         self._clean_seed_rate_by_cultivation(errors)
         self._clean_seed_rates(errors)
@@ -718,6 +737,9 @@ class Crop(TimestampedModel):
     _SOURCE_DIVERGENCE_TRACKED_FIELDS = {
         'name', 'variety', 'notes', 'botanical_name', 'crop_family_id', 'nutrient_demand', 'cultivation_types',
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+        'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
+        'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
+        'germination_types', 'germination_pretreatment',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'seed_rate_value', 'seed_rate_unit', 'seed_rate_by_cultivation',
         'sowing_calculation_safety_percent', 'seed_rate_direct_value', 'seed_rate_direct_unit',
@@ -795,7 +817,11 @@ class Crop(TimestampedModel):
         The serializer and a history restore hand the new list over this way so
         the crop's revision records the windows together with its fields.
         """
-        from farm.services.timing_windows import TimingWindow, replace_crop_timing_windows, sort_windows
+        from farm.services.timing_windows import (
+            TimingWindow,
+            replace_crop_timing_windows,
+            sort_windows,
+        )
 
         pending = getattr(self, '_pending_timing_windows', None)
         if pending is None:
@@ -1161,6 +1187,23 @@ class PublicCrop(TimestampedModel):
     growth_duration_days = models.IntegerField(null=True, blank=True)
     harvest_duration_days = models.IntegerField(null=True, blank=True)
     propagation_duration_days = models.IntegerField(null=True, blank=True)
+    germination_temperature_optimal_min_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_temperature_optimal_max_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_temperature_min_c = models.FloatField(
+        null=True, blank=True, help_text="Germination temperature in degrees Celsius",
+    )
+    germination_days_min = models.IntegerField(
+        null=True, blank=True, help_text="Germination time in days",
+    )
+    germination_days_max = models.IntegerField(
+        null=True, blank=True, help_text="Germination time in days",
+    )
+    germination_types = models.JSONField(default=list, blank=True)
+    germination_pretreatment = models.TextField(blank=True)
     harvest_method = models.CharField(max_length=20, choices=Crop.HARVEST_METHOD_CHOICES, blank=True)
     expected_yield = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     allow_deviation_delivery_weeks = models.BooleanField(default=False)

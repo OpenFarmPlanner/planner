@@ -1,4 +1,5 @@
 import {
+  buildSheetData,
   buildSpreadsheetFilename,
   exportCropsToSpreadsheet,
 } from '../crops/spreadsheetExport';
@@ -82,15 +83,24 @@ describe('exportCropsToSpreadsheet', () => {
     expect(text).toContain('etwas_unbekanntes');
   });
 
-  it('exports only the declared columns, ignoring other crop fields', () => {
-    // `CROP_COLUMNS` declares only string, number, list, companion and
-    // timing-window columns, so
-    // `buildSheetData`'s `typeof raw === 'boolean'` branch is unreachable —
-    // the same dead branch `parseRawValue` has on the import side. Asserting
-    // a yes/no label here would only be testing a line that never runs.
+  it('exports the declared column kinds, including germination ranges and flags', () => {
     const types = new Set(getLocalizedCropColumns(t).map((column) => column.type));
-
-    expect(types).toEqual(new Set(['string', 'number', 'list', 'companions', 'timingWindows']));
+    expect(types).toEqual(new Set([
+      'string', 'number', 'list', 'companions', 'timingWindows', 'range', 'boolean',
+    ]));
+    const rows = buildSheetData([crop({
+      germination_temperature_optimal_min_c: 18,
+      germination_temperature_optimal_max_c: 25,
+      germination_days_min: 7,
+      germination_days_max: 14,
+      germination_types: ['cold', 'light'],
+    })], t);
+    const row = rows[1];
+    expect(row[columnIndex('germination_temperature_optimal')]).toBe('18–25');
+    expect(row[columnIndex('germination_days')]).toBe('7–14');
+    expect(row[columnIndex('germination_cold')]).toBe('detail.boolean.yes');
+    expect(row[columnIndex('germination_light')]).toBe('detail.boolean.yes');
+    expect(row[columnIndex('germination_frost')]).toBeNull();
   });
 
   it('leaves a missing value empty instead of writing null or undefined', async () => {

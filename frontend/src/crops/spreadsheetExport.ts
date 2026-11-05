@@ -38,6 +38,16 @@ export const buildSheetData = (
     const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
       if (col.type === 'timingWindows') return formatWindowCell(crop, col.key, t);
+      if (col.type === 'range') {
+        const lower = crop[col.key === 'germination_days' ? 'germination_days_min' : 'germination_temperature_optimal_min_c'];
+        const upper = crop[col.key === 'germination_days' ? 'germination_days_max' : 'germination_temperature_optimal_max_c'];
+        // Keep incomplete ranges in their individual columns.
+        return lower == null || upper == null ? null : `${lower}–${upper}`;
+      }
+      if (['cold', 'frost', 'light', 'dark'].some((kind) => col.key === `germination_${kind}`)) {
+        const kind = col.key.replace('germination_', '') as NonNullable<Crop['germination_types']>[number];
+        return crop.germination_types?.includes(kind) ? t('detail.boolean.yes') : null;
+      }
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;
       if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], t);

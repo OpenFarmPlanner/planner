@@ -44,6 +44,13 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   growth_duration_days: 'form.growthDurationDays',
   harvest_duration_days: 'form.harvestDurationDays',
   propagation_duration_days: 'form.propagationDurationDays',
+  germination_temperature_optimal_min_c: 'germination.fields.germination_temperature_optimal_min_c',
+  germination_temperature_optimal_max_c: 'germination.fields.germination_temperature_optimal_max_c',
+  germination_temperature_min_c: 'germination.fields.germination_temperature_min_c',
+  germination_days_min: 'germination.fields.germination_days_min',
+  germination_days_max: 'germination.fields.germination_days_max',
+  germination_types: 'germination.fields.germination_types',
+  germination_pretreatment: 'germination.fields.germination_pretreatment',
   harvest_method: 'form.yieldUnit',
   expected_yield: 'form.expectedYield',
   distance_within_row_m: 'form.distanceWithinRowCm',
@@ -228,6 +235,7 @@ export function formatHistoryChangeValue(
   if (value === null || value === undefined || value === '') {
     return t('history.emptyValue');
   }
+  if (field === 'germination_types' && Array.isArray(value)) return value.map((kind) => t(`germination.types.${kind}`)).join(', ');
   if (field === 'created') {
     return t('history.createdValue');
   }

@@ -170,6 +170,13 @@ describe('crop spreadsheet export → import round trip', () => {
     growth_duration_days: 72,
     harvest_duration_days: 50,
     propagation_duration_days: 45,
+    germination_temperature_optimal_min_c: 18,
+    germination_temperature_optimal_max_c: 25,
+    germination_temperature_min_c: 5,
+    germination_days_min: 7,
+    germination_days_max: 14,
+    germination_types: ['cold', 'frost', 'light', 'dark'],
+    germination_pretreatment: 'Chill four weeks.',
     harvest_method: 'per_plant',
     expected_yield: 4.2,
     distance_within_row_cm: 45,
@@ -221,6 +228,9 @@ describe('crop spreadsheet export → import round trip', () => {
     ...(FULL_CROP as unknown as Record<string, unknown>),
     ...windowCells(i18n.getFixedT('de', 'crops')),
     supplier_name: 'Bingenheimer Saatgut',
+    germination_temperature_optimal: '18–25',
+    germination_days: '7–14',
+    germination_cold: true, germination_frost: true, germination_light: true, germination_dark: true,
     good_companions: COMPANIONS.good,
     // "Kartoffel, Aubergine" names two neighbours that share the reason.
     bad_companions: [
@@ -263,5 +273,31 @@ describe('crop spreadsheet export → import round trip', () => {
     });
     expect(result.entries[1]).toMatchObject({ variety: 'Roma', supplier_name: expect.any(String) });
     expect(result.entries[2]).toMatchObject({ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' });
+  });
+});
+
+describe('germination spreadsheet round trip', () => {
+  it.each(['de', 'en', 'fr', 'es'])('preserves numeric fields, types and pre-treatment in %s', async (language) => {
+    const original = i18n.language;
+    try {
+      const crop = { name: 'Germination crop', germination_temperature_optimal_min_c: 18,
+        germination_temperature_optimal_max_c: 25, germination_temperature_min_c: 5,
+        germination_days_min: 7, germination_days_max: 14, germination_types: ['cold', 'light'],
+        germination_pretreatment: 'Chill four weeks.' } as Crop;
+      const csv = buildSpreadsheetFile(buildSheetData([crop], i18n.getFixedT(language, 'crops')), 'csv') as string;
+      await i18n.changeLanguage('en');
+      const parsed = await parseSpreadsheetFile(csvFile(csv));
+      expect(parsed.warnings).toEqual([]);
+      expect(parsed.entries[0]).toMatchObject(crop);
+      expect(parsed.entries[0]).toMatchObject({ germination_days: '7–14', germination_temperature_optimal: '18–25', germination_cold: true, germination_light: true });
+    } finally {
+      await i18n.changeLanguage(original);
+    }
+  });
+
+  it('recognizes catalogue range and individual requirement aliases', async () => {
+    const parsed = await parseSpreadsheetFile(csvFile('Name;Keim-temperatur (°C);Keim-dauer (Tage);Mindestkeimtemperatur;Kaltkeimer;Lichtkeimer\nTest;18-25;7;5;ja;ja'));
+    expect(parsed.warnings).toEqual([]);
+    expect(parsed.entries[0]).toMatchObject({ germination_temperature_optimal: '18-25', germination_days: '7', germination_temperature_min_c: 5, germination_cold: true, germination_light: true });
   });
 });
