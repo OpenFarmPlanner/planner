@@ -182,3 +182,35 @@ test('planting-plan creation persists localized automatic events without duplica
   expect(after.results.map((task) => task.id)).toEqual(before.results.map((task) => task.id));
   expect(after.results).toHaveLength(3);
 });
+
+test('rescheduling keeps completed and overridden event tasks while moving open dates', async ({ page }, testInfo) => {
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Sync crop', cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
+    propagation_duration_days: 20, growth_duration_days: 30,
+  });
+  const season = await page.evaluate(() => Number(localStorage.getItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`)));
+  const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    crop: crop.id, season, planting_date: '2026-06-01', cultivation_type: 'pre_cultivation',
+  });
+  type EventTask = { id: number; title: string; due_date: string; status: string };
+  const initial = await apiRequest<{ results: EventTask[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+  const propagation = initial.results.find((task) => task.title === 'Start propagation')!;
+  const harvest = initial.results.find((task) => task.title === 'Start harvesting')!;
+  await apiRequest(page, 'PATCH', `/tasks/${propagation.id}/`, { status: 'completed' });
+  await apiRequest(page, 'PATCH', `/tasks/${harvest.id}/`, { due_date: '2026-09-01' });
+  await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { planting_date: '2026-07-01' });
+  await page.reload();
+  const plantingCard = page.getByRole('article', { name: 'Pflanzen', exact: true }).filter({ hasText: 'Sync crop' });
+  await expect(plantingCard).toContainText('1.7.2026');
+  await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).getByRole('article', { name: 'Anzucht beginnen' })).toContainText('12.5.2026');
+  await expect(page.getByRole('article', { name: 'Ernte beginnen' }).filter({ hasText: 'Sync crop' })).toContainText('1.9.2026');
+  await plantingCard.getByRole('button', { name: 'Status ändern: Pflanzen' }).click();
+  await page.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Aufgabe bearbeiten' });
+  await expect(dialog.getByRole('combobox', { name: 'Anbauplan (optional)' })).toHaveAttribute('aria-disabled', 'true');
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.screenshot({ path: testInfo.outputPath('generated-task-editor-mobile.png'), fullPage: true });
+  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+  const after = await apiRequest<{ results: EventTask[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+  expect(after.results.map((task) => task.id).sort()).toEqual(initial.results.map((task) => task.id).sort());
+});
