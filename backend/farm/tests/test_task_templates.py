@@ -99,7 +99,9 @@ class CropTaskTemplateTest(TaskTimingFixture):
         revisions = list(EntityRevision.objects.filter(
             project=self.project, entity_type='croptasktemplate', object_id=template_id,
         ).order_by('id'))
-        self.assertEqual([revision.action for revision in revisions], ['created', 'updated', 'deleted'])
+        self.assertEqual(
+            [revision.action for revision in revisions], ['created', 'updated', 'deleted'],
+        )
         self.assertEqual(revisions[0].snapshot['day_offset'], -3)
         self.assertEqual(revisions[1].snapshot['day_offset'], 5)
         self.assertIsNone(revisions[2].snapshot['deleted_at'])
