@@ -483,34 +483,49 @@ The same applies to any future throttle added to `DEFAULT_THROTTLE_CLASSES`:
 a global throttle class needs a per-view opt-in unless it genuinely belongs
 on every endpoint.
 
-### All of the above breaks silently behind a reverse proxy/CDN
+### Client IPs behind reverse proxies
 
-Every check in this section keys on `REMOTE_ADDR`: the per-IP registration
-cap reads it directly (`accounts/views.py`), and DRF's default
-`SimpleRateThrottle.get_ident()` (used by every IP-scoped throttle, e.g.
-`auth_login`, `auth_register`) falls back to it. A CDN or reverse proxy in
-front of the app (Cloudflare being the motivating case) terminates the
-client's connection itself, so `REMOTE_ADDR` becomes the proxy's own edge IP
-for every request — collapsing every visitor into one shared bucket instead
-of one each.
+`TrustedProxyRemoteAddrMiddleware` resolves one canonical `REMOTE_ADDR` before
+registration, Turnstile verification and API throttling. DRF explicitly sets
+`NUM_PROXIES=0`, so IP-scoped throttles (`auth_login`, `auth_register`, guest
+demos and client error reports) use that address instead of re-reading raw
+`X-Forwarded-For`. User/account, token, email-domain and global buckets keep
+their existing identities.
 
-`config.middleware.TrustedProxyRemoteAddrMiddleware` fixes this by rewriting
-`REMOTE_ADDR` from a client-IP header (`CF-Connecting-IP` by default), but
-only when the immediate TCP peer is itself inside `TRUSTED_PROXY_NETWORKS`
-(from the `TRUSTED_PROXY_CIDRS` env var — see
-["Settings reference"](#settings-reference)). That network-layer check is
-what stops a direct client from setting the header itself to claim an
-arbitrary IP and evade every check above. It is a no-op — and therefore safe
-to leave in place unconditionally — until `TRUSTED_PROXY_CIDRS` is set.
+Trust is opt-in. `TRUSTED_PROXY_CIDRS` contains the exact immediate proxy peers.
+Only a connection from one of these peers may supply `X-Forwarded-For` (XFF).
+Starting at its rightmost entry, the middleware skips explicitly trusted
+proxy hops and selects the first untrusted IP. Additional upstream proxies,
+such as Cloudflare behind Uberspace, belong in `TRUSTED_PROXY_UPSTREAM_CIDRS`;
+this list alone never authorizes an immediate connection to supply headers.
+A provider must reliably append the real upstream caller, including when the
+incoming request already contains XFF or repeated header lines.
 
-That setting is a Django runtime value, not a deploy-script one: it belongs
-in the remote backend `.env` (see the commented-out template and current
-Cloudflare ranges in `backend/.env.example`), the same way `SECRET_KEY` or
-`ALLOWED_HOSTS` do. The `ops` repo deliberately does not provision the
-backend `.env` at all (see its
-`docs/environment-variables.md`, "Supervisor-rendered runtime values") —
-only the actual CDN/DNS switch (nameservers, proxy status, TLS mode) is an
-`ops`-side/dashboard action, not this setting.
+For Cloudflare → Uberspace → Django, XFF is normally `<visitor>, <Cloudflare>`.
+A direct-origin request can forge a prefix, but Uberspace appends the actual
+caller: `<forged prefix>, <caller>`. The walk stops at `<caller>` and ignores
+the prefix. `CF-Connecting-IP`, `Forwarded`, `X-Real-IP` and the deprecated
+`TRUSTED_PROXY_IP_HEADER` setting never override the chain. This deliberately
+replaces the old single-header behavior; existing direct-CDN deployments must
+supply a valid XFF chain too.
+
+IP literals are canonicalized, including IPv4-mapped IPv6. Scoped IPv6, quoted
+addresses, ports and malformed entries are not reinterpreted. An invalid
+entry encountered before identifying a client, a missing chain, an all-trusted
+chain, or a suffix exceeding the 32-entry traversal limit retains the peer
+as the bucket.
+Malformed/unbounded prefixes left of an already identified caller are ignored.
+With trust disabled, forwarding headers are ignored and DRF still uses the
+peer. This can conservatively share buckets behind an unconfigured proxy;
+it never grants header-based identity merely because a header is present.
+
+These runtime settings belong in each remote backend `.env`, not in ops
+Supervisor templates. Populate both lists from `backend/.env.example`, using
+the immediate peer for that environment and rechecking the official
+[Cloudflare IPv4](https://www.cloudflare.com/ips-v4/) and
+[IPv6](https://www.cloudflare.com/ips-v6/) ranges. There is no request-time
+fetch or automatic range update. A stale range conservatively stops the walk
+at that proxy. The ops repository does not provision backend `.env` files.
 
 ## Settings reference
 
@@ -532,8 +547,9 @@ All are read from the environment in `backend/config/settings.py`.
 | `PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER` | `20` | Cap on one account's standing moderation-queue backlog |
 | `THROTTLE_PUBLIC_CROP_TRADE_NAME_WRITE` | `30/hour` | Trade-name edits and reverts per user (every trust level) |
 | `THROTTLE_PUBLIC_CROP_REPORT` | `20/hour` | Library reports per user |
-| `TRUSTED_PROXY_CIDRS` | *(empty)* | CIDR ranges of reverse proxies allowed to report the real client IP |
-| `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Header read for the real client IP, once the peer is trusted |
+| `TRUSTED_PROXY_CIDRS` | *(empty)* | Immediate peers authorized to append XFF; also trusted during the chain walk |
+| `TRUSTED_PROXY_UPSTREAM_CIDRS` | *(empty)* | Additional proxy hops skipped only behind a trusted immediate peer |
+| `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Deprecated compatibility setting; ignored for identity |
 | `TURNSTILE_SITE_KEY` | *(empty)* | This deployment's Turnstile widget key; must match the frontend's `VITE_TURNSTILE_SITE_KEY` |
 | `TURNSTILE_SECRET_KEY` | *(empty)* | Turnstile secret; when set, registration requires a verified token |
 | `TURNSTILE_VERIFY_TIMEOUT_SECONDS` | `5` | Timeout for the `siteverify` call before answering `turnstile_unavailable` |
@@ -585,30 +601,51 @@ Stated plainly so nobody re-derives them from the code:
 - [`notifications.md`](./notifications.md) — the `Notification` model the
   moderator/proposer messages reuse.
 
-### Uberspace client-IP boundary (verified 2026-11-04)
+### Uberspace activation and verification
 
-Production and staging currently leave `TRUSTED_PROXY_CIDRS` unset. The
-successful-registration cap reads `REMOTE_ADDR` and is configured as 3/hour
-in both environments. With the current proxy topology, this merges visitors
-into the Uberspace peer's bucket. This observation is separate from the cause
-of the investigated HTTP 504s.
+The 2026-11-04 investigation (#880) found both environments with empty proxy
+trust and a successful-registration cap of 3/hour, merging visitors into the
+Uberspace peer bucket. Trusting Uberspace's CF header alone was unsafe because
+the origin remained directly reachable. The chain resolver above addresses
+identity verification; it does not block direct origin access or explain the
+HTTP 504s investigated in #879.
 
-A temporary staging backend observed peer `100.65.136.1` both through
-Cloudflare and via the direct origin. Cloudflare requests carried
-`CF-Connecting-IP: <visitor>` and `X-Forwarded-For: <visitor>, <Cloudflare edge>`.
-A direct-origin request with a forged `CF-Connecting-IP` preserved that value;
-Uberspace appended the actual caller to `X-Forwarded-For`. Production's origin
-also still answers direct HTTPS requests using the production Host name.
+On 2026-11-05, temporary staging Gunicorn and Daphne backends confirmed that
+Uberspace appends the real caller to XFF for direct requests, forged CF headers,
+repeated XFF lines and malformed prefixes. Genuine Cloudflare requests supplied
+the expected visitor/edge suffix. Replaying these observed headers through the
+candidate middleware and DRF resolved the test caller for both server types.
+Recent production Daphne logs and the gateway were read-only confirmed as
+`100.64.217.1`; staging's
+observed immediate peer was `100.65.136.1`. Reconfirm production's immediate
+application peer before activation; a gateway alone is not proof of every
+future incoming connection's source.
 
-Cloudflare CIDRs alone cannot match this immediate peer. Trusting the Uberspace
-peer alone would let direct-origin callers forge the registration IP. Keep the
-setting unchanged pending the operator's choice: validate the forwarding chain
-from the trusted immediate peer right-to-left, or restrict/authenticate the
-origin before accepting Cloudflare's client-IP header. A bare header or
-`CF-Ray` presence check cannot establish that trust.
+Operator rollout after review, in a maintenance/deploy window:
 
-DRF's default IP identification separately prefers `X-Forwarded-For`; this
-project does not configure `NUM_PROXIES`. Therefore its attempt throttles do
-**not** necessarily share the successful-registration bucket, and rewriting
-`REMOTE_ADDR` alone would not make all IP-based controls use one verified
-identity. Any implementation must cover both paths and direct-origin spoofing.
+Pair the code and configuration change. With empty trust, the fixed DRF setup
+conservatively shares the proxy's attempt bucket (for example, login 10/minute).
+Avoid leaving the new code running with empty trust on a busy deployment.
+Conversely, never restart the old single-header code with Uberspace trusted:
+that would activate the original CF-header spoofing vulnerability.
+
+1. On staging, edit `~/openfarmplanner/backend/.env` over `ssh uberspace.staging`.
+   Set `TRUSTED_PROXY_CIDRS=100.65.136.1/32` and set
+   `TRUSTED_PROXY_UPSTREAM_CIDRS` to the full reviewed Cloudflare list in
+   `backend/.env.example`. Remove any old `TRUSTED_PROXY_IP_HEADER` entry.
+2. Deploy the reviewed application version before restarting either process
+   with these settings. Do not restart the old version after preparing the
+   environment file. The normal application deploy restarts both processes;
+   for an already copied new version, the explicit command is
+   `supervisorctl restart openfarmplanner openfarmplanner-asgi`.
+3. Confirm real Cloudflare and direct-origin requests, including spoofed and
+   duplicate headers, yield the correct caller. Check that different visitors
+   have separate buckets and one visitor cannot rotate buckets with prefixes.
+4. On production, use `ssh uberspace.openfarm` and `~/backend/.env`, setting
+   `TRUSTED_PROXY_CIDRS=100.64.217.1/32` only after reconfirming that peer.
+   Use the same reviewed upstream list. Restart both applications yourself
+   after the application code and settings are present.
+
+Until those environment settings and restarts are applied, trust remains off
+and the proxy bucket remains shared. No production environment or services
+were changed by the agent. Keep #880 open until deployed behavior is verified.

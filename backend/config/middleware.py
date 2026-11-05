@@ -1,35 +1,17 @@
-"""Rewrites REMOTE_ADDR from a trusted reverse proxy's client-IP header.
+"""Resolve client IPs through explicitly trusted forwarding chains.
 
-A CDN/reverse proxy in front of the app (Cloudflare being the motivating
-case) terminates the client's TCP connection itself, so the origin only ever
-sees the proxy's own edge IP as REMOTE_ADDR. Several IP-keyed abuse checks
-read REMOTE_ADDR directly rather than a forwarded-for header — the
-per-IP registration cap in `accounts.views.RegisterView`, and DRF's default
-`SimpleRateThrottle.get_ident` for every IP-scoped throttle (auth_login,
-auth_register, ...). Without this rewrite, fronting the app with such a
-proxy would make every one of those checks key on the proxy's IP instead of
-the real client, either merging all visitors into one throttle bucket or
-disabling the check outright.
-
-Trust is anchored on the network layer, not the header: the header is only
-honoured when the *immediate* TCP peer (the untouched REMOTE_ADDR) is itself
-inside `TRUSTED_PROXY_NETWORKS`. Otherwise any client could set the header
-directly on a request straight to the origin and claim an arbitrary IP,
-which would let it evade every IP-based check downstream rather than merely
-identify itself correctly through a real proxy.
-
-`TRUSTED_PROXY_NETWORKS` is empty by default, making this a no-op until the
-forwarding chain is validated. On Uberspace the immediate peer is Uberspace,
-including for direct-origin requests; trusting it alone does not authenticate
-Cloudflare headers. See docs/agent-api.md's rate-limiting section and
-the deploy runbook in the `ops` repo for how to populate it.
+The immediate peer must be trusted before X-Forwarded-For is consulted.
+Walk the chain right-to-left, stopping at the first untrusted address.
+Single-value client-IP headers cannot authenticate upstream hops and are ignored.
+DRF uses the resulting REMOTE_ADDR exclusively (NUM_PROXIES=0).
 """
 
 from __future__ import annotations
 
 import ipaddress
 import zoneinfo
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.http import HttpResponsePermanentRedirect
@@ -111,7 +93,7 @@ class AdminTimezoneMiddleware:
 
 
 class TrustedProxyRemoteAddrMiddleware:
-    """Replaces REMOTE_ADDR with the real client IP reported by a trusted proxy."""
+    """Resolve one canonical client address for all downstream abuse controls."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -122,26 +104,51 @@ class TrustedProxyRemoteAddrMiddleware:
 
     @staticmethod
     def _rewrite_remote_addr(request: HttpRequest) -> None:
-        networks = settings.TRUSTED_PROXY_NETWORKS
-        if not networks:
+        peer = _parse_ip(request.META.get('REMOTE_ADDR', ''))
+        if peer is None:
+            return
+        request.META['REMOTE_ADDR'] = str(peer)
+        immediate = settings.TRUSTED_PROXY_NETWORKS
+        if not _is_trusted(peer, immediate):
             return
 
-        peer_ip = _parse_ip(request.META.get('REMOTE_ADDR', ''))
-        if peer_ip is None or not any(peer_ip in network for network in networks):
-            return
+        trusted = [*immediate, *settings.TRUSTED_PROXY_UPSTREAM_NETWORKS]
+        remaining = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        # Bound work without truncating a long prefix into an accepted identity.
+        for _ in range(32):
+            prefix, separator, value = remaining.rpartition(',')
+            hop = _parse_ip(value)
+            if hop is None:
+                return
+            if not _is_trusted(hop, trusted):
+                request.META['REMOTE_ADDR'] = str(hop)
+                return
+            if not separator:
+                return
+            remaining = prefix
+        # Missing, malformed, all-trusted or overlong suffixes keep the peer.
 
-        client_ip = _parse_ip(request.META.get(settings.TRUSTED_PROXY_IP_HEADER, ''))
-        if client_ip is None:
-            return
 
-        request.META['REMOTE_ADDR'] = str(client_ip)
+def _is_trusted(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network],
+) -> bool:
+    if any(address in network for network in networks):
+        return True
+    if isinstance(address, ipaddress.IPv4Address):
+        mapped = ipaddress.IPv6Address(f'::ffff:{address}')
+        return any(mapped in network for network in networks)
+    return False
 
 
 def _parse_ip(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     value = (value or '').strip()
-    if not value:
+    if not value or '%' in value:
         return None
     try:
-        return ipaddress.ip_address(value)
+        address = ipaddress.ip_address(value)
     except ValueError:
         return None
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    return address
