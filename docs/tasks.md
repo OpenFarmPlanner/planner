@@ -235,3 +235,6 @@ remain hidden tombstones: open non-overridden tasks are cancelled, completed and
 manually dated work survives. Deleted task identities suppress regeneration.
 Migration 0132 adds the template model and nullable task FK. Reverse removes
 template rules and provenance, retaining task rows. Recurrence follows in #896.
+
+Project-bound API tokens can list/read crop task templates; session-only CRUD
+remains enforced and the public schema publishes only those two GET operations.
