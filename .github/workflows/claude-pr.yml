@@ -450,7 +450,7 @@ jobs:
         name: Install backend dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y gettext
-          python -m pip install --upgrade pip pdm
+          python -m pip install --upgrade pip "pdm==2.29.5" "hishel==1.4.0"
           cd backend
           pdm install -dG test -dG quality
           pdm run compilemessages
