@@ -14,8 +14,10 @@ import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { getFirstMissingProjectSetupStep, getTranslatedProjectSetupActions } from './requirementFlow';
 import TaskBoard from '../components/tasks/TaskBoard';
+import TaskFormDialog from '../components/tasks/TaskFormDialog';
+import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { EMPTY_TASK_FILTERS, type BoardStatus, type TaskFilters } from '../components/tasks/taskBoard';
-import type { Task } from '../api/types';
+import type { Task, TaskWritePayload } from '../api/types';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 
 export default function Dashboard() {
@@ -29,6 +31,11 @@ export default function Dashboard() {
   const [filters, setFilters] = useState<TaskFilters>({ ...EMPTY_TASK_FILTERS });
   const [savingIds, setSavingIds] = useState<number[]>([]);
   const [saveError, setSaveError] = useState(false);
+  const [editor, setEditor] = useState<Task | null | undefined>(undefined);
+  const [deleting, setDeleting] = useState<Task | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const deleteLock = useRef(false);
   const pendingIds = useRef(new Set<number>());
   const loadGeneration = useRef(0);
   const context = useOutletContext<RootLayoutOutletContext | undefined>();
@@ -97,6 +104,31 @@ export default function Dashboard() {
     } finally {
       pendingIds.current.delete(id);
       setSavingIds((previous) => previous.filter((value) => value !== id));
+    }
+  };
+
+  const saveTask = async (payload: TaskWritePayload): Promise<void> => {
+    const response = editor ? await taskAPI.update(editor.id, payload) : await taskAPI.create(payload);
+    setTasks((previous) => editor
+      ? previous.map((task) => task.id === editor.id ? response.data : task)
+      : [...previous, response.data]);
+    if (!editor) setFilters({ ...EMPTY_TASK_FILTERS });
+  };
+
+  const deleteTask = async (): Promise<void> => {
+    if (!deleting || deleteLock.current) return;
+    deleteLock.current = true;
+    setDeleteBusy(true);
+    setDeleteError(false);
+    try {
+      await taskAPI.delete(deleting.id);
+      setTasks((previous) => previous.filter((task) => task.id !== deleting.id));
+      setDeleting(null);
+    } catch {
+      setDeleteError(true);
+    } finally {
+      deleteLock.current = false;
+      setDeleteBusy(false);
     }
   };
 
@@ -191,14 +223,28 @@ export default function Dashboard() {
         </PageSurface>
       ) : null}
 
-      <PageSurface variant="fullWorkspace">
+      {(seasonId || tasks.length > 0 || isSetupComplete) && <PageSurface variant="fullWorkspace">
         {saveError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSaveError(false)}>
           {t('dashboard:board.saveError')}
         </Alert>}
         <TaskBoard tasks={tasks} crops={crops} fields={fields} beds={beds} plans={plans}
           members={members} savingIds={savingIds} filters={filters} onFiltersChange={setFilters}
-          onStatusChange={(id, status) => { void changeStatus(id, status); }} />
-      </PageSurface>
+          onStatusChange={(id, status) => { void changeStatus(id, status); }}
+          hasSeason={Boolean(seasonId)} onCreate={() => {
+            if (seasonId) setEditor(null);
+            else context?.requestSeasonCreation();
+          }} onEdit={setEditor} onDelete={(task) => { setDeleteError(false); setDeleting(task); }} />
+      </PageSurface>}
+      {editor !== undefined && <TaskFormDialog key={editor?.id ?? 'new'} task={editor} seasonId={seasonId}
+        crops={crops} fields={fields} beds={beds} plans={plans} members={members}
+        onSave={saveTask} onClose={() => setEditor(undefined)} />}
+      <ConfirmationDialog open={Boolean(deleting)} title={t('dashboard:form.delete')}
+        message={<>{t('dashboard:form.deleteConfirm', { title: deleting?.title })}
+          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{t('dashboard:form.deleteError')}</Alert>}</>}
+        messageTypographyProps={{ component: 'div' }}
+        cancelLabel={t('common:actions.cancel')} confirmLabel={t('common:actions.delete')}
+        onCancel={() => { if (!deleteBusy) setDeleting(null); }} onConfirm={() => { void deleteTask(); }}
+        cancelButtonProps={{ disabled: deleteBusy }} confirmButtonProps={{ color: 'error', disabled: deleteBusy }} />
     </PageContainer>
   );
 }

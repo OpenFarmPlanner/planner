@@ -174,6 +174,7 @@ erDiagram
     PlantingPlan ||--o{ Task : "optional related task"
     Season ||--o{ Task : "scoped to (legacy nullable)"
     Crop ||--o{ Task : "optional crop"
+    Field ||--o{ Task : "optional direct field"
     User ||--o{ Task : "optional assignee"
     PlantingPlan ||--o{ NoteAttachment : "photo notes"
 ```
@@ -196,7 +197,7 @@ erDiagram
   See [seasons-architecture.md](./seasons-architecture.md) for the full
   model, the `X-Season-Id` scoping mechanism, and the copy-data/setup flows.
 - **`Task`** stores manual and future generated work with project/season,
-  optional plan/crop/assignee, status and effective due date. Generator baseline
+  optional plan/crop/field/assignee, status and effective due date. Generator baseline
   dates and manual overrides are separate; a project/source/occurrence identity
   keeps future repetitions stable across date changes. See [tasks.md](./tasks.md)
   for the CRUD/filter contract, migration and the deferred generator scope.

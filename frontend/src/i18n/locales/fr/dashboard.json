@@ -74,5 +74,20 @@
     "emptyColumn": "Aucune tâche",
     "showMore": "Afficher plus de tâches",
     "saveError": "Le statut n’a pas pu être enregistré. La modification a été annulée. Veuillez réessayer."
+  },
+  "form": {
+    "add": "Ajouter une tâche",
+    "edit": "Modifier la tâche",
+    "delete": "Supprimer la tâche",
+    "createSeason": "Créer une saison",
+    "title": "Titre",
+    "description": "Description",
+    "date": "Échéance",
+    "status": "Statut",
+    "plan": "Plan de culture (facultatif)",
+    "none": "Aucune association",
+    "saveError": "La tâche n’a pas pu être enregistrée. Vérifiez les données et réessayez.",
+    "deleteConfirm": "Supprimer définitivement « {{title}} » ?",
+    "deleteError": "La tâche n’a pas pu être supprimée. Veuillez réessayer."
   }
 }

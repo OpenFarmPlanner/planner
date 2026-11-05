@@ -516,11 +516,12 @@ class TaskSerializer(serializers.ModelSerializer):
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         attrs = super().validate(attrs)
         project = _resolve_active_project_from_serializer(self)
-        for field in ('planting_plan', 'crop', 'season'):
+        for field in ('planting_plan', 'crop', 'season', 'field'):
             related = attrs.get(field, getattr(self.instance, field, None))
             if related is not None and project is not None and related.project_id != project.id:
                 raise serializers.ValidationError({field: 'Does not belong to the active project.'})
         self._validate_task_relations(attrs, project)
+        self._validate_task_field(attrs)
         self._validate_due_date_override(attrs)
         return attrs
 
@@ -554,6 +555,14 @@ class TaskSerializer(serializers.ModelSerializer):
                 'assigned_to': 'Must be a member of the active project.',
             })
 
+    def _validate_task_field(self, attrs: dict[str, Any]) -> None:
+        plan = attrs.get('planting_plan', getattr(self.instance, 'planting_plan', None))
+        field = attrs.get('field', getattr(self.instance, 'field', None))
+        if plan is not None and field is not None:
+            plan_field_id = plan.bed.field_id if plan.bed_id else None
+            if field.pk != plan_field_id:
+                raise serializers.ValidationError({'field': 'Must match the planting plan field.'})
+
     def _validate_due_date_override(self, attrs: dict[str, Any]) -> None:
         if self.instance is None or self.instance.origin == 'manual':
             if attrs.get('due_date_overridden'):
@@ -580,6 +589,7 @@ class TaskFilterSerializer(serializers.Serializer):
     crop = serializers.IntegerField(min_value=1, required=False)
     planting_plan = serializers.IntegerField(min_value=1, required=False)
     assigned_to = serializers.IntegerField(min_value=1, required=False)
+    field = serializers.IntegerField(min_value=1, required=False)
     due_date__gte = serializers.DateField(required=False)
     due_date__lte = serializers.DateField(required=False)
 
