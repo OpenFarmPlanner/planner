@@ -6,7 +6,8 @@ from django.utils import timezone
 from rest_framework import serializers, viewsets
 
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
-from farm.models import CropTaskTemplate, PlantingPlan
+from farm.history import _serialize_instance
+from farm.models import CropTaskTemplate, EntityRevision, PlantingPlan
 from farm.services.tasks import synchronize_plan_tasks
 
 from ..serializers.task_templates import CropTaskTemplateSerializer
@@ -41,16 +42,26 @@ class CropTaskTemplateViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets
 
     @transaction.atomic
     def perform_create(self, serializer: CropTaskTemplateSerializer) -> None:
-        serializer.save(project=self.request.active_project)
-        self._synchronize(serializer.instance)
+        instance = serializer.save(project=self.request.active_project)
+        self.record_revision(instance, EntityRevision.ACTION_CREATED)
+        self._synchronize(instance)
 
     @transaction.atomic
     def perform_update(self, serializer: CropTaskTemplateSerializer) -> None:
-        serializer.save()
-        self._synchronize(serializer.instance)
+        previous_snapshot = _serialize_instance(serializer.instance)
+        instance = serializer.save()
+        self.record_revision(
+            instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot,
+        )
+        self._synchronize(instance)
 
     @transaction.atomic
     def perform_destroy(self, instance: CropTaskTemplate) -> None:
+        snapshot = _serialize_instance(instance)
         instance.deleted_at = timezone.now()
         instance.save(update_fields=['deleted_at', 'updated_at'])
+        self.record_revision(
+            instance, EntityRevision.ACTION_DELETED, snapshot=snapshot,
+            display_name=instance.title, changed_fields=[],
+        )
         self._synchronize(instance)
