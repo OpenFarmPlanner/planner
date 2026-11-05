@@ -22,5 +22,57 @@
     "bed": "Ajouter une planche",
     "crop": "Ajouter une culture",
     "plan": "Ajouter une série"
+  },
+  "board": {
+    "title": "Tableau de bord des tâches",
+    "status": {
+      "pending": "À faire",
+      "in_progress": "En cours",
+      "completed": "Terminées"
+    },
+    "origin": {
+      "manual": "Manuelle",
+      "automatic": "Automatique",
+      "template": "Modèle"
+    },
+    "metrics": {
+      "overdue": "En retard",
+      "today": "Aujourd’hui",
+      "week": "Cette semaine"
+    },
+    "filters": {
+      "title": "Filtrer les tâches",
+      "period": "Période",
+      "crop": "Culture",
+      "field": "Parcelle",
+      "person": "Responsable",
+      "from": "Du",
+      "to": "Au"
+    },
+    "period": {
+      "all": "Toutes les dates",
+      "overdue": "En retard",
+      "today": "Aujourd’hui",
+      "week": "Cette semaine",
+      "custom": "Période personnalisée"
+    },
+    "all": "Toutes",
+    "unassigned": "Non attribuée",
+    "noDate": "Sans échéance",
+    "dateOverride": "Date modifiée manuellement",
+    "changeStatus": "Modifier le statut : {{title}}",
+    "dragTask": "Déplacer la tâche : {{title}}",
+    "dragInstructions": "Faites glisser la tâche par sa poignée vers une autre colonne. Vous pouvez aussi modifier son statut au clavier dans le menu de statut.",
+    "dragStarted": "Déplacement de {{title}}.",
+    "dragOver": "Destination : {{status}}.",
+    "dragEnded": "{{title}} déplacée vers {{status}}.",
+    "dragCancelled": "Déplacement annulé.",
+    "resetFilters": "Réinitialiser les filtres",
+    "invalidRange": "La date de fin doit suivre la date de début.",
+    "noMatches": "Aucune tâche ne correspond aux filtres. Réinitialisez-les pour voir toutes les tâches.",
+    "empty": "Aucune tâche pour cette saison. Retrouvez ici les travaux à venir.",
+    "emptyColumn": "Aucune tâche",
+    "showMore": "Afficher plus de tâches",
+    "saveError": "Le statut n’a pas pu être enregistré. La modification a été annulée. Veuillez réessayer."
   }
 }

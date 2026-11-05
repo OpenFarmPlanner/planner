@@ -3,7 +3,8 @@
 Issue #890 extends the existing `Task` and `/api/tasks/` endpoint. IDs, status
 values (`pending`, `in_progress`, `completed`, `cancelled`), pagination, revision
 history and the legacy `/openfarmplanner/api/tasks/` mount remain compatible.
-No dashboard or task generation is introduced here.
+The dashboard added in #891 consumes these persisted tasks; automatic generation
+remains deferred.
 
 ## Ownership and relations
 
@@ -72,3 +73,37 @@ migration removes the added fields, index and constraint while preserving the
 original task rows and original columns; new metadata is lost on rollback.
 The data reverse is a no-op because its columns are removed by the schema
 reverse. Migration tests cover forward and backward preservation.
+
+
+## Task dashboard (#891)
+
+`/app/dashboard` keeps the existing project setup checklist and replaces its
+read-only derived event preview with a persisted-task board. The legacy
+location-specific event preview is unchanged; automatic conversion is #893.
+
+The board loads all task pages through `taskAPI.listAll()` and uses the existing
+project and active-season request headers. Crops, fields, beds, planting plans
+and project members supply filter labels and card context. It does not create
+or synchronize tasks. The next issue (#892) adds manual task forms.
+
+There are three columns: pending, in progress and completed. Cancelled tasks
+remain stored and are omitted from this three-column work view. Cards show the
+localized origin, due date (or no date), crop/field, optional assignee and manual
+date override marker. Status PATCH requests send only `status`, leaving dates,
+overrides and generator identity untouched. Moves are optimistic; a failed
+request restores that task without reverting other tasks' concurrent changes.
+An in-flight task cannot be moved again until its request settles.
+
+Filters combine period, crop, field (resolved via plan → bed → field) and
+assignee, including unassigned. Date periods use local calendar dates, inclusive
+custom bounds and Monday–Sunday for this week. Undated work remains visible
+under all dates. Metrics reflect the filtered subset and count only unfinished
+work. All filtering uses the complete fetched collection, not just visible
+cards. Each column initially renders 30 cards and exposes a show-more control.
+
+From the MUI `md` breakpoint (900px), mouse/touch drag handles use dnd-kit and
+empty columns are valid drop targets. Below that width, including phone
+landscape, the view is a single-column compact list with collapsible filters.
+Every card has a keyboard-accessible status menu at every breakpoint. Visible
+and screen-reader text is translated in de/en/fr/es. Load failures hide the
+board and retain the shared retry flow; filters survive retry.

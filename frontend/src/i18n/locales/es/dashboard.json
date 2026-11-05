@@ -22,5 +22,57 @@
     "bed": "Añadir bancal",
     "crop": "Añadir cultivo",
     "plan": "Añadir serie"
+  },
+  "board": {
+    "title": "Panel de tareas",
+    "status": {
+      "pending": "Pendientes",
+      "in_progress": "En curso",
+      "completed": "Completadas"
+    },
+    "origin": {
+      "manual": "Manual",
+      "automatic": "Automática",
+      "template": "Plantilla"
+    },
+    "metrics": {
+      "overdue": "Vencidas",
+      "today": "Hoy",
+      "week": "Esta semana"
+    },
+    "filters": {
+      "title": "Filtrar tareas",
+      "period": "Periodo",
+      "crop": "Cultivo",
+      "field": "Parcela",
+      "person": "Responsable",
+      "from": "Desde",
+      "to": "Hasta"
+    },
+    "period": {
+      "all": "Todas las fechas",
+      "overdue": "Vencidas",
+      "today": "Hoy",
+      "week": "Esta semana",
+      "custom": "Periodo personalizado"
+    },
+    "all": "Todas",
+    "unassigned": "Sin asignar",
+    "noDate": "Sin fecha límite",
+    "dateOverride": "Fecha modificada manualmente",
+    "changeStatus": "Cambiar estado: {{title}}",
+    "dragTask": "Mover tarea: {{title}}",
+    "dragInstructions": "Arrastra la tarea por el asa a otra columna. También puedes cambiar su estado con el teclado desde el menú de estado.",
+    "dragStarted": "Moviendo {{title}}.",
+    "dragOver": "Destino: {{status}}.",
+    "dragEnded": "{{title}} movida a {{status}}.",
+    "dragCancelled": "Movimiento cancelado.",
+    "resetFilters": "Restablecer filtros",
+    "invalidRange": "La fecha de fin debe ser posterior a la de inicio.",
+    "noMatches": "Ninguna tarea coincide con los filtros. Restablécelos para ver todas las tareas.",
+    "empty": "Aún no hay tareas en esta temporada. Aquí puedes consultar los próximos trabajos.",
+    "emptyColumn": "Sin tareas",
+    "showMore": "Mostrar más tareas",
+    "saveError": "No se pudo guardar el estado. Se ha deshecho el cambio. Inténtalo de nuevo."
   }
 }

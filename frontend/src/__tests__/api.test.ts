@@ -21,6 +21,7 @@ vi.mock('../api/httpClient', () => ({
 }));
 
 import api, {
+  taskAPI,
   apiTokenAPI,
   bedAPI,
   cropAPI,
@@ -50,6 +51,19 @@ import api, {
 describe('API Client', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('loads every task page and sends only status when moving a task', async () => {
+    getMock.mockResolvedValueOnce({ data: {
+      count: 2, next: '/tasks/?page=2', previous: null, results: [{ id: 1 }],
+    } }).mockResolvedValueOnce({ data: {
+      count: 2, next: null, previous: null, results: [{ id: 2 }],
+    } });
+    expect((await taskAPI.listAll()).results).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(getMock).toHaveBeenNthCalledWith(1, '/tasks/?page_size=1000');
+    expect(getMock).toHaveBeenNthCalledWith(2, '/tasks/?page=2');
+    await taskAPI.updateStatus(1, 'completed');
+    expect(patchMock).toHaveBeenCalledWith('/tasks/1/', { status: 'completed' });
   });
 
   it('follows every backend pagination link', async () => {

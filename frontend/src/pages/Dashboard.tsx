@@ -1,28 +1,38 @@
 import { loadRetryAlertSx } from '../components/loadRetryStyles';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { Alert, Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
-import { Link as RouterLink } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink, useOutletContext } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '../i18n';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import SproutOutlinedIcon from '@mui/icons-material/SpaOutlined';
-import { bedAPI, cropAPI, fieldAPI, locationAPI, plantingPlanAPI, type Bed, type Crop, type Field, type Location, type PlantingPlan } from '../api/api';
+import { bedAPI, cropAPI, fieldAPI, plantingPlanAPI, projectAPI, taskAPI, type Bed, type Crop, type Field, type PlantingPlan, type ProjectMemberPayload } from '../api/api';
 import PageContainer from '../components/layout/PageContainer';
 import PageSurface from '../components/layout/PageSurface';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { getFirstMissingProjectSetupStep, getTranslatedProjectSetupActions } from './requirementFlow';
-import { deriveLocationTasks } from './locationDerivedTasks';
-import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
+import TaskBoard from '../components/tasks/TaskBoard';
+import { EMPTY_TASK_FILTERS, type BoardStatus, type TaskFilters } from '../components/tasks/taskBoard';
+import type { Task } from '../api/types';
+import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 
 export default function Dashboard() {
-  const { t, i18n } = useTranslation(['dashboard', 'common']);
-  const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
+  const { t } = useTranslation(['dashboard', 'common']);
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<ProjectMemberPayload[]>([]);
+  const [filters, setFilters] = useState<TaskFilters>({ ...EMPTY_TASK_FILTERS });
+  const [savingIds, setSavingIds] = useState<number[]>([]);
+  const [saveError, setSaveError] = useState(false);
+  const pendingIds = useRef(new Set<number>());
+  const loadGeneration = useRef(0);
+  const context = useOutletContext<RootLayoutOutletContext | undefined>();
+  const seasonId = context?.activeSeason?.id;
   const [fields, setFields] = useState<Field[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
@@ -37,29 +47,58 @@ export default function Dashboard() {
   const error = shouldShowProjectRequiredState ? null : fetchError;
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState) {
+    if (shouldShowProjectRequiredState || !activeProjectId) {
       return;
     }
+    let cancelled = false;
+    loadGeneration.current += 1;
     const fetchData = async (): Promise<void> => {
       try {
         setLoading(true);
-        const [locationsRes, fieldsRes, bedsRes, cropsRes, plansRes] = await Promise.all([
-          locationAPI.listAll(), fieldAPI.listAll(), bedAPI.listAll(), cropAPI.listAll(), plantingPlanAPI.listAll(),
+        const [fieldsRes, bedsRes, cropsRes, plansRes, tasksRes, membersRes] = await Promise.all([
+          fieldAPI.listAll(), bedAPI.listAll(), cropAPI.listAll(), plantingPlanAPI.listAll(), taskAPI.listAll(), projectAPI.listMembers(activeProjectId),
         ]);
-        setLocations(locationsRes.results);
+        if (cancelled) return;
+        setTasks(tasksRes.results);
+        setMembers(membersRes.data);
         setFields(fieldsRes.results);
         setBeds(bedsRes.results);
         setCrops(cropsRes.results);
         setPlans(plansRes.results);
         setError(null);
       } catch {
-        setError(t('dashboard:errors.load'));
+        if (!cancelled) setError(t('dashboard:errors.load'));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void fetchData();
-  }, [shouldShowProjectRequiredState, t, retryAttempt]);
+    return () => { cancelled = true; };
+  }, [shouldShowProjectRequiredState, activeProjectId, seasonId, t, retryAttempt]);
+
+  const changeStatus = async (id: number, status: BoardStatus): Promise<void> => {
+    const task = tasks.find((row) => row.id === id);
+    if (!task || task.status === status || pendingIds.current.has(id)) return;
+    const generation = loadGeneration.current;
+    pendingIds.current.add(id);
+    setSavingIds((previous) => [...previous, id]);
+    setSaveError(false);
+    setTasks((previous) => previous.map((row) => row.id === id ? { ...row, status } : row));
+    try {
+      const response = await taskAPI.updateStatus(id, status);
+      if (generation === loadGeneration.current) {
+        setTasks((previous) => previous.map((row) => row.id === id ? response.data : row));
+      }
+    } catch {
+      if (generation === loadGeneration.current) {
+        setTasks((previous) => previous.map((row) => row.id === id ? task : row));
+        setSaveError(true);
+      }
+    } finally {
+      pendingIds.current.delete(id);
+      setSavingIds((previous) => previous.filter((value) => value !== id));
+    }
+  };
 
   const firstMissingChecklistStep = getFirstMissingProjectSetupStep({
     hasFields: fields.length > 0,
@@ -67,7 +106,6 @@ export default function Dashboard() {
     hasCrops: crops.length > 0,
     hasPlans: plans.length > 0,
   });
-  const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
 
   const checklistItems = [
     { key: 'fields', label: t('dashboard:checklist.field'), done: fields.length > 0 },
@@ -75,13 +113,6 @@ export default function Dashboard() {
     { key: 'crops', label: t('dashboard:checklist.crop'), done: crops.length > 0 },
     { key: 'plans', label: t('dashboard:checklist.plan'), done: plans.length > 0 },
   ] as const;
-
-  const upcomingTasks = useMemo(() => {
-    const byLocation = deriveLocationTasks({ locations, fields, beds, crops, plantingPlans: plans });
-    return Object.values(byLocation).flat().sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
-  }, [beds, crops, fields, locations, plans]);
-
-  const locationNameById = useMemo(() => new Map(locations.filter((l) => l.id !== undefined).map((l) => [l.id as number, l.name])), [locations]);
 
   if (loading) return <PageContainer><PageSurface variant="contentFit"><Typography>{t('common:messages.loading')}</Typography></PageSurface></PageContainer>;
   if (shouldShowProjectRequiredState && missingProjectReason) return <PageContainer><PageSurface variant="contentFit"><ProjectRequiredState reason={missingProjectReason} /></PageSurface></PageContainer>;
@@ -160,30 +191,14 @@ export default function Dashboard() {
         </PageSurface>
       ) : null}
 
-      {(isSetupComplete || (!isSetupComplete && upcomingTasks.length > 0)) ? (
-      <PageSurface variant="contentFit" sx={{ minWidth: { md: 460 } }}>
-      <Card variant="outlined" sx={{ width: 'fit-content', maxWidth: '100%' }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>{t('dashboard:tasks.title')}</Typography>
-          {upcomingTasks.length === 0 ? (
-            <>
-              <Typography variant="subtitle2">{t('dashboard:tasks.emptyTitle')}</Typography>
-              <Typography variant="body2">{t('dashboard:tasks.emptyDescription')}</Typography>
-            </>
-          ) : (
-            <Stack spacing={0.75}>
-              {upcomingTasks.map((task) => (
-                <Box key={`${task.locationId}-${task.type}-${task.date}-${task.planId ?? 'na'}`} sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>
-                  <Typography variant="body2">{new Date(`${task.date}T00:00:00`).toLocaleDateString(locale)} – {t(`locations:taskTitles.${task.type}`)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{task.cropName ?? ''}{task.cropName && task.locationId ? ' · ' : ''}{locationNameById.get(task.locationId) ?? ''}</Typography>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
+      <PageSurface variant="fullWorkspace">
+        {saveError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSaveError(false)}>
+          {t('dashboard:board.saveError')}
+        </Alert>}
+        <TaskBoard tasks={tasks} crops={crops} fields={fields} beds={beds} plans={plans}
+          members={members} savingIds={savingIds} filters={filters} onFiltersChange={setFilters}
+          onStatusChange={(id, status) => { void changeStatus(id, status); }} />
       </PageSurface>
-      ) : null}
     </PageContainer>
   );
 }
