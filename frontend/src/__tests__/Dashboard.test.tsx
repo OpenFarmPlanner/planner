@@ -273,4 +273,24 @@ describe('Dashboard', () => {
     expect(screen.queryByText('Aufgaben-Dashboard')).not.toBeInTheDocument();
   });
 
+
+  it('derives a linked task field from its plan instead of persisting a stale direct assignment', async () => {
+    mocks.fieldList.mockResolvedValue({ data: { results: [{ id: 3, name: 'Old field' }, { id: 4, name: 'New field' }] } });
+    mocks.bedList.mockResolvedValue({ data: { results: [{ id: 2, field: 4 }] } });
+    mocks.planList.mockResolvedValue({ data: { results: [{ id: 5, bed: 2, crop: null }] } });
+    const linked = task({ planting_plan: 5, field: 3 });
+    mocks.taskList.mockResolvedValue({ results: [linked] });
+    mocks.taskEdit.mockResolvedValue({ data: { ...linked, field: null } });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
+    expect(mocks.taskEdit.mock.calls[0][1]).toMatchObject({ planting_plan: 5, field: null });
+    const card = await screen.findByRole('article', { name: 'Jäten' });
+    expect(card).toHaveTextContent('New field');
+    expect(card).not.toHaveTextContent('Old field');
+  });
+
 });
