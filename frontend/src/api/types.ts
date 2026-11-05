@@ -1705,8 +1705,8 @@ export interface TaskWritePayload {
   description: string;
   due_date?: string | null;
   status: TaskStatus;
-  planting_plan: number | null;
-  crop: number | null;
+  planting_plan?: number | null;
+  crop?: number | null;
   field: number | null;
   assigned_to: number | null;
   season?: number;

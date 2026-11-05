@@ -277,7 +277,7 @@ class Task(TimestampedModel):
     description = models.TextField(blank=True)
     planting_plan = models.ForeignKey(
         PlantingPlan,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='tasks',
         null=True,
         blank=True,
@@ -303,6 +303,7 @@ class Task(TimestampedModel):
         max_length=20, default='manual',
         choices=[('manual', 'Manual'), ('automatic', 'Automatic'), ('template', 'Template')],
     )
+    deleted_at = models.DateTimeField(null=True, blank=True)
     calculated_due_date = models.DateField(null=True, blank=True)
     due_date_overridden = models.BooleanField(default=False)
     # Stable generator identity: the source identifies an event/template and the

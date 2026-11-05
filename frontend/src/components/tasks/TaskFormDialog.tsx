@@ -54,6 +54,11 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
     const payload = { ...draft, title: draft.title.trim() };
     // A linked plan owns the location: storing its field would go stale when the bed moves.
     if (payload.planting_plan !== null) payload.field = null;
+    if (task?.source_key) {
+      delete payload.planting_plan;
+      delete payload.crop;
+      delete payload.season;
+    }
     if (!task) payload.season = seasonId;
     if (task && draft.title === initialTitle) payload.title = task.title;
     // Merely editing a generated task must not mark its unchanged date as overridden.
@@ -90,7 +95,7 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
             <MenuItem value="">{t('dashboard:board.unassigned')}</MenuItem>
             {members.map((member) => <MenuItem key={member.user} value={member.user}>{member.user_display_name || member.user_email}</MenuItem>)}
           </TextField>
-          <TextField select label={t('dashboard:form.plan')} value={draft.planting_plan ?? ''} disabled={saving}
+          <TextField select label={t('dashboard:form.plan')} value={draft.planting_plan ?? ''} disabled={saving || Boolean(task?.source_key)}
             sx={formGridFullRowSx} onChange={(event) => {
               const id = selectId(event.target.value);
               const plan = plans.find((row) => row.id === id);
@@ -105,13 +110,13 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
             </MenuItem>)}
           </TextField>
           <TextField select label={t('dashboard:board.filters.crop')} value={draft.crop ?? ''}
-            disabled={saving || Boolean(selectedPlan)} sx={formGridFieldSx}
+            disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
             onChange={(event) => update('crop', selectId(event.target.value))}>
             <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
             {crops.map((crop) => <MenuItem key={crop.id} value={crop.id}>{formatCropDisplayName(crop)}</MenuItem>)}
           </TextField>
           <TextField select label={t('dashboard:board.filters.field')} value={selectedPlan ? planField ?? '' : draft.field ?? ''}
-            disabled={saving || Boolean(selectedPlan)} sx={formGridFieldSx}
+            disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
             onChange={(event) => update('field', selectId(event.target.value))}>
             <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
             {fields.map((field) => <MenuItem key={field.id} value={field.id}>{field.name}</MenuItem>)}

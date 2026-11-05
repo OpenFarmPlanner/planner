@@ -23,16 +23,17 @@ crop; an explicit field must match its bed’s field. Creating a linked task def
 clear optional relations on updates. A removed user clears the assignee FK.
 Tasks in soft-deleted seasons are hidden from list and detail reads, including
 standalone tasks; restoring the season makes retained tasks visible again.
-The existing cascade on hard deletion of a planting plan is preserved; season
-soft-deletion still records and restores its plan/task deletions through the
-existing history workflow. Future synchronization/deletion policy is #894.
+Deleting a plan keeps its tasks as standalone history: open, non-overridden
+automatic work is cancelled, while manual, completed and overridden work is
+preserved. Season deletion still records and removes linked plans/tasks as one
+batch; restoring the season restores the original task IDs and states.
 
 Any project member can perform CRUD through a session. Project comes from the
 validated request context and cannot be reassigned by clients. Project-bound
 API tokens retain their existing read-only task surface. Listing and detail
 lookups are project-scoped; `X-Season-Id` additionally scopes both when present.
 
-## Dates and future generation
+## Dates and generated identity
 
 - `due_date` is the effective date exposed to existing clients.
 - `calculated_due_date` stores the generator's baseline independently.
@@ -44,18 +45,18 @@ lookups are project-scoped; `X-Season-Id` additionally scopes both when present.
   and the override unchanged. Manual tasks have no calculated baseline.
 - `origin` is `manual`, `automatic` or `template`. API creation is manual;
   origin, calculated date and generator identity are server-owned read-only
-  fields. The future generator will create the other origins internally.
+  fields. Generators create the other origins internally.
 - `(project, source_key, occurrence_index)` is unique when `source_key` is
   nonempty. A generator must include the plan and event/template identity in
   `source_key`; a repetition uses an index independent of its date. This keeps
   identity stable when dates move and gives each occurrence its own task ID
   and status. Empty source keys permit unrelated manual/legacy tasks.
 
-The future synchronizer (#894) must update only open, non-overridden effective
-dates and preserve completed tasks. Template relations and rules (#895), recurrence expansion and limits (#896)
-remain deferred.
+The synchronizer (#894) updates only open, non-overridden effective dates and
+preserves completed tasks. Template relations and rules (#895), recurrence
+expansion and limits (#896) remain deferred.
 The metadata and unique constraint prepare those paths. Generation runs on
-explicit write paths; no GET requests create tasks. Date synchronization is #894.
+explicit write paths; no GET requests create tasks.
 
 ## Filters
 
@@ -153,7 +154,7 @@ prove the work was completed.
 
 Generated identity is `plan:<id>:event:<kind>` plus occurrence index zero. Creation
 uses that unique identity and never replaces an existing task, status, title,
-manual override or date. Synchronizing changes/removals is the next issue #894.
+manual override or date. The synchronizer below reconciles subsequent changes.
 Tasks in plans without an assigned season wait until first-season setup; legacy
 linked manual tasks with a null season are assigned in place at that point.
 
@@ -167,3 +168,26 @@ Task schema already supports all generated rows, so rollback retains work,
 including any completion/override recorded after deployment. Reapplying the
 migration preserves IDs through the unique constraint instead of duplicating
 rows. Forward/backward/replay and inherited timing are covered by migration tests.
+
+
+## Synchronization (#894)
+
+Plan API updates reconcile event tasks under a transaction and a plan row lock.
+Stable source keys and occurrence indices prevent duplicates across repeated saves.
+Open automatic tasks receive the new calculated baseline; their effective date
+moves only without a manual override. Completed and cancelled tasks retain dates
+and status. Text edits, completion and overrides are never reset by synchronization.
+Removed events cancel open non-overridden tasks; overridden dates and completed
+work survive. Cancelled events are never implicitly reopened if they return.
+Each actual automatic change records a task revision; no-op saves add no task history.
+
+Deleting a generated task records a deletion and retains a hidden `deleted_at`
+identity, preventing regeneration on later plan saves. The field is server-owned;
+list/detail APIs exclude these rows. Manual tasks retain normal hard deletion.
+Plan deletion detaches tasks, preserving completed/manual/overridden history and
+cancelling other unfinished generated work. Planless historical source keys cannot
+attach to a newly created plan. Season deletion/restoration retains its existing
+batched snapshot behavior. Recurrence expansion is implemented in #896 using the
+same per-occurrence identity policy. Schema migration 0131 adds the tombstone and
+changes the plan FK to SET_NULL; rollback loses tombstone suppression metadata
+and reinstates cascade deletion, so retained tasks should be reviewed before rollback.

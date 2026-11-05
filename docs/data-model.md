@@ -303,3 +303,7 @@ ranges, multiple germination requirements and pre-treatment text. These are
 regular inheritable fields on project varieties and participate in library
 sync and local pinning. Planning emergence dates and hints are calculated,
 never stored. See [Germination](./germination.md) for the field contract.
+
+Task synchronization (#894) retains generated deletion identities in server-owned
+`deleted_at` (hidden from task API reads), and uses SET_NULL for the planting-plan
+relation to preserve completed and manually managed work after plan removal.
