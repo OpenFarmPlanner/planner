@@ -224,7 +224,7 @@ def normalize_import_items(raw: Any) -> list[dict[str, str]]:
         if not isinstance(item, dict):
             continue
         name = str(item.get('name') or '').strip()[:200]
-        if not name:
+        if not any(char.isalnum() for char in name):
             continue
         reason = item.get('reason')
         items.append({
