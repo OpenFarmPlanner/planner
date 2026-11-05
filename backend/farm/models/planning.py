@@ -286,9 +286,37 @@ class Task(TimestampedModel):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
 
+    season = models.ForeignKey(
+        Season, on_delete=models.CASCADE, related_name='tasks', null=True, blank=True,
+    )
+    crop = models.ForeignKey(
+        Crop, on_delete=models.SET_NULL, related_name='tasks', null=True, blank=True,
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='assigned_tasks', null=True, blank=True,
+    )
+    origin = models.CharField(
+        max_length=20, default='manual',
+        choices=[('manual', 'Manual'), ('automatic', 'Automatic'), ('template', 'Template')],
+    )
+    calculated_due_date = models.DateField(null=True, blank=True)
+    due_date_overridden = models.BooleanField(default=False)
+    # Stable generator identity: the source identifies an event/template and the
+    # occurrence index identifies a repetition, independently of its date.
+    source_key = models.CharField(max_length=200, blank=True, default='')
+    occurrence_index = models.PositiveIntegerField(default=0)
+
     def __str__(self) -> str:
         """Return a string combining task title and status."""
         return f"{self.title} ({self.status})"
 
     class Meta:
-        ordering = ['due_date', '-created_at']
+        ordering = ['due_date', '-created_at', 'id']
+        indexes = [models.Index(fields=['project', 'season', 'status', 'due_date'])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'source_key', 'occurrence_index'],
+                condition=~models.Q(source_key=''), name='unique_task_source_occurrence',
+            ),
+        ]

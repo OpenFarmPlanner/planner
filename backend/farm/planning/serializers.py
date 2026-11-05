@@ -505,26 +505,86 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     planting_plan_name = serializers.CharField(source='planting_plan.__str__', read_only=True)
 
-    def get_image_file(self, obj):
-        if not obj.image_file_id:
-            return None
-        return {
-            'id': obj.image_file_id,
-            'storage_path': obj.image_file.storage_path,
-        }
-
     class Meta:
         model = Task
         fields = '__all__'
-        # Server-assigned from the active project on create (see
-        # TaskViewSet.perform_create); never client-settable so a member cannot
-        # reassign a task across tenant boundaries via update.
-        read_only_fields = ['project']
+        read_only_fields = [
+            'project', 'origin', 'source_key', 'occurrence_index', 'calculated_due_date',
+            'created_at', 'updated_at',
+        ]
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         attrs = super().validate(attrs)
         project = _resolve_active_project_from_serializer(self)
-        planting_plan = attrs.get('planting_plan') or getattr(self.instance, 'planting_plan', None)
-        if project is not None and planting_plan is not None and planting_plan.project_id != project.id:
-            raise serializers.ValidationError({'planting_plan': 'Planting plan does not belong to the active project.'})
+        for field in ('planting_plan', 'crop', 'season'):
+            related = attrs.get(field, getattr(self.instance, field, None))
+            if related is not None and project is not None and related.project_id != project.id:
+                raise serializers.ValidationError({field: 'Does not belong to the active project.'})
+        self._validate_task_relations(attrs, project)
+        self._validate_due_date_override(attrs)
+        return attrs
+
+    def _validate_task_relations(self, attrs: dict[str, Any], project: Any) -> None:
+        plan = attrs.get('planting_plan', getattr(self.instance, 'planting_plan', None))
+        request = self.context.get('request')
+        if self.instance is None and 'season' not in attrs:
+            season_id = resolve_season_id_from_request(request) if request else None
+            if season_id is not None:
+                season = Season.objects.filter(pk=season_id, project=project).first()
+                if season is None:
+                    raise serializers.ValidationError({'season': 'Invalid active season.'})
+                attrs['season'] = season
+            elif plan is not None:
+                attrs['season'] = plan.season
+        if self.instance is None and plan is not None and 'crop' not in attrs:
+            attrs['crop'] = plan.crop
+        season = attrs.get('season', getattr(self.instance, 'season', None))
+        if season is None and (self.instance is None or 'season' in attrs):
+            raise serializers.ValidationError({'season': 'An active season is required.'})
+        if plan is not None and plan.season_id != getattr(season, 'id', None):
+            raise serializers.ValidationError({'season': 'Must match the planting plan season.'})
+        crop = attrs.get('crop', getattr(self.instance, 'crop', None))
+        if plan is not None and crop is not None and crop.id != plan.crop_id:
+            raise serializers.ValidationError({'crop': 'Must match the planting plan crop.'})
+        assigned_to = attrs.get('assigned_to', getattr(self.instance, 'assigned_to', None))
+        if assigned_to is not None and not assigned_to.project_memberships.filter(
+            project=project,
+        ).exists():
+            raise serializers.ValidationError({
+                'assigned_to': 'Must be a member of the active project.',
+            })
+
+    def _validate_due_date_override(self, attrs: dict[str, Any]) -> None:
+        if self.instance is None or self.instance.origin == 'manual':
+            if attrs.get('due_date_overridden'):
+                raise serializers.ValidationError({
+                    'due_date_overridden': 'Only generated tasks have date overrides.',
+                })
+            return
+        if attrs.get('due_date_overridden') is False:
+            if 'due_date' in attrs:
+                raise serializers.ValidationError({
+                    'due_date': 'Cannot set a date and clear its override together.',
+                })
+            attrs['due_date'] = self.instance.calculated_due_date
+        elif 'due_date' in attrs:
+            attrs['due_date_overridden'] = True
+        elif attrs.get('due_date_overridden') is True:
+            raise serializers.ValidationError({'due_date': 'Supply the overridden date.'})
+
+
+class TaskFilterSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Task.STATUS_CHOICES, required=False)
+    origin = serializers.ChoiceField(choices=['manual', 'automatic', 'template'], required=False)
+    season = serializers.IntegerField(min_value=1, required=False)
+    crop = serializers.IntegerField(min_value=1, required=False)
+    planting_plan = serializers.IntegerField(min_value=1, required=False)
+    assigned_to = serializers.IntegerField(min_value=1, required=False)
+    due_date__gte = serializers.DateField(required=False)
+    due_date__lte = serializers.DateField(required=False)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        start, end = attrs.get('due_date__gte'), attrs.get('due_date__lte')
+        if start and end and start > end:
+            raise serializers.ValidationError('The date range must be ordered.')
         return attrs
