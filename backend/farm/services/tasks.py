@@ -95,3 +95,65 @@ def generate_tasks_for_plans(plans: Iterable[PlantingPlan]) -> int:
             indexes[plan.project_id] = build_general_crop_index(plan.project_id)
         count += len(generate_plan_tasks(plan, crop_index=indexes[plan.project_id]))
     return count
+
+
+def _save_synchronized_task(task: Task, changes: dict[str, Any]) -> None:
+    """Record only actual changes, so repeated synchronization adds no history."""
+    from farm.history import _serialize_instance, record_entity_revision
+    from farm.models import EntityRevision
+
+    changed = [field for field, value in changes.items() if getattr(task, field) != value]
+    if not changed:
+        return
+    for field in changed:
+        setattr(task, field, changes[field])
+    task.save(update_fields=[*changed, 'updated_at'])
+    record_entity_revision(
+        project=task.project, entity_type='task', object_id=task.pk,
+        action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(task),
+        display_name=task.title, changed_fields=changed,
+    )
+
+
+@transaction.atomic
+def synchronize_plan_tasks(plan: PlantingPlan) -> None:
+    """Reconcile event dates while preserving completed, overridden and deleted work."""
+    # Serialize concurrent writes to one plan; the source uniqueness constraint
+    # remains the final guard for concurrent task creation.
+    plan = PlantingPlan.objects.select_for_update().select_related('crop', 'season').get(pk=plan.pk)
+    if not plan.season_id or plan.season.deleted_at is not None:
+        return
+    crop_index = build_general_crop_index(plan.project_id)
+    generate_plan_tasks(plan, crop_index=crop_index)
+    events = plan_event_dates(plan, crop_index)
+    for task in Task.objects.select_for_update().filter(
+        project_id=plan.project_id, planting_plan=plan, origin='automatic', deleted_at__isnull=True,
+    ):
+        prefix = f'plan:{plan.pk}:event:'
+        if not task.source_key.startswith(prefix):
+            continue
+        event = task.source_key[len(prefix):]
+        if event not in AUTOMATIC_TASK_TITLES or task.status in ('completed', 'cancelled'):
+            continue
+        changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
+        if event in events:
+            changes['calculated_due_date'] = events[event]
+            if not task.due_date_overridden:
+                changes['due_date'] = events[event]
+        elif not task.due_date_overridden:
+            changes['status'] = 'cancelled'
+            changes['calculated_due_date'] = None
+        _save_synchronized_task(task, changes)
+
+
+@transaction.atomic
+def detach_plan_tasks(plan: PlantingPlan) -> None:
+    """Keep task history when a plan is removed; cancel obsolete automatic work."""
+    for task in Task.objects.select_for_update().filter(
+        project_id=plan.project_id, planting_plan=plan,
+    ):
+        changes = {'planting_plan_id': None}
+        if (task.origin != 'manual' and task.status in ('pending', 'in_progress')
+                and not task.due_date_overridden):
+            changes['status'] = 'cancelled'
+        _save_synchronized_task(task, changes)

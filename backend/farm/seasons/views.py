@@ -22,7 +22,7 @@ from farm.history import (
     start_batch_operation,
 )
 from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
-from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern
+from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
 from farm.services.crop_rotation import RotationService, preview_season_copy
 from farm.services.seasons import (
@@ -133,11 +133,19 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 display_name=_entity_display_name(plan), changed_fields=[],
                 batch_operation=batch,
             )
-        # Tasks linked to these plans DB-cascade away — record them too so
-        # undelete can bring them back.
+        # Record linked tasks explicitly: plan removal now preserves tasks.
+        # Season restoration replays these snapshots with their original IDs.
+        tasks = list(Task.objects.filter(planting_plan__in=plans))
+        for task in tasks:
+            self.record_revision(
+                task, EntityRevision.ACTION_DELETED,
+                object_id=task.pk, snapshot=_serialize_instance(task),
+                display_name=task.title, changed_fields=[], batch_operation=batch,
+            )
         _record_cascade_deletions(
             self.request.active_project, plans, batch, _current_actor_label(self.request),
         )
+        Task.objects.filter(pk__in=[task.pk for task in tasks]).delete()
         PlantingPlan.objects.filter(season=season).delete()
 
     @action(detail=True, methods=['post'], url_path='undelete')

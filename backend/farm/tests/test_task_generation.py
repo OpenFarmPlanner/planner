@@ -8,7 +8,7 @@ from farm.services.tasks import generate_plan_tasks, generate_tasks_for_plans, p
 from farm.tests.api_base import ProjectApiTestCase
 
 
-class TaskGenerationTest(ProjectApiTestCase):
+class TaskTimingFixture(ProjectApiTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.season = Season.objects.create(
@@ -27,6 +27,8 @@ class TaskGenerationTest(ProjectApiTestCase):
             'bed': self.bed, 'planting_date': date(2026, 5, 1), **overrides,
         })
 
+
+class TaskGenerationTest(TaskTimingFixture):
     def test_pre_cultivation_dates_and_optional_harvest_end(self) -> None:
         plan = self.plan(cultivation_type='pre_cultivation')
         generated = generate_plan_tasks(plan)
@@ -110,3 +112,114 @@ class TaskGenerationTest(ProjectApiTestCase):
         self.assertEqual(Task.objects.filter(planting_plan_id=response.data['id']).count(), 3)
         listed = self.client.get('/openfarmplanner/api/tasks/')
         self.assertEqual(listed.data['count'], 3)
+
+
+class TaskSynchronizationTest(TaskTimingFixture):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.pk)
+
+    def test_rescheduling_preserves_ids_completed_and_overridden_dates(self) -> None:
+        plan = self.plan(cultivation_type='pre_cultivation')
+        tasks = {task.title: task for task in generate_plan_tasks(plan)}
+        completed = tasks['Start propagation']
+        completed.status = 'completed'
+        completed.save()
+        overridden = tasks['Start harvesting']
+        overridden.due_date_overridden = True
+        overridden.due_date = date(2026, 8, 1)
+        overridden.save()
+        ids = set(Task.objects.values_list('id', flat=True))
+        for _ in range(2):
+            response = self.client.patch(f'/openfarmplanner/api/planting-plans/{plan.pk}/', {
+                'planting_date': '2026-06-01',
+            })
+            self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(set(Task.objects.values_list('id', flat=True)), ids)
+        completed.refresh_from_db()
+        overridden.refresh_from_db()
+        self.assertEqual(completed.due_date, date(2026, 4, 11))
+        self.assertEqual(overridden.due_date, date(2026, 8, 1))
+        self.assertEqual(overridden.calculated_due_date, date(2026, 7, 1))
+        self.assertEqual(Task.objects.get(pk=tasks['Transplant'].pk).due_date, date(2026, 6, 1))
+
+    def test_deleted_generated_task_is_not_recreated(self) -> None:
+        from farm.services.tasks import synchronize_plan_tasks
+
+        plan = self.plan(cultivation_type='direct_sowing')
+        task = generate_plan_tasks(plan)[0]
+        response = self.client.delete(f'/openfarmplanner/api/tasks/{task.pk}/')
+        self.assertEqual(response.status_code, 204)
+        synchronize_plan_tasks(plan)
+        self.assertTrue(Task.objects.filter(pk=task.pk, deleted_at__isnull=False).exists())
+        self.assertEqual(self.client.get(f'/openfarmplanner/api/tasks/{task.pk}/').status_code, 404)
+
+    def test_removed_event_is_cancelled_and_never_reopened_implicitly(self) -> None:
+        from farm.services.tasks import synchronize_plan_tasks
+
+        plan = self.plan(cultivation_type='pre_cultivation')
+        tasks = {task.title: task for task in generate_plan_tasks(plan)}
+        plan.cultivation_type = 'direct_sowing'
+        plan.save()
+        synchronize_plan_tasks(plan)
+        removed = tasks['Transplant']
+        removed.refresh_from_db()
+        self.assertEqual(removed.status, 'cancelled')
+        plan.cultivation_type = 'pre_cultivation'
+        plan.save()
+        synchronize_plan_tasks(plan)
+        removed.refresh_from_db()
+        self.assertEqual(removed.status, 'cancelled')
+        self.assertEqual(Task.objects.filter(source_key=removed.source_key).count(), 1)
+
+    def test_plan_deletion_preserves_manual_and_completed_work(self) -> None:
+        plan = self.plan(cultivation_type='pre_cultivation')
+        generated = generate_plan_tasks(plan)
+        generated[0].status = 'completed'
+        generated[0].save()
+        manual = Task.objects.create(
+            project=self.project, season=self.season, planting_plan=plan, title='Manual',
+        )
+        response = self.client.delete(f'/openfarmplanner/api/planting-plans/{plan.pk}/')
+        self.assertEqual(response.status_code, 204)
+        manual.refresh_from_db()
+        generated[0].refresh_from_db()
+        self.assertIsNone(manual.planting_plan_id)
+        self.assertEqual(generated[0].status, 'completed')
+        self.assertIsNone(generated[0].planting_plan_id)
+        self.assertTrue(Task.objects.filter(pk=generated[1].pk, status='cancelled').exists())
+
+    def test_noop_history_and_override_reset_use_latest_baseline(self) -> None:
+        from farm.models import EntityRevision
+        from farm.services.tasks import synchronize_plan_tasks
+
+        plan = self.plan(cultivation_type='direct_sowing')
+        task = generate_plan_tasks(plan)[0]
+        task.due_date_overridden = True
+        task.due_date = None
+        task.save()
+        plan.planting_date = date(2026, 6, 1)
+        plan.save()
+        synchronize_plan_tasks(plan)
+        count = EntityRevision.objects.filter(entity_type='task').count()
+        synchronize_plan_tasks(plan)
+        self.assertEqual(EntityRevision.objects.filter(entity_type='task').count(), count)
+        task.refresh_from_db()
+        self.assertIsNone(task.due_date)
+        self.assertTrue(task.due_date_overridden)
+        response = self.client.patch(f'/openfarmplanner/api/tasks/{task.pk}/', {
+            'due_date_overridden': False,
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['due_date'], '2026-06-01')
+
+    def test_generated_identity_cannot_be_reassigned_to_another_plan(self) -> None:
+        plan = self.plan(cultivation_type='direct_sowing')
+        task = generate_plan_tasks(plan)[0]
+        other = self.plan(cultivation_type='direct_sowing')
+        response = self.client.patch(f'/openfarmplanner/api/tasks/{task.pk}/', {
+            'planting_plan': other.pk,
+        })
+        self.assertEqual(response.status_code, 400)
+        task.refresh_from_db()
+        self.assertEqual(task.planting_plan_id, plan.pk)

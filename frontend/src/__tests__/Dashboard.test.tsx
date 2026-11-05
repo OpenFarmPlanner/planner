@@ -325,9 +325,12 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
     const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
     expect(within(dialog).getByRole('textbox', { name: 'Titel' })).toHaveValue('Anzucht beginnen');
+    expect(within(dialog).getByRole('combobox', { name: 'Anbauplan (optional)' })).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
     expect(mocks.taskEdit.mock.calls[0][1].title).toBe('Start propagation');
+    expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('planting_plan');
+    expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('crop');
   });
 
 });

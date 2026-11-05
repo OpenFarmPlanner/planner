@@ -510,7 +510,7 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             'project', 'origin', 'source_key', 'occurrence_index', 'calculated_due_date',
-            'created_at', 'updated_at',
+            'created_at', 'updated_at', 'deleted_at',
         ]
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
@@ -520,6 +520,13 @@ class TaskSerializer(serializers.ModelSerializer):
             related = attrs.get(field, getattr(self.instance, field, None))
             if related is not None and project is not None and related.project_id != project.id:
                 raise serializers.ValidationError({field: 'Does not belong to the active project.'})
+        if self.instance is not None and self.instance.source_key:
+            for name in ('planting_plan', 'crop', 'season'):
+                previous_id = getattr(self.instance, f'{name}_id')
+                if name in attrs and getattr(attrs[name], 'pk', None) != previous_id:
+                    raise serializers.ValidationError({
+                        name: 'Generated task relations are managed by the plan.',
+                    })
         self._validate_task_relations(attrs, project)
         self._validate_task_field(attrs)
         self._validate_due_date_override(attrs)
@@ -542,10 +549,14 @@ class TaskSerializer(serializers.ModelSerializer):
         season = attrs.get('season', getattr(self.instance, 'season', None))
         if season is None and (self.instance is None or 'season' in attrs):
             raise serializers.ValidationError({'season': 'An active season is required.'})
-        if plan is not None and plan.season_id != getattr(season, 'id', None):
+        if (plan is not None
+                and (self.instance is None or {'season', 'planting_plan'} & attrs.keys())
+                and plan.season_id != getattr(season, 'id', None)):
             raise serializers.ValidationError({'season': 'Must match the planting plan season.'})
         crop = attrs.get('crop', getattr(self.instance, 'crop', None))
-        if plan is not None and crop is not None and crop.id != plan.crop_id:
+        if (plan is not None and crop is not None
+                and (self.instance is None or {'crop', 'planting_plan'} & attrs.keys())
+                and crop.id != plan.crop_id):
             raise serializers.ValidationError({'crop': 'Must match the planting plan crop.'})
         assigned_to = attrs.get('assigned_to', getattr(self.instance, 'assigned_to', None))
         if assigned_to is not None and not assigned_to.project_memberships.filter(

@@ -561,6 +561,13 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             for index, task in enumerate(Task.objects.filter(project=self.project))
         ])
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
+        from django.utils import timezone
+
+        Task.objects.create(
+            project=self.project, title='Hidden generated identity',
+            source_key='plan:999:event:sowing', origin='automatic', deleted_at=timezone.now(),
+        )
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
 
 
     def test_public_crops_list_query_count(self):

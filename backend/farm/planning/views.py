@@ -4,7 +4,9 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.db import transaction
 from django.db.models import Count, Q, QuerySet
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
@@ -28,7 +30,11 @@ from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
-from farm.services.tasks import generate_plan_tasks
+from farm.services.tasks import (
+    detach_plan_tasks,
+    generate_plan_tasks,
+    synchronize_plan_tasks,
+)
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
@@ -292,11 +298,18 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
         generate_plan_tasks(instance)
 
-    def perform_update(self, serializer):
+    @transaction.atomic
+    def perform_update(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         instance = serializer.save(updated_by=current_user)
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+        synchronize_plan_tasks(instance)
+
+    @transaction.atomic
+    def perform_destroy(self, instance: PlantingPlan) -> None:
+        detach_plan_tasks(instance)
+        super().perform_destroy(instance)
 
     @action(detail=False, methods=['get'], url_path='remaining-area')
     def remaining_area(self, request):
@@ -533,7 +546,9 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     serializer_class = TaskSerializer
 
     def get_queryset(self) -> QuerySet[Task]:
-        queryset = super().get_queryset().filter(season__deleted_at__isnull=True)
+        queryset = super().get_queryset().filter(
+            season__deleted_at__isnull=True, deleted_at__isnull=True,
+        )
         season_id = resolve_season_id_from_request(self.request)
         if season_id is not None:
             queryset = queryset.filter(season_id=season_id)
@@ -555,7 +570,11 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         instance_id = instance.pk
         snapshot = _serialize_instance(instance)
         title = getattr(instance, 'title', None)
-        instance.delete()
+        if instance.source_key:
+            instance.deleted_at = timezone.now()
+            instance.save(update_fields=['deleted_at', 'updated_at'])
+        else:
+            instance.delete()
         self.record_revision(
             instance, EntityRevision.ACTION_DELETED,
             object_id=instance_id, snapshot=snapshot, display_name=title, changed_fields=[],
