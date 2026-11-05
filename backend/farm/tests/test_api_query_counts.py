@@ -144,7 +144,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=5, project=self.project, season=season,
                 created_by=self.user, updated_by=self.user,
             )
-            Task.objects.create(title=f'Task {index}', planting_plan=plan, project=self.project)
+            Task.objects.create(
+                title=f'Task {index}', planting_plan=plan, project=self.project,
+                season=season, crop=crop, assigned_to=self.user,
+            )
 
             public_crop = PublicCrop.objects.create(
                 name=f'Public crop {index}', variety='Sorte',
@@ -536,6 +539,14 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         """`planting_plan_name` renders `PlantingPlan.__str__`, which reads the
         plan's crop and bed."""
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5)
+        Task.objects.bulk_create([
+            Task(title=f'Extra task {index}', project=self.project,
+                 planting_plan_id=task.planting_plan_id, season_id=task.season_id,
+                 crop_id=task.crop_id, assigned_to=self.user)
+            for index, task in enumerate(Task.objects.filter(project=self.project))
+        ])
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
+
 
     def test_public_crops_list_query_count(self):
         """Species translations, description translations, the species status

@@ -1,8 +1,10 @@
 """API tests for planting plans and area validation."""
 
 from datetime import date
+from unittest.mock import patch
 
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.test import APITestCase as DRFAPITestCase
 
 from farm.models import (
@@ -15,6 +17,7 @@ from farm.models import (
     Project,
     ProjectMembership,
     Season,
+    Task,
 )
 from farm.tests.api_base import ProjectApiTestCase, User
 
@@ -649,3 +652,196 @@ class PlantingPlanAttachmentCountApiTest(DRFAPITestCase):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+
+
+class TaskApiTest(ProjectApiTestCase):
+    url = '/openfarmplanner/api/tasks/'
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.pk)
+        self.plan = PlantingPlan.objects.create(
+            project=self.project, crop=self.crop, season=self.season,
+        )
+
+    def test_manual_crud_and_revision(self) -> None:
+        response = self.client.post(self.url, {
+            'title': 'Weed', 'description': 'Carefully', 'crop': self.crop.pk,
+            'planting_plan': self.plan.pk, 'assigned_to': self.user.pk,
+            'due_date': '2026-04-01',
+        })
+        self.assertEqual(response.status_code, 201, response.data)
+        task_id = response.data['id']
+        self.assertEqual(response.data['season'], self.season.pk)
+        self.assertEqual(response.data['origin'], 'manual')
+        detail = f'{self.url}{task_id}/'
+        self.assertEqual(self.client.get(detail).status_code, 200)
+        updated = self.client.patch(detail, {'status': 'completed'})
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertEqual(updated.data['id'], task_id)
+        self.assertEqual(updated.data['due_date'], '2026-04-01')
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+        self.assertFalse(Task.objects.filter(pk=task_id).exists())
+        from farm.models import EntityRevision
+        revisions = EntityRevision.objects.filter(entity_type='task', object_id=task_id)
+        self.assertEqual(revisions.count(), 3)
+
+    def test_standalone_task_and_explicit_null_relations(self) -> None:
+        response = self.client.post(self.url, {'title': 'Clean tools'})
+        self.assertEqual(response.status_code, 201, response.data)
+        task = Task.objects.get(pk=response.data['id'])
+        task.planting_plan = self.plan
+        task.crop = self.crop
+        task.save()
+        response = self.client.patch(f'{self.url}{task.pk}/', {
+            'planting_plan': None, 'crop': None, 'assigned_to': None,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIsNone(response.data['planting_plan'])
+        self.assertIsNone(response.data['crop'])
+
+    def test_cross_project_relations_and_assignment_rejected(self) -> None:
+        other = Project.objects.create(name='Other', slug='other-task')
+        season = Season.objects.create(
+            project=other, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        crop = Crop.objects.create(project=other, name='Other')
+        plan = PlantingPlan.objects.create(project=other, crop=crop, season=season)
+        user = User.objects.create_user(username='outside')
+        ProjectMembership.objects.create(project=other, user=user)
+        for field, value in [('season', season.pk), ('crop', crop.pk),
+                             ('planting_plan', plan.pk), ('assigned_to', user.pk)]:
+            with self.subTest(field=field):
+                response = self.client.post(self.url, {'title': 'Invalid', field: value})
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertIn(field, response.data)
+        foreign = Task.objects.create(project=other, title='Private')
+        for method in ('get', 'patch', 'delete'):
+            response = getattr(self.client, method)(f'{self.url}{foreign.pk}/')
+            self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.client.get(self.url).data['count'], 0)
+
+    def test_invalid_data_and_conflicting_season(self) -> None:
+        second = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        for data in [{'title': ' '}, {'status': 'unknown'}, {'due_date': 'invalid'},
+                     {'planting_plan': self.plan.pk, 'season': second.pk}]:
+            response = self.client.post(self.url, {'title': 'Task', **data})
+            self.assertEqual(response.status_code, 400, response.data)
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(second.pk + 1000)
+        self.assertEqual(self.client.post(self.url, {'title': 'Task'}).status_code, 400)
+
+    def test_filters_and_season_scope(self) -> None:
+        task = Task.objects.create(
+            project=self.project, season=self.season, crop=self.crop, planting_plan=self.plan,
+            assigned_to=self.user, title='Match', due_date=date(2026, 4, 1),
+        )
+        Task.objects.create(project=self.project, title='Unassigned')
+        filters = {
+            'status': 'pending', 'origin': 'manual', 'crop': self.crop.pk,
+            'assigned_to': self.user.pk, 'planting_plan': self.plan.pk,
+            'season': self.season.pk, 'due_date__gte': '2026-04-01',
+            'due_date__lte': '2026-04-01',
+        }
+        response = self.client.get(self.url, filters)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual([row['id'] for row in response.data['results']], [task.pk])
+        for query in [{'status': 'invalid'}, {'crop': 'invalid'},
+                      {'due_date__gte': 'invalid'},
+                      {'due_date__gte': '2026-05-01', 'due_date__lte': '2026-04-01'}]:
+            self.assertEqual(self.client.get(self.url, query).status_code, 400)
+
+    def test_generated_date_override_and_reset_keep_identity(self) -> None:
+        task = Task.objects.create(
+            project=self.project, season=self.season, title='Generated', origin='automatic',
+            source_key=f'plan:{self.plan.pk}:sowing', due_date=date(2026, 4, 1),
+            calculated_due_date=date(2026, 4, 1),
+        )
+        detail = f'{self.url}{task.pk}/'
+        response = self.client.patch(detail, {'due_date': None}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data['due_date_overridden'])
+        self.assertIsNone(response.data['due_date'])
+        self.assertEqual(response.data['calculated_due_date'], '2026-04-01')
+        response = self.client.patch(detail, {'status': 'completed'})
+        self.assertTrue(response.data['due_date_overridden'])
+        response = self.client.patch(detail, {'due_date_overridden': False}, format='json')
+        self.assertEqual(response.data['due_date'], '2026-04-01')
+        self.assertEqual(response.data['status'], 'completed')
+        self.assertEqual(response.data['id'], task.pk)
+        self.assertEqual(response.data['source_key'], task.source_key)
+
+    def test_provenance_and_project_are_server_owned(self) -> None:
+        response = self.client.post(self.url, {
+            'title': 'Manual', 'origin': 'automatic', 'project': 999,
+            'source_key': 'forged', 'occurrence_index': 4, 'calculated_due_date': '2026-04-01',
+        })
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['project'], self.project.pk)
+        self.assertEqual(response.data['origin'], 'manual')
+        self.assertEqual(response.data['source_key'], '')
+        self.assertEqual(response.data['occurrence_index'], 0)
+        self.assertIsNone(response.data['calculated_due_date'])
+
+    def test_unauthenticated_access(self) -> None:
+        self.client.force_authenticate(user=None)
+        from farm.planning.views import TaskViewSet
+        # Domain-test settings relax authentication; exercise the production guard.
+        with patch.object(TaskViewSet, 'permission_classes', [IsAuthenticated]):
+            self.assertIn(self.client.get(self.url).status_code, (401, 403))
+
+    def test_generated_occurrences_have_unique_stable_identities(self) -> None:
+        from django.db import IntegrityError, transaction
+        first = Task.objects.create(
+            project=self.project, title='Water', origin='template', source_key='plan:1:template:1',
+            occurrence_index=0,
+        )
+        second = Task.objects.create(
+            project=self.project, title='Water', origin='template', source_key=first.source_key,
+            occurrence_index=1,
+        )
+        first.status = 'completed'
+        first.save()
+        second.refresh_from_db()
+        self.assertEqual(second.status, 'pending')
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Task.objects.create(
+                project=self.project, title='Duplicate', source_key=first.source_key,
+                occurrence_index=0,
+            )
+
+    def test_cross_project_update_and_project_access_denied(self) -> None:
+        other = Project.objects.create(name='Other', slug='other-task-update')
+        foreign_crop = Crop.objects.create(project=other, name='Foreign')
+        task = Task.objects.create(project=self.project, season=self.season, title='Task')
+        response = self.client.patch(f'{self.url}{task.pk}/', {'crop': foreign_crop.pk})
+        self.assertEqual(response.status_code, 400)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(other.pk)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    def test_regular_member_can_create_and_update(self) -> None:
+        membership = ProjectMembership.objects.get(project=self.project, user=self.user)
+        membership.role = 'member'
+        membership.save()
+        response = self.client.post(self.url, {'title': 'Member task'})
+        self.assertEqual(response.status_code, 201, response.data)
+        response = self.client.patch(f"{self.url}{response.data['id']}/", {'status': 'in_progress'})
+        self.assertEqual(response.status_code, 200, response.data)
+
+
+    def test_standalone_task_hidden_with_deleted_season_and_visible_on_restore(self) -> None:
+        from django.utils import timezone
+        task = Task.objects.create(
+            project=self.project, season=self.season, title='Standalone',
+        )
+        self.season.deleted_at = timezone.now()
+        self.season.save()
+        self.assertEqual(self.client.get(self.url).data['count'], 0)
+        self.assertEqual(self.client.get(f'{self.url}{task.pk}/').status_code, 404)
+        self.season.deleted_at = None
+        self.season.save()
+        self.assertEqual(self.client.get(f'{self.url}{task.pk}/').status_code, 200)

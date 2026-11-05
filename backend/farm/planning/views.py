@@ -4,7 +4,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Count
+from django.db.models import Count, QuerySet
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
@@ -31,7 +31,7 @@ from farm.services.germination_check import check_germination
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
-from .serializers import PlantingPlanSerializer, TaskSerializer
+from .serializers import PlantingPlanSerializer, TaskFilterSerializer, TaskSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -511,6 +511,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         })
 
 
+@extend_schema_view(list=extend_schema(parameters=[TaskFilterSerializer, SEASON_HEADER_PARAMETER]))
 class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
     """ViewSet for Task model providing CRUD operations.
     
@@ -529,11 +530,20 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     queryset = Task.objects.select_related('planting_plan', 'planting_plan__crop', 'planting_plan__bed').all()
     serializer_class = TaskSerializer
 
-    def perform_create(self, serializer):
+    def get_queryset(self) -> QuerySet[Task]:
+        queryset = super().get_queryset().filter(season__deleted_at__isnull=True)
+        season_id = resolve_season_id_from_request(self.request)
+        if season_id is not None:
+            queryset = queryset.filter(season_id=season_id)
+        filters = TaskFilterSerializer(data=self.request.query_params)
+        filters.is_valid(raise_exception=True)
+        return queryset.filter(**filters.validated_data)
+
+    def perform_create(self, serializer: TaskSerializer) -> None:
         instance = serializer.save(project=self.request.active_project)
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
-    def perform_destroy(self, instance):
+    def perform_destroy(self, instance: Task) -> None:
         instance_id = instance.pk
         snapshot = _serialize_instance(instance)
         title = getattr(instance, 'title', None)
