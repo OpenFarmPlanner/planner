@@ -89,5 +89,12 @@
     "saveError": "La tâche n’a pas pu être enregistrée. Vérifiez les données et réessayez.",
     "deleteConfirm": "Supprimer définitivement « {{title}} » ?",
     "deleteError": "La tâche n’a pas pu être supprimée. Veuillez réessayer."
+  },
+  "events": {
+    "propagation_start": "Commencer les semis en pépinière",
+    "sowing": "Semis direct",
+    "planting": "Repiquer",
+    "harvest_start": "Commencer la récolte",
+    "harvest_end": "Terminer la récolte"
   }
 }

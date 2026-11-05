@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
+from farm.services.tasks import generate_tasks_for_plans
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -315,7 +316,9 @@ def copy_planting_plans(
             elif rotation_conflicts == COPY_CONFLICTS_WITHOUT_BED:
                 copy.bed = None
                 new_plans.append(copy)
-    return PlantingPlan.objects.bulk_create(new_plans), skipped_count
+    created = PlantingPlan.objects.bulk_create(new_plans)
+    generate_tasks_for_plans(created)
+    return created, skipped_count
 
 
 def preview_copy_counts(
@@ -423,6 +426,7 @@ def distribute_planting_plans(
         'followup': PlantingPlan.objects.bulk_create(per_target['second']),
         'skipped': skipped_count,
     }
+    generate_tasks_for_plans([*created['transition'], *created['followup']])
     return created
 
 
@@ -489,7 +493,9 @@ def compute_setup_target_period(project: Project, pattern: SeasonPattern | None 
     return compute_period_containing(pattern, reference_date)
 
 
-def assign_unassigned_planting_plans(project: Project, *, owner=None) -> Season | None:
+def assign_unassigned_planting_plans(
+    project: Project, *, owner: Any | None = None,
+) -> Season | None:
     """Put every season-less planting plan of `project` into a matching season.
 
     Used by the project seeders (demo and hint-test fixtures), which create
@@ -511,6 +517,10 @@ def assign_unassigned_planting_plans(project: Project, *, owner=None) -> Season 
         created_by=owner if owner and getattr(owner, 'pk', None) else None,
     )
     unassigned.update(season=season)
+    generate_tasks_for_plans(
+        PlantingPlan.objects.filter(project=project, season=season)
+        .select_related('crop', 'season'),
+    )
     return season
 
 

@@ -89,5 +89,12 @@
     "saveError": "No se pudo guardar la tarea. Revisa los datos e inténtalo de nuevo.",
     "deleteConfirm": "¿Eliminar «{{title}}» definitivamente?",
     "deleteError": "No se pudo eliminar la tarea. Inténtalo de nuevo."
+  },
+  "events": {
+    "propagation_start": "Iniciar el semillero",
+    "sowing": "Siembra directa",
+    "planting": "Trasplantar",
+    "harvest_start": "Iniciar la cosecha",
+    "harvest_end": "Finalizar la cosecha"
   }
 }

@@ -8,6 +8,7 @@ from django.db.models import Count
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -43,6 +44,7 @@ from farm.services.seasons import (
     resurrect_season,
     serialize_period_transition,
 )
+from farm.services.tasks import generate_tasks_for_plans
 
 from .serializers import SeasonCopyFromSerializer, SeasonPatternSerializer, SeasonSerializer
 
@@ -443,7 +445,7 @@ class SeasonSetupStatusView(APIView):
 class SeasonSetupApplyView(APIView):
     """Apply the first-run season setup: save the pattern and assign existing plans."""
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         active_project = get_active_project_or_400(request)
         try:
             start_day = int(request.data.get('start_day'))
@@ -470,6 +472,10 @@ class SeasonSetupApplyView(APIView):
             project=active_project, season__isnull=True,
         ).update(season=season)
 
+        generate_tasks_for_plans(
+            PlantingPlan.objects.filter(project=active_project, season=season)
+            .select_related('crop', 'season'),
+        )
         return Response({
             'season': SeasonSerializer(Season.objects.annotate(planting_plan_count=Count('planting_plans')).get(pk=season.pk)).data,
             'assigned_planting_plan_count': assigned_count,

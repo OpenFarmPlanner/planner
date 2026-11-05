@@ -196,10 +196,10 @@ erDiagram
   project's first-run season setup assigns one to its pre-existing plans.
   See [seasons-architecture.md](./seasons-architecture.md) for the full
   model, the `X-Season-Id` scoping mechanism, and the copy-data/setup flows.
-- **`Task`** stores manual and future generated work with project/season,
+- **`Task`** stores manual and generated work with project/season,
   optional plan/crop/field/assignee, status and effective due date. Generator baseline
   dates and manual overrides are separate; a project/source/occurrence identity
-  keeps future repetitions stable across date changes. See [tasks.md](./tasks.md)
+  keeps repetitions stable across date changes. See [tasks.md](./tasks.md)
   for the CRUD/filter contract, migration and the deferred generator scope.
 - There is no separate `Note` model. Free-text notes are plain `notes` text
   fields directly on `Location`, `Field`, `Bed`, `Crop`,

@@ -160,3 +160,25 @@ test('task editor fits mobile, landscape and desktop', async ({ page }, testInfo
     }
   }
 });
+
+test('planting-plan creation persists localized automatic events without duplicate generation on reads', async ({ page }) => {
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Tomato events', cultivation_type: 'pre_cultivation',
+    cultivation_types: ['pre_cultivation'], propagation_duration_days: 20,
+    growth_duration_days: 30, harvest_duration_days: 10,
+  });
+  const season = await page.evaluate(() => Number(localStorage.getItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`)));
+  const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    crop: crop.id, season, planting_date: '2026-06-01', cultivation_type: 'pre_cultivation',
+  });
+  await page.reload();
+  const propagation = page.getByRole('article', { name: 'Anzucht beginnen' });
+  await expect(propagation).toContainText('Automatisch');
+  await expect(page.getByRole('article', { name: 'Pflanzen', exact: true }).filter({ hasText: 'Tomato events' })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Ernte beginnen' }).filter({ hasText: 'Tomato events' })).toBeVisible();
+  const before = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+  await page.reload();
+  const after = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+  expect(after.results.map((task) => task.id)).toEqual(before.results.map((task) => task.id));
+  expect(after.results).toHaveLength(3);
+});

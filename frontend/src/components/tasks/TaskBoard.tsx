@@ -12,6 +12,7 @@ import {
 import type { Bed, Crop, Field, PlantingPlan, Task } from '../../api/types';
 import type { ProjectMemberPayload } from '../../api/api';
 import { useTranslation } from '../../i18n';
+import { taskDisplayTitle } from './taskTitles';
 import TaskCard from './TaskCard';
 import { formatCropDisplayName } from '../../crops/cropDisplay';
 import {
@@ -128,7 +129,10 @@ export default function TaskBoard({
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && isBoardStatus(over.id)) onStatusChange(Number(active.id), over.id);
   };
-  const titleOf = (id: string | number) => tasks.find((task) => task.id === Number(id))?.title ?? '';
+  const titleOf = (id: string | number) => {
+    const task = tasks.find((row) => row.id === Number(id));
+    return task ? taskDisplayTitle(task, t) : '';
+  };
   return <Box sx={{ minWidth: 0 }}>
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, alignItems: { sm: 'center' } }}>
       <Typography component="h1" variant="h5" sx={{ flex: 1 }}>{t('board.title')}</Typography>
