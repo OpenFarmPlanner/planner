@@ -314,3 +314,7 @@ moving introduction per user, independently of project and table-edit hints.
 CropTaskTemplate stores project/crop ownership, title, description, reference event,
 signed calendar-day offset and a deletion tombstone. Task.template is nullable
 with SET_NULL so task history survives template removal.
+
+CropTaskTemplate optionally stores repeat_interval_days, repeat_until
+(count/harvest_start/harvest_end), and repeat_count. Task.occurrence_index
+identifies each independently completable row regardless of its calculated date.

@@ -1729,6 +1729,11 @@
     "offsetValue": "Offset: {{days}} days",
     "editNamed": "Edit template: {{title}}",
     "deleteNamed": "Delete template: {{title}}",
-    "deleteConfirm": "Delete template “{{title}}”? Completed tasks and manually changed dates are preserved."
+    "deleteConfirm": "Delete template “{{title}}”? Completed tasks and manually changed dates are preserved.",
+    "recurring": "Repeat",
+    "interval": "Interval in days",
+    "until": "Repeat until",
+    "count": "Number of tasks",
+    "repeatHint": "Each occurrence is a separate task. At most 1000 tasks per template and planting plan."
   }
 }

@@ -285,6 +285,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             queryset = queryset.filter(season_id=season_id)
         return queryset
 
+    @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}

@@ -1773,6 +1773,11 @@
     "offsetValue": "Décalage : {{days}} jours",
     "editNamed": "Modifier le modèle : {{title}}",
     "deleteNamed": "Supprimer le modèle : {{title}}",
-    "deleteConfirm": "Supprimer le modèle « {{title}} » ? Les tâches terminées et les dates modifiées manuellement sont conservées."
+    "deleteConfirm": "Supprimer le modèle « {{title}} » ? Les tâches terminées et les dates modifiées manuellement sont conservées.",
+    "recurring": "Répéter",
+    "interval": "Intervalle en jours",
+    "until": "Répéter jusqu’à",
+    "count": "Nombre de tâches",
+    "repeatHint": "Chaque occurrence est une tâche distincte. Maximum 1000 tâches par modèle et plan."
   }
 }

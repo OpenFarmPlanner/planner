@@ -1773,6 +1773,11 @@
     "offsetValue": "Desfase: {{days}} días",
     "editNamed": "Editar plantilla: {{title}}",
     "deleteNamed": "Eliminar plantilla: {{title}}",
-    "deleteConfirm": "¿Eliminar la plantilla «{{title}}»? Se conservan las tareas completadas y las fechas modificadas manualmente."
+    "deleteConfirm": "¿Eliminar la plantilla «{{title}}»? Se conservan las tareas completadas y las fechas modificadas manualmente.",
+    "recurring": "Repetir",
+    "interval": "Intervalo en días",
+    "until": "Repetir hasta",
+    "count": "Número de tareas",
+    "repeatHint": "Cada repetición es una tarea independiente. Máximo 1000 tareas por plantilla y plan."
   }
 }

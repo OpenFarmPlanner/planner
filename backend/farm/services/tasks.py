@@ -172,38 +172,71 @@ def _template_due_date(template: Any, events: dict[str, date]) -> date | None:
         return None
 
 
+def template_occurrence_dates(template: Any, events: dict[str, date]) -> list[date]:
+    """Expand stable occurrence indices from the start event and inclusive end."""
+    start = _template_due_date(template, events)
+    if start is None:
+        return []
+    interval = template.repeat_interval_days
+    if interval is None:
+        return [start]
+    if template.repeat_until == 'count':
+        count = template.repeat_count or 0
+    else:
+        end = events.get(template.repeat_until)
+        if end is None or end < start:
+            return []
+        count = (end - start).days // interval + 1
+    if count > 1000:
+        from rest_framework.exceptions import ValidationError
+
+        raise ValidationError({
+            'repeat_interval_days': 'A rule may generate at most 1000 tasks per plan.',
+        })
+    dates = []
+    for index in range(count):
+        try:
+            dates.append(start + timedelta(days=index * interval))
+        except OverflowError:
+            break
+    return dates
+
+
 def generate_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:
     from farm.models import CropTaskTemplate
 
     for template in CropTaskTemplate.objects.filter(
         project_id=plan.project_id, crop_id=plan.crop_id, deleted_at__isnull=True,
     ):
-        due = _template_due_date(template, events)
-        if due is None:
-            continue
-        Task.objects.get_or_create(
-            project_id=plan.project_id,
-            source_key=f'plan:{plan.pk}:template:{template.pk}', occurrence_index=0,
-            defaults={
-                'planting_plan': plan, 'season_id': plan.season_id, 'crop_id': plan.crop_id,
-                'template': template, 'title': template.title, 'description': template.description,
-                'origin': 'template', 'due_date': due, 'calculated_due_date': due,
-            },
-        )
+        for index, due in enumerate(template_occurrence_dates(template, events)):
+            Task.objects.get_or_create(
+                project_id=plan.project_id,
+                source_key=f'plan:{plan.pk}:template:{template.pk}', occurrence_index=index,
+                defaults={
+                    'planting_plan': plan, 'season_id': plan.season_id, 'crop_id': plan.crop_id,
+                    'template': template, 'title': template.title,
+                    'description': template.description, 'origin': 'template',
+                    'due_date': due, 'calculated_due_date': due,
+                },
+            )
 
 
 def synchronize_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:
     generate_template_tasks(plan, events)
+    occurrences = {}
     for task in Task.objects.select_for_update().select_related('template').filter(
         project_id=plan.project_id, planting_plan=plan, origin='template', deleted_at__isnull=True,
     ):
         if task.status in ('completed', 'cancelled'):
             continue
         template = task.template
-        due = _template_due_date(template, events) if (
-            template is not None and template.crop_id == plan.crop_id
-            and template.project_id == plan.project_id
-        ) else None
+        if task.template_id not in occurrences:
+            occurrences[task.template_id] = template_occurrence_dates(template, events) if (
+                template is not None and template.crop_id == plan.crop_id
+                and template.project_id == plan.project_id
+            ) else []
+        dates = occurrences[task.template_id]
+        due = dates[task.occurrence_index] if task.occurrence_index < len(dates) else None
         changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
         if due is not None:
             changes['calculated_due_date'] = due
