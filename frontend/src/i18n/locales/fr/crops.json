@@ -642,6 +642,12 @@
     "createPlantingPlanMissingSeasonTooltip": "Créez d’abord une saison."
   },
   "import": {
+    "duplicateRows": "Lignes en double ({{count}})",
+    "duplicateRow": "La ligne {{row}} est un doublon de la ligne {{firstRow}}.",
+    "duplicatePolicy": "Seule la première ligne pour chaque nom et variété est prise en compte. Les lignes suivantes sont ignorées même si les fournisseurs ou d’autres valeurs diffèrent.",
+    "duplicatesSkipped_one": "{{count}} ligne en double ignorée",
+    "duplicatesSkipped_other": "{{count}} lignes en double ignorées",
+    "duplicatesSkipped_many": "{{count}} lignes en double ignorées",
     "menuLabel": "Importer depuis un fichier",
     "menuItem": "Importer depuis JSON…",
     "title": "Importer des cultures",

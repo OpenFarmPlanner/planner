@@ -161,7 +161,8 @@ export const cropAPI = {
   importPreview: (data: Record<string, unknown>[]) => http.post<{
     results: Array<{
       index: number;
-      status: 'create' | 'update_candidate';
+      status: 'create' | 'update_candidate' | 'duplicate';
+      duplicate_of_index?: number;
       matched_crop_id?: number;
       diff?: Array<{ field: string; current: unknown; new: unknown }>;
       import_data: Record<string, unknown>;
@@ -177,6 +178,7 @@ export const cropAPI = {
     created_count: number;
     updated_count: number;
     skipped_count: number;
+    duplicate_count?: number;
     errors: Array<{ index: number; error: unknown }>;
     companions?: CompanionImportSummary;
   }>('/crops/import/apply/', data),

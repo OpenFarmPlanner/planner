@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CropsImportDialog } from '../pages/CropsImportDialog';
 import type { CropImportState } from '../pages/useCropImportState';
@@ -20,6 +20,42 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
 });
 
 describe('CropsImportDialog', () => {
+  it('lists duplicates separately with source rows and the first-row policy', () => {
+    const translate = (key: string, options?: Record<string, unknown>) => {
+      if (key === 'import.duplicateRows') return `Duplicate rows (${options?.count})`;
+      if (key === 'import.duplicateRow') return `Row ${options?.row} duplicates row ${options?.firstRow}`;
+      return key;
+    };
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({
+          previewCount: 3,
+          validCount: 3,
+          previewResults: [
+            { index: 0, status: 'create', import_data: { name: 'Carrot' } },
+            { index: 1, status: 'duplicate', duplicate_of_index: 0,
+              row_number: 12, duplicate_of_row_number: 5, import_data: { name: 'Carrot' } },
+            { index: 2, status: 'duplicate', duplicate_of_index: 0, import_data: { name: 'Carrot' } },
+          ],
+        })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={translate}
+      />,
+    );
+    expect(screen.getByText('import.newCrops (1)')).toBeInTheDocument();
+    const section = screen.getByText('Duplicate rows (2)').parentElement!;
+    expect(within(section).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(section).getByText('Row 12 duplicates row 5')).toBeInTheDocument();
+    expect(within(section).getByText('Row 3 duplicates row 1')).toBeInTheDocument();
+    expect(screen.getByText('import.duplicatePolicy')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
   it('disables import start when entries are not importable', () => {
     render(
       <CropsImportDialog
