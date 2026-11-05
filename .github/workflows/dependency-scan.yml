@@ -25,7 +25,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install PDM
-        run: python -m pip install --upgrade pip pdm
+        run: python -m pip install --upgrade pip "pdm==2.29.5" "hishel==1.4.0"
 
       - name: Ensure pdm.lock exists
         run: |
