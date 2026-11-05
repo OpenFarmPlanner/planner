@@ -322,7 +322,22 @@
     "botanicalName": "Nom latin",
     "botanicalNamePlaceholder": "p. ex. Beta vulgaris var. flavescens",
     "tags": "Étiquettes",
-    "tagsPlaceholder": "p. ex. Aromatiques, Légumes de garde"
+    "tagsPlaceholder": "p. ex. Aromatiques, Légumes de garde",
+    "seedStatus": "Statut des semences",
+    "seedExemptionStatus": "Dérogation pour les semences",
+    "seedExemptionStatusHelp": "Note manuelle pour cette offre dans le projet. Vérifiez séparément la validité pour votre exploitation, l’utilisation prévue et la période.",
+    "seedStatusOptions": {
+      "organic": "Biologique",
+      "in_conversion": "En conversion",
+      "conventional": "Conventionnel",
+      "unknown": "Inconnu"
+    },
+    "seedExemptionStatusOptions": {
+      "approved": "Autorisation disponible",
+      "not_approved": "Aucune autorisation",
+      "not_required": "Non requise",
+      "unknown": "Inconnu"
+    }
   },
   "messages": {
     "createSuccess": "Culture créée avec succès",

@@ -458,7 +458,7 @@ describe('CropForm', () => {
     expect(supplierCreateMock).toHaveBeenCalledWith('Reinsaat', 'https://reinsaat.at', []);
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'form.createSuppliers' })).not.toBeInTheDocument());
 
-    const supplierSelect = await screen.findByRole('combobox');
+    const supplierSelect = await screen.findByRole('combobox', { name: 'form.supplier' });
     await waitFor(() => expect(supplierSelect).toHaveTextContent('Reinsaat'));
     expect(screen.getByLabelText('name-input')).toHaveValue('Neue Karotte');
     expect(screen.getByText('messages.unsavedChanges')).toBeInTheDocument();
@@ -733,7 +733,7 @@ describe('CropForm', () => {
       />,
     );
 
-    const supplierSelect = await screen.findByRole('combobox');
+    const supplierSelect = await screen.findByRole('combobox', { name: 'form.supplier' });
     fireEvent.mouseDown(supplierSelect);
     fireEvent.click(screen.getByRole('option', { name: 'Bingenheimer' }));
 
@@ -1752,4 +1752,20 @@ describe('CropForm', () => {
     expect(content?.scrollTop).toBe(0);
   });
 
+
+  it('edits and saves supplier seed statuses without another crop change', async () => {
+    supplierListMock.mockResolvedValue({ data: { results: [{ id: 10, name: 'Reinsaat', allowed_domains: [] }] } });
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={{ ...CROP_A, supplier_data: [{ supplier_id: 10 }] }} onSave={onSave} onCancel={() => {}} />);
+    const seedSelect = await screen.findByRole('combobox', { name: 'form.seedStatus' });
+    expect(seedSelect).toHaveTextContent('form.seedStatusOptions.unknown');
+    fireEvent.mouseDown(seedSelect);
+    fireEvent.click(await screen.findByRole('option', { name: 'form.seedStatusOptions.conventional' }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'form.seedExemptionStatus' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'form.seedExemptionStatusOptions.approved' }));
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      supplier_data: [expect.objectContaining({ seed_status: 'conventional', seed_exemption_status: 'approved' })],
+    }), undefined));
+  });
 });

@@ -23,7 +23,9 @@ export function hasSupplierInformation(row: SupplierDataDraft): boolean {
     hasTextValue(row.source_url) ||
     (row.germination_rate !== null && row.germination_rate !== undefined) ||
     (row.price !== null && row.price !== undefined) ||
-    Boolean(row.packaging_sizes?.length)
+    Boolean(row.packaging_sizes?.length) ||
+    (row.seed_status !== undefined && row.seed_status !== 'unknown') ||
+    (row.seed_exemption_status !== undefined && row.seed_exemption_status !== 'unknown')
   );
 }
 

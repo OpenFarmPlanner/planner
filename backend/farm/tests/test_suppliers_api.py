@@ -388,6 +388,8 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
             supplier=self.supplier,
             project=self.project,
             supplier_product_name='Sorte A',
+            seed_status='conventional',
+            seed_exemption_status='approved',
             supplier_product_url='https://supplier.example/a',
             germination_rate=85,
             notes='Notiz',
@@ -478,7 +480,25 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(self.linked_crop.selected_seed_demand_supplier_id, self.supplier.id)
         restored_row = CropSupplierData.objects.get(supplier_id=self.supplier.id)
         self.assertEqual(restored_row.supplier_product_name, 'Sorte A')
+        self.assertEqual(restored_row.seed_status, 'conventional')
+        self.assertEqual(restored_row.seed_exemption_status, 'approved')
         self.assertEqual(restored_row.germination_rate, 85)
+
+    def test_legacy_undo_payload_defaults_seed_statuses(self) -> None:
+        response = self.client.post(
+            f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
+        )
+        payload = response.data['undo_payload']
+        for row in payload['supplier_data']:
+            row.pop('seed_status')
+            row.pop('seed_exemption_status')
+        response = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        restored = CropSupplierData.objects.get(supplier_id=self.supplier.id)
+        self.assertEqual(restored.seed_status, 'unknown')
+        self.assertEqual(restored.seed_exemption_status, 'unknown')
 
 
 class NormalizeNewSupplierPayloadTests(ProjectApiTestCase):

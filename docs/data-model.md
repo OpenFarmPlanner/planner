@@ -144,7 +144,12 @@ erDiagram
   full story of how this split is formalized into the `crops` Django app.
 - **`CropSupplierData`** is the join between one `Crop` and one
   `Supplier`: supplier-specific product data (price, packaging sizes,
-  germination rate, thousand-kernel-weight). `SeedPackage` is a simpler,
+  germination rate, thousand-kernel-weight, `seed_status` and
+  `seed_exemption_status`). Both status fields are optional on API writes,
+  default to `unknown` for new and pre-existing rows, and remain unchanged
+  when an update omits them. They belong to the supplier row, never to the
+  crop/variety or shared library. See [supplier seed status](supplier-seed-status.md)
+  for the exemption limitations and import/export contract. `SeedPackage` is a simpler,
   supplier-agnostic "this crop comes in these package sizes" record.
   `Crop.selected_seed_demand_supplier` is a *separate* nullable FK from
   `Crop.supplier` (the general "preferred supplier") — it specifically

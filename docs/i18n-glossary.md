@@ -264,3 +264,13 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
   (OQLF, FAO AGROVOC) and *agricultura sostenida por la comunidad (ASC)*
   (Urgenci, MITECO). *AMAP* is the French form of the model and is named
   alongside, never as a translation of an Austrian GeLaWi.
+
+## Supplier seed status
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Saatgutstatus | Seed status | Statut des semences | Estado de las semillas |
+| Bio | Organic | Biologique | Ecológico |
+| Umstellung | In conversion | En conversion | En conversión |
+| Konventionell | Conventional | Conventionnel | Convencional |
+| Ausnahmegenehmigung | Seed exemption | Dérogation pour les semences | Excepción para las semillas |

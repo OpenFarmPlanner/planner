@@ -343,9 +343,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         for crop in imported:
             self.assertTrue(rows_by_id[crop.pk]['public_update_available'])
 
-    def test_crop_supplier_data_list_query_count(self):
+    def test_crop_supplier_data_list_query_count(self) -> None:
         """Rows embed a full nested `SupplierSerializer`."""
+        CropSupplierData.objects.filter(project=self.project).update(
+            seed_status='organic', seed_exemption_status='not_required',
+        )
         self.assert_list_query_count('/openfarmplanner/api/crop-supplier-data/', 5)
+        for index in range(3):
+            supplier = Supplier.objects.create(
+                name=f'Extra status supplier {index}', project=self.project,
+                homepage_url='https://extra.example',
+            )
+            CropSupplierData.objects.create(
+                crop=self.crop, supplier=supplier, project=self.project,
+                seed_status='conventional', seed_exemption_status='approved',
+            )
+        self.assert_list_query_count(
+            '/openfarmplanner/api/crop-supplier-data/', 5, expected_rows=ROW_COUNT + 3,
+        )
 
     def test_seed_packages_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/seed-packages/', 5)

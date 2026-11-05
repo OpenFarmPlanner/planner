@@ -106,6 +106,8 @@ def _supplier_data_payload_has_information(row: dict[str, object]) -> bool:
         or row.get('germination_rate') is not None
         or row.get('price') is not None
         or bool(row.get('packaging_sizes'))
+        or row.get('seed_status', 'unknown') != 'unknown'
+        or row.get('seed_exemption_status', 'unknown') != 'unknown'
     )
 
 
@@ -137,6 +139,8 @@ class CropSupplierDataSerializer(serializers.ModelSerializer):
             'supplier_url',
             'supplier_product_name',
             'supplier_product_url',
+            'seed_status',
+            'seed_exemption_status',
             'packaging_sizes',
             'germination_rate',
             'price',
@@ -146,7 +150,11 @@ class CropSupplierDataSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'project']
-        extra_kwargs = {'crop': {'required': False}}
+        extra_kwargs = {
+            'crop': {'required': False},
+            'seed_status': {'required': False},
+            'seed_exemption_status': {'required': False},
+        }
         validators = []
 
     def _resolve_crop_for_validation(self, attrs):

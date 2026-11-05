@@ -317,7 +317,22 @@
     "botanicalName": "Latin name",
     "botanicalNamePlaceholder": "e.g. Beta vulgaris var. flavescens",
     "tags": "Tags",
-    "tagsPlaceholder": "e.g. Herbs, Storage vegetables"
+    "tagsPlaceholder": "e.g. Herbs, Storage vegetables",
+    "seedStatus": "Seed status",
+    "seedExemptionStatus": "Seed exemption",
+    "seedExemptionStatusHelp": "Manual note for this offer in the project. Check validity for your farm, intended use and period separately.",
+    "seedStatusOptions": {
+      "organic": "Organic",
+      "in_conversion": "In conversion",
+      "conventional": "Conventional",
+      "unknown": "Unknown"
+    },
+    "seedExemptionStatusOptions": {
+      "approved": "Approval available",
+      "not_approved": "No approval",
+      "not_required": "Not required",
+      "unknown": "Unknown"
+    }
   },
   "messages": {
     "createSuccess": "Crop created successfully",

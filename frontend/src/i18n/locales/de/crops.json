@@ -317,7 +317,22 @@
     "botanicalName": "Lateinischer Name",
     "botanicalNamePlaceholder": "z. B. Beta vulgaris var. flavescens",
     "tags": "Tags",
-    "tagsPlaceholder": "z. B. Kräuter, Lagergemüse"
+    "tagsPlaceholder": "z. B. Kräuter, Lagergemüse",
+    "seedStatus": "Saatgutstatus",
+    "seedExemptionStatus": "Ausnahmegenehmigung",
+    "seedExemptionStatusHelp": "Manueller Hinweis für dieses Angebot im Projekt. Prüfe die Gültigkeit für deinen Betrieb, die Verwendung und den Zeitraum separat.",
+    "seedStatusOptions": {
+      "organic": "Bio",
+      "in_conversion": "Umstellung",
+      "conventional": "Konventionell",
+      "unknown": "Unbekannt"
+    },
+    "seedExemptionStatusOptions": {
+      "approved": "Genehmigung vorhanden",
+      "not_approved": "Keine Genehmigung",
+      "not_required": "Nicht erforderlich",
+      "unknown": "Unbekannt"
+    }
   },
   "messages": {
     "createSuccess": "Kultur erfolgreich erstellt",

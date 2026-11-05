@@ -131,6 +131,8 @@ for step-by-step procedures of recurring tasks, see the skills in
   bed during the previous crop's harvest phase (project setting
   "Anbauplanung"), errors vs. harvest-overlap infos, and where the UI shows
   them.
+- **[Supplier Seed Status](./supplier-seed-status.md)** — offer-level seed
+  status, manual exemption notes, and import/export limitations.
 - **[Seed Demand Calculation](./seed-demand-calculation.md)** — how
   required seed amounts and package suggestions are computed, with worked
   examples.

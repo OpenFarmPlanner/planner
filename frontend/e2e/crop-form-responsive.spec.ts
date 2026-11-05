@@ -190,3 +190,46 @@ test.describe('crop form timing windows section', () => {
     await page.screenshot({ path: test.info().outputPath('timing-windows-1440.png'), fullPage: false });
   });
 });
+
+test('supplier seed statuses persist and fit the existing responsive editor', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `supplier-status-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const supplier = await apiRequest<{ id: number }>(page, 'POST', '/suppliers/', {
+    name: 'Status supplier', homepage_url: 'https://seeds.example',
+  });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Status carrot', supplier_data_input: [{ supplier_id: supplier.id }],
+  });
+  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
+  const seedStatus = dialog.getByRole('combobox', { name: 'Saatgutstatus', exact: true });
+  await expect(seedStatus).toHaveText('Unbekannt');
+  await seedStatus.click();
+  await page.getByRole('option', { name: 'Konventionell', exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Ausnahmegenehmigung', exact: true }).click();
+  await page.getByRole('option', { name: 'Genehmigung vorhanden', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const saved = await apiRequest<{ supplier_data: Array<{ seed_status: string; seed_exemption_status: string }> }>(page, 'GET', `/crops/${crop.id}/`);
+  expect(saved.supplier_data[0]).toMatchObject({ seed_status: 'conventional', seed_exemption_status: 'approved' });
+  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  await expect(seedStatus).toHaveText('Konventionell');
+  for (const width of [375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await seedStatus.scrollIntoViewIfNeeded();
+    const row = dialog.getByTestId('crop-supplier-data-row');
+    const overflow = await row.evaluate((element) => element.scrollWidth - element.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    await expect(dialog.getByRole('button', { name: 'Speichern', exact: true })).toBeInViewport();
+    // Review artifacts only; dynamic form contents are asserted functionally.
+    await page.screenshot({ path: testInfo.outputPath(`supplier-status-${width}.png`) });
+  }
+  await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  await page.setViewportSize({ width: 375, height: 800 });
+  const frenchStatus = page.getByRole('combobox', { name: 'Statut des semences', exact: true });
+  await frenchStatus.scrollIntoViewIfNeeded();
+  await expect(frenchStatus).toHaveText('Conventionnel');
+  const frenchRow = page.getByTestId('crop-supplier-data-row');
+  expect(await frenchRow.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: testInfo.outputPath('supplier-status-fr-375.png') });
+});

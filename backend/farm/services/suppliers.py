@@ -103,6 +103,8 @@ def build_delete_undo_payload(supplier: Supplier) -> dict[str, object]:
             'supplier_url': row.supplier_url,
             'supplier_product_name': row.supplier_product_name,
             'supplier_product_url': row.supplier_product_url,
+            'seed_status': row.seed_status,
+            'seed_exemption_status': row.seed_exemption_status,
             'packaging_sizes': row.packaging_sizes,
             'thousand_kernel_weight_g': (
                 str(row.thousand_kernel_weight_g)
@@ -226,6 +228,10 @@ def _restore_supplier_data_row(project, supplier: Supplier, row_payload: object)
         supplier_url=str(row_payload.get('supplier_url') or ''),
         supplier_product_name=str(row_payload.get('supplier_product_name') or ''),
         supplier_product_url=str(row_payload.get('supplier_product_url') or ''),
+        seed_status=row_payload.get('seed_status', CropSupplierData.SeedStatus.UNKNOWN),
+        seed_exemption_status=row_payload.get(
+            'seed_exemption_status', CropSupplierData.SeedExemptionStatus.UNKNOWN,
+        ),
         packaging_sizes=row_payload.get('packaging_sizes') or [],
         thousand_kernel_weight_g=(
             Decimal(str(row_payload['thousand_kernel_weight_g']))

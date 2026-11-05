@@ -184,3 +184,19 @@ describe('normalizeCropFormData', () => {
     expect(fromEmpty).toEqual(fromFull);
   });
 });
+
+
+describe('supplier seed statuses', () => {
+  it('treats omitted legacy statuses as unknown', () => {
+    expect(hasEffectiveCropFormChanges(
+      { supplier_data: [{ supplier_id: 1 }] },
+      { supplier_data: [{ supplier_id: 1, seed_status: 'unknown', seed_exemption_status: 'unknown' }] },
+    )).toBe(false);
+  });
+  it.each(['seed_status', 'seed_exemption_status'] as const)('detects changes to %s', (field) => {
+    expect(hasEffectiveCropFormChanges(
+      { supplier_data: [{ supplier_id: 1 }] },
+      { supplier_data: [{ supplier_id: 1, [field]: field === 'seed_status' ? 'organic' : 'approved' }] },
+    )).toBe(true);
+  });
+});
