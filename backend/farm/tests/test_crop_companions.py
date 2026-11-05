@@ -191,6 +191,50 @@ class CompanionPlanningCheckTests(CropCompanionTestCase):
 
 
 class CompanionImportTests(CropCompanionTestCase):
+    def test_placeholder_only_neighbours_are_ignored_in_preview_and_apply(self) -> None:
+        placeholders = ['#', '-', '?', '...', '—', '_', '/', '(?)', '※', '✓', '# ? – /']
+        items = [{'name': f' {name} ', 'note': 'Wurzelraum'} for name in placeholders]
+        rows = [{'name': 'Gurke', 'good_companions': items, 'bad_companions': items}]
+
+        preview = self.client.post(PREVIEW_URL, rows, format='json')
+
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertIsNone(preview.data['results'][0].get('companions'))
+
+        response = self.client.post(APPLY_URL, {'items': rows}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['companions'], {
+            'created': 0, 'unresolved': [], 'conflicts': [],
+        })
+        self.assertFalse(CropCompanion.objects.exists())
+
+    def test_placeholders_are_filtered_without_changing_real_neighbours(self) -> None:
+        names = ['Pak-Choi', 'Épinard', '小白菜', '123']
+        items = [
+            {'name': name, 'reason': 'competition', 'note': 'Wurzelraum'}
+            for name in ['#', *names, '?']
+        ]
+        rows = [{'name': 'Gurke', 'good_companions': items}]
+
+        preview = self.client.post(PREVIEW_URL, rows, format='json')
+
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(preview.data['results'][0]['companions'], {
+            'count': len(names), 'unresolved': names,
+        })
+
+        response = self.client.post(APPLY_URL, {'items': rows}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['companions'], {
+            'created': len(names), 'unresolved': sorted(names), 'conflicts': [],
+        })
+        self.assertCountEqual(
+            CropCompanion.objects.values_list('companion_text', 'reason', 'note'),
+            [(name, 'competition', 'Wurzelraum') for name in names],
+        )
+
     def test_apply_links_names_to_kulturen_families_or_free_text(self):
         rows = [
             {

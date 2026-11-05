@@ -155,7 +155,11 @@ language. The JSON export writes the same as `good_companions` /
 
 The import reads the cells in any UI language (`crops/companions.ts`):
 several names before the dash share the note (`Tomate, Kartoffel – gleiche
-Krankheiten`), commas inside parentheses do not split. The backend resolves
+Krankheiten`), commas inside parentheses do not split. Both the cell parser
+and backend import normalization ignore names without any Unicode letter or
+number (e.g. `#`, `-`, `?`), even when a reason or note is supplied. These
+placeholders do not count as neighbours, unresolved names or good/bad conflicts.
+The backend resolves
 each name once every row of the file exists: a crop of the project with that
 name, then the project's crops of the crop species the name names (in any
 language), then a plant family by name or synonym, else free text. The import

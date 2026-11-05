@@ -60,6 +60,22 @@ describe('parseCompanionCell', () => {
     expect(parseCompanionCell(42, lookup)).toEqual([]);
   });
 
+  it.each(['#', '-', '?', '...', '—', '_', '/', '(?)', '※', '✓', '# ? – /'])(
+    'ignores the placeholder %s, including when it has a note', (placeholder) => {
+      expect(parseCompanionCell(` ${placeholder} `, lookup)).toEqual([]);
+      expect(parseCompanionCell(`${placeholder} – Konkurrenz: Wurzelraum`, lookup)).toEqual([]);
+    },
+  );
+
+  it('filters individual placeholders while preserving names and shared details', () => {
+    expect(parseCompanionCell('#, Pak-Choi, ?, Épinard, 小白菜, 123 – Konkurrenz: Wurzelraum', lookup)).toEqual([
+      { name: 'Pak-Choi', reason: 'competition', note: 'Wurzelraum' },
+      { name: 'Épinard', reason: 'competition', note: 'Wurzelraum' },
+      { name: '小白菜', reason: 'competition', note: 'Wurzelraum' },
+      { name: '123', reason: 'competition', note: 'Wurzelraum' },
+    ]);
+  });
+
   it('reads back what formatCompanionCell writes', () => {
     const items = [
       { name: 'Basilikum', reason: 'pest_control', note: '' },
