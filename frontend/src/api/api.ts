@@ -1,6 +1,8 @@
 import http from './httpClient';
 import { getCurrentUiLanguage } from '../i18n';
 import type {
+  Task,
+  TaskStatus,
   ApiToken,
   ApiTokenCreatePayload,
   ApiTokenCreated,
@@ -763,4 +765,10 @@ export default {
   layouts: layoutAPI,
   projects: projectAPI,
   feedback: feedbackAPI,
+};
+
+
+export const taskAPI = {
+  listAll: () => fetchAllPaginated<Task>('/tasks/'),
+  updateStatus: (id: number, status: TaskStatus) => http.patch<Task>(`/tasks/${id}/`, { status }),
 };

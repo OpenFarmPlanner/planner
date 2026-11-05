@@ -22,5 +22,57 @@
     "bed": "Beet hinzufügen",
     "crop": "Kultur hinzufügen",
     "plan": "Anbauplan hinzufügen"
+  },
+  "board": {
+    "title": "Aufgaben-Dashboard",
+    "status": {
+      "pending": "Offen",
+      "in_progress": "In Arbeit",
+      "completed": "Erledigt"
+    },
+    "origin": {
+      "manual": "Manuell",
+      "automatic": "Automatisch",
+      "template": "Vorlage"
+    },
+    "metrics": {
+      "overdue": "Überfällig",
+      "today": "Heute",
+      "week": "Diese Woche"
+    },
+    "filters": {
+      "title": "Aufgaben filtern",
+      "period": "Zeitraum",
+      "crop": "Kultur",
+      "field": "Parzelle",
+      "person": "Verantwortlich",
+      "from": "Von",
+      "to": "Bis"
+    },
+    "period": {
+      "all": "Alle Termine",
+      "overdue": "Überfällig",
+      "today": "Heute",
+      "week": "Diese Woche",
+      "custom": "Eigener Zeitraum"
+    },
+    "all": "Alle",
+    "unassigned": "Nicht zugewiesen",
+    "noDate": "Ohne Termin",
+    "dateOverride": "Termin manuell geändert",
+    "changeStatus": "Status ändern: {{title}}",
+    "dragTask": "Aufgabe verschieben: {{title}}",
+    "dragInstructions": "Ziehe die Aufgabe mit dem Griff in eine andere Spalte. Über das Statusmenü kannst du den Status auch mit der Tastatur ändern.",
+    "dragStarted": "{{title}} wird verschoben.",
+    "dragOver": "Ziel: {{status}}.",
+    "dragEnded": "{{title}} nach {{status}} verschoben.",
+    "dragCancelled": "Verschieben abgebrochen.",
+    "resetFilters": "Filter zurücksetzen",
+    "invalidRange": "Das Enddatum muss nach dem Startdatum liegen.",
+    "noMatches": "Keine Aufgaben passen zu diesen Filtern. Setze die Filter zurück, um alle Aufgaben zu sehen.",
+    "empty": "Noch keine Aufgaben in dieser Saison. Hier behältst du die anstehenden Arbeiten im Blick.",
+    "emptyColumn": "Keine Aufgaben",
+    "showMore": "Weitere Aufgaben anzeigen",
+    "saveError": "Der Status konnte nicht gespeichert werden. Die Änderung wurde zurückgenommen. Versuche es erneut."
   }
 }

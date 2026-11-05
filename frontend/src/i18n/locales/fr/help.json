@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Aide : Vue d'ensemble",
-      "intro": "Au démarrage du projet, une liste de contrôle vous guide dans les premières étapes : ajouter une parcelle, une planche, une culture et une série.\n\nDès que des séries existent, les tâches à venir pour le semis, la plantation, la mise en pépinière et la récolte apparaissent ici."
+      "intro": "La liste de démarrage vous guide pour créer parcelle, planche, culture et plan de culture. Le tableau de bord affiche les tâches enregistrées de la saison active : À faire, En cours et Terminées. Filtrez par période, culture, parcelle ou responsable. Les indicateurs comptent les tâches non terminées. Sur grand écran, déplacez les cartes par leur poignée ; le menu permet aussi de modifier le statut au clavier. Sur petit écran, les tâches sont présentées en liste."
     },
     "locations": {
       "title": "Aide : Sites",

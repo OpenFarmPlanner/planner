@@ -1672,3 +1672,28 @@ export interface AppNotification {
 export interface NotificationListResponse extends PaginatedResponse<AppNotification> {
   unread_count: number;
 }
+
+
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskOrigin = 'manual' | 'automatic' | 'template';
+
+export interface Task {
+  id: number;
+  project: number;
+  season: number | null;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  due_date: string | null;
+  planting_plan: number | null;
+  planting_plan_name?: string | null;
+  crop: number | null;
+  assigned_to: number | null;
+  origin: TaskOrigin;
+  calculated_due_date: string | null;
+  due_date_overridden: boolean;
+  source_key: string;
+  occurrence_index: number;
+  created_at: string;
+  updated_at: string;
+}
