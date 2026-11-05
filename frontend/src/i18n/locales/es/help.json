@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Ayuda: Resumen",
-      "intro": "Al empezar un proyecto, una lista de comprobación te guía por los primeros pasos: añadir una parcela, un bancal, un cultivo y una serie.\n\nEn cuanto existan series, aquí aparecerán las próximas tareas de siembra, trasplante, semillero y cosecha."
+      "intro": "La lista inicial te guía para crear parcelas, bancales, cultivos y planes de cultivo. El panel muestra las tareas guardadas de la temporada activa en Pendientes, En curso y Completadas. Filtra por periodo, cultivo, parcela o responsable. Los indicadores cuentan las tareas sin terminar. En pantallas grandes, arrastra las tarjetas por el asa; el menú también permite cambiar el estado con el teclado. En pantallas pequeñas se muestra una lista compacta."
     },
     "locations": {
       "title": "Ayuda: Ubicaciones",

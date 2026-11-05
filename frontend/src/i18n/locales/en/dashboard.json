@@ -22,5 +22,57 @@
     "bed": "Add bed",
     "crop": "Add crop",
     "plan": "Add planting plan"
+  },
+  "board": {
+    "title": "Task dashboard",
+    "status": {
+      "pending": "Open",
+      "in_progress": "In progress",
+      "completed": "Completed"
+    },
+    "origin": {
+      "manual": "Manual",
+      "automatic": "Automatic",
+      "template": "Template"
+    },
+    "metrics": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "week": "This week"
+    },
+    "filters": {
+      "title": "Filter tasks",
+      "period": "Period",
+      "crop": "Crop",
+      "field": "Field",
+      "person": "Assignee",
+      "from": "From",
+      "to": "To"
+    },
+    "period": {
+      "all": "All dates",
+      "overdue": "Overdue",
+      "today": "Today",
+      "week": "This week",
+      "custom": "Custom period"
+    },
+    "all": "All",
+    "unassigned": "Unassigned",
+    "noDate": "No due date",
+    "dateOverride": "Date changed manually",
+    "changeStatus": "Change status: {{title}}",
+    "dragTask": "Move task: {{title}}",
+    "dragInstructions": "Drag the task by its handle to another column. You can also change its status with the keyboard using the status menu.",
+    "dragStarted": "Moving {{title}}.",
+    "dragOver": "Target: {{status}}.",
+    "dragEnded": "Moved {{title}} to {{status}}.",
+    "dragCancelled": "Move cancelled.",
+    "resetFilters": "Reset filters",
+    "invalidRange": "The end date must follow the start date.",
+    "noMatches": "No tasks match these filters. Reset the filters to see all tasks.",
+    "empty": "No tasks in this season yet. Keep track of upcoming work here.",
+    "emptyColumn": "No tasks",
+    "showMore": "Show more tasks",
+    "saveError": "The status could not be saved. The change was reverted. Please try again."
   }
 }

@@ -127,7 +127,7 @@ docs/                  # This documentation
 
   | Page | Route | Purpose |
   |---|---|---|
-  | `Dashboard.tsx` | `/app/dashboard` | Landing page / setup checklist |
+  | `Dashboard.tsx` | `/app/dashboard` | Task dashboard with status board, compact mobile list and setup checklist |
   | `Locations.tsx` | `/app/locations` | Manage farm locations (Standorte). **Not linked in the navbar** — route and component still exist, kept for potential future use, but there is currently no in-app way to reach this page. |
   | `FieldsBedsPage.tsx` / `FieldsBedsHierarchy.tsx` / `GraphicalFields.tsx` | `/app/fields-beds` | Fields & beds: hierarchy (tree) view and graphical (map) view |
   | `Crops.tsx` | `/app/crops` | Manage the project crop library; Public Crop Library import/export and version history |

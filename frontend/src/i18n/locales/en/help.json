@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Help: Overview",
-      "intro": "When you start a project, a checklist guides you through the first steps: add a field, a bed, a crop and a planting plan.\n\nOnce planting plans exist, upcoming tasks for sowing, transplanting, propagation, and harvest appear here."
+      "intro": "The setup checklist guides you through fields, beds, crops and planting plans. The task dashboard shows saved tasks for the active season in Open, In progress and Completed. Filter by period, crop, field or assignee. The metrics count unfinished tasks. On large screens, drag cards by their handle; the card menu also supports keyboard status changes. Small screens show a compact list."
     },
     "locations": {
       "title": "Help: Locations",
