@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, Chip, IconButton, Menu, MenuItem, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, Chip, Divider, IconButton, Menu, MenuItem, Stack, Typography } from '@mui/material';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useDraggable } from '@dnd-kit/core';
@@ -17,10 +17,12 @@ interface TaskCardProps {
   areaName?: string;
   personName?: string;
   onStatusChange: (id: number, status: BoardStatus) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
 }
 
 export default function TaskCard({
-  task, compact, saving, cropName, areaName, personName, onStatusChange,
+  task, compact, saving, cropName, areaName, personName, onStatusChange, onEdit, onDelete,
 }: TaskCardProps) {
   const { t, i18n } = useTranslation('dashboard');
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -68,6 +70,9 @@ export default function TaskCard({
             setAnchor(null);
             onStatusChange(task.id, status);
           }}>{t(`board.status.${status}`)}</MenuItem>)}
+        <Divider />
+        <MenuItem onClick={() => { setAnchor(null); onEdit(task); }}>{t('form.edit')}</MenuItem>
+        <MenuItem onClick={() => { setAnchor(null); onDelete(task); }} sx={{ color: 'error.main' }}>{t('form.delete')}</MenuItem>
       </Menu>
     </Card>
   );

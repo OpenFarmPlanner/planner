@@ -74,5 +74,20 @@
     "emptyColumn": "Keine Aufgaben",
     "showMore": "Weitere Aufgaben anzeigen",
     "saveError": "Der Status konnte nicht gespeichert werden. Die Änderung wurde zurückgenommen. Versuche es erneut."
+  },
+  "form": {
+    "add": "Aufgabe hinzufügen",
+    "edit": "Aufgabe bearbeiten",
+    "delete": "Aufgabe löschen",
+    "createSeason": "Saison anlegen",
+    "title": "Titel",
+    "description": "Beschreibung",
+    "date": "Fälligkeit",
+    "status": "Status",
+    "plan": "Anbauplan (optional)",
+    "none": "Keine Zuordnung",
+    "saveError": "Die Aufgabe konnte nicht gespeichert werden. Prüfe deine Angaben und versuche es erneut.",
+    "deleteConfirm": "Möchtest du „{{title}}“ endgültig löschen?",
+    "deleteError": "Die Aufgabe konnte nicht gelöscht werden. Versuche es erneut."
   }
 }

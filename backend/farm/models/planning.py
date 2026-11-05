@@ -10,7 +10,7 @@ from .base import TimestampedModel
 from .crops import Crop
 from .projects import Project
 from .seasons import Season
-from .structure import Bed
+from .structure import Bed, Field
 
 
 class PlantingPlan(TimestampedModel):
@@ -291,6 +291,9 @@ class Task(TimestampedModel):
     )
     crop = models.ForeignKey(
         Crop, on_delete=models.SET_NULL, related_name='tasks', null=True, blank=True,
+    )
+    field = models.ForeignKey(
+        Field, on_delete=models.SET_NULL, related_name='tasks', null=True, blank=True,
     )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,

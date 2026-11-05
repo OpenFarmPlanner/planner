@@ -1688,6 +1688,7 @@ export interface Task {
   planting_plan: number | null;
   planting_plan_name?: string | null;
   crop: number | null;
+  field?: number | null;
   assigned_to: number | null;
   origin: TaskOrigin;
   calculated_due_date: string | null;
@@ -1696,4 +1697,17 @@ export interface Task {
   occurrence_index: number;
   created_at: string;
   updated_at: string;
+}
+
+
+export interface TaskWritePayload {
+  title: string;
+  description: string;
+  due_date?: string | null;
+  status: TaskStatus;
+  planting_plan: number | null;
+  crop: number | null;
+  field: number | null;
+  assigned_to: number | null;
+  season?: number;
 }

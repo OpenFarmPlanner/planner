@@ -105,4 +105,58 @@ test('French labels and expanded mobile filters fit at 375px', async ({ page }, 
   await page.getByRole('button', { name: 'Modifier le statut : Jäten' }).click();
   await expect(page.getByRole('menuitem', { name: 'Terminées' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('dashboard-fr-mobile-menu.png'), fullPage: true, animations: 'disabled' });
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Ajouter une tâche' }).click();
+  await expect(page.getByRole('dialog', { name: 'Ajouter une tâche' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('task-editor-fr-mobile.png'), animations: 'disabled', fullPage: true });
+});
+
+test('manual tasks without a crop can be created, edited, completed and deleted', async ({ page }) => {
+  await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+  let dialog = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+  await dialog.getByRole('textbox', { name: 'Titel' }).fill('Zaun reparieren');
+  await dialog.getByRole('textbox', { name: 'Beschreibung' }).fill('Nordseite');
+  await dialog.getByRole('combobox', { name: 'Parzelle' }).click();
+  await page.getByRole('option', { name: 'Nordparzelle' }).click();
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('article', { name: 'Zaun reparieren' })).toContainText('Nordparzelle');
+  await page.reload();
+  const card = page.getByRole('article', { name: 'Zaun reparieren' });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'Status ändern: Zaun reparieren' }).click();
+  await page.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }).click();
+  dialog = page.getByRole('dialog', { name: 'Aufgabe bearbeiten' });
+  await expect(dialog.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Nordseite');
+  await dialog.getByRole('textbox', { name: 'Titel' }).fill('Zaun repariert');
+  await dialog.getByRole('combobox', { name: 'Status', exact: true }).click();
+  await page.getByRole('option', { name: 'Erledigt' }).click();
+  await dialog.getByLabel('Fälligkeit').fill('2026-11-06');
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).getByRole('article', { name: 'Zaun repariert' })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Status ändern: Zaun repariert' }).click();
+  await page.getByRole('menuitem', { name: 'Aufgabe löschen' }).click();
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'Löschen' }).click();
+  await expect(page.getByRole('article', { name: 'Zaun repariert' })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('article', { name: 'Zaun repariert' })).toHaveCount(0);
+});
+
+test('task editor fits mobile, landscape and desktop', async ({ page }, testInfo) => {
+  await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox', { name: 'Titel' }).fill('Eine längere manuelle Aufgabe für die Nordparzelle');
+  for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(dialog.getByRole('button', { name: 'Speichern' })).toBeVisible();
+    expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`task-editor-${viewport.width}x${viewport.height}.png`), animations: 'disabled', fullPage: true });
+    if (viewport.height < 500) {
+      await dialog.getByRole('combobox', { name: 'Parzelle' }).scrollIntoViewIfNeeded();
+      await expect(dialog.getByRole('combobox', { name: 'Parzelle' })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Speichern' })).toBeVisible();
+    }
+  }
 });

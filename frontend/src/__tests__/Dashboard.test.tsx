@@ -12,8 +12,13 @@ const mocks = vi.hoisted(() => ({
   planList: vi.fn(),
   taskList: vi.fn(),
   taskUpdate: vi.fn(),
+  taskCreate: vi.fn(),
+  taskEdit: vi.fn(),
+  taskDelete: vi.fn(),
   members: vi.fn(),
 }));
+
+const outletState = vi.hoisted(() => ({ activeSeason: { id: 1 } as { id: number } | null, activeSeasonLoaded: true }));
 
 const projectRequirementState = vi.hoisted(() => ({
   activeProjectId: 1,
@@ -25,7 +30,7 @@ vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
     ...actual,
-    taskAPI: { listAll: mocks.taskList, updateStatus: mocks.taskUpdate },
+    taskAPI: { listAll: mocks.taskList, updateStatus: mocks.taskUpdate, create: mocks.taskCreate, update: mocks.taskEdit, delete: mocks.taskDelete },
     projectAPI: { ...actual.projectAPI, listMembers: mocks.members },
     locationAPI: { ...actual.locationAPI, list: mocks.locationList, listAll: async () => (await mocks.locationList()).data },
     fieldAPI: { ...actual.fieldAPI, list: mocks.fieldList, listAll: async () => (await mocks.fieldList()).data },
@@ -34,6 +39,11 @@ vi.mock('../api/api', async () => {
     plantingPlanAPI: { ...actual.plantingPlanAPI, list: mocks.planList, listAll: async () => (await mocks.planList()).data },
   };
 });
+
+vi.mock('react-router', async () => ({
+  ...await vi.importActual<typeof import('react-router')>('react-router'),
+  useOutletContext: () => ({ ...outletState, requestSeasonCreation: vi.fn() }),
+}));
 
 vi.mock('../hooks/useProjectRequirement', () => ({ useProjectRequirement: () => projectRequirementState }));
 
@@ -49,6 +59,8 @@ function task(overrides: Partial<Task> = {}): Task {
 describe('Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    outletState.activeSeason = { id: 1 };
+    outletState.activeSeasonLoaded = true;
     projectRequirementState.shouldShowProjectRequiredState = false;
     projectRequirementState.missingProjectReason = null;
     mocks.locationList.mockResolvedValue({ data: { results: [] } });
@@ -58,6 +70,18 @@ describe('Dashboard', () => {
     mocks.planList.mockResolvedValue({ data: { results: [] } });
     mocks.taskList.mockResolvedValue({ results: [] });
     mocks.members.mockResolvedValue({ data: [] });
+  });
+
+  it('waits for initial season resolution before fetching or exposing the board', async () => {
+    outletState.activeSeasonLoaded = false;
+    outletState.activeSeason = null;
+    const view = render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(mocks.taskList).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Aufgabe hinzufügen' })).not.toBeInTheDocument();
+    outletState.activeSeasonLoaded = true;
+    outletState.activeSeason = { id: 1 };
+    view.rerender(<MemoryRouter><Dashboard /></MemoryRouter>);
+    await waitFor(() => expect(mocks.taskList).toHaveBeenCalledTimes(1));
   });
 
   it('retries a failed load without showing the onboarding checklist', async () => {
@@ -194,6 +218,99 @@ describe('Dashboard', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }));
     expect(await screen.findByRole('article', { name: 'Andere' })).toBeInTheDocument();
+  });
+
+
+  it('creates a task without crop or plan and retains it on the board', async () => {
+    mocks.taskCreate.mockResolvedValue({ data: task({ id: 8, title: 'Zaun reparieren', due_date: null }) });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Aufgabe hinzufügen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Titel' }), { target: { value: 'Zaun reparieren' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByRole('article', { name: 'Zaun reparieren' })).toBeInTheDocument();
+    expect(mocks.taskCreate).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Zaun reparieren', crop: null, field: null, planting_plan: null,
+      assigned_to: null, due_date: null, season: 1,
+    }));
+  });
+
+  it('editing a generated task without changing its date leaves the override untouched', async () => {
+    const generated = task({ origin: 'automatic', calculated_due_date: '2026-11-05' });
+    mocks.taskList.mockResolvedValue({ results: [generated] });
+    mocks.taskEdit.mockResolvedValue({ data: { ...generated, description: 'North bed' } });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Beschreibung' }), { target: { value: 'North bed' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
+    expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('due_date');
+    expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('due_date_overridden');
+    expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('origin');
+  });
+
+  it('keeps a draft open after a save error', async () => {
+    mocks.taskCreate.mockRejectedValue(new Error('offline'));
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Aufgabe hinzufügen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Titel' }), { target: { value: 'Entwurf' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Die Aufgabe konnte nicht gespeichert werden');
+    expect(within(dialog).getByRole('textbox', { name: 'Titel' })).toHaveValue('Entwurf');
+  });
+
+  it('deletes only after explicit confirmation and defaults focus to cancel', async () => {
+    mocks.taskList.mockResolvedValue({ results: [task()] });
+    mocks.taskDelete.mockResolvedValue({});
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe löschen' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(mocks.taskDelete).not.toHaveBeenCalled();
+    expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(screen.queryByRole('article', { name: 'Jäten' })).not.toBeInTheDocument());
+    expect(mocks.taskDelete).toHaveBeenCalledWith(1);
+  });
+
+
+  it('keeps first-project onboarding focused until a season or tasks exist', async () => {
+    outletState.activeSeason = null;
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(await screen.findByText('Projektstart')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Parzelle hinzufügen' })).toBeInTheDocument();
+    expect(screen.queryByText('Aufgaben-Dashboard')).not.toBeInTheDocument();
+  });
+
+
+  it('derives a linked task field from its plan instead of persisting a stale direct assignment', async () => {
+    mocks.fieldList.mockResolvedValue({ data: { results: [{ id: 3, name: 'Old field' }, { id: 4, name: 'New field' }] } });
+    mocks.bedList.mockResolvedValue({ data: { results: [{ id: 2, field: 4 }] } });
+    mocks.planList.mockResolvedValue({ data: { results: [{ id: 5, bed: 2, crop: null }] } });
+    const linked = task({ planting_plan: 5, field: 3 });
+    mocks.taskList.mockResolvedValue({ results: [linked] });
+    mocks.taskEdit.mockResolvedValue({ data: { ...linked, field: null } });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    const before = await screen.findByRole('article', { name: 'Jäten' });
+    expect(before).toHaveTextContent('New field');
+    expect(before).not.toHaveTextContent('Old field');
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Parzelle' }));
+    fireEvent.click(screen.getByRole('option', { name: 'New field' }));
+    expect(await screen.findByRole('article', { name: 'Jäten' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    expect(within(dialog).getByRole('combobox', { name: 'Parzelle' })).toHaveTextContent('New field');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
+    expect(mocks.taskEdit.mock.calls[0][1]).toMatchObject({ planting_plan: 5, field: null });
+    const card = await screen.findByRole('article', { name: 'Jäten' });
+    expect(card).toHaveTextContent('New field');
+    expect(card).not.toHaveTextContent('Old field');
   });
 
 });

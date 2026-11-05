@@ -15,10 +15,11 @@ a season filter. Linked legacy tasks inherit their plan's season and crop in
 migration `0127`; titles, descriptions, dates, statuses and IDs are preserved.
 A legacy plan without a season leaves its task unassigned too.
 
-`planting_plan`, `crop` and `assigned_to` are optional. All relations must belong
+`planting_plan`, `crop`, `field` and `assigned_to` are optional. A direct
+field supports tasks such as fence repairs without a crop or planting plan. All relations must belong
 to the active project; the assignee must have a project membership. A linked
 plan and task must have the same season and, when a task crop is set, the same
-crop. Creating a linked task defaults its crop from the plan. Explicit nulls
+crop; an explicit field must match its bed’s field. Creating a linked task defaults its crop from the plan. Explicit nulls
 clear optional relations on updates. A removed user clears the assignee FK.
 Tasks in soft-deleted seasons are hidden from list and detail reads, including
 standalone tasks; restoring the season makes retained tasks visible again.
@@ -59,7 +60,7 @@ GET writes, automatic task creation or synchronization in this change.
 ## Filters
 
 `GET /api/tasks/` accepts exact `status`, `origin`, `season`, `crop`,
-`planting_plan`, `assigned_to` and inclusive `due_date__gte` / `due_date__lte`
+`planting_plan`, `assigned_to`, `field` and inclusive `due_date__gte` / `due_date__lte`
 (ISO dates). Filters combine with AND and with the project/season context.
 Invalid known filters and reversed date ranges return HTTP 400. Null dates do
 not match date bounds. Without date bounds, undated tasks remain visible.
@@ -83,8 +84,7 @@ location-specific event preview is unchanged; automatic conversion is #893.
 
 The board loads all task pages through `taskAPI.listAll()` and uses the existing
 project and active-season request headers. Crops, fields, beds, planting plans
-and project members supply filter labels and card context. It does not create
-or synchronize tasks. The next issue (#892) adds manual task forms.
+and project members supply filter labels and card context. It does not generate or synchronize tasks. Manual task forms are described below.
 
 There are three columns: pending, in progress and completed. Cancelled tasks
 remain stored and are omitted from this three-column work view. Cards show the
@@ -94,7 +94,7 @@ overrides and generator identity untouched. Moves are optimistic; a failed
 request restores that task without reverting other tasks' concurrent changes.
 An in-flight task cannot be moved again until its request settles.
 
-Filters combine period, crop, field (resolved via plan → bed → field) and
+Filters combine period, crop, field (resolved via plan → bed → field for linked tasks; direct field for standalone tasks) and
 assignee, including unassigned. Date periods use local calendar dates, inclusive
 custom bounds and Monday–Sunday for this week. Undated work remains visible
 under all dates. Metrics reflect the filtered subset and count only unfinished
@@ -107,3 +107,27 @@ landscape, the view is a single-column compact list with collapsible filters.
 Every card has a keyboard-accessible status menu at every breakpoint. Visible
 and screen-reader text is translated in de/en/fr/es. Load failures hide the
 board and retain the shared retry flow; filters survive retry.
+
+
+## Manual tasks (#892)
+
+An incomplete project without a season or tasks keeps the existing focused setup
+checklist. Once a season exists, manual tasks are available even without crops
+or planting plans. The board's add button opens a task form when a season is active; without one
+it opens the shared season-creation flow. Tasks may be saved without a date,
+crop, plan, field or assignee. The form captures title (required, up to 200
+characters), description, due date, status and optional relations. Selecting a
+plan fills its crop and field; those controls are fixed until the plan is
+cleared. Standalone field tasks use the new nullable `Task.field` relation.
+The API field filter includes both direct fields and inherited plan fields.
+Migration `0129_add_task_field` is schema-only and reversible; rolling it back
+removes field assignments while preserving tasks.
+
+The card menu exposes edit and delete actions as well as status changes.
+Successful creates appear on the board (filters reset so the new task is not
+hidden); edits retain active filters. Save failures leave the draft open.
+Editing a generated task sends `due_date` only when it changed, preserving an
+existing override/baseline when merely editing its text. Deletion requires the
+shared explicit confirmation dialog, initially focused on Cancel; a failed
+delete preserves the task and dialog. The editor uses a fullscreen layout below
+900px, including phone landscape, with scrollable content and visible actions.

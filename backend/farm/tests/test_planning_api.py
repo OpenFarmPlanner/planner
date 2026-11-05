@@ -845,3 +845,54 @@ class TaskApiTest(ProjectApiTestCase):
         self.season.deleted_at = None
         self.season.save()
         self.assertEqual(self.client.get(f'{self.url}{task.pk}/').status_code, 200)
+
+    def test_standalone_field_task_can_be_saved_and_filtered(self) -> None:
+        response = self.client.post(self.url, {
+            'title': 'Repair fence', 'field': self.field.pk, 'description': 'North edge',
+        })
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['field'], self.field.pk)
+        self.assertIsNone(response.data['crop'])
+        self.assertIsNone(response.data['planting_plan'])
+        listed = self.client.get(self.url, {'field': self.field.pk})
+        self.assertEqual(listed.data['count'], 1)
+        changed = self.client.patch(
+            f"{self.url}{response.data['id']}/", {'field': None}, format='json',
+        )
+        self.assertEqual(changed.status_code, 200)
+        self.assertEqual(self.client.get(self.url, {'field': self.field.pk}).data['count'], 0)
+
+    def test_field_must_belong_to_project_and_match_linked_plan(self) -> None:
+        other = Project.objects.create(name='Other field project', slug='other-task-field')
+        location = Location.objects.create(project=other, name='Other')
+        foreign = Field.objects.create(project=other, location=location, name='Other')
+        response = self.client.post(self.url, {'title': 'Invalid', 'field': foreign.pk})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('field', response.data)
+        own_other = Field.objects.create(
+            project=self.project, location=self.location, name='Second',
+        )
+        self.plan.bed = self.bed
+        self.plan.save()
+        response = self.client.post(self.url, {
+            'title': 'Mismatch', 'field': own_other.pk, 'planting_plan': self.plan.pk,
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('field', response.data)
+        response = self.client.post(self.url, {'title': 'Linked', 'planting_plan': self.plan.pk})
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(self.client.get(self.url, {'field': self.field.pk}).data['count'], 1)
+
+    def test_field_filter_uses_plan_bed_over_stale_stored_field(self) -> None:
+        self.plan.bed = self.bed
+        self.plan.save()
+        other = Field.objects.create(project=self.project, location=self.location, name='Third')
+        task = Task.objects.create(
+            project=self.project, season=self.season, planting_plan=self.plan,
+            crop=self.plan.crop, title='Stale', field=other,
+        )
+        self.assertEqual(self.client.get(self.url, {'field': other.pk}).data['count'], 0)
+        listed = self.client.get(self.url, {'field': self.field.pk})
+        self.assertIn(task.pk, [row['id'] for row in listed.data['results']])
+        renamed = self.client.patch(f'{self.url}{task.pk}/', {'title': 'Renamed'}, format='json')
+        self.assertEqual(renamed.status_code, 200, renamed.data)

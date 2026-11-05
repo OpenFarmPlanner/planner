@@ -4,7 +4,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
@@ -537,6 +537,12 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
             queryset = queryset.filter(season_id=season_id)
         filters = TaskFilterSerializer(data=self.request.query_params)
         filters.is_valid(raise_exception=True)
+        field_id = filters.validated_data.pop('field', None)
+        if field_id is not None:
+            queryset = queryset.filter(
+                Q(planting_plan__isnull=True, field_id=field_id)
+                | Q(planting_plan__bed__field_id=field_id),
+            )
         return queryset.filter(**filters.validated_data)
 
     def perform_create(self, serializer: TaskSerializer) -> None:

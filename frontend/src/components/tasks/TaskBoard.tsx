@@ -3,6 +3,7 @@ import {
   Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, MenuItem,
   Paper, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   DndContext, MouseSensor, TouchSensor, useDroppable, useSensor, useSensors,
@@ -29,6 +30,10 @@ interface Props {
   filters: TaskFilters;
   onFiltersChange: (filters: TaskFilters) => void;
   onStatusChange: (id: number, status: BoardStatus) => void;
+  onCreate: () => void;
+  hasSeason: boolean;
+  onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
 }
 
 const STATUS_COLOR = { pending: 'info.main', in_progress: 'warning.main', completed: 'success.main' };
@@ -56,7 +61,7 @@ function TaskColumn({ status, count, compact, children }: {
 }
 
 export default function TaskBoard({
-  tasks, crops, fields, beds, plans, members, savingIds, filters, onFiltersChange, onStatusChange,
+  tasks, crops, fields, beds, plans, members, savingIds, filters, onFiltersChange, onStatusChange, onCreate, hasSeason, onEdit, onDelete,
 }: Props) {
   const { t } = useTranslation('dashboard');
   const theme = useTheme();
@@ -76,6 +81,7 @@ export default function TaskBoard({
   const personById = useMemo(() => new Map(members.map((member) => [member.user,
     member.user_display_name || member.user_email])), [members]);
   const fieldForTask = (task: Task) => {
+    if (task.planting_plan == null) return task.field ?? undefined;
     const bedId = task.planting_plan === null ? null : planById.get(task.planting_plan)?.bed;
     return bedId == null ? undefined : bedById.get(bedId)?.field;
   };
@@ -124,7 +130,12 @@ export default function TaskBoard({
   };
   const titleOf = (id: string | number) => tasks.find((task) => task.id === Number(id))?.title ?? '';
   return <Box sx={{ minWidth: 0 }}>
-    <Typography component="h1" variant="h5" sx={{ mb: 2 }}>{t('board.title')}</Typography>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, alignItems: { sm: 'center' } }}>
+      <Typography component="h1" variant="h5" sx={{ flex: 1 }}>{t('board.title')}</Typography>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={onCreate}>
+        {t(hasSeason ? 'form.add' : 'form.createSeason')}
+      </Button>
+    </Stack>
     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, mb: 2 }}>
       {(['overdue', 'today', 'week'] as const).map((key) => <Paper key={key} variant="outlined" sx={{ p: 1.5 }}>
         <Typography variant="h5" component="p">{metrics[key]}</Typography>
@@ -159,7 +170,7 @@ export default function TaskBoard({
               cropName={task.crop == null ? undefined : formatCropDisplayName(cropById.get(task.crop) ?? {})}
               areaName={fieldById.get(fieldForTask(task))?.name}
               personName={task.assigned_to == null ? undefined : personById.get(task.assigned_to)}
-              onStatusChange={onStatusChange} />)}
+              onStatusChange={onStatusChange} onEdit={onEdit} onDelete={onDelete} />)}
             {column.length > limits[status] && <Button onClick={() => setLimits((previous) => ({
               ...previous, [status]: previous[status] + 30,
             }))}>{t('board.showMore')}</Button>}

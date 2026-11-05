@@ -53,6 +53,17 @@ describe('API Client', () => {
     vi.clearAllMocks();
   });
 
+  it('uses the task CRUD endpoints with optional relations', async () => {
+    const payload = { title: 'Repair fence', description: '', status: 'pending' as const,
+      crop: null, planting_plan: null, field: 3, assigned_to: null, season: 1, due_date: null };
+    await taskAPI.create(payload);
+    expect(postMock).toHaveBeenCalledWith('/tasks/', payload);
+    await taskAPI.update(7, payload);
+    expect(patchMock).toHaveBeenCalledWith('/tasks/7/', payload);
+    await taskAPI.delete(7);
+    expect(deleteMock).toHaveBeenCalledWith('/tasks/7/');
+  });
+
   it('loads every task page and sends only status when moving a task', async () => {
     getMock.mockResolvedValueOnce({ data: {
       count: 2, next: '/tasks/?page=2', previous: null, results: [{ id: 1 }],

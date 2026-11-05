@@ -14,25 +14,33 @@ import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { getFirstMissingProjectSetupStep, getTranslatedProjectSetupActions } from './requirementFlow';
 import TaskBoard from '../components/tasks/TaskBoard';
+import TaskFormDialog from '../components/tasks/TaskFormDialog';
+import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { EMPTY_TASK_FILTERS, type BoardStatus, type TaskFilters } from '../components/tasks/taskBoard';
-import type { Task } from '../api/types';
+import type { Task, TaskWritePayload } from '../api/types';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 
 export default function Dashboard() {
   const { t } = useTranslation(['dashboard', 'common']);
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const [isFetching, setLoading] = useState(true);
-  const [fetchError, setError] = useState<string | null>(null);
+  const [fetchError, setError] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<ProjectMemberPayload[]>([]);
   const [filters, setFilters] = useState<TaskFilters>({ ...EMPTY_TASK_FILTERS });
   const [savingIds, setSavingIds] = useState<number[]>([]);
   const [saveError, setSaveError] = useState(false);
+  const [editor, setEditor] = useState<Task | null | undefined>(undefined);
+  const [deleting, setDeleting] = useState<Task | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const deleteLock = useRef(false);
   const pendingIds = useRef(new Set<number>());
   const loadGeneration = useRef(0);
   const context = useOutletContext<RootLayoutOutletContext | undefined>();
   const seasonId = context?.activeSeason?.id;
+  const waitingForSeason = context?.activeSeasonLoaded === false;
   const [fields, setFields] = useState<Field[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
@@ -43,11 +51,11 @@ export default function Dashboard() {
   // effect below — the fetched collections do not need clearing either,
   // because the project-required branch renders before they are read and
   // `loading` is back to true by the time a project appears.
-  const loading = shouldShowProjectRequiredState ? false : isFetching;
+  const loading = shouldShowProjectRequiredState ? false : isFetching || waitingForSeason;
   const error = shouldShowProjectRequiredState ? null : fetchError;
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState || !activeProjectId) {
+    if (shouldShowProjectRequiredState || !activeProjectId || waitingForSeason) {
       return;
     }
     let cancelled = false;
@@ -65,16 +73,16 @@ export default function Dashboard() {
         setBeds(bedsRes.results);
         setCrops(cropsRes.results);
         setPlans(plansRes.results);
-        setError(null);
+        setError(false);
       } catch {
-        if (!cancelled) setError(t('dashboard:errors.load'));
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     void fetchData();
     return () => { cancelled = true; };
-  }, [shouldShowProjectRequiredState, activeProjectId, seasonId, t, retryAttempt]);
+  }, [shouldShowProjectRequiredState, activeProjectId, seasonId, waitingForSeason, retryAttempt]);
 
   const changeStatus = async (id: number, status: BoardStatus): Promise<void> => {
     const task = tasks.find((row) => row.id === id);
@@ -100,6 +108,31 @@ export default function Dashboard() {
     }
   };
 
+  const saveTask = async (payload: TaskWritePayload): Promise<void> => {
+    const response = editor ? await taskAPI.update(editor.id, payload) : await taskAPI.create(payload);
+    setTasks((previous) => editor
+      ? previous.map((task) => task.id === editor.id ? response.data : task)
+      : [...previous, response.data]);
+    if (!editor) setFilters({ ...EMPTY_TASK_FILTERS });
+  };
+
+  const deleteTask = async (): Promise<void> => {
+    if (!deleting || deleteLock.current) return;
+    deleteLock.current = true;
+    setDeleteBusy(true);
+    setDeleteError(false);
+    try {
+      await taskAPI.delete(deleting.id);
+      setTasks((previous) => previous.filter((task) => task.id !== deleting.id));
+      setDeleting(null);
+    } catch {
+      setDeleteError(true);
+    } finally {
+      deleteLock.current = false;
+      setDeleteBusy(false);
+    }
+  };
+
   const firstMissingChecklistStep = getFirstMissingProjectSetupStep({
     hasFields: fields.length > 0,
     hasBeds: beds.length > 0,
@@ -121,7 +154,7 @@ export default function Dashboard() {
     return (
       <PageContainer>
         <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
-          {error}
+          {t('dashboard:errors.load')}
         </Alert>
       </PageContainer>
     );
@@ -191,14 +224,28 @@ export default function Dashboard() {
         </PageSurface>
       ) : null}
 
-      <PageSurface variant="fullWorkspace">
+      {(seasonId || tasks.length > 0 || isSetupComplete) && <PageSurface variant="fullWorkspace">
         {saveError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSaveError(false)}>
           {t('dashboard:board.saveError')}
         </Alert>}
         <TaskBoard tasks={tasks} crops={crops} fields={fields} beds={beds} plans={plans}
           members={members} savingIds={savingIds} filters={filters} onFiltersChange={setFilters}
-          onStatusChange={(id, status) => { void changeStatus(id, status); }} />
-      </PageSurface>
+          onStatusChange={(id, status) => { void changeStatus(id, status); }}
+          hasSeason={Boolean(seasonId)} onCreate={() => {
+            if (seasonId) setEditor(null);
+            else context?.requestSeasonCreation();
+          }} onEdit={setEditor} onDelete={(task) => { setDeleteError(false); setDeleting(task); }} />
+      </PageSurface>}
+      {editor !== undefined && <TaskFormDialog key={editor?.id ?? 'new'} task={editor} seasonId={seasonId}
+        crops={crops} fields={fields} beds={beds} plans={plans} members={members}
+        onSave={saveTask} onClose={() => setEditor(undefined)} />}
+      <ConfirmationDialog open={Boolean(deleting)} title={t('dashboard:form.delete')}
+        message={<>{t('dashboard:form.deleteConfirm', { title: deleting?.title })}
+          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{t('dashboard:form.deleteError')}</Alert>}</>}
+        messageTypographyProps={{ component: 'div' }}
+        cancelLabel={t('common:actions.cancel')} confirmLabel={t('common:actions.delete')}
+        onCancel={() => { if (!deleteBusy) setDeleting(null); }} onConfirm={() => { void deleteTask(); }}
+        cancelButtonProps={{ disabled: deleteBusy }} confirmButtonProps={{ color: 'error', disabled: deleteBusy }} />
     </PageContainer>
   );
 }

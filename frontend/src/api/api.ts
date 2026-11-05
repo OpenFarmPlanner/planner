@@ -3,6 +3,7 @@ import { getCurrentUiLanguage } from '../i18n';
 import type {
   Task,
   TaskStatus,
+  TaskWritePayload,
   ApiToken,
   ApiTokenCreatePayload,
   ApiTokenCreated,
@@ -770,5 +771,8 @@ export default {
 
 export const taskAPI = {
   listAll: () => fetchAllPaginated<Task>('/tasks/'),
+  create: (data: TaskWritePayload) => http.post<Task>('/tasks/', data),
+  update: (id: number, data: TaskWritePayload) => http.patch<Task>(`/tasks/${id}/`, data),
+  delete: (id: number) => http.delete(`/tasks/${id}/`),
   updateStatus: (id: number, status: TaskStatus) => http.patch<Task>(`/tasks/${id}/`, { status }),
 };

@@ -146,7 +146,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
             Task.objects.create(
                 title=f'Task {index}', planting_plan=plan, project=self.project,
-                season=season, crop=crop, assigned_to=self.user,
+                season=season, crop=crop, assigned_to=self.user, field=self.fields[index],
             )
 
             public_crop = PublicCrop.objects.create(
