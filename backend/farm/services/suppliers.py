@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, models, transaction
 
 from farm.models import Crop, CropSupplierData, Supplier
 from farm.utils import normalize_supplier_name
@@ -210,6 +210,11 @@ def restore_unlinked_supplier(
     )
 
 
+def _choice_or_unknown(value: object, choices: type[models.TextChoices]) -> str:
+    """Return value if it is a valid choice, else 'unknown' (undo payloads come from the client)."""
+    return value if isinstance(value, str) and value in choices.values else 'unknown'
+
+
 def _restore_supplier_data_row(project, supplier: Supplier, row_payload: object) -> bool:
     """Recreate one CropSupplierData row from the undo payload; skip invalid rows."""
     if not isinstance(row_payload, dict):
@@ -228,9 +233,9 @@ def _restore_supplier_data_row(project, supplier: Supplier, row_payload: object)
         supplier_url=str(row_payload.get('supplier_url') or ''),
         supplier_product_name=str(row_payload.get('supplier_product_name') or ''),
         supplier_product_url=str(row_payload.get('supplier_product_url') or ''),
-        seed_status=row_payload.get('seed_status', CropSupplierData.SeedStatus.UNKNOWN),
-        seed_exemption_status=row_payload.get(
-            'seed_exemption_status', CropSupplierData.SeedExemptionStatus.UNKNOWN,
+        seed_status=_choice_or_unknown(row_payload.get('seed_status'), CropSupplierData.SeedStatus),
+        seed_exemption_status=_choice_or_unknown(
+            row_payload.get('seed_exemption_status'), CropSupplierData.SeedExemptionStatus,
         ),
         packaging_sizes=row_payload.get('packaging_sizes') or [],
         thousand_kernel_weight_g=(

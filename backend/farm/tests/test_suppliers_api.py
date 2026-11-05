@@ -147,6 +147,25 @@ class SupplierApiTest(ProjectApiTestCase):
         self.assertEqual(restored.name, self.supplier.name)
         self.assertEqual(restored.homepage_url, self.supplier.homepage_url)
 
+    def test_restore_ignores_invalid_seed_status_values_in_undo_payload(self):
+        """Client-supplied undo payloads must not store values outside the seed status choices."""
+        delete_response = self.client.delete(f'/openfarmplanner/api/suppliers/{self.supplier.id}/')
+        payload = delete_response.data['undo_payload']
+        payload['supplier_data'] = [{
+            'crop_id': self.crop.id,
+            'seed_status': 'x' * 50,
+            'seed_exemption_status': 'bogus',
+        }]
+
+        restore_response = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+
+        self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
+        row = CropSupplierData.objects.get(supplier_id=self.supplier.id)
+        self.assertEqual(row.seed_status, 'unknown')
+        self.assertEqual(row.seed_exemption_status, 'unknown')
+
     def test_supplier_delete_rejects_supplier_still_in_use(self):
         """A supplier referenced by a crop is kept and reported as a conflict."""
         self.crop.supplier = self.supplier
