@@ -86,3 +86,20 @@ class CropTaskTemplateTest(TaskTimingFixture):
             project=foreign, crop=crop, title='Hidden', reference_event='sowing',
         )
         self.assertEqual(self.client.get(f'{self.url}{hidden.pk}/').status_code, 404)
+
+    def test_template_mutations_record_history_snapshots(self) -> None:
+        from farm.models import EntityRevision
+
+        created = self.client.post(self.url, self.payload())
+        self.assertEqual(created.status_code, 201, created.data)
+        template_id = created.data['id']
+        updated = self.client.patch(f'{self.url}{template_id}/', {'day_offset': 5})
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertEqual(self.client.delete(f'{self.url}{template_id}/').status_code, 204)
+        revisions = list(EntityRevision.objects.filter(
+            project=self.project, entity_type='croptasktemplate', object_id=template_id,
+        ).order_by('id'))
+        self.assertEqual([revision.action for revision in revisions], ['created', 'updated', 'deleted'])
+        self.assertEqual(revisions[0].snapshot['day_offset'], -3)
+        self.assertEqual(revisions[1].snapshot['day_offset'], 5)
+        self.assertIsNone(revisions[2].snapshot['deleted_at'])
