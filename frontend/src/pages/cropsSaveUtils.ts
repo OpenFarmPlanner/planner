@@ -97,6 +97,8 @@ const mapSupplierDataRowToInput = (row: CropSupplierData): CropSupplierDataInput
   supplier_name: row.supplier_name ?? row.supplier?.name,
   supplier_product_name: row.supplier_product_name,
   supplier_product_url: row.supplier_product_url,
+  seed_status: row.seed_status ?? 'unknown',
+  seed_exemption_status: row.seed_exemption_status ?? 'unknown',
   packaging_sizes: row.packaging_sizes ?? [],
   germination_rate: row.germination_rate ?? null,
   price: row.price ?? null,

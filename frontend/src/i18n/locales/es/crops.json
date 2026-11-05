@@ -322,7 +322,22 @@
     "botanicalName": "Nombre latino",
     "botanicalNamePlaceholder": "p. ej., Beta vulgaris var. flavescens",
     "tags": "Etiquetas",
-    "tagsPlaceholder": "p. ej. Aromáticas, Hortalizas de conserva"
+    "tagsPlaceholder": "p. ej. Aromáticas, Hortalizas de conserva",
+    "seedStatus": "Estado de las semillas",
+    "seedExemptionStatus": "Excepción para las semillas",
+    "seedExemptionStatusHelp": "Nota manual para esta oferta en el proyecto. Comprueba por separado la validez para tu explotación, el uso previsto y el periodo.",
+    "seedStatusOptions": {
+      "organic": "Ecológico",
+      "in_conversion": "En conversión",
+      "conventional": "Convencional",
+      "unknown": "Desconocido"
+    },
+    "seedExemptionStatusOptions": {
+      "approved": "Autorización disponible",
+      "not_approved": "Sin autorización",
+      "not_required": "No necesaria",
+      "unknown": "Desconocido"
+    }
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",

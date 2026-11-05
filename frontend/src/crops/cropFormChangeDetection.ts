@@ -139,6 +139,8 @@ const normalizeSupplierRow = (row: SupplierDataDraft): Record<string, unknown> =
     supplier_url: normalizeText(row.supplier_url),
     supplier_product_name: normalizeText(row.supplier_product_name),
     supplier_product_url: normalizeText(row.supplier_product_url),
+    seed_status: row.seed_status ?? 'unknown',
+    seed_exemption_status: row.seed_exemption_status ?? 'unknown',
     packaging_sizes: packagingSizes,
     germination_rate: normalizeNumber(row.germination_rate),
     price: normalizeNumber(row.price),

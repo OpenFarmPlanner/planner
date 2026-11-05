@@ -147,6 +147,25 @@ class SupplierApiTest(ProjectApiTestCase):
         self.assertEqual(restored.name, self.supplier.name)
         self.assertEqual(restored.homepage_url, self.supplier.homepage_url)
 
+    def test_restore_ignores_invalid_seed_status_values_in_undo_payload(self):
+        """Client-supplied undo payloads must not store values outside the seed status choices."""
+        delete_response = self.client.delete(f'/openfarmplanner/api/suppliers/{self.supplier.id}/')
+        payload = delete_response.data['undo_payload']
+        payload['supplier_data'] = [{
+            'crop_id': self.crop.id,
+            'seed_status': 'x' * 50,
+            'seed_exemption_status': 'bogus',
+        }]
+
+        restore_response = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+
+        self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
+        row = CropSupplierData.objects.get(supplier_id=self.supplier.id)
+        self.assertEqual(row.seed_status, 'unknown')
+        self.assertEqual(row.seed_exemption_status, 'unknown')
+
     def test_supplier_delete_rejects_supplier_still_in_use(self):
         """A supplier referenced by a crop is kept and reported as a conflict."""
         self.crop.supplier = self.supplier
@@ -388,6 +407,8 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
             supplier=self.supplier,
             project=self.project,
             supplier_product_name='Sorte A',
+            seed_status='conventional',
+            seed_exemption_status='approved',
             supplier_product_url='https://supplier.example/a',
             germination_rate=85,
             notes='Notiz',
@@ -478,7 +499,25 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(self.linked_crop.selected_seed_demand_supplier_id, self.supplier.id)
         restored_row = CropSupplierData.objects.get(supplier_id=self.supplier.id)
         self.assertEqual(restored_row.supplier_product_name, 'Sorte A')
+        self.assertEqual(restored_row.seed_status, 'conventional')
+        self.assertEqual(restored_row.seed_exemption_status, 'approved')
         self.assertEqual(restored_row.germination_rate, 85)
+
+    def test_legacy_undo_payload_defaults_seed_statuses(self) -> None:
+        response = self.client.post(
+            f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
+        )
+        payload = response.data['undo_payload']
+        for row in payload['supplier_data']:
+            row.pop('seed_status')
+            row.pop('seed_exemption_status')
+        response = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        restored = CropSupplierData.objects.get(supplier_id=self.supplier.id)
+        self.assertEqual(restored.seed_status, 'unknown')
+        self.assertEqual(restored.seed_exemption_status, 'unknown')
 
 
 class NormalizeNewSupplierPayloadTests(ProjectApiTestCase):

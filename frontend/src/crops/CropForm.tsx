@@ -1668,9 +1668,10 @@ export function CropForm({
                     >
                       {hasSupplierOptions ? (
                         <FormControl size="small" sx={mediumStackedFieldSx}>
-                          <InputLabel shrink>{t('form.supplier')}</InputLabel>
+                          <InputLabel id={`supplier-label-${supplierIndex}`} shrink>{t('form.supplier')}</InputLabel>
                           <Select
                             fullWidth
+                            labelId={`supplier-label-${supplierIndex}`}
                             value={selectValue}
                             label={t('form.supplier')}
                             renderValue={(selected) => {
@@ -1759,6 +1760,33 @@ export function CropForm({
                             onChange={(event) => updateSupplierRow(supplierIndex, { supplier_product_name: event.target.value })}
                             sx={wideSingleColumnFieldSx}
                           />
+                          <TextField
+                            select
+                            label={t('form.seedStatus')}
+                            value={row.seed_status ?? 'unknown'}
+                            onChange={(event) => updateSupplierRow(supplierIndex, {
+                              seed_status: event.target.value as NonNullable<typeof row.seed_status>,
+                            })}
+                            sx={mediumStackedFieldSx}
+                          >
+                            {(['organic', 'in_conversion', 'conventional', 'unknown'] as const).map((value) => (
+                              <MenuItem key={value} value={value}>{t(`form.seedStatusOptions.${value}`)}</MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            label={t('form.seedExemptionStatus')}
+                            value={row.seed_exemption_status ?? 'unknown'}
+                            onChange={(event) => updateSupplierRow(supplierIndex, {
+                              seed_exemption_status: event.target.value as NonNullable<typeof row.seed_exemption_status>,
+                            })}
+                            helperText={t('form.seedExemptionStatusHelp')}
+                            sx={wideSingleColumnFieldSx}
+                          >
+                            {(['approved', 'not_approved', 'not_required', 'unknown'] as const).map((value) => (
+                              <MenuItem key={value} value={value}>{t(`form.seedExemptionStatusOptions.${value}`)}</MenuItem>
+                            ))}
+                          </TextField>
                           <Typography variant="subtitle2">{t('form.seedPackagesLabel')}</Typography>
                           {(row.packaging_sizes ?? []).map((pkg, packageIndex) => (
                             <Box

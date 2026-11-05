@@ -47,6 +47,8 @@ export interface SupplierDeleteUndoPayload {
     supplier_url: string;
     supplier_product_name: string;
     supplier_product_url: string;
+    seed_status?: SeedStatus;
+    seed_exemption_status?: SeedExemptionStatus;
     packaging_sizes: SeedPackage[];
     thousand_kernel_weight_g: string | null;
     germination_rate: number | null;
@@ -329,6 +331,9 @@ export type CropInheritableField =
   | 'seed_rate_pre_cultivation_unit'
   | 'tags';
 
+export type SeedStatus = 'organic' | 'in_conversion' | 'conventional' | 'unknown';
+export type SeedExemptionStatus = 'approved' | 'not_approved' | 'not_required' | 'unknown';
+
 export interface CropSupplierData {
   id?: number;
   crop?: number;
@@ -340,6 +345,8 @@ export interface CropSupplierData {
   supplier_url?: string;
   supplier_product_name?: string;
   supplier_product_url?: string;
+  seed_status?: SeedStatus;
+  seed_exemption_status?: SeedExemptionStatus;
   packaging_sizes?: SeedPackage[];
   germination_rate?: number | null;
   price?: number | null;
@@ -355,6 +362,8 @@ export interface CropSupplierDataInput {
   supplier_url?: string;
   supplier_product_name?: string;
   supplier_product_url?: string;
+  seed_status?: SeedStatus;
+  seed_exemption_status?: SeedExemptionStatus;
   packaging_sizes?: SeedPackage[];
   germination_rate?: number | null;
   price?: number | null;

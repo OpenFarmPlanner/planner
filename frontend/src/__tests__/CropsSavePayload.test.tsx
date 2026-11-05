@@ -753,3 +753,17 @@ describe('Crops save payload', () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 });
+
+
+it('preserves supplier seed statuses in save payloads and defaults legacy rows', () => {
+  const payload = buildCropSavePayload({
+    name: 'Carrot', supplier_data: [
+      { supplier_id: 1, seed_status: 'conventional', seed_exemption_status: 'approved' },
+      { supplier_id: 2 },
+    ],
+  } as Crop);
+  expect(payload.supplier_data_input).toEqual([
+    expect.objectContaining({ supplier_id: 1, seed_status: 'conventional', seed_exemption_status: 'approved' }),
+    expect.objectContaining({ supplier_id: 2, seed_status: 'unknown', seed_exemption_status: 'unknown' }),
+  ]);
+});

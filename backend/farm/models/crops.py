@@ -1049,6 +1049,25 @@ class Crop(TimestampedModel):
 class CropSupplierData(TimestampedModel):
     """Supplier-specific seed metadata attached to one crop."""
 
+    class SeedStatus(models.TextChoices):
+        ORGANIC = 'organic', 'Organic'
+        IN_CONVERSION = 'in_conversion', 'In conversion'
+        CONVENTIONAL = 'conventional', 'Conventional'
+        UNKNOWN = 'unknown', 'Unknown'
+
+    class SeedExemptionStatus(models.TextChoices):
+        APPROVED = 'approved', 'Approval available'
+        NOT_APPROVED = 'not_approved', 'No approval'
+        NOT_REQUIRED = 'not_required', 'Not required'
+        UNKNOWN = 'unknown', 'Unknown'
+
+    seed_status = models.CharField(
+        max_length=20, choices=SeedStatus.choices, default=SeedStatus.UNKNOWN,
+    )
+    seed_exemption_status = models.CharField(
+        max_length=20, choices=SeedExemptionStatus.choices, default=SeedExemptionStatus.UNKNOWN,
+        help_text='Manual project-specific note; does not verify approval for a farm or use.',
+    )
     crop = models.ForeignKey(Crop, on_delete=models.CASCADE, related_name='supplier_data')
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='crop_supplier_data')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='crop_supplier_data')
