@@ -39,6 +39,7 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
   const [error, setError] = useState(false);
   const savingRef = useRef(false);
   const selectedPlan = plans.find((plan) => plan.id === draft.planting_plan);
+  const planField = beds.find((bed) => bed.id === selectedPlan?.bed)?.field;
   const close = () => { if (!savingRef.current) onClose(); };
   const update = (key: keyof TaskWritePayload, value: string | number | null) => setDraft((previous) => ({ ...previous, [key]: value }));
   const selectId = (value: string) => value === '' ? null : Number(value);
@@ -106,7 +107,7 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
             <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
             {crops.map((crop) => <MenuItem key={crop.id} value={crop.id}>{formatCropDisplayName(crop)}</MenuItem>)}
           </TextField>
-          <TextField select label={t('dashboard:board.filters.field')} value={draft.field ?? ''}
+          <TextField select label={t('dashboard:board.filters.field')} value={selectedPlan ? planField ?? '' : draft.field ?? ''}
             disabled={saving || Boolean(selectedPlan)} sx={formGridFieldSx}
             onChange={(event) => update('field', selectId(event.target.value))}>
             <MenuItem value="">{t('dashboard:form.none')}</MenuItem>

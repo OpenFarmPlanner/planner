@@ -94,7 +94,7 @@ overrides and generator identity untouched. Moves are optimistic; a failed
 request restores that task without reverting other tasks' concurrent changes.
 An in-flight task cannot be moved again until its request settles.
 
-Filters combine period, crop, field (direct field, otherwise resolved via plan → bed → field) and
+Filters combine period, crop, field (resolved via plan → bed → field for linked tasks; direct field for standalone tasks) and
 assignee, including unassigned. Date periods use local calendar dates, inclusive
 custom bounds and Monday–Sunday for this week. Undated work remains visible
 under all dates. Metrics reflect the filtered subset and count only unfinished

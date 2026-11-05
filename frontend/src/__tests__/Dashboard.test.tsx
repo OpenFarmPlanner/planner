@@ -282,9 +282,16 @@ describe('Dashboard', () => {
     mocks.taskList.mockResolvedValue({ results: [linked] });
     mocks.taskEdit.mockResolvedValue({ data: { ...linked, field: null } });
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    const before = await screen.findByRole('article', { name: 'Jäten' });
+    expect(before).toHaveTextContent('New field');
+    expect(before).not.toHaveTextContent('Old field');
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Parzelle' }));
+    fireEvent.click(screen.getByRole('option', { name: 'New field' }));
+    expect(await screen.findByRole('article', { name: 'Jäten' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
     const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    expect(within(dialog).getByRole('combobox', { name: 'Parzelle' })).toHaveTextContent('New field');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
     expect(mocks.taskEdit.mock.calls[0][1]).toMatchObject({ planting_plan: 5, field: null });

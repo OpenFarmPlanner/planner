@@ -81,7 +81,7 @@ export default function TaskBoard({
   const personById = useMemo(() => new Map(members.map((member) => [member.user,
     member.user_display_name || member.user_email])), [members]);
   const fieldForTask = (task: Task) => {
-    if (task.field != null) return task.field;
+    if (task.planting_plan == null) return task.field ?? undefined;
     const bedId = task.planting_plan === null ? null : planById.get(task.planting_plan)?.bed;
     return bedId == null ? undefined : bedById.get(bedId)?.field;
   };
