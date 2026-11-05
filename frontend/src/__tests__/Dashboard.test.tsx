@@ -313,4 +313,21 @@ describe('Dashboard', () => {
     expect(card).not.toHaveTextContent('Old field');
   });
 
+
+  it('displays generated events in the UI language and keeps their canonical title on unchanged edit', async () => {
+    const generated = task({ origin: 'automatic', title: 'Start propagation',
+      source_key: 'plan:5:event:propagation_start' });
+    mocks.taskList.mockResolvedValue({ results: [generated] });
+    mocks.taskEdit.mockResolvedValue({ data: generated });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(await screen.findByRole('article', { name: 'Anzucht beginnen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Status ändern: Anzucht beginnen' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    expect(within(dialog).getByRole('textbox', { name: 'Titel' })).toHaveValue('Anzucht beginnen');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(mocks.taskEdit).toHaveBeenCalled());
+    expect(mocks.taskEdit.mock.calls[0][1].title).toBe('Start propagation');
+  });
+
 });

@@ -9,6 +9,7 @@ import { useTranslation } from '../../i18n';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { formatCropDisplayName } from '../../crops/cropDisplay';
 import { formGridSx, formGridFieldSx, formGridFullRowSx } from '../forms/formLayout';
+import { taskDisplayTitle } from './taskTitles';
 import { BOARD_STATUSES } from './taskBoard';
 
 interface Props {
@@ -29,8 +30,9 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
   const compact = useMediaQuery(theme.breakpoints.down('md'));
   const titleId = useId();
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
+  const [initialTitle] = useState(() => task ? taskDisplayTitle(task, t) : '');
   const [draft, setDraft] = useState<TaskWritePayload>({
-    title: task?.title ?? '', description: task?.description ?? '', due_date: task?.due_date ?? null,
+    title: initialTitle, description: task?.description ?? '', due_date: task?.due_date ?? null,
     status: task?.status ?? 'pending', planting_plan: task?.planting_plan ?? null,
     crop: task?.crop ?? null,
     field: task?.field ?? beds.find((bed) => bed.id === plans.find((plan) => plan.id === task?.planting_plan)?.bed)?.field ?? null, assigned_to: task?.assigned_to ?? null,
@@ -53,6 +55,7 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
     // A linked plan owns the location: storing its field would go stale when the bed moves.
     if (payload.planting_plan !== null) payload.field = null;
     if (!task) payload.season = seasonId;
+    if (task && draft.title === initialTitle) payload.title = task.title;
     // Merely editing a generated task must not mark its unchanged date as overridden.
     if (task && payload.due_date === task.due_date) delete payload.due_date;
     try {

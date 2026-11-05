@@ -28,6 +28,7 @@ from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
+from farm.services.tasks import generate_plan_tasks
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
@@ -278,7 +279,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             queryset = queryset.filter(season_id=season_id)
         return queryset
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}
         if 'season' not in serializer.validated_data:
@@ -289,6 +290,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             created_by=current_user, updated_by=current_user, project=self.request.active_project, **extra_fields,
         )
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
+        generate_plan_tasks(instance)
 
     def perform_update(self, serializer):
         current_user = self.request.user if self.request.user.is_authenticated else None

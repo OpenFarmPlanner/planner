@@ -14,6 +14,7 @@ import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { getFirstMissingProjectSetupStep, getTranslatedProjectSetupActions } from './requirementFlow';
 import TaskBoard from '../components/tasks/TaskBoard';
+import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import TaskFormDialog from '../components/tasks/TaskFormDialog';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { EMPTY_TASK_FILTERS, type BoardStatus, type TaskFilters } from '../components/tasks/taskBoard';
@@ -240,7 +241,7 @@ export default function Dashboard() {
         crops={crops} fields={fields} beds={beds} plans={plans} members={members}
         onSave={saveTask} onClose={() => setEditor(undefined)} />}
       <ConfirmationDialog open={Boolean(deleting)} title={t('dashboard:form.delete')}
-        message={<>{t('dashboard:form.deleteConfirm', { title: deleting?.title })}
+        message={<>{t('dashboard:form.deleteConfirm', { title: deleting ? taskDisplayTitle(deleting, t) : '' })}
           {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{t('dashboard:form.deleteError')}</Alert>}</>}
         messageTypographyProps={{ component: 'div' }}
         cancelLabel={t('common:actions.cancel')} confirmLabel={t('common:actions.delete')}

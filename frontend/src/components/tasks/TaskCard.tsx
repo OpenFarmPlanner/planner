@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../api/types';
 import { useTranslation } from '../../i18n';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
+import { taskDisplayTitle } from './taskTitles';
 import { BOARD_STATUSES, type BoardStatus } from './taskBoard';
 
 interface TaskCardProps {
@@ -29,28 +30,29 @@ export default function TaskCard({
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: task.id, disabled: compact || saving,
   });
+  const title = taskDisplayTitle(task, t);
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
   const dueDate = task.due_date
     ? new Date(`${task.due_date}T00:00:00`).toLocaleDateString(locale)
     : t('board.noDate');
   return (
-    <Card ref={setNodeRef} variant="outlined" component="article" aria-label={task.title}
+    <Card ref={setNodeRef} variant="outlined" component="article" aria-label={title}
       aria-busy={saving} data-task-id={task.id}
       style={{ transform: CSS.Translate.toString(transform) }}
       sx={{ position: 'relative', zIndex: isDragging ? 1 : 'auto', opacity: isDragging ? 0.6 : 1 }}>
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start' }}>
           {!compact && <IconButton ref={setActivatorNodeRef} {...attributes} {...listeners}
-            disabled={saving} aria-label={t('board.dragTask', { title: task.title })}
+            disabled={saving} aria-label={t('board.dragTask', { title })}
             sx={{ cursor: 'grab', touchAction: 'none', flexShrink: 0 }}>
             <DragIndicatorIcon fontSize="small" />
           </IconButton>}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>{task.title}</Typography>
+            <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>{title}</Typography>
             {(cropName || areaName) && <Typography variant="body2" color="text.secondary"
               sx={{ overflowWrap: 'anywhere' }}>{[cropName, areaName].filter(Boolean).join(' · ')}</Typography>}
           </Box>
-          <IconButton disabled={saving} aria-label={t('board.changeStatus', { title: task.title })}
+          <IconButton disabled={saving} aria-label={t('board.changeStatus', { title })}
             aria-haspopup="menu" aria-expanded={Boolean(anchor)}
             onClick={(event) => setAnchor(event.currentTarget)}>
             <MoreVertIcon fontSize="small" />

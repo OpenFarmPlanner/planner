@@ -89,5 +89,12 @@
     "saveError": "Die Aufgabe konnte nicht gespeichert werden. Prüfe deine Angaben und versuche es erneut.",
     "deleteConfirm": "Möchtest du „{{title}}“ endgültig löschen?",
     "deleteError": "Die Aufgabe konnte nicht gelöscht werden. Versuche es erneut."
+  },
+  "events": {
+    "propagation_start": "Anzucht beginnen",
+    "sowing": "Direktsaat",
+    "planting": "Pflanzen",
+    "harvest_start": "Ernte beginnen",
+    "harvest_end": "Ernte abschließen"
   }
 }

@@ -3,8 +3,8 @@
 Issue #890 extends the existing `Task` and `/api/tasks/` endpoint. IDs, status
 values (`pending`, `in_progress`, `completed`, `cancelled`), pagination, revision
 history and the legacy `/openfarmplanner/api/tasks/` mount remain compatible.
-The dashboard added in #891 consumes these persisted tasks; automatic generation
-remains deferred.
+The dashboard added in #891 consumes these persisted tasks; #893 generates
+known planting-plan events automatically.
 
 ## Ownership and relations
 
@@ -52,10 +52,10 @@ lookups are project-scoped; `X-Season-Id` additionally scopes both when present.
   and status. Empty source keys permit unrelated manual/legacy tasks.
 
 The future synchronizer (#894) must update only open, non-overridden effective
-dates and preserve completed tasks. Generation (#893), template relations and
-rules (#895), recurrence expansion and limits (#896) are deliberately deferred.
-The metadata and unique constraint prepare those paths; there are no signals,
-GET writes, automatic task creation or synchronization in this change.
+dates and preserve completed tasks. Template relations and rules (#895), recurrence expansion and limits (#896)
+remain deferred.
+The metadata and unique constraint prepare those paths. Generation runs on
+explicit write paths; no GET requests create tasks. Date synchronization is #894.
 
 ## Filters
 
@@ -79,12 +79,12 @@ reverse. Migration tests cover forward and backward preservation.
 ## Task dashboard (#891)
 
 `/app/dashboard` keeps the existing project setup checklist and replaces its
-read-only derived event preview with a persisted-task board. The legacy
-location-specific event preview is unchanged; automatic conversion is #893.
+read-only derived event preview with a persisted-task board. The legacy location-specific event preview remains a derived read-only view;
+the board uses persisted generated events from #893.
 
 The board loads all task pages through `taskAPI.listAll()` and uses the existing
 project and active-season request headers. Crops, fields, beds, planting plans
-and project members supply filter labels and card context. It does not generate or synchronize tasks. Manual task forms are described below.
+and project members supply filter labels and card context. The frontend does not generate or synchronize tasks. Manual task forms are described below.
 
 There are three columns: pending, in progress and completed. Cancelled tasks
 remain stored and are omitted from this three-column work view. Cards show the
@@ -131,3 +131,39 @@ existing override/baseline when merely editing its text. Deletion requires the
 shared explicit confirmation dialog, initially focused on Cancel; a failed
 delete preserves the task and dialog. The editor uses a fullscreen layout below
 900px, including phone landscape, with scrollable content and visible actions.
+
+
+## Planting-plan events (#893)
+
+`farm/services/tasks.py` resolves propagation start, direct sowing, transplanting
+and harvest start from known plan dates. Plan cultivation type takes precedence;
+otherwise effective crop cultivation/timing values apply, including inheritance
+from a general crop to a variety. Own propagation needs a positive propagation
+duration and never applies to bought-in transplants. Stored harvest dates take
+precedence over computed fallbacks. Unknown dates or cultivation events are
+omitted. Harvest end is available to the service as an explicit optional event.
+
+Creation runs after planting-plan API creation, season copies, first-season
+assignment and demo/hint seeding. Existing open-season plans are backfilled by
+`0130_generate_plan_event_tasks`, using historical models and frozen timing
+rules. The former overview tasks were computed in the browser, with no stored
+rows to re-identify. Existing manual tasks are never reclassified or overwritten.
+Backfilled events start pending, including past dates: a past deadline does not
+prove the work was completed.
+
+Generated identity is `plan:<id>:event:<kind>` plus occurrence index zero. Creation
+uses that unique identity and never replaces an existing task, status, title,
+manual override or date. Synchronizing changes/removals is the next issue #894.
+Tasks in plans without an assigned season wait until first-season setup; legacy
+linked manual tasks with a null season are assigned in place at that point.
+
+Canonical generated titles are English API data. The UI translates recognized,
+unchanged generated titles in de/en/fr/es; user-edited titles remain user text.
+The editor preserves the canonical title when its localized display text was
+not changed, just as it preserves an unchanged due date.
+
+The data migration has an intentionally non-destructive reverse: the preceding
+Task schema already supports all generated rows, so rollback retains work,
+including any completion/override recorded after deployment. Reapplying the
+migration preserves IDs through the unique constraint instead of duplicating
+rows. Forward/backward/replay and inherited timing are covered by migration tests.
