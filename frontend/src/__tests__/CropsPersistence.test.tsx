@@ -49,10 +49,13 @@ vi.mock('../crops/CropDetail', () => ({
 }));
 
 vi.mock('../crops/CropForm', () => ({
-  CropForm: ({ crop }: { crop?: { id?: number } }): ReactElement => {
+  CropForm: ({ crop, onCancel }: { crop?: { id?: number }; onCancel: () => void }): ReactElement => {
     formCropIdHistory.push(crop?.id);
 
-    return <div data-testid="crop-form">crop-form-{crop?.id ?? 'new'}</div>;
+    return <div data-testid="crop-form">crop-form-{crop?.id ?? 'new'}
+      <Link to={`/crops?cropId=${crop?.id}&action=edit`}>repeat-edit-link</Link>
+      <button onClick={onCancel}>cancel-edit</button>
+    </div>;
   },
 }));
 
@@ -167,6 +170,16 @@ describe('Crops selection persistence', () => {
     }, { timeout: 3000 });
 
     expect(formCropIdHistory[0]).toBe(1);
+  });
+
+  it('consumes an edit action repeated while the dialog is open so cancel stays closed', async () => {
+    renderCrops('/crops?cropId=1&action=edit');
+    await screen.findByTestId('crop-form');
+    await waitFor(() => expect(screen.getByTestId('location-search')).not.toHaveTextContent('action=edit'));
+    fireEvent.click(screen.getByRole('link', { name: 'repeat-edit-link' }));
+    await waitFor(() => expect(screen.getByTestId('location-search')).not.toHaveTextContent('action=edit'));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel-edit' }));
+    await waitFor(() => expect(screen.queryByTestId('crop-form')).not.toBeInTheDocument());
   });
 
   it('persists user selection to url and localStorage', async () => {

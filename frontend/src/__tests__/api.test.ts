@@ -684,3 +684,10 @@ describe('untested endpoint groups', () => {
     expect(deleteMock).toHaveBeenCalledWith('/api-tokens/5/');
   });
 });
+
+it('updates crop supplier data without sending crop metadata', async () => {
+  patchMock.mockResolvedValue({ data: { id: 7 } });
+  const rows = [{ supplier_id: 2, packaging_sizes: [{ size_value: 25, size_unit: 'g' }] }];
+  await cropAPI.updateSupplierData(7, rows);
+  expect(patchMock).toHaveBeenCalledWith('/crops/7/', { supplier_data_input: rows });
+});

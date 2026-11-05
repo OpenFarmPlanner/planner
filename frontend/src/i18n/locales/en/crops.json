@@ -332,7 +332,8 @@
       "not_approved": "No approval",
       "not_required": "Not required",
       "unknown": "Unknown"
-    }
+    },
+    "editSupplierData": "Edit supplier data"
   },
   "messages": {
     "createSuccess": "Crop created successfully",

@@ -564,7 +564,7 @@ function Crops() {
   }, []);
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState || showForm || !selectedCrop) {
+    if (shouldShowProjectRequiredState || !selectedCrop) {
       return;
     }
     const searchParams = new URLSearchParams(location.search);
@@ -572,7 +572,7 @@ function Crops() {
       return;
     }
 
-    handleEdit(selectedCrop);
+    if (!showForm) handleEdit(selectedCrop);
     searchParams.delete('action');
     const nextSearch = searchParams.toString();
     navigate(
@@ -886,6 +886,9 @@ function Crops() {
           onOpenHistory={handleOpenHistory}
           onExportCrop={handleExportCurrentCrop}
           onPublishCrop={handleRequestPublishCrop}
+          onSupplierDataSaved={(saved) => {
+            setCrops((previous) => previous.map((row) => row.id === saved.id ? saved : row));
+          }}
           onPublicUpdateApplied={() => {
             void fetchCrops();
           }}

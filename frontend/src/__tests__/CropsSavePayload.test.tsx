@@ -767,3 +767,14 @@ it('preserves supplier seed statuses in save payloads and defaults legacy rows',
     expect.objectContaining({ supplier_id: 2, seed_status: 'unknown', seed_exemption_status: 'unknown' }),
   ]);
 });
+
+it('omits supplier writes when the crop editor did not edit them', () => {
+  const payload = buildCropSavePayload({ id: 9, name: 'Crop', variety: 'Early' });
+  expect(payload).not.toHaveProperty('supplier_data_input');
+  expect(payload).not.toHaveProperty('supplier_id');
+});
+
+it('keeps an explicit empty supplier list empty even with a legacy supplier reference', () => {
+  const payload = buildCropSavePayload({ id: 9, name: 'Crop', supplier_data: [], supplier: { id: 2, name: 'Old' } });
+  expect(payload.supplier_data_input).toEqual([]);
+});

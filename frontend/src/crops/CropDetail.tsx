@@ -1,3 +1,6 @@
+import { cropAPI } from '../api/api';
+import { CropForm } from './CropForm';
+import { buildCropSavePayload } from '../pages/cropsSaveUtils';
 /**
  * Crop Detail component with searchable dropdown and detailed crop information view.
  */
@@ -99,6 +102,7 @@ interface CropDetailProps {
   onPublishCrop?: () => void;
   /** Called after a pending public-library update was applied to the selected crop. */
   onPublicUpdateApplied?: () => void;
+  onSupplierDataSaved?: (crop: Crop) => void;
   onDeleteCrop?: (crop: Crop) => void;
   /** Opens the "Verknüpfung aufheben" confirmation for the selected crop. */
   onUnlinkPublicCrop?: (crop: Crop) => void;
@@ -135,6 +139,7 @@ export function CropDetail({
   onExportCrop,
   onPublishCrop,
   onPublicUpdateApplied,
+  onSupplierDataSaved,
   onDeleteCrop,
   onUnlinkPublicCrop,
   canCreatePlan = true,
@@ -143,6 +148,7 @@ export function CropDetail({
   searchInputRef,
 }: CropDetailProps) {
   const { t, i18n } = useTranslation('crops');
+  const [editingSuppliers, setEditingSuppliers] = useState(false);
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
   const plantFamilies = usePlantFamilies();
   const locale = resolveLocaleFromLanguage(currentLanguage);
@@ -765,6 +771,16 @@ const detailSectionGridSx = {
 
   return (
     <Box sx={{ width: '100%' }}>
+      {editingSuppliers && selectedCrop && <CropForm crop={selectedCrop} crops={crops}
+        section="supplierData" formKind={selectedCrop.variety?.trim() ? 'variety' : 'crop'}
+        title={t('form.supplierDataSectionTitle')} onCancel={() => setEditingSuppliers(false)}
+        onSave={async (draft) => {
+          const rows = buildCropSavePayload(draft).supplier_data_input ?? [];
+          const response = await cropAPI.updateSupplierData(selectedCrop.id!, rows);
+          onSupplierDataSaved?.(response.data);
+          setEditingSuppliers(false);
+        }} />}
+
 
       {/* Detail View */}
       {!isLoading && crops.length > 0 ? (
@@ -1301,10 +1317,14 @@ const detailSectionGridSx = {
                 locale={locale}
                 t={t}
               />
+            </Box>
+            <Divider sx={{ mb: 2.5 }} />
+            <Box sx={{ mb: 3 }}>
               <Box sx={{ mt: 2.5, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
-                <Typography variant="subtitle1" component="h3" gutterBottom>
-                  {hasMultipleSupplierRows ? t('form.supplierDataSectionTitle') : t('filters.supplier')}
-                </Typography>
+                <Stack direction="row" sx={{ gridColumn: '1 / -1', flexWrap: 'wrap', gap: 1, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="h6">{t('form.supplierDataSectionTitle')}</Typography>
+                  <Button variant="outlined" onClick={() => setEditingSuppliers(true)}>{t('form.editSupplierData')}</Button>
+                </Stack>
                 {hasMultipleSupplierRows && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {t('form.supplierDataSectionDescription')}

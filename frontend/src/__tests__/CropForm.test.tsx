@@ -388,7 +388,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -402,11 +402,11 @@ describe('CropForm', () => {
     expect(await screen.findByRole('heading', { name: 'form.createSuppliers' })).toBeInTheDocument();
   });
 
-  it('opens supplier creation without navigation and preserves crop changes when cancelled', async () => {
+  it('opens supplier creation without navigation and preserves the supplier editor on cancel', async () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -414,11 +414,10 @@ describe('CropForm', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'form.createSuppliers' })).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Neue Karotte' } });
     fireEvent.click(screen.getByRole('button', { name: 'form.createSuppliers' }));
 
     expect(await screen.findByRole('heading', { name: 'form.createSuppliers' })).toBeInTheDocument();
-    expect(screen.getByLabelText('name-input')).toHaveValue('Neue Karotte');
+    expect(screen.queryByLabelText('name-input')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('name'), { target: { value: 'Reinsaat' } });
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
@@ -427,11 +426,11 @@ describe('CropForm', () => {
     });
 
     expect(supplierCreateMock).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('name-input')).toHaveValue('Neue Karotte');
+    expect(screen.queryByLabelText('name-input')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('creates a supplier inline, selects it, and keeps edited crop fields dirty', async () => {
+  it('creates a supplier inline, selects it, and marks the supplier draft dirty', async () => {
     supplierListMock
       .mockResolvedValueOnce({ data: { results: [] } })
       .mockResolvedValueOnce({
@@ -440,7 +439,7 @@ describe('CropForm', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={onSave}
         onCancel={() => {}}
@@ -448,7 +447,6 @@ describe('CropForm', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'form.createSuppliers' })).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Neue Karotte' } });
     fireEvent.click(screen.getByRole('button', { name: 'form.createSuppliers' }));
     fireEvent.change(await screen.findByLabelText('name'), { target: { value: 'Reinsaat' } });
     fireEvent.change(screen.getByLabelText('homepage'), { target: { value: 'reinsaat.at' } });
@@ -460,7 +458,7 @@ describe('CropForm', () => {
 
     const supplierSelect = await screen.findByRole('combobox', { name: 'form.supplier' });
     await waitFor(() => expect(supplierSelect).toHaveTextContent('Reinsaat'));
-    expect(screen.getByLabelText('name-input')).toHaveValue('Neue Karotte');
+    expect(screen.queryByLabelText('name-input')).not.toBeInTheDocument();
     expect(screen.getByText('messages.unsavedChanges')).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: 'form.save' });
@@ -468,7 +466,7 @@ describe('CropForm', () => {
     fireEvent.click(saveButton);
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toEqual(expect.objectContaining({
-      name: 'Neue Karotte',
+      name: CROP_A.name,
       supplier_data: [
         expect.objectContaining({
           supplier_id: 42,
@@ -487,7 +485,7 @@ describe('CropForm', () => {
     });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -513,7 +511,7 @@ describe('CropForm', () => {
     }));
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -539,7 +537,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -563,7 +561,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 99, name: 'New Supplier' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -581,7 +579,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 99, name: 'Different Supplier' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{
           ...CROP_A,
           supplier_data: [{ supplier_id: 10, supplier_name: 'Bingenheimer', packaging_sizes: [] }],
@@ -607,7 +605,7 @@ describe('CropForm', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{
           ...CROP_A,
           supplier_data: [
@@ -654,7 +652,7 @@ describe('CropForm', () => {
     });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{
           ...CROP_A,
           supplier_data: [
@@ -675,18 +673,18 @@ describe('CropForm', () => {
     expect(screen.getByDisplayValue('50')).toBeInTheDocument();
   });
 
-  it('renders separated general and supplier-specific sections', () => {
+  it('omits supplier fields from the general crop editor', () => {
     render(<CropForm crop={CROP_A} onSave={vi.fn().mockResolvedValue(undefined)} onCancel={() => {}} />);
 
     expect(screen.getByText('form.generalInfoSectionTitle')).toBeInTheDocument();
-    expect(screen.getByText('form.supplierDataSectionTitle')).toBeInTheDocument();
+    expect(screen.queryByText('form.supplierDataSectionTitle')).not.toBeInTheDocument();
   });
 
   it('keeps supplier information rows compact without stretch layout', async () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 10, name: 'Bingenheimer' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ supplier_id: 10, supplier_name: 'Bingenheimer', packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -707,7 +705,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 10, name: 'Bingenheimer' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -726,7 +724,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 10, name: 'Bingenheimer' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -747,7 +745,7 @@ describe('CropForm', () => {
     supplierListMock.mockResolvedValueOnce({ data: { results: [{ id: 10, name: 'Bingenheimer' }] } });
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ supplier_id: 10, supplier_name: 'Bingenheimer', packaging_sizes: [] }] }}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -1225,8 +1223,9 @@ describe('CropForm', () => {
       id: 1,
       name: 'Neue Karotte',
       variety: 'Nantaise',
-      supplier: { id: 10, name: 'Bingenheimer' },
     }), undefined);
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty('supplier_data');
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty('supplier');
   });
 
   it("hands the Kultur's changed neighbours to onSave with the crop", async () => {
@@ -1609,7 +1608,6 @@ describe('CropForm', () => {
       name: 'Salat',
       variety: 'Batavia',
       row_spacing_cm: 35,
-      supplier: { id: 11, name: 'Dreschflegel' },
     }), undefined);
   });
 
@@ -1628,7 +1626,7 @@ describe('CropForm', () => {
     }), undefined);
   });
 
-  it('maps legacy seed_supplier into supplier field for validation and save', async () => {
+  it('omits legacy supplier writes when saving unrelated crop fields', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 
     render(<CropForm crop={{ id: 3, name: 'Mangold', variety: 'Rainbow', seed_supplier: 'Legacy Seeds' }} onSave={onSave} onCancel={() => {}} />);
@@ -1639,7 +1637,6 @@ describe('CropForm', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       id: 3,
-      supplier: expect.objectContaining({ name: 'Legacy Seeds' }),
       row_spacing_cm: 40,
     }), undefined);
   });
@@ -1664,7 +1661,6 @@ describe('CropForm', () => {
       name: 'Salat',
       variety: 'Batavia',
       row_spacing_cm: 42,
-      supplier: { id: 11, name: 'Dreschflegel' },
     }), undefined);
   });
 
@@ -1689,7 +1685,7 @@ describe('CropForm', () => {
     const onCancel = vi.fn();
 
     render(
-      <CropForm
+      <CropForm section="supplierData"
         crop={{ ...CROP_A, supplier_data: [{ packaging_sizes: [] }] }}
         onSave={onSave}
         onCancel={onCancel}
@@ -1707,18 +1703,13 @@ describe('CropForm', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 
     render(
-      <CropForm
+      <CropForm section="supplierData" hasExternalChanges
         crop={{ ...CROP_A, supplier_data: [{ supplier_product_name: 'Artikel ohne Lieferant', packaging_sizes: [] }] }}
         onSave={onSave}
         onCancel={() => {}}
       />
     );
 
-    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Neue Karotte' } });
-    await waitFor(() => expect(cropDuplicateCheckMock).toHaveBeenCalledWith(
-      { name: 'Neue Karotte', variety: 'Nantaise', exclude_id: 1 },
-      expect.any(AbortSignal),
-    ));
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
 
     expect(await screen.findByText('form.supplierDataMissingSupplier')).toBeInTheDocument();
@@ -1756,7 +1747,7 @@ describe('CropForm', () => {
   it('edits and saves supplier seed statuses without another crop change', async () => {
     supplierListMock.mockResolvedValue({ data: { results: [{ id: 10, name: 'Reinsaat', allowed_domains: [] }] } });
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<CropForm crop={{ ...CROP_A, supplier_data: [{ supplier_id: 10 }] }} onSave={onSave} onCancel={() => {}} />);
+    render(<CropForm section="supplierData" crop={{ ...CROP_A, supplier_data: [{ supplier_id: 10 }] }} onSave={onSave} onCancel={() => {}} />);
     const seedSelect = await screen.findByRole('combobox', { name: 'form.seedStatus' });
     expect(seedSelect).toHaveTextContent('form.seedStatusOptions.unknown');
     fireEvent.mouseDown(seedSelect);

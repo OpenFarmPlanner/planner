@@ -197,21 +197,29 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
     name: 'Status supplier', homepage_url: 'https://seeds.example',
   });
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
-    name: 'Status carrot', supplier_data_input: [{ supplier_id: supplier.id }],
+    name: 'Status carrot', notes: 'Keep crop notes', supplier_data_input: [{ supplier_id: supplier.id, packaging_sizes: [{ size_value: 25, size_unit: 'g' }], supplier_product_name: 'Old article' }],
   });
   await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
-  const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
+  const cropDialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
+  await expect(cropDialog.getByTestId('crop-supplier-data-section')).toHaveCount(0);
+  await cropDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
   const seedStatus = dialog.getByRole('combobox', { name: 'Saatgutstatus', exact: true });
   await expect(seedStatus).toHaveText('Unbekannt');
   await seedStatus.click();
   await page.getByRole('option', { name: 'Konventionell', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Ausnahmegenehmigung', exact: true }).click();
   await page.getByRole('option', { name: 'Genehmigung vorhanden', exact: true }).click();
+  await dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' }).fill('Updated article');
+  const write = page.waitForResponse((response) => response.url().includes(`/api/crops/${crop.id}/`) && response.request().method() === 'PATCH');
   await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  const response = await write;
+  expect(Object.keys(response.request().postDataJSON())).toEqual(['supplier_data_input']);
   await expect(dialog).not.toBeVisible();
   const saved = await apiRequest<{ supplier_data: Array<{ seed_status: string; seed_exemption_status: string }> }>(page, 'GET', `/crops/${crop.id}/`);
   expect(saved.supplier_data[0]).toMatchObject({ seed_status: 'conventional', seed_exemption_status: 'approved' });
-  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
   await expect(seedStatus).toHaveText('Konventionell');
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -224,7 +232,8 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
     await page.screenshot({ path: testInfo.outputPath(`supplier-status-${width}.png`) });
   }
   await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
-  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  await page.goto(`/app/crops?cropId=${crop.id}`);
+  await page.getByRole('button', { name: 'Modifier les données fournisseur' }).click();
   await page.setViewportSize({ width: 375, height: 800 });
   const frenchStatus = page.getByRole('combobox', { name: 'Statut des semences', exact: true });
   await frenchStatus.scrollIntoViewIfNeeded();
@@ -232,4 +241,27 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   const frenchRow = page.getByTestId('crop-supplier-data-row');
   expect(await frenchRow.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath('supplier-status-fr-375.png') });
+});
+
+test('supplier editor retains failed drafts and explicitly clears all supplier rows', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `supplier-independent-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const supplier = await apiRequest<{ id: number }>(page, 'POST', '/suppliers/', { name: 'Draft supplier' });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Keep identity', notes: 'Keep notes',
+    supplier_data_input: [{ supplier_id: supplier.id, supplier_product_name: 'Old' }],
+  });
+  await page.goto(`/app/crops?cropId=${crop.id}`);
+  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
+  const product = dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' });
+  await product.fill('Retained draft');
+  await page.route(`**/api/crops/${crop.id}/`, (route) => route.fulfill({ status: 500, body: 'Unavailable' }), { times: 1 });
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(product).toHaveValue('Retained draft');
+  await dialog.getByRole('button', { name: 'Lieferantendaten entfernen', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const saved = await apiRequest<{ name: string; notes: string; supplier_data: unknown[] }>(page, 'GET', `/crops/${crop.id}/`);
+  expect(saved).toMatchObject({ name: 'Keep identity', notes: 'Keep notes', supplier_data: [] });
 });
