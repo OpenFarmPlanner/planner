@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   members: vi.fn(),
 }));
 
-const outletState = vi.hoisted(() => ({ activeSeason: { id: 1 } as { id: number } | null }));
+const outletState = vi.hoisted(() => ({ activeSeason: { id: 1 } as { id: number } | null, activeSeasonLoaded: true }));
 
 const projectRequirementState = vi.hoisted(() => ({
   activeProjectId: 1,
@@ -42,7 +42,7 @@ vi.mock('../api/api', async () => {
 
 vi.mock('react-router', async () => ({
   ...await vi.importActual<typeof import('react-router')>('react-router'),
-  useOutletContext: () => ({ activeSeason: outletState.activeSeason, requestSeasonCreation: vi.fn() }),
+  useOutletContext: () => ({ ...outletState, requestSeasonCreation: vi.fn() }),
 }));
 
 vi.mock('../hooks/useProjectRequirement', () => ({ useProjectRequirement: () => projectRequirementState }));
@@ -60,6 +60,7 @@ describe('Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     outletState.activeSeason = { id: 1 };
+    outletState.activeSeasonLoaded = true;
     projectRequirementState.shouldShowProjectRequiredState = false;
     projectRequirementState.missingProjectReason = null;
     mocks.locationList.mockResolvedValue({ data: { results: [] } });
@@ -69,6 +70,18 @@ describe('Dashboard', () => {
     mocks.planList.mockResolvedValue({ data: { results: [] } });
     mocks.taskList.mockResolvedValue({ results: [] });
     mocks.members.mockResolvedValue({ data: [] });
+  });
+
+  it('waits for initial season resolution before fetching or exposing the board', async () => {
+    outletState.activeSeasonLoaded = false;
+    outletState.activeSeason = null;
+    const view = render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(mocks.taskList).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Aufgabe hinzufügen' })).not.toBeInTheDocument();
+    outletState.activeSeasonLoaded = true;
+    outletState.activeSeason = { id: 1 };
+    view.rerender(<MemoryRouter><Dashboard /></MemoryRouter>);
+    await waitFor(() => expect(mocks.taskList).toHaveBeenCalledTimes(1));
   });
 
   it('retries a failed load without showing the onboarding checklist', async () => {

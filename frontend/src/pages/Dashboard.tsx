@@ -24,7 +24,7 @@ export default function Dashboard() {
   const { t } = useTranslation(['dashboard', 'common']);
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const [isFetching, setLoading] = useState(true);
-  const [fetchError, setError] = useState<string | null>(null);
+  const [fetchError, setError] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<ProjectMemberPayload[]>([]);
@@ -40,6 +40,7 @@ export default function Dashboard() {
   const loadGeneration = useRef(0);
   const context = useOutletContext<RootLayoutOutletContext | undefined>();
   const seasonId = context?.activeSeason?.id;
+  const waitingForSeason = context?.activeSeasonLoaded === false;
   const [fields, setFields] = useState<Field[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
@@ -50,11 +51,11 @@ export default function Dashboard() {
   // effect below — the fetched collections do not need clearing either,
   // because the project-required branch renders before they are read and
   // `loading` is back to true by the time a project appears.
-  const loading = shouldShowProjectRequiredState ? false : isFetching;
+  const loading = shouldShowProjectRequiredState ? false : isFetching || waitingForSeason;
   const error = shouldShowProjectRequiredState ? null : fetchError;
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState || !activeProjectId) {
+    if (shouldShowProjectRequiredState || !activeProjectId || waitingForSeason) {
       return;
     }
     let cancelled = false;
@@ -72,16 +73,16 @@ export default function Dashboard() {
         setBeds(bedsRes.results);
         setCrops(cropsRes.results);
         setPlans(plansRes.results);
-        setError(null);
+        setError(false);
       } catch {
-        if (!cancelled) setError(t('dashboard:errors.load'));
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     void fetchData();
     return () => { cancelled = true; };
-  }, [shouldShowProjectRequiredState, activeProjectId, seasonId, t, retryAttempt]);
+  }, [shouldShowProjectRequiredState, activeProjectId, seasonId, waitingForSeason, retryAttempt]);
 
   const changeStatus = async (id: number, status: BoardStatus): Promise<void> => {
     const task = tasks.find((row) => row.id === id);
@@ -153,7 +154,7 @@ export default function Dashboard() {
     return (
       <PageContainer>
         <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
-          {error}
+          {t('dashboard:errors.load')}
         </Alert>
       </PageContainer>
     );
