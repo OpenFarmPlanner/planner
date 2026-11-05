@@ -73,7 +73,12 @@
     "empty": "No tasks in this season yet. Keep track of upcoming work here.",
     "emptyColumn": "No tasks",
     "showMore": "Show more tasks",
-    "saveError": "The status could not be saved. The change was reverted. Please try again."
+    "saveError": "The status could not be saved. The change was reverted. Please try again.",
+    "dragHint": {
+      "desktop": "Drag tasks by their handle into another column, or change status through the task menu.",
+      "mobile": "Change a task’s status through its menu. On larger screens, you can also drag tasks.",
+      "saveError": "Could not hide this hint permanently. Please try again."
+    }
   },
   "form": {
     "add": "Add task",

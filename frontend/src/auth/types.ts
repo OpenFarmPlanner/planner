@@ -38,6 +38,7 @@ export interface AuthUser {
   ui_language?: string;
   /** Shared state of the inline table edit hint, the same for every table and device. */
   table_edit_hint?: TableEditHintState;
+  task_drag_hint_done?: boolean;
 }
 
 export interface TableEditHintState {

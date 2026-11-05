@@ -534,3 +534,11 @@ export async function switchActiveProject(projectId: number): Promise<ProjectSwi
     body: JSON.stringify({ project_id: projectId }),
   });
 }
+
+
+export async function retireTaskDragHint(event: 'moved' | 'dismissed'): Promise<{ done: boolean }> {
+  await ensureCsrfCookie();
+  return request<{ done: boolean }>('/auth/account/task-drag-hint/', {
+    method: 'POST', headers: csrfHeader(), body: JSON.stringify({ event }),
+  });
+}

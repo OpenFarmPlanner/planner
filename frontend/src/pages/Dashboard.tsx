@@ -85,9 +85,9 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [shouldShowProjectRequiredState, activeProjectId, seasonId, waitingForSeason, retryAttempt]);
 
-  const changeStatus = async (id: number, status: BoardStatus): Promise<void> => {
+  const changeStatus = async (id: number, status: BoardStatus): Promise<boolean> => {
     const task = tasks.find((row) => row.id === id);
-    if (!task || task.status === status || pendingIds.current.has(id)) return;
+    if (!task || task.status === status || pendingIds.current.has(id)) return false;
     const generation = loadGeneration.current;
     pendingIds.current.add(id);
     setSavingIds((previous) => [...previous, id]);
@@ -98,11 +98,13 @@ export default function Dashboard() {
       if (generation === loadGeneration.current) {
         setTasks((previous) => previous.map((row) => row.id === id ? response.data : row));
       }
+      return generation === loadGeneration.current;
     } catch {
       if (generation === loadGeneration.current) {
         setTasks((previous) => previous.map((row) => row.id === id ? task : row));
         setSaveError(true);
       }
+      return false;
     } finally {
       pendingIds.current.delete(id);
       setSavingIds((previous) => previous.filter((value) => value !== id));
@@ -231,7 +233,7 @@ export default function Dashboard() {
         </Alert>}
         <TaskBoard tasks={tasks} crops={crops} fields={fields} beds={beds} plans={plans}
           members={members} savingIds={savingIds} filters={filters} onFiltersChange={setFilters}
-          onStatusChange={(id, status) => { void changeStatus(id, status); }}
+          onStatusChange={changeStatus}
           hasSeason={Boolean(seasonId)} onCreate={() => {
             if (seasonId) setEditor(null);
             else context?.requestSeasonCreation();

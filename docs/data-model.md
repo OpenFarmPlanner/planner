@@ -307,3 +307,6 @@ never stored. See [Germination](./germination.md) for the field contract.
 Task synchronization (#894) retains generated deletion identities in server-owned
 `deleted_at` (hidden from task API reads), and uses SET_NULL for the planting-plan
 relation to preserve completed and manually managed work after plan removal.
+
+UserProjectSettings.task_drag_hint_done stores permanent retirement of the task
+moving introduction per user, independently of project and table-edit hints.

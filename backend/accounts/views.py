@@ -7,7 +7,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.tokens import default_token_generator
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone, translation
@@ -35,7 +35,6 @@ from .emails import (
     _uses_local_non_delivery_email_backend,
 )
 from .guest_demo import create_guest_demo_session, delete_guest_demo_session
-from .table_edit_hint import record_table_edit_hint_event, serialize_table_edit_hint
 from .models import (
     AccountDeletionRequest,
     AccountEmailChangeRequest,
@@ -43,6 +42,12 @@ from .models import (
     PendingActivation,
     PublicProfile,
     UserProjectSettings,
+)
+from .registration_abuse import record_registration_success, registration_ip_limit_exceeded
+from .registration_alerts import (
+    RegistrationAlertMixin,
+    RegistrationFailure,
+    report_registration_failure,
 )
 from .serializers import (
     AccountDeleteRequestSerializer,
@@ -61,13 +66,8 @@ from .serializers import (
     RegisterSerializer,
     ResendActivationSerializer,
     TableEditHintEventSerializer,
+    TaskDragHintEventSerializer,
     UserSerializer,
-)
-from .registration_abuse import record_registration_success, registration_ip_limit_exceeded
-from .registration_alerts import (
-    RegistrationAlertMixin,
-    RegistrationFailure,
-    report_registration_failure,
 )
 from .services import (
     _clear_activation_expiry,
@@ -80,6 +80,7 @@ from .services import (
 from .services import (
     record_verified_email as _record_verified_email,
 )
+from .table_edit_hint import record_table_edit_hint_event, serialize_table_edit_hint
 from .turnstile import TurnstileOutcome, turnstile_enabled, verify_turnstile_token
 
 User = get_user_model()
@@ -832,3 +833,25 @@ class PasswordResetConfirmView(APIView):
         user.set_password(serializer.validated_data['password'])
         user.save(update_fields=['password'])
         return Response({'detail': _de(_('Password has been reset successfully.'))})
+
+
+class AccountTaskDragHintView(APIView):
+    """Retire the optional task-moving introduction for the authenticated user."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        row = getattr(request.user, 'project_settings', None)
+        return Response({'done': getattr(row, 'task_drag_hint_done', False)})
+
+    def post(self, request: Request) -> Response:
+        serializer = TaskDragHintEventSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            row, _ = (
+                UserProjectSettings.objects.select_for_update().get_or_create(user=request.user)
+            )
+            if not row.task_drag_hint_done:
+                row.task_drag_hint_done = True
+                row.save(update_fields=['task_drag_hint_done', 'updated_at'])
+        return Response({'done': True})
