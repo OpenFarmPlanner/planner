@@ -1,3 +1,4 @@
+from .crops.views.task_templates import CropTaskTemplateViewSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter, SimpleRouter
 from .agent_api.views import (
@@ -77,6 +78,7 @@ router.register(r'seed-packages', SeedPackageViewSet)
 router.register(r'planting-plans', PlantingPlanViewSet)
 router.register(r'seasons', SeasonViewSet)
 router.register(r'tasks', TaskViewSet)
+router.register(r'crop-task-templates', CropTaskTemplateViewSet)
 router.register(r'projects', ProjectViewSet, basename='projects')
 router.register(r'api-tokens', ProjectApiTokenViewSet, basename='api-tokens')
 

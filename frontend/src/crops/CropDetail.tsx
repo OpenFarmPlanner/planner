@@ -1,6 +1,7 @@
 import { cropAPI } from '../api/api';
 import { CropForm } from './CropForm';
 import { buildCropSavePayload } from '../pages/cropsSaveUtils';
+import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
 /**
  * Crop Detail component with searchable dropdown and detailed crop information view.
  */
@@ -1177,6 +1178,9 @@ const detailSectionGridSx = {
 
             <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} />
 
+            <Divider sx={{ mb: 2.5 }} />
+
+            {selectedCrop.id !== undefined && <CropTaskTemplatesSection key={selectedCrop.id} cropId={selectedCrop.id} />}
             <Divider sx={{ mb: 2.5 }} />
 
             {/* Timing Section */}

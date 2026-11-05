@@ -215,3 +215,23 @@ and reinstates cascade deletion, so retained tasks should be reviewed before rol
 Supplier-specific crop data is edited from its own crop-details section, outside
 the general crop editor. See [Supplier seed status](supplier-seed-status.md#independent-editing-898)
 for the independent PATCH contract and preservation of packaging/status data.
+
+## Crop task templates (#895)
+
+Crop details contain an independently saved Task templates section, outside the
+crop editor. CRUD uses `/api/crop-task-templates/`, scoped to the active project,
+with an optional exact crop filter. Templates belong to one active crop and cannot
+be reassigned. Titles are required; descriptions are optional. Reference events
+are propagation start, sowing, planting, harvest start or harvest end. Signed
+calendar-day offsets range from −3650 to 3650; unknown/out-of-range dates produce
+no task. Rules apply to that exact crop, not implicitly to related varieties.
+
+Template creation/update reconciles existing assigned plans; new plans instantiate
+their crop's templates. Tasks retain a nullable template FK and stable identity
+`plan:<id>:template:<id>` with occurrence zero. Existing titles and descriptions
+remain snapshots so custom edits survive; offsets/references update open dates
+through the same override/completion policy as automatic events. Deleted templates
+remain hidden tombstones: open non-overridden tasks are cancelled, completed and
+manually dated work survives. Deleted task identities suppress regeneration.
+Migration 0132 adds the template model and nullable task FK. Reverse removes
+template rules and provenance, retaining task rows. Recurrence follows in #896.

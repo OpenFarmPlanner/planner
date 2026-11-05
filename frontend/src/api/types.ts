@@ -1711,3 +1711,16 @@ export interface TaskWritePayload {
   assigned_to: number | null;
   season?: number;
 }
+
+export type TaskReferenceEvent = 'propagation_start' | 'sowing' | 'planting' | 'harvest_start' | 'harvest_end';
+export interface CropTaskTemplateWrite {
+  crop: number;
+  title: string;
+  description: string;
+  reference_event: TaskReferenceEvent;
+  day_offset: number;
+}
+export interface CropTaskTemplate extends CropTaskTemplateWrite {
+  id: number;
+  project: number;
+}

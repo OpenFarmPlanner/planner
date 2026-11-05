@@ -303,6 +303,9 @@ class Task(TimestampedModel):
         max_length=20, default='manual',
         choices=[('manual', 'Manual'), ('automatic', 'Automatic'), ('template', 'Template')],
     )
+    template = models.ForeignKey(
+        'CropTaskTemplate', on_delete=models.SET_NULL, related_name='tasks', null=True, blank=True,
+    )
     deleted_at = models.DateTimeField(null=True, blank=True)
     calculated_due_date = models.DateField(null=True, blank=True)
     due_date_overridden = models.BooleanField(default=False)
@@ -324,3 +327,26 @@ class Task(TimestampedModel):
                 condition=~models.Q(source_key=''), name='unique_task_source_occurrence',
             ),
         ]
+
+
+class CropTaskTemplate(TimestampedModel):
+    """A project crop's independently saved task rule."""
+
+    EVENT_CHOICES = [
+        ('propagation_start', 'Propagation start'), ('sowing', 'Direct sowing'),
+        ('planting', 'Transplanting'), ('harvest_start', 'Harvest start'),
+        ('harvest_end', 'Harvest end'),
+    ]
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='task_templates')
+    crop = models.ForeignKey(Crop, on_delete=models.CASCADE, related_name='task_templates')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    reference_event = models.CharField(max_length=30, choices=EVENT_CHOICES)
+    day_offset = models.IntegerField(default=0, help_text='Calendar days relative to the event.')
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['title', 'id']
+
+    def __str__(self) -> str:
+        return self.title

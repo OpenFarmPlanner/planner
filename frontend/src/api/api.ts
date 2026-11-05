@@ -779,3 +779,10 @@ export const taskAPI = {
   delete: (id: number) => http.delete(`/tasks/${id}/`),
   updateStatus: (id: number, status: TaskStatus) => http.patch<Task>(`/tasks/${id}/`, { status }),
 };
+
+export const cropTaskTemplateAPI = {
+  list: (crop: number) => fetchAllPaginated<import('./types').CropTaskTemplate>(`/crop-task-templates/?crop=${crop}`),
+  create: (data: import('./types').CropTaskTemplateWrite) => http.post<import('./types').CropTaskTemplate>('/crop-task-templates/', data),
+  update: (id: number, data: import('./types').CropTaskTemplateWrite) => http.patch<import('./types').CropTaskTemplate>(`/crop-task-templates/${id}/`, data),
+  delete: (id: number) => http.delete(`/crop-task-templates/${id}/`),
+};

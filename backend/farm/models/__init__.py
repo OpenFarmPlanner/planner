@@ -54,7 +54,7 @@ from .crops import (  # noqa: E402
 from .feedback import Feedback  # noqa: E402
 from .history import BatchOperation, CropRevision, EntityRevision, ProjectRevision  # noqa: E402
 from .notes import NoteAttachment  # noqa: E402
-from .planning import PlantingPlan, Task  # noqa: E402
+from .planning import CropTaskTemplate, PlantingPlan, Task  # noqa: E402
 from .projects import (  # noqa: E402
     AgentLoginToken,
     MediaFile,
@@ -79,6 +79,7 @@ __all__ = [
     'CropRevision',
     'CropSupplierData',
     'CropTimingWindow',
+    'CropTaskTemplate',
     'EntityRevision',
     'Feedback',
     'Field',

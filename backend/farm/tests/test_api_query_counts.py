@@ -570,6 +570,22 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
 
 
+    def test_task_templates_list_query_count(self) -> None:
+        from farm.models import CropTaskTemplate
+
+        for index in range(ROW_COUNT):
+            CropTaskTemplate.objects.create(
+                project=self.project, crop=Crop.objects.filter(project=self.project).first(),
+                title=f'Template {index}', reference_event='planting',
+            )
+        self.assert_list_query_count('/openfarmplanner/api/crop-task-templates/', 5)
+        CropTaskTemplate.objects.bulk_create([
+            CropTaskTemplate(project=self.project, crop_id=row.crop_id,
+                             title=f'Extra {row.pk}', reference_event='sowing')
+            for row in CropTaskTemplate.objects.filter(project=self.project)
+        ])
+        self.assert_list_query_count('/openfarmplanner/api/crop-task-templates/', 5, 2 * ROW_COUNT)
+
     def test_public_crops_list_query_count(self):
         """Species translations, description translations, the species status
         behind `crop_species_status` and the active project's imported copies

@@ -1757,5 +1757,22 @@
     "propagationShort": "La durée en pépinière est plus courte que la durée de germination.",
     "invalidNumber": "Saisissez un nombre valide ; les jours doivent être des entiers positifs ou nuls.",
     "invalidRange": "Le maximum doit être supérieur ou égal au minimum."
+  },
+  "taskTemplates": {
+    "title": "Modèles de tâches",
+    "add": "Ajouter un modèle",
+    "edit": "Modifier le modèle",
+    "delete": "Supprimer le modèle",
+    "empty": "Aucun modèle de tâche.",
+    "hint": "Les modèles créent des tâches individuelles pour les plans de cette culture.",
+    "loadError": "Impossible de charger les modèles.",
+    "saveError": "Impossible d’enregistrer le modèle.",
+    "reference": "Événement de référence",
+    "offset": "Décalage en jours",
+    "offsetHint": "Valeurs négatives avant l’événement, positives après (−3650 à 3650).",
+    "offsetValue": "Décalage : {{days}} jours",
+    "editNamed": "Modifier le modèle : {{title}}",
+    "deleteNamed": "Supprimer le modèle : {{title}}",
+    "deleteConfirm": "Supprimer le modèle « {{title}} » ? Les tâches terminées et les dates modifiées manuellement sont conservées."
   }
 }

@@ -69,7 +69,9 @@ def generate_plan_tasks(
         project_id=plan.project_id, planting_plan=plan, season__isnull=True,
     ).update(season_id=plan.season_id)
     created = []
-    for event, due_date in plan_event_dates(plan, crop_index).items():
+    events = plan_event_dates(plan, crop_index)
+    generate_template_tasks(plan, events)
+    for event, due_date in events.items():
         if event == 'harvest_end' and not include_harvest_end:
             continue
         task, was_created = Task.objects.get_or_create(
@@ -126,6 +128,7 @@ def synchronize_plan_tasks(plan: PlantingPlan) -> None:
     crop_index = build_general_crop_index(plan.project_id)
     generate_plan_tasks(plan, crop_index=crop_index)
     events = plan_event_dates(plan, crop_index)
+    synchronize_template_tasks(plan, events)
     for task in Task.objects.select_for_update().filter(
         project_id=plan.project_id, planting_plan=plan, origin='automatic', deleted_at__isnull=True,
     ):
@@ -156,4 +159,57 @@ def detach_plan_tasks(plan: PlantingPlan) -> None:
         if (task.origin != 'manual' and task.status in ('pending', 'in_progress')
                 and not task.due_date_overridden):
             changes['status'] = 'cancelled'
+        _save_synchronized_task(task, changes)
+
+
+def _template_due_date(template: Any, events: dict[str, date]) -> date | None:
+    reference = events.get(template.reference_event)
+    if reference is None or template.deleted_at is not None:
+        return None
+    try:
+        return reference + timedelta(days=template.day_offset)
+    except OverflowError:
+        return None
+
+
+def generate_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:
+    from farm.models import CropTaskTemplate
+
+    for template in CropTaskTemplate.objects.filter(
+        project_id=plan.project_id, crop_id=plan.crop_id, deleted_at__isnull=True,
+    ):
+        due = _template_due_date(template, events)
+        if due is None:
+            continue
+        Task.objects.get_or_create(
+            project_id=plan.project_id,
+            source_key=f'plan:{plan.pk}:template:{template.pk}', occurrence_index=0,
+            defaults={
+                'planting_plan': plan, 'season_id': plan.season_id, 'crop_id': plan.crop_id,
+                'template': template, 'title': template.title, 'description': template.description,
+                'origin': 'template', 'due_date': due, 'calculated_due_date': due,
+            },
+        )
+
+
+def synchronize_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:
+    generate_template_tasks(plan, events)
+    for task in Task.objects.select_for_update().select_related('template').filter(
+        project_id=plan.project_id, planting_plan=plan, origin='template', deleted_at__isnull=True,
+    ):
+        if task.status in ('completed', 'cancelled'):
+            continue
+        template = task.template
+        due = _template_due_date(template, events) if (
+            template is not None and template.crop_id == plan.crop_id
+            and template.project_id == plan.project_id
+        ) else None
+        changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
+        if due is not None:
+            changes['calculated_due_date'] = due
+            if not task.due_date_overridden:
+                changes['due_date'] = due
+        elif not task.due_date_overridden:
+            changes['status'] = 'cancelled'
+            changes['calculated_due_date'] = None
         _save_synchronized_task(task, changes)
