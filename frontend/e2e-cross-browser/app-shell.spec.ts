@@ -44,8 +44,11 @@ test.describe('app shell', () => {
 
     await expectNoHorizontalPageOverflow(page);
     await expectNoBrokenValues(page);
-    // The fixed clock puts "today" on 15 May 2026: the first upcoming task is due that day.
-    await expect(page.getByRole('main')).toContainText('15.5.2026');
+    // The dashboard now displays persisted tasks instead of deriving event dates.
+    await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+    for (const status of ['Offen', 'In Arbeit', 'Erledigt']) {
+      await expect(page.getByRole('region', { name: status, exact: true })).toBeVisible();
+    }
   });
 
   test('main navigation is reachable and navigates', async ({ page }, testInfo) => {
