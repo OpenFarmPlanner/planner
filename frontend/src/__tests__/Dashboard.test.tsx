@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Dashboard from '../pages/Dashboard';
@@ -331,6 +331,26 @@ describe('Dashboard', () => {
     expect(mocks.taskEdit.mock.calls[0][1].title).toBe('Start propagation');
     expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('planting_plan');
     expect(mocks.taskEdit.mock.calls[0][1]).not.toHaveProperty('crop');
+  });
+
+  it('rolls back only the failed task while another concurrent move remains saved', async () => {
+    const firstTask = task();
+    const secondTask = task({ id: 2, title: 'Wässern' });
+    mocks.taskList.mockResolvedValue({ results: [firstTask, secondTask] });
+    let rejectFirst!: (reason: Error) => void;
+    let resolveSecond!: (value: { data: Task }) => void;
+    const first = new Promise<{ data: Task }>((_resolve, reject) => { rejectFirst = reject; });
+    const second = new Promise<{ data: Task }>((resolve) => { resolveSecond = resolve; });
+    mocks.taskUpdate.mockImplementation((id: number) => id === 1 ? first : second);
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'In Arbeit', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Status ändern: Wässern' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Erledigt', exact: true }));
+    await act(async () => { resolveSecond({ data: { ...secondTask, status: 'completed' } }); });
+    await act(async () => { rejectFirst(new Error('offline')); });
+    expect(within(screen.getByRole('region', { name: 'Offen', exact: true })).getByRole('article', { name: 'Jäten', exact: true })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Erledigt', exact: true })).getByRole('article', { name: 'Wässern', exact: true })).toBeInTheDocument();
   });
 
 });

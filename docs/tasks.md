@@ -6,6 +6,11 @@ history and the legacy `/openfarmplanner/api/tasks/` mount remain compatible.
 The dashboard added in #891 consumes these persisted tasks; #893 generates
 known planting-plan events automatically.
 
+## Verification
+
+[Task workflow verification](task-test-coverage.md) maps the integration contracts
+to automated tests and records the deliberate edge-case policies for the epic.
+
 ## Ownership and relations
 
 Tasks belong to a project and season. New API tasks require a season: pass
@@ -53,9 +58,9 @@ lookups are project-scoped; `X-Season-Id` additionally scopes both when present.
   and status. Empty source keys permit unrelated manual/legacy tasks.
 
 The synchronizer (#894) updates only open, non-overridden effective dates and
-preserves completed tasks. Template relations and rules (#895), recurrence
-expansion and limits (#896) remain deferred.
-The metadata and unique constraint prepare those paths. Generation runs on
+preserves completed tasks. Templates (#895) and recurrence expansion/limits
+(#896) use the same stable identity and preservation rules, described below.
+Generation runs on
 explicit write paths; no GET requests create tasks.
 
 ## Filters
@@ -234,7 +239,7 @@ through the same override/completion policy as automatic events. Deleted templat
 remain hidden tombstones: open non-overridden tasks are cancelled, completed and
 manually dated work survives. Deleted task identities suppress regeneration.
 Migration 0132 adds the template model and nullable task FK. Reverse removes
-template rules and provenance, retaining task rows. Recurrence follows in #896.
+template rules and provenance, retaining task rows. Recurrence is described below.
 
 Project-bound API tokens can list/read crop task templates; session-only CRUD
 remains enforced and the public schema publishes only those two GET operations.
