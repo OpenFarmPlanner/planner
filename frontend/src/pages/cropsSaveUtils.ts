@@ -90,7 +90,7 @@ export function omitInheritedLibraryValues(crop: Crop, libraryValues: Partial<Cr
   return result;
 }
 
-const mapSupplierDataRowToInput = (row: CropSupplierData): CropSupplierDataInput => ({
+export const mapSupplierDataRowToInput = (row: CropSupplierData): CropSupplierDataInput => ({
   id: row.id,
   supplier_id: row.supplier_id ?? row.supplier?.id ?? null,
   supplier_name_input: row.supplier_name_input,

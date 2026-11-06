@@ -1,6 +1,36 @@
 import { test, expect } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
+test('template sections and dialogs support all UI languages and compact viewports', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `template-languages-${testInfo.workerIndex}`);
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', { name: 'Template language example' });
+  await apiRequest(page, 'POST', '/crop-task-templates/', {
+    crop: crop.id, title: 'Recurring check', reference_event: 'planting', day_offset: -3,
+    repeat_interval_days: 7, repeat_until: 'count', repeat_count: 3,
+  });
+  for (const language of [
+    { code: 'de', title: 'Aufgabenvorlagen', add: 'Vorlage hinzufügen', field: 'Titel' },
+    { code: 'en', title: 'Task templates', add: 'Add template', field: 'Title' },
+    { code: 'fr', title: 'Modèles de tâches', add: 'Ajouter un modèle', field: 'Titre' },
+    { code: 'es', title: 'Plantillas de tareas', add: 'Añadir plantilla', field: 'Título' },
+  ]) {
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language.code });
+    await page.goto(`/app/crops?cropId=${crop.id}`);
+    const section = page.getByRole('region', { name: language.title, exact: true });
+    await expect(section.getByText('Recurring check', { exact: true })).toBeVisible();
+    for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(viewport);
+      expect(await section.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    }
+    await section.getByRole('button', { name: language.add, exact: true }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: language.add, exact: true });
+    await expect(dialog.getByRole('textbox', { name: language.field, exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+  }
+});
+
 test('crop details save templates independently and instantiate plan tasks', async ({ page, request }, testInfo) => {
   await loginWithDeterministicProject(page, request, `task-template-${testInfo.workerIndex}`, { loginAsAdmin: true });
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {

@@ -628,7 +628,7 @@ describe('CropDetail Component', () => {
     
     expect(screen.getByRole('heading', { level: 2, name: 'Tomato' })).toBeInTheDocument();
     expect(screen.getAllByText('Cherry').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' })).toBeInTheDocument();
   });
 
   it('displays the localized name for imported crops linked to translated species', () => {
@@ -672,13 +672,13 @@ describe('CropDetail Component', () => {
     expect(sectionTitles).toEqual([
       'Fruchtfolge-Eigenschaften',
       'Mischkultur',
-      'Aufgabenvorlagen',
       'Zeitplanung',
       'Keimung',
       'Zeiträume',
+      'Aufgabenvorlagen',
       'Abstände',
       'Saatgut',
-      'Kulturspezifische Lieferantendaten',
+      'Lieferantendaten',
       'Ernte',
       'Notizen',
     ]);
@@ -789,9 +789,9 @@ describe('CropDetail Component', () => {
 
     const seedHeading = screen.getByRole('heading', { level: 6, name: 'Saatgut' });
     const harvestHeading = screen.getByRole('heading', { level: 6, name: 'Ernte' });
-    const supplierSubheading = screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' });
+    const supplierSubheading = screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' });
 
-    expect(screen.getAllByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 6, name: 'Lieferantendaten' })).toHaveLength(1);
     expect(seedHeading.compareDocumentPosition(supplierSubheading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(supplierSubheading.compareDocumentPosition(harvestHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -972,7 +972,7 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' })).toBeInTheDocument();
     expect(screen.queryByText('Die folgenden Angaben gelten nur für den ausgewählten Lieferanten dieser Kultur.')).not.toBeInTheDocument();
     expect(screen.getByText('ReinSaat')).toBeInTheDocument();
     expect(screen.getByText('5 g, 10 g, 25 g')).toBeInTheDocument();
@@ -1082,8 +1082,8 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
-    expect(screen.getByText('Die folgenden Angaben gelten nur für den ausgewählten Lieferanten dieser Kultur.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Die folgenden Angaben gelten nur für den ausgewählten Lieferanten dieser Kultur.')).toHaveAttribute('tabindex', '0');
     expect(screen.getByText('Alpha Seeds')).toBeInTheDocument();
     expect(screen.getByText('Beta Seeds')).toBeInTheDocument();
     expect(screen.getByText('5 g')).toBeInTheDocument();
@@ -1369,7 +1369,8 @@ describe('CropDetail Component', () => {
         />
       );
 
-      const infoIcon = screen.getByTestId('InfoOutlinedIcon');
+      const heading = screen.getByRole('heading', { name: 'Sorten' });
+      const infoIcon = within(heading.parentElement!).getByTestId('InfoOutlinedIcon');
       await user.hover(infoIcon);
       expect(await screen.findByRole('tooltip')).toHaveTextContent(
         'Nur Merkmale werden angezeigt, die vom allgemeinen Kultur-Wert abweichen.'

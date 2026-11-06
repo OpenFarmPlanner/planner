@@ -265,3 +265,53 @@ test('supplier editor retains failed drafts and explicitly clears all supplier r
   const saved = await apiRequest<{ name: string; notes: string; supplier_data: unknown[] }>(page, 'GET', `/crops/${crop.id}/`);
   expect(saved).toMatchObject({ name: 'Keep identity', notes: 'Keep notes', supplier_data: [] });
 });
+
+test('supplier section adds, edits and deletes one offer without changing other crop data', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `supplier-section-${testInfo.workerIndex}`);
+  const suppliers: { id: number; name: string }[] = [];
+  for (const name of ['Offer A', 'Offer B', 'Offer C']) {
+    suppliers.push(await apiRequest(page, 'POST', '/suppliers/', { name }));
+  }
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Independent offers', notes: 'Keep these crop notes',
+    supplier_data_input: [
+      { supplier_id: suppliers[0].id, supplier_product_name: 'Original A', packaging_sizes: [{ size_value: 25, size_unit: 'g' }] },
+      { supplier_id: suppliers[1].id, supplier_product_name: 'Original B', packaging_sizes: [{ size_value: 100, size_unit: 'seeds' }] },
+    ],
+  });
+  await page.goto(`/app/crops?cropId=${crop.id}`);
+  const section = page.getByRole('region', { name: 'Lieferantendaten', exact: true });
+  const add = section.getByRole('button', { name: 'Lieferanteninformation hinzufügen' });
+  await add.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
+  await dialog.getByRole('combobox', { name: 'Saatgutlieferant', exact: true }).click();
+  await page.getByRole('option', { name: 'Offer C', exact: true }).click();
+  await dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' }).fill('New C');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(section.getByText('New C', { exact: true })).toBeVisible();
+
+  await section.getByRole('button', { name: 'Lieferantendaten bearbeiten: Offer B', exact: true }).click();
+  await expect(dialog.getByTestId('crop-supplier-data-row')).toHaveCount(1);
+  await dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' }).fill('Updated B');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await section.getByRole('button', { name: 'Lieferantendaten löschen: Offer C', exact: true }).click();
+  const confirm = page.getByRole('dialog', { name: 'Lieferantendaten löschen', exact: true });
+  await confirm.getByRole('button', { name: 'Löschen', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(confirm).not.toBeVisible();
+  await page.reload();
+  await expect(section.getByText('Updated B', { exact: true })).toBeVisible();
+  await expect(section.getByText('New C', { exact: true })).toHaveCount(0);
+  const saved = await apiRequest<{ notes: string; supplier_data: { supplier: { id: number }; packaging_sizes: unknown[] }[] }>(page, 'GET', `/crops/${crop.id}/`);
+  expect(saved.notes).toBe('Keep these crop notes');
+  expect(saved.supplier_data).toHaveLength(2);
+  expect(saved.supplier_data.find((row) => row.supplier.id === suppliers[0].id)?.packaging_sizes).toEqual([{ size_value: 25, size_unit: 'g' }]);
+  expect(saved.supplier_data.find((row) => row.supplier.id === suppliers[1].id)?.packaging_sizes).toEqual([{ size_value: 100, size_unit: 'seeds' }]);
+  for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    expect(await section.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  }
+});

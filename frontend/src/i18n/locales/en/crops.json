@@ -1734,6 +1734,21 @@
     "interval": "Interval in days",
     "until": "Repeat until",
     "count": "Number of tasks",
-    "repeatHint": "Each occurrence is a separate task. At most 1000 tasks per template and planting plan."
+    "repeatHint": "Each occurrence is a separate task. At most 1000 tasks per template and planting plan.",
+    "once": "Single task",
+    "repeatEvery_one": "Every {{count}} day",
+    "repeatEvery_other": "Every {{count}} days",
+    "occurrences_one": "{{count}} task",
+    "occurrences_other": "{{count}} tasks",
+    "repeatUntilEvent": "Until {{event}}"
+  },
+  "supplierData": {
+    "title": "Supplier data",
+    "editNamed": "Edit supplier data: {{supplier}}",
+    "deleteNamed": "Delete supplier data: {{supplier}}",
+    "delete": "Delete supplier data",
+    "deleteConfirm": "Delete supplier data from “{{supplier}}” for this crop? The supplier itself is kept.",
+    "deleteError": "Could not delete the supplier data.",
+    "changed": "This offer has changed or been removed. Reload the crop and try again."
   }
 }
