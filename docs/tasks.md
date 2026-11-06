@@ -6,6 +6,11 @@ history and the legacy `/openfarmplanner/api/tasks/` mount remain compatible.
 The dashboard added in #891 consumes these persisted tasks; #893 generates
 known planting-plan events automatically.
 
+## Verification
+
+[Task workflow verification](task-test-coverage.md) maps the integration contracts
+to automated tests and records the deliberate edge-case policies for the epic.
+
 ## Ownership and relations
 
 Tasks belong to a project and season. New API tasks require a season: pass
@@ -256,8 +261,3 @@ Disabling recurrence retains index zero and cancels surplus open rows. Migration
 0133 defaults existing rules to a single occurrence; rollback drops rule settings
 while preserving task occurrences and their history. Migration 0134 also enforces
 positive bounded intervals and counts at database level.
-
-## Verification
-
-[Task workflow verification](task-test-coverage.md) maps the integration contracts
-to automated tests and records the deliberate edge-case policies for the epic.

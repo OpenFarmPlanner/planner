@@ -53,3 +53,12 @@ Relevant local tests, typecheck, lint, production build and visual checks are
 run before feature PRs; the full backend/frontend and cross-browser suites run
 in CI. Screenshot baselines are reviewed for intended changes, never updated
 merely to make a failing comparison pass.
+
+## Outstanding visual validation
+
+For epic #889, the maintainer requested continuing without manual screenshot
+review. The mobile Chromium and mobile Firefox crop-library comparisons differ
+after the new task-template section. Their baselines remain unchanged; review
+and reference-image maintenance are tracked separately in
+[issue #939](https://github.com/OpenFarmPlanner/planner/issues/939). This exception
+does not waive functional tests or other CI failures.
