@@ -243,3 +243,34 @@ describe('CropsImportDialog', () => {
     expect(swatches[0]).toHaveStyle({ backgroundColor: '#b91c1c' });
   });
 });
+
+it.each([
+  ['de', 'Mitte April bis Ende April'],
+  ['en', 'mid April to late April'],
+  ['fr', 'mi-avril à fin avril'],
+  ['es', 'mediados de abril a finales de abril'],
+])('previews parsed shorthand in long form in %s', async (language, expected) => {
+  const { default: i18n } = await import('../i18n/config');
+  const originalLanguage = i18n.language;
+  await i18n.changeLanguage(language);
+  try {
+    render(<CropsImportDialog
+      open
+      importState={buildState({ previewResults: [{ index: 0, status: 'create', import_data: {
+        name: 'Carrot',
+        timing_windows: [{ kind: 'direct_sowing', unit: 'decade', start_month: 4,
+          start_decade: 'mid', end_month: 4, end_decade: 'late' }],
+      } }] })}
+      hasImportableEntries
+      confirmUpdates={false}
+      onConfirmUpdatesChange={vi.fn()}
+      onClose={vi.fn()}
+      onImportStart={vi.fn()}
+      t={i18n.getFixedT(language, 'crops')}
+    />);
+    expect(screen.getByText(expected, { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('04b-04c')).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage(originalLanguage);
+  }
+});

@@ -140,6 +140,36 @@ class ParserTest(SimpleTestCase):
                 parsed = parse_timing_window_cell('direct_sowing', case['text'][language])
                 self.assertEqual(parsed, [_window(window) for window in case['windows']])
 
+    def test_short_decades_and_week_forms(self):
+        cases = {
+            '04a-04c': decade(4, 'early', 4, 'late'),
+            '4a-4c': decade(4, 'early', 4, 'late'),
+            '04A–04C': decade(4, 'early', 4, 'late'),
+            '03b bis 05a': decade(3, 'mid', 5, 'early'),
+            '04b': decade(4, 'mid', 4, 'mid'),
+            '10a-03c': decade(10, 'early', 3, 'late'),
+            'KW10-14': weeks(10, 14),
+            'W10–14': weeks(10, 14),
+            'W10-14': weeks(10, 14),
+            'KW10–14': weeks(10, 14),
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(self.parse_one(text), expected)
+                for language in LANGUAGES:
+                    self.assertEqual(self.parse_one(format_window(expected, language)), expected)
+        self.assertEqual(
+            parse_timing_window_cell('direct_sowing', '04b-04c; W10-14\nAnfang Mai'),
+            [decade(4, 'mid', 4, 'late'), weeks(10, 14), decade(5, 'early', 5, 'early')],
+        )
+
+    def test_invalid_short_decades_are_not_guessed(self):
+        for text in ('04d', '04m', '13a-13c', '00a', '004a', 'm-spät'):
+            with self.subTest(text=text):
+                self.assert_rejected(text, ERROR_NOT_RECOGNIZED)
+        self.assert_rejected('04e', ERROR_DAY_DATES)
+        self.assert_rejected('04a-', ERROR_OPEN_END)
+
     def test_accepted_decade_forms(self):
         cases = {
             'Anfang März bis Ende April': decade(3, 'early', 4, 'late'),
@@ -394,6 +424,25 @@ class TimingWindowApiTest(ProjectApiTestCase):
 
 
 class TimingWindowImportTest(ProjectApiTestCase):
+    def test_mixed_formats_in_one_column_preview_and_store_the_same_windows(self):
+        values = ['04b-04c', 'Mitte April bis Ende April', 'KW10-14',
+                  '04b-04c; W10-14; Mitte Mai']
+        rows = [{'name': f'Mixed {index}', 'direct_sowing_windows': value}
+                for index, value in enumerate(values)]
+        results = self.preview(rows).data['results']
+        for result, value in zip(results, values, strict=True):
+            self.assertNotIn('timing_window_issues', result)
+            self.assertEqual(result['import_data']['timing_windows'],
+                             [window.as_dict() for window in
+                              parse_timing_window_cell('direct_sowing', value)])
+        self.assertEqual(self.apply(rows).data['created_count'], len(rows))
+        for index, value in enumerate(values):
+            crop = Crop.objects.get(name=f'Mixed {index}')
+            self.assertEqual(
+                [TimingWindow.from_model(row) for row in crop.timing_windows.order_by('position')],
+                parse_timing_window_cell('direct_sowing', value),
+            )
+
     def test_a_window_in_the_harvest_duration_column_is_reported(self):
         rows = [
             {'name': 'Kürbis', 'harvest_duration_days_text': 'Juli bis September'},

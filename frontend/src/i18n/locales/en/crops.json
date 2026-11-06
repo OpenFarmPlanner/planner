@@ -718,7 +718,7 @@
         "color": "“{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is chosen.",
         "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”.",
         "exportTip": "Easiest: export your crops and use the file as a template.",
-        "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible.",
+        "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible. You can write time windows in full (“early March to late April”), as calendar weeks (“week 10 to 14”) or using the month and third (“03a-04c”). Here a means the first, b the second and c the last third of the month. The preview shows how we read each value.",
         "catalogColumns": "Columns such as “Start indoors” or “Sow outdoors” from seed catalogues are recognized automatically."
       }
     },
@@ -1679,7 +1679,7 @@
       "weekRange": "week {{start}} to {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "“{{value}}” is not a time of year. You can write, for example, “early March to late April” or “week 10 to 14”.",
+      "timing_window_not_recognized": "“{{value}}” is not a time window. Examples include “early March to late April”, “week 10 to 14” or “03a-04c”.",
       "timing_window_open_end": "“{{value}}”: please give a start and an end, for example “March to May”.",
       "timing_window_ambiguous_slash": "“{{value}}” is ambiguous. Write “March to April” for one window, “March; April” for two.",
       "timing_window_day_dates": "Day dates are not supported. Please use thirds of a month (for example “mid March”) or calendar weeks (for example “week 11”).",

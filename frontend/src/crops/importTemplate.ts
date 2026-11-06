@@ -1,5 +1,6 @@
 import type { Crop } from '../api/types';
 import { buildSheetData, downloadSpreadsheet, type SpreadsheetExportFormat } from './spreadsheetExport';
+import { CROP_COLUMNS } from './spreadsheetColumns';
 import { emptyTimingWindow } from './timingWindows';
 
 type TemplateT = (key: string, options?: Record<string, unknown>) => string;
@@ -69,7 +70,14 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
   },
 ] as Crop[];
 
-export const buildCropImportTemplateRows = (t: TemplateT) => buildSheetData(buildTemplateCrops(t), t);
+export const buildCropImportTemplateRows = (t: TemplateT) => {
+  const rows = buildSheetData(buildTemplateCrops(t), t);
+  const columnIndex = (key: string) => CROP_COLUMNS.findIndex((column) => column.key === key);
+  rows[1][columnIndex('pre_cultivation_windows')] = '02b-03c';
+  rows[1][columnIndex('planting_windows')] = 'KW19-22';
+  rows[3][columnIndex('direct_sowing_windows')] = '03a-06c; W30';
+  return rows;
+};
 
 export const downloadCropImportTemplate = (t: TemplateT, format: SpreadsheetExportFormat = 'ods'): void => {
   downloadSpreadsheet(buildCropImportTemplateRows(t), format, `${TEMPLATE_FILENAME_STEM}.${format}`);

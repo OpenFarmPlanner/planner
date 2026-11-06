@@ -174,7 +174,18 @@ space-insensitively:
   principios/mediados/finales.
 - Forms: third to third, one third, month to month, one month, month to third
   and the reverse (a month alone means Anfang as a start and Ende as an end).
-- Weeks: "KW 10", "KW10", "KW 10 bis 14", "KW 10 bis KW 14", "CW 10",
+- Import-only numeric thirds: `04a-04c` (all April), `4a-4c` (same),
+  `03b-05a` (mid March to early May), `04b` (one third), `10a-03c`
+  (across New Year). Month 1–12, optional leading zero; letters are
+  case-insensitive: **a = days 1–10, b = days 11–20, c = day 21 to month end**.
+  Hyphen, en/em dash and `bis` separate endpoints, with optional surrounding
+  spaces. Other letters, invalid months and incomplete ranges are rejected.
+- Formats are detected per window: `04b-04c; KW10-14; Anfang Mai` is valid,
+  as are mixed formats in one column or file. No format selector or new unit.
+  The preview displays parsed windows in the UI language, including new crops.
+  Export always writes the canonical long form in the export language;
+  shorthand is for import only. All four languages import back identically.
+- Weeks: `KW10-14`, `W10-14`, `KW10–14`, `W10–14`, "KW 10", "KW10", "KW 10 bis 14", "KW 10 bis KW 14", "CW 10",
   "week 10 to 14", "semaine(s) 10 à 14", "semana(s) 10 a 14".
 
 Nothing is guessed. A cell that does not fit is rejected as a whole and
@@ -222,3 +233,11 @@ Each date is resolved in its own year. The findings are
 date cell like a harvest overlap (dotted info underline, tooltip), the mobile
 card shows an icon, the dialog an info alert. The planting-plan filter
 "Zeiträume" → "Außerhalb der Zeiträume" shows only plans with such a hint.
+
+### Excel date cells
+
+The XLSX reader does not interpret number formats or date styles. An Excel
+serial date arrives as a number and is sent as its numeric text in a window
+column; it is rejected by the window parser, never converted to a month or
+third. An ISO date stored with XLSX type `d` remains text and is rejected as a
+day date. Enter window values as text. This behavior is unchanged.
