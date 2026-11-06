@@ -119,6 +119,21 @@ class DemoFeatureCoverageTests(TestCase):
         self.assertTrue(tasks.filter(due_date_overridden=True, status="completed").exists())
         self.assertFalse(tasks.exclude(season__project=self.project).exists())
 
+    def test_dashboard_work_remains_visible_in_november_and_at_year_boundaries(self) -> None:
+        for today in [date(2031, 11, 6), date(2031, 12, 31), date(2032, 1, 1)]:
+            with (
+                self.subTest(today=today),
+                patch("farm.services.demo_project.demo_current_year", return_value=today.year),
+                patch("farm.services.demo_project.timezone.localdate", return_value=today),
+            ):
+                project = create_or_reset_demo_project().project
+                season = Season.objects.filter(project=project).order_by("-start_date").first()
+                manual = Task.objects.filter(project=project, season=season, origin="manual")
+                self.assertEqual(manual.count(), 7)
+                self.assertTrue(manual.filter(due_date=today, status="in_progress").exists())
+                self.assertTrue(manual.filter(due_date__lt=today, status="pending").exists())
+                self.assertTrue(manual.filter(due_date__gt=today, status="pending").exists())
+
     def test_rules_create_individually_completable_occurrences_without_duplicates(self) -> None:
         templates = CropTaskTemplate.objects.filter(project=self.project)
         self.assertEqual(templates.count(), 3)
