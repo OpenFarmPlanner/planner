@@ -337,7 +337,8 @@
       "not_approved": "Aucune autorisation",
       "not_required": "Non requise",
       "unknown": "Inconnu"
-    }
+    },
+    "editSupplierData": "Modifier les données fournisseur"
   },
   "messages": {
     "createSuccess": "Culture créée avec succès",

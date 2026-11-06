@@ -6,7 +6,8 @@ crop. `seed_status` accepts `organic`, `in_conversion`, `conventional`, or
 `not_required`, or `unknown`. Both default to `unknown`; API clients can omit
 them. Empty strings, null and unrecognised choices are rejected. An update
 that omits either field preserves its stored value. Choosing Unknown resets it.
-The existing supplier-data section in the crop editor edits these values.
+The dedicated supplier-data section on crop details edits these values through
+an independently saved dialog; the general crop editor omits supplier fields.
 There is no new seed-management module or automatic approval workflow.
 
 ## Domain limits
@@ -53,3 +54,20 @@ validation and omission behaviour as ordinary edits.
 Supplier deletion/undo explicitly carries both statuses, and legacy undo
 payloads without them restore `unknown`. Project history snapshots include
 the fields through the existing model-field serializer.
+
+
+## Independent editing (#898)
+
+Crop details expose a dedicated supplier section and editor. It reuses the
+existing supplier/package controls, inline supplier creation, validation,
+keyboard save shortcut and draft/discard handling. Saving sends only
+`supplier_data_input` through PATCH on the crop endpoint. Crop identity, timing,
+spacing and other metadata are not part of that request. Existing row IDs,
+packaging values, status fields and other offer data are preserved. Removing all
+rows sends an explicit empty list; a legacy preferred supplier does not recreate
+them. Failed saves retain the draft.
+
+The normal crop editor omits supplier writes, so an unrelated crop edit cannot
+overwrite offers saved independently. No schema or seed-demand formula changes
+are required; the existing supplier-specific packaging/TKG/germination resolution
+and supplier-selection behavior remain in use.

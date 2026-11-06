@@ -191,3 +191,9 @@ batched snapshot behavior. Recurrence expansion is implemented in #896 using the
 same per-occurrence identity policy. Schema migration 0131 adds the tombstone and
 changes the plan FK to SET_NULL; rollback loses tombstone suppression metadata
 and reinstates cascade deletion, so retained tasks should be reviewed before rollback.
+
+## Supplier details (#898)
+
+Supplier-specific crop data is edited from its own crop-details section, outside
+the general crop editor. See [Supplier seed status](supplier-seed-status.md#independent-editing-898)
+for the independent PATCH contract and preservation of packaging/status data.

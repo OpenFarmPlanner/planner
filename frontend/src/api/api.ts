@@ -62,6 +62,7 @@ import type {
   CompanionReplaceItem,
   CropCompanion,
   CropSupplierData,
+  CropSupplierDataInput,
   SupplierDeleteResponse,
   SupplierDeleteUsage,
   SupplierDeleteUndoPayload,
@@ -150,6 +151,8 @@ export const cropAPI = {
   seedRateConstraints: () => http.get<SeedRateConstraintsResponse>('/crops/seed-rate-constraints/'),
   create: (data: Crop) => http.post<Crop>('/crops/', withActiveProject(data)),
   update: (id: number, data: Crop) => http.put<Crop>(`/crops/${id}/`, withActiveProject(data)),
+  updateSupplierData: (id: number, rows: CropSupplierDataInput[]) =>
+    http.patch<Crop>(`/crops/${id}/`, { supplier_data_input: rows }),
   deletePreview: (id: number) => http.get<CropDeletePreview>(`/crops/${id}/delete-preview/`),
   delete: (id: number) => http.delete(`/crops/${id}/`),
   history: (id: number) => http.get<CropHistoryEntry[]>(`/crops/${id}/history/`),

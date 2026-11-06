@@ -628,7 +628,7 @@ describe('CropDetail Component', () => {
     
     expect(screen.getByRole('heading', { level: 2, name: 'Tomato' })).toBeInTheDocument();
     expect(screen.getAllByText('Cherry').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { level: 3, name: 'Lieferant' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
   });
 
   it('displays the localized name for imported crops linked to translated species', () => {
@@ -677,6 +677,7 @@ describe('CropDetail Component', () => {
       'Zeiträume',
       'Abstände',
       'Saatgut',
+      'Kulturspezifische Lieferantendaten',
       'Ernte',
       'Notizen',
     ]);
@@ -775,7 +776,7 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('Expected yield')).toBeInTheDocument();
   });
 
-  it('renders supplier seed data once inside the seed section', () => {
+  it('renders supplier data once in its own section after seed details', () => {
     const mockOnSelect = vi.fn();
     renderCropDetail(
       <CropDetail
@@ -787,9 +788,9 @@ describe('CropDetail Component', () => {
 
     const seedHeading = screen.getByRole('heading', { level: 6, name: 'Saatgut' });
     const harvestHeading = screen.getByRole('heading', { level: 6, name: 'Ernte' });
-    const supplierSubheading = screen.getByRole('heading', { level: 3, name: 'Lieferant' });
+    const supplierSubheading = screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' });
 
-    expect(screen.getAllByRole('heading', { level: 3, name: 'Lieferant' })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toHaveLength(1);
     expect(seedHeading.compareDocumentPosition(supplierSubheading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(supplierSubheading.compareDocumentPosition(harvestHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -970,7 +971,7 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { level: 3, name: 'Lieferant' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
     expect(screen.queryByText('Die folgenden Angaben gelten nur für den ausgewählten Lieferanten dieser Kultur.')).not.toBeInTheDocument();
     expect(screen.getByText('ReinSaat')).toBeInTheDocument();
     expect(screen.getByText('5 g, 10 g, 25 g')).toBeInTheDocument();
@@ -1080,7 +1081,7 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { level: 3, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Kulturspezifische Lieferantendaten' })).toBeInTheDocument();
     expect(screen.getByText('Die folgenden Angaben gelten nur für den ausgewählten Lieferanten dieser Kultur.')).toBeInTheDocument();
     expect(screen.getByText('Alpha Seeds')).toBeInTheDocument();
     expect(screen.getByText('Beta Seeds')).toBeInTheDocument();

@@ -145,6 +145,8 @@ interface CropFormProps {
   onSwitchToAddVariety?: (speciesCrop: Crop) => void;
   title?: string;
   variant?: 'project' | 'publicLibrary';
+  /** The dedicated supplier editor reuses these controls without general crop fields. */
+  section?: 'crop' | 'supplierData';
   extraSections?: ReactNode;
   /** The library entry's neighbours, edited in the library form's "Mischkultur" section. */
   libraryCompanions?: readonly PublicCropCompanion[];
@@ -423,6 +425,7 @@ export function CropForm({
   onSwitchToAddVariety,
   title,
   variant = 'project',
+  section = 'crop',
   extraSections,
   libraryCompanions,
   hasExternalChanges = false,
@@ -439,7 +442,7 @@ export function CropForm({
     () => (isProjectForm ? collectProjectTags(crops ?? []) : undefined),
     [crops, isProjectForm],
   );
-  const showSupplierDataSection = isProjectForm;
+  const showSupplierDataSection = isProjectForm && section === 'supplierData';
   const showVarietyField = !isProjectForm || formKind === 'variety';
   const requireVariety = isProjectForm && formKind === 'variety';
   const showFirstVarietyField = isProjectForm && formKind === 'crop' && !isEdit;
@@ -479,6 +482,12 @@ export function CropForm({
         : {}),
       ...(canLinkOnCreate && pendingLibraryLink ? { link_public_crop: pendingLibraryLink.id } : {}),
     };
+    if (isProjectForm && !showSupplierDataSection) {
+      delete dataToSave.supplier_data;
+      delete dataToSave.supplier;
+      delete dataToSave.supplier_product_url;
+      delete dataToSave.supplier_data_input;
+    }
     // The Name field displays the species' current translated name
     // (crop_display_name) so a rename elsewhere shows up immediately, but
     // that translation is language-dependent — submitting it verbatim would
@@ -725,11 +734,16 @@ export function CropForm({
 
   // Validate on every change
   const validateAndSet = useCallback((draft: Partial<Crop>, mode: 'live' | 'submit' = hasSubmitted ? 'submit' : 'live') => {
+    if (showSupplierDataSection) {
+      setErrors({});
+      setIsValid(true);
+      return true;
+    }
     const result = validateCrop(draft, t, mode, requireVariety, seedRateUnitConstraints);
     setErrors(result.errors);
     setIsValid(result.isValid);
     return result.isValid;
-  }, [hasSubmitted, requireVariety, seedRateUnitConstraints, t]);
+  }, [hasSubmitted, requireVariety, seedRateUnitConstraints, showSupplierDataSection, t]);
 
   useEffect(() => {
     if (!isProjectForm) {
@@ -1231,13 +1245,13 @@ export function CropForm({
       return;
     }
     setHasSubmitted(true);
-    const companionsValid = companionRows.validate();
+    const companionsValid = showSupplierDataSection || companionRows.validate();
     if (!validateAndSet(formData, 'submit') || !companionsValid) return;
     if (showSupplierDataSection && hasSupplierDataRowMissingSupplier(formData.supplier_data)) {
       setSaveError(t('form.supplierDataMissingSupplier'));
       return;
     }
-    if (duplicateErrorKey || isDuplicateChecking) return;
+    if (!showSupplierDataSection && (duplicateErrorKey || isDuplicateChecking)) return;
     isSavingRef.current = true;
     setIsSaving(true);
     try {
@@ -1265,6 +1279,13 @@ export function CropForm({
           timing_windows: stripTimingWindowsMatchingBaseline(formData.timing_windows ?? [], timingWindowBaseline),
         }
         : strippedData;
+      if (showSupplierDataSection) {
+        await onSave({ ...crop, ...formData } as Crop, undefined);
+        setSaveError('');
+        setIsDirty(false);
+        setHasSubmitted(false);
+        return;
+      }
       await saveCrop(libraryPinnableFields.length > 0
         ? { ...dataToSave, library_pinned_fields: libraryPinnedFieldsForSave(formData) }
         : dataToSave);
@@ -1287,7 +1308,7 @@ export function CropForm({
   const displayErrors = duplicateErrorKey
     ? { ...errors, [duplicateErrorField]: errors[duplicateErrorField] || t(duplicateErrorKey) }
     : errors;
-  const isSaveDisabled = isSaving || !isValid || Boolean(duplicateErrorKey) || isDuplicateChecking;
+  const isSaveDisabled = isSaving || (!showSupplierDataSection && (!isValid || Boolean(duplicateErrorKey) || isDuplicateChecking));
   const saveDisabledTooltip = duplicateErrorKey === 'form.cropNameConflict'
     ? t('form.cropNameConflict')
     : '';
@@ -1458,6 +1479,7 @@ export function CropForm({
           tabIndex={-1}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+            {!showSupplierDataSection && <>
             <Typography variant="h6">{t('form.generalInfoSectionTitle')}</Typography>
             {!isProjectForm ? (
               <Box
@@ -1619,6 +1641,7 @@ export function CropForm({
               <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />
             ) : null}
             {extraSections}
+            </>}
             {showSupplierDataSection ? (
               <Box
                 data-testid="crop-supplier-data-section"
@@ -1629,7 +1652,6 @@ export function CropForm({
                   mt: 1,
                 }}
               >
-                <Typography variant="h6">{t('form.supplierDataSectionTitle')}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   {t('form.supplierDataSectionDescription')}
                 </Typography>

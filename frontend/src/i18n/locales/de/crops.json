@@ -332,7 +332,8 @@
       "not_approved": "Keine Genehmigung",
       "not_required": "Nicht erforderlich",
       "unknown": "Unbekannt"
-    }
+    },
+    "editSupplierData": "Lieferantendaten bearbeiten"
   },
   "messages": {
     "createSuccess": "Kultur erfolgreich erstellt",

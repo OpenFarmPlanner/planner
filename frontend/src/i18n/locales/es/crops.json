@@ -337,7 +337,8 @@
       "not_approved": "Sin autorización",
       "not_required": "No necesaria",
       "unknown": "Desconocido"
-    }
+    },
+    "editSupplierData": "Editar datos de proveedores"
   },
   "messages": {
     "createSuccess": "Cultivo creado correctamente",

@@ -1172,6 +1172,36 @@ class CropApiTest(ProjectApiTestCase):
         self.assertNotIn('crop', response.data)
         self.assertEqual(CropSupplierData.objects.filter(crop=self.crop, supplier=supplier).count(), 1)
 
+    def test_independent_supplier_patch_preserves_crop_and_package_identity(self) -> None:
+        supplier = Supplier.objects.create(name='Independent', project=self.project)
+        row = CropSupplierData.objects.create(
+            crop=self.crop, supplier=supplier, project=self.project,
+        )
+        package = SeedPackage.objects.create(
+            crop=self.crop, project=self.project, size_value=25, size_unit='g',
+        )
+        original_name = self.crop.name
+        response = self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {
+            'supplier_data_input': [{
+                'id': row.pk, 'supplier_id': supplier.pk, 'supplier_product_name': 'Updated',
+                'seed_status': 'conventional', 'seed_exemption_status': 'approved',
+                'packaging_sizes': [{'size_value': 25, 'size_unit': 'g'}],
+            }],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.crop.refresh_from_db()
+        row.refresh_from_db()
+        self.assertEqual(self.crop.name, original_name)
+        self.assertEqual(row.supplier_product_name, 'Updated')
+        self.assertEqual(row.seed_status, 'conventional')
+        self.assertTrue(SeedPackage.objects.filter(pk=package.pk, crop=self.crop).exists())
+        self.assertEqual(float(row.packaging_sizes[0]['size_value']), 25)
+        response = self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {
+            'supplier_data_input': [],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(CropSupplierData.objects.filter(pk=row.pk).exists())
+
     def test_crop_update_ignores_empty_supplier_data_rows(self):
         payload = {
             'id': self.crop.id,

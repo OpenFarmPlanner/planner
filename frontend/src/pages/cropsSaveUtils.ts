@@ -17,7 +17,7 @@ import { VARIETY_INHERITABLE_FIELDS } from '../crops/varietyValueSource';
 import { arePublicValuesEqual } from '../crop-library/components/publicCropLibrary/formatters';
 
 export type CropSavePayload = Crop & {
-  supplier_id: number | null;
+  supplier_id?: number | null;
   supplier_name?: string;
   supplier?: undefined;
 };
@@ -112,7 +112,7 @@ const isSeedRateCultivationType = (value: unknown): value is CultivationType => 
 
 export function buildCropSavePayload(crop: Crop): CropSavePayload {
   const supplierPayloadRows: CropSupplierDataInput[] = [];
-  if (Array.isArray(crop.supplier_data) && crop.supplier_data.length > 0) {
+  if (Array.isArray(crop.supplier_data)) {
     supplierPayloadRows.push(
       ...crop.supplier_data
         .filter((row) => !isEmptySupplierDataRow(row))
@@ -157,9 +157,11 @@ export function buildCropSavePayload(crop: Crop): CropSavePayload {
     seed_rate_value: seedRateFallbackFields.seed_rate_value,
     seed_rate_by_cultivation: seedRateFallbackFields.seed_rate_by_cultivation,
     seeding_requirement_type: normalizeSeedingRequirementType(crop.seeding_requirement_type),
-    supplier_id: crop.supplier?.id || null,
-    supplier_name: crop.supplier && !crop.supplier.id ? crop.supplier.name : undefined,
-    supplier_data_input: supplierPayloadRows,
+    ...(crop.supplier_data !== undefined || crop.supplier !== undefined ? {
+      supplier_id: crop.supplier?.id || null,
+      supplier_name: crop.supplier && !crop.supplier.id ? crop.supplier.name : undefined,
+      supplier_data_input: supplierPayloadRows,
+    } : {}),
     supplier: undefined,
   };
 

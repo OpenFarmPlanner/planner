@@ -108,7 +108,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     expect(screen.getByText('hierarchy.ownValueLegendSample')).toBeInTheDocument();
 
@@ -152,7 +152,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     expect(screen.queryByText('hierarchy.ownValueLegendSample')).not.toBeInTheDocument();
   });
@@ -166,7 +166,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     expect(screen.queryByText('hierarchy.ownValueLegendSample')).not.toBeInTheDocument();
   });
@@ -183,7 +183,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     // A non-invariant inherited field (row spacing) still shows the Kultur's
     // value and keeps the inherited-field tooltip.
@@ -210,7 +210,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     const cropFamilyField = screen.getByLabelText('form.cropFamily');
     await waitFor(() => expect(cropFamilyField).toHaveValue('Carrot family'));
@@ -231,7 +231,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     // Set an own value in a field the Kultur does not supply, so the form is
     // dirty and actually submits.
@@ -261,7 +261,7 @@ describe('CropForm variety override highlighting', () => {
       />
     );
 
-    await waitFor(() => expect(supplierListMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     fireEvent.change(screen.getByLabelText('form.rowSpacingCm'), { target: { value: '55' } });
     const saveButton = screen.getByRole('button', { name: 'form.save' });
