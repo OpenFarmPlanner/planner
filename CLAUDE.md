@@ -541,5 +541,13 @@ content patterns live, commented, in the triage step's `env` block.
 - **Security review reporting:** no log file. The summary comment states the
   reviewed commit SHA, the changed files and the result; unfixed findings get
   an inline comment and a `security` issue (see "Security Review Protocol").
+- **Subscription fallback:** if Claude's security review reports an exhausted
+  usage allowance, a separate job requests native Codex Security Review via
+  `@codex security review`, using the linked user's GitHub token. Other errors
+  still fail the job. The request uses the ChatGPT/Codex allowance, without an
+  OpenAI API key. It runs asynchronously and reports findings; it does not
+  apply Claude's automatic fixes. A green request job confirms delivery only,
+  not a completed or clean review. Setup and follow-up expectations live in
+  `docs/security-automation.md`.
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.

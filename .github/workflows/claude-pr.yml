@@ -5,7 +5,9 @@
 # (anthropics/claude-code-action@v1), which fixes every finding directly on
 # the PR branch, one commit per finding, and posts a summary comment. A
 # review without findings pushes nothing, so the reviewed SHA stays the head
-# and CI is not re-triggered; no review writes a log file.
+# and CI is not re-triggered; no review writes a log file. Exhausted Claude
+# security-review allowance requests native Codex Security Review using the
+# linked subscription.
 #
 # The trigger criteria, labels and fix rules are summarized in CLAUDE.md
 # ("Automated Claude PR Review"). All path and content patterns the triage
@@ -74,6 +76,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+
+      - name: Test security fallback automation
+        run: |
+          python3 -m unittest discover -s tests -p test_claude_review_fallback.py
+          node --test tests/test_codex_security_request.cjs
 
       - name: Decide which reviews to run
         id: decide
@@ -569,6 +576,8 @@ jobs:
       needs.code-review.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      codex_fallback: ${{ steps.fallback.outputs.codex_fallback }}
     permissions:
       contents: write
       pull-requests: write
@@ -589,6 +598,8 @@ jobs:
       - *install-frontend
 
       - name: Run Claude security review
+        id: claude-security
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -687,3 +698,46 @@ jobs:
               change") every fix that changes API behavior, response formats,
               UI flows, data or migrations, and (with "❓ Uncertain") every
               fix for a finding you were not sure about.
+
+      - name: Check whether Claude exhausted its allowance
+        id: fallback
+        if: ${{ !cancelled() && steps.claude-security.outcome != 'skipped' }}
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude-security.outcome }}
+          CLAUDE_EXECUTION_FILE: ${{ steps.claude-security.outputs.execution_file }}
+        run: python3 scripts/ci/claude_review_fallback.py
+
+  codex-security-fallback:
+    name: Request Codex security review (subscription)
+    needs: [triage, security-review]
+    if: >-
+      !cancelled() &&
+      needs.triage.result == 'success' &&
+      needs.triage.outputs.security_review == 'true' &&
+      needs.triage.outputs.self_changed != 'true' &&
+      needs.triage.outputs.self_push != 'true' &&
+      needs.security-review.result == 'success' &&
+      needs.security-review.outputs.codex_fallback == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # Load automation from the reviewed base, never from the PR checkout.
+      # The personal token is available only to the comment-posting step.
+      - name: Checkout trusted automation
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Request subscription-backed Codex Security Review
+        uses: actions/github-script@v8
+        with:
+          # A linked user's identity is needed for subscription usage.
+          # Prefer a dedicated token; RELEASE_PAT already serves this user.
+          github-token: ${{ secrets.CODEX_REVIEW_GITHUB_TOKEN || secrets.RELEASE_PAT }}
+          script: |
+            const requestReview = require('./.github/scripts/request-codex-security-review.cjs');
+            await requestReview({ github, context, core });
