@@ -69,6 +69,8 @@ test('mobile list supports status changes with the keyboard and filters', async 
   await page.getByRole('menuitem', { name: 'In Arbeit', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('region', { name: 'In Arbeit', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+  await expect(page.getByTestId('task-drag-hint')).toBeVisible();
+  expect(await apiRequest(page, 'GET', '/auth/account/task-drag-hint/')).toEqual({ done: false });
   await page.getByRole('button', { name: 'Aufgaben filtern' }).click();
   await page.getByRole('combobox', { name: 'Zeitraum' }).click();
   await page.getByRole('option', { name: 'Eigener Zeitraum' }).click();
