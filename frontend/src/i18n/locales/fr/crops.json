@@ -740,7 +740,7 @@
         "color": "« {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est choisie.",
         "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} ».",
         "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle.",
-        "timingWindows": "« {{columns}} » : périodes en décades ou en semaines, par exemple « {{decadeExample}} », « {{monthExample}} » ou « {{weekExample}} ». Séparez plusieurs périodes par « ; ». Les dates précises ne sont pas possibles.",
+        "timingWindows": "« {{columns}} » : périodes en décades ou en semaines, par exemple « {{decadeExample}} », « {{monthExample}} » ou « {{weekExample}} ». Séparez plusieurs périodes par « ; ». Les dates précises ne sont pas possibles. Vous pouvez écrire les périodes en toutes lettres (« début mars à fin avril »), en semaines (« semaines 10 à 14 ») ou avec le mois et la décade (« 03a-04c »). La lettre a désigne la première décade, b la deuxième et c la dernière. L’aperçu montre comment nous avons interprété chaque valeur.",
         "catalogColumns": "Les colonnes des catalogues de semences comme « Semis sous abri » ou « Semis en pleine terre » sont reconnues automatiquement."
       }
     },
@@ -1723,7 +1723,7 @@
       "weekRange": "semaines {{start}} à {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "« {{value}} » n’est pas une période de l’année. Écrivez par exemple « début mars à fin avril » ou « semaines 10 à 14 ».",
+      "timing_window_not_recognized": "« {{value}} » n’est pas une période. Exemples possibles : « début mars à fin avril », « semaines 10 à 14 » ou « 03a-04c ».",
       "timing_window_open_end": "« {{value}} » : veuillez indiquer un début et une fin, par exemple « mars à mai ».",
       "timing_window_ambiguous_slash": "« {{value}} » est ambigu. Écrivez « mars à avril » pour une période, « mars; avril » pour deux.",
       "timing_window_day_dates": "Les dates précises ne sont pas prises en charge. Utilisez des décades (par exemple « mi-mars ») ou des semaines (par exemple « semaine 11 »).",

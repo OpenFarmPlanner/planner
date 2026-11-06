@@ -39,7 +39,7 @@ ERROR_HARVEST_NOT_IMPORTED = 'timing_window_harvest_not_imported'
 
 PARSE_ERROR_MESSAGES: dict[str, str] = {
     ERROR_NOT_RECOGNIZED: (
-        'Not a time of year. Use e.g. "early March to late April" or "week 10 to 14".'
+        'Not a time of year. Use e.g. "early March to late April" or "week 10 to 14" or "03a-04c".'
     ),
     ERROR_OPEN_END: 'Give a start and an end, e.g. "March to May".',
     ERROR_AMBIGUOUS_SLASH: (
@@ -165,6 +165,7 @@ def _parse_part(kind: str, part: str) -> TimingWindow:
         raise TimingWindowParseError(ERROR_DAY_DATES, part)
     if '/' in normalized:
         raise TimingWindowParseError(ERROR_AMBIGUOUS_SLASH, part)
+    normalized = _expand_short_decades(normalized)
     tokens = [_classify(word) for word in _split_words(normalized)]
     if any(token.kind == 'unknown' for token in tokens):
         raise TimingWindowParseError(ERROR_NOT_RECOGNIZED, part)
@@ -183,6 +184,21 @@ def _parse_part(kind: str, part: str) -> TimingWindow:
     if not start_tokens or not end_tokens:
         raise TimingWindowParseError(ERROR_OPEN_END, part)
     return _range_window(kind, _parse_side(start_tokens, part), _parse_side(end_tokens, part), part)
+
+
+def _expand_short_decades(text: str) -> str:
+    """Expand only complete numeric thirds, keeping the existing range parser."""
+    thirds = {'a': 'early', 'b': 'mid', 'c': 'late'}
+    months = {
+        1: 'january', 2: 'february', 3: 'march', 4: 'april',
+        5: 'may', 6: 'june', 7: 'july', 8: 'august',
+        9: 'september', 10: 'october', 11: 'november', 12: 'december',
+    }
+
+    def expand(match: re.Match[str]) -> str:
+        return f'{thirds[match[2]]} {months[int(match[1])]}'
+
+    return re.sub(r'(?<!\w)(0?[1-9]|1[0-2])([abc])(?!\w)', expand, text)
 
 
 def _normalize(part: str) -> str:
