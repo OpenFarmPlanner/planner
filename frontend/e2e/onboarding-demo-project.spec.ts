@@ -46,10 +46,10 @@ test.describe('first-project onboarding', () => {
     await page.goto(`/app/crops?cropId=${tomato!.crop}`);
     await expect(page.getByText('Tomaten anbinden', { exact: true })).toBeVisible();
     await expect(page.getByText('Solanum lycopersicum', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+    await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).first().click();
     const suppliers = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
     await expect(suppliers).toBeVisible();
-    await expect(suppliers.getByRole('combobox', { name: 'Saatgutstatus' })).toHaveCount(2);
+    await expect(suppliers.getByRole('combobox', { name: 'Saatgutstatus' })).toHaveCount(1);
     await suppliers.getByRole('button', { name: 'Abbrechen' }).click();
   });
 

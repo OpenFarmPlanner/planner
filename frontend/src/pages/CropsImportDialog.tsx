@@ -79,6 +79,7 @@ const renderCropLabel = (result: ImportPreviewResult): string => (
 );
 
 function NewCropsSection({ entries, t }: { entries: ImportPreviewResult[]; t: Translator }) {
+  const { t: cropsT } = useTranslation('crops');
   if (!entries.length) {
     return null;
   }
@@ -91,7 +92,12 @@ function NewCropsSection({ entries, t }: { entries: ImportPreviewResult[]; t: Tr
       <List dense>
         {entries.map((result) => (
           <ListItem key={result.index}>
-            <ListItemText primary={renderCropLabel(result)} />
+            <ListItemText
+              primary={renderCropLabel(result)}
+              secondary={Array.isArray(result.import_data.timing_windows)
+                ? formatImportValue(result.import_data.timing_windows, 'timing_windows', cropsT)
+                : undefined}
+            />
           </ListItem>
         ))}
       </List>
@@ -128,6 +134,11 @@ function UpdateCandidatesSection({
               primary={renderCropLabel(result)}
               secondary={result.diff && result.diff.length > 0 ? t('import.fieldsChanged', { count: result.diff.length }) : t('import.noChanges')}
             />
+            {Array.isArray(result.import_data.timing_windows) && (
+              <Typography variant="body2" color="text.secondary">
+                {formatImportValue(result.import_data.timing_windows, 'timing_windows', cropsT)}
+              </Typography>
+            )}
             {result.diff && result.diff.length > 0 && (
               <Box sx={{ ml: 2, fontSize: '0.875rem' }}>
                 {result.diff.map((change, index) => (

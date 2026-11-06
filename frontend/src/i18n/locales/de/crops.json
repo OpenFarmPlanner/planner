@@ -718,7 +718,7 @@
         "color": "„{{column}}“ als Hex-Code, z. B. #2E7D32. Ohne Angabe wird eine Farbe gewählt.",
         "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“.",
         "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage.",
-        "timingWindows": "„{{columns}}“: Zeiträume in Monatsdritteln oder Kalenderwochen, zum Beispiel „{{decadeExample}}“, „{{monthExample}}“ oder „{{weekExample}}“. Mehrere Zeiträume mit „;“ trennen. Tagesdaten sind nicht möglich.",
+        "timingWindows": "„{{columns}}“: Zeiträume in Monatsdritteln oder Kalenderwochen, zum Beispiel „{{decadeExample}}“, „{{monthExample}}“ oder „{{weekExample}}“. Mehrere Zeiträume mit „;“ trennen. Tagesdaten sind nicht möglich. Zeitangaben kannst du ausschreiben („Anfang März bis Ende April“), als Kalenderwochen („KW 10 bis 14“) oder kurz mit Monat und Drittel schreiben („03a-04c“). Dabei steht a für das erste, b für das zweite und c für das letzte Drittel des Monats. In der Vorschau siehst du, wie wir jeden Wert gelesen haben.",
         "catalogColumns": "Spalten wie „Vorkultur“ oder „Aussaat Freiland“ aus Saatgutkatalogen werden automatisch erkannt."
       }
     },
@@ -1679,7 +1679,7 @@
       "weekRange": "KW {{start}} bis {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "„{{value}}“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“ oder „KW 10 bis 14“.",
+      "timing_window_not_recognized": "„{{value}}“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“.",
       "timing_window_open_end": "„{{value}}“: Bitte Anfang und Ende angeben, zum Beispiel „März bis Mai“.",
       "timing_window_ambiguous_slash": "„{{value}}“ ist mehrdeutig. Für einen Zeitraum „März bis April“ schreiben, für zwei Zeiträume „März; April“.",
       "timing_window_day_dates": "Tagesdaten werden nicht unterstützt. Bitte Monatsdrittel (zum Beispiel „Mitte März“) oder Kalenderwochen (zum Beispiel „KW 11“) verwenden.",
@@ -1734,6 +1734,21 @@
     "interval": "Intervall in Tagen",
     "until": "Wiederholen bis",
     "count": "Anzahl Aufgaben",
-    "repeatHint": "Jede Wiederholung ist eine eigene Aufgabe. Maximal 1000 Aufgaben je Vorlage und Anbauplan."
+    "repeatHint": "Jede Wiederholung ist eine eigene Aufgabe. Maximal 1000 Aufgaben je Vorlage und Anbauplan.",
+    "once": "Einzelne Aufgabe",
+    "repeatEvery_one": "Intervall: {{count}} Tag",
+    "repeatEvery_other": "Intervall: {{count}} Tage",
+    "occurrences_one": "{{count}} Aufgabe",
+    "occurrences_other": "{{count}} Aufgaben",
+    "repeatUntilEvent": "Bis {{event}}"
+  },
+  "supplierData": {
+    "title": "Lieferantendaten",
+    "editNamed": "Lieferantendaten bearbeiten: {{supplier}}",
+    "deleteNamed": "Lieferantendaten löschen: {{supplier}}",
+    "delete": "Lieferantendaten löschen",
+    "deleteConfirm": "Lieferantendaten von „{{supplier}}“ für diese Kultur löschen? Der Lieferant selbst bleibt erhalten.",
+    "deleteError": "Die Lieferantendaten konnten nicht gelöscht werden.",
+    "changed": "Dieses Angebot wurde inzwischen geändert oder entfernt. Lade die Kultur neu und versuche es erneut."
   }
 }

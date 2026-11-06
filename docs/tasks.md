@@ -223,8 +223,12 @@ for the independent PATCH contract and preservation of packaging/status data.
 
 ## Crop task templates (#895)
 
-Crop details contain an independently saved Task templates section, outside the
-crop editor. CRUD uses `/api/crop-task-templates/`, scoped to the active project,
+Crop details contain an independently saved Task templates section after the
+scheduling windows, outside the crop editor. Its compact card follows the
+Varieties section, with help, empty/loading/error states, an Add button and
+per-template Edit/Delete actions. Rows display the reference event, signed day
+offset, recurrence interval and ending condition. CRUD uses the existing
+`/api/crop-task-templates/`, scoped to the active project,
 with an optional exact crop filter. Templates belong to one active crop and cannot
 be reassigned. Titles are required; descriptions are optional. Reference events
 are propagation start, sowing, planting, harvest start or harvest end. Signed

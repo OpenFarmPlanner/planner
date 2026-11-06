@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { Alert, Box, Button, Checkbox, FormControlLabel, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { AppTooltip } from '../components/AppTooltip';
 import { cropTaskTemplateAPI } from '../api/api';
 import type { CropTaskTemplate, CropTaskTemplateWrite, TaskReferenceEvent } from '../api/types';
 import { useTranslation } from '../i18n';
@@ -20,6 +23,7 @@ export function CropTaskTemplatesSection({ cropId }: { cropId: number }) {
   const [busy, setBusy] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const lock = useRef(false);
+  const titleId = useId();
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
@@ -41,18 +45,38 @@ export function CropTaskTemplatesSection({ cropId }: { cropId: number }) {
     } catch { setDeleteError(true); }
     finally { lock.current = false; setBusy(false); }
   };
-  return <Box sx={{ mb: 3 }}>
+  const recurrenceSummary = (row: CropTaskTemplate) => {
+    if (!row.repeat_interval_days) return t('crops:taskTemplates.once');
+    const interval = t('crops:taskTemplates.repeatEvery', { count: row.repeat_interval_days });
+    const end = row.repeat_until === 'count'
+      ? t('crops:taskTemplates.occurrences', { count: row.repeat_count ?? 0 })
+      : row.repeat_until === 'harvest_start' || row.repeat_until === 'harvest_end'
+        ? t('crops:taskTemplates.repeatUntilEvent', { event: t(`dashboard:events.${row.repeat_until}`) })
+        : null;
+    return [interval, end].filter(Boolean).join(' · ');
+  };
+  return <Box component="section" aria-labelledby={titleId}
+    sx={{ mb: 3, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'surface.surfaceBorder', borderRadius: 2, minWidth: 0 }}>
     <Stack direction="row" sx={{ flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
-      <Typography variant="h6">{t('crops:taskTemplates.title')}</Typography>
-      <Button onClick={() => setEditing(null)}>{t('crops:taskTemplates.add')}</Button>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+        <Typography id={titleId} variant="h6">{t('crops:taskTemplates.title')}</Typography>
+        <AppTooltip title={t('crops:taskTemplates.hint')}>
+          <Box component="span" tabIndex={0} sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+            <InfoOutlinedIcon fontSize="small" />
+          </Box>
+        </AppTooltip>
+      </Stack>
+      <Button variant="outlined" startIcon={<AddIcon />} disabled={!loaded}
+        onClick={() => setEditing(null)}>{t('crops:taskTemplates.add')}</Button>
     </Stack>
-    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{t('crops:taskTemplates.hint')}</Typography>
+    {!loaded && !failed && <CircularProgress size={20} aria-label={t('common:messages.loading')} />}
     {failed && <Alert severity="error" action={<LoadRetryButton onClick={() => setRetry((value) => value + 1)} />}>{t('crops:taskTemplates.loadError')}</Alert>}
-    {loaded && rows.length === 0 && <Typography>{t('crops:taskTemplates.empty')}</Typography>}
+    {loaded && rows.length === 0 && <Typography variant="body2" color="text.secondary">{t('crops:taskTemplates.empty')}</Typography>}
     {loaded && rows.map((row) => <Box key={row.id} sx={{ py: 1, borderBottom: 1, borderColor: 'divider', overflowWrap: 'anywhere' }}>
       <Typography sx={{ fontWeight: 600 }}>{row.title}</Typography>
       {row.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{row.description}</Typography>}
       <Typography variant="body2" color="text.secondary">{t(`dashboard:events.${row.reference_event}`)} · {t('crops:taskTemplates.offsetValue', { days: row.day_offset })}</Typography>
+      <Typography variant="body2" color="text.secondary">{recurrenceSummary(row)}</Typography>
       <Button onClick={() => setEditing(row)} aria-label={t('crops:taskTemplates.editNamed', { title: row.title })}>{t('common:actions.edit')}</Button>
       <Button color="error" onClick={() => { setDeleteError(false); setDeleting(row); }} aria-label={t('crops:taskTemplates.deleteNamed', { title: row.title })}>{t('common:actions.delete')}</Button>
     </Box>)}
