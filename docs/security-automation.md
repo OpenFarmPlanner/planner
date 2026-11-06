@@ -77,6 +77,60 @@ rules are summarized in the "Automated Claude PR Review" section of
 [`CLAUDE.md`](../CLAUDE.md#automated-claude-pr-review); the exact patterns
 live in the workflow's triage step.
 
+### Claude allowance fallback to the Codex subscription
+
+When the Claude security review fails with a usage, rate-limit or insufficient
+credit error in its execution report, the workflow requests native
+[Codex Security Review](https://learn.chatgpt.com/docs/security/security-review)
+by posting `@codex security review` on the PR. Other failures (credentials,
+tooling, test failures, unreadable reports) still fail the Claude job; they
+are not treated as allowance exhaustion. The code-review job has no fallback.
+Existing triage, draft/fork/Dependabot exclusions, `skip-claude`, own-fix
+exclusions and the workflow-change guard still apply.
+
+The request uses the linked account's included Codex allowance or ChatGPT
+credits, rather than the separately billed OpenAI API. Prerequisites:
+
+- Connect `OpenFarmPlanner/planner` in Codex settings and enable Security
+  Review access for the workspace. The native feature currently requires
+  Pro, Business, Enterprise or Edu; Plus does not include Security Review.
+- The workflow posts as a GitHub **user** linked to that Codex account. It
+  prefers `CODEX_REVIEW_GITHUB_TOKEN`, a personal token with permission to
+  read this repository's PRs and read/write their comments (Pull requests:
+  read and write for a fine-grained token). If unset, it uses the existing
+  `RELEASE_PAT`; that token's owner must be linked to the intended Codex
+  account and have those permissions. `GITHUB_TOKEN` is not used for this
+  request because its bot identity has no personal subscription.
+- Automatic Codex Security Reviews can remain disabled if Codex should run
+  only as the Claude fallback. The workflow requests the review explicitly.
+
+The token is used only in a separate job which loads automation from the PR's
+base SHA, with checkout credentials disabled. The request records the current
+head SHA (including any pushed Claude code-review fixes) and the originating
+workflow run. Rerunning the workflow does not post a second request for the
+same SHA under the same user. The workflow change must first reach the default
+branch; the existing self-change guard prevents exercising it on its own PR.
+
+**Delivery is not completion.** The green `Request Codex security review
+(subscription)` job confirms that the request comment exists. The actual
+review runs asynchronously in Codex; inspect its task status and Security
+Report before merging. No posted findings is not proof of a completed clean
+review. Subscription entitlement, repository connection, and token-owner
+linking cannot be verified by successfully posting a GitHub comment.
+
+Native Codex Security Review reports findings and remediation guidance. It
+does not execute Claude's automatic per-finding fix commits. Apply findings
+in a follow-up change or explicitly request a Codex fix, and track unresolved
+findings under the existing Security Review Protocol. Branch protection
+requiring the Claude request job alone does not gate on Codex completion.
+
+Local regression checks for this routing and request logic:
+
+```bash
+python3 -m unittest discover -s tests -p test_claude_review_fallback.py
+node --test tests/test_codex_security_request.cjs
+```
+
 ## Security decisions
 
 Durable security decisions that outlive a single PR: accepted risks,
