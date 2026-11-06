@@ -563,6 +563,7 @@ function Crops() {
     setShowForm(true);
   }, []);
 
+  const consumedEditRequestRef = useRef<string | null>(null);
   useEffect(() => {
     if (shouldShowProjectRequiredState || !selectedCrop) {
       return;
@@ -572,7 +573,12 @@ function Crops() {
       return;
     }
 
-    if (!showForm) handleEdit(selectedCrop);
+    // Closing the editor can rerun this effect before URL cleanup settles.
+    const requestKey = `${location.key}:${selectedCrop.id}`;
+    if (consumedEditRequestRef.current !== requestKey) {
+      consumedEditRequestRef.current = requestKey;
+      if (!showForm) handleEdit(selectedCrop);
+    }
     searchParams.delete('action');
     const nextSearch = searchParams.toString();
     navigate(
@@ -582,7 +588,7 @@ function Crops() {
       },
       { replace: true },
     );
-  }, [handleEdit, location.pathname, location.search, navigate, selectedCrop, shouldShowProjectRequiredState, showForm]);
+  }, [handleEdit, location.key, location.pathname, location.search, navigate, selectedCrop, shouldShowProjectRequiredState, showForm]);
 
   const handleOpenHistory = async () => {
     if (!selectedCrop?.id) {
