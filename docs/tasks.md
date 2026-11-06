@@ -238,3 +238,21 @@ template rules and provenance, retaining task rows. Recurrence follows in #896.
 
 Project-bound API tokens can list/read crop task templates; session-only CRUD
 remains enforced and the public schema publishes only those two GET operations.
+
+## Recurring tasks (#896)
+
+Templates optionally repeat every 1–3650 calendar days. The existing signed day
+offset sets the first occurrence. An inclusive harvest-start/harvest-end cutoff or
+a count of 1–1000 ends the sequence; a missing required date creates no occurrences.
+A rule may produce at most 1000 tasks per plan; larger expansions are rejected
+transactionally instead of silently truncating. Plan creation is atomic with task
+generation. Dates beyond the representable calendar are omitted.
+
+Each row keeps its own completion/override and stable zero-based occurrence index.
+Rescheduling moves open dates, and shortening a rule cancels surplus unprotected
+rows. Completed/overridden/deleted/cancelled occurrences retain the same policy as
+single events; cancelled occurrences do not implicitly reopen when a rule expands.
+Disabling recurrence retains index zero and cancels surplus open rows. Migration
+0133 defaults existing rules to a single occurrence; rollback drops rule settings
+while preserving task occurrences and their history. Migration 0134 also enforces
+positive bounded intervals and counts at database level.

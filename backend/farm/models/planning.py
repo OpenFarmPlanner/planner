@@ -343,10 +343,28 @@ class CropTaskTemplate(TimestampedModel):
     description = models.TextField(blank=True)
     reference_event = models.CharField(max_length=30, choices=EVENT_CHOICES)
     day_offset = models.IntegerField(default=0, help_text='Calendar days relative to the event.')
+    repeat_interval_days = models.PositiveIntegerField(null=True, blank=True)
+    repeat_until = models.CharField(max_length=20, blank=True, default='', choices=[
+        ('count', 'Occurrence count'), ('harvest_start', 'Harvest start'),
+        ('harvest_end', 'Harvest end'),
+    ])
+    repeat_count = models.PositiveIntegerField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['title', 'id']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(repeat_interval_days__isnull=True)
+                | models.Q(repeat_interval_days__gte=1, repeat_interval_days__lte=3650),
+                name='task_template_repeat_interval_range',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(repeat_count__isnull=True)
+                | models.Q(repeat_count__gte=1, repeat_count__lte=1000),
+                name='task_template_repeat_count_range',
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.title

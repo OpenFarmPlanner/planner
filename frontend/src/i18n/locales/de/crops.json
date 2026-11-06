@@ -1729,6 +1729,11 @@
     "offsetValue": "Abstand: {{days}} Tage",
     "editNamed": "Vorlage bearbeiten: {{title}}",
     "deleteNamed": "Vorlage löschen: {{title}}",
-    "deleteConfirm": "Vorlage „{{title}}“ löschen? Erledigte Aufgaben und manuell geänderte Termine bleiben erhalten."
+    "deleteConfirm": "Vorlage „{{title}}“ löschen? Erledigte Aufgaben und manuell geänderte Termine bleiben erhalten.",
+    "recurring": "Wiederholen",
+    "interval": "Intervall in Tagen",
+    "until": "Wiederholen bis",
+    "count": "Anzahl Aufgaben",
+    "repeatHint": "Jede Wiederholung ist eine eigene Aufgabe. Maximal 1000 Aufgaben je Vorlage und Anbauplan."
   }
 }

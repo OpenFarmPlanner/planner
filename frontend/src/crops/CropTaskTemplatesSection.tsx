@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Alert, Box, Button, Checkbox, FormControlLabel, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { cropTaskTemplateAPI } from '../api/api';
 import type { CropTaskTemplate, CropTaskTemplateWrite, TaskReferenceEvent } from '../api/types';
 import { useTranslation } from '../i18n';
@@ -76,6 +76,7 @@ function TemplateEditor({ template, cropId, onClose, onSaved }: {
   const [draft, setDraft] = useState<CropTaskTemplateWrite>(template ?? {
     crop: cropId, title: '', description: '', reference_event: 'planting', day_offset: 0,
   });
+  const [recurring, setRecurring] = useState(Boolean(template?.repeat_interval_days));
   const [offset, setOffset] = useState(String(draft.day_offset));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -83,12 +84,18 @@ function TemplateEditor({ template, cropId, onClose, onSaved }: {
   const titleId = useId();
   const fullscreen = useMediaQuery(useTheme().breakpoints.down('md'));
   const validOffset = offset.trim() !== '' && Number.isInteger(Number(offset)) && Math.abs(Number(offset)) <= 3650;
+  const validRepeat = !recurring || (Number.isInteger(draft.repeat_interval_days) && (draft.repeat_interval_days ?? 0) >= 1
+    && (draft.repeat_interval_days ?? 0) <= 3650 && Boolean(draft.repeat_until)
+    && (draft.repeat_until !== 'count' || (Number.isInteger(draft.repeat_count) && (draft.repeat_count ?? 0) >= 1 && (draft.repeat_count ?? 0) <= 1000)));
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (lock.current || !draft.title.trim() || !validOffset) return;
+    if (lock.current || !draft.title.trim() || !validOffset || !validRepeat) return;
     lock.current = true; setBusy(true); setFailed(false);
     try {
-      const payload = { ...draft, title: draft.title.trim(), day_offset: Number(offset) };
+      const payload = { ...draft, title: draft.title.trim(), day_offset: Number(offset),
+        repeat_interval_days: recurring ? draft.repeat_interval_days : null,
+        repeat_until: recurring ? draft.repeat_until : '' as const,
+        repeat_count: recurring && draft.repeat_until === 'count' ? draft.repeat_count : null };
       const response = template ? await cropTaskTemplateAPI.update(template.id, payload) : await cropTaskTemplateAPI.create(payload);
       onSaved(response.data);
     } catch { setFailed(true); }
@@ -112,9 +119,27 @@ function TemplateEditor({ template, cropId, onClose, onSaved }: {
         <TextField type="number" required label={t('crops:taskTemplates.offset')} value={offset} disabled={busy} sx={formGridFieldSx}
           helperText={t('crops:taskTemplates.offsetHint')} error={!validOffset} slotProps={{ htmlInput: { min: -3650, max: 3650, step: 1 } }}
           onChange={(event) => setOffset(event.target.value)} />
+        <FormControlLabel sx={formGridFullRowSx} control={<Checkbox checked={recurring} disabled={busy}
+          onChange={(event) => { setRecurring(event.target.checked); setDraft({ ...draft, repeat_interval_days: draft.repeat_interval_days ?? 7, repeat_until: draft.repeat_until || 'count', repeat_count: draft.repeat_count ?? 3 }); }} />}
+          label={t('crops:taskTemplates.recurring')} />
+        {recurring && <>
+          <TextField type="number" required label={t('crops:taskTemplates.interval')} value={draft.repeat_interval_days ?? ''} disabled={busy} sx={formGridFieldSx}
+            slotProps={{ htmlInput: { min: 1, max: 3650, step: 1 } }}
+            onChange={(event) => setDraft({ ...draft, repeat_interval_days: event.target.value === '' ? null : Number(event.target.value) })} />
+          <TextField select label={t('crops:taskTemplates.until')} value={draft.repeat_until || 'count'} disabled={busy} sx={formGridFieldSx}
+            onChange={(event) => setDraft({ ...draft, repeat_until: event.target.value as CropTaskTemplateWrite['repeat_until'] })}>
+            <MenuItem value="count">{t('crops:taskTemplates.count')}</MenuItem>
+            <MenuItem value="harvest_start">{t('dashboard:events.harvest_start')}</MenuItem>
+            <MenuItem value="harvest_end">{t('dashboard:events.harvest_end')}</MenuItem>
+          </TextField>
+          {draft.repeat_until === 'count' && <TextField type="number" required label={t('crops:taskTemplates.count')} value={draft.repeat_count ?? ''} disabled={busy} sx={formGridFieldSx}
+            slotProps={{ htmlInput: { min: 1, max: 1000, step: 1 } }}
+            onChange={(event) => setDraft({ ...draft, repeat_count: event.target.value === '' ? null : Number(event.target.value) })} />}
+          <Typography variant="body2" color="text.secondary" sx={formGridFullRowSx}>{t('crops:taskTemplates.repeatHint')}</Typography>
+        </>}
       </Box>
     </DialogContent>
     <DialogActions><Button disabled={busy} onClick={close}>{t('common:actions.cancel')}</Button>
-      <Button type="submit" variant="contained" disabled={busy || !draft.title.trim() || !validOffset}>{t('common:actions.save')}</Button></DialogActions>
+      <Button type="submit" variant="contained" disabled={busy || !draft.title.trim() || !validOffset || !validRepeat}>{t('common:actions.save')}</Button></DialogActions>
   </Dialog>;
 }

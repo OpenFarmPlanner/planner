@@ -54,4 +54,18 @@ describe('CropTaskTemplatesSection', () => {
     expect(await within(screen.getByRole('dialog')).findByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Beet vorbereiten')).toBeInTheDocument();
   });
+  it('saves recurring rules with a bounded count and omits count for event endings', async () => {
+    render(<CropTaskTemplatesSection cropId={2} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Vorlage hinzufügen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Vorlage hinzufügen' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Titel' }), { target: { value: 'Gießen' } });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Wiederholen' }));
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'Intervall in Tagen' }), { target: { value: '5' } });
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'Anzahl Aufgaben' }), { target: { value: '4' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
+      repeat_interval_days: 5, repeat_until: 'count', repeat_count: 4,
+    })));
+  });
+
 });

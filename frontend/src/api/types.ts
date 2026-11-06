@@ -1719,6 +1719,9 @@ export interface CropTaskTemplateWrite {
   description: string;
   reference_event: TaskReferenceEvent;
   day_offset: number;
+  repeat_interval_days?: number | null;
+  repeat_until?: '' | 'count' | 'harvest_start' | 'harvest_end';
+  repeat_count?: number | null;
 }
 export interface CropTaskTemplate extends CropTaskTemplateWrite {
   id: number;
