@@ -63,6 +63,7 @@ class UserProjectSettings(models.Model):
         blank=True,
         related_name='last_for_users',
     )
+    task_drag_hint_done = models.BooleanField(default=False)
     table_edit_hint_done = models.BooleanField(
         default=False,
         help_text=(

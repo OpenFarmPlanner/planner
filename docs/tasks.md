@@ -110,6 +110,24 @@ and screen-reader text is translated in de/en/fr/es. Load failures hide the
 board and retain the shared retry flow; filters survive retry.
 
 
+## Optional task-moving introduction (#897)
+
+A dismissible, localized hint explains drag handles and the always-available
+status menu. Compact views explain the menu first. The authenticated user's
+`UserProjectSettings.task_drag_hint_done` flag persists through
+`/auth/account/task-drag-hint/` and is included in `/auth/me/`. GET never creates
+settings. POST accepts `moved` or `dismissed`, sets only that user's flag and is
+idempotent. Migration accounts/0016 defaults existing users to an unseen hint;
+rollback removes only the new preference.
+
+Only a successfully saved drag retires the hint automatically; failed drops,
+no-op moves and menu changes do not. Failed preference writes leave the hint
+visible with a localized retry message. Session state is keyed by user, and
+server state persists across devices/projects. Mouse/touch dragging remains
+optional: every card's status menu works with keyboard and touch. Touch handles
+retain their hold delay to allow normal scrolling elsewhere; live announcements
+name tasks and destination columns, while failed saves announce rollback.
+
 ## Manual tasks (#892)
 
 An incomplete project without a season or tasks keeps the existing focused setup

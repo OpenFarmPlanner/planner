@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, MenuItem,
+  Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, MenuItem,
   Paper, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -14,6 +14,7 @@ import type { ProjectMemberPayload } from '../../api/api';
 import { useTranslation } from '../../i18n';
 import { taskDisplayTitle } from './taskTitles';
 import TaskCard from './TaskCard';
+import { useTaskDragHint } from './useTaskDragHint';
 import { formatCropDisplayName } from '../../crops/cropDisplay';
 import {
   BOARD_STATUSES, EMPTY_TASK_FILTERS, isBoardStatus, taskDateBounds, taskMatchesFilters,
@@ -30,7 +31,7 @@ interface Props {
   savingIds: number[];
   filters: TaskFilters;
   onFiltersChange: (filters: TaskFilters) => void;
-  onStatusChange: (id: number, status: BoardStatus) => void;
+  onStatusChange: (id: number, status: BoardStatus) => Promise<boolean> | void;
   onCreate: () => void;
   hasSeason: boolean;
   onEdit: (task: Task) => void;
@@ -66,6 +67,7 @@ export default function TaskBoard({
 }: Props) {
   const { t } = useTranslation('dashboard');
   const theme = useTheme();
+  const dragHint = useTaskDragHint();
   const compact = useMediaQuery(theme.breakpoints.down('md'));
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -126,14 +128,21 @@ export default function TaskBoard({
     {hasFilters && <Button onClick={() => onFiltersChange({ ...EMPTY_TASK_FILTERS })}>{t('board.resetFilters')}</Button>}
   </Box>;
 
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (over && isBoardStatus(over.id)) onStatusChange(Number(active.id), over.id);
+  const onDragEnd = async ({ active, over }: DragEndEvent) => {
+    if (over && isBoardStatus(over.id)) {
+      const moved = await onStatusChange(Number(active.id), over.id);
+      if (moved) await dragHint.retire('moved');
+    }
   };
   const titleOf = (id: string | number) => {
     const task = tasks.find((row) => row.id === Number(id));
     return task ? taskDisplayTitle(task, t) : '';
   };
   return <Box sx={{ minWidth: 0 }}>
+    {dragHint.visible && <Alert data-testid="task-drag-hint" role="note" severity="info" closeText={t('common:actions.close')} sx={{ mb: 2 }} onClose={() => { void dragHint.retire('dismissed'); }}>
+      {t(compact ? 'board.dragHint.mobile' : 'board.dragHint.desktop')}
+      {dragHint.failed && <Typography>{t('board.dragHint.saveError')}</Typography>}
+    </Alert>}
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, alignItems: { sm: 'center' } }}>
       <Typography component="h1" variant="h5" sx={{ flex: 1 }}>{t('board.title')}</Typography>
       <Button variant="contained" startIcon={<AddIcon />} onClick={onCreate}>

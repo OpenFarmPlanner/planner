@@ -69,6 +69,8 @@ test('mobile list supports status changes with the keyboard and filters', async 
   await page.getByRole('menuitem', { name: 'In Arbeit', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('region', { name: 'In Arbeit', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+  await expect(page.getByTestId('task-drag-hint')).toBeVisible();
+  expect(await apiRequest(page, 'GET', '/auth/account/task-drag-hint/')).toEqual({ done: false });
   await page.getByRole('button', { name: 'Aufgaben filtern' }).click();
   await page.getByRole('combobox', { name: 'Zeitraum' }).click();
   await page.getByRole('option', { name: 'Eigener Zeitraum' }).click();
@@ -213,4 +215,72 @@ test('rescheduling keeps completed and overridden event tasks while moving open 
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
   const after = await apiRequest<{ results: EventTask[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
   expect(after.results.map((task) => task.id).sort()).toEqual(initial.results.map((task) => task.id).sort());
+});
+
+test('moving hint persists dismissal per account', async ({ page }) => {
+  const hint = page.getByTestId('task-drag-hint');
+  await expect(hint).toBeVisible();
+  const saved = page.waitForResponse((response) => response.url().includes('/auth/account/task-drag-hint/') && response.request().method() === 'POST');
+  await hint.getByRole('button', { name: 'Schließen' }).click();
+  expect((await saved).ok()).toBeTruthy();
+  await expect(hint).not.toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+  await expect(hint).not.toBeVisible();
+});
+
+test('only a successfully saved drag retires the hint and empty columns accept tasks', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const tasks = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/tasks/');
+  for (const task of tasks.results) await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'completed' });
+  await page.reload();
+  const hint = page.getByTestId('task-drag-hint');
+  await expect(hint).toBeVisible();
+  await page.route('**/api/tasks/*/', async (route) => {
+    if (route.request().method() === 'PATCH') await route.fulfill({ status: 500, body: 'Unavailable' });
+    else await route.continue();
+  });
+  await dragTask(page, 'Jäten', 'pending');
+  await expect(page.getByRole('alert').filter({ hasText: 'Die Änderung wurde zurückgenommen' })).toBeVisible();
+  await expect(hint).toBeVisible();
+  expect(await apiRequest(page, 'GET', '/auth/account/task-drag-hint/')).toEqual({ done: false });
+  await page.unroute('**/api/tasks/*/');
+  await dragTask(page, 'Jäten', 'pending');
+  await expect(page.getByRole('region', { name: 'Offen', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+  await expect(hint).not.toBeVisible();
+  expect(await apiRequest(page, 'GET', '/auth/account/task-drag-hint/')).toEqual({ done: true });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+  await expect(hint).not.toBeVisible();
+});
+
+test('touch dragging supports empty targets and announces the move', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const tasks = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/tasks/');
+  for (const task of tasks.results) await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'pending' });
+  await page.reload();
+  const handle = page.getByRole('button', { name: 'Aufgabe verschieben: Jäten' });
+  const target = page.locator('[data-task-column="completed"]');
+  const start = await handle.boundingBox();
+  const end = await target.boundingBox();
+  if (!start || !end) throw new Error('Missing touch target');
+  const client = await page.context().newCDPSession(page);
+  const x = start.x + start.width / 2;
+  const y = start.y + start.height / 2;
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  // The existing TouchSensor intentionally requires a 250 ms hold to preserve scrolling.
+  await page.waitForTimeout(300);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: end.x + end.width / 2, y: end.y + 50 }] });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+  await expect(page.locator('[id^="DndLiveRegion"]')).toContainText('Jäten');
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 650 }] });
+  for (const y of [550, 450, 350, 250, 150]) {
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 200, y }] });
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await client.detach();
 });

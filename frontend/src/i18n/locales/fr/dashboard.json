@@ -73,7 +73,12 @@
     "empty": "Aucune tâche pour cette saison. Retrouvez ici les travaux à venir.",
     "emptyColumn": "Aucune tâche",
     "showMore": "Afficher plus de tâches",
-    "saveError": "Le statut n’a pas pu être enregistré. La modification a été annulée. Veuillez réessayer."
+    "saveError": "Le statut n’a pas pu être enregistré. La modification a été annulée. Veuillez réessayer.",
+    "dragHint": {
+      "desktop": "Déplacez les tâches avec leur poignée vers une autre colonne, ou changez leur statut dans le menu.",
+      "mobile": "Changez le statut dans le menu de la tâche. Sur grand écran, vous pouvez aussi déplacer les tâches.",
+      "saveError": "Impossible de masquer définitivement ce conseil. Réessayez."
+    }
   },
   "form": {
     "add": "Ajouter une tâche",

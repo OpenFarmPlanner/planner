@@ -80,6 +80,7 @@ class UserSerializer(serializers.ModelSerializer):
     has_password = serializers.SerializerMethodField()
     ui_language = serializers.SerializerMethodField()
     table_edit_hint = serializers.SerializerMethodField()
+    task_drag_hint_done = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -107,6 +108,7 @@ class UserSerializer(serializers.ModelSerializer):
             'has_password',
             'ui_language',
             'table_edit_hint',
+            'task_drag_hint_done',
         )
         read_only_fields = fields
 
@@ -114,6 +116,9 @@ class UserSerializer(serializers.ModelSerializer):
         """Stored UI language preference: 'auto', 'de' or 'en'."""
         settings_row = getattr(obj, 'project_settings', None)
         return getattr(settings_row, 'ui_language', UI_LANGUAGE_AUTO) or UI_LANGUAGE_AUTO
+
+    def get_task_drag_hint_done(self, obj: User) -> bool:
+        return getattr(getattr(obj, 'project_settings', None), 'task_drag_hint_done', False)
 
     def get_table_edit_hint(self, obj: User) -> TableEditHintState:
         """Shared state of the inline table edit hint (see accounts/table_edit_hint.py)."""
@@ -416,3 +421,7 @@ class TurnstileClientErrorSerializer(serializers.Serializer):
         if not _SITE_KEY_PATTERN.match(value):
             raise serializers.ValidationError('Ungültiger Site Key.')
         return value
+
+
+class TaskDragHintEventSerializer(serializers.Serializer):
+    event = serializers.ChoiceField(choices=['moved', 'dismissed'])

@@ -73,7 +73,12 @@
     "empty": "Noch keine Aufgaben in dieser Saison. Hier behältst du die anstehenden Arbeiten im Blick.",
     "emptyColumn": "Keine Aufgaben",
     "showMore": "Weitere Aufgaben anzeigen",
-    "saveError": "Der Status konnte nicht gespeichert werden. Die Änderung wurde zurückgenommen. Versuche es erneut."
+    "saveError": "Der Status konnte nicht gespeichert werden. Die Änderung wurde zurückgenommen. Versuche es erneut.",
+    "dragHint": {
+      "desktop": "Verschiebe Aufgaben mit dem Griff in eine andere Spalte. Alternativ kannst du den Status über das Aufgabenmenü ändern.",
+      "mobile": "Ändere den Status einer Aufgabe über ihr Menü. Auf größeren Ansichten kannst du Aufgaben auch ziehen.",
+      "saveError": "Der Hinweis konnte nicht dauerhaft ausgeblendet werden. Bitte versuche es erneut."
+    }
   },
   "form": {
     "add": "Aufgabe hinzufügen",

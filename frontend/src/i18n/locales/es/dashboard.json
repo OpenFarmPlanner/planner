@@ -73,7 +73,12 @@
     "empty": "Aún no hay tareas en esta temporada. Aquí puedes consultar los próximos trabajos.",
     "emptyColumn": "Sin tareas",
     "showMore": "Mostrar más tareas",
-    "saveError": "No se pudo guardar el estado. Se ha deshecho el cambio. Inténtalo de nuevo."
+    "saveError": "No se pudo guardar el estado. Se ha deshecho el cambio. Inténtalo de nuevo.",
+    "dragHint": {
+      "desktop": "Arrastra las tareas por su asa a otra columna o cambia el estado desde el menú.",
+      "mobile": "Cambia el estado desde el menú de la tarea. En pantallas grandes también puedes arrastrarlas.",
+      "saveError": "No se pudo ocultar este consejo permanentemente. Inténtalo de nuevo."
+    }
   },
   "form": {
     "add": "Añadir tarea",
