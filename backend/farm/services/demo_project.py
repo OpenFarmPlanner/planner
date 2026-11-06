@@ -16,12 +16,14 @@ from accounts.models import UserProjectSettings
 from config.languages import normalize_language_tag, resolve_request_language
 from crops.models import CropSpecies
 from crops.services import find_species_by_common_name
+from farm.germination import GERMINATION_FIELDS
 from farm.models import (
     BatchOperation,
     Bed,
     BedLayout,
     Crop,
     CropSupplierData,
+    CropTaskTemplate,
     EntityRevision,
     Field,
     FieldLayout,
@@ -33,7 +35,10 @@ from farm.models import (
     Season,
     SeedPackage,
     Supplier,
+    Task,
 )
+from farm.services.crop_companions import library_companions
+from farm.services.demo_features import populate_demo_crop_features, populate_demo_tasks
 from farm.services.project_users import get_or_create_project_user
 from farm.services.seasons import assign_unassigned_planting_plans, get_or_create_season_for_date
 
@@ -284,6 +289,8 @@ def demo_current_year() -> int:
 
 def reset_project_demo_data(project: Project) -> None:
     """Remove farm-planning records from one project before recreating the demo."""
+    Task.objects.filter(project=project).delete()
+    CropTaskTemplate.objects.filter(project=project).delete()
     PlantingPlan.objects.filter(project=project).delete()
     Season.all_objects.filter(project=project).delete()
     BedLayout.objects.filter(project=project).delete()
@@ -381,6 +388,9 @@ def populate_demo_project(
     fixed year so their screenshots do not change at the turn of the year.
     """
     language = resolve_demo_language(language_code)
+    year = current_year if current_year is not None else demo_current_year()
+    today = timezone.localdate()
+    reference_date = date(year, 5, 15) if current_year is not None or today.year != year else today
     with transaction.atomic():
         reset_project_demo_data(project)
 
@@ -388,15 +398,20 @@ def populate_demo_project(
         locations, fields, beds = _create_area_hierarchy(project, language_code=language)
         _create_layouts(project, fields, beds)
         crops = _create_crops(project, suppliers, language_code=language)
+        populate_demo_crop_features(project, crops, suppliers, language_code=language)
         _create_planting_plans(
             project,
             crops,
             beds,
             owner,
             language_code=language,
-            current_year=current_year or demo_current_year(),
+            current_year=year,
         )
         assign_unassigned_planting_plans(project, owner=owner)
+        populate_demo_tasks(
+            project, owner=owner, fields=fields, crops=crops, language_code=language,
+            today=reference_date,
+        )
         project.demo_seeded_at = timezone.now()
         Project.objects.filter(pk=project.pk).update(demo_seeded_at=project.demo_seeded_at)
 
@@ -447,6 +462,9 @@ def populate_public_demo_library_from_project(project: Project, *, owner: Any | 
                 seeding_requirement_type=crop.seeding_requirement_type,
                 display_color=crop.display_color,
                 seed_packages=[],
+                botanical_name=crop.botanical_name,
+                companions=library_companions(crop)[0] if not crop.variety else [],
+                **{field: getattr(crop, field) for field in GERMINATION_FIELDS},
             )
 
 

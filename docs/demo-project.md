@@ -2,6 +2,8 @@
 
 OpenFarmPlanner defines its reusable demo project data in
 `backend/farm/services/demo_project.py`.
+Additional feature examples live in `backend/farm/services/demo_features.py`;
+both are used by the same population transaction.
 
 The service has two persistent-data entry points:
 
@@ -90,6 +92,48 @@ this template. Guest workspaces are editable but session-bound, reset on the
 next browser session, and removed after their short server-side retention
 period by `cleanup_guest_demo_sessions`. This is separate from the persistent
 personal demo project.
+
+## Recent feature coverage
+
+An audit of features added since the previous dataset update (#808) found that
+tasks, companion planting, tags, botanical names, timing windows, germination
+and supplier seed statuses lacked examples. The template now includes:
+
+| Feature | Demo examples |
+| --- | --- |
+| Task dashboard and manual work | Seven manual tasks: all four statuses, overdue/today/upcoming dates, an undated unassigned task, crop work and field-only fence maintenance. Dated tasks are assigned to the owner. |
+| Automatic plan events | The ordinary `generate_tasks_for_plans` service runs for all 65 plans, sharing the normal inheritance index. Past generated dates start completed; future dates stay pending. One completed current-season event has a manually adjusted date to demonstrate override preservation. |
+| Independent task templates | A carrot fleece task two days before sowing; three weekly tomato-tying occurrences; monthly strawberry mulch checks through harvest end. Each occurrence has its own ID and completion state. |
+| Botanical names and tags | General crops carry botanical names. Fruiting, storage, winter and green-manure tags demonstrate inherited variety values and the crop filters. |
+| Companion planting | Good and bad crop pairs, a whole-family relation and a free-text flower strip. These are illustrative farm-entered relationships, not universal agronomic recommendations. |
+| Timing windows | Tomato propagation/planting, two lettuce sowing windows, ISO-week planting windows, carrot sowing and a garlic window crossing the year boundary. Varieties inherit their general crop's windows. |
+| Germination | Tomato, lettuce, carrot and cucumber carry temperatures, germination days, light/dark requirements and instructions. Their plans can display expected emergence. |
+| Supplier offers | Organic, in-conversion, conventional and unknown seed statuses; all exemption-note states; two offers with different prices for Roma tomatoes and Nantaise carrots. The existing preferred supplier and package data remain intact. |
+
+The earlier bought-in-young-plant, crop-rotation, harvest-overlap and growing-area
+layout stories remain unchanged and retain their existing regression tests.
+Spreadsheet editing and import/export use the same populated crop rows; they do
+not need separate seed records. Onboarding hints retain the user's preferences;
+loading a demo does not reset previously dismissed hints.
+
+Normal demos use today's date for manual task examples and the current season.
+For time-pinned callers, `current_year` also fixes the task reference date to
+May 15 of that year. This keeps fixture data independent of the day tests run.
+The new stored text follows the existing German/English demo templates and the
+English fallback for French and Spanish.
+
+The explicit command-line public-library fixture also copies botanical names,
+germination fields and shareable general-crop companions. Project-only tags,
+timing windows, supplier statuses and tasks stay private. Guest and personal
+demo creation do not publish entries or fabricate global moderation/sync state;
+visitors can explore the actual library through its existing guest permissions.
+
+All examples are created before `demo_seeded_at` is written, so seeding does not
+count as user activity. An explicit reset removes tasks (including legacy tasks
+without a season), task templates and stale history only in the target project.
+Population is atomic: a failure restores the previous dataset. Merely loading
+an existing personal demo remains idempotent and preserves user edits. There
+is no automatic retrofit or destructive reset of existing personal demos.
 
 ## Public demo architecture
 
