@@ -132,8 +132,16 @@ All examples are created before `demo_seeded_at` is written, so seeding does not
 count as user activity. An explicit reset removes tasks (including legacy tasks
 without a season), task templates and stale history only in the target project.
 Population is atomic: a failure restores the previous dataset. Merely loading
-an existing personal demo remains idempotent and preserves user edits. There
-is no automatic retrofit or destructive reset of existing personal demos.
+an existing personal demo remains idempotent and preserves user edits.
+
+Migration `0135` adds the seven standalone work examples to older seeded
+German/English demos that have no manual tasks and no task revision history.
+It uses migration-day dates and the latest non-deleted season (the overview's
+default), even when that season's planting plans are already past. It preserves
+all existing generated tasks, crops, plans and project metadata. Demos with
+manual work or recorded task edits/deletions, inactive/deleted projects and
+projects without a season are skipped. Rollback retains the examples because
+users may have edited them. No demo is reset.
 
 ## Public demo architecture
 

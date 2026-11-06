@@ -203,6 +203,8 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   const cropDialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
   await expect(cropDialog.getByTestId('crop-supplier-data-section')).toHaveCount(0);
   await cropDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(cropDialog).not.toBeVisible();
+  await expect(page.locator('#root')).not.toHaveAttribute('aria-hidden', 'true');
   await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
   const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
   const seedStatus = dialog.getByRole('combobox', { name: 'Saatgutstatus', exact: true });
