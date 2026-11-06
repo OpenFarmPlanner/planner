@@ -20,7 +20,9 @@ for step-by-step procedures of recurring tasks, see the skills in
 ## Complex features
 
 - **[Tasks](./tasks.md)** — task ownership, REST filters, date overrides, stable
-  occurrence identity and migration; generation and dashboard are deferred.
+  occurrence identity, dashboard, generation, synchronization, templates and recurrence.
+- **[Task workflow verification](./task-test-coverage.md)** — integration coverage
+  and edge-case policies for tasks, templates and supplier editing.
 
 - **[DataGrid Architecture](./datagrid-architecture.md)** — the custom
   layer OpenFarmPlanner built on top of MUI X DataGrid: inline editing,

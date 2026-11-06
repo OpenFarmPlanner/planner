@@ -328,6 +328,30 @@ class ApiTokenScopeTests(ApiTokenTestBase):
         self.assertIsNone(template.deleted_at)
         self.assertEqual(template.title, 'Water')
 
+    def test_tasks_are_read_only_even_for_delete_scoped_tokens(self) -> None:
+        from farm.models import Season, Task
+
+        season = Season.objects.create(
+            project=self.project, start_date='2026-01-01', end_date='2026-12-31',
+        )
+        task = Task.objects.create(
+            project=self.project, season=season, title='Keep task', origin='automatic',
+            source_key='plan:123:event:planting',
+        )
+        _, raw_token = self.issue_token(scope=ProjectApiToken.SCOPE_DELETE)
+        client = self.bearer_client(raw_token)
+        self.assertEqual(client.get('/api/tasks/').status_code, 200)
+        self.assertEqual(client.get(f'/api/tasks/{task.pk}/').status_code, 200)
+        self.assertEqual(client.post('/api/tasks/', {
+            'title': 'Forbidden', 'season': season.pk,
+        }, format='json').status_code, 403)
+        response = client.patch(f'/api/tasks/{task.pk}/', {'status': 'completed'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(client.delete(f'/api/tasks/{task.pk}/').status_code, 403)
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'pending')
+        self.assertIsNone(task.deleted_at)
+
     def test_delete_token_cannot_delete_supporting_collections(self):
         supplier = Supplier.objects.create(project=self.project, name='Keep Me')
         _, raw_token = self.issue_token(scope=ProjectApiToken.SCOPE_DELETE)
