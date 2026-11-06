@@ -86,4 +86,15 @@ comment. Add an entry with the date, the decision, the reason and the
 PR or issue that made it. Reviewers must not re-report an accepted risk or
 deliberate exception listed here.
 
-_No entries yet._
+### 2026-11-05 — Verify forwarding chains before using client IPs (#880)
+
+The operator selected chain validation for Cloudflare → Uberspace → Django.
+Trust exact immediate peers separately from upstream proxy CIDRs, walk XFF
+right-to-left, and stop at the first untrusted hop. All IP abuse controls use
+the resulting REMOTE_ADDR; DRF does not independently trust XFF. Single-value
+client-IP headers are not evidence of an upstream proxy. Missing or ambiguous
+chains retain the peer. This permits direct-origin access with its real caller
+identity; restricting origin access is separate infrastructure work. Trusted
+ranges require operator maintenance and are empty by default. See
+[account-trust-levels.md](account-trust-levels.md#client-ips-behind-reverse-proxies)
+for the provider append contract, parser behavior and rollout checks.

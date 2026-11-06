@@ -190,12 +190,11 @@ ALLOWED_HOSTS = _dedupe(
     + DEVELOPMENT_LAN_HOSTS
 )
 
-# Immediate proxy peers allowed to report a client IP via TRUSTED_PROXY_IP_HEADER.
-# Uberspace is the immediate peer even for Cloudflare traffic. Keep empty until
-# the full forwarding chain is validated or direct-origin access is restricted;
-# trusting Uberspace alone would accept forged CF-Connecting-IP headers.
-# See config/middleware.TrustedProxyRemoteAddrMiddleware and account-trust-levels.md.
+# Only these immediate peers may supply X-Forwarded-For; upstream trust is
+# separate so a Cloudflare-looking prefix cannot authenticate a direct caller.
 TRUSTED_PROXY_NETWORKS = _env_ip_networks('TRUSTED_PROXY_CIDRS')
+TRUSTED_PROXY_UPSTREAM_NETWORKS = _env_ip_networks('TRUSTED_PROXY_UPSTREAM_CIDRS')
+# Deprecated: accepted as configuration for compatibility, never used for identity.
 TRUSTED_PROXY_IP_HEADER = _env_str('TRUSTED_PROXY_IP_HEADER', 'HTTP_CF_CONNECTING_IP')
 
 
@@ -630,6 +629,8 @@ PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER = int(
 
 # REST Framework settings
 REST_FRAMEWORK = {
+    # Middleware resolves proxy chains; DRF must never re-trust raw XFF.
+    'NUM_PROXIES': 0,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # Session first: browser requests keep their existing behaviour
         # (including CSRF enforcement) untouched. The token authenticator only
