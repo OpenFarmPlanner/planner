@@ -9,10 +9,28 @@ from django.core.management import call_command
 from django.test import RequestFactory, TestCase
 
 from accounts.models import UserProjectSettings
-from farm.models import Bed, BedLayout, Crop, FieldLayout, Location, PlantingPlan, Project, ProjectMembership, PublicCrop, Season, Supplier
 from config.languages import resolve_request_language
+from farm.models import (
+    Bed,
+    BedLayout,
+    Crop,
+    CropCompanion,
+    CropSupplierData,
+    CropTaskTemplate,
+    CropTimingWindow,
+    FieldLayout,
+    Location,
+    PlantingPlan,
+    Project,
+    ProjectMembership,
+    PublicCrop,
+    Season,
+    Supplier,
+    Task,
+)
 from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.crop_import.field_specs import seed_rate_value_constraint_error
+from farm.services.crop_inheritance import build_general_crop_index, resolve_crop_field
 from farm.services.crop_rotation import (
     BREAK_SOURCE_CROP,
     BREAK_SOURCE_FAMILY,
@@ -35,18 +53,220 @@ from farm.services.demo_project import (
     DEMO_PROJECT_NAME,
     DEMO_PROJECT_NAME_EN,
     DEMO_PROJECT_SLUG,
+    DemoProjectResult,
     create_or_reset_demo_project,
     create_personal_demo_project,
     demo_current_year,
     get_demo_project_description,
     get_demo_project_name,
+    populate_public_demo_library_from_project,
     resolve_demo_language,
     resolve_demo_request_language,
 )
+from farm.services.germination_check import check_germination
 from farm.services.seasons import build_planting_plan_copies
+from farm.services.tasks import generate_tasks_for_plans
+from farm.services.timing_window_check import TimingWindowChecker
+from farm.services.timing_windows import TimingWindow, validate_timing_window, window_contains
 from farm.services.young_plant_demand import build_young_plant_demand_rows
 
 User = get_user_model()
+
+
+class DemoFeatureCoverageTests(TestCase):
+    @classmethod
+    def seed(cls) -> DemoProjectResult:
+        with (
+            patch("farm.services.demo_project.demo_current_year", return_value=2031),
+            patch(
+                "farm.services.demo_project.timezone.localdate",
+                return_value=date(2031, 5, 15),
+            ),
+        ):
+            return create_or_reset_demo_project()
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        result = cls.seed()
+        cls.project = result.project
+        cls.user = result.user
+        cls.today = date(2031, 5, 15)
+        cls.season = Season.objects.get(project=cls.project, start_date__year=2031)
+
+    def test_tasks_populate_all_origins_statuses_and_dashboard_date_groups(self) -> None:
+        tasks = Task.objects.filter(project=self.project)
+        self.assertEqual(
+            set(tasks.values_list("origin", flat=True)), {"manual", "automatic", "template"}
+        )
+        manual = tasks.filter(origin="manual")
+        self.assertEqual(manual.count(), 7)
+        self.assertEqual(
+            set(manual.values_list("status", flat=True)),
+            {
+                "pending",
+                "in_progress",
+                "completed",
+                "cancelled",
+            },
+        )
+        self.assertTrue(manual.filter(status="pending", due_date__lt=self.today).exists())
+        self.assertTrue(manual.filter(due_date=self.today).exists())
+        self.assertTrue(manual.filter(due_date__gt=self.today).exists())
+        self.assertTrue(manual.filter(due_date__isnull=True, assigned_to__isnull=True).exists())
+        self.assertTrue(manual.filter(field__isnull=False, crop__isnull=True).exists())
+        self.assertTrue(manual.filter(crop__isnull=False, assigned_to=self.user).exists())
+        self.assertFalse(tasks.filter(season__isnull=True).exists())
+        self.assertTrue(tasks.filter(due_date_overridden=True, status="completed").exists())
+        self.assertFalse(tasks.exclude(season__project=self.project).exists())
+
+    def test_rules_create_individually_completable_occurrences_without_duplicates(self) -> None:
+        templates = CropTaskTemplate.objects.filter(project=self.project)
+        self.assertEqual(templates.count(), 3)
+        self.assertTrue(
+            templates.filter(day_offset__lt=0, repeat_interval_days__isnull=True).exists()
+        )
+        self.assertTrue(templates.filter(repeat_until="harvest_end").exists())
+        rule = templates.get(repeat_until="count")
+        occurrences = Task.objects.filter(template=rule, season=self.season)
+        plan = occurrences.order_by("planting_plan_id").first().planting_plan
+        rows = list(occurrences.filter(planting_plan=plan).order_by("occurrence_index"))
+        self.assertEqual([row.occurrence_index for row in rows], [0, 1, 2])
+        rows[0].status = "completed"
+        rows[0].save(update_fields=["status"])
+        rows[1].status = "in_progress"
+        rows[1].save(update_fields=["status"])
+        original_ids = set(Task.objects.filter(project=self.project).values_list("pk", flat=True))
+        generate_tasks_for_plans(self.project.planting_plans.select_related("crop", "season"))
+        self.assertEqual(
+            set(Task.objects.filter(project=self.project).values_list("pk", flat=True)),
+            original_ids,
+        )
+        rows[0].refresh_from_db()
+        rows[1].refresh_from_db()
+        self.assertEqual((rows[0].status, rows[1].status), ("completed", "in_progress"))
+
+    def test_crop_metadata_is_inherited_and_windows_are_valid(self) -> None:
+        general = Crop.objects.get(project=self.project, name="Tomate", variety="")
+        variety = Crop.objects.get(project=self.project, name="Tomate", variety="Roma")
+        index = build_general_crop_index(self.project.id)
+        self.assertEqual(
+            resolve_crop_field(variety, "botanical_name", index), "Solanum lycopersicum"
+        )
+        self.assertEqual(resolve_crop_field(variety, "tags", index), ["Fruchtgemüse"])
+        self.assertEqual(resolve_crop_field(variety, "germination_days_max", index), 14)
+        self.assertEqual(general.germination_temperature_min_c, 10)
+        windows = list(CropTimingWindow.objects.filter(crop__project=self.project))
+        self.assertEqual({window.unit for window in windows}, {"decade", "iso_week"})
+        for window in windows:
+            self.assertIsNone(validate_timing_window(TimingWindow.from_model(window)))
+        garlic = CropTimingWindow.objects.get(crop__project=self.project, crop__name="Knoblauch")
+        self.assertTrue(window_contains(TimingWindow.from_model(garlic), date(2031, 1, 15)))
+        plan = (
+            PlantingPlan.objects.filter(
+                project=self.project,
+                season=self.season,
+                crop__name="Karotte",
+            )
+            .select_related("crop")
+            .first()
+        )
+        self.assertIsNotNone(
+            check_germination(plan, TimingWindowChecker(self.project.id))["expected_emergence"]
+        )
+
+    def test_companions_and_supplier_offers_cover_recent_features(self) -> None:
+        relations = CropCompanion.objects.filter(project=self.project)
+        self.assertEqual(set(relations.values_list("kind", flat=True)), {"good", "bad"})
+        self.assertTrue(relations.filter(companion_crop__isnull=False).exists())
+        self.assertTrue(relations.filter(companion_family__isnull=False).exists())
+        self.assertTrue(relations.exclude(companion_text="").exists())
+        offers = CropSupplierData.objects.filter(project=self.project)
+        self.assertEqual(
+            set(offers.values_list("seed_status", flat=True)),
+            set(CropSupplierData.SeedStatus.values),
+        )
+        self.assertEqual(
+            set(offers.values_list("seed_exemption_status", flat=True)),
+            set(CropSupplierData.SeedExemptionStatus.values),
+        )
+        crop = Crop.objects.get(project=self.project, name="Tomate", variety="Roma")
+        self.assertEqual(crop.supplier_data.count(), 2)
+        primary = crop.supplier_data.get(supplier_id=crop.selected_seed_demand_supplier_id)
+        self.assertEqual(primary.supplier_id, crop.supplier_id)
+        self.assertEqual(primary.seed_status, "organic")
+        self.assertTrue(primary.packaging_sizes)
+
+    def test_public_demo_keeps_shareable_metadata_without_supplier_details(self) -> None:
+        populate_public_demo_library_from_project(self.project, owner=self.user)
+        public = PublicCrop.objects.get(source_project=self.project, name="Tomate", variety="")
+        self.assertEqual(public.botanical_name, "Solanum lycopersicum")
+        self.assertEqual(public.germination_days_max, 14)
+        self.assertTrue(public.companions)
+        self.assertFalse(
+            PublicCrop.objects.filter(source_project=self.project)
+            .exclude(seed_packages=[])
+            .exists()
+        )
+
+    def test_reset_removes_old_tasks_and_rules_but_preserves_other_projects(self) -> None:
+        legacy = Task.objects.create(project=self.project, title="Legacy without season")
+        unrelated = Project.objects.create(name="Other", slug="other-demo-features")
+        other_task = Task.objects.create(project=unrelated, title="Keep this task")
+        task_ids = list(Task.objects.filter(project=self.project).values_list("pk", flat=True))
+        template_ids = list(
+            CropTaskTemplate.objects.filter(project=self.project).values_list("pk", flat=True)
+        )
+        self.seed()
+        self.assertFalse(Task.objects.filter(pk__in=task_ids).exists())
+        self.assertFalse(CropTaskTemplate.objects.filter(pk__in=template_ids).exists())
+        self.assertFalse(Task.objects.filter(pk=legacy.pk).exists())
+        self.assertTrue(Task.objects.filter(pk=other_task.pk).exists())
+        self.assertEqual(Task.objects.filter(project=self.project, origin="manual").count(), 7)
+        self.assertEqual(CropTaskTemplate.objects.filter(project=self.project).count(), 3)
+
+    def test_failed_feature_seeding_rolls_back_the_entire_reset(self) -> None:
+        original = set(Task.objects.filter(project=self.project).values_list("pk", flat=True))
+        with patch(
+            "farm.services.demo_project.populate_demo_tasks", side_effect=RuntimeError("boom")
+        ):
+            with self.assertRaises(RuntimeError):
+                self.seed()
+        self.assertEqual(
+            set(Task.objects.filter(project=self.project).values_list("pk", flat=True)), original
+        )
+        self.assertEqual(CropTaskTemplate.objects.filter(project=self.project).count(), 3)
+
+    def test_pinned_demo_year_keeps_task_dates_stable_across_real_year_changes(self) -> None:
+        from farm.services.demo_project import populate_demo_project
+
+        before = Counter(
+            Task.objects.filter(project=self.project).values_list(
+                "origin",
+                "title",
+                "due_date",
+                "status",
+            )
+        )
+        with patch(
+            "farm.services.demo_project.timezone.localdate", return_value=date(2040, 12, 31)
+        ):
+            populate_demo_project(
+                self.project,
+                owner=self.user,
+                language_code="de",
+                current_year=2031,
+            )
+        self.assertEqual(
+            Counter(
+                Task.objects.filter(project=self.project).values_list(
+                    "origin",
+                    "title",
+                    "due_date",
+                    "status",
+                )
+            ),
+            before,
+        )
 
 
 class DemoProjectServiceTests(TestCase):
@@ -320,17 +540,34 @@ class DemoProjectServiceTests(TestCase):
         self.assertTrue(Crop.objects.filter(project=result.project, name='Carrot', crop_family_id='Apiaceae').exists())
         self.assertTrue(PlantingPlan.objects.filter(project=result.project, notes='Early succession for the first CSA box.').exists())
         self.assertFalse(Crop.objects.filter(project=result.project, name='Karotte').exists())
+        self.assertTrue(Task.objects.filter(
+            project=result.project, title='Check irrigation',
+        ).exists())
+        self.assertTrue(CropTaskTemplate.objects.filter(
+            project=result.project, title='Tie up tomatoes',
+        ).exists())
 
     def test_create_personal_demo_project_is_idempotent_for_same_user(self) -> None:
         user = User.objects.create_user(username='repeat', email='repeat@example.com', password='pass12345', is_active=True)
 
         first = create_personal_demo_project(user=user)
+        UserProjectSettings.objects.filter(user=user).update(
+            task_drag_hint_done=True, table_edit_hint_done=True,
+        )
+        edited_task = Task.objects.filter(project=first.project, origin='manual').first()
+        edited_task.title = 'Keep my edited task'
+        edited_task.save(update_fields=['title'])
         second = create_personal_demo_project(user=user)
 
         self.assertEqual(second.project.id, first.project.id)
         self.assertFalse(second.created_project)
         self.assertEqual(Project.objects.filter(memberships__user=user, name=DEMO_PROJECT_NAME).count(), 1)
         self.assertEqual(Location.objects.filter(project=first.project).count(), 3)
+        edited_task.refresh_from_db()
+        self.assertEqual(edited_task.title, 'Keep my edited task')
+        settings_obj = UserProjectSettings.objects.get(user=user)
+        self.assertTrue(settings_obj.task_drag_hint_done)
+        self.assertTrue(settings_obj.table_edit_hint_done)
 
     def test_two_users_receive_separate_demo_projects_and_data(self) -> None:
         first_user = User.objects.create_user(username='first', email='first@example.com', password='pass12345', is_active=True)

@@ -17,7 +17,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from accounts.guest_demo import create_guest_demo_session
 from accounts.models import GuestDemoSession, GuestDemoUsageDay
 from accounts.views import GuestDemoStartView, LoginView
-from farm.models import Crop, Project, ProjectInvitation
+from farm.models import Crop, CropTaskTemplate, Project, ProjectInvitation, Task
 from farm.services.demo_project import DEMO_PROJECT_NAME_EN
 
 User = get_user_model()
@@ -77,6 +77,11 @@ class GuestDemoApiTests(TestCase):
         project = Project.objects.get(id=response.data['resolved_project_id'])
         self.assertEqual(project.name, 'Solawi Sonnenacker')
         self.assertGreater(Crop.objects.filter(project=project).count(), 0)
+        self.assertEqual(
+            set(Task.objects.filter(project=project).values_list('origin', flat=True)),
+            {'manual', 'automatic', 'template'},
+        )
+        self.assertEqual(CropTaskTemplate.objects.filter(project=project).count(), 3)
         self.assertEqual(response.data['pending_consents'], [])
 
     def test_start_uses_request_language_for_demo_content(self) -> None:
