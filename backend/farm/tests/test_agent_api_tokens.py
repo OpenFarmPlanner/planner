@@ -307,6 +307,27 @@ class ApiTokenScopeTests(ApiTokenTestBase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Supplier.objects.filter(name='X').exists())
 
+    def test_crop_task_templates_are_read_only_for_tokens(self) -> None:
+        from farm.models import CropTaskTemplate
+
+        template = CropTaskTemplate.objects.create(
+            project=self.project, crop=self.crop, title='Water', reference_event='planting',
+        )
+        _, raw_token = self.issue_token(scope=ProjectApiToken.SCOPE_DELETE)
+        client = self.bearer_client(raw_token)
+        url = '/api/crop-task-templates/'
+        self.assertEqual(client.get(url).status_code, 200)
+        self.assertEqual(client.get(f'{url}{template.pk}/').status_code, 200)
+        self.assertEqual(client.post(url, {
+            'crop': self.crop.pk, 'title': 'Write', 'reference_event': 'planting',
+        }, format='json').status_code, 403)
+        response = client.patch(f'{url}{template.pk}/', {'title': 'Changed'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(client.delete(f'{url}{template.pk}/').status_code, 403)
+        template.refresh_from_db()
+        self.assertIsNone(template.deleted_at)
+        self.assertEqual(template.title, 'Water')
+
     def test_delete_token_cannot_delete_supporting_collections(self):
         supplier = Supplier.objects.create(project=self.project, name='Keep Me')
         _, raw_token = self.issue_token(scope=ProjectApiToken.SCOPE_DELETE)

@@ -1757,5 +1757,22 @@
     "propagationShort": "La duración en semillero es más corta que el tiempo de germinación.",
     "invalidNumber": "Introduce un número válido; los días deben ser enteros no negativos.",
     "invalidRange": "El máximo debe ser mayor o igual que el mínimo."
+  },
+  "taskTemplates": {
+    "title": "Plantillas de tareas",
+    "add": "Añadir plantilla",
+    "edit": "Editar plantilla",
+    "delete": "Eliminar plantilla",
+    "empty": "Todavía no hay plantillas.",
+    "hint": "Las plantillas crean tareas individuales para los planes de este cultivo.",
+    "loadError": "No se pudieron cargar las plantillas.",
+    "saveError": "No se pudo guardar la plantilla.",
+    "reference": "Evento de referencia",
+    "offset": "Desfase en días",
+    "offsetHint": "Valores negativos antes del evento y positivos después (−3650 a 3650).",
+    "offsetValue": "Desfase: {{days}} días",
+    "editNamed": "Editar plantilla: {{title}}",
+    "deleteNamed": "Eliminar plantilla: {{title}}",
+    "deleteConfirm": "¿Eliminar la plantilla «{{title}}»? Se conservan las tareas completadas y las fechas modificadas manualmente."
   }
 }

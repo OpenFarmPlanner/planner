@@ -1713,5 +1713,22 @@
     "propagationShort": "Anzuchtdauer kürzer als die Keimdauer.",
     "invalidNumber": "Bitte eine gültige Zahl eingeben; Tage müssen ganze, nicht negative Zahlen sein.",
     "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen."
+  },
+  "taskTemplates": {
+    "title": "Aufgabenvorlagen",
+    "add": "Vorlage hinzufügen",
+    "edit": "Vorlage bearbeiten",
+    "delete": "Vorlage löschen",
+    "empty": "Noch keine Aufgabenvorlagen.",
+    "hint": "Vorlagen erzeugen eigene Aufgaben für Anbaupläne dieser Kultur.",
+    "loadError": "Vorlagen konnten nicht geladen werden.",
+    "saveError": "Die Vorlage konnte nicht gespeichert werden.",
+    "reference": "Referenzereignis",
+    "offset": "Abstand in Tagen",
+    "offsetHint": "Negative Werte liegen vor dem Ereignis; positive danach (−3650 bis 3650).",
+    "offsetValue": "Abstand: {{days}} Tage",
+    "editNamed": "Vorlage bearbeiten: {{title}}",
+    "deleteNamed": "Vorlage löschen: {{title}}",
+    "deleteConfirm": "Vorlage „{{title}}“ löschen? Erledigte Aufgaben und manuell geänderte Termine bleiben erhalten."
   }
 }

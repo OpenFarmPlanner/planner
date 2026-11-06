@@ -510,7 +510,7 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             'project', 'origin', 'source_key', 'occurrence_index', 'calculated_due_date',
-            'created_at', 'updated_at', 'deleted_at',
+            'created_at', 'updated_at', 'deleted_at', 'template',
         ]
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:

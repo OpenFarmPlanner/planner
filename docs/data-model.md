@@ -310,3 +310,7 @@ relation to preserve completed and manually managed work after plan removal.
 
 UserProjectSettings.task_drag_hint_done stores permanent retirement of the task
 moving introduction per user, independently of project and table-edit hints.
+
+CropTaskTemplate stores project/crop ownership, title, description, reference event,
+signed calendar-day offset and a deletion tombstone. Task.template is nullable
+with SET_NULL so task history survives template removal.

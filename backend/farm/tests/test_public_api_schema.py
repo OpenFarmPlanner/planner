@@ -30,6 +30,8 @@ EXPECTED_OPERATIONS = {
     ('/api/crop-imports/preview/', 'post'),
     ('/api/crop-supplier-data/', 'get'),
     ('/api/crop-supplier-data/{id}/', 'get'),
+    ('/api/crop-task-templates/', 'get'),
+    ('/api/crop-task-templates/{id}/', 'get'),
     ('/api/crops/', 'get'),
     ('/api/crops/', 'post'),
     ('/api/crops/{id}/', 'get'),

@@ -672,6 +672,7 @@ describe('CropDetail Component', () => {
     expect(sectionTitles).toEqual([
       'Fruchtfolge-Eigenschaften',
       'Mischkultur',
+      'Aufgabenvorlagen',
       'Zeitplanung',
       'Keimung',
       'Zeiträume',

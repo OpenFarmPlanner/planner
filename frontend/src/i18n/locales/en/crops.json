@@ -1713,5 +1713,22 @@
     "propagationShort": "Propagation duration is shorter than germination time.",
     "invalidNumber": "Enter a valid number; days must be non-negative whole numbers.",
     "invalidRange": "The maximum must be at least the minimum."
+  },
+  "taskTemplates": {
+    "title": "Task templates",
+    "add": "Add template",
+    "edit": "Edit template",
+    "delete": "Delete template",
+    "empty": "No task templates yet.",
+    "hint": "Templates create individual tasks for this crop’s planting plans.",
+    "loadError": "Could not load templates.",
+    "saveError": "Could not save the template.",
+    "reference": "Reference event",
+    "offset": "Offset in days",
+    "offsetHint": "Negative values are before the event; positive after (−3650 to 3650).",
+    "offsetValue": "Offset: {{days}} days",
+    "editNamed": "Edit template: {{title}}",
+    "deleteNamed": "Delete template: {{title}}",
+    "deleteConfirm": "Delete template “{{title}}”? Completed tasks and manually changed dates are preserved."
   }
 }
