@@ -1778,6 +1778,23 @@
     "interval": "Intervalle en jours",
     "until": "Répéter jusqu’à",
     "count": "Nombre de tâches",
-    "repeatHint": "Chaque occurrence est une tâche distincte. Maximum 1000 tâches par modèle et plan."
+    "repeatHint": "Chaque occurrence est une tâche distincte. Maximum 1000 tâches par modèle et plan.",
+    "once": "Tâche unique",
+    "repeatEvery_one": "Intervalle : {{count}} jour",
+    "repeatEvery_many": "Intervalle : {{count}} jours",
+    "repeatEvery_other": "Intervalle : {{count}} jours",
+    "occurrences_one": "{{count}} tâche",
+    "occurrences_many": "{{count}} tâches",
+    "occurrences_other": "{{count}} tâches",
+    "repeatUntilEvent": "Jusqu’à {{event}}"
+  },
+  "supplierData": {
+    "title": "Données fournisseurs",
+    "editNamed": "Modifier les données fournisseur : {{supplier}}",
+    "deleteNamed": "Supprimer les données fournisseur : {{supplier}}",
+    "delete": "Supprimer les données fournisseur",
+    "deleteConfirm": "Supprimer les données de « {{supplier}} » pour cette culture ? Le fournisseur lui-même est conservé.",
+    "deleteError": "Impossible de supprimer les données fournisseur.",
+    "changed": "Cette offre a été modifiée ou supprimée. Rechargez la culture et réessayez."
   }
 }

@@ -1778,6 +1778,23 @@
     "interval": "Intervalo en días",
     "until": "Repetir hasta",
     "count": "Número de tareas",
-    "repeatHint": "Cada repetición es una tarea independiente. Máximo 1000 tareas por plantilla y plan."
+    "repeatHint": "Cada repetición es una tarea independiente. Máximo 1000 tareas por plantilla y plan.",
+    "once": "Tarea única",
+    "repeatEvery_one": "Cada {{count}} día",
+    "repeatEvery_many": "Cada {{count}} días",
+    "repeatEvery_other": "Cada {{count}} días",
+    "occurrences_one": "{{count}} tarea",
+    "occurrences_many": "{{count}} tareas",
+    "occurrences_other": "{{count}} tareas",
+    "repeatUntilEvent": "Hasta {{event}}"
+  },
+  "supplierData": {
+    "title": "Datos de proveedores",
+    "editNamed": "Editar datos del proveedor: {{supplier}}",
+    "deleteNamed": "Eliminar datos del proveedor: {{supplier}}",
+    "delete": "Eliminar datos del proveedor",
+    "deleteConfirm": "¿Eliminar los datos de «{{supplier}}» para este cultivo? El proveedor se conserva.",
+    "deleteError": "No se pudieron eliminar los datos del proveedor.",
+    "changed": "Esta oferta se ha modificado o eliminado. Vuelve a cargar el cultivo e inténtalo de nuevo."
   }
 }

@@ -10,14 +10,18 @@ from crops.models import CropSpecies, PlantFamily
 from farm.models import (
     Crop,
     CropSupplierData,
+    CropTaskTemplate,
     CropTimingWindow,
     EntityRevision,
     PlantingPlan,
     Project,
     PublicCrop,
+    Season,
     SeedPackage,
     Supplier,
+    Task,
 )
+from farm.services.tasks import generate_plan_tasks
 from farm.tests.api_base import ProjectApiTestCase
 
 
@@ -1201,6 +1205,59 @@ class CropApiTest(ProjectApiTestCase):
         }, format='json')
         self.assertEqual(response.status_code, 200, response.data)
         self.assertFalse(CropSupplierData.objects.filter(pk=row.pk).exists())
+
+    def test_supplier_offer_crud_preserves_other_offers_packages_and_task_rules(self) -> None:
+        first_supplier = Supplier.objects.create(name='First offer', project=self.project)
+        second_supplier = Supplier.objects.create(name='Second offer', project=self.project)
+        first = CropSupplierData.objects.create(
+            project=self.project, crop=self.crop, supplier=first_supplier,
+            packaging_sizes=[{'size_value': 25, 'size_unit': 'g'}],
+        )
+        second = CropSupplierData.objects.create(
+            project=self.project, crop=self.crop, supplier=second_supplier,
+            packaging_sizes=[{'size_value': 100, 'size_unit': 'seeds'}], notes='Keep offer notes',
+        )
+        package = SeedPackage.objects.create(
+            project=self.project, crop=self.crop, size_value=25, size_unit='g',
+        )
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        template = CropTaskTemplate.objects.create(
+            project=self.project, crop=self.crop, title='Cover crop', reference_event='sowing',
+            day_offset=-2, repeat_interval_days=7, repeat_until='count', repeat_count=3,
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=self.crop, bed=self.bed, season=season,
+            planting_date=date(2026, 5, 1), cultivation_type='direct_sowing',
+        )
+        generate_plan_tasks(plan)
+        tasks = Task.objects.filter(planting_plan=plan).order_by('pk')
+        snapshot = list(tasks.values_list('pk', 'due_date', 'calculated_due_date', 'status'))
+        self.assertTrue(snapshot)
+        original_name = self.crop.name
+        url = f'/openfarmplanner/api/crops/{self.crop.pk}/'
+        response = self.client.patch(url, {'supplier_data_input': [
+            {'id': first.pk, 'supplier_id': first_supplier.pk, 'supplier_product_name': 'Edited'},
+            {'id': second.pk, 'supplier_id': second_supplier.pk},
+        ]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        second.refresh_from_db()
+        self.assertEqual(second.notes, 'Keep offer notes')
+        self.assertEqual(second.packaging_sizes, [{'size_value': 100, 'size_unit': 'seeds'}])
+        response = self.client.patch(url, {'supplier_data_input': [
+            {'id': second.pk, 'supplier_id': second_supplier.pk},
+        ]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(CropSupplierData.objects.filter(pk=first.pk).exists())
+        self.assertTrue(Supplier.objects.filter(pk=first_supplier.pk).exists())
+        self.assertTrue(SeedPackage.objects.filter(pk=package.pk).exists())
+        self.assertTrue(CropTaskTemplate.objects.filter(pk=template.pk).exists())
+        self.assertEqual(
+            list(tasks.values_list('pk', 'due_date', 'calculated_due_date', 'status')), snapshot,
+        )
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.name, original_name)
 
     def test_crop_update_ignores_empty_supplier_data_rows(self):
         payload = {

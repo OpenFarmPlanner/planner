@@ -147,6 +147,8 @@ interface CropFormProps {
   variant?: 'project' | 'publicLibrary';
   /** The dedicated supplier editor reuses these controls without general crop fields. */
   section?: 'crop' | 'supplierData';
+  /** Explains a consistency failure detected by an independently saving section. */
+  saveErrorOverride?: string;
   extraSections?: ReactNode;
   /** The library entry's neighbours, edited in the library form's "Mischkultur" section. */
   libraryCompanions?: readonly PublicCropCompanion[];
@@ -433,6 +435,7 @@ export function CropForm({
   initialDraft,
   importedCopiesCount,
   publicIdentityReadOnly = false,
+  saveErrorOverride,
 }: CropFormProps) {
   const { t } = useTranslation('crops');
   const isEdit = Boolean(crop);
@@ -1857,9 +1860,9 @@ export function CropForm({
           </Box>
         </DialogContent>
         <DialogActions sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
-          {saveError ? (
+          {saveErrorOverride || saveError ? (
             <Alert severity="error" sx={{ width: '100%' }}>
-              {saveError}
+              {saveErrorOverride || saveError}
             </Alert>
           ) : null}
           {hasUnsavedChanges && (

@@ -1,6 +1,4 @@
-import { cropAPI } from '../api/api';
-import { CropForm } from './CropForm';
-import { buildCropSavePayload } from '../pages/cropsSaveUtils';
+import { CropSupplierDataSection } from './CropSupplierDataSection';
 import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
 /**
  * Crop Detail component with searchable dropdown and detailed crop information view.
@@ -41,7 +39,6 @@ import {
   Typography,
   Chip,
   Divider,
-  Link,
   List,
   Stack,
   Button,
@@ -116,7 +113,6 @@ interface CropDetailProps {
 import {
   formatDistance,
   formatNumber,
-  formatPackageSizes,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
 import { CropTimingWindowsDetail } from './CropTimingWindowsDetail';
@@ -149,7 +145,6 @@ export function CropDetail({
   searchInputRef,
 }: CropDetailProps) {
   const { t, i18n } = useTranslation('crops');
-  const [editingSuppliers, setEditingSuppliers] = useState(false);
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
   const plantFamilies = usePlantFamilies();
   const locale = resolveLocaleFromLanguage(currentLanguage);
@@ -576,29 +571,6 @@ const detailSectionGridSx = {
 
   const showVarietyValueLegend = Boolean(!isSpeciesView && selectedCrop?.variety && selectedSpeciesCrop);
 
-  const supplierRows = useMemo(
-    () => selectedCrop?.supplier_data ?? [],
-    [selectedCrop?.supplier_data],
-  );
-
-  const orderedSupplierRows = useMemo(() => {
-    if (supplierRows.length <= 1) {
-      return supplierRows;
-    }
-
-    const preferredSupplierId = selectedCrop?.supplier?.id ?? selectedCrop?.selected_seed_demand_supplier ?? null;
-    if (typeof preferredSupplierId !== 'number') {
-      return supplierRows;
-    }
-
-    const preferredIndex = supplierRows.findIndex((row) => (row.supplier?.id ?? row.supplier_id ?? null) === preferredSupplierId);
-    if (preferredIndex <= 0) {
-      return supplierRows;
-    }
-
-    return [supplierRows[preferredIndex], ...supplierRows.filter((_row, index) => index !== preferredIndex)];
-  }, [selectedCrop?.selected_seed_demand_supplier, selectedCrop?.supplier?.id, supplierRows]);
-  const hasMultipleSupplierRows = supplierRows.length > 1;
   const activeCultivationTypes = useMemo(
     () => (
       selectedCrop
@@ -772,17 +744,6 @@ const detailSectionGridSx = {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {editingSuppliers && selectedCrop && <CropForm crop={selectedCrop} crops={crops}
-        section="supplierData" formKind={selectedCrop.variety?.trim() ? 'variety' : 'crop'}
-        title={t('form.supplierDataSectionTitle')} onCancel={() => setEditingSuppliers(false)}
-        onSave={async (draft) => {
-          const rows = buildCropSavePayload(draft).supplier_data_input ?? [];
-          const response = await cropAPI.updateSupplierData(selectedCrop.id!, rows);
-          onSupplierDataSaved?.(response.data);
-          setEditingSuppliers(false);
-        }} />}
-
-
       {/* Detail View */}
       {!isLoading && crops.length > 0 ? (
         <Box
@@ -1180,9 +1141,6 @@ const detailSectionGridSx = {
 
             <Divider sx={{ mb: 2.5 }} />
 
-            {selectedCrop.id !== undefined && <CropTaskTemplatesSection key={selectedCrop.id} cropId={selectedCrop.id} />}
-            <Divider sx={{ mb: 2.5 }} />
-
             {/* Timing Section */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1244,6 +1202,10 @@ const detailSectionGridSx = {
             <Divider sx={{ mb: 2.5 }} />
 
             <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
+
+            <Divider sx={{ mb: 2.5 }} />
+
+            {selectedCrop.id !== undefined && <CropTaskTemplatesSection key={`task-templates:${selectedCrop.id}`} cropId={selectedCrop.id} />}
 
             <Divider sx={{ mb: 2.5 }} />
 
@@ -1323,54 +1285,8 @@ const detailSectionGridSx = {
               />
             </Box>
             <Divider sx={{ mb: 2.5 }} />
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ mt: 2.5, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
-                <Stack direction="row" sx={{ gridColumn: '1 / -1', flexWrap: 'wrap', gap: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="h6">{t('form.supplierDataSectionTitle')}</Typography>
-                  <Button variant="outlined" onClick={() => setEditingSuppliers(true)}>{t('form.editSupplierData')}</Button>
-                </Stack>
-                {hasMultipleSupplierRows && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {t('form.supplierDataSectionDescription')}
-                  </Typography>
-                )}
-                {orderedSupplierRows.length === 0 ? (
-                  <Box sx={{ gridColumn: '1 / -1', display: 'inline-flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
-                    <Typography variant="body2">{t('form.noSupplierDataRows')}</Typography>
-                  </Box>
-                ) : (
-                  <Stack spacing={2} sx={{ gridColumn: '1 / -1' }}>
-                    {orderedSupplierRows.map((row, index) => (
-                      <Box key={row.id ?? `${row.supplier?.id ?? row.supplier_id ?? 'supplier'}-${index}`}>
-                        {hasMultipleSupplierRows && index > 0 ? <Divider sx={{ mb: 2 }} /> : null}
-                        <Stack spacing={1}>
-                          <Typography variant="subtitle2">{row.supplier?.name || row.supplier_name || t('form.supplier')}</Typography>
-                          {row.supplier_product_name ? (
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">{t('form.supplierProductNameLabel')}</Typography>
-                              <Typography variant="body1">{row.supplier_product_name}</Typography>
-                            </Box>
-                          ) : null}
-                          {row.supplier_product_url && (
-                            <Link href={row.supplier_product_url} target="_blank" rel="noopener noreferrer" underline="hover">
-                              {row.supplier_product_url}
-                            </Link>
-                          )}
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              {t('form.seedPackagesLabel')}
-                            </Typography>
-                            <Typography variant="body1">
-                              {formatPackageSizes(row.packaging_sizes, t, locale)}
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </Box>
+            <CropSupplierDataSection key={`supplier-data:${selectedCrop.id ?? selectedCrop.name}`} crop={selectedCrop}
+              crops={crops} onSaved={onSupplierDataSaved} />
 
             <Divider sx={{ mb: 3 }} />
             {/* Harvest Section */}

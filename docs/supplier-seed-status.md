@@ -58,7 +58,9 @@ the fields through the existing model-field serializer.
 
 ## Independent editing (#898)
 
-Crop details expose a dedicated supplier section and editor. It reuses the
+Crop details expose a compact Supplier data section next to seed requirements,
+matching the Varieties section, with an Add button and offer-level Edit/Delete
+actions. Each editor opens only the selected offer (or a new offer). It reuses the
 existing supplier/package controls, inline supplier creation, validation,
 keyboard save shortcut and draft/discard handling. Saving sends only
 `supplier_data_input` through PATCH on the crop endpoint. Crop identity, timing,
@@ -66,6 +68,12 @@ spacing and other metadata are not part of that request. Existing row IDs,
 packaging values, status fields and other offer data are preserved. Removing all
 rows sends an explicit empty list; a legacy preferred supplier does not recreate
 them. Failed saves retain the draft.
+
+Before saving, the UI reads the latest crop and merges the edited offer into
+its supplier collection. Other offers added since opening the dialog are kept.
+If the selected offer itself changed or was removed, saving is refused and the
+draft remains available. Deletion requires confirmation and removes only that
+crop offer, preserving the supplier entity and normalized seed packages.
 
 The normal crop editor omits supplier writes, so an unrelated crop edit cannot
 overwrite offers saved independently. No schema or seed-demand formula changes
