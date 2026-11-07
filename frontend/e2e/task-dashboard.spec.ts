@@ -22,15 +22,16 @@ async function seedTasks(page: Page) {
     });
   }
   await page.goto('/app/dashboard');
-  await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();
 }
 
+// Grabs the card at its title text: the whole card is the drag activator.
 async function dragTask(page: Page, title: string, status: string) {
-  const handle = page.getByRole('button', { name: `Aufgabe verschieben: ${title}` });
+  const handle = page.getByRole('article', { name: title, exact: true }).getByText(title, { exact: true });
   const target = page.locator(`[data-task-column="${status}"]`);
   const start = await handle.boundingBox();
   const end = await target.boundingBox();
-  if (!start || !end) throw new Error('Missing task handle or column');
+  if (!start || !end) throw new Error('Missing task card or column');
   await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
   await page.mouse.down();
   await page.mouse.move(start.x + start.width / 2 + 12, start.y + start.height / 2, { steps: 4 });
@@ -60,9 +61,54 @@ test('drag persists to the API and a failed drop rolls back', async ({ page }) =
   await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
 });
 
+test('card links open crop and field without dragging; the menu never starts a drag', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const card = page.getByRole('article', { name: 'Jäten', exact: true });
+  await expect(card.getByRole('button', { name: /Aufgabe verschieben/ })).toHaveCount(0);
+  const menu = card.getByRole('button', { name: 'Status ändern: Jäten' });
+  const box = await menu.boundingBox();
+  if (!box) throw new Error('Missing card menu');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + 20, { steps: 10 });
+  await page.mouse.up();
+  await expect(page.getByRole('region', { name: 'Offen', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+  await card.getByRole('link', { name: 'Nordparzelle' }).click();
+  await expect(page).toHaveURL(/\/app\/fields-beds\?highlight=field:\d+/);
+  await page.goBack();
+  await page.getByRole('article', { name: 'Jäten', exact: true }).getByRole('link', { name: /Salat/ }).click();
+  await expect(page).toHaveURL(/\/app\/crops\?cropId=\d+/);
+});
+
+test.describe('on a touch tablet', () => {
+  test.use({ hasTouch: true, viewport: { width: 1024, height: 900 } });
+
+  test('a quick swipe over a card scrolls instead of dragging and a link tap navigates', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 500 });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const card = page.getByRole('article', { name: 'Jäten', exact: true });
+    await card.scrollIntoViewIfNeeded();
+    const box = await card.getByText('Jäten', { exact: true }).boundingBox();
+    if (!box) throw new Error('Missing task card');
+    const before = await page.evaluate(() => window.scrollY);
+    expect(before).toBeGreaterThan(0);
+    const touch = await page.context().newCDPSession(page);
+    const x = box.x + 5;
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: box.y + 5 }] });
+    for (const offset of [40, 80, 120, 160]) {
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: box.y + 5 + offset }] });
+    }
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(before);
+    await expect(page.getByRole('region', { name: 'Offen', exact: true }).getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
+    await touch.detach();
+    await card.getByRole('link', { name: 'Nordparzelle' }).tap();
+    await expect(page).toHaveURL(/\/app\/fields-beds\?highlight=field:\d+/);
+  });
+});
+
 test('mobile list supports status changes with the keyboard and filters', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
-  await expect(page.getByRole('button', { name: 'Aufgabe verschieben: Jäten' })).toHaveCount(0);
   const menu = page.getByRole('button', { name: 'Status ändern: Jäten' });
   await menu.focus();
   await page.keyboard.press('Enter');
@@ -98,7 +144,7 @@ test('French labels and expanded mobile filters fit at 375px', async ({ page }, 
   await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Tableau de bord des tâches' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tâches', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Filtrer les tâches' }).click();
   await page.getByRole('combobox', { name: 'Période', exact: true }).click();
   await page.getByRole('option', { name: 'Période personnalisée' }).click();
@@ -175,7 +221,8 @@ test('planting-plan creation persists localized automatic events without duplica
   });
   await page.reload();
   const propagation = page.getByRole('article', { name: 'Anzucht beginnen' });
-  await expect(propagation).toContainText('Automatisch');
+  await expect(propagation).toContainText('Tomato events');
+  await expect(propagation).not.toContainText('Automatisch');
   await expect(page.getByRole('article', { name: 'Pflanzen', exact: true }).filter({ hasText: 'Tomato events' })).toBeVisible();
   await expect(page.getByRole('article', { name: 'Ernte beginnen' }).filter({ hasText: 'Tomato events' })).toBeVisible();
   const before = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
@@ -225,7 +272,7 @@ test('moving hint persists dismissal per account', async ({ page }) => {
   expect((await saved).ok()).toBeTruthy();
   await expect(hint).not.toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();
   await expect(hint).not.toBeVisible();
 });
 
@@ -250,7 +297,7 @@ test('only a successfully saved drag retires the hint and empty columns accept t
   await expect(hint).not.toBeVisible();
   expect(await apiRequest(page, 'GET', '/auth/account/task-drag-hint/')).toEqual({ done: true });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();
   await expect(hint).not.toBeVisible();
 });
 
@@ -259,7 +306,7 @@ test('touch dragging supports empty targets and announces the move', async ({ pa
   const tasks = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/tasks/');
   for (const task of tasks.results) await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'pending' });
   await page.reload();
-  const handle = page.getByRole('button', { name: 'Aufgabe verschieben: Jäten' });
+  const handle = page.getByRole('article', { name: 'Jäten', exact: true }).getByText('Jäten', { exact: true });
   const target = page.locator('[data-task-column="completed"]');
   const start = await handle.boundingBox();
   const end = await target.boundingBox();

@@ -24,7 +24,7 @@
     "plan": "Anbauplan hinzufügen"
   },
   "board": {
-    "title": "Aufgaben-Dashboard",
+    "title": "Aufgaben",
     "status": {
       "pending": "Offen",
       "in_progress": "In Arbeit",
@@ -61,8 +61,7 @@
     "noDate": "Ohne Termin",
     "dateOverride": "Termin manuell geändert",
     "changeStatus": "Status ändern: {{title}}",
-    "dragTask": "Aufgabe verschieben: {{title}}",
-    "dragInstructions": "Ziehe die Aufgabe mit dem Griff in eine andere Spalte. Über das Statusmenü kannst du den Status auch mit der Tastatur ändern.",
+    "dragInstructions": "Ziehe die Aufgabenkarte in eine andere Spalte. Über das Statusmenü kannst du den Status auch mit der Tastatur ändern.",
     "dragStarted": "{{title}} wird verschoben.",
     "dragOver": "Ziel: {{status}}.",
     "dragEnded": "{{title}} nach {{status}} verschoben.",
@@ -75,7 +74,7 @@
     "showMore": "Weitere Aufgaben anzeigen",
     "saveError": "Der Status konnte nicht gespeichert werden. Die Änderung wurde zurückgenommen. Versuche es erneut.",
     "dragHint": {
-      "desktop": "Verschiebe Aufgaben mit dem Griff in eine andere Spalte. Alternativ kannst du den Status über das Aufgabenmenü ändern.",
+      "desktop": "Ziehe Aufgabenkarten in eine andere Spalte; auf Touchgeräten hältst du die Karte dafür kurz gedrückt. Alternativ kannst du den Status über das Aufgabenmenü ändern.",
       "mobile": "Ändere den Status einer Aufgabe über ihr Menü. Auf größeren Ansichten kannst du Aufgaben auch ziehen.",
       "saveError": "Der Hinweis konnte nicht dauerhaft ausgeblendet werden. Bitte versuche es erneut."
     }
@@ -89,6 +88,7 @@
     "description": "Beschreibung",
     "date": "Fälligkeit",
     "status": "Status",
+    "origin": "Herkunft",
     "plan": "Anbauplan (optional)",
     "none": "Keine Zuordnung",
     "saveError": "Die Aufgabe konnte nicht gespeichert werden. Prüfe deine Angaben und versuche es erneut.",

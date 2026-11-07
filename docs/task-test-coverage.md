@@ -18,7 +18,8 @@ transitions across the APIs rather than duplicating date arithmetic tests.
 | Board filters/metrics, manual CRUD, generated editing and concurrent rollback | `frontend/src/__tests__/Dashboard.test.tsx`, `taskBoard.test.ts`, `api.test.ts` |
 | Template forms, signed offsets, recurrence and failed saves/deletes | `CropTaskTemplatesSection.test.tsx` |
 | Hint persistence, retry and account isolation | `useTaskDragHint.test.tsx` |
-| Mouse/touch drag, empty columns, scrolling, announcements, keyboard menu, dismissal and reload | `frontend/e2e/task-dashboard.spec.ts` |
+| Card drag activation (links, menu and portals never drag) | `frontend/src/components/tasks/taskDragSensors.test.ts` |
+| Mouse/touch drag from the card, card links, scrolling, announcements, keyboard menu, dismissal and reload | `frontend/e2e/task-dashboard.spec.ts` |
 | Independent template saves and separately completable occurrences after rescheduling | `frontend/e2e/task-templates.spec.ts` |
 | Supplier/package/status preservation, partial PATCH, errors, clearing and editor routing | `test_crops_api.py`, `CropsSavePayload.test.tsx`, `CropForm.test.tsx`, `CropsPersistence.test.tsx`, `frontend/e2e/crop-form-responsive.spec.ts` |
 | Responsive layouts and browser-specific rendering | `frontend/e2e/responsive-layouts.spec.ts`, `frontend/e2e-cross-browser/` |

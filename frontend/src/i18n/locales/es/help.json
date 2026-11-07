@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Ayuda: Resumen",
-      "intro": "La lista inicial te guía para crear parcelas, bancales, cultivos y planes de cultivo. El panel muestra las tareas guardadas de la temporada activa en Pendientes, En curso y Completadas. Filtra por periodo, cultivo, parcela o responsable. Los indicadores cuentan las tareas sin terminar. En pantallas grandes, arrastra las tarjetas por el asa; el menú también permite cambiar el estado con el teclado. En pantallas pequeñas se muestra una lista compacta."
+      "intro": "La lista inicial te guía para crear parcelas, bancales, cultivos y planes de cultivo. La vista de tareas muestra las tareas guardadas de la temporada activa en Pendientes, En curso y Completadas. Filtra por periodo, cultivo, parcela o responsable. Los indicadores cuentan las tareas sin terminar. En pantallas grandes, arrastra las tarjetas (en pantallas táctiles tras mantenerlas pulsadas); el cultivo y la parcela de una tarjeta llevan a sus detalles; el menú también permite cambiar el estado con el teclado. En pantallas pequeñas se muestra una lista compacta."
     },
     "locations": {
       "title": "Ayuda: Ubicaciones",

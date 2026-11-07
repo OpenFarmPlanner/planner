@@ -24,7 +24,7 @@ describe('PageHelp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
 
-    expect(await screen.findByText(/Das Aufgaben-Dashboard zeigt gespeicherte Aufgaben der aktiven Saison/)).toBeInTheDocument();
+    expect(await screen.findByText(/Die Aufgabenübersicht zeigt gespeicherte Aufgaben der aktiven Saison/)).toBeInTheDocument();
     expect(screen.getByText(/über das Kartenmenü änderst du den Status auch mit der Tastatur/)).toBeInTheDocument();
     expect(screen.queryByText('Bedienung')).not.toBeInTheDocument();
     expect(screen.queryByText('Hinweis')).not.toBeInTheDocument();

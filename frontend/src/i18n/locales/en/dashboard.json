@@ -24,7 +24,7 @@
     "plan": "Add planting plan"
   },
   "board": {
-    "title": "Task dashboard",
+    "title": "Tasks",
     "status": {
       "pending": "Open",
       "in_progress": "In progress",
@@ -61,8 +61,7 @@
     "noDate": "No due date",
     "dateOverride": "Date changed manually",
     "changeStatus": "Change status: {{title}}",
-    "dragTask": "Move task: {{title}}",
-    "dragInstructions": "Drag the task by its handle to another column. You can also change its status with the keyboard using the status menu.",
+    "dragInstructions": "Drag the task card to another column. You can also change its status with the keyboard using the status menu.",
     "dragStarted": "Moving {{title}}.",
     "dragOver": "Target: {{status}}.",
     "dragEnded": "Moved {{title}} to {{status}}.",
@@ -75,7 +74,7 @@
     "showMore": "Show more tasks",
     "saveError": "The status could not be saved. The change was reverted. Please try again.",
     "dragHint": {
-      "desktop": "Drag tasks by their handle into another column, or change status through the task menu.",
+      "desktop": "Drag task cards into another column; on touch devices, press and hold a card first. You can also change status through the task menu.",
       "mobile": "Change a task’s status through its menu. On larger screens, you can also drag tasks.",
       "saveError": "Could not hide this hint permanently. Please try again."
     }
@@ -89,6 +88,7 @@
     "description": "Description",
     "date": "Due date",
     "status": "Status",
+    "origin": "Origin",
     "plan": "Planting plan (optional)",
     "none": "No link",
     "saveError": "The task could not be saved. Check your entries and try again.",

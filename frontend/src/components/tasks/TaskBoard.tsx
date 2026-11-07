@@ -5,15 +5,13 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import {
-  DndContext, MouseSensor, TouchSensor, useDroppable, useSensor, useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import { DndContext, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import type { Bed, Crop, Field, PlantingPlan, Task } from '../../api/types';
 import type { ProjectMemberPayload } from '../../api/api';
 import { useTranslation } from '../../i18n';
 import { taskDisplayTitle } from './taskTitles';
 import TaskCard from './TaskCard';
+import { TaskCardMouseSensor, TaskCardTouchSensor } from './taskDragSensors';
 import { useTaskDragHint } from './useTaskDragHint';
 import { formatCropDisplayName } from '../../crops/cropDisplay';
 import {
@@ -70,8 +68,8 @@ export default function TaskBoard({
   const dragHint = useTaskDragHint();
   const compact = useMediaQuery(theme.breakpoints.down('md'));
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(TaskCardMouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TaskCardTouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
   const [limits, setLimits] = useState<Record<BoardStatus, number>>({
     pending: 30, in_progress: 30, completed: 30,
@@ -181,6 +179,7 @@ export default function TaskBoard({
             {column.slice(0, limits[status]).map((task) => <TaskCard key={task.id} task={task}
               compact={compact} saving={savingIds.includes(task.id)}
               cropName={task.crop == null ? undefined : formatCropDisplayName(cropById.get(task.crop) ?? {})}
+              areaId={fieldForTask(task)}
               areaName={fieldById.get(fieldForTask(task))?.name}
               personName={task.assigned_to == null ? undefined : personById.get(task.assigned_to)}
               onStatusChange={onStatusChange} onEdit={onEdit} onDelete={onDelete} />)}

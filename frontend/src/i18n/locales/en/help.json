@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Help: Overview",
-      "intro": "The setup checklist guides you through fields, beds, crops and planting plans. The task dashboard shows saved tasks for the active season in Open, In progress and Completed. Filter by period, crop, field or assignee. The metrics count unfinished tasks. On large screens, drag cards by their handle; the card menu also supports keyboard status changes. Small screens show a compact list."
+      "intro": "The setup checklist guides you through fields, beds, crops and planting plans. The task overview shows saved tasks for the active season in Open, In progress and Completed. Filter by period, crop, field or assignee. The metrics count unfinished tasks. On large screens, drag cards (on touch devices after a short press and hold); the crop and field on a card link to their details; the card menu also supports keyboard status changes. Small screens show a compact list."
     },
     "locations": {
       "title": "Help: Locations",
