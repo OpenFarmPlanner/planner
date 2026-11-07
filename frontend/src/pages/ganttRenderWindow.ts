@@ -10,6 +10,8 @@ export interface GanttRenderWindow {
   groups: GanttTaskGroup[];
   startIndex: number;
   endIndex: number;
+  /** Offset of the first rendered row from the top of the first row. */
+  startOffset: number;
   totalHeight: number;
 }
 
@@ -24,6 +26,7 @@ export function getGanttRenderWindow(
       groups: [],
       startIndex: 0,
       endIndex: 0,
+      startOffset: 0,
       totalHeight: 0,
     };
   }
@@ -93,6 +96,7 @@ export function getGanttRenderWindow(
     groups,
     startIndex,
     endIndex,
+    startOffset: rowOffsets[startIndex] ?? 0,
     totalHeight,
   };
 }
