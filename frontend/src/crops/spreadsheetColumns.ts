@@ -203,8 +203,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     key: 'direct_sowing_windows',
     headerKey: 'timingWindows.kinds.direct_sowing',
     aliases: [
-      'direktsaat', 'direktsaatzeitraum', 'aussaat freiland', 'aussat freiland', 'aussaat ins freiland',
-      'freilandaussaat',
+      'direktsaat', 'direktsaatzeitraum', 'aussaat freiland', 'aussaat ins freiland', 'freilandaussaat',
       'direct sowing', 'sow outdoors', 'outdoor sowing',
       'semis direct', 'semis en pleine terre', 'semis en place',
       'siembra directa', 'siembra al aire libre', 'siembra en el exterior',
