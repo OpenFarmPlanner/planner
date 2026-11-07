@@ -44,6 +44,7 @@ const numberFields = [
   'distance_within_row_cm',
   'row_spacing_cm',
   'sowing_depth_cm',
+  'sowing_depth_max_cm',
   'sowing_calculation_safety_percent',
   'sowing_calculation_safety_percent_direct',
   'sowing_calculation_safety_percent_pre_cultivation',

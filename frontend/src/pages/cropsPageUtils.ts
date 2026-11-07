@@ -22,7 +22,7 @@ export type ImportPreviewResult = {
   companions?: CompanionImportPreview;
   /**
    * Cells the import drops (one per cell); the rest of the row is imported.
-   * Despite the name, also germination range cells.
+   * Despite the name, also range cells (germination, sowing depth).
    */
   timing_window_issues?: TimingWindowImportIssue[];
 };
@@ -30,7 +30,7 @@ export type ImportPreviewResult = {
 export type TimingWindowImportIssue = {
   /**
    * The column key: `<kind>_windows`, `harvest_duration_days` for a window
-   * there, or a germination range column.
+   * there, or a range column (germination, sowing depth).
    */
   field: string;
   /** The part of the cell that was rejected, as written. */

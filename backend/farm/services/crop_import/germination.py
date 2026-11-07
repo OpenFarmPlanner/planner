@@ -1,4 +1,8 @@
-"""Expand germination spreadsheet ranges and individual requirement columns."""
+"""Expand spreadsheet range columns and the individual germination requirement columns.
+
+Range columns: optimal germination temperature, germination time and sowing
+depth (in centimetres, converted by the crop serializer).
+"""
 
 import re
 from typing import Any
@@ -8,8 +12,8 @@ from farm.germination import GERMINATION_TYPES
 _RANGE = re.compile(r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:[-–]\s*([+-]?\d+(?:[.,]\d+)?))?\s*$")
 
 
-ERROR_GERMINATION_RANGE = "germination_range_not_recognized"
-GERMINATION_RANGE_MESSAGE = "Enter a number or a range such as 18–25."
+ERROR_RANGE_NOT_RECOGNIZED = "range_not_recognized"
+RANGE_MESSAGE = "Enter a number or a range such as 18–25."
 
 
 def apply_germination_cells(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -26,6 +30,7 @@ def apply_germination_cells(data: dict[str, Any]) -> list[dict[str, Any]]:
             "germination_temperature_optimal_max_c",
         ),
         ("germination_days", "germination_days_min", "germination_days_max"),
+        ("sowing_depth", "sowing_depth_cm", "sowing_depth_max_cm"),
     ):
         raw = data.pop(column, None)
         if raw is None or str(raw).strip() == "":
@@ -35,8 +40,8 @@ def apply_germination_cells(data: dict[str, Any]) -> list[dict[str, Any]]:
             issues.append({
                 "field": column,
                 "value": str(raw).strip(),
-                "code": ERROR_GERMINATION_RANGE,
-                "message": GERMINATION_RANGE_MESSAGE,
+                "code": ERROR_RANGE_NOT_RECOGNIZED,
+                "message": RANGE_MESSAGE,
             })
             continue
         minimum = float(match[1].replace(",", "."))

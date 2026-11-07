@@ -291,6 +291,10 @@ Distances are stored in SI metres, and the canonical field names say so:
 `row_spacing_m`, `distance_within_row_m`, `sowing_depth_m`. An agent never has
 to guess a unit from a field name.
 
+The sowing depth is a range: `sowing_depth_m` is the lower bound and
+`sowing_depth_max_m` the upper one. Sent alone, `sowing_depth_m` is a single
+depth and sets both bounds ([sowing-depth.md](./sowing-depth.md)).
+
 The import endpoints also accept `_cm` and `_mm` spellings and convert them. The
 bare spelling (`row_spacing`) carries no unit and is only usable when the value
 itself states one (`"50 cm"` or `{"value": 50, "unit": "cm"}`).
@@ -300,6 +304,7 @@ itself states one (`"50 cm"` or `{"value": 50, "unit": "cm"}`).
 | `row_spacing_m` | m | > 0 … 3 | 0.05 … 1.5 |
 | `distance_within_row_m` | m | > 0 … 3 | 0.01 … 1.5 |
 | `sowing_depth_m` | m | 0 … 0.5 | 0.002 … 0.15 |
+| `sowing_depth_max_m` | m | 0 … 0.5 | 0.002 … 0.15 |
 | `growth_duration_days` | days | 0 … 1095 | 5 … 400 |
 | `harvest_duration_days` | days | 0 … 730 | … 240 |
 | `propagation_duration_days` | days | 0 … 365 | … 120 |

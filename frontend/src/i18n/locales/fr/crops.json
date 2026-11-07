@@ -277,6 +277,9 @@
     "sowingDepthCm": "Profondeur de semis (cm)",
     "sowingDepthCmPlaceholder": "p. ex. 1,5",
     "sowingDepthCmError": "La profondeur de semis doit être ≥ 0",
+    "sowingDepthMinCm": "Profondeur de semis de (cm)",
+    "sowingDepthMaxCm": "Profondeur de semis à (cm)",
+    "sowingDepthRangeError": "Le maximum doit être supérieur ou égal au minimum.",
     "displayColor": "Couleur d'affichage",
     "displayColorHelp": "Couleur utilisée dans le calendrier de culture.",
     "displayColorError": "Format de couleur non valide (utilisez #RRGGBB).",
@@ -748,7 +751,7 @@
     "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée.",
     "numberCellIgnored": "Ligne {{row}}, {{column}} : « {{value}} » n’est pas un nombre. La valeur n’est pas importée.",
     "cellErrors": {
-      "germination_range_not_recognized": "Indiquez un nombre ou une plage comme « 18–25 »."
+      "range_not_recognized": "Indiquez un nombre ou une plage comme « 18–25 »."
     }
   },
   "library": {
@@ -1304,6 +1307,8 @@
           "distance_within_row_cm": "Espacement sur le rang (cm)",
           "row_spacing_cm": "Espacement entre les rangs (cm)",
           "sowing_depth_cm": "Profondeur de semis (cm)",
+          "sowing_depth_max_m": "Profondeur de semis à (m)",
+          "sowing_depth_max_cm": "Profondeur de semis à (cm)",
           "seed_rate_value": "Dose de semis",
           "seed_rate_unit": "Unité de la dose de semis",
           "seed_rate_by_cultivation": "Dose de semis par mode de culture",

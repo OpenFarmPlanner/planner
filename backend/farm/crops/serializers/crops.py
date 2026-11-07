@@ -90,6 +90,7 @@ from farm.services.timing_windows import (
     months_covered,
 )
 
+from farm.sowing_depth import complete_single_depth_write
 from .seed_packages import SeedPackageSerializer
 from .timing_windows import EffectiveTimingWindowSerializer, TimingWindowListField
 from .seed_rates import (
@@ -148,6 +149,7 @@ INHERITABLE_API_FIELD_NAMES = {
     'distance_within_row_m': 'distance_within_row_cm',
     'row_spacing_m': 'row_spacing_cm',
     'sowing_depth_m': 'sowing_depth_cm',
+    'sowing_depth_max_m': 'sowing_depth_max_cm',
 }
 
 _SEED_RATE_UNIT_FIELDS = (
@@ -233,7 +235,19 @@ class CropSerializer(serializers.ModelSerializer):
         source='sowing_depth_m',
         required=False,
         allow_null=True,
-        help_text='Sowing depth in centimeters'
+        help_text=(
+            'Sowing depth in centimeters, the lower bound of the range. Sent without '
+            'sowing_depth_max_cm it is a single depth and sets both bounds.'
+        ),
+    )
+    sowing_depth_max_cm = CentimetersField(
+        source='sowing_depth_max_m',
+        required=False,
+        allow_null=True,
+        help_text=(
+            'Upper bound of the sowing depth in centimeters; '
+            'equal to sowing_depth_cm for one depth'
+        ),
     )
     
     image_file = serializers.SerializerMethodField()
@@ -1194,6 +1208,7 @@ class CropSerializer(serializers.ModelSerializer):
         later phases assume the earlier ones produced consistent data.
         """
         errors = {}
+        complete_single_depth_write(attrs)
 
         self._promotable_species_invariant_fields = self._validate_species_invariant_fields(
             attrs, errors,

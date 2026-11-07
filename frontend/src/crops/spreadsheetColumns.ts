@@ -10,6 +10,11 @@ export type SpreadsheetColumnDef = {
    *   April; KW 30"); exported canonically, parsed by the backend import.
    */
   type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows' | 'range';
+  /**
+   * `range` only: the lower and upper field the cell is exported from
+   * ("18–25", or "2" when both are equal). The backend import splits it.
+   */
+  rangeFields?: readonly [string, string];
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
@@ -168,8 +173,8 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'germination_days_min', headerKey: 'germination.fields.germination_days_min', aliases: ['germination_days_min'], type: 'number' },
   { key: 'germination_days_max', headerKey: 'germination.fields.germination_days_max', aliases: ['germination_days_max'], type: 'number' },
   { key: 'germination_pretreatment', headerKey: 'germination.fields.germination_pretreatment', aliases: ['germination_pretreatment'], type: 'string' },
-  { key: 'germination_temperature_optimal', headerKey: 'germination.optimalTemperature', aliases: ['keimtemperatur', 'keim-temperatur (°C)'], type: 'range' },
-  { key: 'germination_days', headerKey: 'germination.days', aliases: ['keimdauer', 'keim-dauer (Tage)'], type: 'range' },
+  { key: 'germination_temperature_optimal', headerKey: 'germination.optimalTemperature', aliases: ['keimtemperatur', 'keim-temperatur (°C)'], type: 'range', rangeFields: ['germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c'] },
+  { key: 'germination_days', headerKey: 'germination.days', aliases: ['keimdauer', 'keim-dauer (Tage)'], type: 'range', rangeFields: ['germination_days_min', 'germination_days_max'] },
   { key: 'germination_types', headerKey: 'germination.fields.germination_types', aliases: ['keimverhalten', 'germination_types'], type: 'list', enumImport: { kaltkeimer: 'cold', frostkeimer: 'frost', lichtkeimer: 'light', dunkelkeimer: 'dark' } },
   { key: 'germination_cold', headerKey: 'germination.types.cold', aliases: ['kaltkeimer'], type: 'boolean' },
   { key: 'germination_frost', headerKey: 'germination.types.frost', aliases: ['frostkeimer'], type: 'boolean' },
@@ -245,10 +250,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'number',
   },
   {
-    key: 'sowing_depth_cm',
+    // One column for the range ("2-3", or "2"); exports before the range named it sowing_depth_cm.
+    key: 'sowing_depth',
     headerKey: 'form.sowingDepthCm',
-    aliases: ['tiefe', 'aussaattiefe', 'sowing_depth_cm'],
-    type: 'number',
+    aliases: ['tiefe', 'aussaattiefe', 'saattiefe', 'sowing_depth', 'sowing_depth_cm'],
+    type: 'range',
+    rangeFields: ['sowing_depth_cm', 'sowing_depth_max_cm'],
   },
   {
     key: 'thousand_kernel_weight_g',

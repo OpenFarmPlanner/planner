@@ -162,6 +162,9 @@ export function validateCrop(
   ] as const) {
     if (draft[lower] != null && draft[upper] != null && draft[lower] > draft[upper]) errors[upper] = t('germination.invalidRange');
   }
+  if (draft.sowing_depth_cm != null && draft.sowing_depth_max_cm != null && draft.sowing_depth_cm > draft.sowing_depth_max_cm) {
+    errors.sowing_depth_max_cm = t('form.sowingDepthRangeError');
+  }
 
   // Optional numeric fields validation
   const numericFields = [
@@ -169,6 +172,7 @@ export function validateCrop(
     'distance_within_row_cm',
     'row_spacing_cm',
     'sowing_depth_cm',
+    'sowing_depth_max_cm',
     'sowing_calculation_safety_percent',
     'sowing_calculation_safety_percent_direct',
     'sowing_calculation_safety_percent_pre_cultivation',

@@ -38,11 +38,13 @@ export const buildSheetData = (
     const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
       if (col.type === 'timingWindows') return formatWindowCell(crop, col.key, t);
-      if (col.type === 'range') {
-        const lower = crop[col.key === 'germination_days' ? 'germination_days_min' : 'germination_temperature_optimal_min_c'];
-        const upper = crop[col.key === 'germination_days' ? 'germination_days_max' : 'germination_temperature_optimal_max_c'];
+      if (col.type === 'range' && col.rangeFields) {
+        const [lowerField, upperField] = col.rangeFields;
+        const lower = portable[lowerField] as number | null | undefined;
+        const upper = portable[upperField] as number | null | undefined;
         // Keep incomplete ranges in their individual columns.
-        return lower == null || upper == null ? null : `${lower}–${upper}`;
+        if (lower == null || upper == null) return null;
+        return col.key === 'sowing_depth' && lower === upper ? lower : `${lower}–${upper}`;
       }
       if (['cold', 'frost', 'light', 'dark'].some((kind) => col.key === `germination_${kind}`)) {
         const kind = col.key.replace('germination_', '') as NonNullable<Crop['germination_types']>[number];

@@ -112,7 +112,9 @@ for (const target of TARGETS) {
 
       // Decimal fields use the UI language's separator, not the engine's
       // native number formatting (WebKit used to show "0,5", the others "0.5").
-      await expect(dialog.getByLabel('Saattiefe (cm)')).toHaveValue('0,5');
+      // One depth is stored as a range of one: both bounds show it.
+      await expect(dialog.getByLabel('Saattiefe von (cm)')).toHaveValue('0,5');
+      await expect(dialog.getByLabel('Saattiefe bis (cm)')).toHaveValue('0,5');
 
       if (target.variety) {
         // The rotation info icon stays beside the heading's last line instead

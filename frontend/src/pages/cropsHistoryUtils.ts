@@ -56,10 +56,12 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   distance_within_row_m: 'form.distanceWithinRowCm',
   row_spacing_m: 'form.rowSpacingCm',
   sowing_depth_m: 'form.sowingDepthCm',
+  sowing_depth_max_m: 'form.sowingDepthMaxCm',
   // The import preview diffs the API's centimeter fields.
   distance_within_row_cm: 'form.distanceWithinRowCm',
   row_spacing_cm: 'form.rowSpacingCm',
   sowing_depth_cm: 'form.sowingDepthCm',
+  sowing_depth_max_cm: 'form.sowingDepthMaxCm',
   seed_rate_value: 'form.seedRateValue',
   seed_rate_unit: 'form.seedRateUnit',
   seed_rate_by_cultivation: 'form.seedRateSectionTitle',
@@ -277,7 +279,7 @@ export function formatHistoryChangeValue(
     return value ? t('history.booleanYes') : t('history.booleanNo');
   }
   if (typeof value === 'number') {
-    if (field === 'distance_within_row_m' || field === 'row_spacing_m' || field === 'sowing_depth_m') {
+    if (['distance_within_row_m', 'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m'].includes(field)) {
       return `${formatNumberValue(value * 100)} cm`;
     }
     if (field.includes('safety_percent')) {

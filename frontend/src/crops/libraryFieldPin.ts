@@ -35,6 +35,7 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   distance_within_row_cm: ['distance_within_row_m'],
   row_spacing_cm: ['row_spacing_m'],
   sowing_depth_cm: ['sowing_depth_m'],
+  sowing_depth_max_cm: ['sowing_depth_max_m'],
   thousand_kernel_weight_g: ['thousand_kernel_weight_g'],
   notes: ['notes'],
 } as const satisfies Partial<Record<keyof Crop, readonly string[]>>;

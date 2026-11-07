@@ -136,7 +136,7 @@ _COMPARABLE_FIELDS = [
     'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
     'germination_types', 'germination_pretreatment',
     'harvest_method', 'expected_yield',
-    'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm',
+    'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm', 'sowing_depth_max_cm',
     'seed_rate_value', 'seed_rate_unit', 'sowing_calculation_safety_percent',
     'seed_rate_direct_value', 'seed_rate_direct_unit', 'sowing_calculation_safety_percent_direct',
     'seed_rate_pre_cultivation_value', 'seed_rate_pre_cultivation_unit',

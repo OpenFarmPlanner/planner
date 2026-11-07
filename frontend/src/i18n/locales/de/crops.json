@@ -272,6 +272,9 @@
     "sowingDepthCm": "Saattiefe (cm)",
     "sowingDepthCmPlaceholder": "z.B. 1.5",
     "sowingDepthCmError": "Saattiefe muss ≥ 0 sein",
+    "sowingDepthMinCm": "Saattiefe von (cm)",
+    "sowingDepthMaxCm": "Saattiefe bis (cm)",
+    "sowingDepthRangeError": "Der Höchstwert muss mindestens dem Mindestwert entsprechen.",
     "displayColor": "Anzeigefarbe",
     "displayColorHelp": "Farbe zur Darstellung im Anbaukalender.",
     "displayColorError": "Ungültiges Farbformat (verwenden Sie #RRGGBB)",
@@ -726,7 +729,7 @@
     "timingWindowIssueWithValue": "Zeile {{row}}, {{column}}, „{{value}}“: {{message}} Der Wert wird nicht übernommen.",
     "numberCellIgnored": "Zeile {{row}}, {{column}}: „{{value}}“ ist keine Zahl. Der Wert wird nicht übernommen.",
     "cellErrors": {
-      "germination_range_not_recognized": "Bitte eine Zahl oder einen Bereich wie „18–25“ angeben."
+      "range_not_recognized": "Bitte eine Zahl oder einen Bereich wie „18–25“ angeben."
     }
   },
   "library": {
@@ -1270,6 +1273,8 @@
           "distance_within_row_cm": "Pflanzabstand (cm)",
           "row_spacing_cm": "Reihenabstand (cm)",
           "sowing_depth_cm": "Saattiefe (cm)",
+          "sowing_depth_max_m": "Saattiefe bis (m)",
+          "sowing_depth_max_cm": "Saattiefe bis (cm)",
           "seed_rate_value": "Saatgutbedarf",
           "seed_rate_unit": "Einheit Saatgutbedarf",
           "seed_rate_by_cultivation": "Saatgutbedarf nach Anbauart",

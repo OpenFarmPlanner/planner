@@ -120,6 +120,8 @@ for step-by-step procedures of recurring tasks, see the skills in
   through the crop library.
 - **[Germination](./germination.md)** — germination temperatures and time ranges,
   seed requirements, inheritance, library/spreadsheet exchange and planning hints.
+- **[Sowing depth](./sowing-depth.md)** — the sowing depth as a range (lower and
+  upper bound), the single-depth rule for old clients, form, import and export.
 - **[Timing Windows (Zeiträume)](./timing-windows.md)** — Anzucht,
   Direktsaat, Pflanzung and Ernte windows of a crop in thirds of a month or
   calendar weeks: resolution per year and across New Year, the canonical

@@ -149,7 +149,7 @@ describe('buildTimingWindowPreviewWarnings', () => {
           { field: 'planting_windows', value: 'Frühjahr', code: 'timing_window_not_recognized' },
           { field: 'harvest_duration_days', value: 'Juli bis September', code: 'timing_window_harvest_not_imported' },
           { field: 'direct_sowing_windows', value: 'KW 53', code: 'timing_window_invalid_week' },
-          { field: 'germination_days', value: 'fk', code: 'germination_range_not_recognized' },
+          { field: 'germination_days', value: 'fk', code: 'range_not_recognized' },
         ],
       },
     ], (index) => index + 2, tCrops);

@@ -28,6 +28,7 @@ LENGTH_FIELD_TO_CENTIMETER_FIELD = {
     'row_spacing_m': 'row_spacing_cm',
     'distance_within_row_m': 'distance_within_row_cm',
     'sowing_depth_m': 'sowing_depth_cm',
+    'sowing_depth_max_m': 'sowing_depth_max_cm',
 }
 
 

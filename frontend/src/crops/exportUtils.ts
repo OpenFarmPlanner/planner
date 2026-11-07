@@ -35,7 +35,8 @@ export interface PortableCrop {
   expected_yield?: number;
   distance_within_row_cm?: number;
   row_spacing_cm?: number;
-  sowing_depth_cm?: number;
+  sowing_depth_cm?: number | null;
+  sowing_depth_max_cm?: number | null;
   display_color?: string;
   seed_rate_value?: number | null;
   seed_rate_unit?: Crop['seed_rate_unit'];
@@ -119,6 +120,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     distance_within_row_cm: crop.distance_within_row_cm,
     row_spacing_cm: crop.row_spacing_cm,
     sowing_depth_cm: crop.sowing_depth_cm,
+    sowing_depth_max_cm: crop.sowing_depth_max_cm,
     display_color: crop.display_color,
     seed_rate_value: crop.seed_rate_value,
     seed_rate_unit: crop.seed_rate_unit,

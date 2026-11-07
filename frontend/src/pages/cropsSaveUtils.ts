@@ -168,6 +168,7 @@ export function buildCropSavePayload(crop: Crop): CropSavePayload {
   delete (payload as unknown as Record<string, unknown>).distance_within_row_m;
   delete (payload as unknown as Record<string, unknown>).row_spacing_m;
   delete (payload as unknown as Record<string, unknown>).sowing_depth_m;
+  delete (payload as unknown as Record<string, unknown>).sowing_depth_max_m;
 
   // `seed_requirements` is the API's read-back of the flat seed-rate fields the
   // form edits. Echoing the loaded object would overrule those edits and, once

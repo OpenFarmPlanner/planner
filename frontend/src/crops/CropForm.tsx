@@ -221,6 +221,7 @@ const EMPTY_CROP: Partial<Crop> = {
   distance_within_row_cm: undefined,
   row_spacing_cm: undefined,
   sowing_depth_cm: undefined,
+  sowing_depth_max_cm: undefined,
   display_color: '',
   sowing_calculation_safety_percent: 0,
   sowing_calculation_safety_percent_direct: undefined,
@@ -338,6 +339,7 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   // The only spacing field that takes decimals; rounding it would make a
   // freshly linked crop differ from its entry.
   sowing_depth_cm: metersToCentimeters(publicCrop.sowing_depth_m),
+  sowing_depth_max_cm: metersToCentimeters(publicCrop.sowing_depth_max_m),
   seed_rate_value: publicCrop.seed_rate_value ?? null,
   seed_rate_unit: publicCrop.seed_rate_unit ?? null,
   seed_rate_by_cultivation: publicCrop.seed_rate_by_cultivation ?? null,

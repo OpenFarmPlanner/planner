@@ -277,6 +277,9 @@
     "sowingDepthCm": "Profundidad de siembra (cm)",
     "sowingDepthCmPlaceholder": "p. ej. 1,5",
     "sowingDepthCmError": "La profundidad de siembra debe ser ≥ 0",
+    "sowingDepthMinCm": "Profundidad de siembra desde (cm)",
+    "sowingDepthMaxCm": "Profundidad de siembra hasta (cm)",
+    "sowingDepthRangeError": "El máximo debe ser mayor o igual que el mínimo.",
     "displayColor": "Color de visualización",
     "displayColorHelp": "Color usado en el calendario de cultivos.",
     "displayColorError": "Formato de color no válido (usa #RRGGBB).",
@@ -748,7 +751,7 @@
     "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa.",
     "numberCellIgnored": "Fila {{row}}, {{column}}: «{{value}}» no es un número. El valor no se importa.",
     "cellErrors": {
-      "germination_range_not_recognized": "Indica un número o un rango como «18–25»."
+      "range_not_recognized": "Indica un número o un rango como «18–25»."
     }
   },
   "library": {
@@ -1304,6 +1307,8 @@
           "distance_within_row_cm": "Distancia entre plantas (cm)",
           "row_spacing_cm": "Distancia entre filas (cm)",
           "sowing_depth_cm": "Profundidad de siembra (cm)",
+          "sowing_depth_max_m": "Profundidad de siembra hasta (m)",
+          "sowing_depth_max_cm": "Profundidad de siembra hasta (cm)",
           "seed_rate_value": "Dosis de siembra",
           "seed_rate_unit": "Unidad de la dosis de siembra",
           "seed_rate_by_cultivation": "Dosis de siembra por tipo de cultivo",

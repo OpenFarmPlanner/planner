@@ -31,6 +31,7 @@ export const LIBRARY_LINK_FIELDS = [
   'distance_within_row_cm',
   'row_spacing_cm',
   'sowing_depth_cm',
+  'sowing_depth_max_cm',
   'seed_rate_value',
   'seed_rate_unit',
   'seed_rate_by_cultivation',
