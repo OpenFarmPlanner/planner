@@ -249,6 +249,33 @@ describe('CropForm variety override highlighting', () => {
     }));
   });
 
+  it('keeps an inherited list field a list when it stays inherited on save (#905)', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const variety: Crop = {
+      ...INHERITING_VARIETY_CROP,
+      inherited_fields: [...(INHERITING_VARIETY_CROP.inherited_fields ?? []), 'tags'],
+      effective_values: { ...INHERITING_VARIETY_CROP.effective_values, tags: ['Wurzelgemüse'] },
+    };
+
+    render(
+      <CropForm
+        crop={variety}
+        crops={[LINKED_SPECIES_CROP, variety]}
+        onSave={onSave}
+        onCancel={() => {}}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+    fireEvent.change(screen.getByLabelText('form.propagationDurationDays'), { target: { value: '14' } });
+    const saveButton = screen.getByRole('button', { name: 'form.save' });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0].tags).toEqual([]);
+  });
+
   it('keeps an edited non-invariant inherited field as the variety\'s own value', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 

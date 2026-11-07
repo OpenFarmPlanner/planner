@@ -213,6 +213,42 @@ describe('Crops save payload', () => {
     expect(payload.seed_rate_pre_cultivation_unit).toBe('g_per_m2');
   });
 
+  it('does not echo the loaded seed requirements after pre-cultivation is removed (#905)', () => {
+    const payload = buildCropSavePayload({
+      id: 1,
+      name: 'Kohlrabi',
+      variety: '',
+      cultivation_type: 'direct_sowing',
+      cultivation_types: ['direct_sowing'],
+      seed_rate_pre_cultivation_value: 1,
+      seed_rate_pre_cultivation_unit: 'seeds_per_plant',
+      seed_requirements: {
+        pre_cultivation: { value: 1, unit: 'seeds_per_plant', safety_percent: 18 },
+      },
+    } as Crop);
+
+    expect(payload).not.toHaveProperty('seed_requirements');
+    expect(payload.cultivation_types).toEqual(['direct_sowing']);
+    expect(payload.seed_rate_by_cultivation).toBeNull();
+  });
+
+  it('drops stored seed rates of cultivation types the crop no longer has', () => {
+    const payload = buildCropSavePayload({
+      id: 1,
+      name: 'Gurke',
+      variety: '',
+      cultivation_types: ['direct_sowing'],
+      seed_rate_by_cultivation: {
+        direct_sowing: { value: 2, unit: 'seeds_per_plant' },
+        pre_cultivation: { value: 1, unit: 'seeds_per_plant' },
+      },
+    } as Crop);
+
+    expect(payload.seed_rate_by_cultivation).toEqual({
+      direct_sowing: { value: 2, unit: 'seeds_per_plant' },
+    });
+  });
+
   it('derives fallback seed rate fields from current method-specific amounts', () => {
     const payload = buildCropSavePayload({
       id: 1,

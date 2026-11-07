@@ -6,6 +6,17 @@ const isSetSeedRateValue = (value: unknown): value is number => (
 
 const hasValue = (value: unknown): boolean => value !== null && value !== undefined;
 
+const keepActiveCultivationTypes = (
+  seedRates: SeedRateByCultivation | null | undefined,
+  cultivationTypes: CultivationType[],
+): SeedRateByCultivation | null => {
+  if (!seedRates) return null;
+  const active = Object.fromEntries(
+    Object.entries(seedRates).filter(([type]) => cultivationTypes.includes(type as CultivationType)),
+  ) as SeedRateByCultivation;
+  return Object.keys(active).length > 0 ? active : null;
+};
+
 export const buildSeedRateByCultivation = (
   crop: Crop,
   cultivationTypes: CultivationType[],
@@ -28,7 +39,7 @@ export const buildSeedRateByCultivation = (
 
   if (!hasMethodSpecificSeedRateInput) {
     return {
-      seed_rate_by_cultivation: crop.seed_rate_by_cultivation ?? null,
+      seed_rate_by_cultivation: keepActiveCultivationTypes(crop.seed_rate_by_cultivation, cultivationTypes),
       seed_rate_value: crop.seed_rate_value ?? null,
       seed_rate_unit: legacyUnit,
     };

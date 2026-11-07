@@ -169,6 +169,11 @@ export function buildCropSavePayload(crop: Crop): CropSavePayload {
   delete (payload as unknown as Record<string, unknown>).row_spacing_m;
   delete (payload as unknown as Record<string, unknown>).sowing_depth_m;
 
+  // `seed_requirements` is the API's read-back of the flat seed-rate fields the
+  // form edits. Echoing the loaded object would overrule those edits and, once
+  // a cultivation type is removed, fail validation for the dropped method.
+  delete (payload as unknown as Record<string, unknown>).seed_requirements;
+
   // Read-only inheritance data: the backend resolves these per response and
   // ignores them on write, so sending them back is pure payload noise.
   delete (payload as unknown as Record<string, unknown>).general_crop;
