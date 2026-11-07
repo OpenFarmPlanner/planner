@@ -723,7 +723,11 @@
       }
     },
     "timingWindowIssue": "Row {{row}}, {{column}}: {{message}} The value is not imported.",
-    "timingWindowIssueWithValue": "Row {{row}}, {{column}}, “{{value}}”: {{message}} The value is not imported."
+    "timingWindowIssueWithValue": "Row {{row}}, {{column}}, “{{value}}”: {{message}} The value is not imported.",
+    "numberCellIgnored": "Row {{row}}, {{column}}: “{{value}}” is not a number. The value is not imported.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Please enter a number or a range such as “18–25”."
+    }
   },
   "library": {
     "openButton": "Import from library",
@@ -1679,7 +1683,7 @@
       "weekRange": "week {{start}} to {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "“{{value}}” is not a time window. Examples include “early March to late April”, “week 10 to 14” or “03a-04c”.",
+      "timing_window_not_recognized": "“{{value}}” is not a time window. Examples include “early March to late April”, “week 10 to 14” or “03a-04c”. Separate several windows with “;”, for example “March; October”.",
       "timing_window_open_end": "“{{value}}”: please give a start and an end, for example “March to May”.",
       "timing_window_ambiguous_slash": "“{{value}}” is ambiguous. Write “March to April” for one window, “March; April” for two.",
       "timing_window_day_dates": "Day dates are not supported. Please use thirds of a month (for example “mid March”) or calendar weeks (for example “week 11”).",

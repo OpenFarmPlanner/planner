@@ -1,4 +1,5 @@
 import { readWithLegacyKey, removeWithLegacyKey } from '../compat/legacyCropNames';
+import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
 import type { CompanionImportPreview, CompanionImportSummary } from '../api/types';
 
 export const SELECTED_CROP_STORAGE_KEY = 'selectedCropId';
@@ -19,12 +20,18 @@ export type ImportPreviewResult = {
   import_data: Record<string, unknown>;
   error?: string;
   companions?: CompanionImportPreview;
-  /** Window cells the import drops (one per cell); the rest of the row is imported. */
+  /**
+   * Cells the import drops (one per cell); the rest of the row is imported.
+   * Despite the name, also germination range cells.
+   */
   timing_window_issues?: TimingWindowImportIssue[];
 };
 
 export type TimingWindowImportIssue = {
-  /** The column key: `<kind>_windows`, or `harvest_duration_days` for a window there. */
+  /**
+   * The column key: `<kind>_windows`, `harvest_duration_days` for a window
+   * there, or a germination range column.
+   */
   field: string;
   /** The part of the cell that was rejected, as written. */
   value: string;
@@ -103,11 +110,11 @@ export const buildTimingWindowPreviewWarnings = (
   rowNumberOf: (index: number) => number,
   t: Translator,
 ): string[] => results.flatMap((result) => (result.timing_window_issues ?? []).map((issue) => {
-  const column = issue.field.endsWith('_windows')
-    ? t(`timingWindows.kinds.${issue.field.replace(/_windows$/, '')}`)
-    // A window in the harvest-duration column ("Erntezeitraum").
-    : t('form.harvestDurationDays');
-  const message = t(`timingWindows.importErrors.${issue.code}`, { value: issue.value });
+  const headerKey = CROP_COLUMNS.find((col) => col.key === issue.field)?.headerKey;
+  const column = headerKey ? t(headerKey) : issue.field;
+  const message = issue.code.startsWith('timing_window_')
+    ? t(`timingWindows.importErrors.${issue.code}`, { value: issue.value })
+    : t(`import.cellErrors.${issue.code}`, { value: issue.value });
   const key = TIMING_WINDOW_MESSAGES_WITH_VALUE.has(issue.code)
     ? 'import.timingWindowIssue'
     : 'import.timingWindowIssueWithValue';

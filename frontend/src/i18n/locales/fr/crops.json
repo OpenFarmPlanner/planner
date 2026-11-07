@@ -745,7 +745,11 @@
       }
     },
     "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",
-    "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée."
+    "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée.",
+    "numberCellIgnored": "Ligne {{row}}, {{column}} : « {{value}} » n’est pas un nombre. La valeur n’est pas importée.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Indiquez un nombre ou une plage comme « 18–25 »."
+    }
   },
   "library": {
     "openButton": "Importer depuis la bibliothèque",
@@ -1723,7 +1727,7 @@
       "weekRange": "semaines {{start}} à {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "« {{value}} » n’est pas une période. Exemples possibles : « début mars à fin avril », « semaines 10 à 14 » ou « 03a-04c ».",
+      "timing_window_not_recognized": "« {{value}} » n’est pas une période. Exemples possibles : « début mars à fin avril », « semaines 10 à 14 » ou « 03a-04c ». Séparez plusieurs périodes par « ; », par exemple « mars; octobre ».",
       "timing_window_open_end": "« {{value}} » : veuillez indiquer un début et une fin, par exemple « mars à mai ».",
       "timing_window_ambiguous_slash": "« {{value}} » est ambigu. Écrivez « mars à avril » pour une période, « mars; avril » pour deux.",
       "timing_window_day_dates": "Les dates précises ne sont pas prises en charge. Utilisez des décades (par exemple « mi-mars ») ou des semaines (par exemple « semaine 11 »).",

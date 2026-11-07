@@ -102,6 +102,17 @@ describe('parseSpreadsheetFile', () => {
       expect(result.entries[0]).not.toHaveProperty(numberColumn.key);
     });
 
+    it('warns once per number cell it drops instead of dropping it silently', async () => {
+      const result = await parseSpreadsheetFile(csvFile([
+        [NAME_HEADER, numberColumn.headerKey],
+        ['Tomate', '2-3'],
+        ['Gurke', '2'],
+      ]));
+
+      expect(result.entries[1][numberColumn.key]).toBe(2);
+      expect(result.warnings).toEqual(['crops:import.numberCellIgnored']);
+    });
+
     it('hands text in the harvest-duration column to the backend under its own key', async () => {
       // The backend's timing-window parser decides whether it is a harvest window to report.
       const result = await parseSpreadsheetFile(csvFile([

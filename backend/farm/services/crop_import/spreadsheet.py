@@ -395,11 +395,13 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             continue
 
         try:
-            apply_germination_cells(crop_data)
+            germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
             companions = preview_row_companions(resolver, crop_data)
-            timing_window_issues = apply_timing_window_cells(crop_data, matching_crop)
+            timing_window_issues = [
+                *germination_issues, *apply_timing_window_cells(crop_data, matching_crop),
+            ]
 
             if matching_crop:
                 result = {
@@ -452,7 +454,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
 
         try:
             companions = _pop_companions(crop_data)
-            apply_germination_cells(crop_data)
+            germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
             if supplier:
@@ -464,7 +466,9 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                     continue
                 timing_window_issues.extend(
                     {'index': idx, **issue}
-                    for issue in apply_timing_window_cells(crop_data, matching_crop)
+                    for issue in [
+                        *germination_issues, *apply_timing_window_cells(crop_data, matching_crop),
+                    ]
                 )
                 serializer = CropSerializer(
                     matching_crop, data=crop_data, partial=True,
@@ -490,7 +494,8 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 # against on a create (there is no bound instance either).
                 _resolve_crop_species(crop_data)
                 timing_window_issues.extend(
-                    {'index': idx, **issue} for issue in apply_timing_window_cells(crop_data, None)
+                    {'index': idx, **issue}
+                    for issue in [*germination_issues, *apply_timing_window_cells(crop_data, None)]
                 )
                 serializer = CropSerializer(
                     data=crop_data, context={'project': project, 'defer_companion_linking': True},

@@ -745,7 +745,11 @@
       }
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
-    "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa."
+    "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa.",
+    "numberCellIgnored": "Fila {{row}}, {{column}}: «{{value}}» no es un número. El valor no se importa.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Indica un número o un rango como «18–25»."
+    }
   },
   "library": {
     "openButton": "Importar desde la biblioteca",
@@ -1723,7 +1727,7 @@
       "weekRange": "semanas {{start}} a {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "«{{value}}» no es un periodo. Algunos ejemplos válidos son «principios de marzo a finales de abril», «semanas 10 a 14» o «03a-04c».",
+      "timing_window_not_recognized": "«{{value}}» no es un periodo. Algunos ejemplos válidos son «principios de marzo a finales de abril», «semanas 10 a 14» o «03a-04c». Separa varios periodos con «;», por ejemplo «marzo; octubre».",
       "timing_window_open_end": "«{{value}}»: indica un inicio y un final, por ejemplo «marzo a mayo».",
       "timing_window_ambiguous_slash": "«{{value}}» es ambiguo. Escribe «marzo a abril» para un periodo y «marzo; abril» para dos.",
       "timing_window_day_dates": "No se admiten fechas concretas. Usa decenas del mes (por ejemplo «mediados de marzo») o semanas (por ejemplo «semana 11»).",

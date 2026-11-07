@@ -8,7 +8,17 @@ from farm.germination import GERMINATION_TYPES
 _RANGE = re.compile(r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:[-–]\s*([+-]?\d+(?:[.,]\d+)?))?\s*$")
 
 
-def apply_germination_cells(data: dict[str, Any]) -> None:
+ERROR_GERMINATION_RANGE = "germination_range_not_recognized"
+GERMINATION_RANGE_MESSAGE = "Enter a number or a range such as 18–25."
+
+
+def apply_germination_cells(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Expand the range columns into min/max; return one issue per rejected cell.
+
+    A rejected cell is dropped and the rest of the row is imported, like a
+    timing-window cell.
+    """
+    issues: list[dict[str, Any]] = []
     for column, lower, upper in (
         (
             "germination_temperature_optimal",
@@ -22,7 +32,13 @@ def apply_germination_cells(data: dict[str, Any]) -> None:
             continue
         match = _RANGE.fullmatch(str(raw))
         if match is None:
-            raise ValueError(f"{column}: enter a number or a range such as 18–25.")
+            issues.append({
+                "field": column,
+                "value": str(raw).strip(),
+                "code": ERROR_GERMINATION_RANGE,
+                "message": GERMINATION_RANGE_MESSAGE,
+            })
+            continue
         minimum = float(match[1].replace(",", "."))
         maximum = float((match[2] or match[1]).replace(",", "."))
         data[lower], data[upper] = minimum, maximum
@@ -39,3 +55,4 @@ def apply_germination_cells(data: dict[str, Any]) -> None:
             types.remove(kind)
     if flags_present:
         data["germination_types"] = types
+    return issues
