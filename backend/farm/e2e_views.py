@@ -21,6 +21,7 @@ from accounts.consent import record_acceptance
 from accounts.models import DocumentConsent
 from accounts.trust import grant_established_trust
 from crops.permissions import grant_public_library_moderator_access
+from farm.e2e_cross_browser_data import CROSS_BROWSER_PROJECT_NAME, populate_cross_browser_project
 from farm.models import Project, ProjectInvitation, ProjectMembership, PublicCrop
 from farm.services.demo_project import get_demo_project_name, populate_demo_project, resolve_demo_language
 
@@ -28,6 +29,12 @@ User = get_user_model()
 E2E_PASSWORD = 'Pass12345!'
 TEST_EMAIL_DOMAIN = 'e2e.local'
 E2E_PUBLIC_CROP_VARIETY_PREFIXES = ('E2E Kollaboration ', 'Visual Empty ')
+
+# What a `setup*` action seeds into the fixture project besides its users.
+DATASET_EMPTY = 'empty'
+DATASET_DEMO = 'demo'
+# farm/e2e_cross_browser_data.py: the cross-browser screenshot suite's own data.
+DATASET_CROSS_BROWSER = 'cross_browser'
 
 
 def _e2e_token() -> str:
@@ -119,7 +126,9 @@ class E2EInvitationFixtureView(APIView):
         if action == 'setup':
             return Response(self._setup(request, scenario))
         if action == 'setup_demo':
-            return Response(self._setup(request, scenario, demo_project=True))
+            return Response(self._setup(request, scenario, dataset=DATASET_DEMO))
+        if action == 'setup_cross_browser':
+            return Response(self._setup(request, scenario, dataset=DATASET_CROSS_BROWSER))
         if action == 'setup_empty_user':
             return Response(self._setup_empty_user(scenario))
         if action == 'remove_member':
@@ -160,11 +169,17 @@ class E2EInvitationFixtureView(APIView):
         _grant_fixture_user_trust(user)
         return {'user': {'email': user.email, 'password': E2E_PASSWORD}}
 
-    def _setup(self, request: Request, scenario: str, *, demo_project: bool = False) -> dict[str, object]:
+    def _setup(
+        self, request: Request, scenario: str, *, dataset: str = DATASET_EMPTY,
+    ) -> dict[str, object]:
         self._reset(scenario)
         invitation_state = str(request.data.get('invitation_state', 'pending')).strip().lower() or 'pending'
+        demo_project = dataset == DATASET_DEMO
         demo_language = resolve_demo_language(str(request.data.get('language_code', 'de'))) if demo_project else 'de'
-        project_name = get_demo_project_name(demo_language) if demo_project else f'E2E Project {scenario}'
+        project_name = {
+            DATASET_DEMO: get_demo_project_name(demo_language),
+            DATASET_CROSS_BROWSER: CROSS_BROWSER_PROJECT_NAME,
+        }.get(dataset, f'E2E Project {scenario}')
         project = Project.objects.create(name=project_name, slug=scenario)
 
         admin = User.objects.create_user(
@@ -201,6 +216,8 @@ class E2EInvitationFixtureView(APIView):
                 language_code=demo_language,
                 current_year=_optional_demo_year(request.data.get('demo_year')),
             )
+        elif dataset == DATASET_CROSS_BROWSER:
+            populate_cross_browser_project(project, owner=admin)
 
         invitation = ProjectInvitation.objects.create(
             project=project,

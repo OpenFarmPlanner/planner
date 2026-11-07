@@ -483,13 +483,21 @@ Gecko layout differences at phone width, not Firefox for Android itself.
   baselines on the host.
 - **Time:** an auto fixture (`e2e-cross-browser/fixtures.ts`) pins
   `Date.now()` to 15 May 2026 10:00 Vienna time with `page.clock.setFixedTime`.
-  That is mid-season in the demo project's 2026 season. Timers keep running.
+  That is mid-season in the fixture's 2026 season. Timers keep running.
 - **Locale and time zone:** `de-AT` and `Europe/Vienna` for every project.
-- **Data:** every test seeds its own demo project through the E2E fixture
-  endpoint (`setup_demo`, scenario id per project and test). The demo seeds
-  its seasons relative to today, so `loginToDemoProject` passes
-  `demo_year` (the year of the fixed clock) and the data stays the same
-  whatever the server date.
+- **Data:** every test seeds its own copy of a dedicated, fixed dataset
+  through the E2E fixture endpoint (`setup_cross_browser`, scenario id per
+  project and test; `loginToFixtureProject` in `fixtures.ts`). The data is
+  defined in one place, `backend/farm/e2e_cross_browser_data.py`: project
+  "Testgärtnerei Morgentau", seasons 2025 and 2026, eight Kulturen (Tomate
+  with every crop-form section filled, its Sorte Roma, and the crops the
+  plans use), and twelve current-season plans that show each rotation
+  status once. Its dates are absolute and match the fixed clock, so nothing
+  depends on the server date. It shares no code with the demo project
+  ([demo-project.md](./demo-project.md)): **enriching the demo never touches
+  these baselines.** Conversely, change the fixture only together with the
+  baselines and the names and counts the specs assert;
+  `farm/tests/test_e2e_views.py` pins what the specs rely on.
 - **Masks:** `dynamicContentMasks()` masks the notification bell. Mask any new
   timestamp, user name or counter the same way rather than raising the
   tolerance.
@@ -535,6 +543,18 @@ Baselines follow the "Playwright Screenshot Tests" rules in `CLAUDE.md`:
 never update them automatically, and review every new or changed image
 before committing it. A failing screenshot uploads `*-actual.png`,
 `*-expected.png` and `*-diff.png` in `test-results/`.
+
+Always give `--update-snapshots` its mode: a bare flag followed by a spec
+path takes the path as the mode and fails. `--update-snapshots=changed`
+rewrites only the images outside the tolerance; after a deliberate change to
+the fixture data, re-record the affected specs with
+`--update-snapshots=all`, or small text changes stay behind in baselines that
+still pass.
+
+One screenshot per distinct layout: the crop form is captured as the Kultur
+form only (top and seed section). The Sorte form's own elements (variety
+legend, highlighted own values, the rotation info icon) are guarded by
+functional assertions in `crop-form.spec.ts` instead of a second image pair.
 
 ### CI
 

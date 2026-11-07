@@ -1,10 +1,11 @@
 import { expect, test as base, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from '../e2e/utils';
 
-// Every page sees the same "today": mid-May of the demo project's current
-// 2026 season, so season defaults, today markers and relative dates render
-// identically on every run. Timers keep running (setFixedTime, not install),
-// so debounces, transitions and polling behave like in a real browser.
+// Every page sees the same "today": mid-May of the fixture's current 2026
+// season (CURRENT_YEAR in backend/farm/e2e_cross_browser_data.py), so season
+// defaults, today markers and relative dates render identically on every run.
+// Timers keep running (setFixedTime, not install), so debounces, transitions
+// and polling behave like in a real browser.
 export const FIXED_NOW = new Date('2026-05-15T10:00:00+02:00');
 
 // Sub-pixel rounding differs between engines; anything larger is a real overflow.
@@ -36,19 +37,21 @@ export function scenarioId(testInfo: TestInfo): string {
   return `xb-${testInfo.project.name}-${slug}`.slice(0, 90);
 }
 
+/** The fixture project's name, shown in the topbar's project switcher. */
+export const FIXTURE_PROJECT_NAME = 'Testgärtnerei Morgentau';
+
 /**
- * Logs in as the admin of a freshly seeded demo project (three seasons, crops
- * with varieties, planting plans) and waits until the app has finished
+ * Logs in as the admin of a freshly seeded copy of the suite's own fixed
+ * dataset (backend/farm/e2e_cross_browser_data.py: seasons 2025 and 2026,
+ * crops with varieties, planting plans) and waits until the app has finished
  * bootstrapping: project and season resolved and persisted, no requests in
- * flight.
+ * flight. The suite never uses the demo project: enriching the demo must not
+ * move a screenshot baseline.
  */
-export async function loginToDemoProject(page: Page, testInfo: TestInfo): Promise<void> {
+export async function loginToFixtureProject(page: Page, testInfo: TestInfo): Promise<void> {
   await loginWithDeterministicProject(page, page.request, scenarioId(testInfo), {
-    demoProject: true,
+    crossBrowserData: true,
     loginAsAdmin: true,
-    // The demo seeds its seasons relative to the server date; pin them to the
-    // browser's fixed clock so screenshots stay stable across years.
-    demoYear: FIXED_NOW.getFullYear(),
   });
   await page.waitForURL(/\/app\/dashboard/);
   await expect.poll(() => page.evaluate(
@@ -118,7 +121,7 @@ export interface CropSummary {
 export async function findCrop(page: Page, name: string, variety: string | null): Promise<CropSummary> {
   const crops = await listAll<CropSummary>(page, '/crops/?page_size=500');
   const crop = crops.find((candidate) => candidate.name === name && (candidate.variety || null) === variety);
-  expect(crop, `demo crop ${name} / ${variety ?? '-'} not found`).toBeTruthy();
+  expect(crop, `fixture crop ${name} / ${variety ?? '-'} not found`).toBeTruthy();
   return crop!;
 }
 
@@ -130,7 +133,7 @@ export interface PlantingPlanSummary {
 export async function findPlantingPlan(page: Page, plantingDate: string): Promise<PlantingPlanSummary> {
   const plans = await listAll<PlantingPlanSummary>(page, '/planting-plans/?page_size=500');
   const matches = plans.filter((plan) => plan.planting_date === plantingDate);
-  expect(matches, `expected exactly one demo plan planted on ${plantingDate}`).toHaveLength(1);
+  expect(matches, `expected exactly one fixture plan planted on ${plantingDate}`).toHaveLength(1);
   return matches[0];
 }
 

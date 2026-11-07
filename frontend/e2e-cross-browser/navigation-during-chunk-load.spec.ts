@@ -1,4 +1,4 @@
-import { expect, isMobileProject, loginToDemoProject, test } from './fixtures';
+import { expect, isMobileProject, loginToFixtureProject, test } from './fixtures';
 
 // Regression test: Firefox and WebKit reject a lazy-route import that is
 // still loading when the user leaves the page, and the app's stale-deploy
@@ -9,7 +9,7 @@ test.describe('leaving a page while a route chunk loads', () => {
   test.use({ serviceWorkers: 'block' });
 
   test('a full navigation is not cancelled by the chunk-error reload', async ({ page }, testInfo) => {
-    await loginToDemoProject(page, testInfo);
+    await loginToFixtureProject(page, testInfo);
 
     // Hold every not-yet-loaded script so the next lazy route stays in flight.
     let releaseScripts: () => void = () => undefined;
