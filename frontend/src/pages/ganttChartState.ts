@@ -248,7 +248,9 @@ export function getDatePosition(date: Date, viewMode: ViewMode, startDate: Date)
       // Calendar days, not elapsed 24 h blocks: between the DST switches a
       // local midnight is 23 h or 25 h after the previous one, and flooring
       // the elapsed time put every summer date one column too early (#906).
-      const days = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const day = new Date(date);
+      day.setHours(0, 0, 0, 0);
+      const days = Math.round((day.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       return days * unitWidth + unitWidth / 2;
     }
     case ViewMode.WEEK: {

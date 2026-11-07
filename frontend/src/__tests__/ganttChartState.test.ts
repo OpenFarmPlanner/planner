@@ -553,6 +553,11 @@ describe('timeline positions across DST and year boundaries (#906)', () => {
       - getDatePosition(new Date(2026, 5, 1), ViewMode.DAY, start)).toBe(50);
   });
 
+  it('keeps a date with a time of day in its own day column', () => {
+    const start = new Date(2026, 0, 1);
+    expect(getDatePosition(new Date(2026, 5, 1, 18, 30), ViewMode.DAY, start)).toBe(151 * 50 + 25);
+  });
+
   it('continues month and quarter columns into the next year', () => {
     const start = new Date(2026, 0, 1);
     expect(getDatePosition(new Date(2027, 6, 1), ViewMode.MONTH, start)).toBe(18 * 150);
