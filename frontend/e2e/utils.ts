@@ -128,6 +128,11 @@ export async function loginWithDeterministicProject(
   scenarioId: string,
   options: {
     demoProject?: boolean;
+    /**
+     * Seeds the cross-browser screenshot suite's fixed dataset
+     * (backend/farm/e2e_cross_browser_data.py) instead of an empty project.
+     */
+    crossBrowserData?: boolean;
     loginAsAdmin?: boolean;
     languageCode?: 'de' | 'en';
     /** Grants the admin fixture user crop-library moderator rights. */
@@ -137,7 +142,8 @@ export async function loginWithDeterministicProject(
   } = {},
 ): Promise<void> {
   await invokeE2EAction(request, 'reset', { scenario_id: scenarioId });
-  const fixture = await invokeE2EAction(request, options.demoProject ? 'setup_demo' : 'setup', {
+  const setupAction = options.crossBrowserData ? 'setup_cross_browser' : options.demoProject ? 'setup_demo' : 'setup';
+  const fixture = await invokeE2EAction(request, setupAction, {
     scenario_id: scenarioId,
     invitation_state: 'pending',
     ...(options.languageCode ? { language_code: options.languageCode } : {}),

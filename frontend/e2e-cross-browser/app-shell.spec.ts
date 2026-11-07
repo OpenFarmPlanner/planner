@@ -4,20 +4,19 @@ import {
   expectNoBrokenValues,
   expectNoHorizontalPageOverflow,
   expectWithinViewport,
+  FIXTURE_PROJECT_NAME,
   gotoAppPage,
   isMobileProject,
-  loginToDemoProject,
+  loginToFixtureProject,
   test,
 } from './fixtures';
 
-const DEMO_PROJECT = 'Solawi Sonnenacker';
-
 test.describe('app shell', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await loginToDemoProject(page, testInfo);
+    await loginToFixtureProject(page, testInfo);
   });
 
-  test('logs in with the demo project and its current season selected', async ({ page }, testInfo) => {
+  test('logs in with the fixture project and its current season selected', async ({ page }, testInfo) => {
     const banner = page.getByRole('banner');
     await expect(banner.getByRole('heading', { name: 'Übersicht', level: 1 })).toBeVisible();
 
@@ -31,10 +30,10 @@ test.describe('app shell', () => {
       await page.keyboard.press('Escape');
       await expect(page.getByRole('menu')).toBeHidden();
     } else {
-      await expect(banner.getByRole('button', { name: 'Aktives Projekt wechseln' })).toContainText(DEMO_PROJECT);
+      await expect(banner.getByRole('button', { name: 'Aktives Projekt wechseln' })).toContainText(FIXTURE_PROJECT_NAME);
     }
 
-    // Both demo seasons are selectable.
+    // Both fixture seasons are selectable.
     await seasonButton.click();
     const seasonMenu = page.getByRole('menu');
     await expect(seasonMenu.getByRole('menuitem', { name: /2025/ })).toBeVisible();
@@ -73,7 +72,9 @@ test.describe('app shell', () => {
     await gotoAppPage(page, '/app/planting-plans', 'Anbaupläne');
 
     // Phones edit planting plans in a dialog; desktop edits inline in the grid
-    // and opens a dialog for the bed assignment instead.
+    // and opens a dialog for the bed assignment instead. The first row is the
+    // fixture's lettuce-after-lettuce plan, so that dialog shows its rotation
+    // conflict warning.
     const mobile = isMobileProject(testInfo);
     if (mobile) {
       await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();

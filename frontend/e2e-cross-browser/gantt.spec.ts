@@ -6,14 +6,14 @@ import {
   expectNoHorizontalPageOverflow,
   gotoAppPage,
   LAYOUT_TOLERANCE_PX,
-  loginToDemoProject,
+  loginToFixtureProject,
   test,
 } from './fixtures';
 
 // The Gantt view of the planting plans (Anbaukalender, bed occupancy).
 test.describe('Anbaukalender (Gantt)', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await loginToDemoProject(page, testInfo);
+    await loginToFixtureProject(page, testInfo);
     await gotoAppPage(page, '/app/gantt-chart', 'Anbaukalender');
   });
 

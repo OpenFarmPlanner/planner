@@ -6,20 +6,19 @@ import {
   expectWithinViewport,
   gotoAppPage,
   isMobileProject,
-  loginToDemoProject,
+  loginToFixtureProject,
   test,
 } from './fixtures';
 
-// The project's own crop library ("Kulturen", /app/crops). The demo project
-// has eighteen crop species; Tomate carries three varieties.
-const DEMO_SPECIES = [
-  'Brokkoli', 'Buschbohne', 'Erbse', 'Erdbeere', 'Gurke', 'Karotte', 'Kartoffel', 'Knoblauch', 'Kohlrabi',
-  'Lauch', 'Mangold', 'Phacelia', 'Rote Rübe', 'Salat', 'Senf', 'Tomate', 'Zucchini', 'Zuckermais',
+// The project's own crop library ("Kulturen", /app/crops). The fixture
+// project has eight Kulturen; Tomate carries one Sorte (Roma).
+const FIXTURE_SPECIES = [
+  'Buschbohne', 'Gurke', 'Karotte', 'Kartoffel', 'Phacelia', 'Salat', 'Tomate', 'Zucchini',
 ];
 
 test.describe('Kulturen library', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await loginToDemoProject(page, testInfo);
+    await loginToFixtureProject(page, testInfo);
     await gotoAppPage(page, '/app/crops', 'Kulturen');
   });
 
@@ -32,15 +31,15 @@ test.describe('Kulturen library', () => {
       const selector = page.getByRole('dialog');
       await expect(selector).toBeVisible();
       await expectWithinViewport(page, selector, 'crop selector dialog');
-      for (const species of DEMO_SPECIES) {
+      for (const species of FIXTURE_SPECIES) {
         await expect(selector.getByText(species, { exact: true }).first()).toBeAttached();
       }
       await selector.getByText('Tomate', { exact: true }).first().click();
       await expect(selector).toBeHidden();
     } else {
       const list = page.getByRole('listbox', { name: 'Kulturen' });
-      await expect(list.getByRole('option')).toHaveCount(DEMO_SPECIES.length);
-      for (const species of DEMO_SPECIES) {
+      await expect(list.getByRole('option')).toHaveCount(FIXTURE_SPECIES.length);
+      for (const species of FIXTURE_SPECIES) {
         await expect(list.getByRole('option', { name: species, exact: true })).toBeVisible();
       }
       await list.getByRole('option', { name: 'Tomate' }).click();
@@ -65,7 +64,7 @@ test.describe('Kulturen library', () => {
 });
 
 test('public Kulturbibliothek renders without overflow', async ({ page }, testInfo) => {
-  await loginToDemoProject(page, testInfo);
+  await loginToFixtureProject(page, testInfo);
   await gotoAppPage(page, '/app/crop-library', 'Kulturbibliothek');
   await expect(page.getByRole('main')).toBeVisible();
   await expectNoHorizontalPageOverflow(page);

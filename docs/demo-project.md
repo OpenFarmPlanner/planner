@@ -22,8 +22,11 @@ three seasons back — so the season switcher has more than one season to
 demonstrate. The season years are derived from today's date
 (`demo_current_year()`), never hardcoded, so the history stays inside the
 crop rotation check window in every year. `populate_demo_project` takes an
-optional `current_year` for time-pinned suites; the E2E fixture endpoint
-exposes it as `demo_year` (used by the cross-browser suite). Each plan's season is assigned during
+optional `current_year` for time-pinned specs; the E2E fixture endpoint
+exposes it as `demo_year` (used by `e2e/germination.spec.ts`). The
+cross-browser screenshot suite does not use the demo: it has its own fixed
+dataset (see [testing-and-ci.md](./testing-and-ci.md), "Cross-browser
+suite"), so enriching the demo never changes its baselines. Each plan's season is assigned during
 fixture creation, so demo data never relies on the ordinary planting-plan API
 accepting season-less creates. The crop rows deliberately include
 selectable species entries plus varieties with different shared and own values
