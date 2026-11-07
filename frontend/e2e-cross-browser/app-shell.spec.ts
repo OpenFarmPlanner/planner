@@ -45,7 +45,7 @@ test.describe('app shell', () => {
     await expectNoHorizontalPageOverflow(page);
     await expectNoBrokenValues(page);
     // The dashboard now displays persisted tasks instead of deriving event dates.
-    await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();
     for (const status of ['Offen', 'In Arbeit', 'Erledigt']) {
       await expect(page.getByRole('region', { name: status, exact: true })).toBeVisible();
     }

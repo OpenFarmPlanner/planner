@@ -275,3 +275,62 @@ export function initialAutoLayout(
 
   return output;
 }
+
+export interface DefaultFieldRect extends RectSize {
+  field: { id?: number };
+  defaultX: number;
+  defaultY: number;
+}
+
+export interface PlacedFieldRect extends Rect {
+  id: number;
+}
+
+/** Gap kept between a field without a saved position and the placed fields. */
+export const FIELD_PLACEMENT_SPACING = 24;
+
+/**
+ * Positions a location's fields: saved positions win; a field without one
+ * (e.g. just added in the list view) is placed next to the fields that already
+ * have a position, at the nearest free spot right of them. Only when no field
+ * has a saved position does every field keep its default stacked position.
+ *
+ * Placing a new field at its default instead would put it in the middle of the
+ * large workspace, far from saved positions near the origin, and fitting the
+ * view to both would zoom out until fields and beds are no longer visible
+ * (#903).
+ */
+export function placeFieldRects(
+  rects: DefaultFieldRect[],
+  savedPositions: Record<number, Position | undefined>,
+  bounds: RectSize,
+): PlacedFieldRect[] {
+  const toRect = (rect: DefaultFieldRect, position: Position): PlacedFieldRect => ({
+    id: rect.field.id!,
+    ...clampInsideParent(position, rect, bounds),
+    width: rect.width,
+    height: rect.height,
+  });
+  const placed = rects
+    .filter((rect) => savedPositions[rect.field.id!])
+    .map((rect) => toRect(rect, savedPositions[rect.field.id!]!));
+  const placedById = new Map(placed.map((rect) => [rect.id, rect]));
+  const occupied: Rect[] = [...placed];
+
+  return rects.map((rect) => {
+    const saved = placedById.get(rect.field.id!);
+    if (saved) return saved;
+    if (placed.length === 0) return toRect(rect, { x: rect.defaultX, y: rect.defaultY });
+    const preferred = {
+      x: Math.max(...placed.map((item) => item.x + item.width)) + FIELD_PLACEMENT_SPACING,
+      y: Math.min(...placed.map((item) => item.y)),
+    };
+    const position = findFreePlacementPosition(preferred, rect, occupied, {
+      spacing: FIELD_PLACEMENT_SPACING,
+      bounds,
+    }) ?? preferred;
+    const next = toRect(rect, position);
+    occupied.push(next);
+    return next;
+  });
+}

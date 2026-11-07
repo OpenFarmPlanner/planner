@@ -97,6 +97,24 @@ Standort and Parzelle rows (no bars of their own) get a fixed compact height (`O
 
 `TaskList` (sidebar) and `TaskRow` (timeline) are two independently-rendered sibling columns that both use CSS `minHeight` with the same numeric JS value — if their *content* differs enough that one side's minHeight gets exceeded and the other's doesn't, the two rows silently drift out of sync row-by-row. This bit us once already (see git history around `OCCUPANCY_COMPACT_ROW_HEIGHT`): watch for it whenever either side's row content changes.
 
+## Scroll windowing and timeline keyboard steps
+
+`getGanttRenderWindow` renders the visible rows plus `GANTT_OVERSCAN_ROWS`
+above and below. The rendered chart is placed at the offset of its first
+rendered row (`startOffset`), and the scroll box is `totalHeight` plus the
+chart's header height (measured from the DOM) tall, so every row sits exactly
+where it would without windowing. Pinning the chart to `scrollTop` instead, as
+before #906, froze the content while scrolling, then made it jump by whole
+rows, and cut off the last row.
+
+The arrow-key shortcuts (`←`/`→`, with Shift a larger step) move the timeline
+by whole columns (`getTimelineScrollLeftAfterStep`); every view has equally
+wide columns. They no longer go scroll position → date → next date → scroll
+position, which rounded back into the same period at column boundaries. A
+press during the smooth-scroll animation continues from the pending target.
+`getDatePosition` (Today, restored positions) counts calendar days across the
+DST switch and continues month/quarter columns across the year boundary.
+
 ## Sidebar visual polish
 
 `gantt.css`: consistent 16px chevron hit-area at every depth (previously 18px, inconsistently applied), depth-based font-weight/color progression (a lighter-weight, file-tree-like visual hierarchy instead of relying on indentation alone). The Standort/Parzelle aggregate summary ("1 Parzelle · 8 Beete · 5 belegt") is **not** shown as a second visible sidebar line — the sidebar row holds only the chevron and the name, with the summary folded into the row name's `title` attribute (hover tooltip) via `TaskList.tsx`'s tree-row `<span>`, while the visible copy lives in the timeline area. This has now been tried the other way round twice, and reverted both times: a sidebar `.rmg-task-group-meta` line wastes vertical space and is exactly the kind of two-line-vs-one-line content mismatch described above (it was the original cause of the sidebar/timeline row-misalignment bug, and its 2026-07 re-introduction had to push `OCCUPANCY_COMPACT_ROW_HEIGHT` from 32 to 40 to accommodate it). Keep the summary on the timeline side.

@@ -63,8 +63,6 @@ import {
   GANTT_VIEWPORT_BOTTOM_MARGIN_PX,
   GANTT_VIEWPORT_MIN_HEIGHT_PX,
   type SyntheticMousePoint,
-  addTimelinePeriod,
-  addTimelinePeriodLarge,
   clampDate,
   dispatchSyntheticMouseEvent,
   getCalendarGanttRowHeight,
@@ -78,6 +76,7 @@ import {
   getStoredGanttState,
   getStoredTimelineViewModeFromState,
   getTimelineScrollLeftForDate,
+  getTimelineScrollLeftAfterStep,
   getTimelineViewModeStorageKey,
   getViewParamFromCalendarMode,
   isCalendarViewParam,
@@ -122,6 +121,9 @@ import { OccupancyMobileFilterBar } from '../components/gantt/OccupancyMobileFil
 import { AppTooltip } from '../components/AppTooltip';
 import { OverflowTooltip } from '../components/OverflowTooltip';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
+
+/** Longest smooth-scroll animation a timeline step continues from (see stepTimeline). */
+const TIMELINE_STEP_ANIMATION_MS = 600;
 
 const GanttChartWithFocusMode = GanttChart as React.ComponentType<
   React.ComponentProps<typeof GanttChart> & { focusMode?: boolean }
@@ -213,6 +215,10 @@ function GanttChartPage() {
   const [ganttRenderKey, setGanttRenderKey] = useState(0);
   const [ganttScrollTop, setGanttScrollTop] = useState(0);
   const [ganttViewportHeight, setGanttViewportHeight] = useState(640);
+  // Height of the chart above its first row (toolbar and timeline header), so
+  // the windowed rows sit where they would without windowing (#906).
+  const [ganttChartHeaderHeight, setGanttChartHeaderHeight] = useState(0);
+  const ganttWindowedChartRef = useRef<HTMLDivElement | null>(null);
   const [ganttMaxHeightPx, setGanttMaxHeightPx] = useState<number | null>(null);
   const ganttViewportRef = useRef<HTMLDivElement | null>(null);
   const [ganttResizeBoundaryNode, setGanttResizeBoundaryNode] = useState<HTMLDivElement | null>(null);
@@ -456,6 +462,31 @@ function GanttChartPage() {
       activeGanttLeftColumnWidth,
     );
   }, [activeGanttLeftColumnWidth, calendarMode, endDate, ganttStateStorageKey, startDate, timelineViewMode]);
+
+  const pendingTimelineStepRef = useRef<{ target: number; at: number } | null>(null);
+  const stepTimeline = useCallback((direction: -1 | 1, large = false): void => {
+    const scrollContainer = ganttViewportRef.current?.querySelector<HTMLElement>('.rmg-container') ?? null;
+    if (!scrollContainer) {
+      return;
+    }
+    // The timeline scrolls smoothly (CSS), so a quick repeated press would read
+    // a position mid-animation and lose distance: continue from the pending
+    // target while that animation can still be running.
+    const pending = pendingTimelineStepRef.current;
+    const base = pending && Date.now() - pending.at < TIMELINE_STEP_ANIMATION_MS
+      ? pending.target
+      : scrollContainer.scrollLeft;
+    const target = getTimelineScrollLeftAfterStep(
+      base,
+      scrollContainer.scrollWidth - scrollContainer.clientWidth,
+      timelineViewMode,
+      direction,
+      large,
+    );
+    pendingTimelineStepRef.current = { target, at: Date.now() };
+    // The timeline's scroll listener stores the resulting reference date.
+    scrollContainer.scrollLeft = target;
+  }, [timelineViewMode]);
 
   const handleShortcutTimelineViewModeChange = useCallback((nextViewMode: ViewMode): void => {
     const referenceDate = getCurrentTimelineReferenceDate();
@@ -928,7 +959,7 @@ function GanttChartPage() {
     () => (useWindowedGanttRows
       ? getGanttRenderWindow(
         activeTaskGroups,
-        ganttScrollTop,
+        Math.max(0, ganttScrollTop - ganttChartHeaderHeight),
         ganttViewportHeight,
         getActiveGanttRowHeight,
       )
@@ -936,9 +967,10 @@ function GanttChartPage() {
         groups: activeTaskGroups,
         startIndex: 0,
         endIndex: activeTaskGroups.length,
+        startOffset: 0,
         totalHeight: activeTaskGroups.reduce((total, group) => total + getActiveGanttRowHeight(group), 0),
       }),
-    [activeTaskGroups, ganttScrollTop, ganttViewportHeight, getActiveGanttRowHeight, useWindowedGanttRows],
+    [activeTaskGroups, ganttChartHeaderHeight, ganttScrollTop, ganttViewportHeight, getActiveGanttRowHeight, useWindowedGanttRows],
   );
   const renderedTaskGroups = renderWindow.groups;
   const isGanttRenderWindowVirtualized = useWindowedGanttRows
@@ -998,7 +1030,7 @@ function GanttChartPage() {
       allowRepeat: true,
       contextTags: ['calendar'],
       isEnabled: () => hasCalendarRequirements,
-      action: () => scrollToTimelineReferenceDate(addTimelinePeriod(getCurrentTimelineReferenceDate(), timelineViewMode, -1)),
+      action: () => stepTimeline(-1),
     },
     {
       id: 'calendar.nextPeriod',
@@ -1010,7 +1042,7 @@ function GanttChartPage() {
       allowRepeat: true,
       contextTags: ['calendar'],
       isEnabled: () => hasCalendarRequirements,
-      action: () => scrollToTimelineReferenceDate(addTimelinePeriod(getCurrentTimelineReferenceDate(), timelineViewMode, 1)),
+      action: () => stepTimeline(1),
     },
     {
       id: 'calendar.previousLargePeriod',
@@ -1022,7 +1054,7 @@ function GanttChartPage() {
       allowRepeat: true,
       contextTags: ['calendar'],
       isEnabled: () => hasCalendarRequirements,
-      action: () => scrollToTimelineReferenceDate(addTimelinePeriodLarge(getCurrentTimelineReferenceDate(), timelineViewMode, -1)),
+      action: () => stepTimeline(-1, true),
     },
     {
       id: 'calendar.nextLargePeriod',
@@ -1034,7 +1066,7 @@ function GanttChartPage() {
       allowRepeat: true,
       contextTags: ['calendar'],
       isEnabled: () => hasCalendarRequirements,
-      action: () => scrollToTimelineReferenceDate(addTimelinePeriodLarge(getCurrentTimelineReferenceDate(), timelineViewMode, 1)),
+      action: () => stepTimeline(1, true),
     },
     ...CALENDAR_SHORTCUT_VIEW_MODES.map<CommandSpec>(({ mode, shortcut, labelKey }) => ({
       id: `calendar.viewMode.${mode}`,
@@ -1110,13 +1142,12 @@ function GanttChartPage() {
     calendarMode,
     editMode,
     focusSearch,
-    getCurrentTimelineReferenceDate,
     handleCalendarModeChange,
     handleShortcutTimelineViewModeChange,
     hasCalendarRequirements,
     scrollToTimelineReferenceDate,
+    stepTimeline,
     t,
-    timelineViewMode,
     toggleCalendarEditMode,
   ]);
 
@@ -1412,6 +1443,21 @@ function GanttChartPage() {
     observer.observe(viewport);
     return () => observer.disconnect();
   }, []);
+
+  // Re-measured after every render: the header height depends on the view
+  // mode, the left column width and fonts, and the guard keeps it a no-op.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const chart = ganttWindowedChartRef.current;
+    const firstRow = chart?.querySelector<HTMLElement>('.rmg-timeline-grid');
+    if (!chart || !firstRow) {
+      return;
+    }
+    const headerHeight = Math.round(firstRow.getBoundingClientRect().top - chart.getBoundingClientRect().top);
+    if (headerHeight >= 0 && headerHeight !== ganttChartHeaderHeight) {
+      setGanttChartHeaderHeight(headerHeight);
+    }
+  });
 
   // Caps the calendar panel's height so its bottom edge sits a fixed
   // GANTT_VIEWPORT_BOTTOM_MARGIN_PX below the viewport bottom, instead of a
@@ -1769,11 +1815,18 @@ function GanttChartPage() {
                 }}
               >
                 {isGanttRenderWindowVirtualized ? (
-                  <Box sx={{ height: renderWindow.totalHeight, position: 'relative' }}>
+                  // The rendered window starts up to GANTT_OVERSCAN_ROWS rows
+                  // above the visible ones, so it is placed at that first row's
+                  // offset, not at the scroll position: pinning it to scrollTop
+                  // froze the content while scrolling and then made it jump by
+                  // whole rows, and leaving the header out of the total height
+                  // cut off the last row (#906).
+                  <Box sx={{ height: renderWindow.totalHeight + ganttChartHeaderHeight, position: 'relative' }}>
                     <Box
+                      ref={ganttWindowedChartRef}
                       sx={{
                         position: 'absolute',
-                        top: ganttScrollTop,
+                        top: renderWindow.startOffset,
                         left: 0,
                         right: 0,
                       }}

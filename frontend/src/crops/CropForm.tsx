@@ -239,6 +239,13 @@ const EMPTY_CROP: Partial<Crop> = {
   seed_packages: [],
 };
 
+// The value that makes a Sorte inherit `field` again. List fields without an
+// EMPTY_CROP entry (e.g. tags) must stay lists: the API rejects '' for them.
+function emptyInheritableValue(field: keyof Crop, inheritedValue: unknown): unknown {
+  if (field in EMPTY_CROP) return EMPTY_CROP[field];
+  return Array.isArray(inheritedValue) ? [] : '';
+}
+
 // Neutral info right after a library entry was picked in this dialog. The
 // theme's info Alert is green, as is the variety highlight that marks a
 // Sorte's own values, so this one stays neutral grey.
@@ -1272,7 +1279,7 @@ export function CropForm({
         ? stripValuesMatchingBaseline(
           formData,
           inheritanceBaseline,
-          (field) => (field in EMPTY_CROP ? EMPTY_CROP[field as keyof typeof EMPTY_CROP] : ''),
+          (field) => emptyInheritableValue(field, inheritanceBaseline[field]),
         )
         : formData;
       // Per kind, the same for timing windows: a kind still equal to the

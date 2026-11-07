@@ -20,14 +20,13 @@ import {
   isValidDate,
   storeGanttState,
   GANTT_UNIT_WIDTH_BY_VIEW_MODE,
-  addTimelinePeriod,
-  addTimelinePeriodLarge,
   dispatchSyntheticMouseEvent,
   getDatePosition,
   getGanttUnitWidth,
   getPrimaryTouch,
   getReferenceDateFromScroll,
   getTimelineScrollLeftForDate,
+  getTimelineScrollLeftAfterStep,
   isTimelineViewMode,
   storeCalendarMode,
   storeTimelineViewMode,
@@ -478,58 +477,6 @@ describe('getTimelineScrollLeftForDate', () => {
   });
 });
 
-describe('addTimelinePeriod', () => {
-  it.each([
-    [ViewMode.DAY, new Date(2026, 0, 10), new Date(2026, 0, 11)],
-    [ViewMode.WEEK, new Date(2026, 0, 10), new Date(2026, 0, 17)],
-    [ViewMode.MONTH, new Date(2026, 0, 10), new Date(2026, 1, 10)],
-    [ViewMode.QUARTER, new Date(2026, 0, 10), new Date(2026, 3, 10)],
-    [ViewMode.YEAR, new Date(2026, 0, 10), new Date(2027, 0, 10)],
-  ])('steps forward one %s', (mode, from, expected) => {
-    expect(addTimelinePeriod(from, mode, 1).getTime()).toBe(expected.getTime());
-  });
-
-  it('steps backwards by the same period', () => {
-    expect(addTimelinePeriod(new Date(2026, 3, 10), ViewMode.QUARTER, -1).getTime())
-      .toBe(new Date(2026, 0, 10).getTime());
-  });
-
-  it('leaves the original date untouched', () => {
-    const original = new Date(2026, 0, 10);
-    addTimelinePeriod(original, ViewMode.YEAR, 1);
-    expect(original.getTime()).toBe(new Date(2026, 0, 10).getTime());
-  });
-
-  it('returns the same instant for a mode it does not handle', () => {
-    const from = new Date(2026, 0, 10);
-    expect(addTimelinePeriod(from, ViewMode.HOUR, 1).getTime()).toBe(from.getTime());
-  });
-});
-
-describe('addTimelinePeriodLarge', () => {
-  it.each([
-    [ViewMode.DAY, new Date(2026, 0, 10), new Date(2026, 0, 17)],
-    [ViewMode.WEEK, new Date(2026, 0, 10), new Date(2026, 1, 10)],
-    [ViewMode.MONTH, new Date(2026, 0, 10), new Date(2027, 0, 10)],
-    [ViewMode.QUARTER, new Date(2026, 0, 10), new Date(2027, 0, 10)],
-    [ViewMode.YEAR, new Date(2026, 0, 10), new Date(2031, 0, 10)],
-  ])('takes a larger step than the plain one in %s mode', (mode, from, expected) => {
-    expect(addTimelinePeriodLarge(from, mode, 1).getTime()).toBe(expected.getTime());
-    expect(addTimelinePeriodLarge(from, mode, 1).getTime())
-      .not.toBe(addTimelinePeriod(from, mode, 1).getTime());
-  });
-
-  it('steps backwards by the same larger period', () => {
-    expect(addTimelinePeriodLarge(new Date(2031, 0, 10), ViewMode.YEAR, -1).getTime())
-      .toBe(new Date(2026, 0, 10).getTime());
-  });
-
-  it('returns the same instant for a mode it does not handle', () => {
-    const from = new Date(2026, 0, 10);
-    expect(addTimelinePeriodLarge(from, ViewMode.HOUR, 1).getTime()).toBe(from.getTime());
-  });
-});
-
 describe('touch helpers', () => {
   const touch = (overrides: Partial<Touch> = {}) => ({
     clientX: 10, clientY: 20, screenX: 30, screenY: 40, identifier: 0, ...overrides,
@@ -595,5 +542,50 @@ describe('dispatchSyntheticMouseEvent', () => {
     });
 
     expect(seen).toEqual({ mousedown: 1, mousemove: 1, mouseup: 0 });
+  });
+});
+
+describe('timeline positions across DST and year boundaries (#906)', () => {
+  it('counts calendar days in the day view across the DST switch', () => {
+    const start = new Date(2026, 0, 1);
+    expect(getDatePosition(new Date(2026, 5, 1), ViewMode.DAY, start)).toBe(151 * 50 + 25);
+    expect(getDatePosition(new Date(2026, 5, 2), ViewMode.DAY, start)
+      - getDatePosition(new Date(2026, 5, 1), ViewMode.DAY, start)).toBe(50);
+  });
+
+  it('keeps a date with a time of day in its own day column', () => {
+    const start = new Date(2026, 0, 1);
+    expect(getDatePosition(new Date(2026, 5, 1, 18, 30), ViewMode.DAY, start)).toBe(151 * 50 + 25);
+  });
+
+  it('continues month and quarter columns into the next year', () => {
+    const start = new Date(2026, 0, 1);
+    expect(getDatePosition(new Date(2027, 6, 1), ViewMode.MONTH, start)).toBe(18 * 150);
+    expect(getDatePosition(new Date(2027, 6, 1), ViewMode.QUARTER, start)).toBe(6 * 180);
+  });
+});
+
+describe('getTimelineScrollLeftAfterStep (#906)', () => {
+  it('moves by exactly one column per press so every press advances', () => {
+    let scrollLeft = 0;
+    const positions: number[] = [];
+    for (let press = 0; press < 3; press += 1) {
+      scrollLeft = getTimelineScrollLeftAfterStep(scrollLeft, 1780, ViewMode.MONTH, 1);
+      positions.push(scrollLeft);
+    }
+    expect(positions).toEqual([150, 300, 450]);
+    expect(getTimelineScrollLeftAfterStep(450, 1780, ViewMode.DAY, -1)).toBe(400);
+  });
+
+  it('reaches both ends of the range and stops there', () => {
+    expect(getTimelineScrollLeftAfterStep(1700, 1780, ViewMode.MONTH, 1)).toBe(1780);
+    expect(getTimelineScrollLeftAfterStep(1780, 1780, ViewMode.MONTH, 1)).toBe(1780);
+    expect(getTimelineScrollLeftAfterStep(40, 1780, ViewMode.MONTH, -1)).toBe(0);
+    expect(getTimelineScrollLeftAfterStep(0, -5, ViewMode.MONTH, 1)).toBe(0);
+  });
+
+  it('moves by the larger period with Shift', () => {
+    expect(getTimelineScrollLeftAfterStep(0, 10000, ViewMode.DAY, 1, true)).toBe(7 * 50);
+    expect(getTimelineScrollLeftAfterStep(0, 10000, ViewMode.MONTH, 1, true)).toBe(12 * 150);
   });
 });

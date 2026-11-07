@@ -105,7 +105,10 @@ erDiagram
   path.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
-  separate rows from `Bed`/`Field` themselves, not embedded fields.
+  separate rows from `Bed`/`Field` themselves, not embedded fields. A field
+  without a `FieldLayout` (e.g. just added in the list view) is drawn next to
+  the location's positioned fields (`placeFieldRects`); only when none has a
+  position do all fields use the default stacked arrangement.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's
