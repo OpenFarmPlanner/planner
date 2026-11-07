@@ -1679,7 +1679,7 @@
       "weekRange": "KW {{start}} bis {{end}}"
     },
     "importErrors": {
-      "timing_window_not_recognized": "„{{value}}“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“.",
+      "timing_window_not_recognized": "„{{value}}“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“. Mehrere Zeiträume mit „;“ trennen, zum Beispiel „März; Oktober“.",
       "timing_window_open_end": "„{{value}}“: Bitte Anfang und Ende angeben, zum Beispiel „März bis Mai“.",
       "timing_window_ambiguous_slash": "„{{value}}“ ist mehrdeutig. Für einen Zeitraum „März bis April“ schreiben, für zwei Zeiträume „März; April“.",
       "timing_window_day_dates": "Tagesdaten werden nicht unterstützt. Bitte Monatsdrittel (zum Beispiel „Mitte März“) oder Kalenderwochen (zum Beispiel „KW 11“) verwenden.",

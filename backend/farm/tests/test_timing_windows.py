@@ -236,11 +236,27 @@ class ParserTest(SimpleTestCase):
         self.assertEqual(parse_timing_window_cell('planting', '  '), [])
         self.assertEqual(parse_timing_window_cell('planting', None), [])
 
+    def test_or_separates_windows_in_every_language(self):
+        early_feb, early_nov = decade(2, 'early', 2, 'early'), decade(11, 'early', 11, 'early')
+        for text in ('02a o. 11a', '02a O.11a', 'Anfang Februar oder Anfang November',
+                     'early February or early November', 'début février ou début novembre'):
+            with self.subTest(text=text):
+                self.assertEqual(
+                    parse_timing_window_cell('direct_sowing', text), [early_feb, early_nov],
+                )
+        self.assertEqual(
+            parse_timing_window_cell('direct_sowing', 'März bis April oder KW 40; Mai'),
+            [decade(3, 'early', 4, 'late'), weeks(40, 40), decade(5, 'early', 5, 'late')],
+        )
+
     def test_rejected_forms(self):
         cases = {
             'Frühjahr': ERROR_NOT_RECOGNIZED,
             'nach den Eisheiligen': ERROR_NOT_RECOGNIZED,
             'März, April': ERROR_NOT_RECOGNIZED,
+            'März und Oktober': ERROR_NOT_RECOGNIZED,
+            'marzo o octubre': ERROR_NOT_RECOGNIZED,
+            'März oder': ERROR_NOT_RECOGNIZED,
             '10': ERROR_NOT_RECOGNIZED,
             'März bis 14': ERROR_NOT_RECOGNIZED,
             'ab März': ERROR_OPEN_END,

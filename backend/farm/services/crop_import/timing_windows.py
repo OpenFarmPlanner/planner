@@ -5,7 +5,9 @@ language, case-insensitively and with any spacing: German, English, French
 and Spanish month names and their common abbreviations, the thirds of a month
 (Anfang/Mitte/Ende, early/mid/late, début/mi/fin, principios/mediados/finales)
 and calendar-week words (KW, CW, week, semaine, semana). Several windows are
-separated by ";" (or a line break).
+separated by ";", a line break or the word "or" ("oder", "o.", "or", "ou":
+"02a o. 11a" is two windows). Only "or" is accepted: "and" could also be read
+as one range ("Mitte März und April").
 
 Nothing is guessed: a cell that is not exactly one of the supported forms is
 rejected as a whole with a machine code (see ``PARSE_ERROR_MESSAGES``), and
@@ -39,7 +41,8 @@ ERROR_HARVEST_NOT_IMPORTED = 'timing_window_harvest_not_imported'
 
 PARSE_ERROR_MESSAGES: dict[str, str] = {
     ERROR_NOT_RECOGNIZED: (
-        'Not a time of year. Use e.g. "early March to late April" or "week 10 to 14" or "03a-04c".'
+        'Not a time of year. Use e.g. "early March to late April" or "week 10 to 14" or "03a-04c". '
+        'Separate several windows with ";", e.g. "March; October".'
     ),
     ERROR_OPEN_END: 'Give a start and an end, e.g. "March to May".',
     ERROR_AMBIGUOUS_SLASH: (
@@ -131,6 +134,9 @@ _NUMERIC_DATE = re.compile(
     r'|\b\d{4}-\d{1,2}-\d{1,2}\b'  # 2026-03-15
     r'|\b\d{1,2}/\d{1,2}/\d{2,4}\b'  # 15/03/2026
 )
+# Between two windows, like ";". Whole words only; "o." needs its dot, since a
+# bare letter is too easy to misread.
+_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou)\s+|\s+o\.\s*', re.IGNORECASE)
 _ORDINAL = re.compile(r'^\d+(?:er|e|st|nd|rd|th|º|ª)$')
 _DASHES = str.maketrans({'–': '-', '—': '-', '‑': '-', '−': '-', '’': "'"})
 
@@ -155,7 +161,7 @@ def parse_timing_window_cell(kind: str, value: object) -> list[TimingWindow]:
     :raises TimingWindowParseError: for the first part that is not a supported window.
     """
     text = '' if value is None else str(value)
-    parts = [part.strip() for part in re.split(r'[;\n\r]+', text)]
+    parts = [part.strip() for part in _WINDOW_SEPARATOR.split(text.strip())]
     return [_parse_part(kind, part) for part in parts if part]
 
 

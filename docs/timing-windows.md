@@ -159,7 +159,11 @@ country, so months copied from someone else's farm would mislead. See
 ## Spreadsheet import and export
 
 One column per kind ("Anzucht", "Direktsaat", "Pflanzung", localized like the
-other headers), several windows in one cell separated by ";". The
+other headers), several windows in one cell separated by ";" (also accepted
+on import: a line break or the word "or": "oder", "o.", "or", "ou", so
+"02a o. 11a" is two windows). Only "or" is accepted, not "and", which could
+also be read as one range ("Mitte März und April"); a bare Spanish "o" is
+left out as too easy to misread. The
 export writes the canonical text in the UI language; importing it again gives
 the same windows (tested in all four languages, backend and frontend).
 
