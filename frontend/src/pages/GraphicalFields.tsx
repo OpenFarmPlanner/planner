@@ -44,6 +44,7 @@ import {
   DEFAULT_PLACEMENT_SPACING,
   getBedRectSizeWithinField,
   getFieldRectSize,
+  placeFieldRects,
   initialAutoLayout,
   type Rect as PlacementRect,
   type RectSize,
@@ -56,6 +57,8 @@ import {
   panViewport,
   shouldShowBedLabel,
   shouldShowFieldLabel,
+  getFieldLabelScreenWidth,
+  FIELD_LABEL_SCREEN_PADDING,
   startPanSession,
   toContentBounds,
   type ContentBounds,
@@ -390,27 +393,10 @@ export default function GraphicalFields({
           rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
       ),
     );
-    const fieldViewModels: RectViewModel[] = defaultFieldRects.map(
-      (baseRect) => {
-        const fieldId = baseRect.field.id!;
-        const savedFieldLayout = layoutsByField[fieldId];
-        const clamped = clampInsideParent(
-          {
-            x: savedFieldLayout?.x ?? baseRect.defaultX,
-            y: savedFieldLayout?.y ?? baseRect.defaultY,
-          },
-          { width: baseRect.width, height: baseRect.height },
-          { width: contentWidth, height: contentHeight },
-        );
-
-        return {
-          id: fieldId,
-          x: clamped.x,
-          y: clamped.y,
-          width: baseRect.width,
-          height: baseRect.height,
-        };
-      },
+    const fieldViewModels = placeFieldRects(
+      defaultFieldRects,
+      layoutsByField,
+      { width: contentWidth, height: contentHeight },
     );
 
     return [
@@ -1552,9 +1538,12 @@ export default function GraphicalFields({
                               viewport.scale,
                             ) ? (
                               <Text
-                                x={currentFieldRect.x + 8}
-                                y={currentFieldRect.y + 8}
+                                x={currentFieldRect.x + FIELD_LABEL_SCREEN_PADDING / viewport.scale}
+                                y={currentFieldRect.y + FIELD_LABEL_SCREEN_PADDING / viewport.scale}
                                 text={baseRect.field.name}
+                                width={getFieldLabelScreenWidth(baseRect, viewport.scale)}
+                                wrap="none"
+                                ellipsis
                                 fontStyle="bold"
                                 listening={false}
                                 scaleX={1 / viewport.scale}

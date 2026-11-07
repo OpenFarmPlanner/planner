@@ -11,6 +11,7 @@ import {
   panViewport,
   shouldShowBedLabel,
   shouldShowFieldLabel,
+  getFieldLabelScreenWidth,
   startPanSession,
   ZOOM_LEVEL_DETAIL,
   ZOOM_LEVEL_MEDIUM,
@@ -39,11 +40,20 @@ describe('graphicalViewport helpers', () => {
 
   it('shows labels when the bed occupies enough screen pixels', () => {
     expect(shouldShowFieldLabel({ width: 150, height: 80 }, 1)).toBe(true);
-    expect(shouldShowFieldLabel({ width: 80, height: 30 }, 1)).toBe(false);
+    expect(shouldShowFieldLabel({ width: 30, height: 20 }, 1)).toBe(false);
     expect(shouldShowBedLabel({ width: 120, height: 50 }, ZOOM_LEVEL_DETAIL)).toBe(true);
     expect(shouldShowBedLabel({ width: 60, height: 20 }, ZOOM_LEVEL_DETAIL)).toBe(true);
     expect(shouldShowBedLabel({ width: 120, height: 50 }, ZOOM_LEVEL_OVERVIEW)).toBe(true);
     expect(shouldShowBedLabel({ width: 80, height: 28 }, BED_LABEL_MIN_SCALE - 0.05)).toBe(true);
+  });
+
+  it('shows a field label whenever the field is large enough on screen, at any zoom (#904)', () => {
+    // A 6 m x 42 m field (108 x 756 world px) fitted at 0.44x: 47 px wide on screen.
+    expect(shouldShowFieldLabel({ width: 108, height: 756 }, 0.44)).toBe(true);
+    expect(shouldShowFieldLabel({ width: 108, height: 756 }, 0.3)).toBe(false);
+    expect(shouldShowFieldLabel({ width: 2000, height: 1000 }, 0.05)).toBe(true);
+    expect(getFieldLabelScreenWidth({ width: 108, height: 756 }, 0.5)).toBe(42);
+    expect(getFieldLabelScreenWidth({ width: 10, height: 10 }, 0.5)).toBe(0);
   });
 
   it('shows bed labels at maximum zoom even for moderately sized beds', () => {

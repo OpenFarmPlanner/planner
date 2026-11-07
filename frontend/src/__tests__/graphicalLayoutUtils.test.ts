@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, rectsOverlap, type Rect } from '../pages/graphicalLayoutUtils';
+import { areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
   it('returns deterministic area size', () => {
@@ -195,5 +195,35 @@ describe('graphicalLayoutUtils', () => {
     const placed: Rect = { x: output.get(1)!.x, y: output.get(1)!.y, width: 100, height: 50 };
 
     expect(rectsOverlap(placed, occupied[0], 20)).toBe(false);
+  });
+
+  describe('placeFieldRects', () => {
+    const bounds = { width: 20000, height: 20000 };
+    const field = (id: number, defaultX = 9700, defaultY = 9700) => ({
+      field: { id }, width: 560, height: 220, defaultX, defaultY,
+    });
+
+    it('keeps saved positions and default positions when nothing is placed yet', () => {
+      expect(placeFieldRects([field(1), field(2, 9700, 9944)], {}, bounds)).toEqual([
+        { id: 1, x: 9700, y: 9700, width: 560, height: 220 },
+        { id: 2, x: 9700, y: 9944, width: 560, height: 220 },
+      ]);
+      expect(placeFieldRects([field(1)], { 1: { x: 40, y: 40 } }, bounds)[0]).toMatchObject({ x: 40, y: 40 });
+    });
+
+    it('places a field without a position next to the placed fields instead of the workspace centre (#903)', () => {
+      const [placed, added, second] = placeFieldRects(
+        [field(1), field(2), field(3)],
+        { 1: { x: 40, y: 40 } },
+        bounds,
+      );
+      expect(added).toMatchObject({ x: 40 + 560 + FIELD_PLACEMENT_SPACING, y: 40 });
+      const rects: Rect[] = [placed, added, second];
+      rects.forEach((rect, index) => rects.slice(index + 1).forEach((other) => {
+        expect(rectsOverlap(rect, other)).toBe(false);
+      }));
+      expect(Math.max(...rects.map((rect) => rect.x + rect.width))).toBeLessThan(3000);
+      expect(Math.max(...rects.map((rect) => rect.y + rect.height))).toBeLessThan(3000);
+    });
   });
 });
