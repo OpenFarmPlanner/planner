@@ -7,16 +7,17 @@ import {
   gotoAppPage,
   isMobileProject,
   LAYOUT_TOLERANCE_PX,
-  loginToDemoProject,
+  loginToFixtureProject,
   test,
 } from './fixtures';
 
-// The demo project's 2026 season holds twenty-two planting plans.
-const CURRENT_SEASON_PLAN_COUNT = 22;
+// The fixture project's 2026 season holds twelve planting plans: enough for
+// the grid to scroll in the header test below.
+const CURRENT_SEASON_PLAN_COUNT = 12;
 
 test.describe('Anbaupläne table', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await loginToDemoProject(page, testInfo);
+    await loginToFixtureProject(page, testInfo);
     await gotoAppPage(page, '/app/planting-plans', 'Anbaupläne');
   });
 

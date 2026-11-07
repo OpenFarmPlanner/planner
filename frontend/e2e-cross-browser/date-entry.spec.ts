@@ -4,19 +4,19 @@ import {
   getPlantingPlan,
   gotoAppPage,
   isMobileProject,
-  loginToDemoProject,
+  loginToFixtureProject,
   test,
 } from './fixtures';
 
 // Entering a Pflanztermin through the real UI must store exactly that ISO
 // date. This is where engines differ: Safari and Firefox parse and format
 // dates differently from Chrome, and a date picker shifted by the time zone
-// lands one day off. The demo's Gurke (Arola) plan is planted on 10 May 2026.
-const DEMO_PLANTING_DATE = '2026-05-10';
+// lands one day off. The fixture's Gurke (Arola) plan is planted on 10 May 2026.
+const FIXTURE_PLANTING_DATE = '2026-05-10';
 
 test('a Pflanztermin entered in the UI is stored as the same calendar day', async ({ page }, testInfo) => {
-  await loginToDemoProject(page, testInfo);
-  const plan = await findPlantingPlan(page, DEMO_PLANTING_DATE);
+  await loginToFixtureProject(page, testInfo);
+  const plan = await findPlantingPlan(page, FIXTURE_PLANTING_DATE);
   await gotoAppPage(page, '/app/planting-plans', 'Anbaupläne');
 
   if (!isMobileProject(testInfo)) {

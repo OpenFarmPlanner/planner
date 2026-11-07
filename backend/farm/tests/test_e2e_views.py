@@ -1,8 +1,12 @@
+from collections import Counter
+from datetime import date
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
@@ -10,8 +14,23 @@ from rest_framework.test import APITestCase
 from accounts.models import AccountTrustProfile
 from accounts.trust import resolve_trust_level
 from crops.models import CropSpecies
-from farm.e2e_views import TEST_EMAIL_DOMAIN, E2EInvitationFixtureView, E2E_PUBLIC_CROP_VARIETY_PREFIXES
-from farm.models import Crop, Project, PublicCrop, Season
+from farm.e2e_cross_browser_data import CROSS_BROWSER_PROJECT_NAME
+from farm.e2e_views import (
+    DATASET_CROSS_BROWSER,
+    DATASET_DEMO,
+    TEST_EMAIL_DOMAIN,
+    E2EInvitationFixtureView,
+    E2E_PUBLIC_CROP_VARIETY_PREFIXES,
+)
+from farm.models import Crop, CropCompanion, PlantingPlan, Project, PublicCrop, Season
+from farm.services.crop_rotation import (
+    STATUS_ACCEPTED,
+    STATUS_CONFLICT,
+    STATUS_HINT,
+    STATUS_INFO,
+    STATUS_OK,
+    RotationService,
+)
 
 User = get_user_model()
 
@@ -91,7 +110,7 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
             )
 
     def test_demo_setup_seeds_the_requested_demo_year(self) -> None:
-        self.view._setup(SimpleNamespace(data={'demo_year': 2026}), self.scenario, demo_project=True)
+        self.view._setup(SimpleNamespace(data={'demo_year': 2026}), self.scenario, dataset=DATASET_DEMO)
 
         project = Project.objects.get(slug=self.scenario)
         self.assertEqual(
@@ -101,7 +120,7 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
 
     def test_demo_setup_rejects_a_non_numeric_demo_year(self) -> None:
         with self.assertRaises(ValidationError):
-            self.view._setup(SimpleNamespace(data={'demo_year': 'soon'}), self.scenario, demo_project=True)
+            self.view._setup(SimpleNamespace(data={'demo_year': 'soon'}), self.scenario, dataset=DATASET_DEMO)
 
     def test_empty_user_setup_grants_established_trust(self) -> None:
         self.view._setup_empty_user(self.scenario)
@@ -141,3 +160,87 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertIn('public_crop', response.data)
         self.assertIsNotNone(response.data['public_crop']['id'])
+
+
+class E2ECrossBrowserDatasetTest(TestCase):
+    """The cross-browser screenshot suite's own data (farm/e2e_cross_browser_data.py).
+
+    The names, dates and counts pinned here are the ones the specs in
+    frontend/e2e-cross-browser/ assert and the baselines show.
+    """
+
+    scenario = 'cross-browser-dataset'
+
+    def _setup(self) -> Project:
+        E2EInvitationFixtureView()._setup(
+            SimpleNamespace(data={}), self.scenario, dataset=DATASET_CROSS_BROWSER,
+        )
+        return Project.objects.get(slug=self.scenario)
+
+    def test_setup_does_not_use_the_demo_seeding(self) -> None:
+        with patch('farm.e2e_views.populate_demo_project') as populate_demo:
+            project = self._setup()
+
+        populate_demo.assert_not_called()
+        self.assertEqual(project.name, CROSS_BROWSER_PROJECT_NAME)
+
+    def test_setup_seeds_the_crops_and_seasons_the_specs_expect(self) -> None:
+        project = self._setup()
+
+        crops = Crop.objects.filter(project=project)
+        kulturen = crops.filter(variety='').values_list('name', flat=True)
+        self.assertEqual(sorted(kulturen), [
+            'Buschbohne', 'Gurke', 'Karotte', 'Kartoffel',
+            'Phacelia', 'Salat', 'Tomate', 'Zucchini',
+        ])
+        tomato_varieties = crops.filter(name='Tomate').exclude(variety='')
+        self.assertEqual(list(tomato_varieties.values_list('variety', flat=True)), ['Roma'])
+        seasons = Season.objects.filter(project=project)
+        self.assertEqual(sorted(seasons.values_list('start_date__year', flat=True)), [2025, 2026])
+        plans = PlantingPlan.objects.filter(project=project, season__start_date__year=2026)
+        self.assertEqual(plans.count(), 12)
+        may_tenth = plans.filter(planting_date=date(2026, 5, 10)).select_related('crop')
+        self.assertEqual(
+            [(plan.crop.name, plan.crop.variety) for plan in may_tenth], [('Gurke', 'Arola')],
+        )
+
+    def test_kultur_tomate_fills_the_screenshotted_form_sections(self) -> None:
+        project = self._setup()
+
+        tomato = Crop.objects.get(project=project, name='Tomate', variety='')
+        self.assertEqual(tomato.tags, ['Fruchtgemüse'])
+        self.assertEqual(tomato.crop_family_id, 'Solanaceae')
+        self.assertEqual((tomato.sowing_depth_m, tomato.sowing_depth_max_m), (0.005, 0.005))
+        self.assertEqual(tomato.seed_rate_pre_cultivation_unit, 'seeds_per_plant')
+        self.assertIsNotNone(tomato.crop_species_id)
+        neighbours = CropCompanion.objects.filter(project=project)
+        self.assertEqual(sorted(neighbours.values_list('kind', flat=True)), ['bad', 'good'])
+
+    def test_current_season_shows_every_rotation_status_and_starts_with_a_conflict(self) -> None:
+        project = self._setup()
+
+        service = RotationService(project.id, language_code='de')
+        plans = list(
+            PlantingPlan.objects.filter(project=project, planting_date__year=2026)
+            .select_related('crop', 'bed').order_by('planting_date'),
+        )
+        statuses = Counter(service.check_plan(plan).status for plan in plans)
+        self.assertEqual(
+            set(statuses), {STATUS_OK, STATUS_CONFLICT, STATUS_ACCEPTED, STATUS_HINT, STATUS_INFO},
+        )
+        # The area-assignment dialog screenshot opens the first grid row.
+        self.assertEqual(service.check_plan(plans[0]).status, STATUS_CONFLICT)
+
+    def test_data_does_not_depend_on_the_server_date(self) -> None:
+        def snapshot() -> list[tuple[str, str, str]]:
+            project = self._setup()
+            return list(
+                PlantingPlan.objects.filter(project=project)
+                .order_by('planting_date', 'bed__name')
+                .values_list('crop__name', 'bed__name', 'planting_date'),
+            )
+
+        today = snapshot()
+        with patch('django.utils.timezone.now', return_value=timezone.now().replace(year=2031)):
+            later = snapshot()
+        self.assertEqual(today, later)
