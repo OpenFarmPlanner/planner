@@ -222,6 +222,22 @@ export function formatMetersAsCentimeters(value: number | null | undefined, loca
     : `${formatLocalizedNumber(value * 100, locale, fallback, { maximumFractionDigits: 1 })} cm`;
 }
 
+/** A sowing depth range stored in metres: "2 cm" for one depth, "2–3 cm" for a range. */
+export function formatMetersRangeAsCentimeters(
+  lower: number | null | undefined,
+  upper: number | null | undefined,
+  locale: string,
+  fallback: string,
+): string {
+  const from = lower ?? upper;
+  const to = upper ?? lower;
+  if (from === null || from === undefined || to === null || to === undefined || from === to) {
+    return formatMetersAsCentimeters(from, locale, fallback);
+  }
+  const format = (value: number) => formatLocalizedNumber(value * 100, locale, fallback, { maximumFractionDigits: 1 });
+  return `${format(from)}–${format(to)} cm`;
+}
+
 export function getNutrientDemandLabel(
   value: PublicCrop['nutrient_demand'],
   t: (key: string, options?: Record<string, unknown>) => string,
@@ -370,7 +386,7 @@ function formatCompanionsValue(items: PublicCropCompanion[], t: TFunction): stri
 }
 
 /** Compared distance fields: stored in metres, entered in the crop form in centimetres. */
-const METER_FIELDS = new Set(['distance_within_row_m', 'row_spacing_m', 'sowing_depth_m']);
+const METER_FIELDS = new Set(['distance_within_row_m', 'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m']);
 
 /** Compared numeric fields; decimals arrive from the API as strings ("16.00"). */
 const NUMERIC_FIELDS = new Set([

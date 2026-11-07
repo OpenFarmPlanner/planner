@@ -16,6 +16,7 @@ from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
 from farm.germination import germination_errors
+from farm.sowing_depth import SOWING_DEPTH_FIELDS, complete_single_depth_write, sowing_depth_errors
 from farm.models import (
     CropCompanion,
     PublicCrop,
@@ -60,6 +61,7 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'distance_within_row_m',
     'row_spacing_m',
     'sowing_depth_m',
+    'sowing_depth_max_m',
     'seed_rate_value',
     'seed_rate_unit',
     'seed_rate_by_cultivation',
@@ -192,6 +194,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
     distance_within_row_cm = CentimetersField(source='distance_within_row_m', read_only=True)
     row_spacing_cm = CentimetersField(source='row_spacing_m', read_only=True)
     sowing_depth_cm = CentimetersField(source='sowing_depth_m', read_only=True)
+    sowing_depth_max_cm = CentimetersField(source='sowing_depth_max_m', read_only=True)
     seed_requirements = serializers.SerializerMethodField()
     seed_rate_direct_value = serializers.SerializerMethodField()
     seed_rate_direct_unit = serializers.SerializerMethodField()
@@ -252,6 +255,8 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'row_spacing_cm',
             'sowing_depth_m',
             'sowing_depth_cm',
+            'sowing_depth_max_m',
+            'sowing_depth_max_cm',
             'seed_rate_value',
             'seed_rate_unit',
             'seed_rate_by_cultivation',
@@ -462,7 +467,11 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        errors = germination_errors(self.instance, attrs)
+        complete_single_depth_write(attrs)
+        errors = {
+            **germination_errors(self.instance, attrs),
+            **sowing_depth_errors(self.instance, attrs),
+        }
         if errors:
             raise serializers.ValidationError(errors)
         incoming_fields = set(getattr(self, 'initial_data', {}) or {})
@@ -957,6 +966,10 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         )
         typed_serializer.is_valid(raise_exception=True)
         cleaned = dict(value)
+        # A proposal that names one depth proposes it as both bounds.
+        for field in SOWING_DEPTH_FIELDS:
+            if field in typed_serializer.validated_data:
+                cleaned[field] = typed_serializer.validated_data[field]
         if 'crop_family' in typed_serializer.validated_data:
             cleaned['crop_family'] = typed_serializer.validated_data['crop_family']
         if 'seed_packages' in typed_serializer.validated_data:

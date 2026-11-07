@@ -299,3 +299,15 @@ describe('validateCrop', () => {
 
 
 });
+
+describe('sowing depth range', () => {
+  it('rejects a lower bound above the upper bound and accepts one depth', () => {
+    const base = { name: 'Möhre', cultivation_type: 'direct_sowing' as const };
+    expect(validateCrop({ ...base, sowing_depth_cm: 3, sowing_depth_max_cm: 2 }, t).errors.sowing_depth_max_cm)
+      .toBe('form.sowingDepthRangeError');
+    expect(validateCrop({ ...base, sowing_depth_cm: 2, sowing_depth_max_cm: 2 }, t).errors.sowing_depth_max_cm)
+      .toBeUndefined();
+    expect(validateCrop({ ...base, sowing_depth_cm: 2, sowing_depth_max_cm: null }, t).errors.sowing_depth_max_cm)
+      .toBeUndefined();
+  });
+});

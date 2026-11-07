@@ -272,6 +272,9 @@
     "sowingDepthCm": "Sowing depth (cm)",
     "sowingDepthCmPlaceholder": "e.g. 1.5",
     "sowingDepthCmError": "Sowing depth must be ≥ 0",
+    "sowingDepthMinCm": "Sowing depth from (cm)",
+    "sowingDepthMaxCm": "Sowing depth to (cm)",
+    "sowingDepthRangeError": "The maximum must be at least the minimum.",
     "displayColor": "Display color",
     "displayColorHelp": "Color used in the planting calendar.",
     "displayColorError": "Invalid color format (use #RRGGBB).",
@@ -726,7 +729,7 @@
     "timingWindowIssueWithValue": "Row {{row}}, {{column}}, “{{value}}”: {{message}} The value is not imported.",
     "numberCellIgnored": "Row {{row}}, {{column}}: “{{value}}” is not a number. The value is not imported.",
     "cellErrors": {
-      "germination_range_not_recognized": "Please enter a number or a range such as “18–25”."
+      "range_not_recognized": "Please enter a number or a range such as “18–25”."
     }
   },
   "library": {
@@ -1270,6 +1273,8 @@
           "distance_within_row_cm": "In-row spacing (cm)",
           "row_spacing_cm": "Row spacing (cm)",
           "sowing_depth_cm": "Sowing depth (cm)",
+          "sowing_depth_max_m": "Sowing depth to (m)",
+          "sowing_depth_max_cm": "Sowing depth to (cm)",
           "seed_rate_value": "Seed rate",
           "seed_rate_unit": "Seed rate unit",
           "seed_rate_by_cultivation": "Seed rate by cultivation type",

@@ -124,7 +124,8 @@ describe('crop form UI sections', () => {
 
     const distanceWithinRowInput = screen.getByLabelText('Abstand in der Reihe (cm)');
     const rowSpacingInput = screen.getByLabelText('Reihenabstand (cm)');
-    const sowingDepthInput = screen.getByLabelText('Saattiefe (cm)');
+    const sowingDepthInput = screen.getByLabelText('Saattiefe von (cm)');
+    const sowingDepthMaxInput = screen.getByLabelText('Saattiefe bis (cm)');
 
     expect(distanceWithinRowInput).toHaveAttribute('inputmode', 'numeric');
     expect(rowSpacingInput).toHaveAttribute('inputmode', 'numeric');
@@ -133,10 +134,15 @@ describe('crop form UI sections', () => {
     fireEvent.change(distanceWithinRowInput, { target: { value: '25' } });
     fireEvent.change(rowSpacingInput, { target: { value: '40' } });
     fireEvent.change(sowingDepthInput, { target: { value: '2.1' } });
+    fireEvent.change(sowingDepthMaxInput, { target: { value: '3' } });
 
     expect(onChange).toHaveBeenCalledWith('distance_within_row_cm', 25);
     expect(onChange).toHaveBeenCalledWith('row_spacing_cm', 40);
     expect(onChange).toHaveBeenCalledWith('sowing_depth_cm', 2.1);
+    expect(onChange).toHaveBeenCalledWith('sowing_depth_max_cm', 3);
+    // A cleared bound is sent as null so the backend sees it.
+    fireEvent.change(sowingDepthMaxInput, { target: { value: '' } });
+    expect(onChange).toHaveBeenLastCalledWith('sowing_depth_max_cm', null);
 
   });
 

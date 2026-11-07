@@ -242,6 +242,7 @@ erDiagram
         float distance_within_row_m "[I]"
         float row_spacing_m "[I]"
         float sowing_depth_m "[I]"
+        float sowing_depth_max_m "[I]"
         json cultivation_types "[I]"
         json seed_rate_by_cultivation "[I]"
     }
@@ -316,7 +317,7 @@ the species baseline; a private crop value is a project-specific override.
 | `cultivation_types`, deprecated `cultivation_type` | baseline/override; retire the single field after compatibility migration | A variety and local method can differ, while the species supplies the normal options. |
 | `growth_duration_days`, `harvest_duration_days`, `propagation_duration_days` | baseline/override | Cultivar and local season can materially change timing. |
 | `harvest_method`, `expected_yield` | baseline/override | The common method/yield can be species-based but variety and local practice differ. `expected_yield` needs a documented unit before central publication. |
-| `distance_within_row_m`, `row_spacing_m`, `sowing_depth_m` | baseline/override | Exactly the requested agronomic defaults; stored in SI units. |
+| `distance_within_row_m`, `row_spacing_m`, `sowing_depth_m`, `sowing_depth_max_m` | baseline/override | Exactly the requested agronomic defaults; stored in SI units. |
 | `seed_rate_value`, `seed_rate_unit`, `seed_rate_by_cultivation` | baseline/override | Rates depend on species, variety, and local equipment/practice. Prefer the structured per-cultivation field; treat the legacy pair as compatibility data until retired. |
 | `thousand_kernel_weight_g` | default/override | It is often variety-specific, but an unknown variety needs a species baseline; supplier measurements may additionally override it locally. |
 | `seeding_requirement`, `seeding_requirement_type` | baseline/override, but review semantic unit before centralizing | Current semantics are ambiguous (“total” without an area/time basis), so preserve existing data and clarify it before making it a library recommendation. |

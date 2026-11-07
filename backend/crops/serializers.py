@@ -517,6 +517,7 @@ class CropSerializer(serializers.ModelSerializer):
             'distance_within_row_m',
             'row_spacing_m',
             'sowing_depth_m',
+            'sowing_depth_max_m',
             'seed_rate_value',
             'seed_rate_unit',
             'seed_rate_by_cultivation',

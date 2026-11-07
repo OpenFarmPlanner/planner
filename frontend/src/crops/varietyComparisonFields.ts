@@ -8,6 +8,7 @@
 import type { Crop, CultivationType } from '../api/types';
 import {
   formatDistance,
+  formatSowingDepth,
   formatNumber,
 } from './cropDetailFormatters';
 import { areCropValuesEqual, isEmptyCropValue } from './varietyValueSource';
@@ -124,9 +125,9 @@ export const CROP_COMPARISON_FIELDS: CropComparisonField[] = [
   },
   {
     id: 'sowingDepth',
-    keys: ['sowing_depth_cm'],
+    keys: ['sowing_depth_cm', 'sowing_depth_max_cm'],
     labelKey: 'detail.fields.sowingDepth',
-    format: (crop, t, locale) => `${formatDistance(crop.sowing_depth_cm ?? null, t, locale, 1)} ${t('detail.units.centimeters')}`,
+    format: (crop, t, locale) => `${formatSowingDepth(crop.sowing_depth_cm, crop.sowing_depth_max_cm, t, locale)} ${t('detail.units.centimeters')}`,
   },
   {
     id: 'seedSafetyMargin',

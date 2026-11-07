@@ -22,7 +22,7 @@ and JSON exchange preserve each field. Sheets additionally accept range
 columns (`Keimtemperatur`, `Keim-temperatur (°C)`, `Keimdauer`,
 `Keim-dauer (Tage)`), with `18-25` or `18–25` syntax; a single number sets
 both endpoints. Any other text in a range cell ("fk") is reported in the
-import preview (code `germination_range_not_recognized`, in the same
+import preview (code `range_not_recognized`, in the same
 per-row `timing_window_issues` list as rejected timing-window cells) and only
 that cell is dropped; the rest of the row is imported. Individual requirement columns (`Kaltkeimer`, `Frostkeimer`,
 `Lichtkeimer`, `Dunkelkeimer`) supplement the multiple-choice column.

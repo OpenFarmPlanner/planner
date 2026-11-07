@@ -1136,7 +1136,7 @@ sibling per row.
 Public crop storage and update payloads keep SI units for distances
 (`*_m`) in the database. Read responses additionally expose read-only
 centimeter aliases (`distance_within_row_cm`, `row_spacing_cm`,
-`sowing_depth_cm`) plus the same seed-rate convenience fields as
+`sowing_depth_cm`, `sowing_depth_max_cm`) plus the same seed-rate convenience fields as
 `CropSerializer`, so frontend form/import code can consume public and
 project crops through the same shape without changing stored units.
 

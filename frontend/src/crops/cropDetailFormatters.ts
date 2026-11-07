@@ -82,6 +82,21 @@ export function formatDistance(
   }).format(rounded);
 }
 
+/** A sowing depth range in centimetres: "2" for one depth, "2–3" for a range. */
+export function formatSowingDepth(
+  lower: number | null | undefined,
+  upper: number | null | undefined,
+  t: (key: string) => string,
+  locale = getActiveFormattingLocale(),
+): string {
+  const from = lower ?? upper;
+  const to = upper ?? lower;
+  if (from === null || from === undefined || to === null || to === undefined || from === to) {
+    return formatDistance(from, t, locale, 1);
+  }
+  return `${formatDistance(from, t, locale, 1)}–${formatDistance(to, t, locale, 1)}`;
+}
+
 export function formatSeedUnitLabel(unit: string | null | undefined, t: (key: string) => string): string {
   if (unit === 'g_per_m2') return t('detail.seedUnits.gPerSqm');
   if (unit === 'g_per_lfm') return t('detail.seedUnits.gPerRunningMeter');

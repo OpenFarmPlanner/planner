@@ -56,10 +56,18 @@ export const normalizeImportCropEntry = (entry: Record<string, unknown>): Record
     }
   }
 
+  if (normalized.sowing_depth_max_cm === undefined) {
+    const cm = toCentimeters(normalized.sowing_depth_max_m);
+    if (cm !== undefined) {
+      normalized.sowing_depth_max_cm = cm;
+    }
+  }
+
   delete normalized.supplierName;
   delete normalized.distance_within_row_m;
   delete normalized.row_spacing_m;
   delete normalized.sowing_depth_m;
+  delete normalized.sowing_depth_max_m;
   delete normalized.schemaVersion;
   delete normalized.exportedAt;
   delete normalized.type;

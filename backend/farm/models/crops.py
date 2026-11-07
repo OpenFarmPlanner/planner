@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from farm.germination import germination_errors
+from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
     SEED_PACKAGE_UNIT_SEEDS,
@@ -513,7 +514,15 @@ class Crop(TimestampedModel):
     sowing_depth_m = models.FloatField(
         null=True,
         blank=True,
-        help_text="Sowing depth in meters (stored in SI units)"
+        help_text="Sowing depth in meters, the lower bound of the range (stored in SI units)"
+    )
+    sowing_depth_max_m = models.FloatField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Upper bound of the sowing depth in meters (stored in SI units); "
+            "equal to sowing_depth_m for a single depth"
+        ),
     )
 
     # Seeding attributes.
@@ -602,6 +611,7 @@ class Crop(TimestampedModel):
         self._clean_cultivation_types(errors)
         self._clean_non_negative_numbers(errors)
         errors.update(germination_errors(self))
+        errors.update(sowing_depth_errors(self))
         self._clean_seeding_requirement(errors)
         self._clean_seed_rate_by_cultivation(errors)
         self._clean_seed_rates(errors)
@@ -681,7 +691,6 @@ class Crop(TimestampedModel):
         non_negative_fields = (
             ('distance_within_row_m', 'Distance within row must be non-negative.'),
             ('row_spacing_m', 'Row spacing must be non-negative.'),
-            ('sowing_depth_m', 'Sowing depth must be non-negative.'),
         )
         for field_name, message in non_negative_fields:
             value = getattr(self, field_name)
@@ -741,7 +750,8 @@ class Crop(TimestampedModel):
         'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
         'germination_types', 'germination_pretreatment',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
-        'row_spacing_m', 'sowing_depth_m', 'seed_rate_value', 'seed_rate_unit', 'seed_rate_by_cultivation',
+        'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
+        'seed_rate_by_cultivation',
         'sowing_calculation_safety_percent', 'seed_rate_direct_value', 'seed_rate_direct_unit',
         'sowing_calculation_safety_percent_direct', 'seed_rate_pre_cultivation_value',
         'seed_rate_pre_cultivation_unit', 'sowing_calculation_safety_percent_pre_cultivation',
@@ -760,6 +770,7 @@ class Crop(TimestampedModel):
         previous_windows = self.timing_window_snapshot() if previous else []
 
         self._normalize_library_pinned_fields()
+        fill_missing_depth_bound(self)
         self._flag_source_divergence(previous)
         # Provenance follows the first library link and outlives an unlink.
         if self.source_public_crop_id and not self.derived_from_public_crop_id:
@@ -1228,7 +1239,13 @@ class PublicCrop(TimestampedModel):
     allow_deviation_delivery_weeks = models.BooleanField(default=False)
     distance_within_row_m = models.FloatField(null=True, blank=True)
     row_spacing_m = models.FloatField(null=True, blank=True)
-    sowing_depth_m = models.FloatField(null=True, blank=True)
+    sowing_depth_m = models.FloatField(
+        null=True, blank=True, help_text="Sowing depth in meters, the lower bound of the range",
+    )
+    sowing_depth_max_m = models.FloatField(
+        null=True, blank=True,
+        help_text="Upper bound of the sowing depth in meters; equal to sowing_depth_m for a single depth",
+    )
     seed_rate_value = models.FloatField(null=True, blank=True)
     seed_rate_unit = models.CharField(max_length=30, null=True, blank=True)
     seed_rate_by_cultivation = models.JSONField(null=True, blank=True)
@@ -1255,6 +1272,7 @@ class PublicCrop(TimestampedModel):
 
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety) or ''
+        fill_missing_depth_bound(self)
         if self.status == self.STATUS_PUBLISHED and self.published_at is None:
             self.published_at = timezone.now()
         super().save(*args, **kwargs)

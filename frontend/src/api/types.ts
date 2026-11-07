@@ -225,7 +225,9 @@ export interface Crop {
   
   distance_within_row_cm?: number;
   row_spacing_cm?: number;
-  sowing_depth_cm?: number;
+  /** Lower bound of the sowing depth; one depth is a range of one (both bounds equal). */
+  sowing_depth_cm?: number | null;
+  sowing_depth_max_cm?: number | null;
 
   sowing_calculation_safety_percent?: number;
   
@@ -319,6 +321,7 @@ export type CropInheritableField =
   | 'distance_within_row_cm'
   | 'row_spacing_cm'
   | 'sowing_depth_cm'
+  | 'sowing_depth_max_cm'
   | 'sowing_calculation_safety_percent'
   | 'sowing_calculation_safety_percent_direct'
   | 'sowing_calculation_safety_percent_pre_cultivation'
@@ -429,6 +432,8 @@ export interface PublicCrop {
   row_spacing_cm?: number | null;
   sowing_depth_m?: number | null;
   sowing_depth_cm?: number | null;
+  sowing_depth_max_m?: number | null;
+  sowing_depth_max_cm?: number | null;
   seed_rate_value?: number | null;
   seed_rate_unit?: SeedRateUnit | null;
   seed_rate_by_cultivation?: SeedRateByCultivation | null;

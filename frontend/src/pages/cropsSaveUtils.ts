@@ -168,6 +168,7 @@ export function buildCropSavePayload(crop: Crop): CropSavePayload {
   delete (payload as unknown as Record<string, unknown>).distance_within_row_m;
   delete (payload as unknown as Record<string, unknown>).row_spacing_m;
   delete (payload as unknown as Record<string, unknown>).sowing_depth_m;
+  delete (payload as unknown as Record<string, unknown>).sowing_depth_max_m;
 
   // Read-only inheritance data: the backend resolves these per response and
   // ignores them on write, so sending them back is pure payload noise.

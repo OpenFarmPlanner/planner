@@ -128,6 +128,7 @@ import {
   getPublicAuthorLabel,
   formatLocalizedNumber,
   formatMetersAsCentimeters,
+  formatMetersRangeAsCentimeters,
   getCultivationTypesLabel,
   getCropTitle,
   getHarvestMethodLabel,
@@ -1931,7 +1932,7 @@ export default function PublicCropLibraryPage() {
                         <DetailGrid>
                           <DetailRow label={t('library.page.fields.distanceWithinRow')} value={formatMetersAsCentimeters(getPublicFieldValue('distance_within_row_m', selectedCrop.distance_within_row_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('distance_within_row_m')} />
                           <DetailRow label={t('library.page.fields.rowSpacing')} value={formatMetersAsCentimeters(getPublicFieldValue('row_spacing_m', selectedCrop.row_spacing_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('row_spacing_m')} />
-                          <DetailRow label={t('library.page.fields.sowingDepth')} value={formatMetersAsCentimeters(getPublicFieldValue('sowing_depth_m', selectedCrop.sowing_depth_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('sowing_depth_m')} />
+                          <DetailRow label={t('library.page.fields.sowingDepth')} value={formatMetersRangeAsCentimeters(getPublicFieldValue('sowing_depth_m', selectedCrop.sowing_depth_m), getPublicFieldValue('sowing_depth_max_m', selectedCrop.sowing_depth_max_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('sowing_depth_m')} />
                         </DetailGrid>
                       </DetailSection>
 

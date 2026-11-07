@@ -182,6 +182,7 @@ describe('crop spreadsheet export → import round trip', () => {
     distance_within_row_cm: 45,
     row_spacing_cm: 70,
     sowing_depth_cm: 0.5,
+    sowing_depth_max_cm: 1,
     thousand_kernel_weight_g: 3.2,
     sowing_calculation_safety_percent: 15,
     seed_rate_direct_value: 0.25,
@@ -230,6 +231,7 @@ describe('crop spreadsheet export → import round trip', () => {
     supplier_name: 'Bingenheimer Saatgut',
     germination_temperature_optimal: '18–25',
     germination_days: '7–14',
+    sowing_depth: '0.5–1',
     germination_cold: true, germination_frost: true, germination_light: true, germination_dark: true,
     good_companions: COMPANIONS.good,
     // "Kartoffel, Aubergine" names two neighbours that share the reason.

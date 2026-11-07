@@ -103,6 +103,15 @@ describe('exportCropsToSpreadsheet', () => {
     expect(row[columnIndex('germination_frost')]).toBeNull();
   });
 
+  it('exports one sowing depth as a number and a range as from–to', () => {
+    const rows = buildSheetData([
+      crop({ sowing_depth_cm: 2, sowing_depth_max_cm: 2 }),
+      crop({ sowing_depth_cm: 0.5, sowing_depth_max_cm: 1 }),
+      crop({}),
+    ], t);
+    expect(rows.slice(1).map((row) => row[columnIndex('sowing_depth')])).toEqual([2, '0.5–1', null]);
+  });
+
   it('leaves a missing value empty instead of writing null or undefined', async () => {
     const text = await exportedCsv([crop({ variety: undefined })]);
 

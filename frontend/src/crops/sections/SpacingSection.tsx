@@ -21,13 +21,18 @@ interface SpacingSectionProps {
   getFieldPinProps?: GetLibraryFieldPinProps;
 }
 
+/** From sm up "von" starts a new row, so the depth range stays together beside "bis". */
+const sowingDepthRangeStartSx = { ...formGridFieldSx, gridColumnStart: { xs: 'auto', sm: 1 } } as const;
+
 export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipProps, getFieldPinProps }: SpacingSectionProps) {
   const distanceWithinRowVariety = getFieldTooltipProps?.('distance_within_row_cm');
   const rowSpacingVariety = getFieldTooltipProps?.('row_spacing_cm');
   const sowingDepthVariety = getFieldTooltipProps?.('sowing_depth_cm');
+  const sowingDepthMaxVariety = getFieldTooltipProps?.('sowing_depth_max_cm');
   const distanceWithinRowPin = getFieldPinProps?.('distance_within_row_cm');
   const rowSpacingPin = getFieldPinProps?.('row_spacing_cm');
   const sowingDepthPin = getFieldPinProps?.('sowing_depth_cm');
+  const sowingDepthMaxPin = getFieldPinProps?.('sowing_depth_max_cm');
 
   return (
     <>
@@ -67,14 +72,27 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
           <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
-            label={t('form.sowingDepthCm')}
+            sx={mergeVarietyFieldSx(sowingDepthRangeStartSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
+            label={t('form.sowingDepthMinCm')}
             placeholder={t('form.sowingDepthCmPlaceholder')}
             value={formData.sowing_depth_cm}
-            onValueChange={(value) => onChange('sowing_depth_cm', value ?? undefined)}
+            // null, not undefined: a cleared bound must reach the backend, which
+            // then gives it the other bound's value (one depth is a range of one).
+            onValueChange={(value) => onChange('sowing_depth_cm', value ?? null)}
             error={Boolean(errors.sowing_depth_cm)}
             helperText={errors.sowing_depth_cm}
             slotProps={{ input: { endAdornment: sowingDepthPin?.endAdornment } }}
+          />
+        </VarietyFieldTooltip>
+        <VarietyFieldTooltip tooltipTitle={sowingDepthMaxVariety?.tooltipTitle}>
+          <LocalizedDecimalField
+            sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthMaxVariety?.sx, sowingDepthMaxPin?.fieldSx)}
+            label={t('form.sowingDepthMaxCm')}
+            value={formData.sowing_depth_max_cm}
+            onValueChange={(value) => onChange('sowing_depth_max_cm', value ?? null)}
+            error={Boolean(errors.sowing_depth_max_cm)}
+            helperText={errors.sowing_depth_max_cm}
+            slotProps={{ input: { endAdornment: sowingDepthMaxPin?.endAdornment } }}
           />
         </VarietyFieldTooltip>
       </Box>

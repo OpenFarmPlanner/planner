@@ -236,7 +236,7 @@ class GerminationTest(ProjectApiTestCase):
         issue = {
             "field": "germination_days",
             "value": "fk",
-            "code": "germination_range_not_recognized",
+            "code": "range_not_recognized",
             "message": "Enter a number or a range such as 18–25.",
         }
         preview = preview_crop_import(self.project, [dict(row)])[0]

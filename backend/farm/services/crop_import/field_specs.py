@@ -408,8 +408,9 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         name='sowing_depth_m',
         kind=KIND_NUMBER,
         description=(
-            'Sowing depth, in metres. Accepts sowing_depth_cm / _mm, which are '
-            'converted to metres.'
+            'Sowing depth, in metres; the lower bound when sowing_depth_max_m is '
+            'also given, otherwise the one depth (both bounds). Accepts '
+            'sowing_depth_cm / _mm, which are converted to metres.'
         ),
         example=0.02,
         unit='m',
@@ -419,6 +420,23 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         warn_min=0.002,
         warn_max=0.15,
         input_aliases=_length_aliases('sowing_depth'),
+    ),
+    FieldSpec(
+        name='sowing_depth_max_m',
+        kind=KIND_NUMBER,
+        description=(
+            'Upper bound of the sowing depth, in metres, for a range such as '
+            '2-3 cm; must not be below sowing_depth_m. Accepts '
+            'sowing_depth_max_cm / _mm, which are converted to metres.'
+        ),
+        example=0.03,
+        unit='m',
+        dimension=DIMENSION_LENGTH,
+        hard_min=0,
+        hard_max=0.5,
+        warn_min=0.002,
+        warn_max=0.15,
+        input_aliases=_length_aliases('sowing_depth_max'),
     ),
     FieldSpec(
         name='seed_rate_direct_value',

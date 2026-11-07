@@ -14,6 +14,7 @@ import {
   formatDiscussionPreview,
   formatLocalizedNumber,
   formatMetersAsCentimeters,
+  formatMetersRangeAsCentimeters,
   formatPublicCropValue,
   getCommentTimestamp,
   getCultivationTypesLabel,
@@ -331,6 +332,15 @@ describe('formatDays', () => {
     // Appending "Tage" to the fallback would read as "— Tage".
     expect(formatDays(null, 'de', '—', 'Tage')).toBe('—');
     expect(formatDays(undefined, 'de', '—', 'Tage')).toBe('—');
+  });
+});
+
+describe('formatMetersRangeAsCentimeters', () => {
+  it('shows one depth once and a range as from–to', () => {
+    expect(formatMetersRangeAsCentimeters(0.02, 0.02, 'de', '—')).toBe('2 cm');
+    expect(formatMetersRangeAsCentimeters(0.005, 0.01, 'de', '—')).toBe('0,5–1 cm');
+    expect(formatMetersRangeAsCentimeters(null, 0.03, 'de', '—')).toBe('3 cm');
+    expect(formatMetersRangeAsCentimeters(null, null, 'de', '—')).toBe('—');
   });
 });
 

@@ -112,6 +112,7 @@ interface CropDetailProps {
 
 import {
   formatDistance,
+  formatSowingDepth,
   formatNumber,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
@@ -1246,7 +1247,12 @@ const detailSectionGridSx = {
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('sowing_depth_cm')}>
                       <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm')}>
-                        {formatDistance(getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm), t, locale, 1)} {t('detail.units.centimeters')}
+                        {formatSowingDepth(
+                          getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
+                          getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
+                          t,
+                          locale,
+                        )} {t('detail.units.centimeters')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
