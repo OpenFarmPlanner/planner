@@ -22,7 +22,7 @@ calculated harvest lane instead (see below).
 
 "Anzucht", not "Vorkultur": the glossary uses *Vorkultur* for the previous
 crop on a bed. Column names from seed catalogues ("Vorkultur", "Voranzucht",
-"Anzuchtzeitraum", "Aussaat Freiland" (also the common misspelling "Aussat Freiland"), "Auspflanzung", "Pflanzzeitraum", "start
+"Anzuchtzeitraum", "Aussaat Freiland", "Auspflanzung", "Pflanzzeitraum", "start
 indoors", "sow outdoors", "plant out", and French and Spanish equivalents) are
 spreadsheet column aliases; `spreadsheetColumns.test.ts` checks that no alias
 belongs to two columns. A kind holds any

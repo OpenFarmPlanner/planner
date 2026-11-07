@@ -134,7 +134,6 @@ describe('seed-catalogue column names', () => {
     ['Semis sous abri', 'pre_cultivation_windows'],
     ['Semillero', 'pre_cultivation_windows'],
     ['Aussaat Freiland', 'direct_sowing_windows'],
-    ['Aussat Freiland', 'direct_sowing_windows'],
     ['Direktsaatzeitraum', 'direct_sowing_windows'],
     ['Sow outdoors', 'direct_sowing_windows'],
     ['Semis en pleine terre', 'direct_sowing_windows'],
