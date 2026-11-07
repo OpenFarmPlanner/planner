@@ -93,9 +93,13 @@ project and active-season request headers. Crops, fields, beds, planting plans
 and project members supply filter labels and card context. The frontend does not generate or synchronize tasks. Manual task forms are described below.
 
 There are three columns: pending, in progress and completed. Cancelled tasks
-remain stored and are omitted from this three-column work view. Cards show the
-localized origin, due date (or no date), crop/field, optional assignee and manual
-date override marker. Status PATCH requests send only `status`, leaving dates,
+remain stored and are omitted from this three-column work view. The page
+heading is "Aufgaben" (en "Tasks"). Cards stay compact: title (plain text),
+crop and field as links (crop → `/app/crops?cropId=…`, field →
+`/app/fields-beds?highlight=field:…`), due date (or no date), optional assignee
+and the manual date override marker. The origin (manual/automatic/template) is
+not shown on the card (#948); it stays stored and appears read-only in the edit
+dialog. Status PATCH requests send only `status`, leaving dates,
 overrides and generator identity untouched. Moves are optimistic; a failed
 request restores that task without reverting other tasks' concurrent changes.
 An in-flight task cannot be moved again until its request settles.
@@ -107,8 +111,12 @@ under all dates. Metrics reflect the filtered subset and count only unfinished
 work. All filtering uses the complete fetched collection, not just visible
 cards. Each column initially renders 30 cards and exposes a show-more control.
 
-From the MUI `md` breakpoint (900px), mouse/touch drag handles use dnd-kit and
-empty columns are valid drop targets. Below that width, including phone
+From the MUI `md` breakpoint (900px), the whole card is the dnd-kit drag
+activator (there is no separate handle, #948): a mouse drag starts after 8px of
+movement, a touch drag after a 250 ms long press, so quick swipes still scroll
+the page. Presses that start on a link or button of the card (crop/field links,
+card menu) or inside a portal opened from it never start a drag
+(`components/tasks/taskDragSensors.ts`). Empty columns are valid drop targets. Below that width, including phone
 landscape, the view is a single-column compact list with collapsible filters.
 Every card has a keyboard-accessible status menu at every breakpoint. Visible
 and screen-reader text is translated in de/en/fr/es. Load failures hide the
@@ -117,7 +125,7 @@ board and retain the shared retry flow; filters survive retry.
 
 ## Optional task-moving introduction (#897)
 
-A dismissible, localized hint explains drag handles and the always-available
+A dismissible, localized hint explains card dragging and the always-available
 status menu. Compact views explain the menu first. The authenticated user's
 `UserProjectSettings.task_drag_hint_done` flag persists through
 `/auth/account/task-drag-hint/` and is included in `/auth/me/`. GET never creates
@@ -129,8 +137,8 @@ Only a successfully saved drag retires the hint automatically; failed drops,
 no-op moves and menu changes do not. Failed preference writes leave the hint
 visible with a localized retry message. Session state is keyed by user, and
 server state persists across devices/projects. Mouse/touch dragging remains
-optional: every card's status menu works with keyboard and touch. Touch handles
-retain their hold delay to allow normal scrolling elsewhere; live announcements
+optional: every card's status menu works with keyboard and touch. Touch drags
+keep their hold delay to allow normal scrolling over cards; live announcements
 name tasks and destination columns, while failed saves announce rollback.
 
 ## Manual tasks (#892)

@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Hilfe: Übersicht",
-      "intro": "Beim Projektstart führt dich die Checkliste durch Parzelle, Beet, Kultur und Anbauplan. Das Aufgaben-Dashboard zeigt gespeicherte Aufgaben der aktiven Saison in Offen, In Arbeit und Erledigt. Filtere nach Zeitraum, Kultur, Parzelle oder Person. Die Kennzahlen zählen offene Aufgaben. Auf großen Bildschirmen kannst du Karten am Griff verschieben; über das Kartenmenü änderst du den Status auch mit der Tastatur. Auf kleinen Bildschirmen erscheinen die Aufgaben als Liste."
+      "intro": "Beim Projektstart führt dich die Checkliste durch Parzelle, Beet, Kultur und Anbauplan. Die Aufgabenübersicht zeigt gespeicherte Aufgaben der aktiven Saison in Offen, In Arbeit und Erledigt. Filtere nach Zeitraum, Kultur, Parzelle oder Person. Die Kennzahlen zählen offene Aufgaben. Auf großen Bildschirmen kannst du Karten verschieben (auf Touchgeräten nach kurzem Gedrückthalten); Kultur und Parzelle auf der Karte führen zu ihren Details; über das Kartenmenü änderst du den Status auch mit der Tastatur. Auf kleinen Bildschirmen erscheinen die Aufgaben als Liste."
     },
     "locations": {
       "title": "Hilfe: Standorte",

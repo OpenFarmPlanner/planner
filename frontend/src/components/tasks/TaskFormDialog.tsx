@@ -90,6 +90,8 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
             sx={formGridFieldSx} onChange={(event) => update('status', event.target.value)}>
             {BOARD_STATUSES.map((status) => <MenuItem key={status} value={status}>{t(`dashboard:board.status.${status}`)}</MenuItem>)}
           </TextField>
+          {task && <TextField label={t('dashboard:form.origin')} value={t(`dashboard:board.origin.${task.origin}`)}
+            disabled sx={formGridFieldSx} />}
           <TextField select label={t('dashboard:board.filters.person')} value={draft.assigned_to ?? ''} disabled={saving}
             sx={formGridFieldSx} onChange={(event) => update('assigned_to', selectId(event.target.value))}>
             <MenuItem value="">{t('dashboard:board.unassigned')}</MenuItem>

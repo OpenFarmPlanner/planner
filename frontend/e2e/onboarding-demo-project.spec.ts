@@ -34,7 +34,7 @@ test.describe('first-project onboarding', () => {
     await expect(page.getByRole('heading', { name: 'Brokkoli' })).toBeVisible();
 
     await page.goto('/app/dashboard');
-    await expect(page.getByRole('heading', { name: 'Aufgaben-Dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();
     await expect(page.getByRole('article', { name: 'Zaun am Pachtacker prüfen', exact: true })).toBeVisible();
     await expect(page.getByRole('article', { name: 'Beete jäten', exact: true })).toBeVisible();
     await expect(page.getByTestId('task-drag-hint')).toBeVisible();

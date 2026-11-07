@@ -144,7 +144,7 @@ describe('Dashboard', () => {
     mocks.taskList.mockResolvedValue({ results: [task()] });
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
 
-    expect(await screen.findByText('Aufgaben-Dashboard')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Aufgaben', level: 1 })).toBeInTheDocument();
     expect(screen.queryByText('Standort hinzufügen')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
     expect(screen.queryByText('Dein Projekt ist eingerichtet.')).not.toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('Dashboard', () => {
     mocks.taskList.mockRejectedValue(new Error('offline'));
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.queryByText('Aufgaben-Dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Aufgaben', level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByText(/Noch keine Aufgaben/)).not.toBeInTheDocument();
   });
 
@@ -234,6 +234,32 @@ describe('Dashboard', () => {
       title: 'Zaun reparieren', crop: null, field: null, planting_plan: null,
       assigned_to: null, due_date: null, season: 1,
     }));
+  });
+
+  it('links crop and field on a compact card without drag handle or origin badge', async () => {
+    mocks.fieldList.mockResolvedValue({ data: { results: [{ id: 2, name: 'Nord', location: 1 }] } });
+    mocks.bedList.mockResolvedValue({ data: { results: [{ id: 3, name: 'Beet A', field: 2 }] } });
+    mocks.cropList.mockResolvedValue({ data: { results: [{ id: 4, name: 'Salat' }] } });
+    mocks.planList.mockResolvedValue({ data: { results: [{ id: 5, crop: 4, bed: 3, crop_name: 'Salat' }] } });
+    mocks.taskList.mockResolvedValue({ results: [task({ origin: 'automatic', planting_plan: 5, crop: 4 })] });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    const card = await screen.findByRole('article', { name: 'Jäten' });
+    expect(within(card).getByRole('link', { name: 'Salat' })).toHaveAttribute('href', '/app/crops?cropId=4');
+    expect(within(card).getByRole('link', { name: 'Nord' })).toHaveAttribute('href', '/app/fields-beds?highlight=field:2');
+    expect(within(card).queryByRole('link', { name: 'Jäten' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /Aufgabe verschieben/ })).not.toBeInTheDocument();
+    expect(card).not.toHaveTextContent('Automatisch');
+    expect(within(card).getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('shows the task origin in the edit dialog', async () => {
+    mocks.taskList.mockResolvedValue({ results: [task({ origin: 'automatic' })] });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Status ändern: Jäten' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Aufgabe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    expect(within(dialog).getByRole('textbox', { name: 'Herkunft' })).toHaveValue('Automatisch');
+    expect(within(dialog).getByRole('textbox', { name: 'Herkunft' })).toBeDisabled();
   });
 
   it('editing a generated task without changing its date leaves the override untouched', async () => {
@@ -283,7 +309,7 @@ describe('Dashboard', () => {
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(await screen.findByText('Projektstart')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Parzelle hinzufügen' })).toBeInTheDocument();
-    expect(screen.queryByText('Aufgaben-Dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Aufgaben', level: 1 })).not.toBeInTheDocument();
   });
 
 

@@ -71,7 +71,7 @@
   "pages": {
     "dashboard": {
       "title": "Aide : Vue d'ensemble",
-      "intro": "La liste de démarrage vous guide pour créer parcelle, planche, culture et plan de culture. Le tableau de bord affiche les tâches enregistrées de la saison active : À faire, En cours et Terminées. Filtrez par période, culture, parcelle ou responsable. Les indicateurs comptent les tâches non terminées. Sur grand écran, déplacez les cartes par leur poignée ; le menu permet aussi de modifier le statut au clavier. Sur petit écran, les tâches sont présentées en liste."
+      "intro": "La liste de démarrage vous guide pour créer parcelle, planche, culture et plan de culture. La vue des tâches affiche les tâches enregistrées de la saison active : À faire, En cours et Terminées. Filtrez par période, culture, parcelle ou responsable. Les indicateurs comptent les tâches non terminées. Sur grand écran, faites glisser les cartes (sur écran tactile après un appui prolongé) ; la culture et la parcelle d’une carte mènent à leurs détails ; le menu permet aussi de modifier le statut au clavier. Sur petit écran, les tâches sont présentées en liste."
     },
     "locations": {
       "title": "Aide : Sites",
