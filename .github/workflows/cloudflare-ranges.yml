@@ -1,0 +1,57 @@
+name: Cloudflare IP ranges
+
+# TRUSTED_PROXY_UPSTREAM_CIDRS lives in each server's backend .env and is never
+# updated at runtime. Opens one issue when Cloudflare's published list differs
+# from backend/.env.example (docs/account-trust-levels.md).
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/ci/check_cloudflare_ranges.py'
+      - 'tests/test_cloudflare_ranges.py'
+      - '.github/workflows/cloudflare-ranges.yml'
+      - 'backend/.env.example'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Test the range check
+        run: python3 -m unittest discover -s tests -p test_cloudflare_ranges.py
+
+      - name: Compare with Cloudflare's published ranges
+        id: compare
+        # Exit 1 means "changed" and is handled below; 2 (check failed) fails the job.
+        run: |
+          set +e
+          python3 scripts/ci/check_cloudflare_ranges.py --report "$RUNNER_TEMP/report.md"
+          status=$?
+          set -e
+          echo "changed=$([ "$status" = 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          if [ "$status" = 2 ]; then exit 1; fi
+          if [ "$status" = 1 ]; then cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Open or update the issue
+        if: steps.compare.outputs.changed == 'true' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'Cloudflare IP ranges changed: update TRUSTED_PROXY_UPSTREAM_CIDRS'
+        run: |
+          existing=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$RUNNER_TEMP/report.md"
+          else
+            gh issue create --title "$TITLE" --body-file "$RUNNER_TEMP/report.md"
+          fi
