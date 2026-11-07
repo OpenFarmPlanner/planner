@@ -114,6 +114,51 @@ jobs:
           pdm run compilemessages
           pdm run test
 
+  # SQLite ignores row locks (`select_for_update`), so regressions that only
+  # PostgreSQL raises are pinned by tests marked `postgres` and run here
+  # against a real PostgreSQL server. See docs/testing-and-ci.md.
+  backend-postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: farmplanner
+          POSTGRES_PASSWORD: farmplanner
+          POSTGRES_DB: farmplanner_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U farmplanner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install PDM
+        run: python -m pip install --upgrade pip "pdm==2.29.5" "hishel==1.4.0"
+
+      - name: Install backend dependencies with PDM
+        run: |
+          cd backend
+          pdm install -dG test
+
+      - name: Run PostgreSQL-only backend tests
+        env:
+          TEST_DB_ENGINE: postgres
+          DB_HOST: localhost
+          DB_PORT: '5432'
+        run: |
+          cd backend
+          pdm run test -m postgres -n0 --no-cov --create-db
+
   quality:
     runs-on: ubuntu-latest
     steps:

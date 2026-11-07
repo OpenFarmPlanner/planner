@@ -121,8 +121,15 @@ def _save_synchronized_task(task: Task, changes: dict[str, Any]) -> None:
 def synchronize_plan_tasks(plan: PlantingPlan) -> None:
     """Reconcile event dates while preserving completed, overridden and deleted work."""
     # Serialize concurrent writes to one plan; the source uniqueness constraint
-    # remains the final guard for concurrent task creation.
-    plan = PlantingPlan.objects.select_for_update().select_related('crop', 'season').get(pk=plan.pk)
+    # remains the final guard for concurrent task creation. Lock only the plan
+    # row: crop and season are nullable, and PostgreSQL rejects FOR UPDATE on
+    # the nullable side of the outer joins select_related produces for them.
+    plan = (
+        PlantingPlan.objects
+        .select_related('crop', 'season')
+        .select_for_update(of=('self',))
+        .get(pk=plan.pk)
+    )
     if not plan.season_id or plan.season.deleted_at is not None:
         return
     crop_index = build_general_crop_index(plan.project_id)
@@ -224,7 +231,8 @@ def generate_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None
 def synchronize_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:
     generate_template_tasks(plan, events)
     occurrences = {}
-    for task in Task.objects.select_for_update().select_related('template').filter(
+    # `of=('self',)`: the template relation is nullable (outer join), see above.
+    for task in Task.objects.select_for_update(of=('self',)).select_related('template').filter(
         project_id=plan.project_id, planting_plan=plan, origin='template', deleted_at__isnull=True,
     ):
         if task.status in ('completed', 'cancelled'):

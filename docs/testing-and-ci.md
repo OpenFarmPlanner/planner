@@ -14,6 +14,7 @@ gates to run locally, see the "Testing Rules" section of
 | --- | --- | --- | --- |
 | `frontend-tests (1-3)` | `vitest run --shard=N/3` | 1m43s-2m36s | 1m58s-2m47s |
 | `backend-tests` | `pytest` (xdist, with coverage) | 3m14s | 3m58s |
+| `backend-postgres-tests` | `pytest -m postgres` against PostgreSQL 16 | — | — |
 | `quality` | ruff, radon, ESLint, madge | 38s | 1m18s |
 
 Frontend and `quality` from run 36112871261 (25 Sep 2026). `backend-tests`
@@ -280,6 +281,29 @@ job that was not the critical path. With the backend test step measured
 at 3m14s on CI after these changes, below the ~5 minute E2E workflow, a split would again shorten a job that no longer holds the
 pipeline up. Re-measure on CI before revisiting it. If it comes back, the
 class-scoped migration setup above is the cheaper win.
+
+### PostgreSQL-only regressions
+
+Production runs PostgreSQL, the suite runs SQLite. SQLite ignores row locks
+(`select_for_update()`), so a lock that PostgreSQL rejects passes every
+SQLite test: `select_for_update()` combined with `select_related()` on a
+nullable foreign key is an outer join, and PostgreSQL refuses `FOR UPDATE`
+on its nullable side (#951; lock only the own row with
+`select_for_update(of=('self',))`). Tests for such behavior carry the
+`postgres` marker and also run in the separate `backend-postgres-tests`
+job against a PostgreSQL 16 service; in `backend-tests` they only check the
+functional result. `settings_test` switches to PostgreSQL when
+`TEST_DB_ENGINE=postgres` is set and reads the connection from the same
+`DB_*` variables as `settings.py`. Locally:
+
+```bash
+cd backend
+TEST_DB_ENGINE=postgres pdm run test -m postgres -n0 --no-cov --create-db
+```
+
+The job runs only the marked tests, not the whole suite on PostgreSQL:
+that is a separate decision (it would double the backend CI time and
+surface unrelated backend differences).
 
 ## Why `quality` does not run the backend suite
 
