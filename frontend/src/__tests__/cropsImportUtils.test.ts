@@ -149,6 +149,7 @@ describe('buildTimingWindowPreviewWarnings', () => {
           { field: 'planting_windows', value: 'Frühjahr', code: 'timing_window_not_recognized' },
           { field: 'harvest_duration_days', value: 'Juli bis September', code: 'timing_window_harvest_not_imported' },
           { field: 'direct_sowing_windows', value: 'KW 53', code: 'timing_window_invalid_week' },
+          { field: 'germination_days', value: 'fk', code: 'germination_range_not_recognized' },
         ],
       },
     ], (index) => index + 2, tCrops);
@@ -156,6 +157,7 @@ describe('buildTimingWindowPreviewWarnings', () => {
       'Zeile 2, Pflanzung: „Frühjahr“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“. Mehrere Zeiträume mit „;“ trennen, zum Beispiel „März; Oktober“. Der Wert wird nicht übernommen.',
       'Zeile 2, Erntezeit (Tage), „Juli bis September“: Erntezeiträume werden nicht importiert. Die Ernte ergibt sich aus Pflanzung und Kulturdauer. In dieser Spalte wird die Erntedauer in Tagen erwartet. Der Wert wird nicht übernommen.',
       'Zeile 2, Direktsaat, „KW 53“: Kalenderwochen von 1 bis 52 angeben. Der Wert wird nicht übernommen.',
+      'Zeile 2, Keimdauer (Tage), „fk“: Bitte eine Zahl oder einen Bereich wie „18–25“ angeben. Der Wert wird nicht übernommen.',
     ]);
   });
 });

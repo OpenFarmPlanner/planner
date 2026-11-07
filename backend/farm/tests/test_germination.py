@@ -226,6 +226,29 @@ class GerminationTest(ProjectApiTestCase):
         single = Crop.objects.get(name="Single value")
         self.assertEqual((single.germination_days_min, single.germination_days_max), (7, 7))
 
+    def test_a_rejected_range_cell_is_reported_and_only_that_cell_is_dropped(self) -> None:
+        row = {
+            "name": "Kartoffeln",
+            "variety": "Linda",
+            "germination_days": "fk",
+            "germination_temperature_optimal": "8-12",
+        }
+        issue = {
+            "field": "germination_days",
+            "value": "fk",
+            "code": "germination_range_not_recognized",
+            "message": "Enter a number or a range such as 18–25.",
+        }
+        preview = preview_crop_import(self.project, [dict(row)])[0]
+        self.assertEqual(preview["status"], "create", preview)
+        self.assertEqual(preview["timing_window_issues"], [issue])
+        applied = apply_crop_import(self.project, [dict(row)], confirm_updates=True)
+        self.assertEqual(applied["created_count"], 1, applied)
+        self.assertEqual(applied["timing_window_issues"], [{"index": 0, **issue}])
+        crop = Crop.objects.get(name="Kartoffeln", variety="Linda")
+        self.assertEqual((crop.germination_days_min, crop.germination_days_max), (None, None))
+        self.assertEqual(crop.germination_temperature_optimal_min_c, 8)
+
     def test_saved_and_live_plan_checks_agree(self) -> None:
         season = Season.objects.create(
             project=self.project,

@@ -723,7 +723,11 @@
       }
     },
     "timingWindowIssue": "Zeile {{row}}, {{column}}: {{message}} Der Wert wird nicht übernommen.",
-    "timingWindowIssueWithValue": "Zeile {{row}}, {{column}}, „{{value}}“: {{message}} Der Wert wird nicht übernommen."
+    "timingWindowIssueWithValue": "Zeile {{row}}, {{column}}, „{{value}}“: {{message}} Der Wert wird nicht übernommen.",
+    "numberCellIgnored": "Zeile {{row}}, {{column}}: „{{value}}“ ist keine Zahl. Der Wert wird nicht übernommen.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Bitte eine Zahl oder einen Bereich wie „18–25“ angeben."
+    }
   },
   "library": {
     "openButton": "Aus Bibliothek importieren",

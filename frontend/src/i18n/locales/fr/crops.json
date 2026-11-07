@@ -745,7 +745,11 @@
       }
     },
     "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",
-    "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée."
+    "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée.",
+    "numberCellIgnored": "Ligne {{row}}, {{column}} : « {{value}} » n’est pas un nombre. La valeur n’est pas importée.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Indiquez un nombre ou une plage comme « 18–25 »."
+    }
   },
   "library": {
     "openButton": "Importer depuis la bibliothèque",

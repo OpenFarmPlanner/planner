@@ -745,7 +745,11 @@
       }
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
-    "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa."
+    "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa.",
+    "numberCellIgnored": "Fila {{row}}, {{column}}: «{{value}}» no es un número. El valor no se importa.",
+    "cellErrors": {
+      "germination_range_not_recognized": "Indica un número o un rango como «18–25»."
+    }
   },
   "library": {
     "openButton": "Importar desde la biblioteca",

@@ -113,6 +113,7 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   }
 
   const dataRows = rows.slice(1);
+  const numberCellWarnings: string[] = [];
   let skippedRows = 0;
   const entries: Record<string, unknown>[] = [];
   const rowNumbers: number[] = [];
@@ -139,6 +140,10 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
         // Text in the harvest-duration column ("Juli bis September") is no number;
         // the backend import tells a harvest window from other text.
         entry[HARVEST_DURATION_TEXT_KEY] = raw.trim();
+      } else if (colDef.type === 'number' && typeof raw === 'string' && raw.trim()) {
+        numberCellWarnings.push(i18n.t('crops:import.numberCellIgnored', {
+          row: dataIndex + 2, column: String(headerRow[i]).trim(), value: raw.trim(),
+        }));
       }
     }
 
@@ -151,5 +156,5 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
     rowNumbers.push(dataIndex + 2);
   }
 
-  return { entries, rowNumbers, skippedRows, warnings };
+  return { entries, rowNumbers, skippedRows, warnings: [...warnings, ...numberCellWarnings] };
 };
