@@ -527,6 +527,12 @@ the immediate peer for that environment and rechecking the official
 fetch or automatic range update. A stale range conservatively stops the walk
 at that proxy. The ops repository does not provision backend `.env` files.
 
+The scheduled workflow `.github/workflows/cloudflare-ranges.yml` (Mondays, also
+runnable by hand) compares the example list with Cloudflare's published ranges
+(`scripts/ci/check_cloudflare_ranges.py`) and opens one issue when they differ,
+with the new value and the update steps. It cannot see the servers' `.env`
+files, so keep them in step with `backend/.env.example` whenever it changes.
+
 ## Settings reference
 
 All are read from the environment in `backend/config/settings.py`.
