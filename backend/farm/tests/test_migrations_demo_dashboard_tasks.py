@@ -113,6 +113,10 @@ class TestDemoDashboardTaskMigration:
         assert Task.objects.filter(project_id=self.projects['deleted']).count() == 1
 
         # Exercise the same project + season request context as the overview.
+        # The live API runs today's models, so it needs today's schema: a later
+        # migration adding a column (e.g. to Crop) would otherwise break the query.
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
         from django.contrib.auth import get_user_model
         client = APIClient()
         client.force_authenticate(get_user_model().objects.get(pk=self.owner_id))
@@ -122,6 +126,8 @@ class TestDemoDashboardTaskMigration:
         assert response.status_code == 200
         assert any(row['title'] == 'Beete jäten' for row in response.data['results'])
         assert all(row['project'] == self.projects['de'] for row in response.data['results'])
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
 
         before = list(Task.objects.order_by('pk').values())
         migration = import_module('farm.migrations.0135_backfill_demo_dashboard_tasks')
