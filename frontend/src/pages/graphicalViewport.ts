@@ -7,9 +7,13 @@ export const ZOOM_LEVEL_OVERVIEW = 0.9;
 export const ZOOM_LEVEL_MEDIUM = 1.25;
 export const ZOOM_LEVEL_DETAIL = 1.8;
 export const LABEL_VISIBILITY_SCALE = 0.55;
-export const FIELD_LABEL_MIN_SCALE = LABEL_VISIBILITY_SCALE;
-export const FIELD_LABEL_MIN_WIDTH = 110;
-export const FIELD_LABEL_MIN_HEIGHT = 48;
+// A field label is drawn at a constant screen size (the text is scaled by
+// 1 / zoom), so whether it fits depends on the field's on-screen size only,
+// never on the zoom level itself (#904).
+export const FIELD_LABEL_MIN_SCREEN_WIDTH = 36;
+export const FIELD_LABEL_MIN_SCREEN_HEIGHT = 24;
+/** Screen-pixel inset of a field label from the field's top-left corner. */
+export const FIELD_LABEL_SCREEN_PADDING = 6;
 export const BED_LABEL_MIN_WIDTH = 88;
 export const BED_LABEL_MIN_HEIGHT = 36;
 export const BED_LABEL_MIN_SCALE = Math.min(1, GRAPHICAL_MAX_SCALE);
@@ -135,7 +139,13 @@ export function getVisibleElements(scale: number): VisibilityState {
 }
 
 export function shouldShowFieldLabel(size: RectSize, scale: number): boolean {
-  return size.width >= FIELD_LABEL_MIN_WIDTH && size.height >= FIELD_LABEL_MIN_HEIGHT && scale >= FIELD_LABEL_MIN_SCALE;
+  return size.width * scale >= FIELD_LABEL_MIN_SCREEN_WIDTH
+    && size.height * scale >= FIELD_LABEL_MIN_SCREEN_HEIGHT;
+}
+
+/** On-screen width available to a field label, so long names end in an ellipsis inside the field. */
+export function getFieldLabelScreenWidth(size: RectSize, scale: number): number {
+  return Math.max(0, size.width * scale - FIELD_LABEL_SCREEN_PADDING * 2);
 }
 
 export function shouldShowBedLabel(size: RectSize, scale: number): boolean {
