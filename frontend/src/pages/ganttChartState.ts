@@ -234,6 +234,10 @@ export function getGanttUnitWidth(viewMode: ViewMode): number {
   return GANTT_UNIT_WIDTH_BY_VIEW_MODE[viewMode] ?? GANTT_UNIT_WIDTH_BY_VIEW_MODE[ViewMode.MONTH];
 }
 
+function monthsBetween(start: Date, date: Date): number {
+  return (date.getFullYear() - start.getFullYear()) * 12 + date.getMonth() - start.getMonth();
+}
+
 export function getDatePosition(date: Date, viewMode: ViewMode, startDate: Date): number {
   const unitWidth = getGanttUnitWidth(viewMode);
   const start = new Date(startDate);
@@ -241,7 +245,12 @@ export function getDatePosition(date: Date, viewMode: ViewMode, startDate: Date)
 
   switch (viewMode) {
     case ViewMode.DAY: {
-      const days = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      // Calendar days, not elapsed 24 h blocks: between the DST switches a
+      // local midnight is 23 h or 25 h after the previous one, and flooring
+      // the elapsed time put every summer date one column too early (#906).
+      const day = new Date(date);
+      day.setHours(0, 0, 0, 0);
+      const days = Math.round((day.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       return days * unitWidth + unitWidth / 2;
     }
     case ViewMode.WEEK: {
@@ -249,9 +258,12 @@ export function getDatePosition(date: Date, viewMode: ViewMode, startDate: Date)
       return (days / 7) * unitWidth;
     }
     case ViewMode.MONTH:
-      return ((date.getMonth() - start.getMonth()) + ((date.getDate() - 1) / new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate())) * unitWidth;
+      // Month and quarter columns continue across the year boundary: a range
+      // that ends in the next year must not fold its dates back (#906).
+      return (monthsBetween(start, date) + ((date.getDate() - 1) / new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate())) * unitWidth;
     case ViewMode.QUARTER: {
-      const quarterIndex = Math.floor(date.getMonth() / 3) - Math.floor(start.getMonth() / 3);
+      const quarterIndex = Math.floor((date.getFullYear() * 12 + date.getMonth()) / 3)
+        - Math.floor((start.getFullYear() * 12 + start.getMonth()) / 3);
       const monthInQuarter = date.getMonth() % 3;
       return (quarterIndex + monthInQuarter / 3) * unitWidth;
     }
@@ -313,56 +325,33 @@ export function getTimelineScrollLeftForDate(
   return Math.max(0, Math.min(maxScroll, position - timelineViewportWidth / 2));
 }
 
-export function addTimelinePeriod(date: Date, viewMode: ViewMode, direction: -1 | 1): Date {
-  const nextDate = new Date(date);
+/** Columns one Shift+arrow step moves, per view (a week, ~a month, a year, a year, five years). */
+const LARGE_TIMELINE_STEP_UNITS: Partial<Record<ViewMode, number>> = {
+  [ViewMode.DAY]: 7,
+  [ViewMode.WEEK]: 4,
+  [ViewMode.MONTH]: 12,
+  [ViewMode.QUARTER]: 4,
+  [ViewMode.YEAR]: 5,
+};
 
-  switch (viewMode) {
-    case ViewMode.DAY:
-      nextDate.setDate(nextDate.getDate() + direction);
-      break;
-    case ViewMode.WEEK:
-      nextDate.setDate(nextDate.getDate() + direction * 7);
-      break;
-    case ViewMode.MONTH:
-      nextDate.setMonth(nextDate.getMonth() + direction);
-      break;
-    case ViewMode.QUARTER:
-      nextDate.setMonth(nextDate.getMonth() + direction * 3);
-      break;
-    case ViewMode.YEAR:
-      nextDate.setFullYear(nextDate.getFullYear() + direction);
-      break;
-    default:
-      break;
-  }
-
-  return nextDate;
-}
-
-export function addTimelinePeriodLarge(date: Date, viewMode: ViewMode, direction: -1 | 1): Date {
-  const nextDate = new Date(date);
-
-  switch (viewMode) {
-    case ViewMode.DAY:
-      nextDate.setDate(nextDate.getDate() + direction * 7);
-      break;
-    case ViewMode.WEEK:
-      nextDate.setMonth(nextDate.getMonth() + direction);
-      break;
-    case ViewMode.MONTH:
-      nextDate.setFullYear(nextDate.getFullYear() + direction);
-      break;
-    case ViewMode.QUARTER:
-      nextDate.setFullYear(nextDate.getFullYear() + direction);
-      break;
-    case ViewMode.YEAR:
-      nextDate.setFullYear(nextDate.getFullYear() + direction * 5);
-      break;
-    default:
-      break;
-  }
-
-  return nextDate;
+/**
+ * Scroll position after moving the timeline by whole periods (columns), for
+ * the arrow-key shortcuts. Every view has equally wide columns, so stepping by
+ * the column width is exact; the former scroll → date → next date → scroll
+ * round trip rounded back into the same period at column boundaries, so every
+ * other key press barely moved and the end of the range was out of reach
+ * (#906).
+ */
+export function getTimelineScrollLeftAfterStep(
+  scrollLeft: number,
+  maxScrollLeft: number,
+  viewMode: ViewMode,
+  direction: -1 | 1,
+  large = false,
+): number {
+  const units = large ? LARGE_TIMELINE_STEP_UNITS[viewMode] ?? 1 : 1;
+  const next = scrollLeft + direction * units * getGanttUnitWidth(viewMode);
+  return Math.max(0, Math.min(Math.max(0, maxScrollLeft), next));
 }
 
 export function getPrimaryTouch(event: TouchEvent): Touch | null {
