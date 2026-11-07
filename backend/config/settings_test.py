@@ -18,14 +18,30 @@ ADMINS: list[tuple[str, str]] = []
 TURNSTILE_SITE_KEY = ''
 TURNSTILE_SECRET_KEY = ''
 
-# Override database to use SQLite for tests
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
-        'ATOMIC_REQUESTS': True,
+# Tests run on in-memory SQLite by default. TEST_DB_ENGINE=postgres runs them
+# against PostgreSQL instead (connection from the DB_* variables, as in
+# settings.py), which the CI job for PostgreSQL-only behavior uses: row locks
+# (`select_for_update`) and some query restrictions are no-ops on SQLite.
+if os.getenv('TEST_DB_ENGINE') == 'postgres':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'farmplanner_db'),
+            'USER': os.getenv('DB_USER', 'farmplanner'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'farmplanner'),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'ATOMIC_REQUESTS': True,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+            'ATOMIC_REQUESTS': True,
+        }
+    }
 
 # Keep existing test suite behavior focused on domain logic.
 # Authentication behavior is validated separately in accounts tests.
