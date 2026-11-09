@@ -150,12 +150,12 @@ export default function Dashboard() {
     { key: 'plans', label: t('dashboard:checklist.plan'), done: plans.length > 0 },
   ] as const;
 
-  if (loading) return <PageContainer><PageSurface variant="contentFit"><Typography>{t('common:messages.loading')}</Typography></PageSurface></PageContainer>;
-  if (shouldShowProjectRequiredState && missingProjectReason) return <PageContainer><PageSurface variant="contentFit"><ProjectRequiredState reason={missingProjectReason} /></PageSurface></PageContainer>;
+  if (loading) return <PageContainer mobileInset><PageSurface variant="contentFit"><Typography>{t('common:messages.loading')}</Typography></PageSurface></PageContainer>;
+  if (shouldShowProjectRequiredState && missingProjectReason) return <PageContainer mobileInset><PageSurface variant="contentFit"><ProjectRequiredState reason={missingProjectReason} /></PageSurface></PageContainer>;
 
   if (error) {
     return (
-      <PageContainer>
+      <PageContainer mobileInset>
         <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
           {t('dashboard:errors.load')}
         </Alert>
@@ -167,7 +167,7 @@ export default function Dashboard() {
   const nextSetupActions = firstMissingChecklistStep ? getTranslatedProjectSetupActions(firstMissingChecklistStep, t) : [];
 
   return (
-    <PageContainer>
+    <PageContainer mobileInset>
 
       {!isSetupComplete ? (
         <PageSurface variant="contentFit" sx={{ mb: 2, minWidth: { md: 480 } }}>
