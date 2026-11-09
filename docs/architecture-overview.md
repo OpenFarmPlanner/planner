@@ -350,6 +350,28 @@ a new one.
   `require_project_admin()` check. Do not assume a frontend permission layer
   exists to extend — there is one flag on one page.
 
+### In-memory API response cache
+
+`frontend/src/api/responseCache.ts` wraps the axios adapter of `httpClient`, so
+page navigation reuses recent list responses without any page code changing.
+
+- **What:** only an explicit allowlist of list endpoints shared between pages.
+  Auth, notifications and anything clock-dependent are never cached.
+- **Key:** URL, query, `X-Project-Id`, `X-Season-Id`, `Accept-Language`. The
+  cache is cleared whenever the signed-in user changes.
+- **Age:** served as is for 10 s, refreshed in the background up to 60 s, never
+  served older. A background refresh only updates the cache, never what is on
+  screen, so it cannot disturb a row being edited.
+- **Writes:** any non-GET request, failed or not, and any write through
+  `authApi` clears the whole cache in this tab and the user's other tabs. A
+  response requested before a write is never stored after it.
+- **Memory only.** Nothing reaches `localStorage`, IndexedDB or the service
+  worker (`docs/pwa.md`). A reload starts empty.
+
+Adding an endpoint to the allowlist: check that every change to its data goes
+through `httpClient` or `authApi`; data that changes without a write of the
+user's own may be up to 60 s old.
+
 ## Unclear / needs check
 
 - Whether every admin-only backend action has a matching frontend affordance

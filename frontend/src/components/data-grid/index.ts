@@ -19,7 +19,7 @@ export type {
 } from './types';
 export { NotesCell } from './NotesCell';
 export { NotesDrawer } from './NotesDrawer';
-export { RichTextEditor } from './RichTextEditor';
+export { LazyRichTextEditor as RichTextEditor } from './LazyRichTextEditor';
 export { normalizeRichTextMarkdown } from './richText';
 export { RichTextViewer } from './RichTextViewer';
 export { getPlainExcerpt, stripMarkdown } from './markdown';

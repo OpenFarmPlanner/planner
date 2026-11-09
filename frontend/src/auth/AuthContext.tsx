@@ -24,6 +24,7 @@ import type { AuthUser } from "./types";
 import { AuthContext, type AuthContextValue } from "./authContextShared";
 import { findPublicPageVariant } from "../seo/seoConfig";
 import { toAppRelativePathname } from "../i18n/routeLanguage";
+import { clearApiResponseCache } from "../api/responseCache";
 
 const GUEST_DEMO_SESSION_KEY = 'guestDemoSessionId';
 // Every language version of every registered public page (seoConfig.ts).
@@ -84,6 +85,11 @@ export function AuthProvider({
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
   const authGenerationRef = useRef(0);
   const lastAuthenticatedAtRef = useRef(0);
+
+  const currentUserId = user?.id ?? null;
+  useEffect(() => {
+    clearApiResponseCache();
+  }, [currentUserId]);
 
   const beginAuthMutation = useCallback((): number => {
     authGenerationRef.current += 1;

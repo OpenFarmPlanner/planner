@@ -7,6 +7,7 @@ import { FALLBACK_LANGUAGE } from '../i18n/languages';
 import { normalizeBasePath } from '../utils/basePath';
 import { readCookie } from '../utils/cookies';
 import { API_REQUEST_TIMEOUT_MS } from './requestTimeout';
+import { createCachingAdapter } from './responseCache';
 
 const PROD_API_PATH = '/api';
 
@@ -92,6 +93,10 @@ const httpClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+if (import.meta.env.MODE !== 'test') {
+  httpClient.defaults.adapter = createCachingAdapter(axios.getAdapter(httpClient.defaults.adapter));
+}
 
 const requestStartedAt = new WeakMap<InternalAxiosRequestConfig, number>();
 

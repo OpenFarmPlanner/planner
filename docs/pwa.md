@@ -39,6 +39,10 @@ drops the previous generation.
 
 ### API responses — and the rule any future change must follow
 
+The app's short-lived response cache lives in memory only and is unrelated to
+the service worker; see "In-memory API response cache" in
+`docs/architecture-overview.md`.
+
 Everything under the API prefix is pinned to Workbox's `NetworkOnly`
 strategy. Nothing routes API traffic into a cache today, so that rule is
 belt-and-braces; it is written down because of what would otherwise have to

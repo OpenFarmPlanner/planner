@@ -1,7 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { RichTextEditor } from '../../components/data-grid/RichTextEditor';
+import { LazyRichTextEditor } from '../../components/data-grid/LazyRichTextEditor';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 
 interface NotesSectionProps {
@@ -31,7 +31,7 @@ export function NotesSection({ formData, onChange, t, label, getFieldPinProps }:
           borderRadius: 1,
         } : undefined}
       >
-        <RichTextEditor
+        <LazyRichTextEditor
           value={formData.notes ?? ''}
           onChange={(markdown) => onChange('notes', markdown)}
           autoFocus={false}
