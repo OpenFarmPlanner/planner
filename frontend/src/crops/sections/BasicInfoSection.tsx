@@ -407,38 +407,42 @@ export function BasicInfoSection({
         <Box sx={fieldRowSx}>{firstVarietySourceHint}</Box>
       ) : null}
       {identityHint}
-      {showSeedTypeField ? (
-        <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, seedTypePin?.fieldSx)}>
-          <InputLabel id="crop-seed-type-label" shrink>{t('form.seedType')}</InputLabel>
-          <Select
-            fullWidth
-            displayEmpty
-            notched
-            labelId="crop-seed-type-label"
-            value={formData.seed_type || ''}
-            onChange={e => onChange('seed_type', e.target.value as Crop['seed_type'])}
-            label={t('form.seedType')}
-            error={Boolean(errors.seed_type)}
-            endAdornment={seedTypePin?.endAdornment}
-            sx={seedTypePin ? libraryPinSelectSx : undefined}
-          >
-            <MenuItem value="">{t(SEED_TYPE_UNKNOWN_LABEL_KEY)}</MenuItem>
-            {SEED_TYPE_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      ) : null}
-      {tagOptions ? (
-        <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
-          <CropTagsField
-            sx={mergeVarietyFieldSx(formGridFieldSx, tagsVariety?.sx)}
-            value={formData.tags ?? []}
-            options={tagOptions}
-            onChange={(tags) => onChange('tags', tags)}
-            t={t}
-          />
-        </VarietyFieldTooltip>
+      {showSeedTypeField || tagOptions ? (
+      <Box sx={formGridSx}>
+        {showSeedTypeField ? (
+          <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, seedTypePin?.fieldSx)}>
+            <InputLabel id="crop-seed-type-label" shrink>{t('form.seedType')}</InputLabel>
+            <Select
+              fullWidth
+              displayEmpty
+              notched
+              labelId="crop-seed-type-label"
+              value={formData.seed_type || ''}
+              onChange={e => onChange('seed_type', e.target.value as Crop['seed_type'])}
+              label={t('form.seedType')}
+              error={Boolean(errors.seed_type)}
+              endAdornment={seedTypePin?.endAdornment}
+              sx={seedTypePin ? libraryPinSelectSx : undefined}
+            >
+              <MenuItem value="">{t(SEED_TYPE_UNKNOWN_LABEL_KEY)}</MenuItem>
+              {SEED_TYPE_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
+        {tagOptions ? (
+          <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
+            <CropTagsField
+              sx={mergeVarietyFieldSx(formGridDoubleColumnSx, tagsVariety?.sx)}
+              value={formData.tags ?? []}
+              options={tagOptions}
+              onChange={(tags) => onChange('tags', tags)}
+              t={t}
+            />
+          </VarietyFieldTooltip>
+        ) : null}
+      </Box>
       ) : null}
       {/* The heading is inline and the info icon follows it in an unbreakable
           span (a line may otherwise break before an inline-flex box despite the

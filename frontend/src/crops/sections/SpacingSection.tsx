@@ -5,7 +5,13 @@
 import { Box, Typography, TextField } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { formGridFieldSx, formGridSx } from './styles.tsx';
+import {
+  formGridBottomAlignedFieldSx,
+  formGridCaptionedGroupSx,
+  formGridFieldSx,
+  formGridSx,
+  formRangeInputsSx,
+} from './styles.tsx';
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
@@ -20,9 +26,6 @@ interface SpacingSectionProps {
   getFieldTooltipProps?: GetVarietyFieldTooltipProps;
   getFieldPinProps?: GetLibraryFieldPinProps;
 }
-
-/** From sm up "von" starts a new row, so the depth range stays together beside "bis". */
-const sowingDepthRangeStartSx = { ...formGridFieldSx, gridColumnStart: { xs: 'auto', sm: 1 } } as const;
 
 export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipProps, getFieldPinProps }: SpacingSectionProps) {
   const distanceWithinRowVariety = getFieldTooltipProps?.('distance_within_row_cm');
@@ -40,7 +43,7 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
       <Box sx={formGridSx}>
         <VarietyFieldTooltip tooltipTitle={distanceWithinRowVariety?.tooltipTitle}>
           <TextField
-            sx={mergeVarietyFieldSx(formGridFieldSx, distanceWithinRowVariety?.sx, distanceWithinRowPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridBottomAlignedFieldSx, distanceWithinRowVariety?.sx, distanceWithinRowPin?.fieldSx)}
             type="number"
             label={t('form.distanceWithinRowCm')}
             placeholder={t('form.distanceWithinRowCmPlaceholder')}
@@ -56,7 +59,7 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={rowSpacingVariety?.tooltipTitle}>
           <TextField
-            sx={mergeVarietyFieldSx(formGridFieldSx, rowSpacingVariety?.sx, rowSpacingPin?.fieldSx)}
+            sx={mergeVarietyFieldSx(formGridBottomAlignedFieldSx, rowSpacingVariety?.sx, rowSpacingPin?.fieldSx)}
             type="number"
             label={t('form.rowSpacingCm')}
             placeholder={t('form.rowSpacingCmPlaceholder')}
@@ -70,31 +73,42 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
             }}
           />
         </VarietyFieldTooltip>
-        <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
-          <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(sowingDepthRangeStartSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
-            label={t('form.sowingDepthMinCm')}
-            placeholder={t('form.sowingDepthCmPlaceholder')}
-            value={formData.sowing_depth_cm}
-            // null, not undefined: a cleared bound must reach the backend, which
-            // then gives it the other bound's value (one depth is a range of one).
-            onValueChange={(value) => onChange('sowing_depth_cm', value ?? null)}
-            error={Boolean(errors.sowing_depth_cm)}
-            helperText={errors.sowing_depth_cm}
-            slotProps={{ input: { endAdornment: sowingDepthPin?.endAdornment } }}
-          />
-        </VarietyFieldTooltip>
-        <VarietyFieldTooltip tooltipTitle={sowingDepthMaxVariety?.tooltipTitle}>
-          <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthMaxVariety?.sx, sowingDepthMaxPin?.fieldSx)}
-            label={t('form.sowingDepthMaxCm')}
-            value={formData.sowing_depth_max_cm}
-            onValueChange={(value) => onChange('sowing_depth_max_cm', value ?? null)}
-            error={Boolean(errors.sowing_depth_max_cm)}
-            helperText={errors.sowing_depth_max_cm}
-            slotProps={{ input: { endAdornment: sowingDepthMaxPin?.endAdornment } }}
-          />
-        </VarietyFieldTooltip>
+        <Box sx={formGridCaptionedGroupSx}>
+          <Typography variant="body2" sx={{ mb: 1 }}>{t('form.sowingDepthCm')}</Typography>
+          <Box sx={formRangeInputsSx}>
+            <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
+              <LocalizedDecimalField
+                sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
+                label={t('germination.from')}
+                placeholder={t('form.sowingDepthCmPlaceholder')}
+                value={formData.sowing_depth_cm}
+                // null, not undefined: a cleared bound must reach the backend, which
+                // then gives it the other bound's value (one depth is a range of one).
+                onValueChange={(value) => onChange('sowing_depth_cm', value ?? null)}
+                error={Boolean(errors.sowing_depth_cm)}
+                helperText={errors.sowing_depth_cm}
+                slotProps={{
+                  htmlInput: { 'aria-label': t('form.sowingDepthMinCm') },
+                  input: { endAdornment: sowingDepthPin?.endAdornment },
+                }}
+              />
+            </VarietyFieldTooltip>
+            <VarietyFieldTooltip tooltipTitle={sowingDepthMaxVariety?.tooltipTitle}>
+              <LocalizedDecimalField
+                sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthMaxVariety?.sx, sowingDepthMaxPin?.fieldSx)}
+                label={t('germination.to')}
+                value={formData.sowing_depth_max_cm}
+                onValueChange={(value) => onChange('sowing_depth_max_cm', value ?? null)}
+                error={Boolean(errors.sowing_depth_max_cm)}
+                helperText={errors.sowing_depth_max_cm}
+                slotProps={{
+                  htmlInput: { 'aria-label': t('form.sowingDepthMaxCm') },
+                  input: { endAdornment: sowingDepthMaxPin?.endAdornment },
+                }}
+              />
+            </VarietyFieldTooltip>
+          </Box>
+        </Box>
       </Box>
     </>
   );

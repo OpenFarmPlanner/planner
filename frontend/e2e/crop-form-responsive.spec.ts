@@ -113,7 +113,9 @@ test.describe('crop edit dialog compact layout', () => {
     await expectOneRow([nameBox, botanicalBox]);
     expect(nameBox.width).toBeGreaterThan(botanicalBox.width);
     expect(tagsBox.y).toBeGreaterThan(nameBox.y + nameBox.height);
-    expect(tagsBox.width).toBeGreaterThan(nameBox.width + botanicalBox.width);
+    // Tags span the same two columns as the name above them.
+    expect(Math.abs(tagsBox.x - nameBox.x)).toBeLessThan(2);
+    expect(Math.abs(tagsBox.width - nameBox.width)).toBeLessThan(2);
     // Compact fields: the small MUI field height.
     expect(nameBox.height).toBeLessThan(48);
 
@@ -131,6 +133,70 @@ test.describe('crop edit dialog compact layout', () => {
       await fieldBox(dialog.getByLabel(/^Erwarteter Ertrag/)),
     ]);
   });
+});
+
+test('keeps every variety form row on the shared three-column grid', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `crop-form-grid-${testInfo.workerIndex}`);
+  const projectId = Number(await page.evaluate(() => window.localStorage.getItem('activeProjectId')));
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    project: projectId,
+    name: 'Rasterkarotte',
+    variety: 'Nantaise',
+    cultivation_types: ['direct_sowing'],
+  });
+  await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+  const dialog = page.getByRole('dialog', { name: 'Sorte bearbeiten' });
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  const nameBox = await fieldBox(dialog.getByLabel(/^Name/));
+  const varietyBox = await fieldBox(dialog.getByLabel(/^Sorte/));
+  const botanicalBox = await fieldBox(dialog.getByLabel('Lateinischer Name'));
+  const seedTypeBox = await fieldBox(dialog.getByRole('combobox', { name: 'Saatguttyp' }));
+  const tagsBox = await fieldBox(dialog.getByRole('combobox', { name: 'Tags' }));
+  await expectOneRow([seedTypeBox, tagsBox]);
+  expect(Math.abs(seedTypeBox.x - nameBox.x)).toBeLessThan(2);
+  expect(Math.abs(seedTypeBox.width - nameBox.width)).toBeLessThan(2);
+  expect(Math.abs(tagsBox.x - varietyBox.x)).toBeLessThan(2);
+  expect(Math.abs(tagsBox.x + tagsBox.width - (botanicalBox.x + botanicalBox.width))).toBeLessThan(2);
+
+  // Rows with fewer than three fields keep the column width.
+  const spacingBox = await fieldBox(dialog.getByLabel('Abstand in der Reihe (cm)'));
+  const kernelWeightBox = await fieldBox(dialog.getByLabel(/^1000-Korn-Gewicht/));
+  for (const box of [spacingBox, kernelWeightBox]) {
+    expect(Math.abs(box.x - nameBox.x)).toBeLessThan(2);
+    expect(Math.abs(box.width - nameBox.width)).toBeLessThan(2);
+  }
+
+  // The sowing depth range shares the third column, on the line of the spacing fields.
+  const rowSpacingBox = await fieldBox(dialog.getByLabel('Reihenabstand (cm)'));
+  const depthMinBox = await fieldBox(dialog.getByLabel('Saattiefe von (cm)'));
+  const depthMaxBox = await fieldBox(dialog.getByLabel('Saattiefe bis (cm)'));
+  await expectOneRow([spacingBox, rowSpacingBox, depthMinBox, depthMaxBox]);
+  expect(Math.abs(depthMinBox.x - botanicalBox.x)).toBeLessThan(2);
+  expect(Math.abs(depthMaxBox.x + depthMaxBox.width - (botanicalBox.x + botanicalBox.width))).toBeLessThan(2);
+
+  // The minimum temperature sits on the same line as the from/to inputs.
+  await expectOneRow([
+    await fieldBox(dialog.getByLabel('Optimale Keimtemperatur von (°C)')),
+    await fieldBox(dialog.getByLabel('Keimdauer von (Tage)')),
+    await fieldBox(dialog.getByLabel('Mindestkeimtemperatur (°C)')),
+  ]);
+
+  // Review artifacts only; the layout itself is asserted above.
+  const germination = dialog.getByRole('heading', { name: 'Keimung' });
+  for (const viewport of [
+    { width: 375, height: 800 }, { width: 800, height: 375 }, { width: 768, height: 900 },
+    { width: 1024, height: 900 }, { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await dialog.getByLabel(/^Name/).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`crop-form-top-${viewport.width}.png`) });
+    await germination.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`crop-form-germination-${viewport.width}.png`) });
+    await dialog.getByLabel('Saattiefe von (cm)').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`crop-form-spacing-${viewport.width}.png`) });
+  }
 });
 
 /**
