@@ -82,13 +82,18 @@ Use the responsive object form (`px: { xs: 0, sm: 2 }`) or
 **Detail-page actions** (`components/layout/DetailPageActions.tsx`) show their
 text label only from `ACTION_LABEL_BREAKPOINT` (`lg`, 1200px) up; below that
 they stay icon-only and surface the label as a tooltip, the same way a disabled
-button explains itself. That keeps the actions pinned to the top-right of a
-detail header on tablet and small-desktop widths instead of letting a long page
-title push them onto a row of their own — the header rows in `CropDetail`
-and `PublicCropLibraryPage` therefore use `flexWrap: 'nowrap'` and let the
-title column shrink and wrap instead. The switch is plain responsive `sx`, not
-a measured width, so the header renders at its final size on the first paint;
+button explains itself. That keeps the actions beside the title of a detail
+header on tablet and small-desktop widths, where a multi-word title wraps
+between its words next to them. The switch is plain responsive `sx`, not a
+measured width, so the header renders at its final size on the first paint;
 the media query in the component only picks the tooltip text.
+
+The header rows in `CropDetail` and `PublicCropLibraryPage` share
+`components/layout/detailHeaderStyles.ts`: the actions move to a row of their
+own below the title only when a single word of it does not fit beside them, so
+a name like "Buschbohne" is never broken mid-word. The title column's flex
+basis is its `min-content` width, which is why the title must not use
+`overflowWrap: 'anywhere'`. Phone headers keep their single non-wrapping row.
 
 **Form fields** are compact app-wide: `theme.ts` makes `size="small"` the
 default for `TextField`, `FormControl`, `Select` and `Autocomplete`, so every

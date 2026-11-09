@@ -119,6 +119,7 @@ import { usePersistedCropFilters } from './usePersistedCropFilters';
 import { CropTimingWindowsDetail } from './CropTimingWindowsDetail';
 import { canBeSownInMonth } from './timingWindows';
 import { usePlantFamilies } from './plantFamilies';
+import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../components/layout/detailHeaderStyles';
 
 
 export function CropDetail({
@@ -912,11 +913,17 @@ const detailSectionGridSx = {
                 <CardContent sx={{ p: { xs: 1, sm: 2, lg: 2.5 } }}>
             {/* Header with crop name and badge */}
                   <Box sx={{ mb: { xs: 2, sm: 3 } }}>
-              {/* Never wraps: the actions are pinned top-right and the title column
-                  shrinks (and wraps to a second line) instead, so a long crop name
-                  can't push the buttons onto a row of their own. */}
-              <Box data-testid="crop-detail-header" sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'nowrap', gap: { xs: 1, sm: 2 }, mb: 0.75 }}>
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              {/* The actions stay beside the title and move below it only when a
+                  word of the crop name would not fit next to them (see
+                  detailHeaderStyles.ts). Phones keep a single non-wrapping row. */}
+              <Box
+                data-testid="crop-detail-header"
+                sx={[
+                  { display: 'flex', alignItems: 'flex-start', flexWrap: 'nowrap', gap: { xs: 1, sm: 2 }, mb: 0.75 },
+                  !useUnifiedMobileLayout && detailHeaderRowSx,
+                ]}
+              >
+                <Box sx={[{ flexGrow: 1, minWidth: 0 }, !useUnifiedMobileLayout && detailHeaderTitleColumnSx]}>
                   <Box sx={{ minWidth: 0, display: 'flex', alignItems: 'stretch', gap: 1.75 }}>
                     {selectedCrop.display_color ? (
                       <Box
@@ -941,7 +948,7 @@ const detailSectionGridSx = {
                           onClick={() => setMobileSelectorOpen(true)}
                         />
                       ) : (
-                        <Typography component="h2" sx={{ fontSize: { xs: '1.25rem', sm: '2rem' }, lineHeight: 1.2, fontWeight: 600, overflowWrap: 'anywhere' }}>
+                        <Typography component="h2" sx={[{ fontSize: { xs: '1.25rem', sm: '2rem' }, lineHeight: 1.2, fontWeight: 600 }, detailHeaderTitleTextSx]}>
                           {getCropDisplayName(selectedCrop)}
                         </Typography>
                       )}

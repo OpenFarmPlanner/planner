@@ -37,6 +37,15 @@ test.describe('Kulturen library', () => {
       await selector.getByText('Tomate', { exact: true }).first().click();
       await expect(selector).toBeHidden();
     } else {
+      // The default selection is one word too wide to sit beside the header
+      // actions at desktop width: the actions move below the title instead of
+      // the title breaking mid-word ("Buschboh / ne").
+      const title = header.getByRole('heading', { level: 2, name: 'Buschbohne' });
+      const titleLines = await title.evaluate((element) => Math.round(
+        element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight),
+      ));
+      expect(titleLines, 'the crop name broke across lines').toBe(1);
+
       const list = page.getByRole('listbox', { name: 'Kulturen' });
       await expect(list.getByRole('option')).toHaveCount(FIXTURE_SPECIES.length);
       for (const species of FIXTURE_SPECIES) {
