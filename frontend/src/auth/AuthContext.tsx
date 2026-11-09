@@ -82,6 +82,7 @@ export function AuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthUnavailable, setIsAuthUnavailable] = useState(false);
+  const [isSessionUnchecked, setIsSessionUnchecked] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
   const authGenerationRef = useRef(0);
   const lastAuthenticatedAtRef = useRef(0);
@@ -99,6 +100,7 @@ export function AuthProvider({
   const clearAuthenticatedUser = useCallback((options: { preserveSharedProjectId?: boolean } = {}): void => {
     lastAuthenticatedAtRef.current = 0;
     setIsAuthUnavailable(false);
+    setIsSessionUnchecked(false);
     setUser(null);
     setActiveProjectId(null);
     // `activeProjectId` is shared `localStorage`, read fresh per request by
@@ -117,6 +119,7 @@ export function AuthProvider({
   const applyAuthenticatedUser = useCallback((me: AuthUser): void => {
     lastAuthenticatedAtRef.current = Date.now();
     setIsAuthUnavailable(false);
+    setIsSessionUnchecked(false);
     setUser(me);
     setActiveProjectId(applyResolvedProjectId(me));
   }, []);
@@ -174,6 +177,7 @@ export function AuthProvider({
     try {
       await refreshUser();
     } finally {
+      setIsSessionUnchecked(false);
       setIsLoading(false);
     }
   }, [refreshUser]);
@@ -181,6 +185,7 @@ export function AuthProvider({
   useEffect(() => {
     void (async () => {
       if (shouldSkipStartupAuthProbe()) {
+        setIsSessionUnchecked(true);
         setIsLoading(false);
         return;
       }
@@ -242,6 +247,7 @@ export function AuthProvider({
       user,
       isLoading,
       isAuthUnavailable,
+      isSessionUnchecked,
       retryAuthCheck,
       activeProjectId,
       startGuestDemo: async () => {
@@ -342,6 +348,7 @@ export function AuthProvider({
       beginAuthMutation,
       clearAuthenticatedUser,
       isAuthUnavailable,
+      isSessionUnchecked,
       isLoading,
       refreshUser,
       retryAuthCheck,

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { loginWithDeterministicProject } from './utils';
 
 // Functional checks for the public landing page's sticky topbar (anchor nav,
 // mobile menu) and the closing call-to-action. Not a screenshot baseline -
@@ -78,5 +79,24 @@ test.describe('landing page closing call-to-action', () => {
 
     await expect(page).toHaveURL(/\/app\/fields-beds/);
     await expect(page.getByRole('heading', { name: 'Anbauflächen' })).toBeVisible();
+  });
+});
+
+test.describe('topbar sign-in for a visitor who is already signed in', () => {
+  test('goes straight into the app instead of showing the login form', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'landing-signed-in-login', { loginAsAdmin: true });
+    await page.goto('/');
+
+    await page.getByRole('banner').getByRole('link', { name: 'Anmelden' }).click();
+
+    await expect(page).toHaveURL(/\/app(\/|$)/);
+    await expect(page.getByLabel('E-Mail *')).toHaveCount(0);
+  });
+
+  test('a direct visit to /login redirects into the app too', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'landing-signed-in-login-direct', { loginAsAdmin: true });
+    await page.goto('/login');
+
+    await expect(page).toHaveURL(/\/app(\/|$)/);
   });
 });

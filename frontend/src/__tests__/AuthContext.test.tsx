@@ -206,6 +206,29 @@ describe('AuthProvider cross-tab project sync', () => {
     expect(getMeMock).not.toHaveBeenCalled();
   });
 
+  it('marks the skipped session as unchecked until a later check signs the visitor in', async () => {
+    window.history.pushState({}, '', '/');
+    function SessionProbe() {
+      const auth = useContext(AuthContext);
+      return (
+        <>
+          <div data-testid="session">{auth?.isSessionUnchecked ? 'unchecked' : 'checked'}</div>
+          <div data-testid="user">{auth?.user?.email ?? 'none'}</div>
+          <button type="button" onClick={() => { void auth?.retryAuthCheck(); }}>Check</button>
+        </>
+      );
+    }
+
+    render(<AuthProvider><SessionProbe /></AuthProvider>);
+
+    await waitFor(() => expect(screen.getByTestId('session')).toHaveTextContent('unchecked'));
+    expect(screen.getByTestId('user')).toHaveTextContent('none');
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+    await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('demo@example.com'));
+    expect(screen.getByTestId('session')).toHaveTextContent('checked');
+    expect(getMeMock).toHaveBeenCalledTimes(1);
+  });
+
   it('clears stale auth state when the shared API client reports an expired session', async () => {
     render(<AuthProvider><ActiveProjectProbe /></AuthProvider>);
     await waitFor(() => expect(screen.getByTestId('active-project-id')).toHaveTextContent('1'));

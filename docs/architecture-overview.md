@@ -333,6 +333,12 @@ a new one.
   the same rule: only `{ authenticated: false }` or a 401/403 clears the user.
   A network error, a 5xx or an unreadable response keeps the signed-in user,
   since it says nothing about the session.
+- **Public pages skip the startup `/auth/me/` probe**, so a signed-in visitor
+  looks signed out there and `AuthContext.isSessionUnchecked` is `true`. The
+  login page checks the session on demand (`retryAuthCheck`) and shows a
+  loading state, never the form, until it knows: a signed-in visitor who
+  clicks "Anmelden" goes straight to `/app` (or to an explicit `next`), and a
+  direct visit to `/login` no longer flashes the form while the probe runs.
 - **A stale request must not end a newer login.** Logging in rotates the
   session key and deletes the old session. Django's `SessionMiddleware`
   deletes the cookie on any response whose request's session came back
