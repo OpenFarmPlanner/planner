@@ -14,7 +14,11 @@ One row per crop, aggregated across every planting plan of that crop
 in the project — there's no per-plan or per-project drill-down UI. The only
 interaction that changes the underlying data is choosing a supplier from a
 per-row dropdown (only shown when a crop has more than one supplier with
-seed data); everything else (amount, package suggestion) is read-only,
+seed data; a single supplier is shown as plain text, since there is nothing
+to choose, never as a disabled control). A crop without supplier data says
+what is missing and links to the right next step: "Lieferant anlegen"
+(`/app/suppliers?create=1`) while the project has no supplier at all,
+otherwise "Lieferant zuordnen" (the crop's editor); everything else (amount, package suggestion) is read-only,
 computed server-side. `frontend/src/pages/requirementFlow.ts`, despite the
 name, is *not* part of the calculation — it only decides which "you're
 missing setup step X" empty-state card to show when the project has no
