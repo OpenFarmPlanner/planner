@@ -101,7 +101,7 @@ describe('crop form UI sections', () => {
       />
     );
 
-    const notesInput = screen.getByRole('textbox', { name: 'Notizen' });
+    const notesInput = await screen.findByRole('textbox', { name: 'Notizen' });
     expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument();
     expect(notesInput).toHaveValue('Bestehende Notiz');
 

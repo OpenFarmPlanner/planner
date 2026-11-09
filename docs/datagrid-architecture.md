@@ -910,6 +910,10 @@ upload. `noteAttachmentsCache.ts` caches attachment fetches per note id so
 re-hovering a row doesn't refetch; the drawer explicitly invalidates that
 cache after upload/delete.
 
+The editor itself (Tiptap, the largest frontend dependency) is loaded on demand
+through `LazyRichTextEditor.tsx`. Import that, never `RichTextEditor.tsx`
+directly, or the editor returns to the initial bundle of every page.
+
 `useNotesEditor.ts` holds the drawer's state — which row and field are open,
 the draft, the saving flag, and the focus token that re-focuses the
 attachments section on each open. It is not grid-only: any view that mounts
