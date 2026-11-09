@@ -110,6 +110,7 @@ import {
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
 import { usePlantingPlanSearch } from "./usePlantingPlanSearch";
+import { useCreatedPlanPin, withPinnedRowFirst } from "./useCreatedPlanPin";
 import type { PlantingPlanSearchRecordInput } from "./plantingPlanSearch";
 import { SearchHighlightContext } from "../search/SearchHighlightContext";
 import { SearchHighlightedText } from "../search/SearchHighlightedText";
@@ -1479,7 +1480,11 @@ function PlantingPlans() {
     window.setTimeout(() => setIsFilterPanelOpen(true), 0);
   }, []);
   const isRowVisible = search.isRowVisible;
-  const mobileListRows = search.sortedRows;
+  const { pinnedPlanId, flashingPlanId, pinCreatedPlan } = useCreatedPlanPin(search.sortKey);
+  const mobileListRows = useMemo(
+    () => withPinnedRowFirst(search.sortedRows, persistedRows, pinnedPlanId),
+    [persistedRows, pinnedPlanId, search.sortedRows],
+  );
   const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
     isRowVisible,
     onOpenFilterPanel: openFilterPanel,
@@ -1852,6 +1857,24 @@ function PlantingPlans() {
     return true;
   };
 
+  // Once the plan just created is in the list (first, see useCreatedPlanPin),
+  // bring its card into view and move focus to its actions, so it can be
+  // edited right away — also when the list was scrolled far down before.
+  const revealMobilePlanIdRef = useRef<number | null>(null);
+  const revealCreatedMobileCard = (planId: number): void => {
+    revealMobilePlanIdRef.current = planId;
+  };
+  useEffect(() => {
+    const planId = revealMobilePlanIdRef.current;
+    if (planId === null || !mobileListRows.some((row) => row.id === planId)) {
+      return;
+    }
+    revealMobilePlanIdRef.current = null;
+    const card = document.querySelector<HTMLElement>(`[data-mobile-card-id="${planId}"]`);
+    card?.scrollIntoView({ block: "center", behavior: "smooth" });
+    card?.querySelector<HTMLElement>('[aria-haspopup="menu"]')?.focus({ preventScroll: true });
+  }, [mobileListRows]);
+
   const handleMobileCreate = async (): Promise<void> => {
     if (!validateMobileForm()) {
       return;
@@ -1879,7 +1902,7 @@ function PlantingPlans() {
     const plantingDateIso = toIsoDateString(parseGermanDateText(mobileCreateForm.planting_date)) ?? mobileCreateForm.planting_date;
 
     try {
-      await plantingPlanAPI.create({
+      const response = await plantingPlanAPI.create({
         crop: Number(mobileCreateForm.crop),
         bed: Number(mobileCreateForm.bed),
         planting_date: plantingDateIso,
@@ -1890,6 +1913,10 @@ function PlantingPlans() {
       } as PlantingPlan);
       closeMobileCreateDialog();
       await reloadPlans();
+      if (typeof response.data.id === "number") {
+        pinCreatedPlan(response.data.id);
+        revealCreatedMobileCard(response.data.id);
+      }
     } catch (error) {
       showMobileSaveError(error);
     }
@@ -2183,6 +2210,7 @@ function PlantingPlans() {
             />
             <MobileCardList
               items={mobileListRows}
+              flashingId={flashingPlanId}
               expandedIds={expandedCardIds}
               onToggleExpanded={toggleCardExpanded}
               renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
@@ -2338,6 +2366,7 @@ function PlantingPlans() {
           <EditableDataGrid<PlantingPlanRow>
             surfaceSizing={isMobile ? "fullWorkspace" : "contentFit"}
             scrollMode="continuous"
+            pinCreatedRowsToTop
             columns={columns}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
