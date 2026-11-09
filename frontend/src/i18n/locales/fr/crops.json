@@ -1148,6 +1148,10 @@
         "empty": "Aucune proposition d'espèce cultivée ouverte.",
         "approveDialogTitle": "Approuver l'espèce cultivée",
         "approveDialogIntro": "Vérifiez les noms publics de « {{name}} ». Un nom est obligatoire dans chaque langue avant la publication de l'espèce cultivée.",
+        "scientificNameLabel": "Nom latin",
+        "scientificNameFamily": "Famille botanique : {{family}}",
+        "sharedScientificName": "Ce nom latin est déjà utilisé par : {{names}}. Plusieurs espèces cultivées peuvent appartenir à la même espèce botanique (par exemple le chou-rave et le chou frisé). Vérifiez le nom, puis approuvez l'espèce cultivée.",
+        "approveAnyway": "Approuver quand même",
         "commonNameLabel": "Nom ({{language}})",
         "regionalName": {
           "austria": "Nom en Autriche",
