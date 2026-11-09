@@ -431,11 +431,10 @@
       }
     },
     "selectSupplier": "Lieferant auswählen",
-    "createSupplierAction": "Lieferant hinzufügen",
+    "createSupplierAction": "Lieferant anlegen",
     "noSupplierData": "Keine Lieferantendaten vorhanden",
     "noSupplierAvailable": "Keine Lieferantendaten hinterlegt",
     "noSupplierInProject": "Noch kein Lieferant angelegt",
-    "createSupplierAction": "Lieferant anlegen",
     "assignSupplierAction": "Lieferant zuordnen",
     "noSupplierConfiguredTooltip": "Für diese Kultur ist noch kein Lieferant mit Bestellinformationen hinterlegt. Ergänze einen Lieferanten bei der Kultur, um eine Packungsempfehlung zu erhalten.",
     "supplierNotSelectedTooltip": "Für diese Kultur ist noch kein Lieferant ausgewählt. Wähle einen Lieferanten in der Spalte „Lieferant“, damit die passende Packungsgröße berechnet werden kann.",
@@ -1739,6 +1738,39 @@
     "propagationShort": "Anzuchtdauer kürzer als die Keimdauer.",
     "invalidNumber": "Bitte eine gültige Zahl eingeben; Tage müssen ganze, nicht negative Zahlen sein.",
     "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen."
+  },
+  "siteHealth": {
+    "title": "Standort und Pflanzengesundheit",
+    "pestsPlaceholder": "z. B. Möhrenfliege: mit Kulturschutznetz abdecken",
+    "fields": {
+      "light_requirement": "Lichtbedarf",
+      "water_requirement": "Wasserbedarf",
+      "life_cycle": "Lebensdauer",
+      "winter_hardiness": "Winterhärte",
+      "pests_diseases": "Schädlinge und Krankheiten"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Sonnig",
+        "partial_shade": "Halbschattig",
+        "shade": "Schattig"
+      },
+      "water_requirement": {
+        "low": "Gering",
+        "medium": "Mittel",
+        "high": "Hoch"
+      },
+      "life_cycle": {
+        "annual": "Einjährig",
+        "biennial": "Zweijährig",
+        "perennial": "Mehrjährig"
+      },
+      "winter_hardiness": {
+        "hardy": "Winterhart",
+        "with_protection": "Mit Winterschutz",
+        "not_hardy": "Nicht winterhart"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Aufgabenvorlagen",

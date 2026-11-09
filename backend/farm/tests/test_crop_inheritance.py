@@ -62,6 +62,19 @@ class CropInheritanceTest(TestCase):
         defaults.update(kwargs)
         return Crop.objects.create(**defaults)
 
+    def test_site_health_fields_are_inherited_until_the_sorte_sets_its_own(self):
+        Crop.objects.filter(pk=self.general.pk).update(
+            light_requirement='full_sun', winter_hardiness='not_hardy',
+            life_cycle='annual', pests_diseases='Late blight',
+        )
+        variety = self._variety(winter_hardiness='hardy')
+
+        self.assertEqual(resolve_crop_field(variety, 'light_requirement'), 'full_sun')
+        self.assertEqual(resolve_crop_field(variety, 'life_cycle'), 'annual')
+        self.assertEqual(resolve_crop_field(variety, 'pests_diseases'), 'Late blight')
+        self.assertEqual(resolve_crop_field(variety, 'winter_hardiness'), 'hardy')
+        self.assertNotIn('winter_hardiness', build_inherited_crop_values(variety))
+
     def test_seed_type_is_never_inherited(self):
         self.assertNotIn('seed_type', CROP_INHERITABLE_FIELDS)
         self.general.seed_type = 'f1_hybrid'

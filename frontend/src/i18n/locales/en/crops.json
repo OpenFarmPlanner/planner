@@ -431,11 +431,10 @@
       }
     },
     "selectSupplier": "Select supplier",
-    "createSupplierAction": "Add supplier",
+    "createSupplierAction": "Create supplier",
     "noSupplierData": "No supplier data available",
     "noSupplierAvailable": "No supplier data recorded",
     "noSupplierInProject": "No supplier created yet",
-    "createSupplierAction": "Create supplier",
     "assignSupplierAction": "Assign supplier",
     "noSupplierConfiguredTooltip": "This crop does not have a supplier with ordering information yet. Add a supplier to the crop to get a package suggestion.",
     "supplierNotSelectedTooltip": "No supplier has been selected for this crop yet. Choose a supplier in the “Supplier” column so the matching package size can be calculated.",
@@ -1739,6 +1738,39 @@
     "propagationShort": "Propagation duration is shorter than germination time.",
     "invalidNumber": "Enter a valid number; days must be non-negative whole numbers.",
     "invalidRange": "The maximum must be at least the minimum."
+  },
+  "siteHealth": {
+    "title": "Site and plant health",
+    "pestsPlaceholder": "e.g. carrot fly: cover with insect netting",
+    "fields": {
+      "light_requirement": "Light requirement",
+      "water_requirement": "Water requirement",
+      "life_cycle": "Life cycle",
+      "winter_hardiness": "Winter hardiness",
+      "pests_diseases": "Pests and diseases"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Full sun",
+        "partial_shade": "Partial shade",
+        "shade": "Shade"
+      },
+      "water_requirement": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "life_cycle": {
+        "annual": "Annual",
+        "biennial": "Biennial",
+        "perennial": "Perennial"
+      },
+      "winter_hardiness": {
+        "hardy": "Hardy",
+        "with_protection": "Hardy with winter protection",
+        "not_hardy": "Not hardy"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Task templates",

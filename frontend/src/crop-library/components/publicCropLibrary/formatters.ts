@@ -1,3 +1,4 @@
+import { SITE_HEALTH_CHOICES, formatSiteHealthValue, type SiteHealthField } from '../../../crops/siteHealth';
 import type { TFunction } from 'i18next';
 import type {
   PublicCropCompanion,
@@ -321,6 +322,11 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     germination_days_max: 'germination.fields.germination_days_max',
     germination_types: 'germination.fields.germination_types',
     germination_pretreatment: 'germination.fields.germination_pretreatment',
+    pests_diseases: 'siteHealth.fields.pests_diseases',
+    light_requirement: 'siteHealth.fields.light_requirement',
+    water_requirement: 'siteHealth.fields.water_requirement',
+    life_cycle: 'siteHealth.fields.life_cycle',
+    winter_hardiness: 'siteHealth.fields.winter_hardiness',
   };
   const key = fieldLabelKeys[field];
   if (key) {
@@ -355,6 +361,7 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
   const normalized = normalizeComparisonValue(value);
   if (normalized === null) return t('library.publishWizard.comparison.empty');
   if (field === 'seed_type') return getSeedTypeLabel(normalized, t);
+  if (field in SITE_HEALTH_CHOICES || field === 'pests_diseases') return formatSiteHealthValue(field as SiteHealthField, normalized, t);
   if (typeof normalized === 'boolean') {
     return t(normalized ? 'library.publishWizard.comparison.yes' : 'library.publishWizard.comparison.no');
   }

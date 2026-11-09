@@ -18,10 +18,15 @@ const textFields = [
   'crop_family',
   'notes',
   'germination_pretreatment',
+  'pests_diseases',
 ] as const satisfies readonly (keyof Crop)[];
 
 const enumFields = [
   'seed_type',
+  'light_requirement',
+  'water_requirement',
+  'life_cycle',
+  'winter_hardiness',
   'nutrient_demand',
   'harvest_method',
   'seeding_requirement_type',

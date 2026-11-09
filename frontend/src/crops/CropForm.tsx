@@ -13,6 +13,7 @@
  */
 
 import { GerminationSection } from './sections/GerminationSection';
+import { SiteHealthSection } from './sections/SiteHealthSection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
@@ -218,6 +219,11 @@ const EMPTY_CROP: Partial<Crop> = {
   germination_days_max: null,
   germination_types: [],
   germination_pretreatment: '',
+  pests_diseases: '',
+  light_requirement: '',
+  water_requirement: '',
+  life_cycle: '',
+  winter_hardiness: '',
   expected_yield: undefined,
   distance_within_row_cm: undefined,
   row_spacing_cm: undefined,
@@ -334,6 +340,11 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   germination_days_max: publicCrop.germination_days_max ?? undefined,
   germination_types: publicCrop.germination_types ?? [],
   germination_pretreatment: publicCrop.germination_pretreatment ?? '',
+  pests_diseases: publicCrop.pests_diseases ?? '',
+  light_requirement: publicCrop.light_requirement ?? '',
+  water_requirement: publicCrop.water_requirement ?? '',
+  life_cycle: publicCrop.life_cycle ?? '',
+  winter_hardiness: publicCrop.winter_hardiness ?? '',
   harvest_method: publicCrop.harvest_method ?? '',
   expected_yield: publicCrop.expected_yield ?? undefined,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
@@ -1633,6 +1644,7 @@ export function CropForm({
             <CompanionsSection state={companionRows} disabled={isSaving} />
             <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <GerminationSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            <SiteHealthSection formData={formData} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
             {isProjectForm ? (
               <TimingWindowsSection

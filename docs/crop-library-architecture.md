@@ -1321,6 +1321,34 @@ supplier's offer.
   which is not built. "Unbekannt" is its own option, so a Sorte without a value
   is never treated as a different type. Only rows with a variety match.
 
+### Site, life cycle and plant health
+
+Five descriptive crop fields on `Crop` and `PublicCrop` (#838):
+`light_requirement` (`full_sun` / `partial_shade` / `shade`),
+`water_requirement` (`low` / `medium` / `high`), `life_cycle` (`annual` /
+`biennial` / `perennial`), `winter_hardiness` (`hardy` / `with_protection` /
+`not_hardy`) and the free text `pests_diseases`. Blank means unknown for all of
+them.
+
+- **Inherited, not species-invariant.** They are in `CROP_INHERITABLE_FIELDS`
+  (and the frontend's `VARIETY_INHERITABLE_FIELDS`): a Sorte shows its Kultur's
+  value until it sets its own, because varieties can differ (a more
+  winter-hardy leek, a variety resistant to a disease). They are not locked on
+  linked Sorten the way `crop_family` is.
+- **Library.** Normal copy fields (`CROP_COPY_FIELDS`,
+  `PUBLIC_CROP_EDITABLE_FIELDS`, proposable), so publish, import, diff, pull,
+  push, pinning and revisions follow the 4-case update model. Older revisions
+  without the keys restore as blank.
+- **Spreadsheet and API.** One column each, with localized values in every UI
+  language and German/English synonyms on import (`enum_normalization.py`,
+  `spreadsheetColumns.ts`); described in the agent API field specs.
+- **Not planning checks (yet).** The checks sketched in #838 need data that does
+  not exist: bed neighbours (shared pests across adjacent beds), frost dates per
+  location (#872, winter hardiness), and light/water attributes of beds or
+  fields (site). A perennial occupying its bed beyond the season is a change to
+  the occupancy and rotation model. Each is a follow-up; the fields only
+  describe the crop for now.
+
 ### Project-only crop data
 
 Some crop data deliberately never reaches the crop library: it is left out of
