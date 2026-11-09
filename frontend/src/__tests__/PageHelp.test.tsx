@@ -101,7 +101,7 @@ describe('PageHelp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
 
-    expect(await screen.findByText('Hier siehst du den berechneten Saatgutbedarf deiner Anbaupläne.')).toBeInTheDocument();
+    expect(await screen.findByText(/Hier siehst du, wie viel Saatgut du für die Anbaupläne der aktiven Saison brauchst/)).toBeInTheDocument();
 
     expect(screen.queryByText('Bedienung')).not.toBeInTheDocument();
     expect(screen.queryByText('Zusammenhang mit anderen Seiten')).not.toBeInTheDocument();
