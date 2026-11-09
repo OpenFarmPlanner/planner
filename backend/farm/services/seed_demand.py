@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from farm.models import Crop, CropSupplierData, PlantingPlan, Project
 from farm.seed_units import (
@@ -31,6 +32,12 @@ from farm.seed_units import (
     seeds_to_grams,
 )
 from farm.services.crop_display import resolve_crop_display_name
+from farm.services.crop_inheritance import (
+    CROP_INHERITABLE_FIELDS,
+    GeneralCropIndex,
+    build_general_crop_index,
+    resolve_crop_field,
+)
 from farm.services.seed_packages import PackageOption, compute_seed_package_suggestion
 
 REQUIRED_AMOUNT_WARNING_MISSING_TKG = 'missing_tkg'
@@ -58,6 +65,28 @@ class PlanRequirementResult:
     warning: str | None = None
 
 
+class EffectiveCrop:
+    """A crop as the seed calculation must see it: a Sorte's own values,
+    else those it inherits from its general Kultur.
+
+    Seed rates, safety margins, TKG, row spacing and the enabled cultivation
+    types are all inheritable (``CROP_INHERITABLE_FIELDS``), so reading the
+    raw fields would call an inherited seed rate "missing" while the crop form
+    shows it. Every other attribute is the crop's own.
+    """
+
+    __slots__ = ('_crop', '_index')
+
+    def __init__(self, crop: Crop, index: GeneralCropIndex | None) -> None:
+        self._crop = crop
+        self._index = index
+
+    def __getattr__(self, name: str) -> Any:
+        if name in CROP_INHERITABLE_FIELDS:
+            return resolve_crop_field(self._crop, name, self._index)
+        return getattr(self._crop, name)
+
+
 def parse_selected_suppliers(raw_value: str | None) -> dict[int, int]:
     """Parse the ``supplier_selection`` query param (``cropId:supplierId,...``)."""
     selected: dict[int, int] = {}
@@ -78,7 +107,7 @@ def parse_selected_suppliers(raw_value: str | None) -> dict[int, int]:
 
 
 def _cultivation_type_specific_rate(
-    crop: Crop,
+    crop: Crop | EffectiveCrop,
     cultivation_type: str | None,
 ) -> tuple[Decimal | None, str | None]:
     """Rate from the explicit per-cultivation-type fields, if fully set."""
@@ -101,7 +130,7 @@ def _cultivation_type_specific_rate(
 
 
 def _rate_from_cultivation_map(
-    crop: Crop,
+    crop: Crop | EffectiveCrop,
     cultivation_type: str | None,
 ) -> tuple[Decimal | None, str | None]:
     """Rate from the ``seed_rate_by_cultivation`` JSON map, if valid."""
@@ -116,7 +145,7 @@ def _rate_from_cultivation_map(
 
 
 def select_seed_rate(
-    crop: Crop,
+    crop: Crop | EffectiveCrop,
     cultivation_type: str | None,
 ) -> tuple[Decimal | None, str | None]:
     """Pick the seed rate for a plan's cultivation type.
@@ -140,7 +169,9 @@ def select_seed_rate(
     return Decimal(str(crop.seed_rate_value)), crop.seed_rate_unit
 
 
-def select_safety_margin_percent(crop: Crop, cultivation_type: str | None) -> Decimal:
+def select_safety_margin_percent(
+    crop: Crop | EffectiveCrop, cultivation_type: str | None,
+) -> Decimal:
     """Pick the safety-margin percentage with the same per-cultivation-type
     precedence as :func:`select_seed_rate`."""
     active_types = set(crop.cultivation_types or [])
@@ -282,9 +313,16 @@ def _lfm_based_requirement(
     return PlanRequirementResult(value=lfm * value, unit=amount_unit)
 
 
-def compute_plan_requirement(plan: PlantingPlan) -> PlanRequirementResult:
-    """Compute one plan's raw seed requirement and stable blocker diagnostics."""
-    value, unit = select_seed_rate(plan.crop, plan.cultivation_type)
+def compute_plan_requirement(
+    plan: PlantingPlan, crop: Crop | EffectiveCrop | None = None,
+) -> PlanRequirementResult:
+    """Compute one plan's raw seed requirement and stable blocker diagnostics.
+
+    ``crop`` defaults to the plan's own crop; the aggregation passes its
+    :class:`EffectiveCrop` so inherited values count.
+    """
+    crop = crop if crop is not None else plan.crop
+    value, unit = select_seed_rate(crop, plan.cultivation_type)
     if value is None or not unit or value <= 0:
         return PlanRequirementResult(
             value=None,
@@ -295,7 +333,7 @@ def compute_plan_requirement(plan: PlantingPlan) -> PlanRequirementResult:
 
     area = Decimal(str(plan.area_usage_sqm or 0))
     quantity = Decimal(str(plan.quantity or 0))
-    row_spacing = Decimal(str(plan.crop.row_spacing_m or 0))
+    row_spacing = Decimal(str(crop.row_spacing_m or 0))
 
     if unit in {SEED_RATE_UNIT_G_PER_M2, SEED_RATE_UNIT_SEEDS_PER_M2}:
         return _m2_based_requirement(unit, value, area)
@@ -345,9 +383,11 @@ def _aggregate_requirements_by_crop(
     )
     if season_id is not None:
         plans = plans.filter(season_id=season_id)
+    general_crop_index = build_general_crop_index(project.id)
     grouped: dict[int, dict] = {}
     for plan in plans:
         crop = plan.crop
+        effective_crop = EffectiveCrop(crop, general_crop_index)
         crop_display_name, crop_display_language_code = resolve_crop_display_name(
             crop,
             language_code,
@@ -371,8 +411,8 @@ def _aggregate_requirements_by_crop(
                 'warning': None,
                 'calculation_blockers': [],
                 'tkg': (
-                    Decimal(str(crop.thousand_kernel_weight_g))
-                    if crop.thousand_kernel_weight_g
+                    Decimal(str(effective_crop.thousand_kernel_weight_g))
+                    if effective_crop.thousand_kernel_weight_g
                     else None
                 ),
                 'crop': crop,
@@ -381,7 +421,7 @@ def _aggregate_requirements_by_crop(
         # A failed plan invalidates the crop total. Later plans are still
         # inspected for additional blockers, but successful values are not
         # accumulated into a misleading partial total.
-        result = compute_plan_requirement(plan)
+        result = compute_plan_requirement(plan, effective_crop)
         if result.blockers:
             for blocker in result.blockers:
                 if blocker not in entry['calculation_blockers']:
@@ -393,7 +433,7 @@ def _aggregate_requirements_by_crop(
         if entry['warning'] or result.value is None or not result.unit:
             continue
         margin_factor = Decimal('1') + (
-            select_safety_margin_percent(crop, plan.cultivation_type) / Decimal('100')
+            select_safety_margin_percent(effective_crop, plan.cultivation_type) / Decimal('100')
         )
         entry['required_amount_by_unit'][result.unit] += result.value * margin_factor
     return grouped

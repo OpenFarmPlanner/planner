@@ -44,6 +44,17 @@ below; they appear in the young-plant demand instead — see
 
 For each crop with at least one planting plan:
 
+**A Sorte counts with its effective values.** Every crop field the
+calculation reads that a Sorte inherits from its general Kultur
+(`CROP_INHERITABLE_FIELDS`: the per-cultivation seed rates and units, the
+safety margins, the TKG, the row spacing and the enabled cultivation types)
+is resolved the way the crop form shows it: the Sorte's own value, else the
+Kultur's (`EffectiveCrop` in `seed_demand.py`, one `build_general_crop_index`
+per request, the same as the young-plant demand). Before this, a Sorte that
+left its seed rate to the Kultur was reported as "seed rate missing". The
+legacy single `seed_rate_value` and the `seed_rate_by_cultivation` map are
+not inheritable and stay the Sorte's own.
+
 1. **Per-plan requirement.** Pick the seed rate for the plan's
    `cultivation_type` (direct sowing vs. pre-cultivation have separate rate
    fields; falls back to a generic `seed_rate_by_cultivation` map, then to a
