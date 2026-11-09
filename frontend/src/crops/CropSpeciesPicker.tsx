@@ -7,6 +7,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 
 import type { CropSpecies } from '../api/types';
 import { useTranslation } from '../i18n';
@@ -217,16 +218,26 @@ export function CropSpeciesPicker({
               component="li"
               {...optionProps}
               key="propose-species"
+              data-testid="propose-species-option"
+              aria-label={t('library.speciesPicker.proposeInlineLabel', { name: option.proposeName })}
               sx={{
-                gap: 1,
+                gap: 1.5,
+                py: 1.5,
+                bgcolor: 'surface.surfaceSubtleBackground',
                 ...(option.dividerAbove
                   ? { borderTop: '1px solid', borderColor: 'divider' }
                   : {}),
               }}
             >
-              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 500 }}>
-                {t('library.speciesPicker.proposeInline', { name: option.proposeName })}
-              </Typography>
+              <AddCircleOutlineIcon color="success" fontSize="small" aria-hidden />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                  {t('library.speciesPicker.proposeInline')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflowWrap: 'anywhere' }}>
+                  {t('library.speciesPicker.proposeInlineName', { name: option.proposeName })}
+                </Typography>
+              </Box>
               {proposing ? <CircularProgress color="inherit" size={16} /> : null}
             </Box>
           );

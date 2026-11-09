@@ -1426,7 +1426,9 @@
     },
     "speciesPicker": {
       "label": "Official crop species",
-      "proposeInline": "Suggest \"{{name}}\" as a new crop species",
+      "proposeInline": "Suggest new crop species",
+      "proposeInlineName": "\"{{name}}\"",
+      "proposeInlineLabel": "Suggest \"{{name}}\" as a new crop species",
       "noOptions": "No matching official crop species found.",
       "pendingOptionSuffix": "{{name}} · Proposal under review",
       "proposingHelp": "New crop species will be proposed: {{name}}",

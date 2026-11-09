@@ -1460,7 +1460,9 @@
     },
     "speciesPicker": {
       "label": "Especie de cultivo oficial",
-      "proposeInline": "Proponer «{{name}}» como nueva especie de cultivo",
+      "proposeInline": "Proponer una nueva especie de cultivo",
+      "proposeInlineName": "«{{name}}»",
+      "proposeInlineLabel": "Proponer «{{name}}» como nueva especie de cultivo",
       "noOptions": "No se ha encontrado ninguna especie de cultivo oficial coincidente.",
       "pendingOptionSuffix": "{{name}} · Propuesta en revisión",
       "proposingHelp": "Se propondrá una nueva especie de cultivo: {{name}}",

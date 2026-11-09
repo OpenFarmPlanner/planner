@@ -713,7 +713,7 @@ botanical one:
 Ambiguous terms are aliases of *every* candidate rather than being forced onto
 one: `Peperoni` maps to Paprika, Chili and Pfefferoni, `Fisole(n)` to Busch-,
 Stangen- and Grüne Bohne. The picker then offers all of them, and because an
-alias hit counts as a strong identity match, the "als neue Kulturart
+alias hit counts as a strong identity match, the "Neue Kulturart
 vorschlagen" entry disappears (`hasStrongCropSpeciesIdentityMatch`).
 
 **Why a species search result matched.** Users who named their crop by a synonym have to recognise the official species
@@ -1649,7 +1649,11 @@ the name the user actually typed. The single exception is an exact
 (case-insensitive) hit on an existing name — proposing that can only be
 rejected server-side, so the entry disappears. Being a real option rather
 than a button in the empty-state slot also makes it keyboard-reachable, and a
-divider separates it from the regular hits above it. A failed proposal
+divider separates it from the regular hits above it. It is styled as an action
+rather than a hit: a green add icon, the short bold label "Neue Kulturart
+vorschlagen" with the typed name on a second line, on the subtle surface
+background. Its accessible name is the full sentence ("„Yacon“ als neue
+Kulturart vorschlagen"), so a screen reader announces the name in context. A failed proposal
 surfaces as the field's `error`/`helperText`.
 
 The proposal is **not** sent when that entry is picked. Picking it only puts
