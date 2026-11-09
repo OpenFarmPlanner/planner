@@ -12,6 +12,7 @@ import { computeBaseURL } from '../api/httpClient';
 import { GUEST_DEMO_RESTRICTED_CODE } from '../api/errors';
 import { readCookie } from '../utils/cookies';
 import { API_REQUEST_TIMEOUT_MS } from '../api/requestTimeout';
+import { clearApiResponseCache } from '../api/responseCache';
 
 const API_BASE = computeBaseURL(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL, import.meta.env.BASE_URL);
 
@@ -236,6 +237,10 @@ function toUserFriendlyErrorMessage(payload: Record<string, unknown>): string {
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // Login, logout, consent and project switches change what the lists contain.
+  if ((options.method ?? 'GET').toUpperCase() !== 'GET') {
+    clearApiResponseCache();
+  }
   let response: Response;
   let raw = '';
   try {
