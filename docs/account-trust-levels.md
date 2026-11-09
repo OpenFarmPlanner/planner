@@ -556,6 +556,7 @@ All are read from the environment in `backend/config/settings.py`.
 | `TRUSTED_PROXY_CIDRS` | *(empty)* | Immediate peers authorized to append XFF; also trusted during the chain walk |
 | `TRUSTED_PROXY_UPSTREAM_CIDRS` | *(empty)* | Additional proxy hops skipped only behind a trusted immediate peer |
 | `TRUSTED_PROXY_IP_HEADER` | `HTTP_CF_CONNECTING_IP` | Deprecated compatibility setting; ignored for identity |
+| `CACHE_REDIS_URL` | *(empty)* | Redis used for rate limits and registration counters, shared by all Gunicorn workers. Required as soon as more than one worker runs, otherwise every limit is multiplied by the worker count. If Redis is unreachable, limits lapse and the app keeps working (`config.cache.FailOpenRedisCache`). Empty uses Django's per-process cache (development, tests) |
 | `TURNSTILE_SITE_KEY` | *(empty)* | This deployment's Turnstile widget key; must match the frontend's `VITE_TURNSTILE_SITE_KEY` |
 | `TURNSTILE_SECRET_KEY` | *(empty)* | Turnstile secret; when set, registration requires a verified token |
 | `TURNSTILE_VERIFY_TIMEOUT_SECONDS` | `5` | Timeout for the `siteverify` call before answering `turnstile_unavailable` |
