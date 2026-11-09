@@ -1252,6 +1252,12 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             expected_yield=Decimal('1.20'),
             harvest_method='per_sqm',
             sowing_depth_m=0.03,
+            # Sown by weight (about 120 kg/ha); no supplier yet, so the seed
+            # demand shows the amount next to the "assign a supplier" hint.
+            seed_rate_direct_value=12.0,
+            seed_rate_direct_unit='g_per_m2',
+            safety_direct=10,
+            tkg=Decimal('350.00'),
             is_species=True,
         ),
         CropSpec(
@@ -1288,6 +1294,11 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             distance_within_row_m=0.12,
             expected_yield=Decimal('3.50'),
             harvest_method='per_sqm',
+            # Seeds per m² of bed (about 24 plants at this spacing plus losses
+            # in the Anzucht), so the demand follows from the planned area.
+            seed_rate_pre_value=30.0,
+            seed_rate_pre_unit='seeds_per_m2',
+            tkg=Decimal('3.00'),
             is_species=True,
         ),
         CropSpec(
@@ -1343,6 +1354,10 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             expected_yield=Decimal('1.40'),
             harvest_method='per_sqm',
             sowing_depth_m=0.04,
+            seed_rate_direct_value=6.0,
+            seed_rate_direct_unit='seeds_per_m2',
+            safety_direct=15,
+            tkg=Decimal('150.00'),
             is_species=True,
         ),
         CropSpec(
