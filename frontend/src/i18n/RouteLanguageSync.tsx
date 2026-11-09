@@ -10,6 +10,7 @@ import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
+import { switchLanguage } from './config';
 import { getRouteLanguage, setCurrentRoute } from './routeLanguage';
 
 export default function RouteLanguageSync(): null {
@@ -20,7 +21,7 @@ export default function RouteLanguageSync(): null {
     setCurrentRoute(pathname);
     const language = getRouteLanguage();
     if (language && i18n.resolvedLanguage !== language) {
-      void i18n.changeLanguage(language);
+      void switchLanguage(language);
     }
   }, [i18n, pathname]);
 

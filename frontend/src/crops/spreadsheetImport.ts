@@ -3,6 +3,7 @@ import i18n from 'i18next';
 import { buildCompanionReasonLookup, parseCompanionCell } from './companions';
 import { normalizeImportCropEntry } from './importUtils';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
+import { loadLanguages } from '../i18n/config';
 import {
   buildEnumImportMaps,
   buildHeaderToKeyMap,
@@ -90,6 +91,9 @@ export const parseSpreadsheetFile = async (file: File): Promise<SpreadsheetParse
   }
 
   const headerRow = rows[0] as (string | null)[];
+  // Headers and values may come in any UI language, and only the active
+  // language is loaded up front (i18n/config.ts).
+  await loadLanguages();
   // The current language goes last so its labels win any cross-language clash.
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
   const translators = [

@@ -165,9 +165,9 @@ docs/                  # This documentation
   axios client, `authApi.ts`'s own for the auth client) — a known
   duplication, not a bug, if you're looking for "the" error handler.
 - **i18n**: one JSON namespace per feature area under
-  `frontend/src/i18n/locales/{de,en}/` (17 namespaces today), with key parity
-  between the two bundles enforced by a test. German and English are both
-  live: users pick a language in account settings or the
+  `frontend/src/i18n/locales/{de,en,fr,es}/`, with key parity between the
+  bundles enforced by a test. Each language is one lazy chunk; only the
+  active language is downloaded. Users pick a language in account settings or the
   public-page switcher, the choice is stored per account (`ui_language`) and
   in `localStorage`, and the backend resolves content language from
   `Accept-Language`. The full rules — resolution order, the crop-library
