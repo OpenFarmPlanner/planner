@@ -115,6 +115,7 @@ import { PublicCropMobileSelectorDialog } from '../components/publicCropLibrary/
 import { ImportConflictDialog } from '../components/publicCropLibrary/ImportConflictDialog';
 import { PublicCropSpeciesRelinkDialog } from '../components/PublicCropSpeciesRelinkDialog';
 import { usePlantFamilies } from '../../crops/plantFamilies';
+import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../../components/layout/detailHeaderStyles';
 import { PublicCropTranslationDialog } from '../components/PublicCropTranslationDialog';
 import {
   PUBLIC_CROP_TAB_BY_INDEX,
@@ -1761,14 +1762,20 @@ export default function PublicCropLibraryPage() {
                       direction="row"
                       spacing={1.5}
                       useFlexGap
-                      // Never wraps: the actions stay pinned top-right and the
-                      // title column shrinks (and wraps to a second line) instead,
-                      // so a long crop name can't push them onto their own row.
-                      sx={{ flexWrap: "nowrap",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between", }}
+                      // The actions stay beside the title and move below it only
+                      // when a word of the crop name would not fit next to them
+                      // (see detailHeaderStyles.ts). Phones keep one non-wrapping row.
+                      sx={[
+                        { flexWrap: "nowrap", alignItems: "flex-start", justifyContent: "space-between" },
+                        !useCompactLibraryLayout && detailHeaderRowSx,
+                      ]}
                     >
-                      <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'stretch', gap: 1.75 }}>
+                      <Box
+                        sx={[
+                          { minWidth: 0, flex: 1, display: 'flex', alignItems: 'stretch', gap: 1.75 },
+                          !useCompactLibraryLayout && detailHeaderTitleColumnSx,
+                        ]}
+                      >
                         {selectedCrop.display_color ? (
                           <Box
                             sx={{
@@ -1793,7 +1800,7 @@ export default function PublicCropLibraryPage() {
                               titleSx={{ fontSize: '1.5rem' }}
                             />
                           ) : (
-                            <Typography variant="h5" component="h2" sx={{ fontWeight: 600, overflowWrap: 'anywhere', lineHeight: 1.2 }}>
+                            <Typography variant="h5" component="h2" sx={[{ fontWeight: 600, lineHeight: 1.2 }, detailHeaderTitleTextSx]}>
                               {selectedCropName.text}
                             </Typography>
                           )}

@@ -631,6 +631,19 @@ describe('CropDetail Component', () => {
     expect(screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' })).toBeInTheDocument();
   });
 
+  it('lets the header actions move below the title instead of breaking a crop name mid-word', () => {
+    renderCropDetail(
+      <CropDetail crops={mockCrops} selectedCropId={2} onCropSelect={vi.fn()} onEditCrop={vi.fn()} />
+    );
+
+    // Regression: "Buschbohne" rendered as "Buschboh / ne" beside the pinned
+    // actions at 1280px. The row may wrap now, and the title only breaks a
+    // word that is wider than the whole header (layout: detailHeaderStyles.ts,
+    // pixels: e2e-cross-browser/crop-library.spec.ts).
+    expect(screen.getByTestId('crop-detail-header')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByRole('heading', { level: 2, name: 'Lettuce' })).toHaveStyle({ overflowWrap: 'break-word' });
+  });
+
   it('displays the localized name for imported crops linked to translated species', () => {
     renderCropDetail(
       <CropDetail
@@ -1309,6 +1322,8 @@ describe('CropDetail Component', () => {
     expect(within(screen.getByRole('button', { name: 'Anbauplan hinzufügen' })).getByText('Anbauplan hinzufügen')).toHaveStyle({
       display: 'none',
     });
+    // Phones keep the title selector and the icon actions on one row.
+    expect(screen.getByTestId('crop-detail-header')).toHaveStyle({ flexWrap: 'nowrap' });
   });
 
   it('shows the no-results text in the mobile crop selector', async () => {
