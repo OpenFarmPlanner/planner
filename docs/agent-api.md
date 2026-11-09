@@ -308,7 +308,7 @@ itself states one (`"50 cm"` or `{"value": 50, "unit": "cm"}`).
 | `growth_duration_days` | days | 0 … 1095 | 5 … 400 |
 | `harvest_duration_days` | days | 0 … 730 | … 240 |
 | `propagation_duration_days` | days | 0 … 365 | … 120 |
-| `expected_yield` | kg | 0 … 100000 | … 500 |
+| `expected_yield` | kg per m² or kg per plant, as `harvest_method` says | 0 … 100000 | … 500 |
 | `thousand_kernel_weight_g` | g | > 0 … 2000 | 0.05 … 500 |
 | `sowing_calculation_safety_percent_direct` | percent | 0 … 100 | … 50 |
 | `sowing_calculation_safety_percent_pre_cultivation` | percent | 0 … 100 | … 50 |

@@ -12,9 +12,10 @@
   },
   "chart": {
     "title": "Distribución de rendimientos",
+    "subtitle": "Previsión a partir de los planes de cultivo de la temporada activa: superficie o número de plantas previsto por el rendimiento previsto del cultivo.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periodo",
-    "tooltipYield": "Rendimiento",
+    "tooltipYield": "Rendimiento previsto",
     "yearBoundary": "Cambio de año: {{year1}} → {{year2}}"
   },
   "legend": {

@@ -101,6 +101,8 @@
       "centimeters": "cm",
       "grams": "g",
       "kilograms": "kg",
+      "kgPerSqm": "kg/m²",
+      "kgPerPlant": "kg pro Pflanze",
       "percent": "%"
     },
     "boolean": {
@@ -263,9 +265,10 @@
     "yieldUnitPerPlant": "Pro Pflanze",
     "yieldUnitPerSqm": "Pro m²",
     "expectedYield": "Erwarteter Ertrag",
-    "expectedYieldWithUnit": "Erwarteter Ertrag (kg)",
-    "expectedYieldPlaceholder": "z.B. 500",
-    "expectedYieldUnit": "kg",
+    "expectedYieldPerSqm": "Erwarteter Ertrag (kg/m²)",
+    "expectedYieldPerPlant": "Erwarteter Ertrag (kg pro Pflanze)",
+    "expectedYieldChooseUnit": "Wähle zuerst die Ertragseinheit.",
+    "expectedYieldPlaceholder": "z. B. 3,5",
     "expectedYieldError": "Erwarteter Ertrag muss ≥ 0 sein",
     "distanceWithinRowCm": "Abstand in der Reihe (cm)",
     "distanceWithinRowCmPlaceholder": "z.B. 40",
