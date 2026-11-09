@@ -17,6 +17,7 @@ const csvFile = (csv: string): File => new File([csv], 'kulturen_export.csv', { 
 const ENUM_CROPS = [
   {
     name: 'Tomate',
+    seed_type: 'open_pollinated',
     nutrient_demand: 'high',
     cultivation_types: ['pre_cultivation', 'direct_sowing'],
     harvest_method: 'per_plant',
@@ -25,6 +26,7 @@ const ENUM_CROPS = [
   },
   {
     name: 'Karotte',
+    seed_type: 'f1_hybrid',
     nutrient_demand: 'medium',
     cultivation_types: ['direct_sowing'],
     harvest_method: 'per_sqm',
@@ -42,6 +44,7 @@ const ENUM_CROPS = [
 ] as unknown as Crop[];
 
 const ENUM_KEYS = [
+  'seed_type',
   'nutrient_demand',
   'cultivation_types',
   'harvest_method',
@@ -177,6 +180,7 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_days_max: 14,
     germination_types: ['cold', 'frost', 'light', 'dark'],
     germination_pretreatment: 'Chill four weeks.',
+    seed_type: 'f1_hybrid',
     harvest_method: 'per_plant',
     expected_yield: 4.2,
     distance_within_row_cm: 45,

@@ -18,6 +18,7 @@ import {
  */
 export const LIBRARY_PIN_FORM_FIELDS = {
   botanical_name: ['botanical_name'],
+  seed_type: ['seed_type'],
   nutrient_demand: ['nutrient_demand'],
   cultivation_types: ['cultivation_types', 'cultivation_type'],
   growth_duration_days: ['growth_duration_days'],

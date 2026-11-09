@@ -12,6 +12,7 @@ import type { PublicCropSyncChoices } from './publicCropSync';
  */
 export const LIBRARY_LINK_FIELDS = [
   'notes',
+  'seed_type',
   'crop_family',
   'nutrient_demand',
   'cultivation_types',

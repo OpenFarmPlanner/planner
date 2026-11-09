@@ -40,6 +40,7 @@ from farm.services.public_crops import (
 from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 
 PUBLIC_CROP_PROPOSABLE_FIELDS = {
+    'seed_type',
     'notes',
     'botanical_name',
     'crop_family',
@@ -232,6 +233,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'translations',
             'original_language_code',
             'botanical_name',
+            'seed_type',
             'crop_family',
             'crop_family_display_name',
             'nutrient_demand',
@@ -459,6 +461,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'notes': {'required': False, 'allow_blank': True},
             'nutrient_demand': {'required': False, 'allow_blank': True},
+            'seed_type': {'required': False, 'allow_blank': True},
             'cultivation_type': {'required': False, 'allow_blank': True},
             'harvest_method': {'required': False, 'allow_blank': True},
             'seed_rate_unit': {'required': False, 'allow_null': True, 'allow_blank': True},
@@ -472,6 +475,10 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             **germination_errors(self.instance, attrs),
             **sowing_depth_errors(self.instance, attrs),
         }
+        seed_type = attrs.get('seed_type', getattr(self.instance, 'seed_type', ''))
+        variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
+        if seed_type and not (variety or '').strip():
+            errors['seed_type'] = 'Seed type can only be set on a variety.'
         if errors:
             raise serializers.ValidationError(errors)
         incoming_fields = set(getattr(self, 'initial_data', {}) or {})

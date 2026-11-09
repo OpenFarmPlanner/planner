@@ -29,6 +29,7 @@ import { getLibraryPinnedValueLabel, isLibraryFieldPinned, type LibraryPinFormFi
 import { CropLibraryStatusIcon } from './CropLibraryStatusIcon';
 import { canUnlinkPublicCrop, type CropLibraryTrigger } from './cropLibraryAction';
 import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
+import { getSeedTypeLabel, matchesSeedTypeFilter } from './seedType';
 import { usePublicCropUpdate } from './usePublicCropUpdate';
 import {
   Badge,
@@ -220,6 +221,7 @@ const detailSectionGridSx = {
         filters.selectedTagFilter,
         filters.selectedCultivationFilter,
         filters.selectedNutrientFilter,
+        filters.selectedSeedTypeFilter,
         filters.selectedSupplierFilter,
         filters.growthDaysMin,
         filters.growthDaysMax,
@@ -332,12 +334,14 @@ const detailSectionGridSx = {
       const supplierMatches = selectedSupplierId === null
         || supplierIds.some((supplierId) => supplierId === selectedSupplierId);
       const sowingMatches = canBeSownInMonth(crop, filters.sowingMonth);
+      const seedTypeMatches = matchesSeedTypeFilter(crop, filters.selectedSeedTypeFilter);
 
       return familyMatches
         && tagMatches
         && cultivationMatches
         && growthMatches
         && nutrientMatches
+        && seedTypeMatches
         && yieldMatches
         && supplierMatches
         && sowingMatches;
@@ -560,6 +564,7 @@ const detailSectionGridSx = {
       : undefined
   );
 
+  const showSeedType = !isSpeciesView && Boolean(selectedCrop?.variety);
   const getLibraryPin = (field: LibraryPinFormField) => (
     selectedCrop?.source_public_crop && isLibraryFieldPinned(selectedCrop, field)
       ? (
@@ -1060,13 +1065,25 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* General Information: the crop's identity details, shown when it has any */}
-            {getCropValue('botanical_name', selectedCrop.botanical_name) || getEffectiveCropTags(selectedCrop).length > 0 ? (
+            {showSeedType || getCropValue('botanical_name', selectedCrop.botanical_name) || getEffectiveCropTags(selectedCrop).length > 0 ? (
               <>
                 <Box sx={{ mb: 3 }} data-testid="crop-detail-general">
                   <Typography variant="h6" gutterBottom>
                     {t('detail.sections.general')}
                   </Typography>
                   <Box sx={detailSectionGridSx}>
+                    {showSeedType && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('form.seedType')}
+                        </Typography>
+                        <ValueWithLibraryPin pin={getLibraryPin('seed_type')}>
+                          <Typography variant="body1" data-testid="crop-detail-seed-type">
+                            {getSeedTypeLabel(selectedCrop.seed_type, t)}
+                          </Typography>
+                        </ValueWithLibraryPin>
+                      </Box>
+                    )}
                     {getCropValue('botanical_name', selectedCrop.botanical_name) && (
                       <Box>
                         <Typography variant="body2" color="text.secondary">

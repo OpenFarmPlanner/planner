@@ -16,6 +16,7 @@ export interface PortableCrop {
   notes?: string;
   botanical_name?: string;
   crop_family?: string;
+  seed_type?: Crop['seed_type'];
   nutrient_demand?: Crop['nutrient_demand'];
   cultivation_type?: Crop['cultivation_type'];
   cultivation_types?: Crop['cultivation_types'];
@@ -101,6 +102,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     notes: crop.notes,
     botanical_name: crop.botanical_name || undefined,
     crop_family: crop.crop_family ?? undefined,
+    seed_type: crop.seed_type,
     nutrient_demand: crop.nutrient_demand,
     cultivation_type: crop.cultivation_type,
     cultivation_types: primaryFirst(crop.cultivation_types, crop.cultivation_type),

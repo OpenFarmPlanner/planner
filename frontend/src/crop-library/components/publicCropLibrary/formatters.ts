@@ -12,6 +12,7 @@ import {
   getPublicCropTitle,
 } from '../../publicCropDisplay';
 import { formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
+import { getSeedTypeLabel } from '../../../crops/seedType';
 import { readWithLegacyKey } from '../../../compat/legacyCropNames';
 
 export type PublicCropTab = 'details' | 'versions' | 'discussion';
@@ -308,6 +309,7 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
   const fieldLabelKeys: Partial<Record<string, string>> = {
     name: 'library.page.fields.cropSpecies',
     variety: 'library.page.fields.variety',
+    seed_type: 'form.seedType',
     notes: 'library.page.fields.notes',
     growth_duration_days: 'library.page.fields.growthDurationDays',
     harvest_duration_days: 'library.page.fields.harvestDurationDays',
@@ -352,6 +354,7 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
   if (field === 'germination_types' && Array.isArray(value) && value.length) return value.map((kind) => t(`germination.types.${kind}`)).join(', ');
   const normalized = normalizeComparisonValue(value);
   if (normalized === null) return t('library.publishWizard.comparison.empty');
+  if (field === 'seed_type') return getSeedTypeLabel(normalized, t);
   if (typeof normalized === 'boolean') {
     return t(normalized ? 'library.publishWizard.comparison.yes' : 'library.publishWizard.comparison.no');
   }

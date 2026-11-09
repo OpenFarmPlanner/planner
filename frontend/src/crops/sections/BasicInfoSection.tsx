@@ -20,6 +20,7 @@ import { CropSpeciesOptionContent } from '../CropSpeciesOptionContent';
 import { CropTagsField } from './CropTagsField';
 import { FieldInfoIcon } from '../FieldInfoIcon';
 import { usePlantFamilies } from '../plantFamilies';
+import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_LABEL_KEY } from '../seedType';
 
 interface BasicInfoSectionProps {
   formData: Partial<Crop>;
@@ -166,6 +167,9 @@ export function BasicInfoSection({
   const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
   const botanicalNameVariety = getFieldTooltipProps?.('botanical_name');
   const botanicalNamePin = getFieldPinProps?.('botanical_name');
+  const seedTypePin = getFieldPinProps?.('seed_type');
+  // In the library form a blank variety marks the species-level entry, which has no seed type.
+  const showSeedTypeField = showVarietyField && (varietyRequired || Boolean((formData.variety ?? '').trim()));
   const tagsVariety = getFieldTooltipProps?.('tags');
   const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
@@ -403,6 +407,28 @@ export function BasicInfoSection({
         <Box sx={fieldRowSx}>{firstVarietySourceHint}</Box>
       ) : null}
       {identityHint}
+      {showSeedTypeField ? (
+        <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, seedTypePin?.fieldSx)}>
+          <InputLabel id="crop-seed-type-label" shrink>{t('form.seedType')}</InputLabel>
+          <Select
+            fullWidth
+            displayEmpty
+            notched
+            labelId="crop-seed-type-label"
+            value={formData.seed_type || ''}
+            onChange={e => onChange('seed_type', e.target.value as Crop['seed_type'])}
+            label={t('form.seedType')}
+            error={Boolean(errors.seed_type)}
+            endAdornment={seedTypePin?.endAdornment}
+            sx={seedTypePin ? libraryPinSelectSx : undefined}
+          >
+            <MenuItem value="">{t(SEED_TYPE_UNKNOWN_LABEL_KEY)}</MenuItem>
+            {SEED_TYPE_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : null}
       {tagOptions ? (
         <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
           <CropTagsField

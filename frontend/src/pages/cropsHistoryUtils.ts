@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { CropHistoryChange, CropHistoryEntry, CropTimingWindow } from '../api/types';
+import { getSeedTypeLabel } from '../crops/seedType';
 import { TIMING_WINDOW_KINDS, formatTimingWindows, windowsOfKind } from '../crops/timingWindows';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
@@ -38,6 +39,7 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   crop_family: 'form.cropFamily',
   // Revisions store the plant-family reference under its attname.
   crop_family_id: 'form.cropFamily',
+  seed_type: 'form.seedType',
   nutrient_demand: 'form.nutrientDemand',
   cultivation_type: 'form.cultivationType',
   cultivation_types: 'form.cultivationType',
@@ -263,6 +265,9 @@ export function formatHistoryChangeValue(
     if (value === 'per_sqm') {
       return t('form.yieldUnitPerSqm');
     }
+  }
+  if (field === 'seed_type' && value) {
+    return getSeedTypeLabel(value, t);
   }
   if (field === 'nutrient_demand') {
     if (value === 'low') {

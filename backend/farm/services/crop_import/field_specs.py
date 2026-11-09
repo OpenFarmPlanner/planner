@@ -48,6 +48,7 @@ DIMENSION_LENGTH = 'length'
 CULTIVATION_TYPE_VALUES = tuple(value for value, _ in Crop.CULTIVATION_TYPE_CHOICES)
 NUTRIENT_DEMAND_VALUES = tuple(value for value, _ in Crop.NUTRIENT_DEMAND_CHOICES)
 HARVEST_METHOD_VALUES = tuple(value for value, _ in Crop.HARVEST_METHOD_CHOICES)
+SEED_TYPE_VALUES = tuple(value for value, _ in Crop.SEED_TYPE_CHOICES)
 
 # The project's own seed-rate vocabulary is the only accepted API vocabulary.
 # Synonyms are normalized on the way in (see units.normalize_seed_rate_unit_input)
@@ -272,6 +273,17 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         example='Brassicaceae',
         enum_values=PLANT_FAMILY_BOTANICAL_NAMES,
         input_aliases={'crop_family': None},
+    ),
+    FieldSpec(
+        name='seed_type',
+        kind=KIND_ENUM,
+        description=(
+            'Whether the variety is open-pollinated or an F1 hybrid. Leave empty '
+            'when unknown; only valid on a row with a variety.'
+        ),
+        example='open_pollinated',
+        enum_values=SEED_TYPE_VALUES,
+        input_aliases={'seed_type': None},
     ),
     FieldSpec(
         name='nutrient_demand',

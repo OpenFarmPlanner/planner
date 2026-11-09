@@ -6,6 +6,7 @@ import { FilterPopoverShell } from '../../components/filters/FilterPopoverShell'
 import { FilterSelectField } from '../../components/filters/FilterSelectField';
 import type { PublicCropFilterOptions, PublicCropFilterState } from '../publicCropFilters';
 import { buildPlantFamilyFilterOptions, usePlantFamilies } from '../../crops/plantFamilies';
+import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_FILTER, SEED_TYPE_UNKNOWN_LABEL_KEY } from '../../crops/seedType';
 
 interface PublicCropFiltersPopoverProps {
   anchorEl: HTMLElement | null;
@@ -19,7 +20,7 @@ interface PublicCropFiltersPopoverProps {
 const FULL_WIDTH_ROW = { gridColumn: '1 / -1' } as const;
 
 /**
- * Advanced-filters popover for public crop data (crop family, variety,
+ * Advanced-filters popover for public crop data (crop family, variety, seed type,
  * cultivation type, nutrient demand, growth duration, expected yield).
  * Shares its chrome with CropFiltersPopover (the private crop
  * selector's filter popover) via FilterPopoverShell, and is itself shared
@@ -75,6 +76,19 @@ export function PublicCropFiltersPopover({
         {options.varietyOptions.map((variety) => (
           <MenuItem key={variety} value={variety}>{variety}</MenuItem>
         ))}
+      </FilterSelectField>
+      <FilterSelectField
+        id="public-crop-seed-type-filter"
+        label={t('form.seedType')}
+        value={filters.seedType}
+        onChange={(event) => onFilterChange('seedType', event.target.value as string)}
+        sx={FULL_WIDTH_ROW}
+      >
+        <MenuItem value="">{t('filters.all')}</MenuItem>
+        {SEED_TYPE_OPTIONS.map((option) => (
+          <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
+        ))}
+        <MenuItem value={SEED_TYPE_UNKNOWN_FILTER}>{t(SEED_TYPE_UNKNOWN_LABEL_KEY)}</MenuItem>
       </FilterSelectField>
       <FilterSelectField
         id="public-crop-cultivation-filter"

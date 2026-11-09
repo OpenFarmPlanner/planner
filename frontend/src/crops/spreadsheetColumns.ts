@@ -37,6 +37,20 @@ export const NUTRIENT_DEMAND_IMPORT: Record<string, string> = {
   high: 'high',
 };
 
+export const SEED_TYPE_EXPORT: Record<string, string> = {
+  open_pollinated: 'Open-pollinated',
+  f1_hybrid: 'F1 hybrid',
+};
+
+export const SEED_TYPE_IMPORT: Record<string, string> = {
+  samenfest: 'open_pollinated',
+  'open-pollinated': 'open_pollinated',
+  open_pollinated: 'open_pollinated',
+  'f1-hybrid': 'f1_hybrid',
+  'f1 hybrid': 'f1_hybrid',
+  f1_hybrid: 'f1_hybrid',
+};
+
 export const CULTIVATION_TYPE_EXPORT: Record<string, string> = {
   direct_sowing: 'Direct sowing',
   pre_cultivation: 'Transplanting',
@@ -130,6 +144,14 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     headerKey: 'form.cropFamily',
     aliases: ['familie', 'pflanzenart', 'pfanzenfamilie'],
     type: 'string',
+  },
+  {
+    key: 'seed_type',
+    headerKey: 'form.seedType',
+    aliases: ['saatguttyp', 'seed_type'],
+    type: 'string',
+    enumExport: SEED_TYPE_EXPORT,
+    enumImport: SEED_TYPE_IMPORT,
   },
   {
     key: 'nutrient_demand',
@@ -341,6 +363,11 @@ const buildNutrientDemandExport = (t: SpreadsheetT): Record<string, string> => (
   high: t('form.nutrientDemandHigh'),
 });
 
+const buildSeedTypeExport = (t: SpreadsheetT): Record<string, string> => ({
+  open_pollinated: t('form.seedTypeOpenPollinated'),
+  f1_hybrid: t('form.seedTypeF1Hybrid'),
+});
+
 const buildCultivationTypeExport = (t: SpreadsheetT): Record<string, string> => ({
   direct_sowing: t('form.cultivationTypeDirectSowing'),
   pre_cultivation: t('form.cultivationTypePreCultivation'),
@@ -362,6 +389,7 @@ const buildSeedRateUnitExport = (t: SpreadsheetT): Record<string, string> => ({
 const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<string, string> | undefined => {
   if (columnKey === 'germination_types') return Object.fromEntries(['cold', 'frost', 'light', 'dark'].map((kind) => [kind, t(`germination.types.${kind}`)]));
   if (columnKey === 'nutrient_demand') return buildNutrientDemandExport(t);
+  if (columnKey === 'seed_type') return buildSeedTypeExport(t);
   if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);
   if (columnKey === 'seed_rate_direct_unit' || columnKey === 'seed_rate_pre_cultivation_unit') {

@@ -199,6 +199,8 @@ export interface Crop {
   crop_family_display_name?: string | null;
   /** Read-only free text from before the plant-family list; kept until a later release. */
   legacy_crop_family?: string;
+  /** Set on a Sorte only and never inherited; blank means unknown. */
+  seed_type?: 'open_pollinated' | 'f1_hybrid' | '';
   nutrient_demand?: 'low' | 'medium' | 'high' | '';
   /** Calendar years without this plant family on the same bed in between. */
   rotation_break_years?: number | null;
@@ -411,6 +413,8 @@ export interface PublicCrop {
   botanical_name?: string;
   crop_family?: string | null;
   crop_family_display_name?: string | null;
+  /** Blank means unknown; always blank on a species-level entry. */
+  seed_type?: 'open_pollinated' | 'f1_hybrid' | '';
   nutrient_demand?: 'low' | 'medium' | 'high' | '';
   cultivation_type?: CultivationType | '';
   cultivation_types?: CultivationType[];
