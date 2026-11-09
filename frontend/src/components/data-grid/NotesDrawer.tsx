@@ -23,7 +23,7 @@ import { alpha } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { RichTextEditor } from './RichTextEditor';
+import { LazyRichTextEditor } from './LazyRichTextEditor';
 import { noteAttachmentAPI } from '../../api/api';
 import type { NoteAttachment } from '../../api/types';
 import { useTranslation } from '../../i18n';
@@ -510,7 +510,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
 
         <Box sx={{ flexGrow: 1, mb: 2, overflow: 'auto' }}>
           {activeTab === 'edit' ? (
-            <RichTextEditor value={value} onChange={onChange} minHeight={260} />
+            <LazyRichTextEditor value={value} onChange={onChange} minHeight={260} />
           ) : (
             <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, minHeight: '300px' }}>
               {value ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{value}</ReactMarkdown> : <Typography color="text.secondary" sx={{ fontStyle: "italic", }} >{t('notes.empty')}</Typography>}
