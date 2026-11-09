@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Stack, TextField } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router';
@@ -19,8 +19,8 @@ import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { getActiveFormattingLocale } from '../../utils/numberLocalization';
 
 export default function LoginPage() {
-  const { user, login, restoreAccount } = useAuth();
-  const { t } = useTranslation(['auth', 'projectInvitations']);
+  const { user, isLoading, isSessionUnchecked, retryAuthCheck, login, restoreAccount } = useAuth();
+  const { t } = useTranslation(['auth', 'projectInvitations', 'common']);
   const isGuestDemo = useEndGuestDemoOnAuthPage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,7 +52,24 @@ export default function LoginPage() {
     void loadPendingInvitation();
   }, []);
 
+  // Arriving from a public page, which skips the session probe: check now, so
+  // a signed-in visitor goes straight into the app instead of seeing the form.
+  useEffect(() => {
+    if (isSessionUnchecked) void retryAuthCheck();
+  }, [isSessionUnchecked, retryAuthCheck]);
+
   if (user && !isGuestDemo) return <Navigate to={authenticatedDestination} replace />;
+
+  if (isLoading || isSessionUnchecked) {
+    return (
+      <AuthPageShell title={t('auth:login.title')} subtitle={t('auth:login.subtitle')}>
+        <Box role="status" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, py: 4 }}>
+          <CircularProgress size={20} />
+          <Typography>{t('common:messages.loading')}</Typography>
+        </Box>
+      </AuthPageShell>
+    );
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

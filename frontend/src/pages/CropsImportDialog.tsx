@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -174,6 +175,7 @@ export function CropsImportDialog({
   const contentRef = useRef<HTMLDivElement>(null);
   const hasResult = importState.success !== null || importState.failedEntries.length > 0;
   const isFinished = importState.status === 'success' || importState.failedEntries.length > 0;
+  const isImporting = importState.status === 'uploading';
 
   // The result sits at the top; bring it into view after an import.
   useEffect(() => {
@@ -187,7 +189,7 @@ export function CropsImportDialog({
   const updateCandidates = importState.previewResults.filter((result) => result.status === 'update_candidate');
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={isImporting ? undefined : onClose} maxWidth="md" fullWidth>
       <DialogTitle>{t('import.title')}</DialogTitle>
       <DialogContent ref={contentRef}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -273,13 +275,14 @@ export function CropsImportDialog({
           <Button variant="contained" onClick={onClose}>{t('import.close')}</Button>
         ) : (
           <>
-            <Button onClick={onClose}>{t('import.close')}</Button>
+            <Button onClick={onClose} disabled={isImporting}>{t('import.close')}</Button>
             <Button
               variant="contained"
               onClick={onImportStart}
-              disabled={!hasImportableEntries || importState.status === 'uploading'}
+              disabled={!hasImportableEntries || isImporting}
+              startIcon={isImporting ? <CircularProgress color="inherit" size={16} /> : undefined}
             >
-              {t('import.start')}
+              {isImporting ? t('import.importing') : t('import.start')}
             </Button>
           </>
         )}

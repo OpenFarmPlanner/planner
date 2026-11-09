@@ -238,9 +238,25 @@ export const cropSpeciesAPI = {
     name,
     ...(languageCode ? { translations: [{ language_code: languageCode, common_name: name }] } : {}),
   }),
-  approve: (id: number, reviewNote = '', translations?: CropSpeciesTranslation[]) => http.post<CropSpecies>(
+  /**
+   * `options.scientificName` replaces the proposed Latin name (only the single
+   * approval dialog sends it; bulk approval keeps the proposed one). A name
+   * that published species already carry is answered with a 409
+   * `shared_scientific_name` until `confirmSharedScientificName` is set.
+   */
+  approve: (
+    id: number,
+    reviewNote = '',
+    translations?: CropSpeciesTranslation[],
+    options: { scientificName?: string; confirmSharedScientificName?: boolean } = {},
+  ) => http.post<CropSpecies>(
     `/crop-species/${id}/approve/`,
-    { review_note: reviewNote, ...(translations ? { translations } : {}) },
+    {
+      review_note: reviewNote,
+      ...(translations ? { translations } : {}),
+      ...(options.scientificName !== undefined ? { scientific_name: options.scientificName } : {}),
+      ...(options.confirmSharedScientificName ? { confirm_shared_scientific_name: true } : {}),
+    },
   ),
   reject: (id: number, reviewNote = '') => http.post<CropSpecies>(`/crop-species/${id}/reject/`, { review_note: reviewNote }),
   // Moderator-only: search aliases are curated here, so a regional name never

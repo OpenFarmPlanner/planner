@@ -702,6 +702,152 @@ class CropViewSetTest(DRFAPITestCase):
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
 
+    def _approval_moderator(self, username: str) -> User:
+        moderator = User.objects.create_user(
+            username=username, email=f'{username}@example.com', password='testpass', is_active=True,
+        )
+        grant_public_library_moderator_access(moderator)
+        self.client.force_authenticate(user=moderator)
+        return moderator
+
+    def test_species_approval_stores_the_edited_scientific_name(self):
+        self._approval_moderator('species-scientific-moderator')
+        proposal = CropSpecies.objects.create(
+            name='Tree onion', scientific_name='Allium proliferm',
+            status=CropSpecies.STATUS_PROPOSED,
+            proposed_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            {**self.species_approval_payload(), 'scientific_name': '  Allium  ×proliferum '},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['scientific_name'], 'Allium ×proliferum')
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, CropSpecies.STATUS_PUBLISHED)
+        self.assertEqual(proposal.scientific_name, 'Allium ×proliferum')
+
+    def test_species_approval_without_scientific_name_keeps_the_proposed_one(self):
+        """Bulk approval sends no scientific name and must leave it untouched."""
+        self._approval_moderator('species-scientific-keep-moderator')
+        CropSpecies.objects.create(
+            name='Welsh onion', scientific_name='Allium fistulosum',
+            status=CropSpecies.STATUS_PUBLISHED,
+        )
+        proposal = CropSpecies.objects.create(
+            name='Tree onion', scientific_name='Allium fistulosum',
+            status=CropSpecies.STATUS_PROPOSED,
+            proposed_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            self.species_approval_payload(),
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.scientific_name, 'Allium fistulosum')
+
+    def test_species_approval_can_clear_the_scientific_name(self):
+        self._approval_moderator('species-scientific-clear-moderator')
+        proposal = CropSpecies.objects.create(
+            name='Tree onion', scientific_name='Wrong name', status=CropSpecies.STATUS_PROPOSED,
+            proposed_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            {**self.species_approval_payload(), 'scientific_name': ''},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.scientific_name, '')
+
+    def test_species_approval_rejects_an_invalid_scientific_name(self):
+        self._approval_moderator('species-scientific-invalid-moderator')
+        proposal = CropSpecies.objects.create(
+            name='Tree onion', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
+        )
+
+        for value in (['Allium'], 'A' * 201):
+            response = self.client.post(
+                f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+                {**self.species_approval_payload(), 'scientific_name': value},
+                format='json',
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(response.data['code'], 'invalid_scientific_name')
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
+
+    def test_species_approval_asks_before_reusing_a_published_scientific_name(self):
+        self._approval_moderator('species-scientific-shared-moderator')
+        kale = CropSpecies.objects.create(
+            name='Test leaf cole', scientific_name='Brassica testacea',
+            status=CropSpecies.STATUS_PUBLISHED,
+        )
+        proposal = CropSpecies.objects.create(
+            name='Test stem cole', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
+        )
+        payload = {
+            **self.species_approval_payload(
+                german_name='Teststängelkohl', english_name='Test stem cole',
+            ),
+            'scientific_name': 'brassica testacea',
+        }
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/', payload, format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'shared_scientific_name')
+        self.assertEqual(response.data['species'], [{'id': kale.id, 'name': 'Test leaf cole'}])
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, CropSpecies.STATUS_PROPOSED)
+        self.assertEqual(proposal.scientific_name, '')
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            {**payload, 'confirm_shared_scientific_name': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, CropSpecies.STATUS_PUBLISHED)
+        self.assertEqual(proposal.scientific_name, 'brassica testacea')
+
+    def test_species_approval_still_blocks_a_duplicate_name_with_an_edited_scientific_name(self):
+        self._approval_moderator('species-scientific-duplicate-moderator')
+        existing = CropSpecies.objects.create(
+            name='Tree onion', status=CropSpecies.STATUS_PUBLISHED,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=existing, language_code='en', common_name='Tree onion',
+        )
+        proposal = CropSpecies.objects.create(
+            name='Egyptian onion', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
+        )
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crop-species/{proposal.id}/approve/',
+            {**self.species_approval_payload(), 'scientific_name': 'Allium ×proliferum'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'duplicate_crop_species')
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.scientific_name, '')
+
     def test_moderator_can_reject_species_proposal(self):
         moderator = User.objects.create_user(
             username='species-reject-moderator',

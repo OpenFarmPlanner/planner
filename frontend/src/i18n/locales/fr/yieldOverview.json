@@ -12,9 +12,10 @@
   },
   "chart": {
     "title": "Répartition des rendements",
+    "subtitle": "Prévision à partir des plans de culture de la saison active : surface ou nombre de plants prévu multiplié par le rendement prévu de la culture.",
     "tooltip": "{{period}} · {{crop}} : {{yield}} kg",
     "tooltipPeriod": "Période",
-    "tooltipYield": "Rendement",
+    "tooltipYield": "Rendement prévu",
     "yearBoundary": "Changement d'année : {{year1}} → {{year2}}"
   },
   "legend": {

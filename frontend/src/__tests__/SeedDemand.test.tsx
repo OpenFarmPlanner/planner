@@ -5,7 +5,8 @@ import SeedDemandPage from '../pages/SeedDemand';
 import { CommandProvider } from '../commands/CommandProvider';
 import { FocusManagerProvider } from '../focus/FocusManager';
 
-const { listMock, saveSelectionMock, cropListMock, planListMock, locationListMock, fieldListMock, bedListMock } = vi.hoisted(() => ({
+const { listMock, saveSelectionMock, cropListMock, planListMock, locationListMock, fieldListMock, bedListMock, supplierListMock } = vi.hoisted(() => ({
+  supplierListMock: vi.fn(),
   listMock: vi.fn(),
   saveSelectionMock: vi.fn(),
   cropListMock: vi.fn(),
@@ -46,6 +47,9 @@ vi.mock('../api/api', async () => {
     bedAPI: {
       list: bedListMock,
       listAll: async () => (await bedListMock()).data,
+    },
+    supplierAPI: {
+      list: supplierListMock,
     },
   };
 });
@@ -89,6 +93,7 @@ describe('SeedDemandPage', () => {
     locationListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Hof' }] } });
     fieldListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Feld 1', location: 1 }] } });
     bedListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Beet 1' }] } });
+    supplierListMock.mockResolvedValue({ data: { count: 2, results: [{ id: 10 }, { id: 11 }] } });
   });
 
   it('shows field-first progressive requirement and no table header when no locations exist', async () => {
@@ -944,6 +949,46 @@ describe('SeedDemandPage', () => {
     });
   });
 
+  it('asks to create a supplier first when the project has none', async () => {
+    supplierListMock.mockResolvedValue({ data: { count: 0, results: [] } });
+    listMock.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            crop_id: 4,
+            crop_name: 'Kohlrabi',
+            supplier: '',
+            selected_supplier_id: null,
+            supplier_options: [],
+            required_amount_value: 4,
+            required_amount_unit: 'g',
+            total_grams: 4,
+            package_suggestion: null,
+            warning: 'Keine Lieferantendaten vorhanden.',
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <FocusManagerProvider><CommandProvider>
+          <SeedDemandPage />
+        </CommandProvider></FocusManagerProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('seedDemand.noSupplierInProject')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'seedDemand.createSupplierAction' })).toHaveAttribute(
+      'href',
+      '/app/suppliers?create=1',
+    );
+    expect(screen.queryByRole('link', { name: 'seedDemand.assignSupplierAction' })).not.toBeInTheDocument();
+  });
+
   it('shows read-only supplier state when no suppliers are available', async () => {
     listMock.mockResolvedValue({
       data: {
@@ -977,10 +1022,10 @@ describe('SeedDemandPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('seedDemand.noSupplierAvailable')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'seedDemand.editCropAction' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'seedDemand.assignSupplierAction' })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('link', { name: 'seedDemand.editCropAction' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'seedDemand.assignSupplierAction' })).toHaveAttribute(
       'href',
       '/app/crops?cropId=4&action=edit',
     );
@@ -1026,8 +1071,9 @@ describe('SeedDemandPage', () => {
     expect(screen.getByText('seedDemand.noPackagesAvailable')).toBeInTheDocument();
     expect(screen.getByText('Reinsaat')).toBeInTheDocument();
     expect(screen.queryByText('seedDemand.selectSupplier')).not.toBeInTheDocument();
-    const supplierSelect = screen.getByRole('combobox');
-    expect(supplierSelect).toHaveAttribute('aria-disabled', 'true');
+    // Nothing to choose between: plain text, no disabled control.
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByTestId('seed-demand-supplier-5')).toHaveTextContent('Reinsaat');
   });
 
   it('shows placeholder only for rows with multiple suppliers and no selected supplier', async () => {

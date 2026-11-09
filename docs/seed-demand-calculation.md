@@ -14,7 +14,11 @@ One row per crop, aggregated across every planting plan of that crop
 in the project — there's no per-plan or per-project drill-down UI. The only
 interaction that changes the underlying data is choosing a supplier from a
 per-row dropdown (only shown when a crop has more than one supplier with
-seed data); everything else (amount, package suggestion) is read-only,
+seed data; a single supplier is shown as plain text, since there is nothing
+to choose, never as a disabled control). A crop without supplier data says
+what is missing and links to the right next step: "Lieferant anlegen"
+(`/app/suppliers?create=1`) while the project has no supplier at all,
+otherwise "Lieferant zuordnen" (the crop's editor); everything else (amount, package suggestion) is read-only,
 computed server-side. `frontend/src/pages/requirementFlow.ts`, despite the
 name, is *not* part of the calculation — it only decides which "you're
 missing setup step X" empty-state card to show when the project has no
@@ -39,6 +43,17 @@ below; they appear in the young-plant demand instead — see
 [young-plant-demand.md](./young-plant-demand.md).
 
 For each crop with at least one planting plan:
+
+**A Sorte counts with its effective values.** Every crop field the
+calculation reads that a Sorte inherits from its general Kultur
+(`CROP_INHERITABLE_FIELDS`: the per-cultivation seed rates and units, the
+safety margins, the TKG, the row spacing and the enabled cultivation types)
+is resolved the way the crop form shows it: the Sorte's own value, else the
+Kultur's (`EffectiveCrop` in `seed_demand.py`, one `build_general_crop_index`
+per request, the same as the young-plant demand). Before this, a Sorte that
+left its seed rate to the Kultur was reported as "seed rate missing". The
+legacy single `seed_rate_value` and the `seed_rate_by_cultivation` map are
+not inheritable and stay the Sorte's own.
 
 1. **Per-plan requirement.** Pick the seed rate for the plan's
    `cultivation_type` (direct sowing vs. pre-cultivation have separate rate

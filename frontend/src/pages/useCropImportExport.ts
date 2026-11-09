@@ -1,4 +1,4 @@
-import { useState, useCallback, type ChangeEvent } from 'react';
+import { useState, useCallback, useRef, type ChangeEvent } from 'react';
 import { cropAPI, cropCompanionAPI, type Crop } from '../api/api';
 import { buildCompanionItemsByCrop, type CompanionItemsByKind } from '../crops/companions';
 import { usePlantFamilies } from '../crops/plantFamilies';
@@ -44,6 +44,10 @@ export function useCropImportExport({
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportDialogInitialScope, setExportDialogInitialScope] = useState<ExportScope>('all');
   const [confirmUpdates, setConfirmUpdates] = useState(false);
+  // Reading the file and the preview request can take seconds for a long
+  // list; the start dialog stays open with a spinner until the preview is ready.
+  const [importPreparing, setImportPreparing] = useState(false);
+  const importPreparingRef = useRef(false);
 
   const {
     state: importState,
@@ -61,8 +65,7 @@ export function useCropImportExport({
     setImportStartDialogOpen(true);
   }, [resetImportState]);
 
-  const handleImportFileSelected = useCallback(async (file: File) => {
-    setImportStartDialogOpen(false);
+  const prepareImportPreview = useCallback(async (file: File) => {
     resetImportState();
 
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -167,6 +170,19 @@ export function useCropImportExport({
     setImportErrorState({ error: t('import.errors.unsupportedFormat') });
     setImportDialogOpen(true);
   }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState]);
+
+  const handleImportFileSelected = useCallback(async (file: File) => {
+    if (importPreparingRef.current) return;
+    importPreparingRef.current = true;
+    setImportPreparing(true);
+    try {
+      await prepareImportPreview(file);
+    } finally {
+      importPreparingRef.current = false;
+      setImportPreparing(false);
+      setImportStartDialogOpen(false);
+    }
+  }, [prepareImportPreview]);
 
   const handleOpenExportDialog = useCallback((initialScope: ExportScope = 'all') => {
     setExportDialogInitialScope(initialScope);
@@ -280,6 +296,7 @@ export function useCropImportExport({
     importState,
     hasImportableEntries,
     handleImportFileTrigger,
+    importPreparing,
     handleImportFileSelected,
     handleImportFileChange,
     handleOpenExportDialog,

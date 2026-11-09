@@ -76,6 +76,13 @@ colour — there is very likely already a token for what you need.
 Use the responsive object form (`px: { xs: 0, sm: 2 }`) or
 `theme.breakpoints.down('sm')`, not a hand-written media query.
 
+**Page gutter on phones:** below `sm` the page shells in
+`components/layout/pageContainerStyles.ts` run edge to edge (only the device
+safe-area insets apply), which suits full-bleed lists and grids. A page whose
+content is free-standing headings, buttons and cards (the task board) passes
+`mobileInset` to `PageContainer` for a 16px inset instead — never a
+per-component margin. It uses whichever is larger, 16px or the safe-area inset.
+
 **Radii** come from `shape.borderRadius` (4px). `sx={{ borderRadius: 2 }}` is
 8px.
 

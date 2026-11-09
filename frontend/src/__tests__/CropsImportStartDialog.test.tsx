@@ -19,7 +19,7 @@ const t = i18n.getFixedT('de', 'crops') as unknown as (
   options?: Record<string, unknown>,
 ) => string;
 
-const renderDialog = ({ open = true }: { open?: boolean } = {}) => {
+const renderDialog = ({ open = true, preparing = false }: { open?: boolean; preparing?: boolean } = {}) => {
   const onClose = vi.fn();
   const onFileSelected = vi.fn();
   const view = render(
@@ -28,6 +28,7 @@ const renderDialog = ({ open = true }: { open?: boolean } = {}) => {
         open={open}
         onClose={onClose}
         onFileSelected={onFileSelected}
+        preparing={preparing}
         t={t}
       />
     </ThemeProvider>,
@@ -38,8 +39,8 @@ const renderDialog = ({ open = true }: { open?: boolean } = {}) => {
 const fileInput = (): HTMLInputElement =>
   document.querySelector('input[type="file"]') as HTMLInputElement;
 
-/** The whole dashed panel is the drop target, and the input's grandparent. */
-const dropZone = (): HTMLElement => fileInput().parentElement as HTMLElement;
+/** The whole dashed panel is the drop target; the input sits in its content wrapper. */
+const dropZone = (): HTMLElement => fileInput().parentElement?.parentElement as HTMLElement;
 
 const selectButton = (): HTMLElement => screen.getByRole('button', { name: 'Datei auswählen' });
 
@@ -201,6 +202,31 @@ describe('CropsImportStartDialog', () => {
       Object.defineProperty(event, 'dataTransfer', { value: { files: [spreadsheet()] } });
       const notCancelled = fireEvent(dropZone(), event);
       expect(notCancelled).toBe(false);
+    });
+  });
+
+  describe('while the chosen file is being prepared', () => {
+    it('says so in the drop zone and keeps the zone in place', () => {
+      renderDialog({ preparing: true });
+
+      expect(screen.getByRole('status')).toHaveTextContent('Importvorschau wird vorbereitet…');
+      expect(dropZone()).toHaveAttribute('aria-busy', 'true');
+      expect(fileInput()).toBeDisabled();
+    });
+
+    it('accepts no other file', () => {
+      const { onFileSelected } = renderDialog({ preparing: true });
+
+      fireEvent.drop(dropZone(), { dataTransfer: { files: [spreadsheet()] } });
+      fireEvent.change(fileInput(), { target: { files: [spreadsheet()] } });
+
+      expect(onFileSelected).not.toHaveBeenCalled();
+    });
+
+    it('cannot be closed half-way', () => {
+      renderDialog({ preparing: true });
+
+      expect(screen.getByRole('button', { name: 'Schließen' })).toBeDisabled();
     });
   });
 

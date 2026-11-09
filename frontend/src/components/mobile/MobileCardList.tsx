@@ -1,5 +1,6 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Card, CardActionArea, CardContent, Collapse, Stack, Typography } from '@mui/material';
+import { highlightFlashAnimationSx, highlightFlashKeyframesSx } from '../feedback/highlightFlashStyles';
 
 export interface MobileCardListItem {
   id: string | number;
@@ -19,6 +20,8 @@ interface MobileCardListProps<T extends MobileCardListItem> {
   emptyState?: React.ReactNode;
   detailsShowLabel: string;
   detailsHideLabel: string;
+  /** The card that flashes briefly, e.g. one the user just created. */
+  flashingId?: string | number | null;
 }
 
 export function MobileCardList<T extends MobileCardListItem>({
@@ -34,17 +37,24 @@ export function MobileCardList<T extends MobileCardListItem>({
   emptyState,
   detailsShowLabel,
   detailsHideLabel,
+  flashingId = null,
 }: MobileCardListProps<T>) {
   if (items.length === 0) {
     return <>{emptyState ?? null}</>;
   }
 
   return (
-    <Stack spacing={1}>
+    <Stack spacing={1} sx={highlightFlashKeyframesSx}>
       {items.map((item) => {
         const isExpanded = expandedIds.has(item.id);
         return (
-          <Card key={item.id} variant="outlined" data-mobile-card-id={item.id}>
+          <Card
+            key={item.id}
+            variant="outlined"
+            data-mobile-card-id={item.id}
+            data-flashing={flashingId === item.id ? 'true' : undefined}
+            sx={flashingId === item.id ? highlightFlashAnimationSx : undefined}
+          >
             <CardContent sx={{ px: 1.5, py: 1.25, '&:last-child': { pb: 1.25 } }}>
               <Stack spacing={1}>
                 <Stack direction="row" spacing={0.5} sx={{ alignItems: "flex-start", }} >

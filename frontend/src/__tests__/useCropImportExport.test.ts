@@ -141,6 +141,50 @@ describe('useCropImportExport', () => {
   });
 
   describe('the preview step', () => {
+    it('keeps the start dialog open and busy until the preview is ready', async () => {
+      let resolvePreview: (value: unknown) => void = () => undefined;
+      api.importPreview.mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
+      const view = setup();
+      act(() => { view.result.current.handleImportFileTrigger(); });
+
+      let pending: Promise<void> = Promise.resolve();
+      await act(async () => { pending = view.result.current.handleImportFileSelected(file('c.csv')); });
+
+      expect(view.result.current.importPreparing).toBe(true);
+      expect(view.result.current.importStartDialogOpen).toBe(true);
+      expect(view.result.current.importDialogOpen).toBe(false);
+
+      await act(async () => { resolvePreview({ data: { results: [] } }); await pending; });
+
+      expect(view.result.current.importPreparing).toBe(false);
+      expect(view.result.current.importStartDialogOpen).toBe(false);
+      expect(view.result.current.importDialogOpen).toBe(true);
+    });
+
+    it('ignores a second file while the first is still being prepared', async () => {
+      let resolvePreview: (value: unknown) => void = () => undefined;
+      api.importPreview.mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
+      const view = setup();
+
+      let pending: Promise<void> = Promise.resolve();
+      await act(async () => { pending = view.result.current.handleImportFileSelected(file('a.csv')); });
+      await act(async () => { await view.result.current.handleImportFileSelected(file('b.csv')); });
+      await act(async () => { resolvePreview({ data: { results: [] } }); await pending; });
+
+      expect(spreadsheet.parse).toHaveBeenCalledTimes(1);
+      expect(api.importPreview).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops preparing when the preview fails, so another file can be chosen', async () => {
+      api.importPreview.mockRejectedValue(new Error('offline'));
+      const view = setup();
+
+      await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
+
+      expect(view.result.current.importPreparing).toBe(false);
+      expect(view.result.current.importState.error).toBe('import.errors.network');
+    });
+
     it('opens the dialog with a preview when the file has entries', async () => {
       const view = setup();
 

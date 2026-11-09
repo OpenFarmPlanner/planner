@@ -126,6 +126,20 @@ test('mobile list supports status changes with the keyboard and filters', async 
   await expect(page.getByRole('article', { name: 'Jäten', exact: true })).toBeVisible();
 });
 
+test('mobile board keeps a 16px inset to both viewport edges', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  const heading = await page.getByRole('heading', { name: 'Aufgaben', exact: true }).boundingBox();
+  const button = await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).boundingBox();
+  const column = await page.getByRole('region', { name: 'Offen', exact: true }).boundingBox();
+  if (!heading || !button || !column) throw new Error('Missing board element');
+  expect(heading.x).toBe(16);
+  expect(button.x).toBe(16);
+  expect(button.x + button.width).toBe(375 - 16);
+  expect(column.x).toBe(16);
+  expect(column.x + column.width).toBe(375 - 16);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('captures the populated dashboard at all breakpoints for visual review', async ({ page }, testInfo) => {
   for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
     { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {

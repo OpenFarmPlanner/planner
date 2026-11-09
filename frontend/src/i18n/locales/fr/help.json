@@ -225,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Aide : Besoin en semences",
-      "intro": "Voyez de combien de semences vous avez besoin pour les cultures prévues. Les quantités sont calculées à partir des données des cultures, des surfaces et des séries.\n\nLes plantations de plants achetés n'y figurent pas ; vous les trouvez dans le besoin en plants.",
+      "intro": "Vous voyez ici la quantité de semences nécessaire aux plans de culture de la saison active : pour le semis direct et pour les plantations de plants autoproduits. La quantité découle de la dose de semis de la culture et de la surface prévue.\n\nLes plantations de plants achetés n'y figurent pas : vous les trouverez dans le besoin en plants. Le moment du semis est indiqué dans la vue Pépinière du calendrier de culture.",
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
         "supplierSelect": "Définir le fournisseur par culture",
@@ -234,7 +234,7 @@
     },
     "youngPlantDemand": {
       "title": "Aide : besoin en plants",
-      "intro": "Cette page indique combien de plants commander pour les plantations de plants achetés de la saison active, regroupés par culture, variété et semaine de plantation.\n\nLa quantité découle de la surface de chaque série et des espacements sur le rang et entre les rangs de la culture. La réserve pour pertes est arrondie au plant entier supérieur.",
+      "intro": "Vous voyez ici combien de jeunes plants commander pour les plantations de plants achetés de la saison active, regroupés par culture, variété et semaine de plantation. Pour les plantations de plants autoproduits, il vous faut plutôt des semences : voir le besoin en semences.\n\nLe nombre découle de la surface du plan de culture et des distances de plantation et entre les rangs de la culture. La réserve pour les pertes est arrondie à des plants entiers.",
       "symbolsTitle": "Symboles et commandes",
       "symbols": {
         "expand": "Afficher ou masquer les séries concernées"
@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Aide : Aperçu des rendements",
-      "intro": "L'aperçu des rendements montre les quantités récoltées attendues d'après vos séries de la saison active.\n\nLimitez la vue à une culture ou passez des semaines aux mois sous « Affichage ». Survolez une barre pour voir la période, la culture et la quantité récoltée.",
+      "intro": "L'aperçu des rendements est une prévision : il répartit les récoltes prévues des plans de culture de la saison active sur leurs périodes de récolte. Il se base sur la surface ou le nombre de plants prévu et sur le rendement prévu de la culture par m² ou par plant. Les récoltes réelles ne sont pas saisies.\n\nLimitez l'affichage à une culture ou basculez entre semaines et mois sous « Affichage ». Survolez une barre pour voir la période, la culture et la quantité récoltée.",
       "points": []
     }
   }

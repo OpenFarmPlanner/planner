@@ -5,6 +5,7 @@
 
 import { CALCULATED_COLUMN_CELL_CLASS } from "../components/data-grid/calculatedColumns";
 import { dataGridSx } from "../components/data-grid/styles";
+import { highlightFlashAnimationSx, highlightFlashKeyframesSx } from "../components/feedback/highlightFlashStyles";
 import { alpha } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 
@@ -117,16 +118,8 @@ export const HIERARCHY_DATA_GRID_SX = {
     backgroundColor: "surface.surfaceHoverBackground",
     boxShadow: (theme: Theme) => `inset 0 0 0 9999px ${alpha(theme.palette.warning.main, 0.14)}`,
   },
-  "& .ofp-hierarchy-row-highlighted .MuiDataGrid-cell": {
-    animation: "ofp-hierarchy-row-highlight-flash 2.5s ease-out",
-  },
-  // Matches the app's established green "selected" look (e.g. CropDetail's
-  // selected list item) instead of an unrelated yellow flash.
-  "@keyframes ofp-hierarchy-row-highlight-flash": {
-    "0%": { backgroundColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.22) },
-    "70%": { backgroundColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.14) },
-    "100%": { backgroundColor: "transparent" },
-  },
+  "& .ofp-hierarchy-row-highlighted .MuiDataGrid-cell": highlightFlashAnimationSx,
+  ...highlightFlashKeyframesSx,
   // Replaced by the custom track/thumb rendered alongside the grid (see
   // useHierarchyStableScrollbar) — MUI's own floating scrollbar sizes itself
   // from only the currently-loaded ~100-row page, which visibly jumps on

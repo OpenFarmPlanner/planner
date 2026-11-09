@@ -1354,7 +1354,7 @@ const detailSectionGridSx = {
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('expected_yield')}>
                       <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
-                        {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {t('detail.units.kilograms')}
+                        {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>

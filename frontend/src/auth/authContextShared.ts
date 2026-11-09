@@ -8,6 +8,12 @@ export interface AuthContextValue {
   /** The session could not be checked because the server failed; says nothing about the session. */
   isAuthUnavailable: boolean;
   retryAuthCheck: () => Promise<void>;
+  /**
+   * The session has not been checked yet: public pages skip the startup
+   * `/auth/me/` probe, so a signed-in visitor looks signed out there until
+   * something calls `retryAuthCheck` (the login page does).
+   */
+  isSessionUnchecked: boolean;
   activeProjectId: number | null;
   login: (email: string, password: string) => Promise<AuthUser>;
   startGuestDemo: () => Promise<AuthUser>;

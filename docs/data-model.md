@@ -109,6 +109,11 @@ erDiagram
   without a `FieldLayout` (e.g. just added in the list view) is drawn next to
   the location's positioned fields (`placeFieldRects`); only when none has a
   position do all fields use the default stacked arrangement.
+  Inside a field, beds can only be placed in its usable area
+  (`getFieldUsableArea` in `graphicalFieldsGeometry.ts`): a border and the
+  label strip at the top stay free. The view paints that margin light grey
+  and the usable area white, from the same helper the placement clamp uses,
+  so drawing and placement rules cannot drift apart.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's

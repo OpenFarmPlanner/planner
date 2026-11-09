@@ -1,10 +1,14 @@
 import {
+  FIELD_INNER_BOTTOM_PADDING,
+  FIELD_INNER_OFFSET_X,
+  FIELD_INNER_OFFSET_Y,
   FIELD_SNAP_THRESHOLD,
   MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT,
   MOBILE_VIEWPORT_PADDING,
   SNAP_THRESHOLD,
   VIEWPORT_CONTROL_SAFE_AREA_RIGHT,
   VIEWPORT_PADDING,
+  getFieldUsableArea,
   getFitViewportPadding,
   snapToNeighbors,
   type RectViewModel,
@@ -202,5 +206,20 @@ describe('snapToNeighbors', () => {
     const result = snap({ x: 200, y: 200 }, [rect(2, 200, 200)]);
 
     expect(result).toMatchObject({ x: 200, y: 200 });
+  });
+});
+
+describe('getFieldUsableArea', () => {
+  it('keeps the border and the label strip free', () => {
+    expect(getFieldUsableArea({ width: 560, height: 220 })).toEqual({
+      x: FIELD_INNER_OFFSET_X,
+      y: FIELD_INNER_OFFSET_Y,
+      width: 560 - 2 * FIELD_INNER_OFFSET_X,
+      height: 220 - FIELD_INNER_OFFSET_Y - FIELD_INNER_BOTTOM_PADDING,
+    });
+  });
+
+  it('never reports a negative size for a field smaller than its margins', () => {
+    expect(getFieldUsableArea({ width: 10, height: 20 })).toMatchObject({ width: 0, height: 0 });
   });
 });

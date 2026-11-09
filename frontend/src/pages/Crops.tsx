@@ -264,6 +264,7 @@ function Crops() {
     setConfirmUpdates,
     handleImportFileTrigger,
     handleImportFileSelected,
+    importPreparing,
     handleExportCurrentCrop,
     handleExportAllCrops,
     handleOpenExportDialog,
@@ -1003,6 +1004,7 @@ function Crops() {
         open={importStartDialogOpen}
         onClose={() => setImportStartDialogOpen(false)}
         onFileSelected={(file) => void handleImportFileSelected(file)}
+        preparing={importPreparing}
         t={t}
       />
 

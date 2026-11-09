@@ -330,6 +330,9 @@ export function YieldDistributionChart({
         <Typography variant="h5" component="h2" sx={{ fontWeight: 700 }}>
           {t("chart.title")}
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {t("chart.subtitle")}
+        </Typography>
         <Box sx={{ my: 2 }}>
           <Box
             sx={{

@@ -70,6 +70,7 @@ import { buildClipboardRowValues, buildClipboardTableRows, type TableClipboardRo
 import { ContextMenuHint } from './ContextMenuHint';
 import { useContextMenuHint } from './useContextMenuHint';
 import { useDataGridCommandApi } from './hooks/useDataGridCommandApi';
+import { useCreatedRowPinning } from './hooks/useCreatedRowPinning';
 import { useDataGridDelete } from './hooks/useDataGridDelete';
 import { useDataGridRowActionMenu } from './hooks/useDataGridRowActionMenu';
 import { useDataGridRowCommands } from './hooks/useDataGridRowCommands';
@@ -235,8 +236,11 @@ export function EditableDataGrid<T extends EditableRow>({
   onColumnsPanelOpenChange,
   columnsPanelAnchorEl,
   externalFilter,
+  pinCreatedRowsToTop = false,
 }: EditableDataGridProps<T>) {
   const gridApiRef = useGridApiRef();
+  const createdRowPinning = useCreatedRowPinning();
+  const { pinnedRowKeys: createdRowKeys } = createdRowPinning;
 
   useEffect(() => {
     const api = gridApiRef.current;
@@ -335,10 +339,15 @@ export function EditableDataGrid<T extends EditableRow>({
       return orderedRows;
     }
     const pinnedRowIds = new Set(editingHiddenRowKey ? editingHiddenRowKey.split(',') : []);
+    // A just-created row stays visible even when it fails the filter, so the
+    // user sees what they saved; the filter itself is left untouched.
     return orderedRows.filter((row) => (
-      row.isNew || pinnedRowIds.has(String(row.id)) || isExternallyVisible(row)
+      row.isNew
+      || pinnedRowIds.has(String(row.id))
+      || createdRowKeys.has(String(row.id))
+      || isExternallyVisible(row)
     ));
-  }, [editingHiddenRowKey, isExternallyVisible, orderedRows]);
+  }, [createdRowKeys, editingHiddenRowKey, isExternallyVisible, orderedRows]);
   // The hook balances this cap down so the last internal page is never a stub
   // the grid would shrink itself down to.
   const scrollDrivenRowWindow = useScrollDrivenRowWindow(
@@ -498,9 +507,11 @@ export function EditableDataGrid<T extends EditableRow>({
     continuousScrollLayoutHeights.header,
   );
 
+  const clearCreatedRowPins = createdRowPinning.clear;
   const refreshStableRowOrder = useCallback((sourceRows: readonly T[], model: GridSortModel = sortModel): void => {
+    clearCreatedRowPins();
     setStableRowOrder(getSortedRowIds(sourceRows, model));
-  }, [sortModel]);
+  }, [clearCreatedRowPins, sortModel]);
 
   const saveUpdatedRow = useCallback(async (updatedRow: T): Promise<T> => {
     const numericId = Number(updatedRow.id);
@@ -1224,6 +1235,30 @@ export function EditableDataGrid<T extends EditableRow>({
     recoverSameRowNavigationFromTabEvent,
   ]);
 
+  const rowModesModelRef = useRef(rowModesModel);
+  useEffect(() => {
+    rowModesModelRef.current = rowModesModel;
+  }, [rowModesModel]);
+  /**
+   * Brings a row just pinned to the top into view. Skipped when the save was
+   * triggered by moving into another row: scrolling away would pull that row
+   * out from under the user.
+   */
+  const scrollToTopUnlessEditingElsewhere = useCallback((savedDraftKey: string): void => {
+    window.setTimeout(() => {
+      const isEditingElsewhere = Object.entries(rowModesModelRef.current).some(
+        ([rowKey, mode]) => mode.mode === GridRowModes.Edit && rowKey !== savedDraftKey,
+      );
+      if (isEditingElsewhere) {
+        return;
+      }
+      if (isContinuousScroll) {
+        scrollDrivenRowWindow.ensureRowIndexVisible(0);
+      }
+      gridApiRef.current?.scrollToIndexes?.({ rowIndex: 0 });
+    }, 0);
+  }, [gridApiRef, isContinuousScroll, scrollDrivenRowWindow]);
+
   const saveResolvedRow = useCallback(async (rowAfterSaveGate: T): Promise<T> => {
     const rowKey = String(rowAfterSaveGate.id);
     // Validate required fields
@@ -1257,9 +1292,18 @@ export function EditableDataGrid<T extends EditableRow>({
           // Add the saved row at the beginning
           return [savedRow, ...filteredRows];
         });
-        setStableRowOrder((previousOrder) =>
-          previousOrder.map((orderedId) => (String(orderedId) === rowKey ? savedRow.id : orderedId)),
-        );
+        if (pinCreatedRowsToTop) {
+          setStableRowOrder((previousOrder) => [
+            savedRow.id,
+            ...previousOrder.filter((orderedId) => String(orderedId) !== rowKey),
+          ]);
+          createdRowPinning.pin(savedRow.id);
+          scrollToTopUnlessEditingElsewhere(rowKey);
+        } else {
+          setStableRowOrder((previousOrder) =>
+            previousOrder.map((orderedId) => (String(orderedId) === rowKey ? savedRow.id : orderedId)),
+          );
+        }
         clearSavedRowInteractionState(rowAfterSaveGate.id, savedRow.id);
 
         return savedRow;
@@ -1292,12 +1336,15 @@ export function EditableDataGrid<T extends EditableRow>({
   }, [
     api,
     clearSavedRowInteractionState,
+    createdRowPinning,
     getRowValidationErrors,
     getSaveErrorAction,
     isSaveErrorHandled,
     mapToApiData,
     mapToRow,
+    pinCreatedRowsToTop,
     saveErrorMessage,
+    scrollToTopUnlessEditingElsewhere,
     setRowFieldErrors,
     t,
     validateRow,
@@ -2742,6 +2789,9 @@ export function EditableDataGrid<T extends EditableRow>({
             }
             if (longPressFeedbackRowId !== null && String(longPressFeedbackRowId) === rowKey) {
               classNames.push('ofp-row-long-press');
+            }
+            if (createdRowPinning.flashingRowKey === rowKey) {
+              classNames.push('ofp-row-created');
             }
             return classNames.join(' ');
           }}
