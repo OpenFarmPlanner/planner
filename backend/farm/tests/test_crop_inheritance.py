@@ -62,6 +62,16 @@ class CropInheritanceTest(TestCase):
         defaults.update(kwargs)
         return Crop.objects.create(**defaults)
 
+    def test_seed_type_is_never_inherited(self):
+        self.assertNotIn('seed_type', CROP_INHERITABLE_FIELDS)
+        self.general.seed_type = 'f1_hybrid'
+        Crop.objects.filter(pk=self.general.pk).update(seed_type='f1_hybrid')
+        variety = self._variety()
+
+        self.assertEqual(resolve_crop_field(variety, 'seed_type'), '')
+        self.assertNotIn('seed_type', build_inherited_crop_values(variety))
+        self.assertNotIn('seed_type', build_effective_crop_values(variety))
+
     def test_unset_detection_treats_zero_and_false_as_values(self):
         self.assertTrue(is_unset_crop_value(None))
         self.assertTrue(is_unset_crop_value(''))

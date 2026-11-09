@@ -24,6 +24,39 @@ from farm.services.crop_import.units import (
 )
 
 
+class SeedTypeImportTest(TestCase):
+    """``seed_type`` is an optional enum and never read off the variety name."""
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Seed Type Project', slug='seed-type-project')
+
+    def _row(self, **kwargs):
+        row = {
+            'name': 'Tomate', 'variety': 'Sacher F1',
+            'growth_duration_days': 70, 'harvest_duration_days': 30,
+        }
+        row.update(kwargs)
+        return analyze_import_payload([row], project=self.project)['items'][0]
+
+    @staticmethod
+    def _field(item):
+        return next((entry for entry in item['fields'] if entry['field'] == 'seed_type'), None)
+
+    def test_valid_value_is_accepted(self):
+        item = self._row(seed_type='f1_hybrid')
+
+        self.assertEqual(item['errors'], [])
+        self.assertEqual(self._field(item)['api_value'], 'f1_hybrid')
+
+    def test_invalid_value_blocks_the_row(self):
+        item = self._row(seed_type='hybrid')
+
+        self.assertEqual(item['action'], ACTION_BLOCKED)
+
+    def test_f1_in_the_name_sets_nothing(self):
+        self.assertIsNone(self._field(self._row()))
+
+
 class ImportAnalysisTestCase(TestCase):
     """Base with one project and small helpers for reading a preview."""
 

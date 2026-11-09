@@ -41,6 +41,7 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
   {
     name: t('import.template.speciesName'),
     variety: t('import.template.varietyName'),
+    seed_type: 'open_pollinated',
     seed_supplier: t('import.template.supplierName'),
     growth_duration_days: 72,
     expected_yield: 4.5,

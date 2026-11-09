@@ -203,6 +203,7 @@ const EMPTY_CROP: Partial<Crop> = {
   variety: '',
   timing_windows: [],
   crop_family: null,
+  seed_type: '',
   nutrient_demand: '',
   cultivation_type: 'pre_cultivation',
   cultivation_types: ['pre_cultivation'],
@@ -319,6 +320,7 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   origin_type: 'imported',
   is_modified_from_source: false,
   crop_family: publicCrop.crop_family ?? null,
+  seed_type: publicCrop.seed_type ?? '',
   nutrient_demand: publicCrop.nutrient_demand ?? '',
   cultivation_type: publicCrop.cultivation_type || 'pre_cultivation',
   cultivation_types: publicCrop.cultivation_types?.length ? publicCrop.cultivation_types : ['pre_cultivation'],
@@ -509,6 +511,10 @@ export function CropForm({
     // untouched stored name.
     if (crop?.crop_species && dataToSave.name === (crop.crop_display_name ?? crop.name)) {
       dataToSave.name = crop.name;
+    }
+    // A library pick can fill a variety entry's seed type into a Kultur, which holds none.
+    if (!(dataToSave.variety ?? '').trim()) {
+      dataToSave.seed_type = '';
     }
     const trimmedFirstVarietyName = firstVarietyName.trim();
     const firstVarietyDraft = firstVarietyPublicCrop && normalizeIdentityValue(firstVarietyPublicCrop.variety) === normalizeIdentityValue(trimmedFirstVarietyName)

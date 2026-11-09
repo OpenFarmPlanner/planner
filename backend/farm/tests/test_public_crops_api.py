@@ -36,12 +36,17 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import get_general_crop
 from farm.services.public_crops import (
+    _apply_public_crop_update,
     build_public_crop_payload,
+    build_public_crop_snapshot,
+    ensure_general_public_crop,
     ensure_public_crop_revision,
+    find_general_public_crop,
     has_pending_public_crop_update,
     is_project_crop_up_to_date,
     link_project_crop_to_public_reference,
     public_crop_update_changes,
+    restore_public_crop_version,
     update_public_crop_directly,
 )
 from farm.tests.api_base import User
@@ -5537,6 +5542,140 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'public_crop_not_linked')
+
+
+class PublicCropSeedTypeTest(DRFAPITestCase):
+    """``seed_type`` travels with variety entries and never touches a species-level one."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='seed-type-user', email='seed-type@example.com',
+            password='testpass', is_active=True,
+        )
+        self.project = Project.objects.create(name='Seed Type Project', slug='seed-type-project')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        grant_established_trust(self.user)
+        record_acceptance(self.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
+        self.species = CropSpecies.objects.create(name='Tomato')
+        self.sorte = Crop.objects.create(
+            name='Tomate', variety='Sacher', crop_species=self.species, seed_type='f1_hybrid',
+            growth_duration_days=70, harvest_duration_days=30, project=self.project,
+        )
+
+    def _entry(self, variety: str = '', **kwargs) -> PublicCrop:
+        return PublicCrop.objects.create(
+            name='Tomate', variety=variety, status=PublicCrop.STATUS_PUBLISHED,
+            crop_species=self.species, created_by=self.user,
+            growth_duration_days=70, harvest_duration_days=30, **kwargs,
+        )
+
+    def _linked_to(self, entry: PublicCrop, **kwargs) -> Crop:
+        Crop.objects.filter(pk=self.sorte.pk).update(
+            source_public_crop=entry, source_public_version=entry.version, **kwargs,
+        )
+        self.sorte.refresh_from_db()
+        return self.sorte
+
+    def test_variety_payload_carries_the_seed_type(self):
+        self.assertEqual(build_public_crop_payload(self.sorte)['seed_type'], 'f1_hybrid')
+
+    def test_species_level_payload_never_carries_the_seed_type(self):
+        payload = build_public_crop_payload(self.sorte, public_variety='')
+
+        self.assertEqual(payload['seed_type'], '')
+
+    def test_auto_created_species_entry_stays_blank(self):
+        ensure_general_public_crop(
+            crop_species=self.species, crop=self.sorte, original_language_code='de', user=self.user,
+        )
+
+        self.assertEqual(find_general_public_crop(self.species).seed_type, '')
+
+    def test_sorte_on_a_species_level_entry_shows_no_seed_type_diff(self):
+        sorte = self._linked_to(self._entry())
+
+        self.assertNotIn('seed_type', [change[0] for change in public_crop_update_changes(sorte)])
+        preview = self.client.get(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': sorte.source_public_crop_id},
+        )
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        self.assertNotIn('seed_type', {change['field'] for change in preview.data['changes']})
+
+    def test_seed_type_cannot_be_pushed_to_a_species_level_entry(self):
+        sorte = self._linked_to(self._entry())
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': sorte.source_public_crop_id, 'push_fields': ['seed_type']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(sorte.source_public_crop.seed_type, '')
+
+    def test_update_from_a_species_level_entry_keeps_the_sorte_seed_type(self):
+        sorte = self._linked_to(self._entry())
+
+        _apply_public_crop_update(crop=sorte, public_crop=sorte.source_public_crop)
+
+        sorte.refresh_from_db()
+        self.assertEqual(sorte.seed_type, 'f1_hybrid')
+
+    def test_variety_entry_difference_is_a_normal_update(self):
+        entry = self._entry(variety='Sacher', seed_type='open_pollinated')
+        sorte = self._linked_to(entry)
+
+        self.assertIn(
+            ('seed_type', 'f1_hybrid', 'open_pollinated'),
+            public_crop_update_changes(sorte),
+        )
+
+    def test_unknown_seed_type_cannot_overwrite_the_library_value(self):
+        entry = self._entry(variety='Sacher', seed_type='f1_hybrid')
+        sorte = self._linked_to(entry, seed_type='')
+
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
+            {'public_crop_id': entry.id, 'push_fields': ['seed_type']},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        entry.refresh_from_db()
+        self.assertEqual(entry.seed_type, 'f1_hybrid')
+
+    def test_restoring_a_revision_from_before_the_field_blanks_it(self):
+        entry = self._entry(variety='Sacher', seed_type='f1_hybrid', version=2)
+        current = build_public_crop_snapshot(entry)
+        older = {field: value for field, value in current.items() if field != 'seed_type'}
+        PublicCropRevision.objects.create(
+            public_crop=entry, version=1, action=PublicCropRevision.ACTION_CREATED, snapshot=older,
+        )
+        PublicCropRevision.objects.create(
+            public_crop=entry, version=2, action=PublicCropRevision.ACTION_UPDATED,
+            snapshot=current,
+        )
+
+        restored = restore_public_crop_version(public_crop=entry, user=self.user, version=1)
+
+        self.assertEqual(restored.seed_type, '')
+
+    def test_direct_edit_rejects_seed_type_on_a_species_level_entry(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+        entry = self._entry()
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/public-crops/{entry.id}/',
+            {'seed_type': 'f1_hybrid', 'base_version': entry.version},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('seed_type', response.data)
 
 
 class PublicCropUnlinkApiTest(DRFAPITestCase):

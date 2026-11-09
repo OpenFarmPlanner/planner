@@ -7,6 +7,7 @@ import { buildPlantFamilyFilterOptions, usePlantFamilies } from './plantFamilies
 import { FilterNumberField } from '../components/filters/FilterNumberField';
 import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../components/filters/FilterSelectField';
+import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_FILTER, SEED_TYPE_UNKNOWN_LABEL_KEY } from './seedType';
 
 const FULL_WIDTH_ROW = { gridColumn: '1 / -1' } as const;
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -30,7 +31,7 @@ interface CropFiltersPopoverProps {
 
 /**
  * Presentational advanced-filters popover for the crop selector
- * (family, tag, cultivation type, nutrient demand, supplier, growth days,
+ * (family, tag, cultivation type, nutrient demand, seed type, supplier, growth days,
  * yield, sowing month). All filter state lives in CropDetail.tsx.
  */
 export function CropFiltersPopover({
@@ -112,6 +113,18 @@ export function CropFiltersPopover({
         <MenuItem value="low">{t('filters.nutrientLow')}</MenuItem>
         <MenuItem value="medium">{t('filters.nutrientMedium')}</MenuItem>
         <MenuItem value="high">{t('filters.nutrientHigh')}</MenuItem>
+      </FilterSelectField>
+      <FilterSelectField
+        id="crop-seed-type-filter"
+        label={t('form.seedType')}
+        value={filters.selectedSeedTypeFilter}
+        onChange={(event) => onFilterChange('selectedSeedTypeFilter', event.target.value as string)}
+      >
+        <MenuItem value="">{t('filters.all')}</MenuItem>
+        {SEED_TYPE_OPTIONS.map((option) => (
+          <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
+        ))}
+        <MenuItem value={SEED_TYPE_UNKNOWN_FILTER}>{t(SEED_TYPE_UNKNOWN_LABEL_KEY)}</MenuItem>
       </FilterSelectField>
       <FilterSelectField
         id="crop-supplier-filter"

@@ -129,7 +129,7 @@ def _timing_window_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
 # Read-only and auto-generated fields are excluded: a diff is only useful for
 # values the import could actually change.
 _COMPARABLE_FIELDS = [
-    'name', 'variety', 'notes', 'seed_supplier', 'botanical_name',
+    'name', 'variety', 'seed_type', 'notes', 'seed_supplier', 'botanical_name',
     'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types', 'tags',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
     'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',

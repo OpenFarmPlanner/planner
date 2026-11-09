@@ -1,10 +1,12 @@
 import type { PublicCrop } from '../api/types';
+import { matchesSeedTypeFilter } from '../crops/seedType';
 
 export interface PublicCropFilterState {
   cropFamily: string;
   cultivationType: string;
   nutrientDemand: string;
   variety: string;
+  seedType: string;
   growthDaysMin: string;
   growthDaysMax: string;
   yieldMin: string;
@@ -16,6 +18,7 @@ export const EMPTY_PUBLIC_CROP_FILTERS: PublicCropFilterState = {
   cultivationType: '',
   nutrientDemand: '',
   variety: '',
+  seedType: '',
   growthDaysMin: '',
   growthDaysMax: '',
   yieldMin: '',
@@ -73,5 +76,7 @@ export function matchesPublicCropFilters(crop: PublicCrop, filters: PublicCropFi
     && (parsedYieldMax === null || (yieldValue !== null && yieldValue <= parsedYieldMax))
   );
 
-  return familyMatches && varietyMatches && nutrientMatches && cultivationMatches && growthMatches && yieldMatches;
+  const seedTypeMatches = matchesSeedTypeFilter(crop, filters.seedType);
+
+  return familyMatches && varietyMatches && seedTypeMatches && nutrientMatches && cultivationMatches && growthMatches && yieldMatches;
 }

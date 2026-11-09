@@ -91,6 +91,7 @@ _PAYLOAD_FIELD_BY_ATTNAME = {
 CROP_COPY_FIELDS = [
     'name',
     'variety',
+    'seed_type',
     'notes',
     'botanical_name',
     'crop_family',
@@ -129,6 +130,7 @@ COMPANIONS_FIELD = 'companions'
 
 PUBLIC_CROP_EDITABLE_FIELDS = [
     'variety',
+    'seed_type',
     'notes',
     'botanical_name',
     'crop_family',
@@ -161,6 +163,10 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'seed_packages',
     'companions',
 ]
+
+# Traits of one variety: a species-level entry never holds them, so they are
+# neither published to, compared with, nor pulled from one.
+VARIETY_ONLY_COPY_FIELDS = frozenset({'seed_type'})
 
 # Kept as a module-level name for existing importers; the supported set
 # itself now lives in config.languages so UI and content stay in sync.
@@ -361,6 +367,11 @@ class PublicCropRevisionNotFoundError(Exception):
         super().__init__(message)
         self.message = message
         self.code = 'public_crop_revision_not_found'
+
+
+def is_species_level_entry(public_crop: PublicCrop) -> bool:
+    """Whether ``public_crop`` describes the crop species rather than one variety."""
+    return not (public_crop.variety or '').strip()
 
 
 def _copy_fields(instance: Any) -> dict[str, Any]:
@@ -803,7 +814,7 @@ def restore_public_crop_version(
             if field in PLANT_FAMILY_REFERENCE_FIELDS:
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
-            if field == 'botanical_name' and value is None:
+            if field in {'botanical_name', 'seed_type'} and value is None:
                 # Versions saved before the field existed carry no key; the
                 # column is a non-null blank-able string.
                 value = ''
@@ -895,6 +906,7 @@ def build_public_crop_payload(
 
     is_general_entry = not (payload['variety'] or '').strip()
     if is_general_entry:
+        payload.update(dict.fromkeys(VARIETY_ONLY_COPY_FIELDS, ''))
         general_source = source_crop or get_general_crop(crop) or crop
         # Only the species-level entry carries neighbours, taken from the Kultur;
         # pinned ones stay local (an update keeps the entry's list).
@@ -1123,7 +1135,7 @@ def link_project_crop_to_public_reference(
             # the private crop naming a specific cultivar is an inherent
             # granularity difference between the two, not a sign the user edited
             # anything relative to the source it's being linked to.
-            tracked_fields = tracked_fields - {'variety'}
+            tracked_fields = tracked_fields - {'variety'} - VARIETY_ONLY_COPY_FIELDS
 
         crop.crop_species = public_crop.crop_species
         if pull_fields is not None:
@@ -1349,8 +1361,11 @@ def _sync_compared_fields(
     fields = _compared_public_update_fields(
         _sync_comparison_crop(crop, public_crop), include_pinned=include_pinned,
     )
-    if not (public_crop.variety or '').strip():
-        fields = [field for field in fields if field != 'variety']
+    if is_species_level_entry(public_crop):
+        fields = [
+            field for field in fields
+            if field != 'variety' and field not in VARIETY_ONLY_COPY_FIELDS
+        ]
     if not _compares_companions(crop, public_crop):
         fields = [field for field in fields if field != COMPANIONS_FIELD]
     return fields
@@ -1661,8 +1676,11 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     local = _comparable_copy_fields(_resolved_copy_fields(local_crop))
     remote = _comparable_copy_fields(_copy_fields(entry))
     fields = _compared_public_update_fields(local_crop)
-    if not (entry.variety or '').strip():
-        fields = [field for field in fields if field != 'variety']
+    if is_species_level_entry(entry):
+        fields = [
+            field for field in fields
+            if field != 'variety' and field not in VARIETY_ONLY_COPY_FIELDS
+        ]
     if COMPANIONS_FIELD in fields:
         if _compares_companions(local_crop, entry):
             _add_companion_values(local, remote, local_crop, entry)
@@ -3166,6 +3184,9 @@ def _apply_public_crop_update(
     # (see `_compared_public_update_fields`), so a pull must not silently
     # overwrite it either.
     payload.pop('display_color', None)
+    if is_species_level_entry(public_crop):
+        for field in VARIETY_ONLY_COPY_FIELDS:
+            payload.pop(field, None)
     # A crop the user *published* is linked to its own entry the same way an
     # import is, but pulling a later library change into it must not relabel it
     # as imported — `origin_type` stays whatever it was. Provenance is where the
@@ -3274,6 +3295,8 @@ def public_crop_field_changes(
     local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(public_crop))
     fields = _compared_public_update_fields(crop, include_pinned=include_pinned)
+    if is_species_level_entry(public_crop):
+        fields = [field for field in fields if field not in VARIETY_ONLY_COPY_FIELDS]
     if COMPANIONS_FIELD in fields:
         if _compares_companions(crop, public_crop):
             _add_companion_values(local, remote, crop, public_crop)

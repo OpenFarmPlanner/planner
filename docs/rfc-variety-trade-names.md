@@ -263,6 +263,9 @@ the folded name without step 3.
 
 Traits differ by species: fruit colour means something for tomatoes and
 squash, but nothing for lettuce. We still do not want a schema per species.
+`seed_type` (open-pollinated / F1 hybrid) applies to every species, so it is a
+plain column, not a trait; see
+[Seed type](crop-library-architecture.md#seed-type-saatguttyp).
 
 | Option | Pros | Cons |
 | --- | --- | --- |

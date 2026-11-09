@@ -1382,6 +1382,54 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             growth_duration_days=65,
         )
 
+    def test_seed_type_is_set_on_a_sorte_and_defaults_to_blank(self):
+        url = f'/openfarmplanner/api/crops/{self.sorte.id}/'
+        self.assertEqual(self.client.get(url).data['seed_type'], '')
+
+        response = self.client.patch(url, {'seed_type': 'open_pollinated'}, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.sorte.refresh_from_db()
+        self.assertEqual(self.sorte.seed_type, 'open_pollinated')
+
+    def test_seed_type_is_rejected_on_a_general_kultur(self):
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.general.id}/',
+            {'seed_type': 'f1_hybrid'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('seed_type', response.data)
+        self.general.refresh_from_db()
+        self.assertEqual(self.general.seed_type, '')
+
+    def test_seed_type_rejects_an_unknown_value(self):
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.sorte.id}/',
+            {'seed_type': 'unknown'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('seed_type', response.data)
+
+    def test_seed_type_is_not_derived_from_the_variety_name(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crops/',
+            {
+                'name': 'Karotte',
+                'variety': 'Nerac F1',
+                'crop_species': self.species.id,
+                'growth_duration_days': 65,
+                'harvest_duration_days': 14,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['seed_type'], '')
+
     def _row(self, crop: Crop) -> dict:
         response = self.client.get(f'/openfarmplanner/api/crops/{crop.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)

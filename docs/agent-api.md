@@ -391,7 +391,8 @@ defined in `farm/services/crop_import/field_specs.py`, exposed through
 than rounded. Gram-based units remain decimal-capable.
 
 Enums: `nutrient_demand` (`low`/`medium`/`high`), `harvest_method`
-(`per_plant`/`per_sqm`), `cultivation_types`
+(`per_plant`/`per_sqm`), `seed_type` (`open_pollinated`/`f1_hybrid`, empty means
+unknown, rejected on a row without a variety), `cultivation_types`
 (`pre_cultivation`/`direct_sowing`). German spellings (`hoch`, `Anzucht`,
 `Direktsaat`) are normalized; anything else is rejected.
 

@@ -11,6 +11,7 @@ import {
   formatSowingDepth,
   formatNumber,
 } from './cropDetailFormatters';
+import { getSeedTypeLabel } from './seedType';
 import { areCropValuesEqual, isEmptyCropValue } from './varietyValueSource';
 
 type TranslateFn = (key: string) => string;
@@ -64,6 +65,12 @@ export const CROP_COMPARISON_FIELDS: CropComparisonField[] = [
     format: (crop, _t, _locale, context) => (
       context.getPlantFamilyName?.(crop.crop_family) ?? crop.crop_family ?? ''
     ),
+  },
+  {
+    id: 'seedType',
+    keys: ['seed_type'],
+    labelKey: 'form.seedType',
+    format: (crop, t) => (crop.seed_type ? getSeedTypeLabel(crop.seed_type, t) : ''),
   },
   {
     id: 'nutrientDemand',

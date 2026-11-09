@@ -289,9 +289,23 @@ class Crop(TimestampedModel):
         ('per_sqm', 'Per m²'),
     ]
 
+    SEED_TYPE_CHOICES = [
+        ('open_pollinated', 'Open-pollinated'),
+        ('f1_hybrid', 'F1 hybrid'),
+    ]
+
     # Basic information.
     name = models.CharField(max_length=200)
     variety = models.CharField(max_length=200)
+    seed_type = models.CharField(
+        max_length=20,
+        choices=SEED_TYPE_CHOICES,
+        blank=True,
+        help_text=(
+            'Whether this Sorte is open-pollinated or an F1 hybrid. Blank means unknown. '
+            'Set on Sorten only, never inherited from the Kultur or derived from the name.'
+        ),
+    )
     # Use growth_duration_days instead of days_to_harvest.
     notes = models.TextField(blank=True)
     seed_supplier = models.CharField(
@@ -617,6 +631,7 @@ class Crop(TimestampedModel):
         self._clean_seed_rates(errors)
         self._clean_selected_seed_demand_supplier(errors)
         self._clean_display_color(errors)
+        self._clean_seed_type(errors)
         if errors:
             raise ValidationError(errors)
 
@@ -738,13 +753,18 @@ class Crop(TimestampedModel):
         if self.selected_seed_demand_supplier_id and self.project_id and self.selected_seed_demand_supplier.project_id != self.project_id:
             errors['selected_seed_demand_supplier'] = 'Selected seed demand supplier must belong to the same project.'
 
+    def _clean_seed_type(self, errors: dict[str, str]) -> None:
+        if self.seed_type and not (self.variety or '').strip():
+            errors['seed_type'] = 'Seed type can only be set on a variety.'
+
     def _clean_display_color(self, errors: dict[str, str]) -> None:
         if self.display_color and not DISPLAY_COLOR_PATTERN.match(self.display_color):
             errors['display_color'] = 'Display color must be in hex format (#RRGGBB).'
 
     # Fields whose change marks an imported crop as diverged from its source.
     _SOURCE_DIVERGENCE_TRACKED_FIELDS = {
-        'name', 'variety', 'notes', 'botanical_name', 'crop_family_id', 'nutrient_demand', 'cultivation_types',
+        'name', 'variety', 'seed_type', 'notes', 'botanical_name', 'crop_family_id',
+        'nutrient_demand', 'cultivation_types',
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
         'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
         'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
@@ -1212,6 +1232,15 @@ class PublicCrop(TimestampedModel):
         help_text=LEGACY_CROP_FAMILY_HELP_TEXT,
     )
     nutrient_demand = models.CharField(max_length=20, choices=Crop.NUTRIENT_DEMAND_CHOICES, blank=True)
+    seed_type = models.CharField(
+        max_length=20,
+        choices=Crop.SEED_TYPE_CHOICES,
+        blank=True,
+        help_text=(
+            'Open-pollinated or F1 hybrid. Blank means unknown; '
+            'always blank on a species-level entry.'
+        ),
+    )
     cultivation_types = models.JSONField(default=list, blank=True)
     cultivation_type = models.CharField(max_length=30, choices=Crop.CULTIVATION_TYPE_CHOICES, blank=True)
     growth_duration_days = models.IntegerField(null=True, blank=True)

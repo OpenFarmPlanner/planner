@@ -56,6 +56,10 @@ export function normalizeHarvestMethod(value: unknown): Crop['harvest_method'] {
   return map[normalized] ?? '';
 }
 
+export function normalizeSeedType(value: unknown): Crop['seed_type'] {
+  return value === 'open_pollinated' || value === 'f1_hybrid' ? value : '';
+}
+
 export function normalizeNutrientDemand(value: unknown): Crop['nutrient_demand'] {
   if (value === null || value === undefined) return '';
   const normalized = String(value).trim().toLowerCase();

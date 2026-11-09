@@ -197,6 +197,8 @@ describe('formatHistoryChangeValue', () => {
     expect(value('per_sqm', 'harvest_method')).toBe('Pro m²');
     expect(value('per_plant', 'harvest_method')).toBe('Pro Pflanze');
     expect(value('high', 'nutrient_demand')).toBe('Starkzehrer');
+    expect(value('f1_hybrid', 'seed_type')).toBe('F1-Hybrid');
+    expect(value('open_pollinated', 'seed_type')).toBe('Samenfest');
   });
 
   it('passes an unknown enum token through rather than blanking the row', () => {

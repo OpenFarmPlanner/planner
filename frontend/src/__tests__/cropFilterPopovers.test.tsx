@@ -111,6 +111,7 @@ describe('CropFiltersPopover', () => {
       'Tags',
       'Anbauart',
       'Nährstoffbedarf',
+      'Saatguttyp',
       'Lieferant',
       'Wachstumsdauer min',
       'Wachstumsdauer max',
@@ -230,6 +231,19 @@ describe('CropFiltersPopover', () => {
       const { onFilterChange } = renderPrivate();
       await pick(user, 'Nährstoffbedarf', label);
       expect(onFilterChange).toHaveBeenCalledWith('selectedNutrientFilter', value);
+    });
+  });
+
+  describe('the seed-type filter', () => {
+    it.each([
+      ['Samenfest', 'open_pollinated'],
+      ['F1-Hybrid', 'f1_hybrid'],
+      ['Unbekannt', 'unknown'],
+    ])('writes %s as %s', async (label, value) => {
+      const user = userEvent.setup();
+      const { onFilterChange } = renderPrivate();
+      await pick(user, 'Saatguttyp', label);
+      expect(onFilterChange).toHaveBeenCalledWith('selectedSeedTypeFilter', value);
     });
   });
 

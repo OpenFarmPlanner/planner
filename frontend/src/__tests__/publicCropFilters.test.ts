@@ -197,3 +197,33 @@ describe('matchesPublicCropFilters', () => {
     expect(matchesPublicCropFilters(crop({ crop_family: 'Nachtschatten', variety: 'Cherry' }), both)).toBe(false);
   });
 });
+
+describe('seed type filter', () => {
+  const sorte = (seed_type: PublicCrop['seed_type']): PublicCrop => crop({ variety: 'Sacher', seed_type });
+
+  it('counts as an active filter', () => {
+    expect(countActivePublicCropFilters(filters({ seedType: 'f1_hybrid' }))).toBe(1);
+  });
+
+  it('matches only the chosen type, so an unknown Sorte is not treated as a different one', () => {
+    const f1 = filters({ seedType: 'f1_hybrid' });
+    expect(matchesPublicCropFilters(sorte('f1_hybrid'), f1)).toBe(true);
+    expect(matchesPublicCropFilters(sorte('open_pollinated'), f1)).toBe(false);
+    expect(matchesPublicCropFilters(sorte(''), f1)).toBe(false);
+  });
+
+  it('finds Sorten without a seed type through the unknown option', () => {
+    const unknown = filters({ seedType: 'unknown' });
+    expect(matchesPublicCropFilters(sorte(''), unknown)).toBe(true);
+    expect(matchesPublicCropFilters(sorte(undefined), unknown)).toBe(true);
+    expect(matchesPublicCropFilters(sorte('f1_hybrid'), unknown)).toBe(false);
+  });
+
+  it('never matches a species-level row while the filter is active', () => {
+    expect(matchesPublicCropFilters(crop({ variety: '', seed_type: '' }), filters({ seedType: 'unknown' }))).toBe(false);
+  });
+
+  it('leaves every row in when the filter is off', () => {
+    expect(matchesPublicCropFilters(crop({ variety: '' }), filters())).toBe(true);
+  });
+});

@@ -4,6 +4,7 @@ import {
   normalizeCultivationType,
   normalizeHarvestMethod,
   normalizeNutrientDemand,
+  normalizeSeedType,
   normalizeSeedingRequirementType,
   normalizeSeedRateUnit,
 } from './enumNormalization';
@@ -71,6 +72,7 @@ export function publicCropToCropFormData(crop: PublicCrop): Crop {
     variety: crop.variety ?? '',
     notes: originalNotes,
     crop_family: crop.crop_family ?? null,
+    seed_type: crop.seed_type ?? '',
     nutrient_demand: crop.nutrient_demand ?? '',
     cultivation_type: crop.cultivation_type || cultivationTypes[0] || 'pre_cultivation',
     cultivation_types: cultivationTypes,
@@ -147,6 +149,8 @@ export function buildPublicCropUpdatePayload(
     variety: draft.variety ?? '',
     notes: draft.notes ?? '',
     crop_family: draft.crop_family || null,
+    // A blank variety marks the species-level entry, which holds no seed type.
+    seed_type: draft.variety?.trim() ? normalizeSeedType(draft.seed_type) : '',
     nutrient_demand: normalizeNutrientDemand(draft.nutrient_demand),
     cultivation_type: normalizeCultivationType(draft.cultivation_type),
     cultivation_types: cultivationTypes,

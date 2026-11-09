@@ -21,6 +21,7 @@ const textFields = [
 ] as const satisfies readonly (keyof Crop)[];
 
 const enumFields = [
+  'seed_type',
   'nutrient_demand',
   'harvest_method',
   'seeding_requirement_type',

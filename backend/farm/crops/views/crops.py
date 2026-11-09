@@ -56,6 +56,7 @@ from farm.models import (
 from farm.services.crop_import.field_specs import seed_rate_unit_constraints_payload
 from farm.services.crop_import.spreadsheet import apply_crop_import, preview_crop_import
 from farm.services.public_crops import (
+    VARIETY_ONLY_COPY_FIELDS,
     DuplicatePublicCropError,
     LibraryPinnedFieldsError,
     PublicCropEditConflictError,
@@ -73,6 +74,7 @@ from farm.services.public_crops import (
     find_owned_public_crop_for_update,
     link_project_crop_to_public_reference,
     notify_moderators_of_change_proposal,
+    is_species_level_entry,
     publish_crop_to_public_library,
     reject_public_crop_update,
     sync_crop_with_public_entry,
@@ -599,6 +601,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 proposed_data = {
                     field: value for field, value in payload.items()
                     if field in PUBLIC_CROP_PROPOSABLE_FIELDS
+                    and not (
+                        is_species_level_entry(public_crop)
+                        and field in VARIETY_ONLY_COPY_FIELDS
+                    )
                 }
             else:
                 summary = truncate_proposal_summary(

@@ -172,6 +172,10 @@ Kultur of the same species. Nothing is copied:
   stored on the Kultur when it fills a gap there and rejected when it
   contradicts it.
 
+`seed_type` (`open_pollinated`, `f1_hybrid`, or `''` for unknown) is a Sorte-only
+field: it is rejected on a general crop and never inherited, so it does not
+appear in `effective_values`.
+
 ## Plant families
 
 `crop_family` is the **botanical name** of a family from the curated list at

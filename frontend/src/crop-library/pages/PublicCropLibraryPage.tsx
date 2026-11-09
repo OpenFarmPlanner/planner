@@ -97,6 +97,7 @@ import {
   publicCropMatchesSearchQuery,
 } from '../../crops/publicCropSearchMatch';
 import { PublicCropFiltersPopover } from '../components/PublicCropFiltersPopover';
+import { getSeedTypeLabel } from '../../crops/seedType';
 import {
   EMPTY_PUBLIC_CROP_FILTERS,
   countActivePublicCropFilters,
@@ -1882,6 +1883,9 @@ export default function PublicCropLibraryPage() {
                           <DetailRow label={t('library.page.fields.cropSpecies')} value={selectedCropName.text || t('library.page.notSpecified')} />
                           {!isSpeciesView ? (
                             <DetailRow label={t('library.page.fields.variety')} value={selectedCrop.variety || t('library.page.notSpecified')} />
+                          ) : null}
+                          {!isSpeciesView && selectedCrop.variety ? (
+                            <DetailRow label={t('form.seedType')} value={getSeedTypeLabel(selectedCrop.seed_type, t)} />
                           ) : null}
                           <DetailRow
                             label={t('form.botanicalName')}

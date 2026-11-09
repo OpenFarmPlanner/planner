@@ -683,6 +683,7 @@ describe('CropDetail Component', () => {
 
     const sectionTitles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
     expect(sectionTitles).toEqual([
+      'Allgemeine Informationen',
       'Fruchtfolge-Eigenschaften',
       'Mischkultur',
       'Zeitplanung',
@@ -695,6 +696,24 @@ describe('CropDetail Component', () => {
       'Ernte',
       'Notizen',
     ]);
+  });
+
+  it('shows a Sorte without a seed type as unknown', () => {
+    renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
+
+    expect(screen.getByTestId('crop-detail-seed-type')).toHaveTextContent('Unbekannt');
+  });
+
+  it('shows the seed type a Sorte has', () => {
+    renderCropDetail(
+      <CropDetail
+        crops={[{ ...mockCrops[0], seed_type: 'f1_hybrid' }]}
+        selectedCropId={1}
+        onCropSelect={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('crop-detail-seed-type')).toHaveTextContent('F1-Hybrid');
   });
 
   it('shows the crop rotation break as a plain section without a nested container', () => {

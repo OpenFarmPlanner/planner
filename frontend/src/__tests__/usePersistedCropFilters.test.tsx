@@ -30,6 +30,7 @@ const FULL_FILTERS: PersistedCropFilters = {
   selectedTagFilter: 'Kräuter',
   selectedCultivationFilter: 'direct_sowing',
   selectedNutrientFilter: 'low',
+  selectedSeedTypeFilter: 'f1_hybrid',
   selectedSupplierFilter: '4',
   growthDaysMin: '10',
   growthDaysMax: '90',

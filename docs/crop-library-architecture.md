@@ -1285,6 +1285,33 @@ other foreign keys there.
   (`coerce_plant_family_key()`), and persisted crop-page filters holding free
   text are dropped (`isBotanicalFamilyKey`).
 
+### Seed type (Saatguttyp)
+
+`seed_type` on `Crop` and `PublicCrop` says whether a Sorte is open-pollinated
+(`open_pollinated`) or an F1 hybrid (`f1_hybrid`). It is always set explicitly,
+never derived from the name ("F1" in a variety name sets nothing). It is not
+the supplier [seed status](supplier-seed-status.md), which describes one
+supplier's offer.
+
+- **Unknown is blank.** A blank value is stored and sent as `''`, so it counts
+  as unset: an unknown value is never pushed over a library value and cannot be
+  pinned. A literal `unknown` would be a real value to `is_unset_crop_value`.
+- **Sorten only.** `Crop.clean()` and `PublicCropUpdateSerializer` reject a value
+  on a row without a variety. The field is in none of the inheritance lists
+  (`CROP_INHERITABLE_FIELDS`, `VARIETY_INHERITABLE_FIELDS`,
+  `CROP_OPTIONAL_GENERAL_COPY_FIELDS`), so it is absent from `effective_values`
+  and a new Sorte starts blank.
+- **Library.** It is a normal copy field between a Sorte and a variety entry, so
+  publish, import, diff, pull, push, pinning and revisions follow the 4-case
+  update model. `VARIETY_ONLY_COPY_FIELDS` keeps it off species-level entries: the
+  payload blanks it there, and against such an entry it is neither compared,
+  pushed, proposed nor overwritten by an update. A Sorte linked to a general
+  entry therefore keeps its value and shows no permanent difference.
+- **Filter.** A plain select in the crop list and library filter menus, not the
+  trait filter of [the RFC](rfc-variety-trade-names.md#71-variety-list-with-trait-filter),
+  which is not built. "Unbekannt" is its own option, so a Sorte without a value
+  is never treated as a different type. Only rows with a variety match.
+
 ### Project-only crop data
 
 Some crop data deliberately never reaches the crop library: it is left out of

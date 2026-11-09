@@ -265,6 +265,18 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
   (Urgenci, MITECO). *AMAP* is the French form of the model and is named
   alongside, never as a translation of an Austrian GeLaWi.
 
+## Seed type (variety trait)
+
+Not to be confused with the supplier seed status below: seed type describes the
+variety, seed status describes one supplier's offer.
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Saatguttyp | Seed type | Type de semence | Tipo de semilla |
+| Samenfest | Open-pollinated | Reproductible | De polinización abierta |
+| F1-Hybrid | F1 hybrid | Hybride F1 | Híbrido F1 |
+| Unbekannt | Unknown | Inconnu | Desconocido |
+
 ## Supplier seed status
 
 | DE | EN | FR | ES |

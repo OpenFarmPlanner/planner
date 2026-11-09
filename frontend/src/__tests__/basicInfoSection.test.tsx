@@ -37,7 +37,7 @@ const t = ((key: string, options?: Record<string, unknown>) => (
 
 /** The nutrient-demand select; the plant-family Autocomplete is a combobox too. */
 const nutrientCombobox = (): HTMLElement => (
-  screen.getAllByRole('combobox').find((element) => element.tagName !== 'INPUT') as HTMLElement
+  screen.getAllByRole('combobox').filter((element) => element.tagName !== 'INPUT').at(-1) as HTMLElement
 );
 
 const linkedVarietyForm = {
@@ -63,6 +63,31 @@ describe('BasicInfoSection', () => {
     );
 
     expect(screen.getByPlaceholderText('form.varietyPlaceholder')).toBeDisabled();
+  });
+
+  it('shows the seed type on a Sorte and defaults to unknown', async () => {
+    const onChange = vi.fn();
+    render(<BasicInfoSection formData={{ name: 'Tomate', variety: 'Sacher' }} errors={{}} onChange={onChange} t={t} />);
+
+    const select = screen.getByRole('combobox', { name: 'form.seedType' });
+    expect(select).toHaveTextContent('form.seedTypeUnknown');
+
+    await userEvent.click(select);
+    await userEvent.click(await screen.findByRole('option', { name: 'form.seedTypeF1Hybrid' }));
+
+    expect(onChange).toHaveBeenCalledWith('seed_type', 'f1_hybrid');
+  });
+
+  it('has no seed type on a Kultur row', () => {
+    render(<BasicInfoSection formData={{ name: 'Tomate', variety: '' }} errors={{}} onChange={vi.fn()} t={t} showVarietyField={false} />);
+
+    expect(screen.queryByRole('combobox', { name: 'form.seedType' })).not.toBeInTheDocument();
+  });
+
+  it('hides the seed type on a species-level library entry', () => {
+    render(<BasicInfoSection formData={{ name: 'Tomate', variety: '' }} errors={{}} onChange={vi.fn()} t={t} varietyRequired={false} />);
+
+    expect(screen.queryByRole('combobox', { name: 'form.seedType' })).not.toBeInTheDocument();
   });
 
   it('updates basic text fields', () => {

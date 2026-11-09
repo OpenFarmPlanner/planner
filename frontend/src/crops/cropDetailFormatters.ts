@@ -16,6 +16,8 @@ export interface PersistedCropFilters {
   selectedTagFilter: string;
   selectedCultivationFilter: string;
   selectedNutrientFilter: string;
+  /** 'open_pollinated', 'f1_hybrid', 'unknown', or '' for all. */
+  selectedSeedTypeFilter: string;
   selectedSupplierFilter: string;
   growthDaysMin: string;
   growthDaysMax: string;
