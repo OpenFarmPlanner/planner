@@ -1,3 +1,4 @@
+import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y, getFieldUsableArea } from '../pages/graphicalFieldsGeometry';
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -376,6 +377,60 @@ describe("GraphicalFields", () => {
 
     expect(mobileGeometry).toEqual(desktopGeometry);
   });
+
+  it("shades the margin beds cannot use and leaves the usable area white, also in view mode", async () => {
+    render(<GraphicalFields />);
+    act(() => {
+      fireEvent.click(getLocationHeaderButton());
+    });
+
+    const field = await screen.findByTestId("field-rect-10");
+    const margin = screen.getByTestId("field-margin-10");
+    const usable = screen.getByTestId("field-usable-area-10");
+    const geometry = (element: HTMLElement) => ({
+      x: Number(element.getAttribute("data-x")),
+      y: Number(element.getAttribute("data-y")),
+      width: Number(element.getAttribute("width")),
+      height: Number(element.getAttribute("height")),
+    });
+    const fieldBox = geometry(field);
+    const area = getFieldUsableArea(fieldBox);
+
+    expect(geometry(margin)).toEqual(fieldBox);
+    expect(geometry(usable)).toEqual({
+      x: fieldBox.x + area.x,
+      y: fieldBox.y + area.y,
+      width: area.width,
+      height: area.height,
+    });
+    expect(margin).toHaveAttribute("fill", "#eeeeee");
+    expect(usable).toHaveAttribute("fill", "#fff");
+  });
+
+  it("moves the usable area along with a dragged field", async () => {
+    render(<GraphicalFields />);
+    act(() => {
+      fireEvent.click(getLocationHeaderButton());
+      fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    });
+    await screen.findByTestId("field-rect-10");
+    const node = mockKonvaNodes["field-rect-10"];
+    const start = node.getPosition();
+    const target = { current: { x: start.x + 40, y: start.y + 25 } };
+
+    act(() => {
+      node.handlers.onDragMove?.({ evt: new Event("drag"), target: createKonvaTarget(target) });
+      node.handlers.onDragEnd?.({ evt: new Event("dragend"), target: createKonvaTarget(target) });
+    });
+
+    await waitFor(() => {
+      const field = screen.getByTestId("field-rect-10");
+      const usable = screen.getByTestId("field-usable-area-10");
+      expect(Number(field.getAttribute("data-x"))).not.toBe(start.x);
+      expect(Number(usable.getAttribute("data-x"))).toBe(Number(field.getAttribute("data-x")) + FIELD_INNER_OFFSET_X);
+      expect(Number(usable.getAttribute("data-y"))).toBe(Number(field.getAttribute("data-y")) + FIELD_INNER_OFFSET_Y);
+    });
+  }, 15000);
 
   it("renders the edit mode toggle and allows toggling it by click", async () => {
     render(<GraphicalFields />);
