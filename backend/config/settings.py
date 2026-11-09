@@ -307,6 +307,19 @@ else:
         'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
     }
 
+# Rate limits and registration counters must be shared by all Gunicorn workers,
+# otherwise every limit is multiplied by the number of workers. Without a URL
+# (development, tests) Django's per-process default cache is used.
+CACHE_REDIS_URL = _env_str('CACHE_REDIS_URL')
+if CACHE_REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'config.cache.FailOpenRedisCache',
+            'LOCATION': CACHE_REDIS_URL,
+            'OPTIONS': {'socket_connect_timeout': 1, 'socket_timeout': 1},
+        },
+    }
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
