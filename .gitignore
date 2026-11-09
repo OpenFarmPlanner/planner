@@ -62,3 +62,6 @@ node_modules/
 
 # Playwright HTML report
 frontend/playwright-report/
+
+# Local PDM interpreter selection
+.pdm-python
