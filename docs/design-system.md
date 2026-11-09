@@ -105,11 +105,15 @@ hover and on keyboard focus. Use a placement that keeps an Autocomplete's
 options list visible (`top-start` or `right`).
 
 **Form grids** (`components/forms/formLayout.ts`): `formGridSx` is one column
-on a phone and three equal columns from `sm` up. Unused tracks collapse, so a
-row of two fields splits the width in halves and a lone field spans the whole
-row; no row is left half empty. Fields inside it use `formGridFieldSx`, or
-`formGridDoubleColumnSx` / `formGridFullRowSx` to span columns. The crop form
-uses it for every section, and each section has at most three fields per row.
+on a phone and three equal columns from `sm` up. The tracks are fixed: a short
+field keeps its column width instead of stretching, so all rows and sections of
+a form line up even when a row has fewer than three fields. Fields inside it
+use `formGridFieldSx`, or `formGridDoubleColumnSx` / `formGridFullRowSx` to span
+columns. The crop form uses it for every section, and each section has at most
+three fields per row. Two inputs that form one value (a from/to range) share a
+single cell under one caption: `formGridCaptionedGroupSx` with
+`formRangeInputsSx`, and plain fields beside it use
+`formGridBottomAlignedFieldSx` so all inputs of the row stay on one line.
 
 ## 4. Text that can overflow
 

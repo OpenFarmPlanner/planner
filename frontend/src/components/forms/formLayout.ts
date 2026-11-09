@@ -67,12 +67,9 @@ export const fullWidthFieldSx = {
 
 /**
  * Responsive form grid: one column on a phone, three equal columns from `sm`
- * up. `auto-fit` collapses unused tracks, so a row with two fields splits the
- * width in halves and a lone field spans it instead of leaving a half-empty
- * row; three fields always line up with the three columns of the other rows.
- * Children fill their cell (`formGridFieldSx`) instead of keeping a role width.
- * The minimum track subtracts slightly more than the two gaps so sub-pixel
- * rounding never drops the third column.
+ * up. The tracks are fixed, so a short field keeps its column width and every
+ * row and section of a form lines up, even when a row has fewer than three
+ * fields. Children fill their cell (`formGridFieldSx`) or span columns.
  */
 export const formGridSx: SxProps<Theme> = (theme) => ({
   display: 'grid',
@@ -80,7 +77,7 @@ export const formGridSx: SxProps<Theme> = (theme) => ({
   alignItems: 'start',
   gridTemplateColumns: 'minmax(0, 1fr)',
   [theme.breakpoints.up('sm')]: {
-    gridTemplateColumns: `repeat(auto-fit, minmax(calc((100% - ${theme.spacing(3.5)}) / 3), 1fr))`,
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   },
 });
 
@@ -89,6 +86,23 @@ export const formGridFieldSx = {
   width: '100%',
   maxWidth: '100%',
   minWidth: 0,
+} as const;
+
+/**
+ * A caption with its input(s) in one `formGridSx` cell, e.g. a from/to range.
+ * Bottom-aligned so the inputs of a row share one line even when a caption
+ * wraps; a plain field beside it uses `formGridBottomAlignedFieldSx`.
+ */
+export const formGridCaptionedGroupSx = { minWidth: 0, alignSelf: 'end' } as const;
+
+/** A plain field sharing a `formGridSx` row with a captioned group. */
+export const formGridBottomAlignedFieldSx = { ...formGridFieldSx, alignSelf: 'end' } as const;
+
+/** The from/to pair inside a captioned group. */
+export const formRangeInputsSx = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 1.5,
 } as const;
 
 /** A field inside `formGridSx` that spans the full row (e.g. tags, long text). */
