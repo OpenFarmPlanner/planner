@@ -1118,6 +1118,10 @@
         "empty": "No open crop species proposals.",
         "approveDialogTitle": "Approve crop species",
         "approveDialogIntro": "Check the public names for \"{{name}}\". A name is required in every language before the crop species is published.",
+        "scientificNameLabel": "Latin name",
+        "scientificNameFamily": "Crop family: {{family}}",
+        "sharedScientificName": "This Latin name is already used by: {{names}}. Several crop species can belong to the same botanical species (such as kohlrabi and kale). Check the name, then approve the crop species.",
+        "approveAnyway": "Approve anyway",
         "commonNameLabel": "Name ({{language}})",
         "regionalName": {
           "austria": "Name in Austria",

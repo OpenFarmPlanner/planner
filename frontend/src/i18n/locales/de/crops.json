@@ -1118,6 +1118,10 @@
         "empty": "Keine offenen Kulturart-Vorschläge.",
         "approveDialogTitle": "Kulturart annehmen",
         "approveDialogIntro": "Prüfe die öffentlichen Namen für „{{name}}“. Ein Name ist in jeder Sprache Pflicht, bevor die Kulturart veröffentlicht wird.",
+        "scientificNameLabel": "Lateinischer Name",
+        "scientificNameFamily": "Pflanzenfamilie: {{family}}",
+        "sharedScientificName": "Diesen lateinischen Namen tragen bereits: {{names}}. Mehrere Kulturarten können zur selben Art gehören (etwa Kohlrabi und Grünkohl). Prüfe die Angabe und nimm die Kulturart dann an.",
+        "approveAnyway": "Trotzdem annehmen",
         "commonNameLabel": "Name ({{language}})",
         "regionalName": {
           "austria": "Name in Österreich",

@@ -11,6 +11,8 @@ at `/api/crop-library/` that can later be made genuinely public (e.g. by
 swapping the permission class) without touching anything that already
 works. See docs/crop-library-architecture.md.
 """
+from typing import Any
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -194,6 +196,70 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
+    @staticmethod
+    def _apply_approval_scientific_name(species: CropSpecies, data: Any) -> Response | None:
+        """Takes the moderator's edited scientific name, if the request sends one.
+
+        Only the single-approval dialog sends ``scientific_name``; bulk
+        approval omits it and keeps the proposed value. An empty string clears
+        the name. Returns an error response for an invalid value.
+        """
+        if 'scientific_name' not in data:
+            return None
+        value = data.get('scientific_name')
+        if value is None:
+            value = ''
+        if not isinstance(value, str):
+            return api_error_response(
+                code='invalid_scientific_name',
+                detail='The scientific name must be text.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        scientific_name = ' '.join(value.split())
+        max_length = CropSpecies._meta.get_field('scientific_name').max_length
+        if max_length is not None and len(scientific_name) > max_length:
+            return api_error_response(
+                code='invalid_scientific_name',
+                detail=f'The scientific name may have at most {max_length} characters.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        species.scientific_name = scientific_name
+        return None
+
+    @staticmethod
+    def _shared_scientific_name_conflict(species: CropSpecies, data: Any) -> Response | None:
+        """Asks for confirmation when an edited scientific name is already in use.
+
+        A scientific name is not a species identity here (cabbage, kale and
+        kohlrabi are all *Brassica oleracea*), so a shared one does not block
+        the approval the way a duplicate common name does. It is reported
+        once, and the dialog repeats the request with
+        ``confirm_shared_scientific_name`` after the moderator confirmed.
+        Bulk approval sends no scientific name and is never asked.
+        """
+        if 'scientific_name' not in data or not species.scientific_name:
+            return None
+        if data.get('confirm_shared_scientific_name') is True:
+            return None
+        sharing = list(
+            CropSpecies.objects
+            .filter(
+                status=CropSpecies.STATUS_PUBLISHED,
+                scientific_name__iexact=species.scientific_name,
+            )
+            .exclude(pk=species.pk)
+            .order_by('name')
+            .values('id', 'name')[:5]
+        )
+        if not sharing:
+            return None
+        return api_error_response(
+            code='shared_scientific_name',
+            detail='Published crop species with this scientific name already exist.',
+            status_code=status.HTTP_409_CONFLICT,
+            species=sharing,
+        )
+
     @action(detail=True, methods=['post'], url_path='approve')
     def approve(self, request, pk=None):
         if not is_public_library_moderator(request.user):
@@ -208,6 +274,9 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             )
             if not species.is_pending:
                 return self._proposal_status_error()
+            scientific_name_error = self._apply_approval_scientific_name(species, request.data)
+            if scientific_name_error is not None:
+                return scientific_name_error
             translation_payload = _translation_payload_by_language(request.data.get('translations'))
             existing_translations = {
                 translation.language_code: {
@@ -261,6 +330,9 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
                     status_code=status.HTTP_409_CONFLICT,
                     duplicate={'id': duplicate.id, 'name': duplicate.name},
                 )
+            shared_name_error = self._shared_scientific_name_conflict(species, request.data)
+            if shared_name_error is not None:
+                return shared_name_error
             CropSpeciesSerializer._write_translations(species, list(approved_translations.values()))
             if hasattr(species, '_prefetched_objects_cache'):
                 species._prefetched_objects_cache = {}
@@ -269,7 +341,10 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             species.reviewed_by = request.user
             species.reviewed_at = timezone.now()
             species.review_note = review_note
-            species.save(update_fields=['name', 'name_normalized', 'status', 'reviewed_by', 'reviewed_at', 'review_note'])
+            species.save(update_fields=[
+                'name', 'name_normalized', 'scientific_name', 'status',
+                'reviewed_by', 'reviewed_at', 'review_note',
+            ])
         services.apply_public_crop_species_relinks_for_approved_species(species, request.user)
         services.notify_species_proposal_reviewed(species)
         return Response(self.get_serializer(species).data)

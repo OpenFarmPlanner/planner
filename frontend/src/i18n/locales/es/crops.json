@@ -1148,6 +1148,10 @@
         "empty": "No hay propuestas de especies de cultivo abiertas.",
         "approveDialogTitle": "Aprobar especie de cultivo",
         "approveDialogIntro": "Revisa los nombres públicos de «{{name}}». Se necesita un nombre en cada idioma antes de publicar la especie de cultivo.",
+        "scientificNameLabel": "Nombre latino",
+        "scientificNameFamily": "Familia botánica: {{family}}",
+        "sharedScientificName": "Este nombre latino ya lo usan: {{names}}. Varias especies de cultivo pueden pertenecer a la misma especie botánica (por ejemplo, el colinabo y la col rizada). Revisa el nombre y después aprueba la especie de cultivo.",
+        "approveAnyway": "Aprobar de todos modos",
         "commonNameLabel": "Nombre ({{language}})",
         "regionalName": {
           "austria": "Nombre en Austria",

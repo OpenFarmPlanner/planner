@@ -238,7 +238,7 @@ describe('PublicLibraryModerationPage', () => {
       emptyTranslation('en', 'Tree spinach'),
       emptyTranslation('fr', 'Chénopode géant'),
       emptyTranslation('es', 'Cenizo gigante'),
-    ]));
+    ], { scientificName: '', confirmSharedScientificName: false }));
   });
 
   it('prefills the English approval field for an English species proposal', async () => {
@@ -277,7 +277,7 @@ describe('PublicLibraryModerationPage', () => {
       emptyTranslation('en', 'Tree onion'),
       emptyTranslation('fr', 'Oignon rocambole'),
       emptyTranslation('es', 'Cebolla egipcia'),
-    ]));
+    ], { scientificName: '', confirmSharedScientificName: false }));
   });
 
   it('shows and sends the stored synonyms and regional names of every language', async () => {
@@ -316,7 +316,8 @@ describe('PublicLibraryModerationPage', () => {
     }
     await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
 
-    expect(screen.getByText('Cyperus esculentus · Cyperaceae')).toBeInTheDocument();
+    expect(screen.getByLabelText('Lateinischer Name')).toHaveValue('Cyperus esculentus');
+    expect(screen.getByText('Pflanzenfamilie: Cyperaceae')).toBeInTheDocument();
     expect(nameField('Spanisch')).toHaveValue('Chufa');
     expect(synonymField('Deutsch')).toHaveValue('Tigernuss');
     expect(screen.getByLabelText('Name in der Schweiz')).toHaveValue('Erdmandeli');
@@ -334,7 +335,87 @@ describe('PublicLibraryModerationPage', () => {
       { language_code: 'en', common_name: 'Tiger nut', synonyms: ['Chufa'], regional_names: {} },
       { language_code: 'fr', common_name: 'Souchet comestible', synonyms: [], regional_names: {} },
       { language_code: 'es', common_name: 'Chufa', synonyms: ['Juncia avellanada'], regional_names: {} },
-    ]));
+    ], { scientificName: 'Cyperus esculentus', confirmSharedScientificName: false }));
+  });
+
+  const completeProposal = {
+    id: 31,
+    name: 'Teststängelkohl',
+    scientific_name: 'Brassica olerace',
+    status: 'proposed',
+    proposed_by_label: 'Mara',
+    translations: [
+      { language_code: 'de', common_name: 'Teststängelkohl', synonyms: [], regional_names: {} },
+      { language_code: 'en', common_name: 'Test stem cole', synonyms: [], regional_names: {} },
+      { language_code: 'fr', common_name: 'Chou test', synonyms: [], regional_names: {} },
+      { language_code: 'es', common_name: 'Col de prueba', synonyms: [], regional_names: {} },
+    ],
+    similar_species: [],
+  };
+
+  it('lets the moderator correct the Latin name before approving', async () => {
+    const user = userEvent.setup();
+    apiMocks.cropSpeciesList.mockResolvedValue({ data: { results: [completeProposal] } });
+
+    render(<PublicLibraryModerationPage />);
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
+
+    const latinName = screen.getByLabelText('Lateinischer Name');
+    expect(latinName).toHaveValue('Brassica olerace');
+    await user.clear(latinName);
+    await user.type(latinName, ' Brassica oleracea ');
+    const approveButtons = screen.getAllByRole('button', { name: 'Annehmen' });
+    await user.click(approveButtons[approveButtons.length - 1]);
+
+    await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenCalledWith(
+      31, '', expect.any(Array), { scientificName: 'Brassica oleracea', confirmSharedScientificName: false },
+    ));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Kulturart annehmen' })).not.toBeInTheDocument());
+  });
+
+  it('asks for confirmation when published species already carry the Latin name', async () => {
+    const user = userEvent.setup();
+    apiMocks.cropSpeciesList.mockResolvedValue({ data: { results: [{ ...completeProposal, scientific_name: 'Brassica oleracea' }] } });
+    const conflict = Object.assign(new Error('conflict'), {
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'shared_scientific_name', species: [{ id: 4, name: 'Kale' }, { id: 5, name: 'Kohlrabi' }] } },
+    });
+    apiMocks.cropSpeciesApprove.mockRejectedValueOnce(conflict);
+
+    render(<PublicLibraryModerationPage />);
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Kulturart annehmen' });
+    await user.click(within(dialog).getByRole('button', { name: 'Annehmen' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Diesen lateinischen Namen tragen bereits: Kale, Kohlrabi.');
+    await user.click(within(dialog).getByRole('button', { name: 'Trotzdem annehmen' }));
+
+    await waitFor(() => expect(apiMocks.cropSpeciesApprove).toHaveBeenLastCalledWith(
+      31, '', expect.any(Array), { scientificName: 'Brassica oleracea', confirmSharedScientificName: true },
+    ));
+  });
+
+  it('drops the confirmation once the Latin name is edited again', async () => {
+    const user = userEvent.setup();
+    apiMocks.cropSpeciesList.mockResolvedValue({ data: { results: [{ ...completeProposal, scientific_name: 'Brassica oleracea' }] } });
+    apiMocks.cropSpeciesApprove.mockRejectedValueOnce(Object.assign(new Error('conflict'), {
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'shared_scientific_name', species: [{ id: 4, name: 'Kale' }] } },
+    }));
+
+    render(<PublicLibraryModerationPage />);
+    const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
+    await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Kulturart annehmen' });
+    await user.click(within(dialog).getByRole('button', { name: 'Annehmen' }));
+    await within(dialog).findByRole('button', { name: 'Trotzdem annehmen' });
+
+    await user.type(within(dialog).getByLabelText('Lateinischer Name'), ' var. gongylodes');
+
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Annehmen' })).toBeEnabled();
   });
 
   it('approves several complete proposals at once and reports failures per species', async () => {

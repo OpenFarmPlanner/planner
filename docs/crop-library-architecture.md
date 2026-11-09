@@ -1707,6 +1707,18 @@ their stored values (for example aliases written through the crop library API
 before review), while a field that is sent, even empty, replaces the stored
 one.
 
+The moderation queue's approval dialog also lets the moderator correct the
+Latin name (`scientific_name`) above the language fields; `approve()` stores
+it when the request sends one and leaves it untouched when it does not (bulk
+approval). A Latin name is deliberately **not** a species identity — cabbage,
+kale and kohlrabi are all *Brassica oleracea* — so the duplicate check above
+still runs on the common names only. Instead, an edited Latin name that a
+published species already carries is answered once with a 409
+`shared_scientific_name` listing those species; the dialog shows them in a
+warning, the button turns into "Trotzdem annehmen", and the repeated request
+carries `confirm_shared_scientific_name`. Editing the name again drops the
+confirmation.
+
 Both approval forms (the moderation queue's dialog and the relink dialog
 below) use the shared `SpeciesApprovalFields`: per language the common name and
 the synonyms, plus the Austrian and Swiss regional names on the German

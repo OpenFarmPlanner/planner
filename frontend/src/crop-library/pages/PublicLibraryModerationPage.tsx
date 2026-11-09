@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -29,6 +29,7 @@ import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import { cropSpeciesAPI, publicCropAPI, publicLibraryModeratorRequestAPI } from '../../api/api';
+import { extractApiErrorCode } from '../../api/errors';
 import type {
   CropSpecies,
   CropSpeciesTranslation,
@@ -72,6 +73,13 @@ const isSpeciesProposalComplete = (species: CropSpecies): boolean => REQUIRED_SP
   ),
 );
 
+/** Published species that already carry the Latin name a moderator entered (409 `shared_scientific_name`). */
+const getSharedScientificNameSpecies = (error: unknown): { id: number; name: string }[] | null => {
+  if (extractApiErrorCode(error) !== 'shared_scientific_name') return null;
+  const data = (error as { response?: { data?: { species?: { id: number; name: string }[] } } }).response?.data;
+  return data?.species ?? [];
+};
+
 const getSpeciesAliases = (species: CropSpecies, languageCode: string): string[] => (
   species.translations?.find((translation) => translation.language_code === languageCode)?.synonyms ?? []
 );
@@ -96,6 +104,10 @@ export default function PublicLibraryModerationPage() {
   const [approvalTranslations, setApprovalTranslations] = useState<SpeciesApprovalTranslations>(
     createEmptySpeciesApprovalTranslations,
   );
+  const [approvalScientificName, setApprovalScientificName] = useState('');
+  // Published species sharing the entered Latin name; set, the next approval confirms it.
+  const [sharedScientificNameSpecies, setSharedScientificNameSpecies] = useState<{ id: number; name: string }[] | null>(null);
+  const sharedScientificNameAlertRef = useRef<HTMLDivElement | null>(null);
   const [aliasSearch, setAliasSearch] = useState('');
   const [aliasSpecies, setAliasSpecies] = useState<CropSpecies[]>([]);
   const [aliasLoading, setAliasLoading] = useState(false);
@@ -152,8 +164,15 @@ export default function PublicLibraryModerationPage() {
     void loadQueues();
   }, [loadQueues]);
 
+  useEffect(() => {
+    // On a phone the dialog is scrolled to its buttons; bring the reason for the changed button into view.
+    if (sharedScientificNameSpecies) sharedScientificNameAlertRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [sharedScientificNameSpecies]);
+
   const openSpeciesApproval = (proposal: CropSpecies): void => {
     setApprovalProposal(proposal);
+    setApprovalScientificName(proposal.scientific_name ?? '');
+    setSharedScientificNameSpecies(null);
     setApprovalTranslations(getInitialSpeciesApprovalTranslations(
       proposal, proposal.name, i18n.resolvedLanguage ?? i18n.language,
     ));
@@ -172,12 +191,18 @@ export default function PublicLibraryModerationPage() {
         approvalProposal.id,
         '',
         buildSpeciesApprovalPayload(approvalTranslations),
+        {
+          scientificName: approvalScientificName.trim(),
+          confirmSharedScientificName: sharedScientificNameSpecies !== null,
+        },
       );
       showGlobalSnackbar({ message: t('library.moderation.species.approveSuccess'), severity: 'success' });
       setApprovalProposal(null);
       await loadQueues();
-    } catch {
-      showGlobalSnackbar({ message: t('library.moderation.actionError'), severity: 'error' });
+    } catch (approvalError) {
+      const sharing = getSharedScientificNameSpecies(approvalError);
+      if (sharing) setSharedScientificNameSpecies(sharing);
+      else showGlobalSnackbar({ message: t('library.moderation.actionError'), severity: 'error' });
     } finally {
       setBusyAction(null);
     }
@@ -782,10 +807,29 @@ export default function PublicLibraryModerationPage() {
             <Typography variant="body2" color="text.secondary">
               {t('library.moderation.species.approveDialogIntro', { name: approvalProposal?.name ?? '' })}
             </Typography>
-            {approvalProposal?.scientific_name || approvalProposal?.family ? (
-              <Typography variant="body2" color="text.secondary">
-                {[approvalProposal.scientific_name, approvalProposal.family].filter(Boolean).join(' · ')}
-              </Typography>
+            <TextField
+              label={t('library.moderation.species.scientificNameLabel')}
+              value={approvalScientificName}
+              onChange={(event) => {
+                setApprovalScientificName(event.target.value);
+                setSharedScientificNameSpecies(null);
+              }}
+              disabled={busyAction !== null}
+              helperText={approvalProposal?.family
+                ? t('library.moderation.species.scientificNameFamily', { family: approvalProposal.family })
+                : undefined}
+              slotProps={{ htmlInput: { maxLength: 200, lang: 'la' } }}
+              fullWidth
+            />
+            {sharedScientificNameSpecies ? (
+              <Alert
+                severity="warning"
+                ref={sharedScientificNameAlertRef}
+              >
+                {t('library.moderation.species.sharedScientificName', {
+                  names: sharedScientificNameSpecies.map((species) => species.name).join(', '),
+                })}
+              </Alert>
             ) : null}
             <SpeciesApprovalFields
               translations={approvalTranslations}
@@ -810,7 +854,9 @@ export default function PublicLibraryModerationPage() {
             >
               {busyAction === `species-${approvalProposal?.id}-approve`
                 ? t('library.moderation.saving')
-                : t('library.moderation.approve')}
+                : sharedScientificNameSpecies
+                  ? t('library.moderation.species.approveAnyway')
+                  : t('library.moderation.approve')}
             </Button>
           </DisabledActionTooltip>
         </DialogActions>
