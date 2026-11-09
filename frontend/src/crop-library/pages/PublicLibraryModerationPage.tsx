@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -107,6 +107,7 @@ export default function PublicLibraryModerationPage() {
   const [approvalScientificName, setApprovalScientificName] = useState('');
   // Published species sharing the entered Latin name; set, the next approval confirms it.
   const [sharedScientificNameSpecies, setSharedScientificNameSpecies] = useState<{ id: number; name: string }[] | null>(null);
+  const sharedScientificNameAlertRef = useRef<HTMLDivElement | null>(null);
   const [aliasSearch, setAliasSearch] = useState('');
   const [aliasSpecies, setAliasSpecies] = useState<CropSpecies[]>([]);
   const [aliasLoading, setAliasLoading] = useState(false);
@@ -162,6 +163,11 @@ export default function PublicLibraryModerationPage() {
   useEffect(() => {
     void loadQueues();
   }, [loadQueues]);
+
+  useEffect(() => {
+    // On a phone the dialog is scrolled to its buttons; bring the reason for the changed button into view.
+    if (sharedScientificNameSpecies) sharedScientificNameAlertRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [sharedScientificNameSpecies]);
 
   const openSpeciesApproval = (proposal: CropSpecies): void => {
     setApprovalProposal(proposal);
@@ -818,8 +824,7 @@ export default function PublicLibraryModerationPage() {
             {sharedScientificNameSpecies ? (
               <Alert
                 severity="warning"
-                // On a phone the dialog is scrolled to its buttons; bring the reason for the changed button into view.
-                ref={(node) => { node?.scrollIntoView?.({ block: 'nearest' }); }}
+                ref={sharedScientificNameAlertRef}
               >
                 {t('library.moderation.species.sharedScientificName', {
                   names: sharedScientificNameSpecies.map((species) => species.name).join(', '),
