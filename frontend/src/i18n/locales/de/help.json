@@ -225,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Hilfe: Saatgutbedarf",
-      "intro": "Hier siehst du den berechneten Saatgutbedarf deiner Anbaupläne.\n\nPflanzungen mit gekauften Pflanzen sind hier nicht enthalten, sie findest du im Jungpflanzenbedarf.",
+      "intro": "Hier siehst du, wie viel Saatgut du für die Anbaupläne der aktiven Saison brauchst: für Direktsaat und für Pflanzungen aus eigener Anzucht. Die Menge ergibt sich aus der Aussaatmenge der Kultur und der geplanten Fläche.\n\nPflanzungen mit gekauften Pflanzen sind hier nicht enthalten, sie findest du im Jungpflanzenbedarf. Wann du aussäen musst, zeigt die Anzuchtansicht im Anbaukalender.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "supplierSelect": "Lieferant pro Kultur festlegen",
@@ -234,7 +234,7 @@
     },
     "youngPlantDemand": {
       "title": "Hilfe: Jungpflanzenbedarf",
-      "intro": "Hier siehst du, wie viele Jungpflanzen du für die Pflanzungen mit gekauften Pflanzen der aktiven Saison bestellen musst – nach Kultur, Sorte und Pflanzwoche zusammengefasst.\n\nDie Stückzahl ergibt sich aus der Fläche des Anbauplans und den Pflanz- und Reihenabständen der Kultur. Die Reserve für Ausfälle wird auf ganze Pflanzen aufgerundet.",
+      "intro": "Hier siehst du, wie viele Jungpflanzen du für die Pflanzungen mit gekauften Pflanzen der aktiven Saison bestellen musst – nach Kultur, Sorte und Pflanzwoche zusammengefasst. Für Pflanzungen aus eigener Anzucht brauchst du stattdessen Saatgut, siehe Saatgutbedarf.\n\nDie Stückzahl ergibt sich aus der Fläche des Anbauplans und den Pflanz- und Reihenabständen der Kultur. Die Reserve für Ausfälle wird auf ganze Pflanzen aufgerundet.",
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
         "expand": "Zugehörige Anbaupläne ein- oder ausblenden"
@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Hilfe: Ertragsübersicht",
-      "intro": "Die Ertragsübersicht bündelt erwartete Erntemengen aus deinen Anbauplänen der aktiven Saison.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken, um Zeitraum, Kultur und Erntemenge anzuzeigen.",
+      "intro": "Die Ertragsübersicht ist eine Prognose: Sie verteilt die erwarteten Erntemengen deiner Anbaupläne der aktiven Saison über die Erntezeiträume. Grundlage sind die geplante Fläche oder Pflanzenzahl und der erwartete Ertrag der Kultur pro m² oder pro Pflanze. Tatsächliche Erntemengen werden nicht erfasst.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken, um Zeitraum, Kultur und Erntemenge anzuzeigen.",
       "points": []
     }
   }

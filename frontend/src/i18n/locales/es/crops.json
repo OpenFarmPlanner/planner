@@ -103,6 +103,8 @@
       "centimeters": "cm",
       "grams": "g",
       "kilograms": "kg",
+      "kgPerSqm": "kg/m²",
+      "kgPerPlant": "kg por planta",
       "percent": "%"
     },
     "boolean": {
@@ -268,9 +270,10 @@
     "yieldUnitPerPlant": "Por planta",
     "yieldUnitPerSqm": "Por m²",
     "expectedYield": "Rendimiento previsto",
-    "expectedYieldWithUnit": "Rendimiento previsto (kg)",
-    "expectedYieldPlaceholder": "p. ej. 500",
-    "expectedYieldUnit": "kg",
+    "expectedYieldPerSqm": "Rendimiento previsto (kg/m²)",
+    "expectedYieldPerPlant": "Rendimiento previsto (kg por planta)",
+    "expectedYieldChooseUnit": "Elige primero la unidad de rendimiento.",
+    "expectedYieldPlaceholder": "p. ej. 3,5",
     "expectedYieldError": "El rendimiento previsto debe ser ≥ 0",
     "distanceWithinRowCm": "Distancia entre plantas (cm)",
     "distanceWithinRowCmPlaceholder": "p. ej. 40",

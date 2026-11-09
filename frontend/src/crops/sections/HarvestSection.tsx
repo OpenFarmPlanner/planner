@@ -75,12 +75,16 @@ export function HarvestSection({ formData, errors, onChange, t, getFieldTooltipP
         <VarietyFieldTooltip tooltipTitle={expectedYieldVariety?.tooltipTitle}>
           <LocalizedDecimalField
             sx={mergeVarietyFieldSx(formGridFieldSx, expectedYieldVariety?.sx, expectedYieldPin?.fieldSx)}
-            label={t('form.expectedYieldWithUnit', { defaultValue: `${t('form.expectedYield')} (${t('form.expectedYieldUnit')})` })}
+            label={formData.harvest_method === 'per_plant'
+              ? t('form.expectedYieldPerPlant')
+              : formData.harvest_method === 'per_sqm' ? t('form.expectedYieldPerSqm') : t('form.expectedYield')}
             placeholder={t('form.expectedYieldPlaceholder')}
             value={formData.expected_yield}
             onValueChange={(value) => onChange('expected_yield', value ?? undefined)}
             error={Boolean(errors.expected_yield)}
-            helperText={errors.expected_yield}
+            // The number only means something with its unit; say where to set it.
+            helperText={errors.expected_yield
+              ?? (formData.harvest_method ? undefined : t('form.expectedYieldChooseUnit'))}
             slotProps={{ input: { endAdornment: expectedYieldPin?.endAdornment } }}
           />
         </VarietyFieldTooltip>
