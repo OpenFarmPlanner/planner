@@ -180,6 +180,11 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_days_max: 14,
     germination_types: ['cold', 'frost', 'light', 'dark'],
     germination_pretreatment: 'Chill four weeks.',
+    light_requirement: 'partial_shade',
+    water_requirement: 'high',
+    life_cycle: 'biennial',
+    winter_hardiness: 'with_protection',
+    pests_diseases: 'Carrot fly; cover with netting.',
     seed_type: 'f1_hybrid',
     harvest_method: 'per_plant',
     expected_yield: 4.2,
@@ -283,6 +288,24 @@ describe('crop spreadsheet export → import round trip', () => {
 });
 
 describe('germination spreadsheet round trip', () => {
+  it.each(['de', 'en', 'fr', 'es'])('preserves site, life cycle and plant health in %s', async (language) => {
+    const original = i18n.language;
+    try {
+      const crop = { name: 'Site crop', light_requirement: 'shade', water_requirement: 'low',
+        life_cycle: 'perennial', winter_hardiness: 'not_hardy', pests_diseases: 'Slugs' } as Crop;
+      const csv = buildSpreadsheetFile(buildSheetData([crop], i18n.getFixedT(language, 'crops')), 'csv') as string;
+      await i18n.changeLanguage('en');
+      const parsed = await parseSpreadsheetFile(csvFile(csv));
+      expect(parsed.warnings).toEqual([]);
+      expect(parsed.entries[0]).toMatchObject({
+        light_requirement: 'shade', water_requirement: 'low', life_cycle: 'perennial',
+        winter_hardiness: 'not_hardy', pests_diseases: 'Slugs',
+      });
+    } finally {
+      await i18n.changeLanguage(original);
+    }
+  });
+
   it.each(['de', 'en', 'fr', 'es'])('preserves numeric fields, types and pre-treatment in %s', async (language) => {
     const original = i18n.language;
     try {

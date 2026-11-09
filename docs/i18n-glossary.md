@@ -277,6 +277,20 @@ variety, seed status describes one supplier's offer.
 | F1-Hybrid | F1 hybrid | Hybride F1 | Híbrido F1 |
 | Unbekannt | Unknown | Inconnu | Desconocido |
 
+## Site, life cycle and plant health (crop traits)
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Standort und Pflanzengesundheit | Site and plant health | Exposition et santé des plantes | Ubicación y sanidad vegetal |
+| Lichtbedarf | Light requirement | Besoin en lumière | Necesidad de luz |
+| Sonnig / Halbschattig / Schattig | Full sun / Partial shade / Shade | Plein soleil / Mi-ombre / Ombre | Pleno sol / Semisombra / Sombra |
+| Wasserbedarf | Water requirement | Besoin en eau | Necesidad de agua |
+| Lebensdauer | Life cycle | Cycle de vie | Ciclo de vida |
+| Einjährig / Zweijährig / Mehrjährig | Annual / Biennial / Perennial | Annuelle / Bisannuelle / Vivace | Anual / Bienal / Perenne |
+| Winterhärte | Winter hardiness | Rusticité | Resistencia al frío |
+| Winterhart / Mit Winterschutz / Nicht winterhart | Hardy / Hardy with winter protection / Not hardy | Rustique / Rustique avec protection hivernale / Non rustique | Resistente / Resistente con protección invernal / No resistente |
+| Schädlinge und Krankheiten | Pests and diseases | Ravageurs et maladies | Plagas y enfermedades |
+
 ## Supplier seed status
 
 | DE | EN | FR | ES |

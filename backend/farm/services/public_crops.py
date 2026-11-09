@@ -108,6 +108,11 @@ CROP_COPY_FIELDS = [
     'germination_days_max',
     'germination_types',
     'germination_pretreatment',
+    'pests_diseases',
+    'light_requirement',
+    'water_requirement',
+    'life_cycle',
+    'winter_hardiness',
     'harvest_method',
     'expected_yield',
     'distance_within_row_m',
@@ -147,6 +152,11 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'germination_days_max',
     'germination_types',
     'germination_pretreatment',
+    'pests_diseases',
+    'light_requirement',
+    'water_requirement',
+    'life_cycle',
+    'winter_hardiness',
     'harvest_method',
     'expected_yield',
     'distance_within_row_m',
@@ -814,7 +824,10 @@ def restore_public_crop_version(
             if field in PLANT_FAMILY_REFERENCE_FIELDS:
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
-            if field in {'botanical_name', 'seed_type'} and value is None:
+            if field in {
+                'botanical_name', 'seed_type', 'pests_diseases', 'light_requirement',
+                'water_requirement', 'life_cycle', 'winter_hardiness',
+            } and value is None:
                 # Versions saved before the field existed carry no key; the
                 # column is a non-null blank-able string.
                 value = ''
