@@ -673,6 +673,8 @@
     "skippedRows_other": "{{count}} rows without a valid name were skipped.",
     "warnings": "Notes",
     "start": "Start import",
+    "preparingPreview": "Preparing import preview…",
+    "importing": "Importing crops…",
     "close": "Close",
     "success": "Import successful",
     "created_one": "{{count}} new crop created",

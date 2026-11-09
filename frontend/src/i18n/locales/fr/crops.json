@@ -690,6 +690,8 @@
     "skippedRows_other": "{{count}} lignes sans nom valide ont été ignorées.",
     "warnings": "Remarques",
     "start": "Lancer l'import",
+    "preparingPreview": "Préparation de l'aperçu de l'import…",
+    "importing": "Import des cultures en cours…",
     "close": "Fermer",
     "success": "Import réussi",
     "created_one": "{{count}} nouvelle culture créée",

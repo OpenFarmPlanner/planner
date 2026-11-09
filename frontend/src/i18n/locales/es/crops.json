@@ -690,6 +690,8 @@
     "skippedRows_other": "Se han omitido {{count}} filas sin nombre válido.",
     "warnings": "Avisos",
     "start": "Iniciar importación",
+    "preparingPreview": "Preparando la vista previa de la importación…",
+    "importing": "Importando cultivos…",
     "close": "Cerrar",
     "success": "Importación correcta",
     "created_one": "{{count}} cultivo nuevo creado",

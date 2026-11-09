@@ -1051,6 +1051,15 @@ planning calculations and the UI resolve it identically:
   with differing supplier, notes, timing windows or companions. No values are
   merged. `duplicate_count` is a subset of `skipped_count`; the result message
   reports duplicates separately from unconfirmed existing-crop updates.
+- Both steps of that import show progress, since a long list can take
+  seconds: after a file is chosen the start dialog stays open with a spinner
+  ("Importvorschau wird vorbereitet…") while the file is read and previewed,
+  accepts no other file and cannot be closed; it hands over to the preview
+  once that is ready. During apply the preview stays visible, "Import
+  starten" turns into a disabled "Kulturen werden importiert…" with a
+  spinner and "Schließen" is locked. A failed request leaves the previewed
+  entries in place for a retry. There is no per-row progress to report (one
+  request each), so both indicators are indeterminate.
 - The crops page's spreadsheet import (`services/crop_import/spreadsheet.py`)
   has no species column: a new row is linked to the species its name resolves
   to through `find_species_by_common_name`, as the crop form and the demo
