@@ -439,11 +439,10 @@
       }
     },
     "selectSupplier": "Choisir un fournisseur",
-    "createSupplierAction": "Ajouter un fournisseur",
+    "createSupplierAction": "Créer un fournisseur",
     "noSupplierData": "Aucune donnée fournisseur disponible",
     "noSupplierAvailable": "Aucune donnée fournisseur enregistrée",
     "noSupplierInProject": "Aucun fournisseur créé",
-    "createSupplierAction": "Créer un fournisseur",
     "assignSupplierAction": "Associer un fournisseur",
     "noSupplierConfiguredTooltip": "Cette culture n'a pas encore de fournisseur avec des informations de commande. Ajoutez un fournisseur à la culture pour obtenir une suggestion de conditionnement.",
     "supplierNotSelectedTooltip": "Aucun fournisseur n'a encore été choisi pour cette culture. Choisissez un fournisseur dans la colonne « Fournisseur » afin que le conditionnement adapté puisse être calculé.",
@@ -1783,6 +1782,39 @@
     "propagationShort": "La durée en pépinière est plus courte que la durée de germination.",
     "invalidNumber": "Saisissez un nombre valide ; les jours doivent être des entiers positifs ou nuls.",
     "invalidRange": "Le maximum doit être supérieur ou égal au minimum."
+  },
+  "siteHealth": {
+    "title": "Exposition et santé des plantes",
+    "pestsPlaceholder": "p. ex. mouche de la carotte : couvrir d'un filet anti-insectes",
+    "fields": {
+      "light_requirement": "Besoin en lumière",
+      "water_requirement": "Besoin en eau",
+      "life_cycle": "Cycle de vie",
+      "winter_hardiness": "Rusticité",
+      "pests_diseases": "Ravageurs et maladies"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Plein soleil",
+        "partial_shade": "Mi-ombre",
+        "shade": "Ombre"
+      },
+      "water_requirement": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé"
+      },
+      "life_cycle": {
+        "annual": "Annuelle",
+        "biennial": "Bisannuelle",
+        "perennial": "Vivace"
+      },
+      "winter_hardiness": {
+        "hardy": "Rustique",
+        "with_protection": "Rustique avec protection hivernale",
+        "not_hardy": "Non rustique"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Modèles de tâches",

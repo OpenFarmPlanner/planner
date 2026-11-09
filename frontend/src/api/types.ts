@@ -1,3 +1,4 @@
+import type { LifeCycle, LightRequirement, WaterRequirement, WinterHardiness } from '../crops/siteHealth';
 export type GerminationType = 'cold' | 'frost' | 'light' | 'dark';
 
 export interface SeedPackage {
@@ -221,6 +222,11 @@ export interface Crop {
   germination_days_max?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
+  pests_diseases?: string;
+  light_requirement?: LightRequirement | '';
+  water_requirement?: WaterRequirement | '';
+  life_cycle?: LifeCycle | '';
+  winter_hardiness?: WinterHardiness | '';
   
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number;
@@ -318,6 +324,11 @@ export type CropInheritableField =
   | 'germination_days_max'
   | 'germination_types'
   | 'germination_pretreatment'
+  | 'pests_diseases'
+  | 'light_requirement'
+  | 'water_requirement'
+  | 'life_cycle'
+  | 'winter_hardiness'
   | 'harvest_method'
   | 'expected_yield'
   | 'distance_within_row_cm'
@@ -428,6 +439,11 @@ export interface PublicCrop {
   germination_days_max?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
+  pests_diseases?: string;
+  light_requirement?: LightRequirement | '';
+  water_requirement?: WaterRequirement | '';
+  life_cycle?: LifeCycle | '';
+  winter_hardiness?: WinterHardiness | '';
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number | null;
   distance_within_row_m?: number | null;

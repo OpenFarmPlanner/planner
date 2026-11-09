@@ -289,6 +289,27 @@ class Crop(TimestampedModel):
         ('per_sqm', 'Per m²'),
     ]
 
+    LIGHT_REQUIREMENT_CHOICES = [
+        ('full_sun', 'Full sun'),
+        ('partial_shade', 'Partial shade'),
+        ('shade', 'Shade'),
+    ]
+    WATER_REQUIREMENT_CHOICES = [
+        ('low', 'Low water need'),
+        ('medium', 'Medium water need'),
+        ('high', 'High water need'),
+    ]
+    LIFE_CYCLE_CHOICES = [
+        ('annual', 'Annual'),
+        ('biennial', 'Biennial'),
+        ('perennial', 'Perennial'),
+    ]
+    WINTER_HARDINESS_CHOICES = [
+        ('hardy', 'Winter-hardy'),
+        ('with_protection', 'Hardy with winter protection'),
+        ('not_hardy', 'Not winter-hardy'),
+    ]
+
     SEED_TYPE_CHOICES = [
         ('open_pollinated', 'Open-pollinated'),
         ('f1_hybrid', 'F1 hybrid'),
@@ -494,6 +515,28 @@ class Crop(TimestampedModel):
     )
     germination_types = models.JSONField(default=list, blank=True)
     germination_pretreatment = models.TextField(blank=True)
+
+    # Site, life cycle and plant health (descriptive; inherited by Sorten).
+    pests_diseases = models.TextField(
+        blank=True,
+        help_text='Pests and diseases to watch for, as free text (e.g. carrot fly, late blight).',
+    )
+    light_requirement = models.CharField(
+        max_length=20, choices=LIGHT_REQUIREMENT_CHOICES, blank=True,
+        help_text='Light the crop needs on its site. Blank means unknown.',
+    )
+    water_requirement = models.CharField(
+        max_length=20, choices=WATER_REQUIREMENT_CHOICES, blank=True,
+        help_text='Water the crop needs. Blank means unknown.',
+    )
+    life_cycle = models.CharField(
+        max_length=20, choices=LIFE_CYCLE_CHOICES, blank=True,
+        help_text='Annual, biennial or perennial. Blank means unknown.',
+    )
+    winter_hardiness = models.CharField(
+        max_length=20, choices=WINTER_HARDINESS_CHOICES, blank=True,
+        help_text='Whether the crop survives winter outdoors. Blank means unknown.',
+    )
 
     # Harvest information.
     harvest_method = models.CharField(
@@ -769,6 +812,8 @@ class Crop(TimestampedModel):
         'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
         'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
         'germination_types', 'germination_pretreatment',
+        'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle',
+        'winter_hardiness',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
         'seed_rate_by_cultivation',
@@ -1263,6 +1308,17 @@ class PublicCrop(TimestampedModel):
     )
     germination_types = models.JSONField(default=list, blank=True)
     germination_pretreatment = models.TextField(blank=True)
+    pests_diseases = models.TextField(blank=True)
+    light_requirement = models.CharField(
+        max_length=20, choices=Crop.LIGHT_REQUIREMENT_CHOICES, blank=True,
+    )
+    water_requirement = models.CharField(
+        max_length=20, choices=Crop.WATER_REQUIREMENT_CHOICES, blank=True,
+    )
+    life_cycle = models.CharField(max_length=20, choices=Crop.LIFE_CYCLE_CHOICES, blank=True)
+    winter_hardiness = models.CharField(
+        max_length=20, choices=Crop.WINTER_HARDINESS_CHOICES, blank=True,
+    )
     harvest_method = models.CharField(max_length=20, choices=Crop.HARVEST_METHOD_CHOICES, blank=True)
     expected_yield = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     allow_deviation_delivery_weeks = models.BooleanField(default=False)
