@@ -73,6 +73,48 @@ describe('CropsImportDialog', () => {
     expect(screen.getByRole('button', { name: 'import.start' })).toBeDisabled();
   });
 
+  it('shows that the import is running and locks both buttons meanwhile', () => {
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({ status: 'uploading' })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={vi.fn()}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'import.importing' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'import.close' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'import.start' })).not.toBeInTheDocument();
+    // The preview stays visible while the import runs.
+    expect(screen.getByText('import.newCrops (1)')).toBeInTheDocument();
+  });
+
+  it('offers a retry with the same entries after a failed import', () => {
+    const onImportStart = vi.fn();
+    render(
+      <CropsImportDialog
+        open
+        importState={buildState({ status: 'error', error: 'import.errors.network' })}
+        hasImportableEntries
+        confirmUpdates={false}
+        onConfirmUpdatesChange={vi.fn()}
+        onClose={vi.fn()}
+        onImportStart={onImportStart}
+        t={t}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('import.errors.network');
+    expect(screen.getByText('import.newCrops (1)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'import.start' }));
+    expect(onImportStart).toHaveBeenCalledTimes(1);
+  });
+
   it('propagates update-confirmation checkbox changes', () => {
     const onConfirmUpdatesChange = vi.fn();
 

@@ -673,6 +673,8 @@
     "skippedRows_other": "{{count}} Zeilen ohne gültigen Namen wurden übersprungen.",
     "warnings": "Hinweise",
     "start": "Import starten",
+    "preparingPreview": "Importvorschau wird vorbereitet…",
+    "importing": "Kulturen werden importiert…",
     "close": "Schließen",
     "success": "Import erfolgreich",
     "created_one": "{{count}} neue Kultur erstellt",
