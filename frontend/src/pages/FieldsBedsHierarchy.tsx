@@ -125,6 +125,7 @@ import {
 import {
   useRegisterCommands,
 } from "../commands/useCommandContext";
+import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFlashStyles";
 import type { CommandSpec } from "../commands/types";
 
 interface FieldsBedsHierarchyProps {
@@ -1131,7 +1132,7 @@ function FieldsBedsHierarchy({
       highlightClearTimeoutRef.current = window.setTimeout(() => {
         setHighlightedRowId(null);
         highlightClearTimeoutRef.current = null;
-      }, 2500);
+      }, HIGHLIGHT_FLASH_DURATION_MS);
     }
 
     searchParams.delete("highlight");
