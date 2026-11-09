@@ -29,7 +29,7 @@ import {
   resolveSiteUrl,
   type HreflangAlternate,
 } from './seoConfig';
-import { resolvePublicPageMeta } from './publicPageMeta';
+import { loadLanguages } from '../i18n/config';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 
 /**
@@ -103,16 +103,28 @@ export default function RouteSeo(): null {
     if (!variant) {
       return;
     }
-    // Mirrors what build/prerenderSeo.ts bakes into the prerendered file, so
-    // client-side navigation between public pages leaves the same head.
-    const meta = resolvePublicPageMeta(variant.page, variant.language);
-    document.title = meta.title;
-    upsertMeta('name', 'description', meta.description);
-    upsertMeta('property', 'og:title', meta.title);
-    upsertMeta('property', 'og:description', meta.description);
     upsertMeta('property', 'og:url', canonical);
     upsertMeta('property', 'og:locale', OG_LOCALES[variant.language]);
-  }, [pathname]);
+    // Mirrors what build/prerenderSeo.ts bakes into the prerendered file, so
+    // client-side navigation between public pages leaves the same head. The
+    // texts come through i18next (not publicPageMeta.ts, which would put every
+    // language's bundle into the main chunk); the page's language may still be
+    // loading right after a switch.
+    let cancelled = false;
+    void loadLanguages([variant.language]).catch(() => undefined).then(() => {
+      if (cancelled) return;
+      const translate = i18n.getFixedT(variant.language, 'home');
+      const title = translate(variant.page.titleKey);
+      const description = translate(variant.page.descriptionKey);
+      document.title = title;
+      upsertMeta('name', 'description', description);
+      upsertMeta('property', 'og:title', title);
+      upsertMeta('property', 'og:description', description);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n, pathname]);
 
   useEffect(() => {
     if (findPublicPageVariant(pathname)) {

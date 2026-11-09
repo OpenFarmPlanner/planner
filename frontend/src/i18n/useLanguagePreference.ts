@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useContext, useEffect, useRef } from 'react';
+import { switchLanguage } from './config';
 import { useTranslation } from 'react-i18next';
 
 import { AuthContext } from '../auth/authContextShared';
@@ -85,7 +86,7 @@ export function useLanguagePreference(): LanguagePreferenceState {
   // unchanged language never triggers a re-render loop.
   useEffect(() => {
     if (i18n.resolvedLanguage !== language) {
-      void i18n.changeLanguage(language);
+      void switchLanguage(language);
     }
     if (typeof document !== 'undefined') {
       document.documentElement.lang = language;
@@ -183,14 +184,14 @@ export function useLanguagePreference(): LanguagePreferenceState {
       // which then fixes the language; don't flip the current page's text
       // ahead of that navigation.
       if (!routeLanguage) {
-        void i18n.changeLanguage(resolveLanguage(normalized, detectBrowserLanguage()));
+        void switchLanguage(resolveLanguage(normalized, detectBrowserLanguage()));
       }
       if (!user) {
         return;
       }
       void saveToAccount(normalized);
     },
-    [i18n, routeLanguage, saveToAccount, user],
+    [routeLanguage, saveToAccount, user],
   );
 
   return {

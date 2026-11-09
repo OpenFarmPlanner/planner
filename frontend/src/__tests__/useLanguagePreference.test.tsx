@@ -19,6 +19,12 @@ const { updateUiLanguageMock, changeLanguageMock, i18nState } = vi.hoisted(() =>
 
 vi.mock('../auth/authApi', () => ({ updateUiLanguage: updateUiLanguageMock }));
 
+// The hook switches through `switchLanguage`, which loads the bundle first.
+vi.mock('../i18n/config', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../i18n/config')>(),
+  switchLanguage: changeLanguageMock,
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: {

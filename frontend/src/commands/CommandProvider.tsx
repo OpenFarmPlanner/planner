@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommandPalette } from './CommandPalette';
+import { loadLanguages } from '../i18n/config';
 import { getRunnableCommands, getVisibleCommands } from './commands';
 import type { CommandContextTag, CommandSpec, CreateAction } from './types';
 import type { ShortcutSpec } from '../hooks/useKeyboardShortcuts';
@@ -242,6 +243,12 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation(['navigation', 'common']);
   const { activeRegionId, getRegionShortcutsHelp } = useFocusManager();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Command aliases always include the English ones (keywordList.ts), but only
+  // the UI language is loaded at startup: fetch English when the palette opens.
+  // Components re-render once it arrives (`bindI18n: 'languageChanged loaded'`).
+  useEffect(() => {
+    if (paletteOpen) void loadLanguages(['en']).catch(() => undefined);
+  }, [paletteOpen]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [createChooserOpen, setCreateChooserOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
