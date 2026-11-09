@@ -1,4 +1,5 @@
-import type { SxProps, Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
+import type { SystemStyleObject } from '@mui/system';
 
 /**
  * Style definitions for the page shells.
@@ -62,6 +63,19 @@ const workspacePage = {
   maxWidth: 'none',
 } as const;
 
+/**
+ * Opt-in content inset below `sm` for pages whose content would otherwise run
+ * edge to edge on a phone (e.g. the task board). Keeps the safe-area inset when
+ * it is larger than the 16px gutter, so a notch in landscape is still cleared.
+ * From `sm` up the regular page gutter applies unchanged.
+ */
+export const MOBILE_INSET_SX = (theme: Theme): SystemStyleObject<Theme> => ({
+  [theme.breakpoints.down('sm')]: {
+    paddingLeft: `max(${theme.spacing(2)}, ${SAFE_AREA_LEFT})`,
+    paddingRight: `max(${theme.spacing(2)}, ${SAFE_AREA_RIGHT})`,
+  },
+});
+
 export type PageContainerVariant =
   | 'standardCenteredPage'
   | 'compactCenteredPage'
@@ -74,7 +88,7 @@ export type PageContainerVariant =
   | 'wideWorkspace'
   | 'compactCenteredTable';
 
-export const PAGE_CONTAINER_SX: Record<PageContainerVariant, SxProps<Theme>> = {
+export const PAGE_CONTAINER_SX: Record<PageContainerVariant, SystemStyleObject<Theme>> = {
   // Recommended categories:
   // - standardCenteredPage: default readable centered page width
   // - compactCenteredPage: compact, centered pages (e.g. Suppliers)
