@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { I18N_NAMESPACES } from '../i18n/config';
+import i18n, { I18N_NAMESPACES, switchLanguage } from '../i18n/config';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
 const LOCALES_DIR = path.resolve(__dirname, '../i18n/locales');
@@ -22,4 +22,13 @@ describe('lazy language bundles', () => {
       expect([...I18N_NAMESPACES].sort()).toEqual(files);
     },
   );
+});
+
+describe('switchLanguage', () => {
+  it('lets the most recent request win when switches overlap', async () => {
+    await i18n.changeLanguage('de');
+    await Promise.all([switchLanguage('fr'), switchLanguage('es')]);
+    expect(i18n.resolvedLanguage).toBe('es');
+    await i18n.changeLanguage('de');
+  });
 });

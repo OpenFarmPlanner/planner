@@ -97,13 +97,20 @@ export async function loadLanguages(
   await i18n.loadLanguages([...languages]);
 }
 
+let latestSwitchRequest: string | null = null;
+
 /**
  * Switches the UI language once its bundle is loaded. If the download fails,
  * the current language stays (no screen of raw keys) and `false` is returned.
  */
 export async function switchLanguage(language: string): Promise<boolean> {
+  latestSwitchRequest = language;
   await loadLanguages([language]).catch(() => undefined);
   if (!isLanguageLoaded(language)) {
+    return false;
+  }
+  // A newer switch was requested while this bundle downloaded: it wins.
+  if (latestSwitchRequest !== language) {
     return false;
   }
   await i18n.changeLanguage(language);
