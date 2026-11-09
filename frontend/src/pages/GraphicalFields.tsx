@@ -68,7 +68,6 @@ import {
 } from "./graphicalViewport";
 import {
   DEFAULT_STAGE_HEIGHT,
-  FIELD_INNER_BOTTOM_PADDING,
   FIELD_INNER_OFFSET_X,
   FIELD_INNER_OFFSET_Y,
   FIELD_SNAP_THRESHOLD,
@@ -85,6 +84,7 @@ import {
   WORKSPACE_MIN_HEIGHT,
   WORKSPACE_MIN_WIDTH,
   ZOOM_STEP,
+  getFieldUsableArea,
   getFitViewportPadding,
   snapToNeighbors,
   type BedViewModel,
@@ -1433,12 +1433,10 @@ export default function GraphicalFields({
                             bed.field === fieldId && bed.id !== undefined,
                         );
                         const bedSizeMap = new Map<number, RectSize>();
+                        const fieldUsableArea = getFieldUsableArea(baseRect);
                         const fieldInnerSize = {
-                          width: baseRect.width - FIELD_INNER_OFFSET_X * 2,
-                          height:
-                            baseRect.height -
-                            FIELD_INNER_OFFSET_Y -
-                            FIELD_INNER_BOTTOM_PADDING,
+                          width: fieldUsableArea.width,
+                          height: fieldUsableArea.height,
                         };
                         fieldBeds.forEach((bed) => {
                           bedSizeMap.set(
@@ -1511,6 +1509,29 @@ export default function GraphicalFields({
 
                         return (
                           <Group key={fieldId}>
+                            {/* The light-grey band is kept free of beds (border
+                                and label strip); the white area is where beds
+                                can go. Both only paint: the outlined field
+                                rect above them keeps all the interaction. */}
+                            <Rect
+                              x={currentFieldRect.x}
+                              y={currentFieldRect.y}
+                              width={baseRect.width}
+                              height={baseRect.height}
+                              fill={theme.palette.grey[200]}
+                              cornerRadius={4}
+                              listening={false}
+                              data-testid={`field-margin-${fieldId}`}
+                            />
+                            <Rect
+                              x={currentFieldRect.x + fieldUsableArea.x}
+                              y={currentFieldRect.y + fieldUsableArea.y}
+                              width={fieldUsableArea.width}
+                              height={fieldUsableArea.height}
+                              fill={theme.palette.common.white}
+                              listening={false}
+                              data-testid={`field-usable-area-${fieldId}`}
+                            />
                             <Rect
                               x={currentFieldRect.x}
                               y={currentFieldRect.y}

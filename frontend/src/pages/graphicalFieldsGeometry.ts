@@ -69,6 +69,24 @@ export const FIELD_INNER_OFFSET_X = 10;
 export const FIELD_LABEL_HEIGHT = 24;
 export const FIELD_INNER_OFFSET_Y = FIELD_INNER_OFFSET_X + FIELD_LABEL_HEIGHT;
 export const FIELD_INNER_BOTTOM_PADDING = FIELD_INNER_OFFSET_X;
+
+/**
+ * The part of a field (Parzelle) beds can be placed in, in the field's own
+ * coordinates: the border and the label strip at the top are kept free. The
+ * single source for both the placement clamp and the drawn usable area, so
+ * what the user sees and where a bed can go never disagree.
+ */
+export const getFieldUsableArea = (fieldSize: { width: number; height: number }): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} => ({
+  x: FIELD_INNER_OFFSET_X,
+  y: FIELD_INNER_OFFSET_Y,
+  width: Math.max(0, fieldSize.width - FIELD_INNER_OFFSET_X * 2),
+  height: Math.max(0, fieldSize.height - FIELD_INNER_OFFSET_Y - FIELD_INNER_BOTTOM_PADDING),
+});
 export const SNAP_THRESHOLD = 8;
 export const FIELD_SNAP_THRESHOLD = 14;
 export const DEFAULT_STAGE_HEIGHT = 420;
