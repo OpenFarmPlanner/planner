@@ -20,7 +20,6 @@ export const COMPANION_REASONS: readonly CompanionReason[] = [
   'other',
 ];
 
-type TranslateFn = (key: string) => string;
 
 export const companionReasonLabelKey = (reason: CompanionReason): string => `companions.reasons.${reason}`;
 
@@ -109,24 +108,7 @@ export const formatCompanionCell = (items: readonly CompanionImportItem[]): stri
   items.length === 0 ? null : items.map(({ name }) => name).join('; ')
 );
 
-/**
- * Reason labels of every given language, lower-cased, mapped to their reason.
- * @deprecated Only reads the legacy `Name – Reason: note` cells; see `parseCompanionCell`.
- */
-export const buildCompanionReasonLookup = (...translators: TranslateFn[]): Map<string, CompanionReason> => {
-  const lookup = new Map<string, CompanionReason>();
-  for (const t of translators) {
-    for (const reason of COMPANION_REASONS) {
-      if (reason === 'other') continue;
-      lookup.set(normalizeName(t(companionReasonLabelKey(reason))), reason);
-    }
-  }
-  return lookup;
-};
-
 const LINE_SPLIT = /[\n\r\u2028\u2029]+/;
-// Legacy format: the names end at the first dash with spaces around it ("Tomate – Konkurrenz").
-const NAME_DETAIL_SPLIT = /\s+[\u2013\u2014-]\s+/;
 
 /** "Tomate; Kartoffel, Dill" → three names; separators inside parentheses do not split. */
 const splitNames = (names: string): string[] => {
@@ -147,48 +129,17 @@ const splitNames = (names: string): string[] => {
   return parts.map((part) => part.trim()).filter(Boolean);
 };
 
-const parseDetail = (
-  detail: string,
-  reasonLookup: ReadonlyMap<string, CompanionReason>,
-): Pick<CompanionImportItem, 'reason' | 'note'> => {
-  const colon = detail.indexOf(':');
-  const head = colon >= 0 ? detail.slice(0, colon) : detail;
-  const reason = reasonLookup.get(normalizeName(head));
-  if (!reason) return { reason: 'other', note: detail };
-  return { reason, note: colon >= 0 ? detail.slice(colon + 1).trim() : '' };
-};
-
 /**
  * The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`.
- * Names are separated by `,`, `;` or a line break, like tags.
- *
- * Deprecated legacy format, still read: a line with a spaced dash is parsed
- * as exports from 1.122 up to 1.156 wrote it, one neighbour per line,
- * `Name – Reason: note`, where the names before the dash share reason and
- * note. Remove that branch (with `parseDetail`, `buildCompanionReasonLookup`
- * and `NAME_DETAIL_SPLIT`) once spreadsheets exported in that format are no
- * longer expected to be imported — at the earliest a year after the release
- * that stopped writing it.
+ * Names are separated by `,`, `;` or a line break, like tags; a dash is part
+ * of the name. Every name gets reason "other" and no note.
  */
-export const parseCompanionCell = (
-  text: unknown,
-  reasonLookup: ReadonlyMap<string, CompanionReason>,
-): CompanionImportItem[] => {
+export const parseCompanionCell = (text: unknown): CompanionImportItem[] => {
   if (typeof text !== 'string') return [];
-  const items: CompanionImportItem[] = [];
-  for (const rawLine of text.split(LINE_SPLIT)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const separator = NAME_DETAIL_SPLIT.exec(line);
-    const names = separator ? line.slice(0, separator.index) : line;
-    const detail = separator ? line.slice(separator.index + separator[0].length).trim() : '';
-    const { reason, note } = detail ? parseDetail(detail, reasonLookup) : { reason: 'other' as const, note: '' };
-    for (const name of splitNames(names)) {
-      if (!/[\p{L}\p{N}]/u.test(name)) continue;
-      items.push({ name, reason, note });
-    }
-  }
-  return items;
+  return text.split(LINE_SPLIT)
+    .flatMap(splitNames)
+    .filter((name) => /[\p{L}\p{N}]/u.test(name))
+    .map((name) => ({ name, reason: 'other' as const, note: '' }));
 };
 
 // --- Crop form ----------------------------------------------------------------

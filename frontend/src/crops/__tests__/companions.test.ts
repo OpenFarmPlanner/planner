@@ -4,22 +4,11 @@ import type { Crop, CropCompanion, PublicCrop, PublicCropCompanion } from '../..
 import {
   buildCompanionItemsByCrop,
   buildLibraryCompanionRows,
-  buildCompanionReasonLookup,
   findKulturId,
   formatCompanionCell,
   parseCompanionCell,
   relationPartner,
 } from '../companions';
-
-const labels: Record<string, string> = {
-  'companions.reasons.competition': 'Konkurrenz',
-  'companions.reasons.allelopathy': 'Hemmt das Wachstum',
-  'companions.reasons.pest_control': 'Schädlingsabwehr',
-  'companions.reasons.soil': 'Bodenverbesserung',
-  'companions.reasons.shared_pests_diseases': 'Gleiche Schädlinge oder Krankheiten',
-};
-const t = (key: string): string => labels[key] ?? key;
-const lookup = buildCompanionReasonLookup(t);
 
 const crop = (id: number, name: string, variety = '', extra: Partial<Crop> = {}): Crop => (
   { id, name, variety, ...extra } as Crop
@@ -40,34 +29,35 @@ describe('parseCompanionCell', () => {
   const names = (...list: string[]) => list.map((name) => ({ name, reason: 'other', note: '' }));
 
   it('reads names separated by commas, semicolons and line breaks', () => {
-    expect(parseCompanionCell('Tomate; Basilikum, Kreuzblütler', lookup))
+    expect(parseCompanionCell('Tomate; Basilikum, Kreuzblütler'))
       .toEqual(names('Tomate', 'Basilikum', 'Kreuzblütler'));
-    expect(parseCompanionCell('Tomate\nBasilikum;\r\nDill', lookup)).toEqual(names('Tomate', 'Basilikum', 'Dill'));
+    expect(parseCompanionCell('Tomate\nBasilikum;\r\nDill')).toEqual(names('Tomate', 'Basilikum', 'Dill'));
   });
 
   it('does not split inside parentheses', () => {
-    expect(parseCompanionCell('Kräuter (Dill; Basilikum), Kohl (alle)', lookup))
+    expect(parseCompanionCell('Kräuter (Dill; Basilikum), Kohl (alle)'))
       .toEqual(names('Kräuter (Dill; Basilikum)', 'Kohl (alle)'));
   });
 
   it('keeps hyphenated names whole', () => {
-    expect(parseCompanionCell('Pak-Choi; Zucker-Mais', lookup)).toEqual(names('Pak-Choi', 'Zucker-Mais'));
+    expect(parseCompanionCell('Pak-Choi; Zucker-Mais')).toEqual(names('Pak-Choi', 'Zucker-Mais'));
   });
 
   it('ignores empty lines, stray separators and non-text cells', () => {
-    expect(parseCompanionCell('\n Salbei ;\n\n;,', lookup)).toEqual(names('Salbei'));
-    expect(parseCompanionCell(42, lookup)).toEqual([]);
+    expect(parseCompanionCell('\n Salbei ;\n\n;,')).toEqual(names('Salbei'));
+    expect(parseCompanionCell(42)).toEqual([]);
   });
 
   it.each(['#', '-', '?', '...', '—', '_', '/', '(?)', '※', '✓', '# ? – /'])(
-    'ignores the placeholder %s, including when it has a note', (placeholder) => {
-      expect(parseCompanionCell(` ${placeholder} `, lookup)).toEqual([]);
-      expect(parseCompanionCell(`${placeholder} – Konkurrenz: Wurzelraum`, lookup)).toEqual([]);
-      if (!placeholder.includes(' – ')) {
-        expect(parseCompanionCell(`Dill; ${placeholder}`, lookup)).toEqual(names('Dill'));
-      }
+    'ignores the placeholder %s', (placeholder) => {
+      expect(parseCompanionCell(` ${placeholder} `)).toEqual([]);
+      expect(parseCompanionCell(`Dill; ${placeholder}`)).toEqual(names('Dill'));
     },
   );
+
+  it('keeps a spaced dash as part of the name', () => {
+    expect(parseCompanionCell('Salat - Pflücksalat; Tomate – Roma')).toEqual(names('Salat - Pflücksalat', 'Tomate – Roma'));
+  });
 
   it('reads back what formatCompanionCell writes, names only', () => {
     const items = [
@@ -77,47 +67,9 @@ describe('parseCompanionCell', () => {
     ] as const;
 
     expect(formatCompanionCell(items)).toBe('Basilikum; Tagetes; Kräuter (Dill, Basilikum)');
-    expect(parseCompanionCell(formatCompanionCell(items), lookup))
+    expect(parseCompanionCell(formatCompanionCell(items)))
       .toEqual(names('Basilikum', 'Tagetes', 'Kräuter (Dill, Basilikum)'));
     expect(formatCompanionCell([])).toBeNull();
-  });
-
-  // The deprecated format exports from 1.122 on wrote: one neighbour per line,
-  // `Name – Reason: note`; it must keep importing with reason and note.
-  describe('legacy "Name – Reason: note" cells', () => {
-    it('reads one neighbour per line, several names sharing the note', () => {
-      expect(parseCompanionCell(
-        'Tomate, Kartoffel – gleiche Krankheiten (Verticillium)\nKräuter (Dill, Basilikum) – Geschmack',
-        lookup,
-      )).toEqual([
-        { name: 'Tomate', reason: 'other', note: 'gleiche Krankheiten (Verticillium)' },
-        { name: 'Kartoffel', reason: 'other', note: 'gleiche Krankheiten (Verticillium)' },
-        { name: 'Kräuter (Dill, Basilikum)', reason: 'other', note: 'Geschmack' },
-      ]);
-    });
-
-    it('maps a leading reason label to the reason', () => {
-      expect(parseCompanionCell('Dill – Schädlingsabwehr\nSalbei - konkurrenz: Wurzelraum; viel Licht', lookup)).toEqual([
-        { name: 'Dill', reason: 'pest_control', note: '' },
-        { name: 'Salbei', reason: 'competition', note: 'Wurzelraum; viel Licht' },
-      ]);
-    });
-
-    it('reads a cell mixing legacy lines and plain names', () => {
-      expect(parseCompanionCell('Dill – Schädlingsabwehr\nTagetes; Ringelblume', lookup)).toEqual([
-        { name: 'Dill', reason: 'pest_control', note: '' },
-        ...names('Tagetes', 'Ringelblume'),
-      ]);
-    });
-
-    it('filters individual placeholders while preserving names and shared details', () => {
-      expect(parseCompanionCell('#, Pak-Choi, ?, Épinard, 小白菜, 123 – Konkurrenz: Wurzelraum', lookup)).toEqual([
-        { name: 'Pak-Choi', reason: 'competition', note: 'Wurzelraum' },
-        { name: 'Épinard', reason: 'competition', note: 'Wurzelraum' },
-        { name: '小白菜', reason: 'competition', note: 'Wurzelraum' },
-        { name: '123', reason: 'competition', note: 'Wurzelraum' },
-      ]);
-    });
   });
 });
 

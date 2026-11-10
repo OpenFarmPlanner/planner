@@ -159,8 +159,8 @@ The export writes two columns, "Gute Nachbarn" and "Schlechte Nachbarn", on
 Kultur rows only. A cell holds names only, separated like tags by `,`, `;` or
 a line break; the export writes them on one line: `Tomate; Basilikum;
 Kreuzblütler`. Separators inside parentheses do not split
-(`Kräuter (Dill, Basilikum)` is one name), and a hyphen inside a name
-(`Pak-Choi`) is part of it.
+(`Kräuter (Dill, Basilikum)` is one name); a dash, with or without spaces, is
+part of the name (`Pak-Choi`, `Salat - Pflücksalat`).
 
 Reason and note are not part of the spreadsheet. They are edited in the crop
 form, and the JSON export carries them as `good_companions` /
@@ -171,25 +171,20 @@ note. (One cell format with reasons was rejected as a hidden grammar users
 could not guess, and a separate neighbour sheet because CSV has a single sheet
 and it is harder for gardeners to edit; see issue #1020.)
 
-**Deprecated legacy format.** Exports from 1.122 up to 1.156 wrote one
-neighbour per line, `Name`, `Name – note`, `Name – Reason` or
-`Name – Reason: note`, with the reason label in the export language. The
-import still reads it (`parseCompanionCell` in `crops/companions.ts`): a line
-with a dash with spaces around it is read that way, the names before the dash
-(separated by `,` or `;`) share reason and note, and the reason label is
-recognised in any UI language. The branch can be removed once spreadsheets in
-that format are no longer expected to be imported, at the earliest a year
-after the release that stopped writing it; the parser's legacy tests and this
-paragraph go with it.
+Exports from 1.122 up to 1.156 wrote one neighbour per line as
+`Name – Reason: note`. That format is deliberately no longer read, so that a
+spaced dash can belong to a name: such a line now imports as one free-text
+name, which the import preview lists among the unknown names. Reasons and
+notes move between projects through the JSON export only.
 
 Both the cell parser and backend import normalization ignore names without any
-Unicode letter or number (e.g. `#`, `-`, `?`), even when a reason or note is
-supplied. These placeholders do not count as neighbours, unresolved names or
+Unicode letter or number (e.g. `#`, `-`, `?`); the backend does so even when an
+item carries a reason or note. These placeholders do not count as neighbours, unresolved names or
 good/bad conflicts. The import template has a neighbour example on its Kultur
 row.
 
-The backend resolves each name once every row of the file exists: a crop of the project with that
-name, then the project's crops of the crop species the name names (in any
+The backend resolves each name once every row of the file exists: a crop of
+the project with that name, then the project's crops of the crop species the name names (in any
 language), then a plant family by name or synonym, else free text. The import
 is additive: existing relations are kept, and a pair already listed with the
 other kind is reported as a conflict and left as it is. The preview lists the
