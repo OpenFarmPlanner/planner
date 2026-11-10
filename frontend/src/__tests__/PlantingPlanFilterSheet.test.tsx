@@ -102,7 +102,8 @@ describe('PlantingPlanFilterSheet', () => {
       expect(style.borderTopLeftRadius).toBe('16px');
       expect(style.borderTopRightRadius).toBe('16px');
       expect(style.borderBottomLeftRadius).not.toBe('16px');
-      expect(style.maxHeight).toBe('85dvh');
+      // jsdom resolves the `85dvh` cap against its window height.
+      expect(Number.parseFloat(style.maxHeight)).toBeCloseTo(window.innerHeight * 0.85);
     });
 
     it('closes on Escape', async () => {

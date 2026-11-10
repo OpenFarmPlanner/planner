@@ -15,6 +15,8 @@ describe('useAutosizeSidebarWidth', () => {
     // Create a mock container element
     container = document.createElement('div');
     container.className = 'gantt-sidebar';
+    // Detached elements have no computed style, so the paddings must resolve.
+    document.body.appendChild(container);
     containerRef = { current: container };
 
     // Mock ResizeObserver

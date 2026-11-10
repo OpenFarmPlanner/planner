@@ -419,8 +419,8 @@ describe('both popovers', () => {
   it('place the wide filters on their own row', () => {
     renderPrivate();
     const wide = select('Familie').closest('.MuiFormControl-root') as HTMLElement;
-    expect(window.getComputedStyle(wide).gridColumn).toBe('1/-1');
+    expect(wide).toHaveStyle({ gridColumn: '1/-1' });
     const narrow = select('Anbauart').closest('.MuiFormControl-root') as HTMLElement;
-    expect(window.getComputedStyle(narrow).gridColumn).not.toBe('1/-1');
+    expect(narrow).not.toHaveStyle({ gridColumn: '1/-1' });
   });
 });

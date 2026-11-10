@@ -15,7 +15,9 @@ const authState = createAuthStateMock();
 vi.mock('../auth/useAuth', () => ({ useAuth: () => authState }));
 
 function gapOf(element: Element): number {
-  return Number.parseFloat(window.getComputedStyle(element).gap || '0');
+  // An unset gap computes to `normal`, which is 0 for flex and grid containers.
+  const gap = window.getComputedStyle(element).gap;
+  return gap === '' || gap === 'normal' ? 0 : Number.parseFloat(gap);
 }
 
 function pixelsOf(element: Element, property: 'marginLeft' | 'paddingLeft' | 'paddingRight' | 'width'): number {
