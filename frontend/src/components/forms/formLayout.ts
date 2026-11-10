@@ -88,23 +88,6 @@ export const formGridFieldSx = {
   minWidth: 0,
 } as const;
 
-/**
- * A caption with its input(s) in one `formGridSx` cell, e.g. a from/to range.
- * Bottom-aligned so the inputs of a row share one line even when a caption
- * wraps; a plain field beside it uses `formGridBottomAlignedFieldSx`.
- */
-export const formGridCaptionedGroupSx = { minWidth: 0, alignSelf: 'end' } as const;
-
-/** A plain field sharing a `formGridSx` row with a captioned group. */
-export const formGridBottomAlignedFieldSx = { ...formGridFieldSx, alignSelf: 'end' } as const;
-
-/** The from/to pair inside a captioned group. */
-export const formRangeInputsSx = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 1.5,
-} as const;
-
 /** A field inside `formGridSx` that spans the full row (e.g. tags, long text). */
 export const formGridFullRowSx = {
   ...formGridFieldSx,

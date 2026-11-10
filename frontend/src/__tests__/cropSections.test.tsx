@@ -4,7 +4,7 @@ import { ColorSection } from '../crops/sections/ColorSection';
 import { NotesSection } from '../crops/sections/NotesSection';
 import { SpacingSection } from '../crops/sections/SpacingSection';
 import { SeedingSection } from '../crops/sections/SeedingSection';
-import { HarvestSection } from '../crops/sections/HarvestSection';
+import { YieldSection } from '../crops/sections/YieldSection';
 import { BasicInfoSection } from '../crops/sections/BasicInfoSection';
 
 import i18n from '../i18n/config';
@@ -55,7 +55,8 @@ describe('crop form UI sections', () => {
     fireEvent.change(colorInput, { target: { value: '#123456' } });
 
     expect(onChange).toHaveBeenCalledWith('display_color', '#123456');
-    expect(screen.getByText('Farbe zur Darstellung im Anbaukalender.')).toBeInTheDocument();
+    // The display colour needs no help text below it.
+    expect(screen.queryByText('Farbe zur Darstellung im Anbaukalender.')).not.toBeInTheDocument();
   });
 
   it('renders the saved display color as a visible hex value', () => {
@@ -144,6 +145,25 @@ describe('crop form UI sections', () => {
     fireEvent.change(sowingDepthMaxInput, { target: { value: '' } });
     expect(onChange).toHaveBeenLastCalledWith('sowing_depth_max_cm', null);
 
+    // Both bounds share one range field labelled "Saattiefe (cm)".
+    const range = screen.getByRole('group', { name: 'Saattiefe (cm)' });
+    expect(range).toContainElement(sowingDepthInput);
+    expect(range).toContainElement(sowingDepthMaxInput);
+  });
+
+  it('shows the sowing depth range error inline below the range field', () => {
+    render(
+      <SpacingSection
+        formData={{ sowing_depth_cm: 3, sowing_depth_max_cm: 1 }}
+        errors={{}}
+        onChange={vi.fn()}
+        t={t}
+      />
+    );
+
+    const range = screen.getByRole('group', { name: 'Saattiefe (cm)' });
+    expect(range).toHaveTextContent('Der Höchstwert muss mindestens dem Mindestwert entsprechen.');
+    expect(screen.getByLabelText('Saattiefe von (cm)')).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('renders SeedingSection and handles method-specific seed changes', () => {
@@ -204,30 +224,6 @@ describe('crop form UI sections', () => {
 
     expect(screen.getByText('Einheit auswählen')).toBeInTheDocument();
     expect(screen.queryByText('-')).not.toBeInTheDocument();
-  });
-
-  it('hides the seed unit tooltip while the dropdown menu is open', async () => {
-    const onChange = vi.fn();
-
-    render(
-      <SeedingSection
-        formData={{ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' }}
-        errors={{}}
-        onChange={onChange}
-        t={t}
-      />
-    );
-
-    const unitSelect = screen.getByRole('combobox');
-    fireEvent.mouseOver(unitSelect);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Saatgutmenge pro ausgewählter Einheit. Daraus wird der Gesamtbedarf berechnet.');
-
-    fireEvent.mouseDown(unitSelect);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-    });
   });
 
   it('shows method blocks based on selected cultivation types', () => {
@@ -313,19 +309,19 @@ describe('crop form UI sections', () => {
 
 
   it('names the expected-yield unit after the chosen yield unit, and asks for it while unset', () => {
-    const { rerender } = render(<HarvestSection formData={{ harvest_method: 'per_plant' }} errors={{}} onChange={vi.fn()} t={t} />);
+    const { rerender } = render(<YieldSection formData={{ harvest_method: 'per_plant' }} errors={{}} onChange={vi.fn()} t={t} />);
     expect(screen.getByLabelText('Erwarteter Ertrag (kg pro Pflanze)')).toBeInTheDocument();
 
-    rerender(<HarvestSection formData={{}} errors={{}} onChange={vi.fn()} t={t} />);
+    rerender(<YieldSection formData={{}} errors={{}} onChange={vi.fn()} t={t} />);
     expect(screen.getByLabelText('Erwarteter Ertrag')).toBeInTheDocument();
     expect(screen.getByText('Wähle zuerst die Ertragseinheit.')).toBeInTheDocument();
   });
 
-  it('renders HarvestSection and parses expected yield input including empty value', () => {
+  it('renders YieldSection and parses expected yield input including empty value', () => {
     const onChange = vi.fn();
 
     render(
-      <HarvestSection
+      <YieldSection
         formData={{ expected_yield: 3.5, harvest_method: 'per_sqm' }}
         errors={{ expected_yield: 'Ungültig' }}
         onChange={onChange}

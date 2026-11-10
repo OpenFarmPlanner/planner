@@ -20,6 +20,24 @@ describe('germination crop fields', () => {
     expect(onChange).toHaveBeenCalledWith('germination_days_min', null);
   });
 
+  it('groups each from/to pair in one range field and labels the minimum temperature like any field', () => {
+    render(<GerminationSection formData={{ germination_days_min: 14, germination_days_max: 7 }} errors={{}} onChange={vi.fn()} t={t} />);
+
+    const temperature = screen.getByRole('group', { name: 'germination.optimalTemperature' });
+    expect(temperature).toContainElement(screen.getByLabelText('germination.fields.germination_temperature_optimal_min_c'));
+    expect(temperature).toContainElement(screen.getByLabelText('germination.fields.germination_temperature_optimal_max_c'));
+    const days = screen.getByRole('group', { name: 'germination.days' });
+    expect(days).toContainElement(screen.getByLabelText('germination.fields.germination_days_min'));
+    // From greater than To: the inline error sits below the range field.
+    expect(days).toHaveTextContent('germination.invalidRange');
+
+    // A regular outlined field with its floating label, not a caption above it.
+    const minimum = screen.getByLabelText('germination.fields.germination_temperature_min_c');
+    expect(minimum.closest('[role="group"]')).toBeNull();
+    expect(screen.getByText('germination.fields.germination_temperature_min_c', { selector: 'label' }))
+      .toHaveAttribute('for', minimum.id);
+  });
+
   it('detects edits to requirements and ignores their order', () => {
     expect(hasEffectiveCropFormChanges({}, { germination_types: ['cold'] })).toBe(true);
     expect(hasEffectiveCropFormChanges({ germination_types: ['cold', 'light'] }, { germination_types: ['light', 'cold'] })).toBe(false);

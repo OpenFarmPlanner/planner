@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HarvestSection } from '../crops/sections/HarvestSection';
+import { YieldSection } from '../crops/sections/YieldSection';
 import { SeedingSection } from '../crops/sections/SeedingSection';
 
 import i18n from '../i18n/config';
@@ -9,12 +9,12 @@ import i18n from '../i18n/config';
 const t = (key: string, options?: Record<string, unknown>) =>
   i18n.getFixedT('de', 'crops')(key, options) as string;
 
-describe('HarvestSection and SeedingSection', () => {
+describe('YieldSection and SeedingSection', () => {
   it('changes yield unit via select', () => {
     const onChange = vi.fn();
 
     render(
-      <HarvestSection
+      <YieldSection
         formData={{ harvest_method: '' }}
         errors={{ harvest_method: 'required' }}
         onChange={onChange}
@@ -31,28 +31,50 @@ describe('HarvestSection and SeedingSection', () => {
     expect(screen.getByText('Ertragseinheit ist bei angegebenem Ertrag erforderlich')).toBeInTheDocument();
   });
 
-  it('edits the harvest duration and explains it in a tooltip', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
+  it('is titled "Ertrag" and holds no harvest duration (it sits in the timing section)', () => {
+    render(<YieldSection formData={{}} errors={{}} onChange={vi.fn()} t={t} />);
 
+    expect(screen.getByRole('heading', { name: 'Ertrag' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(t('form.harvestDurationDays'))).not.toBeInTheDocument();
+  });
+
+  it('shows no hover tooltips on the seed rate and safety margin fields', async () => {
+    const user = userEvent.setup();
     render(
-      <HarvestSection
-        formData={{ harvest_duration_days: 7 }}
+      <SeedingSection
+        formData={{ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2', seed_rate_direct_value: 3 }}
         errors={{}}
-        onChange={onChange}
+        onChange={vi.fn()}
         t={t}
       />
     );
 
-    const harvestInput = screen.getByLabelText(t('form.harvestDurationDays'));
-    expect(harvestInput).toHaveAttribute('inputmode', 'numeric');
-    fireEvent.change(harvestInput, { target: { value: '12' } });
-    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 12);
-    fireEvent.change(harvestInput, { target: { value: '' } });
-    expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
+    for (const field of [screen.getByLabelText('Menge'), screen.getByLabelText('Sicherheitszuschlag für Saatgut (%)')]) {
+      await user.hover(field);
+      await user.click(field);
+    }
+    await user.hover(screen.getAllByRole('combobox')[0]);
+    // MUI opens a tooltip after its enter delay; wait past it.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    // Only the thousand kernel weight keeps its help, behind an info button.
+    expect(screen.getAllByRole('button', { name: /^Info zu / })).toHaveLength(1);
+  });
 
-    await user.hover(harvestInput);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(t('form.harvestDurationDaysHelp'));
+  it('explains the thousand kernel weight through an info button inside the field', async () => {
+    const user = userEvent.setup();
+    render(<SeedingSection formData={{ cultivation_types: ['direct_sowing'] }} errors={{}} onChange={vi.fn()} t={t} />);
+
+    const field = screen.getByLabelText('1000-Korn-Gewicht (g)');
+    await user.hover(field);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    const infoButton = screen.getByRole('button', { name: 'Info zu 1000-Korn-Gewicht (g)' });
+    expect(field.closest('.MuiInputBase-root')).toContainElement(infoButton);
+    await user.click(infoButton);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(t('form.thousandKernelWeightHelp'));
+    await user.click(document.body);
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
   });
 
   it('handles seeding unit select and blur callbacks', () => {

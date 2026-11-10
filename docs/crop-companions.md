@@ -103,10 +103,15 @@ neighbours with a leaf icon whose tooltip names them.
 ## Crop form
 
 Neighbours are edited in the Kultur's crop form, in a "Mischkultur" section
-after the crop rotation fields (`sections/CompanionsSection.tsx`,
+after site and plant health (`sections/CompanionsSection.tsx`,
 `useCompanionFormRows`). Good and bad neighbours are two groups, each with its
 heading (icon and colour: green for good, amber for bad, as the planning
-warning) and its own "Hinzufügen" button; the kind follows from the group.
+warning); a group and its heading appear only once it has a row. Below the
+groups there are always the two buttons "Guten Nachbarn hinzufügen" and
+"Schlechten Nachbarn hinzufügen", in the kind's icon and colour; the kind of a
+new row follows from the button. On a phone the buttons wrap below each other.
+Without any neighbour a muted line "Noch keine Nachbarn erfasst." sits above
+the buttons.
 Each neighbour is one compact row: neighbour (a Kultur of the project, a plant
 family, or typed free text), reason, note, a button that moves it to the other
 group, and delete. A neighbouring Kultur shows an ↔ icon whose tooltip says
@@ -115,7 +120,10 @@ that out below the field. On a phone a row takes two lines. A row without a
 neighbour or a neighbour listed twice blocks saving. The rows are saved with
 the form (`PUT replace/` after the crop; a failure is reported once the crop is
 saved, because saving again would create a new crop twice); changed rows count
-as unsaved changes. A Sorte's form shows its Kultur's list read-only.
+as unsaved changes. A Sorte's form shows its Kultur's list read-only; when the
+Kultur has no neighbours, it says so in one muted sentence ("Für {Kultur} sind
+noch keine Nachbarn erfasst. Sie gelten für alle Sorten und werden im Formular
+von {Kultur} bearbeitet.").
 
 The neighbour field's options are grouped by plant family
 (`buildCompanionFormOptions`): one group per family under its name in the UI

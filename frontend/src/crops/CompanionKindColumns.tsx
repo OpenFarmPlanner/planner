@@ -1,11 +1,9 @@
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import { Box, Link, Stack, Typography, type SvgIconProps } from '@mui/material';
-import type { ComponentType } from 'react';
+import { Box, Link, Stack, Typography } from '@mui/material';
 
 import type { CompanionKind } from '../api/types';
 import { useTranslation } from '../i18n';
 import { COMPANION_KINDS } from './companions';
+import { COMPANION_KIND_STYLES } from './companionKindStyles';
 
 /** One neighbour as the read-only lists show it. */
 export interface CompanionListItem {
@@ -17,18 +15,6 @@ export interface CompanionListItem {
   /** Opens the neighbour (a crop or a library entry); plain text without it. */
   onSelect?: () => void;
 }
-
-interface CompanionKindStyle {
-  titleKey: string;
-  Icon: ComponentType<SvgIconProps>;
-  color: 'success.main' | 'warning.main';
-}
-
-/** Good neighbours in green, bad ones in amber, as the planning warning. */
-const COMPANION_KIND_STYLES: Record<CompanionKind, CompanionKindStyle> = {
-  good: { titleKey: 'companions.goodColumn', Icon: ThumbUpOutlinedIcon, color: 'success.main' },
-  bad: { titleKey: 'companions.badColumn', Icon: WarningAmberOutlinedIcon, color: 'warning.main' },
-};
 
 /** The heading of one kind: icon and small capitals in the kind's colour. */
 export function CompanionKindHeading({ kind }: { kind: CompanionKind }) {

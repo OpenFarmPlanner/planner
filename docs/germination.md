@@ -16,8 +16,10 @@ value overriding its Kultur's value. They are not species-invariant. They
 participate in library publication, import, edits/proposals, revisions,
 update differences, explicit field sync and local pinning.
 
-The shared crop form offers a Germination block next to timing, including
-from–to inputs. Crop details and library details show the values. Spreadsheet
+The shared crop form offers a Germination block after the time windows: the
+optimal temperature and the germination time are one range field each
+(`RangeField`, "Von"/"Bis" inside one outlined field), the minimum
+temperature is a plain field beside them. Crop details and library details show the values. Spreadsheet
 and JSON exchange preserve each field. Sheets additionally accept range
 columns (`Keimtemperatur`, `Keim-temperatur (°C)`, `Keimdauer`,
 `Keim-dauer (Tage)`), with `18-25` or `18–25` syntax; a single number sets

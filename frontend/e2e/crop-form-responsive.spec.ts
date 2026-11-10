@@ -119,19 +119,26 @@ test.describe('crop edit dialog compact layout', () => {
     // Compact fields: the small MUI field height.
     expect(nameBox.height).toBeLessThan(48);
 
+    // Timing: the cultivation type on its own line, then the three durations
+    // in one row (propagation, growth, harvest).
+    const cultivationBox = await fieldBox(dialog.getByRole('combobox', { name: 'Anbauart' }));
+    const durationBoxes = [
+      await fieldBox(dialog.getByLabel('Anzuchtdauer (Tage)', { exact: true })),
+      await fieldBox(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })),
+      await fieldBox(dialog.getByLabel('Erntezeit (Tage)', { exact: true })),
+    ];
+    await expectOneRow(durationBoxes);
+    expect(durationBoxes[0].y).toBeGreaterThan(cultivationBox.y + cultivationBox.height);
+    expect(durationBoxes[0].x).toBeLessThan(durationBoxes[1].x);
+    expect(durationBoxes[1].x).toBeLessThan(durationBoxes[2].x);
     await expectOneRow([
-      await fieldBox(dialog.getByRole('combobox', { name: 'Anbauart' })),
-      await fieldBox(dialog.getByLabel('Wachstumszeit (Tage)')),
-      await fieldBox(dialog.getByLabel('Anzuchtdauer (Tage)')),
-    ]);
-    await expectOneRow([
-      await fieldBox(dialog.getByLabel('Erntezeit (Tage)')),
       // The yield unit select has no labelled combobox: find it by its label.
       await inputBox(dialog.locator('.MuiFormControl-root')
         .filter({ has: page.locator('label', { hasText: /^Ertragseinheit$/ }) })
         .locator('.MuiInputBase-root')),
       await fieldBox(dialog.getByLabel(/^Erwarteter Ertrag/)),
     ]);
+    await expect(dialog.getByRole('heading', { name: 'Ertrag', exact: true })).toBeVisible();
   });
 });
 
@@ -168,15 +175,18 @@ test('keeps every variety form row on the shared three-column grid', async ({ pa
     expect(Math.abs(box.width - nameBox.width)).toBeLessThan(2);
   }
 
-  // The sowing depth range shares the third column, on the line of the spacing fields.
+  // The sowing depth range is one field in the third column, on the line of
+  // the spacing fields and as high as they are; both inputs share its outline.
   const rowSpacingBox = await fieldBox(dialog.getByLabel('Reihenabstand (cm)'));
-  const depthMinBox = await fieldBox(dialog.getByLabel('Saattiefe von (cm)'));
-  const depthMaxBox = await fieldBox(dialog.getByLabel('Saattiefe bis (cm)'));
-  await expectOneRow([spacingBox, rowSpacingBox, depthMinBox, depthMaxBox]);
-  expect(Math.abs(depthMinBox.x - botanicalBox.x)).toBeLessThan(2);
-  expect(Math.abs(depthMaxBox.x + depthMaxBox.width - (botanicalBox.x + botanicalBox.width))).toBeLessThan(2);
+  const depthBox = await fieldBox(dialog.getByLabel('Saattiefe von (cm)'));
+  expect(await fieldBox(dialog.getByLabel('Saattiefe bis (cm)'))).toEqual(depthBox);
+  await expect(dialog.getByRole('group', { name: 'Saattiefe (cm)' })).toBeVisible();
+  await expectOneRow([spacingBox, rowSpacingBox, depthBox]);
+  expect(Math.abs(depthBox.height - rowSpacingBox.height)).toBeLessThan(1);
+  expect(Math.abs(depthBox.x - botanicalBox.x)).toBeLessThan(2);
+  expect(Math.abs(depthBox.x + depthBox.width - (botanicalBox.x + botanicalBox.width))).toBeLessThan(2);
 
-  // The minimum temperature sits on the same line as the from/to inputs.
+  // The minimum temperature sits on the same line as the two range fields.
   await expectOneRow([
     await fieldBox(dialog.getByLabel('Optimale Keimtemperatur von (°C)')),
     await fieldBox(dialog.getByLabel('Keimdauer von (Tage)')),

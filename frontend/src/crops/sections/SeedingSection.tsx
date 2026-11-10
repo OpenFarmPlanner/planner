@@ -1,22 +1,21 @@
-import { useState } from 'react';
 import { Box, Typography, FormControl, InputLabel, MenuItem } from '@mui/material';
 import type { Crop, SeedRateUnit, SeedRateUnitConstraints } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { formGridFieldSx, formGridSx } from './styles.tsx';
-import { DropdownAwareTooltip } from '../../components/DropdownAwareTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
-import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
-import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { getSeedRateValueInputProps } from '../seedRateConstraints';
+import { FieldInfoButton } from '../FieldInfoButton';
+import { buildFieldEndAdornment } from '../fieldEndAdornment';
 
 interface SeedingSectionProps {
   formData: Partial<Crop>;
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
-  getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
   seedRateUnitConstraints?: Partial<SeedRateUnitConstraints> | null;
   /**
@@ -51,7 +50,7 @@ function SeedRateBlock({
   errors,
   onChange,
   t,
-  getFieldTooltipProps,
+  getFieldHighlightSx,
   seedRateUnitConstraints,
 }: {
   title: string;
@@ -63,12 +62,10 @@ function SeedRateBlock({
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
-  getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   seedRateUnitConstraints?: Partial<SeedRateUnitConstraints> | null;
 }) {
-  const [unitSelectOpen, setUnitSelectOpen] = useState(false);
-  const rateVariety = getFieldTooltipProps?.([valueField, unitField], t('form.seedRateHelp'));
-  const safetyVariety = getFieldTooltipProps?.(safetyField, t('form.sowingCalculationSafetyPercentHelp'));
+  const rateHighlightSx = getFieldHighlightSx?.([valueField, unitField]);
   const selectedUnit = toSeedRateUnitSelectValue(formData[unitField]);
   const valueInputProps = getSeedRateValueInputProps(selectedUnit || null, seedRateUnitConstraints);
 
@@ -76,62 +73,54 @@ function SeedRateBlock({
     <>
       <Typography variant="subtitle1">{title}</Typography>
       <Box sx={formGridSx}>
-        <DropdownAwareTooltip title={rateVariety?.tooltipTitle ?? t('form.seedRateHelp')} arrow>
-          <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(formGridFieldSx, rateVariety?.sx)}
-            label={t('form.seedAmountLabel')}
-            value={formData[valueField]}
-            onValueChange={(value) => onChange(valueField, value)}
-            error={Boolean(errors[valueField])}
-            helperText={errors[valueField]}
-            slotProps={{ htmlInput: valueInputProps }}
-          />
-        </DropdownAwareTooltip>
+        <LocalizedDecimalField
+          sx={mergeVarietyFieldSx(formGridFieldSx, rateHighlightSx)}
+          label={t('form.seedAmountLabel')}
+          value={formData[valueField]}
+          onValueChange={(value) => onChange(valueField, value)}
+          error={Boolean(errors[valueField])}
+          helperText={errors[valueField]}
+          slotProps={{ htmlInput: valueInputProps }}
+        />
 
-        <DropdownAwareTooltip title={unitSelectOpen ? '' : (rateVariety?.tooltipTitle ?? t('form.seedRateHelp'))} arrow>
-          <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, rateVariety?.sx)} error={Boolean(errors[unitField])}>
-            <InputLabel shrink>{t('form.seedUnitLabel')}</InputLabel>
-            <Select
-              fullWidth
-              value={toSeedRateUnitSelectValue(formData[unitField])}
-              label={t('form.seedUnitLabel')}
-              onChange={(e) => onChange(unitField, (e.target.value || null) as Crop[typeof unitField])}
-              onOpen={() => setUnitSelectOpen(true)}
-              onClose={() => setUnitSelectOpen(false)}
-              renderValue={(selected) => {
-                if (!selected) {
-                  return (
-                    <Typography component="span" color="text.secondary">
-                      {t('form.seedUnitPlaceholder')}
-                    </Typography>
-                  );
-                }
-                const selectedOption = seedRateUnitOptions.find((option) => option.value === selected);
-                return selectedOption ? t(selectedOption.labelKey) : '';
-              }}
-              displayEmpty
-            >
-              {seedRateUnitOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
-              ))}
-            </Select>
-            {errors[unitField] && (
-              <Typography variant="caption" color="error">{errors[unitField]}</Typography>
-            )}
-          </FormControl>
-        </DropdownAwareTooltip>
+        <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, rateHighlightSx)} error={Boolean(errors[unitField])}>
+          <InputLabel shrink>{t('form.seedUnitLabel')}</InputLabel>
+          <Select
+            fullWidth
+            value={toSeedRateUnitSelectValue(formData[unitField])}
+            label={t('form.seedUnitLabel')}
+            onChange={(e) => onChange(unitField, (e.target.value || null) as Crop[typeof unitField])}
+            renderValue={(selected) => {
+              if (!selected) {
+                return (
+                  <Typography component="span" color="text.secondary">
+                    {t('form.seedUnitPlaceholder')}
+                  </Typography>
+                );
+              }
+              const selectedOption = seedRateUnitOptions.find((option) => option.value === selected);
+              return selectedOption ? t(selectedOption.labelKey) : '';
+            }}
+            displayEmpty
+          >
+            {seedRateUnitOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>
+            ))}
+          </Select>
+          {errors[unitField] && (
+            <Typography variant="caption" color="error">{errors[unitField]}</Typography>
+          )}
+        </FormControl>
 
         {showSeedSafetyMargin && (
-          <DropdownAwareTooltip title={safetyVariety?.tooltipTitle ?? t('form.sowingCalculationSafetyPercentHelp')} arrow>
-            <LocalizedDecimalField
-              sx={mergeVarietyFieldSx(formGridFieldSx, safetyVariety?.sx)}
-              label={t('form.sowingCalculationSafetyPercentLabel')}
-              value={formData[safetyField]}
-              onValueChange={(value) => onChange(safetyField, value)}
-              error={Boolean(errors[safetyField])}
-              helperText={errors[safetyField]}
-            />
-          </DropdownAwareTooltip>
+          <LocalizedDecimalField
+            sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.(safetyField))}
+            label={t('form.sowingCalculationSafetyPercentLabel')}
+            value={formData[safetyField]}
+            onValueChange={(value) => onChange(safetyField, value)}
+            error={Boolean(errors[safetyField])}
+            helperText={errors[safetyField]}
+          />
         )}
       </Box>
     </>
@@ -143,7 +132,7 @@ export function SeedingSection({
   errors,
   onChange,
   t,
-  getFieldTooltipProps,
+  getFieldHighlightSx,
   getFieldPinProps,
   seedRateUnitConstraints,
   showSeedSafetyMargin = true,
@@ -151,7 +140,6 @@ export function SeedingSection({
   const cultivationTypes = formData.cultivation_types ?? (formData.cultivation_type ? [formData.cultivation_type] : []);
   const showsDirect = cultivationTypes.includes('direct_sowing');
   const showsPreCultivation = cultivationTypes.includes('pre_cultivation');
-  const thousandKernelWeightVariety = getFieldTooltipProps?.('thousand_kernel_weight_g', t('form.thousandKernelWeightHelp'));
   const thousandKernelWeightPin = getFieldPinProps?.('thousand_kernel_weight_g');
 
   return (
@@ -169,7 +157,7 @@ export function SeedingSection({
           errors={errors}
           onChange={onChange}
           t={t}
-          getFieldTooltipProps={getFieldTooltipProps}
+          getFieldHighlightSx={getFieldHighlightSx}
           seedRateUnitConstraints={seedRateUnitConstraints}
         />
       )}
@@ -185,23 +173,35 @@ export function SeedingSection({
           errors={errors}
           onChange={onChange}
           t={t}
-          getFieldTooltipProps={getFieldTooltipProps}
+          getFieldHighlightSx={getFieldHighlightSx}
           seedRateUnitConstraints={seedRateUnitConstraints}
         />
       )}
 
       <Box sx={formGridSx}>
-        <DropdownAwareTooltip title={thousandKernelWeightVariety?.tooltipTitle ?? t('form.thousandKernelWeightHelp')} arrow>
-          <LocalizedDecimalField
-            sx={mergeVarietyFieldSx(formGridFieldSx, thousandKernelWeightVariety?.sx, thousandKernelWeightPin?.fieldSx)}
-            label={t('form.thousandKernelWeightLabel')}
-            value={formData.thousand_kernel_weight_g}
-            onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}
-            error={Boolean(errors.thousand_kernel_weight_g)}
-            helperText={errors.thousand_kernel_weight_g}
-            slotProps={{ input: { endAdornment: thousandKernelWeightPin?.endAdornment } }}
-          />
-        </DropdownAwareTooltip>
+        <LocalizedDecimalField
+          sx={mergeVarietyFieldSx(
+            formGridFieldSx,
+            getFieldHighlightSx?.('thousand_kernel_weight_g'),
+            thousandKernelWeightPin?.fieldSx,
+          )}
+          label={t('form.thousandKernelWeightLabel')}
+          value={formData.thousand_kernel_weight_g}
+          onValueChange={(value) => onChange('thousand_kernel_weight_g', value ?? undefined)}
+          error={Boolean(errors.thousand_kernel_weight_g)}
+          helperText={errors.thousand_kernel_weight_g}
+          slotProps={{
+            input: {
+              endAdornment: buildFieldEndAdornment(
+                <FieldInfoButton
+                  title={t('form.thousandKernelWeightHelp')}
+                  ariaLabel={t('form.fieldInfoAriaLabel', { field: t('form.thousandKernelWeightLabel') })}
+                />,
+                thousandKernelWeightPin,
+              ),
+            },
+          }}
+        />
       </Box>
 
     </>

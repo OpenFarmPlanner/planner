@@ -88,6 +88,13 @@ const VARIETY_CROP: Crop = {
   row_spacing_cm: 40,
 };
 
+// The variety highlight paints the outlined input's own background.
+const backgroundOf = (input: HTMLElement): string => {
+  const root = input.closest('.MuiOutlinedInput-root');
+  if (!root) throw new Error('outlined input root not found');
+  return window.getComputedStyle(root).backgroundColor;
+};
+
 describe('CropForm variety override highlighting', () => {
   beforeEach(() => {
     cropDuplicateCheckMock.mockClear();
@@ -96,7 +103,7 @@ describe('CropForm variety override highlighting', () => {
     supplierListMock.mockResolvedValue({ data: { results: [] } });
   });
 
-  it('shows the legend and highlights only fields that override the species crop', async () => {
+  it('shows the legend and highlights only fields that override the species crop, without hover tooltips', async () => {
     const user = userEvent.setup({ delay: null });
 
     render(
@@ -121,25 +128,18 @@ describe('CropForm variety override highlighting', () => {
     }
     const nutrientDemandField = within(nutrientDemandFormControl as HTMLElement).getByRole('combobox');
 
-    // Reset DropdownAwareTooltip's suppression state: mounting the dialog
-    // auto-focuses the (combobox-like) name field, which otherwise keeps
-    // every tooltip suppressed for the rest of the test.
-    // Clicking the family field would open its option list, which keeps the
-    // tooltips suppressed too, so a plain number field does the reset.
-    await user.click(rowSpacingField);
+    // Overridden fields (family 'Asteraceae', row spacing 40) carry the
+    // highlight; the inherited nutrient demand does not.
+    const highlight = backgroundOf(cropFamilyField);
+    expect(highlight).not.toBe(backgroundOf(nutrientDemandField));
+    expect(backgroundOf(rowSpacingField)).toBe(highlight);
 
-    await user.hover(cropFamilyField);
-    expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.ownValueFieldTooltip');
-    await user.unhover(cropFamilyField);
-    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument(), { timeout: 5000 });
-
-    await user.hover(rowSpacingField);
-    expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.ownValueFieldTooltip');
-    await user.unhover(rowSpacingField);
-    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument(), { timeout: 5000 });
-
-    await user.hover(nutrientDemandField);
-    expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.inheritedFieldTooltip');
+    // Neither an overridden nor an inherited field explains itself on hover.
+    for (const field of [cropFamilyField, rowSpacingField, nutrientDemandField]) {
+      await user.hover(field);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   }, 20000);
 
   it('does not show the legend or any override tooltip when editing a species-level crop', async () => {
@@ -186,18 +186,17 @@ describe('CropForm variety override highlighting', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
 
     // A non-invariant inherited field (row spacing) still shows the Kultur's
-    // value and keeps the inherited-field tooltip.
+    // value as a real field value (no placeholder), without the highlight.
     const rowSpacingField = screen.getByLabelText('form.rowSpacingCm');
     expect(rowSpacingField).toHaveValue(30);
+    expect(rowSpacingField).not.toHaveAttribute('placeholder', '30');
     expect(rowSpacingField).toBeEnabled();
-
-    // CropForm focuses its first input one animation frame after mount. Wait
-    // for that before clicking, or it can steal focus and close the tooltip.
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+    expect(backgroundOf(rowSpacingField)).toBe(backgroundOf(screen.getByLabelText('form.distanceWithinRowCm')));
 
     await user.click(rowSpacingField);
     await user.hover(rowSpacingField);
-    expect(await screen.findByRole('tooltip', {}, { timeout: 5000 })).toHaveTextContent('hierarchy.inheritedFieldTooltip');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   }, 20000);
 
   it('renders the species-invariant fields read-only for a species-linked Sorte', async () => {
@@ -297,5 +296,68 @@ describe('CropForm variety override highlighting', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toEqual(expect.objectContaining({ row_spacing_cm: 55 }));
+  });
+});
+
+describe('CropForm section order', () => {
+  const SECTION_HEADINGS = [
+    'form.generalInfoSectionTitle',
+    'form.sectionCropRotation',
+    'form.sectionTiming',
+    'form.sectionPlanting',
+    'form.sectionYield',
+    'form.seedRateSectionTitle',
+    'timingWindows.sectionTitle',
+    'germination.title',
+    'siteHealth.title',
+    'companions.title',
+    'form.displayColor',
+    'form.notes',
+  ];
+
+  const renderedSectionHeadings = (): string[] => screen.getAllByRole('heading', { level: 6 })
+    .map((heading) => heading.textContent ?? '')
+    .filter((text) => SECTION_HEADINGS.includes(text));
+
+  it.each([
+    ['variety', VARIETY_CROP],
+    ['crop', SPECIES_CROP],
+  ] as const)('shows the same section order in the %s form', async (formKind, crop) => {
+    render(
+      <CropForm
+        crop={crop}
+        crops={[SPECIES_CROP, VARIETY_CROP]}
+        formKind={formKind}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        onCancel={() => {}}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+    expect(renderedSectionHeadings()).toEqual(SECTION_HEADINGS);
+  });
+
+  it('places the harvest duration in the timing section after propagation and growth duration', async () => {
+    render(
+      <CropForm
+        crop={VARIETY_CROP}
+        crops={[SPECIES_CROP, VARIETY_CROP]}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        onCancel={() => {}}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+    const ordered = [
+      screen.getByRole('heading', { name: 'form.sectionTiming' }),
+      screen.getByLabelText('form.propagationDurationDays'),
+      screen.getByLabelText('form.growthDurationDays'),
+      screen.getByLabelText('form.harvestDurationDays'),
+      screen.getByRole('heading', { name: 'form.sectionPlanting' }),
+    ];
+    for (let index = 1; index < ordered.length; index += 1) {
+      expect(ordered[index - 1].compareDocumentPosition(ordered[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(screen.queryByText('form.sectionHarvest')).not.toBeInTheDocument();
   });
 });

@@ -72,9 +72,9 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
             {displayValue}
           </Typography>
         </Stack>
-        <Typography variant="body2" color={errors.display_color ? 'error' : 'text.secondary'}>
-          {errors.display_color || t('form.displayColorHelp')}
-        </Typography>
+        {errors.display_color ? (
+          <Typography variant="body2" color="error">{errors.display_color}</Typography>
+        ) : null}
       </Stack>
     </>
   );

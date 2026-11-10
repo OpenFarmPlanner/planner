@@ -8,11 +8,8 @@ import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
 import { fieldRowSx, formGridDoubleColumnSx, formGridFieldSx, formGridSx } from './styles.tsx';
 import type { Crop, PlantFamily } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { AppTooltip } from '../../components/AppTooltip';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
-import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
-import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
-import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import type { PublicCropSpeciesOption } from '../publicCropNameSuggestions';
@@ -67,7 +64,7 @@ interface BasicInfoSectionProps {
   varietyApplyHint?: ReactNode;
   /** Optional control rendered directly below the Name/Sorte identity row. */
   identityRowControl?: ReactNode;
-  getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
   /**
    * Render the species-invariant crop-rotation fields (crop family, nutrient
@@ -118,7 +115,7 @@ export function BasicInfoSection({
   onVarietyCommit,
   varietyApplyHint,
   identityRowControl,
-  getFieldTooltipProps,
+  getFieldHighlightSx,
   getFieldPinProps,
   speciesInvariantFieldsReadOnly = false,
   tagOptions,
@@ -164,16 +161,11 @@ export function BasicInfoSection({
   ].filter(Boolean).join(' ');
   // A read-only field (linked Sorte) gets no info icon: the heading's icon explains it.
   const showRotationBreakInfo = !speciesInvariantFieldsReadOnly;
-  const cropFamilyVariety = getFieldTooltipProps?.('crop_family');
-  const botanicalNameVariety = getFieldTooltipProps?.('botanical_name');
   const botanicalNamePin = getFieldPinProps?.('botanical_name');
   const seedTypePin = getFieldPinProps?.('seed_type');
   // In the library form a blank variety marks the species-level entry, which has no seed type.
   const showSeedTypeField = showVarietyField && (varietyRequired || Boolean((formData.variety ?? '').trim()));
-  const tagsVariety = getFieldTooltipProps?.('tags');
-  const nutrientDemandVariety = getFieldTooltipProps?.('nutrient_demand');
   const nutrientDemandPin = speciesInvariantFieldsReadOnly ? null : getFieldPinProps?.('nutrient_demand');
-  const rotationBreakYearsVariety = getFieldTooltipProps?.('rotation_break_years');
   // Name and Latin name share the identity row; without a variety field the
   // name takes two of the three columns.
   const showsVarietyColumn = showVarietyField || showFirstVarietyField;
@@ -321,74 +313,68 @@ export function BasicInfoSection({
         ) : null}
         {!showVarietyField && showFirstVarietyField ? (
           firstVarietyAutocomplete ? (
-            <AppTooltip title={t('form.firstVarietyHelperText')} placement="top-start">
-              <Autocomplete<string, false, false, true>
-                sx={identityFieldSx}
-                freeSolo
-                clearOnBlur={false}
-                options={firstVarietyAutocomplete.options}
-                value={firstVarietyName ?? ''}
-                inputValue={firstVarietyName ?? ''}
-                loading={firstVarietyOptionsLoading}
-                groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
-                onInputChange={(_, value, reason) => {
-                  if (reason === 'reset') {
-                    return;
-                  }
-                  onFirstVarietyNameChange?.(value);
-                }}
-                onChange={(_, value, reason) => {
-                  firstVarietyAutocomplete.onCommit(value ?? '', reason);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={t('form.firstVarietyLabel')}
-                    placeholder={t('form.firstVarietyPlaceholder')}
-                    slotProps={{
-                      ...params.slotProps,
+            <Autocomplete<string, false, false, true>
+              sx={identityFieldSx}
+              freeSolo
+              clearOnBlur={false}
+              options={firstVarietyAutocomplete.options}
+              value={firstVarietyName ?? ''}
+              inputValue={firstVarietyName ?? ''}
+              loading={firstVarietyOptionsLoading}
+              groupBy={() => t('form.publicCropSuggestionsGroupLabel')}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'reset') {
+                  return;
+                }
+                onFirstVarietyNameChange?.(value);
+              }}
+              onChange={(_, value, reason) => {
+                firstVarietyAutocomplete.onCommit(value ?? '', reason);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('form.firstVarietyLabel')}
+                  placeholder={t('form.firstVarietyPlaceholder')}
+                  slotProps={{
+                    ...params.slotProps,
 
-                      htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
+                    htmlInput: { ...params.slotProps.htmlInput, maxLength: 200 },
 
-                      input: {
-                        ...params.slotProps.input,
-                        endAdornment: (
-                          <>
-                            {firstVarietyOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.slotProps.input.endAdornment}
-                          </>
-                        ),
-                      }
-                    }} />
-                )}
-              />
-            </AppTooltip>
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {firstVarietyOptionsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    }
+                  }} />
+              )}
+            />
           ) : (
-            <AppTooltip title={t('form.firstVarietyHelperText')} placement="top-start">
-              <TextField
-                sx={identityFieldSx}
-                label={t('form.firstVarietyLabel')}
-                placeholder={t('form.firstVarietyPlaceholder')}
-                value={firstVarietyName ?? ''}
-                onChange={e => onFirstVarietyNameChange?.(e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 200 } }}
-              />
-            </AppTooltip>
+            <TextField
+              sx={identityFieldSx}
+              label={t('form.firstVarietyLabel')}
+              placeholder={t('form.firstVarietyPlaceholder')}
+              value={firstVarietyName ?? ''}
+              onChange={e => onFirstVarietyNameChange?.(e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 200 } }}
+            />
           )
         ) : null}
-        <VarietyFieldTooltip tooltipTitle={botanicalNameVariety?.tooltipTitle}>
-          <TextField
-            sx={mergeVarietyFieldSx(formGridFieldSx, botanicalNameVariety?.sx, botanicalNamePin?.fieldSx)}
-            label={t('form.botanicalName')}
-            placeholder={t('form.botanicalNamePlaceholder')}
-            value={formData.botanical_name ?? ''}
-            onChange={(event) => onChange('botanical_name', event.target.value)}
-            slotProps={{
-              input: { endAdornment: botanicalNamePin?.endAdornment, sx: { fontStyle: 'italic' } },
-              htmlInput: { maxLength: 200 },
-            }}
-          />
-        </VarietyFieldTooltip>
+        <TextField
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('botanical_name'), botanicalNamePin?.fieldSx)}
+          label={t('form.botanicalName')}
+          placeholder={t('form.botanicalNamePlaceholder')}
+          value={formData.botanical_name ?? ''}
+          onChange={(event) => onChange('botanical_name', event.target.value)}
+          slotProps={{
+            input: { endAdornment: botanicalNamePin?.endAdornment, sx: { fontStyle: 'italic' } },
+            htmlInput: { maxLength: 200 },
+          }}
+        />
       </Box>
       {identityRowControl}
       {nameApplyHint || varietyApplyHint ? (
@@ -432,15 +418,13 @@ export function BasicInfoSection({
           </FormControl>
         ) : null}
         {tagOptions ? (
-          <VarietyFieldTooltip tooltipTitle={tagsVariety?.tooltipTitle}>
-            <CropTagsField
-              sx={mergeVarietyFieldSx(formGridDoubleColumnSx, tagsVariety?.sx)}
-              value={formData.tags ?? []}
-              options={tagOptions}
-              onChange={(tags) => onChange('tags', tags)}
-              t={t}
-            />
-          </VarietyFieldTooltip>
+          <CropTagsField
+            sx={mergeVarietyFieldSx(formGridDoubleColumnSx, getFieldHighlightSx?.('tags'))}
+            value={formData.tags ?? []}
+            options={tagOptions}
+            onChange={(tags) => onChange('tags', tags)}
+            t={t}
+          />
         ) : null}
       </Box>
       ) : null}
@@ -460,84 +444,78 @@ export function BasicInfoSection({
         ) : null}
       </Box>
       <Box sx={formGridSx}>
-        <VarietyFieldTooltip tooltipTitle={cropFamilyVariety?.tooltipTitle}>
-          <Autocomplete<PlantFamily, false, false, false>
-            sx={mergeVarietyFieldSx(formGridFieldSx, cropFamilyVariety?.sx)}
-            options={plantFamilies.families}
-            value={selectedFamily}
-            onChange={(_, family) => onChange('crop_family', family?.botanical_name ?? null)}
-            getOptionLabel={getPlantFamilyLabel}
-            isOptionEqualToValue={(option, value) => option.botanical_name === value.botanical_name}
-            filterOptions={plantFamilyFilter}
-            noOptionsText={t('form.cropFamilyNoOptions')}
-            loading={!plantFamilies.loaded}
-            disabled={speciesInvariantFieldsReadOnly}
-            renderOption={({ key, ...optionProps }, family) => (
-              <li key={key} {...optionProps}>
-                <CropSpeciesOptionContent
-                  officialName={plantFamilies.getName(family.botanical_name)}
-                  scientificName={family.botanical_name}
-                  match={null}
-                  query=""
-                />
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t('form.cropFamily')}
-                placeholder={t('form.cropFamilyPlaceholder')}
-                helperText={legacyCropFamily ? t('form.cropFamilyLegacyHint', { value: legacyCropFamily }) : undefined}
+        <Autocomplete<PlantFamily, false, false, false>
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('crop_family'))}
+          options={plantFamilies.families}
+          value={selectedFamily}
+          onChange={(_, family) => onChange('crop_family', family?.botanical_name ?? null)}
+          getOptionLabel={getPlantFamilyLabel}
+          isOptionEqualToValue={(option, value) => option.botanical_name === value.botanical_name}
+          filterOptions={plantFamilyFilter}
+          noOptionsText={t('form.cropFamilyNoOptions')}
+          loading={!plantFamilies.loaded}
+          disabled={speciesInvariantFieldsReadOnly}
+          renderOption={({ key, ...optionProps }, family) => (
+            <li key={key} {...optionProps}>
+              <CropSpeciesOptionContent
+                officialName={plantFamilies.getName(family.botanical_name)}
+                scientificName={family.botanical_name}
+                match={null}
+                query=""
               />
-            )}
-          />
-        </VarietyFieldTooltip>
-        <VarietyFieldTooltip tooltipTitle={nutrientDemandVariety?.tooltipTitle}>
-          <FormControl
-            sx={mergeVarietyFieldSx(formGridFieldSx, nutrientDemandVariety?.sx, nutrientDemandPin?.fieldSx)}
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={t('form.cropFamily')}
+              placeholder={t('form.cropFamilyPlaceholder')}
+              helperText={legacyCropFamily ? t('form.cropFamilyLegacyHint', { value: legacyCropFamily }) : undefined}
+            />
+          )}
+        />
+        <FormControl
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('nutrient_demand'), nutrientDemandPin?.fieldSx)}
+          disabled={speciesInvariantFieldsReadOnly}
+        >
+          <InputLabel>{t('form.nutrientDemand')}</InputLabel>
+          <Select
+            fullWidth
+            value={formData.nutrient_demand || ''}
+            onChange={e => onChange('nutrient_demand', e.target.value)}
+            label={t('form.nutrientDemand')}
             disabled={speciesInvariantFieldsReadOnly}
+            endAdornment={nutrientDemandPin?.endAdornment}
+            sx={nutrientDemandPin ? libraryPinSelectSx : undefined}
           >
-            <InputLabel>{t('form.nutrientDemand')}</InputLabel>
-            <Select
-              fullWidth
-              value={formData.nutrient_demand || ''}
-              onChange={e => onChange('nutrient_demand', e.target.value)}
-              label={t('form.nutrientDemand')}
-              disabled={speciesInvariantFieldsReadOnly}
-              endAdornment={nutrientDemandPin?.endAdornment}
-              sx={nutrientDemandPin ? libraryPinSelectSx : undefined}
-            >
-              <MenuItem value="">{t('noData')}</MenuItem>
-              <MenuItem value="low">{t('form.nutrientDemandLow')}</MenuItem>
-              <MenuItem value="medium">{t('form.nutrientDemandMedium')}</MenuItem>
-              <MenuItem value="high">{t('form.nutrientDemandHigh')}</MenuItem>
-            </Select>
-          </FormControl>
-        </VarietyFieldTooltip>
-        <VarietyFieldTooltip tooltipTitle={rotationBreakYearsVariety?.tooltipTitle}>
-          <TextField
-            type="number"
-            sx={mergeVarietyFieldSx(formGridFieldSx, rotationBreakYearsVariety?.sx)}
-            label={showRotationBreakInfo ? (
-              <>
-                {t('form.rotationBreakYears')}
-                {'\u00A0'}
-                <FieldInfoIcon title={rotationBreakTooltip} />
-              </>
-            ) : t('form.rotationBreakYears')}
-            value={formData.rotation_break_years ?? ''}
-            onChange={e => onChange('rotation_break_years', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-            placeholder={rotationBreakPlaceholder}
-            slotProps={{
-              // The icon in the label must not become part of the input's name.
-              htmlInput: { min: 0, inputMode: 'numeric', 'aria-label': t('form.rotationBreakYears') },
-              // Like every other field the label sits inside the empty field; it
-              // shrinks for a value or for the family default shown as placeholder.
-              inputLabel: rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
-            }}
-            disabled={speciesInvariantFieldsReadOnly}
-          />
-        </VarietyFieldTooltip>
+            <MenuItem value="">{t('noData')}</MenuItem>
+            <MenuItem value="low">{t('form.nutrientDemandLow')}</MenuItem>
+            <MenuItem value="medium">{t('form.nutrientDemandMedium')}</MenuItem>
+            <MenuItem value="high">{t('form.nutrientDemandHigh')}</MenuItem>
+          </Select>
+        </FormControl>
+        <TextField
+          type="number"
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('rotation_break_years'))}
+          label={showRotationBreakInfo ? (
+            <>
+              {t('form.rotationBreakYears')}
+              {'\u00A0'}
+              <FieldInfoIcon title={rotationBreakTooltip} />
+            </>
+          ) : t('form.rotationBreakYears')}
+          value={formData.rotation_break_years ?? ''}
+          onChange={e => onChange('rotation_break_years', e.target.value === '' ? null : parseInt(e.target.value, 10))}
+          placeholder={rotationBreakPlaceholder}
+          slotProps={{
+            // The icon in the label must not become part of the input's name.
+            htmlInput: { min: 0, inputMode: 'numeric', 'aria-label': t('form.rotationBreakYears') },
+            // Like every other field the label sits inside the empty field; it
+            // shrinks for a value or for the family default shown as placeholder.
+            inputLabel: rotationBreakPlaceholder !== undefined ? { shrink: true } : undefined,
+          }}
+          disabled={speciesInvariantFieldsReadOnly}
+        />
       </Box>
     </>
   );

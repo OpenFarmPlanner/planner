@@ -39,7 +39,10 @@ for a single depth.
 
 ## UI
 
-The crop form shows "Saattiefe von (cm)" and "Saattiefe bis (cm)"; crop and
+The crop form shows one range field "Saattiefe (cm)" with the inputs
+"Saattiefe von (cm)" and "Saattiefe bis (cm)" (`RangeField`, see
+[design-system.md](./design-system.md)); a minimum above the maximum shows an
+inline error below it. Crop and
 library details and the variety comparison show "2 cm" for one depth and
 "2–3 cm" for a range.
 
