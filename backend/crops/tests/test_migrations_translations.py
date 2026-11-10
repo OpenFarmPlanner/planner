@@ -11,22 +11,19 @@ Documented assumptions being verified here (see the migration docstrings):
 """
 
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestCropSpeciesTranslationBackfill:
-    migrate_from = ('crops', '0004_add_crop_translations')
-    migrate_to = ('crops', '0005_backfill_crop_species_translations')
+@pytest.mark.django_db
+class TestCropSpeciesTranslationBackfill(MigrationTestBase):
+    migrate_from = [('crops', '0004_add_crop_translations')]
+    migrate_to = [('crops', '0005_backfill_crop_species_translations')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         # A clean slate: assert exactly what this migration produces, not
         # whatever the seeded catalogue happens to contain.
         translation_model.objects.all().delete()
@@ -38,15 +35,6 @@ class TestCropSpeciesTranslationBackfill:
         species_model.objects.create(
             name='Eigene Sonderkultur', name_normalized='eigene sonderkultur', status='proposed',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def _translations(self, name_normalized: str) -> dict[str, str]:
         species_model = self.new_apps.get_model('crops', 'CropSpecies')
@@ -93,17 +81,14 @@ class TestCropSpeciesTranslationBackfill:
         assert translation_model.objects.filter(language_code='en').count() == 1
 
 
-@pytest.mark.django_db(transaction=True)
-class TestPublicCropTranslationBackfill:
-    migrate_from = ('farm', '0082_add_crop_translations')
-    migrate_to = ('farm', '0083_backfill_public_culture_translations')
+@pytest.mark.django_db
+class TestPublicCropTranslationBackfill(MigrationTestBase):
+    migrate_from = [('farm', '0082_add_crop_translations')]
+    migrate_to = [('farm', '0083_backfill_public_culture_translations')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        public_crop_model = old_apps.get_model('farm', 'PublicCulture')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        public_crop_model = apps.get_model('farm', 'PublicCulture')
 
         public_crop_model.objects.create(
             name='Tomate', variety='Moneymaker', notes='Robuste Freilandsorte.',
@@ -127,15 +112,6 @@ class TestPublicCropTranslationBackfill:
             name_normalized='kohlrabi', variety_normalized='lanro',
             status='published', version=1, original_language_code='de',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def _translations(self, name_normalized: str) -> dict[str, str]:
         model = self.new_apps.get_model('farm', 'PublicCulture')
@@ -178,20 +154,17 @@ class TestPublicCropTranslationBackfill:
         assert model.objects.count() == 3
 
 
-@pytest.mark.django_db(transaction=True)
-class TestAsianGreensCollectiveSpeciesReplacement:
+@pytest.mark.django_db
+class TestAsianGreensCollectiveSpeciesReplacement(MigrationTestBase):
     """`Asiatisches Blattgemüse/Senfkohl` is a supplier category, not a species."""
 
-    migrate_from = ('crops', '0010_sync_dach_crop_species_seed_data')
-    migrate_to = ('crops', '0011_replace_asian_greens_collective_species')
+    migrate_from = [('crops', '0010_sync_dach_crop_species_seed_data')]
+    migrate_to = [('crops', '0011_replace_asian_greens_collective_species')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         # Reproduce the pre-rename database instead of whatever the seed sync
         # produced, so the rename path is actually exercised.
         translation_model.objects.all().delete()
@@ -216,15 +189,6 @@ class TestAsianGreensCollectiveSpeciesReplacement:
         species_model.objects.create(
             name='Tomate', name_normalized='tomate', status='published',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def _species(self, name_normalized: str):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')
@@ -255,35 +219,23 @@ class TestAsianGreensCollectiveSpeciesReplacement:
         assert self._species('tomate').status == 'published'
 
 
-@pytest.mark.django_db(transaction=True)
-class TestAsianGreensCollectiveSpeciesReplacementLeavesProposalsAlone:
+@pytest.mark.django_db
+class TestAsianGreensCollectiveSpeciesReplacementLeavesProposalsAlone(MigrationTestBase):
     """An unreviewed user proposal under a collective name is not this migration's to reject."""
 
-    migrate_from = ('crops', '0010_sync_dach_crop_species_seed_data')
-    migrate_to = ('crops', '0011_replace_asian_greens_collective_species')
+    migrate_from = [('crops', '0010_sync_dach_crop_species_seed_data')]
+    migrate_to = [('crops', '0011_replace_asian_greens_collective_species')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         translation_model.objects.all().delete()
         species_model.objects.all().delete()
 
         species_model.objects.create(
             name='Asiasalat', name_normalized='asiasalat', status='proposed',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_leaves_the_unreviewed_proposal_untouched(self):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')
@@ -293,20 +245,16 @@ class TestAsianGreensCollectiveSpeciesReplacementLeavesProposalsAlone:
         assert proposal.review_note == ''
 
 
-@pytest.mark.django_db(transaction=True)
-class TestAsianGreensRenameWithExistingBlattsenf:
+class TestAsianGreensRenameWithExistingBlattsenfSetup(MigrationTestBase):
     """A stray `Blattsenf` alongside legacy `Senfkohl` must not leave a duplicate."""
 
-    migrate_from = ('crops', '0010_sync_dach_crop_species_seed_data')
-    migrate_to = ('crops', '0011_replace_asian_greens_collective_species')
+    migrate_from = [('crops', '0010_sync_dach_crop_species_seed_data')]
+    migrate_to = [('crops', '0011_replace_asian_greens_collective_species')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         translation_model.objects.all().delete()
         species_model.objects.all().delete()
 
@@ -323,15 +271,9 @@ class TestAsianGreensRenameWithExistingBlattsenf:
             name='Blattsenf', name_normalized='blattsenf', status='published',
         )
 
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
 
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
+@pytest.mark.django_db
+class TestAsianGreensRenameWithExistingBlattsenf(TestAsianGreensRenameWithExistingBlattsenfSetup):
     def test_keeps_the_existing_blattsenf_species_published(self):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')
 
@@ -348,10 +290,13 @@ class TestAsianGreensRenameWithExistingBlattsenf:
         assert legacy.status == 'rejected'
         assert 'Blattsenf' in legacy.review_note
 
+
+@pytest.mark.django_db(transaction=True)
+class TestAsianGreensRenameWithExistingBlattsenfReverse(
+    TestAsianGreensRenameWithExistingBlattsenfSetup,
+):
     def test_reverse_migration_restores_the_superseded_legacy_species(self):
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_from])
-        apps = self.executor.loader.project_state([self.migrate_from]).apps
+        apps = self.migrate_to_state(self.migrate_from)
         species_model = apps.get_model('crops', 'CropSpecies')
 
         legacy = species_model.objects.get(name_normalized='senfkohl')
@@ -361,20 +306,17 @@ class TestAsianGreensRenameWithExistingBlattsenf:
         assert blattsenf.status == 'published'
 
 
-@pytest.mark.django_db(transaction=True)
-class TestAsianGreensRenameWithProposedSenfkohlDuplicate:
+@pytest.mark.django_db
+class TestAsianGreensRenameWithProposedSenfkohlDuplicate(MigrationTestBase):
     """An unreviewed 'Senfkohl' proposal alongside 'Blattsenf' is not this migration's to reject."""
 
-    migrate_from = ('crops', '0010_sync_dach_crop_species_seed_data')
-    migrate_to = ('crops', '0011_replace_asian_greens_collective_species')
+    migrate_from = [('crops', '0010_sync_dach_crop_species_seed_data')]
+    migrate_to = [('crops', '0011_replace_asian_greens_collective_species')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         translation_model.objects.all().delete()
         species_model.objects.all().delete()
 
@@ -384,15 +326,6 @@ class TestAsianGreensRenameWithProposedSenfkohlDuplicate:
         species_model.objects.create(
             name='Blattsenf', name_normalized='blattsenf', status='published',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-        self.new_apps = self.executor.loader.project_state([self.migrate_to]).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_leaves_the_unreviewed_proposal_untouched(self):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')

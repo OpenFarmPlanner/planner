@@ -10,81 +10,67 @@ import uuid
 from datetime import timedelta
 
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
+from farm.tests.migration_base import MigrationTestBase
 
-@pytest.mark.django_db(transaction=True)
-class TestCultureToCropStoredJsonMigration:
-    migrate_from = ('farm', '0099_rename_crop_related_names')
-    migrate_to = ('farm', '0100_rename_culture_in_stored_json')
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
+class TestCultureToCropStoredJsonMigrationSetup(MigrationTestBase):
+    migrate_from = [('farm', '0099_rename_crop_related_names')]
+    migrate_to = [('farm', '0100_rename_culture_in_stored_json')]
 
-        project_model = old_apps.get_model('farm', 'Project')
-        revision_model = old_apps.get_model('farm', 'EntityRevision')
-        draft_model = old_apps.get_model('farm', 'CropImportDraft')
-        user_model = old_apps.get_model('auth', 'User')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        project_model = apps.get_model('farm', 'Project')
+        revision_model = apps.get_model('farm', 'EntityRevision')
+        draft_model = apps.get_model('farm', 'CropImportDraft')
+        user_model = apps.get_model('auth', 'User')
 
-        self.project = project_model.objects.create(name='Rename', slug='rename')
+        cls.project = project_model.objects.create(name='Rename', slug='rename')
         user = user_model.objects.create(username='importer')
 
-        self.crop_revision = revision_model.objects.create(
-            project=self.project,
+        cls.crop_revision = revision_model.objects.create(
+            project=cls.project,
             entity_type='culture',
             object_id=1,
             action='updated',
             snapshot={'name': 'Tomate', 'source_public_culture_id': 7},
             changed_fields=['name', 'source_public_culture_id'],
         )
-        self.plan_revision = revision_model.objects.create(
-            project=self.project,
+        cls.plan_revision = revision_model.objects.create(
+            project=cls.project,
             entity_type='planting_plan',
             object_id=2,
             action='updated',
             snapshot={'culture_id': 3, 'bed_id': 4},
             changed_fields=['culture_id'],
         )
-        self.supplier_data_revision = revision_model.objects.create(
-            project=self.project,
+        cls.supplier_data_revision = revision_model.objects.create(
+            project=cls.project,
             entity_type='culture_supplier_data',
             object_id=5,
             action='created',
             snapshot={'culture_id': 3, 'supplier_id': 9},
             changed_fields=['created'],
         )
-        self.draft = draft_model.objects.create(
+        cls.draft = draft_model.objects.create(
             id=uuid.uuid4(),
-            project=self.project,
+            project=cls.project,
             created_by=user,
             checksum='x' * 64,
             preview={'items': [{'index': 0, 'action': 'update', 'matched_culture_id': 3}]},
             expires_at=timezone.now() + timedelta(hours=2),
         )
 
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
-    def _models(self, state):
-        apps = self.executor.loader.project_state(state).apps
+    @staticmethod
+    def _models(apps):
         return apps.get_model('farm', 'EntityRevision'), apps.get_model('farm', 'CropImportDraft')
 
-    def _migrate_back(self):
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_from])
-        return self._models([self.migrate_from])
 
+@pytest.mark.django_db
+class TestCultureToCropStoredJsonMigration(TestCultureToCropStoredJsonMigrationSetup):
     def test_entity_types_are_renamed(self):
-        revision_model, _ = self._models([self.migrate_to])
+        revision_model, _ = self._models(self.new_apps)
 
         assert revision_model.objects.get(pk=self.crop_revision.pk).entity_type == 'crop'
         assert (
@@ -94,7 +80,7 @@ class TestCultureToCropStoredJsonMigration:
         assert revision_model.objects.get(pk=self.plan_revision.pk).entity_type == 'planting_plan'
 
     def test_snapshot_keys_are_renamed_per_entity_type(self):
-        revision_model, _ = self._models([self.migrate_to])
+        revision_model, _ = self._models(self.new_apps)
 
         crop = revision_model.objects.get(pk=self.crop_revision.pk)
         assert crop.snapshot == {'name': 'Tomate', 'source_public_crop_id': 7}
@@ -106,7 +92,7 @@ class TestCultureToCropStoredJsonMigration:
         assert supplier_data.snapshot == {'crop_id': 3, 'supplier_id': 9}
 
     def test_changed_fields_are_renamed_so_the_history_diff_survives(self):
-        revision_model, _ = self._models([self.migrate_to])
+        revision_model, _ = self._models(self.new_apps)
 
         crop = revision_model.objects.get(pk=self.crop_revision.pk)
         assert crop.changed_fields == ['name', 'source_public_crop_id']
@@ -118,14 +104,17 @@ class TestCultureToCropStoredJsonMigration:
         assert plan.changed_fields == ['crop_id']
 
     def test_import_draft_preview_keys_are_renamed(self):
-        _, draft_model = self._models([self.migrate_to])
+        _, draft_model = self._models(self.new_apps)
 
         draft = draft_model.objects.get(pk=self.draft.pk)
         assert draft.preview['items'][0]['matched_crop_id'] == 3
         assert 'matched_culture_id' not in draft.preview['items'][0]
 
+
+@pytest.mark.django_db(transaction=True)
+class TestCultureToCropStoredJsonMigrationReverse(TestCultureToCropStoredJsonMigrationSetup):
     def test_migration_is_reversible(self):
-        revision_model, draft_model = self._migrate_back()
+        revision_model, draft_model = self._models(self.migrate_to_state(self.migrate_from))
 
         crop = revision_model.objects.get(pk=self.crop_revision.pk)
         assert crop.entity_type == 'culture'

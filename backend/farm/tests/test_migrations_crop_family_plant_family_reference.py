@@ -3,24 +3,20 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
 from conftest import ensure_seeded_plant_families
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestCropFamilyPlantFamilyReference:
-    migrate_from = ('farm', '0111_project_demo_seeded_at')
-    migrate_to = ('farm', '0112_crop_family_plant_family_reference')
+@pytest.mark.django_db
+class TestCropFamilyPlantFamilyReference(MigrationTestBase):
+    migrate_from = [('farm', '0111_project_demo_seeded_at')]
+    migrate_to = [('farm', '0112_crop_family_plant_family_reference')]
 
-    def setup_method(self):
-        # The previous test's flush removed the families crops.0019 seeded.
-        ensure_seeded_plant_families()
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        project = old_apps.get_model('farm', 'Project').objects.create(name='P', slug='p')
-        crop_model = old_apps.get_model('farm', 'Crop')
-        public_crop_model = old_apps.get_model('farm', 'PublicCrop')
-        proposal_model = old_apps.get_model('farm', 'PublicCropChangeProposal')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        project = apps.get_model('farm', 'Project').objects.create(name='P', slug='p')
+        crop_model = apps.get_model('farm', 'Crop')
+        public_crop_model = apps.get_model('farm', 'PublicCrop')
+        proposal_model = apps.get_model('farm', 'PublicCropChangeProposal')
 
         def crop(name: str, family: str, **extra) -> int:
             return crop_model.objects.create(
@@ -28,7 +24,7 @@ class TestCropFamilyPlantFamilyReference:
                 crop_family=family, **extra,
             ).id
 
-        self.crop_ids = {
+        cls.crop_ids = {
             'Kreuzblütler': crop('Kohlrabi', 'Kreuzblütler'),
             ' brassicaceae ': crop('Kohl', ' brassicaceae '),
             'Kohlgewächse': crop('Rettich', 'Kohlgewächse'),
@@ -48,7 +44,7 @@ class TestCropFamilyPlantFamilyReference:
             ),
             'empty': crop('Leer', ''),
         }
-        self.public_ids = {
+        cls.public_ids = {
             'Kreuzblütengewächse': public_crop_model.objects.create(
                 name='Kohl', name_normalized='kohl', status='published',
                 crop_family='Kreuzblütengewächse',
@@ -57,8 +53,8 @@ class TestCropFamilyPlantFamilyReference:
                 name='X', name_normalized='x', status='published', crop_family='Phantasie',
             ).id,
         }
-        public_entry_id = self.public_ids['Kreuzblütengewächse']
-        self.proposal_ids = {
+        public_entry_id = cls.public_ids['Kreuzblütengewächse']
+        cls.proposal_ids = {
             'mapped': proposal_model.objects.create(
                 public_crop_id=public_entry_id, kind='edit', status='pending',
                 proposed_data={'crop_family': 'Hülsenfrüchtler', 'notes': 'x'},
@@ -69,19 +65,8 @@ class TestCropFamilyPlantFamilyReference:
             ).id,
         }
 
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
-    def _apps(self):
-        return self.executor.loader.project_state([self.migrate_to]).apps
-
     def test_known_spellings_are_mapped_and_the_original_text_is_kept(self):
-        crop_model = self._apps().get_model('farm', 'Crop')
+        crop_model = self.new_apps.get_model('farm', 'Crop')
         expected = {
             'Kreuzblütler': 'Brassicaceae',
             ' brassicaceae ': 'Brassicaceae',
@@ -104,7 +89,7 @@ class TestCropFamilyPlantFamilyReference:
         assert kohlrabi.legacy_crop_family == 'Kreuzblütler'
 
     def test_unmapped_values_stay_empty_and_keep_their_text(self):
-        crop_model = self._apps().get_model('farm', 'Crop')
+        crop_model = self.new_apps.get_model('farm', 'Crop')
         for label in ('Liliengewächse', 'Nachtschatten / Kürbis'):
             row = crop_model._base_manager.get(id=self.crop_ids[label])
             assert row.crop_family_id is None
@@ -112,7 +97,7 @@ class TestCropFamilyPlantFamilyReference:
         assert crop_model._base_manager.get(id=self.crop_ids['empty']).crop_family_id is None
 
     def test_public_entries_follow_the_same_rules(self):
-        public_crop_model = self._apps().get_model('farm', 'PublicCrop')
+        public_crop_model = self.new_apps.get_model('farm', 'PublicCrop')
         mapped = public_crop_model.objects.get(id=self.public_ids['Kreuzblütengewächse'])
         assert mapped.crop_family_id == 'Brassicaceae'
         unmapped = public_crop_model.objects.get(id=self.public_ids['Phantasie'])
@@ -120,7 +105,7 @@ class TestCropFamilyPlantFamilyReference:
         assert unmapped.legacy_crop_family == 'Phantasie'
 
     def test_pending_proposals_are_rekeyed_or_lose_only_the_unmappable_family(self):
-        proposal_model = self._apps().get_model('farm', 'PublicCropChangeProposal')
+        proposal_model = self.new_apps.get_model('farm', 'PublicCropChangeProposal')
         mapped = proposal_model.objects.get(id=self.proposal_ids['mapped'])
         assert mapped.proposed_data == {'crop_family': 'Fabaceae', 'notes': 'x'}
         unmapped = proposal_model.objects.get(id=self.proposal_ids['unmapped'])

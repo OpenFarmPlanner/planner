@@ -1,23 +1,20 @@
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestSupplierDataBackfillMigration:
-    migrate_from = ('farm', '0059_culture_selected_seed_demand_supplier')
-    migrate_to = ('farm', '0060_backfill_supplier_data_from_culture_seed_fields')
+@pytest.mark.django_db
+class TestSupplierDataBackfillMigration(MigrationTestBase):
+    migrate_from = [('farm', '0059_culture_selected_seed_demand_supplier')]
+    migrate_to = [('farm', '0060_backfill_supplier_data_from_culture_seed_fields')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate([self.migrate_from])
-        old_apps = self.executor.loader.project_state([self.migrate_from]).apps
-
-        project_model = old_apps.get_model('farm', 'Project')
-        crop_model = old_apps.get_model('farm', 'Culture')
-        supplier_model = old_apps.get_model('farm', 'Supplier')
-        crop_supplier_data_model = old_apps.get_model('farm', 'CultureSupplierData')
-        seed_package_model = old_apps.get_model('farm', 'SeedPackage')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        project_model = apps.get_model('farm', 'Project')
+        crop_model = apps.get_model('farm', 'Culture')
+        supplier_model = apps.get_model('farm', 'Supplier')
+        crop_supplier_data_model = apps.get_model('farm', 'CultureSupplierData')
+        seed_package_model = apps.get_model('farm', 'SeedPackage')
 
         project = project_model.objects.create(name='Migration Project', slug='migration-project')
         supplier = supplier_model.objects.create(name='Migration Supplier', homepage_url='https://supplier.example', project_id=project.id)
@@ -64,16 +61,8 @@ class TestSupplierDataBackfillMigration:
             size_unit='g',
         )
 
-        self.executor.loader.build_graph()
-        self.executor.migrate([self.migrate_to])
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
     def test_migration_copies_legacy_values_to_empty_supplier_data(self):
-        apps = self.executor.loader.project_state([self.migrate_to]).apps
+        apps = self.new_apps
         crop_model = apps.get_model('farm', 'Culture')
         crop_supplier_data_model = apps.get_model('farm', 'CultureSupplierData')
 
@@ -84,7 +73,7 @@ class TestSupplierDataBackfillMigration:
         assert supplier_data.packaging_sizes == [{'size_value': 25.0, 'size_unit': 'g'}]
 
     def test_migration_does_not_overwrite_existing_supplier_specific_values(self):
-        apps = self.executor.loader.project_state([self.migrate_to]).apps
+        apps = self.new_apps
         crop_model = apps.get_model('farm', 'Culture')
         crop_supplier_data_model = apps.get_model('farm', 'CultureSupplierData')
 

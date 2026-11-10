@@ -1,10 +1,10 @@
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestCropSpeciesMetadataMigration:
+@pytest.mark.django_db
+class TestCropSpeciesMetadataMigration(MigrationTestBase):
     migrate_from = [
         ('farm', '0102_clear_public_variety_species_invariant_fields'),
         ('crops', '0011_replace_asian_greens_collective_species'),
@@ -14,18 +14,15 @@ class TestCropSpeciesMetadataMigration:
         ('crops', '0012_crop_species_metadata'),
     ]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate(self.migrate_from)
-        old_apps = self.executor.loader.project_state(self.migrate_from).apps
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
+        project_model = apps.get_model('farm', 'Project')
+        crop_model = apps.get_model('farm', 'Crop')
+        public_crop_model = apps.get_model('farm', 'PublicCrop')
 
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
-        project_model = old_apps.get_model('farm', 'Project')
-        crop_model = old_apps.get_model('farm', 'Crop')
-        public_crop_model = old_apps.get_model('farm', 'PublicCrop')
-
-        self.species, _ = species_model.objects.update_or_create(
+        cls.species, _ = species_model.objects.update_or_create(
             name_normalized='blattsenf',
             defaults={'name': 'Blattsenf'},
         )
@@ -39,7 +36,7 @@ class TestCropSpeciesMetadataMigration:
         )
         crop_model.objects.create(
             project=custom_project,
-            crop_species=self.species,
+            crop_species=cls.species,
             name='Blattsenf',
             variety='',
             name_normalized='blattsenf',
@@ -47,7 +44,7 @@ class TestCropSpeciesMetadataMigration:
         )
         crop_model.objects.create(
             project=project,
-            crop_species=self.species,
+            crop_species=cls.species,
             name='Blattsenf',
             variety='Grün im Schnee',
             name_normalized='blattsenf',
@@ -56,14 +53,14 @@ class TestCropSpeciesMetadataMigration:
         )
         crop_model.objects.create(
             project=project,
-            crop_species=self.species,
+            crop_species=cls.species,
             name='Blattsenf',
             variety='',
             name_normalized='blattsenf',
             crop_family='Custom family',
         )
         public_crop_model.objects.create(
-            crop_species=self.species,
+            crop_species=cls.species,
             name='Blattsenf',
             variety='',
             name_normalized='blattsenf',
@@ -72,22 +69,13 @@ class TestCropSpeciesMetadataMigration:
             crop_family='',
         )
         translation_model.objects.update_or_create(
-            species=self.species,
+            species=cls.species,
             language_code='en',
             defaults={
                 'common_name': 'Mustard greens',
                 'common_name_normalized': 'mustard greens',
             },
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_to)
-        self.new_apps = self.executor.loader.project_state(self.migrate_to).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_populates_seeded_species_metadata(self):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')

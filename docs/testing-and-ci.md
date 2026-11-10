@@ -239,24 +239,56 @@ The largest classes, from the final run above:
 | `TestSupplierDataBackfillMigration` | 2 | 58s |
 | `TestRelinkGeneralPublicCropsMigration` | 3 | 54s |
 
-**The next lever, not yet done:** one migration cycle per class instead of
-one per test. That means a class-scoped fixture that migrates, seeds and
-migrates forward once, tests marked plain `django_db` so each one's writes
-roll back, and a flush once the class is done, as `transaction=True` does
-today after every test. By the table above it would take the summed
-migration time from ~557s to roughly 200s, and the local wall time from
-~200s to an estimated 110-120s. Two constraints shape it:
+By November 2026 the suite had grown to 2507 tests and 85 migration test
+methods in 28 files, and the CI test step to 10m12s (612s of pytest). The
+growth compounds: every migration test migrates back from the *current*
+leaf nodes, so each new migration makes every older migration test slower.
 
-- Tests that migrate *inside* the test body
-  (`test_migration_is_reversible`, and the two `test_reverse_*` tests)
-  cannot run inside the rolled-back transaction: SQLite's schema editor
-  refuses to run in an atomic block while foreign-key checks are on. They
-  keep a per-test cycle in a class of their own.
-- The migrate/seed/migrate boilerplate is currently copied into all 14
-  files. A shared helper should replace it, rather than a fifteenth copy.
+**One migration cycle per class** (`farm/tests/migration_base.py`).
+`MigrationTestBase` migrates back to `migrate_from`, calls the class's
+`seed_before_migration(cls, apps)`, migrates forward to `migrate_to` and
+exposes `old_apps`/`new_apps`, once per class in a class-scoped fixture.
+The classes are marked plain `django_db`, so each test's writes roll back
+and the tests of a class still see the same seeded rows in any order. When
+the class ends, the fixture migrates to the leaf nodes and flushes, which
+is what each test's teardown did before. Every migration test class with
+more than one test now uses it; a class with a single test gains nothing,
+and the remaining ones keep their own `setup_method` until they are next
+touched. New migration tests use the base.
 
-It touches every migration test file and deserves its own change, with
-its own before/after measurement.
+- Tests that migrate *inside* the test body (`test_migration_is_reversible`
+  and the `test_reverse_*` tests) cannot run inside the rolled-back
+  transaction: SQLite's schema editor refuses to run in an atomic block
+  while foreign-key checks are on. Each sits in a `...Reverse` class of its
+  own, marked `django_db(transaction=True)`, that shares the seed through a
+  `...Setup` base and calls `self.migrate_to_state(...)`.
+- **A class leaves the database as it found it.** The flush at its end also
+  removes the crop species and plant families the data migrations seed, and
+  regular tests such as `test_e2e_views.py` rely on them. Ordering cannot
+  keep those tests away from a flushed database: pytest-xdist's `loadscope`
+  dispatches the largest scopes first, so a migration class can run on a
+  worker before smaller regular classes. That was already true of the old
+  per-test layout on `main` (one xdist worker running
+  `TestPublicCropTranslationBackfill` and then `E2ECrossBrowserDatasetTest`
+  fails two tests there). The fixture therefore serializes the database
+  before migrating back and restores it after the flush, as Django's
+  `serialized_rollback` does (flush without `post_migrate`, then
+  `deserialize_db_from_string`). That a test must not rely on the seeded
+  catalogue being either present or absent still holds; the old single-test
+  classes that keep their own `setup_method` still flush without restoring.
+
+Measured on a 4-core box (`pdm run test`, the CI command), full suite,
+2507 passing tests both times:
+
+| configuration | pytest | wall |
+| --- | --- | --- |
+| per-test migration cycle | 587s | 589s |
+| **one cycle per class** | **272s** | **274s** |
+
+Application coverage is unchanged except for one line: the early `return`
+of `crops/migrations/0008`'s reverse function on a database without the
+aubergine translation, which the old layout reached only by accident when a
+later test of a class migrated back from an already flushed database.
 
 ### Why not split the backend into two CI jobs
 
@@ -278,9 +310,11 @@ Both failure modes have shown up in this pipeline before: the `quality` job
 ran the identical backend suite a second time (see the next section), and
 the frontend shards were merged back because a second runner shortened a
 job that was not the critical path. With the backend test step measured
-at 3m14s on CI after these changes, below the ~5 minute E2E workflow, a split would again shorten a job that no longer holds the
-pipeline up. Re-measure on CI before revisiting it. If it comes back, the
-class-scoped migration setup above is the cheaper win.
+at 3m14s on CI after these changes, below the ~5 minute E2E workflow, a
+split would again shorten a job that no longer holds the pipeline up. By
+November 2026 the step had grown back to 10m12s and was the critical path;
+the class-scoped migration cycle above roughly halved it. Re-measure on CI
+before revisiting a split.
 
 ### PostgreSQL-only regressions
 
