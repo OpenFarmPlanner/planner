@@ -106,6 +106,9 @@ applies it.
 
 ## Playwright Screenshot Tests
 - Screenshot baselines must never be updated or committed automatically.
+  CI only proposes re-recorded images; they are committed after a person has
+  reviewed the diffs and added the `accept-screenshots` PR label
+  ([`docs/testing-and-ci.md`](docs/testing-and-ci.md#accepting-changed-baselines)).
 - If a screenshot test fails, first determine whether the visual change is intentional or indicates a bug.
 - Only update baselines when:
   - the UI change is explicitly intended, and
@@ -520,7 +523,8 @@ content patterns live, commented, in the triage step's `env` block.
   commits (detected from the commit's author and `claude-review:`/
   `claude-security:` message prefix, not the GitHub push actor — those
   commits are pushed with the default `GITHUB_TOKEN`, so GitHub always
-  reports the actor as `github-actions[bot]`).
+  reports the actor as `github-actions[bot]`), or pushes that change only
+  Playwright screenshot baselines (`frontend/e2e*/<spec>-snapshots/*.png`).
 - **Code review** when the PR changes ≥ 300 lines or ≥ 15 files (not counting
   auto-generated migrations, lockfiles, snapshots, locale files, `docs/**`,
   `*.md`), touches core domain logic (`crop_inheritance.py`,
