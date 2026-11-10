@@ -305,6 +305,46 @@ The job runs only the marked tests, not the whole suite on PostgreSQL:
 that is a separate decision (it would double the backend CI time and
 surface unrelated backend differences).
 
+### Retiring migration tests
+
+A migration test guards a data migration until production has run it. After
+that the migration's code is frozen (it is never edited again), the data it
+transformed is gone, and a rollback that far back is not a real option, so
+the test only costs time, and more with every newer migration, since each
+migration test migrates back from the current leaf nodes. Fresh databases
+(every test database, every new install) still run every migration, so a
+migration that crashes on an empty database stays caught without its test.
+The rule: **a migration test lives until its migration is in production.**
+
+`.github/workflows/retire-migration-tests.yml` applies it on the 1st and 15th
+of every month (GitHub's cron cannot express "every 14 days"), and on demand
+through `workflow_dispatch` with an optional version:
+
+- `scripts/ci/retire_deployed_migration_tests.py` reads the version
+  production runs from its public `GET /api/version/` (`{"version": "x.y.z"}`)
+  and fetches the matching `vx.y.z` release tag.
+- A migration test file (a `backend/<app>/tests/test_*.py` that uses
+  `MigrationExecutor` or `MigrationTestBase`) is retired when every migration
+  it names, as `('app', '0123_name')` or `app.migrations.0123_name`, exists
+  in that tag. A file naming no migration, or one this checkout lacks, is
+  kept. Only test files are deleted, never migrations.
+- The job opens one pull request from `chore/retire-deployed-migration-tests`
+  (or updates the open one) listing the files and their migrations. A person
+  reviews and merges it; nothing disappears unseen.
+
+Retirement works per file, so give each migration its own
+`test_migrations_<name>.py`: a file that also covers a migration not yet in
+production stays until that one is deployed too.
+
+The PR is created with the repository secret `RETIREMENT_PR_TOKEN`, a
+fine-grained personal access token limited to this repository with
+*Contents* and *Pull requests* read/write. `GITHUB_TOKEN` cannot be used:
+pushes and pull requests it makes start no workflow runs, so the PR would
+never get its CI. When the token expires, the scheduled run fails at checkout
+until a new one is stored. If production's version endpoint cannot be reached
+(the job runs from GitHub's runners, which Cloudflare could challenge), the
+job fails rather than guessing.
+
 ## Why `quality` does not run the backend suite
 
 `scripts/quality.sh` produces lint, complexity and coverage reports, and

@@ -1,0 +1,97 @@
+name: Retire deployed migration tests
+
+# A migration test guards a data migration until production runs it; after
+# that it only costs CI time (docs/testing-and-ci.md, "Retiring migration
+# tests"). Twice a month this asks production which release it runs
+# (/api/version/) and opens or updates one PR that deletes every migration
+# test whose migrations are all in that release's tag. Migrations themselves
+# are never touched; a person reviews and merges the PR.
+on:
+  schedule:
+    # The 1st and 15th: GitHub's cron cannot express "every 14 days".
+    - cron: '23 5 1,15 * *'
+  workflow_dispatch:
+    inputs:
+      production_version:
+        description: 'Production version to retire against (e.g. 1.156.0); empty asks production'
+        required: false
+  pull_request:
+    paths:
+      - 'scripts/ci/retire_deployed_migration_tests.py'
+      - 'tests/test_retire_deployed_migration_tests.py'
+      - '.github/workflows/retire-migration-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retire-migration-tests
+  cancel-in-progress: false
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRANCH: chore/retire-deployed-migration-tests
+    steps:
+      # A fine-grained PAT (contents + pull requests: write on this repo), not
+      # GITHUB_TOKEN: pushes and PRs made with GITHUB_TOKEN start no workflow
+      # runs, so the PR would never get its CI. Pull requests from this repo
+      # only run the unit tests and need no secret.
+      - name: Require the pull request token
+        if: github.event_name != 'pull_request'
+        env:
+          HAS_TOKEN: ${{ secrets.RETIREMENT_PR_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" != 'true' ]; then
+            echo '::error::Repository secret RETIREMENT_PR_TOKEN is missing (see docs/testing-and-ci.md, "Retiring migration tests").'
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ github.event_name != 'pull_request' && secrets.RETIREMENT_PR_TOKEN || github.token }}
+
+      - name: Test the retirement script
+        run: python3 -m unittest discover -s tests -p test_retire_deployed_migration_tests.py
+
+      - name: Find tests of deployed migrations
+        id: retire
+        if: github.event_name != 'pull_request'
+        env:
+          PRODUCTION_VERSION: ${{ inputs.production_version }}
+        # Exit 1 means "files retired" and is handled below; 2 (check failed) fails the job.
+        run: |
+          set +e
+          python3 scripts/ci/retire_deployed_migration_tests.py \
+            ${PRODUCTION_VERSION:+--version "$PRODUCTION_VERSION"} \
+            --fetch-tag \
+            --report "$RUNNER_TEMP/report.md" \
+            --github-output "$GITHUB_OUTPUT"
+          status=$?
+          set -e
+          echo "retired=$([ "$status" = 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          if [ "$status" = 2 ]; then exit 1; fi
+          if [ "$status" = 1 ]; then cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Open or update the pull request
+        if: steps.retire.outputs.retired == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RETIREMENT_PR_TOKEN }}
+          VERSION: ${{ steps.retire.outputs.version }}
+        run: |
+          title="test(backend): retire tests of migrations deployed in v$VERSION"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898898+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$BRANCH"
+          git add -A backend
+          git commit -q -m "$title" -m "Production runs v$VERSION; see docs/testing-and-ci.md, \"Retiring migration tests\"."
+          git push --force origin "$BRANCH"
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "$title" --body-file "$RUNNER_TEMP/report.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/report.md"
+          fi
