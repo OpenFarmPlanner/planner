@@ -1,50 +1,38 @@
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestGenericFennelSpeciesMigration:
+@pytest.mark.django_db
+class TestGenericFennelSpeciesMigration(MigrationTestBase):
     migrate_from = [('crops', '0012_crop_species_metadata')]
     migrate_to = [('crops', '0013_replace_generic_fennel_species')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate(self.migrate_from)
-        old_apps = self.executor.loader.project_state(self.migrate_from).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
 
         species_model.objects.filter(
             name_normalized__in=['fenchel', 'gewürzfenchel'],
         ).delete()
-        self.generic_species = species_model.objects.create(
+        cls.generic_species = species_model.objects.create(
             name='Fenchel',
             name_normalized='fenchel',
             status='published',
         )
         translation_model.objects.create(
-            species=self.generic_species,
+            species=cls.generic_species,
             language_code='de',
             common_name='Fenchel',
             common_name_normalized='fenchel',
         )
         translation_model.objects.create(
-            species=self.generic_species,
+            species=cls.generic_species,
             language_code='en',
             common_name='Fennel',
             common_name_normalized='fennel',
         )
-
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_to)
-        self.new_apps = self.executor.loader.project_state(self.migrate_to).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_replaces_generic_fennel_with_published_herb_fennel(self):
         species_model = self.new_apps.get_model('crops', 'CropSpecies')

@@ -1,20 +1,16 @@
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestCropSpeciesRegionalDisplayNameMigration:
+class TestCropSpeciesRegionalDisplayNameMigrationSetup(MigrationTestBase):
     migrate_from = [('crops', '0014_crop_species_search_aliases')]
     migrate_to = [('crops', '0015_crop_species_regional_display_names')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate(self.migrate_from)
-        old_apps = self.executor.loader.project_state(self.migrate_from).apps
-
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
 
         # Transactional tests flush the tables, so after the first test the
         # seed-migration rows are gone and the species this migration writes to
@@ -52,15 +48,6 @@ class TestCropSpeciesRegionalDisplayNameMigration:
                 common_name_normalized=english_name.casefold(),
             )
 
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_to)
-        self.new_apps = self.executor.loader.project_state(self.migrate_to).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
     def _translation(self, normalized_species_name, language_code='de'):
         translation_model = self.new_apps.get_model('crops', 'CropSpeciesTranslation')
         return translation_model.objects.get(
@@ -68,6 +55,9 @@ class TestCropSpeciesRegionalDisplayNameMigration:
             language_code=language_code,
         )
 
+
+@pytest.mark.django_db
+class TestCropSpeciesRegionalDisplayNameMigration(TestCropSpeciesRegionalDisplayNameMigrationSetup):
     def test_seeds_swiss_and_austrian_display_names(self):
         assert self._translation('feldsalat').regional_names == {
             'austria': 'Vogerlsalat',
@@ -81,29 +71,6 @@ class TestCropSpeciesRegionalDisplayNameMigration:
 
     def test_keeps_a_regional_name_curated_outside_the_seed_list(self):
         assert self._translation('aubergine').regional_names == {'austria': 'Melanzani'}
-
-    def test_reverse_keeps_a_regional_name_an_earlier_migration_owns(self):
-        """Rolling back must not delete what 0008 wrote.
-
-        0008 added the Austrian aubergine name before the seed list carried
-        it, so the stored value is identical to the seeded one. Matching on
-        the value alone cannot tell the two apart, and dropping it loses data
-        this migration never added.
-        """
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_from)
-        reverted_apps = self.executor.loader.project_state(self.migrate_from).apps
-        translation_model = reverted_apps.get_model('crops', 'CropSpeciesTranslation')
-
-        def regional_names(normalized_species_name):
-            return translation_model.objects.get(
-                species__name_normalized=normalized_species_name,
-                language_code='de',
-            ).regional_names
-
-        assert regional_names('aubergine') == {'austria': 'Melanzani'}
-        # The names this migration did add are still removed.
-        assert regional_names('feldsalat') == {}
 
     def test_never_registers_the_ambiguous_peperoni_as_a_display_name(self):
         """Guards docs/crop-taxonomy-guidelines.md §4.
@@ -120,3 +87,29 @@ class TestCropSpeciesRegionalDisplayNameMigration:
                 if isinstance(value, str)
             ]
             assert not any(name.casefold() == 'peperoni' for name in names)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCropSpeciesRegionalDisplayNameMigrationReverse(
+    TestCropSpeciesRegionalDisplayNameMigrationSetup,
+):
+    def test_reverse_keeps_a_regional_name_an_earlier_migration_owns(self):
+        """Rolling back must not delete what 0008 wrote.
+
+        0008 added the Austrian aubergine name before the seed list carried
+        it, so the stored value is identical to the seeded one. Matching on
+        the value alone cannot tell the two apart, and dropping it loses data
+        this migration never added.
+        """
+        reverted_apps = self.migrate_to_state(self.migrate_from)
+        translation_model = reverted_apps.get_model('crops', 'CropSpeciesTranslation')
+
+        def regional_names(normalized_species_name):
+            return translation_model.objects.get(
+                species__name_normalized=normalized_species_name,
+                language_code='de',
+            ).regional_names
+
+        assert regional_names('aubergine') == {'austria': 'Melanzani'}
+        # The names this migration did add are still removed.
+        assert regional_names('feldsalat') == {}

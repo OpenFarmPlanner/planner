@@ -1,23 +1,19 @@
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
+
+from farm.tests.migration_base import MigrationTestBase
 
 
-@pytest.mark.django_db(transaction=True)
-class TestEndiveSearchAliasMigration:
+class EndiveAliasMigrationSetup(MigrationTestBase):
     migrate_from = [('crops', '0015_crop_species_regional_display_names')]
     migrate_to = [('crops', '0016_endive_search_aliases')]
 
-    def setup_method(self):
-        self.executor = MigrationExecutor(connection)
-        self.executor.migrate(self.migrate_from)
-        old_apps = self.executor.loader.project_state(self.migrate_from).apps
+    @classmethod
+    def seed_before_migration(cls, apps):
+        species_model = apps.get_model('crops', 'CropSpecies')
+        translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
 
-        species_model = old_apps.get_model('crops', 'CropSpecies')
-        translation_model = old_apps.get_model('crops', 'CropSpeciesTranslation')
-
-        # Transactional tests flush the tables between tests, so recreate the
-        # species from a known state instead of relying on the seed rows.
+        # Flushes between test classes remove the seed rows, so recreate the
+        # species from a known state instead of relying on them.
         species_model.objects.filter(name_normalized__in=['endivie', 'chicoree']).delete()
         endive = species_model.objects.create(
             name='Endivie', name_normalized='endivie', status='published',
@@ -41,15 +37,6 @@ class TestEndiveSearchAliasMigration:
             synonyms=['Brüsseler Endivie', 'Chicoree'],
         )
 
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_to)
-        self.new_apps = self.executor.loader.project_state(self.migrate_to).apps
-
-    def teardown_method(self):
-        executor = MigrationExecutor(connection)
-        executor.loader.build_graph()
-        executor.migrate(executor.loader.graph.leaf_nodes())
-
     def _translation(self, apps, normalized_species_name):
         translation_model = apps.get_model('crops', 'CropSpeciesTranslation')
         return translation_model.objects.get(
@@ -57,6 +44,9 @@ class TestEndiveSearchAliasMigration:
             language_code='de',
         )
 
+
+@pytest.mark.django_db
+class TestEndiveSearchAliasMigration(EndiveAliasMigrationSetup):
     def test_adds_the_smooth_and_curly_endive_names_as_aliases(self):
         translation = self._translation(self.new_apps, 'endivie')
 
@@ -79,10 +69,11 @@ class TestEndiveSearchAliasMigration:
 
         assert translation.synonyms == ['Brüsseler Endivie', 'Chicoree']
 
+
+@pytest.mark.django_db(transaction=True)
+class TestEndiveSearchAliasMigrationReverse(EndiveAliasMigrationSetup):
     def test_reverse_removes_only_the_added_aliases(self):
-        self.executor.loader.build_graph()
-        self.executor.migrate(self.migrate_from)
-        reverted_apps = self.executor.loader.project_state(self.migrate_from).apps
+        reverted_apps = self.migrate_to_state(self.migrate_from)
 
         translation = self._translation(reverted_apps, 'endivie')
 
