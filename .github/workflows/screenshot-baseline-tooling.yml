@@ -1,0 +1,26 @@
+name: Screenshot baseline tooling
+
+# Tests scripts/ci/screenshot_baselines.py, which e2e.yml and
+# e2e-cross-browser.yml use to propose baselines and accept-screenshots.yml
+# uses to commit them, whenever a PR changes it. accept-screenshots.yml runs
+# only on its label and so cannot carry a path filter itself.
+on:
+  pull_request:
+    paths:
+      - 'scripts/ci/screenshot_baselines.py'
+      - 'tests/test_screenshot_baselines.py'
+      - '.github/workflows/screenshot-baseline-tooling.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Test the baseline tooling
+        run: python3 -m unittest discover -s tests -p test_screenshot_baselines.py

@@ -625,6 +625,41 @@ the fixture data, re-record the affected specs with
 `--update-snapshots=all`, or small text changes stay behind in baselines that
 still pass.
 
+### Accepting changed baselines
+
+An intended UI change makes screenshot jobs fail until their baselines are
+updated, and baselines must come from the environment that compares them
+(the Docker image here, the CI runner's Chrome for `frontend/e2e/`). CI
+therefore proposes them itself, and a person accepts them:
+
+1. A failing screenshot job uploads its diffs as before. It then re-runs only
+   the failed tests (`--last-failed --update-snapshots=changed`) in the same
+   environment and uploads the re-recorded images as
+   `proposed-baselines-cross-browser-<project>` or
+   `proposed-baselines-e2e-shard-<n>` (`scripts/ci/screenshot_baselines.py collect`).
+   Tests that fail for any other reason stay failed and propose nothing.
+2. Review every diff (`*-diff.png`, `*-actual.png` against `*-expected.png`)
+   in the `playwright-cross-browser-*` / `playwright-report-shard-*`
+   artifacts, as the "Playwright Screenshot Tests" rules in `CLAUDE.md`
+   require.
+3. Add the label **`accept-screenshots`** to the PR.
+   `.github/workflows/accept-screenshots.yml` takes the proposed images of the
+   labeled head (it refuses if the branch has moved on or a screenshot
+   workflow is still running), accepts only PNGs inside a
+   `frontend/e2e*/<spec>-snapshots/` directory, commits them as one
+   `test(e2e): accept reviewed screenshot baselines` commit, removes the label
+   and comments the accepted files.
+
+The commit is pushed with `SCREENSHOT_BASELINE_TOKEN` (or `RELEASE_PAT`), not
+the default `GITHUB_TOKEN`, because a `GITHUB_TOKEN` push starts no workflow
+and would leave the new head without CI. CI then runs once more on it; the
+screenshot jobs must pass on the accepted images. The Claude PR review skips
+such a push (`baseline_push` in `claude-pr.yml`'s triage): a push that changes
+only files under `frontend/e2e*/<spec>-snapshots/` has no code to review.
+
+Recording on your own machine stays possible for new screenshot tests
+(`npm run test:e2e:update`, Docker only).
+
 One screenshot per distinct layout: the crop form is captured as the Kultur
 form only (top and seed section). The Sorte form's own elements (variety
 legend, highlighted own values, the rotation info icon) are guarded by
@@ -635,7 +670,9 @@ functional assertions in `crop-form.spec.ts` instead of a second image pair.
 `.github/workflows/e2e-cross-browser.yml` runs the suite on pull requests to
 `main`, one job per project, via the same `run-in-docker.sh`. A failing job
 uploads `playwright-report/` and `test-results/` (traces and screenshot
-diffs) as `playwright-cross-browser-<project>`.
+diffs) as `playwright-cross-browser-<project>`, plus its re-recorded
+screenshots as `proposed-baselines-cross-browser-<project>` (see
+[Accepting changed baselines](#accepting-changed-baselines)).
 
 ### Cross-browser issues found and fixed
 

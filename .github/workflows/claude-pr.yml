@@ -70,6 +70,7 @@ jobs:
       security_review: ${{ steps.decide.outputs.security_review }}
       self_changed: ${{ steps.decide.outputs.self_changed }}
       self_push: ${{ steps.decide.outputs.self_push }}
+      baseline_push: ${{ steps.decide.outputs.baseline_push }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -88,6 +89,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          # The head before this push (synchronize events only; see the
+          # baseline_push output).
+          BEFORE_SHA: ${{ github.event.action == 'synchronize' && github.event.before || '' }}
 
           # ------------------------------------------------------------------
           # Triage configuration. Every pattern is a Python regular expression
@@ -227,6 +231,12 @@ jobs:
           # GITHUB_TOKEN, so GitHub always records the push actor as
           # `github-actions[bot]`, regardless of this commit author field.
           CLAUDE_BOT_EMAIL: 41898282+claude[bot]@users.noreply.github.com
+
+          # Playwright screenshot baselines (see the baseline_push output). A
+          # push that changes nothing else has no code to review: the
+          # screenshot jobs themselves verify it. Kept in step with
+          # BASELINE_PATH in scripts/ci/screenshot_baselines.py.
+          BASELINE_PATTERN: '^frontend/(e2e|e2e-cross-browser)/[^/]+-snapshots/[^/]+\.png$'
         run: |
           python3 - <<'PY'
           import json
@@ -379,6 +389,20 @@ jobs:
               head_author == env["CLAUDE_BOT_EMAIL"]
               and re.match(r"^claude-(review|security):", head_subject) is not None
           )
+          # A push whose every file is a screenshot baseline: the reviews have
+          # nothing to read in it. Only a fast-forward from a commit still
+          # present counts; a force push or an unknown `before` reviews as usual.
+          baseline_push = False
+          before = env.get("BEFORE_SHA", "")
+          if re.fullmatch(r"[0-9a-f]{40}", before) and before != "0" * 40:
+              pushed_diff = subprocess.run(
+                  ["git", "diff", "--name-only", "--no-renames", before, head],
+                  capture_output=True,
+                  text=True,
+              )
+              pushed = pushed_diff.stdout.splitlines() if pushed_diff.returncode == 0 else []
+              baseline = re.compile(env["BASELINE_PATTERN"])
+              baseline_push = bool(pushed) and all(baseline.search(path) for path in pushed)
           if self_changed:
               summary += [
                   f"> {env['SELF_WORKFLOW']} is changed in this PR. claude-code-action only runs",
@@ -392,8 +416,15 @@ jobs:
                   "> skipped so a fix push cannot start a new review loop.",
                   "",
               ]
+          if baseline_push:
+              summary += [
+                  "> This push changes only Playwright screenshot baselines. The review jobs",
+                  "> are skipped; the screenshot jobs verify the new images.",
+                  "",
+              ]
           with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"self_changed={'true' if self_changed else 'false'}\n")
+              output.write(f"baseline_push={'true' if baseline_push else 'false'}\n")
               output.write(f"self_push={'true' if self_push else 'false'}\n")
               for key, found in reasons.items():
                   decision = "true" if found else "false"
@@ -416,11 +447,13 @@ jobs:
     # claude-code-action refuses to run from a workflow file that differs
     # from the default branch, so a PR changing this file skips the reviews.
     # self_push skips Claude's own fix-commit pushes so they cannot start a
-    # new review loop (see the triage job's self_push output).
+    # new review loop (see the triage job's self_push output); baseline_push
+    # skips pushes that change only screenshot baselines.
     if: >-
       needs.triage.outputs.code_review == 'true' &&
       needs.triage.outputs.self_changed != 'true' &&
-      needs.triage.outputs.self_push != 'true'
+      needs.triage.outputs.self_push != 'true' &&
+      needs.triage.outputs.baseline_push != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -573,6 +606,7 @@ jobs:
       needs.triage.outputs.security_review == 'true' &&
       needs.triage.outputs.self_changed != 'true' &&
       needs.triage.outputs.self_push != 'true' &&
+      needs.triage.outputs.baseline_push != 'true' &&
       needs.code-review.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 90

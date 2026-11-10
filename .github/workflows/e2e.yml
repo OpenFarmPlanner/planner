@@ -99,3 +99,24 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
+
+      # See e2e-cross-browser.yml: re-record only the failed screenshots as
+      # proposed baselines for the `accept-screenshots` label.
+      - name: Re-record failed screenshots as proposed baselines
+        id: propose
+        if: failure()
+        continue-on-error: true
+        working-directory: frontend
+        run: |
+          if [ -f test-results/.last-run.json ]; then
+            npx playwright test --last-failed --update-snapshots=changed || true
+          fi
+          python3 "$GITHUB_WORKSPACE/scripts/ci/screenshot_baselines.py" collect "$RUNNER_TEMP/proposed-baselines"
+
+      - name: Upload proposed baselines
+        if: failure() && steps.propose.outputs.count != '' && steps.propose.outputs.count != '0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: proposed-baselines-e2e-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/proposed-baselines/
+          retention-days: 7
