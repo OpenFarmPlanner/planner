@@ -45,10 +45,12 @@ migrations that are already on `main`.
 - Process large tables in batches (`.iterator()`, `bulk_update`).
 - A hand-written migration triggers the automated Claude code review
   (`.github/workflows/claude-pr.yml`); expect it.
-- Test it in a `test_migrations_*.py` file next to the app's other migration
-  tests: migrate back to the predecessor, build the fixture rows, migrate
-  forward, assert, and migrate forward to the leaf nodes again in teardown
-  (`docs/testing-and-ci.md`, "The migration tests are the expensive ones").
+- Test it in its own `test_migrations_<name>.py` file next to the app's other
+  migration tests: migrate back to the predecessor, build the fixture rows,
+  migrate forward, assert, and migrate forward to the leaf nodes again in
+  teardown (`docs/testing-and-ci.md`, "The migration tests are the expensive
+  ones"). One file per migration, because the file is deleted automatically
+  once the migration runs in production ("Retiring migration tests").
 
 ## 4. Verify
 

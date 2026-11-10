@@ -87,6 +87,9 @@ applies it.
   grows per row, fix the queryset with `select_related`/`prefetch_related`
   instead of raising the expected number.
 - Prefer extending existing test files before creating new test structures.
+- A data-migration test goes in its own `test_migrations_<name>.py` file and
+  is deleted once its migration runs in production; a scheduled workflow opens
+  that PR (see [`docs/testing-and-ci.md`](docs/testing-and-ci.md#retiring-migration-tests)).
 - Follow existing test patterns used in the repository.
 - Run targeted tests when appropriate unless the user explicitly says not to run tests.
 - Locally, run only the tests relevant to the change (plus lint and typecheck
