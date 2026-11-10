@@ -148,9 +148,10 @@ The crop details have a read-only "Mischkultur" section
 (`CropCompanionsSection`), laid out like the library page's
 (`CompanionKindColumns`): the two kinds side by side (one column on a phone),
 each under its coloured heading, one line per neighbour with the name (a
-neighbouring crop as a link) and reason and note in grey. Without neighbours it
-says "Keine Angabe"; there is no edit button, neighbours are edited in the
-crop form only. A Sorte shows its Kultur's list with "Gilt für alle Sorten
+neighbouring crop as a link) and reason and note in grey. Without neighbours
+the section is hidden, unless "Alle Angaben anzeigen" is on (see
+[crop-detail.md](crop-detail.md)); then it says "Keine Angabe". There is no
+edit button, neighbours are edited in the crop form only. A Sorte shows its Kultur's list with "Gilt für alle Sorten
 von …".
 
 ## Spreadsheet and JSON import/export

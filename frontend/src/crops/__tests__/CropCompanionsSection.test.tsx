@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import type { Crop, CropCompanion } from '../../api/types';
 import { CropCompanionsSection } from '../CropCompanionsSection';
@@ -90,6 +90,20 @@ describe('CropCompanionsSection', () => {
 
     expect(await screen.findByText('Keine Angabe')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing in the hide-empty mode until a neighbour is recorded', async () => {
+    api.list.mockResolvedValue({ data: [] });
+    render(<CropCompanionsSection crop={ROMA} crops={CROPS} onCropSelect={vi.fn()} hideWhenEmpty />);
+
+    await waitFor(() => expect(api.list).toHaveBeenCalled());
+    expect(screen.queryByTestId('crop-companions-section')).not.toBeInTheDocument();
+  });
+
+  it('still lists neighbours in the hide-empty mode', async () => {
+    render(<CropCompanionsSection crop={TOMATO} crops={CROPS} onCropSelect={vi.fn()} hideWhenEmpty />);
+
+    expect(await screen.findByRole('button', { name: 'Kartoffel' })).toBeInTheDocument();
   });
 
   it('has no edit controls of its own', async () => {

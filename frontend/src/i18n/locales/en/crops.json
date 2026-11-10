@@ -77,12 +77,9 @@
   "detail": {
     "sections": {
       "general": "General information",
-      "cropRotation": "Crop Rotation Properties",
-      "spacing": "Spacing",
-      "seed": "Seed",
-      "harvest": "Yield",
       "notes": "Notes"
     },
+    "showAllFields": "Show all details",
     "fields": {
       "distanceWithinRow": "In-row spacing",
       "rowSpacing": "Row spacing",

@@ -79,12 +79,9 @@
   "detail": {
     "sections": {
       "general": "Informations générales",
-      "cropRotation": "Propriétés de rotation des cultures",
-      "spacing": "Espacements",
-      "seed": "Semences",
-      "harvest": "Rendement",
       "notes": "Notes"
     },
+    "showAllFields": "Afficher toutes les informations",
     "fields": {
       "distanceWithinRow": "Espacement sur le rang",
       "rowSpacing": "Espacement entre les rangs",

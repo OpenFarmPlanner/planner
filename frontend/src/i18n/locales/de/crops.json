@@ -77,12 +77,9 @@
   "detail": {
     "sections": {
       "general": "Allgemeine Informationen",
-      "cropRotation": "Fruchtfolge-Eigenschaften",
-      "spacing": "Abstände",
-      "seed": "Saatgut",
-      "harvest": "Ernte",
       "notes": "Notizen"
     },
+    "showAllFields": "Alle Angaben anzeigen",
     "fields": {
       "distanceWithinRow": "Abstand in der Reihe",
       "rowSpacing": "Reihenabstand",
