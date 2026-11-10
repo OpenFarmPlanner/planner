@@ -65,8 +65,13 @@ test.describe('landing page topbar wordmark', () => {
       await page.addInitScript((code) => window.localStorage.setItem('ui.language', code), language);
       await page.setViewportSize({ width, height: 800 });
       await page.goto(path);
+      // Measure only once the page's language and fonts are in place: until
+      // then the labels have other widths, and a single early measurement
+      // read "hidden" at 1440px now and then.
+      await expect(page.locator('html')).toHaveAttribute('lang', language);
+      await page.evaluate(() => document.fonts.ready);
 
-      expect(await wordmarkState(page)).toBe(expected);
+      await expect.poll(() => wordmarkState(page)).toBe(expected);
     });
   }
 });
