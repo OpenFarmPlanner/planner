@@ -17,23 +17,20 @@ interface CropCompanionsSectionProps {
   crop: Crop;
   crops: Crop[];
   onCropSelect: (crop: Crop) => void;
-  /**
-   * Render nothing while there is no neighbour to list (no Kultur, still
-   * loading, or none recorded); a load error is still shown.
-   */
-  hideWhenEmpty?: boolean;
 }
 
 /**
  * "Mischkultur" in the crop details: the Kultur's good and bad neighbours,
  * read-only; they are edited in the Kultur's crop form. A Sorte shows its
- * Kultur's list (see docs/crop-companions.md).
+ * Kultur's list (see docs/crop-companions.md). Like every empty detail
+ * section it renders nothing without neighbours (no Kultur, still loading,
+ * or none recorded); a load error is still shown.
  */
-export function CropCompanionsSection({ crop, crops, onCropSelect, hideWhenEmpty = false }: CropCompanionsSectionProps) {
+export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompanionsSectionProps) {
   const { t } = useTranslation(['crops', 'common']);
   const families = usePlantFamilies();
   // Reloaded whenever the crop list is refetched, e.g. after the form saved.
-  const { relations, loaded, failed } = useCropCompanions(crops);
+  const { relations, failed } = useCropCompanions(crops);
 
   const cropsById = useMemo(
     () => new Map(crops.flatMap((entry) => (entry.id === undefined ? [] : [[entry.id, entry] as const]))),
@@ -61,7 +58,7 @@ export function CropCompanionsSection({ crop, crops, onCropSelect, hideWhenEmpty
     };
   });
 
-  if (hideWhenEmpty && !failed && items.length === 0) {
+  if (!failed && items.length === 0) {
     return null;
   }
 
@@ -69,18 +66,10 @@ export function CropCompanionsSection({ crop, crops, onCropSelect, hideWhenEmpty
     <Box sx={{ mb: 3 }} data-testid="crop-companions-section">
       <Typography variant="h6" gutterBottom>{t('companions.title')}</Typography>
       {failed ? <Alert severity="error">{t('companions.loadError')}</Alert> : null}
-      {!kultur ? (
-        <Typography variant="body2" color="text.secondary">
-          {t('companions.noKulturHint', { name: crop.name })}
-        </Typography>
-      ) : null}
       {kultur && isVariety ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {t('companions.sharedHint', { name: kultur.name })}
         </Typography>
-      ) : null}
-      {kultur && loaded && !failed && items.length === 0 ? (
-        <Typography variant="body1">{t('noData')}</Typography>
       ) : null}
       {items.length > 0 ? <CompanionKindColumns items={items} /> : null}
     </Box>

@@ -79,7 +79,6 @@
       "general": "Allgemeine Informationen",
       "notes": "Notizen"
     },
-    "showAllFields": "Alle Angaben anzeigen",
     "fields": {
       "distanceWithinRow": "Abstand in der Reihe",
       "rowSpacing": "Reihenabstand",
@@ -768,10 +767,6 @@
       "collaborationLoadError": "Diskussion und Versionsverlauf konnten nicht geladen werden.",
       "sections": {
         "general": "Allgemeine Informationen",
-        "timing": "Zeitplanung",
-        "spacing": "Abstände",
-        "seed": "Saatgut",
-        "harvest": "Ernte",
         "metadata": "Bibliotheksdaten",
         "notes": "Notizen"
       },
@@ -816,7 +811,6 @@
         "propagationDurationDays": "Anzuchtdauer (Tage)",
         "cropFamily": "Pflanzenfamilie",
         "nutrientDemand": "Nährstoffbedarf",
-        "cultivationType": "Anbauart",
         "distanceWithinRow": "Abstand in der Reihe",
         "rowSpacing": "Reihenabstand",
         "sowingDepth": "Saattiefe",
@@ -840,10 +834,6 @@
           "low": "Niedrig",
           "medium": "Mittel",
           "high": "Hoch"
-        },
-        "cultivationTypes": {
-          "directSowing": "Direktsaat",
-          "preCultivation": "Pflanzung"
         }
       },
       "discussion": {
@@ -1607,7 +1597,6 @@
     "badColumn": "Schlechte Nachbarn",
     "add": "Nachbar hinzufügen",
     "sharedHint": "Gilt für alle Sorten von {{name}}.",
-    "noKulturHint": "Nachbarn werden bei der Kultur ohne Sorte erfasst. Für {{name}} gibt es noch keinen solchen Eintrag.",
     "familyLabel": "{{name}} (Pflanzenfamilie)",
     "delete": "Nachbar entfernen",
     "saveError": "Die Kultur ist gespeichert, die Nachbarn konnten aber nicht gespeichert werden.",

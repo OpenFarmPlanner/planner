@@ -8,10 +8,7 @@ import type {
 } from '../../../api/types';
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../../i18n/languages';
 import { stripCitationMarkers } from '../../../components/data-grid/markdown';
-import {
-  getCultivationTypeLabel,
-  getPublicCropTitle,
-} from '../../publicCropDisplay';
+import { getPublicCropTitle } from '../../publicCropDisplay';
 import { formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
 import { getSeedTypeLabel } from '../../../crops/seedType';
 import { readWithLegacyKey } from '../../../compat/legacyCropNames';
@@ -249,20 +246,6 @@ export function getNutrientDemandLabel(
     return t(`library.page.fields.nutrientDemandValues.${value}`);
   }
   return fallback;
-}
-
-export function getCultivationTypesLabel(
-  crop: PublicCrop,
-  t: TFunction,
-  fallback: string,
-): string {
-  const values = crop.cultivation_types?.length
-    ? crop.cultivation_types
-    : crop.cultivation_type ? [crop.cultivation_type] : [];
-  const labels = values
-    .map((value) => getCultivationTypeLabel(value, t, ''))
-    .filter(Boolean);
-  return labels.length > 0 ? labels.join(', ') : fallback;
 }
 
 export function getHarvestMethodLabel(

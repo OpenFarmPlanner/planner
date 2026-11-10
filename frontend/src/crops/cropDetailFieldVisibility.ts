@@ -1,11 +1,8 @@
 /**
- * The crop detail read view hides unset values by default so the populated
- * ones are easy to scan; a per-browser "show all details" preference brings
- * the missing values and their placeholders back. Edit mode is not affected.
+ * Crop detail read views (the crops page and the crop library) show only
+ * filled-in values and leave out sections without any. Edit forms are not
+ * affected.
  */
-import { useCallback, useState } from 'react';
-
-const SHOW_ALL_FIELDS_STORAGE_KEY = 'ofp.crops.detail.showAllFields';
 
 /**
  * Whether a value counts as filled in: null, undefined, blank strings and
@@ -20,29 +17,7 @@ export function hasDetailValue(value: unknown): boolean {
   return true;
 }
 
-export function readShowAllCropDetailFields(): boolean {
-  try {
-    return window.localStorage.getItem(SHOW_ALL_FIELDS_STORAGE_KEY) === 'true';
-  } catch {
-    return false;
-  }
+/** Whether any of a section's values is filled in. */
+export function hasAnyDetailValue(...values: unknown[]): boolean {
+  return values.some(hasDetailValue);
 }
-
-export function storeShowAllCropDetailFields(showAll: boolean): void {
-  try {
-    window.localStorage.setItem(SHOW_ALL_FIELDS_STORAGE_KEY, String(showAll));
-  } catch {
-    // Storage may be unavailable (private mode); the choice then only lives for this visit.
-  }
-}
-
-export function useShowAllCropDetailFields(): [boolean, (showAll: boolean) => void] {
-  const [showAll, setShowAllState] = useState(readShowAllCropDetailFields);
-  const setShowAll = useCallback((next: boolean) => {
-    setShowAllState(next);
-    storeShowAllCropDetailFields(next);
-  }, []);
-  return [showAll, setShowAll];
-}
-
-export const CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY = SHOW_ALL_FIELDS_STORAGE_KEY;

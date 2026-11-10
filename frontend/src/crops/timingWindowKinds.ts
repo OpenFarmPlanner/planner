@@ -18,8 +18,3 @@ export function collectKinds(crop: Crop): KindWindows[] {
     })
     .filter((entry) => entry.windows.length > 0);
 }
-
-/** Whether the crop has any effective timing window to show. */
-export function hasTimingWindows(crop: Crop): boolean {
-  return collectKinds(crop).length > 0;
-}

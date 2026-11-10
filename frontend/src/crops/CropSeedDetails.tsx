@@ -50,13 +50,6 @@ interface CropSeedDetailsProps {
   thousandKernelWeightG?: number | null;
   thousandKernelWeightSource?: ValueSource | null;
   thousandKernelWeightPin?: ReactNode;
-  emptyValueLabel: string;
-  /**
-   * How unset values are shown. `legacy` (the crop library views) keeps the
-   * long-standing mix; the project crop detail passes `hide` (only filled-in
-   * values) or `showAll` (every field, unset ones with `emptyValueLabel`).
-   */
-  emptyFields?: 'legacy' | 'hide' | 'showAll';
   locale: string;
   t: (key: string) => string;
 }
@@ -94,6 +87,7 @@ function ValueWithSource({
   );
 }
 
+/** The seed values of a crop detail read view; only filled-in values are shown. */
 export function CropSeedDetails({
   activeCultivationTypes,
   cultivationTypeSource = null,
@@ -109,29 +103,26 @@ export function CropSeedDetails({
   thousandKernelWeightG,
   thousandKernelWeightSource = null,
   thousandKernelWeightPin,
-  emptyValueLabel,
-  emptyFields = 'legacy',
   locale,
   t,
 }: CropSeedDetailsProps) {
-  const showAll = emptyFields === 'showAll';
-  const hideEmpty = emptyFields === 'hide';
   const hasThousandKernelWeight = thousandKernelWeightG !== null && thousandKernelWeightG !== undefined;
   const hasSeedingRequirement = seedingRequirement !== undefined && seedingRequirement !== null;
   const hasGeneralSafety = sowingSafetyPercent !== undefined && sowingSafetyPercent !== null;
-  const missingSafetyLabel = emptyFields === 'legacy' ? '-' : emptyValueLabel;
+  const singleSafety = seedRateRows[0]?.safety;
+  const hasSingleSafety = singleSafety !== null && singleSafety !== undefined;
   const hasSingleSeedRate = seedRateRows.length > 0 && activeCultivationTypes.length <= 1;
   const hasMethodSeedRates = seedRateRows.length > 0 && activeCultivationTypes.length > 1;
 
   return (
     <Box sx={seedDetailGridSx}>
-      {(activeCultivationTypes.length > 0 || showAll) && (
+      {activeCultivationTypes.length > 0 && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Typography variant="body2" color="text.secondary">
             {t('form.cultivationType')}
           </Typography>
           <ValueWithSource source={cultivationTypeSource} pin={cultivationTypePin}>
-            {activeCultivationTypes.length === 0 ? emptyValueLabel : activeCultivationTypes
+            {activeCultivationTypes
               .map((item) => (
                 item === 'pre_cultivation'
                   ? t('form.cultivationTypePreCultivation')
@@ -151,15 +142,7 @@ export function CropSeedDetails({
           </ValueWithSource>
         </Box>
       )}
-      {seedRateRows.length === 0 && showAll && (
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            {t('form.seedAmountLabel')}
-          </Typography>
-          <ValueWithSource>{emptyValueLabel}</ValueWithSource>
-        </Box>
-      )}
-      {hasSingleSeedRate && showSeedSafetyMargin && (!hideEmpty || (seedRateRows[0].safety !== null && seedRateRows[0].safety !== undefined)) && (
+      {hasSingleSeedRate && showSeedSafetyMargin && hasSingleSafety && (
         <Box>
           <Typography
             variant="body2"
@@ -169,9 +152,7 @@ export function CropSeedDetails({
             {t('detail.fields.seedSafetyMargin')}
           </Typography>
           <ValueWithSource source={seedRateRows[0].safetySource}>
-            {seedRateRows[0].safety !== null && seedRateRows[0].safety !== undefined
-              ? `${formatNumber(seedRateRows[0].safety, t, locale)} ${t('detail.units.percent')}`
-              : missingSafetyLabel}
+            {`${formatNumber(singleSafety, t, locale)} ${t('detail.units.percent')}`}
           </ValueWithSource>
         </Box>
       )}
@@ -206,7 +187,7 @@ export function CropSeedDetails({
                       <Box component="span" sx={getOwnValueSx(row.safetySource)}>
                         {row.safety !== null && row.safety !== undefined
                           ? `${formatNumber(row.safety, t, locale)} ${t('detail.units.percent')}`
-                          : missingSafetyLabel}
+                          : '-'}
                       </Box>
                     </TableCell>
                   )}
@@ -216,17 +197,17 @@ export function CropSeedDetails({
           </Table>
         </Box>
       )}
-      {seedRateRows.length === 0 && showSeedSafetyMargin && (hasGeneralSafety || showAll) && (
+      {seedRateRows.length === 0 && showSeedSafetyMargin && hasGeneralSafety && (
         <Box>
           <Typography variant="body2" color="text.secondary">
             {t('detail.fields.seedSafetyMargin')}
           </Typography>
           <ValueWithSource source={sowingSafetySource}>
-            {hasGeneralSafety ? `${formatNumber(sowingSafetyPercent, t, locale)} ${t('detail.units.percent')}` : emptyValueLabel}
+            {`${formatNumber(sowingSafetyPercent, t, locale)} ${t('detail.units.percent')}`}
           </ValueWithSource>
         </Box>
       )}
-      {(hasSeedingRequirement || showAll) && (
+      {hasSeedingRequirement && (
         <Box>
           <Typography
             variant="body2"
@@ -235,8 +216,8 @@ export function CropSeedDetails({
             {t('detail.fields.seedingRequirement')}
           </Typography>
           <ValueWithSource source={seedingRequirementSource ?? seedingRequirementTypeSource}>
-            {hasSeedingRequirement ? formatSeedRateNumber(seedingRequirement, t, locale) : emptyValueLabel}
-            {!hasSeedingRequirement ? '' : seedingRequirementType === 'per_sqm'
+            {formatSeedRateNumber(seedingRequirement, t, locale)}
+            {seedingRequirementType === 'per_sqm'
               ? ` ${t('detail.seedingRequirementTypes.perSqm')}`
               : seedingRequirementType === 'per_plant'
                 ? ` ${t('detail.seedingRequirementTypes.perPlant')}`
@@ -244,17 +225,15 @@ export function CropSeedDetails({
           </ValueWithSource>
         </Box>
       )}
-      {(!hideEmpty || hasThousandKernelWeight) && (
-      <Box>
-        <Typography variant="body2" color="text.secondary">
-          {t('form.thousandKernelWeightLabel')}
-        </Typography>
-        <ValueWithSource source={thousandKernelWeightSource} pin={thousandKernelWeightPin}>
-          {hasThousandKernelWeight
-            ? `${formatNumber(thousandKernelWeightG, t, locale)} ${t('detail.units.grams')}`
-            : emptyValueLabel}
-        </ValueWithSource>
-      </Box>
+      {hasThousandKernelWeight && (
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            {t('form.thousandKernelWeightLabel')}
+          </Typography>
+          <ValueWithSource source={thousandKernelWeightSource} pin={thousandKernelWeightPin}>
+            {`${formatNumber(thousandKernelWeightG, t, locale)} ${t('detail.units.grams')}`}
+          </ValueWithSource>
+        </Box>
       )}
     </Box>
   );

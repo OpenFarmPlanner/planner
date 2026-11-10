@@ -36,7 +36,6 @@ const renderDetails = (options: RenderOptions = {}) =>
       seedingRequirementTypeSource={options.seedingRequirementTypeSource}
       thousandKernelWeightG={options.thousandKernelWeightG}
       thousandKernelWeightSource={options.thousandKernelWeightSource}
-      emptyValueLabel="—"
       locale="de-DE"
       t={t}
     />,
@@ -185,13 +184,13 @@ describe('CropSeedDetails', () => {
       expect(valueFor('Sicherheitszuschlag Saatgut')).toHaveTextContent('12,5 %');
     });
 
-    it('shows a dash where the rate carries no margin', () => {
+    it('is left out where the rate carries no margin', () => {
       renderDetails({
         activeCultivationTypes: ['direct_sowing'],
         seedRateRows: [row({ safety: null })],
       });
 
-      expect(valueFor('Sicherheitszuschlag Saatgut')).toHaveTextContent('-');
+      expect(screen.queryByText('Sicherheitszuschlag Saatgut')).not.toBeInTheDocument();
     });
 
     it('keeps a margin of zero, which is a decision and not a gap', () => {
@@ -331,10 +330,10 @@ describe('CropSeedDetails', () => {
   });
 
   describe('thousand kernel weight', () => {
-    it('is always offered, so its absence is visible rather than silent', () => {
+    it('is left out when it is not set, like every empty detail value', () => {
       renderDetails({ thousandKernelWeightG: null });
 
-      expect(valueFor('1000-Korn-Gewicht (g)')).toHaveTextContent('—');
+      expect(screen.queryByText('1000-Korn-Gewicht (g)')).not.toBeInTheDocument();
     });
 
     it('carries its unit', () => {

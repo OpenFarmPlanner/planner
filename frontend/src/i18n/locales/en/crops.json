@@ -79,7 +79,6 @@
       "general": "General information",
       "notes": "Notes"
     },
-    "showAllFields": "Show all details",
     "fields": {
       "distanceWithinRow": "In-row spacing",
       "rowSpacing": "Row spacing",
@@ -768,10 +767,6 @@
       "collaborationLoadError": "Discussion and version history could not be loaded.",
       "sections": {
         "general": "General information",
-        "timing": "Timing",
-        "spacing": "Spacing",
-        "seed": "Seed",
-        "harvest": "Harvest",
         "metadata": "Library data",
         "notes": "Notes"
       },
@@ -816,7 +811,6 @@
         "propagationDurationDays": "Propagation duration (days)",
         "cropFamily": "Crop family",
         "nutrientDemand": "Nutrient demand",
-        "cultivationType": "Cultivation type",
         "distanceWithinRow": "Distance within row",
         "rowSpacing": "Row spacing",
         "sowingDepth": "Sowing depth",
@@ -840,10 +834,6 @@
           "low": "Low",
           "medium": "Medium",
           "high": "High"
-        },
-        "cultivationTypes": {
-          "directSowing": "Direct sowing",
-          "preCultivation": "Transplanting"
         }
       },
       "discussion": {
@@ -1607,7 +1597,6 @@
     "badColumn": "Bad neighbors",
     "add": "Add neighbor",
     "sharedHint": "Applies to all varieties of {{name}}.",
-    "noKulturHint": "Neighbors are recorded on the crop entry without a variety. {{name}} has no such entry yet.",
     "familyLabel": "{{name}} (crop family)",
     "delete": "Remove neighbor",
     "saveError": "The crop was saved, but its neighbors could not be saved.",

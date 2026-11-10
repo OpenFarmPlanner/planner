@@ -114,33 +114,31 @@ export function CropTimingWindowsDetail({ crop, isVarietyView }: CropTimingWindo
     year,
   );
 
+  if (kinds.length === 0) {
+    return null;
+  }
+
   return (
     <Box sx={{ mb: 3 }} data-testid="crop-timing-windows-detail">
       <Typography variant="h6" gutterBottom>
         {t('crops:timingWindows.sectionTitle')}
       </Typography>
-      {kinds.length === 0 ? (
-        <Typography variant="body1" color="text.secondary">{t('crops:noData')}</Typography>
-      ) : (
-        <>
-          <Box sx={detailGridSx}>
-            {kinds.map(({ kind, windows, inherited }) => (
-              <Box key={kind}>
-                <Typography variant="body2" color="text.secondary">
-                  {t(`crops:timingWindows.kinds.${kind}`)}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={isVarietyView && !inherited ? varietySpecificValueHighlightSx : undefined}
-                >
-                  {formatTimingWindows(windows, t)}
-                </Typography>
-              </Box>
-            ))}
+      <Box sx={detailGridSx}>
+        {kinds.map(({ kind, windows, inherited }) => (
+          <Box key={kind}>
+            <Typography variant="body2" color="text.secondary">
+              {t(`crops:timingWindows.kinds.${kind}`)}
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={isVarietyView && !inherited ? varietySpecificValueHighlightSx : undefined}
+            >
+              {formatTimingWindows(windows, t)}
+            </Typography>
           </Box>
-          <TimingWindowYearBar kinds={kinds} harvest={harvest} year={year} />
-        </>
-      )}
+        ))}
+      </Box>
+      <TimingWindowYearBar kinds={kinds} harvest={harvest} year={year} />
     </Box>
   );
 }

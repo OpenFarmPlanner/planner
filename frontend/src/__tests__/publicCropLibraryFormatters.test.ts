@@ -17,7 +17,6 @@ import {
   formatMetersRangeAsCentimeters,
   formatPublicCropValue,
   getCommentTimestamp,
-  getCultivationTypesLabel,
   getDeletedCommentPlaceholder,
   getHarvestMethodLabel,
   getNutrientDemandLabel,
@@ -383,48 +382,6 @@ describe('enum labels', () => {
 
   it('never renders an unknown harvest method raw', () => {
     expect(getHarvestMethodLabel('per_hectare' as never, t, '—')).toBe('—');
-  });
-});
-
-describe('getCultivationTypesLabel', () => {
-  it('joins several types', () => {
-    expect(getCultivationTypesLabel(
-      crop({ cultivation_types: ['pre_cultivation', 'direct_sowing'] } as never), t, '—',
-    )).toBe('Pflanzung, Direktsaat');
-  });
-
-  it('falls back to the singular legacy field when the list is empty', () => {
-    // Older public crops carry `cultivation_type` rather than the array.
-    expect(getCultivationTypesLabel(
-      crop({ cultivation_types: [], cultivation_type: 'direct_sowing' } as never), t, '—',
-    )).toBe('Direktsaat');
-  });
-
-  it('prefers the list over the legacy field when both exist', () => {
-    expect(getCultivationTypesLabel(
-      crop({ cultivation_types: ['pre_cultivation'], cultivation_type: 'direct_sowing' } as never), t, '—',
-    )).toBe('Pflanzung');
-  });
-
-  it('falls back when neither is set', () => {
-    expect(getCultivationTypesLabel(crop(), t, '—')).toBe('—');
-  });
-
-  it('spells pre_cultivation the same here as the publish wizard does', () => {
-    // The detail page resolves `library.page.fields.cultivationTypes.preCultivation`
-    // and the publishing wizard's comparison resolves
-    // `library.publishWizard.comparison.values.pre_cultivation` for the same
-    // stored enum value. Pinned so both surfaces keep using one German term.
-    expect(getCultivationTypesLabel(
-      crop({ cultivation_types: ['pre_cultivation'] } as never), t, '—',
-    )).toBe('Pflanzung');
-    expect(formatPublicCropValue('cultivation_types', ['pre_cultivation'], t)).toBe('Pflanzung');
-  });
-
-  it('falls back rather than rendering an empty join for unlabelled values', () => {
-    expect(getCultivationTypesLabel(
-      crop({ cultivation_types: ['hydroponic'] } as never), t, '—',
-    )).toBe('—');
   });
 });
 
