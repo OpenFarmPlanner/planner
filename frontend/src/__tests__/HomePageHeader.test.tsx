@@ -40,8 +40,10 @@ describe('HomePage topbar', () => {
     const user = userEvent.setup();
     renderHomePage();
 
+    // jsdom applies media queries against its fixed 1024px viewport, where the
+    // phone-only menu button is hidden by the `md` breakpoint.
     const header = screen.getByRole('banner');
-    const menuButton = within(header).getByRole('button', { name: 'Menü öffnen' });
+    const menuButton = within(header).getByLabelText('Menü öffnen');
 
     await user.click(menuButton);
 
