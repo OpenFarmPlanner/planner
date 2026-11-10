@@ -60,13 +60,13 @@ import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect'
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import { BasicInfoSection } from './sections/BasicInfoSection';
 import { TimingSection } from './sections/TimingSection';
-import { HarvestSection } from './sections/HarvestSection';
+import { YieldSection } from './sections/YieldSection';
 import { SpacingSection } from './sections/SpacingSection';
 import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
-import { TimingWindowsSection, type TimingWindowKindHighlight } from './sections/TimingWindowsSection';
+import { TimingWindowsSection } from './sections/TimingWindowsSection';
 import { collectProjectTags } from './cropTags';
 import { useCompanionFormRows } from './useCompanionFormRows';
 import type { CompanionFormRow } from './companions';
@@ -88,9 +88,8 @@ import {
   stripTimingWindowsMatchingBaseline,
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
-import { varietySpecificFieldHighlightSx } from './varietyValueAccent';
+import { varietySpecificFieldHighlightSx, type GetVarietyFieldHighlightSx } from './varietyValueAccent';
 import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
-import { buildVarietyFieldTooltipTitle, type GetVarietyFieldTooltipProps } from './varietyFieldTooltipHelpers';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { describeLibraryPinError, libraryPinnedFieldsForSave } from './libraryFieldPin';
 import { buildLibraryFieldPinProps, type GetLibraryFieldPinProps } from './libraryFieldPinProps';
@@ -577,29 +576,23 @@ export function CropForm({
   const isSpeciesLinkedVariety = isProjectForm
     && formKind === 'variety'
     && Boolean(formData.crop_species);
-  const getFieldTooltipProps: GetVarietyFieldTooltipProps = useCallback((fields, helpText) => {
+  const getFieldHighlightSx: GetVarietyFieldHighlightSx = useCallback((fields) => {
     if (!selectedSpeciesCrop) {
-      return null;
+      return undefined;
     }
     const fieldList = Array.isArray(fields) ? fields : [fields];
     const active = fieldList.some((field) => getVarietyOwnValueSource(formData, selectedSpeciesCrop, field) === 'ownValue');
-    return {
-      sx: active ? varietySpecificFieldHighlightSx : undefined,
-      tooltipTitle: buildVarietyFieldTooltipTitle(t, active, helpText),
-    };
-  }, [selectedSpeciesCrop, formData, t]);
-  const getTimingWindowKindHighlight = useCallback((kind: TimingWindowKind): TimingWindowKindHighlight | null => {
+    return active ? varietySpecificFieldHighlightSx : undefined;
+  }, [selectedSpeciesCrop, formData]);
+  const getTimingWindowKindHighlightSx = useCallback((kind: TimingWindowKind) => {
     if (!selectedSpeciesCrop || !formData.variety) {
-      return null;
+      return undefined;
     }
     const active = getVarietyOwnTimingWindowSource(
       formData.timing_windows, Boolean(formData.variety), selectedSpeciesCrop, kind,
     ) === 'ownValue';
-    return {
-      sx: active ? varietySpecificFieldHighlightSx : undefined,
-      tooltipTitle: buildVarietyFieldTooltipTitle(t, active),
-    };
-  }, [selectedSpeciesCrop, formData.timing_windows, formData.variety, t]);
+    return active ? varietySpecificFieldHighlightSx : undefined;
+  }, [selectedSpeciesCrop, formData.timing_windows, formData.variety]);
   // Locally pinned library fields: only an edited project crop that is linked
   // to a library entry marks its pinned fields (the backend lists what it may pin).
   const libraryPinnableFields = isProjectForm && isEdit && crop?.source_public_crop
@@ -1466,6 +1459,16 @@ export function CropForm({
     updateSupplierRow(supplierIndex, { packaging_sizes: currentPackages.filter((_pkg, index) => index !== packageIndex) });
   };
 
+  // What every field section needs: values, errors, the variety highlight and library pins.
+  const sectionProps = {
+    formData,
+    errors,
+    onChange: handleChange,
+    t,
+    getFieldHighlightSx,
+    getFieldPinProps,
+  };
+
   return (
     <Dialog
       open
@@ -1549,7 +1552,7 @@ export function CropForm({
               errors={displayErrors}
               onChange={handleChange}
               t={t}
-              getFieldTooltipProps={getFieldTooltipProps}
+              getFieldHighlightSx={getFieldHighlightSx}
               getFieldPinProps={getFieldPinProps}
               speciesInvariantFieldsReadOnly={isSpeciesLinkedVariety}
               showIdentityFields={isProjectForm}
@@ -1641,31 +1644,30 @@ export function CropForm({
                 />
               ) : null}
             />
-            <CompanionsSection state={companionRows} disabled={isSaving} />
-            <TimingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
-            <GerminationSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
-            <SiteHealthSection formData={formData} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
-            <HarvestSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
+            {/* Section order (the same for Kultur and Sorte): general, crop
+                rotation (both in BasicInfoSection), timing, spacing, yield,
+                seed demand, time windows, germination, site and health,
+                companion planting, display colour, notes. */}
+            <TimingSection {...sectionProps} />
+            <SpacingSection {...sectionProps} />
+            <YieldSection {...sectionProps} />
+            <SeedingSection
+              {...sectionProps}
+              seedRateUnitConstraints={seedRateUnitConstraints}
+              showSeedSafetyMargin={isProjectForm}
+            />
             {isProjectForm ? (
               <TimingWindowsSection
                 windows={formData.timing_windows ?? []}
                 errors={errors}
                 onChange={(windows) => handleChange('timing_windows', windows)}
                 t={t}
-                getKindHighlight={getTimingWindowKindHighlight}
+                getKindHighlightSx={getTimingWindowKindHighlightSx}
               />
             ) : null}
-            <SpacingSection formData={formData} errors={errors} onChange={handleChange} t={t} getFieldTooltipProps={getFieldTooltipProps} getFieldPinProps={getFieldPinProps} />
-            <SeedingSection
-              formData={formData}
-              errors={errors}
-              onChange={handleChange}
-              t={t}
-              getFieldTooltipProps={getFieldTooltipProps}
-              getFieldPinProps={getFieldPinProps}
-              seedRateUnitConstraints={seedRateUnitConstraints}
-              showSeedSafetyMargin={isProjectForm}
-            />
+            <GerminationSection {...sectionProps} />
+            <SiteHealthSection {...sectionProps} />
+            <CompanionsSection state={companionRows} disabled={isSaving} />
             <ColorSection formData={formData} errors={errors} onChange={handleChange} t={t} defaultColor={DEFAULT_DISPLAY_COLOR} />
             {isProjectForm ? (
               <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />

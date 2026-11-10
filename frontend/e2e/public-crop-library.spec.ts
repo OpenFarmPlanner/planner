@@ -147,7 +147,7 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await page.getByTestId('public-crop-detail-header').getByRole('button', { name: 'Bearbeiten' }).click();
     const editDialog = page.getByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });
     await expect(editDialog).toBeVisible();
-    const growthDurationInput = editDialog.getByLabel('Wachstumszeit (Tage)');
+    const growthDurationInput = editDialog.getByLabel('Wachstumszeit (Tage)', { exact: true });
     await expect(growthDurationInput).toHaveValue('42');
     await growthDurationInput.fill('48');
     await expect(growthDurationInput).toHaveValue('48');

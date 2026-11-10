@@ -5,17 +5,9 @@
 import { Box, Typography, TextField } from '@mui/material';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import {
-  formGridBottomAlignedFieldSx,
-  formGridCaptionedGroupSx,
-  formGridFieldSx,
-  formGridSx,
-  formRangeInputsSx,
-} from './styles.tsx';
-import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
-import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
-import type { GetVarietyFieldTooltipProps } from '../varietyFieldTooltipHelpers';
-import { mergeVarietyFieldSx } from '../varietyValueAccent';
+import { formGridFieldSx, formGridSx } from './styles.tsx';
+import { RangeField } from '../../components/inputs/RangeField';
+import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 
 interface SpacingSectionProps {
@@ -23,15 +15,11 @@ interface SpacingSectionProps {
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
-  getFieldTooltipProps?: GetVarietyFieldTooltipProps;
+  getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
 }
 
-export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipProps, getFieldPinProps }: SpacingSectionProps) {
-  const distanceWithinRowVariety = getFieldTooltipProps?.('distance_within_row_cm');
-  const rowSpacingVariety = getFieldTooltipProps?.('row_spacing_cm');
-  const sowingDepthVariety = getFieldTooltipProps?.('sowing_depth_cm');
-  const sowingDepthMaxVariety = getFieldTooltipProps?.('sowing_depth_max_cm');
+export function SpacingSection({ formData, errors, onChange, t, getFieldHighlightSx, getFieldPinProps }: SpacingSectionProps) {
   const distanceWithinRowPin = getFieldPinProps?.('distance_within_row_cm');
   const rowSpacingPin = getFieldPinProps?.('row_spacing_cm');
   const sowingDepthPin = getFieldPinProps?.('sowing_depth_cm');
@@ -41,74 +29,60 @@ export function SpacingSection({ formData, errors, onChange, t, getFieldTooltipP
     <>
       <Typography variant="h6" sx={{ mt: 1 }}>{t('form.sectionPlanting')}</Typography>
       <Box sx={formGridSx}>
-        <VarietyFieldTooltip tooltipTitle={distanceWithinRowVariety?.tooltipTitle}>
-          <TextField
-            sx={mergeVarietyFieldSx(formGridBottomAlignedFieldSx, distanceWithinRowVariety?.sx, distanceWithinRowPin?.fieldSx)}
-            type="number"
-            label={t('form.distanceWithinRowCm')}
-            placeholder={t('form.distanceWithinRowCmPlaceholder')}
-            value={formData.distance_within_row_cm ?? ''}
-            onChange={e => onChange('distance_within_row_cm', e.target.value ? parseInt(e.target.value) : undefined)}
-            error={Boolean(errors.distance_within_row_cm)}
-            helperText={errors.distance_within_row_cm}
-            slotProps={{
-              htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-              input: { endAdornment: distanceWithinRowPin?.endAdornment },
-            }}
-          />
-        </VarietyFieldTooltip>
-        <VarietyFieldTooltip tooltipTitle={rowSpacingVariety?.tooltipTitle}>
-          <TextField
-            sx={mergeVarietyFieldSx(formGridBottomAlignedFieldSx, rowSpacingVariety?.sx, rowSpacingPin?.fieldSx)}
-            type="number"
-            label={t('form.rowSpacingCm')}
-            placeholder={t('form.rowSpacingCmPlaceholder')}
-            value={formData.row_spacing_cm ?? ''}
-            onChange={e => onChange('row_spacing_cm', e.target.value ? parseInt(e.target.value) : undefined)}
-            error={Boolean(errors.row_spacing_cm)}
-            helperText={errors.row_spacing_cm}
-            slotProps={{
-              htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-              input: { endAdornment: rowSpacingPin?.endAdornment },
-            }}
-          />
-        </VarietyFieldTooltip>
-        <Box sx={formGridCaptionedGroupSx}>
-          <Typography variant="body2" sx={{ mb: 1 }}>{t('form.sowingDepthCm')}</Typography>
-          <Box sx={formRangeInputsSx}>
-            <VarietyFieldTooltip tooltipTitle={sowingDepthVariety?.tooltipTitle}>
-              <LocalizedDecimalField
-                sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthVariety?.sx, sowingDepthPin?.fieldSx)}
-                label={t('germination.from')}
-                placeholder={t('form.sowingDepthCmPlaceholder')}
-                value={formData.sowing_depth_cm}
-                // null, not undefined: a cleared bound must reach the backend, which
-                // then gives it the other bound's value (one depth is a range of one).
-                onValueChange={(value) => onChange('sowing_depth_cm', value ?? null)}
-                error={Boolean(errors.sowing_depth_cm)}
-                helperText={errors.sowing_depth_cm}
-                slotProps={{
-                  htmlInput: { 'aria-label': t('form.sowingDepthMinCm') },
-                  input: { endAdornment: sowingDepthPin?.endAdornment },
-                }}
-              />
-            </VarietyFieldTooltip>
-            <VarietyFieldTooltip tooltipTitle={sowingDepthMaxVariety?.tooltipTitle}>
-              <LocalizedDecimalField
-                sx={mergeVarietyFieldSx(formGridFieldSx, sowingDepthMaxVariety?.sx, sowingDepthMaxPin?.fieldSx)}
-                label={t('germination.to')}
-                value={formData.sowing_depth_max_cm}
-                onValueChange={(value) => onChange('sowing_depth_max_cm', value ?? null)}
-                error={Boolean(errors.sowing_depth_max_cm)}
-                helperText={errors.sowing_depth_max_cm}
-                slotProps={{
-                  htmlInput: { 'aria-label': t('form.sowingDepthMaxCm') },
-                  input: { endAdornment: sowingDepthMaxPin?.endAdornment },
-                }}
-              />
-            </VarietyFieldTooltip>
-          </Box>
-        </Box>
+        <TextField
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('distance_within_row_cm'), distanceWithinRowPin?.fieldSx)}
+          type="number"
+          label={t('form.distanceWithinRowCm')}
+          placeholder={t('form.distanceWithinRowCmPlaceholder')}
+          value={formData.distance_within_row_cm ?? ''}
+          onChange={e => onChange('distance_within_row_cm', e.target.value ? parseInt(e.target.value) : undefined)}
+          error={Boolean(errors.distance_within_row_cm)}
+          helperText={errors.distance_within_row_cm}
+          slotProps={{
+            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+            input: { endAdornment: distanceWithinRowPin?.endAdornment },
+          }}
+        />
+        <TextField
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('row_spacing_cm'), rowSpacingPin?.fieldSx)}
+          type="number"
+          label={t('form.rowSpacingCm')}
+          placeholder={t('form.rowSpacingCmPlaceholder')}
+          value={formData.row_spacing_cm ?? ''}
+          onChange={e => onChange('row_spacing_cm', e.target.value ? parseInt(e.target.value) : undefined)}
+          error={Boolean(errors.row_spacing_cm)}
+          helperText={errors.row_spacing_cm}
+          slotProps={{
+            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+            input: { endAdornment: rowSpacingPin?.endAdornment },
+          }}
+        />
+        <RangeField
+          sx={mergeVarietyFieldSx(
+            formGridFieldSx,
+            getFieldHighlightSx?.(['sowing_depth_cm', 'sowing_depth_max_cm']),
+            sowingDepthPin?.fieldSx ?? sowingDepthMaxPin?.fieldSx,
+          )}
+          label={t('form.sowingDepthCm')}
+          // null, not undefined: a cleared bound must reach the backend, which
+          // then gives it the other bound's value (one depth is a range of one).
+          from={{
+            value: formData.sowing_depth_cm,
+            onValueChange: (value) => onChange('sowing_depth_cm', value ?? null),
+            ariaLabel: t('form.sowingDepthMinCm'),
+            placeholder: t('germination.from'),
+            adornment: sowingDepthPin?.button,
+          }}
+          to={{
+            value: formData.sowing_depth_max_cm,
+            onValueChange: (value) => onChange('sowing_depth_max_cm', value ?? null),
+            ariaLabel: t('form.sowingDepthMaxCm'),
+            placeholder: t('germination.to'),
+            adornment: sowingDepthMaxPin?.button,
+          }}
+          error={errors.sowing_depth_cm || errors.sowing_depth_max_cm}
+          invalidRangeText={t('form.sowingDepthRangeError')}
+        />
       </Box>
     </>
   );

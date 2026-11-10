@@ -64,8 +64,37 @@ describe('CompanionsSection in the crop form', () => {
     expect(api.listForCrop).toHaveBeenCalledWith(1);
     expect(within(row).getByRole('combobox', { name: /Nachbar/ })).toHaveValue('Kartoffel');
     expect(within(row).getByTestId('companion-shared-pair')).toHaveAccessibleName('Gilt auch für Kartoffel.');
-    expect(within(screen.getByTestId('companion-form-group-good')).queryByTestId('crop-companion-form-row')).toBeNull();
+    // A group without rows shows no heading; its add button stays below the groups.
+    expect(screen.queryByTestId('companion-form-group-good')).toBeNull();
+    expect(screen.queryByText('Gute Nachbarn')).toBeNull();
+    expect(within(badGroup).getByRole('heading', { name: 'Schlechte Nachbarn' })).toBeInTheDocument();
+    expect(screen.queryByTestId('companion-form-empty')).toBeNull();
     expect(screen.getByTestId('dirty')).toHaveTextContent('false');
+  });
+
+  it('shows one muted line and both add buttons while no neighbour is recorded', async () => {
+    api.listForCrop.mockResolvedValue({ data: [] });
+    render(<Harness crop={TOMATO} isKulturForm />);
+
+    expect(await screen.findByText('Noch keine Nachbarn erfasst.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Gute Nachbarn' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Schlechte Nachbarn' })).toBeNull();
+    const addGood = screen.getByRole('button', { name: 'Guten Nachbarn hinzufügen' });
+    const addBad = screen.getByRole('button', { name: 'Schlechten Nachbarn hinzufügen' });
+    // The line sits above the buttons; the buttons carry the kind's colour.
+    expect(screen.getByText('Noch keine Nachbarn erfasst.').compareDocumentPosition(addGood) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(addGood).toHaveClass('MuiButton-colorSuccess');
+    expect(addBad).toHaveClass('MuiButton-colorWarning');
+
+    fireEvent.click(addGood);
+
+    expect(screen.queryByText('Noch keine Nachbarn erfasst.')).toBeNull();
+    const goodGroup = screen.getByTestId('companion-form-group-good');
+    expect(within(goodGroup).getByRole('heading', { name: 'Gute Nachbarn' })).toBeInTheDocument();
+    expect(screen.queryByTestId('companion-form-group-bad')).toBeNull();
+    // The add buttons stay below the groups.
+    expect(goodGroup.compareDocumentPosition(addBad) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('adds, edits and removes rows; the changes are saved with the form', async () => {
@@ -128,6 +157,18 @@ describe('CompanionsSection in the crop form', () => {
     expect(screen.getByText('Schlechte Nachbarn')).toBeInTheDocument();
     expect(api.listForCrop).toHaveBeenCalledWith(1);
     expect(screen.getByText(/werden im Formular von Tomate bearbeitet/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hinzufügen/ })).not.toBeInTheDocument();
+  });
+
+  it('tells a Sorte in one sentence when its Kultur has no neighbours', async () => {
+    api.listForCrop.mockResolvedValue({ data: [] });
+    render(<Harness crop={ROMA} isKulturForm={false} />);
+
+    expect(await screen.findByText(
+      'Für Tomate sind noch keine Nachbarn erfasst. Sie gelten für alle Sorten und werden im Formular von Tomate bearbeitet.',
+    )).toBeInTheDocument();
+    expect(screen.queryByText('Die Nachbarn gelten für alle Sorten von Tomate und werden im Formular von Tomate bearbeitet.'))
+      .toBeNull();
     expect(screen.queryByRole('button', { name: /hinzufügen/ })).not.toBeInTheDocument();
   });
 });

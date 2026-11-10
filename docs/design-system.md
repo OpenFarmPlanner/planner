@@ -107,9 +107,15 @@ default for `TextField`, `FormControl`, `Select` and `Autocomplete`, so every
 form shares the 40px field height. Pass `size="medium"` only where a taller
 field is deliberate. A button sitting beside a field in one row matches that
 height on desktop. Use `helperText` for validation errors only. When a field
-needs explaining, attach an `AppTooltip` to the field itself, so it shows on
-hover and on keyboard focus. Use a placement that keeps an Autocomplete's
-options list visible (`top-start` or `right`).
+needs explaining, put an info button at its end (`crops/FieldInfoButton.tsx`,
+combined with a library pin by `crops/fieldEndAdornment.tsx`): its tooltip
+opens on click, tap or keyboard (Escape closes it, not the dialog) and the
+button is named "Info zu {Feldname}". Hovering the field itself shows nothing,
+so a long form stays quiet under the pointer; the crop form keeps such help
+for the few fields whose meaning is not obvious (propagation, growth and
+harvest duration, thousand kernel weight). Older forms may still attach an
+`AppTooltip` to the field itself; there use a placement that keeps an
+Autocomplete's options list visible (`top-start` or `right`).
 
 **Form grids** (`components/forms/formLayout.ts`): `formGridSx` is one column
 on a phone and three equal columns from `sm` up. The tracks are fixed: a short
@@ -117,10 +123,14 @@ field keeps its column width instead of stretching, so all rows and sections of
 a form line up even when a row has fewer than three fields. Fields inside it
 use `formGridFieldSx`, or `formGridDoubleColumnSx` / `formGridFullRowSx` to span
 columns. The crop form uses it for every section, and each section has at most
-three fields per row. Two inputs that form one value (a from/to range) share a
-single cell under one caption: `formGridCaptionedGroupSx` with
-`formRangeInputsSx`, and plain fields beside it use
-`formGridBottomAlignedFieldSx` so all inputs of the row stay on one line.
+three fields per row. Two inputs that form one value (a from/to range) are one
+field, `components/inputs/RangeField.tsx`: a single outlined field with its
+label in the border ("Saattiefe (cm)"), the "Von" and "Bis" inputs side by
+side behind a thin divider, and the same height, border, focus and error
+state as any other field, so it sits in one grid cell on the line of its
+neighbours. The label names the group; each input has its own accessible name
+("Saattiefe von (cm)"). From greater than To shows an inline error below the
+field.
 
 ## 4. Text that can overflow
 

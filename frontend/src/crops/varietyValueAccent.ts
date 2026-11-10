@@ -1,5 +1,6 @@
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
+import type { Crop } from '../api/types';
 
 export const varietySpecificValueHighlightSx = {
   display: 'inline-block',
@@ -40,3 +41,12 @@ export function mergeVarietyFieldSx(
   if (present.length === 0) return base;
   return [base, ...present].flatMap((sx) => (Array.isArray(sx) ? sx : [sx])) as SxProps<Theme>;
 }
+
+/**
+ * The variety highlight for a form field (or a group of fields shown as one
+ * control) participating in the crop/variety inheritance concept: the highlight
+ * `sx` when the Sorte holds an own value there, otherwise `undefined`.
+ */
+export type GetVarietyFieldHighlightSx = (
+  fields: keyof Crop | (keyof Crop)[],
+) => SxProps<Theme> | undefined;

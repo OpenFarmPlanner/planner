@@ -27,7 +27,6 @@ import {
   segmentedToggleButtonSx,
 } from '../../components/buttons/segmentedControlStyles';
 import { FieldInfoIcon } from '../FieldInfoIcon';
-import { VarietyFieldTooltip } from '../VarietyFieldTooltip';
 import {
   MAX_ISO_WEEK,
   TIMING_WINDOW_DECADES,
@@ -39,18 +38,13 @@ import {
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 const WEEKS = Array.from({ length: MAX_ISO_WEEK }, (_, index) => index + 1);
 
-export interface TimingWindowKindHighlight {
-  sx?: SxProps<Theme>;
-  tooltipTitle?: React.ReactNode;
-}
-
 interface TimingWindowsSectionProps {
   windows: CropTimingWindow[];
   errors: Record<string, string>;
   onChange: (windows: CropTimingWindow[]) => void;
   t: TFunction;
   /** Variety highlight per kind (own windows vs. the Kultur's), like the other fields. */
-  getKindHighlight?: (kind: TimingWindowKind) => TimingWindowKindHighlight | null;
+  getKindHighlightSx?: (kind: TimingWindowKind) => SxProps<Theme> | undefined;
 }
 
 const selectSx = { minWidth: 0 } as const;
@@ -147,7 +141,7 @@ function TimingWindowRow({ window, error, t, onChange, onRemove }: TimingWindowR
   );
 }
 
-export function TimingWindowsSection({ windows, errors, onChange, t, getKindHighlight }: TimingWindowsSectionProps) {
+export function TimingWindowsSection({ windows, errors, onChange, t, getKindHighlightSx }: TimingWindowsSectionProps) {
   // A new row starts in the unit of the row last added in this form (as it is
   // now, so switching that row's unit counts), else "Monat". Form state only.
   const [lastAdded, setLastAdded] = useState<{ index: number | null; unit: TimingWindowUnit }>({
@@ -193,19 +187,17 @@ export function TimingWindowsSection({ windows, errors, onChange, t, getKindHigh
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {TIMING_WINDOW_KINDS.map((kind) => {
-          const highlight = getKindHighlight?.(kind) ?? null;
+          const highlightSx = getKindHighlightSx?.(kind);
           const rows = windows
             .map((window, index) => ({ window, index }))
             .filter(({ window }) => window.kind === kind);
           const titleId = `timing-window-group-${kind}`;
           return (
             <Box key={kind} role="group" aria-labelledby={titleId} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <VarietyFieldTooltip tooltipTitle={highlight?.tooltipTitle}>
-                <Typography id={titleId} variant="subtitle2" sx={{ width: 'fit-content' }}>
-                  {t(`timingWindows.kinds.${kind}`)}
-                </Typography>
-              </VarietyFieldTooltip>
-              <Box sx={[{ display: 'flex', flexDirection: 'column', gap: 1 }, ...(highlight?.sx ? [highlight.sx].flat() : [])] as SxProps<Theme>}>
+              <Typography id={titleId} variant="subtitle2" sx={{ width: 'fit-content' }}>
+                {t(`timingWindows.kinds.${kind}`)}
+              </Typography>
+              <Box sx={[{ display: 'flex', flexDirection: 'column', gap: 1 }, ...(highlightSx ? [highlightSx].flat() : [])] as SxProps<Theme>}>
                 {rows.map(({ window, index }) => (
                   <TimingWindowRow
                     key={index}

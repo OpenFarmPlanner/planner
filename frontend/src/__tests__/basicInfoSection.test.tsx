@@ -377,7 +377,7 @@ describe('BasicInfoSection', () => {
     expect(screen.getByText('Pflichtfeld')).toHaveClass('MuiFormHelperText-root');
   });
 
-  it('explains the optional first variety in a tooltip on hover and on keyboard focus', async () => {
+  it('shows no hover or focus tooltip on the identity fields', async () => {
     render(
       <BasicInfoSection
         formData={{ name: 'Karotte' }}
@@ -391,15 +391,18 @@ describe('BasicInfoSection', () => {
       />,
     );
 
-    const firstVariety = screen.getByPlaceholderText('form.firstVarietyPlaceholder');
-    expect(screen.queryByText('form.firstVarietyHelperText')).not.toBeInTheDocument();
-
-    fireEvent.mouseOver(firstVariety);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
-    fireEvent.mouseLeave(firstVariety);
-
-    fireEvent.focus(firstVariety);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('form.firstVarietyHelperText');
+    const fields = [
+      screen.getByPlaceholderText('form.firstVarietyPlaceholder'),
+      screen.getByLabelText(/^form\.name/),
+      screen.getByLabelText('form.botanicalName'),
+    ];
+    for (const field of fields) {
+      fireEvent.mouseOver(field);
+      fireEvent.focus(field);
+    }
+    // MUI opens a tooltip after its enter delay; wait past it.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   describe('the tag field', () => {

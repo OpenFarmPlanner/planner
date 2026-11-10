@@ -1,13 +1,8 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef } from 'react';
 import type { FocusEvent } from 'react';
 import { TextField } from '@mui/material';
 import type { TextFieldProps } from '@mui/material';
-import { useTranslation } from 'react-i18next';
-import {
-  formatLocalizedNumberForInput,
-  parseLocalizedNumber,
-  resolveLocaleFromLanguage,
-} from '../../utils/numberLocalization';
+import { useLocalizedDecimalInput } from './useLocalizedDecimalInput';
 
 export type LocalizedDecimalFieldProps = Omit<TextFieldProps, 'type' | 'value' | 'onChange' | 'defaultValue'> & {
   /** API decimals may arrive as strings (e.g. "4.50"); they are shown localized too. */
@@ -26,37 +21,17 @@ export type LocalizedDecimalFieldProps = Omit<TextFieldProps, 'type' | 'value' |
  */
 export const LocalizedDecimalField = forwardRef<HTMLDivElement, LocalizedDecimalFieldProps>(
   function LocalizedDecimalField({ value, onValueChange, inputMode = 'decimal', onBlur, slotProps, ...textFieldProps }, ref) {
-    const { i18n } = useTranslation();
-    const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
-    // While the user types, their exact text is shown (e.g. "0," on the way to
-    // "0,5"); the formatted value takes over again on blur.
-    const [draft, setDraft] = useState<string | null>(null);
-
-    const numericValue = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
-    const formattedValue = typeof numericValue === 'number' && Number.isFinite(numericValue)
-      ? formatLocalizedNumberForInput(numericValue, locale)
-      : '';
+    const input = useLocalizedDecimalInput({ value, onValueChange });
 
     return (
       <TextField
         ref={ref}
         {...textFieldProps}
         type="text"
-        value={draft ?? formattedValue}
-        onChange={(event) => {
-          const rawValue = event.target.value;
-          setDraft(rawValue);
-          if (rawValue.trim() === '') {
-            onValueChange(null);
-            return;
-          }
-          const parsed = parseLocalizedNumber(rawValue, locale);
-          if (parsed !== null) {
-            onValueChange(parsed);
-          }
-        }}
+        value={input.value}
+        onChange={(event) => input.onChange(event.target.value)}
         onBlur={(event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-          setDraft(null);
+          input.onBlur();
           onBlur?.(event);
         }}
         slotProps={{

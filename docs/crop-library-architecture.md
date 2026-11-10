@@ -1186,7 +1186,15 @@ so `getVarietyOwnValueSource` reports no override and the green highlight keeps
 marking genuine per-Sorte values only. On save, anything still matching the
 baseline is cleared again (`stripValuesMatchingBaseline`, the same mechanism the
 add-variety prefill uses), so displaying an inherited value never freezes it as
-an override, and clearing a field simply removes the override.
+an override, and clearing a field simply removes the override. The highlight
+and the legend above the form ("Markierte Werte = gelten nur für diese
+Sorte.") are the only markers: fields carry no "inherited"/"own value" hover
+tooltip, and an inherited value is a real field value, never a placeholder.
+Kultur and Sorte share one form with the same section order: general
+information, crop rotation, timing (cultivation type, then propagation, growth
+and harvest duration in one row), plant spacing, yield, seed demand, time
+windows, germination, site and plant health, companion planting, display
+colour, notes (project form only).
 
 ### Plant families (Pflanzenfamilien)
 

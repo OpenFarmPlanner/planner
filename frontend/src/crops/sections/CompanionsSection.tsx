@@ -1,4 +1,3 @@
-import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
@@ -19,6 +18,7 @@ import type { CompanionKind, CompanionReason } from '../../api/types';
 import { AppTooltip } from '../../components/AppTooltip';
 import { useTranslation } from '../../i18n';
 import { CompanionKindColumns, CompanionKindHeading } from '../CompanionKindColumns';
+import { COMPANION_KIND_STYLES } from '../companionKindStyles';
 import {
   COMPANION_KINDS,
   COMPANION_REASONS,
@@ -51,7 +51,9 @@ const OTHER_KIND: Record<CompanionKind, CompanionKind> = { good: 'bad', bad: 'go
 /**
  * "Mischkultur" in the crop form: good and bad neighbours in two groups, one
  * compact row per neighbour, saved with the form (see
- * docs/crop-companions.md#crop-form). A Sorte shows its Kultur's list read-only.
+ * docs/crop-companions.md#crop-form). A group appears once it has a row; the
+ * two add buttons below the groups are always there. A Sorte shows its
+ * Kultur's list read-only.
  */
 export function CompanionsSection({ state, disabled = false }: CompanionsSectionProps) {
   const { t } = useTranslation(['crops', 'common']);
@@ -59,6 +61,16 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
   if (mode === 'hidden') return null;
 
   if (mode === 'readOnly') {
+    if (state.loaded && !state.failed && rows.length === 0) {
+      return (
+        <Box data-testid="crop-companions-form-section" sx={{ mt: 1 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>{t('companions.title')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('companions.form.varietyReadOnlyEmpty', { name: state.kulturName })}
+          </Typography>
+        </Box>
+      );
+    }
     return (
       <Box data-testid="crop-companions-form-section" sx={{ mt: 1 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>{t('companions.title')}</Typography>
@@ -90,26 +102,13 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
       </Typography>
       {state.failed ? <Alert severity="error" sx={{ mb: 1 }}>{t('companions.loadError')}</Alert> : null}
       <Stack spacing={1.5}>
+        {/* A group shows only with rows; its heading would otherwise announce an empty list. */}
         {COMPANION_KINDS.map((kind) => {
           const kindRows = rows.filter((row) => row.kind === kind);
+          if (kindRows.length === 0) return null;
           return (
             <Box key={kind} data-testid={`companion-form-group-${kind}`}>
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                <CompanionKindHeading kind={kind} />
-                <Button
-                  size="small"
-                  sx={{ flexShrink: 0, minWidth: 0, gap: 0.5 }}
-                  disabled={disabled || !state.loaded}
-                  aria-label={t(ADD_LABEL_KEYS[kind])}
-                  onClick={() => setRows([...rows, emptyCompanionFormRow(kind)])}
-                >
-                  <AddIcon fontSize="small" />
-                  {/* A phone keeps the heading on one line: the icon alone there. */}
-                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                    {t('companions.form.add')}
-                  </Box>
-                </Button>
-              </Stack>
+              <CompanionKindHeading kind={kind} />
               {kindRows.map((row, index) => (
                 <CompanionFormRowFields
                   key={row.key}
@@ -126,6 +125,31 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
             </Box>
           );
         })}
+        {state.loaded && !state.failed && rows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" data-testid="companion-form-empty">
+            {t('companions.form.empty')}
+          </Typography>
+        ) : null}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {COMPANION_KINDS.map((kind) => {
+            const { Icon, paletteColor } = COMPANION_KIND_STYLES[kind];
+            return (
+              <Button
+                key={kind}
+                variant="text"
+                size="small"
+                color={paletteColor}
+                startIcon={<Icon aria-hidden />}
+                // Each label stays on one line; the buttons wrap below each other instead.
+                sx={{ whiteSpace: 'nowrap' }}
+                disabled={disabled || !state.loaded}
+                onClick={() => setRows([...rows, emptyCompanionFormRow(kind)])}
+              >
+                {t(ADD_LABEL_KEYS[kind])}
+              </Button>
+            );
+          })}
+        </Box>
       </Stack>
     </Box>
   );

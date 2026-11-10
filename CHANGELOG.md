@@ -8,6 +8,23 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Crops: the crop and variety form is calmer and easier to scan. Kultur and
+  Sorte share one section order: general information, crop rotation, timing
+  (cultivation type, then Anzuchtdauer, Wachstumszeit and Erntezeit in one
+  row), plant spacing, yield ("Ertrag", formerly "Ernteinformationen", now
+  without the harvest duration), seed demand, time windows, germination, site
+  and plant health, companion planting, display colour and notes. Fields no
+  longer show tooltips on hover: the "inherited"/"own value" tooltip on a
+  Sorte's fields is gone (the green highlight and its legend stay), and only
+  the three durations and the thousand kernel weight keep their explanation,
+  behind an info button inside the field that opens on click, tap or keyboard.
+  The help texts under the display colour, the seed rate and the safety margin
+  are gone. From/to pairs (sowing depth, optimal germination temperature,
+  germination time) are one field each with "Von" and "Bis" inside and an
+  inline error when the minimum exceeds the maximum. The companion planting
+  section shows a group heading only for neighbours it has, always offers
+  "Guten Nachbarn hinzufügen" and "Schlechten Nachbarn hinzufügen" below, and
+  says so when no neighbour is recorded yet.
 - Crops: **time windows** (Zeiträume) for Anzucht, Direktsaat and Pflanzung,
   any number per kind, in thirds of a month ("Anfang März bis Mitte Mai") or
   calendar weeks ("KW 10 bis 14"), also across the turn of the year. They are
