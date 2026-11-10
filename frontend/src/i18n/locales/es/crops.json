@@ -730,7 +730,9 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Semillas Ejemplo",
-      "directSownName": "Zanahoria"
+      "directSownName": "Zanahoria",
+      "goodNeighbours": "Albahaca; Tagetes",
+      "badNeighbours": "Patata; Hinojo"
     },
     "help": {
       "templateHint": "¿Todavía no tienes un archivo adecuado?",

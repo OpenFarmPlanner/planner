@@ -730,7 +730,9 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Semences Exemple",
-      "directSownName": "Carotte"
+      "directSownName": "Carotte",
+      "goodNeighbours": "Basilic; Tagète",
+      "badNeighbours": "Pomme de terre; Fenouil"
     },
     "help": {
       "templateHint": "Pas encore de fichier adapté ?",

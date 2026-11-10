@@ -708,7 +708,9 @@
       "speciesName": "Tomate",
       "varietyName": "Roma",
       "supplierName": "Beispiel Saatgut",
-      "directSownName": "Karotte"
+      "directSownName": "Karotte",
+      "goodNeighbours": "Basilikum; Tagetes",
+      "badNeighbours": "Kartoffel; Fenchel"
     },
     "help": {
       "templateHint": "Noch keine passende Datei?",

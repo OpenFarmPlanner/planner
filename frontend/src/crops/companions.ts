@@ -20,7 +20,6 @@ export const COMPANION_REASONS: readonly CompanionReason[] = [
   'other',
 ];
 
-type TranslateFn = (key: string) => string;
 
 export const companionReasonLabelKey = (reason: CompanionReason): string => `companions.reasons.${reason}`;
 
@@ -101,39 +100,17 @@ export const buildCompanionItemsByCrop = (
 };
 
 /**
- * One neighbour per line: `Name`, `Name – note`, `Name – Reason` or
- * `Name – Reason: note`. The reason label is written in the export language
- * and read back in any language (see `buildCompanionReasonLookup`).
+ * A spreadsheet cell of neighbour names: `Tomate; Basilikum; Kreuzblütler`.
+ * Reason and note are not written; they live in the crop form and the JSON
+ * export, and the additive import keeps them on re-import.
  */
-export const formatCompanionCell = (
-  items: readonly CompanionImportItem[],
-  t: TranslateFn,
-): string | null => {
-  if (items.length === 0) return null;
-  return items.map(({ name, reason, note }) => {
-    const reasonLabel = reason === 'other' ? '' : t(companionReasonLabelKey(reason));
-    const detail = reasonLabel && note ? `${reasonLabel}: ${note}` : reasonLabel || note;
-    return detail ? `${name} – ${detail}` : name;
-  }).join('\n');
-};
-
-/** Reason labels of every given language, lower-cased, mapped to their reason. */
-export const buildCompanionReasonLookup = (...translators: TranslateFn[]): Map<string, CompanionReason> => {
-  const lookup = new Map<string, CompanionReason>();
-  for (const t of translators) {
-    for (const reason of COMPANION_REASONS) {
-      if (reason === 'other') continue;
-      lookup.set(normalizeName(t(companionReasonLabelKey(reason))), reason);
-    }
-  }
-  return lookup;
-};
+export const formatCompanionCell = (items: readonly CompanionImportItem[]): string | null => (
+  items.length === 0 ? null : items.map(({ name }) => name).join('; ')
+);
 
 const LINE_SPLIT = /[\n\r\u2028\u2029]+/;
-// The names end at the first dash with spaces around it ("Tomate – Konkurrenz").
-const NAME_DETAIL_SPLIT = /\s+[\u2013\u2014-]\s+/;
 
-/** "Tomate, Kartoffel" → two names; commas inside parentheses do not split. */
+/** "Tomate; Kartoffel, Dill" → three names; separators inside parentheses do not split. */
 const splitNames = (names: string): string[] => {
   const parts: string[] = [];
   let depth = 0;
@@ -141,7 +118,7 @@ const splitNames = (names: string): string[] => {
   for (const char of names) {
     if (char === '(' || char === '[') depth += 1;
     if ((char === ')' || char === ']') && depth > 0) depth -= 1;
-    if (char === ',' && depth === 0) {
+    if ((char === ',' || char === ';') && depth === 0) {
       parts.push(current);
       current = '';
       continue;
@@ -152,37 +129,17 @@ const splitNames = (names: string): string[] => {
   return parts.map((part) => part.trim()).filter(Boolean);
 };
 
-const parseDetail = (
-  detail: string,
-  reasonLookup: ReadonlyMap<string, CompanionReason>,
-): Pick<CompanionImportItem, 'reason' | 'note'> => {
-  const colon = detail.indexOf(':');
-  const head = colon >= 0 ? detail.slice(0, colon) : detail;
-  const reason = reasonLookup.get(normalizeName(head));
-  if (!reason) return { reason: 'other', note: detail };
-  return { reason, note: colon >= 0 ? detail.slice(colon + 1).trim() : '' };
-};
-
-/** The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`. */
-export const parseCompanionCell = (
-  text: unknown,
-  reasonLookup: ReadonlyMap<string, CompanionReason>,
-): CompanionImportItem[] => {
+/**
+ * The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`.
+ * Names are separated by `,`, `;` or a line break, like tags; a dash is part
+ * of the name. Every name gets reason "other" and no note.
+ */
+export const parseCompanionCell = (text: unknown): CompanionImportItem[] => {
   if (typeof text !== 'string') return [];
-  const items: CompanionImportItem[] = [];
-  for (const rawLine of text.split(LINE_SPLIT)) {
-    const line = rawLine.trim().replace(/^;+|;+$/g, '').trim();
-    if (!line) continue;
-    const separator = NAME_DETAIL_SPLIT.exec(line);
-    const names = separator ? line.slice(0, separator.index) : line;
-    const detail = separator ? line.slice(separator.index + separator[0].length).trim() : '';
-    const { reason, note } = detail ? parseDetail(detail, reasonLookup) : { reason: 'other' as const, note: '' };
-    for (const name of splitNames(names)) {
-      if (!/[\p{L}\p{N}]/u.test(name)) continue;
-      items.push({ name, reason, note });
-    }
-  }
-  return items;
+  return text.split(LINE_SPLIT)
+    .flatMap(splitNames)
+    .filter((name) => /[\p{L}\p{N}]/u.test(name))
+    .map((name) => ({ name, reason: 'other' as const, note: '' }));
 };
 
 // --- Crop form ----------------------------------------------------------------
