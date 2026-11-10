@@ -28,11 +28,12 @@ cannot: SQLite's schema editor refuses to run inside a transaction while
 foreign-key checks are on. Put it in its own class marked
 ``django_db(transaction=True)`` and call ``self.migrate_to_state()`` there.
 
-The flush at the end of a class also removes the catalogues the data
-migrations seed (crop species, plant families). pytest-django runs plain
-``django_db`` tests before transactional ones, so the transactional migration
-tests always came last; ``conftest.py`` keeps these classes last as well, so
-no other test runs after such a flush.
+A class leaves the database as it found it: the fixture serializes the
+contents before migrating back and restores them after the final flush, so
+the catalogues the data migrations seed (crop species, plant families) are
+back for whatever test the worker runs next. pytest-xdist's ``loadscope``
+dispatches the largest classes first, so test order cannot be relied on to
+keep other tests away from a flushed database.
 """
 
 from collections.abc import Iterator
@@ -82,12 +83,17 @@ class MigrationTestBase:
     @classmethod
     def _migration_cycle(cls, django_db_setup: None, django_db_blocker) -> Iterator[None]:
         with django_db_blocker.unblock():
+            contents_before = connection.creation.serialize_db_to_string()
             cls.old_apps = migrate_to_state(cls.migrate_from)
             cls.seed_before_migration(cls.old_apps)
             cls.new_apps = migrate_to_state(cls.migrate_to)
         yield
         with django_db_blocker.unblock():
             migrate_to_leaf_nodes()
-            # The seeded rows were written outside the per-test transactions;
-            # remove them as a transactional test's teardown would.
-            call_command('flush', verbosity=0, interactive=False)
+            # The seeded rows were written outside the per-test transactions,
+            # so remove them, then put back what was there before the class.
+            # As in Django's serialized rollback, the flush must not recreate
+            # rows (content types) through post_migrate: the restore brings
+            # them back with their original primary keys.
+            call_command('flush', verbosity=0, interactive=False, inhibit_post_migrate=True)
+            connection.creation.deserialize_db_from_string(contents_before)

@@ -262,15 +262,20 @@ touched. New migration tests use the base.
   while foreign-key checks are on. Each sits in a `...Reverse` class of its
   own, marked `django_db(transaction=True)`, that shares the seed through a
   `...Setup` base and calls `self.migrate_to_state(...)`.
-- **The classes must run last on their worker.** pytest-django orders
-  transactional tests after all others, and the migration tests used to be
-  transactional, so their flushes, which also remove the crop species and
-  plant families the data migrations seed, never ran before a regular test.
-  The new classes are not transactional, so `pytest_collection_modifyitems`
-  in `backend/conftest.py` moves them behind everything else. Without it,
-  `test_e2e_views.py` failed on a Tomato without a crop species. That a test
-  must not rely on the seeded catalogue being either present or absent still
-  holds; this keeps the ordering the suite was written against.
+- **A class leaves the database as it found it.** The flush at its end also
+  removes the crop species and plant families the data migrations seed, and
+  regular tests such as `test_e2e_views.py` rely on them. Ordering cannot
+  keep those tests away from a flushed database: pytest-xdist's `loadscope`
+  dispatches the largest scopes first, so a migration class can run on a
+  worker before smaller regular classes. That was already true of the old
+  per-test layout on `main` (one xdist worker running
+  `TestPublicCropTranslationBackfill` and then `E2ECrossBrowserDatasetTest`
+  fails two tests there). The fixture therefore serializes the database
+  before migrating back and restores it after the flush, as Django's
+  `serialized_rollback` does (flush without `post_migrate`, then
+  `deserialize_db_from_string`). That a test must not rely on the seeded
+  catalogue being either present or absent still holds; the old single-test
+  classes that keep their own `setup_method` still flush without restoring.
 
 Measured on a 4-core box (`pdm run test`, the CI command), full suite,
 2507 passing tests both times:
@@ -278,7 +283,7 @@ Measured on a 4-core box (`pdm run test`, the CI command), full suite,
 | configuration | pytest | wall |
 | --- | --- | --- |
 | per-test migration cycle | 587s | 589s |
-| **one cycle per class** | **296s** | **298s** |
+| **one cycle per class** | **272s** | **274s** |
 
 Application coverage is unchanged except for one line: the early `return`
 of `crops/migrations/0008`'s reverse function on a database without the

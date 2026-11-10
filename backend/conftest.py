@@ -32,23 +32,3 @@ def _restore_seeded_plant_families(django_db_setup, django_db_blocker):
             # Schema left migrated backwards; the next migration test's own
             # teardown migrates forward again.
             pass
-
-
-def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Run the migration test classes after every other test of a worker.
-
-    A ``MigrationTestBase`` class flushes the database when it ends, which also
-    removes the crop species and plant families the data migrations seed.
-    pytest-django already orders transactional tests after the others (its
-    hook runs first); this keeps the migration classes, which are not
-    transactional, behind them too, so no test that relies on the seeded
-    catalogues runs after such a flush. The sort is stable, so each class stays
-    together and the remaining order is pytest-django's.
-    """
-    from farm.tests.migration_base import MigrationTestBase
-
-    def runs_a_migration_cycle(item: pytest.Item) -> bool:
-        test_class = getattr(item, 'cls', None)
-        return test_class is not None and issubclass(test_class, MigrationTestBase)
-
-    items.sort(key=runs_a_migration_cycle)
