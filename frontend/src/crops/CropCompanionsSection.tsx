@@ -17,6 +17,11 @@ interface CropCompanionsSectionProps {
   crop: Crop;
   crops: Crop[];
   onCropSelect: (crop: Crop) => void;
+  /**
+   * Render nothing while there is no neighbour to list (no Kultur, still
+   * loading, or none recorded); a load error is still shown.
+   */
+  hideWhenEmpty?: boolean;
 }
 
 /**
@@ -24,7 +29,7 @@ interface CropCompanionsSectionProps {
  * read-only; they are edited in the Kultur's crop form. A Sorte shows its
  * Kultur's list (see docs/crop-companions.md).
  */
-export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompanionsSectionProps) {
+export function CropCompanionsSection({ crop, crops, onCropSelect, hideWhenEmpty = false }: CropCompanionsSectionProps) {
   const { t } = useTranslation(['crops', 'common']);
   const families = usePlantFamilies();
   // Reloaded whenever the crop list is refetched, e.g. after the form saved.
@@ -55,6 +60,10 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
       onSelect: partnerCrop ? () => onCropSelect(partnerCrop) : undefined,
     };
   });
+
+  if (hideWhenEmpty && !failed && items.length === 0) {
+    return null;
+  }
 
   return (
     <Box sx={{ mb: 3 }} data-testid="crop-companions-section">

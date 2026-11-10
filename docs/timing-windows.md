@@ -142,6 +142,8 @@ country, so months copied from someone else's farm would mislead. See
   "Monat" (form state only). A start after the end shows "Über den
   Jahreswechsel". An incomplete row blocks saving with "Bitte Anfang und Ende
   angeben.".
+- The detail view hides the section when the crop has no effective window,
+  unless "Alle Angaben anzeigen" is on ([crop-detail.md](crop-detail.md)).
 - The detail view lists the effective windows per kind and draws a year bar
   (January to December) with one labelled lane per kind; week windows are
   drawn in the current year. Colours come from the theme palette

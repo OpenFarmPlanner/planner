@@ -1,15 +1,14 @@
 import { Box, Typography } from '@mui/material';
 
-import type { Crop, CropTimingWindow, TimingWindowKind } from '../api/types';
+import type { Crop } from '../api/types';
 import { useTranslation } from '../i18n';
 import {
-  TIMING_WINDOW_KINDS,
   computedHarvestYearSegments,
   formatTimingWindows,
   timingWindowYearSegments,
-  windowsOfKind,
   type YearSegment,
 } from './timingWindows';
+import { collectKinds, type KindWindows } from './timingWindowKinds';
 import {
   TIMING_WINDOW_LANE_COLORS,
   computedHarvestSegmentSx,
@@ -33,23 +32,6 @@ interface CropTimingWindowsDetailProps {
   crop: Crop;
   /** Whether a Sorte is shown; its own windows get the variety highlight. */
   isVarietyView: boolean;
-}
-
-interface KindWindows {
-  kind: TimingWindowKind;
-  windows: CropTimingWindow[];
-  inherited: boolean;
-}
-
-function collectKinds(crop: Crop): KindWindows[] {
-  const effective = crop.effective_timing_windows
-    ?? (crop.timing_windows ?? []).map((window) => ({ ...window, inherited: false }));
-  return TIMING_WINDOW_KINDS
-    .map((kind) => {
-      const windows = windowsOfKind(effective, kind);
-      return { kind, windows, inherited: windows.length > 0 && windows.every((window) => window.inherited) };
-    })
-    .filter((entry) => entry.windows.length > 0);
 }
 
 const segmentPosition = (segment: YearSegment) => ({

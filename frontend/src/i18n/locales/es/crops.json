@@ -79,12 +79,9 @@
   "detail": {
     "sections": {
       "general": "Información general",
-      "cropRotation": "Propiedades de rotación de cultivos",
-      "spacing": "Distancias",
-      "seed": "Semillas",
-      "harvest": "Rendimiento",
       "notes": "Notas"
     },
+    "showAllFields": "Mostrar todos los datos",
     "fields": {
       "distanceWithinRow": "Distancia entre plantas",
       "rowSpacing": "Distancia entre filas",

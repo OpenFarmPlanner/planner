@@ -8,6 +8,7 @@ import type { Crop } from '../api/api';
 import translations from '@/test-utils/translations';
 import i18n from '../i18n/config';
 import { CROP_FILTERS_STORAGE_KEY } from '../crops/cropDetailFormatters';
+import { CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY } from '../crops/cropDetailFieldVisibility';
 
 describe('CropDetail Component', () => {
   const renderCropDetail = (ui: Parameters<typeof render>[0]) =>
@@ -31,8 +32,13 @@ describe('CropDetail Component', () => {
     });
   }
 
+  function enableShowAllFields(): void {
+    window.localStorage.setItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY, 'true');
+  }
+
   beforeEach(async () => {
     window.sessionStorage.clear();
+    window.localStorage.removeItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY);
     await i18n.changeLanguage('de');
   });
 
@@ -671,7 +677,8 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('Importiert')).toBeInTheDocument();
   });
 
-  it('renders detail sections in the expected order', () => {
+  it('renders every detail section in the crop form order when all details are shown', () => {
+    enableShowAllFields();
     const mockOnSelect = vi.fn();
     renderCropDetail(
       <CropDetail
@@ -685,21 +692,94 @@ describe('CropDetail Component', () => {
     expect(sectionTitles).toEqual([
       'Allgemeine Informationen',
       'Fruchtfolge-Eigenschaften',
-      'Mischkultur',
       'Zeitplanung',
+      'Pflanzabstände',
+      'Ertrag',
+      'Saatgutbedarf',
+      'Zeiträume',
       'Keimung',
       'Standort und Pflanzengesundheit',
-      'Zeiträume',
-      'Aufgabenvorlagen',
-      'Abstände',
-      'Saatgut',
-      'Lieferantendaten',
-      'Ernte',
+      'Mischkultur',
       'Notizen',
+      'Aufgabenvorlagen',
+      'Lieferantendaten',
     ]);
   });
 
-  it('shows a Sorte without a seed type as unknown', () => {
+  it('hides sections without a value by default and keeps the order of the rest', () => {
+    renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
+
+    const sectionTitles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
+    // Task templates and supplier offers are actionable, so they stay even
+    // while empty; every other section shows up only with a value in it.
+    expect(sectionTitles).toEqual([
+      'Zeitplanung',
+      'Ertrag',
+      'Notizen',
+      'Aufgabenvorlagen',
+      'Lieferantendaten',
+    ]);
+    expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: translations.crops.taskTemplates.add })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: translations.crops.form.addSupplierData })).toBeInTheDocument();
+  });
+
+  it('shows only the filled-in fields of a section with mixed values, keeping 0 and false values', () => {
+    renderCropDetail(
+      <CropDetail
+        crops={[{
+          id: 40,
+          name: 'Radieschen',
+          growth_duration_days: 28,
+          harvest_duration_days: null as unknown as number,
+          propagation_duration_days: 0,
+          rotation_break_years: 0,
+          crop_family: '',
+          germination_pretreatment: '   ',
+        }]}
+        selectedCropId={40}
+        onCropSelect={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(translations.crops.form.growthDurationDays)).toBeInTheDocument();
+    expect(screen.getByText(translations.crops.form.propagationDurationDays)).toBeInTheDocument();
+    expect(screen.getByText(/^0\s+Tage$/)).toBeInTheDocument();
+    expect(screen.queryByText(translations.crops.form.harvestDurationDays)).not.toBeInTheDocument();
+    expect(screen.getByText(translations.crops.form.rotationBreakYears)).toBeInTheDocument();
+    expect(screen.getByText(/^0\s+Jahre$/)).toBeInTheDocument();
+    expect(screen.queryByText(translations.crops.form.cropFamily)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
+    expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
+  });
+
+  it('toggles all details with their placeholders and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={2} onCropSelect={vi.fn()} />);
+
+    const toggle = screen.getByRole('switch', { name: translations.crops.detail.showAllFields });
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(toggle).toBeChecked();
+    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
+    expect(screen.getAllByText(translations.crops.noData).length).toBeGreaterThan(0);
+    expect(window.localStorage.getItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY)).toBe('true');
+
+    unmount();
+    renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={2} onCropSelect={vi.fn()} />);
+    expect(screen.getByRole('switch', { name: translations.crops.detail.showAllFields })).toBeChecked();
+    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('switch', { name: translations.crops.detail.showAllFields }));
+    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY)).toBe('false');
+  });
+
+  it('shows a Sorte without a seed type as unknown when all details are shown', () => {
+    enableShowAllFields();
     renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
 
     expect(screen.getByTestId('crop-detail-seed-type')).toHaveTextContent('Unbekannt');
@@ -718,6 +798,7 @@ describe('CropDetail Component', () => {
   });
 
   it('shows the crop rotation break as a plain section without a nested container', () => {
+    enableShowAllFields();
     const mockOnSelect = vi.fn();
     renderCropDetail(
       <CropDetail
@@ -727,7 +808,7 @@ describe('CropDetail Component', () => {
       />
     );
 
-    const heading = screen.getByRole('heading', { level: 6, name: translations.crops.detail.sections.cropRotation });
+    const heading = screen.getByRole('heading', { level: 6, name: translations.crops.form.sectionCropRotation });
     expect(screen.getByText(translations.crops.form.rotationBreakYears)).toBeInTheDocument();
     expect(screen.getAllByText(translations.crops.noData).length).toBeGreaterThan(0);
     // Structurally identical to the other sections (heading + grid, no
@@ -787,13 +868,13 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { level: 6, name: 'Crop Rotation Properties' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Crop rotation properties' })).toBeInTheDocument();
     expect(screen.getByText('Crop family')).toBeInTheDocument();
     expect(screen.getByText('Nutrient demand')).toBeInTheDocument();
     expect(screen.getByText('Medium feeder')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 6, name: 'Spacing' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: 'Plant spacing' })).toBeInTheDocument();
     expect(screen.getByText('In-row spacing')).toBeInTheDocument();
-    const seedHeading = screen.getByRole('heading', { level: 6, name: 'Seed' });
+    const seedHeading = screen.getByRole('heading', { level: 6, name: 'Seed demand' });
     expect(seedHeading).toBeInTheDocument();
     const cultivationTypeLabel = screen.getByText('Cultivation type');
     expect(cultivationTypeLabel).toBeInTheDocument();
@@ -810,7 +891,8 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('Expected yield')).toBeInTheDocument();
   });
 
-  it('renders supplier data once in its own section after seed details', () => {
+  it('renders supplier data once in its own section after the form sections', () => {
+    enableShowAllFields();
     const mockOnSelect = vi.fn();
     renderCropDetail(
       <CropDetail
@@ -820,13 +902,13 @@ describe('CropDetail Component', () => {
       />
     );
 
-    const seedHeading = screen.getByRole('heading', { level: 6, name: 'Saatgut' });
-    const harvestHeading = screen.getByRole('heading', { level: 6, name: 'Ernte' });
+    const seedHeading = screen.getByRole('heading', { level: 6, name: 'Saatgutbedarf' });
+    const notesHeading = screen.getByRole('heading', { level: 6, name: 'Notizen' });
     const supplierSubheading = screen.getByRole('heading', { level: 6, name: 'Lieferantendaten' });
 
     expect(screen.getAllByRole('heading', { level: 6, name: 'Lieferantendaten' })).toHaveLength(1);
-    expect(seedHeading.compareDocumentPosition(supplierSubheading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(supplierSubheading.compareDocumentPosition(harvestHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(seedHeading.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(notesHeading.compareDocumentPosition(supplierSubheading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('displays harvest information correctly', () => {
