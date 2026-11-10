@@ -52,7 +52,7 @@ export const buildSheetData = (
       }
       const raw = portable[col.key];
       if (raw === undefined || raw === null) return null;
-      if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], t);
+      if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good']);
       if (Array.isArray(raw)) {
         return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(', ') : null;
       }

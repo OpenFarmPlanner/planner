@@ -218,21 +218,23 @@ describe('crop spreadsheet export → import round trip', () => {
     ]),
   );
 
-  // Neighbours with and without a reason and a note, so the reason label is
-  // read back in every language.
+  // The sheet holds neighbour names only; reason and note stay in the project
+  // (the import is additive) and travel in the JSON export.
   const COMPANIONS = {
     good: [
       { name: 'Basilikum', reason: 'pest_control', note: '' },
       { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' },
     ],
     bad: [
-      { name: 'Kartoffel, Aubergine', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
+      { name: 'Kartoffel', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
+      { name: 'Aubergine', reason: 'shared_pests_diseases', note: '' },
     ],
   } as const;
   const COMPANIONS_BY_CROP = new Map([[1, {
     good: [...COMPANIONS.good],
     bad: [...COMPANIONS.bad],
   }]]);
+  const namesOnly = (items: readonly { name: string }[]) => items.map(({ name }) => ({ name, reason: 'other', note: '' }));
 
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
@@ -242,12 +244,8 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_days: '7–14',
     sowing_depth: '0.5–1',
     germination_cold: true, germination_frost: true, germination_light: true, germination_dark: true,
-    good_companions: COMPANIONS.good,
-    // "Kartoffel, Aubergine" names two neighbours that share the reason.
-    bad_companions: [
-      { name: 'Kartoffel', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
-      { name: 'Aubergine', reason: 'shared_pests_diseases', note: 'Kraut- und Braunfäule' },
-    ],
+    good_companions: namesOnly(COMPANIONS.good),
+    bad_companions: namesOnly(COMPANIONS.bad),
   };
 
   it('has a test value for every exported column', () => {
@@ -283,6 +281,8 @@ describe('crop spreadsheet export → import round trip', () => {
       nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     });
     expect(result.entries[1]).toMatchObject({ variety: 'Roma', supplier_name: expect.any(String) });
+    expect(result.entries[0]?.good_companions).toHaveLength(2);
+    expect(result.entries[0]?.bad_companions).toHaveLength(2);
     expect(result.entries[2]).toMatchObject({ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' });
   });
 });

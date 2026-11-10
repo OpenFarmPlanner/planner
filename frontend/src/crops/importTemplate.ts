@@ -77,6 +77,8 @@ export const buildCropImportTemplateRows = (t: TemplateT) => {
   rows[1][columnIndex('pre_cultivation_windows')] = '02b-03c';
   rows[1][columnIndex('planting_windows')] = 'KW19-22';
   rows[3][columnIndex('direct_sowing_windows')] = '03a-06c; W30';
+  rows[1][columnIndex('good_companions')] = t('import.template.goodNeighbours');
+  rows[1][columnIndex('bad_companions')] = t('import.template.badNeighbours');
   return rows;
 };
 

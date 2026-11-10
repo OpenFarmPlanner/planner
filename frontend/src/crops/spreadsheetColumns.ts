@@ -7,7 +7,8 @@ export type SpreadsheetColumnDef = {
   /**
    * `list`: several values in one cell, separated by commas, semicolons or
    *   line breaks; with `enumExport`/`enumImport` they are enum values.
-   * `companions`: one neighbour per line (see crops/companions.ts).
+   * `companions`: neighbour names, separated like `list`; read into
+   *   `{name, reason, note}` items (see crops/companions.ts).
    * `timingWindows`: the windows of one kind as text ("Anfang März bis Ende
    *   April; KW 30"); exported canonically, parsed by the backend import.
    */

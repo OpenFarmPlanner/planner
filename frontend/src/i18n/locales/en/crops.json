@@ -708,7 +708,9 @@
       "speciesName": "Tomato",
       "varietyName": "Roma",
       "supplierName": "Example Seeds",
-      "directSownName": "Carrot"
+      "directSownName": "Carrot",
+      "goodNeighbours": "Basil; Marigold",
+      "badNeighbours": "Potato; Fennel"
     },
     "help": {
       "templateHint": "No suitable file yet?",

@@ -275,6 +275,32 @@ class CompanionImportTests(CropCompanionTestCase):
         self.assertEqual(response.data['companions']['conflicts'][0]['kept'], 'good')
         self.assertEqual(CropCompanion.objects.get().kind, 'good')
 
+    def test_a_names_only_reimport_keeps_reason_and_note(self) -> None:
+        # The spreadsheet holds names only (docs/crop-companions.md), so a
+        # re-imported export must not clear what the crop form stored.
+        relation = self.relate(self.tomato, self.potato)
+        CropCompanion.objects.filter(pk=relation.pk).update(reason='shared_pests_diseases', note='Krautfäule')
+        CropCompanion.objects.create(
+            project=self.project, crop=self.tomato, companion_text='Salbei', kind=CropCompanion.KIND_GOOD,
+            reason='pest_control', note='Duft',
+        )
+
+        response = self.client.post(APPLY_URL, {
+            'items': [{
+                'name': 'Tomate',
+                'good_companions': [{'name': 'Salbei', 'reason': 'other', 'note': ''}],
+                'bad_companions': [{'name': 'Kartoffel', 'reason': 'other', 'note': ''}],
+            }],
+            'confirm_updates': True,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['companions']['created'], 0)
+        self.assertCountEqual(
+            CropCompanion.objects.values_list('kind', 'reason', 'note'),
+            [('bad', 'shared_pests_diseases', 'Krautfäule'), ('good', 'pest_control', 'Duft')],
+        )
+
     def test_a_variety_row_gets_its_neighbours_on_the_kultur(self):
         response = self.client.post(APPLY_URL, {
             'items': [{'name': 'Paprika', 'variety': 'Frühzauber', 'bad_companions': [{'name': 'Kartoffel'}]}],

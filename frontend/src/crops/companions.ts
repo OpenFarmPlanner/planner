@@ -101,23 +101,18 @@ export const buildCompanionItemsByCrop = (
 };
 
 /**
- * One neighbour per line: `Name`, `Name – note`, `Name – Reason` or
- * `Name – Reason: note`. The reason label is written in the export language
- * and read back in any language (see `buildCompanionReasonLookup`).
+ * A spreadsheet cell of neighbour names: `Tomate; Basilikum; Kreuzblütler`.
+ * Reason and note are not written; they live in the crop form and the JSON
+ * export, and the additive import keeps them on re-import.
  */
-export const formatCompanionCell = (
-  items: readonly CompanionImportItem[],
-  t: TranslateFn,
-): string | null => {
-  if (items.length === 0) return null;
-  return items.map(({ name, reason, note }) => {
-    const reasonLabel = reason === 'other' ? '' : t(companionReasonLabelKey(reason));
-    const detail = reasonLabel && note ? `${reasonLabel}: ${note}` : reasonLabel || note;
-    return detail ? `${name} – ${detail}` : name;
-  }).join('\n');
-};
+export const formatCompanionCell = (items: readonly CompanionImportItem[]): string | null => (
+  items.length === 0 ? null : items.map(({ name }) => name).join('; ')
+);
 
-/** Reason labels of every given language, lower-cased, mapped to their reason. */
+/**
+ * Reason labels of every given language, lower-cased, mapped to their reason.
+ * @deprecated Only reads the legacy `Name – Reason: note` cells; see `parseCompanionCell`.
+ */
 export const buildCompanionReasonLookup = (...translators: TranslateFn[]): Map<string, CompanionReason> => {
   const lookup = new Map<string, CompanionReason>();
   for (const t of translators) {
@@ -130,10 +125,10 @@ export const buildCompanionReasonLookup = (...translators: TranslateFn[]): Map<s
 };
 
 const LINE_SPLIT = /[\n\r\u2028\u2029]+/;
-// The names end at the first dash with spaces around it ("Tomate – Konkurrenz").
+// Legacy format: the names end at the first dash with spaces around it ("Tomate – Konkurrenz").
 const NAME_DETAIL_SPLIT = /\s+[\u2013\u2014-]\s+/;
 
-/** "Tomate, Kartoffel" → two names; commas inside parentheses do not split. */
+/** "Tomate; Kartoffel, Dill" → three names; separators inside parentheses do not split. */
 const splitNames = (names: string): string[] => {
   const parts: string[] = [];
   let depth = 0;
@@ -141,7 +136,7 @@ const splitNames = (names: string): string[] => {
   for (const char of names) {
     if (char === '(' || char === '[') depth += 1;
     if ((char === ')' || char === ']') && depth > 0) depth -= 1;
-    if (char === ',' && depth === 0) {
+    if ((char === ',' || char === ';') && depth === 0) {
       parts.push(current);
       current = '';
       continue;
@@ -163,7 +158,18 @@ const parseDetail = (
   return { reason, note: colon >= 0 ? detail.slice(colon + 1).trim() : '' };
 };
 
-/** The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`. */
+/**
+ * The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`.
+ * Names are separated by `,`, `;` or a line break, like tags.
+ *
+ * Deprecated legacy format, still read: a line with a spaced dash is parsed
+ * as exports from 1.122 up to 1.156 wrote it, one neighbour per line,
+ * `Name – Reason: note`, where the names before the dash share reason and
+ * note. Remove that branch (with `parseDetail`, `buildCompanionReasonLookup`
+ * and `NAME_DETAIL_SPLIT`) once spreadsheets exported in that format are no
+ * longer expected to be imported — at the earliest a year after the release
+ * that stopped writing it.
+ */
 export const parseCompanionCell = (
   text: unknown,
   reasonLookup: ReadonlyMap<string, CompanionReason>,
@@ -171,7 +177,7 @@ export const parseCompanionCell = (
   if (typeof text !== 'string') return [];
   const items: CompanionImportItem[] = [];
   for (const rawLine of text.split(LINE_SPLIT)) {
-    const line = rawLine.trim().replace(/^;+|;+$/g, '').trim();
+    const line = rawLine.trim();
     if (!line) continue;
     const separator = NAME_DETAIL_SPLIT.exec(line);
     const names = separator ? line.slice(0, separator.index) : line;
