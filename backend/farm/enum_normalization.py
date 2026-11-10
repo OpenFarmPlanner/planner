@@ -93,6 +93,43 @@ def normalize_choice_value(field_name: str, value: object) -> object:
         }
         return mapping.get(text, text)
 
+    if field_name == 'light_requirement':
+        mapping = {
+            'full sun': 'full_sun', 'sun': 'full_sun', 'sonne': 'full_sun', 'sonnig': 'full_sun',
+            'vollsonne': 'full_sun',
+            'partial shade': 'partial_shade', 'part shade': 'partial_shade',
+            'halbschatten': 'partial_shade', 'halbschattig': 'partial_shade',
+            'shade': 'shade', 'schatten': 'shade', 'schattig': 'shade',
+        }
+        return mapping.get(text, text)
+
+    if field_name == 'water_requirement':
+        mapping = {
+            'low': 'low', 'niedrig': 'low', 'gering': 'low',
+            'medium': 'medium', 'mittel': 'medium',
+            'high': 'high', 'hoch': 'high',
+        }
+        return mapping.get(text, text)
+
+    if field_name == 'life_cycle':
+        mapping = {
+            'annual': 'annual', 'einjährig': 'annual', 'einjaehrig': 'annual',
+            'biennial': 'biennial', 'zweijährig': 'biennial', 'zweijaehrig': 'biennial',
+            'perennial': 'perennial', 'mehrjährig': 'perennial', 'mehrjaehrig': 'perennial',
+            'ausdauernd': 'perennial',
+        }
+        return mapping.get(text, text)
+
+    if field_name == 'winter_hardiness':
+        mapping = {
+            'hardy': 'hardy', 'winterhart': 'hardy', 'yes': 'hardy', 'ja': 'hardy',
+            'with protection': 'with_protection', 'with winter protection': 'with_protection',
+            'mit winterschutz': 'with_protection', 'bedingt winterhart': 'with_protection',
+            'not hardy': 'not_hardy', 'nicht winterhart': 'not_hardy', 'no': 'not_hardy',
+            'nein': 'not_hardy',
+        }
+        return mapping.get(text, text)
+
     if field_name == 'seed_rate_unit':
         return normalize_seed_rate_unit(text) or text
 

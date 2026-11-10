@@ -688,6 +688,7 @@ describe('CropDetail Component', () => {
       'Mischkultur',
       'Zeitplanung',
       'Keimung',
+      'Standort und Pflanzengesundheit',
       'Zeiträume',
       'Aufgabenvorlagen',
       'Abstände',

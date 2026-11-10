@@ -713,7 +713,7 @@ botanical one:
 Ambiguous terms are aliases of *every* candidate rather than being forced onto
 one: `Peperoni` maps to Paprika, Chili and Pfefferoni, `Fisole(n)` to Busch-,
 Stangen- and Grüne Bohne. The picker then offers all of them, and because an
-alias hit counts as a strong identity match, the "als neue Kulturart
+alias hit counts as a strong identity match, the "Neue Kulturart
 vorschlagen" entry disappears (`hasStrongCropSpeciesIdentityMatch`).
 
 **Why a species search result matched.** Users who named their crop by a synonym have to recognise the official species
@@ -1051,6 +1051,15 @@ planning calculations and the UI resolve it identically:
   with differing supplier, notes, timing windows or companions. No values are
   merged. `duplicate_count` is a subset of `skipped_count`; the result message
   reports duplicates separately from unconfirmed existing-crop updates.
+- Both steps of that import show progress, since a long list can take
+  seconds: after a file is chosen the start dialog stays open with a spinner
+  ("Importvorschau wird vorbereitet…") while the file is read and previewed,
+  accepts no other file and cannot be closed; it hands over to the preview
+  once that is ready. During apply the preview stays visible, "Import
+  starten" turns into a disabled "Kulturen werden importiert…" with a
+  spinner and "Schließen" is locked. A failed request leaves the previewed
+  entries in place for a retry. There is no per-row progress to report (one
+  request each), so both indicators are indeterminate.
 - The crops page's spreadsheet import (`services/crop_import/spreadsheet.py`)
   has no species column: a new row is linked to the species its name resolves
   to through `find_species_by_common_name`, as the crop form and the demo
@@ -1311,6 +1320,34 @@ supplier's offer.
   trait filter of [the RFC](rfc-variety-trade-names.md#71-variety-list-with-trait-filter),
   which is not built. "Unbekannt" is its own option, so a Sorte without a value
   is never treated as a different type. Only rows with a variety match.
+
+### Site, life cycle and plant health
+
+Five descriptive crop fields on `Crop` and `PublicCrop` (#838):
+`light_requirement` (`full_sun` / `partial_shade` / `shade`),
+`water_requirement` (`low` / `medium` / `high`), `life_cycle` (`annual` /
+`biennial` / `perennial`), `winter_hardiness` (`hardy` / `with_protection` /
+`not_hardy`) and the free text `pests_diseases`. Blank means unknown for all of
+them.
+
+- **Inherited, not species-invariant.** They are in `CROP_INHERITABLE_FIELDS`
+  (and the frontend's `VARIETY_INHERITABLE_FIELDS`): a Sorte shows its Kultur's
+  value until it sets its own, because varieties can differ (a more
+  winter-hardy leek, a variety resistant to a disease). They are not locked on
+  linked Sorten the way `crop_family` is.
+- **Library.** Normal copy fields (`CROP_COPY_FIELDS`,
+  `PUBLIC_CROP_EDITABLE_FIELDS`, proposable), so publish, import, diff, pull,
+  push, pinning and revisions follow the 4-case update model. Older revisions
+  without the keys restore as blank.
+- **Spreadsheet and API.** One column each, with localized values in every UI
+  language and German/English synonyms on import (`enum_normalization.py`,
+  `spreadsheetColumns.ts`); described in the agent API field specs.
+- **Not planning checks (yet).** The checks sketched in #838 need data that does
+  not exist: bed neighbours (shared pests across adjacent beds), frost dates per
+  location (#872, winter hardiness), and light/water attributes of beds or
+  fields (site). A perennial occupying its bed beyond the season is a change to
+  the occupancy and rotation model. Each is a follow-up; the fields only
+  describe the crop for now.
 
 ### Project-only crop data
 
@@ -1649,7 +1686,11 @@ the name the user actually typed. The single exception is an exact
 (case-insensitive) hit on an existing name — proposing that can only be
 rejected server-side, so the entry disappears. Being a real option rather
 than a button in the empty-state slot also makes it keyboard-reachable, and a
-divider separates it from the regular hits above it. A failed proposal
+divider separates it from the regular hits above it. It is styled as an action
+rather than a hit: a green add icon, the short bold label "Neue Kulturart
+vorschlagen" with the typed name on a second line, on the subtle surface
+background. Its accessible name is the full sentence ("„Yacon“ als neue
+Kulturart vorschlagen"), so a screen reader announces the name in context. A failed proposal
 surfaces as the field's `error`/`helperText`.
 
 The proposal is **not** sent when that entry is picked. Picking it only puts
@@ -1702,6 +1743,18 @@ translation: `synonyms` and `regional_names` that a request leaves out keep
 their stored values (for example aliases written through the crop library API
 before review), while a field that is sent, even empty, replaces the stored
 one.
+
+The moderation queue's approval dialog also lets the moderator correct the
+Latin name (`scientific_name`) above the language fields; `approve()` stores
+it when the request sends one and leaves it untouched when it does not (bulk
+approval). A Latin name is deliberately **not** a species identity — cabbage,
+kale and kohlrabi are all *Brassica oleracea* — so the duplicate check above
+still runs on the common names only. Instead, an edited Latin name that a
+published species already carries is answered once with a 409
+`shared_scientific_name` listing those species; the dialog shows them in a
+warning, the button turns into "Trotzdem annehmen", and the repeated request
+carries `confirm_shared_scientific_name`. Editing the name again drops the
+confirmation.
 
 Both approval forms (the moderation queue's dialog and the relink dialog
 below) use the shared `SpeciesApprovalFields`: per language the common name and

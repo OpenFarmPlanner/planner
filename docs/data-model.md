@@ -109,6 +109,11 @@ erDiagram
   without a `FieldLayout` (e.g. just added in the list view) is drawn next to
   the location's positioned fields (`placeFieldRects`); only when none has a
   position do all fields use the default stacked arrangement.
+  Inside a field, beds can only be placed in its usable area
+  (`getFieldUsableArea` in `graphicalFieldsGeometry.ts`): a border and the
+  label strip at the top stay free. The view paints that margin light grey
+  and the usable area white, from the same helper the placement clamp uses,
+  so drawing and placement rules cannot drift apart.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's
@@ -308,6 +313,14 @@ ranges, multiple germination requirements and pre-treatment text. These are
 regular inheritable fields on project varieties and participate in library
 sync and local pinning. Planning emergence dates and hints are calculated,
 never stored. See [Germination](./germination.md) for the field contract.
+
+## Site, life cycle and plant health
+
+`Crop` and `PublicCrop` also store optional, descriptive `light_requirement`,
+`water_requirement`, `life_cycle`, `winter_hardiness` (choice fields, blank =
+unknown) and `pests_diseases` (text). Like germination they are inheritable
+and part of library sync; no planning check reads them yet. See
+[crop-library-architecture.md](./crop-library-architecture.md#site-life-cycle-and-plant-health).
 
 Task synchronization (#894) retains generated deletion identities in server-owned
 `deleted_at` (hidden from task API reads), and uses SET_NULL for the planting-plan

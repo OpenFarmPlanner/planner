@@ -149,6 +149,90 @@ def test_seed_demand_localizes_linked_crop_species_name(api_client: APIClient, b
     assert row['variety'] == 'Hangdown'
 
 
+def _create_kultur_and_sorte(
+    project: Project, *, kultur_values: dict, sorte_values: dict,
+) -> tuple[Crop, Crop]:
+    """A general Kultur and a Sorte of the same species, as the crop form makes them."""
+    species = CropSpecies.objects.create(
+        name=f'Seed demand inheritance species {len(kultur_values)}-{len(sorte_values)}',
+    )
+    kultur = Crop.objects.create(
+        name='Möhre', variety='', crop_species=species, project=project,
+        growth_duration_days=90, harvest_duration_days=14, **kultur_values,
+    )
+    sorte = Crop.objects.create(
+        name='Möhre', variety='Nantaise', crop_species=species, project=project,
+        cultivation_types=[], **sorte_values,
+    )
+    return kultur, sorte
+
+
+@pytest.mark.django_db
+def test_seed_demand_uses_the_seed_rate_a_sorte_inherits_from_its_kultur(
+    api_client: APIClient, bed: Bed,
+):
+    _, sorte = _create_kultur_and_sorte(
+        bed.project,
+        kultur_values={
+            'cultivation_types': ['direct_sowing'],
+            'seed_rate_direct_value': 10,
+            'seed_rate_direct_unit': 'g_per_m2',
+            'sowing_calculation_safety_percent_direct': 10,
+        },
+        sorte_values={},
+    )
+    _create_plan(sorte, bed, 5)
+    _create_supplier_data(sorte, 25, 'g')
+
+    row = api_client.get('/openfarmplanner/api/seed-demand/').json()['results'][0]
+
+    assert row['crop_id'] == sorte.id
+    assert row['calculation_blockers'] == []
+    assert row['required_amount_value'] == pytest.approx(55.0)
+
+
+@pytest.mark.django_db
+def test_seed_demand_prefers_the_sortes_own_seed_rate(api_client: APIClient, bed: Bed):
+    _, sorte = _create_kultur_and_sorte(
+        bed.project,
+        kultur_values={
+            'cultivation_types': ['direct_sowing'],
+            'seed_rate_direct_value': 10,
+            'seed_rate_direct_unit': 'g_per_m2',
+        },
+        sorte_values={'seed_rate_direct_value': 2, 'seed_rate_direct_unit': 'g_per_m2'},
+    )
+    _create_plan(sorte, bed, 5)
+
+    row = api_client.get('/openfarmplanner/api/seed-demand/').json()['results'][0]
+
+    assert row['required_amount_value'] == pytest.approx(10.0)
+
+
+@pytest.mark.django_db
+def test_seed_demand_converts_with_the_inherited_thousand_kernel_weight(
+    api_client: APIClient, bed: Bed,
+):
+    _, sorte = _create_kultur_and_sorte(
+        bed.project,
+        kultur_values={
+            'cultivation_types': ['direct_sowing'],
+            'seed_rate_direct_value': 1,
+            'seed_rate_direct_unit': 'g_per_m2',
+            'thousand_kernel_weight_g': 2,
+        },
+        sorte_values={},
+    )
+    _create_plan(sorte, bed, 5)
+    # Seed-count packages: 5 g at 2 g per 1000 seeds is 2500 seeds.
+    _create_supplier_data(sorte, 1000, 'seeds')
+
+    row = api_client.get('/openfarmplanner/api/seed-demand/').json()['results'][0]
+
+    assert row['package_blocker'] is None
+    assert row['package_suggestion']['pack_count'] == 3
+
+
 @pytest.mark.django_db
 def test_seed_demand_applies_germination_rate(api_client: APIClient, bed: Bed):
     crop = Crop.objects.create(

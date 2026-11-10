@@ -49,6 +49,10 @@ CULTIVATION_TYPE_VALUES = tuple(value for value, _ in Crop.CULTIVATION_TYPE_CHOI
 NUTRIENT_DEMAND_VALUES = tuple(value for value, _ in Crop.NUTRIENT_DEMAND_CHOICES)
 HARVEST_METHOD_VALUES = tuple(value for value, _ in Crop.HARVEST_METHOD_CHOICES)
 SEED_TYPE_VALUES = tuple(value for value, _ in Crop.SEED_TYPE_CHOICES)
+LIGHT_REQUIREMENT_VALUES = tuple(value for value, _ in Crop.LIGHT_REQUIREMENT_CHOICES)
+WATER_REQUIREMENT_VALUES = tuple(value for value, _ in Crop.WATER_REQUIREMENT_CHOICES)
+LIFE_CYCLE_VALUES = tuple(value for value, _ in Crop.LIFE_CYCLE_CHOICES)
+WINTER_HARDINESS_VALUES = tuple(value for value, _ in Crop.WINTER_HARDINESS_CHOICES)
 
 # The project's own seed-rate vocabulary is the only accepted API vocabulary.
 # Synonyms are normalized on the way in (see units.normalize_seed_rate_unit_input)
@@ -356,6 +360,26 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
               enum_values=('cold', 'frost', 'light', 'dark')),
     FieldSpec(name='germination_pretreatment', kind=KIND_STRING,
               description='Seed pre-treatment instructions.', example='Chill for four weeks.'),
+    FieldSpec(name='pests_diseases', kind=KIND_STRING,
+              description='Pests and diseases to watch for, as free text.',
+              example='Carrot fly; cover with insect netting.',
+              input_aliases={'pests_diseases': None}),
+    FieldSpec(name='light_requirement', kind=KIND_ENUM,
+              description='Light the crop needs on its site.', example='full_sun',
+              enum_values=LIGHT_REQUIREMENT_VALUES,
+              input_aliases={'light_requirement': None}),
+    FieldSpec(name='water_requirement', kind=KIND_ENUM,
+              description='Water the crop needs.', example='medium',
+              enum_values=WATER_REQUIREMENT_VALUES,
+              input_aliases={'water_requirement': None}),
+    FieldSpec(name='life_cycle', kind=KIND_ENUM,
+              description='Annual, biennial or perennial.', example='annual',
+              enum_values=LIFE_CYCLE_VALUES,
+              input_aliases={'life_cycle': None}),
+    FieldSpec(name='winter_hardiness', kind=KIND_ENUM,
+              description='Whether the crop survives winter outdoors.', example='hardy',
+              enum_values=WINTER_HARDINESS_VALUES,
+              input_aliases={'winter_hardiness': None}),
     FieldSpec(
         name='propagation_duration_days',
         kind=KIND_INTEGER,

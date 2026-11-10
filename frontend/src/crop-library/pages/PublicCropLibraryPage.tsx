@@ -1,6 +1,7 @@
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
 import { GERMINATION_FIELDS, formatGerminationValue } from '../../crops/germination';
+import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -1939,6 +1940,13 @@ export default function PublicCropLibraryPage() {
                       </DetailSection>
                       <Divider />
 
+                      <DetailSection title={t('siteHealth.title')}>
+                        <DetailGrid>
+                          {SITE_HEALTH_FIELDS.map((field) => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
+                        </DetailGrid>
+                      </DetailSection>
+                      <Divider />
+
                       <DetailSection title={t('library.page.sections.spacing')}>
                         <DetailGrid>
                           <DetailRow label={t('library.page.fields.distanceWithinRow')} value={formatMetersAsCentimeters(getPublicFieldValue('distance_within_row_m', selectedCrop.distance_within_row_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('distance_within_row_m')} />
@@ -1971,7 +1979,7 @@ export default function PublicCropLibraryPage() {
                       <DetailSection title={t('library.page.sections.harvest')}>
                         <DetailGrid>
                           <DetailRow label={t('library.page.fields.harvestMethod')} value={getHarvestMethodLabel(getPublicFieldValue('harvest_method', selectedCrop.harvest_method), t, t('library.page.notSpecified'))} source={getPublicFieldSource('harvest_method')} />
-                          <DetailRow label={t('library.page.fields.expectedYield')} value={getPublicFieldValue('expected_yield', selectedCrop.expected_yield) === null || getPublicFieldValue('expected_yield', selectedCrop.expected_yield) === undefined ? t('library.page.notSpecified') : `${formatLocalizedNumber(getPublicFieldValue('expected_yield', selectedCrop.expected_yield), locale, t('library.page.notSpecified'), { maximumFractionDigits: 2 })} kg`} source={getPublicFieldSource('expected_yield')} />
+                          <DetailRow label={t('library.page.fields.expectedYield')} value={getPublicFieldValue('expected_yield', selectedCrop.expected_yield) === null || getPublicFieldValue('expected_yield', selectedCrop.expected_yield) === undefined ? t('library.page.notSpecified') : `${formatLocalizedNumber(getPublicFieldValue('expected_yield', selectedCrop.expected_yield), locale, t('library.page.notSpecified'), { maximumFractionDigits: 2 })} ${getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`} source={getPublicFieldSource('expected_yield')} />
                         </DetailGrid>
                       </DetailSection>
 

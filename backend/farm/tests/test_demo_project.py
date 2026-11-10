@@ -68,6 +68,7 @@ from farm.services.seasons import build_planting_plan_copies
 from farm.services.tasks import generate_tasks_for_plans
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.timing_windows import TimingWindow, validate_timing_window, window_contains
+from farm.services.seed_demand import build_seed_demand_rows
 from farm.services.young_plant_demand import build_young_plant_demand_rows
 
 User = get_user_model()
@@ -301,6 +302,32 @@ class DemoProjectServiceTests(TestCase):
         # Both broccoli beds share a row when 20 and 22 April fall in one ISO week.
         self.assertEqual(plans_by_crop, Counter({'Brokkoli': 2, 'Tomate': 1}))
         self.assertTrue(all(row['plant_count'] for row in rows))
+
+    def test_demo_project_shows_a_computed_seed_demand_for_every_sown_crop(self) -> None:
+        """The seed demand demonstrates real numbers, not a page of "not calculable".
+
+        Varieties count with the seed rate they inherit from their Kultur.
+        Potatoes (tubers) and strawberries (planted) deliberately have no seed
+        rate; field crops without a supplier show the "assign a supplier" state.
+        """
+        result = create_or_reset_demo_project()
+        season = Season.objects.get(
+            project=result.project, start_date__year=demo_current_year(),
+        )
+
+        rows = build_seed_demand_rows(
+            project=result.project, selected_supplier_by_crop={},
+            language_code='de', season_id=season.id,
+        )
+
+        not_calculable = {
+            row['crop_name'] for row in rows if row['required_amount_value'] is None
+        }
+        self.assertEqual(not_calculable, {'Erdbeere', 'Kartoffel'})
+        without_supplier = {row['crop_name'] for row in rows if not row['supplier_options']}
+        self.assertTrue({'Buschbohne', 'Lauch', 'Zuckermais'} <= without_supplier)
+        with_packages = [row for row in rows if row['package_suggestion']]
+        self.assertGreaterEqual(len(with_packages), 3)
 
     def test_create_or_reset_demo_project_replaces_project_data(self) -> None:
         result = create_or_reset_demo_project()

@@ -5,6 +5,7 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
  */
 
 import { GERMINATION_FIELDS, formatGerminationValue } from './germination';
+import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from './siteHealth';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ref } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
@@ -1226,6 +1227,23 @@ const detailSectionGridSx = {
             </Box>
             <Divider sx={{ mb: 2.5 }} />
 
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>{t('siteHealth.title')}</Typography>
+              <Box sx={detailSectionGridSx}>
+                {SITE_HEALTH_FIELDS.map((field) => (
+                  <Box key={field} sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin(field)}>
+                      <Typography sx={[getOwnValueSx(field) ?? {}, { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }]}>
+                        {formatSiteHealthValue(field, getCropValue(field, selectedCrop[field]), t)}
+                      </Typography>
+                    </ValueWithLibraryPin>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+            <Divider sx={{ mb: 2.5 }} />
+
             <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
 
             <Divider sx={{ mb: 2.5 }} />
@@ -1354,7 +1372,7 @@ const detailSectionGridSx = {
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('expected_yield')}>
                       <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
-                        {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {t('detail.units.kilograms')}
+                        {formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>

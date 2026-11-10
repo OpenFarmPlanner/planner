@@ -185,7 +185,7 @@ describe('CropSpeciesPicker', () => {
       expect(options.map((option) => option.textContent)).toEqual([
         'Lauch Synonym: Porree',
         'Portulak Ähnlicher Name',
-        '„Porr“ als neue Kulturart vorschlagen',
+        'Neue Kulturart vorschlagen„Porr“',
       ]);
     });
 
@@ -220,6 +220,18 @@ describe('CropSpeciesPicker', () => {
 
       expect(await screen.findByRole('option', { name: /als neue Kulturart vorschlagen/ }))
         .toBeInTheDocument();
+    });
+
+    it('shows the action as a short label with the typed name below it', async () => {
+      const user = userEvent.setup();
+      setup();
+
+      await user.type(field(), 'Yacon');
+
+      const option = await screen.findByTestId('propose-species-option');
+      expect(within(option).getByText('Neue Kulturart vorschlagen')).toBeInTheDocument();
+      expect(within(option).getByText('„Yacon“')).toBeInTheDocument();
+      expect(within(option).getByTestId('AddCircleOutlineOutlinedIcon')).toBeInTheDocument();
     });
 
     it('stays away while the typed name is an existing species', async () => {
@@ -294,6 +306,17 @@ describe('CropSpeciesPicker', () => {
       // browses away from leaves no stray proposal behind.
       expect(onProposalNameChange).toHaveBeenLastCalledWith('Yacon');
       expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('can be chosen with the keyboard alone', async () => {
+      const user = userEvent.setup();
+      const { onProposalNameChange } = setup();
+
+      await user.type(field(), 'Yacon');
+      await screen.findByTestId('propose-species-option');
+      await user.keyboard('{ArrowDown}{Enter}');
+
+      expect(onProposalNameChange).toHaveBeenLastCalledWith('Yacon');
     });
 
     it('keeps the proposed name in the field afterwards', async () => {

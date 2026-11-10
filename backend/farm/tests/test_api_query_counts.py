@@ -362,6 +362,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/crop-supplier-data/', 5, expected_rows=ROW_COUNT + 3,
         )
 
+    def test_seed_demand_list_query_count(self):
+        """One inheritance index for all rows, not a general-Kultur lookup per Sorte."""
+        self.assert_list_query_count('/openfarmplanner/api/seed-demand/', 7)
+
     def test_seed_packages_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/seed-packages/', 5)
 

@@ -312,19 +312,28 @@ describe('crop form UI sections', () => {
 
 
 
+  it('names the expected-yield unit after the chosen yield unit, and asks for it while unset', () => {
+    const { rerender } = render(<HarvestSection formData={{ harvest_method: 'per_plant' }} errors={{}} onChange={vi.fn()} t={t} />);
+    expect(screen.getByLabelText('Erwarteter Ertrag (kg pro Pflanze)')).toBeInTheDocument();
+
+    rerender(<HarvestSection formData={{}} errors={{}} onChange={vi.fn()} t={t} />);
+    expect(screen.getByLabelText('Erwarteter Ertrag')).toBeInTheDocument();
+    expect(screen.getByText('Wähle zuerst die Ertragseinheit.')).toBeInTheDocument();
+  });
+
   it('renders HarvestSection and parses expected yield input including empty value', () => {
     const onChange = vi.fn();
 
     render(
       <HarvestSection
-        formData={{ expected_yield: 3.5 }}
+        formData={{ expected_yield: 3.5, harvest_method: 'per_sqm' }}
         errors={{ expected_yield: 'Ungültig' }}
         onChange={onChange}
         t={t}
       />
     );
 
-    const yieldInput = screen.getByLabelText('Erwarteter Ertrag (kg)');
+    const yieldInput = screen.getByLabelText('Erwarteter Ertrag (kg/m²)');
     // Shown with the UI language's decimal separator in every browser, not
     // the engine's native number formatting.
     expect(yieldInput).toHaveValue('3,5');
@@ -338,7 +347,7 @@ describe('crop form UI sections', () => {
     fireEvent.change(yieldInput, { target: { value: '' } });
     expect(onChange).toHaveBeenCalledWith('expected_yield', undefined);
     expect(screen.getByText('Ungültig')).toBeInTheDocument();
-    expect(screen.getByLabelText('Erwarteter Ertrag (kg)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Erwarteter Ertrag (kg/m²)')).toBeInTheDocument();
   });
 
   it('name and variety fields enforce maxLength=200 (K-01 regression guard)', () => {

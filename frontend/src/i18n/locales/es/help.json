@@ -225,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Ayuda: Necesidad de semillas",
-      "intro": "Consulta cuántas semillas necesitas para los cultivos planificados. Las cantidades se calculan a partir de los datos de los cultivos, las superficies y las series.\n\nLos trasplantes de plantel comprado no se incluyen aquí; los encuentras en la necesidad de plantel.",
+      "intro": "Aquí ves cuánta semilla necesitan los planes de cultivo de la temporada activa: para la siembra directa y para los trasplantes de plantel propio. La cantidad resulta de la dosis de siembra del cultivo y de la superficie prevista.\n\nLos trasplantes de plantel comprado no se incluyen aquí; los encontrarás en la necesidad de plantel. Cuándo sembrar lo muestra la vista Semillero del calendario de cultivos.",
       "symbolsTitle": "Iconos y controles",
       "symbols": {
         "supplierSelect": "Definir el proveedor por cultivo",
@@ -234,7 +234,7 @@
     },
     "youngPlantDemand": {
       "title": "Ayuda: Necesidad de plantel",
-      "intro": "Aquí ves cuántas plantas de plantel debes pedir para los trasplantes de plantel comprado de la temporada activa, agrupadas por cultivo, variedad y semana de trasplante.\n\nLa cantidad se calcula a partir de la superficie de cada serie y de las distancias entre plantas y entre filas del cultivo. La reserva por pérdidas se redondea a plantas enteras.",
+      "intro": "Aquí ves cuánto plantel debes pedir para los trasplantes de plantel comprado de la temporada activa, agrupados por cultivo, variedad y semana de trasplante. Para los trasplantes de plantel propio necesitas semillas, consulta la necesidad de semillas.\n\nEl número resulta de la superficie del plan y de las distancias entre plantas y entre hileras del cultivo. La reserva para pérdidas se redondea a plantas enteras.",
       "symbolsTitle": "Símbolos y controles",
       "symbols": {
         "expand": "Mostrar u ocultar las series correspondientes"
@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Ayuda: Resumen de rendimientos",
-      "intro": "El resumen de rendimientos muestra las cantidades de cosecha previstas según tus series de la temporada activa.\n\nLimita la vista a un cultivo o cambia entre semanas y meses en «Vista». Pasa el ratón sobre una barra para ver el periodo, el cultivo y la cantidad de cosecha.",
+      "intro": "El resumen de rendimiento es una previsión: reparte las cosechas previstas de los planes de cultivo de la temporada activa a lo largo de sus periodos de cosecha. Se basa en la superficie o el número de plantas previsto y en el rendimiento previsto del cultivo por m² o por planta. Las cosechas reales no se registran.\n\nLimita la vista a un cultivo o cambia entre semanas y meses en «Vista». Pasa el cursor sobre una barra para ver el periodo, el cultivo y la cantidad cosechada.",
       "points": []
     }
   }

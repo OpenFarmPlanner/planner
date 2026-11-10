@@ -101,6 +101,8 @@
       "centimeters": "cm",
       "grams": "g",
       "kilograms": "kg",
+      "kgPerSqm": "kg/m²",
+      "kgPerPlant": "kg pro Pflanze",
       "percent": "%"
     },
     "boolean": {
@@ -263,9 +265,10 @@
     "yieldUnitPerPlant": "Pro Pflanze",
     "yieldUnitPerSqm": "Pro m²",
     "expectedYield": "Erwarteter Ertrag",
-    "expectedYieldWithUnit": "Erwarteter Ertrag (kg)",
-    "expectedYieldPlaceholder": "z.B. 500",
-    "expectedYieldUnit": "kg",
+    "expectedYieldPerSqm": "Erwarteter Ertrag (kg/m²)",
+    "expectedYieldPerPlant": "Erwarteter Ertrag (kg pro Pflanze)",
+    "expectedYieldChooseUnit": "Wähle zuerst die Ertragseinheit.",
+    "expectedYieldPlaceholder": "z. B. 3,5",
     "expectedYieldError": "Erwarteter Ertrag muss ≥ 0 sein",
     "distanceWithinRowCm": "Abstand in der Reihe (cm)",
     "distanceWithinRowCmPlaceholder": "z.B. 40",
@@ -428,10 +431,11 @@
       }
     },
     "selectSupplier": "Lieferant auswählen",
-    "createSupplierAction": "Lieferant hinzufügen",
-    "editCropAction": "Kultur bearbeiten",
+    "createSupplierAction": "Lieferant anlegen",
     "noSupplierData": "Keine Lieferantendaten vorhanden",
     "noSupplierAvailable": "Keine Lieferantendaten hinterlegt",
+    "noSupplierInProject": "Noch kein Lieferant angelegt",
+    "assignSupplierAction": "Lieferant zuordnen",
     "noSupplierConfiguredTooltip": "Für diese Kultur ist noch kein Lieferant mit Bestellinformationen hinterlegt. Ergänze einen Lieferanten bei der Kultur, um eine Packungsempfehlung zu erhalten.",
     "supplierNotSelectedTooltip": "Für diese Kultur ist noch kein Lieferant ausgewählt. Wähle einen Lieferanten in der Spalte „Lieferant“, damit die passende Packungsgröße berechnet werden kann.",
     "noPackagesAvailable": "Noch nicht hinterlegt",
@@ -673,6 +677,8 @@
     "skippedRows_other": "{{count}} Zeilen ohne gültigen Namen wurden übersprungen.",
     "warnings": "Hinweise",
     "start": "Import starten",
+    "preparingPreview": "Importvorschau wird vorbereitet…",
+    "importing": "Kulturen werden importiert…",
     "close": "Schließen",
     "success": "Import erfolgreich",
     "created_one": "{{count}} neue Kultur erstellt",
@@ -1118,6 +1124,10 @@
         "empty": "Keine offenen Kulturart-Vorschläge.",
         "approveDialogTitle": "Kulturart annehmen",
         "approveDialogIntro": "Prüfe die öffentlichen Namen für „{{name}}“. Ein Name ist in jeder Sprache Pflicht, bevor die Kulturart veröffentlicht wird.",
+        "scientificNameLabel": "Lateinischer Name",
+        "scientificNameFamily": "Pflanzenfamilie: {{family}}",
+        "sharedScientificName": "Diesen lateinischen Namen tragen bereits: {{names}}. Mehrere Kulturarten können zur selben Art gehören (etwa Kohlrabi und Grünkohl). Prüfe die Angabe und nimm die Kulturart dann an.",
+        "approveAnyway": "Trotzdem annehmen",
         "commonNameLabel": "Name ({{language}})",
         "regionalName": {
           "austria": "Name in Österreich",
@@ -1426,7 +1436,9 @@
     },
     "speciesPicker": {
       "label": "Offizielle Kulturart",
-      "proposeInline": "„{{name}}“ als neue Kulturart vorschlagen",
+      "proposeInline": "Neue Kulturart vorschlagen",
+      "proposeInlineName": "„{{name}}“",
+      "proposeInlineLabel": "„{{name}}“ als neue Kulturart vorschlagen",
       "noOptions": "Keine passende offizielle Kulturart gefunden.",
       "pendingOptionSuffix": "{{name}} · Vorschlag in Prüfung",
       "proposingHelp": "Neue Kulturart wird vorgeschlagen: {{name}}",
@@ -1726,6 +1738,39 @@
     "propagationShort": "Anzuchtdauer kürzer als die Keimdauer.",
     "invalidNumber": "Bitte eine gültige Zahl eingeben; Tage müssen ganze, nicht negative Zahlen sein.",
     "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen."
+  },
+  "siteHealth": {
+    "title": "Standort und Pflanzengesundheit",
+    "pestsPlaceholder": "z. B. Möhrenfliege: mit Kulturschutznetz abdecken",
+    "fields": {
+      "light_requirement": "Lichtbedarf",
+      "water_requirement": "Wasserbedarf",
+      "life_cycle": "Lebensdauer",
+      "winter_hardiness": "Winterhärte",
+      "pests_diseases": "Schädlinge und Krankheiten"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Sonnig",
+        "partial_shade": "Halbschattig",
+        "shade": "Schattig"
+      },
+      "water_requirement": {
+        "low": "Gering",
+        "medium": "Mittel",
+        "high": "Hoch"
+      },
+      "life_cycle": {
+        "annual": "Einjährig",
+        "biennial": "Zweijährig",
+        "perennial": "Mehrjährig"
+      },
+      "winter_hardiness": {
+        "hardy": "Winterhart",
+        "with_protection": "Mit Winterschutz",
+        "not_hardy": "Nicht winterhart"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Aufgabenvorlagen",

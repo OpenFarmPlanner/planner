@@ -9,7 +9,7 @@ import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import { mergeVarietyFieldSx } from '../varietyValueAccent';
 import { GERMINATION_NUMBER_FIELDS, GERMINATION_TYPES, propagationShorterThanGermination } from '../germination';
-import { formGridFieldSx, formGridSx } from './styles';
+import { formGridCaptionedGroupSx, formGridDoubleColumnSx, formGridFieldSx, formGridSx, formRangeInputsSx } from './styles';
 
 type NumericField = typeof GERMINATION_NUMBER_FIELDS[number];
 
@@ -27,8 +27,8 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldTool
     const source = getFieldTooltipProps?.(field);
     const pin = getFieldPinProps?.(field);
     const days = field.includes('days');
-    const label = t(field === 'germination_temperature_min_c' ? `germination.fields.${field}`
-      : field.endsWith('_min_c') || field.endsWith('_min') ? 'germination.from' : 'germination.to');
+    const label = field === 'germination_temperature_min_c' ? undefined
+      : t(field.endsWith('_min_c') || field.endsWith('_min') ? 'germination.from' : 'germination.to');
     const props = {
       sx: mergeVarietyFieldSx(formGridFieldSx, source?.sx, pin?.fieldSx),
       label, value: formData[field] ?? '', error: Boolean(errors[field]), helperText: errors[field],
@@ -53,19 +53,22 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldTool
     <>
       <Typography variant="h6" sx={{ mt: 1 }}>{t('germination.title')}</Typography>
       <Box sx={formGridSx}>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={formGridCaptionedGroupSx}>
           <Typography variant="body2" sx={{ mb: 1 }}>{t('germination.optimalTemperature')}</Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>
+          <Box sx={formRangeInputsSx}>
             {numberInput('germination_temperature_optimal_min_c')}{numberInput('germination_temperature_optimal_max_c')}
           </Box>
         </Box>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={formGridCaptionedGroupSx}>
           <Typography variant="body2" sx={{ mb: 1 }}>{t('germination.days')}</Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.5 }}>
+          <Box sx={formRangeInputsSx}>
             {numberInput('germination_days_min')}{numberInput('germination_days_max')}
           </Box>
         </Box>
-        {numberInput('germination_temperature_min_c')}
+        <Box sx={formGridCaptionedGroupSx}>
+          <Typography variant="body2" sx={{ mb: 1 }}>{t('germination.fields.germination_temperature_min_c')}</Typography>
+          {numberInput('germination_temperature_min_c')}
+        </Box>
         <VarietyFieldTooltip tooltipTitle={typesSource?.tooltipTitle}>
           <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, typesSource?.sx, typesPin?.fieldSx)}>
             <InputLabel id="germination-types-label">{t('germination.fields.germination_types')}</InputLabel>
@@ -79,7 +82,7 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldTool
           </FormControl>
         </VarietyFieldTooltip>
         <VarietyFieldTooltip tooltipTitle={treatmentSource?.tooltipTitle}>
-          <TextField sx={mergeVarietyFieldSx(formGridFieldSx, treatmentSource?.sx, treatmentPin?.fieldSx)}
+          <TextField sx={mergeVarietyFieldSx(formGridDoubleColumnSx, treatmentSource?.sx, treatmentPin?.fieldSx)}
             label={t('germination.fields.germination_pretreatment')} multiline minRows={2}
             value={formData.germination_pretreatment ?? ''} onChange={(event) => onChange('germination_pretreatment', event.target.value)}
             slotProps={{ input: { endAdornment: treatmentPin?.endAdornment } }} />

@@ -103,6 +103,8 @@
       "centimeters": "cm",
       "grams": "g",
       "kilograms": "kg",
+      "kgPerSqm": "kg/m²",
+      "kgPerPlant": "kg par plant",
       "percent": "%"
     },
     "boolean": {
@@ -268,9 +270,10 @@
     "yieldUnitPerPlant": "Par plant",
     "yieldUnitPerSqm": "Par m²",
     "expectedYield": "Rendement prévu",
-    "expectedYieldWithUnit": "Rendement prévu (kg)",
-    "expectedYieldPlaceholder": "p. ex. 500",
-    "expectedYieldUnit": "kg",
+    "expectedYieldPerSqm": "Rendement prévu (kg/m²)",
+    "expectedYieldPerPlant": "Rendement prévu (kg par plant)",
+    "expectedYieldChooseUnit": "Choisissez d'abord l'unité de rendement.",
+    "expectedYieldPlaceholder": "p. ex. 3,5",
     "expectedYieldError": "Le rendement prévu doit être ≥ 0",
     "distanceWithinRowCm": "Espacement sur le rang (cm)",
     "distanceWithinRowCmPlaceholder": "p. ex. 40",
@@ -436,10 +439,11 @@
       }
     },
     "selectSupplier": "Choisir un fournisseur",
-    "createSupplierAction": "Ajouter un fournisseur",
-    "editCropAction": "Modifier la culture",
+    "createSupplierAction": "Créer un fournisseur",
     "noSupplierData": "Aucune donnée fournisseur disponible",
     "noSupplierAvailable": "Aucune donnée fournisseur enregistrée",
+    "noSupplierInProject": "Aucun fournisseur créé",
+    "assignSupplierAction": "Associer un fournisseur",
     "noSupplierConfiguredTooltip": "Cette culture n'a pas encore de fournisseur avec des informations de commande. Ajoutez un fournisseur à la culture pour obtenir une suggestion de conditionnement.",
     "supplierNotSelectedTooltip": "Aucun fournisseur n'a encore été choisi pour cette culture. Choisissez un fournisseur dans la colonne « Fournisseur » afin que le conditionnement adapté puisse être calculé.",
     "noPackagesAvailable": "Pas encore renseigné",
@@ -690,6 +694,8 @@
     "skippedRows_other": "{{count}} lignes sans nom valide ont été ignorées.",
     "warnings": "Remarques",
     "start": "Lancer l'import",
+    "preparingPreview": "Préparation de l'aperçu de l'import…",
+    "importing": "Import des cultures en cours…",
     "close": "Fermer",
     "success": "Import réussi",
     "created_one": "{{count}} nouvelle culture créée",
@@ -1148,6 +1154,10 @@
         "empty": "Aucune proposition d'espèce cultivée ouverte.",
         "approveDialogTitle": "Approuver l'espèce cultivée",
         "approveDialogIntro": "Vérifiez les noms publics de « {{name}} ». Un nom est obligatoire dans chaque langue avant la publication de l'espèce cultivée.",
+        "scientificNameLabel": "Nom latin",
+        "scientificNameFamily": "Famille botanique : {{family}}",
+        "sharedScientificName": "Ce nom latin est déjà utilisé par : {{names}}. Plusieurs espèces cultivées peuvent appartenir à la même espèce botanique (par exemple le chou-rave et le chou frisé). Vérifiez le nom, puis approuvez l'espèce cultivée.",
+        "approveAnyway": "Approuver quand même",
         "commonNameLabel": "Nom ({{language}})",
         "regionalName": {
           "austria": "Nom en Autriche",
@@ -1460,7 +1470,9 @@
     },
     "speciesPicker": {
       "label": "Espèce cultivée officielle",
-      "proposeInline": "Proposer « {{name}} » comme nouvelle espèce cultivée",
+      "proposeInline": "Proposer une nouvelle espèce cultivée",
+      "proposeInlineName": "« {{name}} »",
+      "proposeInlineLabel": "Proposer « {{name}} » comme nouvelle espèce cultivée",
       "noOptions": "Aucune espèce cultivée officielle correspondante trouvée.",
       "pendingOptionSuffix": "{{name}} · Proposition en cours d'examen",
       "proposingHelp": "Une nouvelle espèce cultivée sera proposée : {{name}}",
@@ -1770,6 +1782,39 @@
     "propagationShort": "La durée en pépinière est plus courte que la durée de germination.",
     "invalidNumber": "Saisissez un nombre valide ; les jours doivent être des entiers positifs ou nuls.",
     "invalidRange": "Le maximum doit être supérieur ou égal au minimum."
+  },
+  "siteHealth": {
+    "title": "Exposition et santé des plantes",
+    "pestsPlaceholder": "p. ex. mouche de la carotte : couvrir d'un filet anti-insectes",
+    "fields": {
+      "light_requirement": "Besoin en lumière",
+      "water_requirement": "Besoin en eau",
+      "life_cycle": "Cycle de vie",
+      "winter_hardiness": "Rusticité",
+      "pests_diseases": "Ravageurs et maladies"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Plein soleil",
+        "partial_shade": "Mi-ombre",
+        "shade": "Ombre"
+      },
+      "water_requirement": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé"
+      },
+      "life_cycle": {
+        "annual": "Annuelle",
+        "biennial": "Bisannuelle",
+        "perennial": "Vivace"
+      },
+      "winter_hardiness": {
+        "hardy": "Rustique",
+        "with_protection": "Rustique avec protection hivernale",
+        "not_hardy": "Non rustique"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Modèles de tâches",

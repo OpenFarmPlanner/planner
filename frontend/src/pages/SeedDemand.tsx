@@ -21,7 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import { bedAPI, cropAPI, fieldAPI, locationAPI, plantingPlanAPI, seedDemandAPI } from '../api/api';
+import { bedAPI, cropAPI, fieldAPI, locationAPI, plantingPlanAPI, seedDemandAPI, supplierAPI } from '../api/api';
 import type { SeedDemand } from '../api/types';
 import { useTranslation } from '../i18n';
 import { ContextMenuActionItem } from '../components/contextMenu/ContextMenuActionItem';
@@ -90,6 +90,9 @@ export default function SeedDemandPage() {
   const [isFetching, setIsLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
   const [setupCounts, setSetupCounts] = useState<ProjectSetupCounts>(NO_PROJECT_SETUP);
+  // Whether a crop without supplier data needs a supplier created first or
+  // only assigned; null until loaded.
+  const [projectSupplierCount, setProjectSupplierCount] = useState<number | null>(null);
 
   // Without a project nothing is fetched, so the page reports an empty,
   // settled state. Derived during render rather than pushed into state from
@@ -176,13 +179,15 @@ export default function SeedDemandPage() {
     try {
       const response = await seedDemandAPI.list();
       setRows(response.data.results ?? []);
-      const [cropsResponse, plansResponse, locationsResponse, fieldsResponse, bedsResponse] = await Promise.all([
+      const [cropsResponse, plansResponse, locationsResponse, fieldsResponse, bedsResponse, suppliersResponse] = await Promise.all([
         cropAPI.listAll(),
         plantingPlanAPI.list(),
         locationAPI.list(),
         fieldAPI.list(),
         bedAPI.list(),
+        supplierAPI.list(),
       ]);
+      setProjectSupplierCount(suppliersResponse.data.count ?? suppliersResponse.data.results.length);
       const crops = cropsResponse.results;
       setSetupCounts({
         crops: crops.length,
@@ -539,7 +544,6 @@ export default function SeedDemandPage() {
                   : '';
                 const selectValue = supplierOptionValues.has(selectedSupplierValue) ? selectedSupplierValue : '';
                 const singleSupplierOption = supplierCount === 1 ? supplierOptions[0] : null;
-                const singleSupplierValue = singleSupplierOption ? String(singleSupplierOption.supplier_id) : '';
 
                 return (
                   <TableRow
@@ -608,28 +612,32 @@ export default function SeedDemandPage() {
                           </FormControl>
                         </Box>
                       ) : supplierCount === 1 && singleSupplierOption ? (
-                        <FormControl size="small" sx={{ minWidth: 220 }}>
-                          <Select
-                            fullWidth
-                            value={singleSupplierValue}
-                            disabled
-                            sx={{
-                              '& .MuiSelect-select': { py: 0.75 },
-                            }}
-                          >
-                            <MenuItem value={singleSupplierValue}>
-                              {singleSupplierOption.supplier_name}
-                            </MenuItem>
-                          </Select>
-                        </FormControl>
+                        // Only one supplier is assigned, so there is nothing to
+                        // choose: show it as text rather than a disabled select.
+                        <Typography variant="body2" data-testid={`seed-demand-supplier-${row.crop_id}`}>
+                          {singleSupplierOption.supplier_name}
+                        </Typography>
                       ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            {t('seedDemand.noSupplierAvailable')}
-                          </Typography>
-                          <Link component={RouterLink} to={`/app/crops?cropId=${row.crop_id}&action=edit`} underline="hover" variant="caption">
-                            {t('seedDemand.editCropAction')}
-                          </Link>
+                          {projectSupplierCount === 0 ? (
+                            <>
+                              <Typography variant="body2" color="text.secondary">
+                                {t('seedDemand.noSupplierInProject')}
+                              </Typography>
+                              <Link component={RouterLink} to="/app/suppliers?create=1" underline="hover" variant="caption">
+                                {t('seedDemand.createSupplierAction')}
+                              </Link>
+                            </>
+                          ) : (
+                            <>
+                              <Typography variant="body2" color="text.secondary">
+                                {t('seedDemand.noSupplierAvailable')}
+                              </Typography>
+                              <Link component={RouterLink} to={`/app/crops?cropId=${row.crop_id}&action=edit`} underline="hover" variant="caption">
+                                {t('seedDemand.assignSupplierAction')}
+                              </Link>
+                            </>
+                          )}
                         </Box>
                       )}
                     </TableCell>

@@ -103,6 +103,8 @@
       "centimeters": "cm",
       "grams": "g",
       "kilograms": "kg",
+      "kgPerSqm": "kg/m²",
+      "kgPerPlant": "kg por planta",
       "percent": "%"
     },
     "boolean": {
@@ -268,9 +270,10 @@
     "yieldUnitPerPlant": "Por planta",
     "yieldUnitPerSqm": "Por m²",
     "expectedYield": "Rendimiento previsto",
-    "expectedYieldWithUnit": "Rendimiento previsto (kg)",
-    "expectedYieldPlaceholder": "p. ej. 500",
-    "expectedYieldUnit": "kg",
+    "expectedYieldPerSqm": "Rendimiento previsto (kg/m²)",
+    "expectedYieldPerPlant": "Rendimiento previsto (kg por planta)",
+    "expectedYieldChooseUnit": "Elige primero la unidad de rendimiento.",
+    "expectedYieldPlaceholder": "p. ej. 3,5",
     "expectedYieldError": "El rendimiento previsto debe ser ≥ 0",
     "distanceWithinRowCm": "Distancia entre plantas (cm)",
     "distanceWithinRowCmPlaceholder": "p. ej. 40",
@@ -436,10 +439,11 @@
       }
     },
     "selectSupplier": "Seleccionar proveedor",
-    "createSupplierAction": "Añadir proveedor",
-    "editCropAction": "Editar cultivo",
+    "createSupplierAction": "Crear proveedor",
     "noSupplierData": "No hay datos del proveedor disponibles",
     "noSupplierAvailable": "No hay datos del proveedor registrados",
+    "noSupplierInProject": "Todavía no hay ningún proveedor",
+    "assignSupplierAction": "Asignar proveedor",
     "noSupplierConfiguredTooltip": "Este cultivo todavía no tiene un proveedor con información de pedido. Añade un proveedor al cultivo para obtener una sugerencia de envase.",
     "supplierNotSelectedTooltip": "Todavía no se ha seleccionado ningún proveedor para este cultivo. Elige un proveedor en la columna «Proveedor» para que se pueda calcular el tamaño de envase adecuado.",
     "noPackagesAvailable": "Todavía sin registrar",
@@ -690,6 +694,8 @@
     "skippedRows_other": "Se han omitido {{count}} filas sin nombre válido.",
     "warnings": "Avisos",
     "start": "Iniciar importación",
+    "preparingPreview": "Preparando la vista previa de la importación…",
+    "importing": "Importando cultivos…",
     "close": "Cerrar",
     "success": "Importación correcta",
     "created_one": "{{count}} cultivo nuevo creado",
@@ -1148,6 +1154,10 @@
         "empty": "No hay propuestas de especies de cultivo abiertas.",
         "approveDialogTitle": "Aprobar especie de cultivo",
         "approveDialogIntro": "Revisa los nombres públicos de «{{name}}». Se necesita un nombre en cada idioma antes de publicar la especie de cultivo.",
+        "scientificNameLabel": "Nombre latino",
+        "scientificNameFamily": "Familia botánica: {{family}}",
+        "sharedScientificName": "Este nombre latino ya lo usan: {{names}}. Varias especies de cultivo pueden pertenecer a la misma especie botánica (por ejemplo, el colinabo y la col rizada). Revisa el nombre y después aprueba la especie de cultivo.",
+        "approveAnyway": "Aprobar de todos modos",
         "commonNameLabel": "Nombre ({{language}})",
         "regionalName": {
           "austria": "Nombre en Austria",
@@ -1460,7 +1470,9 @@
     },
     "speciesPicker": {
       "label": "Especie de cultivo oficial",
-      "proposeInline": "Proponer «{{name}}» como nueva especie de cultivo",
+      "proposeInline": "Proponer una nueva especie de cultivo",
+      "proposeInlineName": "«{{name}}»",
+      "proposeInlineLabel": "Proponer «{{name}}» como nueva especie de cultivo",
       "noOptions": "No se ha encontrado ninguna especie de cultivo oficial coincidente.",
       "pendingOptionSuffix": "{{name}} · Propuesta en revisión",
       "proposingHelp": "Se propondrá una nueva especie de cultivo: {{name}}",
@@ -1770,6 +1782,39 @@
     "propagationShort": "La duración en semillero es más corta que el tiempo de germinación.",
     "invalidNumber": "Introduce un número válido; los días deben ser enteros no negativos.",
     "invalidRange": "El máximo debe ser mayor o igual que el mínimo."
+  },
+  "siteHealth": {
+    "title": "Ubicación y sanidad vegetal",
+    "pestsPlaceholder": "p. ej. mosca de la zanahoria: cubrir con malla antiinsectos",
+    "fields": {
+      "light_requirement": "Necesidad de luz",
+      "water_requirement": "Necesidad de agua",
+      "life_cycle": "Ciclo de vida",
+      "winter_hardiness": "Resistencia al frío",
+      "pests_diseases": "Plagas y enfermedades"
+    },
+    "values": {
+      "light_requirement": {
+        "full_sun": "Pleno sol",
+        "partial_shade": "Semisombra",
+        "shade": "Sombra"
+      },
+      "water_requirement": {
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta"
+      },
+      "life_cycle": {
+        "annual": "Anual",
+        "biennial": "Bienal",
+        "perennial": "Perenne"
+      },
+      "winter_hardiness": {
+        "hardy": "Resistente",
+        "with_protection": "Resistente con protección invernal",
+        "not_hardy": "No resistente"
+      }
+    }
   },
   "taskTemplates": {
     "title": "Plantillas de tareas",

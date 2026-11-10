@@ -225,7 +225,7 @@
     },
     "seedDemand": {
       "title": "Help: Seed demand",
-      "intro": "See how much seed you need for your planned crops. Quantities are calculated from crop data, areas, and planting plan entries.\n\nTransplants with bought-in plants are not included here; you find them in the young plant demand.",
+      "intro": "Here you can see how much seed the active season's planting plans need: for direct sowing and for transplants you raise yourself. The amount follows from the crop's seed rate and the planned area.\n\nTransplanting bought-in plants is not included here; you will find it under young plant demand. When to sow is shown in the propagation view of the crop calendar.",
       "symbolsTitle": "Icons and controls",
       "symbols": {
         "supplierSelect": "Set supplier per crop",
@@ -234,7 +234,7 @@
     },
     "youngPlantDemand": {
       "title": "Help: Young plant demand",
-      "intro": "This page shows how many young plants to order for the active season's transplants with bought-in plants, grouped by crop, variety and planting week.\n\nThe quantity comes from each planting plan's area and the crop's in-row and row spacing. The reserve for losses is rounded up to whole plants.",
+      "intro": "Here you can see how many young plants you need to order for the active season's bought-in transplants, grouped by crop, variety and planting week. Transplants you raise yourself need seed instead, see seed demand.\n\nThe number follows from the plan's area and the crop's plant and row spacing. The reserve for losses is rounded up to whole plants.",
       "symbolsTitle": "Symbols and controls",
       "symbols": {
         "expand": "Show or hide the underlying planting plans"
@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Help: Yield overview",
-      "intro": "The yield overview shows expected harvest quantities from your planting plans in the active season.\n\nNarrow the view down to one crop, or switch between weeks and months under “Display”. Hover over a bar to see the period, crop and harvest quantity.",
+      "intro": "The yield overview is a forecast: it spreads the expected harvest of the active season's planting plans over their harvest periods. It is based on the planned area or plant count and the crop's expected yield per m² or per plant. Actual harvests are not recorded.\n\nNarrow the view to one crop or switch between weeks and months under \"View\". Hover over a bar to see the period, crop and harvest amount.",
       "points": []
     }
   }

@@ -1141,6 +1141,23 @@ The callbacks reach the column menu and notes cells through
 rebuilds the column definitions or `slots`. Cell text highlighting works the
 same way: cells read the active terms from `SearchHighlightContext`.
 
+## Newly created rows on top (`pinCreatedRowsToTop`)
+
+Opt-in (today: Anbaupläne). When a new row is saved, `EditableDataGrid` moves
+it to the front of `stableRowOrder` instead of leaving it where the draft was
+typed, keeps it visible even when `externalFilter` would hide it (the filter
+itself is untouched), scrolls up to it and flashes it (`ofp-row-created`, the
+shared `components/feedback/highlightFlashStyles.ts`, 2.5 s; reduced motion
+holds the tint without fading). The scroll is skipped when the save was
+triggered by moving into another row, which would otherwise be pulled out from
+under the user. The pin never expires on a timer: it ends with the next
+`refreshStableRowOrder` (sort change, MUI filter change, reload), so the row
+does not jump away when the flash ends. `useCreatedRowPinning` holds the state.
+
+The page's mobile card list does the same for a plan created through the
+dialog (`pages/useCreatedPlanPin.ts`, `MobileCardList`'s `flashingId`), and
+also moves focus to the new card's actions menu so it can be edited at once.
+
 ## Row history / versioning — not a grid feature
 
 Crop version history (backed by the generic `EntityRevision` model, see
@@ -1161,7 +1178,7 @@ grid," that's new work, not exposing something that already half-exists.
   grid's own post-edit row order). `DataGrid.tsx`'s `stableRowOrder` state is
   only refreshed via `refreshStableRowOrder` on data fetch, an explicit sort
   change, or a filter change — never as a side effect of a row being
-  created/saved — which is what stops a create/rename in a sorted table from
+  created/saved (except `pinCreatedRowsToTop`, above) — which is what stops a create/rename in a sorted table from
   immediately jumping the row to its freshly-sorted position.
   `FieldsBedsHierarchy.tsx` (see below) is not `EditableDataGrid` and doesn't
   share this state, but `hierarchyUtils.ts`'s `computeHierarchyOrderSnapshot`/

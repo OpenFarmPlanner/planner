@@ -135,6 +135,7 @@ _COMPARABLE_FIELDS = [
     'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
     'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
     'germination_types', 'germination_pretreatment',
+    'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle', 'winter_hardiness',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm', 'sowing_depth_max_cm',
     'seed_rate_value', 'seed_rate_unit', 'sowing_calculation_safety_percent',

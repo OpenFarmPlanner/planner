@@ -367,7 +367,7 @@ describe('CropsPublishingWizardDialog', () => {
     expect(options.map((option) => option.textContent)).toEqual([
       'Kürbis',
       'Kürbis Butternut',
-      '„Kürb“ als neue Kulturart vorschlagen',
+      'Neue Kulturart vorschlagen„Kürb“',
     ]);
   });
 
@@ -520,7 +520,7 @@ describe('CropsPublishingWizardDialog', () => {
     const options = await findSettledOptions(2);
     expect(options.map((option) => option.textContent)).toEqual([
       'Tomate Synonym: Paradeis',
-      '„Paradei“ als neue Kulturart vorschlagen',
+      'Neue Kulturart vorschlagen„Paradei“',
     ]);
   });
 

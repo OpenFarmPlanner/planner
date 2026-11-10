@@ -7,6 +7,7 @@
 
 import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
+import { highlightFlashAnimationSx, highlightFlashKeyframesSx } from '../feedback/highlightFlashStyles';
 import { CALCULATED_COLUMN_CELL_CLASS, CALCULATED_COLUMN_HEADER_CLASS } from './calculatedColumns';
 import {
   COUPLED_FIELD_HEADER_END_CLASS,
@@ -138,6 +139,9 @@ export const dataGridSx = {
   '& .MuiDataGrid-row': {
     minHeight: 44,
   },
+  // A row the user just created, moved to the top (`pinCreatedRowsToTop`).
+  '& .ofp-row-created .MuiDataGrid-cell': highlightFlashAnimationSx,
+  ...highlightFlashKeyframesSx,
   '& .MuiDataGrid-row:hover': {
     backgroundColor: 'surface.surfaceHoverBackground',
   },

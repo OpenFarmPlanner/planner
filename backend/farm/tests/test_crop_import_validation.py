@@ -57,6 +57,38 @@ class SeedTypeImportTest(TestCase):
         self.assertIsNone(self._field(self._row()))
 
 
+class SiteHealthImportTest(TestCase):
+    """Site, life cycle and plant health import as enums (German synonyms too) and text."""
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Site Health Project', slug='site-health-project')
+
+    def _row(self, **kwargs):
+        row = {'name': 'Lauch', 'growth_duration_days': 100, 'harvest_duration_days': 50}
+        row.update(kwargs)
+        return analyze_import_payload([row], project=self.project)['items'][0]
+
+    @staticmethod
+    def _value(item, field):
+        return next(entry['api_value'] for entry in item['fields'] if entry['field'] == field)
+
+    def test_german_values_are_normalized(self):
+        item = self._row(
+            light_requirement='Halbschattig', water_requirement='hoch', life_cycle='Zweijährig',
+            winter_hardiness='Mit Winterschutz', pests_diseases='Lauchmotte',
+        )
+
+        self.assertEqual(item['errors'], [])
+        self.assertEqual(self._value(item, 'light_requirement'), 'partial_shade')
+        self.assertEqual(self._value(item, 'water_requirement'), 'high')
+        self.assertEqual(self._value(item, 'life_cycle'), 'biennial')
+        self.assertEqual(self._value(item, 'winter_hardiness'), 'with_protection')
+        self.assertEqual(self._value(item, 'pests_diseases'), 'Lauchmotte')
+
+    def test_unknown_value_blocks_the_row(self):
+        self.assertEqual(self._row(life_cycle='forever')['action'], ACTION_BLOCKED)
+
+
 class ImportAnalysisTestCase(TestCase):
     """Base with one project and small helpers for reading a preview."""
 

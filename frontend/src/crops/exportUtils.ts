@@ -31,6 +31,11 @@ export interface PortableCrop {
   germination_days_max?: Crop['germination_days_max'];
   germination_types?: Crop['germination_types'];
   germination_pretreatment?: Crop['germination_pretreatment'];
+  pests_diseases?: Crop['pests_diseases'];
+  light_requirement?: Crop['light_requirement'];
+  water_requirement?: Crop['water_requirement'];
+  life_cycle?: Crop['life_cycle'];
+  winter_hardiness?: Crop['winter_hardiness'];
 
   harvest_method?: Crop['harvest_method'];
   expected_yield?: number;
@@ -117,6 +122,11 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     germination_days_max: crop.germination_days_max ?? undefined,
     germination_types: crop.germination_types ?? [],
     germination_pretreatment: crop.germination_pretreatment ?? '',
+    pests_diseases: crop.pests_diseases ?? '',
+    light_requirement: crop.light_requirement ?? '',
+    water_requirement: crop.water_requirement ?? '',
+    life_cycle: crop.life_cycle ?? '',
+    winter_hardiness: crop.winter_hardiness ?? '',
     harvest_method: crop.harvest_method,
     expected_yield: crop.expected_yield,
     distance_within_row_cm: crop.distance_within_row_cm,

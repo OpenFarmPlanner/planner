@@ -66,6 +66,7 @@ vi.mock('@mui/x-data-grid', async () => {
     paginationModel,
     pageSizeOptions,
     sx,
+    getRowClassName,
   }: unknown) => {
     const [, forceFocusRender] = React.useState(0);
     const [editValues, setEditValues] = React.useState<Record<string, unknown>>({});
@@ -167,6 +168,7 @@ vi.mock('@mui/x-data-grid', async () => {
             role="row"
             data-id={String(row.id)}
             data-selected={rowSelectionModel?.ids?.has(row.id) ? 'true' : 'false'}
+            data-row-class={getRowClassName?.({ id: row.id, row }) ?? ''}
             data-testid={`row-${row.id}`}
           >
             <span data-testid={`mode-${row.id}`}>{rowModesModel?.[row.id]?.mode ?? GridRowModes.View}</span>
@@ -567,6 +569,59 @@ describe('EditableDataGrid', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Tab speichern 1/i })[0]);
     await waitFor(() => expect(updateSpy).toHaveBeenCalled());
     expect(updateSpy).toHaveBeenLastCalledWith(expect.any(Number), expect.objectContaining({ area_sqm: 12 }));
+  });
+
+  describe('pinCreatedRowsToTop', () => {
+    const rowOrder = () => screen.getAllByRole('row').map((row) => row.getAttribute('data-id'));
+
+    it('moves a saved new row to the top and flashes it, and keeps it there', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const props = serverBackedProps([
+        createGridRow({ id: 1, name: 'Blumen', area_sqm: 1 }),
+        createGridRow({ id: 2, name: 'Kartoffeln', area_sqm: 2 }),
+      ]);
+      render(<EditableDataGrid {...props} pinCreatedRowsToTop />);
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2']));
+
+      fireEvent.click(screen.getByLabelText('Neu'));
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2', '-1']));
+      fireEvent.click(screen.getByRole('button', { name: /Enter speichern -1/i }));
+
+      await waitFor(() => expect(rowOrder()).toEqual(['100', '1', '2']));
+      expect(screen.getByTestId('row-100')).toHaveAttribute('data-row-class', expect.stringContaining('ofp-row-created'));
+
+      await act(async () => { vi.advanceTimersByTime(3000); });
+      expect(screen.getByTestId('row-100')).not.toHaveAttribute('data-row-class', expect.stringContaining('ofp-row-created'));
+      // The flash ends, the position does not.
+      expect(rowOrder()).toEqual(['100', '1', '2']);
+    });
+
+    it('keeps a saved new row visible although the external filter would hide it', async () => {
+      const props = serverBackedProps([createGridRow({ id: 1, name: 'Blumen', area_sqm: 1 })]);
+      const externalFilter = { isRowVisible: (row: TestGridRow) => row.name === 'Blumen' };
+      render(<EditableDataGrid {...props} pinCreatedRowsToTop externalFilter={externalFilter} />);
+      await waitFor(() => expect(rowOrder()).toEqual(['1']));
+
+      fireEvent.click(screen.getByLabelText('Neu'));
+      fireEvent.click(screen.getByRole('button', { name: /Enter speichern -1/i }));
+
+      await waitFor(() => expect(rowOrder()).toEqual(['100', '1']));
+    });
+
+    it('leaves the order alone without the prop', async () => {
+      const props = serverBackedProps([
+        createGridRow({ id: 1, name: 'Blumen', area_sqm: 1 }),
+        createGridRow({ id: 2, name: 'Kartoffeln', area_sqm: 2 }),
+      ]);
+      render(<EditableDataGrid {...props} />);
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2']));
+
+      fireEvent.click(screen.getByLabelText('Neu'));
+      fireEvent.click(screen.getByRole('button', { name: /Enter speichern -1/i }));
+
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2', '100']));
+      expect(screen.getByTestId('row-100')).not.toHaveAttribute('data-row-class', expect.stringContaining('ofp-row-created'));
+    });
   });
 
   it('commits command draft values and stops row edit mode', async () => {

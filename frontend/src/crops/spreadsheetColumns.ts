@@ -1,3 +1,5 @@
+import { SITE_HEALTH_CHOICES, type SiteHealthChoiceField } from './siteHealth';
+
 export type SpreadsheetColumnDef = {
   headerKey: string;
   key: string;
@@ -49,6 +51,25 @@ export const SEED_TYPE_IMPORT: Record<string, string> = {
   'f1-hybrid': 'f1_hybrid',
   'f1 hybrid': 'f1_hybrid',
   f1_hybrid: 'f1_hybrid',
+};
+
+const SITE_HEALTH_IMPORT: Record<string, Record<string, string>> = {
+  light_requirement: {
+    full_sun: 'full_sun', 'full sun': 'full_sun', sonne: 'full_sun', sonnig: 'full_sun', vollsonne: 'full_sun',
+    partial_shade: 'partial_shade', 'partial shade': 'partial_shade', halbschatten: 'partial_shade', halbschattig: 'partial_shade',
+    shade: 'shade', schatten: 'shade', schattig: 'shade',
+  },
+  water_requirement: {
+    low: 'low', niedrig: 'low', gering: 'low', medium: 'medium', mittel: 'medium', high: 'high', hoch: 'high',
+  },
+  life_cycle: {
+    annual: 'annual', einjährig: 'annual', biennial: 'biennial', zweijährig: 'biennial',
+    perennial: 'perennial', mehrjährig: 'perennial', ausdauernd: 'perennial',
+  },
+  winter_hardiness: {
+    hardy: 'hardy', winterhart: 'hardy', with_protection: 'with_protection', 'mit winterschutz': 'with_protection',
+    'bedingt winterhart': 'with_protection', not_hardy: 'not_hardy', 'nicht winterhart': 'not_hardy',
+  },
 };
 
 export const CULTIVATION_TYPE_EXPORT: Record<string, string> = {
@@ -195,6 +216,11 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'germination_days_min', headerKey: 'germination.fields.germination_days_min', aliases: ['germination_days_min'], type: 'number' },
   { key: 'germination_days_max', headerKey: 'germination.fields.germination_days_max', aliases: ['germination_days_max'], type: 'number' },
   { key: 'germination_pretreatment', headerKey: 'germination.fields.germination_pretreatment', aliases: ['germination_pretreatment'], type: 'string' },
+  { key: 'light_requirement', headerKey: 'siteHealth.fields.light_requirement', aliases: ['licht', 'standort licht', 'light_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.light_requirement },
+  { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
+  { key: 'life_cycle', headerKey: 'siteHealth.fields.life_cycle', aliases: ['lebenszyklus', 'lebensdauer', 'life_cycle'], type: 'string', enumImport: SITE_HEALTH_IMPORT.life_cycle },
+  { key: 'winter_hardiness', headerKey: 'siteHealth.fields.winter_hardiness', aliases: ['winterhärte', 'winterhart', 'winter_hardiness'], type: 'string', enumImport: SITE_HEALTH_IMPORT.winter_hardiness },
+  { key: 'pests_diseases', headerKey: 'siteHealth.fields.pests_diseases', aliases: ['schädlinge', 'krankheiten', 'schädlinge und krankheiten', 'pests_diseases'], type: 'string' },
   { key: 'germination_temperature_optimal', headerKey: 'germination.optimalTemperature', aliases: ['keimtemperatur', 'keim-temperatur (°C)'], type: 'range', rangeFields: ['germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c'] },
   { key: 'germination_days', headerKey: 'germination.days', aliases: ['keimdauer', 'keim-dauer (Tage)'], type: 'range', rangeFields: ['germination_days_min', 'germination_days_max'] },
   { key: 'germination_types', headerKey: 'germination.fields.germination_types', aliases: ['keimverhalten', 'germination_types'], type: 'list', enumImport: { kaltkeimer: 'cold', frostkeimer: 'frost', lichtkeimer: 'light', dunkelkeimer: 'dark' } },
@@ -392,6 +418,10 @@ const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<stri
   if (columnKey === 'seed_type') return buildSeedTypeExport(t);
   if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);
+  if (columnKey in SITE_HEALTH_CHOICES) {
+    const field = columnKey as SiteHealthChoiceField;
+    return Object.fromEntries(SITE_HEALTH_CHOICES[field].map((value) => [value, t(`siteHealth.values.${field}.${value}`)]));
+  }
   if (columnKey === 'seed_rate_direct_unit' || columnKey === 'seed_rate_pre_cultivation_unit') {
     return buildSeedRateUnitExport(t);
   }

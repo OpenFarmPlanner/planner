@@ -126,6 +126,12 @@ export interface EditableDataGridProps<T extends EditableRow> {
   getInlineRowActions?: (row: T, helpers: EditableDataGridRowActionHelpers<T>) => EditableDataGridRowAction<T>[];
   showInlineRowActionMenu?: boolean;
   duplicateRow?: (row: T) => T;
+  /**
+   * Moves a row the user just created to the top, keeps it there (and visible
+   * despite an external filter) until the next sort change or reload, scrolls
+   * up to it and flashes it briefly. Off by default.
+   */
+  pinCreatedRowsToTop?: boolean;
   deleteUndoOptions?: DeleteUndoOptions;
   clipboardColumns?: EditableDataGridClipboardColumn<T>[];
   onRowsStateChange?: (rows: T[]) => void;

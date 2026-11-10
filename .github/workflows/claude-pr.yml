@@ -733,7 +733,7 @@ jobs:
           persist-credentials: false
 
       - name: Request subscription-backed Codex Security Review
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           # A linked user's identity is needed for subscription usage.
           # Prefer a dedicated token; RELEASE_PAT already serves this user.

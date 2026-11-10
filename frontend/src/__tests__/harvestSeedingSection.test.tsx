@@ -27,7 +27,7 @@ describe('HarvestSection and SeedingSection', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Pro Pflanze' }));
 
     expect(onChange).toHaveBeenCalledWith('harvest_method', 'per_plant');
-    expect(screen.getByLabelText('Erwarteter Ertrag (kg)')).toHaveAttribute('inputmode', 'decimal');
+    expect(screen.getByLabelText('Erwarteter Ertrag')).toHaveAttribute('inputmode', 'decimal');
     expect(screen.getByText('Ertragseinheit ist bei angegebenem Ertrag erforderlich')).toBeInTheDocument();
   });
 
