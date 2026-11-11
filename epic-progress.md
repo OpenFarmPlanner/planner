@@ -17,7 +17,7 @@ Stop on a blocker. Do not implement multiple issues simultaneously.
 
 | Order | Issue | Reason / overlaps | Status |
 | --- | --- | --- | --- |
-| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | In progress: `ci/1030-remove-pixel-diff` |
+| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) open; CI/review/merge pending |
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | Pending |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | Pending |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
@@ -66,8 +66,8 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: finish and validate #1030; no other P0 implementation
-has started. No PR opened or merge completed yet. Test results pending.
+Current resume point: PR #1034 for #1030 is pushed and open. Finish CI/review,
+merge and verify before #1028. No other P0 implementation has started.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -131,3 +131,37 @@ finish #1030 validation and required CI/reviews, merge and verify it, then
 continue #1028 and the remaining issues sequentially. Do not create or
 implement the next issue while this PR remains unmerged. The complete final
 integration/UX review is still pending; none of the other P0s is complete.
+
+## Cloud handoff ready
+
+PR: https://github.com/OpenFarmPlanner/planner/pull/1034
+Branch: `ci/1030-remove-pixel-diff` (pushed; base `main`).
+Implementation commit: `d2de2a69e7fb17b1e53afdff43f68af553bf1446`.
+No issue or PR has merged in this campaign yet.
+
+At the user's request to hand work to cloud promptly, local long-running
+checks were stopped for handoff: the full backend quality run remained past
+97% with no reported failures but **did not complete**; cross-browser tests
+**did not execute** because the image download repeatedly retried. These are
+unfinished checks, not passes. CI must complete the required checks, and the
+cloud should rerun appropriate checks where necessary. Production build,
+targeted lint/typecheck/syntax checks and all eight targeted Chrome tests did
+complete successfully. No application UI changed; mobile/desktop variants
+are preserved. The comprehensive final UX review remains pending.
+
+### First cloud actions
+
+1. Read AGENTS.md, CLAUDE.md and this file; select Codex High as requested.
+2. Verify connected tools or authenticated GitHub CLI can read issues/checks,
+   push branches, create PRs and merge on this repository. Environment access
+   does not itself prove those permissions; report a concrete blocker if any
+   needed capability is unavailable. Never expose credentials in output.
+3. Fetch and check out `ci/1030-remove-pixel-diff`; inspect PR #1034's current
+   head, reviews and checks, including any automatic reviewer fixes. Fix
+   failures on this branch. Do not bypass CI/protection/review requirements.
+4. Merge #1034 only once required checks/reviews pass; verify its merged SHA
+   is on refreshed `origin/main` and issue #1030 is closed.
+5. Start #1028 from that refreshed default branch on a dedicated branch.
+   Continue the recorded issue order, one complete PR cycle at a time.
+6. After all ten merge, create and test the separate final integration PR,
+   complete every consistency/scenario review above, and report limitations.
