@@ -21,6 +21,7 @@ export default defineConfig({
     // saw (requests, cookies, responses). Traces are written for failed tests
     // only, into test-results/, which e2e.yml uploads when a shard fails.
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     video: 'off',
   },
   webServer: e2eWebServers,
@@ -34,8 +35,8 @@ export default defineConfig({
       // Headless Chrome is launched with `--hide-scrollbars`, so the page never
       // gets the classic scrollbar that MUI's modal scroll lock compensates for
       // - the very thing scrollbar-layout.spec.ts is about. Dropping that flag
-      // for this project only keeps the rest of the suite (and its screenshot
-      // baselines) on the default, scrollbar-free rendering.
+      // for this project only keeps the rest of the suite on the default,
+      // scrollbar-free rendering.
       name: 'chromium-scrollbars',
       testMatch: /scrollbar-layout\.spec\.ts/,
       use: {

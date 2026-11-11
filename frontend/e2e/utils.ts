@@ -284,3 +284,12 @@ export async function waitForStableRowCount(page: Page): Promise<number> {
   expect(stableCount, 'grid row count did not settle').toBe(previousCount);
   return stableCount;
 }
+
+export async function expectNoHorizontalPageOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    body: document.body.scrollWidth - document.body.clientWidth,
+  }));
+  expect(overflow.document, 'document scrolls horizontally').toBeLessThanOrEqual(1);
+  expect(overflow.body, 'body scrolls horizontally').toBeLessThanOrEqual(1);
+}

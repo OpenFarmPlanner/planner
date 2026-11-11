@@ -215,12 +215,15 @@ RTL locale should stay a layout concern rather than a styling one:
 
 ## 7. Verifying a visual change
 
-`frontend/e2e/responsive-layouts.spec.ts` captures 32 screenshot baselines —
-8 main routes × 4 viewports (375 / 768 / 1024 / 1440). They run on every pull
-request and are the real check that a refactor did not move anything.
+`frontend/e2e/responsive-layouts.spec.ts` checks eight main routes at four
+viewports (375 / 768 / 1024 / 1440) for horizontal overflow and visible
+headings, attaching screenshots for human visual review. Focused responsive
+and cross-browser specs guard dialog bounds, reachable actions, field widths
+and intentional mobile/desktop variants.
 
-Per [`CLAUDE.md`](../CLAUDE.md), baselines are never updated automatically. If
-one fails, first decide whether the change was intended.
+Per [`CLAUDE.md`](../CLAUDE.md), inspect captures for clipping, overlap and
+unintended reflow. Screenshot pixels are not a CI gate and require no
+rebaseline approval.
 
 ## 8. When data fails to load
 

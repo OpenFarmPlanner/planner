@@ -1,5 +1,6 @@
 import { expect, test as base, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from '../e2e/utils';
+export { expectNoHorizontalPageOverflow } from '../e2e/utils';
 
 // Every page sees the same "today": mid-May of the fixture's current 2026
 // season (CURRENT_YEAR in backend/farm/e2e_cross_browser_data.py), so season
@@ -46,7 +47,7 @@ export const FIXTURE_PROJECT_NAME = 'Testgärtnerei Morgentau';
  * crops with varieties, planting plans) and waits until the app has finished
  * bootstrapping: project and season resolved and persisted, no requests in
  * flight. The suite never uses the demo project: enriching the demo must not
- * move a screenshot baseline.
+ * change the layout fixture.
  */
 export async function loginToFixtureProject(page: Page, testInfo: TestInfo): Promise<void> {
   await loginWithDeterministicProject(page, page.request, scenarioId(testInfo), {
@@ -65,20 +66,6 @@ export async function gotoAppPage(page: Page, path: string, heading: string): Pr
   await page.goto(path);
   await expect(page.getByRole('banner').getByRole('heading', { name: heading, level: 1 })).toBeVisible();
   await page.waitForLoadState('networkidle');
-}
-
-/** Topbar elements whose content is not part of the layout under test. */
-export function dynamicContentMasks(page: Page): Locator[] {
-  return [page.getByRole('button', { name: 'Benachrichtigungen' })];
-}
-
-export async function expectNoHorizontalPageOverflow(page: Page): Promise<void> {
-  const overflow = await page.evaluate(() => ({
-    document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    body: document.body.scrollWidth - document.body.clientWidth,
-  }));
-  expect(overflow.document, 'document scrolls horizontally').toBeLessThanOrEqual(LAYOUT_TOLERANCE_PX);
-  expect(overflow.body, 'body scrolls horizontally').toBeLessThanOrEqual(LAYOUT_TOLERANCE_PX);
 }
 
 /** Catches date and number formatting that broke in one engine (e.g. Safari's stricter Date parsing). */

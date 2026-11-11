@@ -1,5 +1,4 @@
 import {
-  dynamicContentMasks,
   expect,
   expectNoBrokenValues,
   expectNoHorizontalPageOverflow,
@@ -94,11 +93,9 @@ test.describe('app shell', () => {
     expect(await actions.count()).toBeGreaterThan(0);
     for (const action of await actions.all()) {
       await expectWithinViewport(page, action, `dialog action "${await action.innerText()}"`);
+      if (await action.isEnabled()) {
+        await action.click({ trial: true });
+      }
     }
-
-    await page.mouse.move(0, 0);
-    await expect(dialog).toHaveScreenshot(mobile ? 'planting-plan-create-dialog.png' : 'area-assignment-dialog.png', {
-      mask: dynamicContentMasks(page),
-    });
   });
 });

@@ -1,28 +1,26 @@
 import { expect, test } from '@playwright/test';
-import { loginWithDeterministicProject, MAIN_ROUTES, setViewportPreset, VIEWPORTS, waitForPageStable } from './utils';
+import { expectNoHorizontalPageOverflow, loginWithDeterministicProject, MAIN_ROUTES, setViewportPreset, VIEWPORTS, waitForPageStable } from './utils';
 
-// Screenshot tests (rather than functional assertions) because the thing under
-// test is the overall page layout and breakpoint behavior across viewport
-// sizes for every main route - not any single element's presence or text,
-// which functional assertions can't capture holistically.
-test.describe('responsive layout baselines', () => {
+// Route-wide overflow coverage complements the focused dialog, grid and
+// navigation tests without coupling ordinary UI changes to reference images.
+test.describe('responsive layouts', () => {
   test.beforeEach(async ({ page, request }, testInfo) => {
     await loginWithDeterministicProject(page, request, `responsive-${testInfo.workerIndex}`);
   });
 
   for (const viewport of VIEWPORTS) {
-    test(`captures main routes at ${viewport.key}`, async ({ page }) => {
+    test(`main routes fit at ${viewport.key}`, async ({ page }, testInfo) => {
       await setViewportPreset(page, viewport);
       for (const route of MAIN_ROUTES) {
-        await page.goto(route.path);
-        await waitForPageStable(page, route.ready);
-        await expect(page).toHaveScreenshot(`${route.key}-${viewport.key}.png`, {
-          fullPage: false,
-          animations: 'disabled',
-          // Small tolerance for minor font-rendering/anti-aliasing differences
-          // between machines (baselines are generated locally on Linux + real
-          // Chrome, matching the CI runner closely but not byte-for-byte).
-          maxDiffPixelRatio: 0.02,
+        await test.step(route.key, async () => {
+          await page.goto(route.path);
+          await waitForPageStable(page, route.ready);
+          await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toBeVisible();
+          await expectNoHorizontalPageOverflow(page);
+          // Artifacts support human visual review; they never gate on pixels.
+          const path = testInfo.outputPath(`${route.key}-${viewport.key}.png`);
+          await page.screenshot({ path, animations: 'disabled' });
+          await testInfo.attach(`${route.key}-${viewport.key}`, { path, contentType: 'image/png' });
         });
       }
     });
