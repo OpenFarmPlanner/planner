@@ -213,8 +213,9 @@ The backend job installs GNU gettext with `scripts/ci/install-gettext.sh`.
 A working `msgfmt` avoids package-network access; otherwise the installer
 preserves configured proxy variables across `sudo` without logging their
 values, bounds each root apt process, and fails if installation fails.
-This does not skip translation compilation or tests. The Claude workflow's
-separate toolchain setup is unchanged until this installation path is verified.
+The installer regression tests run before installation. This does not skip
+translation compilation or tests. Claude review jobs install their separate
+toolchain in `claude-pr.yml`.
 
 The backend job compiles application translations before pytest. The shared
 `pdm run compilemessages` command includes `--ignore=.venv` because PDM creates
