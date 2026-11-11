@@ -209,6 +209,13 @@ flush removed it, and a transactional test that needs it between its own
 tests calls `ensure_seeded_plant_families()` itself (see
 `test_migrations_crop_family_plant_family_reference.py`).
 
+The backend job installs GNU gettext with `scripts/ci/install-gettext.sh`.
+A working `msgfmt` avoids package-network access; otherwise the installer
+preserves configured proxy variables across `sudo` without logging their
+values, bounds each root apt process, and fails if installation fails.
+This does not skip translation compilation or tests. The Claude workflow's
+separate toolchain setup is unchanged until this installation path is verified.
+
 The backend job compiles application translations before pytest. The shared
 `pdm run compilemessages` command includes `--ignore=.venv` because PDM creates
 its environment inside `backend/`; without that exclusion Django recursively

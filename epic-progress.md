@@ -165,3 +165,29 @@ are preserved. The comprehensive final UX review remains pending.
    Continue the recorded issue order, one complete PR cycle at a time.
 6. After all ten merge, create and test the separate final integration PR,
    complete every consistency/scenario review above, and report limitations.
+
+## Cloud continuation, 2026-11-11
+
+The user requested autonomous continuation through all P0 merges, retaining
+the current model. Superseded WIP #1033 was closed at the user's request;
+it is a parallel implementation of #1030, not a dependency of #1034.
+GitHub reports admin/push permissions, a normal merge tool is available,
+and authenticated HTTPS push dry-run succeeded. SSH is unusable in this
+executor, so HTTPS is the verified fallback. Classic branch protection
+cannot be read by this integration (403); required checks can be queried.
+
+At head `aec6c70772f2c4f38ba52e54aeb7e7f87b94140b`, all three Chrome E2E
+shards, six cross-browser jobs, frontend shards, build, PostgreSQL tests,
+quality, CodeQL and dependency checks passed. Local `make quality` completed:
+2508 backend tests passed, 96% coverage; separate TypeScript and syntax
+checks passed. Backend CI and both Claude reviews failed before execution
+while apt could not resolve Ubuntu mirrors. A backend retry reproduced the
+failure. Failed jobs were started on fresh runners after a later user
+request to continue. No gate has been bypassed and no later P0 started.
+
+The current CI repair introduces a bounded gettext installer preserving
+configured proxy variables through sudo, with regression tests. Backend
+CI exercises it first; the Claude workflow remains unchanged for now so
+its self-change guard does not suppress review of this PR. Proxy loss is
+a hypothesis to test, not an established cause. Finish CI/reviews, merge
+and verify #1034 before beginning #1028, then continue the order above.
