@@ -204,3 +204,10 @@ that guard is unchanged. Request independent native Codex code and security
 reviews on the final head and inspect completed results before merging.
 Do not treat a delivered review request or the self-skipped Claude jobs as
 a completed clean review. All required CI checks still have to pass.
+
+The fallback successfully passed gettext installation on GitHub runners
+at `2d7bc529` and `d39b0e0a`; backend tests then started. The fallback
+includes base, updates and security suites to preserve security updates.
+The native bot rejected both review requests with an account-connection
+message. The user has been asked asynchronously to connect GitHub in Codex;
+continue independent CI work while that external prerequisite is resolved.

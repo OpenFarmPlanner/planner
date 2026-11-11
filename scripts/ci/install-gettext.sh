@@ -25,7 +25,7 @@ install_from_mirror() (
   # Use an alternate Ubuntu archive mirror with Ubuntu's existing signing key.
   # These per-command sources never replace the runner's system configuration.
   printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://mirrors.edge.kernel.org/ubuntu/ %s main\n' \
-    "$codename" > "$sources_dir/sources.list"
+    "$codename" "$codename-updates" "$codename-security" > "$sources_dir/sources.list"
   local source_options=(
     -o "Dir::Etc::sourcelist=$sources_dir/sources.list"
     -o Dir::Etc::sourceparts=-

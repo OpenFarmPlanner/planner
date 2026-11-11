@@ -97,6 +97,8 @@ class InstallGettextTests(unittest.TestCase):
         self.assertIn("Dir::Etc::sourceparts=-", calls)
         self.assertIn("signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg", sources)
         self.assertIn("https://mirrors.edge.kernel.org/ubuntu/ resolute main", sources)
+        self.assertIn("https://mirrors.edge.kernel.org/ubuntu/ resolute-updates main", sources)
+        self.assertIn("https://mirrors.edge.kernel.org/ubuntu/ resolute-security main", sources)
         self.assertNotIn("trusted=yes", sources)
 
     def test_failed_mirror_fallback_does_not_pass_installation(self) -> None:
