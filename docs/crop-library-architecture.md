@@ -56,6 +56,10 @@ for quickly copying a crop into the active project.
 Germination fields (temperature and day ranges, requirements and pre-treatment)
 are shared library data, including revision, import, field sync and pinning.
 Their contract and planning hints are documented in [Germination](./germination.md).
+Temperature pretreatment and germination light requirements are independent
+enums, with optional stratification day/temperature endpoints. Their pins
+also protect against indirect overwrites through the deprecated composite
+`germination_types` list; unpinned axes can still sync independently.
 
 ## 0. Product and legal model
 

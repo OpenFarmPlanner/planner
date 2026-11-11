@@ -17,6 +17,48 @@ function csvFile(rows: SpreadsheetRows, name = 'crops.csv'): File {
 const NAME_HEADER = CROP_COLUMNS.find((c) => c.key === 'name')!.headerKey;
 
 describe('parseSpreadsheetFile', () => {
+  it.each(['csv', 'xlsx', 'ods'] as const)('preserves germination enums and partial stratification ranges in %s', async (format) => {
+    const columns = [
+      'name', 'germination_temperature_requirement', 'germination_light_requirement',
+      'stratification_days_min', 'stratification_days_max',
+      'stratification_temperature_min_c', 'stratification_temperature_max_c',
+    ].map((key) => CROP_COLUMNS.find((column) => column.key === key)!);
+    const rows: SpreadsheetRows = [
+      columns.map((column) => column.headerKey),
+      ['Lavender', 'cold_stratification', 'none', 14, null, -6.5, null],
+      ['Lettuce', 'none', 'light', null, null, null, null],
+    ];
+    const data = buildSpreadsheetFile(rows, format);
+    const result = await parseSpreadsheetFile(new File([data as BlobPart], `crops.${format}`));
+
+    expect(result.warnings).toEqual([]);
+    expect(result.entries[0]).toMatchObject({
+      germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'none',
+      stratification_days_min: 14, stratification_temperature_min_c: -6.5,
+    });
+    expect(result.entries[0]).not.toHaveProperty('stratification_days_max');
+    expect(result.entries[0]).not.toHaveProperty('stratification_temperature_max_c');
+    expect(result.entries[1]).toMatchObject({
+      germination_temperature_requirement: 'none', germination_light_requirement: 'light',
+    });
+  });
+
+  it.each([
+    ['Kaltstratifikation', 'Lichtunabhängig'],
+    ['Cold stratification', 'Light-independent'],
+    ['Stratification à froid', 'Indifférent à la lumière'],
+    ['Estratificación en frío', 'Indiferente a la luz'],
+  ])('imports localized germination choices %s / %s', async (temperature, light) => {
+    const result = await parseSpreadsheetFile(csvFile([
+      [NAME_HEADER, 'germination_temperature_requirement', 'germination_light_requirement'],
+      ['Lavender', temperature, light],
+    ]));
+    expect(result.entries[0]).toMatchObject({
+      germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'none',
+    });
+    expect(result.warnings).toEqual([]);
+  });
+
   it('rejects a format it cannot read', async () => {
     const result = await parseSpreadsheetFile(new File(['x'], 'crops.pdf'));
 

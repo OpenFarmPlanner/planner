@@ -201,6 +201,9 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     audit timestamps. `_history_action` tags the resulting save as a restore
     rather than a plain update (see `Crop.save`).
     """
+    from farm.germination import upgrade_germination_snapshot
+
+    snapshot = upgrade_germination_snapshot(revision.snapshot)
     restorable_fields = {
         field.name for field in Crop._meta.fields
         if field.name not in {'id', 'created_at', 'updated_at', 'crop_family'}
@@ -215,7 +218,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     ) if linked_ids else set()
 
     with transaction.atomic():
-        for key, value in revision.snapshot.items():
+        for key, value in snapshot.items():
             if key in restorable_fields:
                 setattr(crop, key, value)
             elif key in link_attnames and (value is None or value in existing_public_ids):

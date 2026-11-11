@@ -40,6 +40,7 @@ class GerminationTest(ProjectApiTestCase):
     def test_warm_season_boundaries_and_cold_requirements(self) -> None:
         for kind in ("cold", "frost"):
             self.crop.germination_types = [kind]
+            self.crop.save()
             for day, flagged in (
                 (date(2026, 3, 31), False),
                 (date(2026, 4, 1), True),
@@ -50,6 +51,7 @@ class GerminationTest(ProjectApiTestCase):
                     self.assertEqual(bool(self.check(day)["germination_findings"]), flagged)
         for kind in ("light", "dark"):
             self.crop.germination_types = [kind]
+            self.crop.save()
             self.assertEqual(self.check(date(2026, 6, 1))["germination_findings"], [])
 
     def test_sowing_date_and_emergence_for_direct_and_transplanted_plans(self) -> None:
@@ -277,3 +279,147 @@ class GerminationTest(ProjectApiTestCase):
         for field in ("germination_findings", "expected_emergence"):
             self.assertEqual(saved[field], live.data[field])
         self.assertEqual(len(saved["germination_findings"]), 2)
+
+
+class GerminationRequirementsTest(ProjectApiTestCase):
+    def test_canonical_requirements_round_trip_and_preserve_explicit_none_for_old_clients(self) -> None:
+        url = f'/openfarmplanner/api/crops/{self.crop.pk}/'
+        values = {
+            'germination_temperature_requirement': 'cold_stratification',
+            'germination_light_requirement': 'light',
+            'stratification_days_min': 0, 'stratification_days_max': 28,
+            'stratification_temperature_min_c': -5.5, 'stratification_temperature_max_c': 4.5,
+            'germination_temperature_optimal_min_c': 18,
+        }
+        response = self.client.patch(url, values, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        for field, value in values.items():
+            self.assertEqual(response.data[field], value)
+        self.assertEqual(response.data['germination_types'], ['cold', 'light'])
+        response = self.client.patch(url, {'germination_temperature_requirement': 'none'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['germination_types'], ['light'])
+        # An old client resends the unchanged list while editing another field.
+        response = self.client.patch(url, {'germination_types': ['light'], 'notes': 'Old client edit'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['germination_temperature_requirement'], 'none')
+        self.assertEqual(response.data['stratification_temperature_min_c'], -5.5)
+
+    def test_ranges_validate_partial_patch_and_allow_empty_or_negative_temperature(self) -> None:
+        public = PublicCrop(stratification_days_min=14, stratification_temperature_min_c=-5)
+        for data in (
+            {'stratification_days_max': 7}, {'stratification_days_min': -1},
+            {'stratification_days_min': 1.5}, {'stratification_temperature_max_c': -6},
+            {'stratification_temperature_min_c': -274},
+            {'germination_light_requirement': 'light,dark'},
+            {'germination_temperature_requirement': 'invalid'},
+        ):
+            serializer = PublicCropUpdateSerializer(instance=public, data=data, partial=True)
+            self.assertFalse(serializer.is_valid(), data)
+        serializer = PublicCropUpdateSerializer(
+            instance=public,
+            data={'stratification_days_min': None, 'stratification_temperature_max_c': -1.5}, partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_conflicting_legacy_values_survive_edit_and_spreadsheet_round_trip(self) -> None:
+        self.crop.germination_types = ['cold', 'frost', 'light', 'dark']
+        self.crop.save()
+        self.assertEqual(self.crop.germination_temperature_requirement, '')
+        self.assertEqual(self.crop.germination_light_requirement, '')
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{self.crop.pk}/',
+            {'notes': 'Keep conflicts', 'germination_temperature_requirement': '', 'germination_light_requirement': ''},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['germination_types'], ['cold', 'frost', 'light', 'dark'])
+        row = {
+            'name': 'Portable conflict', 'germination_types': ['cold', 'frost', 'light', 'dark'],
+            'germination_temperature_requirement': '', 'germination_light_requirement': '',
+            'stratification_days_min': 14, 'stratification_temperature_min_c': -5,
+        }
+        result = apply_crop_import(self.project, [row], confirm_updates=True)
+        self.assertEqual(result['created_count'], 1, result)
+        created = Crop.objects.get(project=self.project, name='Portable conflict')
+        self.assertEqual(created.germination_types, row['germination_types'])
+        self.assertIsNone(created.stratification_days_max)
+        self.assertIsNone(created.stratification_temperature_max_c)
+
+    def test_requirements_inherit_and_explicit_none_overrides(self) -> None:
+        species = CropSpecies.objects.create(name='Canonical requirements species')
+        self.crop.crop_species = species
+        self.crop.germination_temperature_requirement = 'cold_stratification'
+        self.crop.germination_light_requirement = 'light'
+        self.crop.stratification_days_min = 14
+        self.crop.save()
+        variety = Crop.objects.create(name=self.crop.name, variety='Early', project=self.project, crop_species=species)
+        self.assertEqual(resolve_crop_field(variety, 'germination_temperature_requirement'), 'cold_stratification')
+        self.assertEqual(resolve_crop_field(variety, 'stratification_days_min'), 14)
+        response = self.client.patch(
+            f'/openfarmplanner/api/crops/{variety.pk}/',
+            {'germination_light_requirement': 'dark'}, format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        variety.refresh_from_db()
+        self.assertEqual(variety.germination_temperature_requirement, '')
+        self.assertEqual(resolve_crop_field(variety, 'germination_temperature_requirement'), 'cold_stratification')
+        variety.germination_temperature_requirement = 'none'
+        variety.save()
+        self.assertEqual(resolve_crop_field(variety, 'germination_temperature_requirement'), 'none')
+        self.assertEqual(resolve_crop_field(variety, 'germination_light_requirement'), 'dark')
+
+    def test_conflicting_variety_axis_does_not_inherit_a_guessed_requirement(self) -> None:
+        from farm.services.crop_inheritance import build_inherited_crop_values
+
+        species = CropSpecies.objects.create(name='Conflicting requirements species')
+        self.crop.crop_species = species
+        self.crop.germination_temperature_requirement = 'cold_stratification'
+        self.crop.save()
+        variety = Crop.objects.create(
+            name=self.crop.name, variety='Historical conflict', project=self.project,
+            crop_species=species, germination_types=['cold', 'frost'],
+        )
+        self.assertEqual(resolve_crop_field(variety, 'germination_temperature_requirement'), '')
+        self.assertEqual(resolve_crop_field(variety, 'germination_types'), ['cold', 'frost'])
+        self.assertNotIn('germination_temperature_requirement', build_inherited_crop_values(variety))
+
+    def test_new_canonical_values_publish_and_import_through_library_payload(self) -> None:
+        from farm.services.public_crops import build_public_crop_payload
+
+        self.crop.germination_temperature_requirement = 'frost_treatment'
+        self.crop.germination_light_requirement = 'dark'
+        self.crop.stratification_days_min = 14
+        self.crop.stratification_temperature_min_c = -5
+        self.crop.save()
+        payload = build_public_crop_payload(self.crop)
+        self.assertEqual(payload['germination_temperature_requirement'], 'frost_treatment')
+        self.assertEqual(payload['germination_light_requirement'], 'dark')
+        self.assertEqual(payload['stratification_temperature_min_c'], -5)
+        self.assertIsNone(payload['stratification_days_max'])
+        public = PublicCrop.objects.create(**payload)
+        self.assertEqual(public.germination_types, ['frost', 'dark'])
+
+    def test_old_history_snapshot_resolves_conflicts_and_clears_new_ranges(self) -> None:
+        from farm.germination import upgrade_germination_snapshot
+
+        snapshot = upgrade_germination_snapshot({'germination_types': ['cold', 'frost', 'light']})
+        self.assertEqual(snapshot['germination_temperature_requirement'], '')
+        self.assertEqual(snapshot['germination_light_requirement'], 'light')
+        self.assertIsNone(snapshot['stratification_days_min'])
+        self.assertEqual(snapshot['germination_types'], ['cold', 'frost', 'light'])
+
+    def test_restoring_an_old_revision_does_not_keep_new_stratification_values(self) -> None:
+        from farm.history.restore import restore_crop_from_revision
+        from farm.models import EntityRevision
+
+        self.crop.germination_temperature_requirement = 'none'
+        self.crop.stratification_days_min = 14
+        self.crop.save()
+        revision = EntityRevision(snapshot={'germination_types': ['cold', 'frost', 'light']})
+        restore_crop_from_revision(self.crop, revision)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.germination_types, ['cold', 'frost', 'light'])
+        self.assertEqual(self.crop.germination_temperature_requirement, '')
+        self.assertEqual(self.crop.germination_light_requirement, 'light')
+        self.assertIsNone(self.crop.stratification_days_min)

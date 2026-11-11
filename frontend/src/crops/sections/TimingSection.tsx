@@ -27,12 +27,9 @@ export function TimingSection({ formData, errors, onChange, t, getFieldHighlight
   const selectedCultivationTypes = formData.cultivation_types?.length
     ? formData.cultivation_types
     : (formData.cultivation_type ? [formData.cultivation_type as CultivationType] : []);
-  const isDirectSowingOnly = selectedCultivationTypes.length === 1 && selectedCultivationTypes[0] === 'direct_sowing';
   const cultivationTypePin = getFieldPinProps?.('cultivation_types');
   const growthDurationPin = getFieldPinProps?.('growth_duration_days');
-  const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
   const harvestDurationPin = getFieldPinProps?.('harvest_duration_days');
-  const propagationTooLong = (formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0);
   const infoButton = (labelKey: string, helpKey: string) => (
     <FieldInfoButton title={t(helpKey)} ariaLabel={t('form.fieldInfoAriaLabel', { field: t(labelKey) })} />
   );
@@ -86,31 +83,6 @@ export function TimingSection({ formData, errors, onChange, t, getFieldHighlight
         </FormControl>
       </Box>
       <Box sx={formGridSx}>
-        <TextField
-          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('propagation_duration_days'), propagationDurationPin?.fieldSx)}
-          type="number"
-          label={t('form.propagationDurationDays')}
-          value={isDirectSowingOnly ? 0 : (formData.propagation_duration_days ?? '')}
-          onChange={e => onChange('propagation_duration_days', e.target.value ? parseInt(e.target.value) : undefined)}
-          disabled={isDirectSowingOnly}
-          error={Boolean(errors.propagation_duration_days) || propagationTooLong}
-          helperText={
-            errors.propagation_duration_days
-              || (propagationTooLong ? t('form.propagationDurationDaysTooLong') : undefined)
-          }
-          slotProps={{
-            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-            input: {
-              endAdornment: buildFieldEndAdornment(
-                infoButton(
-                  'form.propagationDurationDays',
-                  isDirectSowingOnly ? 'form.directSowingPropagationDisabledHelp' : 'form.propagationDurationDaysHelp',
-                ),
-                isDirectSowingOnly ? undefined : propagationDurationPin,
-              ),
-            },
-          }}
-        />
         <TextField
           sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('growth_duration_days'), growthDurationPin?.fieldSx)}
           type="number"

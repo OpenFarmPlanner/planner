@@ -6205,11 +6205,17 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
             germination_temperature_min_c=8,
             germination_days_min=7, germination_days_max=14,
             germination_types=['cold', 'light'], germination_pretreatment='Chill four weeks.',
+            germination_temperature_requirement='cold_stratification', germination_light_requirement='light',
+            stratification_days_min=14, stratification_days_max=28,
+            stratification_temperature_min_c=-5, stratification_temperature_max_c=5,
         )
         fields = [
             'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
             'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
             'germination_types', 'germination_pretreatment',
+            'germination_temperature_requirement', 'germination_light_requirement',
+            'stratification_days_min', 'stratification_days_max',
+            'stratification_temperature_min_c', 'stratification_temperature_max_c',
         ]
         changes = self._sync_preview(self.kultur)
         self.assertTrue(set(fields).issubset(changes))
@@ -6231,6 +6237,34 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(imported.germination_days_max, 21)
         self.assertEqual(imported.germination_pretreatment, 'Chill four weeks.')
         self.assertEqual(imported.germination_temperature_min_c, 8)
+        self.assertEqual(imported.germination_temperature_requirement, 'cold_stratification')
+        self.assertEqual(imported.germination_light_requirement, 'light')
+        self.assertEqual(imported.stratification_days_min, 14)
+        self.assertEqual(imported.stratification_days_max, 28)
+        self.assertEqual(imported.stratification_temperature_min_c, -5)
+        self.assertEqual(imported.stratification_temperature_max_c, 5)
+
+    def test_a_requirement_pin_cannot_be_overwritten_or_shared_through_the_legacy_list(self) -> None:
+        from farm.services.public_crops import _apply_public_crop_update, build_public_crop_payload
+
+        response = self._patch(self.kultur, {
+            'germination_temperature_requirement': 'cold_stratification',
+            'germination_light_requirement': 'light',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        self._pin(self.kultur, ['germination_temperature_requirement'])
+        self._library_edit(germination_temperature_requirement='frost_treatment', germination_light_requirement='dark')
+        self.kultur.refresh_from_db()
+        payload = build_public_crop_payload(self.kultur)
+        self.assertNotIn('germination_temperature_requirement', payload)
+        self.assertNotIn('germination_types', payload)
+        self.assertEqual(payload['germination_light_requirement'], 'light')
+        self.entry.refresh_from_db()
+        _apply_public_crop_update(crop=self.kultur, public_crop=self.entry)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.germination_temperature_requirement, 'cold_stratification')
+        self.assertEqual(self.kultur.germination_light_requirement, 'dark')
+        self.assertEqual(set(self.kultur.germination_types), {'cold', 'dark'})
 
     def test_pinning_is_stored_and_recorded_in_the_history(self):
         revisions = EntityRevision.objects.filter(entity_type='crop', object_id=self.kultur.id)

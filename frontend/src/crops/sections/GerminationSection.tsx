@@ -1,18 +1,22 @@
 import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalField';
 import { RangeField } from '../../components/inputs/RangeField';
-import { Alert, Box, Checkbox, FormControl, InputLabel, ListItemText, MenuItem, TextField, Typography } from '@mui/material';
+import { Alert, Box, FormControl, FormHelperText, InputLabel, MenuItem, TextField, Typography } from '@mui/material';
 import type { TFunction } from 'i18next';
-import type { Crop, GerminationType } from '../../api/types';
+import type { Crop } from '../../api/types';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
-import { GERMINATION_TYPES, propagationShorterThanGermination } from '../germination';
+import { TEMPERATURE_REQUIREMENTS, GERMINATION_LIGHT_REQUIREMENTS, requiresStratification, hasLegacyGerminationConflict, propagationShorterThanGermination } from '../germination';
+import { FieldInfoButton } from '../FieldInfoButton';
+import { buildFieldEndAdornment } from '../fieldEndAdornment';
 import { formGridDoubleColumnSx, formGridFieldSx, formGridSx } from './styles';
 
 type RangeBoundField =
   | 'germination_temperature_optimal_min_c' | 'germination_temperature_optimal_max_c'
-  | 'germination_days_min' | 'germination_days_max';
+  | 'germination_days_min' | 'germination_days_max'
+  | 'stratification_days_min' | 'stratification_days_max'
+  | 'stratification_temperature_min_c' | 'stratification_temperature_max_c';
 
 interface Props {
   formData: Partial<Crop>;
@@ -52,14 +56,37 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldHigh
     />
   );
   const minTemperaturePin = getFieldPinProps?.('germination_temperature_min_c');
-  const typesPin = getFieldPinProps?.('germination_types');
+  const selectedCultivationTypes = formData.cultivation_types?.length
+    ? formData.cultivation_types : (formData.cultivation_type ? [formData.cultivation_type] : []);
+  const isDirectSowingOnly = selectedCultivationTypes.length === 1 && selectedCultivationTypes[0] === 'direct_sowing';
+  const propagationTooLong = (formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0);
+  const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
+  const infoButton = (labelKey: string, helpKey: string) => (
+    <FieldInfoButton title={t(helpKey)} ariaLabel={t('form.fieldInfoAriaLabel', { field: t(labelKey) })} />
+  );
+  const requirementSelect = <F extends 'germination_temperature_requirement' | 'germination_light_requirement'>(field: F, options: readonly NonNullable<Crop[F]>[]) => {
+    const pin = getFieldPinProps?.(field);
+    return (
+      <FormControl error={Boolean(errors[field])} sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.(field), pin?.fieldSx)}>
+        <InputLabel id={`${field}-label`} shrink>{t(`germination.fields.${field}`)}</InputLabel>
+        <Select labelId={`${field}-label`} label={t(`germination.fields.${field}`)}
+          displayEmpty value={formData[field] ?? ''} endAdornment={pin?.endAdornment}
+          renderValue={(value) => value ? t(`germination.values.${field}.${value}`) : t('germination.unknown')}
+          sx={pin ? libraryPinSelectSx : undefined}
+          onChange={(event) => onChange(field, event.target.value as Crop[F])}>
+          <MenuItem value=""><em>{t('germination.unknown')}</em></MenuItem>
+          {options.map((value) => <MenuItem key={value} value={value}>{t(`germination.values.${field}.${value}`)}</MenuItem>)}
+        </Select>
+        {errors[field] ? <FormHelperText>{errors[field]}</FormHelperText> : null}
+      </FormControl>
+    );
+  };
   const treatmentPin = getFieldPinProps?.('germination_pretreatment');
   return (
     <>
       <Typography variant="h6" sx={{ mt: 1 }}>{t('germination.title')}</Typography>
       <Box sx={formGridSx}>
         {range(t('germination.optimalTemperature'), 'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c', 'decimal')}
-        {range(t('germination.days'), 'germination_days_min', 'germination_days_max', 'integer')}
         <LocalizedDecimalField
           sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('germination_temperature_min_c'), minTemperaturePin?.fieldSx)}
           label={t('germination.fields.germination_temperature_min_c')}
@@ -69,21 +96,44 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldHigh
           helperText={errors.germination_temperature_min_c}
           slotProps={{ input: { endAdornment: minTemperaturePin?.endAdornment } }}
         />
-        <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('germination_types'), typesPin?.fieldSx)}>
-          <InputLabel id="germination-types-label">{t('germination.fields.germination_types')}</InputLabel>
-          <Select labelId="germination-types-label" label={t('germination.fields.germination_types')} multiple
-            value={formData.germination_types ?? []} endAdornment={typesPin?.endAdornment}
-            sx={typesPin ? libraryPinSelectSx : undefined}
-            onChange={(event) => onChange('germination_types', event.target.value as GerminationType[])}
-            renderValue={(values) => (values as GerminationType[]).map((kind) => t(`germination.types.${kind}`)).join(', ')}>
-            {GERMINATION_TYPES.map((kind) => <MenuItem key={kind} value={kind}><Checkbox checked={formData.germination_types?.includes(kind) ?? false} /><ListItemText primary={t(`germination.types.${kind}`)} /></MenuItem>)}
-          </Select>
-        </FormControl>
+        {range(t('germination.days'), 'germination_days_min', 'germination_days_max', 'integer')}
+        {requirementSelect('germination_temperature_requirement', TEMPERATURE_REQUIREMENTS)}
+        {requiresStratification(formData.germination_temperature_requirement) ? <>
+          {range(t('germination.stratificationDays'), 'stratification_days_min', 'stratification_days_max', 'integer')}
+          {range(t('germination.stratificationTemperature'), 'stratification_temperature_min_c', 'stratification_temperature_max_c', 'decimal')}
+        </> : null}
+        {requirementSelect('germination_light_requirement', GERMINATION_LIGHT_REQUIREMENTS)}
+        <TextField
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('propagation_duration_days'), propagationDurationPin?.fieldSx)}
+          type="number"
+          label={t('form.propagationDurationDays')}
+          value={isDirectSowingOnly ? 0 : (formData.propagation_duration_days ?? '')}
+          onChange={e => onChange('propagation_duration_days', e.target.value ? parseInt(e.target.value) : undefined)}
+          disabled={isDirectSowingOnly}
+          error={Boolean(errors.propagation_duration_days) || propagationTooLong}
+          helperText={
+            errors.propagation_duration_days
+              || (propagationTooLong ? t('form.propagationDurationDaysTooLong') : undefined)
+          }
+          slotProps={{
+            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+            input: {
+              endAdornment: buildFieldEndAdornment(
+                infoButton(
+                  'form.propagationDurationDays',
+                  isDirectSowingOnly ? 'form.directSowingPropagationDisabledHelp' : 'form.propagationDurationDaysHelp',
+                ),
+                isDirectSowingOnly ? undefined : propagationDurationPin,
+              ),
+            },
+          }}
+        />
         <TextField sx={mergeVarietyFieldSx(formGridDoubleColumnSx, getFieldHighlightSx?.('germination_pretreatment'), treatmentPin?.fieldSx)}
           label={t('germination.fields.germination_pretreatment')} multiline minRows={2}
           value={formData.germination_pretreatment ?? ''} onChange={(event) => onChange('germination_pretreatment', event.target.value)}
           slotProps={{ input: { endAdornment: treatmentPin?.endAdornment } }} />
       </Box>
+      {hasLegacyGerminationConflict(formData) ? <Alert severity="warning">{t('germination.legacyConflict')}</Alert> : null}
       {propagationShorterThanGermination(formData) ? <Alert severity="info">{t('germination.propagationShort')}</Alert> : null}
     </>
   );

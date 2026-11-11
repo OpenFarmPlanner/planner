@@ -3,7 +3,7 @@
 ## Scope and workflow
 
 Requested 2026-11-11: implement every currently open P0 sequentially using
-Codex High; #1030 must merge first. Issue bodies and comments were fetched
+the current model (as subsequently requested); #1030 must merge first. Issue bodies and comments were fetched
 from GitHub, including related #1020, #851, #838 and #1009. There are ten
 open P0 issues in the initial inventory. No issue comments add dependencies.
 
@@ -11,14 +11,15 @@ Each issue starts from fetched `origin/main` on its own branch. Implement its
 acceptance criteria, update tests/docs, run `make quality` and relevant
 integration tests, commit/push, open a linked PR, wait for CI and reviews,
 merge without bypasses, and verify the merge before starting another issue.
-Stop on a blocker. Do not implement multiple issues simultaneously.
+Repair fixable blockers and continue autonomously. Respect required external
+checks/reviews; do not implement multiple issues simultaneously.
 
 ## Dependency-aware order
 
 | Order | Issue | Reason / overlaps | Status |
 | --- | --- | --- | --- |
-| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) open; CI/review/merge pending |
-| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | Pending |
+| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
+| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | Implemented on `feat/1028-germination-requirements`; validation/review/merge in progress |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | Pending |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
@@ -66,8 +67,10 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: PR #1034 for #1030 is pushed and open. Finish CI/review,
-merge and verify before #1028. No other P0 implementation has started.
+Current resume point: #1034 merged on 2026-11-11 at 16:12:35 UTC; fetched
+main and verified commit `4b57c0e8f52ef4121b028a2a66f2d82b7e819bb8` and
+issue #1030 closure. Duplicate WIP #1033 was closed at the user’s request.
+Finish #1028 checks/reviews and merge verification before beginning #1032.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -211,3 +214,35 @@ includes base, updates and security suites to preserve security updates.
 The native bot rejected both review requests with an account-connection
 message. The user has been asked asynchronously to connect GitHub in Codex;
 continue independent CI work while that external prerequisite is resolved.
+
+## #1030 completion and review clarification
+
+All required checks passed on head `060ff6f9704dcb1d50deb475bf15922e612c738d`.
+The signed archive fallback worked in backend CI and Claude toolchain setup.
+Changing the Claude workflow intentionally triggered its existing self-change
+guard. Native Codex requests were declined because the account was not
+connected; no native or independent review was claimed. The repository's
+manual code/security review route was completed and documented against the
+exact head. GitHub reported CLEAN with no outstanding required review; normal
+squash merge used the expected SHA with no bypass. The earlier request for
+account connection is optional, not a campaign prerequisite. Subsequent PRs
+leave the Claude workflow unchanged, allowing its ordinary review jobs.
+
+## #1028 implementation
+
+Two independent enums distinguish unknown/inherited values from explicit
+none. Four nullable stratification endpoints support partial ranges, whole
+nonnegative days and negative decimal Celsius. Shared forms/details use the
+same logical order, with conditional stratification fields and propagation
+duration in the germination group. All four locales are updated.
+
+Legacy list/API and spreadsheet flags remain compatible, conflicts remain
+portable rather than guessed, and linked varieties preserve historical
+whole-list overrides. New axes inherit independently. Migration 0139 uses
+batched historical models; old immutable revisions are upgraded on restore.
+Library sync/publishing closes indirect pin bypasses through the legacy list.
+
+Validation in progress: targeted backend/migration/API query-count tests,
+frontend unit/i18n/type checks, Chrome end-to-end flows at all five viewports
+and French/Spanish mobile, plus the full quality and responsive suites.
+Record final results and the PR link here before committing.

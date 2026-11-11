@@ -1710,7 +1710,14 @@
       "germination_days_min": "Keimdauer von (Tage)",
       "germination_days_max": "Keimdauer bis (Tage)",
       "germination_types": "Keimverhalten",
-      "germination_pretreatment": "Vorbehandlung"
+      "germination_pretreatment": "Vorbehandlung",
+      "germination_temperature_requirement": "Temperaturvorbehandlung",
+      "germination_light_requirement": "Lichtbedarf bei der Keimung",
+      "stratification_days_min": "Stratifikationsdauer von (Tage)",
+      "stratification_days_max": "Stratifikationsdauer bis (Tage)",
+      "stratification_temperature_min_c": "Stratifikationstemperatur von (°C)",
+      "stratification_temperature_max_c": "Stratifikationstemperatur bis (°C)",
+      "propagation_duration_days": "Anzuchtdauer (Tage)"
     },
     "types": {
       "cold": "Kaltkeimer",
@@ -1720,7 +1727,23 @@
     },
     "propagationShort": "Anzuchtdauer kürzer als die Keimdauer.",
     "invalidNumber": "Bitte eine gültige Zahl eingeben; Tage müssen ganze, nicht negative Zahlen sein.",
-    "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen."
+    "invalidRange": "Der Höchstwert muss mindestens dem Mindestwert entsprechen.",
+    "unknown": "Unbekannt",
+    "stratificationDays": "Stratifikationsdauer (Tage)",
+    "stratificationTemperature": "Stratifikationstemperatur (°C)",
+    "legacyConflict": "Bisherige Keimanforderungen widersprechen sich. Wählen Sie die passende Temperaturvorbehandlung und den Lichtbedarf. Die ursprünglichen Angaben bleiben bis zur Klärung erhalten.",
+    "values": {
+      "germination_temperature_requirement": {
+        "none": "Keine Vorbehandlung",
+        "cold_stratification": "Kaltstratifikation",
+        "frost_treatment": "Frostbehandlung"
+      },
+      "germination_light_requirement": {
+        "none": "Lichtunabhängig",
+        "light": "Lichtkeimer",
+        "dark": "Dunkelkeimer"
+      }
+    }
   },
   "siteHealth": {
     "title": "Standort und Pflanzengesundheit",

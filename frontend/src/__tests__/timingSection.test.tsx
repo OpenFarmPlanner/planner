@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TimingSection } from '../crops/sections/TimingSection';
+import { TimingSection as TimingFields } from '../crops/sections/TimingSection';
+import { GerminationSection } from '../crops/sections/GerminationSection';
+import type { ComponentProps } from 'react';
+
+function TimingSection(props: ComponentProps<typeof TimingFields>) {
+  return <><TimingFields {...props} /><GerminationSection {...props} /></>;
+}
 import type { GetVarietyFieldHighlightSx } from '../crops/varietyValueAccent';
 
 const translations: Record<string, string> = {
@@ -23,7 +29,7 @@ const t = (key: string, options?: Record<string, unknown>) => (translations[key]
 
 const PRE_CULTIVATION = { cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'] } as const;
 
-describe('TimingSection', () => {
+describe('timing and germination sections', () => {
   it('parses growth, propagation and harvest duration inputs', () => {
     const onChange = vi.fn();
 
@@ -48,14 +54,16 @@ describe('TimingSection', () => {
     expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
   });
 
-  it('orders the fields cultivation type, propagation, growth and harvest duration', () => {
+  it('keeps growth and harvest in timing and places propagation after the germination requirements', () => {
     render(<TimingSection formData={{ ...PRE_CULTIVATION }} errors={{}} onChange={vi.fn()} t={t} />);
 
     const fields = [
       screen.getByRole('combobox', { name: 'Anbauart' }),
-      screen.getByLabelText('Anzuchtdauer (Tage)'),
       screen.getByLabelText('Wachstumszeit (Tage)'),
       screen.getByLabelText('Erntezeit (Tage)'),
+      screen.getByRole('combobox', { name: 'germination.fields.germination_temperature_requirement' }),
+      screen.getByRole('combobox', { name: 'germination.fields.germination_light_requirement' }),
+      screen.getByLabelText('Anzuchtdauer (Tage)'),
     ];
     for (let index = 1; index < fields.length; index += 1) {
       expect(fields[index - 1].compareDocumentPosition(fields[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

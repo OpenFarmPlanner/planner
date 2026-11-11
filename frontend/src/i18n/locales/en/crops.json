@@ -1710,7 +1710,14 @@
       "germination_days_min": "Germination time from (days)",
       "germination_days_max": "Germination time to (days)",
       "germination_types": "Germination type",
-      "germination_pretreatment": "Pre-treatment"
+      "germination_pretreatment": "Pre-treatment",
+      "germination_temperature_requirement": "Temperature pretreatment",
+      "germination_light_requirement": "Light for germination",
+      "stratification_days_min": "Stratification duration from (days)",
+      "stratification_days_max": "Stratification duration to (days)",
+      "stratification_temperature_min_c": "Stratification temperature from (°C)",
+      "stratification_temperature_max_c": "Stratification temperature to (°C)",
+      "propagation_duration_days": "Propagation duration (days)"
     },
     "types": {
       "cold": "Cold germinator",
@@ -1720,7 +1727,23 @@
     },
     "propagationShort": "Propagation duration is shorter than germination time.",
     "invalidNumber": "Enter a valid number; days must be non-negative whole numbers.",
-    "invalidRange": "The maximum must be at least the minimum."
+    "invalidRange": "The maximum must be at least the minimum.",
+    "unknown": "Unknown",
+    "stratificationDays": "Stratification duration (days)",
+    "stratificationTemperature": "Stratification temperature (°C)",
+    "legacyConflict": "Previous germination requirements conflict. Choose the appropriate temperature pretreatment and light requirement. The original values are retained until resolved.",
+    "values": {
+      "germination_temperature_requirement": {
+        "none": "No pretreatment",
+        "cold_stratification": "Cold stratification",
+        "frost_treatment": "Frost treatment"
+      },
+      "germination_light_requirement": {
+        "none": "Light-independent",
+        "light": "Light germinator",
+        "dark": "Dark germinator"
+      }
+    }
   },
   "siteHealth": {
     "title": "Site and plant health",

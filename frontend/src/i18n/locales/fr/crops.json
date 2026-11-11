@@ -1750,11 +1750,18 @@
     "fields": {
       "germination_temperature_optimal_min_c": "Température optimale de germination de (°C)",
       "germination_temperature_optimal_max_c": "Température optimale de germination à (°C)",
-      "germination_temperature_min_c": "Température minimale de germination (°C)",
+      "germination_temperature_min_c": "Température min. de germination (°C)",
       "germination_days_min": "Durée de germination de (jours)",
       "germination_days_max": "Durée de germination à (jours)",
       "germination_types": "Type de germination",
-      "germination_pretreatment": "Prétraitement"
+      "germination_pretreatment": "Prétraitement",
+      "germination_temperature_requirement": "Prétraitement thermique",
+      "germination_light_requirement": "Lumière à la germination",
+      "stratification_days_min": "Durée de stratification de (jours)",
+      "stratification_days_max": "Durée de stratification à (jours)",
+      "stratification_temperature_min_c": "Température de stratification de (°C)",
+      "stratification_temperature_max_c": "Température de stratification à (°C)",
+      "propagation_duration_days": "Durée en pépinière (jours)"
     },
     "types": {
       "cold": "Germination au froid",
@@ -1764,7 +1771,23 @@
     },
     "propagationShort": "La durée en pépinière est plus courte que la durée de germination.",
     "invalidNumber": "Saisissez un nombre valide ; les jours doivent être des entiers positifs ou nuls.",
-    "invalidRange": "Le maximum doit être supérieur ou égal au minimum."
+    "invalidRange": "Le maximum doit être supérieur ou égal au minimum.",
+    "unknown": "Inconnu",
+    "stratificationDays": "Durée de stratification (jours)",
+    "stratificationTemperature": "Température de stratification (°C)",
+    "legacyConflict": "Les anciennes exigences de germination sont contradictoires. Choisissez le prétraitement thermique et le besoin de lumière appropriés. Les valeurs d’origine sont conservées jusqu’à leur clarification.",
+    "values": {
+      "germination_temperature_requirement": {
+        "none": "Sans prétraitement",
+        "cold_stratification": "Stratification à froid",
+        "frost_treatment": "Traitement par le gel"
+      },
+      "germination_light_requirement": {
+        "none": "Indifférent à la lumière",
+        "light": "Germination à la lumière",
+        "dark": "Germination à l’obscurité"
+      }
+    }
   },
   "siteHealth": {
     "title": "Exposition et santé des plantes",

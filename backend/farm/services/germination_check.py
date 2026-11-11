@@ -43,8 +43,8 @@ def check_germination(plan: PlantingPlan, checker: TimingWindowChecker) -> dict[
         if sowing_iso is None:
             return result
         sowing = date.fromisoformat(sowing_iso)
-    types = resolve_crop_field(crop, "germination_types", index) or []
-    if set(types) & {"cold", "frost"} and 4 <= sowing.month <= 8:
+    requirement = resolve_crop_field(crop, "germination_temperature_requirement", index)
+    if requirement in {"cold_stratification", "frost_treatment"} and 4 <= sowing.month <= 8:
         kind = "pre_cultivation" if own_propagation else "direct_sowing"
         windows = [
             window

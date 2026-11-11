@@ -337,7 +337,7 @@ describe('CropForm section order', () => {
     expect(renderedSectionHeadings()).toEqual(SECTION_HEADINGS);
   });
 
-  it('places the harvest duration in the timing section after propagation and growth duration', async () => {
+  it('places growth and harvest in timing and propagation in germination', async () => {
     render(
       <CropForm
         crop={VARIETY_CROP}
@@ -350,10 +350,13 @@ describe('CropForm section order', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
     const ordered = [
       screen.getByRole('heading', { name: 'form.sectionTiming' }),
-      screen.getByLabelText('form.propagationDurationDays'),
       screen.getByLabelText('form.growthDurationDays'),
       screen.getByLabelText('form.harvestDurationDays'),
       screen.getByRole('heading', { name: 'form.sectionPlanting' }),
+      screen.getByRole('heading', { name: 'germination.title' }),
+      screen.getByRole('combobox', { name: 'germination.fields.germination_temperature_requirement' }),
+      screen.getByRole('combobox', { name: 'germination.fields.germination_light_requirement' }),
+      screen.getByLabelText('form.propagationDurationDays'),
     ];
     for (let index = 1; index < ordered.length; index += 1) {
       expect(ordered[index - 1].compareDocumentPosition(ordered[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

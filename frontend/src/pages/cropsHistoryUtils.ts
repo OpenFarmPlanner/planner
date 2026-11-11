@@ -51,6 +51,12 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   germination_temperature_min_c: 'germination.fields.germination_temperature_min_c',
   germination_days_min: 'germination.fields.germination_days_min',
   germination_days_max: 'germination.fields.germination_days_max',
+  germination_temperature_requirement: 'germination.fields.germination_temperature_requirement',
+  germination_light_requirement: 'germination.fields.germination_light_requirement',
+  stratification_days_min: 'germination.fields.stratification_days_min',
+  stratification_days_max: 'germination.fields.stratification_days_max',
+  stratification_temperature_min_c: 'germination.fields.stratification_temperature_min_c',
+  stratification_temperature_max_c: 'germination.fields.stratification_temperature_max_c',
   germination_types: 'germination.fields.germination_types',
   germination_pretreatment: 'germination.fields.germination_pretreatment',
   pests_diseases: 'siteHealth.fields.pests_diseases',
@@ -244,6 +250,7 @@ export function formatHistoryChangeValue(
   if (value === null || value === undefined || value === '') {
     return t('history.emptyValue');
   }
+  if ((field === 'germination_temperature_requirement' || field === 'germination_light_requirement') && value) return t(`germination.values.${field}.${value}`);
   if (field === 'germination_types' && Array.isArray(value)) return value.map((kind) => t(`germination.types.${kind}`)).join(', ');
   if (field === 'created') {
     return t('history.createdValue');

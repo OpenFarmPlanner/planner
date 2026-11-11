@@ -17,6 +17,8 @@ const textFields = [
   'botanical_name',
   'crop_family',
   'notes',
+  'germination_temperature_requirement',
+  'germination_light_requirement',
   'germination_pretreatment',
   'pests_diseases',
 ] as const satisfies readonly (keyof Crop)[];
@@ -44,6 +46,11 @@ const numberFields = [
   'germination_temperature_min_c',
   'germination_days_min',
   'germination_days_max',
+  'stratification_days_min',
+  'stratification_days_max',
+  'stratification_temperature_min_c',
+  'stratification_temperature_max_c',
+
 
   'rotation_break_years',
   'expected_yield',
