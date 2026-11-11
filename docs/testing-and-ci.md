@@ -219,8 +219,8 @@ existing Ubuntu signing key. It never disables archive verification or
 rewrites the runner's system sources. Other distributions do not use this
 Ubuntu-specific fallback.
 The installer regression tests run before installation. This does not skip
-translation compilation or tests. Claude review jobs install their separate
-toolchain in `claude-pr.yml`.
+translation compilation or tests. Claude review jobs use the same installer
+before installing their Python toolchain in `claude-pr.yml`.
 
 The backend job compiles application translations before pytest. The shared
 `pdm run compilemessages` command includes `--ignore=.venv` because PDM creates

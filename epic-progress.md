@@ -197,3 +197,10 @@ proxy preservation alone did not restore DNS. The installer therefore adds
 a temporary, signed Ubuntu archive fallback through the kernel.org mirror.
 The mirror publishes the runner's resolute archive; actual runner access
 must still be verified in CI. No archive signature or test gate is disabled.
+
+The shared installer is now also called by the Claude toolchain setup.
+Changing `claude-pr.yml` activates its existing self-change protection;
+that guard is unchanged. Request independent native Codex code and security
+reviews on the final head and inspect completed results before merging.
+Do not treat a delivered review request or the self-skipped Claude jobs as
+a completed clean review. All required CI checks still have to pass.
