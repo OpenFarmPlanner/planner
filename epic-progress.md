@@ -191,3 +191,9 @@ CI exercises it first; the Claude workflow remains unchanged for now so
 its self-change guard does not suppress review of this PR. Proxy loss is
 a hypothesis to test, not an established cause. Finish CI/reviews, merge
 and verify #1034 before beginning #1028, then continue the order above.
+
+The first installer run confirmed no proxy is configured on these runners;
+proxy preservation alone did not restore DNS. The installer therefore adds
+a temporary, signed Ubuntu archive fallback through the kernel.org mirror.
+The mirror publishes the runner's resolute archive; actual runner access
+must still be verified in CI. No archive signature or test gate is disabled.

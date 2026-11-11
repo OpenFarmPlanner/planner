@@ -213,6 +213,11 @@ The backend job installs GNU gettext with `scripts/ci/install-gettext.sh`.
 A working `msgfmt` avoids package-network access; otherwise the installer
 preserves configured proxy variables across `sudo` without logging their
 values, bounds each root apt process, and fails if installation fails.
+If the default Ubuntu mirrors fail, it retries through the kernel.org
+Ubuntu archive mirror using temporary per-command sources and the runner's
+existing Ubuntu signing key. It never disables archive verification or
+rewrites the runner's system sources. Other distributions do not use this
+Ubuntu-specific fallback.
 The installer regression tests run before installation. This does not skip
 translation compilation or tests. Claude review jobs install their separate
 toolchain in `claude-pr.yml`.
