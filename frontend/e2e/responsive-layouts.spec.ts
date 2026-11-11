@@ -15,6 +15,13 @@ test.describe('responsive layouts', () => {
         await test.step(route.key, async () => {
           await page.goto(route.path);
           await waitForPageStable(page, route.ready);
+          // The shell heading can render before the route's lazy module and
+          // project data. Inspect the loaded content rather than a blank frame.
+          const main = page.locator('main, [role="main"]').first();
+          await expect(main).toHaveText(/\S/);
+          await expect(main).not.toHaveText(/^\s*(?:Laden(?:\.{3}|…)?|Anbaupläne werden geladen\.{3})\s*$/);
+          await expect(main.getByRole('progressbar')).toHaveCount(0);
+          await page.evaluate(() => document.fonts.ready);
           await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toBeVisible();
           await expectNoHorizontalPageOverflow(page);
           // Artifacts support human visual review; they never gate on pixels.

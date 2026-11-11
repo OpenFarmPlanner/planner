@@ -43,7 +43,10 @@ export function formatGerminationValue(field: string, value: unknown, t: TFuncti
   if (field === 'germination_temperature_requirement' || field === 'germination_light_requirement') {
     return t(`germination.values.${field}.${value}`);
   }
-  if (typeof value === 'number') return new Intl.NumberFormat(locale).format(value);
+  if (typeof value === 'number') {
+    const formatted = new Intl.NumberFormat(locale).format(value);
+    return field === 'propagation_duration_days' ? `${formatted} ${t('detail.units.days')}` : formatted;
+  }
   return String(value);
 }
 

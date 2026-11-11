@@ -764,7 +764,7 @@ describe('CropDetail Component', () => {
     expect(screen.getByText(translations.crops.form.rotationBreakYears)).toBeInTheDocument();
     expect(screen.getByText(/^0\s+Jahre$/)).toBeInTheDocument();
     expect(screen.queryByText(translations.crops.form.cropFamily)).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
     expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
   });
 

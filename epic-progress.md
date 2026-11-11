@@ -19,7 +19,7 @@ checks/reviews; do not implement multiple issues simultaneously.
 | Order | Issue | Reason / overlaps | Status |
 | --- | --- | --- | --- |
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
-| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | Implemented on `feat/1028-germination-requirements`; validation/review/merge in progress |
+| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) open; validation/review/merge in progress |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | Pending |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
@@ -246,3 +246,27 @@ Validation in progress: targeted backend/migration/API query-count tests,
 frontend unit/i18n/type checks, Chrome end-to-end flows at all five viewports
 and French/Spanish mobile, plus the full quality and responsive suites.
 Record final results and the PR link here before committing.
+
+### #1028 PR validation updates
+
+PR #1035 opened at head `e035e45c`. The final focused backend run passed
+18 tests and 14 subtests; the new pin regression passed separately. The
+CSV/XLSX/ODS and localized-choice suite passed 76 tests after adding all six
+new fields to the existing every-column fixture. CI caught that omitted
+fixture and old detail-view expectations; propagation duration now retains
+its day unit in its new group, and tests expect that group consistently.
+
+All 14 responsive route/crop-form cases passed initially, but inspection
+exposed loading-frame screenshots. The route suite now waits for visible
+content and no loading indicator before captures; its corrected rerun is
+pending. The eight germination E2E cases passed; all five germination form
+viewports plus French/Spanish mobile screenshots were inspected. The French
+minimum-temperature label was shortened after inspection.
+
+Claude code and security executions stopped immediately; security fallback
+identified exhausted Claude allowance. The workflow requested native Codex
+security review, but its bot again required an account connection. Neither
+is a completed review. Use the repository's documented manual review route
+with exact SHA/scope/results, and leave all actual required GitHub checks in
+force. Account connection remains optional unless a current branch rule
+explicitly requires that external reviewer.
