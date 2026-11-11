@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
 # Runs the cross-browser Playwright suite inside the official Playwright Docker
-# image whose version matches the installed @playwright/test, so screenshots
-# are rendered with the same browsers, fonts and system libraries on every
+# image whose version matches the installed @playwright/test, so layout checks
+# run with the same browsers, fonts and system libraries on every
 # machine and in CI. Arguments are passed through to `playwright test`, e.g.
 #
 #   e2e-cross-browser/run-in-docker.sh --project=mobile-firefox
-#   e2e-cross-browser/run-in-docker.sh --update-snapshots
 #
 # Environment:
 #   E2E_DOCKER_ARGS  extra `docker run` arguments (proxy variables, CA mounts,

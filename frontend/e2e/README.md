@@ -34,47 +34,35 @@ npm run test:e2e
   `scrollbar-layout.spec.ts`; `chromium-scrollbars` runs only that spec, with headless
   Chrome's `--hide-scrollbars` flag dropped so the page actually renders a classic
   scrollbar. That spec is about MUI's modal scroll lock compensating the scrollbar
-  width, which is unobservable without one. Keep the rest of the suite (and its
-  screenshot baselines) on the default, scrollbar-free rendering.
+  width, which is unobservable without one. Keep the rest of the suite on the default, scrollbar-free rendering.
 
 See `frontend/playwright.config.ts` for exact runtime settings. In CI, the
 `E2E (production build)` workflow (`.github/workflows/e2e.yml`) runs this same build+test
 flow on every pull request targeting `main`.
 
 
-## Responsive screenshot baseline
-
-Run responsive visual baselines:
+## Responsive layout checks
 
 ```bash
 cd frontend
 npx playwright test e2e/responsive-layouts.spec.ts
 ```
 
-Update screenshots intentionally:
-
-```bash
-cd frontend
-npx playwright test e2e/responsive-layouts.spec.ts --update-snapshots
-```
-
-Notes:
-- Viewports covered: `375x800`, `768x900`, `1024x900`, `1440x900`.
-- Route coverage: dashboard, standorte, anbauflaechen, kulturen, anbauplaene, anbaukalender, ertragsuebersicht, saatgutbedarf, lieferanten.
-- Helpers are in `e2e/utils.ts` for deterministic login, viewport presets, and stable-page waiting.
-
+Eight main routes are checked at `375x800`, `768x900`, `1024x900` and
+`1440x900` for page-heading visibility and horizontal overflow. Captures are
+attached for human visual review; there are no pixel comparisons or baseline
+updates. Focused specs cover dialogs, grids, action bounds and phone landscape.
+Both configs retain a screenshot and trace on failure for CI artifacts.
 
 ## Cross-browser suite
 
-Chromium, Firefox and WebKit (desktop and mobile) layout assertions and
-per-browser screenshots live in `e2e-cross-browser/` with their own config,
-`playwright.cross-browser.config.ts`. They run only inside the official
-Playwright Docker image:
+Chromium, Firefox and WebKit (desktop and mobile) functional/layout assertions
+live in `e2e-cross-browser/` with `playwright.cross-browser.config.ts`.
+Run them inside the official Playwright Docker image:
 
 ```bash
 cd frontend
-npm run test:e2e:cross-browser   # run
-npm run test:e2e:update          # re-record baselines, then review them
+npm run test:e2e:cross-browser
 ```
 
 See "Cross-browser suite" in `docs/testing-and-ci.md`.

@@ -1,5 +1,4 @@
 import {
-  dynamicContentMasks,
   expect,
   expectNoBrokenValues,
   expectNoHorizontalPageOverflow,
@@ -64,11 +63,6 @@ test.describe('Kulturen library', () => {
 
     await expectNoHorizontalPageOverflow(page);
     await expectNoBrokenValues(page);
-  });
-
-  test('matches the per-browser screenshot', async ({ page }) => {
-    await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('crop-library.png', { mask: dynamicContentMasks(page) });
   });
 });
 

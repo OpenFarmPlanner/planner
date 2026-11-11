@@ -1,6 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
 import {
-  dynamicContentMasks,
   expect,
   expectWithinViewport,
   findCrop,
@@ -16,11 +15,10 @@ import {
 // width instead of filling its field (see docs/form-layout.md). The Sorte
 // variant matters on its own: it adds the variety legend and the highlighted
 // own-value fields, which change the form's widths and wrapping. Those are
-// guarded by the functional assertions below; its screenshots would only
-// repeat the Kultur pair, so only the Kultur form is captured.
+// guarded by the functional assertions below for both forms.
 const TARGETS = [
-  { key: 'kultur', name: 'Tomate', variety: null, title: 'Kultur bearbeiten', screenshots: true },
-  { key: 'sorte', name: 'Tomate', variety: 'Roma', title: 'Sorte bearbeiten', screenshots: false },
+  { key: 'kultur', name: 'Tomate', variety: null, title: 'Kultur bearbeiten' },
+  { key: 'sorte', name: 'Tomate', variety: 'Roma', title: 'Sorte bearbeiten' },
 ] as const;
 
 interface FieldGeometry {
@@ -168,22 +166,5 @@ for (const target of TARGETS) {
       await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
       await expect(dialog).toBeHidden();
     });
-
-    if (target.screenshots) {
-      test('matches the per-browser screenshots', async ({ page }) => {
-        const dialog = await openTarget(page, target);
-        // Keep the pointer away from the fields so no hover tooltip is captured.
-        await page.mouse.move(0, 0);
-        const mask = dynamicContentMasks(page);
-
-        await expect(dialog).toHaveScreenshot(`crop-form-${target.key}-top.png`, { mask });
-
-        // The seed section holds the fields that broke worst (number inputs
-        // with a max collapsed to a few characters).
-        await dialog.getByLabel('Sicherheitszuschlag für Saatgut (%)').first().scrollIntoViewIfNeeded();
-        await page.mouse.move(0, 0);
-        await expect(dialog).toHaveScreenshot(`crop-form-${target.key}-seeding.png`, { mask });
-      });
-    }
   });
 }

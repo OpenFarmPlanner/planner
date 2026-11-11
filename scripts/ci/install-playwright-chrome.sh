@@ -6,7 +6,7 @@
 # the browser before `npm run build` (the frontend's `postbuild` script,
 # build/prerender.ts, launches Chrome itself). The Playwright config pins
 # `channel: 'chrome'`, i.e. the real Google Chrome install, not the bundled
-# Chromium — the screenshot baselines were recorded against it.
+# Chromium — it is the manual reference browser.
 #
 # The fast path is to install nothing. The GitHub runner image already ships
 # Google Chrome, which is exactly what `channel: 'chrome'` resolves to, so if
