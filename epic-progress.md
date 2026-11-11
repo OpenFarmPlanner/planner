@@ -270,3 +270,56 @@ is a completed review. Use the repository's documented manual review route
 with exact SHA/scope/results, and leave all actual required GitHub checks in
 force. Account connection remains optional unless a current branch rule
 explicitly requires that external reviewer.
+
+### #1028 completed local validation / CI recovery
+
+Local `make quality` completed successfully: 2,519 backend tests passed with
+96% coverage; Ruff/Madge kept their existing allowed report codes, Radon
+and ESLint passed. A later focused run passed 18 tests and 14 subtests,
+including the extra conflict-inheritance regression; the pin regression
+passed separately. TypeScript and the Vite production bundle passed.
+Frontend/i18n targeted runs passed 133 tests; CSV/XLSX/ODS and localized
+choice tests passed 76 tests; both corrected detail assertions passed.
+All three full frontend CI shards passed on `009b083b`.
+
+Eight germination browser scenarios passed at 375/768/1024/1440 px and
+800x375 landscape, with French/Spanish mobile and library/plan behavior.
+All 14 responsive route/crop-form cases initially passed; visual inspection
+then revealed loading-frame captures. The strengthened route suite passed
+all four sizes; the tablet retry used a 120-second local CLI deadline for
+eight navigations after the initial run exceeded its 60-second total. The
+repository's CI deadline was unchanged. All 32 loaded route screenshots and
+the germination form/library/plan screenshots were inspected. The shortened
+French minimum-temperature label passed recapture and inspection.
+
+The initial broad local detail/library test run had stale group expectations
+and discussion timing failures under load. Expectations and the propagation
+unit regression were fixed; the current full frontend CI shards and focused
+assertions passed. A redundant stale local rerun was stopped after that CI
+verification; no claim is made that the stopped run passed.
+
+Manual code/security review of `009b083b` is documented in PR #1035 comment
+6806322797, transparently as the authoring Codex session's manual review.
+No native or independent completed review is claimed. Claude allowance was
+exhausted, and the native fallback requested account connection. The actual
+GitHub required review state has no outstanding review request.
+
+Required backend/E2E check statuses became inconsistent with their completed
+job steps: backend's final step finished at 20:19:55 UTC and E2E shard 1 at
+20:22:04 UTC, but required status reads remained pending. GitHub rejected
+reruns as already running and cancellations as already finished, including
+direct REST requests. This documentation commit creates a fresh head for a
+normal CI retry. Do not merge until the new head's required checks succeed;
+do not override or manually mark a required check green.
+
+### Final integration observations to revisit
+
+The shared header, unchanged in #1035, has overlapping actions/title on the
+crop page at 768px and an add-plot control overlapping the representation
+toggle on the fields page at 1024px. Inspect its responsive action-collapse
+and flex sizing during the separately authorized final UX integration PR,
+including trial clicks for every visible action. On empty/no-season planting
+plans at 1024/1440px, the sticky empty table header appears below the alert
+and overlaps the empty-row message. Confirm intended behavior and QA
+exclusions before fixing. These observations mean the complete existing app
+is not claimed visually clean just because germination/overflow tests pass.
