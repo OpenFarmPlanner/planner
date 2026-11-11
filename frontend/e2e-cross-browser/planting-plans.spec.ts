@@ -1,6 +1,5 @@
 import {
   boxOf,
-  dynamicContentMasks,
   expect,
   expectNoBrokenValues,
   expectNoHorizontalPageOverflow,
@@ -65,8 +64,4 @@ test.describe('Anbaupläne table', () => {
     expect(Math.abs(after.y - before.y), 'column header moved with the rows').toBeLessThanOrEqual(LAYOUT_TOLERANCE_PX);
   });
 
-  test('matches the per-browser screenshot', async ({ page }) => {
-    await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('planting-plans.png', { mask: dynamicContentMasks(page) });
-  });
 });

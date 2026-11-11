@@ -189,7 +189,7 @@ table of what is and isn't implemented.
   E2E suites are split across CI jobs, why the frontend is sharded and the
   backend runs under xdist, and where the runtime actually goes, plus the
   Docker-based cross-browser suite (Chromium/Firefox/WebKit, desktop and
-  mobile) with its per-browser screenshot baselines.
+  mobile) and failure screenshots and traces.
 - [`security-automation.md`](./security-automation.md) — automated dependency,
   SAST, Django deployment, and GitHub-native security coverage and triggers.
 - [`security-review-log.md`](./security-review-log.md) — frozen history of

@@ -67,11 +67,6 @@ export async function gotoAppPage(page: Page, path: string, heading: string): Pr
   await page.waitForLoadState('networkidle');
 }
 
-/** Topbar elements whose content is not part of the layout under test. */
-export function dynamicContentMasks(page: Page): Locator[] {
-  return [page.getByRole('button', { name: 'Benachrichtigungen' })];
-}
-
 export async function expectNoHorizontalPageOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => ({
     document: document.documentElement.scrollWidth - document.documentElement.clientWidth,

@@ -437,7 +437,7 @@ The third shard bought 34 seconds for a whole extra runner, because the
 expensive specs cluster: shard 1 holds the login-heavy `fields-beds-*`,
 `gantt-*` and `invitation-flow` files and runs 1.8x as long as either of
 the others. Note also which way this falls — the shard holding the
-screenshot spec (`responsive-layouts`) is among the *fast* ones.
+responsive spec (`responsive-layouts`) is among the *fast* ones.
 
 Adding shards is therefore close to exhausted as a lever: a fourth would
 split one of the already-fast shards and leave shard 1's 4m11s standing.
@@ -521,158 +521,20 @@ the config pins comes from the runner image, which is the fast path
 
 ## Cross-browser suite (Chromium, Firefox, WebKit in Docker)
 
-`frontend/playwright.cross-browser.config.ts` runs `frontend/e2e-cross-browser/`
-in three engines, on desktop and on phones: layout assertions (overflow,
-bounding boxes, dates) plus a screenshot per key view. It is a separate
-suite from `playwright.config.ts`, which stays the Chrome-channel suite
-with its own baselines. **Chrome remains the manual reference browser.** No
-screenshot is ever compared across browsers: the default
-`snapshotPathTemplate` includes the project name, so every project keeps its
-own baselines under `e2e-cross-browser/<spec>-snapshots/`.
+`frontend/playwright.cross-browser.config.ts` runs functional and layout assertions
+on desktop and phone viewports in Chromium, Firefox and WebKit. Mobile Firefox
+uses a phone-sized desktop Firefox viewport; it is not Android emulation.
+The suite checks page and dialog overflow, control visibility and viewport
+bounds, crop form field geometry, navigation, and timeline geometry. The main
+responsive suite also checks route visibility and page overflow at four widths;
+fields-beds tests cover portrait, landscape, tablet and desktop layout switches.
+These checks do not comprehensively detect every overlap or visual defect.
 
-| Project | Engine | Device |
-| --- | --- | --- |
-| `desktop-chromium` | Chromium (bundled, not the Chrome channel) | Desktop Chrome, 1280x720 |
-| `desktop-firefox` | Firefox | Desktop Firefox, 1280x720 |
-| `desktop-webkit` | WebKit | Desktop Safari, 1280x720 |
-| `mobile-chromium` | Chromium | Pixel 7, 412x839, touch, `isMobile` |
-| `mobile-webkit` | WebKit | iPhone 15, 393x659, touch, `isMobile` |
-| `mobile-firefox` | Firefox | approximated phone, 393x851 (see below) |
-
-**mobile-firefox is an approximation.** Playwright cannot emulate mobile
-Firefox: `isMobile` is supported only by Chromium and WebKit. The project
-therefore uses desktop Firefox with a phone-sized viewport (393x851),
-`hasTouch: true`, `deviceScaleFactor: 2` and a Firefox for Android user
-agent. Unlike a real phone it ignores `<meta name="viewport">`, keeps
-desktop media features (`pointer: fine`, `hover: hover`), shows desktop
-scrollbars and number-input spinners, and has no font inflation. It catches
-Gecko layout differences at phone width, not Firefox for Android itself.
-
-### Determinism
-
-- **Docker only.** Screenshots are rendered and compared inside the official
-  `mcr.microsoft.com/playwright:v<version>-noble` image, where `<version>` is
-  read from the installed `@playwright/test` in `package-lock.json`, so fonts
-  and system libraries are identical locally and in CI. Never record
-  baselines on the host.
-- **Time:** an auto fixture (`e2e-cross-browser/fixtures.ts`) pins
-  `Date.now()` to 15 May 2026 10:00 Vienna time with `page.clock.setFixedTime`.
-  That is mid-season in the fixture's 2026 season. Timers keep running.
-- **Locale and time zone:** `de-AT` and `Europe/Vienna` for every project.
-- **Data:** every test seeds its own copy of a dedicated, fixed dataset
-  through the E2E fixture endpoint (`setup_cross_browser`, scenario id per
-  project and test; `loginToFixtureProject` in `fixtures.ts`). The data is
-  defined in one place, `backend/farm/e2e_cross_browser_data.py`: project
-  "Testgärtnerei Morgentau", seasons 2025 and 2026, eight Kulturen (Tomate
-  with every crop-form section filled, its Sorte Roma, and the crops the
-  plans use), and twelve current-season plans that show each rotation
-  status once. Its dates are absolute and match the fixed clock, so nothing
-  depends on the server date. It shares no code with the demo project
-  ([demo-project.md](./demo-project.md)): **enriching the demo never touches
-  these baselines.** Conversely, change the fixture only together with the
-  baselines and the names and counts the specs assert;
-  `farm/tests/test_e2e_views.py` pins what the specs rely on.
-- **Masks:** `dynamicContentMasks()` masks the notification bell. Mask any new
-  timestamp, user name or counter the same way rather than raising the
-  tolerance.
-- **Defaults:** `toHaveScreenshot` uses `animations: 'disabled'`,
-  `caret: 'hide'` and `maxDiffPixelRatio: 0.01`. Tests move the pointer
-  to 0,0 before a capture so no hover tooltip is recorded.
-
-### Running it
-
-```bash
-cd frontend
-npm run test:e2e:cross-browser                    # all six projects
-npm run test:e2e:cross-browser -- --project=mobile-firefox crop-form
-npm run test:e2e:update                           # re-record baselines (Docker)
-npm run test:e2e:all                              # Chrome suite, then this one
-```
-
-All of these call `e2e-cross-browser/run-in-docker.sh`, which is equivalent to
-
-```bash
-docker run --rm --init --ipc=host \
-  -v "$PWD/..:/work" \
-  -v openfarmplanner-e2e-node-modules:/work/frontend/node_modules \
-  -v openfarmplanner-e2e-cache:/cache \
-  -w /work/frontend \
-  mcr.microsoft.com/playwright:v1.63.0-noble \
-  bash e2e-cross-browser/docker-entrypoint.sh [playwright args]
-```
-
-The entrypoint installs a pinned `uv` (the image has Python but no uv),
-runs `npm ci` when the lockfile changed, builds the bundle with
-`tsc -b && vite build`, and runs the suite. The build skips the `postbuild`
-prerender, which needs the Google Chrome channel the image lacks. The backend
-and the browsers run inside the container's own network, so a dev server on
-the host's 8000/4173 is never reused. `E2E_SKIP_BUILD=1` reuses the last
-`dist/`. `E2E_DOCKER_ARGS` adds `docker run` arguments, e.g. proxy variables
-and a CA bundle behind a TLS-intercepting proxy. Results land in
-`frontend/test-results/` and `frontend/playwright-report/`.
-
-### Baselines
-
-Baselines follow the "Playwright Screenshot Tests" rules in `CLAUDE.md`:
-never update them automatically, and review every new or changed image
-before committing it. A failing screenshot uploads `*-actual.png`,
-`*-expected.png` and `*-diff.png` in `test-results/`.
-
-Always give `--update-snapshots` its mode: a bare flag followed by a spec
-path takes the path as the mode and fails. `--update-snapshots=changed`
-rewrites only the images outside the tolerance; after a deliberate change to
-the fixture data, re-record the affected specs with
-`--update-snapshots=all`, or small text changes stay behind in baselines that
-still pass.
-
-### Accepting changed baselines
-
-An intended UI change makes screenshot jobs fail until their baselines are
-updated, and baselines must come from the environment that compares them
-(the Docker image here, the CI runner's Chrome for `frontend/e2e/`). CI
-therefore proposes them itself, and a person accepts them:
-
-1. A failing screenshot job uploads its diffs as before. It then re-runs only
-   the failed tests (`--last-failed --update-snapshots=changed`) in the same
-   environment and uploads the re-recorded images as
-   `proposed-baselines-cross-browser-<project>` or
-   `proposed-baselines-e2e-shard-<n>` (`scripts/ci/screenshot_baselines.py collect`).
-   Tests that fail for any other reason stay failed and propose nothing.
-2. Review every diff (`*-diff.png`, `*-actual.png` against `*-expected.png`)
-   in the `playwright-cross-browser-*` / `playwright-report-shard-*`
-   artifacts, as the "Playwright Screenshot Tests" rules in `CLAUDE.md`
-   require.
-3. Add the label **`accept-screenshots`** to the PR.
-   `.github/workflows/accept-screenshots.yml` takes the proposed images of the
-   labeled head (it refuses if the branch has moved on or a screenshot
-   workflow is still running), accepts only PNGs inside a
-   `frontend/e2e*/<spec>-snapshots/` directory, commits them as one
-   `test(e2e): accept reviewed screenshot baselines` commit, removes the label
-   and comments the accepted files.
-
-The commit is pushed with `SCREENSHOT_BASELINE_TOKEN` (or `RELEASE_PAT`), not
-the default `GITHUB_TOKEN`, because a `GITHUB_TOKEN` push starts no workflow
-and would leave the new head without CI. CI then runs once more on it; the
-screenshot jobs must pass on the accepted images. The Claude PR review skips
-such a push (`baseline_push` in `claude-pr.yml`'s triage): a push that changes
-only files under `frontend/e2e*/<spec>-snapshots/` has no code to review.
-
-Recording on your own machine stays possible for new screenshot tests
-(`npm run test:e2e:update`, Docker only).
-
-One screenshot per distinct layout: the crop form is captured as the Kultur
-form only (top and seed section). The Sorte form's own elements (variety
-legend, highlighted own values, the rotation info icon) are guarded by
-functional assertions in `crop-form.spec.ts` instead of a second image pair.
-
-### CI
-
-`.github/workflows/e2e-cross-browser.yml` runs the suite on pull requests to
-`main`, one job per project, via the same `run-in-docker.sh`. A failing job
-uploads `playwright-report/` and `test-results/` (traces and screenshot
-diffs) as `playwright-cross-browser-<project>`, plus its re-recorded
-screenshots as `proposed-baselines-cross-browser-<project>` (see
-[Accepting changed baselines](#accepting-changed-baselines)).
+Run `cd frontend && npm run test:e2e:cross-browser` (or pass a project and spec
+with `--`). The Docker runner uses the pinned Playwright image and a fixed test
+dataset and clock. CI runs all six projects. Both E2E workflows retain a
+screenshot and trace on failure in their uploaded Playwright artifacts. There
+is no pixel-diff approval gate.
 
 ### Cross-browser issues found and fixed
 
@@ -688,7 +550,7 @@ in the fixtures.
 | At phone width the "Fruchtfolge-Eigenschaften" info icon drifted to the right edge and the variety legend dropped its description onto a line of its own. | all, at about 393 px and below | The icon is tied to the heading's last word; the legend is one flowing sentence. | `crop-form.spec.ts` |
 
 Not issues, but emulation limits that show up in the `mobile-firefox`
-baselines: native number spinners on integer fields and desktop scrollbars
+tests: native number spinners on integer fields and desktop scrollbars
 (Firefox has no mobile emulation, see above).
 
 ## Adding tests

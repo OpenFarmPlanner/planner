@@ -21,6 +21,7 @@ export default defineConfig({
     // saw (requests, cookies, responses). Traces are written for failed tests
     // only, into test-results/, which e2e.yml uploads when a shard fails.
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     video: 'off',
   },
   webServer: e2eWebServers,

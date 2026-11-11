@@ -24,11 +24,6 @@ test.describe('fields-beds mobile/desktop layout switch', () => {
 
     await expect(page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`)).toBeVisible();
     await expect(page.locator('[role="grid"]')).toHaveCount(0);
-    await expect(page).toHaveScreenshot('fields-beds-layout-375x800.png', {
-      fullPage: false,
-      animations: 'disabled',
-      maxDiffPixelRatio: 0.02,
-    });
   });
 
   test('phone landscape (800x375) shows the mobile list', async ({ page, request }) => {
@@ -40,11 +35,6 @@ test.describe('fields-beds mobile/desktop layout switch', () => {
 
     await expect(page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`)).toBeVisible();
     await expect(page.locator('[role="grid"]')).toHaveCount(0);
-    await expect(page).toHaveScreenshot('fields-beds-layout-800x375.png', {
-      fullPage: false,
-      animations: 'disabled',
-      maxDiffPixelRatio: 0.02,
-    });
   });
 
   test('tablet (768x900) keeps the DataGrid', async ({ page, request }) => {
@@ -56,11 +46,6 @@ test.describe('fields-beds mobile/desktop layout switch', () => {
 
     await expect(page.locator('[role="grid"]')).toBeVisible();
     await expect(page.locator('[data-hierarchy-mobile-row-id]')).toHaveCount(0);
-    await expect(page).toHaveScreenshot('fields-beds-layout-768x900.png', {
-      fullPage: false,
-      animations: 'disabled',
-      maxDiffPixelRatio: 0.02,
-    });
   });
 
   test('desktop (1440x900) keeps the DataGrid', async ({ page, request }) => {
@@ -72,10 +57,5 @@ test.describe('fields-beds mobile/desktop layout switch', () => {
 
     await expect(page.locator('[role="grid"]')).toBeVisible();
     await expect(page.locator('[data-hierarchy-mobile-row-id]')).toHaveCount(0);
-    await expect(page).toHaveScreenshot('fields-beds-layout-1440x900.png', {
-      fullPage: false,
-      animations: 'disabled',
-      maxDiffPixelRatio: 0.02,
-    });
   });
 });

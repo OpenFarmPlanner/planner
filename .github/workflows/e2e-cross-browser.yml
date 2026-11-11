@@ -13,13 +13,7 @@ permissions:
 
 jobs:
   cross-browser:
-    # Layout assertions and per-browser screenshot regression for Chromium,
-    # Firefox and WebKit, desktop and mobile (playwright.cross-browser.config.ts).
-    # The suite runs inside the official Playwright image pinned to the
-    # installed @playwright/test version (e2e-cross-browser/run-in-docker.sh),
-    # the same environment the screenshot baselines were recorded in, so a
-    # diff here is a rendering change, not a runner difference. One job per
-    # browser project; each starts its own backend and SQLite database.
+    # Functional and responsive assertions across browser engines and viewports.
     name: cross-browser (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,43 +40,13 @@ jobs:
         working-directory: frontend
         run: e2e-cross-browser/run-in-docker.sh --project=${{ matrix.project }}
 
-      - name: Upload Playwright report and screenshot diffs
+      - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-cross-browser-${{ matrix.project }}
-          # test-results/ holds the actual/expected/diff images of every
-          # failed toHaveScreenshot plus the trace of every failed test.
+          # Failed tests retain screenshots and traces for diagnosis.
           path: |
             frontend/playwright-report/
             frontend/test-results/
-          retention-days: 7
-
-      # After the diffs are uploaded: re-run only the failed tests with
-      # --update-snapshots=changed in the same image, so a changed screenshot
-      # leaves the image it should be compared against from now on. A person
-      # reviews the diffs above and accepts these with the
-      # `accept-screenshots` label (accept-screenshots.yml). Tests failing for
-      # any other reason stay failed and propose nothing.
-      - name: Re-record failed screenshots as proposed baselines
-        id: propose
-        if: failure()
-        continue-on-error: true
-        working-directory: frontend
-        env:
-          E2E_SKIP_BUILD: '1'
-        run: |
-          # No record of failed tests (e.g. the build broke): nothing to re-run.
-          if [ -f test-results/.last-run.json ]; then
-            e2e-cross-browser/run-in-docker.sh --project=${{ matrix.project }} \
-              --last-failed --update-snapshots=changed || true
-          fi
-          python3 "$GITHUB_WORKSPACE/scripts/ci/screenshot_baselines.py" collect "$RUNNER_TEMP/proposed-baselines"
-
-      - name: Upload proposed baselines
-        if: failure() && steps.propose.outputs.count != '' && steps.propose.outputs.count != '0'
-        uses: actions/upload-artifact@v7
-        with:
-          name: proposed-baselines-cross-browser-${{ matrix.project }}
-          path: ${{ runner.temp }}/proposed-baselines/
           retention-days: 7

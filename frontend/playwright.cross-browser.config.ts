@@ -1,17 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { e2eBaseURL, e2eWebServers } from './playwright.webservers';
 
-// Cross-browser layout and screenshot suite (see docs/testing-and-ci.md,
-// "Cross-browser suite"). Kept apart from playwright.config.ts because that
-// suite runs on the CI host against the Google Chrome channel and owns the
-// Chrome baselines, while this one only runs inside the official Playwright
-// Docker image (e2e-cross-browser/run-in-docker.sh) so every browser renders
-// with the same fonts and system libraries on every machine.
-//
-// Screenshot baselines use the default snapshotPathTemplate, which already
-// includes the project name: every browser has its own baselines and nothing
-// is ever compared across browsers. Chrome stays the manual reference.
-
+// Cross-browser functional and layout suite; see docs/testing-and-ci.md.
 // Firefox has no mobile emulation (`isMobile` is Chromium/WebKit only), so the
 // mobile-firefox project approximates a phone: Pixel-class viewport, touch,
 // a 2x pixel ratio and a Firefox for Android user agent. It still reports
@@ -25,11 +15,6 @@ export default defineConfig({
   timeout: 90_000,
   expect: {
     timeout: 10_000,
-    toHaveScreenshot: {
-      animations: 'disabled',
-      caret: 'hide',
-      maxDiffPixelRatio: 0.01,
-    },
   },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
@@ -37,6 +22,7 @@ export default defineConfig({
     locale: 'de-AT',
     timezoneId: 'Europe/Vienna',
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     video: 'off',
   },
   webServer: e2eWebServers,

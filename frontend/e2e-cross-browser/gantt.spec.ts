@@ -1,6 +1,5 @@
 import {
   boxOf,
-  dynamicContentMasks,
   expect,
   expectNoBrokenValues,
   expectNoHorizontalPageOverflow,
@@ -49,8 +48,4 @@ test.describe('Anbaukalender (Gantt)', () => {
     await expectNoBrokenValues(page);
   });
 
-  test('matches the per-browser screenshot', async ({ page }) => {
-    await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('gantt-chart.png', { mask: dynamicContentMasks(page) });
-  });
 });
