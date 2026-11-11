@@ -127,9 +127,9 @@ for step-by-step procedures of recurring tasks, see the skills in
   calendar weeks: resolution per year and across New Year, the canonical
   text, inheritance by Sorten, the spreadsheet parser, the sowing-month
   filter, the planting hints, and why they stay out of the crop library.
-- **[Crop Detail](./crop-detail.md)** — the read view of a crop: section
-  order (the crop form's), which values and sections are hidden while empty,
-  and the persisted "Alle Angaben anzeigen" switch.
+- **[Crop Detail](./crop-detail.md)** — the read views of a crop on the
+  crops page and in the crop library: section order (the crop form's) and
+  which values and sections are hidden while empty.
 - **[Crop Tags](./crop-tags.md)** — the user's own tags on
   crops for filtering: normalization, inheritance by Sorten, the spreadsheet
   column, and why they stay out of the crop library.

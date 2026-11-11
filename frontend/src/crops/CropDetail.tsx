@@ -46,8 +46,6 @@ import {
   Button,
   IconButton,
   TextField,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import type { Crop } from '../api/api';
 import EmptyStateCard from '../components/project/EmptyStateCard';
@@ -121,8 +119,7 @@ import {
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
 import { CropTimingWindowsDetail } from './CropTimingWindowsDetail';
-import { hasTimingWindows } from './timingWindowKinds';
-import { hasDetailValue, useShowAllCropDetailFields } from './cropDetailFieldVisibility';
+import { hasAnyDetailValue, hasDetailValue } from './cropDetailFieldVisibility';
 import { canBeSownInMonth } from './timingWindows';
 import { usePlantFamilies } from './plantFamilies';
 import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../components/layout/detailHeaderStyles';
@@ -573,9 +570,6 @@ const detailSectionGridSx = {
   );
 
   const showSeedType = !isSpeciesView && Boolean(selectedCrop?.variety);
-  const [showAllFields, setShowAllFields] = useShowAllCropDetailFields();
-  const showField = (value: unknown): boolean => showAllFields || hasDetailValue(value);
-  const showSection = (...values: unknown[]): boolean => showAllFields || values.some(hasDetailValue);
   const getLibraryPin = (field: LibraryPinFormField) => (
     selectedCrop?.source_public_crop && isLibraryFieldPinned(selectedCrop, field)
       ? (
@@ -1055,21 +1049,6 @@ const detailSectionGridSx = {
 
             <Divider sx={{ mb: 2.5 }} />
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-              <FormControlLabel
-                control={(
-                  <Switch
-                    size="small"
-                    checked={showAllFields}
-                    onChange={(event) => setShowAllFields(event.target.checked)}
-                  />
-                )}
-                label={t('detail.showAllFields')}
-                slotProps={{ typography: { variant: 'body2' } }}
-                sx={{ mr: 0 }}
-              />
-            </Box>
-
             {/* Section order follows the crop form (see CropForm.tsx); the
                 Sorten list leads, the detail-only actionable sections (task
                 templates, supplier offers) close. Empty sections render
@@ -1093,7 +1072,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* General Information: the crop's identity details */}
-            {showSection(
+            {hasAnyDetailValue(
               showSeedType ? selectedCrop.seed_type : undefined,
               getCropValue('botanical_name', selectedCrop.botanical_name),
               getEffectiveCropTags(selectedCrop),
@@ -1103,7 +1082,7 @@ const detailSectionGridSx = {
                     {t('detail.sections.general')}
                   </Typography>
                   <Box sx={detailSectionGridSx}>
-                    {showSeedType && showField(selectedCrop.seed_type) && (
+                    {showSeedType && hasDetailValue(selectedCrop.seed_type) && (
                       <Box>
                         <Typography variant="body2" color="text.secondary">
                           {t('form.seedType')}
@@ -1115,32 +1094,28 @@ const detailSectionGridSx = {
                         </ValueWithLibraryPin>
                       </Box>
                     )}
-                    {showField(getCropValue('botanical_name', selectedCrop.botanical_name)) && (
+                    {hasDetailValue(getCropValue('botanical_name', selectedCrop.botanical_name)) && (
                       <Box>
                         <Typography variant="body2" color="text.secondary">
                           {t('form.botanicalName')}
                         </Typography>
                         <ValueWithLibraryPin pin={getLibraryPin('botanical_name')}>
                           <Typography variant="body1" sx={[{ fontStyle: 'italic' }, getOwnValueSx('botanical_name') ?? {}]}>
-                            {getCropValue('botanical_name', selectedCrop.botanical_name) || t('noData')}
+                            {getCropValue('botanical_name', selectedCrop.botanical_name)}
                           </Typography>
                         </ValueWithLibraryPin>
                       </Box>
                     )}
-                    {showField(getEffectiveCropTags(selectedCrop)) && (
+                    {hasDetailValue(getEffectiveCropTags(selectedCrop)) && (
                       <Box data-testid="crop-detail-tags">
                         <Typography variant="body2" color="text.secondary">
                           {t('form.tags')}
                         </Typography>
-                        {getEffectiveCropTags(selectedCrop).length > 0 ? (
-                          <Box sx={[{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }, getOwnValueSx('tags') ?? {}]}>
-                            {getEffectiveCropTags(selectedCrop).map((tag) => (
-                              <Chip key={tag} size="small" label={tag} />
-                            ))}
-                          </Box>
-                        ) : (
-                          <Typography variant="body1">{t('noData')}</Typography>
-                        )}
+                        <Box sx={[{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }, getOwnValueSx('tags') ?? {}]}>
+                          {getEffectiveCropTags(selectedCrop).map((tag) => (
+                            <Chip key={tag} size="small" label={tag} />
+                          ))}
+                        </Box>
                       </Box>
                     )}
                   </Box>
@@ -1148,7 +1123,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Crop Rotation Properties Section */}
-            {showSection(
+            {hasAnyDetailValue(
               getCropValue('crop_family', selectedCrop.crop_family),
               getCropValue('nutrient_demand', selectedCrop.nutrient_demand),
               getCropValue('rotation_break_years', selectedCrop.rotation_break_years),
@@ -1158,19 +1133,17 @@ const detailSectionGridSx = {
                 {t('form.sectionCropRotation')}
               </Typography>
               <Box sx={detailSectionGridSx}>
-                {showField(getCropValue('crop_family', selectedCrop.crop_family)) && (
+                {hasDetailValue(getCropValue('crop_family', selectedCrop.crop_family)) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.cropFamily')}
                     </Typography>
                     <Typography variant="body1" sx={getOwnValueSx('crop_family')}>
-                      {hasDetailValue(getCropValue('crop_family', selectedCrop.crop_family))
-                        ? plantFamilies.getName(getCropValue('crop_family', selectedCrop.crop_family))
-                        : t('noData')}
+                      {plantFamilies.getName(getCropValue('crop_family', selectedCrop.crop_family))}
                     </Typography>
                   </Box>
                 )}
-                {showField(getCropValue('nutrient_demand', selectedCrop.nutrient_demand)) && (
+                {hasDetailValue(getCropValue('nutrient_demand', selectedCrop.nutrient_demand)) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.nutrientDemand')}
@@ -1181,22 +1154,18 @@ const detailSectionGridSx = {
                           ? t('form.nutrientDemandLow')
                           : getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'medium'
                             ? t('form.nutrientDemandMedium')
-                            : getCropValue('nutrient_demand', selectedCrop.nutrient_demand) === 'high'
-                              ? t('form.nutrientDemandHigh')
-                              : t('noData')}
+                            : t('form.nutrientDemandHigh')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
                 )}
-                {showField(getCropValue('rotation_break_years', selectedCrop.rotation_break_years)) && (
+                {hasDetailValue(getCropValue('rotation_break_years', selectedCrop.rotation_break_years)) && (
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     {t('form.rotationBreakYears')}
                   </Typography>
                   <Typography variant="body1" sx={getOwnValueSx('rotation_break_years')}>
-                    {hasDetailValue(getCropValue('rotation_break_years', selectedCrop.rotation_break_years))
-                      ? `${formatNumber(getCropValue('rotation_break_years', selectedCrop.rotation_break_years), t, locale)} ${t('detail.units.years')}`
-                      : t('noData')}
+                    {`${formatNumber(getCropValue('rotation_break_years', selectedCrop.rotation_break_years), t, locale)} ${t('detail.units.years')}`}
                   </Typography>
                 </Box>
                 )}
@@ -1205,7 +1174,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Timing Section */}
-            {showSection(
+            {hasAnyDetailValue(
               getCropValue('growth_duration_days', selectedCrop.growth_duration_days),
               getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days),
               getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days),
@@ -1220,16 +1189,14 @@ const detailSectionGridSx = {
                   ['harvest_duration_days', 'form.harvestDurationDays'],
                   ['propagation_duration_days', 'form.propagationDurationDays'],
                 ] as const).map(([field, labelKey]) => (
-                  showField(getCropValue(field, selectedCrop[field])) ? (
+                  hasDetailValue(getCropValue(field, selectedCrop[field])) ? (
                     <Box key={field}>
                       <Typography variant="body2" color="text.secondary">
                         {t(labelKey)}
                       </Typography>
                       <ValueWithLibraryPin pin={getLibraryPin(field)}>
                         <Typography variant="body1" sx={getOwnValueSx(field)}>
-                          {hasDetailValue(getCropValue(field, selectedCrop[field]))
-                            ? `${formatNumber(getCropValue(field, selectedCrop[field]), t, locale)} ${t('detail.units.days')}`
-                            : t('noData')}
+                          {`${formatNumber(getCropValue(field, selectedCrop[field]), t, locale)} ${t('detail.units.days')}`}
                         </Typography>
                       </ValueWithLibraryPin>
                     </Box>
@@ -1240,7 +1207,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Spacing Section */}
-            {showSection(
+            {hasAnyDetailValue(
               getCropValue('distance_within_row_cm', selectedCrop.distance_within_row_cm),
               getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm),
               getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
@@ -1255,22 +1222,20 @@ const detailSectionGridSx = {
                   ['distance_within_row_cm', 'detail.fields.distanceWithinRow'],
                   ['row_spacing_cm', 'detail.fields.rowSpacing'],
                 ] as const).map(([field, labelKey]) => (
-                  showField(getCropValue(field, selectedCrop[field])) ? (
+                  hasDetailValue(getCropValue(field, selectedCrop[field])) ? (
                     <Box key={field}>
                       <Typography variant="body2" color="text.secondary">
                         {t(labelKey)}
                       </Typography>
                       <ValueWithLibraryPin pin={getLibraryPin(field)}>
                         <Typography variant="body1" sx={getOwnValueSx(field)}>
-                          {hasDetailValue(getCropValue(field, selectedCrop[field]))
-                            ? `${formatDistance(getCropValue(field, selectedCrop[field]), t, locale)} ${t('detail.units.centimeters')}`
-                            : t('noData')}
+                          {`${formatDistance(getCropValue(field, selectedCrop[field]), t, locale)} ${t('detail.units.centimeters')}`}
                         </Typography>
                       </ValueWithLibraryPin>
                     </Box>
                   ) : null
                 ))}
-                {showSection(
+                {hasAnyDetailValue(
                   getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
                   getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
                 ) && (
@@ -1280,15 +1245,12 @@ const detailSectionGridSx = {
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('sowing_depth_cm')}>
                       <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm')}>
-                        {hasDetailValue(getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm))
-                          || hasDetailValue(getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm))
-                          ? `${formatSowingDepth(
-                            getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
-                            getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
-                            t,
-                            locale,
-                          )} ${t('detail.units.centimeters')}`
-                          : t('noData')}
+                        {`${formatSowingDepth(
+                          getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
+                          getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
+                          t,
+                          locale,
+                        )} ${t('detail.units.centimeters')}`}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
@@ -1298,7 +1260,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Yield Section */}
-            {showSection(
+            {hasAnyDetailValue(
               getCropValue('harvest_method', selectedCrop.harvest_method),
               getCropValue('expected_yield', selectedCrop.expected_yield),
             ) ? (
@@ -1317,7 +1279,7 @@ const detailSectionGridSx = {
                   justifyContent: 'start',
                 }}
               >
-                {showField(getCropValue('harvest_method', selectedCrop.harvest_method)) && (
+                {hasDetailValue(getCropValue('harvest_method', selectedCrop.harvest_method)) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.yieldUnit')}
@@ -1326,23 +1288,19 @@ const detailSectionGridSx = {
                       <Typography variant="body1" sx={getOwnValueSx('harvest_method')}>
                         {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant'
                           ? t('form.yieldUnitPerPlant')
-                          : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm'
-                            ? t('form.yieldUnitPerSqm')
-                            : t('noData')}
+                          : t('form.yieldUnitPerSqm')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
                 )}
-                {showField(getCropValue('expected_yield', selectedCrop.expected_yield)) && (
+                {hasDetailValue(getCropValue('expected_yield', selectedCrop.expected_yield)) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.expectedYield')}
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('expected_yield')}>
                       <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
-                        {hasDetailValue(getCropValue('expected_yield', selectedCrop.expected_yield))
-                          ? `${formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} ${getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`
-                          : t('noData')}
+                        {`${formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} ${getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
@@ -1352,7 +1310,7 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Seed Demand Section */}
-            {showSection(
+            {hasAnyDetailValue(
               activeCultivationTypes,
               seedRateRows,
               seedRateRows.length === 0
@@ -1383,23 +1341,19 @@ const detailSectionGridSx = {
                 seedingRequirementTypeSource={getCropValueSource('seeding_requirement_type')}
                 thousandKernelWeightG={getCropValue('thousand_kernel_weight_g', selectedCrop.thousand_kernel_weight_g)}
                 thousandKernelWeightSource={getCropValueSource('thousand_kernel_weight_g')}
-                emptyValueLabel={t('noData')}
-                emptyFields={showAllFields ? 'showAll' : 'hide'}
                 locale={locale}
                 t={t}
               />
             </Box>
             ) : null}
 
-            {showAllFields || hasTimingWindows(selectedCrop) ? (
-              <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
-            ) : null}
+            <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
 
-            {showSection(...GERMINATION_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
+            {hasAnyDetailValue(...GERMINATION_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('germination.title')}</Typography>
               <Box sx={detailSectionGridSx}>
-                {GERMINATION_FIELDS.filter((field) => showField(getCropValue(field, selectedCrop[field]))).map((field) => (
+                {GERMINATION_FIELDS.filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
                   <Box key={field} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">{t(`germination.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>
@@ -1413,11 +1367,11 @@ const detailSectionGridSx = {
             </Box>
             ) : null}
 
-            {showSection(...SITE_HEALTH_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
+            {hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('siteHealth.title')}</Typography>
               <Box sx={detailSectionGridSx}>
-                {SITE_HEALTH_FIELDS.filter((field) => showField(getCropValue(field, selectedCrop[field]))).map((field) => (
+                {SITE_HEALTH_FIELDS.filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
                   <Box key={field} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>
@@ -1431,10 +1385,10 @@ const detailSectionGridSx = {
             </Box>
             ) : null}
 
-            <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} hideWhenEmpty={!showAllFields} />
+            <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} />
 
             {/* Notes Section */}
-            {showField(selectedCrop.notes) ? (
+            {hasDetailValue(selectedCrop.notes) ? (
             <Box component="section" sx={{ mb: 3 }}>
               <ValueWithLibraryPin pin={getLibraryPin('notes')}>
                 <Typography variant="h6" gutterBottom>
@@ -1443,13 +1397,9 @@ const detailSectionGridSx = {
               </ValueWithLibraryPin>
               <Box sx={{ p: { xs: 1.5, sm: 2.5 }, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: { xs: '100%', xl: 1180 } }}>
-                  {hasDetailValue(selectedCrop.notes) ? (
-                    <Box>
-                      <LocalizedMarkdownNotes localized={localizedNotes} />
-                    </Box>
-                  ) : (
-                    <Typography variant="body1" color="text.secondary">{t('noData')}</Typography>
-                  )}
+                  <Box>
+                    <LocalizedMarkdownNotes localized={localizedNotes} />
+                  </Box>
                 </Box>
               </Box>
             </Box>

@@ -1,11 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY,
-  hasDetailValue,
-  readShowAllCropDetailFields,
-  storeShowAllCropDetailFields,
-} from '../cropDetailFieldVisibility';
+import { hasAnyDetailValue, hasDetailValue } from '../cropDetailFieldVisibility';
 
 describe('hasDetailValue', () => {
   it.each([null, undefined, '', '   ', [], {}, Number.NaN])('treats %j as missing', (value) => {
@@ -17,19 +12,9 @@ describe('hasDetailValue', () => {
   });
 });
 
-describe('show-all preference', () => {
-  beforeEach(() => {
-    window.localStorage.removeItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY);
-  });
-
-  it('defaults to hiding empty details', () => {
-    expect(readShowAllCropDetailFields()).toBe(false);
-  });
-
-  it('round-trips the stored choice', () => {
-    storeShowAllCropDetailFields(true);
-    expect(readShowAllCropDetailFields()).toBe(true);
-    storeShowAllCropDetailFields(false);
-    expect(readShowAllCropDetailFields()).toBe(false);
+describe('hasAnyDetailValue', () => {
+  it('needs one filled-in value', () => {
+    expect(hasAnyDetailValue(null, '', [])).toBe(false);
+    expect(hasAnyDetailValue(null, 0)).toBe(true);
   });
 });

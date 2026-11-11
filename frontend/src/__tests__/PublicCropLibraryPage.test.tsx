@@ -419,6 +419,86 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.queryByText('Keine öffentlichen Kulturen gefunden.')).not.toBeInTheDocument();
   });
 
+  it('orders the detail sections like the crop details on the crops page', async () => {
+    publicCropApiMocks.list.mockResolvedValue(paginated([
+      {
+        id: 20,
+        status: 'published',
+        name: 'Möhre',
+        variety: '',
+        crop_species_name: 'Möhre',
+        botanical_name: 'Daucus carota',
+        crop_family: 'Apiaceae',
+        nutrient_demand: 'medium',
+        growth_duration_days: 90,
+        distance_within_row_m: 0.03,
+        harvest_method: 'per_sqm',
+        expected_yield: 4,
+        cultivation_types: ['direct_sowing'],
+        germination_days_min: 10,
+        light_requirement: 'full_sun',
+        notes: 'Gleichmäßig feucht halten.',
+        version: 1,
+        original_language_code: 'de',
+        published_at: '2026-07-24T10:00:00Z',
+        created_at: '2026-07-21T08:00:00Z',
+        updated_at: '2026-07-25T12:00:00Z',
+      },
+    ]));
+
+    renderPage(['/app/crop-library?cropId=20']);
+
+    await screen.findByRole('heading', { level: 2, name: 'Möhre' });
+    const titles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
+    expect(titles).toEqual([
+      'Sorten',
+      'Allgemeine Informationen',
+      'Fruchtfolge-Eigenschaften',
+      'Zeitplanung',
+      'Pflanzabstände',
+      'Ertrag',
+      'Saatgutbedarf',
+      'Keimung',
+      'Standort und Pflanzengesundheit',
+      'Notizen',
+      'Bibliotheksdaten',
+    ]);
+    expect(screen.queryByText('Keine Angabe')).not.toBeInTheDocument();
+  });
+
+  it('leaves out empty fields and sections of a library entry', async () => {
+    publicCropApiMocks.list.mockResolvedValue(paginated([
+      {
+        id: 21,
+        status: 'published',
+        name: 'Radieschen',
+        variety: '',
+        crop_species_name: 'Radieschen',
+        growth_duration_days: 28,
+        harvest_duration_days: null,
+        propagation_duration_days: 0,
+        botanical_name: '  ',
+        version: 1,
+        original_language_code: 'de',
+        published_at: '2026-07-24T10:00:00Z',
+        created_at: '2026-07-21T08:00:00Z',
+        updated_at: '2026-07-25T12:00:00Z',
+      },
+    ]));
+
+    renderPage(['/app/crop-library?cropId=21']);
+
+    await screen.findByRole('heading', { level: 2, name: 'Radieschen' });
+    const titles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
+    expect(titles).toEqual(['Sorten', 'Allgemeine Informationen', 'Zeitplanung', 'Bibliotheksdaten']);
+    expect(screen.getByText('Wachstumszeit (Tage)')).toBeInTheDocument();
+    // 0 is a value, not a gap.
+    expect(screen.getByText('Anzuchtdauer (Tage)')).toBeInTheDocument();
+    expect(screen.queryByText('Erntezeit (Tage)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lateinischer Name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Keine Angabe')).not.toBeInTheDocument();
+  });
+
   it('uses the project seed layout without package sizes in public crop details', async () => {
     publicCropApiMocks.list.mockResolvedValue(paginated([
       {
@@ -463,8 +543,10 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.getByText('Korn / lfm')).toBeInTheDocument();
     expect(screen.getByText('1000-Korn-Gewicht (g)')).toBeInTheDocument();
     expect(screen.getByText('1,3 g')).toBeInTheDocument();
-    expect(screen.getByText('Saatgutbedarf')).toBeInTheDocument();
-    expect(screen.getByText('4,5 / m²')).toBeInTheDocument();
+    // "Saatgutbedarf" is both the section heading (as on the crops page) and
+    // the seeding requirement's own label.
+    expect(screen.getByRole('heading', { level: 6, name: 'Saatgutbedarf' })).toBeInTheDocument();
+    expect(screen.getByText('4,5 / m²').previousElementSibling).toHaveTextContent('Saatgutbedarf');
     expect(screen.queryByText('Packungsgrößen')).not.toBeInTheDocument();
     expect(screen.queryByText('250 g')).not.toBeInTheDocument();
   });

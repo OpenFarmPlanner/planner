@@ -81,7 +81,6 @@
       "general": "Información general",
       "notes": "Notas"
     },
-    "showAllFields": "Mostrar todos los datos",
     "fields": {
       "distanceWithinRow": "Distancia entre plantas",
       "rowSpacing": "Distancia entre filas",
@@ -790,10 +789,6 @@
       "collaborationLoadError": "No se han podido cargar el debate ni el historial de versiones.",
       "sections": {
         "general": "Información general",
-        "timing": "Calendario",
-        "spacing": "Distancias",
-        "seed": "Semillas",
-        "harvest": "Cosecha",
         "metadata": "Datos de la biblioteca",
         "notes": "Notas"
       },
@@ -838,7 +833,6 @@
         "propagationDurationDays": "Duración en semillero (días)",
         "cropFamily": "Familia botánica",
         "nutrientDemand": "Necesidades de nutrientes",
-        "cultivationType": "Tipo de cultivo",
         "distanceWithinRow": "Distancia entre plantas",
         "rowSpacing": "Distancia entre filas",
         "sowingDepth": "Profundidad de siembra",
@@ -862,10 +856,6 @@
           "low": "Bajas",
           "medium": "Medias",
           "high": "Altas"
-        },
-        "cultivationTypes": {
-          "directSowing": "Siembra directa",
-          "preCultivation": "Trasplante"
         }
       },
       "discussion": {
@@ -1647,7 +1637,6 @@
     "badColumn": "Malos vecinos",
     "add": "Añadir vecino",
     "sharedHint": "Se aplica a todas las variedades de {{name}}.",
-    "noKulturHint": "Los vecinos se registran en la ficha del cultivo sin variedad. {{name}} todavía no tiene una ficha así.",
     "familyLabel": "{{name}} (familia botánica)",
     "delete": "Quitar vecino",
     "saveError": "El cultivo se guardó, pero no se pudieron guardar sus vecinos.",

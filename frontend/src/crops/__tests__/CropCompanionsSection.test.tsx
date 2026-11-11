@@ -84,26 +84,20 @@ describe('CropCompanionsSection', () => {
     expect(screen.getByText('Gilt für alle Sorten von Tomate.')).toBeInTheDocument();
   });
 
-  it('says "Keine Angabe" without an edit button when nothing is recorded yet', async () => {
+  it('renders nothing while no neighbour is recorded', async () => {
     api.list.mockResolvedValue({ data: [] });
     renderSection(ROMA);
 
-    expect(await screen.findByText('Keine Angabe')).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('renders nothing in the hide-empty mode until a neighbour is recorded', async () => {
-    api.list.mockResolvedValue({ data: [] });
-    render(<CropCompanionsSection crop={ROMA} crops={CROPS} onCropSelect={vi.fn()} hideWhenEmpty />);
-
     await waitFor(() => expect(api.list).toHaveBeenCalled());
     expect(screen.queryByTestId('crop-companions-section')).not.toBeInTheDocument();
+    expect(screen.queryByText('Keine Angabe')).not.toBeInTheDocument();
   });
 
-  it('still lists neighbours in the hide-empty mode', async () => {
-    render(<CropCompanionsSection crop={TOMATO} crops={CROPS} onCropSelect={vi.fn()} hideWhenEmpty />);
+  it('shows a load error even without neighbours', async () => {
+    api.list.mockRejectedValue(new Error('offline'));
+    renderSection();
 
-    expect(await screen.findByRole('button', { name: 'Kartoffel' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 
   it('has no edit controls of its own', async () => {

@@ -8,7 +8,6 @@ import type { Crop } from '../api/api';
 import translations from '@/test-utils/translations';
 import i18n from '../i18n/config';
 import { CROP_FILTERS_STORAGE_KEY } from '../crops/cropDetailFormatters';
-import { CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY } from '../crops/cropDetailFieldVisibility';
 
 describe('CropDetail Component', () => {
   const renderCropDetail = (ui: Parameters<typeof render>[0]) =>
@@ -32,13 +31,8 @@ describe('CropDetail Component', () => {
     });
   }
 
-  function enableShowAllFields(): void {
-    window.localStorage.setItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY, 'true');
-  }
-
   beforeEach(async () => {
     window.sessionStorage.clear();
-    window.localStorage.removeItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY);
     await i18n.changeLanguage('de');
   });
 
@@ -677,19 +671,40 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('Importiert')).toBeInTheDocument();
   });
 
-  it('renders every detail section in the crop form order when all details are shown', () => {
-    enableShowAllFields();
-    const mockOnSelect = vi.fn();
-    renderCropDetail(
-      <CropDetail
-        crops={mockCrops}
-        selectedCropId={1}
-        onCropSelect={mockOnSelect}
-      />
-    );
+  // Every section of the crop form filled in (companions are covered by
+  // CropCompanionsSection.test.tsx: they load from their own endpoint).
+  const fullCrop: Crop = {
+    id: 50,
+    name: 'Karotte',
+    botanical_name: 'Daucus carota',
+    tags: ['Lager'],
+    crop_family: 'Apiaceae',
+    nutrient_demand: 'medium',
+    rotation_break_years: 3,
+    growth_duration_days: 90,
+    harvest_duration_days: 30,
+    distance_within_row_cm: 3,
+    row_spacing_cm: 30,
+    sowing_depth_cm: 1,
+    harvest_method: 'per_sqm',
+    expected_yield: 4,
+    cultivation_types: ['direct_sowing'],
+    thousand_kernel_weight_g: 1.2,
+    timing_windows: [{
+      kind: 'direct_sowing', unit: 'decade', start_month: 3, start_decade: 'early', end_month: 5,
+      end_decade: 'late', start_week: null, end_week: null,
+    }],
+    germination_days_min: 10,
+    light_requirement: 'full_sun',
+    notes: 'Gleichmäßig feucht halten.',
+  };
+
+  it('renders the detail sections in the crop form order', () => {
+    renderCropDetail(<CropDetail crops={[fullCrop]} selectedCropId={50} onCropSelect={vi.fn()} />);
 
     const sectionTitles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
     expect(sectionTitles).toEqual([
+      'Sorten',
       'Allgemeine Informationen',
       'Fruchtfolge-Eigenschaften',
       'Zeitplanung',
@@ -699,14 +714,14 @@ describe('CropDetail Component', () => {
       'Zeiträume',
       'Keimung',
       'Standort und Pflanzengesundheit',
-      'Mischkultur',
       'Notizen',
       'Aufgabenvorlagen',
       'Lieferantendaten',
     ]);
+    expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
   });
 
-  it('hides sections without a value by default and keeps the order of the rest', () => {
+  it('hides sections without a value and keeps the order of the rest', () => {
     renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
 
     const sectionTitles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
@@ -753,36 +768,10 @@ describe('CropDetail Component', () => {
     expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
   });
 
-  it('toggles all details with their placeholders and remembers the choice', async () => {
-    const user = userEvent.setup();
-    const { unmount } = renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={2} onCropSelect={vi.fn()} />);
-
-    const toggle = screen.getByRole('switch', { name: translations.crops.detail.showAllFields });
-    expect(toggle).not.toBeChecked();
-    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
-
-    await user.click(toggle);
-
-    expect(toggle).toBeChecked();
-    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
-    expect(screen.getAllByText(translations.crops.noData).length).toBeGreaterThan(0);
-    expect(window.localStorage.getItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY)).toBe('true');
-
-    unmount();
-    renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={2} onCropSelect={vi.fn()} />);
-    expect(screen.getByRole('switch', { name: translations.crops.detail.showAllFields })).toBeChecked();
-    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('switch', { name: translations.crops.detail.showAllFields }));
-    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(CROP_DETAIL_SHOW_ALL_FIELDS_STORAGE_KEY)).toBe('false');
-  });
-
-  it('shows a Sorte without a seed type as unknown when all details are shown', () => {
-    enableShowAllFields();
+  it('leaves out the seed type of a Sorte that has none', () => {
     renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
 
-    expect(screen.getByTestId('crop-detail-seed-type')).toHaveTextContent('Unbekannt');
+    expect(screen.queryByTestId('crop-detail-seed-type')).not.toBeInTheDocument();
   });
 
   it('shows the seed type a Sorte has', () => {
@@ -798,19 +787,11 @@ describe('CropDetail Component', () => {
   });
 
   it('shows the crop rotation break as a plain section without a nested container', () => {
-    enableShowAllFields();
-    const mockOnSelect = vi.fn();
-    renderCropDetail(
-      <CropDetail
-        crops={mockCrops}
-        selectedCropId={1}
-        onCropSelect={mockOnSelect}
-      />
-    );
+    renderCropDetail(<CropDetail crops={[fullCrop]} selectedCropId={50} onCropSelect={vi.fn()} />);
 
     const heading = screen.getByRole('heading', { level: 6, name: translations.crops.form.sectionCropRotation });
     expect(screen.getByText(translations.crops.form.rotationBreakYears)).toBeInTheDocument();
-    expect(screen.getAllByText(translations.crops.noData).length).toBeGreaterThan(0);
+    expect(screen.getByText(/^3\s+Jahre$/)).toBeInTheDocument();
     // Structurally identical to the other sections (heading + grid, no
     // separate bordered/backgrounded wrapper), unlike the old "Allgemeine
     // Informationen" container this section replaced.
@@ -892,15 +873,7 @@ describe('CropDetail Component', () => {
   });
 
   it('renders supplier data once in its own section after the form sections', () => {
-    enableShowAllFields();
-    const mockOnSelect = vi.fn();
-    renderCropDetail(
-      <CropDetail
-        crops={mockCrops}
-        selectedCropId={1}
-        onCropSelect={mockOnSelect}
-      />
-    );
+    renderCropDetail(<CropDetail crops={[fullCrop]} selectedCropId={50} onCropSelect={vi.fn()} />);
 
     const seedHeading = screen.getByRole('heading', { level: 6, name: 'Saatgutbedarf' });
     const notesHeading = screen.getByRole('heading', { level: 6, name: 'Notizen' });

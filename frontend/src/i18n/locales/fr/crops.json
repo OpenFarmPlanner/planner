@@ -81,7 +81,6 @@
       "general": "Informations générales",
       "notes": "Notes"
     },
-    "showAllFields": "Afficher toutes les informations",
     "fields": {
       "distanceWithinRow": "Espacement sur le rang",
       "rowSpacing": "Espacement entre les rangs",
@@ -790,10 +789,6 @@
       "collaborationLoadError": "La discussion et l'historique des versions n'ont pas pu être chargés.",
       "sections": {
         "general": "Informations générales",
-        "timing": "Calendrier",
-        "spacing": "Espacements",
-        "seed": "Semences",
-        "harvest": "Récolte",
         "metadata": "Données de la bibliothèque",
         "notes": "Notes"
       },
@@ -838,7 +833,6 @@
         "propagationDurationDays": "Durée en pépinière (jours)",
         "cropFamily": "Famille botanique",
         "nutrientDemand": "Besoins nutritifs",
-        "cultivationType": "Mode de culture",
         "distanceWithinRow": "Espacement sur le rang",
         "rowSpacing": "Espacement entre les rangs",
         "sowingDepth": "Profondeur de semis",
@@ -862,10 +856,6 @@
           "low": "Faibles",
           "medium": "Moyens",
           "high": "Élevés"
-        },
-        "cultivationTypes": {
-          "directSowing": "Semis direct",
-          "preCultivation": "Plantation"
         }
       },
       "discussion": {
@@ -1647,7 +1637,6 @@
     "badColumn": "Mauvais voisins",
     "add": "Ajouter un voisin",
     "sharedHint": "S'applique à toutes les variétés de {{name}}.",
-    "noKulturHint": "Les voisins sont enregistrés sur la fiche de la culture sans variété. {{name}} n'a pas encore de fiche de ce type.",
     "familyLabel": "{{name}} (famille botanique)",
     "delete": "Retirer le voisin",
     "saveError": "La culture est enregistrée, mais ses voisins n'ont pas pu être enregistrés.",
