@@ -101,6 +101,24 @@ class GuestDemoApiTests(TestCase):
         self.assertTrue(response.data['memberships'][0]['is_demo_project'])
         self.assertEqual(response.data['ui_language'], 'en')
 
+    def test_start_creates_french_and_spanish_demo_content(self) -> None:
+        for language, name, task in (
+            ('fr', 'AMAP du Champ ensoleillé', "Contrôler l'irrigation"),
+            ('es', 'Huerta comunitaria Soleada', 'Revisar el riego'),
+        ):
+            with self.subTest(language=language):
+                client = APIClient()
+                response = client.post(
+                    f'/openfarmplanner/api/auth/guest-demo/start/?language={language}',
+                    {}, format='json', HTTP_ACCEPT_LANGUAGE='de',
+                )
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                project = Project.objects.get(id=response.data['resolved_project_id'])
+                self.assertEqual(project.name, name)
+                self.assertTrue(Task.objects.filter(project=project, title=task).exists())
+                self.assertTrue(response.data['memberships'][0]['is_demo_project'])
+                self.assertEqual(response.data['ui_language'], language)
+
     def test_each_start_receives_its_own_workspace(self) -> None:
         first = self.client.post(
             '/openfarmplanner/api/auth/guest-demo/start/',

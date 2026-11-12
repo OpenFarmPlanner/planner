@@ -38,7 +38,11 @@ from farm.models import (
     Task,
 )
 from farm.services.crop_companions import library_companions
-from farm.services.demo_features import populate_demo_crop_features, populate_demo_tasks
+from farm.services.demo_features import (
+    FEATURE_TEXT,
+    populate_demo_crop_features,
+    populate_demo_tasks,
+)
 from farm.services.project_users import get_or_create_project_user
 from farm.services.seasons import assign_unassigned_planting_plans, get_or_create_season_for_date
 
@@ -51,14 +55,8 @@ DEMO_PROJECT_NAME_EN = 'Sunny Acre CSA'
 DEMO_PROJECT_DESCRIPTION_EN = 'Personal demo project with realistic sample data.'
 DEMO_SCREENSHOT_PROJECT_DESCRIPTION = 'Reproduzierbares Demo-Projekt f\u00fcr Produkt-Screenshots.'
 DEMO_SCREENSHOT_PROJECT_DESCRIPTION_EN = 'Reproducible demo project for product screenshots.'
-DEMO_PROJECT_DESCRIPTIONS = frozenset({
-    DEMO_PROJECT_DESCRIPTION,
-    DEMO_PROJECT_DESCRIPTION_EN,
-    DEMO_SCREENSHOT_PROJECT_DESCRIPTION,
-    DEMO_SCREENSHOT_PROJECT_DESCRIPTION_EN,
-})
 DEMO_LANGUAGE_DEFAULT = 'de'
-# Supported UI languages without demo templates (fr, es) get the English demo.
+# Incomplete templates fall back as a whole, never one string at a time.
 DEMO_LANGUAGE_FALLBACK = 'en'
 DEMO_USER_EMAIL = 'demo-openfarmplanner@example.local'
 DEMO_USERNAME = 'openfarmplanner-demo'
@@ -67,15 +65,25 @@ DEMO_PASSWORD = 'OpenFarmPlannerDemo2026!'
 DEMO_PROJECT_NAMES = {
     'de': DEMO_PROJECT_NAME,
     'en': DEMO_PROJECT_NAME_EN,
+    'fr': 'AMAP du Champ ensoleillé',
+    'es': 'Huerta comunitaria Soleada',
 }
 DEMO_PERSONAL_PROJECT_DESCRIPTIONS = {
     'de': DEMO_PROJECT_DESCRIPTION,
     'en': DEMO_PROJECT_DESCRIPTION_EN,
+    'fr': 'Projet de démonstration personnel avec des exemples de données réalistes.',
+    'es': 'Proyecto de demostración personal con datos de ejemplo realistas.',
 }
 DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS = {
     'de': DEMO_SCREENSHOT_PROJECT_DESCRIPTION,
     'en': DEMO_SCREENSHOT_PROJECT_DESCRIPTION_EN,
+    'fr': "Projet de démonstration reproductible pour les captures d'écran du produit.",
+    'es': 'Proyecto de demostración reproducible para las capturas de pantalla del producto.',
 }
+DEMO_PROJECT_DESCRIPTIONS = frozenset({
+    *DEMO_PERSONAL_PROJECT_DESCRIPTIONS.values(),
+    *DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS.values(),
+})
 
 DEMO_TEXT = {
     'de': {
@@ -223,6 +231,144 @@ DEMO_TEXT = {
             'karotte-2': 'Newly established this season, no previous crops recorded yet.',
         },
     },
+    'fr': {
+        'locations': {
+            'hofgarten': (
+                'Jardin de la ferme',
+                'Planches abritées près du poste de lavage et de la pépinière.',
+            ),
+            'bachacker': (
+                'Champ du ruisseau',
+                'Parcelle de plein champ pour les légumes-racines et les choux.',
+            ),
+            'lindenhof': (
+                'Parcelle louée de Lindenhof',
+                'Parcelle louée pour les pommes de terre, choux, légumineuses et alliacées.',
+            ),
+        },
+        'fields': {
+            'fruehbeete': 'Planches précoces nord',
+            'tunnel': 'Tunnel sud',
+            'wurzel': 'Légumes-racines',
+            'kohl': 'Carré des choux',
+            'schlag-nord': 'Parcelle nord',
+            'schlag-sued': 'Parcelle sud',
+        },
+        'beds': {
+            'salat-1': 'Laitues 1', 'salat-2': 'Laitues 2',
+            'kraeuter': 'Aromatiques et blettes',
+            'tomate-1': 'Rang de tomates 1', 'tomate-2': 'Rang de tomates 2',
+            'gurke': 'Rang de concombres',
+            'karotte-1': 'Carottes 1', 'karotte-2': 'Carottes 2',
+            'rote-bete': 'Betteraves', 'kohlrabi': 'Choux-raves', 'zucchini': 'Courgettes',
+            'reserve': 'Réserve pour engrais vert',
+            'kartoffel-1': 'Pommes de terre 1', 'kartoffel-2': 'Pommes de terre 2',
+            'brokkoli': 'Brocolis', 'kohlbeet': 'Planche de choux', 'bohnen': 'Haricots',
+            'lauch': 'Ail et poireaux', 'mais': 'Maïs doux', 'kuerbis': 'Planche de courges',
+        },
+        'crops': {
+            'karotte': ('Carotte', 'Nantaise 2', 'Apiaceae'),
+            'salat': ('Laitue', 'Lollo Bionda', 'Asteraceae'),
+            'tomate': ('Tomate', 'Ruthje', 'Solanaceae'),
+            'gurke': ('Concombre', 'Tanja', 'Cucurbitaceae'),
+            'mangold': ('Blette', 'Bright Lights', 'Amaranthaceae'),
+            'rote-bete': ('Betterave', 'Robuschka', 'Amaranthaceae'),
+            'kohlrabi': ('Chou-rave', 'Azur Star', 'Brassicaceae'),
+            'zucchini': ('Courgette', 'Costata Romanesco', 'Cucurbitaceae'),
+            'kartoffel': ('Pomme de terre', '', 'Solanaceae'),
+            'erbse': ('Pois', '', 'Fabaceae'),
+            'buschbohne': ('Haricot nain', '', 'Fabaceae'),
+            'knoblauch': ('Ail', '', 'Amaryllidaceae'),
+            'lauch': ('Poireau', '', 'Amaryllidaceae'),
+            'brokkoli': ('Brocoli', '', 'Brassicaceae'),
+            'senf': ('Moutarde', '', 'Brassicaceae'),
+            'zuckermais': ('Maïs doux', '', 'Poaceae'),
+            'phacelia': ('Phacélie', '', 'Boraginaceae'),
+            'erdbeere': ('Fraise', '', None),
+        },
+        'plan_notes': {
+            'salat_frueh': "Série précoce pour le premier panier de l'AMAP.",
+            'tomate': 'Tomates tuteurées après élevage des plants.',
+            'salat_herbst': "Série d'automne après la pause estivale.",
+            'tomate_akzeptiert': (
+                'Tomate après tomate acceptée volontairement : le tunnel accueille des tomates '
+                'chaque année et trois rangs ne suffisent pas à respecter le délai de retour. '
+                'Sol enrichi avec du compost mûr.'
+            ),
+        },
+        'bed_notes': {
+            'karotte-2': 'Planche créée cette saison, aucune culture précédente enregistrée.',
+        },
+    },
+    'es': {
+        'locations': {
+            'hofgarten': (
+                'Huerto de la finca',
+                'Bancales protegidos cerca de la zona de lavado y del semillero.',
+            ),
+            'bachacker': (
+                'Campo del arroyo',
+                'Parcela al aire libre para hortalizas de raíz y coles.',
+            ),
+            'lindenhof': (
+                'Parcela arrendada de Lindenhof',
+                'Parcela arrendada para patatas, coles, leguminosas y aliáceas.',
+            ),
+        },
+        'fields': {
+            'fruehbeete': 'Bancales tempranos norte',
+            'tunnel': 'Túnel sur',
+            'wurzel': 'Hortalizas de raíz',
+            'kohl': 'Sector de coles',
+            'schlag-nord': 'Parcela norte',
+            'schlag-sued': 'Parcela sur',
+        },
+        'beds': {
+            'salat-1': 'Lechugas 1', 'salat-2': 'Lechugas 2',
+            'kraeuter': 'Aromáticas y acelgas',
+            'tomate-1': 'Hilera de tomates 1', 'tomate-2': 'Hilera de tomates 2',
+            'gurke': 'Hilera de pepinos',
+            'karotte-1': 'Zanahorias 1', 'karotte-2': 'Zanahorias 2',
+            'rote-bete': 'Remolachas', 'kohlrabi': 'Colirrábanos', 'zucchini': 'Calabacines',
+            'reserve': 'Reserva para abono verde',
+            'kartoffel-1': 'Patatas 1', 'kartoffel-2': 'Patatas 2',
+            'brokkoli': 'Brócoli', 'kohlbeet': 'Bancal de coles', 'bohnen': 'Judías',
+            'lauch': 'Ajos y puerros', 'mais': 'Maíz dulce', 'kuerbis': 'Bancal de calabazas',
+        },
+        'crops': {
+            'karotte': ('Zanahoria', 'Nantaise 2', 'Apiaceae'),
+            'salat': ('Lechuga', 'Lollo Bionda', 'Asteraceae'),
+            'tomate': ('Tomate', 'Ruthje', 'Solanaceae'),
+            'gurke': ('Pepino', 'Tanja', 'Cucurbitaceae'),
+            'mangold': ('Acelga', 'Bright Lights', 'Amaranthaceae'),
+            'rote-bete': ('Remolacha', 'Robuschka', 'Amaranthaceae'),
+            'kohlrabi': ('Colirrábano', 'Azur Star', 'Brassicaceae'),
+            'zucchini': ('Calabacín', 'Costata Romanesco', 'Cucurbitaceae'),
+            'kartoffel': ('Patata', '', 'Solanaceae'),
+            'erbse': ('Guisante', '', 'Fabaceae'),
+            'buschbohne': ('Judía enana', '', 'Fabaceae'),
+            'knoblauch': ('Ajo', '', 'Amaryllidaceae'),
+            'lauch': ('Puerro', '', 'Amaryllidaceae'),
+            'brokkoli': ('Brócoli', '', 'Brassicaceae'),
+            'senf': ('Mostaza', '', 'Brassicaceae'),
+            'zuckermais': ('Maíz dulce', '', 'Poaceae'),
+            'phacelia': ('Facelia', '', 'Boraginaceae'),
+            'erdbeere': ('Fresa', '', None),
+        },
+        'plan_notes': {
+            'salat_frueh': 'Serie temprana para la primera cesta de la huerta comunitaria.',
+            'tomate': 'Tomates entutorados tras la producción de plantel.',
+            'salat_herbst': 'Serie de otoño tras la pausa de verano.',
+            'tomate_akzeptiert': (
+                'Tomate después de tomate aceptado deliberadamente: el túnel tiene tomates cada '
+                'año y tres hileras no bastan para respetar la pausa de rotación. '
+                'Suelo enriquecido con compost maduro.'
+            ),
+        },
+        'bed_notes': {
+            'karotte-2': 'Bancal creado esta temporada, sin cultivos anteriores registrados.',
+        },
+    },
 }
 
 
@@ -335,26 +481,53 @@ def find_demo_crop_species(name: str | None) -> CropSpecies | None:
         return species
 
     for text in DEMO_TEXT.values():
-        for crop_key, crop_text in text['crops'].items():
+        for crop_key, crop_text in text.get('crops', {}).items():
             if crop_text[0] != name:
                 continue
             for fallback_text in DEMO_TEXT.values():
-                species = find_species_by_common_name(fallback_text['crops'][crop_key][0])
+                fallback_crop = fallback_text.get('crops', {}).get(crop_key)
+                if fallback_crop is None:
+                    continue
+                species = find_species_by_common_name(fallback_crop[0])
                 if species is not None:
                     return species
     return None
+
+
+def _has_complete_translation(reference: Any, translated: Any) -> bool:
+    if isinstance(reference, dict):
+        return isinstance(translated, dict) and all(
+            key in translated and _has_complete_translation(value, translated[key])
+            for key, value in reference.items()
+        )
+    if isinstance(reference, list | tuple):
+        return (
+            isinstance(translated, type(reference))
+            and len(reference) == len(translated)
+            and all(_has_complete_translation(value, translated[index])
+                    for index, value in enumerate(reference))
+        )
+    if isinstance(reference, str):
+        return isinstance(translated, str) and (not reference or bool(translated.strip()))
+    return translated == reference
 
 
 def resolve_demo_language(language_code: str | None) -> str:
     """Resolve a requested demo language to one that has demo templates.
 
     Unknown or missing codes keep German as the template default; a supported
-    UI language without its own templates (fr, es) falls back to English.
+    UI language without complete content falls back to English as a whole.
     """
-    language = normalize_language_tag(language_code)
-    if not language:
-        return DEMO_LANGUAGE_DEFAULT
-    return language if language in DEMO_TEXT else DEMO_LANGUAGE_FALLBACK
+    language = normalize_language_tag(language_code) or DEMO_LANGUAGE_DEFAULT
+    bundles = (
+        DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
+        DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
+    )
+    complete = all(
+        _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
+        for bundle in bundles
+    )
+    return language if complete else DEMO_LANGUAGE_FALLBACK
 
 
 def resolve_demo_request_language(request: Any) -> str:

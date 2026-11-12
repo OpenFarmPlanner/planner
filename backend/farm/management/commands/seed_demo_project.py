@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand, CommandParser
 
 from farm.services.demo_project import (
     DEMO_PASSWORD,
+    DEMO_PROJECT_NAMES,
     DEMO_PROJECT_SLUG,
     DEMO_USER_EMAIL,
     DEMO_USERNAME,
@@ -20,7 +21,7 @@ class Command(BaseCommand):
         parser.add_argument('--user-email', default=DEMO_USER_EMAIL)
         parser.add_argument('--username', default=DEMO_USERNAME)
         parser.add_argument('--password', default=DEMO_PASSWORD)
-        parser.add_argument('--language', choices=['de', 'en'], default='de')
+        parser.add_argument('--language', choices=list(DEMO_PROJECT_NAMES), default='de')
         parser.add_argument(
             '--skip-public-library',
             action='store_true',

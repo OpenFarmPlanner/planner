@@ -413,6 +413,31 @@ class ProjectsApiTests(APITestCase):
         )
         self.assertTrue(demo_membership['is_demo_project'])
 
+    def test_selected_language_creates_and_loads_french_and_spanish_demos(self) -> None:
+        for language, name, location in (
+            ('fr', 'AMAP du Champ ensoleillé', 'Jardin de la ferme'),
+            ('es', 'Huerta comunitaria Soleada', 'Huerto de la finca'),
+        ):
+            with self.subTest(language=language):
+                UserProjectSettings.objects.filter(user=self.user).update(ui_language=language)
+                first = self.client.post(
+                    '/openfarmplanner/api/projects/create-demo/', {}, format='json',
+                    HTTP_ACCEPT_LANGUAGE='de',
+                )
+                self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+                self.assertEqual(first.data['name'], name)
+                self.assertTrue(Location.objects.filter(
+                    project_id=first.data['id'], name=location,
+                ).exists())
+                second = self.client.post(
+                    '/openfarmplanner/api/projects/create-demo/', {}, format='json',
+                )
+                self.assertEqual(second.status_code, status.HTTP_200_OK)
+                self.assertEqual(second.data['id'], first.data['id'])
+                me = self.client.get('/openfarmplanner/api/auth/me/')
+                self.assertTrue(next(row for row in me.data['memberships']
+                                     if row['project_id'] == first.data['id'])['is_demo_project'])
+
     def test_demo_project_creation_is_idempotent_for_repeated_requests(self) -> None:
         first = self.client.post('/openfarmplanner/api/projects/create-demo/', {}, format='json')
         second = self.client.post('/openfarmplanner/api/projects/create-demo/', {}, format='json')

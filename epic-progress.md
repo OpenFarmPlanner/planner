@@ -28,9 +28,10 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | PR [#1046](https://github.com/OpenFarmPlanner/planner/pull/1046) merged and verified at `c6a0f75b` |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | PR [#1047](https://github.com/OpenFarmPlanner/planner/pull/1047) merged and verified at `4a10dcb7` |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | PR [#1048](https://github.com/OpenFarmPlanner/planner/pull/1048) merged and verified at `21e331c6` |
-| 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | In progress on `fix/1014-remove-crop-plot-empty-state` |
-| 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | Pending |
+| 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | PR [#1050](https://github.com/OpenFarmPlanner/planner/pull/1050) merged and verified at `dfdd8d36` |
+| 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | In progress on `fix/1021-localize-demo-content` |
 | 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | Pending |
+| 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | Pending |
 | 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
 
 ## #1030 coverage audit
@@ -70,19 +71,18 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1029 merged and verified through PR #1048 at
-`21e331c6` after all 10 required checks passed. #1029 is closed. PostgreSQL,
+Current resume point: #1014 merged and verified through PR #1050 at
+`dfdd8d36` after all 10 required checks passed. #1014 is closed. PostgreSQL,
 six cross-browser jobs, the isolated security completion reader, build and
-dependency checks passed too. Backend: 2,561 passed, 96% coverage. The optional
-Claude code review failed before completion and native Codex rejected its
-current-head request. No independent approval is claimed. Security was
-intentionally triage exempt; no required approval or unresolved thread existed.
-Normal pinned-head merge, without overrides. Verification:
-https://github.com/OpenFarmPlanner/planner/pull/1048#issuecomment-6832090136 .
+dependency checks passed too. Code/security review were deliberately triage
+exempt, not completed scans; final review requests, reviews and threads were
+empty with pagination exhausted. GitHub CLEAN, normal pinned-head merge without
+overrides; fetched main contains it and matches the tested head tree. Proof:
+https://github.com/OpenFarmPlanner/planner/pull/1050#issuecomment-6832766478 .
 
-Finish #1014 on `fix/1014-remove-crop-plot-empty-state`, based on refreshed
-main `d1e127d0` (including the automatic version bump after #1048). Complete
-CI/reviews and verify normal merge before #1021, then #1038 and final integration.
+Finish #1021 on `fix/1021-localize-demo-content`, based on refreshed
+main `89c04ac7` (including the automatic version bump after #1050). Complete
+CI/reviews and verify normal merge before #1038, #840 and final integration.
 The earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
 Inspect every review thread and required check; provider failures remain visible
 and triage exemptions are distinct from completed security reviews.
@@ -874,3 +874,39 @@ required check/review thread, merge normally and verify before #1021.
 
 Post-merge CI for #1048's automatic release commit `d1e127d0` also passed:
 https://github.com/OpenFarmPlanner/planner/actions/runs/43278324270 .
+
+
+## #1021 implementation
+
+French and Spanish templates now cover project metadata, locations, fields,
+beds and notes, crop names, planting notes, tags, germination instructions,
+companion text/notes, task templates and manual tasks. Shared population,
+relations, quantities, dates and enum codes remain unchanged. Companion notes
+use the selected-language map introduced by #1031 instead of being classified
+as legacy German. CLI language choices come from the same registry.
+
+Language selection validates the complete project/feature bundle against
+English; a missing/blank translation falls back to the whole English dataset.
+Missing/unsupported request languages retain the historical German default.
+Existing editable personal demos remain idempotent and preserve user edits;
+new demos follow the selected language. Catalog-owned names keep their normal
+database/API fallback; no global translations, migrations or independent
+cross-browser fixtures are changed. Supplier/cultivar/botanical names stay intact.
+
+The targeted backend suite passed 168 tests; eight affected tests passed after
+the final language/companion refinements, including one additional fallback
+creation test (169 unique tests). TypeScript, the production build, all 20
+public prerenders and source-only make quality pass; full backend remains a
+required CI gate. Targeted Ruff I/F/UP passes; the quality script accepts its
+existing Ruff/Madge reports. All 12 browser cases pass (2.2m), including French
+and Spanish at 375x800/1440x900/800x375 plus existing onboarding/guest-session
+regressions. The six localized cases also passed again (1.8m) with direct
+companion-note captures; all 18 initial and 24 final captures were inspected.
+Final targeted lint/typecheck pass; commit and PR are ready. The initial phone test used a
+desktop-only selector; it was corrected to follow the intentional mobile tree.
+Shared shell layout is unchanged; its known landscape title/action overlap
+remains assigned to final integration. CI, final reviews and merge remain pending.
+
+Post-merge CI for #1050 and its automatic release commit `89c04ac7` passed:
+https://github.com/OpenFarmPlanner/planner/actions/runs/43283297809 and
+https://github.com/OpenFarmPlanner/planner/actions/runs/43283351915 .
