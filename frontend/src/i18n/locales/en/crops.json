@@ -32,6 +32,9 @@
     "openAdvanced": "Open advanced filters",
     "title": "Filters",
     "tag": "Tags",
+    "clearSelection": "Clear selection",
+    "tagsSelected_one": "{{count}} tag selected",
+    "tagsSelected_other": "{{count}} tags selected",
     "sowingMonth": "Can be sown in month"
   },
   "emptySearch": {

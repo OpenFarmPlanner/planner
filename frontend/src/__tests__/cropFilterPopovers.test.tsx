@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CropFiltersPopover } from '../crops/CropFiltersPopover';
@@ -18,12 +19,13 @@ const emptyPrivateFilters: PersistedCropFilters = {
   selectedFamilyFilter: '',
   selectedCultivationFilter: '',
   selectedNutrientFilter: '',
+  selectedSeedTypeFilter: '',
   selectedSupplierFilter: '',
   growthDaysMin: '',
   growthDaysMax: '',
   yieldMin: '',
   yieldMax: '',
-  selectedTagFilter: '',
+  selectedTagFilter: [],
   sowingMonth: '',
 };
 
@@ -42,21 +44,32 @@ const renderPrivate = (filters: Partial<PersistedCropFilters> = {}, tagOptions: 
   const onFilterChange = vi.fn();
   const onClose = vi.fn();
   const onReset = vi.fn();
-  const view = render(
-    <CropFiltersPopover
-      anchorEl={anchor()}
-      onClose={onClose}
-      filters={{ ...emptyPrivateFilters, ...filters }}
-      onFilterChange={onFilterChange}
-      familyOptions={['Brassicaceae', 'Fabaceae']}
-      tagOptions={tagOptions}
-      supplierOptions={[
-        { id: '7', name: 'Reinsaat' },
-        { id: '9', name: 'Bingenheimer' },
-      ]}
-      onReset={onReset}
-    />,
-  );
+  const anchorEl = anchor();
+  function PrivateFiltersHarness() {
+    const [currentFilters, setCurrentFilters] = useState({ ...emptyPrivateFilters, ...filters });
+    return (
+      <CropFiltersPopover
+        anchorEl={anchorEl}
+        onClose={onClose}
+        filters={currentFilters}
+        onFilterChange={(key, value) => {
+          onFilterChange(key, value);
+          setCurrentFilters((previous) => ({ ...previous, [key]: value }));
+        }}
+        familyOptions={['Brassicaceae', 'Fabaceae']}
+        tagOptions={tagOptions}
+        supplierOptions={[
+          { id: '7', name: 'Reinsaat' },
+          { id: '9', name: 'Bingenheimer' },
+        ]}
+        onReset={() => {
+          onReset();
+          setCurrentFilters(emptyPrivateFilters);
+        }}
+      />
+    );
+  }
+  const view = render(<PrivateFiltersHarness />);
   return { ...view, onFilterChange, onClose, onReset };
 };
 
@@ -81,7 +94,7 @@ const renderPublic = (filters: Partial<PublicCropFilterState> = {}) => {
   return { ...view, onFilterChange, onClose, onReset };
 };
 
-const select = (label: string): HTMLElement => screen.getByLabelText(label);
+const select = (label: string): HTMLElement => screen.getByLabelText(label, { selector: '[role="combobox"]' });
 const numberField = (label: string): HTMLElement => screen.getByLabelText(label);
 
 const pick = async (
@@ -169,13 +182,45 @@ describe('CropFiltersPopover', () => {
   });
 
   describe('the tag filter', () => {
-    it("lists the project's tags behind an \"all\" entry and writes the pick", async () => {
+    it('selects and deselects several checked tags without closing the menu', async () => {
       const user = userEvent.setup();
       const { onFilterChange } = renderPrivate();
       await user.click(select('Tags'));
-      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Alle', 'Blumen', 'Kräuter']);
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Auswahl löschen', 'Blumen', 'Kräuter']);
       await user.click(screen.getByRole('option', { name: 'Kräuter' }));
-      expect(onFilterChange).toHaveBeenCalledWith('selectedTagFilter', 'Kräuter');
+      expect(onFilterChange).toHaveBeenLastCalledWith('selectedTagFilter', ['Kräuter']);
+      await user.click(screen.getByRole('option', { name: 'Blumen' }));
+      expect(onFilterChange).toHaveBeenLastCalledWith('selectedTagFilter', ['Kräuter', 'Blumen']);
+      for (const name of ['Blumen', 'Kräuter']) {
+        const option = screen.getByRole('option', { name });
+        expect(option).toHaveAttribute('aria-selected', 'true');
+        expect(within(option).getByRole('checkbox', { hidden: true })).toBeChecked();
+      }
+      expect(select('Tags')).toHaveTextContent('2 Tags ausgewählt');
+      await user.click(screen.getByRole('option', { name: 'Kräuter' }));
+      expect(onFilterChange).toHaveBeenLastCalledWith('selectedTagFilter', ['Blumen']);
+      expect(screen.getByRole('option', { name: 'Kräuter' })).toHaveAttribute('aria-selected', 'false');
+      expect(select('Tags')).toHaveTextContent('1 Tag ausgewählt');
+    });
+
+    it('clears the complete selection and keeps the dropdown open', async () => {
+      const user = userEvent.setup();
+      const { onFilterChange } = renderPrivate({ selectedTagFilter: ['Blumen', 'Kräuter'] });
+      await user.click(select('Tags'));
+      await user.click(screen.getByRole('option', { name: 'Auswahl löschen' }));
+      expect(onFilterChange).toHaveBeenLastCalledWith('selectedTagFilter', []);
+      expect(screen.getByRole('option', { name: 'Blumen' })).toHaveAttribute('aria-selected', 'false');
+    });
+
+    it('supports keyboard selection and the canonical spelling of a restored tag', async () => {
+      const user = userEvent.setup();
+      const { onFilterChange } = renderPrivate({ selectedTagFilter: ['kräuter'] });
+      await user.click(select('Tags'));
+      expect(screen.getByRole('option', { name: 'Kräuter' })).toHaveAttribute('aria-selected', 'true');
+      screen.getByRole('option', { name: 'Blumen' }).focus();
+      await user.keyboard('{Enter}');
+      expect(onFilterChange).toHaveBeenLastCalledWith('selectedTagFilter', ['Kräuter', 'Blumen']);
+      expect(screen.getByRole('listbox')).toHaveAttribute('aria-multiselectable', 'true');
     });
 
     it('is left out while the project has no tags', () => {

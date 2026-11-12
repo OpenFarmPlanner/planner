@@ -43,10 +43,19 @@ user's list, Kamille is tagged "Kräuter" and "Blumen").
 - **Crop details:** the effective tags as chips, with the Latin name in a
   "General information" section above the crop rotation properties (shown only
   when the crop has either).
-- **Filter:** "Tags" in the crop filter, offering the project's tags; a crop
-  matches when its effective tags contain the selected one (case-insensitive).
-  A Kultur stays visible when one of its Sorten matches, as with the other
-  filters.
+- **Filter:** "Tags" in the crop filter offers checkbox-based multiple selection.
+  A crop matches only when its effective tags contain **every** selected tag
+  (AND, case-insensitive). Empty selection does not restrict results; other
+  filters and the search still apply. Tags on separate Sorten are never pooled
+  into one match. A Kultur stays visible as context when one of its Sorten
+  matches, as with the other filters.
+- The dropdown stays open while checking or unchecking tags. Its collapsed
+  field shows the localized selection count. "Clear selection" clears only
+  tags; "Reset filters" clears every filter. Mouse, keyboard and touch use
+  the shared `TypeaheadSelect` behavior. Long labels wrap inside the menu.
+- The existing `cropsDetailFiltersV1` session-storage key is preserved. The
+  `selectedTagFilter` field now stores a list; the deprecated single-string
+  shape remains readable as a one-item list until old sessions expire.
 
 ## Import and export
 

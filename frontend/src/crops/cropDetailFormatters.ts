@@ -12,8 +12,8 @@ export const LEGACY_CROP_FILTERS_STORAGE_KEY = 'culturesDetailFiltersV1';
 export interface PersistedCropFilters {
   searchQuery: string;
   selectedFamilyFilter: string;
-  /** A tag name; '' for all. */
-  selectedTagFilter: string;
+  /** Every selected tag must match; an empty list does not restrict tags. */
+  selectedTagFilter: string[];
   selectedCultivationFilter: string;
   selectedNutrientFilter: string;
   /** 'open_pollinated', 'f1_hybrid', 'unknown', or '' for all. */

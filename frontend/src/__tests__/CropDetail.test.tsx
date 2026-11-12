@@ -196,6 +196,62 @@ describe('CropDetail Component', () => {
     expect(screen.queryByText('Salbei')).not.toBeInTheDocument();
   });
 
+  it('requires every tag on the same crop, including inherited values', async () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({
+      selectedTagFilter: ['kräuter', 'blumen'],
+    }));
+    const crops = [
+      { id: 31, name: 'Kamille', variety: '', tags: ['Kräuter', 'Blumen'] },
+      { id: 32, name: 'Kamille', variety: 'Inherited', tags: [],
+        effective_values: { tags: ['Kräuter', 'Blumen'] }, general_crop: 31 },
+      { id: 33, name: 'Salbei', variety: '', tags: ['Kräuter'] },
+      { id: 34, name: 'Ringelblume', variety: '', tags: ['Blumen'] },
+      { id: 35, name: 'Split tags', variety: '', tags: ['Kräuter'] },
+      { id: 36, name: 'Split tags', variety: 'Separate', tags: ['Blumen'], general_crop: 35 },
+      { id: 37, name: 'Variety match', variety: '', tags: ['Blumen'] },
+      { id: 38, name: 'Variety match', variety: 'Both', tags: ['Kräuter', 'Blumen'], general_crop: 37 },
+    ] as Crop[];
+    renderCropDetail(<CropDetail crops={crops} onCropSelect={vi.fn()} />);
+    const list = screen.getByRole('listbox', { name: translations.crops.title });
+    expect(within(list).getByText('Kamille')).toBeInTheDocument();
+    expect(within(list).getByText('Variety match')).toBeInTheDocument();
+    for (const name of ['Salbei', 'Ringelblume', 'Split tags']) {
+      expect(within(list).queryByText(name)).not.toBeInTheDocument();
+    }
+    expect(screen.getByLabelText('Erweiterte Filter öffnen')).toHaveTextContent('1');
+    const user = userEvent.setup();
+    await user.dblClick(within(list).getByRole('option', { name: 'Kamille' }));
+    expect(within(list).getByRole('option', { name: 'Inherited' })).toBeInTheDocument();
+  });
+
+  it('combines tags with other filters and clears all of them with Reset filters', async () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({
+      selectedTagFilter: ['Kräuter', 'Blumen'], selectedNutrientFilter: 'low',
+    }));
+    const crops = [
+      { id: 41, name: 'Kamille', variety: '', tags: ['Kräuter', 'Blumen'], nutrient_demand: 'low' },
+      { id: 42, name: 'Salbei', variety: '', tags: ['Kräuter', 'Blumen'], nutrient_demand: 'high' },
+      { id: 43, name: 'Ringelblume', variety: '', tags: ['Blumen'], nutrient_demand: 'low' },
+    ] as Crop[];
+    renderCropDetail(<CropDetail crops={crops} onCropSelect={vi.fn()} />);
+    expect(screen.getByText('Kamille')).toBeInTheDocument();
+    expect(screen.queryByText('Salbei')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ringelblume')).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText('Erweiterte Filter öffnen'));
+    await user.click(screen.getByLabelText('Tags'));
+    await user.click(screen.getByRole('option', { name: 'Auswahl löschen' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByText('Ringelblume')).toBeInTheDocument();
+    expect(screen.queryByText('Salbei')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }));
+    expect(screen.getByText('Salbei')).toBeInTheDocument();
+    expect(screen.getByText('Ringelblume')).toBeInTheDocument();
+    expect(JSON.parse(window.sessionStorage.getItem(CROP_FILTERS_STORAGE_KEY)!)).toMatchObject({
+      selectedTagFilter: [], selectedNutrientFilter: '',
+    });
+  });
+
   it('keeps variety matches in the embedded crop search list', async () => {
     const user = userEvent.setup();
 

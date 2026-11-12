@@ -29,8 +29,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | PR [#1047](https://github.com/OpenFarmPlanner/planner/pull/1047) merged and verified at `4a10dcb7` |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | PR [#1048](https://github.com/OpenFarmPlanner/planner/pull/1048) merged and verified at `21e331c6` |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | PR [#1050](https://github.com/OpenFarmPlanner/planner/pull/1050) merged and verified at `dfdd8d36` |
-| 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | In progress on `fix/1021-localize-demo-content` |
-| 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | Pending |
+| 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | PR [#1051](https://github.com/OpenFarmPlanner/planner/pull/1051) merged and verified at `12f54927` |
+| 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | In progress on `feat/1038-multi-tag-filter` |
 | 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | Pending |
 | 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
 
@@ -71,18 +71,21 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1014 merged and verified through PR #1050 at
-`dfdd8d36` after all 10 required checks passed. #1014 is closed. PostgreSQL,
+Current resume point: #1021 merged and verified through PR #1051 at
+`12f54927` after all 10 required checks passed. #1021 is closed. PostgreSQL,
 six cross-browser jobs, the isolated security completion reader, build and
-dependency checks passed too. Code/security review were deliberately triage
-exempt, not completed scans; final review requests, reviews and threads were
-empty with pagination exhausted. GitHub CLEAN, normal pinned-head merge without
+dependency checks passed too. Backend: 2,568 passed, 96% coverage. Optional Claude
+code review failed before completion and native Codex rejected its request;
+neither is independent approval. Security was intentionally triage exempt,
+not a completed scan. Final review requests, reviews and threads were empty
+with pagination exhausted. GitHub UNSTABLE due to the optional provider failure,
+normal pinned-head merge without
 overrides; fetched main contains it and matches the tested head tree. Proof:
-https://github.com/OpenFarmPlanner/planner/pull/1050#issuecomment-6832766478 .
+https://github.com/OpenFarmPlanner/planner/pull/1051#issuecomment-6833554466 .
 
-Finish #1021 on `fix/1021-localize-demo-content`, based on refreshed
-main `89c04ac7` (including the automatic version bump after #1050). Complete
-CI/reviews and verify normal merge before #1038, #840 and final integration.
+Finish #1038 on `feat/1038-multi-tag-filter`, based on refreshed
+main `700f99fd` (including the automatic version bump after #1051). Complete
+CI/reviews and verify normal merge before #840 and final integration.
 The earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
 Inspect every review thread and required check; provider failures remain visible
 and triage exemptions are distinct from completed security reviews.
@@ -910,3 +913,36 @@ remains assigned to final integration. CI, final reviews and merge remain pendin
 Post-merge CI for #1050 and its automatic release commit `89c04ac7` passed:
 https://github.com/OpenFarmPlanner/planner/actions/runs/43283297809 and
 https://github.com/OpenFarmPlanner/planner/actions/runs/43283351915 .
+
+
+## #1038 implementation
+
+The crop tag filter reuses the existing multi-select and checkbox controls,
+keeps the menu open, displays a four-language pluralized selection count and
+offers Clear selection. Every selected tag must match one crop's effective
+tags; parent crops remain as context for matching varieties, without pooling
+tags from different varieties. Active-filter counting treats the tag list as
+one category. Clear selection preserves other filters; Reset clears all.
+The same session key/field is retained, with normalized array storage and a
+deprecated single-string reader for old sessions. No API/schema/global
+taxonomy or shared-shell layout change.
+
+All 253 targeted unit/i18n tests pass across the main and affected reruns;
+after the controlled test harness refinement, all 44 popover tests pass too.
+TypeScript, final targeted ESLint, Vite's production build and source-only
+make quality pass. Public-page prerendering is left to the standard CI build;
+no public page changed. Full backend coverage remains required in CI.
+All 13 browser cases pass (3.9m), covering eight main routes at all four
+breakpoints and tag selection/deselection/clear/reset at 375/768/1024/1440 px,
+800x375 landscape, all four languages, keyboard and touch. Visual inspection
+found fading-menu capture artifacts, so the test now waits for closure and
+disables capture animations. All nine affected recaptures pass (1.9m), and all
+50 initial plus 18 final images were inspected. Tag UI fits and long labels
+wrap; the existing mobile picker and shared shell are preserved. Known shared
+toolbar/header overlap remains assigned to final integration.
+
+Commit/push/open the PR for this branch, finish every required check/review,
+then merge normally pinned to the tested head and verify before #840.
+Post-merge CI for #1051 and its release commit `700f99fd` passed:
+https://github.com/OpenFarmPlanner/planner/actions/runs/43288958261 and
+https://github.com/OpenFarmPlanner/planner/actions/runs/43289018835 .

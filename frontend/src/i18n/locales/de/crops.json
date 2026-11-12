@@ -32,6 +32,9 @@
     "openAdvanced": "Erweiterte Filter öffnen",
     "title": "Filter",
     "tag": "Tags",
+    "clearSelection": "Auswahl löschen",
+    "tagsSelected_one": "{{count}} Tag ausgewählt",
+    "tagsSelected_other": "{{count}} Tags ausgewählt",
     "sowingMonth": "Aussaat möglich im Monat"
   },
   "emptySearch": {

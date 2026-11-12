@@ -237,7 +237,7 @@ const detailSectionGridSx = {
         filters.yieldMax,
         filters.sowingMonth,
       ];
-      return filterValues.filter((v) => typeof v === 'string' && v.length > 0).length;
+      return filterValues.filter((value) => value.length > 0).length;
     },
     [filters],
   );
@@ -307,8 +307,10 @@ const detailSectionGridSx = {
     return crops.filter((crop) => {
       const familyMatches = filters.selectedFamilyFilter.length === 0
         || getEffectiveCropValue(crop, 'crop_family') === filters.selectedFamilyFilter;
-      const tagMatches = filters.selectedTagFilter.length === 0
-        || getEffectiveCropTags(crop).some((tag) => tag.toLocaleLowerCase() === filters.selectedTagFilter.toLocaleLowerCase());
+      const effectiveTags = getEffectiveCropTags(crop).map((tag) => tag.toLocaleLowerCase());
+      const tagMatches = filters.selectedTagFilter.every((tag) => (
+        effectiveTags.includes(tag.toLocaleLowerCase())
+      ));
       const effectiveCultivationTypes = getEffectiveCropValue(crop, 'cultivation_types');
       const effectiveCultivationType = getEffectiveCropValue(crop, 'cultivation_type');
       const cultivationValues = effectiveCultivationTypes?.length

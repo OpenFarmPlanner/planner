@@ -27,7 +27,7 @@ const stored = (): PersistedCropFilters | null => {
 const FULL_FILTERS: PersistedCropFilters = {
   searchQuery: 'möhre',
   selectedFamilyFilter: 'Apiaceae',
-  selectedTagFilter: 'Kräuter',
+  selectedTagFilter: ['Kräuter', 'Blumen'],
   selectedCultivationFilter: 'direct_sowing',
   selectedNutrientFilter: 'low',
   selectedSeedTypeFilter: 'f1_hybrid',
@@ -58,6 +58,26 @@ describe('usePersistedCropFilters — reading what was stored', () => {
     // back out again.
     window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify(FULL_FILTERS));
     expect(setup().result.current.filters).toEqual(FULL_FILTERS);
+  });
+
+  it.each([CROP_FILTERS_STORAGE_KEY, LEGACY_CROP_FILTERS_STORAGE_KEY])(
+    'keeps a legacy single tag stored under %s', (key) => {
+      window.sessionStorage.setItem(key, JSON.stringify({ selectedTagFilter: 'Kräuter' }));
+      expect(setup().result.current.filters.selectedTagFilter).toEqual(['Kräuter']);
+      expect(stored()?.selectedTagFilter).toEqual(['Kräuter']);
+    },
+  );
+
+  it.each([undefined, null, 42, {}, ''])('clears a missing or invalid tag value %s', (value) => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({ selectedTagFilter: value }));
+    expect(setup().result.current.filters.selectedTagFilter).toEqual([]);
+  });
+
+  it('normalizes stored tags and removes duplicates and malformed entries', () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({
+      selectedTagFilter: [' Kräuter ', 'kräuter', 42, null, 'Blumen', '', 'A, B'],
+    }));
+    expect(setup().result.current.filters.selectedTagFilter).toEqual(['Kräuter', 'Blumen', 'A, B']);
   });
 
   it('adopts filters left under the pre-rename key', () => {
