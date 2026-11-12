@@ -20,7 +20,7 @@ checks/reviews; do not implement multiple issues simultaneously.
 | --- | --- | --- | --- |
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
-| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | In progress on `feat/1032-crop-specific-properties` |
+| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036), implemented; finish CI/review and verify merge, then stop |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
@@ -68,8 +68,10 @@ branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
 Current resume point: #1035 is merged and verified at `b96f46b7`; #1028 is
-closed. Implement #1032 on `feat/1032-crop-specific-properties`, finish its
-validation/CI/reviews, merge and verify, then stop. User steering on
+closed. #1032 is implemented on `feat/1032-crop-specific-properties` in
+PR #1036. Finish its CI/reviews, merge and verify, then stop. This handoff
+is committed before merge: always check #1036 on GitHub for its final state
+and verified merge SHA; final validation/merge evidence is in PR comments. User steering on
 2026-11-12: stop after the next merge (#1032); do not start #1031 until
 explicitly resumed.
 
@@ -386,3 +388,13 @@ No PR has been opened yet.
 - Actual Vite dev-server checks: shared registry JSON returns 200; unrelated
   backend manage.py returns 403. The allowlist exposes only the exact registry.
 - User steering: stop after merging and verifying #1032. Do not begin #1031.
+
+- Follow-up library browser case passed (23.5 seconds): create first variety,
+  publish, edit public properties, preserve the private copy, then import the
+  edited values into another project in a separate browser context. Required
+  planning durations are supplied independently of maturity group. The test
+  session correction changes no product behavior.
+- Final local schema check reports no changes detected. Full `make quality`
+  completed: ESLint 0, Madge 1 (accepted existing circular report), Ruff 1
+  (repository report), with the backend failure/correction detailed above.
+  Complete-suite CI and automated review remain mandatory before merge.
