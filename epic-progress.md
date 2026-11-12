@@ -715,3 +715,14 @@ commit `79d78eab` (version metadata only) through a normal merge, without
 rewriting the published feature commit. PR #1046 is active. Fresh head CI
 remains required, including the intentionally blocking first-install human
 review gate. No human approval has been posted or inferred.
+
+Live #1046 evidence on initial final head `8af517e1`: all 30 policy tests
+and ordinary quality checks pass in Actions, then quality fails specifically
+for missing explicit first-install human bootstrap review. Supported native
+request at 15:59:17 UTC was rejected at 15:59:21 UTC:
+https://github.com/OpenFarmPlanner/planner/pull/1046#issuecomment-6828663280 .
+The provider's self-change guard skips execution, not completion approval.
+A final boundary check also disables persisted quality checkout credentials,
+so PR-owned lint/tests do not inherit the job's newly scoped API-reading token.
+The native rejection is investigation evidence, not a completed review of any
+head. Fresh head CI and exact-head human bootstrap approval remain mandatory.

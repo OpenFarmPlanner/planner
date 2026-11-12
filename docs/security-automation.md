@@ -82,7 +82,9 @@ live in the workflow's triage step.
 The already-required **quality** job enforces review completion on PRs. Its
 security step loads `.github/scripts/security-review-completion.cjs` from the
 immutable PR **base SHA**, with a read-only token. No new branch-protection
-context replaces or weakens existing checks. Changes to workflow files still
+context replaces or weakens existing checks. Quality checkout does not persist
+Git credentials, so PR-owned lint/tests do not receive its API-reading token.
+Changes to workflow files still
 need careful review: a named check is not a GitHub ruleset requiring an
 immutable workflow. Repository administration remains an operator boundary.
 
