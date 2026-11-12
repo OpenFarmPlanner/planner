@@ -81,7 +81,7 @@ function TimingWindowYearBar({ kinds, harvest, year }: { kinds: KindWindows[]; h
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            sx={{ fontStyle: 'italic', overflowWrap: 'anywhere' }}
           >
             {t('crops:timingWindows.computedHarvest')}
           </Typography>

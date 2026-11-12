@@ -154,7 +154,7 @@ country, so months copied from someone else's farm would mislead. See
 - The detail view lists the effective windows per kind and draws a year bar
   (January to December) with one labelled lane per kind; week windows are
   drawn in the current year. Colours come from the theme palette
-  (`timingWindowStyles.ts`). Lane labels wrap rather than truncating the longer window names. The phone
+  (`timingWindowStyles.ts`). Entered and calculated lane labels wrap rather than truncating the longer window names. The phone
   label column is intentionally widened from 96px to 128px so German
   compound words fit; the desktop column and proportional tracks are unchanged.
 - Below them the lane **"Ernte (berechnet)"**, hatched and labelled in italics

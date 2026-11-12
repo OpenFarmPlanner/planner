@@ -70,7 +70,17 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
   ];
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+    <Box sx={{
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5,
+      '& > .MuiAlert-root': {
+        flexWrap: { xs: 'wrap', sm: 'nowrap' },
+        '& .MuiAlert-action': {
+          width: { xs: '100%', sm: 'auto' },
+          pl: { xs: 0, sm: 2 },
+          justifyContent: 'flex-end',
+        },
+      },
+    }}>
       <Typography variant="body2" color="text.secondary">
         {t('import.help.templateHint')}
       </Typography>

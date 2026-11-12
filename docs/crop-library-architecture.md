@@ -2256,7 +2256,8 @@ download help also gives that instruction before upload. The typed potato
 sample takes its resolved name from the live catalog API,
 so it remains recognizable even where the catalog lacks a UI-language
 translation. A failed catalog read or missing profile yields a localized
-error with retry, rather than downloading an invalid file. Template buttons
+error with retry, rather than downloading an invalid file. The retry action
+sits below the message on phones and beside it on wider screens. Template buttons
 are disabled while that request runs. The typed sample does not invent a
 catalog name or change bootstrap files. Preview writes nothing, and apply preserves
 matched crops unless `confirm_updates` is true; samples do not introduce an

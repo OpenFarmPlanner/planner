@@ -102,6 +102,8 @@ for (const [language, { text, navigation }] of Object.entries(languages)) {
       const laneLabel = page.getByTestId('timing-window-lane-pre_cultivation').getByText(text.timingWindows.kinds.pre_cultivation, { exact: true });
       await laneLabel.scrollIntoViewIfNeeded();
       expect(await laneLabel.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
+      const harvestLabel = page.getByTestId('timing-window-lane-computed-harvest').getByText(text.timingWindows.computedHarvest, { exact: true });
+      expect(await harvestLabel.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
       await page.screenshot({ path: testInfo.outputPath(`template-timing-${language}-${format}.png`), animations: 'disabled' });
       if (format === 'ods') {
         await page.goto(`/app/crops?cropId=${existing.id}&action=edit`);
@@ -142,7 +144,17 @@ test('a catalog failure stays readable on a French phone and the download can be
   await error.scrollIntoViewIfNeeded();
   expect(await error.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
   await error.getByRole('button', { name: 'Réessayer', exact: true }).click({ trial: true });
+  const message = error.locator('.MuiAlert-message');
+  const retry = error.getByRole('button', { name: 'Réessayer', exact: true });
+  const phoneMessage = (await message.boundingBox())!;
+  const phoneRetry = (await retry.boundingBox())!;
+  expect(phoneRetry.y).toBeGreaterThanOrEqual(phoneMessage.y + phoneMessage.height - 1);
   await page.screenshot({ path: testInfo.outputPath('template-retry-fr-375.png'), animations: 'disabled' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopMessage = (await message.boundingBox())!;
+  const desktopRetry = (await retry.boundingBox())!;
+  expect(desktopRetry.x).toBeGreaterThanOrEqual(desktopMessage.x + desktopMessage.width - 1);
+  await page.screenshot({ path: testInfo.outputPath('template-retry-fr-1440.png'), animations: 'disabled' });
   await page.unroute(endpoint);
   const [download] = await Promise.all([
     page.waitForEvent('download'), error.getByRole('button', { name: 'Réessayer', exact: true }).click(),

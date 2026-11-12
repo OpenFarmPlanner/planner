@@ -645,3 +645,13 @@ and no completed review; this is not approval or a clean scan. Security triage
 skipped this scope. Record the exact-head manual review and inspect every thread
 before normal merge. PR #1044 is the active PR; #1007 remains blocked on its
 verified merge. No required check or review is bypassed.
+
+Visual follow-up for #1017: inspected all final and focused captures, then fixed
+two localized phone issues: Retry now sits below its French message at 375px
+(and beside it at desktop), and the computed-harvest label wraps fully in
+Spanish. The shared year-bar's calculated lane keeps its existing italic style.
+Scoped alert styling preserves desktop behavior. New layout assertions cover
+both cases; both focused browser cases pass and all five fresh captures were
+inspected. All 357 targeted tests, TypeScript, full ESLint (zero errors, 117
+existing warnings), production build and 20 prerenders pass again. A fresh
+15-case browser run and exact-head CI/reviews remain required before merge.
