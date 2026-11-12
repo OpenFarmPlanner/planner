@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createTheme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -369,6 +369,7 @@ describe('CropForm', () => {
       { name: 'Butternut', variety: 'Nantaise', exclude_id: 1 },
       expect.any(AbortSignal),
     ));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -1434,12 +1435,56 @@ describe('CropForm', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const onCancel = vi.fn();
 
-    render(<CropForm crop={CROP_A} onSave={onSave} onCancel={onCancel} />);
+    render(<CropForm crop={{ ...CROP_A, life_cycle: 'biennial' }} onSave={onSave} onCancel={onCancel} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['project', 'publicLibrary'] as const)('offers only annual and perennial life cycles in a new %s form', (variant) => {
+    render(<CropForm variant={variant} onSave={vi.fn()} onCancel={() => {}} />);
+    const selector = screen.getByRole('combobox', { name: 'siteHealth.fields.life_cycle' });
+    fireEvent.mouseDown(selector);
+    const options = within(screen.getByRole('listbox'));
+    expect(options.getAllByRole('option')).toHaveLength(3);
+    expect(options.getByRole('option', { name: 'siteHealth.values.life_cycle.annual' })).toBeInTheDocument();
+    expect(options.getByRole('option', { name: 'siteHealth.values.life_cycle.perennial' })).toBeInTheDocument();
+    expect(options.queryByRole('option', { name: 'siteHealth.values.life_cycle.biennial' })).not.toBeInTheDocument();
+    expect(options.queryByRole('option', { name: 'siteHealth.legacyLifeCycleOption' })).not.toBeInTheDocument();
+  });
+
+  it('keeps an existing biennial value when another field is edited', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={{ ...CROP_A, life_cycle: 'biennial' }} onSave={onSave} onCancel={() => {}} />);
+    const selector = screen.getByRole('combobox', { name: 'siteHealth.fields.life_cycle' });
+    expect(selector).toHaveTextContent('siteHealth.values.life_cycle.biennial');
+    expect(screen.getByText('siteHealth.legacyLifeCycleHint')).toBeInTheDocument();
+    fireEvent.mouseDown(selector);
+    const legacy = screen.getByRole('option', { name: 'siteHealth.legacyLifeCycleOption' });
+    expect(legacy).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Updated carrot' } });
+    await waitFor(() => expect(cropDuplicateCheckMock).toHaveBeenCalledWith(
+      { name: 'Updated carrot', variety: 'Nantaise', exclude_id: 1 }, expect.any(AbortSignal),
+    ));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0].life_cycle).toBe('biennial');
+  });
+
+  it('changes a legacy life cycle only after an explicit selection', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={{ ...CROP_A, life_cycle: 'biennial' }} onSave={onSave} onCancel={() => {}} />);
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'siteHealth.fields.life_cycle' }));
+    fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.life_cycle.perennial' }));
+    expect(screen.queryByText('siteHealth.legacyLifeCycleHint')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0].life_cycle).toBe('perennial');
   });
 
   it('treats trim-only text edits as unchanged when saving an edited crop', () => {

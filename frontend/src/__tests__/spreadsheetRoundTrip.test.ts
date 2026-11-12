@@ -17,6 +17,7 @@ const csvFile = (csv: string): File => new File([csv], 'kulturen_export.csv', { 
 const ENUM_CROPS = [
   {
     name: 'Tomate',
+    life_cycle: 'annual',
     germination_temperature_requirement: 'cold_stratification',
     germination_light_requirement: 'light',
     seed_type: 'open_pollinated',
@@ -28,6 +29,7 @@ const ENUM_CROPS = [
   },
   {
     name: 'Karotte',
+    life_cycle: 'biennial',
     germination_temperature_requirement: 'frost_treatment',
     germination_light_requirement: 'dark',
     seed_type: 'f1_hybrid',
@@ -47,9 +49,11 @@ const ENUM_CROPS = [
   },
   { name: 'Phacelia', seed_rate_direct_value: 2, seed_rate_direct_unit: 'g_per_lfm' },
   { name: 'Spinat', seed_rate_direct_value: 300, seed_rate_direct_unit: 'seeds_per_m2' },
+  { name: 'Rhabarber', life_cycle: 'perennial' },
 ] as unknown as Crop[];
 
 const ENUM_KEYS = [
+  'life_cycle',
   'germination_temperature_requirement',
   'germination_light_requirement',
   'seed_type',

@@ -16,6 +16,14 @@ const buildCropDraft = (overrides: Partial<Crop>): Crop => ({
 });
 
 describe('publicCropToCropFormData', () => {
+  it('preserves a legacy biennial value through editing another public field', () => {
+    const form = publicCropToCropFormData(buildPublicCrop({ life_cycle: 'biennial', notes: 'Original' }));
+    expect(form.life_cycle).toBe('biennial');
+    const payload = buildPublicCropUpdatePayload({ ...form, notes: 'Updated' }, 3);
+    expect(payload.life_cycle).toBe('biennial');
+    expect(payload.notes).toBe('Updated');
+  });
+
   it('carries the crop species into the form but never into the update payload', () => {
     const form = publicCropToCropFormData(buildPublicCrop({ crop_species: 42 }));
 

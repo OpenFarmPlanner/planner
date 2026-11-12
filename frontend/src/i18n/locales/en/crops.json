@@ -1787,7 +1787,9 @@
         "with_protection": "Hardy with winter protection",
         "not_hardy": "Not hardy"
       }
-    }
+    },
+    "legacyLifeCycleOption": "{{value}} (existing value)",
+    "legacyLifeCycleHint": "This saved value is kept unless you choose a different life cycle."
   },
   "taskTemplates": {
     "title": "Task templates",

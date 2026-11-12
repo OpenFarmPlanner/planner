@@ -22,8 +22,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036) merged and verified at `8317a536` |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR [#1039](https://github.com/OpenFarmPlanner/planner/pull/1039) merged and verified at `7663d0f4` |
-| 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | In progress on `fix/1037-variety-rename-conflict`; before #1008 |
-| 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
+| 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | PR [#1040](https://github.com/OpenFarmPlanner/planner/pull/1040) merged and verified at `d597ec04` |
+| 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | In progress on `fix/1008-life-cycle-selectors` |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
@@ -69,16 +69,16 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1031 merged and verified through PR #1039 at
-`7663d0f4` (2026-11-12 12:33:44 UTC); #1031 is closed. Implement #1037 on
-`fix/1037-variety-rename-conflict`, based on refreshed main `e665e513` (the
-subsequent automated 1.162.0 version commit), then finish CI/reviews, merge
-normally and verify before #1008. User explicitly inserted #1037 next.
-Newly open P0 #1038 is included before final integration; the original
-sequence otherwise stays intact. Do not start another implementation before
-the preceding merge is verified. The earlier stop-after-#1032 instruction
-was fulfilled and superseded by resume. Check every review thread explicitly
-as well as required checks and reviews before attempting normal merge.
+Current resume point: #1037 merged and verified through PR #1040 at
+`d597ec04` (2026-11-12 13:32:01 UTC); #1037 is closed. Implement #1008 on
+`fix/1008-life-cycle-selectors`, based on refreshed main `d180bae7` (the
+subsequent automated 1.162.1 version commit), then finish CI/reviews, merge
+normally and verify before #1017. Newly open P0 #1038 is included before final
+integration; the original dependency sequence otherwise stays intact. Do not
+start another implementation before the preceding merge is verified. The
+earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
+Check every review thread explicitly as well as required checks/reviews
+before attempting normal merge.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -536,3 +536,42 @@ budget is retained. All layout and strict language-specific assertions stay
 intact. This is another test-fixture-only correction; product code and its
 2,561-test local validation are unchanged. Fresh CI/reviews on the follow-up
 head must pass before normal merge; #1008 has not been implemented yet.
+
+
+## #1040 merge verification and #1008 implementation
+
+PR #1040 merged normally at 2026-11-12 13:32:01 UTC as
+`d597ec04d98f91e2fc1a64ad704efd6f54a329db`, matching tested head
+`6ff0dae3db28769df159903e78d003b680dac58d`. All 10 required checks passed,
+including 2,561 backend tests and every frontend/E2E shard. All six
+cross-browser configurations, CodeQL, build and PostgreSQL checks passed.
+No review requests or threads were outstanding. The native-review account
+limitation and authoring-session manual reviews remain recorded separately.
+No admin override or check/review bypass was used. Fetched main contains the
+merge, its tree exactly matched the tested head, and #1037 closed at
+13:32:02 UTC. Evidence:
+https://github.com/OpenFarmPlanner/planner/pull/1040#issuecomment-6825018000 .
+
+#1008 restricts new choices in the shared project/library life-cycle selector
+to Annual and Perennial, retaining blank/unknown. Existing Biennial records
+show a disabled existing-value option and localized explanation. Stored types,
+backend acceptance, read labels and import/export mappings retain Biennial;
+other edits preserve it and explicit replacement remains possible. No life-cycle
+filter exists in the current crop/library filter popovers, so no new filter is
+introduced. #1009 remains excluded. Validation and visual review are in progress.
+
+#1008 validation: 230 targeted frontend tests pass, including new project and
+library selectors, unchanged legacy saves, explicit replacements, public-form
+payload preservation and all 16 cross-language spreadsheet enum combinations.
+TypeScript, production Vite build, all 20 public-page prerenders and ESLint
+pass. Eight focused browser cases pass: project saves/replacements at
+375x800, 768x900, 1024x900, 1440x900 and 800x375; French/Spanish legacy hints
+at 375px; and a published library entry retaining Biennial after a health-note
+edit. The changed-view screenshots were inspected. The selected value keeps
+its original short label to avoid truncation in the tablet three-column form;
+the disabled menu option and helper explain its legacy status. Existing mobile
+form structure is retained. One existing name-edit unit test now waits for Save
+to become enabled after duplicate validation; its payload assertion and timeout
+are unchanged. The main-route responsive suite, full make quality and PR
+CI/reviews remain pending before merge. No backend, migration, sync or planning
+logic changed. #1017 must wait for verified merge.

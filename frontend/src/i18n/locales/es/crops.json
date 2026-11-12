@@ -1831,7 +1831,9 @@
         "with_protection": "Resistente con protección invernal",
         "not_hardy": "No resistente"
       }
-    }
+    },
+    "legacyLifeCycleOption": "{{value}} (valor existente)",
+    "legacyLifeCycleHint": "Este valor guardado se conserva hasta que elijas otro ciclo de vida."
   },
   "taskTemplates": {
     "title": "Plantillas de tareas",

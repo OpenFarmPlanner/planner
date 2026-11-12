@@ -1357,6 +1357,16 @@ Five descriptive crop fields on `Crop` and `PublicCrop` (#838):
 `not_hardy`) and the free text `pests_diseases`. Blank means unknown for all of
 them.
 
+- **Life-cycle selection and legacy data (#1008).** The shared project/library
+  form offers Annual and Perennial (blank still means unknown). Existing
+  Biennial values remain readable, appear as a disabled existing-value option
+  with an explanation, and survive edits to other fields. Choosing another
+  value or clearing the field is explicit. `SITE_HEALTH_CHOICES`, the backend
+  enum, display labels and spreadsheet mappings retain Biennial for storage,
+  history and lossless exchange; `selectableSiteHealthChoices` restricts new
+  UI selections. No data migration or automatic conversion takes place.
+  Current crop/library filter popovers have no life-cycle selector; this
+  change does not introduce one.
 - **Inherited, not species-invariant.** They are in `CROP_INHERITABLE_FIELDS`
   (and the frontend's `VARIETY_INHERITABLE_FIELDS`): a Sorte shows its Kultur's
   value until it sets its own, because varieties can differ (a more

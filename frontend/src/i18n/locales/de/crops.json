@@ -1787,7 +1787,9 @@
         "with_protection": "Mit Winterschutz",
         "not_hardy": "Nicht winterhart"
       }
-    }
+    },
+    "legacyLifeCycleOption": "{{value}} (Bestandswert)",
+    "legacyLifeCycleHint": "Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst."
   },
   "taskTemplates": {
     "title": "Aufgabenvorlagen",
