@@ -213,10 +213,14 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         one lookup of the user's pending edit proposals per page. The plant
         family names and default breaks come from the family list, loaded once
         (two queries: families and their translations)."""
-        # Each crop created above also has an imported sibling row, so the
-        # project holds twice ROW_COUNT crops.
+        for crop in self.crops:
+            Crop.objects.create(
+                project=self.project, name=crop.name, variety='Rename sibling',
+                crop_species=crop.crop_species,
+            )
+        # Imported copies and additional varieties must keep the list budget flat.
         self.assert_list_query_count(
-            '/openfarmplanner/api/crops/', 16, expected_rows=ROW_COUNT * 2,
+            '/openfarmplanner/api/crops/', 16, expected_rows=ROW_COUNT * 3,
         )
 
     def test_crops_list_carries_species_search_names(self):

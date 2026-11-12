@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -87,6 +87,7 @@ from ..serializers import (
     CropSerializer,
     PublicCropSerializer,
 )
+from ..serializers.crops import CropNameConflict
 from ..serializers.public import (
     PUBLIC_CROP_PROPOSABLE_FIELDS,
     PublicCropChangeProposalSerializer,
@@ -432,18 +433,38 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         previous_media_id = instance.image_file_id
         old_name = instance.name
         old_crop_species_id = instance.crop_species_id
-        with transaction.atomic():
-            updated = serializer.save()
-            self._set_latest_revision_actor(updated)
-            auto_general_crop = getattr(updated, '_auto_general_crop', None)
-            if auto_general_crop is not None:
-                self._set_latest_revision_actor(auto_general_crop)
-            if updated.name != old_name:
-                self._rename_sibling_crops(updated, old_name, old_crop_species_id)
+        try:
+            with transaction.atomic():
+                self._validate_crop_group_rename(instance, serializer.validated_data.get('name', old_name))
+                updated = serializer.save()
+                self._set_latest_revision_actor(updated)
+                auto_general_crop = getattr(updated, '_auto_general_crop', None)
+                if auto_general_crop is not None:
+                    self._set_latest_revision_actor(auto_general_crop)
+                if updated.name != old_name:
+                    self._rename_sibling_crops(updated, old_name, old_crop_species_id)
+        except IntegrityError as error:
+            CropSerializer._raise_name_conflict_if_general_name_constraint(error)
+            raise
         if previous_media_id and previous_media_id != updated.image_file_id:
             MediaFile.objects.filter(id=previous_media_id, orphaned_at__isnull=True).update(orphaned_at=timezone.now())
         if updated.image_file_id:
             MediaFile.objects.filter(id=updated.image_file_id).update(orphaned_at=None)
+
+    def _validate_crop_group_rename(self, instance: Crop, name: str) -> None:
+        from farm.utils import normalize_text
+
+        normalized_name = normalize_text(name)
+        if normalized_name == instance.name_normalized:
+            return
+        conflict = (
+            Crop.objects.filter(project_id=instance.project_id, name_normalized=normalized_name)
+            .filter(Q(variety_normalized__isnull=True) | Q(variety_normalized=''))
+            .exclude(self._crop_group_q(instance))
+            .exists()
+        )
+        if conflict:
+            raise CropNameConflict()
 
     def _rename_sibling_crops(
         self, updated: Crop, old_name: str, old_crop_species_id: int | None,

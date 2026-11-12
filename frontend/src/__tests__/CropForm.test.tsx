@@ -7,11 +7,14 @@ import type { Crop, PublicCrop } from '../api/types';
 import type { PublicCropSpeciesOption } from '../crops/publicCropNameSuggestions';
 import type { GetLibraryFieldPinProps } from '../crops/libraryFieldPinProps';
 
-vi.mock('../i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
+vi.mock('../i18n', async () => {
+  const { default: crops } = await import('../i18n/locales/de/crops.json');
+  return {
+    useTranslation: () => ({
+      t: (key: string) => key === 'form.cropNameConflict' ? crops.form.cropNameConflict : key,
+    }),
+  };
+});
 
 const { cropDuplicateCheckMock, seedRateConstraintsMock, publicCropListMock, supplierCreateMock, supplierListMock } = vi.hoisted(() => ({
   cropDuplicateCheckMock: vi.fn().mockResolvedValue({ data: { exists: false } }),
@@ -793,7 +796,7 @@ describe('CropForm', () => {
       { name: 'Bohne', variety: '', exclude_id: undefined },
       expect.any(AbortSignal),
     ));
-    expect(await screen.findByText('form.cropNameConflict')).toBeInTheDocument();
+    expect(await screen.findByText(/Diese Kultur existiert bereits in diesem Projekt/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'form.create' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'form.create' }));
@@ -814,7 +817,7 @@ describe('CropForm', () => {
       expect.any(AbortSignal),
     ));
     await waitFor(() => expect(screen.getByRole('button', { name: 'form.create' })).not.toBeDisabled());
-    expect(screen.queryByText('form.cropNameConflict')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Diese Kultur existiert bereits in diesem Projekt/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'form.create' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -1678,6 +1681,26 @@ describe('CropForm', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(await screen.findByText('messages.updateError')).toBeInTheDocument();
+  });
+
+  it('keeps a rejected variety rename open and shows the localized name-conflict hint', async () => {
+    const onSave = vi.fn().mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'crop_name_conflict', detail: 'A general crop with this name already exists in this project.' } },
+    });
+    const onCancel = vi.fn();
+    render(<CropForm crop={CROP_A} onSave={onSave} onCancel={onCancel} />);
+    fireEvent.change(screen.getByLabelText('name-input'), { target: { value: 'Existing crop' } });
+    await waitFor(() => expect(cropDuplicateCheckMock).toHaveBeenCalledWith(
+      { name: 'Existing crop', variety: 'Nantaise', exclude_id: 1 }, expect.any(AbortSignal),
+    ));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    expect(await screen.findByText(/Diese Kultur existiert bereits in diesem Projekt/)).toBeInTheDocument();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('name-input')).toHaveValue('Existing crop');
+    expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled();
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it('ignores empty supplier information rows when detecting changes', () => {
