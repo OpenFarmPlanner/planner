@@ -444,3 +444,12 @@ PR #1039 is open. Initial CI identified the API-client expectation above; the
 follow-up head must pass fresh CI. Automated Claude code review failed without
 a completed review result; this is not an approval. Exact-head manual review
 and GitHub-required checks/reviews remain mandatory before normal merge.
+
+CI on `449fc6bf` passed 2,555 backend tests, all frontend shards, quality,
+CodeQL and all six cross-browser configurations. Two production E2E shards
+passed; the third exposed shared-fixture interference: an earlier test had
+already published the first species, so the new general-entry publication
+correctly returned 409. The browser fixture now selects an official species
+without an existing public general entry. Its focused rerun passes against
+an already populated test database. This changes test setup only. Fresh CI
+on the follow-up head is required before merge; #1037 has not been started.

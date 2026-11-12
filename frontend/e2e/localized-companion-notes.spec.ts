@@ -74,10 +74,14 @@ test('library note editing preserves other languages and missing versions stay h
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'companion-notes-library', { loginAsAdmin: true });
-  const species = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/crop-species/');
-  const { crop } = await createSource(page, species.results[0]);
+  const available = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/crop-species/?page_size=1000');
+  const library = await apiRequest<{ results: { crop_species: number; variety: string }[] }>(page, 'GET', '/public-crops/?page_size=1000');
+  const publishedSpecies = new Set(library.results.filter((entry) => !entry.variety).map((entry) => entry.crop_species));
+  const species = [...available.results].reverse().find((entry) => !publishedSpecies.has(entry.id));
+  expect(species, 'An official species without an existing public general entry is available').toBeDefined();
+  const { crop } = await createSource(page, species!);
   const published = await apiRequest<{ public_crop: { id: number } }>(page, 'POST', `/crops/${crop.id}/publish-public/`, {
-    accepted_public_library_terms: true, crop_species_id: species.results[0].id, original_language_code: 'de', publish_as_general: true,
+    accepted_public_library_terms: true, crop_species_id: species!.id, original_language_code: 'de', publish_as_general: true,
   });
   await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
   await expect(page.getByTestId('library-companions-section')).toContainText('Quelle DE');
