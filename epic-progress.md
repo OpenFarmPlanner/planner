@@ -709,3 +709,9 @@ required config-preflight resource is unavailable and no native scan tools are
 exposed here. No scan was started or claimed complete. Exact-head manual boundary
 review, PR CI, live provider reproduction and human bootstrap approval remain
 pending. Do not start #1007 before #1045's verified merge.
+
+Before final #1045 review, incorporated main's automated 1.162.3 release
+commit `79d78eab` (version metadata only) through a normal merge, without
+rewriting the published feature commit. PR #1046 is active. Fresh head CI
+remains required, including the intentionally blocking first-install human
+review gate. No human approval has been posted or inferred.
