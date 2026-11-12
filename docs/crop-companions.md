@@ -155,6 +155,35 @@ the section is hidden, like every empty detail section (see
 edit button, neighbours are edited in the crop form only. A Sorte shows its
 Kultur's list with "Gilt für alle Sorten von …".
 
+## Project crop reference labels
+
+The form's Name field, companion owner hints, neighbour options/selected rows
+and detail links all use `getCropDisplayName` (`crop_display_name`, falling
+back to stored `name`). A species rename or translated catalog name can differ
+from the project's historical text; the displayed name is used consistently
+on both sides of a shared relation. A missing display name retains the stored
+name. Family and free-text labels retain their own semantics.
+
+When crop metadata refreshes, loaded crop-target labels refresh without
+refetching the relation list, discarding unsaved note drafts or marking the
+form dirty. IDs and edited note languages determine the saved relation; labels
+do not change its identity. Untouched crop names still save their original
+stored value. No catalog names are duplicated or seeded in the frontend.
+
+The adjacent UI audit also aligns existing-crop hints, the republish species
+picker prefill and local-name fallbacks in library update messages. The crop
+tree/detail/delete/publishing headings and planning/demand labels already use
+shared display helpers. Public-library hierarchy/adapters retain their separate
+published-entry/original-language contract. Incoming library update labels and
+publish duplicate candidates describe library entries; they retain that API
+value rather than inventing a project label.
+
+Stored-name reads used for duplicate matching, general-crop ownership fallback,
+JSON/spreadsheet values and companion export tokens remain identity/exchange
+data, not UI reference labels. Their canonical values must not silently change
+when a user changes UI language or a catalog species is renamed. Export tests
+cover divergent stored/display names explicitly.
+
 ## Spreadsheet and JSON import/export
 
 The export writes two columns, "Gute Nachbarn" and "Schlechte Nachbarn", on

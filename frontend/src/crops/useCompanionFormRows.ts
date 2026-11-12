@@ -18,6 +18,7 @@ import {
 } from './companions';
 import { usePlantFamilies } from './plantFamilies';
 import { getEffectiveCropValue } from './varietyValueSource';
+import { getCropDisplayName } from './cropDisplay';
 
 /**
  * How the form shows neighbours: editable on a Kultur (or a species-level
@@ -76,7 +77,7 @@ export function useCompanionFormRows({
   const mode: CompanionFormMode = isKulturForm ? 'edit' : kulturId !== null ? 'readOnly' : 'hidden';
 
   const cropLabel = useCallback(
-    (cropId: number): string => crops.find((entry) => entry.id === cropId)?.name ?? '',
+    (cropId: number): string => getCropDisplayName(crops.find((entry) => entry.id === cropId) ?? {}),
     [crops],
   );
   // The form mounts once per opening, so the library entry's list is read once.
@@ -118,7 +119,7 @@ export function useCompanionFormRows({
     const seenSpecies = new Set<number>();
     const neighbors = crops.filter(isKulturLike).flatMap((entry): CompanionNeighbor[] => {
       const familyKey = getEffectiveCropValue(entry, 'crop_family');
-      const label = entry.name ?? '';
+      const label = getCropDisplayName(entry);
       if (isLibrary) {
         const speciesId = entry.crop_species;
         if (!speciesId || speciesId === crop?.crop_species || seenSpecies.has(speciesId)) return [];
@@ -138,11 +139,12 @@ export function useCompanionFormRows({
     );
   }, [crop?.crop_species, crop?.id, crops, families, i18n?.language, i18n?.resolvedLanguage, isLibrary, t]);
 
-  // Family names arrive with the family catalogue, possibly after the rows.
+  // Refresh labels without refetching relations or discarding note drafts.
   const labelledRows = useMemo(() => rows.map((row) => ({
     ...row, noteLanguage: row.noteLanguage ?? language,
-    ...(row.target?.type === 'family' ? { target: { ...row.target, label: families.getName(row.target.familyKey) } } : {}),
-  })), [families, rows, language]);
+    ...(row.target?.type === 'family' ? { target: { ...row.target, label: families.getName(row.target.familyKey) } }
+      : row.target?.type === 'crop' ? { target: { ...row.target, label: cropLabel(row.target.cropId) } } : {}),
+  })), [cropLabel, families, rows, language]);
   const errors = useMemo(() => findCompanionRowErrors(rows), [rows]);
   const validate = useCallback((): boolean => {
     setShowErrors(true);

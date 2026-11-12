@@ -93,6 +93,7 @@ import { varietySpecificFieldHighlightSx, type GetVarietyFieldHighlightSx } from
 import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { describeLibraryPinError, libraryPinnedFieldsForSave } from './libraryFieldPin';
+import { getCropDisplayName } from './cropDisplay';
 import { buildLibraryFieldPinProps, type GetLibraryFieldPinProps } from './libraryFieldPinProps';
 import { PublicCropSyncPanel } from './PublicCropSyncPanel';
 import { buildDefaultSyncChoices, type PublicCropSyncChoices } from './publicCropSync';
@@ -426,7 +427,7 @@ const buildInitialFormData = (crop?: Crop, initialDraft?: Partial<Crop>): Partia
   // resolves to the species' current name, and it falls back to `crop.name`
   // itself when there is no linked species, so preferring it here can only
   // correct a stale value, never lose one.
-  const normalizedName = displayedCrop.crop_display_name ?? displayedCrop.name;
+  const normalizedName = getCropDisplayName(displayedCrop);
 
   if (displayedCrop.supplier || !displayedCrop.seed_supplier) {
     return {
@@ -536,7 +537,7 @@ export function CropForm({
     // the viewer's UI happens to be in. Only accept it as an edit if it
     // actually changed from what was displayed; otherwise keep the
     // untouched stored name.
-    if (crop?.crop_species && dataToSave.name === (crop.crop_display_name ?? crop.name)) {
+    if (crop?.crop_species && dataToSave.name === getCropDisplayName(crop)) {
       dataToSave.name = crop.name;
     }
     // A library pick can fill a variety entry's seed type into a Kultur, which holds none.
@@ -1616,9 +1617,9 @@ export function CropForm({
                   {hasFirstVarietyName
                     ? t('form.existingCropFirstVarietyHint', {
                       variety: firstVarietyName.trim(),
-                      name: existingPrivateCrop.name,
+                      name: getCropDisplayName(existingPrivateCrop),
                     })
-                    : t('form.existingCropHint', { name: existingPrivateCrop.name })}
+                    : t('form.existingCropHint', { name: getCropDisplayName(existingPrivateCrop) })}
                 </Alert>
               ) : null}
               nameOptions={isProjectForm ? nameOptions : undefined}

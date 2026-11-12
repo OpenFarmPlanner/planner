@@ -37,8 +37,8 @@ const relation = (overrides: Partial<CropCompanion>): CropCompanion => ({
   ...overrides,
 });
 
-const renderSection = (crop: Crop = TOMATO, onCropSelect = vi.fn()) => {
-  render(<CropCompanionsSection crop={crop} crops={CROPS} onCropSelect={onCropSelect} />);
+const renderSection = (crop: Crop = TOMATO, onCropSelect = vi.fn(), crops = CROPS) => {
+  render(<CropCompanionsSection crop={crop} crops={crops} onCropSelect={onCropSelect} />);
   return { onCropSelect };
 };
 
@@ -82,6 +82,17 @@ describe('CropCompanionsSection', () => {
 
     expect(await screen.findByRole('button', { name: 'Kartoffel' })).toBeInTheDocument();
     expect(screen.getByText('Gilt für alle Sorten von Tomate.')).toBeInTheDocument();
+  });
+
+  it('uses resolved names in the variety hint and both sides of linked neighbours', async () => {
+    const crops = CROPS.map(crop => ({ ...crop, crop_display_name: crop.id === 2 ? 'Potato' : 'Tomato' }));
+    const select = vi.fn();
+    renderSection(crops[3], select, crops);
+    const neighbor = await screen.findByRole('button', { name: 'Potato' });
+    expect(screen.getByText('Gilt für alle Sorten von Tomato.')).toBeInTheDocument();
+    expect(screen.queryByText('Kartoffel')).not.toBeInTheDocument();
+    fireEvent.click(neighbor);
+    expect(select).toHaveBeenCalledWith(crops[1]);
   });
 
   it('renders nothing while no neighbour is recorded', async () => {

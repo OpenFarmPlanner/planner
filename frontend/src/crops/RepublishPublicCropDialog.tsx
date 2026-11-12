@@ -6,7 +6,7 @@ import type { Crop, CropSpecies } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { useTranslation } from '../i18n';
-import { formatCropDisplayName } from './cropDisplay';
+import { formatCropDisplayName, getCropDisplayName } from './cropDisplay';
 import { CropSpeciesPicker } from './CropSpeciesPicker';
 import { getCropSpeciesOptionLabel } from './cropSpeciesMatching';
 import { needsCropSpeciesSelection } from './publishChecks';
@@ -53,7 +53,7 @@ export function RepublishPublicCropDialog({
   // prefill the search starts from. That one empty reset is skipped.
   const skipMountResetRef = useRef(false);
   const cropId = crop?.id;
-  const cropName = crop?.name ?? '';
+  const cropName = getCropDisplayName(crop ?? {});
   const speciesRequired = checkState === 'speciesRequired';
   const { results: speciesOptions, loading: speciesLoading } = useCropSpeciesSearch(
     speciesSearchQuery,
@@ -174,7 +174,7 @@ export function RepublishPublicCropDialog({
                 proposalName={proposalName}
                 onProposalNameChange={handleProposalNameChange}
                 proposing={proposing}
-                localCropName={crop?.name}
+                localCropName={cropName}
                 errorText={proposeError}
                 required
                 serverSearched

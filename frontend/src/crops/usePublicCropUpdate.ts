@@ -16,6 +16,7 @@ import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { extractApiErrorCode } from '../api/errors';
 import { readCropLibrarySyncFlags } from './cropLibraryAction';
 import { describeLibraryPinError } from './libraryFieldPin';
+import { getCropDisplayName } from './cropDisplay';
 
 export interface PublicCropUpdateDecision {
   unpinFields?: string[];
@@ -58,6 +59,7 @@ export function usePublicCropUpdate(
   const [isRejecting, setIsRejecting] = useState(false);
 
   const cropId = crop?.id;
+  const cropName = getCropDisplayName(crop ?? {});
   const { hasOpenUpdate, isRejected } = readCropLibrarySyncFlags(crop);
 
   const openDiff = useCallback((): void => {
@@ -103,7 +105,7 @@ export function usePublicCropUpdate(
       .then(() => {
         showGlobalSnackbar({
           message: t('library.publicUpdate.applied', {
-            name: update?.public_crop_name ?? crop?.name ?? '',
+            name: update?.public_crop_name ?? cropName,
           }),
           severity: 'success',
         });
@@ -128,7 +130,7 @@ export function usePublicCropUpdate(
       .finally(() => {
         setIsApplying(false);
       });
-  }, [crop?.name, onUpdated, t, update]);
+  }, [cropName, onUpdated, t, update]);
 
   const rejectUpdate = useCallback((): void => {
     if (!cropId) {
@@ -139,7 +141,7 @@ export function usePublicCropUpdate(
       .then(() => {
         showGlobalSnackbar({
           message: t('library.publicUpdate.rejected', {
-            name: update?.public_crop_name ?? crop?.name ?? '',
+            name: update?.public_crop_name ?? cropName,
           }),
           severity: 'info',
         });
@@ -152,7 +154,7 @@ export function usePublicCropUpdate(
       .finally(() => {
         setIsRejecting(false);
       });
-  }, [crop?.name, cropId, onUpdated, t, update]);
+  }, [cropName, cropId, onUpdated, t, update]);
 
   return {
     update,
