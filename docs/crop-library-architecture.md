@@ -1134,6 +1134,16 @@ planning calculations and the UI resolve it identically:
   its general Kultur's values. Rows that already carry a different species are
   a separate group and stay untouched.
 
+Renaming any private crop row through PUT/PATCH cascades its name to active
+siblings in the original group: by species when linked, otherwise by normalized
+name among unlinked rows. Before saving, a target normalized name belonging to
+an active general crop outside that group in the same project is rejected with
+409 `crop_name_conflict`. The edited row, sibling updates and history share one
+transaction. A concurrent write that reaches the same general-name database
+constraint is translated to the same 409 after rollback; unrelated database
+errors are not converted. The form keeps the rejected edit open and uses its
+existing localized conflict hint.
+
 `CropSerializer` exposes the raw and the resolved value side by side, so a
 client can tell them apart per field:
 

@@ -21,15 +21,16 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036) merged and verified at `8317a536` |
-| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR #1039; CI/reviews in progress |
-| 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | Pending; before #1008 |
+| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR [#1039](https://github.com/OpenFarmPlanner/planner/pull/1039) merged and verified at `7663d0f4` |
+| 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | In progress on `fix/1037-variety-rename-conflict`; before #1008 |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | Pending |
-| 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all ten merge; consistency fixes only. | Pending |
+| 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | Pending |
+| 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
 
 ## #1030 coverage audit
 
@@ -68,13 +69,16 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: user resumed the campaign on 2026-11-12 after #1036
-was merged and verified at `8317a536` (#1032 closed). Implement #1031 on
-`feat/1031-localized-companion-notes`, then finish CI/reviews, merge normally
-and verify. User steering during #1031: insert #1037 immediately after that
-merge, before #1008; then return to the dependency-aware order above. Do not
-start the next issue before the preceding merge is verified. The earlier
-stop-after-#1032 instruction was fulfilled and is now superseded by resume.
+Current resume point: #1031 merged and verified through PR #1039 at
+`7663d0f4` (2026-11-12 12:33:44 UTC); #1031 is closed. Implement #1037 on
+`fix/1037-variety-rename-conflict`, based on refreshed main `e665e513` (the
+subsequent automated 1.162.0 version commit), then finish CI/reviews, merge
+normally and verify before #1008. User explicitly inserted #1037 next.
+Newly open P0 #1038 is included before final integration; the original
+sequence otherwise stays intact. Do not start another implementation before
+the preceding merge is verified. The earlier stop-after-#1032 instruction
+was fulfilled and superseded by resume. Check every review thread explicitly
+as well as required checks and reviews before attempting normal merge.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -472,3 +476,63 @@ rule. A truthy non-boolean marker could otherwise bypass the 200-character
 limit. The existing preview/apply no-partial-write regression now includes
 that malformed payload and passes. This guard/test follow-up also requires
 fresh exact-head CI before merge.
+
+
+## #1039 merge verification and #1037 implementation
+
+PR #1039 merged normally at 2026-11-12 12:33:44 UTC as
+`7663d0f4a32f99184e9c7281d7600d1f8c4f920f`, matching tested head
+`39f0474f87bd4364fc5b1cfa5238c1c757f7c13a`. All 10 required checks passed,
+including 2,556 backend tests, all frontend/E2E shards and both CodeQL
+analyses. All six cross-browser configurations passed. The CodeQL thread
+was fixed and automatically resolved; no review/check bypass was used.
+Claude allowance and native account-connection limitations are recorded in
+PR comments, separately from exact-head authoring-session manual reviews.
+Fetched main contains the merge, its tree exactly matched the tested head,
+and #1031 closed at 12:33:45 UTC. Evidence:
+https://github.com/OpenFarmPlanner/planner/pull/1039#issuecomment-6823732149 .
+
+#1037 now prevalidates general-name conflicts outside the old crop group,
+then retains the whole save/cascade in one transaction. The database guard
+also converts the same named PostgreSQL or SQLite general-name constraint
+to the existing 409 code after rollback. Other database errors remain errors.
+The targeted backend run passes 15 rename/duplicate tests, including PUT and
+PATCH, species/name grouping, a real database-constraint failure after the
+precheck is bypassed to simulate a race, PostgreSQL naming, rollback/history,
+and project/trash isolation. Frontend regression verifies the existing
+localized hint and that the rejected form stays open. Remaining validation,
+CI and reviews are pending before merge.
+
+#1037 local validation: 127 backend crop API/query-count tests pass. The
+extended crops-list fixture adds more varieties and still passes its unchanged
+16-query budget. All 99 frontend form/error tests pass with the actual German
+conflict translation in the fixture; positive and negative existing duplicate
+checks remain asserted. TypeScript and targeted ESLint pass. Browser rejection,
+rollback verification and corrected-name save pass at 375x800 and 1440x900;
+both error-state screenshots were inspected and fit without clipped controls.
+The existing mobile/desktop form layouts are retained. No schema change or new
+UI wording is needed. Full `make quality` is running before merge, alongside
+fresh PR CI and exact-head review. Remaining campaign order is unchanged.
+
+#1037 full local make quality completed: 2,561 backend tests pass, ESLint
+reports zero errors, and Ruff/Madge retain their accepted repository reports.
+Initial CI passed backend/frontend/build/quality/CodeQL/cross-browser gates;
+two E2E shards failed in setup: a late Gantt initial-scroll restoration and
+a crop import menu clicked before loaded crop content. Both affected cases
+passed three local repetitions without source changes. Their setup now waits
+for the selected Gantt view and queued render frames, and the loaded crop
+heading/network idle before opening the menu. Functional assertions, exact
+scroll expectations and timeouts are unchanged. Repeated validation of all
+three Gantt cases plus landscape import is in progress (12 cases total);
+fresh exact-head CI is required for these test-only readiness fixes.
+
+The readiness follow-up passed its Gantt/import cases in full CI, but shard 2
+then exposed a separate area-dialog fixture language race. That fixture wrote
+only the browser cache while the account preference could restore German.
+It now uses the existing account-language API, aligns the pending browser
+choice, and verifies the document language before proceeding. Three local
+German/English repetitions pass (21.9s, 20.6s, 22.4s); the original 60-second
+budget is retained. All layout and strict language-specific assertions stay
+intact. This is another test-fixture-only correction; product code and its
+2,561-test local validation are unchanged. Fresh CI/reviews on the follow-up
+head must pass before normal merge; #1008 has not been implemented yet.

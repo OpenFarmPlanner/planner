@@ -14,18 +14,19 @@ from rest_framework.exceptions import APIException
 
 from config.languages import DEFAULT_LANGUAGE_CODE, resolve_request_language
 from crops.models import CropSpecies
+from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import (
     PlantFamilyField,
     plant_family_default_breaks,
     plant_family_display_name,
 )
-from crops.permissions import is_public_library_moderator
 from farm.common.serializer_fields import (
     CentimetersField,
     LocalizedDecimalField,
     _resolve_active_project_from_serializer,
 )
 from farm.enum_normalization import normalize_seed_rate_unit
+from farm.germination import complete_germination_write
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -49,10 +50,13 @@ from farm.seed_units import (
     SEED_PACKAGE_UNIT_SEEDS,
     SEED_RATE_UNITS,
 )
-from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
-from farm.services.crop_companions import is_kultur, link_free_text_companions
+from farm.services.crop_companions import (
+    CompanionRelationIndex,
+    attach_relation_index,
+    is_kultur,
+    link_free_text_companions,
+)
 from farm.services.crop_display import resolve_crop_display_name
-from farm.services.crop_tags import canonical_tags
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
@@ -69,6 +73,7 @@ from farm.services.crop_inheritance import (
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
 )
+from farm.services.crop_tags import canonical_tags
 from farm.services.public_crops import (
     LibraryPinnedFieldsError,
     can_republish_withdrawn_entry,
@@ -89,11 +94,9 @@ from farm.services.timing_windows import (
     load_timing_window_index,
     months_covered,
 )
-
-from farm.germination import complete_germination_write
 from farm.sowing_depth import complete_single_depth_write
+
 from .seed_packages import SeedPackageSerializer
-from .timing_windows import EffectiveTimingWindowSerializer, TimingWindowListField
 from .seed_rates import (
     EMPTY_SEED_RATE_UNIT_VALUES,
     PRE_CULTIVATION_SEED_RATE_UNITS,
@@ -107,6 +110,7 @@ from .suppliers import (
     _supplier_data_payload_has_information,
     _supplier_data_payload_has_supplier,
 )
+from .timing_windows import EffectiveTimingWindowSerializer, TimingWindowListField
 
 # Sentinel so a resolved `None` is cached instead of re-queried per field.
 _UNRESOLVED = object()
@@ -1433,7 +1437,13 @@ class CropSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def _raise_name_conflict_if_general_name_constraint(exc: IntegrityError) -> None:
-        if 'unique_general_crop_name_per_project' in str(exc):
+        constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
+        message = str(exc)
+        if (
+            constraint == 'unique_general_crop_name_per_project'
+            or 'unique_general_crop_name_per_project' in message
+            or message == 'UNIQUE constraint failed: farm_crop.project_id, farm_crop.name_normalized'
+        ):
             raise CropNameConflict() from exc
 
     def _creates_inheriting_variety(self, attrs: dict[str, Any]) -> bool:

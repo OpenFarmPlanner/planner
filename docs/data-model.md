@@ -141,6 +141,9 @@ erDiagram
   every variety it grows, including growing parameters and history. It's
   soft-deletable (`deleted_at`); the default manager (`objects`) hides
   soft-deleted rows, `all_objects` doesn't (used by restore flows).
+  Renaming a crop group is atomic; a conflicting active general name in the
+  same project returns 409 `crop_name_conflict` without partial saves. See
+  [crop-library-architecture.md](./crop-library-architecture.md#sorte--kultur-value-inheritance).
 - **`PublicCrop`** is the shared, cross-project "crop library" — it has
   no owning `Project`, only optional *provenance* links back to the project
   and crop it was published from. Published rows are intended to be

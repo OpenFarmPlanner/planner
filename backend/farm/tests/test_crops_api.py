@@ -910,6 +910,89 @@ class CropApiTest(ProjectApiTestCase):
         self.crop.refresh_from_db()
         self.assertEqual(float(self.crop.thousand_kernel_weight_g), 4.2)
 
+    def test_conflicting_variety_rename_is_atomic_for_both_group_types_and_methods(self):
+        for index, (linked, method) in enumerate([(False, 'patch'), (False, 'put'), (True, 'patch'), (True, 'put')]):
+            with self.subTest(linked=linked, method=method):
+                species = CropSpecies.objects.create(name=f'Rename conflict species {index}') if linked else None
+                name = f'Source crop {index}'
+                Crop.objects.create(project=self.project, name=name, crop_species=species)
+                variety = Crop.objects.create(project=self.project, name=name, variety='Source variety', crop_species=species)
+                Crop.objects.create(project=self.project, name=name, variety='Sibling variety', crop_species=species)
+                target = f'Existing crop {index}'
+                Crop.objects.create(project=self.project, name=target)
+                before = list(Crop.objects.order_by('id').values())
+                revisions = EntityRevision.objects.count()
+
+                response = getattr(self.client, method)(f'/openfarmplanner/api/crops/{variety.pk}/', {
+                    'name': f'  {target.upper()}   ', 'variety': variety.variety,
+                    'notes': 'This change must also roll back',
+                    'growth_duration_days': 60, 'harvest_duration_days': 14,
+                }, format='json')
+
+                self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+                self.assertEqual(response.data['code'], 'crop_name_conflict')
+                self.assertEqual(list(Crop.objects.order_by('id').values()), before)
+                self.assertEqual(EntityRevision.objects.count(), revisions)
+
+    def test_general_name_database_conflict_rolls_back_the_whole_rename_cascade(self):
+        from unittest.mock import patch
+
+        variety = Crop.objects.create(project=self.project, name=self.crop.name, variety='Source variety')
+        Crop.objects.create(project=self.project, name='Existing target')
+        before = list(Crop.objects.order_by('id').values())
+        revisions = EntityRevision.objects.count()
+        with patch('farm.crops.views.crops.CropViewSet._validate_crop_group_rename'):
+            response = self.client.patch(f'/openfarmplanner/api/crops/{variety.pk}/', {
+                'name': 'Existing target', 'notes': 'Rejected update',
+            }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'crop_name_conflict')
+        self.assertEqual(list(Crop.objects.order_by('id').values()), before)
+        self.assertEqual(EntityRevision.objects.count(), revisions)
+
+    def test_named_postgresql_general_name_conflict_is_translated_after_rollback(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+
+        variety = Crop.objects.create(project=self.project, name=self.crop.name, variety='Source variety')
+        before = list(Crop.objects.order_by('id').values())
+        failure = IntegrityError('duplicate key value violates unique constraint "unique_general_crop_name_per_project"')
+        with patch('farm.crops.views.crops.CropViewSet._rename_sibling_crops', side_effect=failure):
+            response = self.client.patch(f'/openfarmplanner/api/crops/{variety.pk}/', {'name': 'New target'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'crop_name_conflict')
+        self.assertEqual(list(Crop.objects.order_by('id').values()), before)
+
+    def test_unrelated_database_errors_are_not_reported_as_name_conflicts(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+
+        before = list(Crop.objects.order_by('id').values())
+        with patch('farm.crops.views.crops.CropViewSet._rename_sibling_crops', side_effect=IntegrityError('unrelated failure')):
+            with self.assertRaisesRegex(IntegrityError, 'unrelated failure'):
+                self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {'name': 'New target'}, format='json')
+        self.assertEqual(list(Crop.objects.order_by('id').values()), before)
+
+    def test_variety_rename_ignores_general_crops_in_other_projects_and_trash(self):
+        from django.utils import timezone
+
+        other_project = Project.objects.create(name='Other rename project', slug='other-rename-project')
+        target = 'Available target'
+        other = Crop.objects.create(project=other_project, name=target)
+        archived = Crop.all_objects.create(project=self.project, name=target, deleted_at=timezone.now())
+        variety = Crop.objects.create(project=self.project, name=self.crop.name, variety='Source variety')
+        response = self.client.patch(f'/openfarmplanner/api/crops/{variety.pk}/', {'name': target}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.crop.refresh_from_db()
+        variety.refresh_from_db()
+        other.refresh_from_db()
+        archived.refresh_from_db()
+        self.assertEqual((self.crop.name, variety.name), (target, target))
+        self.assertIsNotNone(archived.deleted_at)
+        self.assertEqual(other.project_id, other_project.pk)
+
     def test_crop_rename_cascades_to_sibling_varieties_grouped_by_name(self):
         """Renaming one row of a crop (grouped by name, no crop_species link)
         must rename its siblings too, so the variety stays in the same crop
