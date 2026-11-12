@@ -32,6 +32,7 @@ from farm.agent_api.schema_serializers import (
     SeedRateConstraintsSerializer,
 )
 from farm.common.mixins import ProjectScopedMixin
+from farm.companion_notes import note_language
 from farm.crops.moderation import (
     describe_contribution_origin,
     pending_queue_limit_exceeded,
@@ -72,9 +73,9 @@ from farm.services.public_crops import (
     build_public_crop_update_status,
     build_publishing_check_result,
     find_owned_public_crop_for_update,
+    is_species_level_entry,
     link_project_crop_to_public_reference,
     notify_moderators_of_change_proposal,
-    is_species_level_entry,
     publish_crop_to_public_library,
     reject_public_crop_update,
     sync_crop_with_public_entry,
@@ -351,6 +352,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        note_language({'request': request}, request.query_params.get('companion_note_language'))
         results = preview_crop_import(request.active_project, request.data)
         return Response({'results': results}, status=status.HTTP_200_OK)
 
@@ -369,6 +371,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             request.active_project,
             items,
             confirm_updates=request.data.get('confirm_updates', False),
+            companion_note_language=note_language({'request': request}, request.data.get('companion_note_language')),
+            replace_companion_notes=request.data.get('replace_companion_notes') is True,
         )
         return Response(summary, status=status.HTTP_200_OK)
 
@@ -553,6 +557,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 original_language_code=request.data.get('original_language_code'),
                 publish_as_general=publish_as_general,
                 require_moderation=requires_moderation_queue(request),
+                companion_note_language=note_language({'request': request}),
             )
         except PublicCropPublishingValidationError as error:
             return api_error_response(
@@ -597,6 +602,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 summary = truncate_proposal_summary(f'Update awaiting moderation: {label}')
                 payload = build_public_crop_payload(
                     crop, public_variety=None if publish_as_general else crop.variety,
+                    companion_note_language=note_language({'request': request}),
                 )
                 proposed_data = {
                     field: value for field, value in payload.items()
@@ -902,6 +908,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 require_moderation=moderated,
                 origin_api=origin_api,
                 origin_declared_agent=origin_declared_agent,
+                companion_note_language=note_language({'request': request}),
             )
         except (
             PublicCropSyncFieldsError,

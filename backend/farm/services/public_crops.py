@@ -22,14 +22,15 @@ from rest_framework.exceptions import ValidationError as ApiValidationError
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
-from crops.plant_families import coerce_plant_family_key
 from crops.permissions import (
     is_public_library_admin,
     is_public_library_moderator,
     public_library_moderator_users,
 )
+from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from crops.specific_properties import crop_specific_property_errors, specific_property_errors
+from farm.companion_notes import companion_language_patch, merge_library_notes, notes_of
 from farm.models import (
     Crop,
     Project,
@@ -58,8 +59,8 @@ from farm.services.crop_companions import (
     is_kultur,
     kultur_relations,
     library_companion_view,
-    link_free_text_companions,
     library_companions,
+    link_free_text_companions,
     replace_library_companions,
 )
 from farm.services.crop_inheritance import (
@@ -632,7 +633,7 @@ def _add_companion_values(
 def _companion_key(items: Any) -> list[tuple[Any, ...]]:
     """Neighbour items without the stored display names, for a comparison with a snapshot."""
     return [
-        (item['species'], item['family'], item['kind'], item['reason'], item['note'])
+        (item['species'], item['family'], item['kind'], item['reason'], tuple(sorted(notes_of(item).items())))
         for item in (items if isinstance(items, list) else [])
         if isinstance(item, dict) and {'species', 'family', 'kind', 'reason', 'note'} <= set(item)
     ]
@@ -782,6 +783,9 @@ def update_public_crop_directly(
                 'Administrator privileges are required to rename a public crop variety.',
                 code='public_crop_identity_admin_required',
             )
+        data = dict(data)
+        if COMPANIONS_FIELD in data:
+            data[COMPANIONS_FIELD] = merge_library_notes(data[COMPANIONS_FIELD], locked.companions, 'de')
         changed_field_names = []
         for field, value in data.items():
             if previous_snapshot.get(field) == _json_safe(value):
@@ -855,6 +859,12 @@ def restore_public_crop_version(
         from farm.germination import upgrade_germination_snapshot
 
         snapshot = upgrade_germination_snapshot(revision.snapshot)
+        if isinstance(snapshot.get('companions'), list):
+            legacy_language = snapshot.get('original_language_code') or locked.original_language_code or 'de'
+            snapshot['companions'] = [
+                {**item, 'notes': notes_of(item, legacy_language)} if isinstance(item, dict) else item
+                for item in snapshot['companions']
+            ]
         update_fields = []
         for field in PUBLIC_CROP_EDITABLE_FIELDS:
             value = snapshot.get(field, {} if field == 'specific_properties' else None)
@@ -927,6 +937,7 @@ def build_public_crop_payload(
     public_variety: str | None = None,
     source_crop: Crop | None = None,
     include_specific_properties: bool = True,
+    companion_note_language: str | None = None,
 ) -> dict[str, Any]:
     """The public-entry fields taken from ``crop``.
 
@@ -974,6 +985,7 @@ def build_public_crop_payload(
             payload[COMPANIONS_FIELD], _skipped = library_companions(
                 general_source, _linked_entry_companions(general_source),
             )
+            payload[COMPANIONS_FIELD] = companion_language_patch(payload[COMPANIONS_FIELD], companion_note_language)
         for field in PUBLIC_SPECIES_INVARIANT_FIELDS:
             if field in get_library_pinned_fields(general_source):
                 payload.pop(field, None)
@@ -1628,6 +1640,7 @@ def sync_crop_with_public_entry(
     require_moderation: bool = False,
     origin_api: bool = False,
     origin_declared_agent: bool = False,
+    companion_note_language: str | None = None,
 ) -> PublicCropSyncResult:
     """Resolve every difference between a linked crop and its entry in one step.
 
@@ -1707,7 +1720,7 @@ def sync_crop_with_public_entry(
                 raise ApiValidationError(errors)
             crop.save()
         if push_fields:
-            payload = build_public_crop_payload(crop)
+            payload = build_public_crop_payload(crop, companion_note_language=companion_note_language)
             data = {field: payload[field] for field in push_fields if field in payload}
             if require_moderation:
                 proposal = _queue_public_crop_sync_proposal(
@@ -2215,15 +2228,20 @@ def _is_public_library_moderator(user: User | None) -> bool:
     return is_public_library_moderator(user)
 
 
+@transaction.atomic
 def _update_public_crop_from_project_crop(
     *,
     public_crop: PublicCrop,
     crop: Crop,
     public_variety: str | None = None,
+    companion_note_language: str | None = None,
 ) -> PublicCrop:
+    public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
     ensure_public_crop_revision(public_crop)
     previous_snapshot = build_public_crop_snapshot(public_crop)
-    payload = build_public_crop_payload(crop, public_variety=public_variety)
+    payload = build_public_crop_payload(crop, public_variety=public_variety, companion_note_language=companion_note_language)
+    if COMPANIONS_FIELD in payload:
+        payload[COMPANIONS_FIELD] = merge_library_notes(payload[COMPANIONS_FIELD], public_crop.companions, companion_note_language or 'de')
     payload.pop('published_at', None)
     for field, value in payload.items():
         set_crop_field_value(public_crop, field, value)
@@ -2819,6 +2837,7 @@ def publish_crop_to_public_library(
     original_language_code: str | None = None,
     publish_as_general: bool = False,
     require_moderation: bool = False,
+    companion_note_language: str | None = None,
 ) -> tuple[PublicCrop, list[DuplicateCandidate], str]:
     # Checked before the quality gate: a copy that has not taken over the current
     # public version must not overwrite it, however complete its own fields are.
@@ -2864,6 +2883,7 @@ def publish_crop_to_public_library(
             public_crop=update_target,
             crop=crop,
             public_variety=public_variety,
+            companion_note_language=companion_note_language,
         )
         updated_public_crop.crop_species = check_result.crop_species
         updated_public_crop.original_language_code = check_result.original_language_code

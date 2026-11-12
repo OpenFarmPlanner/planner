@@ -24,6 +24,7 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
   const cultivationLabels = Object.values(columns.find((column) => column.key === 'cultivation_types')?.enumExport ?? {});
 
   const rules = [
+    t('companions.cellHelp'),
     t('import.help.rules.required', { name: header('name') }),
     t('import.help.rules.varietyRows', {
       variety: header('variety'),

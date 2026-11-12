@@ -76,7 +76,7 @@ export const buildCompanionExportItems = (
       ? cropsById.get(partner.cropId)?.name
       : partner.type === 'family' ? familyName(partner.familyKey) : partner.text;
     if (!name) continue;
-    items[relation.kind].push({ name, reason: relation.reason, note: relation.note });
+    items[relation.kind].push({ name, reason: relation.reason, note: relation.note, notes: relation.notes });
   }
   return items;
 };
@@ -99,48 +99,7 @@ export const buildCompanionItemsByCrop = (
   return itemsByCrop;
 };
 
-/**
- * A spreadsheet cell of neighbour names: `Tomate; Basilikum; Kreuzblütler`.
- * Reason and note are not written; they live in the crop form and the JSON
- * export, and the additive import keeps them on re-import.
- */
-export const formatCompanionCell = (items: readonly CompanionImportItem[]): string | null => (
-  items.length === 0 ? null : items.map(({ name }) => name).join('; ')
-);
-
-const LINE_SPLIT = /[\n\r\u2028\u2029]+/;
-
-/** "Tomate; Kartoffel, Dill" → three names; separators inside parentheses do not split. */
-const splitNames = (names: string): string[] => {
-  const parts: string[] = [];
-  let depth = 0;
-  let current = '';
-  for (const char of names) {
-    if (char === '(' || char === '[') depth += 1;
-    if ((char === ')' || char === ']') && depth > 0) depth -= 1;
-    if ((char === ',' || char === ';') && depth === 0) {
-      parts.push(current);
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  parts.push(current);
-  return parts.map((part) => part.trim()).filter(Boolean);
-};
-
-/**
- * The neighbours named in one spreadsheet cell; the inverse of `formatCompanionCell`.
- * Names are separated by `,`, `;` or a line break, like tags; a dash is part
- * of the name. Every name gets reason "other" and no note.
- */
-export const parseCompanionCell = (text: unknown): CompanionImportItem[] => {
-  if (typeof text !== 'string') return [];
-  return text.split(LINE_SPLIT)
-    .flatMap(splitNames)
-    .filter((name) => /[\p{L}\p{N}]/u.test(name))
-    .map((name) => ({ name, reason: 'other' as const, note: '' }));
-};
+export { formatCompanionCell, parseCompanionCell } from './companionCells';
 
 // --- Crop form ----------------------------------------------------------------
 
@@ -161,6 +120,9 @@ export interface CompanionFormRow {
   target: CompanionFormTarget | null;
   reason: CompanionReason;
   note: string;
+  noteLanguage?: string;
+  noteChanges?: CropCompanion['notes'];
+  notes?: CropCompanion['notes'];
 }
 
 export type CompanionFormRowError = 'required' | 'duplicate';
@@ -242,7 +204,7 @@ export const relationToFormRow = (
     : partner.type === 'family'
       ? { type: 'family', familyKey: partner.familyKey, label: familyName(partner.familyKey) }
       : { type: 'text', text: partner.text, label: partner.text };
-  return { key: newCompanionRowKey(), kind: relation.kind, target, reason: relation.reason, note: relation.note };
+  return { key: newCompanionRowKey(), kind: relation.kind, target, reason: relation.reason, note: relation.note, notes: relation.notes ?? (relation.note ? { de: relation.note } : {}), noteLanguage: relation.note_language_code };
 };
 
 export const libraryItemToFormRow = (
@@ -256,6 +218,8 @@ export const libraryItemToFormRow = (
     : { type: 'species', speciesId: item.species as number, label: item.species_name },
   reason: item.reason,
   note: item.note,
+  notes: item.notes ?? (item.note ? { de: item.note } : {}),
+  noteLanguage: item.note_language_code,
 });
 
 /** Why a row cannot be saved, by row key: no neighbour picked, or the neighbour is listed twice. */
@@ -287,7 +251,9 @@ export const formRowsToReplaceItems = (rows: readonly CompanionFormRow[]): Compa
       companion_text: target.type === 'text' ? target.text.trim() : '',
       kind: row.kind,
       reason: row.reason,
-      note: row.note.trim(),
+      note: row.note,
+      ...(row.noteLanguage ? { note_language_code: row.noteLanguage } : {}),
+      ...(row.noteChanges ? { notes: row.noteChanges } : {}),
     }];
   });
 
@@ -302,7 +268,9 @@ export const formRowsToLibraryItems = (rows: readonly CompanionFormRow[]): Publi
       family: target.type === 'family' ? target.familyKey : null,
       kind: row.kind,
       reason: row.reason,
-      note: row.note.trim(),
+      note: row.note,
+      ...(row.noteLanguage ? { note_language_code: row.noteLanguage } : {}),
+      ...(row.noteChanges ? { notes: row.noteChanges } : {}),
     }];
   });
 
@@ -312,14 +280,11 @@ export const sameCompanionRows = (
   second: readonly CompanionFormRow[],
 ): boolean => {
   const signature = (rows: readonly CompanionFormRow[]): string => rows
-    .map((row) => [
-      row.target ? companionTargetKey(row.target) : '',
-      row.kind,
-      row.reason,
-      row.note.trim(),
-    ].join('|'))
-    .sort()
-    .join('\n');
+    .map((row) => JSON.stringify([
+      row.target ? companionTargetKey(row.target) : '', row.kind, row.reason,
+      Object.entries({ ...row.notes, ...row.noteChanges, [row.noteLanguage ?? 'de']: row.note }).sort(([a], [b]) => a.localeCompare(b)),
+    ]))
+    .sort().join('\n');
   return signature(first) === signature(second);
 };
 
@@ -333,6 +298,7 @@ export interface LibraryCompanionRow {
   label: string;
   /** The neighbour's species-level entry, linked from the row; null for a family or an unpublished species. */
   entry: PublicCrop | null;
+  notes?: PublicCropCompanion['notes'];
 }
 
 const isPublishedSpeciesEntry = (entry: PublicCrop): boolean => (
@@ -361,7 +327,7 @@ export const buildLibraryCompanionRows = (
   const rows: LibraryCompanionRow[] = [];
   const listedSpecies = new Set<number>();
   const row = (item: PublicCropCompanion, label: string, entry: PublicCrop | null): LibraryCompanionRow => ({
-    kind: item.kind, reason: item.reason, note: item.note, label, entry,
+    kind: item.kind, reason: item.reason, note: item.note, notes: item.notes, label, entry,
   });
   for (const item of speciesEntry.companions ?? []) {
     if (item.family) {

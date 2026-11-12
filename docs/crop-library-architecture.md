@@ -134,7 +134,7 @@ The public Crop Library follows an open-data model:
   Fields the user pinned locally (`Crop.library_pinned_fields`, see "Locally
   pinned fields" below) drop out of this set as well. A Kultur compared with a
   species-level entry adds the virtual field `companions`, its good and bad
-  neighbours (`COMPANIONS_FIELD`; rules in
+  neighbours, including all saved note languages (`COMPANIONS_FIELD`; rules in
   [crop-companions.md](./crop-companions.md#crop-library)).
   `GET /api/crops/<id>/public-update/` returns that diff and is read-only:
   confirming in the dialog calls `public-crops/<id>/import/` with

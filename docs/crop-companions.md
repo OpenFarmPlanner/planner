@@ -23,7 +23,8 @@ go through it.
 | `companion_text` | free text: an imported name that matched no crop or family (e.g. "Kräuter (Dill, Basilikum)"). |
 | `kind` | `good` or `bad`. |
 | `reason` | `competition`, `allelopathy`, `pest_control`, `soil`, `shared_pests_diseases`, `other`. |
-| `note` | Optional short text. |
+| `notes` | Optional note/source text by language (`de`, `en`, `fr`, `es`), at most 500 characters per version. |
+| `note` | Compatibility storage copy; APIs return the selected language, without fallback. |
 
 Exactly one of the three targets is set (database check constraint).
 
@@ -157,26 +158,57 @@ Kultur's list with "Gilt für alle Sorten von …".
 ## Spreadsheet and JSON import/export
 
 The export writes two columns, "Gute Nachbarn" and "Schlechte Nachbarn", on
-Kultur rows only. A cell holds names only, separated like tags by `,`, `;` or
-a line break; the export writes them on one line: `Tomate; Basilikum;
-Kreuzblütler`. Separators inside parentheses do not split
-(`Kräuter (Dill, Basilikum)` is one name); a dash, with or without spaces, is
-part of the name (`Pak-Choi`, `Salat - Pflücksalat`).
+Kultur rows only. Import and spreadsheet export each expose an explicit note
+language, initially the UI language. Ordinary CSV/XLSX/ODS cells carry the
+notes; JSON is optional and preserves the entire `notes` language map.
 
-Reason and note are not part of the spreadsheet. They are edited in the crop
-form, and the JSON export carries them as `good_companions` /
-`bad_companions` lists of `{name, reason, note}`. A spreadsheet name is
-imported with reason "other" and no note; since the import is additive,
-re-importing an exported sheet keeps every existing relation with its reason and
-note. (One cell format with reasons was rejected as a hidden grammar users
-could not guess, and a separate neighbour sheet because CSV has a single sheet
-and it is harder for gardeners to edit; see issue #1020.)
+The canonical cell grammar is **one group per line**, comma/semicolon-separated
+names and an optional note following the spaced delimiter ` | `:
 
-Exports from 1.122 up to 1.156 wrote one neighbour per line as
-`Name – Reason: note`. That format is deliberately no longer read, so that a
-spaced dash can belong to a name: such a line now imports as one free-text
-name, which the import preview lists among the unknown names. Reasons and
-notes move between projects through the JSON export only.
+```text
+Tomate; Gurke; Bohne | Schutz vor Schädlingen
+Erdbeere | Quelle: Gartenversuch 2025
+Sellerie
+```
+
+A group note applies to every name on that line. A plain list is still valid.
+Separators inside parentheses do not split a name; unspaced hyphens, as in
+`Pak-Choi`, never split names. Export groups neighbors sharing the selected
+language's note and writes neighbors without a note as names only.
+
+**Reserved characters and line breaks.** Export quotes names/notes containing
+commas, semicolons, pipes, quotes, backslashes or line breaks, or surrounding
+whitespace. Within these quoted text tokens, `\"` represents a quote, `\\`
+a backslash and `\n` a line break. These are quoted text strings, not JSON
+objects in cells. The outer CSV writer independently quotes the entire cell,
+including the real line breaks between groups; XLSX/ODS preserve the same cell
+text. For example, the following is one group with a multiline note:
+
+```text
+"Kraut; Spezial"; "Salat - Pflücksalat" | "Quelle: \"A | B\"\nSeite 12"
+```
+
+**Safe legacy reading.** A line containing a spaced dash (` - ` or ` – `)
+is deferred to the backend. Exact normalized full neighbor names win. Otherwise
+only one split whose every preceding name resolves exactly to a project crop,
+known species or plant family is accepted; its suffix applies to the entire
+group. Existing historical reason labels followed by `:` are recognized only
+in this legacy form. Arbitrary prose after a canonical pipe never implies a
+reason enum. Unresolved/ambiguous legacy groups remain intact as free text and
+are called out in preview; the importer never searches arbitrary name prefixes.
+Names are limited to 200 characters and notes to 500; oversized unresolved
+input is rejected rather than truncated.
+
+**Merge and replacement.** Import adds relations without deleting others.
+Existing structured reasons are retained on re-import. Nonempty notes update
+only the chosen language; absent/empty notes preserve existing values. The
+explicit replacement checkbox allows an empty note to clear that language for
+a listed neighbor. Other languages, the opposite side of a shared pair and
+existing reason categories stay intact. Conflicting good/bad assignments keep
+the existing kind and are reported. An explicit JSON `notes` map merges only
+its supplied language keys, with `""` clearing that version; omitted keys are
+preserved. A derived `note` alongside a full map is not copied into another
+language.
 
 Both the cell parser and backend import normalization ignore names without any
 Unicode letter or number (e.g. `#`, `-`, `?`); the backend does so even when an
@@ -202,8 +234,8 @@ The library knows no projects ([crop-library-architecture.md](./crop-library-arc
 so a published neighbour names a **crop species** or a **plant family**:
 
 - `PublicCrop.companions` is a JSON list of `{species, species_name, family,
-  kind, reason, note}` (species id plus the neighbour's name at publishing,
-  or a family), only on the species-level entry. It is an editable public
+  kind, reason, note, notes}` (species id plus the neighbour's name at publishing,
+  or a family), with `notes` holding its language versions, only on the species-level entry. It is an editable public
   field: version history, direct edits and change proposals cover it.
 - **Publishing** a Kultur, or a Sorte whose species entry is created or
   updated from its Kultur, writes the Kultur's neighbours: a neighbouring
@@ -246,3 +278,32 @@ so a published neighbour names a **crop species** or a **plant family**:
 - Neighbouring beds are not checked (beds have no position).
 - The project history records each neighbour change on its own, not as one
   entry per form save.
+
+## Note languages and compatibility
+
+Companion prose is an explicit exception to the otherwise single-language
+private project content: project relations preserve every imported library
+note version so publication, import, pins, sync and JSON backup do not discard
+translations. No translation is generated automatically. The existing form's
+language selector switches note text independently of neighbor identity and
+reason; saving sends only the languages actually edited. Switching languages
+retains unsaved changes. Library and project details show only the current UI
+language's note and continue to show translated structured reasons. Newline
+and citation text is rendered as escaped plain text with preserved line breaks.
+
+API writes may send `note` plus `note_language_code`, or an explicit `notes`
+map. Language maps and text lengths are validated. Library note patches merge
+against the locked current entry, preserving other languages changed since
+validation. Private relation updates use the same locking discipline. Ordinary
+publication/sync updates scope note changes to the request language; a newly
+created library entry can preserve all known versions. Pulling library data
+preserves local versions absent from that entry. Removing a relation through
+an existing explicit whole-list edit still removes that relation and its notes.
+
+Migration `farm.0141_localized_companion_notes` adds the private language map.
+Historical private notes are preserved verbatim as German legacy content;
+historical public notes use the entry's declared original language, with German
+only for missing/unsupported historical metadata. Species and translations are
+not seeded or renamed. The old storage field remains for compatibility. Schema
+rollback drops private language maps and reduces public maps to the original
+language; restore a backup to recover newer additional versions after rollback.

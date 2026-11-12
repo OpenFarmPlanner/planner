@@ -89,7 +89,7 @@ describe('useCropImportExport', () => {
       status: 'duplicate', row_number: 12, duplicate_of_row_number: 5,
     });
     await act(async () => { await view.result.current.handleImportStart(); });
-    expect(api.importApply).toHaveBeenCalledWith({ items: entries, confirm_updates: false });
+    expect(api.importApply).toHaveBeenCalledWith({ items: entries, confirm_updates: false, companion_note_language: 'de', replace_companion_notes: false });
     expect(view.showSnackbar).toHaveBeenCalledWith('import.created, import.duplicatesSkipped', 'success');
   });
 
@@ -190,7 +190,7 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
-      expect(api.importPreview).toHaveBeenCalledWith([{ name: 'Tomate' }]);
+      expect(api.importPreview).toHaveBeenCalledWith([{ name: 'Tomate' }], 'de');
       expect(view.result.current.importDialogOpen).toBe(true);
       expect(view.result.current.hasImportableEntries).toBe(true);
     });
@@ -264,6 +264,7 @@ describe('useCropImportExport', () => {
       expect(api.importApply).toHaveBeenCalledWith({
         items: [{ name: 'Tomate' }],
         confirm_updates: true,
+        companion_note_language: 'de', replace_companion_notes: false,
       });
     });
 

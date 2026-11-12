@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, type ChangeEvent } from 'react';
 import { cropAPI, cropCompanionAPI, type Crop } from '../api/api';
 import { buildCompanionItemsByCrop, type CompanionItemsByKind } from '../crops/companions';
 import { usePlantFamilies } from '../crops/plantFamilies';
+import { normalizeLanguageTag } from '../i18n/languages';
 import { useTranslation } from '../i18n';
 import {
   buildAllCropsExport,
@@ -17,6 +18,7 @@ import {
   buildCompanionPreviewWarning,
   buildTimingWindowPreviewWarnings,
   buildSpecificPropertyPreviewErrors,
+  buildCompanionNotePreviewErrors,
   buildImportSuccessMessage,
   mapImportErrors,
 } from './cropsPageUtils';
@@ -37,7 +39,11 @@ export function useCropImportExport({
   fetchCrops,
   showSnackbar,
 }: UseCropImportExportConfig) {
-  const { t } = useTranslation(['crops', 'common']);
+  const { t, i18n } = useTranslation(['crops', 'common']);
+  const currentLanguage = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
+  const [importNoteLanguage, setImportNoteLanguage] = useState<string>(currentLanguage);
+  const [exportNoteLanguage, setExportNoteLanguage] = useState<string>(currentLanguage);
+  const [replaceCompanionNotes, setReplaceCompanionNotes] = useState(false);
   const plantFamilies = usePlantFamilies();
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -63,8 +69,10 @@ export function useCropImportExport({
 
   const handleImportFileTrigger = useCallback(() => {
     resetImportState();
+    setImportNoteLanguage(currentLanguage);
+    setReplaceCompanionNotes(false);
     setImportStartDialogOpen(true);
-  }, [resetImportState]);
+  }, [resetImportState, currentLanguage]);
 
   const prepareImportPreview = useCallback(async (file: File) => {
     resetImportState();
@@ -85,7 +93,7 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const response = await cropAPI.importPreview(entries);
+          const response = await cropAPI.importPreview(entries, importNoteLanguage);
           const invalidEntries: string[] = [];
           if (skippedRows > 0) invalidEntries.push(t('import.skippedRows', { count: skippedRows }));
           warnings.forEach((w) => invalidEntries.push(w));
@@ -96,6 +104,7 @@ export function useCropImportExport({
             (index) => rowNumbers[index] ?? index + 2,
             t,
           ));
+          invalidEntries.push(...buildCompanionNotePreviewErrors(response.data.results, (index) => rowNumbers[index] ?? index + 2, t));
           invalidEntries.push(...buildSpecificPropertyPreviewErrors(response.data.results, (index) => rowNumbers[index] ?? index + 2, t));
           setPreviewReadyState({
             previewCount: entries.length + skippedRows,
@@ -142,7 +151,7 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const response = await cropAPI.importPreview(importAnalysis.validEntries);
+          const response = await cropAPI.importPreview(importAnalysis.validEntries, importNoteLanguage);
           const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
@@ -151,6 +160,7 @@ export function useCropImportExport({
               ...importAnalysis.invalidEntries,
               ...(companionWarning ? [companionWarning] : []),
               ...buildTimingWindowPreviewWarnings(response.data.results, (index) => index + 1, t),
+              ...buildCompanionNotePreviewErrors(response.data.results, (index) => index + 1, t),
               ...buildSpecificPropertyPreviewErrors(response.data.results, (index) => index + 1, t),
             ],
             payload: importAnalysis.validEntries,
@@ -172,7 +182,7 @@ export function useCropImportExport({
 
     setImportErrorState({ error: t('import.errors.unsupportedFormat') });
     setImportDialogOpen(true);
-  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState]);
+  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, importNoteLanguage]);
 
   const handleImportFileSelected = useCallback(async (file: File) => {
     if (importPreparingRef.current) return;
@@ -188,9 +198,10 @@ export function useCropImportExport({
   }, [prepareImportPreview]);
 
   const handleOpenExportDialog = useCallback((initialScope: ExportScope = 'all') => {
+    setExportNoteLanguage(currentLanguage);
     setExportDialogInitialScope(initialScope);
     setExportDialogOpen(true);
-  }, []);
+  }, [currentLanguage]);
 
   // Called by the command palette (expects separate current/all handlers)
   const handleExportCurrentCrop = useCallback(() => handleOpenExportDialog('current'), [handleOpenExportDialog]);
@@ -226,14 +237,14 @@ export function useCropImportExport({
       } else {
         const cropsToExport: Crop[] = exportsSingleCrop ? [selectedCrop] : allCrops;
         const filename = buildSpreadsheetFilename(format, scope === 'current' ? 'single' : 'all', selectedCrop ?? undefined);
-        exportCropsToSpreadsheet(cropsToExport, format, filename, t, companionsByCrop);
+        exportCropsToSpreadsheet(cropsToExport, format, filename, i18n?.getFixedT ? i18n.getFixedT(exportNoteLanguage, 'crops') : t, companionsByCrop, exportNoteLanguage);
       }
       showSnackbar(t('export.success'), 'success');
     } catch (error) {
       console.error('Error exporting crops:', error);
       showSnackbar(t('messages.fetchError'), 'error');
     }
-  }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t]);
+  }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t, i18n, exportNoteLanguage]);
 
   const handleImportStart = async () => {
     if (!hasImportableEntries || importState.status === 'uploading') return;
@@ -244,6 +255,8 @@ export function useCropImportExport({
       const response = await cropAPI.importApply({
         items: importState.payload,
         confirm_updates: confirmUpdates,
+        companion_note_language: importNoteLanguage,
+        replace_companion_notes: replaceCompanionNotes,
       });
 
       const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = response.data;
@@ -292,6 +305,8 @@ export function useCropImportExport({
   return {
     importDialogOpen,
     importStartDialogOpen,
+    importNoteLanguage, setImportNoteLanguage, exportNoteLanguage, setExportNoteLanguage,
+    replaceCompanionNotes, setReplaceCompanionNotes,
     exportDialogOpen,
     exportDialogInitialScope,
     confirmUpdates,

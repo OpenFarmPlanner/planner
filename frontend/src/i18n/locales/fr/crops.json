@@ -727,7 +727,7 @@
       "varietyName": "Roma",
       "supplierName": "Semences Exemple",
       "directSownName": "Carotte",
-      "goodNeighbours": "Basilic; Tagète",
+      "goodNeighbours": "Basilic; Tagète | Protection contre les ravageurs",
       "badNeighbours": "Pomme de terre; Fenouil"
     },
     "help": {
@@ -1686,11 +1686,22 @@
       "unresolved_other": "{{count}} voisins ne correspondent à aucune culture ni famille botanique et sont importés comme texte : {{names}}",
       "conflicts_one": "{{count}} voisin est déjà enregistré avec l'autre type et reste inchangé.",
       "conflicts_many": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés.",
-      "conflicts_other": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés."
+      "conflicts_other": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés.",
+      "invalid": "Les noms des voisins sont limités à 200 caractères et les notes à 500. Vérifiez aussi les codes de langue des notes.",
+      "invalidRow": "Ligne {{row}} : nom de voisin ou note non valide. Vérifiez les noms, les codes de langue et la longueur des textes.",
+      "legacyWarning": "Ces anciens commentaires ne peuvent pas être reconnus sans ambiguïté et sont conservés comme texte : {{names}}"
     },
     "publishSkipped_one": "{{count}} voisin reste dans le projet : c'est du texte libre ou une culture sans espèce cultivée.",
     "publishSkipped_many": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
-    "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée."
+    "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
+    "noteLanguage": "Langue des notes de voisinage",
+    "languageHelp": {
+      "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées.",
+      "import": "Les notes du tableau sont importées uniquement dans cette langue. Par défaut, une note vide conserve le texte existant. JSON conserve toutes les versions linguistiques.",
+      "export": "Seules les notes dans cette langue sont exportées. Le format JSON contient toutes les versions linguistiques."
+    },
+    "replaceImportedNotes": "Remplacer les notes des voisins indiqués dans cette langue, y compris par des notes vides",
+    "cellHelp": "Un groupe par ligne : Tomate ; Concombre | Protection contre les ravageurs. Les noms seuls sont acceptés. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret ne sont liés que si les noms sont reconnus sans ambiguïté."
   },
   "timingWindows": {
     "sectionTitle": "Périodes",

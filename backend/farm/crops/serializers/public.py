@@ -12,12 +12,16 @@ from config.languages import (
     resolve_request_language,
 )
 from crops.models import CropSpecies
-from crops.specific_properties import crop_specific_property_errors
 from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
+from crops.specific_properties import crop_specific_property_errors
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
+from farm.companion_notes import (
+    localize_companions,
+    note_language,
+    validate_notes,
+)
 from farm.germination import complete_germination_write, germination_errors
-from farm.sowing_depth import SOWING_DEPTH_FIELDS, complete_single_depth_write, sowing_depth_errors
 from farm.models import (
     CropCompanion,
     PublicCrop,
@@ -39,6 +43,7 @@ from farm.services.public_crops import (
     is_project_crop_up_to_date,
 )
 from farm.services.public_pseudonyms import has_public_name, number_topic_authors
+from farm.sowing_depth import SOWING_DEPTH_FIELDS, complete_single_depth_write, sowing_depth_errors
 
 PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'seed_type',
@@ -118,7 +123,15 @@ class PublicCropCompanionSerializer(serializers.Serializer):
     reason = serializers.ChoiceField(
         choices=CropCompanion.REASON_CHOICES, default=CropCompanion.REASON_OTHER,
     )
-    note = serializers.CharField(required=False, allow_blank=True, max_length=500, default='')
+    note = serializers.CharField(required=False, allow_blank=True, max_length=500, trim_whitespace=False)
+    notes = serializers.JSONField(required=False)
+    note_language_code = serializers.CharField(required=False)
+
+    def validate_notes(self, value: Any) -> dict[str, str]:
+        return validate_notes(value)
+
+    def validate_note_language_code(self, value: str) -> str:
+        return note_language({}, value)
 
     def to_internal_value(self, data: Any) -> dict[str, Any]:
         if isinstance(data, dict):
@@ -163,6 +176,11 @@ class PublicCropSerializer(serializers.ModelSerializer):
     crop_family_display_name = serializers.SerializerMethodField(
         help_text='Name of crop_family in the request language, or null.',
     )
+    companions = serializers.SerializerMethodField()
+
+    def get_companions(self, obj: PublicCrop) -> list[dict[str, Any]]:
+        return localize_companions(obj.companions, note_language(self.context), obj.original_language_code or 'de')
+
     crop_species_name = serializers.SerializerMethodField()
     crop_species_canonical_name = serializers.CharField(
         source='crop_species.name',
@@ -502,6 +520,14 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             'seeding_requirement_type': {'required': False, 'allow_blank': True},
             'display_color': {'required': False, 'allow_blank': True},
         }
+
+    def validate_companions(self, value: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        language = note_language(self.context, self.context.get('companion_legacy_language'))
+        return [
+            item if 'notes' in item and 'note_language_code' not in item
+            else {**item, 'note_language_code': item.get('note_language_code', language)}
+            for item in value
+        ]
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         complete_germination_write(attrs, self.instance)
@@ -1005,7 +1031,7 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError('At least one changed field is required.')
         typed_serializer = PublicCropUpdateSerializer(
-            self.context.get('public_crop'), data=value, partial=True,
+            self.context.get('public_crop'), data=value, partial=True, context=self.context,
         )
         typed_serializer.is_valid(raise_exception=True)
         cleaned = dict(value)
@@ -1021,10 +1047,7 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
                 many=True,
             ).data
         if 'companions' in typed_serializer.validated_data:
-            cleaned['companions'] = PublicCropCompanionSerializer(
-                typed_serializer.validated_data['companions'],
-                many=True,
-            ).data
+            cleaned['companions'] = typed_serializer.validated_data['companions']
         return cleaned
 
     def get_proposed_by_label(self, obj: PublicCropChangeProposal) -> str:

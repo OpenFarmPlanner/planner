@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from crops.plant_families import coerce_plant_family_key
-from farm.models import Crop, EntityRevision, PlantingPlan, Project, PublicCrop, Task
+from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop, Task
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -160,7 +160,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                     continue
                 # Snapshots may carry fields the model has since dropped — keep
                 # only what still exists rather than crashing on an unknown kwarg.
-                snapshot = _with_legacy_crop_family(model, snapshot)
+                snapshot = _with_legacy_snapshot_fields(model, snapshot)
                 row_data = {key: value for key, value in snapshot.items() if key in allowed_fields}
                 for field in external_fk_fields:
                     if (
@@ -255,12 +255,14 @@ def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> N
         )
 
 
-def _with_legacy_crop_family(model: type, snapshot: dict) -> dict:
-    """A crop snapshot from before migration 0112 with its family text mapped to a key.
+def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
+    """Upgrade legacy family keys and companion note maps before restoring a snapshot.
 
     Those snapshots hold the free text under ``crop_family``, which is no
     longer a column; without this the family would be dropped on restore.
     """
+    if model is CropCompanion and 'notes' not in snapshot:
+        return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
     if model is not Crop or 'crop_family_id' in snapshot or 'crop_family' not in snapshot:
         return snapshot
     return {**snapshot, 'crop_family_id': coerce_plant_family_key(snapshot['crop_family'])}
@@ -328,7 +330,7 @@ def _recreate_rows_deleted_since(
             or model.objects.filter(pk=revision.object_id).exists()
         ):
             continue
-        snapshot = _with_legacy_crop_family(model, snapshot)
+        snapshot = _with_legacy_snapshot_fields(model, snapshot)
         row_data = {key: value for key, value in snapshot.items() if key in allowed_fields}
         recreated.append(model(**build_row_data(row_data)))
 
@@ -494,7 +496,7 @@ def _record_cascade_deletions(project: Project, instances: list, batch, user_nam
 
 def _row_data_from_snapshot(model, snapshot: dict, project: Project) -> dict:
     concrete = {field.attname for field in model._meta.concrete_fields}
-    snapshot = _with_legacy_crop_family(model, snapshot)
+    snapshot = _with_legacy_snapshot_fields(model, snapshot)
     row = {key: value for key, value in snapshot.items() if key in concrete}
     row['project_id'] = project.id
     if 'deleted_at' in concrete:

@@ -100,5 +100,5 @@ class CropCompanionViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
             mark_library_copies_modified(touched)
         relations = self.get_queryset().filter(Q(crop=kultur) | Q(companion_crop=kultur))
         return Response(
-            CropCompanionSerializer(relations, many=True).data, status=status.HTTP_200_OK,
+            CropCompanionSerializer(relations, many=True, context=self.get_serializer_context()).data, status=status.HTTP_200_OK,
         )

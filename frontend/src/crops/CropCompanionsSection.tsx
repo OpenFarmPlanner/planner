@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Alert, Box, Typography } from '@mui/material';
 
 import type { Crop, CropCompanion } from '../api/types';
+import { normalizeLanguageTag } from '../i18n/languages';
 import { useTranslation } from '../i18n';
 import { CompanionKindColumns, type CompanionListItem } from './CompanionKindColumns';
 import {
@@ -27,7 +28,8 @@ interface CropCompanionsSectionProps {
  * or none recorded); a load error is still shown.
  */
 export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompanionsSectionProps) {
-  const { t } = useTranslation(['crops', 'common']);
+  const { t, i18n } = useTranslation(['crops', 'common']);
+  const language = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
   const families = usePlantFamilies();
   // Reloaded whenever the crop list is refetched, e.g. after the form saved.
   const { relations, failed } = useCropCompanions(crops);
@@ -53,7 +55,7 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
       key: relation.id ?? `${relation.kind}-${label}`,
       kind: relation.kind,
       label,
-      detail: [reason, relation.note].filter(Boolean).join(': '),
+      detail: [reason, relation.notes ? relation.notes[language] ?? '' : relation.note].filter(Boolean).join(': '),
       onSelect: partnerCrop ? () => onCropSelect(partnerCrop) : undefined,
     };
   });

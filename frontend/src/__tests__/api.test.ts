@@ -167,7 +167,7 @@ describe('API Client', () => {
     cropAPI.create(cropData as never);
     cropAPI.update(7, cropData as never);
     cropAPI.delete(7);
-    cropAPI.importPreview(importPreviewData);
+    cropAPI.importPreview(importPreviewData, 'fr');
     cropAPI.importApply(importApplyData);
 
     expect(getMock).toHaveBeenCalledWith('/crops/');
@@ -175,7 +175,7 @@ describe('API Client', () => {
     expect(postMock).toHaveBeenCalledWith('/crops/', cropData);
     expect(putMock).toHaveBeenCalledWith('/crops/7/', cropData);
     expect(deleteMock).toHaveBeenCalledWith('/crops/7/');
-    expect(postMock).toHaveBeenCalledWith('/crops/import/preview/', importPreviewData);
+    expect(postMock).toHaveBeenCalledWith('/crops/import/preview/', importPreviewData, { params: { companion_note_language: 'fr' } });
     expect(postMock).toHaveBeenCalledWith('/crops/import/apply/', importApplyData);
   });
 

@@ -250,7 +250,7 @@ describe('crop spreadsheet export → import round trip', () => {
     good: [...COMPANIONS.good],
     bad: [...COMPANIONS.bad],
   }]]);
-  const namesOnly = (items: readonly { name: string }[]) => items.map(({ name }) => ({ name, reason: 'other', note: '' }));
+  const cellItems = (items: readonly { name: string; note: string }[]) => items.map(({ name, note }) => ({ name, reason: 'other', note }));
 
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
@@ -262,8 +262,8 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_days: '7–14',
     sowing_depth: '0.5–1',
     germination_cold: true, germination_frost: true, germination_light: true, germination_dark: true,
-    good_companions: namesOnly(COMPANIONS.good),
-    bad_companions: namesOnly(COMPANIONS.bad),
+    good_companions: cellItems(COMPANIONS.good),
+    bad_companions: cellItems(COMPANIONS.bad),
   };
 
   it('has a test value for every exported column', () => {

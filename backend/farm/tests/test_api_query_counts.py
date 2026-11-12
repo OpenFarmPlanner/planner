@@ -333,7 +333,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             PublicCrop.objects.filter(pk=crop.source_public_crop_id).update(
                 variety='', version=2, companions=[{
                     'species': None, 'species_name': '', 'family': 'Brassicaceae',
-                    'kind': 'good', 'reason': 'other', 'note': '',
+                    'kind': 'good', 'reason': 'other', 'note': '', 'notes': {'fr': 'Source FR'},
                 }],
             )
             Crop.objects.filter(pk=crop.pk).update(variety='', source_public_version=1)
@@ -503,13 +503,14 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self._add_bad_neighbours_on_every_bed()
         CropCompanion.objects.create(
             project=self.project, crop=self.crop, companion_crop=self.crops[1],
-            kind=CropCompanion.KIND_GOOD,
+            kind=CropCompanion.KIND_GOOD, notes={'de': 'Quelle DE', 'en': 'Source EN'},
         )
 
         with self.assertNumQueries(4):
             response = self.client.get('/openfarmplanner/api/crop-companions/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), ROW_COUNT + 1)
+        self.assertTrue(any(item['notes'].get('en') == 'Source EN' for item in response.data))
 
     def test_young_plant_demand_list_query_count(self):
         """Crop, species translations and the bed/field/location of every plan
@@ -661,7 +662,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         for index, public_crop in enumerate(self.public_crops):
             PublicCrop.objects.filter(pk=public_crop.pk).update(variety='', version=2, companions=[{
                 'species': None, 'species_name': '', 'family': 'Brassicaceae',
-                'kind': 'good', 'reason': 'other', 'note': '',
+                'kind': 'good', 'reason': 'other', 'note': '', 'notes': {'fr': 'Source FR'},
             }])
             copy = Crop.objects.get(project=self.project, source_public_crop=public_crop)
             Crop.objects.filter(pk=copy.pk).update(variety='', source_public_version=1)

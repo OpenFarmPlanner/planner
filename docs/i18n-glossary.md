@@ -321,3 +321,12 @@ variety, seed status describes one supplier's offer.
 | Mittelfrüh | Medium early | Demi-précoce | Semiprecoz |
 | Mittelspät | Medium late | Demi-tardive | Semitardía |
 | Spät | Late | Tardive | Tardía |
+
+## Companion note language
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Sprache der Nachbarnotizen | Companion note language | Langue des notes de voisinage | Idioma de las notas de asociación |
+
+Companion notes may include source references as user-written prose. No source
+model or automatic translation is implied.

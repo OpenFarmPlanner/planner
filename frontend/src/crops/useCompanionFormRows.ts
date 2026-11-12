@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cropCompanionAPI } from '../api/api';
 import type { Crop, PublicCropCompanion } from '../api/types';
+import { normalizeLanguageTag } from '../i18n/languages';
 import { useTranslation } from '../i18n';
 import {
   buildCompanionFormOptions,
@@ -36,6 +37,8 @@ interface UseCompanionFormRowsArgs {
 
 export interface CompanionFormRowsState {
   mode: CompanionFormMode;
+  noteLanguage?: string;
+  setNoteLanguage?: (language: string) => void;
   rows: CompanionFormRow[];
   setRows: (rows: CompanionFormRow[]) => void;
   /** Neighbours the user can pick, in the order of their plant-family groups. */
@@ -65,6 +68,7 @@ export function useCompanionFormRows({
   const { t, i18n } = useTranslation('crops');
   const families = usePlantFamilies();
   const isLibrary = variant === 'publicLibrary';
+  const [language, setLanguage] = useState(normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de');
   const kulturId = useMemo(() => {
     if (isLibrary || !crop?.id) return null;
     return findKulturId(crop, crops as Crop[]);
@@ -135,19 +139,31 @@ export function useCompanionFormRows({
   }, [crop?.crop_species, crop?.id, crops, families, i18n?.language, i18n?.resolvedLanguage, isLibrary, t]);
 
   // Family names arrive with the family catalogue, possibly after the rows.
-  const labelledRows = useMemo(() => rows.map((row) => (
-    row.target?.type === 'family'
-      ? { ...row, target: { ...row.target, label: families.getName(row.target.familyKey) } }
-      : row
-  )), [families, rows]);
+  const labelledRows = useMemo(() => rows.map((row) => ({
+    ...row, noteLanguage: row.noteLanguage ?? language,
+    ...(row.target?.type === 'family' ? { target: { ...row.target, label: families.getName(row.target.familyKey) } } : {}),
+  })), [families, rows, language]);
   const errors = useMemo(() => findCompanionRowErrors(rows), [rows]);
   const validate = useCallback((): boolean => {
     setShowErrors(true);
     return Object.keys(errors).length === 0;
   }, [errors]);
 
+  const setNoteLanguage = (next: string) => {
+    const selected = normalizeLanguageTag(next);
+    if (!selected) return;
+    const select = (row: CompanionFormRow): CompanionFormRow => ({
+      ...row, noteLanguage: selected, note: row.notes?.[selected] ?? '',
+    });
+    setRows((current) => current.map(select));
+    setInitialRows((current) => current.map(select));
+    setLanguage(selected);
+  };
+
   return {
     mode,
+    noteLanguage: language,
+    setNoteLanguage,
     rows: labelledRows,
     setRows,
     options,

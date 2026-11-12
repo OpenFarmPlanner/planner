@@ -267,6 +267,8 @@ function Crops() {
     importPreparing,
     handleExportCurrentCrop,
     handleExportAllCrops,
+    importNoteLanguage, setImportNoteLanguage, exportNoteLanguage, setExportNoteLanguage,
+    replaceCompanionNotes, setReplaceCompanionNotes,
     handleOpenExportDialog,
     handleExport,
     handleImportStart,
@@ -1005,6 +1007,8 @@ function Crops() {
         onClose={() => setImportStartDialogOpen(false)}
         onFileSelected={(file) => void handleImportFileSelected(file)}
         preparing={importPreparing}
+        noteLanguage={importNoteLanguage} onNoteLanguageChange={setImportNoteLanguage}
+        replaceNotes={replaceCompanionNotes} onReplaceNotesChange={setReplaceCompanionNotes}
         t={t}
       />
 
@@ -1025,6 +1029,7 @@ function Crops() {
         initialScope={exportDialogInitialScope}
         onClose={() => setExportDialogOpen(false)}
         onExport={handleExport}
+        noteLanguage={exportNoteLanguage} onNoteLanguageChange={setExportNoteLanguage}
         t={t}
       />
 

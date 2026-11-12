@@ -128,9 +128,14 @@ export const buildCompanionPreviewWarning = (
   results: ImportPreviewResult[],
   t: Translator,
 ): string | null => {
-  const unresolved = Array.from(new Set(results.flatMap((result) => result.companions?.unresolved ?? [])));
-  if (unresolved.length === 0) return null;
-  return t('companions.import.unresolved', { count: unresolved.length, names: formatNames(unresolved) });
+  const warnings = [...new Set(results.flatMap((result) => result.companions?.warnings ?? []))];
+  const unresolved = Array.from(new Set(results.flatMap((result) => result.companions?.unresolved ?? [])))
+    .filter((name) => !warnings.includes(name));
+  const messages = [
+    unresolved.length ? t('companions.import.unresolved', { count: unresolved.length, names: formatNames(unresolved) }) : '',
+    warnings.length ? t('companions.import.legacyWarning', { names: formatNames(warnings) }) : '',
+  ].filter(Boolean);
+  return messages.join(' ') || null;
 };
 
 /** One sentence per outcome of the imported neighbours: created, kept as text, conflicts. */
@@ -173,3 +178,9 @@ export const buildSpecificPropertyPreviewErrors = (
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string[] => results.filter((result) => result.error_code === 'specific_properties_invalid')
   .map((result) => t('specificProperties.importRowInvalid', { row: rowNumber(result.index) }));
+
+export const buildCompanionNotePreviewErrors = (
+  results: ImportPreviewResult[], rowNumber: (index: number) => number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string[] => results.filter((result) => result.error_code === 'companion_notes_invalid')
+  .map((result) => t('companions.import.invalidRow', { row: rowNumber(result.index) }));

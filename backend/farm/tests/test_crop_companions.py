@@ -644,3 +644,253 @@ class FreeTextLinkingTests(CropCompanionTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         entry.refresh_from_db()
         self.assertEqual(entry.companion_crop_id, Crop.objects.get(project=self.project, name='Ringelblume').id)
+
+
+class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
+    def test_project_note_edits_preserve_other_languages_and_reciprocal_identity(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        relation.note = 'Quelle DE'
+        relation.save(update_fields=['note'])
+        url = f'{COMPANIONS_URL}{relation.pk}/'
+        for language, note in [('en', 'Source EN\n2025'), ('fr', 'Source FR')]:
+            response = self.client.patch(url, {'note_language_code': language, 'note': note}, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+        relation.refresh_from_db()
+        self.assertEqual(relation.notes, {'de': 'Quelle DE', 'en': 'Source EN\n2025', 'fr': 'Source FR'})
+        for language, expected in [('de', 'Quelle DE'), ('en', 'Source EN\n2025'), ('es', '')]:
+            response = self.client.get(url, HTTP_ACCEPT_LANGUAGE=language)
+            self.assertEqual(response.data['note'], expected)
+        self.assertEqual(CropCompanion.objects.filter(project=self.project).count(), 1)
+
+    def test_public_note_edits_and_missing_language_have_no_fallback(self) -> None:
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+        base = {'species': self.potato_species.pk, 'kind': 'bad', 'reason': 'shared_pests_diseases'}
+        for language, note in [('de', 'Quelle DE'), ('fr', 'Source FR')]:
+            response = self.client.patch(url, {'companions': [{**base, 'note': note, 'note_language_code': language}]}, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+        entry.refresh_from_db()
+        self.assertEqual(entry.companions[0]['notes'], {'de': 'Quelle DE', 'fr': 'Source FR'})
+        response = self.client.get(url, HTTP_ACCEPT_LANGUAGE='es')
+        self.assertEqual(response.data['companions'][0]['note'], '')
+        self.assertEqual(response.data['companions'][0]['reason'], 'shared_pests_diseases')
+        response = self.client.patch(url, {'companions': [{**base, 'note_language_code': 'fr', 'note': ''}]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        entry.refresh_from_db()
+        self.assertEqual(entry.companions[0]['notes'], {'de': 'Quelle DE', 'fr': ''})
+
+    def test_invalid_language_maps_are_rejected(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        for value in ([], {'xx': 'Unknown'}, {'de': 12}, {'en': 'x' * 501}):
+            response = self.client.patch(f'{COMPANIONS_URL}{relation.pk}/', {'notes': value}, format='json')
+            self.assertEqual(response.status_code, 400, response.data)
+
+    def test_import_note_validation_does_not_expose_nested_exception_details(self) -> None:
+        from unittest.mock import patch
+
+        from rest_framework.exceptions import ValidationError
+
+        row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate', 'notes': {'fr': 'Source'}}]}
+        diagnostic = 'Internal note parser diagnostic'
+        with patch('farm.services.crop_companions.validate_notes', side_effect=ValidationError(diagnostic)):
+            preview = self.client.post(PREVIEW_URL, [row], format='json')
+            applied = self.client.post(APPLY_URL, {'items': [row]}, format='json')
+        self.assertEqual(preview.data['results'][0]['error_code'], 'companion_notes_invalid')
+        self.assertEqual(applied.data['errors'][0]['error_code'], 'companion_notes_invalid')
+        self.assertNotIn(diagnostic, str(preview.data))
+        self.assertNotIn(diagnostic, str(applied.data))
+        self.assertFalse(Crop.objects.filter(project=self.project, name='Gurke').exists())
+
+    def test_import_note_merge_and_explicit_empty_replacement(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Quelle', 'fr': 'Ancienne source'}
+        relation.reason = 'shared_pests_diseases'
+        relation.save()
+        item = {'name': self.tomato.name, 'bad_companions': [{'name': self.potato.name, 'note': 'Nouvelle source'}]}
+        for note, replacement, expected in [('Nouvelle source', False, 'Nouvelle source'), ('', False, 'Nouvelle source'), ('', True, '')]:
+            item['bad_companions'][0]['note'] = note
+            response = self.client.post(APPLY_URL, {'items': [item], 'confirm_updates': True, 'companion_note_language': 'fr', 'replace_companion_notes': replacement}, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            relation.refresh_from_db()
+            self.assertEqual(relation.notes, {'de': 'Quelle', 'fr': expected})
+            self.assertEqual(relation.reason, 'shared_pests_diseases')
+
+    def test_legacy_group_resolution_is_exact_and_ambiguous_input_stays_text(self) -> None:
+        row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate, Kartoffel – Quelle 2025', 'legacy': True}]}
+        response = self.client.post(PREVIEW_URL, [row], format='json')
+        self.assertEqual(response.data['results'][0]['companions']['count'], 2)
+        response = self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'fr'}, format='json')
+        self.assertEqual(response.data['companions']['created'], 2)
+        self.assertEqual(list(CropCompanion.objects.values_list('notes', flat=True)), [{'fr': 'Quelle 2025'}] * 2)
+        Crop.objects.create(project=self.project, name='Tomate - Foo')
+        ambiguous = {'name': 'Zucchini', 'good_companions': [{'name': 'Tomate - Foo - Bar', 'legacy': True}]}
+        preview = self.client.post(PREVIEW_URL, [ambiguous], format='json').data['results'][0]
+        self.assertEqual(preview['companions']['warnings'], ['Tomate - Foo - Bar'])
+        response = self.client.post(APPLY_URL, {'items': [ambiguous]}, format='json')
+        self.assertTrue(CropCompanion.objects.filter(companion_text='Tomate - Foo - Bar').exists())
+
+    def test_known_spaced_dash_name_wins_over_legacy_suffix(self) -> None:
+        named = Crop.objects.create(project=self.project, name='Salat - Pflücksalat')
+        Crop.objects.create(project=self.project, name='Salat')
+        response = self.client.post(APPLY_URL, {'items': [{'name': 'Gurke', 'good_companions': [{'name': named.name, 'legacy': True}]}]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        relation = CropCompanion.objects.get()
+        self.assertIn(named.pk, (relation.crop_id, relation.companion_crop_id))
+        self.assertEqual(relation.notes, {})
+
+    def test_json_language_maps_are_authoritative_and_do_not_copy_derived_note(self) -> None:
+        response = self.client.post(APPLY_URL, {'items': [{'name': 'Gurke', 'good_companions': [{'name': 'Tomate', 'notes': {'fr': 'Source FR'}, 'note': 'Source FR'}]}], 'companion_note_language': 'de'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(CropCompanion.objects.get().notes, {'fr': 'Source FR'})
+
+    def test_private_and_public_maps_ignore_derived_text_without_an_explicit_language(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        private_url = f'{COMPANIONS_URL}{relation.pk}/'
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+        public_url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+        identity = {'species': self.potato_species.pk, 'kind': relation.kind, 'reason': relation.reason}
+        for explicit in (False, True):
+            patch = {'notes': {'fr': 'Source FR'}, 'note': 'Selected English source'}
+            if explicit:
+                patch['note_language_code'] = 'en'
+            private = self.client.patch(private_url, patch, format='json', HTTP_ACCEPT_LANGUAGE='en')
+            public = self.client.patch(public_url, {'companions': [{**identity, **patch}]}, format='json', HTTP_ACCEPT_LANGUAGE='en')
+            self.assertEqual(private.status_code, 200, private.data)
+            self.assertEqual(public.status_code, 200, public.data)
+            expected = {'fr': 'Source FR', **({'en': 'Selected English source'} if explicit else {})}
+            self.assertEqual(private.data['notes'], expected)
+            self.assertEqual(public.data['companions'][0]['notes'], expected)
+
+    def test_public_edit_merges_against_the_locked_current_language_map(self) -> None:
+        from farm.crops.serializers.public import PublicCropUpdateSerializer
+        from farm.services.public_crops import update_public_crop_directly
+
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+        base = {'species': self.potato_species.pk, 'family': None, 'kind': 'bad', 'reason': 'other'}
+        entry.companions = [{**base, 'notes': {'de': 'Quelle', 'fr': 'Ancienne source'}}]
+        entry.save()
+        english = PublicCropUpdateSerializer(entry, data={'companions': [{**base, 'note': 'New source', 'note_language_code': 'en'}]}, partial=True)
+        self.assertTrue(english.is_valid(), english.errors)
+        update_public_crop_directly(public_crop=entry, user=self.user, data={'companions': [{**base, 'note': 'Nouvelle source', 'note_language_code': 'fr'}]})
+        updated = update_public_crop_directly(public_crop=entry, user=self.user, data=english.validated_data)
+        self.assertEqual(updated.companions[0]['notes'], {'de': 'Quelle', 'fr': 'Nouvelle source', 'en': 'New source'})
+
+    def test_publication_scopes_notes_and_preserves_the_remote_other_language(self) -> None:
+        from farm.services.public_crops import (
+            build_public_crop_payload,
+            update_public_crop_directly,
+        )
+
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Quelle', 'fr': 'Old private copy'}
+        relation.save()
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+        entry.companions[0]['notes']['fr'] = 'New public French source'
+        entry.save()
+        self.tomato.refresh_from_db()
+        payload = build_public_crop_payload(self.tomato, companion_note_language='de')
+        updated = update_public_crop_directly(public_crop=entry, user=self.user, data={'companions': payload['companions']})
+        self.assertEqual(updated.companions[0]['notes']['fr'], 'New public French source')
+
+    def test_private_note_write_merges_after_another_language_changed(self) -> None:
+        from farm.crops.serializers.companions import CropCompanionSerializer
+
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Quelle', 'fr': 'Ancienne source'}
+        relation.save()
+        english = CropCompanionSerializer(relation, data={'note': 'Source', 'note_language_code': 'en'}, partial=True, context={'project': self.project})
+        self.assertTrue(english.is_valid(), english.errors)
+        CropCompanion.objects.filter(pk=relation.pk).update(notes={'de': 'Quelle', 'fr': 'Nouvelle source'})
+        saved = english.save()
+        self.assertEqual(saved.notes, {'de': 'Quelle', 'fr': 'Nouvelle source', 'en': 'Source'})
+
+    def test_library_pull_preserves_private_languages_absent_from_the_entry(self) -> None:
+        from farm.services.crop_companions import replace_library_companions
+
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Quelle', 'fr': 'Source privée'}
+        relation.save()
+        replace_library_companions(self.tomato, [{'species': self.potato_species.pk, 'species_name': 'Kartoffel', 'kind': 'bad', 'reason': 'other', 'notes': {'de': 'Neue Quelle'}}])
+        relation.refresh_from_db()
+        self.assertEqual(relation.notes, {'de': 'Neue Quelle', 'fr': 'Source privée'})
+
+    def test_additive_library_import_adds_missing_languages_and_keeps_local_notes(self) -> None:
+        from farm.services.crop_companions import apply_library_companions
+
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Private source'}
+        relation.save()
+        added = apply_library_companions(self.tomato, [{
+            'species': self.potato_species.pk, 'species_name': 'Kartoffel',
+            'kind': relation.kind, 'reason': 'other',
+            'notes': {'de': 'Public source', 'fr': 'Source française'},
+        }])
+        relation.refresh_from_db()
+        self.assertEqual(added, 0)
+        self.assertEqual(relation.notes, {'de': 'Private source', 'fr': 'Source française'})
+
+    def test_restoring_an_old_private_snapshot_resets_newer_note_versions(self) -> None:
+        from farm.history.records import _serialize_instance
+        from farm.history.restore import _restore_project_state_at
+
+        relation = self.relate(self.tomato, self.potato)
+        relation.note = 'Legacy source'
+        relation.save()
+        snapshot = _serialize_instance(relation)
+        snapshot.pop('notes')
+        revision = EntityRevision.objects.create(project=self.project, entity_type='crop_companion', object_id=relation.pk, action='created', snapshot=snapshot)
+        relation.notes = {'fr': 'Newer source'}
+        relation.save()
+        _restore_project_state_at(self.project, revision.created_at)
+        relation.refresh_from_db()
+        self.assertEqual(relation.notes, {'de': 'Legacy source'})
+
+    def test_known_legacy_reason_labels_remain_structured(self) -> None:
+        from farm.services.crop_companions import LEGACY_REASON_LABELS
+
+        label = LEGACY_REASON_LABELS['pest_control'][0]
+        row = {'name': 'Gurke', 'good_companions': [{'name': f'Tomate – {label}: Source 2025', 'legacy': True}]}
+        response = self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'en'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        relation = CropCompanion.objects.get()
+        self.assertEqual(relation.reason, 'pest_control')
+        self.assertEqual(relation.notes, {'en': 'Source 2025'})
+
+    def test_old_public_revision_recovers_its_original_note_language(self) -> None:
+        from farm.models import PublicCropRevision
+        from farm.services.public_crops import build_public_crop_snapshot, restore_public_crop_version
+
+        self.publish(self.tomato)
+        entry = PublicCrop.objects.get(variety='')
+        entry.original_language_code = 'fr'
+        legacy = {'family': 'Brassicaceae', 'species': None, 'species_name': '', 'kind': 'bad', 'reason': 'other', 'note': 'Ancienne source'}
+        snapshot = build_public_crop_snapshot(entry)
+        snapshot['companions'] = [legacy]
+        revision = PublicCropRevision.objects.get(public_crop=entry, version=1)
+        revision.snapshot = snapshot
+        revision.save(update_fields=['snapshot'])
+        entry.companions = [{**legacy, 'notes': {'fr': 'Nouvelle source', 'en': 'New source'}}]
+        entry.version = 2
+        entry.save()
+        restored = restore_public_crop_version(public_crop=entry, version=revision.version, user=self.user)
+        self.assertEqual(restored.companions[0]['notes'], {'fr': 'Ancienne source'})
+
+    def test_invalid_import_notes_are_previewed_without_truncation_or_partial_writes(self) -> None:
+        for item in [
+            {'name': 'Tomate', 'note': 'x' * 501},
+            {'name': 'Tomate – ' + 'x' * 501, 'legacy': True},
+            {'name': 'Tomate', 'notes': {'xx': 'Unsupported'}},
+            {'name': 'x' * 201, 'legacy': 'yes'},
+        ]:
+            row = {'name': 'Invalid note crop', 'good_companions': [item]}
+            preview = self.client.post(PREVIEW_URL, [row], format='json')
+            result = preview.data['results'][0]
+            self.assertEqual(result['error_code'], 'companion_notes_invalid', result)
+            self.assertEqual(result['import_data']['good_companions'][0], item)
+            applied = self.client.post(APPLY_URL, {'items': [row]}, format='json')
+            self.assertEqual(applied.data['errors'][0]['error_code'], 'companion_notes_invalid', applied.data)
+            self.assertFalse(Crop.objects.filter(project=self.project, name=row['name']).exists())

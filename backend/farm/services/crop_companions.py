@@ -17,6 +17,7 @@ documented in docs/crop-companions.md; in short:
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -25,15 +26,38 @@ from typing import Any
 
 from django.db import transaction
 from django.db.models import Q, QuerySet
+from rest_framework.exceptions import ValidationError
 
 from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
+from farm.companion_notes import legacy_note, merge_notes, notes_of, validate_notes
 from farm.models import Crop, CropCompanion, PlantingPlan
 from farm.services.crop_inheritance import ensure_general_crop_for_variety, find_general_crop
 from farm.utils import normalize_text
 
 KINDS = (CropCompanion.KIND_GOOD, CropCompanion.KIND_BAD)
 REASONS = tuple(value for value, _label in CropCompanion.REASON_CHOICES)
+
+# Historical UI labels accepted only in legacy dash/colon cells.
+LEGACY_REASON_LABELS = {'competition': ('Konkurrenz', 'Competition', 'Concurrence', 'Competencia'),
+ 'allelopathy': ('Hemmt das Wachstum',
+                 'Inhibits growth',
+                 'Inhibe la croissance',
+                 'Inhibe el crecimiento'),
+ 'pest_control': ('Schädlingsabwehr',
+                  'Pest control',
+                  'Protection contre les ravageurs',
+                  'Control de plagas'),
+ 'soil': ('Bodenverbesserung',
+          'Soil improvement',
+          'Amélioration du sol',
+          'Mejora del suelo'),
+ 'shared_pests_diseases': ('Gleiche Schädlinge oder Krankheiten',
+                           'Shared pests or diseases',
+                           'Ravageurs ou maladies communs',
+                           'Plagas o enfermedades comunes'),
+ 'other': ('Sonstiges', 'Other', 'Autre', 'Otro')}
+
 
 TARGET_CROP = 'crop'
 TARGET_FAMILY = 'family'
@@ -211,7 +235,7 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
 
 # --- Spreadsheet import ---------------------------------------------------------
 
-def normalize_import_items(raw: Any) -> list[dict[str, str]]:
+def normalize_import_items(raw: Any) -> list[dict[str, Any]]:
     """Validated ``{name, reason, note}`` items from an import row's companion field.
 
     The frontend parses spreadsheet cells into these items
@@ -223,16 +247,87 @@ def normalize_import_items(raw: Any) -> list[dict[str, str]]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        name = str(item.get('name') or '').strip()[:200]
+        name = str(item.get('name') or '').strip()
+        if (len(name) > 200 and item.get('legacy') is not True) or len(str(item.get('note') or '')) > 500:
+            raise ValidationError('Companion names allow 200 characters and notes allow 500 characters.', code='companion_notes_invalid')
         if not any(char.isalnum() for char in name):
             continue
         reason = item.get('reason')
         items.append({
             'name': name,
             'reason': reason if reason in REASONS else CropCompanion.REASON_OTHER,
-            'note': str(item.get('note') or '').strip()[:500],
+            'note': str(item.get('note') or ''),
+            **({'notes': _import_notes_map(item['notes'])} if 'notes' in item else {}),
+            **({'legacy': True} if item.get('legacy') is True else {}),
         })
     return items
+
+
+def _import_notes_map(value: Any) -> dict[str, str]:
+    try:
+        return validate_notes(value)
+    except ValidationError as error:
+        raise ValidationError('Invalid companion note language map.', code='companion_notes_invalid') from error
+
+
+def resolve_import_items(raw: Any, resolver: CompanionNameResolver) -> tuple[list[dict[str, Any]], list[str]]:
+    resolved: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for item in normalize_import_items(raw):
+        if not item.pop('legacy', False):
+            resolved.append(item)
+            continue
+        names = _legacy_names(item['name'])
+        if names and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in names):
+            resolved.extend({**item, 'name': name} for name in names)
+            continue
+        candidates = []
+        for match in re.finditer(r'\s+[-–]\s+', item['name']):
+            prefix = _legacy_names(item['name'][:match.start()])
+            if prefix and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in prefix):
+                candidates.append((prefix, item['name'][match.end():]))
+        if len(candidates) == 1:
+            prefix, note = candidates[0]
+            reason, note = _legacy_reason(note)
+            reason = reason or item['reason']
+            if len(note) > 500:
+                raise ValidationError('Companion notes allow at most 500 characters.', code='companion_notes_invalid')
+            resolved.extend({**item, 'name': name, 'note': note, 'reason': reason} for name in prefix)
+        else:
+            if len(item['name']) > 200:
+                raise ValidationError('The unresolved companion name exceeds 200 characters; split or correct the group.', code='companion_notes_invalid')
+            warnings.append(item['name'])
+            resolved.append(item)
+    return resolved, warnings
+
+
+def _legacy_reason(note: str) -> tuple[str | None, str]:
+    label, separator, text = note.partition(':')
+    if separator:
+        for code, aliases in LEGACY_REASON_LABELS.items():
+            if normalize_text(label) in {normalize_text(alias) for alias in aliases}:
+                return code, text.lstrip()
+    return None, note
+
+
+def _legacy_names(value: str) -> list[str]:
+    names: list[str] = []
+    current = ''
+    depth = 0
+    for character in value:
+        if character in '([':
+            depth += 1
+        elif character in ')]' and depth:
+            depth -= 1
+        if character in ',;' and not depth:
+            if current.strip():
+                names.append(current.strip())
+            current = ''
+        else:
+            current += character
+    if current.strip():
+        names.append(current.strip())
+    return names
 
 
 class CompanionNameResolver:
@@ -313,19 +408,21 @@ def preview_row_companions(
     names = [
         item['name']
         for kind in KINDS
-        for item in normalize_import_items(row.get(f'{kind}_companions'))
+        for item in resolve_import_items(row.get(f'{kind}_companions'), resolver)[0]
     ]
     if not names:
         return None
     unresolved = [
         name for name in names if resolver.resolve(name, create=False).type == TARGET_TEXT
     ]
-    return {'count': len(names), 'unresolved': unresolved}
+    warnings = [warning for kind in KINDS for warning in resolve_import_items(row.get(f'{kind}_companions'), resolver)[1]]
+    return {'count': len(names), 'unresolved': unresolved, **({'warnings': warnings} if warnings else {})}
 
 
 def apply_import_companions(
     project_id: int,
     rows: list[tuple[Crop, dict[str, Any]]],
+    *, language: str = 'de', replace_notes: bool = False,
 ) -> CompanionImportReport:
     """Add the neighbours named by imported rows; existing relations are kept.
 
@@ -339,17 +436,19 @@ def apply_import_companions(
         for crop, row in rows:
             kultur = ensure_kultur(crop)
             for kind in KINDS:
-                for item in normalize_import_items(row.get(f'{kind}_companions')):
-                    _apply_import_item(kultur, kind, item, resolver, report)
+                for item in resolve_import_items(row.get(f'{kind}_companions'), resolver)[0]:
+                    _apply_import_item(kultur, kind, item, resolver, report, language, replace_notes)
     return report
 
 
 def _apply_import_item(
     kultur: Crop,
     kind: str,
-    item: dict[str, str],
+    item: dict[str, Any],
     resolver: CompanionNameResolver,
     report: CompanionImportReport,
+    language: str,
+    replace_notes: bool,
 ) -> None:
     target = resolver.resolve(item['name'], create=True)
     if target.type == TARGET_TEXT:
@@ -358,18 +457,34 @@ def _apply_import_item(
         return
     existing = find_relation(kultur, target)
     if existing is not None:
+        existing = CropCompanion.objects.select_for_update().get(pk=existing.pk)
         if existing.kind != kind:
             report.conflicts.append({
                 'crop': kultur.name,
                 'neighbour': item['name'],
                 'kept': existing.kind,
             })
+        elif item.get('note') or item.get('notes') or replace_notes:
+            patch = dict(item)
+            if not item.get('note') and not replace_notes:
+                patch.pop('note', None)
+            notes = merge_notes(notes_of(existing), patch, language)
+            if notes != notes_of(existing):
+                existing.notes = notes
+                existing.note = legacy_note(notes)
+                existing.save(update_fields=['notes', 'note', 'updated_at'])
+                mark_library_copies_modified([existing.crop_id, existing.companion_crop_id])
         return
+    patch = dict(item)
+    if not patch.get('note') and not replace_notes:
+        patch.pop('note', None)
+    notes = merge_notes({}, patch, language)
     CropCompanion.objects.create(
         project_id=kultur.project_id,
         kind=kind,
         reason=item['reason'],
-        note=item['note'],
+        notes=notes,
+        note=legacy_note(notes),
         **relation_kwargs(kultur, target),
     )
     report.created += 1
@@ -443,7 +558,8 @@ def canonical_library_items(items: Iterable[Any] | None) -> list[dict[str, Any]]
             'reason': (
                 item['reason'] if item.get('reason') in REASONS else CropCompanion.REASON_OTHER
             ),
-            'note': str(item.get('note') or '').strip(),
+            'note': notes_of(item).get('de', ''),
+            **({'notes': notes_of(item)} if notes_of(item) else {}),
         })
     canonical.sort(key=lambda entry: (
         entry['kind'], entry['family'] or '', entry['species'] or 0, entry['reason'], entry['note'],
@@ -485,7 +601,8 @@ def library_companion_view(
     skipped = 0
     for relation in kultur_relations(kultur):
         target = target_from(relation, kultur.id)
-        detail = {'kind': relation.kind, 'reason': relation.reason, 'note': relation.note}
+        detail = {'kind': relation.kind, 'reason': relation.reason, 'note': notes_of(relation).get('de', ''),
+                  **({'notes': notes_of(relation)} if notes_of(relation) else {})}
         species_id: int | None = None
         fallback_name = ''
         if target.type == TARGET_FAMILY:
@@ -544,7 +661,20 @@ def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) 
     if view.items == entry:
         return False
     with transaction.atomic():
-        CropCompanion.objects.filter(pk__in=view.relation_ids).delete()
+        keep_ids = set()
+        for item in entry:
+            target = _library_item_target(kultur, item)
+            existing = find_relation(kultur, target) if target else None
+            if existing is not None:
+                existing = CropCompanion.objects.select_for_update().get(pk=existing.pk)
+                keep_ids.add(existing.pk)
+                notes = {**notes_of(existing), **notes_of(item)}
+                existing.kind = item['kind']
+                existing.reason = item['reason']
+                existing.notes = notes
+                existing.note = legacy_note(notes)
+                existing.save(update_fields=['kind', 'reason', 'notes', 'note', 'updated_at'])
+        CropCompanion.objects.filter(pk__in=view.relation_ids).exclude(pk__in=keep_ids).delete()
         apply_library_companions(kultur, entry)
     return True
 
@@ -576,13 +706,23 @@ def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> i
         target = _library_item_target(kultur, item)
         if target is None or (target.crop is not None and target.crop.id == kultur.id):
             continue
-        if find_relation(kultur, target) is not None:
+        existing = find_relation(kultur, target)
+        if existing is not None:
+            if existing.kind == kind:
+                with transaction.atomic():
+                    existing = CropCompanion.objects.select_for_update().get(pk=existing.pk)
+                    notes = {**notes_of(item), **notes_of(existing)}
+                    if notes != notes_of(existing):
+                        existing.notes = notes
+                        existing.note = legacy_note(notes)
+                        existing.save(update_fields=['notes', 'note', 'updated_at'])
             continue
         CropCompanion.objects.create(
             project_id=kultur.project_id,
             kind=kind,
             reason=item['reason'] if item.get('reason') in REASONS else CropCompanion.REASON_OTHER,
-            note=str(item.get('note') or '')[:500],
+            note=notes_of(item).get('de', '')[:500],
+            notes=notes_of(item),
             **relation_kwargs(kultur, target),
         )
         added += 1
