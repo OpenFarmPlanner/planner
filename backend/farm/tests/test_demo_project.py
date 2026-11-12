@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
 from datetime import date
 from unittest.mock import patch
 
@@ -9,7 +10,7 @@ from django.core.management import call_command
 from django.test import RequestFactory, TestCase
 
 from accounts.models import UserProjectSettings
-from config.languages import resolve_request_language
+from config.languages import SUPPORTED_LANGUAGE_CODES, resolve_request_language
 from farm.models import (
     Bed,
     BedLayout,
@@ -48,27 +49,30 @@ from farm.services.crop_rotation import (
     preview_season_copy,
     suggest_beds,
 )
+from farm.services.demo_features import FEATURE_TEXT
 from farm.services.demo_project import (
     DEMO_PROJECT_DESCRIPTION,
     DEMO_PROJECT_NAME,
     DEMO_PROJECT_NAME_EN,
     DEMO_PROJECT_SLUG,
+    DEMO_TEXT,
     DemoProjectResult,
     create_or_reset_demo_project,
     create_personal_demo_project,
     demo_current_year,
     get_demo_project_description,
     get_demo_project_name,
+    is_demo_project_description,
     populate_public_demo_library_from_project,
     resolve_demo_language,
     resolve_demo_request_language,
 )
 from farm.services.germination_check import check_germination
 from farm.services.seasons import build_planting_plan_copies
+from farm.services.seed_demand import build_seed_demand_rows
 from farm.services.tasks import generate_tasks_for_plans
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.timing_windows import TimingWindow, validate_timing_window, window_contains
-from farm.services.seed_demand import build_seed_demand_rows
 from farm.services.young_plant_demand import build_young_plant_demand_rows
 
 User = get_user_model()
@@ -432,7 +436,7 @@ class DemoProjectServiceTests(TestCase):
 
     def test_rotation_statuses_do_not_depend_on_the_demo_language(self) -> None:
         statuses = {}
-        for language in ('de', 'en'):
+        for language in SUPPORTED_LANGUAGE_CODES:
             result = create_or_reset_demo_project(language_code=language)
             service = RotationService(result.project.id, language_code=language)
             plans = PlantingPlan.objects.filter(
@@ -440,7 +444,8 @@ class DemoProjectServiceTests(TestCase):
             ).select_related('crop', 'bed')
             statuses[language] = Counter(service.check_plan(plan).status for plan in plans)
 
-        self.assertEqual(statuses['de'], statuses['en'])
+        for language in SUPPORTED_LANGUAGE_CODES:
+            self.assertEqual(statuses['de'], statuses[language])
         self.assertEqual(
             set(statuses['de']), {STATUS_OK, STATUS_CONFLICT, STATUS_ACCEPTED, STATUS_HINT, STATUS_INFO},
         )
@@ -589,6 +594,87 @@ class DemoProjectServiceTests(TestCase):
             project=result.project, title='Tie up tomatoes',
         ).exists())
 
+    def test_french_and_spanish_content_preserves_planning_facts_and_user_edits(self) -> None:
+        snapshots = []
+        for language, location, bed_name, carrot, irrigation, tying in (
+            ('fr', 'Jardin de la ferme', 'Carottes 1', 'Carotte',
+             "Contrôler l'irrigation", 'Attacher les tomates'),
+            ('es', 'Huerto de la finca', 'Zanahorias 1', 'Zanahoria',
+             'Revisar el riego', 'Entutorar los tomates'),
+        ):
+            with self.subTest(language=language), patch(
+                'farm.services.demo_project.timezone.localdate', return_value=date(2031, 5, 15),
+            ), patch('farm.services.demo_project.demo_current_year', return_value=2031):
+                user = User.objects.create_user(username=language)
+                result = create_personal_demo_project(user=user, language_code=language)
+                project = result.project
+                self.assertTrue(Location.objects.filter(project=project, name=location).exists())
+                self.assertTrue(Bed.objects.filter(project=project, name=bed_name).exists())
+                self.assertTrue(Crop.objects.filter(
+                    project=project, name=carrot, variety='Nantaise 2',
+                ).exists())
+                self.assertTrue(Task.objects.filter(project=project, title=irrigation).exists())
+                self.assertTrue(CropTaskTemplate.objects.filter(
+                    project=project, title=tying,
+                ).exists())
+                text = DEMO_TEXT[language]
+                feature = FEATURE_TEXT[language]
+                self.assertEqual(set(Location.objects.filter(project=project).values_list(
+                    'description', flat=True,
+                )), {row[1] for row in text['locations'].values()})
+                self.assertEqual(set(PlantingPlan.objects.filter(project=project).exclude(
+                    notes='',
+                ).values_list('notes', flat=True)), {
+                    text['plan_notes']['salat_frueh'], text['plan_notes']['salat_herbst'],
+                    f"{text['plan_notes']['tomate']} {text['plan_notes']['tomate_akzeptiert']}",
+                })
+                self.assertTrue(Bed.objects.filter(
+                    project=project, notes=text['bed_notes']['karotte-2'],
+                ).exists())
+                self.assertEqual(set(CropCompanion.objects.filter(project=project).values_list(
+                    'note', flat=True,
+                )), {feature['companion_note']})
+                for relation in CropCompanion.objects.filter(project=project):
+                    self.assertEqual(relation.notes, {language: feature['companion_note']})
+                self.assertTrue(Crop.objects.filter(
+                    project=project, germination_pretreatment=feature['pretreatment'],
+                ).exists())
+                crops = list(Crop.objects.filter(project=project).order_by('pk'))
+                beds = list(Bed.objects.filter(project=project).order_by('pk'))
+                crop_index = {crop.pk: index for index, crop in enumerate(crops)}
+                bed_index = {bed.pk: index for index, bed in enumerate(beds)}
+                plans = list(PlantingPlan.objects.filter(project=project).order_by('pk'))
+                snapshots.append((
+                    [(crop.crop_species_id, crop.crop_family_id, crop.cultivation_types,
+                      crop.growth_duration_days, crop.expected_yield, crop.rotation_break_years)
+                     for crop in crops],
+                    [(bed.area_sqm, bed.length_m, bed.width_m) for bed in beds],
+                    [(crop_index[plan.crop_id], bed_index[plan.bed_id], plan.planting_date,
+                      plan.area_usage_sqm, plan.quantity, plan.cultivation_type,
+                      plan.rotation_conflict_accepted) for plan in plans],
+                    Counter(Task.objects.filter(project=project).values_list(
+                        'origin', 'status', 'due_date', 'due_date_overridden',
+                    )),
+                ))
+                edited = Task.objects.get(project=project, title=irrigation)
+                edited.title = 'My edited task'
+                edited.save(update_fields=['title'])
+                repeated = create_personal_demo_project(user=user, language_code=language)
+                self.assertEqual(repeated.project.pk, project.pk)
+                edited.refresh_from_db()
+                self.assertEqual(edited.title, 'My edited task')
+        self.assertEqual(snapshots[0], snapshots[1])
+
+    def test_management_command_accepts_french_and_spanish(self) -> None:
+        for language in ('fr', 'es'):
+            with self.subTest(language=language):
+                call_command('seed_demo_project', language=language, skip_public_library=True)
+                project = Project.objects.get(slug=DEMO_PROJECT_SLUG)
+                self.assertEqual(project.name, get_demo_project_name(language))
+                self.assertTrue(Task.objects.filter(
+                    project=project, title=FEATURE_TEXT[language]['tasks'][0],
+                ).exists())
+
     def test_create_personal_demo_project_is_idempotent_for_same_user(self) -> None:
         user = User.objects.create_user(username='repeat', email='repeat@example.com', password='pass12345', is_active=True)
 
@@ -660,17 +746,51 @@ class DemoRequestLanguageTests(TestCase):
         self.assertEqual(resolve_demo_request_language(request), 'de')
         self.assertEqual(resolve_request_language(request), 'en')
 
-    def test_french_and_spanish_get_the_english_demo(self) -> None:
-        # Supported UI languages without demo templates must not raise a
-        # KeyError and must not silently get the German templates either.
-        for language in ('fr', 'es'):
+    def test_every_ui_language_has_a_complete_demo(self) -> None:
+        for language in SUPPORTED_LANGUAGE_CODES:
             with self.subTest(language=language):
                 request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE=language)
                 self.assertEqual(resolve_request_language(request), language)
-                self.assertEqual(resolve_demo_request_language(request), 'en')
-                self.assertEqual(resolve_demo_language(language), 'en')
-                self.assertEqual(get_demo_project_name(language), get_demo_project_name('en'))
-                self.assertEqual(get_demo_project_description(language), get_demo_project_description('en'))
+                self.assertEqual(resolve_demo_request_language(request), language)
+                self.assertEqual(resolve_demo_language(language), language)
+                self.assertTrue(is_demo_project_description(get_demo_project_description(language)))
+                self.assertTrue(is_demo_project_description(
+                    get_demo_project_description(language, screenshot=True),
+                ))
+
+    def test_regional_tags_use_the_corresponding_demo(self) -> None:
+        self.assertEqual(resolve_demo_language('fr-CA'), 'fr')
+        self.assertEqual(resolve_demo_language('es_MX'), 'es')
+
+    def test_incomplete_content_falls_back_as_a_whole(self) -> None:
+        partial = deepcopy(DEMO_TEXT['fr'])
+        del partial['beds']['karotte-2']
+        blank_task = deepcopy(FEATURE_TEXT['fr'])
+        blank_task['tasks'][0] = '  '
+        for bundle, value in (
+            (DEMO_TEXT, partial), (FEATURE_TEXT, {}), (FEATURE_TEXT, blank_task),
+        ):
+            with self.subTest(bundle=bundle is DEMO_TEXT), patch.dict(bundle, {'fr': value}):
+                self.assertEqual(resolve_demo_language('fr'), 'en')
+                self.assertEqual(get_demo_project_name('fr'), get_demo_project_name('en'))
+                self.assertEqual(
+                    get_demo_project_description('fr'), get_demo_project_description('en'),
+                )
+
+    def test_incomplete_template_creates_a_consistently_english_demo(self) -> None:
+        user = User.objects.create_user(username='fallback')
+        with patch.dict(FEATURE_TEXT, {'fr': {}}):
+            result = create_personal_demo_project(user=user, language_code='fr')
+        self.assertEqual(result.project.name, DEMO_PROJECT_NAME_EN)
+        self.assertTrue(Location.objects.filter(
+            project=result.project, name='Farm Garden',
+        ).exists())
+        self.assertTrue(Task.objects.filter(
+            project=result.project, title='Check irrigation',
+        ).exists())
+        self.assertFalse(Task.objects.filter(
+            project=result.project, title="Contrôler l'irrigation",
+        ).exists())
 
     def test_an_explicit_query_parameter_wins_over_the_demo_default(self) -> None:
         request = self.factory.get('/', {'language': 'en'})

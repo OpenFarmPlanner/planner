@@ -80,15 +80,32 @@ in any season. `DemoRotationCasesTests` in
 `backend/farm/tests/test_demo_project.py` pins every case, so a template
 change that breaks one fails the build.
 
-The demo data exists in German and English. The authenticated API and guest
-demo resolve the language from the request/UI language and create new demo
+The demo data exists in German, English, French and Spanish. The authenticated
+API and guest demo resolve the language from the request/UI language and create new demo
 projects with matching project, location, field, bed (name and note), crop,
-and plan-note text. Existing demo projects are user-entered project content after
+plan-note text, tags, companion notes, germination instructions, manual tasks
+and task templates. Existing demo projects are user-entered project content after
 creation and are not translated in place. Demo crops are linked to
 `CropSpecies` when a matching species exists, so planning read views can show
-localized crop names without rewriting the stored demo records. The management
-command defaults to German for existing screenshot workflows and accepts
-`--language en` for the English fixture.
+localized crop names without rewriting the stored demo records. Catalog-owned
+names retain the ordinary API fallback when the shared catalog lacks a translation;
+demo creation never seeds or rewrites global species translations. Supplier brands,
+cultivar names, botanical names, identifiers, enum codes and agronomic values
+are not translated. Automatic task event titles use the existing UI translations.
+The management command defaults to German for existing screenshot workflows and accepts
+`--language en`, `--language fr` or `--language es` for localized fixtures.
+
+Language resolution uses the shared request order (explicit query, account
+preference, browser header), retaining German for missing or unsupported codes.
+`resolve_demo_language` validates the full project and feature bundle against
+the English shape, including all names and descriptions. A supported language
+with missing/blank content falls back to the entire English dataset, rather than
+mixing individual fallback strings. Add future content to `DEMO_TEXT`,
+`FEATURE_TEXT` and the project name/description maps; population logic and command
+choices are shared. A parity test requires a complete bundle for every supported
+UI language. Loading an existing personal demo in that language is idempotent;
+switching languages creates or returns the corresponding demo without rewriting
+the other project's content or edits.
 
 The public landing page also starts an isolated anonymous guest project from
 this template. Guest workspaces are editable but session-bound, reset on the
@@ -123,8 +140,8 @@ loading a demo does not reset previously dismissed hints.
 Normal demos use today's date for manual task examples and the current season.
 For time-pinned callers, `current_year` also fixes the task reference date to
 May 15 of that year. This keeps fixture data independent of the day tests run.
-The new stored text follows the existing German/English demo templates and the
-English fallback for French and Spanish.
+Stored example text follows the selected German, English, French or Spanish
+demo template.
 
 The explicit command-line public-library fixture also copies botanical names,
 germination fields and shareable general-crop companions. Project-only tags,

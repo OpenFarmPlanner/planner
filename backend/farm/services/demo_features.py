@@ -70,6 +70,63 @@ FEATURE_TEXT = {
         ],
         "task_description": "Sample task for shared work planning in the demo project.",
     },
+    "fr": {
+        "tags": ["Légumes-fruits", "Légumes de conservation", "Légumes d'hiver", "Engrais vert"],
+        "pretreatment": "Maintenir le lit de semences uniformément humide.",
+        "companion_note": "Exemple d'association de cultures propre à la ferme.",
+        "flower_strip": "Bande fleurie",
+        "templates": [
+            "Attacher les tomates",
+            "Vérifier le paillage et l'humidité du sol",
+            "Poser le voile avant le semis",
+        ],
+        "template_description": (
+            "Terminer chaque occurrence séparément ; les tâches terminées sont conservées "
+            "lors du déplacement du plan de culture."
+        ),
+        "tasks": [
+            "Vérifier la clôture de la parcelle louée",
+            "Désherber les planches",
+            "Nettoyer les caisses de récolte",
+            "Contrôler l'irrigation",
+            "Organiser la livraison de compost",
+            "Commande supplémentaire de semences",
+            "Vérifier le voile de protection",
+        ],
+        "task_description": (
+            "Exemple de tâche pour le travail collectif dans le projet de démonstration."
+        ),
+    },
+    "es": {
+        "tags": [
+            "Hortalizas de fruto", "Hortalizas de conservación",
+            "Hortalizas de invierno", "Abono verde",
+        ],
+        "pretreatment": "Mantener el lecho de siembra uniformemente húmedo.",
+        "companion_note": "Ejemplo de asociación de cultivos propia de la finca.",
+        "flower_strip": "Franja floral",
+        "templates": [
+            "Entutorar los tomates",
+            "Revisar el acolchado y la humedad del suelo",
+            "Colocar la manta antes de la siembra",
+        ],
+        "template_description": (
+            "Completar cada repetición por separado; las tareas completadas se conservan "
+            "al cambiar las fechas del plan de cultivo."
+        ),
+        "tasks": [
+            "Revisar la valla de la parcela arrendada",
+            "Desherbar los bancales",
+            "Limpiar las cajas de cosecha",
+            "Revisar el riego",
+            "Organizar la entrega de compost",
+            "Pedido adicional de semillas",
+            "Revisar la manta de protección",
+        ],
+        "task_description": (
+            "Tarea de ejemplo para el trabajo compartido en el proyecto de demostración."
+        ),
+    },
 }
 
 BOTANICAL_NAMES = {
@@ -118,7 +175,7 @@ def populate_demo_crop_features(
             crops[key].tags = [text["tags"][index]]
             crops[key].save()
     _populate_germination_and_windows(crops, text)
-    _populate_companions(project, crops, text)
+    _populate_companions(project, crops, text, language_code=language_code)
     _populate_supplier_statuses(project, crops, suppliers)
     _populate_task_templates(project, crops, text)
 
@@ -171,7 +228,9 @@ def _decade_window(
     }
 
 
-def _populate_companions(project: Project, crops: dict[str, Crop], text: dict[str, Any]) -> None:
+def _populate_companions(
+    project: Project, crops: dict[str, Crop], text: dict[str, Any], *, language_code: str,
+) -> None:
     for key, other, kind, reason in [
         ("tomate-art", "kartoffel", "bad", "shared_pests_diseases"),
         ("karotte-art", "lauch", "good", "pest_control"),
@@ -181,6 +240,7 @@ def _populate_companions(project: Project, crops: dict[str, Crop], text: dict[st
             kind=kind,
             reason=reason,
             note=text["companion_note"],
+            notes={language_code: text["companion_note"]},
             **relation_kwargs(crops[key], CompanionTarget(type="crop", crop=crops[other])),
         )
     CropCompanion.objects.create(
@@ -190,6 +250,7 @@ def _populate_companions(project: Project, crops: dict[str, Crop], text: dict[st
         kind="good",
         reason="soil",
         note=text["companion_note"],
+        notes={language_code: text["companion_note"]},
     )
     CropCompanion.objects.create(
         project=project,
@@ -198,6 +259,7 @@ def _populate_companions(project: Project, crops: dict[str, Crop], text: dict[st
         kind="good",
         reason="other",
         note=text["companion_note"],
+        notes={language_code: text["companion_note"]},
     )
 
 

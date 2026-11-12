@@ -1,4 +1,63 @@
 import { expect, test } from '@playwright/test';
+import { apiRequest, waitForPageStable } from './utils';
+
+for (const locale of [
+  { language: 'fr', start: 'Voir la démo sans inscription', project: 'AMAP du Champ ensoleillé',
+    location: 'Champ du ruisseau', field: 'Légumes-racines', expand: 'Déplier',
+    bed: 'Carottes 1', task: 'Désherber les planches',
+    tag: 'Légumes-fruits', companionNote: "Exemple d'association de cultures propre à la ferme." },
+  { language: 'es', start: 'Ver la demo sin registrarse', project: 'Huerta comunitaria Soleada',
+    location: 'Campo del arroyo', field: 'Hortalizas de raíz', expand: 'Desplegar',
+    bed: 'Zanahorias 1', task: 'Desherbar los bancales',
+    tag: 'Hortalizas de fruto', companionNote: 'Ejemplo de asociación de cultivos propia de la finca.' },
+]) {
+  test.describe(`localized ${locale.language} demo`, () => {
+    test.use({ locale: locale.language });
+    for (const viewport of [{ width: 375, height: 800 }, { width: 1440, height: 900 },
+      { width: 800, height: 375 }]) {
+      test(`shows translated project data at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+        await page.setViewportSize(viewport);
+        await page.goto(`/${locale.language}`);
+        await page.getByRole('button', { name: locale.start, exact: true }).click();
+        await expect(page).toHaveURL(/\/app\/fields-beds/);
+        await expect(page.getByText(locale.location, { exact: true })).toBeVisible();
+        const user = await apiRequest<{ memberships: { project_name: string }[] }>(
+          page, 'GET', '/auth/me/',
+        );
+        expect(user.memberships.map((membership) => membership.project_name)).toContain(locale.project);
+        if (viewport.width === 375 || viewport.height === 375) {
+          for (const name of [locale.location, locale.field]) {
+            await page.getByRole('button', {
+              name: new RegExp(`^${locale.expand}\\s*:\\s*${name}$`),
+            }).click();
+          }
+        }
+        await expect(page.getByText(locale.bed, { exact: true })).toBeVisible();
+        await waitForPageStable(page);
+        await page.screenshot({ path: testInfo.outputPath('localized-fields.png') });
+
+        await page.goto('/app/dashboard');
+        await expect(page.getByRole('article', { name: locale.task, exact: true })).toBeVisible();
+        await waitForPageStable(page);
+        await page.screenshot({ path: testInfo.outputPath('localized-tasks.png') });
+
+        const crops = await apiRequest<{ results: { id: number; name: string; variety: string }[] }>(
+          page, 'GET', `/crops/?page_size=100&language=${locale.language}`,
+        );
+        const tomato = crops.results.find((crop) => crop.name === 'Tomate' && !crop.variety);
+        expect(tomato).toBeDefined();
+        await page.goto(`/app/crops?cropId=${tomato!.id}`);
+        await expect(page.getByText('Solanum lycopersicum', { exact: true })).toBeVisible();
+        await expect(page.getByText(locale.tag, { exact: true }).first()).toBeVisible();
+        await expect(page.getByText(locale.companionNote, { exact: true }).first()).toBeVisible();
+        await waitForPageStable(page);
+        await page.screenshot({ path: testInfo.outputPath('localized-crop.png') });
+        await page.getByText(locale.companionNote, { exact: true }).first().scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath('localized-companions.png') });
+      });
+    }
+  });
+}
 
 test('starts the public guest demo and keeps the user in the app', async ({ page }) => {
   let publicAuthProbeCount = 0;
