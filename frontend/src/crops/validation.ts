@@ -159,6 +159,8 @@ export function validateCrop(
   for (const [lower, upper] of [
     ['germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c'],
     ['germination_days_min', 'germination_days_max'],
+    ['stratification_days_min', 'stratification_days_max'],
+    ['stratification_temperature_min_c', 'stratification_temperature_max_c'],
   ] as const) {
     if (draft[lower] != null && draft[upper] != null && draft[lower] > draft[upper]) errors[upper] = t('germination.invalidRange');
   }

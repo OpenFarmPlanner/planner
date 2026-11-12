@@ -17,6 +17,8 @@ const csvFile = (csv: string): File => new File([csv], 'kulturen_export.csv', { 
 const ENUM_CROPS = [
   {
     name: 'Tomate',
+    germination_temperature_requirement: 'cold_stratification',
+    germination_light_requirement: 'light',
     seed_type: 'open_pollinated',
     nutrient_demand: 'high',
     cultivation_types: ['pre_cultivation', 'direct_sowing'],
@@ -26,6 +28,8 @@ const ENUM_CROPS = [
   },
   {
     name: 'Karotte',
+    germination_temperature_requirement: 'frost_treatment',
+    germination_light_requirement: 'dark',
     seed_type: 'f1_hybrid',
     nutrient_demand: 'medium',
     cultivation_types: ['direct_sowing'],
@@ -35,6 +39,8 @@ const ENUM_CROPS = [
   },
   {
     name: 'Erbse',
+    germination_temperature_requirement: 'none',
+    germination_light_requirement: 'none',
     nutrient_demand: 'low',
     seed_rate_direct_value: 30,
     seed_rate_direct_unit: 'seeds_per_lfm',
@@ -44,6 +50,8 @@ const ENUM_CROPS = [
 ] as unknown as Crop[];
 
 const ENUM_KEYS = [
+  'germination_temperature_requirement',
+  'germination_light_requirement',
   'seed_type',
   'nutrient_demand',
   'cultivation_types',
@@ -178,6 +186,12 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_temperature_min_c: 5,
     germination_days_min: 7,
     germination_days_max: 14,
+    germination_temperature_requirement: 'cold_stratification',
+    germination_light_requirement: 'light',
+    stratification_days_min: 14,
+    stratification_days_max: 28,
+    stratification_temperature_min_c: -5.5,
+    stratification_temperature_max_c: 5,
     germination_types: ['cold', 'frost', 'light', 'dark'],
     germination_pretreatment: 'Chill four weeks.',
     light_requirement: 'partial_shade',

@@ -90,6 +90,7 @@ from farm.services.timing_windows import (
     months_covered,
 )
 
+from farm.germination import complete_germination_write
 from farm.sowing_depth import complete_single_depth_write
 from .seed_packages import SeedPackageSerializer
 from .timing_windows import EffectiveTimingWindowSerializer, TimingWindowListField
@@ -1200,7 +1201,7 @@ class CropSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Safety margin must be between 0 and 100.')
         return value
     
-    def validate(self, attrs):
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Validate cross-field rules and supplier get-or-create.
 
         Split into one helper per field group. The intermediate error gates
@@ -1208,6 +1209,7 @@ class CropSerializer(serializers.ModelSerializer):
         later phases assume the earlier ones produced consistent data.
         """
         errors = {}
+        complete_germination_write(attrs, self.instance)
         complete_single_depth_write(attrs)
 
         self._promotable_species_invariant_fields = self._validate_species_invariant_fields(

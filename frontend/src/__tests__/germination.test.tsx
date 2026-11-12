@@ -58,6 +58,48 @@ describe('germination crop fields', () => {
     const payload = buildPublicCropUpdatePayload(draft, 1);
     expect(payload).toMatchObject({ germination_days_min: 7, germination_days_max: 14, germination_types: ['light'], germination_pretreatment: 'Soak' });
   });
+
+  it('uses independent single-choice selectors and conditionally shows the stratification ranges', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<GerminationSection formData={{}} errors={{}} onChange={onChange} t={t} />);
+    expect(screen.queryByLabelText('germination.fields.stratification_days_min')).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'germination.fields.germination_temperature_requirement' }));
+    fireEvent.click(screen.getByRole('option', { name: 'germination.values.germination_temperature_requirement.cold_stratification' }));
+    expect(onChange).toHaveBeenCalledWith('germination_temperature_requirement', 'cold_stratification');
+    expect(onChange).not.toHaveBeenCalledWith('germination_light_requirement', expect.anything());
+    rerender(<GerminationSection formData={{ germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light' }} errors={{}} onChange={onChange} t={t} />);
+    expect(screen.getByLabelText('germination.fields.stratification_days_min')).toBeVisible();
+    expect(screen.getByLabelText('germination.fields.stratification_days_max')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('germination.fields.stratification_temperature_min_c'), { target: { value: '-5' } });
+    expect(onChange).toHaveBeenCalledWith('stratification_temperature_min_c', -5);
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'germination.fields.germination_light_requirement' }));
+    fireEvent.click(screen.getByRole('option', { name: 'germination.values.germination_light_requirement.dark' }));
+    expect(onChange).toHaveBeenCalledWith('germination_light_requirement', 'dark');
+    rerender(<GerminationSection formData={{ germination_temperature_requirement: 'none' }} errors={{}} onChange={onChange} t={t} />);
+    expect(screen.queryByLabelText('germination.fields.stratification_days_min')).not.toBeInTheDocument();
+  });
+
+  it('detects canonical edits, validates partial ranges, and preserves all fields in public updates', () => {
+    const values = {
+      germination_temperature_requirement: 'frost_treatment', germination_light_requirement: 'none',
+      stratification_days_min: 0, stratification_days_max: null,
+      stratification_temperature_min_c: -5.5, stratification_temperature_max_c: null,
+    } as const;
+    expect(hasEffectiveCropFormChanges({}, values)).toBe(true);
+    const payload = buildPublicCropUpdatePayload(publicCropToCropFormData({ id: 1, name: 'Test', ...values } as PublicCrop), 1);
+    expect(payload).toMatchObject(values);
+    const draft = { name: 'Test', ...values } as Crop;
+    expect(validateCrop(draft, t).errors.stratification_days_min).toBeUndefined();
+    expect(validateCrop({ ...draft, stratification_days_max: -1 }, t).errors.stratification_days_max).toBeDefined();
+    expect(validateCrop({ ...draft, stratification_days_min: 1.5 }, t).errors.stratification_days_min).toBe('germination.invalidNumber');
+    expect(validateCrop({ ...draft, stratification_temperature_max_c: -6 }, t).errors.stratification_temperature_max_c).toBe('germination.invalidRange');
+  });
+
+  it('warns about retained legacy conflicts without arbitrarily selecting a requirement', () => {
+    render(<GerminationSection formData={{ germination_types: ['cold', 'frost', 'light', 'dark'] }} errors={{}} onChange={vi.fn()} t={t} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('germination.legacyConflict');
+    expect(screen.queryByLabelText('germination.fields.stratification_days_min')).not.toBeInTheDocument();
+  });
 });
 
 describe('germination plan information', () => {

@@ -1,3 +1,5 @@
+export type GerminationTemperatureRequirement = '' | 'none' | 'cold_stratification' | 'frost_treatment';
+export type GerminationLightRequirement = '' | 'none' | 'light' | 'dark';
 import type { LifeCycle, LightRequirement, WaterRequirement, WinterHardiness } from '../crops/siteHealth';
 export type GerminationType = 'cold' | 'frost' | 'light' | 'dark';
 
@@ -220,6 +222,12 @@ export interface Crop {
   germination_temperature_min_c?: number | null;
   germination_days_min?: number | null;
   germination_days_max?: number | null;
+  germination_temperature_requirement?: GerminationTemperatureRequirement;
+  germination_light_requirement?: GerminationLightRequirement;
+  stratification_days_min?: number | null;
+  stratification_days_max?: number | null;
+  stratification_temperature_min_c?: number | null;
+  stratification_temperature_max_c?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
   pests_diseases?: string;
@@ -322,6 +330,12 @@ export type CropInheritableField =
   | 'germination_temperature_min_c'
   | 'germination_days_min'
   | 'germination_days_max'
+  | 'germination_temperature_requirement'
+  | 'germination_light_requirement'
+  | 'stratification_days_min'
+  | 'stratification_days_max'
+  | 'stratification_temperature_min_c'
+  | 'stratification_temperature_max_c'
   | 'germination_types'
   | 'germination_pretreatment'
   | 'pests_diseases'
@@ -437,6 +451,12 @@ export interface PublicCrop {
   germination_temperature_min_c?: number | null;
   germination_days_min?: number | null;
   germination_days_max?: number | null;
+  germination_temperature_requirement?: GerminationTemperatureRequirement;
+  germination_light_requirement?: GerminationLightRequirement;
+  stratification_days_min?: number | null;
+  stratification_days_max?: number | null;
+  stratification_temperature_min_c?: number | null;
+  stratification_temperature_max_c?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
   pests_diseases?: string;

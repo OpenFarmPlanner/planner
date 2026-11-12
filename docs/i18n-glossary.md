@@ -134,8 +134,14 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | TKG (Tausendkorngewicht) | TKW (thousand-kernel weight) | PMG (poids de mille grains) | PMS (peso de mil semillas) |
 | Keimung | Germination | Germination | Germinación |
 | Keimtemperatur optimal (°C) | Optimal germination temperature (°C) | Température optimale de germination (°C) | Temperatura óptima de germinación (°C) |
-| Mindestkeimtemperatur (°C) | Minimum germination temperature (°C) | Température minimale de germination (°C) | Temperatura mínima de germinación (°C) |
+| Mindestkeimtemperatur (°C) | Minimum germination temperature (°C) | Température min. de germination (°C) | Temperatura mínima de germinación (°C) |
 | Keimdauer (Tage) | Germination time (days) | Durée de germination (jours) | Tiempo de germinación (días) |
+| Temperaturvorbehandlung | Temperature pretreatment | Prétraitement thermique | Pretratamiento térmico |
+| Kaltstratifikation | Cold stratification | Stratification à froid | Estratificación en frío |
+| Frostbehandlung | Frost treatment | Traitement par le gel | Tratamiento con heladas |
+| Lichtbedarf bei der Keimung | Germination light requirement | Lumière à la germination | Luz para la germinación |
+| Stratifikationsdauer (Tage) | Stratification duration (days) | Durée de stratification (jours) | Duración de estratificación (días) |
+| Stratifikationstemperatur (°C) | Stratification temperature (°C) | Température de stratification (°C) | Temperatura de estratificación (°C) |
 | Keimverhalten | Germination type | Type de germination | Tipo de germinación |
 | Kaltkeimer | Cold germinator | Germination au froid | Germinación en frío |
 | Frostkeimer | Frost germinator | Germination après gel | Germinación tras heladas |

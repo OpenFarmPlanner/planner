@@ -13,7 +13,10 @@ for (const viewport of [
       growth_duration_days: 60, propagation_duration_days: 5,
       germination_temperature_optimal_min_c: 18, germination_temperature_optimal_max_c: 25,
       germination_temperature_min_c: 5, germination_days_min: 7, germination_days_max: 14,
-      germination_types: ['cold', 'light'], germination_pretreatment: 'Chill four weeks.',
+      germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light',
+      stratification_days_min: 14, stratification_days_max: 28,
+      stratification_temperature_min_c: -5, stratification_temperature_max_c: 5,
+      germination_pretreatment: 'Chill four weeks.',
     });
     await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
     const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
@@ -22,12 +25,33 @@ for (const viewport of [
     await minimum.scrollIntoViewIfNeeded();
     await expect(minimum).toHaveValue('7');
     await expect(dialog.getByText('Anzuchtdauer kürzer als die Keimdauer.', { exact: true })).toBeVisible();
+    const temperatureRequirement = dialog.getByRole('combobox', { name: 'Temperaturvorbehandlung', exact: true });
+    const lightRequirement = dialog.getByRole('combobox', { name: 'Lichtbedarf bei der Keimung', exact: true });
+    await expect(temperatureRequirement).toHaveText('Kaltstratifikation');
+    await expect(lightRequirement).toHaveText('Lichtkeimer');
+    const stratificationMinimum = dialog.getByLabel('Stratifikationsdauer von (Tage)', { exact: true });
+    await expect(stratificationMinimum).toHaveValue('14');
+    await temperatureRequirement.click();
+    await page.getByRole('option', { name: 'Keine Vorbehandlung', exact: true }).click();
+    await expect(stratificationMinimum).toHaveCount(0);
+    await temperatureRequirement.click();
+    await page.getByRole('option', { name: 'Frostbehandlung', exact: true }).click();
+    await expect(stratificationMinimum).toHaveValue('14');
+    await expect(lightRequirement).toHaveText('Lichtkeimer');
+    await dialog.getByLabel('Stratifikationsdauer bis (Tage)', { exact: true }).fill('');
+    await dialog.getByLabel('Stratifikationstemperatur von (°C)', { exact: true }).fill('-6,5');
+    await dialog.getByLabel('Stratifikationstemperatur bis (°C)', { exact: true }).fill('');
     await minimum.fill('8');
     await dialog.getByRole('button', { name: /Speichern/ }).click();
     await expect(dialog).toBeHidden();
-    const saved = await apiRequest<{ germination_days_min: number; germination_types: string[] }>(page, 'GET', `/crops/${crop.id}/`);
+    const saved = await apiRequest<{ germination_days_min: number; germination_types: string[]; germination_temperature_requirement: string; germination_light_requirement: string; stratification_days_max: number | null; stratification_temperature_min_c: number; stratification_temperature_max_c: number | null }>(page, 'GET', `/crops/${crop.id}/`);
     expect(saved.germination_days_min).toBe(8);
-    expect(saved.germination_types).toEqual(['cold', 'light']);
+    expect([...saved.germination_types].sort()).toEqual(['frost', 'light']);
+    expect(saved.germination_temperature_requirement).toBe('frost_treatment');
+    expect(saved.germination_light_requirement).toBe('light');
+    expect(saved.stratification_days_max).toBeNull();
+    expect(saved.stratification_temperature_min_c).toBe(-6.5);
+    expect(saved.stratification_temperature_max_c).toBeNull();
     await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
     await expect(minimum).toHaveValue('8');
     await minimum.scrollIntoViewIfNeeded();
@@ -47,7 +71,10 @@ for (const [language, title] of [['fr', 'Germination'], ['es', 'Germinación']] 
       name: 'Germination localized', cultivation_types: ['pre_cultivation'],
       growth_duration_days: 60, propagation_duration_days: 5,
       germination_temperature_optimal_min_c: 18.5, germination_temperature_optimal_max_c: 25,
-      germination_days_min: 7, germination_days_max: 14, germination_types: ['cold', 'light'],
+      germination_days_min: 7, germination_days_max: 14,
+      germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light',
+      stratification_days_min: 14, stratification_days_max: 28,
+      stratification_temperature_min_c: -5.5, stratification_temperature_max_c: 5,
     });
     await page.evaluate((choice) => {
       localStorage.setItem('ui.language', choice);

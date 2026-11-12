@@ -1,6 +1,6 @@
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
-import { GERMINATION_FIELDS, formatGerminationValue } from '../../crops/germination';
+import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
@@ -151,7 +151,6 @@ type PublicCropLoadStatus = 'loading' | 'success' | 'error';
 
 /** The timing values of a library entry, in the crop form's order. */
 const PUBLIC_TIMING_FIELDS = [
-  ['propagation_duration_days', 'library.page.fields.propagationDurationDays'],
   ['growth_duration_days', 'library.page.fields.growthDurationDays'],
   ['harvest_duration_days', 'library.page.fields.harvestDurationDays'],
 ] as const;
@@ -1997,10 +1996,10 @@ export default function PublicCropLibraryPage() {
                               />
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(...GERMINATION_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field]))) ? (
+                          hasAnyDetailValue(...germinationDetailFields(getPublicFieldValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).map((field) => getPublicFieldValue(field, selectedCrop[field]))) ? (
                             <DetailSection key="germination" title={t('germination.title')}>
                               <DetailGrid>
-                                {GERMINATION_FIELDS
+                                {germinationDetailFields(getPublicFieldValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement))
                                   .filter((field) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
                                   .map((field) => <DetailRow key={field} label={t(`germination.fields.${field}`)} value={formatGerminationValue(field, getPublicFieldValue(field, selectedCrop[field]), t, locale)} source={getPublicFieldSource(field)} />)}
                               </DetailGrid>

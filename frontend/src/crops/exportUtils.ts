@@ -29,6 +29,12 @@ export interface PortableCrop {
   germination_temperature_min_c?: Crop['germination_temperature_min_c'];
   germination_days_min?: Crop['germination_days_min'];
   germination_days_max?: Crop['germination_days_max'];
+  germination_temperature_requirement?: Crop['germination_temperature_requirement'];
+  germination_light_requirement?: Crop['germination_light_requirement'];
+  stratification_days_min?: Crop['stratification_days_min'];
+  stratification_days_max?: Crop['stratification_days_max'];
+  stratification_temperature_min_c?: Crop['stratification_temperature_min_c'];
+  stratification_temperature_max_c?: Crop['stratification_temperature_max_c'];
   germination_types?: Crop['germination_types'];
   germination_pretreatment?: Crop['germination_pretreatment'];
   pests_diseases?: Crop['pests_diseases'];
@@ -120,6 +126,12 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     germination_temperature_min_c: crop.germination_temperature_min_c ?? undefined,
     germination_days_min: crop.germination_days_min ?? undefined,
     germination_days_max: crop.germination_days_max ?? undefined,
+    germination_temperature_requirement: crop.germination_temperature_requirement ?? '',
+    germination_light_requirement: crop.germination_light_requirement ?? '',
+    stratification_days_min: crop.stratification_days_min ?? undefined,
+    stratification_days_max: crop.stratification_days_max ?? undefined,
+    stratification_temperature_min_c: crop.stratification_temperature_min_c ?? undefined,
+    stratification_temperature_max_c: crop.stratification_temperature_max_c ?? undefined,
     germination_types: crop.germination_types ?? [],
     germination_pretreatment: crop.germination_pretreatment ?? '',
     pests_diseases: crop.pests_diseases ?? '',

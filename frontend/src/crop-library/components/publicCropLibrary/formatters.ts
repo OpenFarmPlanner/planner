@@ -303,6 +303,12 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     germination_temperature_min_c: 'germination.fields.germination_temperature_min_c',
     germination_days_min: 'germination.fields.germination_days_min',
     germination_days_max: 'germination.fields.germination_days_max',
+    germination_temperature_requirement: 'germination.fields.germination_temperature_requirement',
+    germination_light_requirement: 'germination.fields.germination_light_requirement',
+    stratification_days_min: 'germination.fields.stratification_days_min',
+    stratification_days_max: 'germination.fields.stratification_days_max',
+    stratification_temperature_min_c: 'germination.fields.stratification_temperature_min_c',
+    stratification_temperature_max_c: 'germination.fields.stratification_temperature_max_c',
     germination_types: 'germination.fields.germination_types',
     germination_pretreatment: 'germination.fields.germination_pretreatment',
     pests_diseases: 'siteHealth.fields.pests_diseases',
@@ -340,6 +346,7 @@ export function formatPublicCropValue(field: string, value: unknown, t: TFunctio
   if (field === 'companions' && Array.isArray(value) && value.length > 0) {
     return formatCompanionsValue(value as PublicCropCompanion[], t);
   }
+  if ((field === 'germination_temperature_requirement' || field === 'germination_light_requirement') && value) return t(`germination.values.${field}.${value}`);
   if (field === 'germination_types' && Array.isArray(value) && value.length) return value.map((kind) => t(`germination.types.${kind}`)).join(', ');
   const normalized = normalizeComparisonValue(value);
   if (normalized === null) return t('library.publishWizard.comparison.empty');
@@ -391,6 +398,11 @@ const NUMERIC_FIELDS = new Set([
   'germination_temperature_min_c',
   'germination_days_min',
   'germination_days_max',
+  'stratification_days_min',
+  'stratification_days_max',
+  'stratification_temperature_min_c',
+  'stratification_temperature_max_c',
+
   'expected_yield',
   'thousand_kernel_weight_g',
   'seed_rate_value',

@@ -386,6 +386,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     def test_planting_plans_germination_findings_share_timing_indexes(self) -> None:
         Crop.objects.filter(project=self.project).update(
             germination_types=['cold'], germination_days_min=7, germination_days_max=14,
+            germination_temperature_requirement='cold_stratification',
+            germination_light_requirement='light', stratification_days_min=14,
+            stratification_days_max=28, stratification_temperature_min_c=-5,
+            stratification_temperature_max_c=5,
         )
         for index in range(ROW_COUNT):
             PlantingPlan.objects.create(

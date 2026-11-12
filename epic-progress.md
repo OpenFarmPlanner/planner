@@ -3,7 +3,7 @@
 ## Scope and workflow
 
 Requested 2026-11-11: implement every currently open P0 sequentially using
-Codex High; #1030 must merge first. Issue bodies and comments were fetched
+the current model (as subsequently requested); #1030 must merge first. Issue bodies and comments were fetched
 from GitHub, including related #1020, #851, #838 and #1009. There are ten
 open P0 issues in the initial inventory. No issue comments add dependencies.
 
@@ -11,14 +11,15 @@ Each issue starts from fetched `origin/main` on its own branch. Implement its
 acceptance criteria, update tests/docs, run `make quality` and relevant
 integration tests, commit/push, open a linked PR, wait for CI and reviews,
 merge without bypasses, and verify the merge before starting another issue.
-Stop on a blocker. Do not implement multiple issues simultaneously.
+Repair fixable blockers and continue autonomously. Respect required external
+checks/reviews; do not implement multiple issues simultaneously.
 
 ## Dependency-aware order
 
 | Order | Issue | Reason / overlaps | Status |
 | --- | --- | --- | --- |
-| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) open; CI/review/merge pending |
-| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | Pending |
+| 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
+| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) open; validation/review/merge in progress |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | Pending |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
@@ -66,8 +67,10 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: PR #1034 for #1030 is pushed and open. Finish CI/review,
-merge and verify before #1028. No other P0 implementation has started.
+Current resume point: #1034 merged on 2026-11-11 at 16:12:35 UTC; fetched
+main and verified commit `4b57c0e8f52ef4121b028a2a66f2d82b7e819bb8` and
+issue #1030 closure. Duplicate WIP #1033 was closed at the user’s request.
+Finish #1028 checks/reviews and merge verification before beginning #1032.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -211,3 +214,112 @@ includes base, updates and security suites to preserve security updates.
 The native bot rejected both review requests with an account-connection
 message. The user has been asked asynchronously to connect GitHub in Codex;
 continue independent CI work while that external prerequisite is resolved.
+
+## #1030 completion and review clarification
+
+All required checks passed on head `060ff6f9704dcb1d50deb475bf15922e612c738d`.
+The signed archive fallback worked in backend CI and Claude toolchain setup.
+Changing the Claude workflow intentionally triggered its existing self-change
+guard. Native Codex requests were declined because the account was not
+connected; no native or independent review was claimed. The repository's
+manual code/security review route was completed and documented against the
+exact head. GitHub reported CLEAN with no outstanding required review; normal
+squash merge used the expected SHA with no bypass. The earlier request for
+account connection is optional, not a campaign prerequisite. Subsequent PRs
+leave the Claude workflow unchanged, allowing its ordinary review jobs.
+
+## #1028 implementation
+
+Two independent enums distinguish unknown/inherited values from explicit
+none. Four nullable stratification endpoints support partial ranges, whole
+nonnegative days and negative decimal Celsius. Shared forms/details use the
+same logical order, with conditional stratification fields and propagation
+duration in the germination group. All four locales are updated.
+
+Legacy list/API and spreadsheet flags remain compatible, conflicts remain
+portable rather than guessed, and linked varieties preserve historical
+whole-list overrides. New axes inherit independently. Migration 0139 uses
+batched historical models; old immutable revisions are upgraded on restore.
+Library sync/publishing closes indirect pin bypasses through the legacy list.
+
+Validation in progress: targeted backend/migration/API query-count tests,
+frontend unit/i18n/type checks, Chrome end-to-end flows at all five viewports
+and French/Spanish mobile, plus the full quality and responsive suites.
+Record final results and the PR link here before committing.
+
+### #1028 PR validation updates
+
+PR #1035 opened at head `e035e45c`. The final focused backend run passed
+18 tests and 14 subtests; the new pin regression passed separately. The
+CSV/XLSX/ODS and localized-choice suite passed 76 tests after adding all six
+new fields to the existing every-column fixture. CI caught that omitted
+fixture and old detail-view expectations; propagation duration now retains
+its day unit in its new group, and tests expect that group consistently.
+
+All 14 responsive route/crop-form cases passed initially, but inspection
+exposed loading-frame screenshots. The route suite now waits for visible
+content and no loading indicator before captures; its corrected rerun is
+pending. The eight germination E2E cases passed; all five germination form
+viewports plus French/Spanish mobile screenshots were inspected. The French
+minimum-temperature label was shortened after inspection.
+
+Claude code and security executions stopped immediately; security fallback
+identified exhausted Claude allowance. The workflow requested native Codex
+security review, but its bot again required an account connection. Neither
+is a completed review. Use the repository's documented manual review route
+with exact SHA/scope/results, and leave all actual required GitHub checks in
+force. Account connection remains optional unless a current branch rule
+explicitly requires that external reviewer.
+
+### #1028 completed local validation / CI recovery
+
+Local `make quality` completed successfully: 2,519 backend tests passed with
+96% coverage; Ruff/Madge kept their existing allowed report codes, Radon
+and ESLint passed. A later focused run passed 18 tests and 14 subtests,
+including the extra conflict-inheritance regression; the pin regression
+passed separately. TypeScript and the Vite production bundle passed.
+Frontend/i18n targeted runs passed 133 tests; CSV/XLSX/ODS and localized
+choice tests passed 76 tests; both corrected detail assertions passed.
+All three full frontend CI shards passed on `009b083b`.
+
+Eight germination browser scenarios passed at 375/768/1024/1440 px and
+800x375 landscape, with French/Spanish mobile and library/plan behavior.
+All 14 responsive route/crop-form cases initially passed; visual inspection
+then revealed loading-frame captures. The strengthened route suite passed
+all four sizes; the tablet retry used a 120-second local CLI deadline for
+eight navigations after the initial run exceeded its 60-second total. The
+repository's CI deadline was unchanged. All 32 loaded route screenshots and
+the germination form/library/plan screenshots were inspected. The shortened
+French minimum-temperature label passed recapture and inspection.
+
+The initial broad local detail/library test run had stale group expectations
+and discussion timing failures under load. Expectations and the propagation
+unit regression were fixed; the current full frontend CI shards and focused
+assertions passed. A redundant stale local rerun was stopped after that CI
+verification; no claim is made that the stopped run passed.
+
+Manual code/security review of `009b083b` is documented in PR #1035 comment
+6806322797, transparently as the authoring Codex session's manual review.
+No native or independent completed review is claimed. Claude allowance was
+exhausted, and the native fallback requested account connection. The actual
+GitHub required review state has no outstanding review request.
+
+Required backend/E2E check statuses became inconsistent with their completed
+job steps: backend's final step finished at 20:19:55 UTC and E2E shard 1 at
+20:22:04 UTC, but required status reads remained pending. GitHub rejected
+reruns as already running and cancellations as already finished, including
+direct REST requests. This documentation commit creates a fresh head for a
+normal CI retry. Do not merge until the new head's required checks succeed;
+do not override or manually mark a required check green.
+
+### Final integration observations to revisit
+
+The shared header, unchanged in #1035, has overlapping actions/title on the
+crop page at 768px and an add-plot control overlapping the representation
+toggle on the fields page at 1024px. Inspect its responsive action-collapse
+and flex sizing during the separately authorized final UX integration PR,
+including trial clicks for every visible action. On empty/no-season planting
+plans at 1024/1440px, the sticky empty table header appears below the alert
+and overlaps the empty-row message. Confirm intended behavior and QA
+exclusions before fixing. These observations mean the complete existing app
+is not claimed visually clean just because germination/overflow tests pass.

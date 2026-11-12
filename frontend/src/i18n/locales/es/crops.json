@@ -1754,7 +1754,14 @@
       "germination_days_min": "Tiempo de germinación desde (días)",
       "germination_days_max": "Tiempo de germinación hasta (días)",
       "germination_types": "Tipo de germinación",
-      "germination_pretreatment": "Tratamiento previo"
+      "germination_pretreatment": "Tratamiento previo",
+      "germination_temperature_requirement": "Pretratamiento térmico",
+      "germination_light_requirement": "Luz para la germinación",
+      "stratification_days_min": "Duración de estratificación desde (días)",
+      "stratification_days_max": "Duración de estratificación hasta (días)",
+      "stratification_temperature_min_c": "Temperatura de estratificación desde (°C)",
+      "stratification_temperature_max_c": "Temperatura de estratificación hasta (°C)",
+      "propagation_duration_days": "Duración en semillero (días)"
     },
     "types": {
       "cold": "Germinación en frío",
@@ -1764,7 +1771,23 @@
     },
     "propagationShort": "La duración en semillero es más corta que el tiempo de germinación.",
     "invalidNumber": "Introduce un número válido; los días deben ser enteros no negativos.",
-    "invalidRange": "El máximo debe ser mayor o igual que el mínimo."
+    "invalidRange": "El máximo debe ser mayor o igual que el mínimo.",
+    "unknown": "Desconocido",
+    "stratificationDays": "Duración de estratificación (días)",
+    "stratificationTemperature": "Temperatura de estratificación (°C)",
+    "legacyConflict": "Los requisitos de germinación anteriores son contradictorios. Elija el pretratamiento térmico y el requisito de luz adecuados. Los valores originales se conservan hasta que se aclaren.",
+    "values": {
+      "germination_temperature_requirement": {
+        "none": "Sin pretratamiento",
+        "cold_stratification": "Estratificación en frío",
+        "frost_treatment": "Tratamiento con heladas"
+      },
+      "germination_light_requirement": {
+        "none": "Indiferente a la luz",
+        "light": "Germinación con luz",
+        "dark": "Germinación en oscuridad"
+      }
+    }
   },
   "siteHealth": {
     "title": "Ubicación y sanidad vegetal",

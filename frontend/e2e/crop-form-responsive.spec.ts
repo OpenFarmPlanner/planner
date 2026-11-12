@@ -119,18 +119,16 @@ test.describe('crop edit dialog compact layout', () => {
     // Compact fields: the small MUI field height.
     expect(nameBox.height).toBeLessThan(48);
 
-    // Timing: the cultivation type on its own line, then the three durations
-    // in one row (propagation, growth, harvest).
+    // Timing: cultivation type, then growth and harvest. Propagation belongs
+    // to the later germination section.
     const cultivationBox = await fieldBox(dialog.getByRole('combobox', { name: 'Anbauart' }));
     const durationBoxes = [
-      await fieldBox(dialog.getByLabel('Anzuchtdauer (Tage)', { exact: true })),
       await fieldBox(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })),
       await fieldBox(dialog.getByLabel('Erntezeit (Tage)', { exact: true })),
     ];
     await expectOneRow(durationBoxes);
     expect(durationBoxes[0].y).toBeGreaterThan(cultivationBox.y + cultivationBox.height);
     expect(durationBoxes[0].x).toBeLessThan(durationBoxes[1].x);
-    expect(durationBoxes[1].x).toBeLessThan(durationBoxes[2].x);
     await expectOneRow([
       // The yield unit select has no labelled combobox: find it by its label.
       await inputBox(dialog.locator('.MuiFormControl-root')

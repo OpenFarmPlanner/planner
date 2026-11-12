@@ -309,7 +309,10 @@ powers project history and restore.
 ## Germination data
 
 `Crop` and `PublicCrop` store optional germination temperatures (°C), day
-ranges, multiple germination requirements and pre-treatment text. These are
+ranges, independent temperature/light requirement enums, optional stratification
+duration/temperature ranges, and pre-treatment text. Explicit `none` differs
+from blank/unknown; the deprecated `germination_types` list remains compatible
+with older clients and preserves conflicting historical flags. These are
 regular inheritable fields on project varieties and participate in library
 sync and local pinning. Planning emergence dates and hints are calculated,
 never stored. See [Germination](./germination.md) for the field contract.

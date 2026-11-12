@@ -13,7 +13,10 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from farm.germination import germination_errors
+from farm.germination import (
+    TEMPERATURE_REQUIREMENT_CHOICES, LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
+    germination_errors, sync_germination_requirements,
+)
 from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
@@ -513,7 +516,22 @@ class Crop(TimestampedModel):
     germination_days_max = models.IntegerField(
         null=True, blank=True, help_text="Germination time in days",
     )
-    germination_types = models.JSONField(default=list, blank=True)
+    germination_temperature_requirement = models.CharField(
+        max_length=30, choices=TEMPERATURE_REQUIREMENT_CHOICES, blank=True,
+        help_text="Seed temperature pretreatment. Blank means unknown or inherited; none is explicit.",
+    )
+    germination_light_requirement = models.CharField(
+        max_length=20, choices=GERMINATION_LIGHT_CHOICES, blank=True,
+        help_text="Light needed for germination, independently of growing-site light. Blank means unknown or inherited.",
+    )
+    stratification_days_min = models.IntegerField(null=True, blank=True, help_text="Stratification duration in days")
+    stratification_days_max = models.IntegerField(null=True, blank=True, help_text="Stratification duration in days")
+    stratification_temperature_min_c = models.FloatField(null=True, blank=True, help_text="Stratification temperature in degrees Celsius")
+    stratification_temperature_max_c = models.FloatField(null=True, blank=True, help_text="Stratification temperature in degrees Celsius")
+    germination_types = models.JSONField(
+        default=list, blank=True,
+        help_text="Deprecated requirement list. Retained for old clients and conflicting historical data; remove only after clients migrate and conflicts are resolved.",
+    )
     germination_pretreatment = models.TextField(blank=True)
 
     # Site, life cycle and plant health (descriptive; inherited by Sorten).
@@ -811,6 +829,12 @@ class Crop(TimestampedModel):
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
         'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
         'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
+        'germination_temperature_requirement',
+        'germination_light_requirement',
+        'stratification_days_min',
+        'stratification_days_max',
+        'stratification_temperature_min_c',
+        'stratification_temperature_max_c',
         'germination_types', 'germination_pretreatment',
         'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle',
         'winter_hardiness',
@@ -834,6 +858,9 @@ class Crop(TimestampedModel):
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
         previous_windows = self.timing_window_snapshot() if previous else []
 
+        germination_changes = sync_germination_requirements(self, previous, kwargs.get('update_fields'))
+        if germination_changes and kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | germination_changes
         self._normalize_library_pinned_fields()
         fill_missing_depth_bound(self)
         self._flag_source_divergence(previous)
@@ -1306,7 +1333,22 @@ class PublicCrop(TimestampedModel):
     germination_days_max = models.IntegerField(
         null=True, blank=True, help_text="Germination time in days",
     )
-    germination_types = models.JSONField(default=list, blank=True)
+    germination_temperature_requirement = models.CharField(
+        max_length=30, choices=TEMPERATURE_REQUIREMENT_CHOICES, blank=True,
+        help_text="Seed temperature pretreatment. Blank means unknown or inherited; none is explicit.",
+    )
+    germination_light_requirement = models.CharField(
+        max_length=20, choices=GERMINATION_LIGHT_CHOICES, blank=True,
+        help_text="Light needed for germination, independently of growing-site light. Blank means unknown or inherited.",
+    )
+    stratification_days_min = models.IntegerField(null=True, blank=True, help_text="Stratification duration in days")
+    stratification_days_max = models.IntegerField(null=True, blank=True, help_text="Stratification duration in days")
+    stratification_temperature_min_c = models.FloatField(null=True, blank=True, help_text="Stratification temperature in degrees Celsius")
+    stratification_temperature_max_c = models.FloatField(null=True, blank=True, help_text="Stratification temperature in degrees Celsius")
+    germination_types = models.JSONField(
+        default=list, blank=True,
+        help_text="Deprecated requirement list. Retained for old clients and conflicting historical data; remove only after clients migrate and conflicts are resolved.",
+    )
     germination_pretreatment = models.TextField(blank=True)
     pests_diseases = models.TextField(blank=True)
     light_requirement = models.CharField(
@@ -1357,6 +1399,12 @@ class PublicCrop(TimestampedModel):
 
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety) or ''
+        previous = PublicCrop.objects.filter(pk=self.pk).values(
+            'germination_types', 'germination_temperature_requirement', 'germination_light_requirement',
+        ).first() if self.pk else None
+        germination_changes = sync_germination_requirements(self, previous, kwargs.get('update_fields'))
+        if germination_changes and kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | germination_changes
         fill_missing_depth_bound(self)
         if self.status == self.STATUS_PUBLISHED and self.published_at is None:
             self.published_at = timezone.now()

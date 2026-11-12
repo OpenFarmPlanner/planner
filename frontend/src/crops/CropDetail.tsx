@@ -4,7 +4,7 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
  * Crop Detail component with searchable dropdown and detailed crop information view.
  */
 
-import { GERMINATION_FIELDS, formatGerminationValue } from './germination';
+import { germinationDetailFields, formatGerminationValue } from './germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from './siteHealth';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ref } from 'react';
@@ -1177,7 +1177,6 @@ const detailSectionGridSx = {
             {hasAnyDetailValue(
               getCropValue('growth_duration_days', selectedCrop.growth_duration_days),
               getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days),
-              getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1187,7 +1186,6 @@ const detailSectionGridSx = {
                 {([
                   ['growth_duration_days', 'form.growthDurationDays'],
                   ['harvest_duration_days', 'form.harvestDurationDays'],
-                  ['propagation_duration_days', 'form.propagationDurationDays'],
                 ] as const).map(([field, labelKey]) => (
                   hasDetailValue(getCropValue(field, selectedCrop[field])) ? (
                     <Box key={field}>
@@ -1349,11 +1347,11 @@ const detailSectionGridSx = {
 
             <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
 
-            {hasAnyDetailValue(...GERMINATION_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
+            {hasAnyDetailValue(...germinationDetailFields(getCropValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).map((field) => getCropValue(field, selectedCrop[field]))) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('germination.title')}</Typography>
               <Box sx={detailSectionGridSx}>
-                {GERMINATION_FIELDS.filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
+                {germinationDetailFields(getCropValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
                   <Box key={field} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">{t(`germination.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>

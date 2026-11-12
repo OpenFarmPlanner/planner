@@ -1,3 +1,4 @@
+import { TEMPERATURE_REQUIREMENTS, GERMINATION_LIGHT_REQUIREMENTS } from './germination';
 import { SITE_HEALTH_CHOICES, type SiteHealthChoiceField } from './siteHealth';
 
 export type SpreadsheetColumnDef = {
@@ -52,6 +53,43 @@ export const SEED_TYPE_IMPORT: Record<string, string> = {
   'f1-hybrid': 'f1_hybrid',
   'f1 hybrid': 'f1_hybrid',
   f1_hybrid: 'f1_hybrid',
+};
+
+const GERMINATION_REQUIREMENT_IMPORT: Record<string, Record<string, string>> = {
+  "germination_temperature_requirement": {
+    "none": "none",
+    "cold_stratification": "cold_stratification",
+    "frost_treatment": "frost_treatment",
+    "keine vorbehandlung": "none",
+    "kaltstratifikation": "cold_stratification",
+    "frostbehandlung": "frost_treatment",
+    "no pretreatment": "none",
+    "cold stratification": "cold_stratification",
+    "frost treatment": "frost_treatment",
+    "sans prétraitement": "none",
+    "stratification à froid": "cold_stratification",
+    "traitement par le gel": "frost_treatment",
+    "sin pretratamiento": "none",
+    "estratificación en frío": "cold_stratification",
+    "tratamiento con heladas": "frost_treatment"
+  },
+  "germination_light_requirement": {
+    "none": "none",
+    "light": "light",
+    "dark": "dark",
+    "lichtunabhängig": "none",
+    "lichtkeimer": "light",
+    "dunkelkeimer": "dark",
+    "light-independent": "none",
+    "light germinator": "light",
+    "dark germinator": "dark",
+    "indifférent à la lumière": "none",
+    "germination à la lumière": "light",
+    "germination à l’obscurité": "dark",
+    "indiferente a la luz": "none",
+    "germinación con luz": "light",
+    "germinación en oscuridad": "dark"
+  }
 };
 
 const SITE_HEALTH_IMPORT: Record<string, Record<string, string>> = {
@@ -216,6 +254,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'germination_temperature_min_c', headerKey: 'germination.fields.germination_temperature_min_c', aliases: ['germination_temperature_min_c', 'mindestkeimtemperatur'], type: 'number' },
   { key: 'germination_days_min', headerKey: 'germination.fields.germination_days_min', aliases: ['germination_days_min'], type: 'number' },
   { key: 'germination_days_max', headerKey: 'germination.fields.germination_days_max', aliases: ['germination_days_max'], type: 'number' },
+  { key: 'germination_temperature_requirement', headerKey: 'germination.fields.germination_temperature_requirement', aliases: ['germination_temperature_requirement'], type: 'string', enumImport: GERMINATION_REQUIREMENT_IMPORT.germination_temperature_requirement },
+  { key: 'stratification_days_min', headerKey: 'germination.fields.stratification_days_min', aliases: ['stratification_days_min'], type: 'number' },
+  { key: 'stratification_days_max', headerKey: 'germination.fields.stratification_days_max', aliases: ['stratification_days_max'], type: 'number' },
+  { key: 'stratification_temperature_min_c', headerKey: 'germination.fields.stratification_temperature_min_c', aliases: ['stratification_temperature_min_c'], type: 'number' },
+  { key: 'stratification_temperature_max_c', headerKey: 'germination.fields.stratification_temperature_max_c', aliases: ['stratification_temperature_max_c'], type: 'number' },
+  { key: 'germination_light_requirement', headerKey: 'germination.fields.germination_light_requirement', aliases: ['germination_light_requirement'], type: 'string', enumImport: GERMINATION_REQUIREMENT_IMPORT.germination_light_requirement },
   { key: 'germination_pretreatment', headerKey: 'germination.fields.germination_pretreatment', aliases: ['germination_pretreatment'], type: 'string' },
   { key: 'light_requirement', headerKey: 'siteHealth.fields.light_requirement', aliases: ['licht', 'standort licht', 'light_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.light_requirement },
   { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
@@ -414,6 +458,8 @@ const buildSeedRateUnitExport = (t: SpreadsheetT): Record<string, string> => ({
 });
 
 const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<string, string> | undefined => {
+  if (columnKey === 'germination_temperature_requirement') return Object.fromEntries(TEMPERATURE_REQUIREMENTS.map((value) => [value, t(`germination.values.${columnKey}.${value}`)]));
+  if (columnKey === 'germination_light_requirement') return Object.fromEntries(GERMINATION_LIGHT_REQUIREMENTS.map((value) => [value, t(`germination.values.${columnKey}.${value}`)]));
   if (columnKey === 'germination_types') return Object.fromEntries(['cold', 'frost', 'light', 'dark'].map((kind) => [kind, t(`germination.types.${kind}`)]));
   if (columnKey === 'nutrient_demand') return buildNutrientDemandExport(t);
   if (columnKey === 'seed_type') return buildSeedTypeExport(t);

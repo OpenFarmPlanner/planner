@@ -21,6 +21,7 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from farm.models import Crop
+from farm.germination import REQUIREMENT_LEGACY_VALUES, project_legacy_requirements
 from farm.models.crops import (
     compute_plants_per_m2,
     crop_model_kwargs,
@@ -67,6 +68,12 @@ CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
     'germination_temperature_min_c',
     'germination_days_min',
     'germination_days_max',
+    'germination_temperature_requirement',
+    'germination_light_requirement',
+    'stratification_days_min',
+    'stratification_days_max',
+    'stratification_temperature_min_c',
+    'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
     'pests_diseases',
@@ -117,6 +124,12 @@ CROP_OPTIONAL_GENERAL_COPY_FIELDS: tuple[str, ...] = (
     'germination_temperature_min_c',
     'germination_days_min',
     'germination_days_max',
+    'germination_temperature_requirement',
+    'germination_light_requirement',
+    'stratification_days_min',
+    'stratification_days_max',
+    'stratification_temperature_min_c',
+    'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
     'pests_diseases',
@@ -494,6 +507,19 @@ def resolve_crop_field(
     if crop is None:
         return None
     own_value = get_crop_field_value(crop, field)
+    if field in REQUIREMENT_LEGACY_VALUES and not own_value:
+        flags = crop.germination_types or []
+        if sum(flag in flags for flag in REQUIREMENT_LEGACY_VALUES[field].values()) > 1:
+            # Conflicting own data is unknown, rather than a request to inherit.
+            return own_value
+    if field == 'germination_types':
+        general = get_general_crop(crop, index) if not own_value else None
+        legacy = own_value or (general.germination_types if general is not None else [])
+        return project_legacy_requirements(
+            resolve_crop_field(crop, 'germination_temperature_requirement', index),
+            resolve_crop_field(crop, 'germination_light_requirement', index),
+            legacy,
+        )
     if field not in CROP_INHERITABLE_FIELDS:
         return own_value
     force_inherit = forces_species_invariant_inheritance(crop, field)
@@ -529,6 +555,8 @@ def build_inherited_crop_values(
             continue
         general_value = get_crop_field_value(general_crop, field)
         if is_unset_crop_value(general_value):
+            continue
+        if field in REQUIREMENT_LEGACY_VALUES and resolve_crop_field(crop, field, index) != general_value:
             continue
         inherited[field] = general_value
     return inherited

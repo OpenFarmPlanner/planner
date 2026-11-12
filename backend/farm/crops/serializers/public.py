@@ -15,7 +15,7 @@ from crops.models import CropSpecies
 from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
-from farm.germination import germination_errors
+from farm.germination import complete_germination_write, germination_errors
 from farm.sowing_depth import SOWING_DEPTH_FIELDS, complete_single_depth_write, sowing_depth_errors
 from farm.models import (
     CropCompanion,
@@ -55,6 +55,12 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'germination_temperature_min_c',
     'germination_days_min',
     'germination_days_max',
+    'germination_temperature_requirement',
+    'germination_light_requirement',
+    'stratification_days_min',
+    'stratification_days_max',
+    'stratification_temperature_min_c',
+    'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
     'pests_diseases',
@@ -252,6 +258,12 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'germination_temperature_min_c',
             'germination_days_min',
             'germination_days_max',
+            'germination_temperature_requirement',
+            'germination_light_requirement',
+            'stratification_days_min',
+            'stratification_days_max',
+            'stratification_temperature_min_c',
+            'stratification_temperature_max_c',
             'germination_types',
             'germination_pretreatment',
             'pests_diseases',
@@ -485,6 +497,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        complete_germination_write(attrs, self.instance)
         complete_single_depth_write(attrs)
         errors = {
             **germination_errors(self.instance, attrs),

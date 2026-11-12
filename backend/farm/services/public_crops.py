@@ -106,6 +106,12 @@ CROP_COPY_FIELDS = [
     'germination_temperature_min_c',
     'germination_days_min',
     'germination_days_max',
+    'germination_temperature_requirement',
+    'germination_light_requirement',
+    'stratification_days_min',
+    'stratification_days_max',
+    'stratification_temperature_min_c',
+    'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
     'pests_diseases',
@@ -150,6 +156,12 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'germination_temperature_min_c',
     'germination_days_min',
     'germination_days_max',
+    'germination_temperature_requirement',
+    'germination_light_requirement',
+    'stratification_days_min',
+    'stratification_days_max',
+    'stratification_temperature_min_c',
+    'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
     'pests_diseases',
@@ -467,6 +479,19 @@ def get_library_pinned_fields(crop: Crop) -> set[str]:
     if not isinstance(raw, list):
         return set()
     return {field for field in raw if isinstance(field, str)}
+
+
+def _effective_library_pins(crop: Crop) -> set[str]:
+    """Keep a canonical pin from leaking through its deprecated projection."""
+    from farm.germination import REQUIREMENT_LEGACY_VALUES
+
+    pinned = get_library_pinned_fields(crop)
+    result = set(pinned)
+    if 'germination_types' in pinned:
+        result.update(REQUIREMENT_LEGACY_VALUES)
+    elif pinned.intersection(REQUIREMENT_LEGACY_VALUES):
+        result.add('germination_types')
+    return result
 
 
 def library_pinnable_fields(crop: Crop) -> list[str]:
@@ -818,9 +843,12 @@ def restore_public_crop_version(
                 'Administrator privileges are required to restore a public crop variety.',
                 code='public_crop_identity_admin_required',
             )
+        from farm.germination import upgrade_germination_snapshot
+
+        snapshot = upgrade_germination_snapshot(revision.snapshot)
         update_fields = []
         for field in PUBLIC_CROP_EDITABLE_FIELDS:
-            value = revision.snapshot.get(field)
+            value = snapshot.get(field)
             if field in PLANT_FAMILY_REFERENCE_FIELDS:
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
@@ -943,7 +971,7 @@ def build_public_crop_payload(
     # values, so it keeps its own — untouched from _copy_fields above.
     # Locally pinned values are never shared: a create falls back to the
     # entry's default, an update keeps the entry's value.
-    for field in get_library_pinned_fields(crop):
+    for field in _effective_library_pins(crop):
         payload.pop(field, None)
     return payload
 
@@ -1488,7 +1516,7 @@ def build_public_crop_sync_preview(
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
-    pinned = get_library_pinned_fields(crop)
+    pinned = _effective_library_pins(crop)
     preview = []
     for field, local_value, public_value in _public_crop_sync_changes(
         crop, public_crop, include_pinned=True,
@@ -1524,7 +1552,7 @@ def _pull_public_crop_fields(
     """
     remote = _copy_fields(public_crop)
     effective = _resolved_copy_fields(crop)
-    pinned = get_library_pinned_fields(crop)
+    pinned = _effective_library_pins(crop)
     written = [
         field for field in fields
         if field != COMPANIONS_FIELD and field not in pinned and effective[field] != remote[field]
@@ -1616,6 +1644,19 @@ def sync_crop_with_public_entry(
         raise PublicCropSyncFieldsError(empty_pushes, code='public_crop_sync_field_empty')
     previous_pins = get_library_pinned_fields(crop)
     next_pins = (previous_pins - set(pull_fields) - set(push_fields)) | set(pin_fields)
+    # A legacy decision names the whole pair. A new single-axis decision
+    # releases that part of an old whole-list pin and retains the other value.
+    from farm.germination import REQUIREMENT_LEGACY_VALUES
+
+    decided = set(pull_fields) | set(push_fields)
+    if 'germination_types' in decided:
+        next_pins.difference_update(REQUIREMENT_LEGACY_VALUES)
+    if 'germination_types' in previous_pins and decided.intersection(REQUIREMENT_LEGACY_VALUES):
+        next_pins.discard('germination_types')
+        next_pins.update(
+            field for field in REQUIREMENT_LEGACY_VALUES
+            if field not in decided and _has_effective_value(crop, field)
+        )
     # The sync links the crop to ``public_crop`` (an owned entry it was not
     # linked to yet included), so its pins hold from this step on.
     validate_library_pinned_fields(
@@ -3191,7 +3232,7 @@ def _apply_public_crop_update(
     remaining_pins = (pinned - set(unpin_fields)) | set(pin_fields)
     crop.library_pinned_fields = sorted(remaining_pins)
     payload = build_project_crop_payload(public_crop)
-    for field in remaining_pins:
+    for field in _effective_library_pins(crop):
         payload.pop(field, None)
     # `display_color` is a project-local choice — kept out of the update diff
     # (see `_compared_public_update_fields`), so a pull must not silently
@@ -3284,7 +3325,7 @@ def _compared_public_update_fields(crop: Crop, *, include_pinned: bool = False) 
     if (crop.variety or '').strip() and crop.crop_species_id:
         excluded |= set(PUBLIC_SPECIES_INVARIANT_FIELDS)
     if not include_pinned:
-        excluded |= get_library_pinned_fields(crop)
+        excluded |= _effective_library_pins(crop)
     fields = [*CROP_COPY_FIELDS, COMPANIONS_FIELD] if is_kultur(crop) else CROP_COPY_FIELDS
     return [field for field in fields if field not in excluded]
 
@@ -3451,7 +3492,7 @@ def resolve_public_publish_block(
             return 'no_local_changes'
         return None
 
-    pinned = get_library_pinned_fields(crop)
+    pinned = _effective_library_pins(crop)
     local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(owned_public_crop))
     if all(local[field] == remote[field] for field in local if field not in pinned):
