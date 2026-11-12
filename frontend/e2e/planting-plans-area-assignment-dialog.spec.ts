@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject } from './utils';
 
 const backendPort = process.env.BACKEND_PORT ?? '8000';
 const apiBase = `http://127.0.0.1:${backendPort}/api`;
@@ -32,11 +32,14 @@ async function createAreaDialogFixture(
     loginAsAdmin: true,
   });
   if (options.languageCode) {
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: options.languageCode });
     await page.evaluate((languageCode) => {
       window.localStorage.setItem('ui.language', languageCode);
+      window.localStorage.setItem('ui.language.pendingChoice', languageCode);
     }, options.languageCode);
     await page.reload();
     await expect(page).toHaveURL(/\/app\//);
+    await expect(page.locator('html')).toHaveAttribute('lang', options.languageCode);
   }
 
   const activeProjectId = await page.evaluate(() => window.localStorage.getItem('activeProjectId'));

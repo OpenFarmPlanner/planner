@@ -525,3 +525,14 @@ heading/network idle before opening the menu. Functional assertions, exact
 scroll expectations and timeouts are unchanged. Repeated validation of all
 three Gantt cases plus landscape import is in progress (12 cases total);
 fresh exact-head CI is required for these test-only readiness fixes.
+
+The readiness follow-up passed its Gantt/import cases in full CI, but shard 2
+then exposed a separate area-dialog fixture language race. That fixture wrote
+only the browser cache while the account preference could restore German.
+It now uses the existing account-language API, aligns the pending browser
+choice, and verifies the document language before proceeding. Three local
+German/English repetitions pass (21.9s, 20.6s, 22.4s); the original 60-second
+budget is retained. All layout and strict language-specific assertions stay
+intact. This is another test-fixture-only correction; product code and its
+2,561-test local validation are unchanged. Fresh CI/reviews on the follow-up
+head must pass before normal merge; #1008 has not been implemented yet.
