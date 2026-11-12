@@ -884,6 +884,7 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             {'name': 'Tomate', 'note': 'x' * 501},
             {'name': 'Tomate – ' + 'x' * 501, 'legacy': True},
             {'name': 'Tomate', 'notes': {'xx': 'Unsupported'}},
+            {'name': 'x' * 201, 'legacy': 'yes'},
         ]:
             row = {'name': 'Invalid note crop', 'good_companions': [item]}
             preview = self.client.post(PREVIEW_URL, [row], format='json')

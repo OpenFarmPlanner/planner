@@ -248,7 +248,7 @@ def normalize_import_items(raw: Any) -> list[dict[str, Any]]:
         if not isinstance(item, dict):
             continue
         name = str(item.get('name') or '').strip()
-        if (len(name) > 200 and not item.get('legacy')) or len(str(item.get('note') or '')) > 500:
+        if (len(name) > 200 and item.get('legacy') is not True) or len(str(item.get('note') or '')) > 500:
             raise ValidationError('Companion names allow 200 characters and notes allow 500 characters.', code='companion_notes_invalid')
         if not any(char.isalnum() for char in name):
             continue

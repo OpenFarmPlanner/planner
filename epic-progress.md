@@ -465,3 +465,10 @@ This review conversation was missed in the earlier readiness check; all
 review threads must now be checked explicitly, addressed, and resolved with
 fix evidence before normal merge. Fresh CI and CodeQL on the fix head remain
 required. #1037 still follows the verified #1031 merge.
+
+Follow-up input review tightened the legacy marker to literal boolean `true`
+for the name-length exception, matching the parser's existing activation
+rule. A truthy non-boolean marker could otherwise bypass the 200-character
+limit. The existing preview/apply no-partial-write regression now includes
+that malformed payload and passes. This guard/test follow-up also requires
+fresh exact-head CI before merge.
