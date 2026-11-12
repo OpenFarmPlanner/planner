@@ -630,3 +630,18 @@ Before opening #1017's PR, incorporated main's automated 1.162.2 commit
 local backend coverage passed all 2,561 tests (the backend implementation is
 unchanged). Final frontend/build/browser verification uses the rebased branch;
 required PR CI and review checks remain mandatory.
+
+#1017 final-build verification: all 15 local browser cases pass with backend
+coverage workers finished, including both binary formats in all four languages,
+read-only preview, explicit overwrite protection, typed values, localized
+catalog failure/retry, timing controls at 375/1440 and all eight main routes at
+375/768/1024/1440. The focused catalog cases also pass independently. All 357
+targeted frontend tests now pass after updating the existing timing-section
+unit assertions to the canonical labels; initial PR CI had caught six old-label
+assertions in that previously omitted file. Product code is unchanged by this
+test-only follow-up. TypeScript/full ESLint and fresh exact-head CI must pass
+before merge. Claude's first code-review action failed with `is_error:true`
+and no completed review; this is not approval or a clean scan. Security triage
+skipped this scope. Record the exact-head manual review and inspect every thread
+before normal merge. PR #1044 is the active PR; #1007 remains blocked on its
+verified merge. No required check or review is bypassed.

@@ -35,7 +35,7 @@ describe('TimingWindowsSection', () => {
     render(<Harness initial={[]} />);
     expect(screen.getAllByRole('group').filter((element) => element.getAttribute('aria-labelledby'))
       .map((element) => element.textContent?.split('Zeitraum hinzufügen')[0]))
-      .toEqual(['Anzucht', 'Direktsaat', 'Pflanzung']);
+      .toEqual(['Anzuchtzeitraum', 'Direktsaatzeitraum', 'Pflanzzeitraum']);
     expect(screen.getAllByRole('button', { name: 'Zeitraum hinzufügen' })).toHaveLength(3);
   });
 
@@ -51,7 +51,7 @@ describe('TimingWindowsSection', () => {
 
   it('puts the third of the month before the month', () => {
     render(<Harness initial={[decade('direct_sowing', { start_month: 4, start_decade: 'early', end_month: 5, end_decade: 'late' })]} />);
-    const selects = within(group('Direktsaat')).getAllByRole('combobox');
+    const selects = within(group('Direktsaatzeitraum')).getAllByRole('combobox');
     expect(selects.map((select) => select.getAttribute('aria-label')))
       .toEqual(['Von: Monatsdrittel', 'Von: Monat', 'Bis: Monatsdrittel', 'Bis: Monat']);
   });
@@ -59,9 +59,9 @@ describe('TimingWindowsSection', () => {
   it('adds a month row and fills it with native selects', async () => {
     const user = userEvent.setup();
     render(<Harness initial={[]} />);
-    await user.click(within(group('Direktsaat')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
+    await user.click(within(group('Direktsaatzeitraum')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
 
-    const row = within(group('Direktsaat'));
+    const row = within(group('Direktsaatzeitraum'));
     await user.selectOptions(row.getByLabelText('Von: Monatsdrittel'), 'Anfang');
     await user.selectOptions(row.getByLabelText('Von: Monat'), 'März');
     await user.selectOptions(row.getByLabelText('Bis: Monatsdrittel'), 'Mitte');
@@ -75,10 +75,10 @@ describe('TimingWindowsSection', () => {
   it('clears the values when the unit of a row is switched', async () => {
     const user = userEvent.setup();
     render(<Harness initial={[decade('planting', { start_month: 7, start_decade: 'early', end_month: 9, end_decade: 'late' })]} />);
-    await user.click(within(group('Pflanzung')).getByRole('button', { name: 'KW' }));
+    await user.click(within(group('Pflanzzeitraum')).getByRole('button', { name: 'KW' }));
 
     expect(currentWindows()).toEqual([emptyTimingWindow('planting', 'iso_week')]);
-    const weekSelect = within(group('Pflanzung')).getByLabelText('Von: Kalenderwoche');
+    const weekSelect = within(group('Pflanzzeitraum')).getByLabelText('Von: Kalenderwoche');
     expect(within(weekSelect).getAllByRole('option')).toHaveLength(53);
     expect(within(weekSelect).getByRole('option', { name: 'KW 52' })).toBeInTheDocument();
     expect(within(weekSelect).queryByRole('option', { name: 'KW 53' })).toBeNull();
@@ -87,9 +87,9 @@ describe('TimingWindowsSection', () => {
   it('starts a new row in the unit of the row added last', async () => {
     const user = userEvent.setup();
     render(<Harness initial={[]} />);
-    await user.click(within(group('Anzucht')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
-    await user.click(within(group('Anzucht')).getByRole('button', { name: 'KW' }));
-    await user.click(within(group('Pflanzung')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
+    await user.click(within(group('Anzuchtzeitraum')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
+    await user.click(within(group('Anzuchtzeitraum')).getByRole('button', { name: 'KW' }));
+    await user.click(within(group('Pflanzzeitraum')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
 
     expect(currentWindows().map((window) => [window.kind, window.unit])).toEqual([
       ['pre_cultivation', 'iso_week'],
@@ -121,7 +121,7 @@ describe('TimingWindowsSection', () => {
       initial={[decade('planting', { start_month: 5, start_decade: 'mid' })]}
       errors={{ 'timing_windows.0': 'Bitte Anfang und Ende angeben.' }}
     />);
-    expect(within(group('Pflanzung')).getByText('Bitte Anfang und Ende angeben.')).toBeInTheDocument();
+    expect(within(group('Pflanzzeitraum')).getByText('Bitte Anfang und Ende angeben.')).toBeInTheDocument();
   });
 });
 
