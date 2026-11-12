@@ -21,12 +21,9 @@ import { PublicCropLibraryDialog } from '../crop-library/components/PublicCropLi
 import {
   Alert,
   Box,
-  type SxProps,
-  type Theme,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
 import {
   type SnackbarState,
@@ -55,8 +52,7 @@ import { AlertSnackbar } from '../components/feedback/AlertSnackbar';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
-import EmptyStateCard from '../components/project/EmptyStateCard';
-import { getFirstMissingCultivationPlanRequirement, getTranslatedProjectSetupAction } from './requirementFlow';
+import { getFirstMissingCultivationPlanRequirement } from './requirementFlow';
 import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation/topbarTypes';
 import { useTopbarContextActions } from '../hooks/useTopbarContextActions';
 import {
@@ -73,18 +69,6 @@ import LoadRetryButton from '../components/LoadRetryButton';
 // Stable identity so the memos downstream do not see a new array on every
 // render while no project is selected.
 const EMPTY_CROPS: Crop[] = [];
-
-const PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_CONTAINER_SX: SxProps<Theme> = {
-  backgroundColor: (theme) => alpha(theme.palette.success.main, 0.06),
-  borderLeft: '3px solid',
-  borderLeftColor: 'success.main',
-  py: 1.25,
-  px: 1.5,
-};
-
-const PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_TITLE_SX: SxProps<Theme> = {
-  fontWeight: 500,
-};
 
 function Crops() {
   const { t, i18n } = useTranslation(['crops', 'common']);
@@ -723,27 +707,10 @@ function Crops() {
     hasBeds,
     hasCrops: crops.length > 0,
   });
-  const firstMissingPlanAction = firstMissingPlanRequirement
-    ? getTranslatedProjectSetupAction(firstMissingPlanRequirement, t)
-    : null;
-  const planRequirementActions = firstMissingPlanAction ? [firstMissingPlanAction] : [];
   const canCreatePlantingPlan = Boolean(selectedCrop) && firstMissingPlanRequirement === null && !isMissingActiveSeason;
   const createPlanDisabledTooltip = isMissingActiveSeason
     ? t('buttons.createPlantingPlanMissingSeasonTooltip')
     : undefined;
-  // A missing season only disables "Anbauplan anlegen" (with a tooltip); the
-  // crop page shows no season empty state, seasons are created elsewhere.
-  const planRequirementEmptyState = firstMissingPlanRequirement === 'fields'
-    ? {
-      title: t('buttons.createPlantingPlanMissingFieldsTitle'),
-      description: t('buttons.createPlantingPlanDisabled.fields'),
-    }
-    : firstMissingPlanRequirement === 'beds'
-      ? {
-        title: t('buttons.createPlantingPlanMissingBedsTitle'),
-        description: t('buttons.createPlantingPlanDisabled.beds'),
-      }
-      : null;
   useCommandContextTag('crops');
 
   const goToRelativeCrop = useCallback((direction: 'next' | 'previous') => {
@@ -890,19 +857,6 @@ function Crops() {
           isPublishingCrop={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}
         />
       </Box>
-      {crops.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          {planRequirementEmptyState ? (
-            <EmptyStateCard
-              title={planRequirementEmptyState.title}
-              description={planRequirementEmptyState.description}
-              actions={planRequirementActions}
-              containerSx={PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_CONTAINER_SX}
-              titleSx={PLANTING_PLAN_REQUIREMENT_EMPTY_STATE_TITLE_SX}
-            />
-          ) : null}
-        </Box>
-      )}
 
       <PublicCropLibraryDialog
         open={publicLibraryOpen}

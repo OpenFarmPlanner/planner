@@ -71,3 +71,14 @@ neighbours. Their outlined action opens the shared crop-level companion editor,
 including from a variety; read-only/public surfaces offer no project edits.
 Reason and note appear below linked names. General information is distinct from
 actual good/bad neighbours; see the companion documentation above.
+
+
+## Planting prerequisites
+
+Crop details and crop-list contexts do not show plot/bed setup callouts.
+Planning prerequisites still disable the create-plan action and retain its
+existing tooltip behavior. Crop values, notes, yield and supplier data are
+independent of having a plot or bed. Legitimate setup guidance on planning
+pages and crop onboarding/search empty states remain in their own contexts.
+The removed callout-only titles/descriptions are no longer translated; shared
+action and tooltip keys remain available in all four languages.

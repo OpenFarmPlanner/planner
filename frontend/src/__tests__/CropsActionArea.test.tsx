@@ -1039,25 +1039,26 @@ describe('Crops action area', () => {
     expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
-  it('disables create planting plan button with bed-specific guidance when no beds exist', async () => {
+  it.each([false, true])('keeps the plan action disabled without a prerequisite callout (plots: %s)', async (hasPlots) => {
+    if (!hasPlots) fieldListMock.mockResolvedValue({ data: { results: [] } });
     bedListMock.mockResolvedValue({ data: { results: [] } });
     renderCrops('/crops?cropId=1');
 
     const createPlanButton = await screen.findByRole('button', { name: 'Anbauplan erstellen' });
+    await screen.findByTestId('crop-row-1');
     expect(createPlanButton).toBeDisabled();
-    const fieldsBedsLink = await screen.findByRole('link', { name: 'Anbauflächen öffnen' });
-    expect(fieldsBedsLink).toBeInTheDocument();
-    expect(fieldsBedsLink).toHaveAttribute('href', '/app/fields-beds');
-    expect(screen.queryByRole('link', { name: 'Beet anlegen' })).not.toBeInTheDocument();
-
-    fireEvent.mouseOver(createPlanButton.parentElement as HTMLElement);
-    expect(await screen.findByText('Du brauchst zuerst mindestens ein Beet. Beete werden innerhalb einer Parzelle auf der Seite Anbauflächen hinzugefügt.')).toBeInTheDocument();
+    expect(screen.queryByText('Um einen Anbauplan zu erstellen, brauchst du mindestens eine Parzelle.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Um einen Anbauplan zu erstellen, brauchst du mindestens ein Beet.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Anbauflächen öffnen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
   });
 
   it('enables create planting plan button when all prerequisites are present', async () => {
     renderCrops('/crops?cropId=1');
     const createPlanButton = await screen.findByRole('button', { name: 'Anbauplan erstellen' });
     await waitFor(() => expect(createPlanButton).toBeEnabled());
+    expect(screen.queryByRole('link', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Anbauflächen öffnen' })).not.toBeInTheDocument();
   });
 
   it('disables create planting plan without a season and shows no season empty state', async () => {

@@ -633,14 +633,6 @@
     "goToFieldsBeds": "Go to growing areas",
     "createField": "Add plot",
     "createSeason": "Create season",
-    "createPlantingPlanDisabled": {
-      "fields": "You first need at least one plot to create a planting plan.",
-      "beds": "You first need at least one bed. Beds are added inside a plot on the growing areas page.",
-      "crops": "You first need at least one crop to create a planting plan.",
-      "null": "Add planting plan"
-    },
-    "createPlantingPlanMissingFieldsTitle": "To create a planting plan you need at least one plot.",
-    "createPlantingPlanMissingBedsTitle": "To create a planting plan you need at least one bed.",
     "createPlantingPlanMissingBedsHint": "For a planting plan you first need at least one bed.",
     "createPlantingPlanMissingBedsTooltip": "You first need at least one bed. Beds are added inside a plot on the growing areas page.",
     "createPlantingPlanMissingSeasonTooltip": "Create a season first."
