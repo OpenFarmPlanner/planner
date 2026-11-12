@@ -33,11 +33,13 @@ module.exports = async function requestReview({ github, context, core }) {
     ({ data: comment } = await github.rest.issues.createComment({ owner, repo, issue_number, body }));
   }
   await core.summary
-    .addHeading('Codex Security Review requested')
+    .addHeading('Codex request delivered — review not completed')
     .addRaw(`Commit: ${sha}\n\n`)
     .addLink('Review request', comment.html_url)
     .addRaw('\n\nUses the linked ChatGPT/Codex allowance, without an OpenAI API key. ' +
       'Review runs asynchronously in Codex. Check the Codex task and Security Report for completion; ' +
       'this job only confirms that the request was posted. Findings require follow-up fixes.\n')
     .write();
+  return { state: 'codex_request_delivered', head_sha: sha,
+    comment_id: comment.id, url: comment.html_url };
 };

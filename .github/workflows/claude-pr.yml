@@ -78,16 +78,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Test security fallback automation
-        run: |
-          python3 -m unittest discover -s tests -p test_claude_review_fallback.py
-          node --test tests/test_codex_security_request.cjs
-
       - name: Decide which reviews to run
         id: decide
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           # The head before this push (synchronize events only; see the
           # baseline_push output).
@@ -171,6 +167,8 @@ jobs:
             ^backend/config/(routing|asgi)\.py$
             # CI/CD and deployment configuration
             ^\.github/workflows/
+            ^\.github/scripts/(security-review-completion|request-codex-security-review)\.cjs$
+            ^scripts/ci/claude_review_fallback\.py$
             (^|/)Dockerfile[^/]*$
             (^|/)docker-compose[^/]*\.ya?ml$
 
@@ -244,6 +242,7 @@ jobs:
           import re
           import subprocess
           import tomllib
+          from pathlib import Path
 
           env = os.environ
           base, head = env["BASE_SHA"], env["HEAD_SHA"]
@@ -438,8 +437,25 @@ jobs:
                   summary.append("")
           with open(env["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as step_summary:
               step_summary.write("\n".join(summary) + "\n")
+          Path("security-review-triage.json").write_text(json.dumps({
+              "schema": 1, "head_sha": head, "scope": sorted(changed),
+              "pull_request": int(env["PR_NUMBER"]),
+              "run_id": int(env["GITHUB_RUN_ID"]),
+              "run_attempt": int(env["GITHUB_RUN_ATTEMPT"]),
+              "security_required": bool(reasons["security_review"]),
+              "self_changed": self_changed, "self_push": self_push,
+              "baseline_push": baseline_push,
+          }), encoding="utf-8")
           print("\n".join(summary))
           PY
+
+      - name: Preserve triage evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-review-triage
+          path: security-review-triage.json
+          retention-days: 30
+          overwrite: true
 
   code-review:
     name: Claude code review
@@ -612,6 +628,7 @@ jobs:
     timeout-minutes: 90
     outputs:
       codex_fallback: ${{ steps.fallback.outputs.codex_fallback }}
+      review_completed: ${{ steps.fallback.outputs.review_completed }}
     permissions:
       contents: write
       pull-requests: write
@@ -723,7 +740,7 @@ jobs:
             ## Summary comment
             Finish with exactly one PR comment via `gh pr comment`, headed
             "Claude security review", containing:
-            - **Reviewed commit:** the full SHA you recorded first.
+            - **Reviewed commit:** the final full SHA, after re-reviewing any fixes.
             - **Scope:** the changed files (`git diff --name-only
               origin/${{ github.event.pull_request.base.ref }}...HEAD`).
             - **Result:** "No issues", or every fix with its commit SHA and
@@ -733,16 +750,60 @@ jobs:
               UI flows, data or migrations, and (with "❓ Uncertain") every
               fix for a finding you were not sure about.
 
-      - name: Check whether Claude exhausted its allowance
+            After any fix, review the FINAL diff again and record the final
+            `git rev-parse HEAD`; a pre-fix SHA does not certify the fixes.
+            Your final response must be a standalone JSON object (no Markdown):
+            {"security_review_completed": true, "reviewed_sha": "FULL_FINAL_SHA",
+             "scope": ["sorted", "changed/file/paths"], "result": "no_issues",
+             "unfixed_findings": []}
+            Scope must exactly match sorted `git diff --name-only --no-renames
+            ${{ github.event.pull_request.base.sha }}...HEAD`.
+            Use result `issues_fixed` if all findings were fixed and re-reviewed.
+            If findings remain or the review did not finish, do not report
+            completion; list those findings in `unfixed_findings` instead.
+
+      - name: Validate completion and classify provider failure
         id: fallback
         if: ${{ !cancelled() && steps.claude-security.outcome != 'skipped' }}
         env:
           CLAUDE_OUTCOME: ${{ steps.claude-security.outcome }}
           CLAUDE_EXECUTION_FILE: ${{ steps.claude-security.outputs.execution_file }}
-        run: python3 scripts/ci/claude_review_fallback.py
+          REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          export REVIEW_HEAD_SHA="$(git rev-parse HEAD)"
+          export REVIEW_SCOPE_FILE="$RUNNER_TEMP/security-review-scope.json"
+          export REVIEW_REPORT_FILE="$GITHUB_WORKSPACE/security-review-completion.json"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+          scope = subprocess.check_output(
+              ["git", "diff", "--name-only", "--no-renames", f"{os.environ['REVIEW_BASE_SHA']}...HEAD"], text=True,
+          ).splitlines()
+          Path(os.environ["REVIEW_SCOPE_FILE"]).write_text(json.dumps(sorted(scope)), encoding="utf-8")
+          PY
+          git show "$REVIEW_BASE_SHA:scripts/ci/claude_review_fallback.py" > "$RUNNER_TEMP/trusted-review-completion.py"
+          python3 "$RUNNER_TEMP/trusted-review-completion.py"
+
+      - name: Preserve completion evidence
+        if: ${{ !cancelled() && steps.claude-security.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-review-completion
+          path: security-review-completion.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+
+      - name: Fail when the Claude security review did not complete
+        if: ${{ !cancelled() && steps.fallback.outputs.review_completed != 'true' }}
+        run: |
+          echo '::error::Claude security review did not complete. Fallback delivery does not complete a review.'
+          exit 1
 
   codex-security-fallback:
-    name: Request Codex security review (subscription)
+    name: Deliver Codex request (not review completion)
     needs: [triage, security-review]
     if: >-
       !cancelled() &&
@@ -750,7 +811,7 @@ jobs:
       needs.triage.outputs.security_review == 'true' &&
       needs.triage.outputs.self_changed != 'true' &&
       needs.triage.outputs.self_push != 'true' &&
-      needs.security-review.result == 'success' &&
+      needs.security-review.result == 'failure' &&
       needs.security-review.outputs.codex_fallback == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -774,4 +835,6 @@ jobs:
           github-token: ${{ secrets.CODEX_REVIEW_GITHUB_TOKEN || secrets.RELEASE_PAT }}
           script: |
             const requestReview = require('./.github/scripts/request-codex-security-review.cjs');
-            await requestReview({ github, context, core });
+            const request = await requestReview({ github, context, core });
+            core.setOutput('request_state', request.state);
+            core.setOutput('requested_sha', request.head_sha);

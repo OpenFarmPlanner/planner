@@ -413,6 +413,26 @@ Playwright workflows, and skips the install outright on a hit. The
 `--force` came in with the workflow's initial import rather than from a
 resolution failure; `npm ci` installs the same lockfile cleanly.
 
+## Required security review policy in quality
+
+On PRs, the existing required `quality` job also runs the security-review
+policy from the immutable PR base with read-only API permissions. It consumes
+run/attempt-bound triage and completion artifacts; request delivery, bot
+rejection, missing evidence and stale heads never count as a completed review.
+Non-security exemptions are explicit skips, not clean scans. Provider guards
+still prevent loops, while required guarded reviews need human approval.
+A successful process without structured final-SHA/scope evidence is insufficient.
+
+The step waits at most 20 minutes (the quality job has a 30-minute limit).
+After a provider finishes or a human approves an exact-head contingency, rerun
+that failed job to evaluate the new evidence. A new push needs new evidence.
+The first installation requires explicit human bootstrap review because the
+base has no policy yet. No existing required check name or protection is removed.
+See [security-automation.md](security-automation.md#security-review-completion-gate-1045)
+for states, actual completion evidence, manual commands and provider limitations.
+Policy regression tests run in quality, not in the classifier before triage.
+There is no application/backend behavior change or schema migration.
+
 ## E2E: sharded across runners, serial inside one
 
 `frontend/playwright.config.ts` still pins `workers: 1` and

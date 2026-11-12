@@ -77,58 +77,163 @@ rules are summarized in the "Automated Claude PR Review" section of
 [`CLAUDE.md`](../CLAUDE.md#automated-claude-pr-review); the exact patterns
 live in the workflow's triage step.
 
-### Claude allowance fallback to the Codex subscription
+### Security review completion gate (#1045)
 
-When the Claude security review fails with a usage, rate-limit or insufficient
-credit error in its execution report, the workflow requests native
-[Codex Security Review](https://learn.chatgpt.com/docs/security/security-review)
-by posting `@codex security review` on the PR. Other failures (credentials,
-tooling, test failures, unreadable reports) still fail the Claude job; they
-are not treated as allowance exhaustion. The code-review job has no fallback.
-Existing triage, draft/fork/Dependabot exclusions, `skip-claude`, own-fix
-exclusions and the workflow-change guard still apply.
+The already-required **quality** job enforces review completion on PRs. Its
+security step loads `.github/scripts/security-review-completion.cjs` from the
+immutable PR **base SHA**, with a read-only token. No new branch-protection
+context replaces or weakens existing checks. Changes to workflow files still
+need careful review: a named check is not a GitHub ruleset requiring an
+immutable workflow. Repository administration remains an operator boundary.
 
-The request uses the linked account's included Codex allowance or ChatGPT
-credits, rather than the separately billed OpenAI API. Prerequisites:
+Triage publishes a small JSON artifact containing the head, changed-file
+scope, PR number, run/attempt, decision and execution guards. Triage reads code
+but does not execute PR-owned tests. The tests run in quality instead. A
+non-security decision is **triage_skipped**, never a clean security scan.
+Draft/fork/Dependabot and deliberate `skip-claude` exemptions remain explicit.
+The review-workflow self-change guard and own-fix/baseline guards still stop
+provider execution loops; they do not certify a required review. In particular,
+a PR editing `claude-pr.yml` requires explicit maintainer review even if its
+edited triage says otherwise.
 
-- Connect `OpenFarmPlanner/planner` in Codex settings and enable Security
-  Review access for the workspace. The native feature currently requires
-  Pro, Business, Enterprise or Edu; Plus does not include Security Review.
-- The workflow posts as a GitHub **user** linked to that Codex account. It
-  prefers `CODEX_REVIEW_GITHUB_TOKEN`, a personal token with permission to
-  read this repository's PRs and read/write their comments (Pull requests:
-  read and write for a fine-grained token). If unset, it uses the existing
-  `RELEASE_PAT`; that token's owner must be linked to the intended Codex
-  account and have those permissions. `GITHUB_TOKEN` is not used for this
-  request because its bot identity has no personal subscription.
-- Automatic Codex Security Reviews can remain disabled if Codex should run
-  only as the Claude fallback. The workflow requests the review explicitly.
+A successful Claude process alone is insufficient. Its terminal execution
+record must be successful, contain no error, have performed at least one turn,
+and return structured completion evidence with the **final** reviewed SHA,
+exact sorted file scope, a completed result and no unresolved findings. After
+fixes, Claude re-reviews the final diff. Validation uses the parser from the
+immutable base, not its PR-modified copy. Normalized evidence (not raw execution
+logs) is published as an artifact bound to the workflow run and attempt.
+The gate checks the provider job actually succeeded too. Expired, missing,
+malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 
-The token is used only in a separate job which loads automation from the PR's
-base SHA, with checkout credentials disabled. The request records the current
-head SHA (including any pushed Claude code-review fixes) and the originating
-workflow run. Rerunning the workflow does not post a second request for the
-same SHA under the same user. The workflow change must first reach the default
-branch; the existing self-change guard prevents exercising it on its own PR.
+| State | Meaning and check behavior |
+| --- | --- |
+| `triage_skipped` | Deliberately exempt; quality may pass, with an explicit **not security reviewed** summary. |
+| `claude_completed` | Validated successful execution and exact-head/scope evidence; quality may pass. |
+| `claude_failed` / `claude_allowance_exhausted` | No completed review. Claude's security job fails; only a real allowance error routes to Codex. |
+| Codex request delivered | Delivery job may succeed, explicitly named **not review completion**; this grants no completion. |
+| `codex_rejected` | The trusted connector bot rejected the delivered current-head request; quality fails. |
+| `codex_pending` / `review_pending` | No verified completion; quality waits up to 20 minutes, then fails as `timed_out`. |
+| `stale_head` / `stale_review` | A new push or mismatched scope invalidates evidence; never transfer approval to the new head. |
+| `manual_review_required` | Provider execution is guarded; an explicit exact-head review/approval is needed. |
+| `codex_completed_attested` | A human maintainer verified the native task and Security Report; auditable attestation, **not automated verification**. |
+| `manual_review_approved` | A human maintainer explicitly approved a completed manual review; **not an automated scan**. |
 
-**Delivery is not completion.** The green `Request Codex security review
-(subscription)` job confirms that the request comment exists. The actual
-review runs asynchronously in Codex; inspect its task status and Security
-Report before merging. No posted findings is not proof of a completed clean
-review. Subscription entitlement, repository connection, and token-owner
-linking cannot be verified by successfully posting a GitHub comment.
+The GitHub summary records the SHA, state, reason and evidence link. A successful
+**quality** job means the required policy was satisfied, possibly by an explicit
+exemption or manual decision; it does not always mean an automated scan ran.
+CodeQL, dependency gates, other required checks and all review threads remain
+separate requirements. A later push always needs fresh checks and evidence.
 
-Native Codex Security Review reports findings and remediation guidance. It
-does not execute Claude's automatic per-finding fix commits. Apply findings
-in a follow-up change or explicitly request a Codex fix, and track unresolved
-findings under the existing Security Review Protocol. Branch protection
-requiring the Claude request job alone does not gate on Codex completion.
+### Codex delivery, provider rejection and remaining uncertainty
 
-Local regression checks for this routing and request logic:
+Confirmed evidence: [#1036 request/rejection](https://github.com/OpenFarmPlanner/planner/pull/1036#issuecomment-6817626358),
+[#1039 final-head rejection](https://github.com/OpenFarmPlanner/planner/pull/1039#issuecomment-6823549958),
+and [#1040 rejection](https://github.com/OpenFarmPlanner/planner/pull/1040#issuecomment-6824802763).
+In [run 43226417060](https://github.com/OpenFarmPlanner/planner/actions/runs/43226417060),
+`continue-on-error` let the allowance classifier succeed, and the next job
+succeeded after posting a request. Nothing checked review completion, so the
+workflow could be green despite the rejection. The classifier now reports
+routing separately, Claude's incomplete job stays failed, and quality enforces
+completion. #1042/#1044 intentionally had security triage false; their skips
+are not completed security reviews.
+
+The exact `@codex security review` command is supported by the current
+[Security Review documentation](https://learn.chatgpt.com/docs/security/security-review).
+Native reviews require eligible workspace access and a connected repository.
+A clean native review can post no findings: reactions, silence, code-review
+comments and delivery acknowledgements cannot establish security completion.
+The full task and Security Report are the completion evidence. No documented
+public exact-head completion API was established in this investigation, so
+this gate does not invent a bot-comment format or treat ordinary Codex code
+review as a completed Security Review.
+
+The owner reports that GitHub is connected, the Connector app has all-repository
+read/write access, a Codex Cloud environment exists, and automatic code/security
+reviews are enabled. Requests were posted as `stipsitzm`; the connector rejected
+them within seconds with an account-connection instruction and a legacy Cloud
+settings URL. Current [GitHub review documentation](https://learn.chatgpt.com/docs/third-party/github)
+distinguishes legacy setup and current review settings. These observations do
+**not** establish a wrong installation, missing entitlement or identity mapping.
+The provider-side rejection remains unresolved; reinstalling/reconnecting is
+not a repository fix and is not recommended without provider diagnosis.
+
+For upstream support, provide the PR/run/rejection links above, request actor,
+request/head SHA, UTC timestamps, workspace entitlement and repository review
+settings, plus whether the request is linked to a native task. Ask support to
+trace the mention event through identity-to-workspace/repository authorization
+and explain the legacy-connector rejection despite the verified settings.
+Never include tokens. A minimal reproduction is one supported request on a
+current eligible PR under the linked user; preserve its request and immediate
+bot response. This repository cannot repair OpenAI's internal identity routing.
+
+### Recovery and explicit human contingency
+
+The fallback uses `CODEX_REVIEW_GITHUB_TOKEN`, otherwise `RELEASE_PAT`, from a
+personal user linked to the intended Codex account. `GITHUB_TOKEN` is not a
+subscription identity. The request job loads base-commit automation, disables
+checkout credentials, records the current SHA/run and deduplicates per user/SHA.
+Reruns do not spam the same rejected request. After an upstream fix, a maintainer
+may manually request another native review with the supported command, then
+verify its actual task/report. New heads get new requests and new reviews.
+
+If native completion cannot be automatically verified, a **human admin or
+maintainer**, after inspecting the completed task/report for the exact SHA,
+can post:
+
+```text
+/security-review approve codex FULL_HEAD_SHA https://chatgpt.com/codex/tasks/TASK_ID
+I verified the completed Codex Security Report for this exact commit.
+Result: No unresolved findings
+Reason: native completion verified in the task and Security Report
+```
+
+This is explicitly a maintainer attestation of Codex completion. The gate does
+not claim to have fetched or independently verified that private report.
+
+For an independent manual review, first post a PR comment containing
+`<!-- manual-security-review:FULL_HEAD_SHA -->`, every changed path in backticks,
+the actual review findings/resolution and `Result: No unresolved findings`.
+Then a human admin/maintainer approves that report:
+
+```text
+/security-review approve manual FULL_HEAD_SHA https://github.com/OpenFarmPlanner/planner/pull/PR_NUMBER#issuecomment-REPORT_ID
+I independently reviewed this exact commit and approve its security review.
+Reason: automated providers unavailable; completed manual review linked above
+```
+
+The linked report must be on this PR, cover the exact SHA and all changed
+files, and predate approval. Authoring-session/self-review reports are rejected.
+Bots and users without admin/maintain permission cannot approve. Agents must
+never manufacture these attestations or use a broad instruction to continue
+as approval of a specific review. Approval is a deliberate human decision.
+
+The first installation has no base policy yet. Its quality check therefore
+fails until a human maintainer independently reviews the exact patch and posts:
+
+```text
+/security-review bootstrap FULL_HEAD_SHA
+I independently reviewed this exact commit and approve installing the security review gate.
+```
+
+This auditable first-install decision is displayed as manual approval, not an
+automated scan. No branch-protection bypass is used. Once the policy is on main,
+normal base-policy loading applies; editing the head cannot edit that policy.
+
+After completion/approval becomes available, rerun the failed quality job
+intentionally to re-evaluate evidence. A comment itself does not launch more
+provider jobs. Pending checks have a bounded wait; provider failures, rejection
+and guarded execution fail clearly. If a new push occurs, repeat the review and
+approval for its new SHA. Do not rerun tests repeatedly to mask a provider error.
+Artifacts expire after 30 days; expired evidence requires a new review or
+explicit human contingency, never silent reuse. No service repair or completed
+native review is claimed merely because local regression tests pass.
+
+Local policy regression checks:
 
 ```bash
 python3 -m unittest discover -s tests -p test_claude_review_fallback.py
-node --test tests/test_codex_security_request.cjs
+node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs
 ```
 
 ## Security decisions
