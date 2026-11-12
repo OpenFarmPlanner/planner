@@ -8,9 +8,24 @@ import { formatHistoryChangeValue, getCropFieldLabel } from './cropsHistoryUtils
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
+export function formatImportRowRanges(rows: number[], language: string): string {
+  const sorted = [...new Set(rows)].sort((a, b) => a - b);
+  const format = new Intl.NumberFormat(language);
+  const ranges: string[] = [];
+  for (let index = 0; index < sorted.length; index++) {
+    const start = sorted[index];
+    let end = start;
+    while (sorted[index + 1] === end + 1) end = sorted[++index];
+    ranges.push(start === end ? format.format(start) : `${format.format(start)}–${format.format(end)}`);
+  }
+  return ranges.join(', ');
+}
+
 export type ImportEntryPartition = {
   validEntries: Record<string, unknown>[];
   invalidEntries: string[];
+  rowNumbers: number[];
+  invalidRowNumbers: number[];
 };
 
 export type ImportAnalysisResult =
@@ -18,6 +33,7 @@ export type ImportAnalysisResult =
       status: 'ready';
       originalCount: number;
       validEntries: Record<string, unknown>[];
+      rowNumbers: number[];
       invalidEntries: string[];
     }
   | {
@@ -30,20 +46,26 @@ export type ImportAnalysisResult =
 export const partitionImportEntries = (
   entries: unknown[],
   t: Translator,
+  sourceRowNumbers?: number[],
 ): ImportEntryPartition => {
   const invalidEntries: string[] = [];
   const validEntries: Record<string, unknown>[] = [];
+  const rowNumbers: number[] = [];
+  const invalidRowNumbers: number[] = [];
 
   entries.forEach((entry, index) => {
-    const nameValue = (entry as { name?: unknown }).name;
+    const nameValue = (entry as { name?: unknown } | null)?.name;
+    const row = sourceRowNumbers?.[index] ?? index + 1;
     if (typeof nameValue === 'string' && nameValue.trim().length > 0) {
       validEntries.push(entry as Record<string, unknown>);
+      rowNumbers.push(row);
     } else {
-      invalidEntries.push(`${t('import.invalidEntry')} ${index + 1}`);
+      invalidEntries.push(`${t('import.invalidEntry')} ${row}`);
+      invalidRowNumbers.push(row);
     }
   });
 
-  return { validEntries, invalidEntries };
+  return { validEntries, invalidEntries, rowNumbers, invalidRowNumbers };
 };
 
 export const analyzeCropImportJson = (
@@ -51,7 +73,7 @@ export const analyzeCropImportJson = (
   t: Translator,
 ): ImportAnalysisResult => {
   try {
-    const { entries, originalCount } = parseCropImportJson(jsonString);
+    const { entries, originalCount, rowNumbers: sourceRows, skippedRowNumbers } = parseCropImportJson(jsonString);
 
     if (originalCount === 0) {
       return {
@@ -62,7 +84,9 @@ export const analyzeCropImportJson = (
       };
     }
 
-    const { validEntries, invalidEntries } = partitionImportEntries(entries, t);
+    const { validEntries, rowNumbers, invalidRowNumbers } = partitionImportEntries(entries, t, sourceRows);
+    const invalidEntries = [...skippedRowNumbers, ...invalidRowNumbers].sort((a, b) => a - b)
+      .map(row => `${t('import.invalidEntry')} ${row}`);
 
     if (validEntries.length === 0) {
       return {
@@ -77,6 +101,7 @@ export const analyzeCropImportJson = (
       status: 'ready',
       originalCount,
       validEntries,
+      rowNumbers,
       invalidEntries,
     };
   } catch {
@@ -153,6 +178,12 @@ export const formatImportFailure = (
   t: TFunction<'crops'>,
   seedRateConstraints?: Partial<SeedRateUnitConstraints> | null,
 ): string => {
+  const outcomeKeys: Record<string, string> = {
+    not_sent: 'import.errors.notSent', unknown: 'import.errors.unknown',
+    companions_not_sent: 'import.errors.companionsNotSent', companions_unknown: 'import.errors.companionsUnknown',
+    invalid_crop_import_reference: 'import.errors.invalidReference',
+  };
+  if (entry.error_code && outcomeKeys[entry.error_code]) return t(outcomeKeys[entry.error_code]);
   if (entry.error_code === 'companion_notes_invalid') return t('companions.import.invalid');
   if (entry.error_code === 'specific_properties_invalid') return t('specificProperties.importInvalid');
   const importData = entry.importData ?? {};

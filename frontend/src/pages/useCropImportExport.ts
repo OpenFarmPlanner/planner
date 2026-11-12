@@ -24,6 +24,7 @@ import {
 } from './cropsPageUtils';
 import { analyzeCropImportJson, readFileAsText } from './cropsImportUtils';
 import { useCropImportState } from './useCropImportState';
+import { applyCropImportBatches, previewCropImportBatches, CropImportBatchError, isImportBodyLimitError, isImportProjectChangedError, type ImportProgress } from './cropImportBatches';
 
 export type ExportFormat = SpreadsheetExportFormat | 'json';
 export type ExportScope = 'current' | 'all';
@@ -55,6 +56,16 @@ export function useCropImportExport({
   // list; the start dialog stays open with a spinner until the preview is ready.
   const [importPreparing, setImportPreparing] = useState(false);
   const importPreparingRef = useRef(false);
+  const applyingRef = useRef(false);
+  const attemptedRef = useRef(false);
+  const importProjectRef = useRef<number | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const progressLabel = importProgress
+    ? t(`import.progress.${importProgress.stage}`, { completed: importProgress.completed, total: importProgress.total }) : undefined;
+  const previewError = useCallback((error: unknown) => isImportProjectChangedError(error)
+    ? t('import.errors.projectChanged') : isImportBodyLimitError(error)
+    ? t('import.errors.bodyLimit') : error instanceof CropImportBatchError
+      ? t('import.errors.invalidResponse') : t('import.errors.network'), [t]);
 
   const {
     state: importState,
@@ -68,7 +79,9 @@ export function useCropImportExport({
   } = useCropImportState();
 
   const handleImportFileTrigger = useCallback(() => {
+    if (applyingRef.current || importPreparingRef.current) return;
     resetImportState();
+    setImportProgress(null);
     setImportNoteLanguage(currentLanguage);
     setReplaceCompanionNotes(false);
     setImportStartDialogOpen(true);
@@ -76,6 +89,16 @@ export function useCropImportExport({
 
   const prepareImportPreview = useCallback(async (file: File) => {
     resetImportState();
+    setConfirmUpdates(false);
+    attemptedRef.current = false;
+    const projectId = Number(window.localStorage.getItem('activeProjectId'));
+    importProjectRef.current = Number.isInteger(projectId) && projectId > 0 ? projectId : undefined;
+    setImportProgress(null);
+    if (importProjectRef.current === undefined) {
+      setImportErrorState({ error: t('import.errors.projectChanged') });
+      setImportDialogOpen(true);
+      return;
+    }
 
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const isSpreadsheet = ['xlsx', 'ods', 'csv'].includes(ext);
@@ -93,25 +116,25 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const response = await cropAPI.importPreview(entries, importNoteLanguage);
+          const results = await previewCropImportBatches(entries, importNoteLanguage, setImportProgress, importProjectRef.current);
           const invalidEntries: string[] = [];
           if (skippedRows > 0) invalidEntries.push(t('import.skippedRows', { count: skippedRows }));
           warnings.forEach((w) => invalidEntries.push(w));
-          const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
+          const companionWarning = buildCompanionPreviewWarning(results, t);
           if (companionWarning) invalidEntries.push(companionWarning);
           invalidEntries.push(...buildTimingWindowPreviewWarnings(
-            response.data.results,
+            results,
             (index) => rowNumbers[index] ?? index + 2,
             t,
           ));
-          invalidEntries.push(...buildCompanionNotePreviewErrors(response.data.results, (index) => rowNumbers[index] ?? index + 2, t));
-          invalidEntries.push(...buildSpecificPropertyPreviewErrors(response.data.results, (index) => rowNumbers[index] ?? index + 2, t));
+          invalidEntries.push(...buildCompanionNotePreviewErrors(results, (index) => rowNumbers[index] ?? index + 2, t));
+          invalidEntries.push(...buildSpecificPropertyPreviewErrors(results, (index) => rowNumbers[index] ?? index + 2, t));
           setPreviewReadyState({
             previewCount: entries.length + skippedRows,
-            validCount: entries.length - response.data.results.filter((result) => result.error).length,
+            validCount: entries.length - results.filter((result) => result.error).length,
             invalidEntries,
             payload: entries,
-            previewResults: response.data.results.map((result) => ({
+            previewResults: results.map((result) => ({
               ...result,
               row_number: rowNumbers?.[result.index] ?? result.index + 2,
               duplicate_of_row_number: result.duplicate_of_index === undefined
@@ -122,7 +145,7 @@ export function useCropImportExport({
           setImportDialogOpen(true);
         } catch (error) {
           console.error('Error calling preview endpoint:', error);
-          setImportErrorState({ error: t('import.errors.network') });
+          setImportErrorState({ error: previewError(error) });
           setImportDialogOpen(true);
         }
       } catch (error) {
@@ -151,25 +174,29 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const response = await cropAPI.importPreview(importAnalysis.validEntries, importNoteLanguage);
-          const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
+          const results = await previewCropImportBatches(importAnalysis.validEntries, importNoteLanguage, setImportProgress, importProjectRef.current);
+          const companionWarning = buildCompanionPreviewWarning(results, t);
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
-            validCount: importAnalysis.validEntries.length - response.data.results.filter((result) => result.error).length,
+            validCount: importAnalysis.validEntries.length - results.filter((result) => result.error).length,
             invalidEntries: [
               ...importAnalysis.invalidEntries,
               ...(companionWarning ? [companionWarning] : []),
-              ...buildTimingWindowPreviewWarnings(response.data.results, (index) => index + 1, t),
-              ...buildCompanionNotePreviewErrors(response.data.results, (index) => index + 1, t),
-              ...buildSpecificPropertyPreviewErrors(response.data.results, (index) => index + 1, t),
+              ...buildTimingWindowPreviewWarnings(results, (index) => importAnalysis.rowNumbers[index], t),
+              ...buildCompanionNotePreviewErrors(results, (index) => importAnalysis.rowNumbers[index], t),
+              ...buildSpecificPropertyPreviewErrors(results, (index) => importAnalysis.rowNumbers[index], t),
             ],
             payload: importAnalysis.validEntries,
-            previewResults: response.data.results,
+            previewResults: results.map(result => ({
+              ...result, row_number: importAnalysis.rowNumbers[result.index],
+              duplicate_of_row_number: result.duplicate_of_index === undefined ? undefined
+                : importAnalysis.rowNumbers[result.duplicate_of_index],
+            })),
           });
           setImportDialogOpen(true);
         } catch (error) {
           console.error('Error calling preview endpoint:', error);
-          setImportErrorState({ error: t('import.errors.network') });
+          setImportErrorState({ error: previewError(error) });
           setImportDialogOpen(true);
         }
       } catch (error) {
@@ -182,10 +209,10 @@ export function useCropImportExport({
 
     setImportErrorState({ error: t('import.errors.unsupportedFormat') });
     setImportDialogOpen(true);
-  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, importNoteLanguage]);
+  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, importNoteLanguage, previewError]);
 
   const handleImportFileSelected = useCallback(async (file: File) => {
-    if (importPreparingRef.current) return;
+    if (importPreparingRef.current || applyingRef.current) return;
     importPreparingRef.current = true;
     setImportPreparing(true);
     try {
@@ -247,47 +274,69 @@ export function useCropImportExport({
   }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t, i18n, exportNoteLanguage]);
 
   const handleImportStart = async () => {
-    if (!hasImportableEntries || importState.status === 'uploading') return;
-
+    if (!hasImportableEntries || applyingRef.current || attemptedRef.current) return;
+    applyingRef.current = true;
+    attemptedRef.current = true;
     setImportUploading();
-
     try {
-      const response = await cropAPI.importApply({
-        items: importState.payload,
+      const result = await applyCropImportBatches(importState.payload, importState.previewResults, {
         confirm_updates: confirmUpdates,
         companion_note_language: importNoteLanguage,
         replace_companion_notes: replaceCompanionNotes,
-      });
-
-      const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = response.data;
+        ...(importProjectRef.current !== undefined ? { expected_project_id: importProjectRef.current } : {}),
+      }, setImportProgress);
+      const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = result;
       const summary = [
         buildImportSuccessMessage(created_count, updated_count, skipped_count, t, duplicate_count),
         ...buildCompanionImportMessages(companions, t),
       ].filter(Boolean).join(' ');
-      // Rows that went through are saved even when others failed.
-      if (created_count + updated_count > 0) {
-        await fetchCrops();
+      let refreshFailed = false;
+      if (result.attempted) {
+        try { await fetchCrops(); }
+        catch { refreshFailed = true; }
       }
-
-      if (errors.length > 0) {
-        const seedRateConstraints = await cropAPI.seedRateConstraints()
-          .then((constraintsResponse) => constraintsResponse.data.units)
-          .catch(() => null);
+      const failedEntries = mapImportErrors(errors, importState.payload);
+      for (const outcome of result.outcomes) {
+        const pending = ['not_sent', 'unknown'].includes(outcome.status) ? outcome.status
+          : ['not_sent', 'unknown'].includes(outcome.companions ?? '') ? `companions_${outcome.companions}` : null;
+        if (pending) failedEntries.push({
+          index: outcome.index, name: importState.payload[outcome.index].name as string,
+          variety: importState.payload[outcome.index].variety as string | undefined,
+          error: '', error_code: pending,
+        });
+      }
+      failedEntries.forEach(entry => {
+        entry.row_number = importState.previewResults.find(row => row.index === entry.index)?.row_number ?? entry.index + 1;
+        entry.companionPhase = result.outcomes[entry.index]?.companions === 'error';
+      });
+      if (failedEntries.length || result.interrupted || refreshFailed) {
+        const seedRateConstraints = errors.length ? await cropAPI.seedRateConstraints()
+          .then(response => response.data.units).catch(() => null) : null;
+        const messages = [
+          failedEntries.length ? (result.interrupted ? t('import.errors.incomplete')
+            : t('import.errors.someFailures', { count: failedEntries.length })) : '',
+          result.interrupted?.kind === 'too_large' ? t('import.errors.bodyLimit') : '',
+          result.interrupted?.kind === 'invalid_response' ? t('import.errors.invalidResponse') : '',
+          result.interrupted?.kind === 'project_changed' ? t('import.errors.projectChanged') : '',
+          result.interrupted?.stage === 'finalize' ? t('import.errors.finalize') : '',
+          refreshFailed ? t('import.errors.refresh') : '',
+        ].filter(Boolean);
         setImportPartialFailure({
-          failedEntries: mapImportErrors(errors, importState.payload),
-          error: t('import.errors.someFailures', { count: errors.length }),
-          summary,
-          seedRateConstraints,
+          failedEntries: failedEntries.sort((a, b) => a.index - b.index),
+          confirmedRows: result.outcomes.filter(row => ['created', 'updated'].includes(row.status))
+            .map(row => importState.previewResults.find(preview => preview.index === row.index)?.row_number ?? row.index + 1),
+          error: messages.join(' '), summary, seedRateConstraints,
         });
         return;
       }
-
       setImportSuccessState(summary || t('import.success'));
       setImportDialogOpen(false);
       showSnackbar(summary || t('import.success'), 'success');
     } catch (error) {
       console.error('Error importing crops:', error);
-      setImportErrorState({ error: t('import.errors.network') });
+      setImportPartialFailure({ failedEntries: [], error: t('import.errors.network'), summary: t('import.errors.unknown') });
+    } finally {
+      applyingRef.current = false;
     }
   };
 
@@ -315,6 +364,7 @@ export function useCropImportExport({
     hasImportableEntries,
     handleImportFileTrigger,
     importPreparing,
+    progressLabel,
     handleImportFileSelected,
     handleImportFileChange,
     handleOpenExportDialog,

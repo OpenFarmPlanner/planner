@@ -716,7 +716,18 @@
       "someFailures_one": "No se ha podido importar {{count}} entrada.",
       "someFailures_many": "No se han podido importar {{count}} entradas.",
       "someFailures_other": "No se han podido importar {{count}} entradas.",
-      "rowFailed": "No se ha podido guardar esta entrada."
+      "rowFailed": "No se ha podido guardar esta entrada.",
+      "bodyLimit": "El archivo contiene entradas demasiado grandes o demasiados nombres de vecinos distintos. Acorta los textos largos o divide el archivo antes de volver a importar. Las filas ya confirmadas siguen guardadas.",
+      "invalidResponse": "No se pudo confirmar la respuesta. Revisa los cultivos antes de volver a importar para evitar sobrescribir datos guardados por accidente.",
+      "notSent": "Esta entrada no se guardó.",
+      "unknown": "Se desconoce si esta entrada se guardó. Revisa los cultivos antes de volver a importar.",
+      "companionsNotSent": "Cultivo guardado; sus vecinos aún no se han importado.",
+      "companionsUnknown": "Cultivo guardado; se desconoce si se añadieron sus vecinos. Revisa los vecinos antes de volver a importar.",
+      "invalidReference": "El cultivo ya no está disponible en el proyecto actual.",
+      "finalize": "No se pudo confirmar la vinculación final de los vecinos existentes. Los cultivos ya guardados se conservan.",
+      "refresh": "No se pudieron volver a cargar los cultivos. Recarga la página; las entradas ya confirmadas siguen guardadas.",
+      "incomplete": "La importación no está confirmada por completo. Revisa los detalles de cada fila antes de volver a importar.",
+      "projectChanged": "El proyecto activo ha cambiado y la importación se ha detenido. Las filas ya confirmadas pertenecen al proyecto original. Vuelve a ese proyecto y revisa sus cultivos antes de volver a importar."
     },
     "template": {
       "speciesName": "Tomate",
@@ -758,7 +769,17 @@
     "numberCellIgnored": "Fila {{row}}, {{column}}: «{{value}}» no es un número. El valor no se importa.",
     "cellErrors": {
       "range_not_recognized": "Indica un número o un rango como «18–25»."
-    }
+    },
+    "progress": {
+      "preview": "Preparando la vista previa: {{completed}} de {{total}} entradas",
+      "crops": "Guardando cultivos: {{completed}} de {{total}} entradas",
+      "companions": "Añadiendo vecinos: {{completed}} de {{total}} entradas",
+      "finalize": "Vinculando los vecinos existentes…"
+    },
+    "confirmedRows": "Filas guardadas correctamente: {{rows}}",
+    "incompleteEntries": "Entradas con importación incompleta",
+    "rowLabel": "Fila {{row}}",
+    "companionFailure": "Cultivo guardado; no se añadieron los vecinos: {{message}}"
   },
   "library": {
     "openButton": "Importar desde la biblioteca",

@@ -14,6 +14,7 @@ type CropImportState = {
   error: string | null;
   success: string | null;
   failedEntries: ImportFailedEntry[];
+  confirmedRows: number[];
   /** The seed-rate rules, to explain a failed row like the crop form would. */
   seedRateConstraints: Partial<SeedRateUnitConstraints> | null;
 };
@@ -36,6 +37,7 @@ type SetPreviewReadyPayload = {
 type SetPartialFailurePayload = {
   error: string;
   failedEntries: ImportFailedEntry[];
+  confirmedRows?: number[];
   /** What did go through ("21 neue Kulturen erstellt"), if anything. */
   summary?: string;
   seedRateConstraints?: Partial<SeedRateUnitConstraints> | null;
@@ -59,6 +61,7 @@ const INITIAL_IMPORT_STATE: CropImportState = {
   error: null,
   success: null,
   failedEntries: [],
+  confirmedRows: [],
   seedRateConstraints: null,
 };
 
@@ -105,6 +108,7 @@ const cropImportReducer = (state: CropImportState, action: ImportAction): CropIm
         error: action.payload.error,
         success: action.payload.summary || null,
         failedEntries: action.payload.failedEntries,
+        confirmedRows: action.payload.confirmedRows ?? [],
         seedRateConstraints: action.payload.seedRateConstraints ?? null,
       };
     case 'set_success':

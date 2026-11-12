@@ -80,6 +80,9 @@ for step-by-step procedures of recurring tasks, see the skills in
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.
+- **[Crop spreadsheet and JSON import](./crop-spreadsheet-import.md)** — bounded
+  preview/apply batches, cross-batch identity and neighbours, source rows and
+  truthful partial results after an interrupted import.
 - **[Crop Library State Matrix](./crop-library-state-matrix.md)** — every
   state a private crop and its public library link can be in, what each
   action must do there, and the fixtures/tests that pin it.

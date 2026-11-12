@@ -20,7 +20,7 @@ import type { ImportPreviewResult } from './cropsPageUtils';
 import type { TFunction } from 'i18next';
 import { DISPLAY_COLOR_PATTERN } from '../crops/displayColor';
 import { getCropFieldLabel } from './cropsHistoryUtils';
-import { formatImportDiffChange, formatImportFailure, formatImportValue } from './cropsImportUtils';
+import { formatImportDiffChange, formatImportFailure, formatImportValue, formatImportRowRanges } from './cropsImportUtils';
 import type { CropImportState } from './useCropImportState';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
@@ -34,6 +34,7 @@ type CropsImportDialogProps = {
   onClose: () => void;
   onImportStart: () => void;
   t: Translator;
+  progressLabel?: string;
 };
 
 type ImportDiffChange = NonNullable<ImportPreviewResult['diff']>[number];
@@ -111,11 +112,13 @@ function UpdateCandidatesSection({
   confirmUpdates,
   onConfirmUpdatesChange,
   t,
+  disabled,
 }: {
   entries: ImportPreviewResult[];
   confirmUpdates: boolean;
   onConfirmUpdatesChange: (value: boolean) => void;
   t: Translator;
+  disabled: boolean;
 }) {
   const { t: cropsT } = useTranslation('crops');
 
@@ -154,7 +157,7 @@ function UpdateCandidatesSection({
       </List>
       <FormControlLabel
         sx={{ mt: 1 }}
-        control={<Checkbox checked={confirmUpdates} onChange={(event) => onConfirmUpdatesChange(event.target.checked)} />}
+        control={<Checkbox disabled={disabled} checked={confirmUpdates} onChange={(event) => onConfirmUpdatesChange(event.target.checked)} />}
         label={t('import.confirmUpdates')}
       />
     </Box>
@@ -170,11 +173,12 @@ export function CropsImportDialog({
   onClose,
   onImportStart,
   t,
+  progressLabel,
 }: CropsImportDialogProps) {
-  const { t: cropsT } = useTranslation('crops');
+  const { t: cropsT, i18n } = useTranslation('crops');
   const contentRef = useRef<HTMLDivElement>(null);
   const hasResult = importState.success !== null || importState.failedEntries.length > 0;
-  const isFinished = importState.status === 'success' || importState.failedEntries.length > 0;
+  const isFinished = importState.status === 'success' || hasResult;
   const isImporting = importState.status === 'uploading';
 
   // The result sits at the top; bring it into view after an import.
@@ -195,17 +199,23 @@ export function CropsImportDialog({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           {importState.error && <Alert severity="error">{importState.error}</Alert>}
           {importState.success && <Alert severity="success">{importState.success}</Alert>}
+          {isImporting && progressLabel && <Typography role="status">{progressLabel}</Typography>}
+          {importState.confirmedRows?.length > 0 && <Typography sx={{ overflowWrap: 'anywhere' }}>
+            {t('import.confirmedRows', { rows: formatImportRowRanges(importState.confirmedRows, i18n.language) })}
+          </Typography>}
           {importState.failedEntries.length > 0 && (
             <Box>
               <Typography variant="h6" color="error.main">
-                {t('import.failedEntries')} ({importState.failedEntries.length})
+                {t('import.incompleteEntries')} ({importState.failedEntries.length})
               </Typography>
               <List dense>
                 {importState.failedEntries.map((entry, index) => (
                   <ListItem key={index}>
                     <ListItemText
-                      primary={entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : `${t('import.invalidEntry')} ${entry.index + 1}`}
-                      secondary={formatImportFailure(entry, cropsT, importState.seedRateConstraints)}
+                      primary={`${t('import.rowLabel', { row: entry.row_number ?? entry.index + 1 })}: ${entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : t('import.invalidEntry')}`}
+                      secondary={entry.companionPhase
+                        ? t('import.companionFailure', { message: formatImportFailure(entry, cropsT, importState.seedRateConstraints) })
+                        : formatImportFailure(entry, cropsT, importState.seedRateConstraints)}
                     />
                   </ListItem>
                 ))}
@@ -213,9 +223,9 @@ export function CropsImportDialog({
             </Box>
           )}
 
-          <Typography variant="body1">
+          {importState.previewCount > 0 && <Typography variant="body1">
             {t('import.foundCount', { count: importState.validCount || importState.previewCount })}
-          </Typography>
+          </Typography>}
           {importState.previewCount !== importState.validCount && (
             <Typography variant="body2" color="warning.main">
               {t('import.invalidCount', {
@@ -250,6 +260,7 @@ export function CropsImportDialog({
             entries={updateCandidates}
             confirmUpdates={confirmUpdates}
             onConfirmUpdatesChange={onConfirmUpdatesChange}
+            disabled={isImporting || isFinished}
             t={t}
           />
 

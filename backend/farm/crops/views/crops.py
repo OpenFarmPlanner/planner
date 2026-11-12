@@ -54,8 +54,13 @@ from farm.models import (
     PublicCropChangeProposal,
     format_crop_display_name,
 )
+from farm.services.crop_companions import link_free_text_companions
 from farm.services.crop_import.field_specs import seed_rate_unit_constraints_payload
-from farm.services.crop_import.spreadsheet import apply_crop_import, preview_crop_import
+from farm.services.crop_import.spreadsheet import (
+    apply_crop_import,
+    apply_crop_import_companions,
+    preview_crop_import,
+)
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
     DuplicatePublicCropError,
@@ -344,22 +349,47 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return Response({'units': seed_rate_unit_constraints_payload()})
 
     @action(detail=False, methods=['post'], url_path='import/preview')
-    def import_preview(self, request):
+    def import_preview(self, request: Request) -> Response:
         """Report per row whether importing it would create or update a crop."""
-        if not isinstance(request.data, list):
+        project_error = self._import_project_error(request)
+        if project_error is not None:
+            return project_error
+        rows = request.data
+        known_names = []
+        if isinstance(rows, dict) and 'items' in rows:
+            known_names = rows.get('known_crop_names', [])
+            rows = rows['items']
+        if not isinstance(rows, list):
             return api_error_response(
                 code='invalid_crop_import_payload',
                 detail='Request body must be an array of crop objects.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        if not isinstance(known_names, list) or any(
+            not isinstance(name, str) for name in known_names
+        ):
+            return api_error_response(
+                code='invalid_crop_import_context',
+                detail='Known crop names must be an array of strings.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         note_language({'request': request}, request.query_params.get('companion_note_language'))
-        results = preview_crop_import(request.active_project, request.data)
+        results = preview_crop_import(request.active_project, rows, known_names=known_names)
         return Response({'results': results}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='import/apply')
-    def import_apply(self, request):
+    def import_apply(self, request: Request) -> Response:
         """Create the new crops and, when confirmed, update the matching ones."""
+        project_error = self._import_project_error(request)
+        if project_error is not None:
+            return project_error
+        if not isinstance(request.data, dict):
+            return api_error_response(
+                code='invalid_crop_import_payload',
+                detail='Request body must be an object.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         items = request.data.get('items', [])
         if not isinstance(items, list):
             return api_error_response(
@@ -368,14 +398,55 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        phase = request.data.get('phase')
+        if phase not in (None, 'crops', 'companions', 'finalize'):
+            return api_error_response(
+                code='invalid_crop_import_phase',
+                detail='Unknown import phase.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        language = note_language({'request': request}, request.data.get('companion_note_language'))
+        if phase == 'companions':
+            summary = apply_crop_import_companions(
+                request.active_project, items, language=language,
+                replace_notes=request.data.get('replace_companion_notes') is True,
+            )
+            return Response(summary, status=status.HTTP_200_OK)
+        if phase == 'finalize':
+            if items:
+                return api_error_response(
+                    code='invalid_crop_import_items',
+                    detail='Finalization does not accept crop rows.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            link_free_text_companions(request.active_project.pk)
+            return Response({
+                'created_count': 0, 'updated_count': 0, 'skipped_count': 0,
+                'duplicate_count': 0, 'errors': [], 'results': [],
+            })
         summary = apply_crop_import(
             request.active_project,
             items,
             confirm_updates=request.data.get('confirm_updates', False),
-            companion_note_language=note_language({'request': request}, request.data.get('companion_note_language')),
+            companion_note_language=language,
             replace_companion_notes=request.data.get('replace_companion_notes') is True,
+            defer_companions=phase == 'crops',
         )
         return Response(summary, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _import_project_error(request: Request) -> Response | None:
+        if isinstance(request.data, dict) and 'expected_project_id' in request.data:
+            expected = request.data['expected_project_id']
+            if type(expected) is not int or expected != request.active_project.pk:
+                return api_error_response(
+                    code='crop_import_project_changed',
+                    detail=(
+                        'The active project changed. Restart the import in the intended project.'
+                    ),
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+        return None
 
     def destroy(self, request, *args, **kwargs):
         crop = self.get_object()

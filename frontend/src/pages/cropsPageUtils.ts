@@ -1,6 +1,6 @@
 import { readWithLegacyKey, removeWithLegacyKey } from '../compat/legacyCropNames';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
-import type { CompanionImportPreview, CompanionImportSummary } from '../api/types';
+import type { CompanionImportPreview, CompanionImportSummary, CropImportIdentity } from '../api/types';
 
 export const SELECTED_CROP_STORAGE_KEY = 'selectedCropId';
 /** Pre-"Crop" spelling, still present for users who last visited before the rename. */
@@ -18,6 +18,7 @@ export type ImportPreviewResult = {
   matched_crop_id?: number;
   diff?: Array<{ field: string; current: unknown; new: unknown }>;
   import_data: Record<string, unknown>;
+  normalized_identity?: CropImportIdentity | null;
   error?: string;
   error_code?: string;
   companions?: CompanionImportPreview;
@@ -41,6 +42,8 @@ export type TimingWindowImportIssue = {
 
 export type ImportFailedEntry = {
   index: number;
+  row_number?: number;
+  companionPhase?: boolean;
   name?: string;
   variety?: string;
   error: string | Record<string, unknown>;

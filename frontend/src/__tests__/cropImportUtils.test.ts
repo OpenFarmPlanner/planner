@@ -197,7 +197,7 @@ describe('parseCropImportJson — accepted shapes', () => {
   });
 
   it('accepts an empty array as an empty import rather than an error', () => {
-    expect(parseCropImportJson('[]')).toEqual({ entries: [], originalCount: 0 });
+    expect(parseCropImportJson('[]')).toEqual({ entries: [], originalCount: 0, rowNumbers: [], skippedRowNumbers: [] });
   });
 
   it('recovers from a trailing comma, which hand-edited files often carry', () => {
@@ -216,12 +216,10 @@ describe('parseCropImportJson — accepted shapes', () => {
     expect(parsed.entries).toHaveLength(1);
   });
 
-  it('treats a nested array item as an entry, since arrays are objects', () => {
-    // `isRecord` only excludes null and non-objects, so an array slips through
-    // and is normalized as if it were a crop. Recorded as current behaviour;
-    // the resulting row has no name and is rejected downstream.
+  it('records a nested array as a skipped source row', () => {
     const parsed = parseCropImportJson('[[]]');
-    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.entries).toHaveLength(0);
+    expect(parsed.skippedRowNumbers).toEqual([1]);
   });
 });
 

@@ -3,14 +3,15 @@
 
 from rest_framework.test import APITestCase as DRFAPITestCase
 
+from farm.crops.serializers import CropSerializer
 from farm.models import (
     Crop,
+    CropCompanion,
     MediaFile,
     Project,
     ProjectMembership,
     Supplier,
 )
-from farm.crops.serializers import CropSerializer
 from farm.services.demo_project import populate_demo_project
 from farm.tests.api_base import User
 
@@ -36,6 +37,163 @@ class CropImportAPITest(DRFAPITestCase):
             notes="Existing notes",
             project=self.project,
         )
+
+    def test_preview_context_preserves_cross_batch_legacy_names_and_identity(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/crops/import/preview/',
+            {'items': [{'name': ' Straße ', 'variety': ' EARLY ',
+                        'good_companions': [
+                            {'name': 'Next crop - named variety', 'legacy': True},
+                        ]}],
+             'known_crop_names': ['Next crop - named variety']}, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        row = response.data['results'][0]
+        self.assertEqual(row['normalized_identity'], {'name': 'strasse', 'variety': 'early'})
+        self.assertEqual(row['companions']['unresolved'], [])
+        self.assertFalse(Crop.objects.filter(
+            project=self.project, name_normalized='strasse',
+        ).exists())
+
+    def test_preview_rejects_invalid_context_without_writes(self) -> None:
+        for names in ('Name', [42], [None], [{}]):
+            with self.subTest(names=names):
+                response = self.client.post(
+                    '/openfarmplanner/api/crops/import/preview/',
+                    {'items': [], 'known_crop_names': names}, format='json',
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.data['code'], 'invalid_crop_import_context')
+
+    def test_crops_phase_receipts_and_deferred_companions(self) -> None:
+        first = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'items': [
+                {'name': 'Batch first', 'good_companions': [{'name': 'Batch second'}]},
+            ],
+            'confirm_updates': False,
+        }, format='json')
+        second = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'items': [{'name': 'Batch second'}], 'confirm_updates': False,
+        }, format='json')
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        first_id = first.data['results'][0]['crop_id']
+        second_id = second.data['results'][0]['crop_id']
+        self.assertEqual(first.data['results'][0]['status'], 'created')
+        self.assertFalse(CropCompanion.objects.filter(project=self.project).exists())
+
+        good = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'companions', 'items': [{'crop_id': first_id,
+                'good_companions': [{'name': 'Batch second', 'note': 'Note française'}]}],
+            'companion_note_language': 'fr',
+        }, format='json')
+        bad = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'companions', 'items': [{'crop_id': second_id,
+                                             'bad_companions': [{'name': 'Batch first'}]}],
+        }, format='json')
+        self.assertEqual(good.status_code, 200)
+        self.assertEqual(good.data['updated_count'], 0)
+        self.assertEqual(good.data['results'][0]['status'], 'companions_applied')
+        self.assertEqual(bad.data['companions']['conflicts'][0]['kept'], 'good')
+        relation = CropCompanion.objects.get(project=self.project)
+        self.assertEqual(relation.notes, {'fr': 'Note française'})
+        self.assertEqual(relation.kind, 'good')
+        self.assertEqual({relation.crop_id, relation.companion_crop_id}, {first_id, second_id})
+
+    def test_companion_phase_cannot_use_foreign_or_malformed_crop_ids(self) -> None:
+        other = Project.objects.create(name='Other', slug='import-other')
+        foreign = Crop.objects.create(project=other, name='Private crop')
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'companions',
+            'items': [{'crop_id': value, 'good_companions': 'Tomato'}
+                      for value in (foreign.pk, None, [], {}, True, '1')],
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['errors']), 6)
+        self.assertTrue(all(row['status'] == 'error' for row in response.data['results']))
+        self.assertFalse(CropCompanion.objects.exists())
+
+    def test_finalize_links_old_free_text_only_after_crop_batches(self) -> None:
+        owner = Crop.objects.create(project=self.project, name='Previous owner')
+        CropCompanion.objects.create(
+            project=self.project, crop=owner, companion_text='Future target', kind='good',
+        )
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'items': [{'name': 'Future target'}], 'confirm_updates': False,
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(CropCompanion.objects.filter(companion_text='Future target').exists())
+        finished = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'finalize', 'items': [],
+        }, format='json')
+        self.assertEqual(finished.status_code, 200)
+        self.assertFalse(CropCompanion.objects.filter(companion_text='Future target').exists())
+        self.assertTrue(CropCompanion.objects.filter(companion_crop__isnull=False).exists())
+
+    def test_receipts_include_skips_errors_and_duplicates(self) -> None:
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'confirm_updates': False,
+            'items': [{'name': 'Tomato', 'variety': 'Cherry'},
+                      {'name': 'Valid crop'}, {'name': 'VALID CROP'},
+                      {'name': 'Invalid crop', 'growth_duration_days': 'invalid'}],
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['status'] for row in response.data['results']],
+                         ['skipped', 'created', 'duplicate', 'error'])
+        self.assertEqual(response.data['results'][0]['crop_id'], self.existing_crop.pk)
+
+    def test_explicit_companions_precede_older_free_text_when_finalizing(self) -> None:
+        owner = Crop.objects.create(project=self.project, name='Existing neighbour')
+        CropCompanion.objects.create(
+            project=self.project, crop=owner, companion_text='Future crop', kind='bad',
+        )
+        crop = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'items': [{'name': 'Future crop'}],
+        }, format='json').data['results'][0]['crop_id']
+        self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'companions', 'items': [{
+                'crop_id': crop, 'good_companions': [{'name': 'Existing neighbour'}],
+            }],
+        }, format='json')
+        self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'finalize', 'items': [],
+        }, format='json')
+        relation = CropCompanion.objects.get(project=self.project)
+        self.assertEqual(relation.kind, 'good')
+        self.assertEqual({relation.crop_id, relation.companion_crop_id}, {crop, owner.pk})
+
+    def test_invalid_phase_and_finalization_payloads_do_not_write(self) -> None:
+        for payload in ([], {'phase': 'unknown'}, {'phase': []},
+                        {'phase': 'finalize', 'items': [{'name': 'Forbidden'}]}):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    '/openfarmplanner/api/crops/import/apply/', payload, format='json',
+                )
+                self.assertEqual(response.status_code, 400)
+        self.assertEqual(Crop.objects.filter(project=self.project).count(), 1)
+
+    def test_project_switch_rejects_preview_and_every_apply_phase_before_writes(self) -> None:
+        other = Project.objects.create(name='Switched project', slug='switched-import')
+        ProjectMembership.objects.create(user=self.user, project=other, role='admin')
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(other.pk)
+        preview = self.client.post('/openfarmplanner/api/crops/import/preview/', {
+            'items': [{'name': 'Wrong project crop'}], 'expected_project_id': self.project.pk,
+        }, format='json')
+        self.assertEqual(preview.status_code, 409)
+        self.assertEqual(preview.data['code'], 'crop_import_project_changed')
+        for phase in ('crops', 'companions', 'finalize'):
+            with self.subTest(phase=phase):
+                response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+                    'phase': phase, 'expected_project_id': self.project.pk, 'items': [],
+                }, format='json')
+                self.assertEqual(response.status_code, 409)
+        self.assertFalse(Crop.objects.filter(project=other).exists())
+        self.assertFalse(CropCompanion.objects.exists())
+        matching = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'phase': 'crops', 'expected_project_id': other.pk,
+            'items': [{'name': 'Correct project crop'}],
+        }, format='json')
+        self.assertEqual(matching.data['created_count'], 1)
 
     def test_in_file_duplicates_preview_and_apply(self) -> None:
         for confirm_updates in (False, True):

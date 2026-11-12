@@ -20,12 +20,12 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from crops.permissions import grant_public_library_moderator_access
 from crops.models import (
     CropSpecies,
     CropSpeciesTranslation,
     PublicLibraryModeratorRequest,
 )
+from crops.permissions import grant_public_library_moderator_access
 from farm.models import (
     Bed,
     Crop,
@@ -36,8 +36,8 @@ from farm.models import (
     Field,
     Location,
     PlantingPlan,
-    ProjectApiToken,
     Project,
+    ProjectApiToken,
     ProjectMembership,
     PublicCrop,
     PublicCropChangeProposal,
@@ -222,6 +222,19 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assert_list_query_count(
             '/openfarmplanner/api/crops/', 16, expected_rows=ROW_COUNT * 3,
         )
+
+    def test_crops_list_query_count_stays_flat_after_import_batches(self) -> None:
+        for batch in range(2):
+            response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+                'phase': 'crops', 'confirm_updates': False,
+                'items': [{'name': f'Batch {batch} crop {index}'} for index in range(3)],
+            }, format='json')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['created_count'], 3)
+            self.assert_list_query_count(
+                '/openfarmplanner/api/crops/', 16,
+                expected_rows=ROW_COUNT * 2 + (batch + 1) * 3,
+            )
 
     def test_crops_list_carries_species_search_names(self):
         """Page search resolves crop synonyms from `crop_species_search_names`;
