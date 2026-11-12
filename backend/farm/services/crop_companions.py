@@ -267,7 +267,7 @@ def _import_notes_map(value: Any) -> dict[str, str]:
     try:
         return validate_notes(value)
     except ValidationError as error:
-        raise ValidationError(str(error), code='companion_notes_invalid') from error
+        raise ValidationError('Invalid companion note language map.', code='companion_notes_invalid') from error
 
 
 def resolve_import_items(raw: Any, resolver: CompanionNameResolver) -> tuple[list[dict[str, Any]], list[str]]:

@@ -686,6 +686,22 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             response = self.client.patch(f'{COMPANIONS_URL}{relation.pk}/', {'notes': value}, format='json')
             self.assertEqual(response.status_code, 400, response.data)
 
+    def test_import_note_validation_does_not_expose_nested_exception_details(self) -> None:
+        from unittest.mock import patch
+
+        from rest_framework.exceptions import ValidationError
+
+        row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate', 'notes': {'fr': 'Source'}}]}
+        diagnostic = 'Internal note parser diagnostic'
+        with patch('farm.services.crop_companions.validate_notes', side_effect=ValidationError(diagnostic)):
+            preview = self.client.post(PREVIEW_URL, [row], format='json')
+            applied = self.client.post(APPLY_URL, {'items': [row]}, format='json')
+        self.assertEqual(preview.data['results'][0]['error_code'], 'companion_notes_invalid')
+        self.assertEqual(applied.data['errors'][0]['error_code'], 'companion_notes_invalid')
+        self.assertNotIn(diagnostic, str(preview.data))
+        self.assertNotIn(diagnostic, str(applied.data))
+        self.assertFalse(Crop.objects.filter(project=self.project, name='Gurke').exists())
+
     def test_import_note_merge_and_explicit_empty_replacement(self) -> None:
         relation = self.relate(self.tomato, self.potato)
         relation.notes = {'de': 'Quelle', 'fr': 'Ancienne source'}

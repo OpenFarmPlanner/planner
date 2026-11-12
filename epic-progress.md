@@ -453,3 +453,15 @@ correctly returned 409. The browser fixture now selects an official species
 without an existing public general entry. Its focused rerun passes against
 an already populated test database. This changes test setup only. Fresh CI
 on the follow-up head is required before merge; #1037 has not been started.
+
+All 10 required checks passed on `93876960`, including all production E2E
+shards, but normal merge was rejected by branch policy. No override or
+alternate merge API was used. Inspection found an unresolved CodeQL review
+thread on `_import_notes_map`: it converted a nested exception to public
+validation text. The wrapper now returns a fixed message while keeping the
+localized machine code. Its invalid-note tests and the new regression for
+nested-diagnostic suppression in preview/apply pass (three tests total).
+This review conversation was missed in the earlier readiness check; all
+review threads must now be checked explicitly, addressed, and resolved with
+fix evidence before normal merge. Fresh CI and CodeQL on the fix head remain
+required. #1037 still follows the verified #1031 merge.
