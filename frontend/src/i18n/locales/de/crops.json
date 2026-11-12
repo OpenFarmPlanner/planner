@@ -633,14 +633,6 @@
     "goToFieldsBeds": "Zu Anbauflächen",
     "createField": "Parzelle hinzufügen",
     "createSeason": "Saison anlegen",
-    "createPlantingPlanDisabled": {
-      "fields": "Du brauchst zuerst mindestens eine Parzelle, um einen Anbauplan zu erstellen.",
-      "beds": "Du brauchst zuerst mindestens ein Beet. Beete werden innerhalb einer Parzelle auf der Seite Anbauflächen hinzugefügt.",
-      "crops": "Du brauchst zuerst mindestens eine Kultur, um einen Anbauplan zu erstellen.",
-      "null": "Anbauplan hinzufügen"
-    },
-    "createPlantingPlanMissingFieldsTitle": "Um einen Anbauplan zu erstellen, brauchst du mindestens eine Parzelle.",
-    "createPlantingPlanMissingBedsTitle": "Um einen Anbauplan zu erstellen, brauchst du mindestens ein Beet.",
     "createPlantingPlanMissingBedsHint": "Für einen Anbauplan brauchst du zuerst mindestens ein Beet.",
     "createPlantingPlanMissingBedsTooltip": "Du brauchst zuerst mindestens ein Beet. Beete werden innerhalb einer Parzelle auf der Seite Anbauflächen hinzugefügt.",
     "createPlantingPlanMissingSeasonTooltip": "Lege zuerst eine Saison an."

@@ -646,14 +646,6 @@
     "goToFieldsBeds": "Aller aux surfaces de culture",
     "createField": "Ajouter une parcelle",
     "createSeason": "Créer une saison",
-    "createPlantingPlanDisabled": {
-      "fields": "Il vous faut d'abord au moins une parcelle pour créer une série.",
-      "beds": "Il vous faut d'abord au moins une planche. Les planches s'ajoutent à l'intérieur d'une parcelle, sur la page Surfaces de culture.",
-      "crops": "Il vous faut d'abord au moins une culture pour créer une série.",
-      "null": "Ajouter une série"
-    },
-    "createPlantingPlanMissingFieldsTitle": "Pour créer une série, il vous faut au moins une parcelle.",
-    "createPlantingPlanMissingBedsTitle": "Pour créer une série, il vous faut au moins une planche.",
     "createPlantingPlanMissingBedsHint": "Pour une série, il vous faut d'abord au moins une planche.",
     "createPlantingPlanMissingBedsTooltip": "Il vous faut d'abord au moins une planche. Les planches s'ajoutent à l'intérieur d'une parcelle, sur la page Surfaces de culture.",
     "createPlantingPlanMissingSeasonTooltip": "Créez d’abord une saison."

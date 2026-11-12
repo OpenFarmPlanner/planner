@@ -27,8 +27,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | PR [#1044](https://github.com/OpenFarmPlanner/planner/pull/1044) merged and verified at `ae32f649` |
 | 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | PR [#1046](https://github.com/OpenFarmPlanner/planner/pull/1046) merged and verified at `c6a0f75b` |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | PR [#1047](https://github.com/OpenFarmPlanner/planner/pull/1047) merged and verified at `4a10dcb7` |
-| 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | In progress on `feat/1029-dedicated-companion-editor` |
-| 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
+| 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | PR [#1048](https://github.com/OpenFarmPlanner/planner/pull/1048) merged and verified at `21e331c6` |
+| 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | In progress on `fix/1014-remove-crop-plot-empty-state` |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | Pending |
 | 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | Pending |
 | 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
@@ -70,21 +70,22 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1007 merged and verified through PR #1047 at
-`4a10dcb7` after all 10 required checks passed. #1007 is closed. The optional
-Claude code review failed before completion twice; native Codex rejected its
-request. No independent approval is claimed. Security was intentionally triage
-exempt, and its isolated reader passed. No required reviewer or unresolved
-thread existed; the normal pinned-head merge used no override. Verification:
-https://github.com/OpenFarmPlanner/planner/pull/1047#issuecomment-6830854810 .
+Current resume point: #1029 merged and verified through PR #1048 at
+`21e331c6` after all 10 required checks passed. #1029 is closed. PostgreSQL,
+six cross-browser jobs, the isolated security completion reader, build and
+dependency checks passed too. Backend: 2,561 passed, 96% coverage. The optional
+Claude code review failed before completion and native Codex rejected its
+current-head request. No independent approval is claimed. Security was
+intentionally triage exempt; no required approval or unresolved thread existed.
+Normal pinned-head merge, without overrides. Verification:
+https://github.com/OpenFarmPlanner/planner/pull/1048#issuecomment-6832090136 .
 
-Finish #1029 on `feat/1029-dedicated-companion-editor`, based on refreshed
-main `86e581f0` (including the automatic version bump after #1047). Complete
-CI/reviews and verify its normal merge before #1014. The remaining order,
-including #1038 before final integration, is unchanged. The earlier
-stop-after-#1032 instruction was fulfilled and superseded by resume. Inspect
-every review thread and required check. Provider failures remain visible;
-triage exemptions are distinct from completed security reviews.
+Finish #1014 on `fix/1014-remove-crop-plot-empty-state`, based on refreshed
+main `d1e127d0` (including the automatic version bump after #1048). Complete
+CI/reviews and verify normal merge before #1021, then #1038 and final integration.
+The earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
+Inspect every review thread and required check; provider failures remain visible
+and triage exemptions are distinct from completed security reviews.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -844,3 +845,32 @@ Locate the PR for this branch and finish every required check and review
 thread, then perform a normal pinned-head merge and verify fetched main/tree
 and issue closure before #1014. Optional provider failures must remain visible;
 no independent approval or completed security scan may be inferred from them.
+
+
+## #1014 implementation
+
+The plot/bed prerequisite callout was rendered once by Crops.tsx outside the
+crop detail component, so removing that container removes it from list and
+detail contexts at every breakpoint. Its private styles, setup-action mapping,
+and now-unused callout-only titles/description group are removed in all four
+languages. Crop detail fields, actionable crop onboarding, planning-page setup
+guidance, prerequisite checks and existing action tooltips are unchanged.
+Regression coverage checks missing plots, plots without beds and full
+prerequisites; browser captures include the bottom of crop details. Validation,
+PR, CI/reviews and merge are pending. #1021 must wait for verified merge.
+
+
+#1014 local validation completed: 191 targeted unit/i18n tests, TypeScript,
+production build, all 20 prerenders and source-only make quality pass. Existing
+Crops.tsx effect warnings and accepted Ruff/Madge findings are unchanged;
+backend is unchanged and its full suite remains required in CI. Five browser
+cases pass (2.7m), covering eight main routes at 375/768/1024/1440 px plus crop
+detail top/bottom at those sizes and 800x375 landscape. All 42 captures were
+inspected. The callout is absent from the DOM and the detail bottom; existing
+sections and legitimate planning/setup guidance remain. Shared shell/mobile
+layouts are unchanged apart from the requested removal; known shared-shell
+issues remain for final integration. Open the PR for this branch, finish every
+required check/review thread, merge normally and verify before #1021.
+
+Post-merge CI for #1048's automatic release commit `d1e127d0` also passed:
+https://github.com/OpenFarmPlanner/planner/actions/runs/43278324270 .

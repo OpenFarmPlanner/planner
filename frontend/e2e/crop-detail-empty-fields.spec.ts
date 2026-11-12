@@ -71,8 +71,12 @@ test('hides empty crop details on the crops page at every viewport', async ({ pa
     await expect(sections.getByText('0 Jahre')).toBeVisible();
     await expect(sections.getByText('Keine Angabe')).toHaveCount(0);
     await expect(page.getByRole('switch')).toHaveCount(0);
+    await expect(page.getByText('Um einen Anbauplan zu erstellen, brauchst du mindestens eine Parzelle.', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Um einen Anbauplan zu erstellen, brauchst du mindestens ein Beet.', { exact: true })).toHaveCount(0);
     await expectNoHorizontalOverflow(page, viewport.key);
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`crop-detail-${viewport.key}.png`) });
+    await sections.getByRole('heading', { name: 'Lieferantendaten', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`crop-detail-bottom-${viewport.key}.png`) });
   }
 });
 

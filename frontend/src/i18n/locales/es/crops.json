@@ -646,14 +646,6 @@
     "goToFieldsBeds": "Ir a las superficies de cultivo",
     "createField": "Añadir parcela",
     "createSeason": "Crear temporada",
-    "createPlantingPlanDisabled": {
-      "fields": "Primero necesitas al menos una parcela para crear una serie.",
-      "beds": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
-      "crops": "Primero necesitas al menos un cultivo para crear una serie.",
-      "null": "Añadir serie"
-    },
-    "createPlantingPlanMissingFieldsTitle": "Para crear una serie necesitas al menos una parcela.",
-    "createPlantingPlanMissingBedsTitle": "Para crear una serie necesitas al menos un bancal.",
     "createPlantingPlanMissingBedsHint": "Para una serie necesitas primero al menos un bancal.",
     "createPlantingPlanMissingBedsTooltip": "Primero necesitas al menos un bancal. Los bancales se añaden dentro de una parcela, en la página Superficies de cultivo.",
     "createPlantingPlanMissingSeasonTooltip": "Crea primero una temporada."
