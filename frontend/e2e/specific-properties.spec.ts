@@ -115,7 +115,7 @@ for (const [language, title] of [['fr', 'Propriétés propres à la culture'], [
   });
 }
 
-test('first-variety values publish, edit and import independently of the project copy', async ({ page, request }, testInfo) => {
+test('first-variety values publish, edit and import independently of the project copy', async ({ page, request, browser }, testInfo) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'specific-library', { loginAsAdmin: true });
@@ -149,7 +149,13 @@ test('first-variety values publish, edit and import independently of the project
   await expect(page.getByText('Mehligkochend', { exact: true })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('properties-library-1440.png') });
   expect((await apiRequest<Crop>(page, 'GET', `/crops/${projectVariety.id}/`)).specific_properties).toEqual({ cooking_type: 'waxy' });
-  await loginWithDeterministicProject(page, request, 'specific-library-import', { loginAsAdmin: true });
-  const imported = await apiRequest<{ crop: Crop }>(page, 'POST', `/public-crops/${published.public_crop.id}/import/`, {});
-  expect(imported.crop.specific_properties).toEqual({ cooking_type: 'floury' });
+  const importContext = await browser.newContext({ baseURL: new URL(page.url()).origin, locale: 'de-DE' });
+  try {
+    const importPage = await importContext.newPage();
+    await loginWithDeterministicProject(importPage, request, 'specific-library-import', { loginAsAdmin: true });
+    const imported = await apiRequest<{ crop: Crop }>(importPage, 'POST', `/public-crops/${published.public_crop.id}/import/`, {});
+    expect(imported.crop.specific_properties).toEqual({ cooking_type: 'floury' });
+  } finally {
+    await importContext.close();
+  }
 });
