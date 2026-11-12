@@ -2,10 +2,12 @@
 
 from typing import Any
 
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import serializers
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
+from farm.companion_notes import legacy_note, merge_notes, note_language, notes_of, validate_notes
 from farm.models import Crop, CropCompanion
 from farm.services.crop_companions import active_relations, is_kultur
 from farm.utils import normalize_text
@@ -18,6 +20,20 @@ class CropCompanionSerializer(serializers.ModelSerializer):
     the same pair cannot exist twice.
     """
 
+    note = serializers.CharField(required=False, allow_blank=True, max_length=500, trim_whitespace=False)
+    note_language_code = serializers.CharField(required=False, write_only=True)
+
+    def validate_notes(self, value: Any) -> dict[str, str]:
+        return validate_notes(value)
+
+    def to_representation(self, instance: CropCompanion) -> dict[str, Any]:
+        result = super().to_representation(instance)
+        language = note_language(self.context)
+        result['notes'] = notes_of(instance)
+        result['note'] = result['notes'].get(language, '')
+        result['note_language_code'] = language
+        return result
+
     class Meta:
         model = CropCompanion
         fields = [
@@ -29,6 +45,8 @@ class CropCompanionSerializer(serializers.ModelSerializer):
             'kind',
             'reason',
             'note',
+            'notes',
+            'note_language_code',
             'created_at',
             'updated_at',
         ]
@@ -62,8 +80,23 @@ class CropCompanionSerializer(serializers.ModelSerializer):
         if 'companion_text' in attrs:
             attrs['companion_text'] = (attrs['companion_text'] or '').strip()
 
+        explicit_language = attrs.pop('note_language_code', None)
+        language = note_language(self.context, explicit_language)
+        self._note_patch = {key: attrs[key] for key in ('notes', 'note') if key in attrs}
+        if explicit_language is not None:
+            self._note_patch['note_language_code'] = language
+        self._note_language = language
+        notes = merge_notes(notes_of(self.instance) if self.instance else {}, self._note_patch, language)
+        attrs.update(notes=notes, note=legacy_note(notes))
         self._reject_duplicate({**merged, **attrs})
         return attrs
+
+    @transaction.atomic
+    def update(self, instance: CropCompanion, validated_data: dict[str, Any]) -> CropCompanion:
+        locked = CropCompanion.objects.select_for_update().get(pk=instance.pk)
+        notes = merge_notes(notes_of(locked), self._note_patch, self._note_language)
+        validated_data.update(notes=notes, note=legacy_note(notes))
+        return super().update(locked, validated_data)
 
     def _validate_kultur(self, field_name: str, crop: Crop | None) -> None:
         """A relation's crop must be an active Kultur of the active project."""
@@ -163,7 +196,7 @@ class CropCompanionReplaceSerializer(serializers.Serializer):
                 'companion_text': item.get('companion_text') or '',
                 'kind': item.get('kind'),
                 'reason': item.get('reason', CropCompanion.REASON_OTHER),
-                'note': item.get('note') or '',
+                **{key: item[key] for key in ('note', 'notes', 'note_language_code') if key in item},
                 'crop': kultur.id,
             }
             key = _target_key(data)

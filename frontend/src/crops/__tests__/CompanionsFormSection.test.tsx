@@ -56,13 +56,28 @@ describe('CompanionsSection in the crop form', () => {
     api.listForCrop.mockResolvedValue({ data: [PAIR] });
   });
 
+  it('edits only explicitly selected note languages and retains drafts when switching', async () => {
+    api.listForCrop.mockResolvedValue({ data: [{ ...PAIR, note_language_code: 'de', notes: { de: 'Quelle', en: 'Source' }, note: 'Quelle' }] });
+    render(<Harness crop={TOMATO} isKulturForm />);
+    await screen.findByDisplayValue('Quelle');
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sprache der Nachbarnotizen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'English' }));
+    expect(screen.getByLabelText('Notiz')).toHaveValue('Source');
+    fireEvent.change(screen.getByLabelText('Notiz'), { target: { value: 'Updated source' } });
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sprache der Nachbarnotizen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Deutsch' }));
+    expect(screen.getByLabelText('Notiz')).toHaveValue('Quelle');
+    expect(screen.getByTestId('dirty')).toHaveTextContent('true');
+    expect(payload()[0].notes).toEqual({ en: 'Updated source' });
+  });
+
   it("loads the Kultur's neighbours into their group and marks a shared pair", async () => {
     render(<Harness crop={TOMATO} isKulturForm />);
 
     const badGroup = await screen.findByTestId('companion-form-group-bad');
     const row = await within(badGroup).findByTestId('crop-companion-form-row');
     expect(api.listForCrop).toHaveBeenCalledWith(1);
-    expect(within(row).getByRole('combobox', { name: /Nachbar/ })).toHaveValue('Kartoffel');
+    expect(within(row).getByRole('combobox', { name: /^Nachbar$/ })).toHaveValue('Kartoffel');
     expect(within(row).getByTestId('companion-shared-pair')).toHaveAccessibleName('Gilt auch für Kartoffel.');
     // A group without rows shows no heading; its add button stays below the groups.
     expect(screen.queryByTestId('companion-form-group-good')).toBeNull();
@@ -103,14 +118,14 @@ describe('CompanionsSection in the crop form', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
     const goodRow = within(screen.getByTestId('companion-form-group-good')).getByTestId('crop-companion-form-row');
-    fireEvent.change(within(goodRow).getByRole('combobox', { name: /Nachbar/ }), { target: { value: 'Basil' } });
+    fireEvent.change(within(goodRow).getByRole('combobox', { name: /^Nachbar$/ }), { target: { value: 'Basil' } });
     fireEvent.click(await screen.findByRole('option', { name: 'Basilikum' }));
     const badRow = within(screen.getByTestId('companion-form-group-bad')).getByTestId('crop-companion-form-row');
     fireEvent.click(within(badRow).getByRole('button', { name: 'Nachbar entfernen' }));
 
     expect(screen.getByTestId('dirty')).toHaveTextContent('true');
     expect(payload()).toEqual([{
-      companion_crop: 3, companion_family: null, companion_text: '', kind: 'good', reason: 'other', note: '',
+      companion_crop: 3, companion_family: null, companion_text: '', kind: 'good', reason: 'other', note: '', note_language_code: 'de',
     }]);
   });
 
@@ -130,7 +145,7 @@ describe('CompanionsSection in the crop form', () => {
     await waitFor(() => expect(api.listForCrop).toHaveBeenCalled());
 
     fireEvent.click(await screen.findByRole('button', { name: 'Schlechten Nachbarn hinzufügen' }));
-    fireEvent.change(screen.getByRole('combobox', { name: /Nachbar/ }), { target: { value: 'Salbei' } });
+    fireEvent.change(screen.getByRole('combobox', { name: /^Nachbar$/ }), { target: { value: 'Salbei' } });
 
     expect(payload()).toEqual([expect.objectContaining({ companion_crop: null, companion_text: 'Salbei', kind: 'bad' })]);
   });
@@ -142,7 +157,7 @@ describe('CompanionsSection in the crop form', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
     const goodRows = within(screen.getByTestId('companion-form-group-good')).getAllByTestId('crop-companion-form-row');
-    fireEvent.change(within(goodRows[1]).getByRole('combobox', { name: /Nachbar/ }), { target: { value: 'Kartoffel' } });
+    fireEvent.change(within(goodRows[1]).getByRole('combobox', { name: /^Nachbar$/ }), { target: { value: 'Kartoffel' } });
     fireEvent.click(screen.getByRole('button', { name: 'validate' }));
 
     expect(within(goodRows[0]).getByText('Bitte wähle einen Nachbarn.')).toBeInTheDocument();
@@ -192,7 +207,7 @@ describe('useCompanionFormRows in the library form', () => {
 
     expect(result.current.allowFreeText).toBe(false);
     expect(result.current.options.map((option) => option.label)).toEqual(['Fenchel']);
-    expect(formRowsToLibraryItems(result.current.rows)).toEqual(companions);
+    expect(formRowsToLibraryItems(result.current.rows)).toEqual(companions.map((item) => ({ ...item, note_language_code: 'de' })));
     act(() => result.current.setRows([]));
     expect(result.current.dirty).toBe(true);
   });
@@ -213,7 +228,7 @@ const openListLines = () => within(screen.getByRole('listbox'))
 
 const openNeighborList = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
-  fireEvent.mouseDown(screen.getByRole('combobox', { name: /Nachbar/ }));
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /^Nachbar$/ }));
   await screen.findByRole('listbox');
 };
 
@@ -273,7 +288,7 @@ describe('neighbour options grouped by plant family', () => {
 
       fireEvent.click(await screen.findByRole('option', { name: 'Nachtschattengewächse (ganze Familie)' }));
 
-      expect(screen.getByRole('combobox', { name: /Nachbar/ })).toHaveValue('Nachtschattengewächse');
+      expect(screen.getByRole('combobox', { name: /^Nachbar$/ })).toHaveValue('Nachtschattengewächse');
       expect(payload()).toEqual([expect.objectContaining({ companion_family: 'Solanaceae', companion_crop: null })]);
     });
 
@@ -282,7 +297,7 @@ describe('neighbour options grouped by plant family', () => {
       await openNeighborList();
       await screen.findByRole('option', { name: 'Tomate' });
 
-      fireEvent.change(screen.getByRole('combobox', { name: /Nachbar/ }), { target: { value: 'Toma' } });
+      fireEvent.change(screen.getByRole('combobox', { name: /^Nachbar$/ }), { target: { value: 'Toma' } });
 
       await waitFor(() => expect(openListLines()).toEqual(['Nachtschattengewächse', 'Tomate']));
     });
@@ -291,7 +306,7 @@ describe('neighbour options grouped by plant family', () => {
       render(<ProjectHarness />);
       await openNeighborList();
       await screen.findByRole('option', { name: 'Tomate' });
-      const input = screen.getByRole('combobox', { name: /Nachbar/ });
+      const input = screen.getByRole('combobox', { name: /^Nachbar$/ });
 
       fireEvent.change(input, { target: { value: 'Kreuz' } });
       await waitFor(() => expect(openListLines()).toEqual(['Kreuzblütler', 'Kreuzblütler (ganze Familie)']));

@@ -57,7 +57,7 @@ export function CompanionKindColumns({ items }: { items: readonly CompanionListI
                   </Link>
                 ) : item.label}
                 {item.detail ? (
-                  <Typography component="span" variant="body2" color="text.secondary">
+                  <Typography component="span" variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
                     {` · ${item.detail}`}
                   </Typography>
                 ) : null}

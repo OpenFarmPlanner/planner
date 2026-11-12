@@ -16,6 +16,7 @@ import {
   storeExportFormat,
   type CropExportFormat,
 } from '../crops/exportFormatPreference';
+import { CompanionNoteLanguageField } from '../crops/CompanionNoteLanguageField';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 type ExportScope = 'current' | 'all';
@@ -32,6 +33,8 @@ type CropsExportDialogProps = {
   onClose: () => void;
   onExport: (scope: ExportScope, format: ExportFormat) => Promise<void>;
   t: Translator;
+  noteLanguage?: string;
+  onNoteLanguageChange?: (language: string) => void;
 };
 
 export function CropsExportDialog({
@@ -41,6 +44,7 @@ export function CropsExportDialog({
   onClose,
   onExport,
   t,
+  noteLanguage = 'de', onNoteLanguageChange,
 }: CropsExportDialogProps) {
   const [scope, setScope] = useState<ExportScope>(initialScope);
   const [format, setFormat] = useState<ExportFormat>(readStoredExportFormat);
@@ -68,6 +72,8 @@ export function CropsExportDialog({
       <DialogTitle>{t('export.dialogTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 0.5 }}>
+          {onNoteLanguageChange && format !== 'json' ? <CompanionNoteLanguageField value={noteLanguage}
+            onChange={onNoteLanguageChange} disabled={exporting} mode="export" /> : null}
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               {t('export.scopeLabel')}

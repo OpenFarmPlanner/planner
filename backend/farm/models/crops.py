@@ -2083,6 +2083,7 @@ class CropCompanion(TimestampedModel):
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
     reason = models.CharField(max_length=30, choices=REASON_CHOICES, default=REASON_OTHER)
     note = models.CharField(max_length=500, blank=True)
+    notes = models.JSONField(default=dict, blank=True, help_text='Companion notes by language; no fallback between languages.')
 
     class Meta:
         ordering = ['crop_id', 'id']

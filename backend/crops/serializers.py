@@ -17,17 +17,18 @@ from config.languages import (
     normalize_language_tag,
     resolve_request_language,
 )
+from farm.companion_notes import localize_companions, note_language
 from farm.crops.serializers.public import get_public_user_label
 from farm.models import PublicCrop
 
 from . import services
-from .plant_family_serializers import PlantFamilyField, plant_family_display_name
 from .models import (
     SUPPORTED_REGIONAL_NAME_KEYS,
     CropSpecies,
     CropSpeciesTranslation,
     PublicLibraryModeratorRequest,
 )
+from .plant_family_serializers import PlantFamilyField, plant_family_display_name
 
 
 def get_request_language(context: dict) -> str:
@@ -452,6 +453,11 @@ class CropSerializer(serializers.ModelSerializer):
     crop_family = PlantFamilyField(read_only=True)
     crop_family_display_name = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
+    companions = serializers.SerializerMethodField()
+
+    def get_companions(self, obj: PublicCrop) -> list[dict]:
+        return localize_companions(obj.companions, note_language(self.context), obj.original_language_code or 'de')
+
     display_language_code = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
     description_language_code = serializers.SerializerMethodField()

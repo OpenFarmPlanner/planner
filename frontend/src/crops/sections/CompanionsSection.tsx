@@ -16,6 +16,7 @@ import {
 
 import type { CompanionKind, CompanionReason } from '../../api/types';
 import { AppTooltip } from '../../components/AppTooltip';
+import { CompanionNoteLanguageField } from '../CompanionNoteLanguageField';
 import { useTranslation } from '../../i18n';
 import { CompanionKindColumns, CompanionKindHeading } from '../CompanionKindColumns';
 import { COMPANION_KIND_STYLES } from '../companionKindStyles';
@@ -91,7 +92,12 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
   }
 
   const updateRow = (key: string, patch: Partial<CompanionFormRow>) => {
-    setRows(rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+    setRows(rows.map((row) => row.key === key ? {
+      ...row, ...patch, ...(patch.note !== undefined && row.noteLanguage ? {
+        notes: { ...row.notes, [row.noteLanguage]: patch.note },
+        noteChanges: { ...row.noteChanges, [row.noteLanguage]: patch.note },
+      } : {}),
+    } : row));
   };
 
   return (
@@ -100,6 +106,9 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {t(allowFreeText ? 'companions.form.description' : 'companions.form.libraryDescription')}
       </Typography>
+      {state.setNoteLanguage ? <Box sx={{ mb: 1 }}><CompanionNoteLanguageField
+        value={state.noteLanguage ?? 'de'} onChange={state.setNoteLanguage} disabled={disabled}
+      /></Box> : null}
       {state.failed ? <Alert severity="error" sx={{ mb: 1 }}>{t('companions.loadError')}</Alert> : null}
       <Stack spacing={1.5}>
         {/* A group shows only with rows; its heading would otherwise announce an empty list. */}
@@ -143,7 +152,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
                 // Each label stays on one line; the buttons wrap below each other instead.
                 sx={{ whiteSpace: 'nowrap' }}
                 disabled={disabled || !state.loaded}
-                onClick={() => setRows([...rows, emptyCompanionFormRow(kind)])}
+                onClick={() => setRows([...rows, { ...emptyCompanionFormRow(kind), noteLanguage: state.noteLanguage }])}
               >
                 {t(ADD_LABEL_KEYS[kind])}
               </Button>
@@ -286,6 +295,7 @@ function CompanionFormRowFields({
         size="small"
         sx={{ flex: { xs: '1 1 0', sm: '1 1 120px' }, minWidth: 0, order: 4 }}
         label={t('companions.form.note')}
+        multiline maxRows={4}
         value={row.note}
         disabled={disabled}
         slotProps={{ htmlInput: { maxLength: 500 } }}

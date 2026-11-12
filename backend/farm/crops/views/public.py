@@ -35,8 +35,6 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
-from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
-from farm.services.public_discussions import delete_comment_by_author, remove_comment_by_moderation
 from farm.services.public_crop_trade_names import (
     TradeNameConflictError,
     TradeNameEditConflictError,
@@ -71,6 +69,8 @@ from farm.services.public_crops import (
     restore_public_crop_version,
     update_public_crop_directly,
 )
+from farm.services.public_discussions import delete_comment_by_author, remove_comment_by_moderation
+from farm.services.public_pseudonyms import number_anonymous_authors, number_topic_authors
 
 from ..serializers import (
     CropSerializer,
@@ -383,7 +383,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         public_crop = self.get_object()
         if requires_moderation_queue(request):
             return self._queue_edit_proposal(request, public_crop)
-        serializer = PublicCropUpdateSerializer(public_crop, data=request.data, partial=partial)
+        serializer = PublicCropUpdateSerializer(public_crop, data=request.data, partial=partial, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         validated_data = dict(serializer.validated_data)
         base_version = validated_data.pop('base_version', None)
@@ -953,6 +953,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             else:
                 update_serializer = PublicCropUpdateSerializer(
                     public_crop, data=proposal.proposed_data, partial=True,
+                    context={'companion_legacy_language': public_crop.original_language_code or 'de'},
                 )
                 update_serializer.is_valid(raise_exception=True)
                 update_data = dict(update_serializer.validated_data)

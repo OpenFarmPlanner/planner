@@ -348,3 +348,12 @@ with SET_NULL so task history survives template removal.
 CropTaskTemplate optionally stores repeat_interval_days, repeat_until
 (count/harvest_start/harvest_end), and repeat_count. Task.occurrence_index
 identifies each independently completable row regardless of its calculated date.
+
+## Companion note languages
+
+`CropCompanion.notes` stores note/source prose by language; public companions
+carry the same `notes` map in their existing JSON list. Identity, kind and reason
+remain shared and language independent. The compatibility `note` field is
+resolved to the requested language in API responses, without fallback. See
+[Companion planting](./crop-companions.md) for locale patches, migration,
+reciprocal pairs and reversible ordinary spreadsheet cells.

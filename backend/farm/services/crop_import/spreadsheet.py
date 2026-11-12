@@ -372,6 +372,16 @@ def _duplicate_row_indices(rows: list) -> dict[int, int]:
     return duplicates
 
 
+def _import_error_details(error: Exception) -> dict[str, Any]:
+    details: dict[str, Any] = {'error': str(error)}
+    if isinstance(error, SpecificPropertyImportError):
+        details['error_code'] = 'specific_properties_invalid'
+    code_reader = getattr(error, 'get_codes', None)
+    if callable(code_reader) and 'companion_notes_invalid' in str(code_reader()):
+        details['error_code'] = 'companion_notes_invalid'
+    return details
+
+
 def preview_crop_import(project: Project, rows: list) -> list[dict]:
     """One outcome per row — `create`, `update_candidate`, `duplicate`, or an error.
 
@@ -434,20 +444,20 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
         except Exception as error:
             results.append({
                 'index': idx,
-                'error': str(error),
-                **({'error_code': 'specific_properties_invalid'} if isinstance(error, SpecificPropertyImportError) else {}),
+                **_import_error_details(error),
                 'import_data': crop_data,
             })
 
     return results
 
 
-def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) -> dict[str, Any]:
+def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool, companion_note_language: str = 'de', replace_companion_notes: bool = False) -> dict[str, Any]:
     """Create the rows that are new and, when confirmed, update the ones that match.
 
     Neighbours named by the imported rows are added afterwards, so a neighbour
     created by a later row of the same file is found.
     """
+    companion_resolver = CompanionNameResolver(project.id, extra_names=[row.get('name') for row in rows if _is_importable_row(row)])
     duplicates = _duplicate_row_indices(rows)
     created_count = 0
     updated_count = 0
@@ -464,6 +474,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
 
         try:
             companions = _pop_companions(crop_data)
+            preview_row_companions(companion_resolver, companions)
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
@@ -520,8 +531,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                     errors.append({'index': idx, 'error': serializer.errors})
         except Exception as error:
             errors.append({
-                'index': idx, 'error': str(error),
-                **({'error_code': 'specific_properties_invalid'} if isinstance(error, SpecificPropertyImportError) else {}),
+                'index': idx, **_import_error_details(error),
             })
 
     summary: dict[str, Any] = {
@@ -534,7 +544,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
     if timing_window_issues:
         summary['timing_window_issues'] = timing_window_issues
     if companion_rows:
-        summary['companions'] = apply_import_companions(project.id, companion_rows).as_dict()
+        summary['companions'] = apply_import_companions(project.id, companion_rows, language=companion_note_language, replace_notes=replace_companion_notes).as_dict()
     # Once for the whole file: neighbours entered as free text before these
     # crops existed now link to them.
     link_free_text_companions(project.id)

@@ -164,7 +164,7 @@ export const cropAPI = {
   projectRestore: (history_id: number) => http.post<{ detail: string }>('/history/project/restore/', { history_id }),
   revertBatch: (batch_id: number) => http.post<{ detail: string }>(`/history/batch/${batch_id}/revert/`, {}),
   // Legacy import flow split into preview/apply endpoints.
-  importPreview: (data: Record<string, unknown>[]) => http.post<{
+  importPreview: (data: Record<string, unknown>[], companionNoteLanguage?: string) => http.post<{
     results: Array<{
       index: number;
       status: 'create' | 'update_candidate' | 'duplicate';
@@ -173,19 +173,22 @@ export const cropAPI = {
       diff?: Array<{ field: string; current: unknown; new: unknown }>;
       import_data: Record<string, unknown>;
       error?: string;
+      error_code?: string;
       /** Only for rows naming neighbours: the names that would stay free text. */
       companions?: CompanionImportPreview;
     }>;
-  }>('/crops/import/preview/', data),
+  }>('/crops/import/preview/', data, { params: companionNoteLanguage ? { companion_note_language: companionNoteLanguage } : undefined }),
   importApply: (data: {
     items: Record<string, unknown>[];
     confirm_updates: boolean;
+    companion_note_language?: string;
+    replace_companion_notes?: boolean;
   }) => http.post<{
     created_count: number;
     updated_count: number;
     skipped_count: number;
     duplicate_count?: number;
-    errors: Array<{ index: number; error: unknown }>;
+    errors: Array<{ index: number; error: unknown; error_code?: string }>;
     companions?: CompanionImportSummary;
   }>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>

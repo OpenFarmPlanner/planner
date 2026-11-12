@@ -920,6 +920,8 @@ export interface PublicCropCompanion {
   kind: CompanionKind;
   reason: CompanionReason;
   note: string;
+  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  note_language_code?: string;
 }
 
 export interface PublishPublicCropPreview {
@@ -1258,15 +1260,18 @@ export interface CropCompanion {
   kind: CompanionKind;
   reason: CompanionReason;
   note: string;
+  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  note_language_code?: string;
 }
 
 /** One neighbour of `PUT /crop-companions/replace/`, named from the Kultur's side. */
 export type CompanionReplaceItem = Pick<
   CropCompanion,
-  'companion_crop' | 'companion_family' | 'companion_text' | 'kind' | 'reason' | 'note'
+  'companion_crop' | 'companion_family' | 'companion_text' | 'kind' | 'reason' | 'note' | 'note_language_code' | 'notes'
 >;
 
 export interface CompanionImportPreview {
+  warnings?: string[];
   count: number;
   unresolved: string[];
 }
@@ -1284,6 +1289,9 @@ export interface CompanionImportItem {
   name: string;
   reason: CompanionReason;
   note: string;
+  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  note_language_code?: string;
+  legacy?: boolean;
 }
 
 export interface CompanionFinding {

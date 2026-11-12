@@ -1,6 +1,7 @@
 import type { PublicCrop } from '../../../api/types';
 import { CompanionKindColumns } from '../../../crops/CompanionKindColumns';
 import { companionReasonLabelKey, type LibraryCompanionRow } from '../../../crops/companions';
+import { normalizeLanguageTag } from '../../../i18n/languages';
 import { useTranslation } from '../../../i18n';
 import { DetailSection } from './DetailPrimitives';
 
@@ -11,7 +12,8 @@ interface LibraryCompanionsSectionProps {
 
 /** "Mischkultur" on the library page, styled as in the crop details; a neighbour with an entry links to it. */
 export function LibraryCompanionsSection({ rows, onSelectEntry }: LibraryCompanionsSectionProps) {
-  const { t } = useTranslation('crops');
+  const { t, i18n } = useTranslation('crops');
+  const language = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
   return (
     <DetailSection title={t('companions.title')}>
       <div data-testid="library-companions-section">
@@ -23,7 +25,7 @@ export function LibraryCompanionsSection({ rows, onSelectEntry }: LibraryCompani
               key: `${row.kind}-${row.label}-${index}`,
               kind: row.kind,
               label: row.label,
-              detail: [reason, row.note].filter(Boolean).join(': '),
+              detail: [reason, row.notes ? row.notes[language] ?? '' : row.note].filter(Boolean).join(': '),
               onSelect: entry ? () => onSelectEntry(entry) : undefined,
             };
           })}

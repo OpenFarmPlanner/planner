@@ -20,8 +20,9 @@ checks/reviews; do not implement multiple issues simultaneously.
 | --- | --- | --- | --- |
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
-| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036), implemented; finish CI/review and verify merge, then stop |
-| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
+| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036) merged and verified at `8317a536` |
+| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | In progress on `feat/1031-localized-companion-notes` |
+| 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | Pending; before #1008 |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
@@ -67,13 +68,13 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1035 is merged and verified at `b96f46b7`; #1028 is
-closed. #1032 is implemented on `feat/1032-crop-specific-properties` in
-PR #1036. Finish its CI/reviews, merge and verify, then stop. This handoff
-is committed before merge: always check #1036 on GitHub for its final state
-and verified merge SHA; final validation/merge evidence is in PR comments. User steering on
-2026-11-12: stop after the next merge (#1032); do not start #1031 until
-explicitly resumed.
+Current resume point: user resumed the campaign on 2026-11-12 after #1036
+was merged and verified at `8317a536` (#1032 closed). Implement #1031 on
+`feat/1031-localized-companion-notes`, then finish CI/reviews, merge normally
+and verify. User steering during #1031: insert #1037 immediately after that
+merge, before #1008; then return to the dependency-aware order above. Do not
+start the next issue before the preceding merge is verified. The earlier
+stop-after-#1032 instruction was fulfilled and is now superseded by resume.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -398,3 +399,30 @@ No PR has been opened yet.
   completed: ESLint 0, Madge 1 (accepted existing circular report), Ruff 1
   (repository report), with the backend failure/correction detailed above.
   Complete-suite CI and automated review remain mandatory before merge.
+
+
+## #1031 localized companion notes — implementation and validation
+
+Resumed after the verified #1036 merge. The implementation adds four-language
+companion note maps, explicit editing/import/export language selection, strict
+missing-language display, and reversible grouped CSV/XLSX/ODS cells. Migration
+0141 preserves private legacy prose in German and public prose in its declared
+original language; old history snapshots remain restorable. Update/import and
+publication paths merge language patches without replacing other versions.
+Legacy dash/colon parsing requires exact known-name resolution and warns when
+ambiguous. Existing relations and structured reasons survive additive import.
+
+Validation so far: TypeScript and Vite builds pass; all 20 public pages were
+prerendered using the installed Chrome binary through a temporary local runner.
+Focused frontend runs pass (148 core tests and 121 UI/locale tests). Focused
+backend regression runs cover library/history flows and query budgets; the
+latest localized/migration run passed 18 tests. A final API-map regression is
+being checked after review. Browser editing passed at 375, 768, 1024, 1440 px
+and 800x375, with French/Spanish phone forms and library missing-language
+behavior; the explicit French CSV import/export flow passes. Responsive route
+captures, final dialog captures, full make quality, CI and exact-head reviews
+remain pending. Shared shell findings remain assigned to final integration.
+
+User steering: immediately after #1031 merges and is verified, implement #1037
+(rename conflicts return 409 with atomic rollback), then continue with #1008
+and the remaining ordered campaign. #1037 is an issue awaiting its own PR.

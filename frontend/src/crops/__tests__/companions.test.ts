@@ -55,20 +55,20 @@ describe('parseCompanionCell', () => {
     },
   );
 
-  it('keeps a spaced dash as part of the name', () => {
-    expect(parseCompanionCell('Salat - Pflücksalat; Tomate – Roma')).toEqual(names('Salat - Pflücksalat', 'Tomate – Roma'));
+  it('defers spaced-dash groups for exact backend name resolution', () => {
+    expect(parseCompanionCell('Salat - Pflücksalat; Tomate – Roma')).toEqual([{ name: 'Salat - Pflücksalat; Tomate – Roma', reason: 'other', note: '', legacy: true }]);
   });
 
-  it('reads back what formatCompanionCell writes, names only', () => {
+  it('writes one note group per line and reads neighbors and notes back', () => {
     const items = [
       { name: 'Basilikum', reason: 'pest_control', note: '' },
       { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' },
       { name: 'Kräuter (Dill, Basilikum)', reason: 'other', note: '' },
     ] as const;
 
-    expect(formatCompanionCell(items)).toBe('Basilikum; Tagetes; Kräuter (Dill, Basilikum)');
+    expect(formatCompanionCell(items)).toBe('Basilikum; "Kräuter (Dill, Basilikum)"\nTagetes | lockt Schnecken ab');
     expect(parseCompanionCell(formatCompanionCell(items)))
-      .toEqual(names('Basilikum', 'Tagetes', 'Kräuter (Dill, Basilikum)'));
+      .toEqual([...names('Basilikum', 'Kräuter (Dill, Basilikum)'), { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' }]);
     expect(formatCompanionCell([])).toBeNull();
   });
 });

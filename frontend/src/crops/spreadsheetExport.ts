@@ -30,6 +30,7 @@ export const buildSheetData = (
   crops: Crop[],
   t: SheetT,
   companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
+  companionNoteLanguage = 'de',
 ): (string | number | null)[][] => {
   const relevantProperties = new Set(crops.flatMap((crop) => Object.keys(specificPropertyDefinitions(crop.specific_property_profile))));
   const cropColumns = getLocalizedCropColumns(t).filter((column) => !column.key.startsWith(SPECIFIC_PROPERTY_PREFIX)
@@ -57,7 +58,7 @@ export const buildSheetData = (
       if (propertyKey && !specificPropertyDefinitions(crop.specific_property_profile)[propertyKey]) return null;
       const raw = propertyKey ? crop.specific_properties?.[propertyKey] : portable[col.key];
       if (raw === undefined || raw === null) return null;
-      if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good']);
+      if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], companionNoteLanguage);
       if (Array.isArray(raw)) {
         return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(', ') : null;
       }
@@ -96,8 +97,9 @@ export const exportCropsToSpreadsheet = (
   filename: string,
   t: SheetT,
   companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
+  companionNoteLanguage = 'de',
 ): void => {
-  downloadSpreadsheet(buildSheetData(crops, t, companionsByCrop), format, filename);
+  downloadSpreadsheet(buildSheetData(crops, t, companionsByCrop, companionNoteLanguage), format, filename);
 };
 
 export const buildSpreadsheetFilename = (
