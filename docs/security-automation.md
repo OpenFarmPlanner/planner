@@ -118,7 +118,7 @@ malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 | `claude_failed` / `claude_allowance_exhausted` | No completed review. Claude's security job fails; only a real allowance error routes to Codex. |
 | Codex request delivered | Delivery job may succeed, explicitly named **not review completion**; this grants no completion. |
 | `codex_rejected` | The trusted connector bot rejected the delivered current-head request; quality fails. |
-| `codex_pending` / `review_pending` | No verified completion; quality waits up to 20 minutes, then fails as `timed_out`. |
+| `codex_pending` / `review_pending` | No verified completion; the completion job waits up to 20 minutes, then fails as `timed_out`. |
 | `stale_head` / `stale_review` | A new push or mismatched scope invalidates evidence; never transfer approval to the new head. |
 | `manual_review_required` | Provider execution is guarded; an explicit exact-head review/approval is needed. |
 | `codex_completed_attested` | A human maintainer verified the native task and Security Report; auditable attestation, **not automated verification**. |
@@ -225,8 +225,10 @@ This auditable first-install decision is displayed as manual approval, not an
 automated scan. No branch-protection bypass is used. Once the policy is on main,
 normal base-policy loading applies; editing the head cannot edit that policy.
 
-After completion/approval becomes available, rerun the failed quality job
-intentionally to re-evaluate evidence. A comment itself does not launch more
+After completion/approval becomes available, rerun both failed CI jobs together
+with `gh run rerun RUN_ID --failed`. The completion reader must re-evaluate the
+new evidence before quality evaluates its dependency result; rerunning quality
+alone does not refresh the failed reader. A comment itself does not launch more
 provider jobs. Pending checks have a bounded wait; provider failures, rejection
 and guarded execution fail clearly. If a new push occurs, repeat the review and
 approval for its new SHA. Do not rerun tests repeatedly to mask a provider error.

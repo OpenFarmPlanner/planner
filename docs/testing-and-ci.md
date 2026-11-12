@@ -427,9 +427,11 @@ Non-security exemptions are explicit skips, not clean scans. Provider guards
 still prevent loops, while required guarded reviews need human approval.
 A successful process without structured final-SHA/scope evidence is insufficient.
 
-The step waits at most 20 minutes (the quality job has a 30-minute limit).
-After a provider finishes or a human approves an exact-head contingency, rerun
-that failed job to evaluate the new evidence. A new push needs new evidence.
+The reader waits at most 20 minutes within its 25-minute job limit; quality
+has a separate 30-minute limit. After a provider finishes or a human approves
+an exact-head contingency, rerun both failed jobs with
+`gh run rerun RUN_ID --failed`, so the reader re-evaluates evidence before
+quality checks its result. Rerunning quality alone does not refresh the reader. A new push needs new evidence.
 The first installation requires explicit human bootstrap review because the
 base has no policy yet. No existing required check name or protection is removed.
 See [security-automation.md](security-automation.md#security-review-completion-gate-1045)

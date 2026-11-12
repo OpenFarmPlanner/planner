@@ -735,3 +735,12 @@ retains only contents-read permission and disabled Git credential persistence.
 All 30 policy tests and Actionlint pass after this refinement. Earlier CI
 bootstrap-failure evidence remains valid investigation evidence, not approval
 of this final head; fresh complete CI and exact-head human review are required.
+
+Functional head `29f86718`: all nine other required CI checks pass, including
+backend and all three production E2E shards; six cross-browser jobs, PostgreSQL,
+CodeQL and dependencies pass too. Only isolated completion and required quality
+fail, specifically for absent human bootstrap review. Recovery docs now state
+that BOTH failed jobs must rerun after approval (`gh run rerun RUN_ID --failed`),
+so the reader refreshes evidence before quality checks its dependency result.
+This documentation-only follow-up still needs fresh final-head required checks.
+No approval is inferred or posted, and #1007 remains blocked on verified merge.
