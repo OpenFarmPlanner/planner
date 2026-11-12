@@ -306,10 +306,10 @@
     "yieldUnitRequired": "Ertragseinheit ist bei angegebenem Ertrag erforderlich",
     "seedingRequirementTypeRequired": "Saatgutbedarf-Typ ist erforderlich, wenn ein Saatgutbedarf angegeben ist.",
     "seedingRequirementValueRequired": "Saatgutbedarf ist erforderlich, wenn ein Saatgutbedarf-Typ angegeben ist.",
-    "seedRateDirectValue": "Direktsaat Menge",
-    "seedRateDirectUnit": "Direktsaat Einheit",
-    "seedRatePreCultivationValue": "Pflanzung Menge",
-    "seedRatePreCultivationUnit": "Pflanzung Einheit",
+    "seedRateDirectValue": "Direktsaat: Menge",
+    "seedRateDirectUnit": "Direktsaat: Einheit",
+    "seedRatePreCultivationValue": "Pflanzung: Menge",
+    "seedRatePreCultivationUnit": "Pflanzung: Einheit",
     "packageUnitLabel": "Packungseinheit",
     "packageUnitGram": "g",
     "packageUnitSeeds": "Korn",
@@ -617,8 +617,8 @@
     "success": "Export abgeschlossen",
     "columns": {
       "expectedYieldKgPerSqm": "Erwarteter Ertrag (kg/m²)",
-      "safetyPercentDirect": "Sicherheitszuschlag Direktsaat (%)",
-      "safetyPercentPreCultivation": "Sicherheitszuschlag Pflanzung (%)"
+      "safetyPercentDirect": "Direktsaat: Sicherheitszuschlag für Saatgut (%)",
+      "safetyPercentPreCultivation": "Pflanzung: Sicherheitszuschlag für Saatgut (%)"
     }
   },
   "buttons": {
@@ -702,11 +702,16 @@
     },
     "template": {
       "speciesName": "Tomate",
-      "varietyName": "Roma",
+      "varietyName": "Nantes 2",
       "supplierName": "Beispiel Saatgut",
       "directSownName": "Karotte",
       "goodNeighbours": "Basilikum; Tagetes | Schutz vor Schädlingen",
-      "badNeighbours": "Kartoffel; Fenchel"
+      "badNeighbours": "Kartoffel; Fenchel",
+      "sampleTag": "Beispiel",
+      "sampleNote": "Beispielzeile: vor dem Import ersetzen oder löschen.",
+      "potatoSeedNote": "Dieses Beispiel beschreibt die Anzucht aus botanischen Kartoffelsamen, nicht das Pflanzen von Knollen.",
+      "pretreatment": "Gleichmäßig feucht halten.",
+      "pestsDiseases": "Kraut- und Braunfäule: Blätter trocken halten."
     },
     "help": {
       "templateHint": "Noch keine passende Datei?",
@@ -724,8 +729,11 @@
         "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“.",
         "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage.",
         "timingWindows": "„{{columns}}“: Zeiträume in Monatsdritteln oder Kalenderwochen, zum Beispiel „{{decadeExample}}“, „{{monthExample}}“ oder „{{weekExample}}“. Mehrere Zeiträume mit „;“ trennen. Tagesdaten sind nicht möglich. Zeitangaben kannst du ausschreiben („Anfang März bis Ende April“), als Kalenderwochen („KW 10 bis 14“) oder kurz mit Monat und Drittel schreiben („03a-04c“). Dabei steht a für das erste, b für das zweite und c für das letzte Drittel des Monats. In der Vorschau siehst du, wie wir jeden Wert gelesen haben.",
-        "catalogColumns": "Spalten wie „Vorkultur“ oder „Aussaat Freiland“ aus Saatgutkatalogen werden automatisch erkannt."
-      }
+        "catalogColumns": "Nutze „{{directSowing}}“ für Zeiträume; „{{cultivation}}“ beschreibt die Anbauart.",
+        "yield": "„{{yield}}“ in kg angeben. „{{unit}}“ bestimmt, ob der Wert pro Pflanze oder pro m² gilt."
+      },
+      "templateSamples": "Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.",
+      "templateError": "Die Vorlage konnte nicht geladen werden."
     },
     "timingWindowIssue": "Zeile {{row}}, {{column}}: {{message}} Der Wert wird nicht übernommen.",
     "timingWindowIssueWithValue": "Zeile {{row}}, {{column}}, „{{value}}“: {{message}} Der Wert wird nicht übernommen.",
@@ -1663,9 +1671,9 @@
     "sectionTitle": "Zeiträume",
     "sectionHelp": "Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.",
     "kinds": {
-      "pre_cultivation": "Anzucht",
-      "direct_sowing": "Direktsaat",
-      "planting": "Pflanzung"
+      "pre_cultivation": "Anzuchtzeitraum",
+      "direct_sowing": "Direktsaatzeitraum",
+      "planting": "Pflanzzeitraum"
     },
     "addWindow": "Zeitraum hinzufügen",
     "removeWindow": "Zeitraum entfernen",
@@ -1856,7 +1864,6 @@
         "late": "Spät"
       }
     },
-    "templateSpeciesName": "Kartoffel",
     "importRowInvalid": "Zeile {{row}}: Die Eigenschaften passen nicht zur Kulturart oder enthalten ungültige Werte."
   }
 }

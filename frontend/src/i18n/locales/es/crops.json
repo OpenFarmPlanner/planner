@@ -311,10 +311,10 @@
     "yieldUnitRequired": "Si se indica un rendimiento, la unidad de rendimiento es obligatoria",
     "seedingRequirementTypeRequired": "Si se indica una necesidad de semillas, el tipo de necesidad de semillas es obligatorio.",
     "seedingRequirementValueRequired": "Si se indica un tipo de necesidad de semillas, la necesidad de semillas es obligatoria.",
-    "seedRateDirectValue": "Cantidad para siembra directa",
-    "seedRateDirectUnit": "Unidad para siembra directa",
-    "seedRatePreCultivationValue": "Cantidad para trasplante",
-    "seedRatePreCultivationUnit": "Unidad para trasplante",
+    "seedRateDirectValue": "Siembra directa: Cantidad",
+    "seedRateDirectUnit": "Siembra directa: Unidad",
+    "seedRatePreCultivationValue": "Trasplante: Cantidad",
+    "seedRatePreCultivationUnit": "Trasplante: Unidad",
     "packageUnitLabel": "Unidad del envase",
     "packageUnitGram": "g",
     "packageUnitSeeds": "semillas",
@@ -630,8 +630,8 @@
     "success": "Exportación completada",
     "columns": {
       "expectedYieldKgPerSqm": "Rendimiento previsto (kg/m²)",
-      "safetyPercentDirect": "Margen de seguridad de semillas, siembra directa (%)",
-      "safetyPercentPreCultivation": "Margen de seguridad de semillas, trasplante (%)"
+      "safetyPercentDirect": "Siembra directa: Recargo de seguridad de semillas (%)",
+      "safetyPercentPreCultivation": "Trasplante: Recargo de seguridad de semillas (%)"
     }
   },
   "buttons": {
@@ -724,11 +724,16 @@
     },
     "template": {
       "speciesName": "Tomate",
-      "varietyName": "Roma",
+      "varietyName": "Nantes 2",
       "supplierName": "Semillas Ejemplo",
       "directSownName": "Zanahoria",
       "goodNeighbours": "Albahaca; Tagetes | Control de plagas",
-      "badNeighbours": "Patata; Hinojo"
+      "badNeighbours": "Patata; Hinojo",
+      "sampleTag": "Ejemplo",
+      "sampleNote": "Fila de ejemplo: sustituir o eliminar antes de importar.",
+      "potatoSeedNote": "Este ejemplo describe el cultivo a partir de semillas botánicas de patata, no la plantación de tubérculos.",
+      "pretreatment": "Mantener una humedad uniforme.",
+      "pestsDiseases": "Mildiu: mantener las hojas secas."
     },
     "help": {
       "templateHint": "¿Todavía no tienes un archivo adecuado?",
@@ -746,8 +751,11 @@
         "matching": "Una fila con el mismo nombre, variedad y proveedor que un cultivo existente solo lo actualiza tras «{{confirm}}».",
         "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla.",
         "timingWindows": "«{{columns}}»: periodos en decenas del mes o en semanas, por ejemplo «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa varios periodos con «;». No se admiten fechas concretas. Puedes escribir los periodos con palabras («principios de marzo a finales de abril»), como semanas («semanas 10 a 14») o con el mes y la decena («03a-04c»). La letra a indica la primera decena, b la segunda y c la última. En la vista previa verás cómo hemos interpretado cada valor.",
-        "catalogColumns": "Las columnas de los catálogos de semillas como «Semillero» o «Siembra al aire libre» se reconocen automáticamente."
-      }
+        "catalogColumns": "Usa «{{directSowing}}» para los periodos; «{{cultivation}}» describe el método de cultivo.",
+        "yield": "Indica «{{yield}}» en kg. «{{unit}}» determina si el valor es por planta o por m²."
+      },
+      "templateSamples": "Sustituye o elimina las tres filas de ejemplo antes de importar tus datos.",
+      "templateError": "No se ha podido cargar la plantilla."
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
     "timingWindowIssueWithValue": "Fila {{row}}, {{column}}, «{{value}}»: {{message}} El valor no se importa.",
@@ -1707,9 +1715,9 @@
     "sectionTitle": "Periodos",
     "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa y el trasplante, en decenas del mes o en semanas. La planificación señala las fechas fuera de estos periodos.",
     "kinds": {
-      "pre_cultivation": "Semillero",
-      "direct_sowing": "Siembra directa",
-      "planting": "Trasplante"
+      "pre_cultivation": "Periodo de siembra en semillero",
+      "direct_sowing": "Periodo de siembra directa",
+      "planting": "Periodo de trasplante"
     },
     "addWindow": "Añadir periodo",
     "removeWindow": "Quitar periodo",
@@ -1902,7 +1910,6 @@
         "late": "Tardía"
       }
     },
-    "templateSpeciesName": "Patata",
     "importRowInvalid": "Fila {{row}}: Las propiedades no corresponden a esta especie o contienen valores no válidos."
   }
 }

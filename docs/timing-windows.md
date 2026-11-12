@@ -10,9 +10,9 @@ relative to the last frost date are #872 and not part of this.
 
 | Kind (code) | DE | EN | FR | ES |
 | --- | --- | --- | --- | --- |
-| `pre_cultivation` | Anzucht | Propagation | Pépinière | Semillero |
-| `direct_sowing` | Direktsaat | Direct sowing | Semis direct | Siembra directa |
-| `planting` | Pflanzung | Transplanting | Plantation | Trasplante |
+| `pre_cultivation` | Anzuchtzeitraum | Propagation window | Période de semis en pépinière | Periodo de siembra en semillero |
+| `direct_sowing` | Direktsaatzeitraum | Direct sowing window | Période de semis direct | Periodo de siembra directa |
+| `planting` | Pflanzzeitraum | Transplanting window | Période de plantation | Periodo de trasplante |
 
 **No harvest windows.** A plan's harvest start already follows from its
 planting date plus the growth duration
@@ -22,11 +22,18 @@ calculated harvest lane instead (see below).
 
 "Anzucht", not "Vorkultur": the glossary uses *Vorkultur* for the previous
 crop on a bed. Column names from seed catalogues ("Vorkultur", "Voranzucht",
-"Anzuchtzeitraum", "Aussaat Freiland", "Auspflanzung", "Pflanzzeitraum", "start
+"Anzuchtzeitraum", "Auspflanzung", "Pflanzzeitraum", "start
 indoors", "sow outdoors", "plant out", and French and Spanish equivalents) are
 spreadsheet column aliases; `spreadsheetColumns.test.ts` checks that no alias
 belongs to two columns. A kind holds any
 number of windows (e.g. a spring and a late-summer sowing).
+
+The form, details and spreadsheet use the same window labels above (#1017),
+separate from cultivation-method labels such as Direktsaat. The former
+spreadsheet header "Aussaat Freiland" is deliberately no longer recognized;
+users must change it to "Direktsaatzeitraum". Other documented catalogue
+aliases and prior canonical labels remain accepted. The backend kind and
+`direct_sowing_windows` key are unchanged.
 
 ## Units
 
@@ -134,7 +141,7 @@ country, so months copied from someone else's farm would mislead. See
 
 - Section "Zeiträume", explained by an info icon with tooltip after the
   heading (the shared `crops/FieldInfoIcon.tsx`: focusable, opens on tap),
-  with the groups Anzucht, Direktsaat, Pflanzung, each with its rows and
+  with the groups Anzuchtzeitraum, Direktsaatzeitraum, Pflanzzeitraum, each with its rows and
   "+ Zeitraum hinzufügen". A row has a "Monat"/"KW" switch, native selects for
   "Von"/"Bis" (third before month, reading like "Anfang April", or week 1–52) and a
   remove button ("Zeitraum entfernen"). Switching the unit clears the row; a
@@ -147,7 +154,9 @@ country, so months copied from someone else's farm would mislead. See
 - The detail view lists the effective windows per kind and draws a year bar
   (January to December) with one labelled lane per kind; week windows are
   drawn in the current year. Colours come from the theme palette
-  (`timingWindowStyles.ts`).
+  (`timingWindowStyles.ts`). Entered and calculated lane labels wrap rather than truncating the longer window names. The phone
+  label column is intentionally widened from 96px to 128px so German
+  compound words fit; the desktop column and proportional tracks are unchanged.
 - Below them the lane **"Ernte (berechnet)"**, hatched and labelled in italics
   so it reads as derived (`computedHarvestYearSegments` in `timingWindows.ts`),
   from the effective windows and durations (Sorte before Kultur): per
@@ -160,7 +169,7 @@ country, so months copied from someone else's farm would mislead. See
 
 ## Spreadsheet import and export
 
-One column per kind ("Anzucht", "Direktsaat", "Pflanzung", localized like the
+One column per kind ("Anzuchtzeitraum", "Direktsaatzeitraum", "Pflanzzeitraum", localized like the
 other headers), several windows in one cell separated by ";" (also accepted
 on import: a line break or the word "or": "oder", "o.", "or", "ou", so
 "02a o. 11a" is two windows). Only "or" is accepted, not "and", which could

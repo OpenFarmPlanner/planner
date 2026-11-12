@@ -306,10 +306,10 @@
     "yieldUnitRequired": "A yield unit is required when a yield is given",
     "seedingRequirementTypeRequired": "A seed demand type is required when a seed demand is given.",
     "seedingRequirementValueRequired": "A seed demand is required when a seed demand type is given.",
-    "seedRateDirectValue": "Direct sowing quantity",
-    "seedRateDirectUnit": "Direct sowing unit",
-    "seedRatePreCultivationValue": "Transplanting quantity",
-    "seedRatePreCultivationUnit": "Transplanting unit",
+    "seedRateDirectValue": "Direct sowing: Quantity",
+    "seedRateDirectUnit": "Direct sowing: Unit",
+    "seedRatePreCultivationValue": "Transplanting: Quantity",
+    "seedRatePreCultivationUnit": "Transplanting: Unit",
     "packageUnitLabel": "Package unit",
     "packageUnitGram": "g",
     "packageUnitSeeds": "seeds",
@@ -617,8 +617,8 @@
     "success": "Export complete",
     "columns": {
       "expectedYieldKgPerSqm": "Expected yield (kg/m²)",
-      "safetyPercentDirect": "Direct sowing seed safety margin (%)",
-      "safetyPercentPreCultivation": "Transplanting seed safety margin (%)"
+      "safetyPercentDirect": "Direct sowing: Seed safety surcharge (%)",
+      "safetyPercentPreCultivation": "Transplanting: Seed safety surcharge (%)"
     }
   },
   "buttons": {
@@ -702,11 +702,16 @@
     },
     "template": {
       "speciesName": "Tomato",
-      "varietyName": "Roma",
+      "varietyName": "Nantes 2",
       "supplierName": "Example Seeds",
       "directSownName": "Carrot",
       "goodNeighbours": "Basil; Marigold | Pest control",
-      "badNeighbours": "Potato; Fennel"
+      "badNeighbours": "Potato; Fennel",
+      "sampleTag": "Example",
+      "sampleNote": "Example row: replace or delete before importing.",
+      "potatoSeedNote": "This example describes propagation from true potato seed, rather than planting tubers.",
+      "pretreatment": "Keep evenly moist.",
+      "pestsDiseases": "Late blight: keep leaves dry."
     },
     "help": {
       "templateHint": "No suitable file yet?",
@@ -724,8 +729,11 @@
         "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”.",
         "exportTip": "Easiest: export your crops and use the file as a template.",
         "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible. You can write time windows in full (“early March to late April”), as calendar weeks (“week 10 to 14”) or using the month and third (“03a-04c”). Here a means the first, b the second and c the last third of the month. The preview shows how we read each value.",
-        "catalogColumns": "Columns such as “Start indoors” or “Sow outdoors” from seed catalogues are recognized automatically."
-      }
+        "catalogColumns": "Use “{{directSowing}}” for timing windows; “{{cultivation}}” describes the cultivation method.",
+        "yield": "Enter “{{yield}}” in kg. “{{unit}}” determines whether the value is per plant or per m²."
+      },
+      "templateSamples": "Replace or delete the three example rows before importing your data.",
+      "templateError": "The template could not be loaded."
     },
     "timingWindowIssue": "Row {{row}}, {{column}}: {{message}} The value is not imported.",
     "timingWindowIssueWithValue": "Row {{row}}, {{column}}, “{{value}}”: {{message}} The value is not imported.",
@@ -1663,9 +1671,9 @@
     "sectionTitle": "Time windows",
     "sectionHelp": "When propagation, direct sowing and transplanting usually happen, in thirds of a month or calendar weeks. Crop planning points out dates outside these windows.",
     "kinds": {
-      "pre_cultivation": "Propagation",
-      "direct_sowing": "Direct sowing",
-      "planting": "Transplanting"
+      "pre_cultivation": "Propagation window",
+      "direct_sowing": "Direct sowing window",
+      "planting": "Transplanting window"
     },
     "addWindow": "Add window",
     "removeWindow": "Remove window",
@@ -1856,7 +1864,6 @@
         "late": "Late"
       }
     },
-    "templateSpeciesName": "Potato",
     "importRowInvalid": "Row {{row}}: The properties do not apply to this species or contain unsupported values."
   }
 }

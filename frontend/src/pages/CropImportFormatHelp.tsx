@@ -1,9 +1,12 @@
-import { Box, Button, Collapse, List, ListItem, ListItemText, Typography } from '@mui/material';
+import { Alert, Box, Button, Collapse, List, ListItem, ListItemText, Typography } from '@mui/material';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useState } from 'react';
 import { downloadCropImportTemplate } from '../crops/importTemplate';
 import { getLocalizedCropColumns } from '../crops/spreadsheetColumns';
 import { emptyTimingWindow, formatTimingWindow } from '../crops/timingWindows';
+import type { SpreadsheetExportFormat } from '../crops/spreadsheetExport';
+import LoadRetryButton from '../components/LoadRetryButton';
+import { loadRetryAlertSx } from '../components/loadRetryStyles';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
 
@@ -17,6 +20,19 @@ const linkButtonSx = { ml: -3, textAlign: 'left', justifyContent: 'flex-start' }
  */
 export function CropImportFormatHelp({ t }: { t: Translator }) {
   const [open, setOpen] = useState(false);
+  const [templatePending, setTemplatePending] = useState<SpreadsheetExportFormat | null>(null);
+  const [templateError, setTemplateError] = useState<SpreadsheetExportFormat | null>(null);
+  const downloadTemplate = async (format: SpreadsheetExportFormat) => {
+    setTemplatePending(format);
+    setTemplateError(null);
+    try {
+      await downloadCropImportTemplate(t, format);
+    } catch {
+      setTemplateError(format);
+    } finally {
+      setTemplatePending(null);
+    }
+  };
   const columns = getLocalizedCropColumns(t);
   const header = (key: string) => columns.find((column) => column.key === key)?.header ?? key;
   const enumColumns = columns.filter((column) => column.enumExport);
@@ -34,6 +50,7 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
     t('import.help.rules.numbers'),
     t('import.help.rules.cultivationTypes', { example: cultivationLabels.join(', ') }),
     t('import.help.rules.wholeSeeds', { unit: seedUnitLabels.seeds_per_plant ?? 'seeds_per_plant' }),
+    t('import.help.rules.yield', { yield: header('expected_yield'), unit: header('harvest_method') }),
     t('import.help.rules.color', { column: header('display_color') }),
     t('import.help.rules.timingWindows', {
       columns: columns.filter((column) => column.type === 'timingWindows').map((column) => column.header).join(', '),
@@ -47,13 +64,23 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
       ),
       weekExample: formatTimingWindow({ ...emptyTimingWindow('planting', 'iso_week'), start_week: 10, end_week: 14 }, t),
     }),
-    t('import.help.rules.catalogColumns'),
+    t('import.help.rules.catalogColumns', { directSowing: header('direct_sowing_windows'), cultivation: header('cultivation_types') }),
     t('import.help.rules.matching', { confirm: t('import.confirmUpdates') }),
     t('import.help.rules.exportTip'),
   ];
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+    <Box sx={{
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5,
+      '& > .MuiAlert-root': {
+        flexWrap: { xs: 'wrap', sm: 'nowrap' },
+        '& .MuiAlert-action': {
+          width: { xs: '100%', sm: 'auto' },
+          pl: { xs: 0, sm: 2 },
+          justifyContent: 'flex-end',
+        },
+      },
+    }}>
       <Typography variant="body2" color="text.secondary">
         {t('import.help.templateHint')}
       </Typography>
@@ -62,7 +89,9 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
           type="button"
           variant="text"
           startIcon={<FileDownloadOutlinedIcon />}
-          onClick={() => downloadCropImportTemplate(t, 'ods')}
+          onClick={() => void downloadTemplate('ods')}
+          disabled={templatePending !== null}
+          loading={templatePending === 'ods'}
           sx={linkButtonSx}
         >
           {t('import.help.templateButton')}
@@ -71,11 +100,19 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
           type="button"
           variant="text"
           size="small"
-          onClick={() => downloadCropImportTemplate(t, 'xlsx')}
+          onClick={() => void downloadTemplate('xlsx')}
+          disabled={templatePending !== null}
+          loading={templatePending === 'xlsx'}
         >
           {t('import.help.templateButtonXlsx')}
         </Button>
       </Box>
+      {templateError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton onClick={() => void downloadTemplate(templateError)} />}>
+        {t('import.help.templateError')}
+      </Alert> : null}
+      <Typography variant="body2" color="text.secondary">
+        {t('import.help.templateSamples')}
+      </Typography>
       <Button
         type="button"
         variant="text"

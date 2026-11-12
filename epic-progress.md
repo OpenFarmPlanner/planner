@@ -23,8 +23,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036) merged and verified at `8317a536` |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR [#1039](https://github.com/OpenFarmPlanner/planner/pull/1039) merged and verified at `7663d0f4` |
 | 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | PR [#1040](https://github.com/OpenFarmPlanner/planner/pull/1040) merged and verified at `d597ec04` |
-| 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | In progress on `fix/1008-life-cycle-selectors` |
-| 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
+| 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | PR [#1042](https://github.com/OpenFarmPlanner/planner/pull/1042) merged and verified at `10510124` |
+| 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | In progress on `fix/1017-complete-crop-import-templates` |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
@@ -69,16 +69,15 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1037 merged and verified through PR #1040 at
-`d597ec04` (2026-11-12 13:32:01 UTC); #1037 is closed. Implement #1008 on
-`fix/1008-life-cycle-selectors`, based on refreshed main `d180bae7` (the
-subsequent automated 1.162.1 version commit), then finish CI/reviews, merge
-normally and verify before #1017. Newly open P0 #1038 is included before final
-integration; the original dependency sequence otherwise stays intact. Do not
-start another implementation before the preceding merge is verified. The
-earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
-Check every review thread explicitly as well as required checks/reviews
-before attempting normal merge.
+Current resume point: #1008 merged and verified through PR #1042 at
+`10510124` (2026-11-12 14:09:15 UTC); #1008 is closed. Implement #1017 on
+`fix/1017-complete-crop-import-templates`, based on fetched main `673cf608` (automated 1.162.2 release metadata),
+then finish CI/reviews, merge normally and verify before #1007. Newly open P0
+#1038 is included before final integration; the dependency sequence stays
+intact. Do not start another implementation before the preceding merge is
+verified. The earlier stop-after-#1032 instruction was fulfilled and superseded
+by resume. Check every review thread explicitly as well as required
+checks/reviews before attempting normal merge.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -575,3 +574,84 @@ to become enabled after duplicate validation; its payload assertion and timeout
 are unchanged. The main-route responsive suite, full make quality and PR
 CI/reviews remain pending before merge. No backend, migration, sync or planning
 logic changed. #1017 must wait for verified merge.
+
+
+## #1042 merge verification and #1017 implementation
+
+PR #1042 merged normally at 2026-11-12 14:09:15 UTC as
+`10510124fb7ea364e7e35671fe6e34299166ae73`, matching tested/reviewed head
+`b967c1f68c1e7235faeed87f2cc4f5da0f23e363`. All 10 required checks and
+additional build/PostgreSQL/audits/all six cross-browser jobs passed. Full local
+make quality passed with 2,561 backend tests, ESLint zero errors (117 existing
+warnings), and accepted Ruff/Madge reports. All 230 targeted tests and 12 local
+browser cases passed; eight changed-view and 32 main-route captures were
+inspected, with pre-existing shared-shell findings retained for final review.
+Claude triage skipped this scope; the exact-head authoring-session review was
+recorded without claiming independent approval or a native scan. Final thread
+check was empty and GitHub CLEAN. Fetched main contains the merge and its tree
+exactly matches the tested head; #1008 closed at 14:09:17 UTC. Evidence:
+https://github.com/OpenFarmPlanner/planner/pull/1042#issuecomment-6825888358 .
+
+#1017 audits all 58 current columns against form/detail ownership and supplies
+three marked example rows. Canonical timing labels become explicit windows in
+all four languages; the backend keys/kinds and timing import semantics remain
+unchanged. The issue explicitly requires removing the Aussaat Freiland header;
+other prior canonical labels remain recognized. Generic yield and contextual
+seed headers share the form's field names, with yield units explained rather
+than assuming kg/m². Local template, backend, UI and responsive validation,
+CI and reviews must complete before merge. No #918 fields are added before
+they become importable.
+
+#1017 targeted validation: 342 frontend tests pass; TypeScript and the
+production build pass. The backend timing/import suites pass 78 tests and
+215 subtests, including preservation/replacement of timing kinds. New browser
+coverage downloads ODS/XLSX in every language, validates preview and apply,
+and checks that an existing crop is untouched without overwrite confirmation.
+Its first run caught an invalid seed-type example on a general crop; seed type
+now appears only on the carrot variety. Longer year-bar lane labels wrap in
+the existing column instead of truncating the new window names. Full browser,
+visual, lint/prerender, make quality and CI/reviews are still pending.
+
+The multilingual backend browser run exposed that the live catalog can lack
+French/Spanish names for the typed potato sample. Template downloads now fetch
+the catalog and use its resolved potato name; no names are added to frozen seed
+files or duplicated as a frontend catalog. The pure builder requires catalog
+metadata and rejects a missing profile. Downloads show loading/error/retry with
+four-language messages. All 345 targeted tests pass, including those states.
+The first full browser pass also had two invitation-redirect setup timeouts
+under concurrent backend load, before the affected views opened; traces are
+retained and fresh final-build coverage remains required. Phone year-bar labels
+are intentionally widened to 128px so the new German window names do not break
+at a final single letter; desktop tracks/width are retained. Final validation is
+still pending, so this branch must not merge yet.
+
+Before opening #1017's PR, incorporated main's automated 1.162.2 commit
+`673cf608` by rebasing; only backend version metadata changed on main. Full
+local backend coverage passed all 2,561 tests (the backend implementation is
+unchanged). Final frontend/build/browser verification uses the rebased branch;
+required PR CI and review checks remain mandatory.
+
+#1017 final-build verification: all 15 local browser cases pass with backend
+coverage workers finished, including both binary formats in all four languages,
+read-only preview, explicit overwrite protection, typed values, localized
+catalog failure/retry, timing controls at 375/1440 and all eight main routes at
+375/768/1024/1440. The focused catalog cases also pass independently. All 357
+targeted frontend tests now pass after updating the existing timing-section
+unit assertions to the canonical labels; initial PR CI had caught six old-label
+assertions in that previously omitted file. Product code is unchanged by this
+test-only follow-up. TypeScript/full ESLint and fresh exact-head CI must pass
+before merge. Claude's first code-review action failed with `is_error:true`
+and no completed review; this is not approval or a clean scan. Security triage
+skipped this scope. Record the exact-head manual review and inspect every thread
+before normal merge. PR #1044 is the active PR; #1007 remains blocked on its
+verified merge. No required check or review is bypassed.
+
+Visual follow-up for #1017: inspected all final and focused captures, then fixed
+two localized phone issues: Retry now sits below its French message at 375px
+(and beside it at desktop), and the computed-harvest label wraps fully in
+Spanish. The shared year-bar's calculated lane keeps its existing italic style.
+Scoped alert styling preserves desktop behavior. New layout assertions cover
+both cases; both focused browser cases pass and all five fresh captures were
+inspected. All 357 targeted tests, TypeScript, full ESLint (zero errors, 117
+existing warnings), production build and 20 prerenders pass again. A fresh
+15-case browser run and exact-head CI/reviews remain required before merge.

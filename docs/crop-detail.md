@@ -52,3 +52,9 @@ form.
 `CropSeedDetails` (the seed demand values) is shared by both views and shows
 only what is set; a seed rate in the per-method table without a safety margin
 shows "-" because a table cell cannot be left out.
+
+The project timing section uses the same Anzuchtzeitraum, Direktsaatzeitraum
+and Pflanzzeitraum labels as the edit form and spreadsheets (localized in
+all four languages; see [timing-windows.md](timing-windows.md)). They are
+windows, distinct from the cultivation-method labels. Harvest remains
+calculated, not an imported or editable harvest window.

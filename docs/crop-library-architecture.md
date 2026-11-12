@@ -2241,3 +2241,55 @@ own action:
 - **The old species is left alone.** It stays published and usable by whatever
   else maps to it correctly. Taking it out of circulation is the separate
   species reject/lifecycle decision, not something this action triggers.
+
+### Spreadsheet templates and field labels (#1017)
+
+`importTemplate.ts` uses `buildSheetData` and the same `CROP_COLUMNS` as normal
+export and import. ODS and XLSX contain identical logical headers and sample
+values (their empty-cell encodings may differ). The three samples are a general
+tomato, a carrot variety with a supplier, and a potato with its typed profile.
+When the carrot name resolves to a catalog species, importing its variety
+also creates its general crop through the existing variety-import behavior
+(three file rows, four project crops). Without a catalog match it remains an
+unlinked variety, giving three project crops. Every row's notes mark it as an example to replace/delete; the
+download help also gives that instruction before upload. The typed potato
+sample takes its resolved name from the live catalog API,
+so it remains recognizable even where the catalog lacks a UI-language
+translation. A failed catalog read or missing profile yields a localized
+error with retry, rather than downloading an invalid file. The retry action
+sits below the message on phones and beside it on wider screens. Template buttons
+are disabled while that request runs. The typed sample does not invent a
+catalog name or change bootstrap files. Preview writes nothing, and apply preserves
+matched crops unless `confirm_updates` is true; samples do not introduce an
+automatic overwrite path.
+
+The complete 58-column audit uses the following presentation owners:
+
+| Columns | Label / meaning |
+| --- | --- |
+| `name`, `variety`, `supplier_name`, `botanical_name`, `crop_family`, `seed_type`, `nutrient_demand`, `cultivation_types`, `tags` | Existing shared form labels; choices remain localized. |
+| `growth_duration_days`, `harvest_duration_days`, `propagation_duration_days` | Form/germination duration labels, in days; harvest is a duration, not a harvest window. |
+| `pre_cultivation_windows`, `direct_sowing_windows`, `planting_windows` | Shared timing-window kind labels in form, details and sheets; see the four-language table in `timing-windows.md`. |
+| Germination's five numeric endpoints, two requirement enums, four stratification endpoints and `germination_pretreatment` | Shared germination field labels, Celsius and whole days. |
+| `germination_temperature_optimal`, `germination_days`, `germination_types`, `germination_cold`, `germination_frost`, `germination_light`, `germination_dark` | Existing range/compatibility columns; examples agree with the canonical requirements. Explicit No demonstrates a valid negative flag without inventing a frost requirement. |
+| `light_requirement`, `water_requirement`, `life_cycle`, `winter_hardiness`, `pests_diseases` | Shared site/health labels; sample life cycles use Annual/Perennial. |
+| `harvest_method`, `expected_yield` | Shared yield-unit and generic expected-yield labels. Values are kg per plant or m² according to the row's unit; the header no longer assumes kg/m². |
+| `distance_within_row_cm`, `row_spacing_cm`, `sowing_depth` | Shared spacing/depth labels in cm; the single depth column demonstrates a range. |
+| `thousand_kernel_weight_g`, `sowing_calculation_safety_percent`, and the direct/pre-cultivation amount, unit and safety fields | Shared form labels; per-method headers prepend the cultivation context so the two Amount/Unit fields remain unambiguous. |
+| `display_color`, `notes`, `good_companions`, `bad_companions` | Shared color, notes and companion labels; valid hex, text and neighbour examples. |
+| `specific_properties.cooking_type`, `specific_properties.maturity_group` | Registry-owned localized labels, as in form/details; actual potato values, not template-only fields. |
+
+The potato notes explicitly describe propagation from botanical seed rather
+than tubers, providing context for its germination/stratification examples.
+Other empty optional cells retain normal import/inheritance behavior. Timing
+examples demonstrate numeric thirds and ISO weeks; no day dates are invented.
+Default harvest units/weights from #918 are not added until they are importable.
+
+Prior canonical headers remain aliases when labels are aligned. The one explicit
+exception required by #1017 is **Aussaat Freiland**, which is no longer recognized,
+including case/whitespace variants; use Direktsaatzeitraum. The underlying
+`direct_sowing_windows` and `CropTimingWindow.kind = direct_sowing` are unchanged.
+Tests require a nonempty example for every current column (including registry
+columns), localized collision-free headers, identical ODS/XLSX logical data,
+and accepted imports in all four languages, so schema growth exposes missing
+examples rather than silently leaving blank columns.
