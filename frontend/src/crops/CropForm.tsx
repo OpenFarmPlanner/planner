@@ -67,6 +67,7 @@ import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
+import { CropCompanionsSection } from './CropCompanionsSection';
 import { TimingWindowsSection } from './sections/TimingWindowsSection';
 import { collectProjectTags } from './cropTags';
 import { useCompanionFormRows } from './useCompanionFormRows';
@@ -133,11 +134,12 @@ interface CropFormProps {
    */
   crops?: Partial<Crop>[];
   /**
-   * `companions` is the "Mischkultur" section's rows when they changed, else
-   * undefined; the caller saves them after the crop (see docs/crop-companions.md#crop-form).
+   * Library callers save changed companion rows with their entry/proposal.
+   * Project neighbours save independently through the dedicated editor.
    */
   onSave: (crop: Crop, firstVariety?: FirstVarietyDraft, companions?: CompanionFormRow[]) => Promise<void>;
   onCancel: () => void;
+  onEditCompanions?: (crop: Crop) => void;
   /**
    * Offered when the typed crop name already exists as a private crop in
    * this project: closes the form and hands over to the existing "+ Add
@@ -463,6 +465,7 @@ export function CropForm({
   crops,
   onSave,
   onCancel,
+  onEditCompanions,
   onSwitchToAddVariety,
   title,
   variant = 'project',
@@ -489,6 +492,7 @@ export function CropForm({
   const requireVariety = isProjectForm && formKind === 'variety';
   const showFirstVarietyField = isProjectForm && formKind === 'crop' && !isEdit;
   const companionRows = useCompanionFormRows({
+    enabled: !isProjectForm,
     variant,
     crop,
     crops,
@@ -1696,7 +1700,9 @@ export function CropForm({
             ) : null}
             <GerminationSection {...sectionProps} />
             <SiteHealthSection {...sectionProps} />
-            <CompanionsSection state={companionRows} disabled={isSaving} />
+            {isProjectForm
+              ? crop ? <CropCompanionsSection crop={crop} crops={(crops ?? []) as Crop[]} onEdit={isSaving ? undefined : onEditCompanions} /> : null
+              : <CompanionsSection state={companionRows} disabled={isSaving} />}
             <ColorSection formData={formData} errors={errors} onChange={handleChange} t={t} defaultColor={DEFAULT_DISPLAY_COLOR} />
             {isProjectForm ? (
               <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />

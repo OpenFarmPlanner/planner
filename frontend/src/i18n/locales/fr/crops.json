@@ -1640,6 +1640,11 @@
     "alreadyRejected": "Cette mise à jour a déjà été refusée."
   },
   "companions": {
+    "editTitle": "Modifier les associations de cultures",
+    "addNeighbors": "Ajouter des voisins",
+    "editNamed": "Modifier {{name}}",
+    "information": "Information générale",
+    "editorSaveError": "Les voisins n’ont pas pu être enregistrés. Vos modifications sont conservées.",
     "title": "Association de cultures",
     "goodColumn": "Bons voisins",
     "badColumn": "Mauvais voisins",

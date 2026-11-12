@@ -1,4 +1,6 @@
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import { useState } from 'react';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import {
@@ -26,15 +28,20 @@ import {
   companionReasonLabelKey,
   companionTargetKey,
   emptyCompanionFormRow,
+  isCompanionInformationText,
   type CompanionFormOption,
   type CompanionFormRow,
   type CompanionFormTarget,
 } from '../companions';
 import type { CompanionFormRowsState } from '../useCompanionFormRows';
+import LoadRetryButton from '../../components/LoadRetryButton';
 
 interface CompanionsSectionProps {
   state: CompanionFormRowsState;
   disabled?: boolean;
+  compact?: boolean;
+  hideTitle?: boolean;
+  onRetry?: () => void;
 }
 
 const ADD_LABEL_KEYS: Record<CompanionKind, string> = {
@@ -50,15 +57,15 @@ const MOVE_LABEL_KEYS: Record<CompanionKind, string> = {
 const OTHER_KIND: Record<CompanionKind, CompanionKind> = { good: 'bad', bad: 'good' };
 
 /**
- * "Mischkultur" in the crop form: good and bad neighbours in two groups, one
- * compact row per neighbour, saved with the form (see
- * docs/crop-companions.md#crop-form). A group appears once it has a row; the
- * two add buttons below the groups are always there. A Sorte shows its
- * Kultur's list read-only.
+ * Shared row controls for the project companion dialog and library proposals.
+ * Compact mode expands one editor at a time; library rows remain staged with
+ * their entry. Note languages, target resolution and validation are shared.
  */
-export function CompanionsSection({ state, disabled = false }: CompanionsSectionProps) {
+export function CompanionsSection({ state, disabled = false, compact = false, hideTitle = false, onRetry }: CompanionsSectionProps) {
   const { t } = useTranslation(['crops', 'common']);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const { mode, rows, setRows, options, allowFreeText, errors } = state;
+  const activeKey = rows.find(row => errors[row.key])?.key ?? expandedKey;
   if (mode === 'hidden') return null;
 
   if (mode === 'readOnly') {
@@ -85,6 +92,7 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
             label: row.target?.label ?? '',
             detail: [row.reason === 'other' ? '' : t(companionReasonLabelKey(row.reason)), row.note]
               .filter(Boolean).join(': '),
+            informational: row.target?.type === 'text' && isCompanionInformationText(row.target.text),
           }))}
         />
       </Box>
@@ -99,66 +107,75 @@ export function CompanionsSection({ state, disabled = false }: CompanionsSection
       } : {}),
     } : row));
   };
+  const addButton = (kind: CompanionKind) => {
+    const { Icon, paletteColor } = COMPANION_KIND_STYLES[kind];
+    return <Button key={kind} variant="text" size="small" color={paletteColor} startIcon={<Icon aria-hidden />}
+      sx={{ whiteSpace: 'nowrap' }} disabled={disabled || !state.loaded}
+      onClick={() => {
+        const row = { ...emptyCompanionFormRow(kind), noteLanguage: state.noteLanguage };
+        setRows([...rows, row]);
+        setExpandedKey(row.key);
+      }}>{t(ADD_LABEL_KEYS[kind])}</Button>;
+  };
 
   return (
     <Box data-testid="crop-companions-form-section" sx={{ mt: 1 }}>
-      <Typography variant="h6">{t('companions.title')}</Typography>
+      {!hideTitle ? <Typography variant="h6">{t('companions.title')}</Typography> : null}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {t(allowFreeText ? 'companions.form.description' : 'companions.form.libraryDescription')}
       </Typography>
       {state.setNoteLanguage ? <Box sx={{ mb: 1 }}><CompanionNoteLanguageField
         value={state.noteLanguage ?? 'de'} onChange={state.setNoteLanguage} disabled={disabled}
       /></Box> : null}
-      {state.failed ? <Alert severity="error" sx={{ mb: 1 }}>{t('companions.loadError')}</Alert> : null}
+      {state.failed ? <Alert severity="error" action={onRetry ? <LoadRetryButton onClick={onRetry} /> : undefined} sx={{ mb: 1 }}>{t('companions.loadError')}</Alert> : null}
       <Stack spacing={1.5}>
-        {/* A group shows only with rows; its heading would otherwise announce an empty list. */}
-        {COMPANION_KINDS.map((kind) => {
-          const kindRows = rows.filter((row) => row.kind === kind);
-          if (kindRows.length === 0) return null;
+        {/* Dedicated-editor groups keep their add action available when empty. */}
+        {[...COMPANION_KINDS, null].map((kind) => {
+          const kindRows = rows.filter((row) => {
+            const information = row.target?.type === 'text' && isCompanionInformationText(row.target.text);
+            return kind === null ? information : row.kind === kind && !information;
+          });
+          if (kindRows.length === 0 && (!compact || kind === null)) return null;
           return (
-            <Box key={kind} data-testid={`companion-form-group-${kind}`}>
-              <CompanionKindHeading kind={kind} />
+            <Box key={kind ?? 'information'} data-testid={`companion-form-group-${kind ?? 'information'}`}>
+              {kind ? <CompanionKindHeading kind={kind} /> : <Typography variant="body2" color="text.secondary">{t('companions.information')}</Typography>}
               {kindRows.map((row, index) => (
+                compact && activeKey !== row.key ? <Box key={row.key} data-testid="companion-compact-row"
+                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{row.target?.label || t('companions.form.neighbor')}</Typography>
+                    {row.reason !== 'other' ? <Typography variant="body2" color="text.secondary">{t(companionReasonLabelKey(row.reason))}</Typography> : null}
+                    {row.note ? <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.note}</Typography> : null}
+                  </Box>
+                  <IconButton size="small" disabled={disabled} aria-label={t('companions.editNamed', { name: row.target?.label || t('companions.form.neighbor') })}
+                    onClick={() => setExpandedKey(row.key)}><EditOutlinedIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" disabled={disabled} aria-label={t('companions.delete')}
+                    onClick={() => setRows(rows.filter(entry => entry.key !== row.key))}><DeleteIcon fontSize="small" /></IconButton>
+                </Box> : <Box key={row.key}>
                 <CompanionFormRowFields
-                  key={row.key}
                   row={row}
                   divided={index > 0}
                   options={options}
                   allowFreeText={allowFreeText}
                   error={errors[row.key]}
                   disabled={disabled}
+                  autoFocus={compact}
                   onChange={(patch) => updateRow(row.key, patch)}
                   onRemove={() => setRows(rows.filter((entry) => entry.key !== row.key))}
                 />
+                {compact ? <Button size="small" disabled={disabled} onClick={() => setExpandedKey(null)}>{t('common:actions.close')}</Button> : null}
+                </Box>
               ))}
+              {compact && kind ? addButton(kind) : null}
             </Box>
           );
         })}
-        {state.loaded && !state.failed && rows.length === 0 ? (
+        {!compact && state.loaded && !state.failed && rows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" data-testid="companion-form-empty">
             {t('companions.form.empty')}
           </Typography>
         ) : null}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {COMPANION_KINDS.map((kind) => {
-            const { Icon, paletteColor } = COMPANION_KIND_STYLES[kind];
-            return (
-              <Button
-                key={kind}
-                variant="text"
-                size="small"
-                color={paletteColor}
-                startIcon={<Icon aria-hidden />}
-                // Each label stays on one line; the buttons wrap below each other instead.
-                sx={{ whiteSpace: 'nowrap' }}
-                disabled={disabled || !state.loaded}
-                onClick={() => setRows([...rows, { ...emptyCompanionFormRow(kind), noteLanguage: state.noteLanguage }])}
-              >
-                {t(ADD_LABEL_KEYS[kind])}
-              </Button>
-            );
-          })}
-        </Box>
+        {!compact ? <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>{COMPANION_KINDS.map(addButton)}</Box> : null}
       </Stack>
     </Box>
   );
@@ -171,6 +188,7 @@ interface CompanionFormRowFieldsProps {
   allowFreeText: boolean;
   error?: 'required' | 'duplicate';
   disabled: boolean;
+  autoFocus?: boolean;
   onChange: (patch: Partial<CompanionFormRow>) => void;
   onRemove: () => void;
 }
@@ -186,6 +204,7 @@ function CompanionFormRowFields({
   allowFreeText,
   error,
   disabled,
+  autoFocus = false,
   onChange,
   onRemove,
 }: CompanionFormRowFieldsProps) {
@@ -194,6 +213,7 @@ function CompanionFormRowFields({
     ? t('companions.form.neighborRequired')
     : error === 'duplicate' ? t('companions.duplicate') : '';
   const sharedPairText = row.target?.type === 'crop' ? t('companions.form.sharedPair', { name: row.target.label }) : '';
+  const information = row.target?.type === 'text' && isCompanionInformationText(row.target.text);
 
   return (
     <Box
@@ -247,6 +267,7 @@ function CompanionFormRowFields({
         renderInput={(params) => (
           <TextField
             {...params}
+            autoFocus={autoFocus}
             required
             label={t('companions.form.neighbor')}
             error={Boolean(errorText)}
@@ -304,7 +325,7 @@ function CompanionFormRowFields({
       {/* On a phone the actions sit beside the neighbour; reason and note share the second line. */}
       <Box aria-hidden sx={{ display: { xs: 'block', sm: 'none' }, flexBasis: '100%', height: 0, order: 2 }} />
       <Stack direction="row" sx={{ flexShrink: 0, order: { xs: 1, sm: 5 } }}>
-        <AppTooltip title={t(MOVE_LABEL_KEYS[row.kind])}>
+        {!information ? <AppTooltip title={t(MOVE_LABEL_KEYS[row.kind])}>
           <IconButton
             size="small"
             disabled={disabled}
@@ -313,7 +334,7 @@ function CompanionFormRowFields({
           >
             <SwapVertIcon fontSize="small" />
           </IconButton>
-        </AppTooltip>
+        </AppTooltip> : null}
         <AppTooltip title={t('companions.delete')}>
           <IconButton size="small" color="error" disabled={disabled} aria-label={t('companions.delete')} onClick={onRemove}>
             <DeleteIcon fontSize="small" />

@@ -56,7 +56,7 @@ vi.mock('../api/api', async () => {
       listAll: async () => (await supplierListMock()).data,
       create: supplierCreateMock,
     },
-    cropCompanionAPI: { listForCrop: companionListMock },
+    cropCompanionAPI: { listForCrop: companionListMock, list: companionListMock },
   };
 });
 
@@ -1237,21 +1237,15 @@ describe('CropForm', () => {
     expect(onSave.mock.calls[0][0]).not.toHaveProperty('supplier');
   });
 
-  it("hands the Kultur's changed neighbours to onSave with the crop", async () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
+  it('opens the independent companion editor without exposing inline controls', async () => {
+    const onSave = vi.fn();
+    const onEditCompanions = vi.fn();
     const kultur = { ...CROP_A, variety: '' };
-
-    render(<CropForm crop={kultur} crops={[kultur]} formKind="crop" onSave={onSave} onCancel={() => {}} />);
-
-    await waitFor(() => expect(companionListMock).toHaveBeenCalledWith(1));
-    fireEvent.click(await screen.findByRole('button', { name: 'companions.form.addGood' }));
-    fireEvent.change(screen.getByRole('combobox', { name: /companions\.form\.neighbor/ }), { target: { value: 'Salbei' } });
-    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
-
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][2]).toEqual([
-      expect.objectContaining({ kind: 'good', target: { type: 'text', text: 'Salbei', label: 'Salbei' } }),
-    ]);
+    render(<CropForm crop={kultur} crops={[kultur]} formKind="crop" onSave={onSave} onCancel={vi.fn()} onEditCompanions={onEditCompanions} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'companions.addNeighbors' }));
+    expect(onEditCompanions).toHaveBeenCalledWith(kultur);
+    expect(screen.queryByRole('combobox', { name: /companions\.form\.neighbor/ })).not.toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('hides the variety field and saves without one when formKind is crop', async () => {

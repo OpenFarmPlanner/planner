@@ -96,6 +96,7 @@ interface CropDetailProps {
   onOpenPublicLibrary?: () => void;
   onImportFile?: () => void;
   onEditCrop?: (crop: Crop) => void;
+  onEditCompanions?: (crop: Crop) => void;
   onAddVariety?: (speciesCrop: Crop) => void;
   onCreatePlan?: () => void;
   onOpenHistory?: () => void;
@@ -136,6 +137,7 @@ export function CropDetail({
   onOpenPublicLibrary,
   onImportFile,
   onEditCrop,
+  onEditCompanions,
   onAddVariety,
   onCreatePlan,
   onOpenHistory,
@@ -1386,7 +1388,7 @@ const detailSectionGridSx = {
             </Box>
             ) : null}
 
-            <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} />
+            <CropCompanionsSection crop={selectedCrop} crops={crops} onCropSelect={onCropSelect} onEdit={onEditCompanions} />
 
             {/* Notes Section */}
             {hasDetailValue(selectedCrop.notes) ? (

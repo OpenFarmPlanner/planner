@@ -26,8 +26,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | PR [#1042](https://github.com/OpenFarmPlanner/planner/pull/1042) merged and verified at `10510124` |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | PR [#1044](https://github.com/OpenFarmPlanner/planner/pull/1044) merged and verified at `ae32f649` |
 | 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | PR [#1046](https://github.com/OpenFarmPlanner/planner/pull/1046) merged and verified at `c6a0f75b` |
-| 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | In progress on `fix/1007-resolved-crop-reference-labels` |
-| 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
+| 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | PR [#1047](https://github.com/OpenFarmPlanner/planner/pull/1047) merged and verified at `4a10dcb7` |
+| 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | In progress on `feat/1029-dedicated-companion-editor` |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | Pending |
 | 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | Pending |
@@ -70,15 +70,21 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1045 merged and verified through PR #1046 at
-`c6a0f75b` (12 November 2026, 17:42:50 CET) after the owner's explicit
-exact-head bootstrap approval. #1045 is closed. Implement #1007 on
-`fix/1007-resolved-crop-reference-labels`, then complete CI/reviews and verify
-its normal merge before #1029. The remaining order, including #1038 before
-final integration, is unchanged. The earlier stop-after-#1032 instruction was
-fulfilled and superseded by resume. Inspect every review thread and required
-check. Native provider rejection remains unresolved; triage skips and human
-contingencies are distinct from completed automated security review.
+Current resume point: #1007 merged and verified through PR #1047 at
+`4a10dcb7` after all 10 required checks passed. #1007 is closed. The optional
+Claude code review failed before completion twice; native Codex rejected its
+request. No independent approval is claimed. Security was intentionally triage
+exempt, and its isolated reader passed. No required reviewer or unresolved
+thread existed; the normal pinned-head merge used no override. Verification:
+https://github.com/OpenFarmPlanner/planner/pull/1047#issuecomment-6830854810 .
+
+Finish #1029 on `feat/1029-dedicated-companion-editor`, based on refreshed
+main `86e581f0` (including the automatic version bump after #1047). Complete
+CI/reviews and verify its normal merge before #1014. The remaining order,
+including #1038 before final integration, is unchanged. The earlier
+stop-after-#1032 instruction was fulfilled and superseded by resume. Inspect
+every review thread and required check. Provider failures remain visible;
+triage exemptions are distinct from completed security reviews.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -785,3 +791,56 @@ eight fresh captures were inspected, including the loaded dashboard.
 
 CI, final reviews and normal merge verification remain pending. #1029 must
 wait for verified merge.
+
+
+## #1029 implementation
+
+Project companion rows now live in a dedicated dialog opened from crop/variety
+details and existing general/variety forms. The dialog reuses row state,
+resolution, note languages, validation and atomic reciprocal replace. Rows
+start compact and one editor expands at a time; dirty cancellation confirms,
+load failures block writing, and save failures retain drafts. Crop saves no
+longer submit project relations. Public library proposals keep their own
+staged save boundary and read-only library details gain no edit action.
+Recognizable absence prose displays as information, without rewriting stored
+rows or parsing spreadsheet text. Shared detail reasons/notes sit below names.
+Implementation, regression/i18n tests and responsive visual verification are
+in progress; no #1029 PR has been opened or merged yet.
+
+
+#1029 validation so far: all 263 targeted tests passed; after the final
+per-group add-action refinement, all 39 affected tests passed, including one
+additional information-only regression (264 unique tests across these runs).
+Final TypeScript, targeted ESLint, production build and all 20 prerenders pass.
+Source-only make quality completed, followed by targeted lint for the final UI
+refinement; backend coverage is left to CI. The three unchanged Crops.tsx effect
+warnings and accepted Ruff/Madge findings remain existing debt. Three focused
+phone browser cases pass, including reciprocal CRUD, a simulated save failure
+and retry, shared editor access from a variety form, canonical-name preservation
+and locale-preserving note edits. All seven focused screenshots were inspected.
+The full 23-case responsive/four-language/library browser run is in progress;
+its artifacts still require final inspection. No feature commit or PR yet.
+
+
+#1029 local implementation is complete and ready for PR/CI. Final validation:
+265 unique unit/i18n tests passed across targeted runs, including all 40
+currently affected editor tests after the final metadata-refresh and alignment
+refinements. TypeScript, final targeted ESLint, production build and 20 public
+prerenders pass. Source quality completed and final changed files were linted
+again; backend remains unchanged and its full suite is required in CI.
+
+All 23 browser cases pass (5.9m): shared editor access, resolved names,
+reciprocal CRUD, save failure/retry, locale-preserving notes, read-only library
+presentation, sparse crop detail and all eight main routes. After final
+polish, all 11 affected cases pass again (3.6m), covering 375/768/1024/1440 px,
+800x375 landscape, all four UI languages and empty-state actions. All 76 main
+run captures and 31 final recaptures were visually inspected. The new dialog
+is intentionally fullscreen below md; shared shell/mobile variants are
+unchanged. Wrapped section actions stay right-aligned. The owner heading and
+selected labels refresh without a refetch or note-draft loss. Known shared
+shell toolbar/title overlap remains for final integration.
+
+Locate the PR for this branch and finish every required check and review
+thread, then perform a normal pinned-head merge and verify fetched main/tree
+and issue closure before #1014. Optional provider failures must remain visible;
+no independent approval or completed security scan may be inferred from them.

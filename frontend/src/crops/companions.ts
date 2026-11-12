@@ -11,6 +11,16 @@ import type {
 
 export const COMPANION_KINDS: readonly CompanionKind[] = ['good', 'bad'];
 
+/** Recognizable absence statements are information, never a named neighbour. */
+export function isCompanionInformationText(text: string): boolean {
+  return [
+    /^no\s+(?:(?:specific|known|bad)\s+)*neighbou?rs(?:\s+(?:known|reported))?(?:\s*[.!:;—–-]|\s*$)/i,
+    /^keine\s+(?:(?:besonderen|spezifischen|schlechten|bekannten)\s+)*nachbarn(?:\s+bekannt)?(?:\s*[.!:;—–-]|\s*$)/i,
+    /^aucun\s+(?:(?:mauvais|spécifique|connu)\s+)*voisin(?:\s+(?:spécifique|connu))*(?:\s*[.!:;—–-]|\s*$)/i,
+    /^(?:no\s+se\s+conocen|sin)\s+(?:(?:malos|específicos|conocidos)\s+)*vecinos(?:\s+(?:específicos|conocidos))*(?:\s*[.!:;—–-]|\s*$)/i,
+  ].some(pattern => pattern.test(text.trim()));
+}
+
 export const COMPANION_REASONS: readonly CompanionReason[] = [
   'competition',
   'allelopathy',

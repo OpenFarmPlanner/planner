@@ -3,8 +3,8 @@
 Two read views show one crop: the read mode of the crops page
 (`crops/CropDetail.tsx`) and an entry's "Details" tab in the crop library
 (`crop-library/pages/PublicCropLibraryPage.tsx`). Editing happens in the crop
-form (`CropForm.tsx`) and the library's edit dialog, which are not affected by
-anything below.
+form (`CropForm.tsx`), the dedicated project companion editor and the
+library's edit dialog.
 
 ## Section order
 
@@ -42,8 +42,9 @@ form.
 - A section whose fields are all missing is left out entirely, separator
   included.
 - Sections you act on stay even when empty, with their empty state and add
-  button: Sorten, Aufgabenvorlagen, Lieferantendaten. The library's general
-  section always names the crop species.
+  button: Sorten, Aufgabenvorlagen, Lieferantendaten, and Mischkultur on
+  editing-capable project views. The library's general section always names
+  the crop species.
 - Crop-specific property dictionaries are record-local and never inherit.
 - A Sorte's blank value still falls back to its Kultur's value first (in the
   library: the species entry's); only a value missing on both counts as
@@ -63,3 +64,10 @@ Project companion references use the same resolved crop-name helper as the
 Name field and detail heading, including a variety's owner hint and reciprocal
 neighbour links. Stored historical names remain identity data; see
 [crop-companions.md](crop-companions.md#project-crop-reference-labels).
+
+
+Editable project companion sections remain visible when empty to offer Add
+neighbours. Their outlined action opens the shared crop-level companion editor,
+including from a variety; read-only/public surfaces offer no project edits.
+Reason and note appear below linked names. General information is distinct from
+actual good/bad neighbours; see the companion documentation above.

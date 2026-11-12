@@ -58,13 +58,13 @@ test('hides empty crop details on the crops page at every viewport', async ({ pa
     await waitForPageStable(page, /Kulturbibliothek/i);
 
     const sections = page.getByTestId('crop-detail-sections');
-    // The Sorten list is navigation and the cultivation type has a backend
-    // default, so both stay; every untouched section is gone.
+    // Navigation, backend defaults and actionable empty sections stay.
     await expect(sections.getByRole('heading', { level: 6 })).toHaveText([
       'Sorten',
       'Fruchtfolge-Eigenschaften',
       'Zeitplanung',
       'Saatgutbedarf',
+      'Mischkultur',
       'Aufgabenvorlagen',
       'Lieferantendaten',
     ]);
