@@ -1,3 +1,5 @@
+import { SpecificPropertiesDetails } from '../../crops/SpecificPropertiesDetails';
+import { hasSpecificPropertyValues } from '../../crops/specificProperties';
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
 import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
@@ -1905,6 +1907,9 @@ export default function PublicCropLibraryPage() {
                               ) : null}
                             </DetailGrid>
                           </DetailSection>,
+                          hasSpecificPropertyValues(selectedCrop.specific_property_profile, selectedCrop.specific_properties) ? <SpecificPropertiesDetails key="specific-properties"
+                            profile={selectedCrop.specific_property_profile} values={selectedCrop.specific_properties}
+                            variety={selectedCrop.variety} t={t} /> : null,
                           hasAnyDetailValue(
                             getPublicFieldValue('crop_family', selectedCrop.crop_family),
                             getPublicFieldValue('nutrient_demand', selectedCrop.nutrient_demand),

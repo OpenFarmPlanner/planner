@@ -1814,5 +1814,36 @@
     "deleteConfirm": "Delete supplier data from “{{supplier}}” for this crop? The supplier itself is kept.",
     "deleteError": "Could not delete the supplier data.",
     "changed": "This offer has changed or been removed. Reload the crop and try again."
+  },
+  "specificProperties": {
+    "title": "Crop-specific properties",
+    "unset": "Not specified",
+    "invalidValue": "Choose a supported value.",
+    "incompatible": "Some properties do not apply to the selected crop species. Remove them before saving, or select the previous species again.",
+    "clearIncompatible": "Remove incompatible values",
+    "cropValues": "Values for this crop",
+    "varietyValues": "Values for this variety",
+    "publishInvalid": "The properties do not apply to the selected species. Check them before publishing.",
+    "importInvalid": "The properties do not apply to this species or contain unsupported values.",
+    "fields": {
+      "cooking_type": "Cooking type",
+      "maturity_group": "Maturity group"
+    },
+    "values": {
+      "cooking_type": {
+        "waxy": "Waxy",
+        "mostly_waxy": "Mostly waxy",
+        "floury": "Floury"
+      },
+      "maturity_group": {
+        "very_early": "Very early",
+        "early": "Early",
+        "medium_early": "Medium early",
+        "medium_late": "Medium late",
+        "late": "Late"
+      }
+    },
+    "templateSpeciesName": "Potato",
+    "importRowInvalid": "Row {{row}}: The properties do not apply to this species or contain unsupported values."
   }
 }

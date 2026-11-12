@@ -19,8 +19,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | Order | Issue | Reason / overlaps | Status |
 | --- | --- | --- | --- |
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
-| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) open; validation/review/merge in progress |
-| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | Pending |
+| 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
+| 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036), implemented; finish CI/review and verify merge, then stop |
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | Pending |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
@@ -67,10 +67,13 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1034 merged on 2026-11-11 at 16:12:35 UTC; fetched
-main and verified commit `4b57c0e8f52ef4121b028a2a66f2d82b7e819bb8` and
-issue #1030 closure. Duplicate WIP #1033 was closed at the user’s request.
-Finish #1028 checks/reviews and merge verification before beginning #1032.
+Current resume point: #1035 is merged and verified at `b96f46b7`; #1028 is
+closed. #1032 is implemented on `feat/1032-crop-specific-properties` in
+PR #1036. Finish its CI/reviews, merge and verify, then stop. This handoff
+is committed before merge: always check #1036 on GitHub for its final state
+and verified merge SHA; final validation/merge evidence is in PR comments. User steering on
+2026-11-12: stop after the next merge (#1032); do not start #1031 until
+explicitly resumed.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -323,3 +326,75 @@ plans at 1024/1440px, the sticky empty table header appears below the alert
 and overlaps the empty-row message. Confirm intended behavior and QA
 exclusions before fixing. These observations mean the complete existing app
 is not claimed visually clean just because germination/overflow tests pass.
+
+## #1035 merge verification and current resume point
+
+Resumed 2026-11-12. The documentation-only head's workflows were still queued
+without jobs after the overnight wait. Closing/reopening the unchanged PR
+retriggered normal workflows successfully. All current checks passed, with
+no outstanding required review. Normal squash auto-merge completed at
+06:19:34 UTC as `b96f46b72eed2267901c8c7bc9be8881318526bb`; fetched main,
+verified ancestry and issue #1028 closure. No check or review was bypassed.
+
+Current resume point: #1032 implementation on a fresh branch from verified
+main. Finish its validation, CI/reviews, merge and verification before #1031.
+
+## #1032 implementation and validation in progress
+
+The shared versioned registry defines typed, localized cooking/maturity fields.
+Species profiles are curated database metadata; model JSON values are local to
+each crop/library record, without implicit variety inheritance. API and both
+import pipelines validate applicability. Spreadsheet columns are localized and
+filtered by exported profiles; blanks merge without erasing existing values.
+The form retains incompatible values across species changes until explicit
+clearing, and supports official species without public entries. Pins and old
+revision restoration include the dictionary.
+
+Initial targeted checks passed: backend 49 tests + 7 subtests including list
+query budgets, library/history 13 tests + 7 subtests, frontend/i18n/exchange
+155 tests, and form regressions 96 tests. TypeScript/build, full make quality,
+actual browser scenarios and final ownership/security review remain in progress.
+No PR has been opened yet.
+
+### #1032 local verification and migration correction (2026-11-12)
+
+- Core/backend query-budget run: 49 passed and 7 subtests; existing list
+  query budgets remain unchanged. Library/history regressions: 13 passed and
+  7 subtests. Final typed-property/write-path run after adding library-link
+  validation: 13 passed.
+- Targeted frontend runs: 155 core/spreadsheet/i18n tests, 96 form/adapter
+  regressions, then 71 updated suggestion/import tests and 18 property tests
+  passed. The latter exercise all enum options through CSV/XLSX/ODS in all
+  four locales. TypeScript and ESLint passed; production bundle built.
+- `make quality` completed and generated reports. Its initial full backend
+  run had 2515 passes, 13 failures and 6 errors: the new profile migration
+  lacked a dependency on farm.0139, leaving its column behind during the
+  historical germination rollback; subsequent tests then inherited an
+  incomplete schema. Added that dependency. Both migration classes and the
+  new profile migration now pass together (5 tests). Full backend CI must
+  confirm the complete suite before merge; the script's accepted pytest
+  exit code alone is not evidence of success.
+- Fresh-database browser testing also exposed blank botanical metadata on the
+  existing canonical potato. The migration now assigns its profile without
+  creating species or changing names. Historical botanical candidates and
+  the canonical blank-metadata record both have regression coverage.
+- Browser create/save/reopen passed at 375x800, 768x900, 1024x900, 1440x900
+  and 800x375 without a variety or public-library entry. Explicit species
+  switching/clear passed. French and Spanish mobile controls and warning
+  actions passed; screenshots were inspected at all five sizes and in both
+  longer locales. Shared shell findings already listed above remain for the
+  final integration PR. Library publication/edit/import and main-route
+  responsive checks are being completed before merge.
+- Actual Vite dev-server checks: shared registry JSON returns 200; unrelated
+  backend manage.py returns 403. The allowlist exposes only the exact registry.
+- User steering: stop after merging and verifying #1032. Do not begin #1031.
+
+- Follow-up library browser case passed (23.5 seconds): create first variety,
+  publish, edit public properties, preserve the private copy, then import the
+  edited values into another project in a separate browser context. Required
+  planning durations are supplied independently of maturity group. The test
+  session correction changes no product behavior.
+- Final local schema check reports no changes detected. Full `make quality`
+  completed: ESLint 0, Madge 1 (accepted existing circular report), Ruff 1
+  (repository report), with the backend failure/correction detailed above.
+  Complete-suite CI and automated review remain mandatory before merge.

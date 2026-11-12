@@ -1,3 +1,4 @@
+import { formatSpecificProperties, type SpecificProperties } from '../../../crops/specificProperties';
 import { SITE_HEALTH_CHOICES, formatSiteHealthValue, type SiteHealthField } from '../../../crops/siteHealth';
 import type { TFunction } from 'i18next';
 import type {
@@ -311,6 +312,7 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     stratification_temperature_max_c: 'germination.fields.stratification_temperature_max_c',
     germination_types: 'germination.fields.germination_types',
     germination_pretreatment: 'germination.fields.germination_pretreatment',
+    specific_properties: 'specificProperties.title',
     pests_diseases: 'siteHealth.fields.pests_diseases',
     light_requirement: 'siteHealth.fields.light_requirement',
     water_requirement: 'siteHealth.fields.water_requirement',
@@ -343,6 +345,7 @@ export function getPublicCropComparisonFieldLabel(field: string, t: TFunction): 
  * values, booleans and empty values identically.
  */
 export function formatPublicCropValue(field: string, value: unknown, t: TFunction): string {
+  if (field === 'specific_properties' && value && typeof value === 'object' && Object.keys(value).length > 0) return formatSpecificProperties(value as SpecificProperties, t);
   if (field === 'companions' && Array.isArray(value) && value.length > 0) {
     return formatCompanionsValue(value as PublicCropCompanion[], t);
   }

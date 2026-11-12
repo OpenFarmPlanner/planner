@@ -184,6 +184,9 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   server: {
+    fs: {
+      allow: [import.meta.dirname, path.resolve(import.meta.dirname, '../backend/crops/specific_properties.v1.json')],
+    },
     watch: {
       ignored: [
         '**/coverage/**',

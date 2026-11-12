@@ -261,6 +261,12 @@ the folded name without step 3.
 
 ### 4.3 Traits (decision 9)
 
+Implementation update (#1032): the initial crop-specific cooking/maturity
+properties ship as typed JSON values on project and public records, backed by
+a versioned repository registry. See [Crop-specific properties](crop-specific-properties.md).
+The normalized catalogue below remains a broader future proposal; it is not
+the current schema and must preserve the shipped keys/contracts if adopted.
+
 Traits differ by species: fruit colour means something for tomatoes and
 squash, but nothing for lettuce. We still do not want a schema per species.
 `seed_type` (open-pollinated / F1 hybrid) applies to every species, so it is a

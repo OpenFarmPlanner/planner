@@ -22,6 +22,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from crops.plant_families import PLANT_FAMILY_BOTANICAL_NAMES
+from crops.specific_properties import PROPERTY_DEFINITIONS
 from farm.models import Crop
 from farm.seed_units import (
     SEED_RATE_UNIT_G_PER_LFM,
@@ -41,6 +42,7 @@ KIND_BOOLEAN = 'boolean'
 KIND_COLOR = 'color'
 # Free-text names, several per crop (the crop's tags).
 KIND_STRING_LIST = 'string_list'
+KIND_OBJECT = 'object'
 
 # Physical dimension used to decide which unit conversions are legal.
 DIMENSION_LENGTH = 'length'
@@ -578,6 +580,26 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         description='Calendar colour as a #RRGGBB hex string.',
         example='#4CAF50',
         input_aliases={'display_color': None},
+    ),
+)
+
+CROP_FIELD_SPECS += (
+    FieldSpec(
+        name='specific_properties', kind=KIND_OBJECT,
+        description='Typed crop-specific values. Explicit JSON replaces all values; empty sheet cells preserve them.',
+        example={'cooking_type': 'waxy', 'maturity_group': 'early'},
+        input_aliases={'specific_properties': None},
+    ),
+    *(
+        FieldSpec(
+            name=f'specific_properties.{key}',
+            kind=KIND_STRING if definition['type'] == 'text' else definition['type'],
+            description=f'Crop-specific {key}; validated against the resolved database species.',
+            example=next(iter(definition.get('options', {})), None),
+            enum_values=tuple(definition['options']) if definition['type'] == 'enum' else None,
+            input_aliases={f'specific_properties.{key}': None, key: None},
+        )
+        for key, definition in PROPERTY_DEFINITIONS.items()
     ),
 )
 

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "profiles": {
+    "solanum_tuberosum": ["cooking_type", "maturity_group"]
+  },
+  "properties": {
+    "cooking_type": {
+      "type": "enum",
+      "label_key": "specificProperties.fields.cooking_type",
+      "options": {
+        "waxy": "specificProperties.values.cooking_type.waxy",
+        "mostly_waxy": "specificProperties.values.cooking_type.mostly_waxy",
+        "floury": "specificProperties.values.cooking_type.floury"
+      }
+    },
+    "maturity_group": {
+      "type": "enum",
+      "label_key": "specificProperties.fields.maturity_group",
+      "options": {
+        "very_early": "specificProperties.values.maturity_group.very_early",
+        "early": "specificProperties.values.maturity_group.early",
+        "medium_early": "specificProperties.values.maturity_group.medium_early",
+        "medium_late": "specificProperties.values.maturity_group.medium_late",
+        "late": "specificProperties.values.maturity_group.late"
+      }
+    }
+  }
+}

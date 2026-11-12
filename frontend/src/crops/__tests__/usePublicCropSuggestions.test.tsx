@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PublicCrop } from '../../api/types';
 import { usePublicCropSuggestions } from '../usePublicCropSuggestions';
 
-const { listMock } = vi.hoisted(() => ({ listMock: vi.fn() }));
-vi.mock('../../api/api', () => ({ publicCropAPI: { list: listMock } }));
+const { listMock, officialListMock } = vi.hoisted(() => ({ listMock: vi.fn(), officialListMock: vi.fn() }));
+vi.mock('../../api/api', () => ({ publicCropAPI: { list: listMock }, cropSpeciesAPI: { list: officialListMock } }));
 
 /** The debounce the search waits out before it asks the library. */
 const DEBOUNCE_MS = 250;
@@ -20,7 +20,7 @@ const crop = (overrides: Partial<PublicCrop> = {}): PublicCrop => ({
   ...overrides,
 } as PublicCrop);
 
-const results = (crops: PublicCrop[]) => ({ data: { results: crops } });
+const results = <T,>(crops: T[]) => ({ data: { results: crops } });
 
 interface Props {
   enabled?: boolean;
@@ -69,6 +69,7 @@ beforeEach(() => {
   // the clock is frozen.
   vi.useFakeTimers({ shouldAdvanceTime: false });
   listMock.mockResolvedValue(results([]));
+  officialListMock.mockResolvedValue(results([]));
 });
 
 afterEach(() => {
@@ -600,5 +601,21 @@ describe('the variety suggestions', () => {
     await settle();
 
     expect(signals[0]?.aborted).toBe(true);
+  });
+});
+
+describe('official species without public entries', () => {
+  it('offers the database species and profile before a variety exists', async () => {
+    officialListMock.mockResolvedValue(results([{
+      id: 42, name: 'Potato', display_name: 'Kartoffel', status: 'published',
+      specific_property_profile: 'solanum_tuberosum', search_names: ['Potato', 'Kartoffel'],
+    }]));
+    const { result } = setup({ searchTerm: 'Kartoffel', nameText: 'Kartoffel' });
+    await settleSearch();
+    await settle();
+    expect(result.current.nameOptions).toContainEqual(expect.objectContaining({
+      cropSpeciesId: 42, name: 'Kartoffel', specific_property_profile: 'solanum_tuberosum',
+    }));
+    expect(result.current.varietyOptions).toEqual([]);
   });
 });

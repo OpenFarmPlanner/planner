@@ -1860,5 +1860,36 @@
     "deleteConfirm": "Supprimer les données de « {{supplier}} » pour cette culture ? Le fournisseur lui-même est conservé.",
     "deleteError": "Impossible de supprimer les données fournisseur.",
     "changed": "Cette offre a été modifiée ou supprimée. Rechargez la culture et réessayez."
+  },
+  "specificProperties": {
+    "title": "Propriétés propres à la culture",
+    "unset": "Non renseigné",
+    "invalidValue": "Choisissez une valeur valide.",
+    "incompatible": "Certaines propriétés ne conviennent pas à l’espèce sélectionnée. Supprimez-les avant d’enregistrer ou sélectionnez à nouveau l’espèce précédente.",
+    "clearIncompatible": "Supprimer les valeurs incompatibles",
+    "cropValues": "Valeurs de cette culture",
+    "varietyValues": "Valeurs de cette variété",
+    "publishInvalid": "Les propriétés ne conviennent pas à l’espèce sélectionnée. Vérifiez-les avant de publier.",
+    "importInvalid": "Les propriétés ne conviennent pas à cette espèce ou contiennent des valeurs non valides.",
+    "fields": {
+      "cooking_type": "Type de cuisson",
+      "maturity_group": "Groupe de maturité"
+    },
+    "values": {
+      "cooking_type": {
+        "waxy": "Chair ferme",
+        "mostly_waxy": "Chair plutôt ferme",
+        "floury": "Chair farineuse"
+      },
+      "maturity_group": {
+        "very_early": "Très précoce",
+        "early": "Précoce",
+        "medium_early": "Demi-précoce",
+        "medium_late": "Demi-tardive",
+        "late": "Tardive"
+      }
+    },
+    "templateSpeciesName": "Pomme de terre",
+    "importRowInvalid": "Ligne {{row}} : Les propriétés ne conviennent pas à cette espèce ou contiennent des valeurs non valides."
   }
 }

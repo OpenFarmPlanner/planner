@@ -1,3 +1,4 @@
+import { SpecificPropertiesSection } from './sections/SpecificPropertiesSection';
 /**
  * Crop Form component for creating and editing crops.
  * 
@@ -224,6 +225,8 @@ const EMPTY_CROP: Partial<Crop> = {
   stratification_temperature_max_c: null,
   germination_types: [],
   germination_pretreatment: '',
+  specific_properties: {},
+  specific_property_profile: '',
   pests_diseases: '',
   light_requirement: '',
   water_requirement: '',
@@ -351,6 +354,8 @@ const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
   stratification_temperature_max_c: publicCrop.stratification_temperature_max_c ?? null,
   germination_types: publicCrop.germination_types ?? [],
   germination_pretreatment: publicCrop.germination_pretreatment ?? '',
+  specific_properties: { ...(publicCrop.specific_properties ?? {}) },
+  specific_property_profile: publicCrop.specific_property_profile ?? '',
   pests_diseases: publicCrop.pests_diseases ?? '',
   light_requirement: publicCrop.light_requirement ?? '',
   water_requirement: publicCrop.water_requirement ?? '',
@@ -540,7 +545,7 @@ export function CropForm({
     }
     const trimmedFirstVarietyName = firstVarietyName.trim();
     const firstVarietyDraft = firstVarietyPublicCrop && normalizeIdentityValue(firstVarietyPublicCrop.variety) === normalizeIdentityValue(trimmedFirstVarietyName)
-      ? buildDraftFromPublicCrop(firstVarietyPublicCrop)
+      ? { ...buildDraftFromPublicCrop(firstVarietyPublicCrop), specific_properties: { ...(draft.specific_properties ?? {}) } }
       : undefined;
     const firstVariety: FirstVarietyDraft | undefined = showFirstVarietyField && trimmedFirstVarietyName
       ? {
@@ -940,7 +945,7 @@ export function CropForm({
    */
   const applyPublicCropDraft = useCallback((
     publicCrop: PublicCrop,
-    { preserveVariety = false }: { preserveVariety?: boolean } = {},
+    { preserveVariety = false, preserveSpecificProperties = false }: { preserveVariety?: boolean; preserveSpecificProperties?: boolean } = {},
   ) => {
     setPublicCropSearchTerm(getPublicCropDraftName(publicCrop));
     setLibraryEntryPickedInDialog(true);
@@ -950,6 +955,7 @@ export function CropForm({
         ...prev,
         ...draft,
         ...(preserveVariety ? { variety: prev.variety } : {}),
+        ...(preserveSpecificProperties ? { specific_properties: prev.specific_properties } : {}),
       };
       setIsDirty(true);
       setUserInteracted(true);
@@ -967,6 +973,7 @@ export function CropForm({
         const updated = {
           ...prev,
           crop_species: null,
+          specific_property_profile: '',
           source_public_crop: null,
           source_public_version: null,
           origin_type: 'manual' as const,
@@ -988,7 +995,7 @@ export function CropForm({
     setPendingLibraryLink(entry);
     setLibraryLinkFilledCount(Object.keys(values).length);
     setFormData((prev) => {
-      const updated = { ...prev, ...values, crop_species: entry.crop_species ?? prev.crop_species ?? null };
+      const updated = { ...prev, ...values, crop_species: entry.crop_species ?? prev.crop_species ?? null, specific_property_profile: entry.specific_property_profile ?? '' };
       setIsDirty(true);
       setUserInteracted(true);
       setSaveError('');
@@ -1033,7 +1040,7 @@ export function CropForm({
       linkLibraryEntry(entry);
       return;
     }
-    applyPublicCropDraft(entry, { preserveVariety: true });
+    applyPublicCropDraft(entry, { preserveVariety: true, preserveSpecificProperties: !entry.variety });
   }, [applyPublicCropDraft, canLinkOnCreate, linkLibraryEntry]);
 
   // The one place that links a crop draft to a library species and carries
@@ -1051,7 +1058,9 @@ export function CropForm({
   // job once the fetch for this species lands. A species without a general
   // entry stays linked by `crop_species` alone rather than copying an
   // arbitrary variety's values.
-  const applySpeciesGeneralPrefill = useCallback((cropSpeciesId: number) => {
+  const applySpeciesGeneralPrefill = useCallback((cropSpeciesId: number, profile?: string) => {
+    if (profile !== undefined) setFormData((prev) => prev.specific_property_profile === profile
+      ? prev : { ...prev, specific_property_profile: profile });
     const alreadyApplied = canLinkOnCreate
       ? pendingLibraryLink?.crop_species === cropSpeciesId
       : formData.crop_species === cropSpeciesId;
@@ -1084,12 +1093,12 @@ export function CropForm({
     varietyPublicCrops,
   ]);
 
-  const handleNameOptionSelect = useCallback((option: { cropSpeciesId: number | null } | null) => {
+  const handleNameOptionSelect = useCallback((option: { cropSpeciesId: number | null; specific_property_profile?: string } | null) => {
     if (option?.cropSpeciesId == null) {
       pendingSpeciesPrefillRef.current = null;
       clearLibraryLink();
       setFormData((prev) => {
-        const updated = { ...prev, crop_species: null };
+        const updated = { ...prev, crop_species: null, specific_property_profile: '' };
         setIsDirty(true);
         setUserInteracted(true);
         setSaveError('');
@@ -1098,7 +1107,7 @@ export function CropForm({
       });
       return;
     }
-    applySpeciesGeneralPrefill(option.cropSpeciesId);
+    applySpeciesGeneralPrefill(option.cropSpeciesId, option.specific_property_profile);
   }, [applySpeciesGeneralPrefill, clearLibraryLink, validateAndSet]);
 
   // Explicit apply action for free text that matches a Name suggestion
@@ -1163,7 +1172,8 @@ export function CropForm({
       : null;
     setFirstVarietyPublicCrop(matched);
     if (matched?.crop_species != null) {
-      applySpeciesGeneralPrefill(matched.crop_species);
+      applySpeciesGeneralPrefill(matched.crop_species, matched.specific_property_profile);
+      setFormData((prev) => ({ ...prev, specific_properties: { ...(matched.specific_properties ?? {}) } }));
     }
     setIsDirty(true);
     setUserInteracted(true);
@@ -1173,7 +1183,8 @@ export function CropForm({
     if (!matchedFirstVarietyOption) return;
     setFirstVarietyPublicCrop(matchedFirstVarietyOption);
     if (matchedFirstVarietyOption.crop_species != null) {
-      applySpeciesGeneralPrefill(matchedFirstVarietyOption.crop_species);
+      applySpeciesGeneralPrefill(matchedFirstVarietyOption.crop_species, matchedFirstVarietyOption.specific_property_profile);
+      setFormData((prev) => ({ ...prev, specific_properties: { ...(matchedFirstVarietyOption.specific_properties ?? {}) } }));
     }
     setIsDirty(true);
     setUserInteracted(true);
@@ -1559,6 +1570,11 @@ export function CropForm({
               />
             ) : null}
             <BasicInfoSection
+              afterIdentityFields={<SpecificPropertiesSection
+                profile={formData.specific_property_profile} values={formData.specific_properties} variety={formData.variety || firstVarietyName}
+                onChange={(values) => handleChange('specific_properties', values)}
+                t={t} errors={displayErrors} getFieldPinProps={getFieldPinProps}
+              />}
               formData={formData}
               tagOptions={tagOptions}
               errors={displayErrors}

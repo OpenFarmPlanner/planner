@@ -19,6 +19,7 @@ export type ImportPreviewResult = {
   diff?: Array<{ field: string; current: unknown; new: unknown }>;
   import_data: Record<string, unknown>;
   error?: string;
+  error_code?: string;
   companions?: CompanionImportPreview;
   /**
    * Cells the import drops (one per cell); the rest of the row is imported.
@@ -43,6 +44,7 @@ export type ImportFailedEntry = {
   name?: string;
   variety?: string;
   error: string | Record<string, unknown>;
+  error_code?: string;
   importData?: Record<string, unknown>;
 };
 
@@ -152,7 +154,7 @@ export const buildCompanionImportMessages = (
 };
 
 export const mapImportErrors = (
-  errors: Array<{ index: number; error: unknown }>,
+  errors: Array<{ index: number; error: unknown; error_code?: string }>,
   importPayload: Record<string, unknown>[],
 ): ImportFailedEntry[] => errors.map((err) => {
   const originalData = importPayload[err.index];
@@ -161,6 +163,13 @@ export const mapImportErrors = (
     name: originalData?.name as string | undefined,
     variety: originalData?.variety as string | undefined,
     importData: originalData,
+    error_code: err.error_code,
     error: typeof err.error === 'string' || typeof err.error === 'object' ? err.error as string | Record<string, unknown> : String(err.error),
   };
 });
+
+export const buildSpecificPropertyPreviewErrors = (
+  results: ImportPreviewResult[], rowNumber: (index: number) => number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string[] => results.filter((result) => result.error_code === 'specific_properties_invalid')
+  .map((result) => t('specificProperties.importRowInvalid', { row: rowNumber(result.index) }));

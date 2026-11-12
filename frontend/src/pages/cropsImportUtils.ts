@@ -153,6 +153,7 @@ export const formatImportFailure = (
   t: TFunction<'crops'>,
   seedRateConstraints?: Partial<SeedRateUnitConstraints> | null,
 ): string => {
+  if (entry.error_code === 'specific_properties_invalid') return t('specificProperties.importInvalid');
   const importData = entry.importData ?? {};
   const fieldErrors = typeof entry.error === 'object' && entry.error !== null ? Object.keys(entry.error) : [];
   const lines = fieldErrors

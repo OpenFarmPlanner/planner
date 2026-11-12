@@ -1,3 +1,4 @@
+import { SpecificPropertiesDetails } from './SpecificPropertiesDetails';
 import { CropSupplierDataSection } from './CropSupplierDataSection';
 import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
 /**
@@ -1122,6 +1123,8 @@ const detailSectionGridSx = {
                 </Box>
             ) : null}
 
+            <SpecificPropertiesDetails profile={selectedCrop.specific_property_profile}
+              values={selectedCrop.specific_properties} variety={selectedCrop.variety} t={t} />
             {/* Crop Rotation Properties Section */}
             {hasAnyDetailValue(
               getCropValue('crop_family', selectedCrop.crop_family),

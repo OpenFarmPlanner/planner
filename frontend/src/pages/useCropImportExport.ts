@@ -16,6 +16,7 @@ import {
   buildCompanionImportMessages,
   buildCompanionPreviewWarning,
   buildTimingWindowPreviewWarnings,
+  buildSpecificPropertyPreviewErrors,
   buildImportSuccessMessage,
   mapImportErrors,
 } from './cropsPageUtils';
@@ -95,9 +96,10 @@ export function useCropImportExport({
             (index) => rowNumbers[index] ?? index + 2,
             t,
           ));
+          invalidEntries.push(...buildSpecificPropertyPreviewErrors(response.data.results, (index) => rowNumbers[index] ?? index + 2, t));
           setPreviewReadyState({
             previewCount: entries.length + skippedRows,
-            validCount: entries.length,
+            validCount: entries.length - response.data.results.filter((result) => result.error).length,
             invalidEntries,
             payload: entries,
             previewResults: response.data.results.map((result) => ({
@@ -144,11 +146,12 @@ export function useCropImportExport({
           const companionWarning = buildCompanionPreviewWarning(response.data.results, t);
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
-            validCount: importAnalysis.validEntries.length,
+            validCount: importAnalysis.validEntries.length - response.data.results.filter((result) => result.error).length,
             invalidEntries: [
               ...importAnalysis.invalidEntries,
               ...(companionWarning ? [companionWarning] : []),
               ...buildTimingWindowPreviewWarnings(response.data.results, (index) => index + 1, t),
+              ...buildSpecificPropertyPreviewErrors(response.data.results, (index) => index + 1, t),
             ],
             payload: importAnalysis.validEntries,
             previewResults: response.data.results,

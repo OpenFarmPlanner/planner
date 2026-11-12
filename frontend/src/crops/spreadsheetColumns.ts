@@ -1,3 +1,4 @@
+import { SPECIFIC_PROPERTY_PREFIX, SPECIFIC_PROPERTY_REGISTRY } from './specificProperties';
 import { TEMPERATURE_REQUIREMENTS, GERMINATION_LIGHT_REQUIREMENTS } from './germination';
 import { SITE_HEALTH_CHOICES, type SiteHealthChoiceField } from './siteHealth';
 
@@ -426,6 +427,13 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     aliases: ['bad companions', 'bad neighbours', 'schlechte nachbarn', 'mischkultur schlecht'],
     type: 'companions',
   },
+  ...Object.entries(SPECIFIC_PROPERTY_REGISTRY.properties).map(([key, definition]): SpreadsheetColumnDef => ({
+    key: `${SPECIFIC_PROPERTY_PREFIX}${key}`, headerKey: definition.label_key,
+    aliases: [`${SPECIFIC_PROPERTY_PREFIX}${key}`, key],
+    type: definition.type === 'enum' || definition.type === 'text' ? 'string'
+      : definition.type === 'boolean' ? 'boolean' : 'number',
+    enumImport: definition.options ? Object.fromEntries(Object.keys(definition.options).map((value) => [value, value])) : undefined,
+  })),
 ];
 
 const buildNutrientDemandExport = (t: SpreadsheetT): Record<string, string> => ({
@@ -458,6 +466,10 @@ const buildSeedRateUnitExport = (t: SpreadsheetT): Record<string, string> => ({
 });
 
 const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<string, string> | undefined => {
+  if (columnKey.startsWith(SPECIFIC_PROPERTY_PREFIX)) {
+    const definition = SPECIFIC_PROPERTY_REGISTRY.properties[columnKey.slice(SPECIFIC_PROPERTY_PREFIX.length)];
+    return definition?.options ? Object.fromEntries(Object.entries(definition.options).map(([value, label]) => [value, t(label)])) : undefined;
+  }
   if (columnKey === 'germination_temperature_requirement') return Object.fromEntries(TEMPERATURE_REQUIREMENTS.map((value) => [value, t(`germination.values.${columnKey}.${value}`)]));
   if (columnKey === 'germination_light_requirement') return Object.fromEntries(GERMINATION_LIGHT_REQUIREMENTS.map((value) => [value, t(`germination.values.${columnKey}.${value}`)]));
   if (columnKey === 'germination_types') return Object.fromEntries(['cold', 'frost', 'light', 'dark'].map((kind) => [kind, t(`germination.types.${kind}`)]));

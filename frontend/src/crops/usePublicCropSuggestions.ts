@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { publicCropAPI } from '../api/api';
 import type { PublicCrop } from '../api/types';
+import { useCropSpeciesSearch } from './useCropSpeciesSearch';
 import { normalizeCropSpeciesSearchValue } from './cropSpeciesMatching';
 import {
   dedupePublicCropsBySpecies,
@@ -49,6 +50,7 @@ export function usePublicCropSuggestions({
   searchTerm,
   nameText,
 }: UsePublicCropSuggestionsOptions): PublicCropSuggestions {
+  const officialSearch = useCropSpeciesSearch(searchTerm, enabled);
   const [publicCropOptions, setPublicCropOptions] = useState<PublicCrop[]>([]);
   const [nameOptionsLoading, setNameOptionsLoading] = useState(false);
   const [matchedCropSpeciesId, setMatchedCropSpeciesId] = useState<number | null>(null);
@@ -109,8 +111,25 @@ export function usePublicCropSuggestions({
   // "Name" suggestions must be unique crop species, never "Species · Variety"
   // combinations — the Variety field covers the sorte-specific part.
   const nameOptions = useMemo(
-    () => dedupePublicCropsBySpecies(publicCropOptions, searchTerm),
-    [publicCropOptions, searchTerm],
+    () => {
+      const options = dedupePublicCropsBySpecies(publicCropOptions, searchTerm);
+      for (const species of officialSearch.results) {
+        const existing = options.find((option) => option.cropSpeciesId === species.id);
+        if (existing) {
+          existing.specific_property_profile = species.specific_property_profile;
+          continue;
+        }
+        options.push({
+          key: species.id, cropSpeciesId: species.id,
+          canonicalName: species.display_name || species.name,
+          name: species.display_name || species.name, matchedAlias: null,
+          searchNames: species.search_names ?? [species.name],
+          specific_property_profile: species.specific_property_profile,
+        });
+      }
+      return options;
+    },
+    [officialSearch.results, publicCropOptions, searchTerm],
   );
 
   // The library entry the typed Name text matches exactly, regardless of how
@@ -174,7 +193,7 @@ export function usePublicCropSuggestions({
 
   return {
     nameOptions,
-    nameOptionsLoading,
+    nameOptionsLoading: nameOptionsLoading || officialSearch.loading,
     matchedNameOption,
     varietyPublicCrops,
     varietyOptions,

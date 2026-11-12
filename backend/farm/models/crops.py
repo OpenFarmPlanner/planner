@@ -17,6 +17,7 @@ from farm.germination import (
     TEMPERATURE_REQUIREMENT_CHOICES, LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
     germination_errors, sync_germination_requirements,
 )
+from crops.specific_properties import crop_specific_property_errors
 from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
@@ -533,6 +534,10 @@ class Crop(TimestampedModel):
         help_text="Deprecated requirement list. Retained for old clients and conflicting historical data; remove only after clients migrate and conflicts are resolved.",
     )
     germination_pretreatment = models.TextField(blank=True)
+    specific_properties = models.JSONField(
+        default=dict, blank=True,
+        help_text="Typed values for this record, validated against its species property profile.",
+    )
 
     # Site, life cycle and plant health (descriptive; inherited by Sorten).
     pests_diseases = models.TextField(
@@ -686,6 +691,7 @@ class Crop(TimestampedModel):
         self._clean_cultivation_types(errors)
         self._clean_non_negative_numbers(errors)
         errors.update(germination_errors(self))
+        errors.update(crop_specific_property_errors(self))
         errors.update(sowing_depth_errors(self))
         self._clean_seeding_requirement(errors)
         self._clean_seed_rate_by_cultivation(errors)
@@ -835,7 +841,7 @@ class Crop(TimestampedModel):
         'stratification_days_max',
         'stratification_temperature_min_c',
         'stratification_temperature_max_c',
-        'germination_types', 'germination_pretreatment',
+        'germination_types', 'germination_pretreatment', 'specific_properties',
         'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle',
         'winter_hardiness',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
@@ -1350,6 +1356,10 @@ class PublicCrop(TimestampedModel):
         help_text="Deprecated requirement list. Retained for old clients and conflicting historical data; remove only after clients migrate and conflicts are resolved.",
     )
     germination_pretreatment = models.TextField(blank=True)
+    specific_properties = models.JSONField(
+        default=dict, blank=True,
+        help_text="Typed values for this record, validated against its species property profile.",
+    )
     pests_diseases = models.TextField(blank=True)
     light_requirement = models.CharField(
         max_length=20, choices=Crop.LIGHT_REQUIREMENT_CHOICES, blank=True,
@@ -1393,6 +1403,12 @@ class PublicCrop(TimestampedModel):
 
     class Meta:
         ordering = ['name', 'variety']
+
+    def clean(self) -> None:
+        super().clean()
+        errors = crop_specific_property_errors(self)
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         from farm.utils import normalize_text
