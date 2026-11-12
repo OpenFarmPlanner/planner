@@ -525,13 +525,24 @@ content patterns live, commented, in the triage step's `env` block.
 - **Security review reporting:** no log file. The summary comment states the
   reviewed commit SHA, the changed files and the result; unfixed findings get
   an inline comment and a `security` issue (see "Security Review Protocol").
+- **Completion gate:** an isolated job loads review policy from the immutable
+  PR base without running PR code; the required `quality` job explicitly fails
+  unless it passes. It requires validated final-head/scope completion
+  evidence, an intentional triage exemption, or an explicitly approved human
+  contingency. A skipped triage is not a clean scan; authoring-agent self-review
+  is not independent approval. Workflow self-change/own-fix guards do not certify
+  a required review. First installation needs explicit human bootstrap approval.
+  See `docs/security-automation.md` for exact commands and recovery.
 - **Subscription fallback:** if Claude's security review reports an exhausted
-  usage allowance, a separate job requests native Codex Security Review via
+  usage allowance, its incomplete job stays failed and a separate job requests
+  native Codex Security Review via
   `@codex security review`, using the linked user's GitHub token. Other errors
   still fail the job. The request uses the ChatGPT/Codex allowance, without an
   OpenAI API key. It runs asynchronously and reports findings; it does not
-  apply Claude's automatic fixes. A green request job confirms delivery only,
-  not a completed or clean review. Setup and follow-up expectations live in
+  apply Claude's automatic fixes. A green delivery job confirms delivery only,
+  not a completed or clean review. Claude completion also needs a validated
+  structured terminal report naming the final SHA and changed files.
+  Setup and follow-up expectations live in
   `docs/security-automation.md`.
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.

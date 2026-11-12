@@ -24,7 +24,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR [#1039](https://github.com/OpenFarmPlanner/planner/pull/1039) merged and verified at `7663d0f4` |
 | 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | PR [#1040](https://github.com/OpenFarmPlanner/planner/pull/1040) merged and verified at `d597ec04` |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | PR [#1042](https://github.com/OpenFarmPlanner/planner/pull/1042) merged and verified at `10510124` |
-| 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | In progress on `fix/1017-complete-crop-import-templates` |
+| 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | PR [#1044](https://github.com/OpenFarmPlanner/planner/pull/1044) merged and verified at `ae32f649` |
+| 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | In progress on `fix/1045-security-review-completion` |
 | 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
@@ -69,15 +70,14 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1008 merged and verified through PR #1042 at
-`10510124` (2026-11-12 14:09:15 UTC); #1008 is closed. Implement #1017 on
-`fix/1017-complete-crop-import-templates`, based on fetched main `673cf608` (automated 1.162.2 release metadata),
-then finish CI/reviews, merge normally and verify before #1007. Newly open P0
-#1038 is included before final integration; the dependency sequence stays
-intact. Do not start another implementation before the preceding merge is
-verified. The earlier stop-after-#1032 instruction was fulfilled and superseded
-by resume. Check every review thread explicitly as well as required
-checks/reviews before attempting normal merge.
+Current resume point: #1017 merged and verified through PR #1044 at
+`ae32f649` (2026-11-12 15:36:23 UTC); #1017 is closed. The user inserted
+#1045 immediately after this merge. Implement it on
+`fix/1045-security-review-completion`, then finish CI/reviews and verify its
+normal merge before #1007. The remaining dependency order, including #1038
+before final integration, is unchanged. The earlier stop-after-#1032
+instruction was fulfilled and superseded by resume. Check every review thread
+explicitly as well as required checks/reviews before normal merge.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -655,3 +655,92 @@ both cases; both focused browser cases pass and all five fresh captures were
 inspected. All 357 targeted tests, TypeScript, full ESLint (zero errors, 117
 existing warnings), production build and 20 prerenders pass again. A fresh
 15-case browser run and exact-head CI/reviews remain required before merge.
+
+## #1044 merge verification and #1045 investigation
+
+PR #1044 merged normally at 2026-11-12 15:36:23 UTC as
+`ae32f649e73fdfa24da6d61403a94bb09fe3b549`, pinned to final head
+`9ea046d9c931faee6d5f4a480679627f88270233`. All 10 required checks,
+build, PostgreSQL, six cross-browser jobs and dependency checks passed.
+All 357 targeted tests and 15 final local browser cases pass, with all 54
+unique final captures inspected at 375/768/1024/1440 and phone landscape.
+Full local quality passed with 2,561 backend tests and zero ESLint errors
+(existing Ruff/Madge reports remain accepted). Required check/review lists
+were clear; optional Claude code review failed without completing and
+security triage intentionally skipped this UI-only scope. Neither is
+independent security approval. Fetched main contains the merge, its tree
+exactly matches the tested head, and #1017 closed at 15:36:25 UTC. Evidence:
+https://github.com/OpenFarmPlanner/planner/pull/1044#issuecomment-6828083828 .
+
+#1045: the allowance helper succeeds to route a failed Claude review to the
+fallback, and the fallback succeeds after posting a request. Neither verifies
+completion, so no existing required check enforces it. Confirmed repeated
+Codex connector account-link rejection on #1036/#1039/#1040, including
+https://github.com/OpenFarmPlanner/planner/pull/1040#issuecomment-6824802763 .
+Official documentation supports the exact trigger; a clean native review
+can post no findings, so silence/reactions cannot prove completion. The owner
+has verified connection/settings; the external rejection remains unexplained
+and must not be represented as fixed by repository code. Branch-protection
+API access returns 403 despite repository ADMIN permissions; preserve required
+check names and enforce completion through the already-required quality job.
+Implementation and validation are pending. #1007 must wait for verified merge.
+
+#1045 implementation: triage publishes head/scope/PR/run/attempt evidence without
+executing PR tests. Claude completion requires a successful terminal record with
+final SHA, exact sorted scope and no unresolved findings, validated with the
+base-commit parser. Incomplete/allowance jobs remain failed; Codex delivery is
+explicitly distinct. The existing required quality job loads immutable-base
+policy with a read-only token and enforces completion, intentional exemptions
+or explicit human-approved contingency. Artifact provenance/attempts, head and
+scope are checked. Rejection, pending/timeout, stale evidence and API failures
+never become approval. Provider self-change/own-fix guards remain; the original
+review can certify a fix only after reviewing its exact final head. Manual
+attestations require a human admin/maintainer and reject authoring self-review.
+First installation has no base policy, so it deliberately requires a human
+exact-head bootstrap review/approval before quality can pass. This is not
+permission inferred from the user's general instruction to continue.
+
+Local validation: 11 Python and 19 Node policy regression tests pass; targeted
+Python Ruff and Actionlint 1.7.12 pass. Source-only make quality passes with
+SKIP_BACKEND_TESTS=1 (full backend remains mandatory in CI), zero frontend ESLint
+errors and accepted existing Ruff/Madge reports. No application, UI, dependency,
+schema or migration changes. The optional native diff-scan skill could not run: its
+required config-preflight resource is unavailable and no native scan tools are
+exposed here. No scan was started or claimed complete. Exact-head manual boundary
+review, PR CI, live provider reproduction and human bootstrap approval remain
+pending. Do not start #1007 before #1045's verified merge.
+
+Before final #1045 review, incorporated main's automated 1.162.3 release
+commit `79d78eab` (version metadata only) through a normal merge, without
+rewriting the published feature commit. PR #1046 is active. Fresh head CI
+remains required, including the intentionally blocking first-install human
+review gate. No human approval has been posted or inferred.
+
+Live #1046 evidence on initial final head `8af517e1`: all 30 policy tests
+and ordinary quality checks pass in Actions, then quality fails specifically
+for missing explicit first-install human bootstrap review. Supported native
+request at 15:59:17 UTC was rejected at 15:59:21 UTC:
+https://github.com/OpenFarmPlanner/planner/pull/1046#issuecomment-6828663280 .
+The provider's self-change guard skips execution, not completion approval.
+A final boundary check also disables persisted quality checkout credentials,
+so PR-owned lint/tests do not inherit the job's newly scoped API-reading token.
+The native rejection is investigation evidence, not a completed review of any
+head. Fresh head CI and exact-head human bootstrap approval remain mandatory.
+
+Final credential isolation refinement: the completion reader now runs on its
+own runner with no checkout or PR code execution. The existing required quality
+job depends on it, runs with always(), and explicitly fails on a non-success
+result; a failed dependency cannot silently skip the required check. Quality
+retains only contents-read permission and disabled Git credential persistence.
+All 30 policy tests and Actionlint pass after this refinement. Earlier CI
+bootstrap-failure evidence remains valid investigation evidence, not approval
+of this final head; fresh complete CI and exact-head human review are required.
+
+Functional head `29f86718`: all nine other required CI checks pass, including
+backend and all three production E2E shards; six cross-browser jobs, PostgreSQL,
+CodeQL and dependencies pass too. Only isolated completion and required quality
+fail, specifically for absent human bootstrap review. Recovery docs now state
+that BOTH failed jobs must rerun after approval (`gh run rerun RUN_ID --failed`),
+so the reader refreshes evidence before quality checks its dependency result.
+This documentation-only follow-up still needs fresh final-head required checks.
+No approval is inferred or posted, and #1007 remains blocked on verified merge.

@@ -193,7 +193,8 @@ table of what is and isn't implemented.
   Docker-based cross-browser suite (Chromium/Firefox/WebKit, desktop and
   mobile) with deterministic layout assertions and failure artifacts.
 - [`security-automation.md`](./security-automation.md) — automated dependency,
-  SAST, Django deployment, and GitHub-native security coverage and triggers.
+  SAST, Django deployment, and GitHub-native security coverage, exact-head review
+  completion gates, provider limitations and explicit human contingencies.
 - [`security-review-log.md`](./security-review-log.md) — frozen history of
   security reviews up to 2026-10-17; no new entries. Reviews are now
   documented in PR comments with the reviewed SHA, open findings as

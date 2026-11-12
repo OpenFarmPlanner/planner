@@ -161,11 +161,78 @@ jobs:
           cd backend
           pdm run test -m postgres -n0 --no-cov --create-db
 
-  quality:
+  security-review-completion:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    steps:
+      - name: Evaluate security review completion
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: current } = await github.rest.pulls.get({
+              ...context.repo, pull_number: pr.number,
+            });
+            if (current.head.sha !== pr.head.sha) throw new Error('Stale CI head; a new push needs new checks.');
+            let policy;
+            try {
+              const { data } = await github.rest.repos.getContent({
+                ...context.repo, path: '.github/scripts/security-review-completion.cjs', ref: pr.base.sha,
+              });
+              policy = Buffer.from(data.content, 'base64').toString();
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              // First installation has no trusted base policy. Only an explicit
+              // human maintainer's exact-head review can approve the bootstrap.
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                ...context.repo, issue_number: pr.number, per_page: 100,
+              });
+              const command = `/security-review bootstrap ${pr.head.sha}`;
+              const statement = 'I independently reviewed this exact commit and approve installing the security review gate.';
+              for (const comment of comments) {
+                const body = (comment.body ?? '').replace(/\r\n?/g, '\n');
+                if (comment.user?.type !== 'User' ||
+                    body.split('\n')[0] !== command || !body.split('\n').includes(statement)) continue;
+                const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  ...context.repo, username: comment.user.login,
+                });
+                if (!['admin', 'maintain'].includes(permission.permission) && !permission.user?.permissions?.maintain) continue;
+                await core.summary.addHeading('Security review completion').addRaw(
+                  `State: **manual_review_approved** (first-install bootstrap)\n\nHead: ${pr.head.sha}\n\n` +
+                  `Explicit human review: ${comment.html_url}\n\nThis is not automated security review completion.\n`).write();
+                return;
+              }
+              throw new Error('First-install security gate requires an explicit human maintainer review and exact-head bootstrap approval. Authoring-agent self-review is not approval.');
+            }
+            // Execute policy from the immutable PR base, with a read-only token.
+            // No PR checkout code is loaded by this privileged API-reading step.
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const os = require('node:os');
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'trusted-security-policy-'));
+            try {
+              const file = path.join(directory, 'security-review-completion.cjs');
+              fs.writeFileSync(file, policy);
+              await require(file).enforce({ github, context, core, expectedHead: pr.head.sha });
+            } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+
+  quality:
+    needs: security-review-completion
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node (LTS)
         id: setup-node
@@ -219,6 +286,17 @@ jobs:
         env:
           SKIP_BACKEND_TESTS: '1'
         run: make quality
+
+      - name: Test security review completion policy
+        run: |
+          python3 -m unittest discover -s tests -p test_claude_review_fallback.py
+          node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs
+
+      - name: Enforce security review completion
+        if: github.event_name == 'pull_request' && needs.security-review-completion.result != 'success'
+        run: |
+          echo '::error::The isolated security review completion job did not pass. Review its evidence and approval requirement.'
+          exit 1
 
       - name: Upload quality reports
         if: always()

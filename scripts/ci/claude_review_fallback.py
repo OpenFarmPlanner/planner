@@ -37,18 +37,79 @@ def needs_codex_fallback(outcome: str, messages: object) -> bool:
     )
 
 
+def completion_report(
+    outcome: str, messages: object, head: str, scope: list[str]
+) -> dict[str, object]:
+    """Routing success is distinct from a validated, exact-head security review."""
+    report: dict[str, object] = {
+        "schema": 1,
+        "provider": "claude",
+        "head_sha": head,
+        "scope": sorted(scope),
+        "state": "claude_failed",
+    }
+    if not re.fullmatch(r"[0-9a-f]{40}", head) or not scope:
+        return report
+    try:
+        if needs_codex_fallback(outcome, messages):
+            return {**report, "state": "claude_allowance_exhausted"}
+    except ValueError:
+        return report
+    if outcome != "success" or not isinstance(messages, list) or not messages:
+        return report
+    terminal = messages[-1]
+    if (
+        not isinstance(terminal, dict)
+        or terminal.get("type") != "result"
+        or terminal.get("is_error") is not False
+        or terminal.get("subtype") != "success"
+        or not isinstance(terminal.get("num_turns"), int)
+        or terminal["num_turns"] < 1
+    ):
+        return report
+    try:
+        evidence = json.loads(terminal.get("result", ""))
+    except (TypeError, ValueError):
+        return report
+    if (
+        not isinstance(evidence, dict)
+        or evidence.get("reviewed_sha") != head
+        or evidence.get("security_review_completed") is not True
+        or evidence.get("scope") != sorted(scope)
+        or evidence.get("result") not in ("no_issues", "issues_fixed")
+        or evidence.get("unfixed_findings") != []
+    ):
+        return report
+    return {**report, "state": "claude_completed", "result": evidence["result"]}
+
+
 def main() -> None:
-    report = os.environ.get("CLAUDE_EXECUTION_FILE", "")
+    execution_file = os.environ.get("CLAUDE_EXECUTION_FILE", "")
     messages: object = None
-    if report:
-        messages = json.loads(Path(report).read_text(encoding="utf-8"))
-    fallback = needs_codex_fallback(os.environ["CLAUDE_OUTCOME"], messages)
+    try:
+        if execution_file:
+            messages = json.loads(Path(execution_file).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    report = completion_report(
+        os.environ["CLAUDE_OUTCOME"],
+        messages,
+        os.environ["REVIEW_HEAD_SHA"],
+        json.loads(Path(os.environ["REVIEW_SCOPE_FILE"]).read_text(encoding="utf-8")),
+    )
+    report["run_id"] = int(os.environ["GITHUB_RUN_ID"])
+    report["run_attempt"] = int(os.environ["GITHUB_RUN_ATTEMPT"])
+    fallback = report["state"] == "claude_allowance_exhausted"
+    completed = report["state"] == "claude_completed"
+    Path(os.environ["REVIEW_REPORT_FILE"]).write_text(json.dumps(report), encoding="utf-8")
     with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
         output.write(f"codex_fallback={str(fallback).lower()}\n")
+        output.write(f"review_completed={str(completed).lower()}\n")
+    print(f"Security review state: {report['state']}")
     if fallback:
         print(
-            "::warning::Claude allowance exhausted. Requesting Codex Security Review "
-            "using the linked subscription."
+            "::warning::Claude allowance exhausted; security review did not complete. "
+            "The Codex fallback can request a review, but cannot certify completion."
         )
 
 
