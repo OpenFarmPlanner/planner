@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
-import { Alert, Box, Typography } from '@mui/material';
+import { useId, useMemo } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 
 import type { Crop, CropCompanion } from '../api/types';
 import { normalizeLanguageTag } from '../i18n/languages';
@@ -8,32 +10,33 @@ import { CompanionKindColumns, type CompanionListItem } from './CompanionKindCol
 import {
   companionReasonLabelKey,
   findKulturId,
+  isCompanionInformationText,
   relationPartner,
   relationsOfKultur,
 } from './companions';
 import { usePlantFamilies } from './plantFamilies';
 import { useCropCompanions } from './useCropCompanions';
 import { getCropDisplayName } from './cropDisplay';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 interface CropCompanionsSectionProps {
   crop: Crop;
   crops: Crop[];
-  onCropSelect: (crop: Crop) => void;
+  onCropSelect?: (crop: Crop) => void;
+  onEdit?: (crop: Crop) => void;
 }
 
 /**
- * "Mischkultur" in the crop details: the Kultur's good and bad neighbours,
- * read-only; they are edited in the Kultur's crop form. A Sorte shows its
- * Kultur's list (see docs/crop-companions.md). Like every empty detail
- * section it renders nothing without neighbours (no Kultur, still loading,
- * or none recorded); a load error is still shown.
+ * Shared project companion summary. Editing-capable callers open the same
+ * Kultur editor from details or a crop/variety form; read-only empty lists hide.
  */
-export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompanionsSectionProps) {
+export function CropCompanionsSection({ crop, crops, onCropSelect, onEdit }: CropCompanionsSectionProps) {
   const { t, i18n } = useTranslation(['crops', 'common']);
+  const titleId = useId();
   const language = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
   const families = usePlantFamilies();
   // Reloaded whenever the crop list is refetched, e.g. after the form saved.
-  const { relations, failed } = useCropCompanions(crops);
+  const { relations, failed, loaded, reload } = useCropCompanions(crops);
 
   const cropsById = useMemo(
     () => new Map(crops.flatMap((entry) => (entry.id === undefined ? [] : [[entry.id, entry] as const]))),
@@ -57,24 +60,35 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
       kind: relation.kind,
       label,
       detail: [reason, relation.notes ? relation.notes[language] ?? '' : relation.note].filter(Boolean).join(': '),
-      onSelect: partnerCrop ? () => onCropSelect(partnerCrop) : undefined,
+      informational: partner.type === 'text' && isCompanionInformationText(partner.text),
+      onSelect: partnerCrop && onCropSelect ? () => onCropSelect(partnerCrop) : undefined,
     };
   });
 
-  if (!failed && items.length === 0) {
+  const editable = Boolean(onEdit && kultur);
+  const hasNeighbors = items.some(item => !item.informational);
+  if (!failed && items.length === 0 && !editable) {
     return null;
   }
 
   return (
-    <Box sx={{ mb: 3 }} data-testid="crop-companions-section">
-      <Typography variant="h6" gutterBottom>{t('companions.title')}</Typography>
-      {failed ? <Alert severity="error">{t('companions.loadError')}</Alert> : null}
+    <Box component="section" aria-labelledby={titleId} sx={{ mb: 3 }} data-testid="crop-companions-section">
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+        <Typography id={titleId} variant="h6">{t('companions.title')}</Typography>
+        {editable && kultur ? <Button variant="outlined" startIcon={hasNeighbors ? <EditOutlinedIcon /> : <AddIcon />}
+          sx={{ ml: 'auto' }}
+          disabled={!loaded || failed} onClick={() => onEdit?.(kultur)}>
+          {t(hasNeighbors ? 'common:actions.edit' : 'companions.addNeighbors')}
+        </Button> : null}
+      </Stack>
+      {failed ? <Alert severity="error" action={<LoadRetryButton onClick={() => void reload()} />}>{t('companions.loadError')}</Alert> : null}
       {kultur && isVariety ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {t('companions.sharedHint', { name: getCropDisplayName(kultur) })}
         </Typography>
       ) : null}
       {items.length > 0 ? <CompanionKindColumns items={items} /> : null}
+      {editable && loaded && !failed && items.length === 0 ? <Typography variant="body2" color="text.secondary">{t('companions.form.empty')}</Typography> : null}
     </Box>
   );
 }

@@ -1600,6 +1600,11 @@
     "alreadyRejected": "Dieses Update wurde bereits abgelehnt."
   },
   "companions": {
+    "editTitle": "Mischkultur bearbeiten",
+    "addNeighbors": "Nachbarn hinzufügen",
+    "editNamed": "{{name}} bearbeiten",
+    "information": "Allgemeiner Hinweis",
+    "editorSaveError": "Die Nachbarn konnten nicht gespeichert werden. Deine Änderungen bleiben erhalten.",
     "title": "Mischkultur",
     "goodColumn": "Gute Nachbarn",
     "badColumn": "Schlechte Nachbarn",

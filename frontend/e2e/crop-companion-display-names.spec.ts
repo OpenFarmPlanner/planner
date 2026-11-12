@@ -5,9 +5,14 @@ import en from '../src/i18n/locales/en/crops.json' with { type: 'json' };
 import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import es from '../src/i18n/locales/es/crops.json' with { type: 'json' };
 import { apiRequest, loginWithDeterministicProject } from './utils';
+import deCommon from '../src/i18n/locales/de/common.json' with { type: 'json' };
+import enCommon from '../src/i18n/locales/en/common.json' with { type: 'json' };
+import frCommon from '../src/i18n/locales/fr/common.json' with { type: 'json' };
+import esCommon from '../src/i18n/locales/es/common.json' with { type: 'json' };
 
 type SavedCrop = Crop & { id: number; crop_display_name: string };
 const languages = { de, en, fr, es };
+const commonLanguages = { de: deCommon, en: enCommon, fr: frCommon, es: esCommon };
 const viewports = [
   { language: 'en', width: 375, height: 800 },
   { language: 'en', width: 768, height: 900 },
@@ -21,6 +26,7 @@ for (const { language, width, height } of viewports) {
   test(`resolved companion references agree in ${language} at ${width}x${height}`, async ({ page, request }, testInfo) => {
     test.setTimeout(120_000);
     const text = languages[language as keyof typeof languages];
+    const common = commonLanguages[language as keyof typeof commonLanguages];
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginWithDeterministicProject(page, request, `companion-display-${language}-${width}-${height}`, { loginAsAdmin: true });
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
@@ -56,14 +62,21 @@ for (const { language, width, height } of viewports) {
     await expect(dialog).toBeVisible();
     await page.setViewportSize({ width, height });
     await expect(dialog.getByRole('combobox', { name: text.form.name, exact: true })).toHaveValue(crop.crop_display_name);
-    const inherited = dialog.getByTestId('crop-companions-form-section');
-    await expect(inherited).toContainText(text.companions.form.varietyReadOnly.replaceAll('{{name}}', crop.crop_display_name));
+    const inherited = dialog.getByTestId('crop-companions-section');
+    await expect(inherited).toContainText(text.companions.sharedHint.replace('{{name}}', crop.crop_display_name));
     await expect(inherited.getByText(neighbor.crop_display_name, { exact: true })).toBeVisible();
     await expect(inherited).not.toContainText(crop.name);
     await expect(inherited).not.toContainText(neighbor.name);
     await inherited.scrollIntoViewIfNeeded();
     expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
     await page.screenshot({ path: testInfo.outputPath(`companion-variety-${language}-${width}.png`), animations: 'disabled' });
+
+    await inherited.getByRole('button', { name: common.actions.edit, exact: true }).click();
+    const sharedEditor = page.getByRole('dialog', { name: text.companions.editTitle, exact: true });
+    await expect(sharedEditor).toContainText(text.companions.sharedHint.replace('{{name}}', crop.crop_display_name));
+    await expect(sharedEditor.getByTestId('companion-compact-row')).toContainText(neighbor.crop_display_name);
+    await sharedEditor.getByRole('button', { name: common.actions.cancel, exact: true }).click();
+    await expect(sharedEditor).toBeHidden();
 
     await page.goto(`/app/crops?cropId=${variety.id}`);
     const detail = page.getByTestId('crop-companions-section');
@@ -84,15 +97,8 @@ for (const { language, width, height } of viewports) {
         companionWrites.push(request.url());
       }
     });
-    const field = dialog.getByRole('combobox', { name: text.companions.form.neighbor, exact: true });
-    await expect(field).toHaveValue(neighbor.crop_display_name);
-    await field.scrollIntoViewIfNeeded();
-    await field.click();
-    const option = page.getByRole('option', { name: neighbor.crop_display_name, exact: true });
-    await expect(option).toBeVisible();
-    await option.click();
-    expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
-    await page.screenshot({ path: testInfo.outputPath(`companion-picker-${language}-${width}.png`), animations: 'disabled' });
+    await expect(dialog.getByRole('combobox', { name: text.companions.form.neighbor, exact: true })).toHaveCount(0);
+    await expect(dialog.getByTestId('crop-companions-section')).toContainText(neighbor.crop_display_name);
     await dialog.getByRole('textbox', { name: text.siteHealth.fields.pests_diseases, exact: true }).fill('Updated health note');
     await dialog.getByRole('button', { name: text.form.save, exact: true }).click();
     await expect(dialog).toBeHidden();
@@ -102,5 +108,19 @@ for (const { language, width, height } of viewports) {
     expect(saved.crop_display_name).toBe(crop.crop_display_name);
     const savedRelation = await apiRequest<{ crop: number; companion_crop: number }>(page, 'GET', `/crop-companions/${relation.id}/`);
     expect(savedRelation).toMatchObject({ crop: crop.id, companion_crop: neighbor.id });
+    await page.getByTestId('crop-companions-section').getByRole('button', { name: common.actions.edit, exact: true }).click();
+    const editor = page.getByRole('dialog', { name: text.companions.editTitle, exact: true });
+    await editor.getByRole('button', { name: text.companions.editNamed.replace('{{name}}', neighbor.crop_display_name), exact: true }).click();
+    const field = editor.getByRole('combobox', { name: text.companions.form.neighbor, exact: true });
+    await expect(field).toHaveValue(neighbor.crop_display_name);
+    await field.click();
+    await page.getByRole('option', { name: neighbor.crop_display_name, exact: true }).click();
+    await expect(editor.getByRole('button', { name: common.actions.save, exact: true })).toBeDisabled();
+    await field.scrollIntoViewIfNeeded();
+    expect(await editor.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
+    await page.screenshot({ path: testInfo.outputPath(`companion-picker-${language}-${width}.png`), animations: 'disabled' });
+    await editor.getByRole('button', { name: common.actions.cancel, exact: true }).click();
+    await expect(editor).toBeHidden();
+    expect(companionWrites).toEqual([]);
   });
 }

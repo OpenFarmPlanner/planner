@@ -27,6 +27,8 @@ import { getCropDisplayName } from './cropDisplay';
 export type CompanionFormMode = 'edit' | 'readOnly' | 'hidden';
 
 interface UseCompanionFormRowsArgs {
+  enabled?: boolean;
+  reloadKey?: unknown;
   variant: 'project' | 'publicLibrary';
   crop?: Crop;
   crops?: readonly Partial<Crop>[];
@@ -60,6 +62,8 @@ const isKulturLike = (crop: Partial<Crop>): boolean => !(crop.variety || '').tri
 
 /** The "Mischkultur" rows of the crop form (see docs/crop-companions.md#crop-form). */
 export function useCompanionFormRows({
+  enabled = true,
+  reloadKey,
   variant,
   crop,
   crops = [],
@@ -71,10 +75,10 @@ export function useCompanionFormRows({
   const isLibrary = variant === 'publicLibrary';
   const [language, setLanguage] = useState(normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de');
   const kulturId = useMemo(() => {
-    if (isLibrary || !crop?.id) return null;
+    if (!enabled || isLibrary || !crop?.id) return null;
     return findKulturId(crop, crops as Crop[]);
-  }, [crop, crops, isLibrary]);
-  const mode: CompanionFormMode = isKulturForm ? 'edit' : kulturId !== null ? 'readOnly' : 'hidden';
+  }, [crop, crops, enabled, isLibrary]);
+  const mode: CompanionFormMode = !enabled ? 'hidden' : isKulturForm ? 'edit' : kulturId !== null ? 'readOnly' : 'hidden';
 
   const cropLabel = useCallback(
     (cropId: number): string => getCropDisplayName(crops.find((entry) => entry.id === cropId) ?? {}),
@@ -113,7 +117,7 @@ export function useCompanionFormRows({
     return () => { cancelled = true; };
     // Loaded when the form opens for a Kultur, not on every crop-list change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLibrary, kulturId]);
+  }, [isLibrary, kulturId, reloadKey]);
 
   const options = useMemo<CompanionFormOption[]>(() => {
     const seenSpecies = new Set<number>();

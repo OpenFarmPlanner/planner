@@ -61,8 +61,8 @@ describe('CropCompanionsSection', () => {
     const { onCropSelect } = renderSection();
 
     const potatoLink = await screen.findByRole('button', { name: 'Kartoffel' });
-    expect(screen.getByText('· Gleiche Schädlinge oder Krankheiten: Kraut- und Braunfäule')).toBeInTheDocument();
-    expect(screen.getByText('· Schädlingsabwehr')).toBeInTheDocument();
+    expect(screen.getByText('Gleiche Schädlinge oder Krankheiten: Kraut- und Braunfäule')).toBeInTheDocument();
+    expect(screen.getByText('Schädlingsabwehr')).toBeInTheDocument();
     expect(await screen.findByText('Kreuzblütler (Pflanzenfamilie)')).toBeInTheDocument();
     expect(screen.getByText('Gute Nachbarn')).toBeInTheDocument();
     expect(screen.getByText('Schlechte Nachbarn')).toBeInTheDocument();
@@ -117,5 +117,39 @@ describe('CropCompanionsSection', () => {
     await screen.findByRole('button', { name: 'Kartoffel' });
     expect(screen.queryByRole('button', { name: 'Nachbar hinzufügen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Nachbar entfernen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+  });
+
+  it('offers adding neighbours to an empty editable Kultur', async () => {
+    api.list.mockResolvedValue({ data: [] });
+    const edit = vi.fn();
+    render(<CropCompanionsSection crop={TOMATO} crops={CROPS} onEdit={edit} />);
+    const add = await screen.findByRole('button', { name: 'Nachbarn hinzufügen' });
+    await waitFor(() => expect(add).toBeEnabled());
+    fireEvent.click(add);
+    expect(edit).toHaveBeenCalledWith(TOMATO);
+  });
+
+  it('opens the same Kultur from a variety, without offering variety ownership', async () => {
+    const edit = vi.fn();
+    render(<CropCompanionsSection crop={ROMA} crops={CROPS} onEdit={edit} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    expect(edit).toHaveBeenCalledWith(TOMATO);
+  });
+
+  it('presents absence prose as information rather than a negative neighbour', async () => {
+    api.list.mockResolvedValue({ data: [relation({ companion_crop: null, companion_text: 'No specific bad neighbors known — all-rounder', reason: 'other', note: '' })] });
+    renderSection();
+    expect(await screen.findByText('Allgemeiner Hinweis')).toBeInTheDocument();
+    expect(screen.getByText('No specific bad neighbors known — all-rounder')).toBeInTheDocument();
+    expect(screen.queryByText('Schlechte Nachbarn')).not.toBeInTheDocument();
+  });
+
+  it('still offers Add neighbours when there is only general information', async () => {
+    api.list.mockResolvedValue({ data: [relation({ companion_crop: null, companion_text: 'No bad neighbors known.', note: '' })] });
+    render(<CropCompanionsSection crop={TOMATO} crops={CROPS} onEdit={vi.fn()} />);
+    await screen.findByText('Allgemeiner Hinweis');
+    expect(screen.getByRole('button', { name: 'Nachbarn hinzufügen' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
   });
 });

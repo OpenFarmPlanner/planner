@@ -1,6 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
+import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
+import deCommon from '../src/i18n/locales/de/common.json' with { type: 'json' };
+import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
+import frCommon from '../src/i18n/locales/fr/common.json' with { type: 'json' };
+import es from '../src/i18n/locales/es/crops.json' with { type: 'json' };
+import esCommon from '../src/i18n/locales/es/common.json' with { type: 'json' };
 
 type Crop = { id: number; name: string };
 type Relation = { id: number; notes: Record<string, string> };
@@ -22,6 +28,18 @@ async function chooseLanguage(page: Page, label: string, language: string) {
   await page.getByRole('option', { name: language, exact: true }).click();
 }
 
+async function openProjectCompanions(page: Page, cropId: number, language: 'de' | 'fr' | 'es' = 'de') {
+  const text = { de, fr, es }[language];
+  const common = { de: deCommon, fr: frCommon, es: esCommon }[language];
+  await page.goto(`/app/crops?cropId=${cropId}`);
+  await page.getByTestId('crop-companions-section').getByRole('button', { name: common.actions.edit, exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: text.companions.editTitle, exact: true });
+  const row = dialog.getByTestId('companion-compact-row');
+  // Each compact row exposes Edit, followed by Delete.
+  await row.getByRole('button').first().click();
+  return dialog;
+}
+
 for (const viewport of [
   { width: 375, height: 800 }, { width: 768, height: 900 },
   { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 },
@@ -30,8 +48,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await loginWithDeterministicProject(page, request, `companion-notes-${viewport.width}`, { loginAsAdmin: true });
     const { crop, relation } = await createSource(page);
-    await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
-    const dialog = page.getByRole('dialog');
+    const dialog = await openProjectCompanions(page, crop.id);
     await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'English');
     const note = dialog.getByRole('textbox', { name: 'Notiz', exact: true });
     await expect(note).toHaveValue('Source EN');
@@ -59,12 +76,13 @@ for (const [language, label] of [['fr', 'Langue des notes de voisinage'], ['es',
       localStorage.setItem('ui.language', choice);
       localStorage.setItem('ui.language.pendingChoice', choice);
     }, language);
-    await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
-    const dialog = page.getByRole('dialog');
+    const dialog = await openProjectCompanions(page, crop.id, language);
     const selector = dialog.getByRole('combobox', { name: label, exact: true });
     await expect(dialog.getByRole('textbox', { name: language === 'fr' ? 'Note' : 'Nota', exact: true })).toHaveValue(language === 'fr' ? 'Source FR' : '');
     await selector.scrollIntoViewIfNeeded();
     await expect(selector).toBeVisible();
+    await page.mouse.move(0, 0);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`companion-notes-${language}-375.png`) });
   });
@@ -85,6 +103,7 @@ test('library note editing preserves other languages and missing versions stay h
   });
   await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
   await expect(page.getByTestId('library-companions-section')).toContainText('Quelle DE');
+  await expect(page.getByTestId('library-companions-section').getByRole('button', { name: /^Bearbeiten/ })).toHaveCount(0);
   await page.getByRole('button', { name: /^Bearbeiten/ }).click();
   await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'English');
   const dialog = page.getByRole('dialog');

@@ -1640,6 +1640,11 @@
     "alreadyRejected": "Esta actualización ya ha sido rechazada."
   },
   "companions": {
+    "editTitle": "Editar la asociación de cultivos",
+    "addNeighbors": "Añadir vecinos",
+    "editNamed": "Editar {{name}}",
+    "information": "Información general",
+    "editorSaveError": "No se han podido guardar los vecinos. Tus cambios se conservan.",
     "title": "Asociación de cultivos",
     "goodColumn": "Buenos vecinos",
     "badColumn": "Malos vecinos",

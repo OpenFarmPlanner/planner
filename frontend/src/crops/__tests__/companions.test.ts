@@ -5,10 +5,27 @@ import {
   buildCompanionItemsByCrop,
   buildLibraryCompanionRows,
   findKulturId,
+  isCompanionInformationText,
   formatCompanionCell,
   parseCompanionCell,
   relationPartner,
 } from '../companions';
+
+describe('informational companion text', () => {
+  it.each([
+    'No specific bad neighbors known — all-rounder',
+    'No known bad neighbours.',
+    'Keine spezifischen schlechten Nachbarn bekannt — Allrounder',
+    'Aucun mauvais voisin connu — polyvalent',
+    'No se conocen malos vecinos — versátil',
+  ])('recognizes absence prose without rewriting it: %s', (text) => {
+    expect(isCompanionInformationText(text)).toBe(true);
+  });
+
+  it.each(['Dill', 'Noir de Crimée', 'Basilikum; schützt vor Schädlingen', 'Neighbours with shared pests'])('retains genuine/unrecognized free-text neighbours: %s', (text) => {
+    expect(isCompanionInformationText(text)).toBe(false);
+  });
+});
 
 const crop = (id: number, name: string, variety = '', extra: Partial<Crop> = {}): Crop => (
   { id, name, variety, ...extra } as Crop

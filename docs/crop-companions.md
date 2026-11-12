@@ -103,28 +103,32 @@ neighbours with a leaf icon whose tooltip names them.
 
 ## Crop form
 
-Neighbours are edited in the Kultur's crop form, in a "Mischkultur" section
-after site and plant health (`sections/CompanionsSection.tsx`,
-`useCompanionFormRows`). Good and bad neighbours are two groups, each with its
-heading (icon and colour: green for good, amber for bad, as the planning
-warning); a group and its heading appear only once it has a row. Below the
-groups there are always the two buttons "Guten Nachbarn hinzufügen" and
-"Schlechten Nachbarn hinzufügen", in the kind's icon and colour; the kind of a
-new row follows from the button. On a phone the buttons wrap below each other.
-Without any neighbour a muted line "Noch keine Nachbarn erfasst." sits above
-the buttons.
-Each neighbour is one compact row: neighbour (a Kultur of the project, a plant
-family, or typed free text), reason, note, a button that moves it to the other
-group, and delete. A neighbouring Kultur shows an ↔ icon whose tooltip says
-"Gilt auch für …", because the pair is shared; a phone, without hover, spells
-that out below the field. On a phone a row takes two lines. A row without a
-neighbour or a neighbour listed twice blocks saving. The rows are saved with
-the form (`PUT replace/` after the crop; a failure is reported once the crop is
-saved, because saving again would create a new crop twice); changed rows count
-as unsaved changes. A Sorte's form shows its Kultur's list read-only; when the
-Kultur has no neighbours, it says so in one muted sentence ("Für {Kultur} sind
-noch keine Nachbarn erfasst. Sie gelten für alle Sorten und werden im Formular
-von {Kultur} bearbeitet.").
+Project crop and variety forms show a read-only companion summary with an
+Edit/Add neighbours action. They open the same crop-level editor as details;
+there is no inline project row editor and saving a crop never replaces its
+neighbours. A new crop must exist before neighbours can be edited. Library
+entry/proposal forms retain their own staged companion data and save contract.
+
+## Dedicated companion editor
+
+`CropCompanionEditor` uses `useCompanionFormRows` and the existing row controls
+in `sections/CompanionsSection`. The title identifies the editor, the resolved
+crop name and “Applies to all varieties” identify its scope. A variety opens its
+Kultur, not a separate variety relation list. Only an editing-capable project
+caller supplies the action; read-only and public library detail surfaces do
+not acquire project editing controls.
+
+Good and bad groups each retain their own add action, including when empty.
+Neighbours start as compact name/reason/note rows. Edit expands one row at a time; adding expands the new row. Crop/family/free-text resolution,
+reason categories, duplicate detection and moving between kinds reuse the
+existing controls. Deleting changes the draft. Save atomically calls
+`PUT /crop-companions/replace/` on the Kultur and refreshes displayed relations;
+it never saves the crop itself. Linked pairs remain reciprocal. Cancelling a
+dirty editor asks before discarding. Load failures disable all writes and offer
+retry; save failures retain drafts and allow retry. The note-language selector
+retains untouched language versions as before. The dialog scrolls within its
+content and keeps actions outside that scroll area; below the tablet breakpoint
+it is fullscreen, including phone landscape.
 
 The neighbour field's options are grouped by plant family
 (`buildCompanionFormOptions`): one group per family under its name in the UI
@@ -145,15 +149,24 @@ fields (direct edit or change proposal).
 
 ## Crop details
 
-The crop details have a read-only "Mischkultur" section
-(`CropCompanionsSection`), laid out like the library page's
-(`CompanionKindColumns`): the two kinds side by side (one column on a phone),
-each under its coloured heading, one line per neighbour with the name (a
-neighbouring crop as a link) and reason and note in grey. Without neighbours
-the section is hidden, like every empty detail section (see
-[crop-detail.md](crop-detail.md)); a load error is still shown. There is no
-edit button, neighbours are edited in the crop form only. A Sorte shows its
-Kultur's list with "Gilt für alle Sorten von …".
+`CropCompanionsSection` presents good/bad neighbours using the shared
+`CompanionKindColumns`: linked names remain clickable, with reason and note
+on discreet secondary lines below the name. Public library display uses the
+same presentation. An editing-capable project view has a green outlined
+pencil Edit action, or Add neighbours with a plus when empty, consistent with
+the existing secondary section buttons. An empty section stays hidden on
+read-only surfaces. A variety shows its Kultur's scope and opens that Kultur's
+editor. A load error offers retry and cannot enable writing an unknown list.
+
+Recognizable absence statements such as “No specific bad neighbors known —
+all-rounder” are shown as general information outside positive/negative
+neighbour lists. This is narrowly scoped presentation of existing free text,
+including German, English, French and Spanish absence statements. Linked crop
+and family targets and ordinary unresolved crop names keep their existing
+semantics. Text is never converted, split, linked, deleted or migrated
+implicitly; the original stored row survives unrelated saves. Multi-neighbour
+spreadsheet parsing and extracting trailing commentary remain outside this
+issue. Library data remains species/family references only.
 
 ## Project crop reference labels
 

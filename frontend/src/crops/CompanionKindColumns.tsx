@@ -12,6 +12,7 @@ export interface CompanionListItem {
   label: string;
   /** Reason and note, already joined; empty when there is neither. */
   detail: string;
+  informational?: boolean;
   /** Opens the neighbour (a crop or a library entry); plain text without it. */
   onSelect?: () => void;
 }
@@ -36,10 +37,12 @@ export function CompanionKindHeading({ kind }: { kind: CompanionKind }) {
  * details, the library page and a Sorte's read-only list in the crop form.
  */
 export function CompanionKindColumns({ items }: { items: readonly CompanionListItem[] }) {
+  const { t } = useTranslation('crops');
+  const information = items.filter(item => item.informational);
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 1.5, md: 3 } }}>
       {COMPANION_KINDS.map((kind) => {
-        const kindItems = items.filter((item) => item.kind === kind);
+          const kindItems = items.filter((item) => item.kind === kind && !item.informational);
         if (kindItems.length === 0) return null;
         return (
           <Box key={kind} sx={{ minWidth: 0 }} data-testid={`companion-kind-${kind}`}>
@@ -57,8 +60,8 @@ export function CompanionKindColumns({ items }: { items: readonly CompanionListI
                   </Link>
                 ) : item.label}
                 {item.detail ? (
-                  <Typography component="span" variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {` · ${item.detail}`}
+                  <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', whiteSpace: 'pre-wrap' }}>
+                    {item.detail}
                   </Typography>
                 ) : null}
               </Typography>
@@ -66,6 +69,13 @@ export function CompanionKindColumns({ items }: { items: readonly CompanionListI
           </Box>
         );
       })}
+      {information.length > 0 ? <Box sx={{ gridColumn: '1 / -1' }}>
+        <Typography variant="body2" color="text.secondary">{t('companions.information')}</Typography>
+        {information.map(item => <Box key={item.key} sx={{ py: 0.5 }}>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.label}</Typography>
+          {item.detail ? <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>{item.detail}</Typography> : null}
+        </Box>)}
+      </Box> : null}
     </Box>
   );
 }

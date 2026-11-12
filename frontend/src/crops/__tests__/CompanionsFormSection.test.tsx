@@ -168,7 +168,7 @@ describe('CompanionsSection in the crop form', () => {
     render(<Harness crop={ROMA} isKulturForm={false} />);
 
     expect(await screen.findByText('Kartoffel')).toBeInTheDocument();
-    expect(screen.getByText('· Gleiche Schädlinge oder Krankheiten: Krautfäule')).toBeInTheDocument();
+    expect(screen.getByText('Gleiche Schädlinge oder Krankheiten: Krautfäule')).toBeInTheDocument();
     expect(screen.getByText('Schlechte Nachbarn')).toBeInTheDocument();
     expect(api.listForCrop).toHaveBeenCalledWith(1);
     expect(screen.getByText(/werden im Formular von Tomate bearbeitet/)).toBeInTheDocument();

@@ -20,6 +20,7 @@ vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
     ...actual,
+    cropCompanionAPI: { list: vi.fn().mockResolvedValue({ data: [] }) },
     cropAPI: {
       ...actual.cropAPI,
       duplicateCheck: cropDuplicateCheckMock,
@@ -328,6 +329,7 @@ describe('CropForm section order', () => {
         crop={crop}
         crops={[SPECIES_CROP, VARIETY_CROP]}
         formKind={formKind}
+        onEditCompanions={vi.fn()}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
       />

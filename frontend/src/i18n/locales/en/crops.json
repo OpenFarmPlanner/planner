@@ -1600,6 +1600,11 @@
     "alreadyRejected": "This update has already been declined."
   },
   "companions": {
+    "editTitle": "Edit companion planting",
+    "addNeighbors": "Add neighbors",
+    "editNamed": "Edit {{name}}",
+    "information": "General information",
+    "editorSaveError": "The neighbors could not be saved. Your changes are still available.",
     "title": "Companion planting",
     "goodColumn": "Good neighbors",
     "badColumn": "Bad neighbors",
