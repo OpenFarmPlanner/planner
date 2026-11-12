@@ -188,7 +188,7 @@ export async function tabSaveHierarchyRow(page: Page): Promise<void> {
  */
 export async function apiRequest<T>(
   page: Page,
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT',
   path: string,
   data?: Record<string, unknown>,
 ): Promise<T> {

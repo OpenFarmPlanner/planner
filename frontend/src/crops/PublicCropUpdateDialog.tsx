@@ -21,6 +21,7 @@
  */
 
 import { useState } from 'react';
+import { getCropDisplayName } from './cropDisplay';
 import {
   Alert,
   Box,
@@ -132,7 +133,7 @@ export function PublicCropUpdateDialog({ crop, controller }: PublicCropUpdateDia
       <DialogContent sx={{ pt: 1 }}>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
           {t('library.publicUpdate.dialogDescription', {
-            name: update?.public_crop_name ?? crop.name,
+            name: update?.public_crop_name ?? getCropDisplayName(crop),
           })}
         </Typography>
 

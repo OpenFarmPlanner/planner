@@ -25,8 +25,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | PR [#1040](https://github.com/OpenFarmPlanner/planner/pull/1040) merged and verified at `d597ec04` |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | PR [#1042](https://github.com/OpenFarmPlanner/planner/pull/1042) merged and verified at `10510124` |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | PR [#1044](https://github.com/OpenFarmPlanner/planner/pull/1044) merged and verified at `ae32f649` |
-| 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | In progress on `fix/1045-security-review-completion` |
-| 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | Pending |
+| 6a | #1045 Security review completion and fallback | User inserted immediately after #1017 merges (2026-11-12); establish trustworthy completion before remaining PRs. | PR [#1046](https://github.com/OpenFarmPlanner/planner/pull/1046) merged and verified at `c6a0f75b` |
+| 7 | #1007 Resolved crop display names | Establish shared label behavior before companion editor refactoring. | In progress on `fix/1007-resolved-crop-reference-labels` |
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | Pending |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | Pending |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | Pending |
@@ -70,14 +70,15 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1017 merged and verified through PR #1044 at
-`ae32f649` (2026-11-12 15:36:23 UTC); #1017 is closed. The user inserted
-#1045 immediately after this merge. Implement it on
-`fix/1045-security-review-completion`, then finish CI/reviews and verify its
-normal merge before #1007. The remaining dependency order, including #1038
-before final integration, is unchanged. The earlier stop-after-#1032
-instruction was fulfilled and superseded by resume. Check every review thread
-explicitly as well as required checks/reviews before normal merge.
+Current resume point: #1045 merged and verified through PR #1046 at
+`c6a0f75b` (12 November 2026, 17:42:50 CET) after the owner's explicit
+exact-head bootstrap approval. #1045 is closed. Implement #1007 on
+`fix/1007-resolved-crop-reference-labels`, then complete CI/reviews and verify
+its normal merge before #1029. The remaining order, including #1038 before
+final integration, is unchanged. The earlier stop-after-#1032 instruction was
+fulfilled and superseded by resume. Inspect every review thread and required
+check. Native provider rejection remains unresolved; triage skips and human
+contingencies are distinct from completed automated security review.
 
 Final review must cover crop table/graphical list, create/edit/details,
 public library species/varieties, publish/import, XLSX/ODS/CSV, all four
@@ -744,3 +745,43 @@ that BOTH failed jobs must rerun after approval (`gh run rerun RUN_ID --failed`)
 so the reader refreshes evidence before quality checks its dependency result.
 This documentation-only follow-up still needs fresh final-head required checks.
 No approval is inferred or posted, and #1007 remains blocked on verified merge.
+
+## #1046 merge verification and #1007 implementation
+
+The owner explicitly approved final head `65c62d4f` in the conversation;
+approval was recorded transparently at
+https://github.com/OpenFarmPlanner/planner/pull/1046#issuecomment-6829739087 .
+Rerunning both failed CI jobs accepted the manual bootstrap review and passed
+quality. All 10 required checks, the isolated reader, PostgreSQL, six
+cross-browser jobs and dependency checks passed; final thread/review inventories
+were empty and GitHub CLEAN. PR #1046 merged normally at 17:42:50 CET as
+`c6a0f75b0525a2814dd8e3d5d7cb1ed960b83e83`; #1045 closed at 17:42:52 CET.
+Fetched main contains the merge and its tree exactly matches the approved/tested
+head. Evidence: https://github.com/OpenFarmPlanner/planner/pull/1046#issuecomment-6829805804 .
+No check/protection was bypassed. Both native provider entry points remain
+rejected; the manual approval is not a completed native scan.
+
+#1007 reuses getCropDisplayName for companion owner hints, linked neighbours,
+selected labels and picker options, and aligns the crop form's name fallback.
+Resolved labels refresh without refetching/discarding note drafts or changing
+relation identity/dirty state. Adjacent existing-crop hints, republish picker
+prefill and missing-library-name fallbacks use the same helper. Persistence,
+identity matching and exchange values remain canonical.
+
+Local validation: 148 targeted unit tests pass, with 22 affected tests rerun
+after TypeScript-only test-option corrections. TypeScript, the production
+build and all 20 public prerenders pass. Source-only make quality completes
+(backend tests deliberately left to CI; existing Ruff/Madge findings retain
+the script's documented accepted status). All 12 browser cases pass: the
+resolved-name flow at 375/768/1024/1440 px and 800x375 landscape, DE/FR/ES at
+375 px, and eight main routes across all four portrait/desktop breakpoints.
+All 24 affected-view and 32 route captures were visually inspected. Mobile layout and shared
+shell code are unchanged; the known tablet toolbar/title overlap and other
+previously recorded shell issues remain for final integration. Image inspection
+also exposed a loading-state gap in the responsive test: its ready assertion
+now waits for “Lädt...” as well as “Laden...”, so a dashboard loading frame
+cannot stand in for a rendered route. The phone-route rerun passes and all
+eight fresh captures were inspected, including the loaded dashboard.
+
+CI, final reviews and normal merge verification remain pending. #1029 must
+wait for verified merge.

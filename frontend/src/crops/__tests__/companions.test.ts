@@ -91,7 +91,8 @@ describe('findKulturId', () => {
 
 describe('export items', () => {
   it('lists a shared pair on both Kulturen and names families and free text', () => {
-    const crops = [crop(1, 'Tomate'), crop(2, 'Kartoffel'), crop(3, 'Tomate', 'Roma')];
+    const crops = [crop(1, 'Tomate', '', { crop_display_name: 'Tomato' }),
+      crop(2, 'Kartoffel', '', { crop_display_name: 'Potato' }), crop(3, 'Tomate', 'Roma')];
     const relations = [
       relation({ crop: 1, companion_crop: 2, reason: 'shared_pests_diseases' }),
       relation({ crop: 1, companion_family: 'Brassicaceae', kind: 'good' }),

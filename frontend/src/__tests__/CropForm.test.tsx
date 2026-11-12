@@ -246,6 +246,11 @@ describe('CropForm', () => {
     expect(screen.getByLabelText('name-input')).toHaveValue('2');
   });
 
+  it('uses the shared stored-name fallback when the resolved display name is empty', () => {
+    render(<CropForm crop={{ ...CROP_A, name: 'Ackerbohne', crop_display_name: '' }} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByLabelText('name-input')).toHaveValue('Ackerbohne');
+  });
+
   it('saves the untouched canonical name, not the displayed translation, when the Name field was not edited', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(

@@ -43,11 +43,11 @@ const previewWith = (blockingReasons: string[]) => ({
   },
 });
 
-const renderDialog = (onConfirm = vi.fn()) => {
+const renderDialog = (onConfirm = vi.fn(), crop = CROP) => {
   render(
     <RepublishPublicCropDialog
       open
-      crop={CROP}
+      crop={crop}
       originalLanguageCode="de"
       publishAsGeneral={false}
       onCancel={vi.fn()}
@@ -95,6 +95,14 @@ describe('RepublishPublicCropDialog', () => {
     fireEvent.click(confirmButton());
 
     expect(onConfirm).toHaveBeenCalledWith({ cropSpeciesId: 31 });
+  });
+
+  it('prefills the species picker with the same resolved name as the confirmation', async () => {
+    publishPreviewMock.mockResolvedValue(previewWith(['crop_species_unavailable']));
+    renderDialog(vi.fn(), { ...CROP, crop_display_name: 'Spring onion' });
+    const input = await screen.findByLabelText(/Offizielle Kulturart/i);
+    await waitFor(() => expect(input).toHaveValue('Spring onion'));
+    expect(screen.getByText(/Spring onion \(Ishikura\)/)).toBeInTheDocument();
   });
 
   it('does not block the republish when the pre-check itself fails', async () => {

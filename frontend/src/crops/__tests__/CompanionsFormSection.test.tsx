@@ -33,8 +33,8 @@ const PAIR: CropCompanion = {
   kind: 'bad', reason: 'shared_pests_diseases', note: 'Krautfäule',
 };
 
-function Harness({ crop, isKulturForm }: { crop: Crop; isKulturForm: boolean }) {
-  const state = useCompanionFormRows({ variant: 'project', crop, crops: CROPS, isKulturForm });
+function Harness({ crop, isKulturForm, crops = CROPS }: { crop: Crop; isKulturForm: boolean; crops?: Crop[] }) {
+  const state = useCompanionFormRows({ variant: 'project', crop, crops, isKulturForm });
   return (
     <>
       <CompanionsSection state={state} />
@@ -173,6 +173,41 @@ describe('CompanionsSection in the crop form', () => {
     expect(api.listForCrop).toHaveBeenCalledWith(1);
     expect(screen.getByText(/werden im Formular von Tomate bearbeitet/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /hinzufügen/ })).not.toBeInTheDocument();
+  });
+
+  it('uses resolved crop names for a variety hint and its read-only neighbours', async () => {
+    const crops = CROPS.map(crop => ({ ...crop, crop_display_name: crop.id === 2 ? 'Potato' : 'Tomato' }));
+    render(<Harness crop={crops[3]} crops={crops} isKulturForm={false} />);
+    expect(await screen.findByText('Potato', { exact: true })).toBeInTheDocument();
+    expect(screen.getByText('Die Nachbarn gelten für alle Sorten von Tomato und werden im Formular von Tomato bearbeitet.')).toBeInTheDocument();
+    expect(screen.queryByText('Kartoffel')).not.toBeInTheDocument();
+  });
+
+  it('uses the resolved Kultur name in the empty variety hint too', async () => {
+    api.listForCrop.mockResolvedValue({ data: [] });
+    const crops = CROPS.map(crop => ({ ...crop, crop_display_name: 'Tomato' }));
+    render(<Harness crop={crops[3]} crops={crops} isKulturForm={false} />);
+    expect(await screen.findByText('Für Tomato sind noch keine Nachbarn erfasst. Sie gelten für alle Sorten und werden im Formular von Tomato bearbeitet.')).toBeInTheDocument();
+  });
+
+  it('refreshes option and selected labels without refetching relations or changing identity/note drafts', async () => {
+    const initial = CROPS.map(crop => ({ ...crop, crop_display_name: crop.id === 2 ? 'Potato' : 'Tomato' }));
+    const { result, rerender } = renderHook(({ crops }) => useCompanionFormRows({
+      variant: 'project', crop: crops[0], crops, isKulturForm: true,
+    }), { initialProps: { crops: initial } });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.rows[0].target?.label).toBe('Potato');
+    expect(result.current.options.some(option => option.label === 'Potato')).toBe(true);
+    rerender({ crops: initial.map(crop => ({ ...crop, crop_display_name: crop.id === 2 ? 'Updated potato' : 'Tomato' })) });
+    expect(result.current.rows[0].target?.label).toBe('Updated potato');
+    expect(result.current.dirty).toBe(false);
+    act(() => result.current.setRows(result.current.rows.map(row => ({ ...row, note: 'Unsaved note' }))));
+    rerender({ crops: initial });
+    expect(result.current.rows[0].target?.label).toBe('Potato');
+    expect(result.current.rows[0].note).toBe('Unsaved note');
+    expect(formRowsToReplaceItems(result.current.rows)[0]).toMatchObject({ companion_crop: 2, note: 'Unsaved note' });
+    expect(result.current.dirty).toBe(true);
+    expect(api.listForCrop).toHaveBeenCalledTimes(1);
   });
 
   it('tells a Sorte in one sentence when its Kultur has no neighbours', async () => {

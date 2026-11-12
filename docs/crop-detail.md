@@ -58,3 +58,8 @@ and Pflanzzeitraum labels as the edit form and spreadsheets (localized in
 all four languages; see [timing-windows.md](timing-windows.md)). They are
 windows, distinct from the cultivation-method labels. Harvest remains
 calculated, not an imported or editable harvest window.
+
+Project companion references use the same resolved crop-name helper as the
+Name field and detail heading, including a variety's owner hint and reciprocal
+neighbour links. Stored historical names remain identity data; see
+[crop-companions.md](crop-companions.md#project-crop-reference-labels).

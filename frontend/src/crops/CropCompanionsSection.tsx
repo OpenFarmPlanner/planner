@@ -13,6 +13,7 @@ import {
 } from './companions';
 import { usePlantFamilies } from './plantFamilies';
 import { useCropCompanions } from './useCropCompanions';
+import { getCropDisplayName } from './cropDisplay';
 
 interface CropCompanionsSectionProps {
   crop: Crop;
@@ -46,7 +47,7 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
     const partner = relationPartner(relation, kulturId);
     const partnerCrop = partner.type === 'crop' ? cropsById.get(partner.cropId) : undefined;
     const label = partner.type === 'crop'
-      ? partnerCrop?.name ?? ''
+      ? getCropDisplayName(partnerCrop ?? {})
       : partner.type === 'family'
         ? t('companions.familyLabel', { name: families.getName(partner.familyKey) })
         : partner.text;
@@ -70,7 +71,7 @@ export function CropCompanionsSection({ crop, crops, onCropSelect }: CropCompani
       {failed ? <Alert severity="error">{t('companions.loadError')}</Alert> : null}
       {kultur && isVariety ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {t('companions.sharedHint', { name: kultur.name })}
+          {t('companions.sharedHint', { name: getCropDisplayName(kultur) })}
         </Typography>
       ) : null}
       {items.length > 0 ? <CompanionKindColumns items={items} /> : null}

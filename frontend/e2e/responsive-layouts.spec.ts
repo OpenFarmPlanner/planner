@@ -19,7 +19,7 @@ test.describe('responsive layouts', () => {
           // project data. Inspect the loaded content rather than a blank frame.
           const main = page.locator('main, [role="main"]').first();
           await expect(main).toHaveText(/\S/);
-          await expect(main).not.toHaveText(/^\s*(?:Laden(?:\.{3}|…)?|Anbaupläne werden geladen\.{3})\s*$/);
+          await expect(main).not.toHaveText(/^\s*(?:(?:Laden|Lädt)(?:\.{3}|…)?|Anbaupläne werden geladen\.{3})\s*$/);
           await expect(main.getByRole('progressbar')).toHaveCount(0);
           await page.evaluate(() => document.fonts.ready);
           await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toBeVisible();

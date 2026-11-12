@@ -17,6 +17,10 @@ describe('crop display names', () => {
     })).toBe('Ackerbohne');
   });
 
+  it('falls back when the resolved display name is empty', () => {
+    expect(getCropDisplayName({ name: 'Stored crop name', crop_display_name: '' })).toBe('Stored crop name');
+  });
+
   it('supports planting-plan and aggregate rows with crop_name fields', () => {
     expect(formatCropDisplayName({
       crop_name: 'Ackerbohne',

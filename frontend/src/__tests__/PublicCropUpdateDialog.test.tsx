@@ -10,7 +10,10 @@ const apiMocks = vi.hoisted(() => ({
   publicUpdate: vi.fn(),
   rejectPublicUpdate: vi.fn(),
   importToProject: vi.fn(),
+  snackbar: vi.fn(),
 }));
+
+vi.mock('../utils/globalSnackbar', () => ({ showGlobalSnackbar: apiMocks.snackbar }));
 
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
@@ -65,6 +68,7 @@ describe('PublicCropUpdateDialog', () => {
     apiMocks.publicUpdate.mockReset();
     apiMocks.rejectPublicUpdate.mockReset();
     apiMocks.importToProject.mockReset();
+    apiMocks.snackbar.mockReset();
   });
 
   const openDialog = async (
@@ -92,6 +96,16 @@ describe('PublicCropUpdateDialog', () => {
       .toHaveTextContent('Sortenname geändert: „Nantes“ → „Nantes II“');
     expect(screen.getByText(t.publishWizard.comparison.fields.growth_duration_days)).toBeInTheDocument();
     expect(screen.getByText('80')).toBeInTheDocument();
+  });
+
+  it('uses the resolved project label when the library update omits its name', async () => {
+    apiMocks.rejectPublicUpdate.mockResolvedValue({ data: {} });
+    await openDialog({ ...varietyRenameUpdate, public_crop_name: undefined }, { ...importedCrop, crop_display_name: 'Carrot' });
+    expect(screen.getByText(t.publicUpdate.dialogDescription.replace('{{name}}', 'Carrot'))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.publicUpdate.reject }));
+    await waitFor(() => expect(apiMocks.snackbar).toHaveBeenCalledWith({
+      message: t.publicUpdate.rejected.replace('{{name}}', 'Carrot'), severity: 'info',
+    }));
   });
 
   it('applies nothing until the user confirms', async () => {
