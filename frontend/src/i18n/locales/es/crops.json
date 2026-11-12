@@ -33,6 +33,10 @@
     "openAdvanced": "Abrir filtros avanzados",
     "title": "Filtros",
     "tag": "Etiquetas",
+    "clearSelection": "Borrar selección",
+    "tagsSelected_one": "{{count}} etiqueta seleccionada",
+    "tagsSelected_many": "{{count}} etiquetas seleccionadas",
+    "tagsSelected_other": "{{count}} etiquetas seleccionadas",
     "sowingMonth": "Se puede sembrar en"
   },
   "emptySearch": {

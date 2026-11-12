@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { MenuItem } from '@mui/material';
+import { Checkbox, ListItemText, MenuItem } from '@mui/material';
 
 import { useTranslation } from '../i18n';
 import type { PersistedCropFilters } from './cropDetailFormatters';
@@ -8,6 +8,7 @@ import { FilterNumberField } from '../components/filters/FilterNumberField';
 import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../components/filters/FilterSelectField';
 import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_FILTER, SEED_TYPE_UNKNOWN_LABEL_KEY } from './seedType';
+import { normalizeCropTags } from './cropTags';
 
 const FULL_WIDTH_ROW = { gridColumn: '1 / -1' } as const;
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -46,6 +47,7 @@ export function CropFiltersPopover({
 }: CropFiltersPopoverProps): ReactElement {
   const { t, i18n } = useTranslation('crops');
   const plantFamilies = usePlantFamilies();
+  const selectedTags = normalizeCropTags(filters.selectedTagFilter, tagOptions);
 
   return (
     <FilterPopoverShell
@@ -68,16 +70,33 @@ export function CropFiltersPopover({
         ))}
       </FilterSelectField>
       {tagOptions.length > 0 ? (
-        <FilterSelectField
+        <FilterSelectField<string[]>
           id="crop-tag-filter"
           label={t('filters.tag')}
-          value={filters.selectedTagFilter}
-          onChange={(event) => onFilterChange('selectedTagFilter', event.target.value as string)}
+          multiple
+          value={selectedTags}
+          renderValue={(selected) => t('filters.tagsSelected', { count: selected.length })}
+          onChange={(event) => {
+            const value = event.target.value;
+            const tags = typeof value === 'string' ? [value] : value;
+            onFilterChange('selectedTagFilter', tags.includes('') ? [] : normalizeCropTags(tags, tagOptions));
+          }}
           sx={FULL_WIDTH_ROW}
         >
-          <MenuItem value="">{t('filters.all')}</MenuItem>
+          <MenuItem value="">{t('filters.clearSelection')}</MenuItem>
           {tagOptions.map((tag) => (
-            <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+            <MenuItem key={tag} value={tag}>
+              <Checkbox
+                checked={selectedTags.includes(tag)}
+                tabIndex={-1}
+                size="small"
+                slotProps={{ input: { 'aria-hidden': true } }}
+              />
+              <ListItemText
+                primary={tag}
+                slotProps={{ primary: { sx: { whiteSpace: 'normal', overflowWrap: 'anywhere' } } }}
+              />
+            </MenuItem>
           ))}
         </FilterSelectField>
       ) : null}

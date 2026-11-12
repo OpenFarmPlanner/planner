@@ -8,12 +8,13 @@ import {
   type PersistedCropFilters,
 } from './cropDetailFormatters';
 import { isBotanicalFamilyKey } from './plantFamilies';
+import { normalizeCropTags } from './cropTags';
 
 /** Every filter cleared — the state a fresh session and the reset buttons use. */
 export const EMPTY_CROP_FILTERS: PersistedCropFilters = {
   searchQuery: '',
   selectedFamilyFilter: '',
-  selectedTagFilter: '',
+  selectedTagFilter: [],
   selectedCultivationFilter: '',
   selectedNutrientFilter: '',
   selectedSeedTypeFilter: '',
@@ -36,12 +37,19 @@ function readStoredFilters(supplierIdFromQuery: string): PersistedCropFilters {
   }
 
   try {
-    const parsed = JSON.parse(raw) as PersistedCropFilters;
+    const parsed = JSON.parse(raw) as Omit<PersistedCropFilters, 'selectedTagFilter'> & {
+      selectedTagFilter?: unknown;
+    };
+    // Deprecated single-tag values remain readable until old sessions expire.
+    const tags = parsed.selectedTagFilter;
+    const selectedTags = Array.isArray(tags)
+      ? tags.filter((tag): tag is string => typeof tag === 'string')
+      : (typeof tags === 'string' ? [tags] : []);
     return {
       searchQuery: parsed.searchQuery ?? '',
       // A filter stored before the plant-family list held free text, not a key.
       selectedFamilyFilter: isBotanicalFamilyKey(parsed.selectedFamilyFilter) ? parsed.selectedFamilyFilter : '',
-      selectedTagFilter: typeof parsed.selectedTagFilter === 'string' ? parsed.selectedTagFilter : '',
+      selectedTagFilter: normalizeCropTags(selectedTags),
       selectedCultivationFilter: parsed.selectedCultivationFilter ?? '',
       selectedNutrientFilter: parsed.selectedNutrientFilter ?? '',
       selectedSeedTypeFilter: typeof parsed.selectedSeedTypeFilter === 'string' ? parsed.selectedSeedTypeFilter : '',

@@ -86,6 +86,8 @@ the visible crop name is not reported as a synonym hit.
   from / month to).
 - Values selected **within** one filter combine with **OR**; different
   filters combine with **AND**; search and filters combine with **AND**.
+  These are the planting-plan filters. The crop list's own-tag filter uses
+  **AND within its tag selection**, as specified in [crop-tags.md](./crop-tags.md).
 - The **Kultur** filter groups by the Kultur name, so it covers every Sorte
   of that Kultur.
 - **Pflanzzeitraum, Erntebeginn, Ernteende** match the month of the planting
