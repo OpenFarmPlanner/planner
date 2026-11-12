@@ -93,8 +93,9 @@ def merge_library_notes(
     result = []
     for item in items:
         item = dict(item)
-        selected = item.pop("note_language_code", language)
+        selected = item.get("note_language_code", language)
         notes = merge_notes(notes_of(previous.get(identity(item), {})), item, selected)
+        item.pop("note_language_code", None)
         item.update(notes=notes, note=legacy_note(notes))
         result.append(item)
     return result

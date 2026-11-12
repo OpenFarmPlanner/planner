@@ -21,7 +21,7 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 1 | #1030 Remove screenshot pixel-diff CI gate | Mandatory first; retain functional/layout tests and failure artifacts. | PR [#1034](https://github.com/OpenFarmPlanner/planner/pull/1034) merged and verified at `4b57c0e8` |
 | 2 | #1028 Germination enums and stratification | Shared project/library schema, migrations and exchange fields must settle before templates. | PR [#1035](https://github.com/OpenFarmPlanner/planner/pull/1035) merged and verified at `b96f46b7` |
 | 3 | #1032 Typed crop-specific variety properties | Registry/model/API/library/spreadsheet foundation; templates must include its dynamic columns. | PR [#1036](https://github.com/OpenFarmPlanner/planner/pull/1036) merged and verified at `8317a536` |
-| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | In progress on `feat/1031-localized-companion-notes` |
+| 4 | #1031 Localized companion notes | Establish locale-preserving data/API and reversible spreadsheet grammar before the dedicated editor. Partially supersedes closed #1020. | PR #1039; CI/reviews in progress |
 | 4a | #1037 Return 409 on variety/general-crop rename conflict | User explicitly inserted this after #1031 merges (2026-11-12). | Pending; before #1008 |
 | 5 | #1008 Life-cycle selectors | Preserve legacy biennial data while settling selectable values before template examples. #1009 is P2 and explicitly excluded. | Pending |
 | 6 | #1017 Complete spreadsheet templates | Finalize examples and canonical labels against the preceding schemas; preceding issues update their own necessary template fields, this issue audits every column. | Pending |
@@ -426,3 +426,21 @@ remain pending. Shared shell findings remain assigned to final integration.
 User steering: immediately after #1031 merges and is verified, implement #1037
 (rename conflicts return 409 with atomic rollback), then continue with #1008
 and the remaining ordered campaign. #1037 is an issue awaiting its own PR.
+
+Final local validation before CI follow-up: `make quality` completed with
+2,550 backend tests passing, ESLint zero errors, and the repository's reported
+Ruff/Madge findings (accepted report exits, not a clean-lint claim). The last
+API-map regression exposed and now verifies a merge-helper correction: keep
+the explicit locale marker until its text patch has been merged. That focused
+regression passes. The API-client test now verifies the new French parameter
+and all 66 tests in its file pass. All four responsive runs passed; all 32
+route captures were visually inspected, alongside note forms and import/export
+dialogs at 375/768/1024/1440 and phone landscape as applicable. Spanish capture
+now waits for the loaded notes. The final four browser cases pass, including
+CSV import/export at 375, 800x375 and 1440. Existing shell overlaps remain
+recorded for final integration; shared shell layout is unchanged here.
+
+PR #1039 is open. Initial CI identified the API-client expectation above; the
+follow-up head must pass fresh CI. Automated Claude code review failed without
+a completed review result; this is not an approval. Exact-head manual review
+and GitHub-required checks/reviews remain mandatory before normal merge.

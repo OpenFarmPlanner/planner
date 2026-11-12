@@ -108,49 +108,49 @@ test('library note editing preserves other languages and missing versions stay h
 });
 
 for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
-test(`spreadsheet import and export expose an explicit note language at ${viewport.width}`, async ({ page, request }, testInfo) => {
-  test.setTimeout(120_000);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await loginWithDeterministicProject(page, request, 'companion-notes-exchange', { loginAsAdmin: true });
-  await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Tomate' });
-  await page.goto('/app/crops');
-  await expect(page.getByRole('heading', { name: 'Kulturen', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Aus Datei importieren/ }).click();
-  let dialog = page.getByRole('dialog', { name: 'Kulturen importieren' });
-  await expect(dialog).toBeVisible();
-  await page.setViewportSize(viewport);
-  await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'Français');
-  expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
-  await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('import-note-language.png') });
-  await dialog.locator('input[type=file]').setInputFiles({
-    name: 'notes.csv', mimeType: 'text/csv', buffer: Buffer.from('Name,Gute Nachbarn\nGurke,"Tomate | Source FR 2025"\n'),
+  test(`spreadsheet import and export expose an explicit note language at ${viewport.width}`, async ({ page, request }, testInfo) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, 'companion-notes-exchange', { loginAsAdmin: true });
+    await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Tomate' });
+    await page.goto('/app/crops');
+    await expect(page.getByRole('heading', { name: 'Kulturen', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Aus Datei importieren/ }).click();
+    let dialog = page.getByRole('dialog', { name: 'Kulturen importieren' });
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize(viewport);
+    await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'Français');
+    expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('import-note-language.png') });
+    await dialog.locator('input[type=file]').setInputFiles({
+      name: 'notes.csv', mimeType: 'text/csv', buffer: Buffer.from('Name,Gute Nachbarn\nGurke,"Tomate | Source FR 2025"\n'),
+    });
+    dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button', { name: 'Import starten', exact: true })).toBeVisible();
+    const [applied] = await Promise.all([
+      page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/crops/import/apply/')),
+      dialog.getByRole('button', { name: 'Import starten', exact: true }).click(),
+    ]);
+    expect(applied.ok()).toBe(true);
+    expect(applied.request().postDataJSON().companion_note_language).toBe('fr');
+    const relations = await apiRequest<Relation[]>(page, 'GET', '/crop-companions/');
+    expect(relations[0].notes).toEqual({ fr: 'Source FR 2025' });
+    await expect(dialog).toBeHidden();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Alle Kulturen exportieren/ }).click();
+    dialog = page.getByRole('dialog', { name: 'Kulturen exportieren' });
+    await page.setViewportSize(viewport);
+    await dialog.getByRole('radio', { name: 'CSV (.csv)', exact: true }).check();
+    await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'Français');
+    expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('export-note-language.png') });
+    const [download] = await Promise.all([
+      page.waitForEvent('download'), dialog.getByRole('button', { name: 'Exportieren', exact: true }).click(),
+    ]);
+    const contents = await readFile((await download.path())!, 'utf8');
+    expect(contents).toContain('Source FR 2025');
+    expect(contents).toContain(' | ');
   });
-  dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('button', { name: 'Import starten', exact: true })).toBeVisible();
-  const [applied] = await Promise.all([
-    page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/crops/import/apply/')),
-    dialog.getByRole('button', { name: 'Import starten', exact: true }).click(),
-  ]);
-  expect(applied.ok()).toBe(true);
-  expect(applied.request().postDataJSON().companion_note_language).toBe('fr');
-  const relations = await apiRequest<Relation[]>(page, 'GET', '/crop-companions/');
-  expect(relations[0].notes).toEqual({ fr: 'Source FR 2025' });
-  await expect(dialog).toBeHidden();
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Alle Kulturen exportieren/ }).click();
-  dialog = page.getByRole('dialog', { name: 'Kulturen exportieren' });
-  await page.setViewportSize(viewport);
-  await dialog.getByRole('radio', { name: 'CSV (.csv)', exact: true }).check();
-  await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'Français');
-  expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
-  await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('export-note-language.png') });
-  const [download] = await Promise.all([
-    page.waitForEvent('download'), dialog.getByRole('button', { name: 'Exportieren', exact: true }).click(),
-  ]);
-  const contents = await readFile((await download.path())!, 'utf8');
-  expect(contents).toContain('Source FR 2025');
-  expect(contents).toContain(' | ');
-});
 }
