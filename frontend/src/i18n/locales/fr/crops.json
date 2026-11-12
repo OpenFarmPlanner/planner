@@ -1831,7 +1831,9 @@
         "with_protection": "Rustique avec protection hivernale",
         "not_hardy": "Non rustique"
       }
-    }
+    },
+    "legacyLifeCycleOption": "{{value}} (valeur existante)",
+    "legacyLifeCycleHint": "Cette valeur enregistrée est conservée tant que vous ne choisissez pas un autre cycle de vie."
   },
   "taskTemplates": {
     "title": "Modèles de tâches",

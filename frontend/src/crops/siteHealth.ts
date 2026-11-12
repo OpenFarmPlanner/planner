@@ -22,6 +22,13 @@ export type WaterRequirement = typeof SITE_HEALTH_CHOICES.water_requirement[numb
 export type LifeCycle = typeof SITE_HEALTH_CHOICES.life_cycle[number];
 export type WinterHardiness = typeof SITE_HEALTH_CHOICES.winter_hardiness[number];
 
+/** Stored and portable values include biennial; new UI selections do not. */
+export function selectableSiteHealthChoices(field: SiteHealthChoiceField): readonly string[] {
+  return field === 'life_cycle'
+    ? SITE_HEALTH_CHOICES.life_cycle.filter((value) => value !== 'biennial')
+    : SITE_HEALTH_CHOICES[field];
+}
+
 export function formatSiteHealthValue(field: SiteHealthField, value: unknown, t: TFunction): string {
   if (value == null || value === '') return t('noData');
   if (field === 'pests_diseases') return String(value);

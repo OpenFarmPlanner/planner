@@ -297,6 +297,11 @@ variety, seed status describes one supplier's offer.
 | Winterhart / Mit Winterschutz / Nicht winterhart | Hardy / Hardy with winter protection / Not hardy | Rustique / Rustique avec protection hivernale / Non rustique | Resistente / Resistente con protección invernal / No resistente |
 | Schädlinge und Krankheiten | Pests and diseases | Ravageurs et maladies | Plagas y enfermedades |
 
+Biennial labels remain valid for existing data and import/export. They are not
+new choices in the life-cycle selector. Existing values use the localized
+suffix “Bestandswert” / “existing value” / “valeur existante” / “valor existente”
+and a hint explaining that other edits preserve the value.
+
 ## Supplier seed status
 
 | DE | EN | FR | ES |
