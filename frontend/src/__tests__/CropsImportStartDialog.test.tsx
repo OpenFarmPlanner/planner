@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '@mui/material/styles';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropsImportStartDialog } from '../pages/CropsImportStartDialog';
 import { downloadCropImportTemplate } from '../crops/importTemplate';
 import i18n from '../i18n';
@@ -62,7 +62,16 @@ const spreadsheet = (name = 'kulturen.xlsx'): File =>
  * only that half asks the browser for a file twice, and is caught.
  */
 describe('CropsImportStartDialog', () => {
+  beforeEach(() => vi.mocked(downloadCropImportTemplate).mockReset());
   describe('what it shows', () => {
+    it('marks template rows as examples and documents the canonical timing header', () => {
+      renderDialog();
+      expect(screen.getByText('Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Welche Werte sind erlaubt?' }));
+      expect(screen.getByText('Nutze „Direktsaatzeitraum“ für Zeiträume; „Anbauart“ beschreibt die Anbauart.')).toBeInTheDocument();
+      expect(screen.queryByText(/Aussaat Freiland/)).not.toBeInTheDocument();
+    });
+
     it('titles itself and names the supported formats', () => {
       renderDialog();
       expect(screen.getByText('Kulturen importieren')).toBeInTheDocument();
@@ -284,6 +293,31 @@ describe('CropsImportStartDialog', () => {
   });
 
   describe('format help', () => {
+    it('keeps both download choices disabled while catalog data is loading', async () => {
+      let finishDownload = () => {};
+      vi.mocked(downloadCropImportTemplate).mockReturnValueOnce(new Promise<void>(resolve => { finishDownload = resolve; }));
+      renderDialog();
+      const ods = screen.getByRole('button', { name: 'Vorlage herunterladen (.ods)' });
+      const xlsx = screen.getByRole('button', { name: 'oder als Excel (.xlsx)' });
+      await userEvent.click(ods);
+      expect(ods).toBeDisabled();
+      expect(xlsx).toBeDisabled();
+      await act(async () => { finishDownload(); });
+      await waitFor(() => expect(ods).toBeEnabled());
+      expect(xlsx).toBeEnabled();
+    });
+
+    it('shows a localized download error and retries the requested format', async () => {
+      vi.mocked(downloadCropImportTemplate).mockRejectedValueOnce(new Error('network details')).mockResolvedValueOnce(undefined);
+      renderDialog();
+      await userEvent.click(screen.getByRole('button', { name: 'oder als Excel (.xlsx)' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Die Vorlage konnte nicht geladen werden.');
+      expect(screen.queryByText('network details')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: i18n.getFixedT('de', 'common')('runtime.retryAction') }));
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+      expect(downloadCropImportTemplate).toHaveBeenNthCalledWith(2, t, 'xlsx');
+    });
+
     it('downloads the template as OpenDocument, or as Excel on request', async () => {
       renderDialog();
 

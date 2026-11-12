@@ -219,7 +219,7 @@ test.describe('crop form timing windows section', () => {
   });
 
   async function addDirectSowingRow(dialog: Locator): Promise<Locator> {
-    const group = dialog.getByRole('group', { name: 'Direktsaat' });
+    const group = dialog.getByRole('group', { name: 'Direktsaatzeitraum' });
     const addButton = group.getByRole('button', { name: 'Zeitraum hinzufügen' });
     await addButton.scrollIntoViewIfNeeded();
     await addButton.click();

@@ -31,7 +31,7 @@ describe('CropTimingWindowsDetail', () => {
     expect(within(bar).getByTestId('timing-window-lane-direct_sowing')).toBeInTheDocument();
     expect(within(bar).getByTestId('timing-window-lane-planting')).toBeInTheDocument();
     expect(within(bar).queryByTestId('timing-window-lane-pre_cultivation')).toBeNull();
-    expect(within(bar).getByText('Pflanzung')).toBeInTheDocument();
+    expect(within(bar).getByText('Pflanzzeitraum')).toBeInTheDocument();
     // No growth duration: no calculated harvest lane.
     expect(within(bar).queryByTestId('timing-window-lane-computed-harvest')).toBeNull();
   });

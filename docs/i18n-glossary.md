@@ -119,6 +119,9 @@ FR/ES: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Pflanzwoche | Planting week | Semaine de plantation | Semana de trasplante |
 | Anzucht | Propagation | Pépinière † | Semillero † |
 | Zeitraum (Anzucht-, Direktsaat-, Pflanzungs-) | Time window | Période | Periodo |
+| Anzuchtzeitraum | Propagation window | Période de semis en pépinière | Periodo de siembra en semillero |
+| Direktsaatzeitraum | Direct sowing window | Période de semis direct | Periodo de siembra directa |
+| Pflanzzeitraum | Transplanting window | Période de plantation | Periodo de trasplante |
 | Ernte (berechnet) | Harvest (calculated) | Récolte (calculée) | Cosecha (calculada) |
 | Monatsdrittel (Anfang / Mitte / Ende) | Third of the month (early / mid / late) | Décade (début / mi- / fin) | Decena del mes (principios / mediados / finales) |
 | Kalenderwoche (KW) | Calendar week (week) | Semaine (sem.) | Semana (sem.) |

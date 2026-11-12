@@ -66,7 +66,7 @@ function TimingWindowYearBar({ kinds, harvest, year }: { kinds: KindWindows[]; h
       </Box>
       {kinds.map(({ kind, windows }) => (
         <Box key={kind} sx={{ display: 'contents' }} data-testid={`timing-window-lane-${kind}`}>
-          <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
             {t(`crops:timingWindows.kinds.${kind}`)}
           </Typography>
           <Box sx={timingWindowTrackSx}>

@@ -253,7 +253,7 @@ describe('CropsImportDialog', () => {
       />,
     );
 
-    expect(screen.getByText('Pflanzung Menge: Die Menge muss für diese Einheit eine ganze Zahl sein.')).toBeInTheDocument();
+    expect(screen.getByText('Pflanzung: Menge: Die Menge muss für diese Einheit eine ganze Zahl sein.')).toBeInTheDocument();
   });
 
   it('shows a color change as swatches next to the codes', () => {

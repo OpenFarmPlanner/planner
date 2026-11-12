@@ -276,15 +276,16 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'germination_dark', headerKey: 'germination.types.dark', aliases: ['dunkelkeimer'], type: 'boolean' },
   {
     key: 'propagation_duration_days',
-    headerKey: 'form.propagationDurationDays',
-    aliases: ['anzuchtdauer', 'anzuchttage', 'propagation_duration_days'],
+    headerKey: 'germination.fields.propagation_duration_days',
+    aliases: ["anzuchtdauer (tage)", "propagation duration (days)", "durée en pépinière (jours)", "duración en semillero (días)", "form.propagationdurationdays", 'anzuchtdauer', 'anzuchttage', 'propagation_duration_days'],
     type: 'number',
   },
   {
     key: 'pre_cultivation_windows',
     headerKey: 'timingWindows.kinds.pre_cultivation',
-    // Seed catalogues name these columns in many ways ("Vorkultur", "Aussaat Freiland").
+    // Seed catalogues use several names for propagation windows.
     aliases: [
+      'pépinière',
       'anzucht', 'anzuchtzeitraum', 'vorkultur', 'vorzucht', 'voranzucht', 'vorziehen', 'aussaat vorkultur',
       'propagation', 'indoor sowing', 'start indoors', 'sow indoors',
       'semis sous abri', 'semis en pépinière', 'semis en godets',
@@ -297,7 +298,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     key: 'direct_sowing_windows',
     headerKey: 'timingWindows.kinds.direct_sowing',
     aliases: [
-      'direktsaat', 'direktsaatzeitraum', 'aussaat freiland', 'aussaat ins freiland', 'freilandaussaat',
+      'direktsaat', 'direktsaatzeitraum', 'aussaat ins freiland', 'freilandaussaat',
       'direct sowing', 'sow outdoors', 'outdoor sowing',
       'semis direct', 'semis en pleine terre', 'semis en place',
       'siembra directa', 'siembra al aire libre', 'siembra en el exterior',
@@ -327,8 +328,8 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   },
   {
     key: 'expected_yield',
-    headerKey: 'export.columns.expectedYieldKgPerSqm',
-    aliases: ['ertrag', 'erwarteter ertrag', 'expected_yield'],
+    headerKey: 'form.expectedYield',
+    aliases: ["erwarteter ertrag (kg/m²)", "expected yield (kg/m²)", "rendement prévu (kg/m²)", "rendimiento previsto (kg/m²)", "export.columns.expectedyieldkgpersqm", 'ertrag', 'erwarteter ertrag', 'expected_yield'],
     type: 'number',
   },
   {
@@ -359,20 +360,20 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   },
   {
     key: 'sowing_calculation_safety_percent',
-    headerKey: 'detail.fields.seedSafetyMarginPercent',
-    aliases: ['sicherheitsaufschlag', 'sicherheitsmarge', 'sowing_calculation_safety_percent'],
+    headerKey: 'form.sowingCalculationSafetyPercentLabel',
+    aliases: ["sicherheitszuschlag (%)", "seed safety margin (%)", "marge de sécurité des semences (%)", "margen de seguridad de semillas (%)", "detail.fields.seedsafetymarginpercent", 'sicherheitsaufschlag', 'sicherheitsmarge', 'sowing_calculation_safety_percent'],
     type: 'number',
   },
   {
     key: 'seed_rate_direct_value',
     headerKey: 'form.seedRateDirectValue',
-    aliases: ['direktsaat menge', 'direktsaat saatgut', 'seed_rate_direct_value'],
+    aliases: ["direct sowing quantity", "quantité pour le semis direct", "cantidad para siembra directa", 'direktsaat menge', 'direktsaat saatgut', 'seed_rate_direct_value'],
     type: 'number',
   },
   {
     key: 'seed_rate_direct_unit',
     headerKey: 'form.seedRateDirectUnit',
-    aliases: ['direktsaat einheit', 'seed_rate_direct_unit'],
+    aliases: ["direct sowing unit", "unité pour le semis direct", "unidad para siembra directa", 'direktsaat einheit', 'seed_rate_direct_unit'],
     type: 'string',
     enumExport: SEED_RATE_UNIT_EXPORT,
     enumImport: SEED_RATE_UNIT_IMPORT,
@@ -380,19 +381,19 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   {
     key: 'sowing_calculation_safety_percent_direct',
     headerKey: 'export.columns.safetyPercentDirect',
-    aliases: ['sicherheitszuschlag direktsaat', 'sowing_calculation_safety_percent_direct'],
+    aliases: ["sicherheitszuschlag direktsaat (%)", "direct sowing seed safety margin (%)", "marge de sécurité des semences, semis direct (%)", "margen de seguridad de semillas, siembra directa (%)", 'sicherheitszuschlag direktsaat', 'sowing_calculation_safety_percent_direct'],
     type: 'number',
   },
   {
     key: 'seed_rate_pre_cultivation_value',
     headerKey: 'form.seedRatePreCultivationValue',
-    aliases: ['pflanzung menge', 'pflanzung saatgut', 'seed_rate_pre_cultivation_value'],
+    aliases: ["transplanting quantity", "quantité pour la plantation", "cantidad para trasplante", 'pflanzung menge', 'pflanzung saatgut', 'seed_rate_pre_cultivation_value'],
     type: 'number',
   },
   {
     key: 'seed_rate_pre_cultivation_unit',
     headerKey: 'form.seedRatePreCultivationUnit',
-    aliases: ['pflanzung einheit', 'seed_rate_pre_cultivation_unit'],
+    aliases: ["transplanting unit", "unité pour la plantation", "unidad para trasplante", 'pflanzung einheit', 'seed_rate_pre_cultivation_unit'],
     type: 'string',
     enumExport: SEED_RATE_UNIT_EXPORT,
     enumImport: SEED_RATE_UNIT_IMPORT,
@@ -400,7 +401,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   {
     key: 'sowing_calculation_safety_percent_pre_cultivation',
     headerKey: 'export.columns.safetyPercentPreCultivation',
-    aliases: ['sicherheitszuschlag pflanzung', 'sowing_calculation_safety_percent_pre_cultivation'],
+    aliases: ["sicherheitszuschlag pflanzung (%)", "transplanting seed safety margin (%)", "marge de sécurité des semences, plantation (%)", "margen de seguridad de semillas, trasplante (%)", 'sicherheitszuschlag pflanzung', 'sowing_calculation_safety_percent_pre_cultivation'],
     type: 'number',
   },
   {

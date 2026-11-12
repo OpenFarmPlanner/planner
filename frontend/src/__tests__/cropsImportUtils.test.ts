@@ -154,9 +154,9 @@ describe('buildTimingWindowPreviewWarnings', () => {
       },
     ], (index) => index + 2, tCrops);
     expect(lines).toEqual([
-      'Zeile 2, Pflanzung: „Frühjahr“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“. Mehrere Zeiträume mit „;“ trennen, zum Beispiel „März; Oktober“. Der Wert wird nicht übernommen.',
+      'Zeile 2, Pflanzzeitraum: „Frühjahr“ ist keine Zeitangabe. Möglich sind zum Beispiel „Anfang März bis Ende April“, „KW 10 bis 14“ oder „03a-04c“. Mehrere Zeiträume mit „;“ trennen, zum Beispiel „März; Oktober“. Der Wert wird nicht übernommen.',
       'Zeile 2, Erntezeit (Tage), „Juli bis September“: Erntezeiträume werden nicht importiert. Die Ernte ergibt sich aus Pflanzung und Kulturdauer. In dieser Spalte wird die Erntedauer in Tagen erwartet. Der Wert wird nicht übernommen.',
-      'Zeile 2, Direktsaat, „KW 53“: Kalenderwochen von 1 bis 52 angeben. Der Wert wird nicht übernommen.',
+      'Zeile 2, Direktsaatzeitraum, „KW 53“: Kalenderwochen von 1 bis 52 angeben. Der Wert wird nicht übernommen.',
       'Zeile 2, Keimdauer (Tage), „fk“: Bitte eine Zahl oder einen Bereich wie „18–25“ angeben. Der Wert wird nicht übernommen.',
     ]);
   });

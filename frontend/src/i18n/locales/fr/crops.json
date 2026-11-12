@@ -311,10 +311,10 @@
     "yieldUnitRequired": "Une unité de rendement est obligatoire lorsqu'un rendement est indiqué",
     "seedingRequirementTypeRequired": "Un type de besoin en semences est obligatoire lorsqu'un besoin en semences est indiqué.",
     "seedingRequirementValueRequired": "Un besoin en semences est obligatoire lorsqu'un type de besoin en semences est indiqué.",
-    "seedRateDirectValue": "Quantité pour le semis direct",
-    "seedRateDirectUnit": "Unité pour le semis direct",
-    "seedRatePreCultivationValue": "Quantité pour la plantation",
-    "seedRatePreCultivationUnit": "Unité pour la plantation",
+    "seedRateDirectValue": "Semis direct: Quantité",
+    "seedRateDirectUnit": "Semis direct: Unité",
+    "seedRatePreCultivationValue": "Plantation: Quantité",
+    "seedRatePreCultivationUnit": "Plantation: Unité",
     "packageUnitLabel": "Unité du conditionnement",
     "packageUnitGram": "g",
     "packageUnitSeeds": "graines",
@@ -630,8 +630,8 @@
     "success": "Export terminé",
     "columns": {
       "expectedYieldKgPerSqm": "Rendement prévu (kg/m²)",
-      "safetyPercentDirect": "Marge de sécurité des semences, semis direct (%)",
-      "safetyPercentPreCultivation": "Marge de sécurité des semences, plantation (%)"
+      "safetyPercentDirect": "Semis direct: Supplément de sécurité pour les semences (%)",
+      "safetyPercentPreCultivation": "Plantation: Supplément de sécurité pour les semences (%)"
     }
   },
   "buttons": {
@@ -724,11 +724,16 @@
     },
     "template": {
       "speciesName": "Tomate",
-      "varietyName": "Roma",
+      "varietyName": "Nantes 2",
       "supplierName": "Semences Exemple",
       "directSownName": "Carotte",
       "goodNeighbours": "Basilic; Tagète | Protection contre les ravageurs",
-      "badNeighbours": "Pomme de terre; Fenouil"
+      "badNeighbours": "Pomme de terre; Fenouil",
+      "sampleTag": "Exemple",
+      "sampleNote": "Ligne d’exemple : à remplacer ou supprimer avant l’import.",
+      "potatoSeedNote": "Cet exemple décrit la culture à partir de graines botaniques de pomme de terre, et non la plantation de tubercules.",
+      "pretreatment": "Maintenir une humidité régulière.",
+      "pestsDiseases": "Mildiou : garder les feuilles sèches."
     },
     "help": {
       "templateHint": "Pas encore de fichier adapté ?",
@@ -746,8 +751,11 @@
         "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} ».",
         "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle.",
         "timingWindows": "« {{columns}} » : périodes en décades ou en semaines, par exemple « {{decadeExample}} », « {{monthExample}} » ou « {{weekExample}} ». Séparez plusieurs périodes par « ; ». Les dates précises ne sont pas possibles. Vous pouvez écrire les périodes en toutes lettres (« début mars à fin avril »), en semaines (« semaines 10 à 14 ») ou avec le mois et la décade (« 03a-04c »). La lettre a désigne la première décade, b la deuxième et c la dernière. L’aperçu montre comment nous avons interprété chaque valeur.",
-        "catalogColumns": "Les colonnes des catalogues de semences comme « Semis sous abri » ou « Semis en pleine terre » sont reconnues automatiquement."
-      }
+        "catalogColumns": "Utilisez « {{directSowing}} » pour les périodes ; « {{cultivation}} » décrit le mode de culture.",
+        "yield": "Indiquez « {{yield}} » en kg. « {{unit}} » précise si la valeur est par plante ou par m²."
+      },
+      "templateSamples": "Remplacez ou supprimez les trois lignes d’exemple avant d’importer vos données.",
+      "templateError": "Impossible de charger le modèle."
     },
     "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",
     "timingWindowIssueWithValue": "Ligne {{row}}, {{column}}, « {{value}} » : {{message}} La valeur n’est pas importée.",
@@ -1707,9 +1715,9 @@
     "sectionTitle": "Périodes",
     "sectionHelp": "Quand la pépinière, le semis direct et la plantation ont lieu d’habitude, en décades ou en semaines. La planification signale les dates en dehors de ces périodes.",
     "kinds": {
-      "pre_cultivation": "Pépinière",
-      "direct_sowing": "Semis direct",
-      "planting": "Plantation"
+      "pre_cultivation": "Période de semis en pépinière",
+      "direct_sowing": "Période de semis direct",
+      "planting": "Période de plantation"
     },
     "addWindow": "Ajouter une période",
     "removeWindow": "Supprimer la période",
@@ -1902,7 +1910,6 @@
         "late": "Tardive"
       }
     },
-    "templateSpeciesName": "Pomme de terre",
     "importRowInvalid": "Ligne {{row}} : Les propriétés ne conviennent pas à cette espèce ou contiennent des valeurs non valides."
   }
 }

@@ -36,7 +36,7 @@ export const timingWindowTrackSx = {
 
 export const timingWindowLaneGridSx = {
   display: 'grid',
-  gridTemplateColumns: { xs: '96px minmax(0, 1fr)', sm: '128px minmax(0, 1fr)' },
+  gridTemplateColumns: '128px minmax(0, 1fr)',
   columnGap: 1,
   rowGap: 0.75,
   alignItems: 'center',

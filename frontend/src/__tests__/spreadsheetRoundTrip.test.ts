@@ -5,7 +5,7 @@ import { emptyTimingWindow, formatTimingWindows } from '../crops/timingWindows';
 import { buildSheetData } from '../crops/spreadsheetExport';
 import { buildCropImportTemplateRows } from '../crops/importTemplate';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
-import { buildSpreadsheetFile } from '../crops/spreadsheetFile';
+import { buildSpreadsheetFile, parseSpreadsheetRows } from '../crops/spreadsheetFile';
 import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
 
 // Uses the real translations (unlike spreadsheetImport.test.ts, which mocks
@@ -13,6 +13,8 @@ import { parseSpreadsheetFile } from '../crops/spreadsheetImport';
 // import does not know".
 
 const csvFile = (csv: string): File => new File([csv], 'kulturen_export.csv', { type: 'text/csv' });
+
+const TEMPLATE_SPECIES = [{ name: 'Kartoffel', specific_property_profile: 'solanum_tuberosum' }];
 
 const ENUM_CROPS = [
   {
@@ -290,22 +292,53 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(roundTripped).toEqual(expected);
   });
 
-  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('imports its own template without warnings (%s)', async (language) => {
-    await i18n.changeLanguage(language);
-    const csv = buildSpreadsheetFile(buildCropImportTemplateRows(i18n.getFixedT(language, 'crops')), 'csv') as string;
+  it('uses the database display name for the typed sample and refuses a missing profile', () => {
+    const t = i18n.getFixedT('fr', 'crops');
+    const rows = buildCropImportTemplateRows(t, [{ ...TEMPLATE_SPECIES[0], display_name: 'Database potato label' }]);
+    expect(rows[3][0]).toBe('Database potato label');
+    expect(() => buildCropImportTemplateRows(t, [])).toThrow('The template crop species is unavailable.');
+  });
 
-    const result = await parseSpreadsheetFile(csvFile(csv));
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('fills every template column with a valid example and keeps ODS/XLSX identical (%s)', (language) => {
+    const rows = buildCropImportTemplateRows(i18n.getFixedT(language, 'crops'), TEMPLATE_SPECIES);
+    expect(rows[0]).toHaveLength(CROP_COLUMNS.length);
+    for (const [index, column] of CROP_COLUMNS.entries()) {
+      expect(rows.slice(1).some(row => row[index] !== null && row[index] !== undefined && row[index] !== ''), column.key).toBe(true);
+    }
+    const read = (format: 'ods' | 'xlsx') => {
+      const data = buildSpreadsheetFile(rows, format) as Uint8Array;
+      return parseSpreadsheetRows(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), format)
+        .map(row => rows[0].map((_, index) => row[index] === '' ? null : row[index] ?? null));
+    };
+    const expected = rows.map(row => row.map(cell => cell === '' ? null : cell));
+    expect(read('ods')).toEqual(expected);
+    expect(read('xlsx')).toEqual(expected);
+  });
+
+  it('reports the removed header instead of accepting a timing-window cell', async () => {
+    const result = await parseSpreadsheetFile(csvFile('Name,AUSSAAT   FREILAND\nTemplate crop,März bis Mai\n'));
+    expect(result.entries).toEqual([{ name: 'Template crop' }]);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('AUSSAAT   FREILAND');
+  });
+
+  it.each(SUPPORTED_LANGUAGES.flatMap(({ code }) => (['csv', 'ods', 'xlsx'] as const).map(format => [code, format] as const)))('imports its own %s template without warnings (%s)', async (language, format) => {
+    await i18n.changeLanguage(language);
+    const rows = buildCropImportTemplateRows(i18n.getFixedT(language, 'crops'), TEMPLATE_SPECIES);
+    const data = buildSpreadsheetFile(rows, format);
+    const result = await parseSpreadsheetFile(new File([data as BlobPart], `template.${format}`));
 
     expect(result.warnings).toEqual([]);
     expect(result.skippedRows).toBe(0);
-    expect(result.entries).toHaveLength(4);
+    expect(result.entries).toHaveLength(3);
     expect(result.entries[0]).toMatchObject({
       nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     });
-    expect(result.entries[1]).toMatchObject({ variety: 'Roma', supplier_name: expect.any(String) });
+    expect(result.entries[1]).toMatchObject({ variety: 'Nantes 2', supplier_name: expect.any(String), cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' });
     expect(result.entries[0]?.good_companions).toHaveLength(2);
     expect(result.entries[0]?.bad_companions).toHaveLength(2);
-    expect(result.entries[2]).toMatchObject({ cultivation_types: ['direct_sowing'], seed_rate_direct_unit: 'g_per_m2' });
+    expect(result.entries[2]).toMatchObject({ germination_temperature_requirement: 'cold_stratification', stratification_days_min: 28, stratification_temperature_max_c: 5 });
+    for (const entry of result.entries) expect(entry.notes).toContain(i18n.t('crops:import.template.sampleNote'));
   });
 });
 

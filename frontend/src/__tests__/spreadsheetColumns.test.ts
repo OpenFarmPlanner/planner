@@ -1,3 +1,4 @@
+import i18n, { loadLanguages } from '../i18n/config';
 import {
   CROP_COLUMNS,
   CULTIVATION_TYPE_EXPORT,
@@ -10,6 +11,7 @@ import {
   YIELD_UNIT_IMPORT,
   buildHeaderToKeyMap,
   normalizeHeaderForLookup,
+  getLocalizedCropColumns,
 } from '../crops/spreadsheetColumns';
 
 const ENUM_PAIRS: Array<[string, Record<string, string>, Record<string, string>]> = [
@@ -133,7 +135,6 @@ describe('seed-catalogue column names', () => {
     ['Start indoors', 'pre_cultivation_windows'],
     ['Semis sous abri', 'pre_cultivation_windows'],
     ['Semillero', 'pre_cultivation_windows'],
-    ['Aussaat Freiland', 'direct_sowing_windows'],
     ['Direktsaatzeitraum', 'direct_sowing_windows'],
     ['Sow outdoors', 'direct_sowing_windows'],
     ['Semis en pleine terre', 'direct_sowing_windows'],
@@ -151,5 +152,39 @@ describe('seed-catalogue column names', () => {
 
   it('has no harvest window column', () => {
     expect(CROP_COLUMNS.map((column) => column.key)).not.toContain('harvest_windows');
+  });
+});
+
+
+describe('localized canonical spreadsheet headers', () => {
+  beforeAll(async () => { await loadLanguages(); });
+
+  it.each(['de', 'en', 'fr', 'es'])('maps every localized header without collisions and shares form labels (%s)', language => {
+    const t = i18n.getFixedT(language, 'crops');
+    const columns = getLocalizedCropColumns(t);
+    const headers = columns.map(column => normalizeHeaderForLookup(column.header));
+    expect(new Set(headers).size).toBe(columns.length);
+    const map = buildHeaderToKeyMap(t);
+    for (const column of columns) expect(map.get(normalizeHeaderForLookup(column.header))).toBe(column.key);
+    const header = (key: string) => columns.find(column => column.key === key)?.header;
+    expect(header('expected_yield')).toBe(t('form.expectedYield'));
+    expect(header('propagation_duration_days')).toBe(t('germination.fields.propagation_duration_days'));
+    expect(header('sowing_calculation_safety_percent')).toBe(t('form.sowingCalculationSafetyPercentLabel'));
+    for (const [suffix, method] of [['direct', 'DirectSowing'], ['pre_cultivation', 'PreCultivation']]) {
+      const context = t(`form.cultivationType${method}`);
+      expect(header(`seed_rate_${suffix}_value`)).toBe(`${context}: ${t('form.seedAmountLabel')}`);
+      expect(header(`seed_rate_${suffix}_unit`)).toBe(`${context}: ${t('form.seedUnitLabel')}`);
+      expect(header(`sowing_calculation_safety_percent_${suffix}`)).toBe(`${context}: ${t('form.sowingCalculationSafetyPercentLabel')}`);
+    }
+    for (const kind of ['pre_cultivation', 'direct_sowing', 'planting']) {
+      expect(header(`${kind}_windows`)).toBe(t(`timingWindows.kinds.${kind}`));
+    }
+  });
+
+  it('rejects the removed Aussaat Freiland header in every UI language', () => {
+    const map = buildHeaderToKeyMap(...['de', 'en', 'fr', 'es'].map(language => i18n.getFixedT(language, 'crops')));
+    expect(map.has(normalizeHeaderForLookup('  AUSSAAT   FREILAND  '))).toBe(false);
+    expect(map.get(normalizeHeaderForLookup('Direktsaatzeitraum'))).toBe('direct_sowing_windows');
+    expect(map.get(normalizeHeaderForLookup('Direct sowing window'))).toBe('direct_sowing_windows');
   });
 });
