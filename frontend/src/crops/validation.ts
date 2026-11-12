@@ -1,3 +1,4 @@
+import { invalidSpecificPropertyKeys } from './specificProperties';
 import { GERMINATION_NUMBER_FIELDS } from './germination';
 /**
  * Validation logic for CropForm.
@@ -166,6 +167,10 @@ export function validateCrop(
   }
   if (draft.sowing_depth_cm != null && draft.sowing_depth_max_cm != null && draft.sowing_depth_cm > draft.sowing_depth_max_cm) {
     errors.sowing_depth_max_cm = t('form.sowingDepthRangeError');
+  }
+
+  for (const key of invalidSpecificPropertyKeys(draft.specific_property_profile, draft.specific_properties)) {
+    errors[`specific_properties.${key}`] = t('specificProperties.invalidValue');
   }
 
   // Optional numeric fields validation

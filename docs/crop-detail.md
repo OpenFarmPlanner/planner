@@ -13,19 +13,20 @@ form's headings:
 
 1. Sorten (a Kultur only: its varieties; "Sorte hinzufügen" on the crops page)
 2. Allgemeine Informationen
-3. Fruchtfolge-Eigenschaften
-4. Zeitplanung
-5. Pflanzabstände
-6. Ertrag
-7. Saatgutbedarf (the cultivation type lives here, as in the form)
-8. Zeiträume (crops page only: timing windows are project data)
-9. Keimung
-10. Standort und Pflanzengesundheit
-11. Mischkultur
-12. Notizen
-13. Aufgabenvorlagen (crops page only)
-14. Lieferantendaten (crops page only; edited in its own form)
-15. Bibliotheksdaten (library only: original language, publication dates)
+3. Kulturspezifische Eigenschaften (only supported species, filled own values)
+4. Fruchtfolge-Eigenschaften
+5. Zeitplanung
+6. Pflanzabstände
+7. Ertrag
+8. Saatgutbedarf (the cultivation type lives here, as in the form)
+9. Zeiträume (crops page only: timing windows are project data)
+10. Keimung
+11. Standort und Pflanzengesundheit
+12. Mischkultur
+13. Notizen
+14. Aufgabenvorlagen (crops page only)
+15. Lieferantendaten (crops page only; edited in its own form)
+16. Bibliotheksdaten (library only: original language, publication dates)
 
 Hiding empty sections never reorders the remaining ones.
 
@@ -43,6 +44,7 @@ form.
 - Sections you act on stay even when empty, with their empty state and add
   button: Sorten, Aufgabenvorlagen, Lieferantendaten. The library's general
   section always names the crop species.
+- Crop-specific property dictionaries are record-local and never inherit.
 - A Sorte's blank value still falls back to its Kultur's value first (in the
   library: the species entry's); only a value missing on both counts as
   missing.

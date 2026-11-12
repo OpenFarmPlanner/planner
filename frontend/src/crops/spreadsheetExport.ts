@@ -1,3 +1,4 @@
+import { SPECIFIC_PROPERTY_PREFIX, specificPropertyDefinitions } from './specificProperties';
 import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
 import { formatCompanionCell, type CompanionItemsByKind } from './companions';
@@ -30,7 +31,9 @@ export const buildSheetData = (
   t: SheetT,
   companionsByCrop?: ReadonlyMap<number, CompanionItemsByKind>,
 ): (string | number | null)[][] => {
-  const cropColumns = getLocalizedCropColumns(t);
+  const relevantProperties = new Set(crops.flatMap((crop) => Object.keys(specificPropertyDefinitions(crop.specific_property_profile))));
+  const cropColumns = getLocalizedCropColumns(t).filter((column) => !column.key.startsWith(SPECIFIC_PROPERTY_PREFIX)
+    || relevantProperties.has(column.key.slice(SPECIFIC_PROPERTY_PREFIX.length)));
   const headers = cropColumns.map((col) => col.header);
   const rows = crops.map((crop) => {
     const portableCrop = toPortableCrop(crop, crop.id === undefined ? undefined : companionsByCrop?.get(crop.id));
@@ -50,7 +53,9 @@ export const buildSheetData = (
         const kind = col.key.replace('germination_', '') as NonNullable<Crop['germination_types']>[number];
         return crop.germination_types?.includes(kind) ? t('detail.boolean.yes') : null;
       }
-      const raw = portable[col.key];
+      const propertyKey = col.key.startsWith(SPECIFIC_PROPERTY_PREFIX) ? col.key.slice(SPECIFIC_PROPERTY_PREFIX.length) : null;
+      if (propertyKey && !specificPropertyDefinitions(crop.specific_property_profile)[propertyKey]) return null;
+      const raw = propertyKey ? crop.specific_properties?.[propertyKey] : portable[col.key];
       if (raw === undefined || raw === null) return null;
       if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good']);
       if (Array.isArray(raw)) {

@@ -41,6 +41,8 @@ function describeReason(
   t: TFunction,
 ): string | null {
   switch (reason) {
+    case 'invalid_specific_properties':
+      return t('specificProperties.publishInvalid');
     case 'missing_crop_species':
       return t('library.publishWizard.blockingReasons.missingCropSpecies');
     case 'crop_species_unavailable':

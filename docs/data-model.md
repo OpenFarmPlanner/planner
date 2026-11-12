@@ -306,6 +306,15 @@ powers project history and restore.
 - Whether any code path other than `require_project_admin()` gates
   behavior by role — a full audit of every view wasn't performed.
 
+## Crop-specific properties
+
+`CropSpecies.specific_property_profile` is curated metadata referencing the
+versioned property registry. `Crop.specific_properties` and
+`PublicCrop.specific_properties` are independent JSON dictionaries validated
+against that profile. Values do not implicitly inherit between species and
+variety records. See [Crop-specific properties](./crop-specific-properties.md)
+for ownership, replacement semantics, migration and exchange details.
+
 ## Germination data
 
 `Crop` and `PublicCrop` store optional germination temperatures (°C), day

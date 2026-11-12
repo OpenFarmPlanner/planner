@@ -1814,5 +1814,36 @@
     "deleteConfirm": "Lieferantendaten von „{{supplier}}“ für diese Kultur löschen? Der Lieferant selbst bleibt erhalten.",
     "deleteError": "Die Lieferantendaten konnten nicht gelöscht werden.",
     "changed": "Dieses Angebot wurde inzwischen geändert oder entfernt. Lade die Kultur neu und versuche es erneut."
+  },
+  "specificProperties": {
+    "title": "Kulturspezifische Eigenschaften",
+    "unset": "Keine Angabe",
+    "invalidValue": "Bitte wähle einen gültigen Wert.",
+    "incompatible": "Einige Eigenschaften passen nicht zur gewählten Kulturart. Entferne sie vor dem Speichern oder wähle wieder die vorherige Kulturart.",
+    "clearIncompatible": "Nicht passende Werte entfernen",
+    "cropValues": "Werte dieser Kultur",
+    "varietyValues": "Werte dieser Sorte",
+    "publishInvalid": "Die Eigenschaften passen nicht zur gewählten Kulturart. Bitte prüfe sie vor dem Veröffentlichen.",
+    "importInvalid": "Die Eigenschaften passen nicht zur Kulturart oder enthalten ungültige Werte.",
+    "fields": {
+      "cooking_type": "Kochtyp",
+      "maturity_group": "Reifegruppe"
+    },
+    "values": {
+      "cooking_type": {
+        "waxy": "Festkochend",
+        "mostly_waxy": "Vorwiegend festkochend",
+        "floury": "Mehligkochend"
+      },
+      "maturity_group": {
+        "very_early": "Sehr früh",
+        "early": "Früh",
+        "medium_early": "Mittelfrüh",
+        "medium_late": "Mittelspät",
+        "late": "Spät"
+      }
+    },
+    "templateSpeciesName": "Kartoffel",
+    "importRowInvalid": "Zeile {{row}}: Die Eigenschaften passen nicht zur Kulturart oder enthalten ungültige Werte."
   }
 }

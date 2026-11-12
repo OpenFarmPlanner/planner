@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from crops.specific_properties import REGISTRY
+
 from farm.services.crop_import.field_specs import (
     CROP_FIELD_SPECS,
     KIND_BOOLEAN,
@@ -18,6 +20,7 @@ from farm.services.crop_import.field_specs import (
     KIND_ENUM_LIST,
     KIND_INTEGER,
     KIND_NUMBER,
+    KIND_OBJECT,
     KIND_STRING,
     KIND_STRING_LIST,
     FieldSpec,
@@ -35,6 +38,7 @@ _JSON_TYPE_BY_KIND = {
     KIND_BOOLEAN: 'boolean',
     KIND_ENUM_LIST: 'array',
     KIND_STRING_LIST: 'array',
+    KIND_OBJECT: 'object',
 }
 
 
@@ -640,6 +644,7 @@ def build_openapi_document(*, server_url: str = '/api') -> dict[str, Any]:
 
     return {
         'openapi': OPENAPI_VERSION,
+        'x-crop-specific-properties': REGISTRY,
         'info': {
             'title': 'OpenFarmPlanner Agent API',
             'version': '1.0.0',

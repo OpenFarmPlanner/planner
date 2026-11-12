@@ -61,6 +61,11 @@ enums, with optional stratification day/temperature endpoints. Their pins
 also protect against indirect overwrites through the deprecated composite
 `germination_types` list; unpinned axes can still sync independently.
 
+Typed [crop-specific properties](./crop-specific-properties.md) are stored in
+record-local JSON dictionaries validated against a shared versioned registry.
+General entries and varieties own their values independently; publication,
+import, sync, pins and history use the existing explicit workflows.
+
 ## 0. Product and legal model
 
 The public Crop Library follows an open-data model:

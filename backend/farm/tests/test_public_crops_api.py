@@ -6244,6 +6244,29 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(imported.stratification_temperature_min_c, -5)
         self.assertEqual(imported.stratification_temperature_max_c, 5)
 
+    def test_specific_properties_pin_preserves_own_values_until_explicit_pull(self) -> None:
+        from farm.services.public_crops import _apply_public_crop_update, build_public_crop_payload
+
+        species = CropSpecies.objects.create(
+            name='Pinned property species', specific_property_profile='solanum_tuberosum',
+        )
+        for record in (self.kultur, self.entry):
+            record.crop_species = species
+            record.save(update_fields=['crop_species'])
+        response = self._patch(self.kultur, {'specific_properties': {'cooking_type': 'waxy'}})
+        self.assertEqual(response.status_code, 200, response.data)
+        self._pin(self.kultur, ['specific_properties'])
+        self._library_edit(specific_properties={'cooking_type': 'floury', 'maturity_group': 'late'})
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertNotIn('specific_properties', build_public_crop_payload(self.kultur))
+        _apply_public_crop_update(crop=self.kultur, public_crop=self.entry)
+        self.assertEqual(self.kultur.specific_properties, {'cooking_type': 'waxy'})
+        _apply_public_crop_update(crop=self.kultur, public_crop=self.entry, unpin_fields=['specific_properties'])
+        self.assertEqual(self.kultur.specific_properties, {'cooking_type': 'floury', 'maturity_group': 'late'})
+        self.kultur.specific_properties['cooking_type'] = 'mostly_waxy'
+        self.assertEqual(self.entry.specific_properties['cooking_type'], 'floury')
+
     def test_a_requirement_pin_cannot_be_overwritten_or_shared_through_the_legacy_list(self) -> None:
         from farm.services.public_crops import _apply_public_crop_update, build_public_crop_payload
 

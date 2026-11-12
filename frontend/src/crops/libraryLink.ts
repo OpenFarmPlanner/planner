@@ -33,6 +33,7 @@ export const LIBRARY_LINK_FIELDS = [
   'stratification_temperature_max_c',
   'germination_types',
   'germination_pretreatment',
+  'specific_properties',
   'pests_diseases',
   'light_requirement',
   'water_requirement',

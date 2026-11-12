@@ -34,6 +34,10 @@ class CropSpecies(models.Model):
 
     name = models.CharField(max_length=200)
     name_normalized = models.CharField(max_length=200, db_index=True, editable=False, unique=True)
+    specific_property_profile = models.CharField(
+        max_length=80, blank=True,
+        help_text="Curated, stable property-registry profile; independent of translated names.",
+    )
     scientific_name = models.CharField(max_length=200, blank=True)
     family = models.CharField(max_length=200, blank=True)
     categories = models.JSONField(default=list, blank=True)

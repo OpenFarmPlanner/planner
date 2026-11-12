@@ -18,6 +18,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError as ApiValidationError
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
@@ -28,6 +29,7 @@ from crops.permissions import (
     public_library_moderator_users,
 )
 from crops.services import find_species_by_common_name
+from crops.specific_properties import crop_specific_property_errors, specific_property_errors
 from farm.models import (
     Crop,
     Project,
@@ -114,6 +116,7 @@ CROP_COPY_FIELDS = [
     'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
+    'specific_properties',
     'pests_diseases',
     'light_requirement',
     'water_requirement',
@@ -164,6 +167,7 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
+    'specific_properties',
     'pests_diseases',
     'light_requirement',
     'water_requirement',
@@ -217,6 +221,7 @@ PUBLISH_BLOCKER_CROP_SPECIES_UNAVAILABLE = 'crop_species_unavailable'
 PUBLISH_BLOCKER_MISSING_ORIGINAL_LANGUAGE = 'missing_original_language'
 PUBLISH_BLOCKER_MISSING_REQUIRED_FIELDS = 'missing_required_fields'
 PUBLISH_BLOCKER_DUPLICATES = 'duplicates'
+PUBLISH_BLOCKER_SPECIFIC_PROPERTIES = 'invalid_specific_properties'
 
 
 @dataclass(frozen=True)
@@ -398,6 +403,7 @@ def is_species_level_entry(public_crop: PublicCrop) -> bool:
 
 def _copy_fields(instance: Any) -> dict[str, Any]:
     payload = {field: get_crop_field_value(instance, field) for field in CROP_COPY_FIELDS}
+    payload['specific_properties'] = copy.deepcopy(payload.get('specific_properties') or {})
     payload['cultivation_types'] = list(payload.get('cultivation_types') or [])
     payload['seed_rate_by_cultivation'] = payload.get('seed_rate_by_cultivation') or None
     return payload
@@ -807,6 +813,9 @@ def _save_edited_public_crop(
     user: User | None,
 ) -> None:
     """Persist a direct edit as the next version, with its dependent rows."""
+    errors = crop_specific_property_errors(public_crop)
+    if errors:
+        raise ApiValidationError(errors)
     update_fields = [*changed_field_names, 'version', 'updated_at']
     if 'variety' in changed_field_names:
         update_fields.append('variety_normalized')
@@ -848,7 +857,7 @@ def restore_public_crop_version(
         snapshot = upgrade_germination_snapshot(revision.snapshot)
         update_fields = []
         for field in PUBLIC_CROP_EDITABLE_FIELDS:
-            value = snapshot.get(field)
+            value = snapshot.get(field, {} if field == 'specific_properties' else None)
             if field in PLANT_FAMILY_REFERENCE_FIELDS:
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
@@ -866,6 +875,9 @@ def restore_public_crop_version(
         if not update_fields:
             return locked
 
+        errors = crop_specific_property_errors(locked)
+        if errors:
+            raise ApiValidationError(errors)
         locked.version = max(locked.version, 1) + 1
         locked.save(update_fields=[*update_fields, 'version', 'updated_at'])
         if 'variety' in update_fields:
@@ -914,6 +926,7 @@ def build_public_crop_payload(
     *,
     public_variety: str | None = None,
     source_crop: Crop | None = None,
+    include_specific_properties: bool = True,
 ) -> dict[str, Any]:
     """The public-entry fields taken from ``crop``.
 
@@ -935,6 +948,12 @@ def build_public_crop_payload(
     # entry must carry that, not the blank stored on the Sorte. Species-invariant
     # fields are resolved explicitly further down.
     payload = _resolved_copy_fields(crop)
+    if not include_specific_properties:
+        general = source_crop or get_general_crop(crop)
+        payload['specific_properties'] = (
+            copy.deepcopy(general.specific_properties)
+            if general and 'specific_properties' not in _effective_library_pins(general) else {}
+        )
     if public_variety is not None:
         payload['variety'] = public_variety
     payload['seed_packages'] = _seed_packages_payload_from_crop(crop)
@@ -1196,6 +1215,9 @@ def link_project_crop_to_public_reference(
         else:
             crop.source_public_version = None if remaining_changes else public_crop.version
         crop.origin_type = Crop.ORIGIN_IMPORTED
+        errors = crop_specific_property_errors(crop)
+        if errors:
+            raise ApiValidationError(errors)
         crop.save()
         # Crop.save() flags divergence against the pre-link row; the link sets
         # its own baseline flag instead (queryset update: no second revision).
@@ -1680,6 +1702,9 @@ def sync_crop_with_public_entry(
         if pull_fields:
             _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
         if pull_fields or pins_changed:
+            errors = crop_specific_property_errors(crop)
+            if errors:
+                raise ApiValidationError(errors)
             crop.save()
         if push_fields:
             payload = build_public_crop_payload(crop)
@@ -1990,6 +2015,10 @@ def _publishing_blocking_reasons(
         reasons.append(PUBLISH_BLOCKER_MISSING_REQUIRED_FIELDS)
     if duplicates:
         reasons.append(PUBLISH_BLOCKER_DUPLICATES)
+    if crop_species is not None and specific_property_errors(
+        crop.specific_properties, crop_species.specific_property_profile,
+    ):
+        reasons.append(PUBLISH_BLOCKER_SPECIFIC_PROPERTIES)
     return reasons
 
 
@@ -2058,6 +2087,7 @@ def ensure_general_public_crop(
             crop,
             public_variety='',
             source_crop=get_general_crop(crop),
+            include_specific_properties=False,
         )),
     )
     sync_original_language_translation(public_crop)
@@ -2231,6 +2261,13 @@ def _link_crop_to_crop_species(
     "Kulturart korrigieren" correction, where the group's rows already hold the
     species being corrected away from instead of none.
     """
+    member_ids = _crop_group_member_ids(
+        crop, target_species_id=crop_species.pk, previous_species_id=previous_species_id,
+    )
+    for values in Crop.objects.filter(pk__in=member_ids).exclude(specific_properties={}).values_list('specific_properties', flat=True):
+        errors = specific_property_errors(values, crop_species.specific_property_profile)
+        if errors:
+            raise ApiValidationError({'specific_properties': errors})
     crop.crop_species = crop_species
     crop.save(update_fields=['crop_species', 'updated_at'])
     sync_crop_species_across_crop_group(crop, previous_species_id=previous_species_id)
@@ -2353,6 +2390,9 @@ def _apply_public_crop_species_relink(
         previous_snapshot = build_public_crop_snapshot(locked)
         locked.crop_species = crop_species
         locked.variety = target_variety
+        errors = crop_specific_property_errors(locked)
+        if errors:
+            raise ApiValidationError(errors)
         locked.version = max(locked.version, 1) + 1
         locked.save(update_fields=['crop_species', 'variety', 'variety_normalized', 'version', 'updated_at'])
         prune_trade_names_for_variety(locked, user=user)
@@ -3249,6 +3289,9 @@ def _apply_public_crop_update(
     payload.pop('derived_from_public_crop', None)
     for field, value in payload.items():
         set_crop_field_value(crop, field, value)
+    errors = crop_specific_property_errors(crop)
+    if errors:
+        raise ApiValidationError(errors)
     crop.save()
     if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
         replace_library_companions(crop, public_crop.companions)

@@ -71,7 +71,7 @@ export function buildGeneralCropDraftForFirstVariety(
 }
 
 // Every crop states its own cultivation types; a Sorte never inherits them.
-const NON_INHERITED_LIBRARY_FIELDS = new Set<string>(['cultivation_type', 'cultivation_types']);
+const NON_INHERITED_LIBRARY_FIELDS = new Set<string>(['cultivation_type', 'cultivation_types', 'specific_properties']);
 
 /**
  * The first Sorte's values without the ones that only repeat the linked

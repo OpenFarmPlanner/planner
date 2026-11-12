@@ -1,3 +1,4 @@
+import type { SpecificProperties } from '../crops/specificProperties';
 export type GerminationTemperatureRequirement = '' | 'none' | 'cold_stratification' | 'frost_treatment';
 export type GerminationLightRequirement = '' | 'none' | 'light' | 'dark';
 import type { LifeCycle, LightRequirement, WaterRequirement, WinterHardiness } from '../crops/siteHealth';
@@ -230,6 +231,8 @@ export interface Crop {
   stratification_temperature_max_c?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
+  specific_properties?: SpecificProperties;
+  specific_property_profile?: string;
   pests_diseases?: string;
   light_requirement?: LightRequirement | '';
   water_requirement?: WaterRequirement | '';
@@ -459,6 +462,8 @@ export interface PublicCrop {
   stratification_temperature_max_c?: number | null;
   germination_types?: GerminationType[];
   germination_pretreatment?: string;
+  specific_properties?: SpecificProperties;
+  specific_property_profile?: string;
   pests_diseases?: string;
   light_requirement?: LightRequirement | '';
   water_requirement?: WaterRequirement | '';
@@ -855,6 +860,7 @@ export interface PlantFamily {
 export interface CropSpecies {
   id: number;
   name: string;
+  specific_property_profile?: string;
   scientific_name?: string;
   family?: string;
   categories?: string[];
@@ -899,6 +905,7 @@ export interface PublicLibraryModeratorRequestMine {
 
 /** Why `PublishPublicCropPreview.can_publish` is false; one entry per blocker. */
 export type PublishBlockingReason =
+  | 'invalid_specific_properties'
   | 'missing_crop_species'
   | 'crop_species_unavailable'
   | 'missing_original_language'

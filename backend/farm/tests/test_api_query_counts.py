@@ -100,6 +100,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             # `proposed` row too, not only against published ones.
             species = CropSpecies.objects.create(
                 name=f'Query count species {index}',
+                specific_property_profile='solanum_tuberosum',
                 status=CropSpecies.STATUS_PROPOSED if index == 0 else CropSpecies.STATUS_PUBLISHED,
             )
             CropSpeciesTranslation.objects.create(
@@ -117,11 +118,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             if index > 0:
                 self.crops.append(crop)
             crop.crop_species = species
+            crop.specific_properties = {'cooking_type': 'waxy', 'maturity_group': 'early'}
             crop.supplier = self.suppliers[index]
             # A different plant family per row: `crop_family_display_name`
             # and `effective_rotation_break_years` must not look one up per row.
             crop.crop_family_id = PLANT_FAMILY_KEYS[index]
-            crop.save(update_fields=['crop_species', 'supplier', 'crop_family'])
+            crop.save(update_fields=['crop_species', 'supplier', 'crop_family', 'specific_properties'])
 
             CropSupplierData.objects.create(
                 crop=crop, supplier=self.suppliers[index], project=self.project,
@@ -153,6 +155,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 name=f'Public crop {index}', variety='Sorte',
                 status=PublicCrop.STATUS_PUBLISHED, crop_species=species, created_by=self.user,
                 original_language_code='en', crop_family_id=PLANT_FAMILY_KEYS[index],
+                specific_properties={'cooking_type': 'waxy', 'maturity_group': 'early'},
             )
             self.public_crops.append(public_crop)
             # Two trade names per entry, so `variety_display`/`trade_names`
@@ -224,6 +227,8 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200)
         rows_by_id = {row['id']: row for row in response.data['results']}
         for index, crop in enumerate(self.crops):
+            self.assertEqual(rows_by_id[crop.id]['specific_property_profile'], 'solanum_tuberosum')
+            self.assertEqual(rows_by_id[crop.id]['specific_properties'], crop.specific_properties)
             names = rows_by_id[crop.id]['crop_species_search_names']
             self.assertIn(f'Synonym {index}', names)
             self.assertIn(f'Regional {index}', names)

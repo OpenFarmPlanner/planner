@@ -28,6 +28,7 @@ from farm.services.timing_windows import (
 from farm.utils import normalize_supplier_name, normalize_text
 
 from .germination import apply_germination_cells
+from .specific_properties import SpecificPropertyImportError, apply_specific_property_cells
 from .timing_windows import (
     ERROR_HARVEST_NOT_IMPORTED,
     PARSE_ERROR_MESSAGES,
@@ -140,7 +141,7 @@ _COMPARABLE_FIELDS = [
     'stratification_days_max',
     'stratification_temperature_min_c',
     'stratification_temperature_max_c',
-    'germination_types', 'germination_pretreatment',
+    'germination_types', 'germination_pretreatment', 'specific_properties',
     'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle', 'winter_hardiness',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm', 'sowing_depth_max_cm',
@@ -405,6 +406,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
+            apply_specific_property_cells(crop_data, matching_crop)
             companions = preview_row_companions(resolver, crop_data)
             timing_window_issues = [
                 *germination_issues, *apply_timing_window_cells(crop_data, matching_crop),
@@ -433,6 +435,7 @@ def preview_crop_import(project: Project, rows: list) -> list[dict]:
             results.append({
                 'index': idx,
                 'error': str(error),
+                **({'error_code': 'specific_properties_invalid'} if isinstance(error, SpecificPropertyImportError) else {}),
                 'import_data': crop_data,
             })
 
@@ -464,6 +467,7 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
+            apply_specific_property_cells(crop_data, matching_crop)
             if supplier:
                 crop_data['supplier'] = supplier.id
 
@@ -515,7 +519,10 @@ def apply_crop_import(project: Project, rows: list, *, confirm_updates: bool) ->
                 else:
                     errors.append({'index': idx, 'error': serializer.errors})
         except Exception as error:
-            errors.append({'index': idx, 'error': str(error)})
+            errors.append({
+                'index': idx, 'error': str(error),
+                **({'error_code': 'specific_properties_invalid'} if isinstance(error, SpecificPropertyImportError) else {}),
+            })
 
     summary: dict[str, Any] = {
         'created_count': created_count,

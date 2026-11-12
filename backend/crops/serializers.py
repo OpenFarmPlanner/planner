@@ -187,6 +187,7 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'scientific_name',
+            'specific_property_profile',
             'family',
             'categories',
             'status',
@@ -202,6 +203,7 @@ class CropSpeciesSerializer(serializers.ModelSerializer):
             'search_match',
         ]
         read_only_fields = [
+            'specific_property_profile',
             'id',
             'status',
             'proposed_by_label',
@@ -453,6 +455,9 @@ class CropSerializer(serializers.ModelSerializer):
     display_language_code = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
     description_language_code = serializers.SerializerMethodField()
+    specific_property_profile = serializers.CharField(
+        source='crop_species.specific_property_profile', read_only=True, default='',
+    )
     crop_species_translations = serializers.SerializerMethodField()
     crop_species_search_names = serializers.SerializerMethodField()
     variety_trade_name = serializers.SerializerMethodField(
@@ -519,6 +524,7 @@ class CropSerializer(serializers.ModelSerializer):
             'stratification_temperature_max_c',
             'germination_types',
             'germination_pretreatment',
+            'specific_properties',
             'pests_diseases',
             'light_requirement',
             'water_requirement',
@@ -549,6 +555,7 @@ class CropSerializer(serializers.ModelSerializer):
             'description',
             'description_language_code',
             'crop_species_translations',
+            'specific_property_profile',
             'crop_species_search_names',
         ]
         read_only_fields = fields

@@ -23,6 +23,7 @@ export interface PublicCropSpeciesOption {
   /** `crop_species` id when known, otherwise the normalized name (legacy entries without a species link). */
   key: number | string;
   cropSpeciesId: number | null;
+  specific_property_profile?: string;
   canonicalName: string;
   name: string;
   matchedAlias: string | null;
@@ -57,6 +58,7 @@ export const dedupePublicCropsBySpecies = (
       byKey.set(key, {
         key,
         cropSpeciesId: crop.crop_species ?? null,
+        specific_property_profile: crop.specific_property_profile,
         canonicalName,
         name,
         matchedAlias,

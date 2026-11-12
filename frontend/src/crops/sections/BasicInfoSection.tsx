@@ -20,6 +20,7 @@ import { usePlantFamilies } from '../plantFamilies';
 import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_LABEL_KEY } from '../seedType';
 
 interface BasicInfoSectionProps {
+  afterIdentityFields?: ReactNode;
   formData: Partial<Crop>;
   /** The project's tags; the "Tags" field shows only when given (never in the library form). */
   tagOptions?: readonly string[];
@@ -87,6 +88,7 @@ function unlistedPlantFamily(botanicalName: string): PlantFamily {
 }
 
 export function BasicInfoSection({
+  afterIdentityFields,
   formData,
   errors,
   onChange,
@@ -434,6 +436,7 @@ export function BasicInfoSection({
           the icon stays beside the last word instead of drifting to the right
           edge or onto a line of its own. The icon stays outside the heading's
           accessible name. */}
+      {afterIdentityFields}
       <Box sx={{ mt: 1, typography: 'h6' }}>
         <Typography variant="h6" sx={{ display: 'inline' }}>{t('form.sectionCropRotation')}</Typography>
         {speciesInvariantFieldsReadOnly ? (

@@ -1,3 +1,4 @@
+import type { SpecificProperties } from './specificProperties';
 import type { CompanionImportItem, Crop, CropTimingWindow } from '../api/types';
 import { toTimingWindowPayload } from './timingWindows';
 import type { CompanionItemsByKind } from './companions';
@@ -37,6 +38,8 @@ export interface PortableCrop {
   stratification_temperature_max_c?: Crop['stratification_temperature_max_c'];
   germination_types?: Crop['germination_types'];
   germination_pretreatment?: Crop['germination_pretreatment'];
+  specific_properties?: SpecificProperties;
+  specific_property_profile?: string;
   pests_diseases?: Crop['pests_diseases'];
   light_requirement?: Crop['light_requirement'];
   water_requirement?: Crop['water_requirement'];
@@ -134,6 +137,8 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     stratification_temperature_max_c: crop.stratification_temperature_max_c ?? undefined,
     germination_types: crop.germination_types ?? [],
     germination_pretreatment: crop.germination_pretreatment ?? '',
+    specific_properties: { ...(crop.specific_properties ?? {}) },
+    specific_property_profile: crop.specific_property_profile ?? '',
     pests_diseases: crop.pests_diseases ?? '',
     light_requirement: crop.light_requirement ?? '',
     water_requirement: crop.water_requirement ?? '',

@@ -306,3 +306,18 @@ variety, seed status describes one supplier's offer.
 | Umstellung | In conversion | En conversion | En conversión |
 | Konventionell | Conventional | Conventionnel | Convencional |
 | Ausnahmegenehmigung | Seed exemption | Dérogation pour les semences | Excepción para las semillas |
+
+## Crop-specific properties
+
+| DE | EN | FR | ES |
+| --- | --- | --- | --- |
+| Kochtyp | Cooking type | Type de cuisson | Tipo de cocción |
+| Reifegruppe | Maturity group | Groupe de maturité | Grupo de maduración |
+| Festkochend | Waxy | Chair ferme | Firme |
+| Vorwiegend festkochend | Mostly waxy | Chair plutôt ferme | Mayormente firme |
+| Mehligkochend | Floury | Chair farineuse | Harinosa |
+| Sehr früh | Very early | Très précoce | Muy precoz |
+| Früh | Early | Précoce | Precoz |
+| Mittelfrüh | Medium early | Demi-précoce | Semiprecoz |
+| Mittelspät | Medium late | Demi-tardive | Semitardía |
+| Spät | Late | Tardive | Tardía |

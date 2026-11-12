@@ -1,3 +1,4 @@
+import { formatSpecificProperties, type SpecificProperties } from '../crops/specificProperties';
 import type { TFunction } from 'i18next';
 import type { CropHistoryChange, CropHistoryEntry, CropTimingWindow } from '../api/types';
 import { getSeedTypeLabel } from '../crops/seedType';
@@ -59,6 +60,7 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   stratification_temperature_max_c: 'germination.fields.stratification_temperature_max_c',
   germination_types: 'germination.fields.germination_types',
   germination_pretreatment: 'germination.fields.germination_pretreatment',
+    specific_properties: 'specificProperties.title',
   pests_diseases: 'siteHealth.fields.pests_diseases',
   light_requirement: 'siteHealth.fields.light_requirement',
   water_requirement: 'siteHealth.fields.water_requirement',
@@ -247,6 +249,7 @@ export function formatHistoryChangeValue(
   field: string,
   t: TFunction<'crops'>,
 ): string {
+  if (field === 'specific_properties' && value && typeof value === 'object' && Object.keys(value).length > 0) return formatSpecificProperties(value as SpecificProperties, t);
   if (value === null || value === undefined || value === '') {
     return t('history.emptyValue');
   }

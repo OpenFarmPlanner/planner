@@ -5,6 +5,7 @@ import type { CropSpecies } from '../api/types';
 
 const SEARCH_DEBOUNCE_MS = 250;
 const SEARCH_PAGE_SIZE = 20;
+const EMPTY_RESULTS: CropSpecies[] = [];
 
 export interface CropSpeciesSearchResult {
   /** Results for exactly the current query; empty while that query is still pending. */
@@ -70,11 +71,11 @@ export function useCropSpeciesSearch(query: string, enabled: boolean): CropSpeci
   }, [active, trimmedQuery]);
 
   if (!active) {
-    return { results: [], loading: false, settled: true };
+    return { results: EMPTY_RESULTS, loading: false, settled: true };
   }
   const settled = settledSearch?.query === trimmedQuery;
   return {
-    results: settled ? settledSearch.results : [],
+    results: settled ? settledSearch.results : EMPTY_RESULTS,
     loading: !settled,
     settled,
   };

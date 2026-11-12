@@ -28,6 +28,7 @@ from .field_specs import (
     KIND_ENUM,
     KIND_ENUM_LIST,
     KIND_INTEGER,
+    KIND_OBJECT,
     KIND_STRING,
     KIND_STRING_LIST,
     SEED_RATE_PLAUSIBILITY,
@@ -71,6 +72,7 @@ MESSAGES: dict[str, str] = {
     'invalid_color': 'Colour must be a #RRGGBB hex string.',
     'not_a_list': 'Value must be a list.',
     'missing_name': 'A crop name is required.',
+    'specific_properties_invalid': 'Crop-specific properties do not match the resolved species or contain unsupported values.',
     'unknown_field': 'Field is not part of the crop schema and was ignored.',
     'duplicate_key': 'Several input keys map to the same API field.',
     'missing_companion': 'Field requires its companion field to be present.',
@@ -376,6 +378,13 @@ def analyze_field(
 
     if spec.kind == KIND_STRING:
         _analyze_string(spec, analysis, raw_value)
+    elif spec.kind == KIND_OBJECT:
+        if isinstance(raw_value, dict):
+            analysis.api_value = raw_value
+            analysis.confidence = CONFIDENCE_EXACT
+        else:
+            analysis.confidence = CONFIDENCE_INVALID
+            analysis.errors.append(_issue('specific_properties_invalid', 'Expected an object.'))
     elif spec.kind == KIND_ENUM:
         _analyze_enum(spec, analysis, raw_value)
     elif spec.kind == KIND_ENUM_LIST:
@@ -574,7 +583,7 @@ def _annotate_existing_values(analyses: dict[str, FieldAnalysis], existing: Crop
     for field_name, analysis in analyses.items():
         if analysis.errors or field_name == 'supplier_name':
             continue
-        current = getattr(existing, field_name, None)
+        current = existing.specific_properties.get(field_name.removeprefix('specific_properties.')) if field_name.startswith('specific_properties.') else getattr(existing, field_name, None)
         if isinstance(current, Decimal):
             current = float(current)
         analysis.current_value = current
@@ -671,6 +680,16 @@ def analyze_item(
             seen_identities[identity_key] = index
 
     _warn_unused_cultivation_types(analyses, existing)
+    from .specific_properties import SpecificPropertyImportError, apply_specific_property_cells
+
+    property_payload = {
+        name: analysis.api_value for name, analysis in analyses.items()
+        if not analysis.errors and analysis.api_value is not None
+    }
+    try:
+        apply_specific_property_cells(property_payload, existing)
+    except SpecificPropertyImportError as error:
+        row_errors.append(_issue('specific_properties_invalid', str(error)))
     if existing is not None:
         _annotate_existing_values(analyses, existing)
 

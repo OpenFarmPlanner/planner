@@ -186,6 +186,8 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_temperature_min_c: 5,
     germination_days_min: 7,
     germination_days_max: 14,
+    specific_property_profile: 'solanum_tuberosum',
+    specific_properties: { cooking_type: 'waxy', maturity_group: 'early' },
     germination_temperature_requirement: 'cold_stratification',
     germination_light_requirement: 'light',
     stratification_days_min: 14,
@@ -254,6 +256,8 @@ describe('crop spreadsheet export → import round trip', () => {
     ...(FULL_CROP as unknown as Record<string, unknown>),
     ...windowCells(i18n.getFixedT('de', 'crops')),
     supplier_name: 'Bingenheimer Saatgut',
+    'specific_properties.cooking_type': 'waxy',
+    'specific_properties.maturity_group': 'early',
     germination_temperature_optimal: '18–25',
     germination_days: '7–14',
     sowing_depth: '0.5–1',
@@ -290,7 +294,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
     expect(result.warnings).toEqual([]);
     expect(result.skippedRows).toBe(0);
-    expect(result.entries).toHaveLength(3);
+    expect(result.entries).toHaveLength(4);
     expect(result.entries[0]).toMatchObject({
       nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     });

@@ -120,6 +120,8 @@ for step-by-step procedures of recurring tasks, see the skills in
   through the crop library.
 - **[Germination](./germination.md)** — germination temperatures and time ranges,
   seed requirements, inheritance, library/spreadsheet exchange and planning hints.
+- **[Crop-specific properties](./crop-specific-properties.md)** — the versioned
+  typed registry, species profiles, record-local values, and localized spreadsheet exchange.
 - **[Sowing depth](./sowing-depth.md)** — the sowing depth as a range (lower and
   upper bound), the single-depth rule for old clients, form, import and export.
 - **[Timing Windows (Zeiträume)](./timing-windows.md)** — Anzucht,

@@ -20,6 +20,7 @@ from farm.models import CropImportDraft
 from farm.services.crop_companions import link_free_text_companions
 
 from .analysis import ACTION_CREATE, ACTION_SKIP, ACTION_UPDATE
+from .specific_properties import apply_specific_property_cells
 
 # Canonical (metre-based) field names mapped to the centimetre-based fields the
 # existing CropSerializer exposes. The agent-facing contract stays in SI
@@ -76,6 +77,7 @@ def _apply_row(item: dict[str, Any], *, project, context: dict[str, Any]) -> dic
     action = item['action']
 
     if action == ACTION_CREATE:
+        apply_specific_property_cells(payload)
         serializer = CropSerializer(data=payload, context=context)
         serializer.is_valid(raise_exception=True)
         # `project` is read-only on the serializer and assigned here from the
@@ -90,6 +92,7 @@ def _apply_row(item: dict[str, Any], *, project, context: dict[str, Any]) -> dic
             'match_disappeared',
             f"The crop matched for row {item['index']} no longer exists. Re-run the preview.",
         )
+    apply_specific_property_cells(payload, existing)
     serializer = CropSerializer(existing, data=payload, partial=True, context=context)
     serializer.is_valid(raise_exception=True)
     crop = serializer.save()

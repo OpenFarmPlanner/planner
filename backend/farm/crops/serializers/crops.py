@@ -187,6 +187,9 @@ class CropSerializer(serializers.ModelSerializer):
     crop_display_name = serializers.SerializerMethodField(read_only=True)
     crop_display_language_code = serializers.SerializerMethodField(read_only=True)
     description_language_code = serializers.SerializerMethodField(read_only=True)
+    specific_property_profile = serializers.CharField(
+        source='crop_species.specific_property_profile', read_only=True, default='',
+    )
     crop_species_translations = serializers.SerializerMethodField(read_only=True)
     crop_species_search_names = serializers.SerializerMethodField(
         read_only=True,

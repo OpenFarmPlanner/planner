@@ -204,6 +204,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     from farm.germination import upgrade_germination_snapshot
 
     snapshot = upgrade_germination_snapshot(revision.snapshot)
+    snapshot.setdefault('specific_properties', {})
     restorable_fields = {
         field.name for field in Crop._meta.fields
         if field.name not in {'id', 'created_at', 'updated_at', 'crop_family'}

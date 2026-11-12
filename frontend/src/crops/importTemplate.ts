@@ -69,6 +69,12 @@ const buildTemplateCrops = (t: TemplateT): Crop[] => [
       { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 30, end_week: 30 },
     ],
   },
+  {
+    name: t('specificProperties.templateSpeciesName'), variety: '',
+    specific_property_profile: 'solanum_tuberosum',
+    specific_properties: { cooking_type: 'waxy', maturity_group: 'early' },
+    growth_duration_days: 90,
+  },
 ] as Crop[];
 
 export const buildCropImportTemplateRows = (t: TemplateT) => {

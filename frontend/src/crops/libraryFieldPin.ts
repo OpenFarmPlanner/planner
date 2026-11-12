@@ -37,6 +37,7 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   stratification_temperature_max_c: ['stratification_temperature_max_c'],
   germination_types: ['germination_types'],
   germination_pretreatment: ['germination_pretreatment'],
+  specific_properties: ['specific_properties'],
   pests_diseases: ['pests_diseases'],
   light_requirement: ['light_requirement'],
   water_requirement: ['water_requirement'],

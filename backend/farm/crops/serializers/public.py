@@ -12,6 +12,7 @@ from config.languages import (
     resolve_request_language,
 )
 from crops.models import CropSpecies
+from crops.specific_properties import crop_specific_property_errors
 from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
@@ -63,6 +64,7 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'stratification_temperature_max_c',
     'germination_types',
     'germination_pretreatment',
+    'specific_properties',
     'pests_diseases',
     'light_requirement',
     'water_requirement',
@@ -167,6 +169,9 @@ class PublicCropSerializer(serializers.ModelSerializer):
         read_only=True,
         default='',
     )
+    specific_property_profile = serializers.CharField(
+        source='crop_species.specific_property_profile', read_only=True, default='',
+    )
     crop_species_translations = serializers.SerializerMethodField()
     crop_species_search_names = serializers.SerializerMethodField()
     # A `proposed` species is one a user suggested and no moderator has
@@ -235,6 +240,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'crop_species_name',
             'crop_species_canonical_name',
             'crop_species_translations',
+            'specific_property_profile',
             'crop_species_search_names',
             'crop_species_status',
             'display_name',
@@ -266,6 +272,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'stratification_temperature_max_c',
             'germination_types',
             'germination_pretreatment',
+            'specific_properties',
             'pests_diseases',
             'light_requirement',
             'water_requirement',
@@ -501,6 +508,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         complete_single_depth_write(attrs)
         errors = {
             **germination_errors(self.instance, attrs),
+            **crop_specific_property_errors(self.instance, attrs),
             **sowing_depth_errors(self.instance, attrs),
         }
         seed_type = attrs.get('seed_type', getattr(self.instance, 'seed_type', ''))

@@ -1860,5 +1860,36 @@
     "deleteConfirm": "¿Eliminar los datos de «{{supplier}}» para este cultivo? El proveedor se conserva.",
     "deleteError": "No se pudieron eliminar los datos del proveedor.",
     "changed": "Esta oferta se ha modificado o eliminado. Vuelve a cargar el cultivo e inténtalo de nuevo."
+  },
+  "specificProperties": {
+    "title": "Propiedades específicas del cultivo",
+    "unset": "Sin especificar",
+    "invalidValue": "Selecciona un valor válido.",
+    "incompatible": "Algunas propiedades no corresponden a la especie seleccionada. Elimínalas antes de guardar o vuelve a seleccionar la especie anterior.",
+    "clearIncompatible": "Eliminar valores incompatibles",
+    "cropValues": "Valores de este cultivo",
+    "varietyValues": "Valores de esta variedad",
+    "publishInvalid": "Las propiedades no corresponden a la especie seleccionada. Revísalas antes de publicar.",
+    "importInvalid": "Las propiedades no corresponden a esta especie o contienen valores no válidos.",
+    "fields": {
+      "cooking_type": "Tipo de cocción",
+      "maturity_group": "Grupo de maduración"
+    },
+    "values": {
+      "cooking_type": {
+        "waxy": "Firme",
+        "mostly_waxy": "Mayormente firme",
+        "floury": "Harinosa"
+      },
+      "maturity_group": {
+        "very_early": "Muy precoz",
+        "early": "Precoz",
+        "medium_early": "Semiprecoz",
+        "medium_late": "Semitardía",
+        "late": "Tardía"
+      }
+    },
+    "templateSpeciesName": "Patata",
+    "importRowInvalid": "Fila {{row}}: Las propiedades no corresponden a esta especie o contienen valores no válidos."
   }
 }
