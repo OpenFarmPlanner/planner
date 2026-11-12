@@ -513,3 +513,15 @@ both error-state screenshots were inspected and fit without clipped controls.
 The existing mobile/desktop form layouts are retained. No schema change or new
 UI wording is needed. Full `make quality` is running before merge, alongside
 fresh PR CI and exact-head review. Remaining campaign order is unchanged.
+
+#1037 full local make quality completed: 2,561 backend tests pass, ESLint
+reports zero errors, and Ruff/Madge retain their accepted repository reports.
+Initial CI passed backend/frontend/build/quality/CodeQL/cross-browser gates;
+two E2E shards failed in setup: a late Gantt initial-scroll restoration and
+a crop import menu clicked before loaded crop content. Both affected cases
+passed three local repetitions without source changes. Their setup now waits
+for the selected Gantt view and queued render frames, and the loaded crop
+heading/network idle before opening the menu. Functional assertions, exact
+scroll expectations and timeouts are unchanged. Repeated validation of all
+three Gantt cases plus landscape import is in progress (12 cases total);
+fresh exact-head CI is required for these test-only readiness fixes.

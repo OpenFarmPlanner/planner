@@ -17,6 +17,12 @@ async function openCalendar(page: Page, viewShortcut: string): Promise<void> {
   await page.locator('h1').first().click();
   await page.keyboard.press(viewShortcut);
   await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('button', { name: viewShortcut === '1' ? 'Tag' : 'Monat', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true');
+  // Let the selected view commit its queued initial scroll restoration.
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
 }
 
 async function scrollTimelineTo(page: Page, left: number): Promise<void> {

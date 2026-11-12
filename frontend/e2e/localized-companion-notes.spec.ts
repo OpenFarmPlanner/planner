@@ -119,6 +119,8 @@ for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }
     await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Tomate' });
     await page.goto('/app/crops');
     await expect(page.getByRole('heading', { name: 'Kulturen', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tomate', exact: true })).toBeVisible();
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
     await page.getByRole('menuitem', { name: /Aus Datei importieren/ }).click();
     let dialog = page.getByRole('dialog', { name: 'Kulturen importieren' });
