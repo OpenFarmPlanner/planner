@@ -224,9 +224,14 @@ test('bounded polling reports timeout, permits an evidenced retry, and stops on 
 
 test('required quality job loads immutable base policy and bootstrap needs explicit human approval', async () => {
   const workflow = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
-  assert.match(workflow.slice(workflow.indexOf('  quality:')), /persist-credentials: false/);
-  const start = workflow.indexOf('      - name: Enforce security review completion');
-  const end = workflow.indexOf('      - name: Upload quality reports', start);
+  const quality = workflow.slice(workflow.indexOf('  quality:'));
+  assert.match(quality, /persist-credentials: false/);
+  assert.match(quality, /needs: security-review-completion/);
+  assert.match(quality, /if: always\(\)/);
+  assert.match(quality, /needs\.security-review-completion\.result != 'success'/);
+  assert.doesNotMatch(quality, /actions: read|pull-requests: read/);
+  const start = workflow.indexOf('      - name: Evaluate security review completion');
+  const end = workflow.indexOf('  quality:', start);
   const script = workflow.slice(start, end).split('          script: |\n')[1]
     .split('\n').map(line => line.startsWith('            ') ? line.slice(12) : line).join('\n');
   const runScript = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', 'core', 'require', script);

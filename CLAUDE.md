@@ -525,8 +525,9 @@ content patterns live, commented, in the triage step's `env` block.
 - **Security review reporting:** no log file. The summary comment states the
   reviewed commit SHA, the changed files and the result; unfixed findings get
   an inline comment and a `security` issue (see "Security Review Protocol").
-- **Completion gate:** the required `quality` job loads the review policy from
-  the immutable PR base and requires validated final-head/scope completion
+- **Completion gate:** an isolated job loads review policy from the immutable
+  PR base without running PR code; the required `quality` job explicitly fails
+  unless it passes. It requires validated final-head/scope completion
   evidence, an intentional triage exemption, or an explicitly approved human
   contingency. A skipped triage is not a clean scan; authoring-agent self-review
   is not independent approval. Workflow self-change/own-fix guards do not certify

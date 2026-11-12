@@ -79,11 +79,14 @@ live in the workflow's triage step.
 
 ### Security review completion gate (#1045)
 
-The already-required **quality** job enforces review completion on PRs. Its
-security step loads `.github/scripts/security-review-completion.cjs` from the
+The isolated **security-review-completion** job evaluates review evidence on
+PRs; the already-required **quality** job explicitly fails unless that job
+passes. Quality uses `always()` so a failed dependency cannot merely skip the
+required check. The evidence reader has no checkout and never runs PR code;
+its runner and API-reading token are separate from PR-owned lint/tests. It loads `.github/scripts/security-review-completion.cjs` from the
 immutable PR **base SHA**, with a read-only token. No new branch-protection
 context replaces or weakens existing checks. Quality checkout does not persist
-Git credentials, so PR-owned lint/tests do not receive its API-reading token.
+Git credentials, and its token has only contents-read permission.
 Changes to workflow files still
 need careful review: a named check is not a GitHub ruleset requiring an
 immutable workflow. Repository administration remains an operator boundary.

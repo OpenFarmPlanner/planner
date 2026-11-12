@@ -415,8 +415,12 @@ resolution failure; `npm ci` installs the same lockfile cleanly.
 
 ## Required security review policy in quality
 
-On PRs, the existing required `quality` job also runs the security-review
-policy from the immutable PR base with read-only API permissions. It consumes
+On PRs, an isolated `security-review-completion` job runs the security-review
+policy from the immutable PR base with read-only API permissions. Its runner
+has no checkout or PR code execution. The existing required `quality` job
+uses `always()` and explicitly fails unless that dependency passes, so failure
+cannot turn the required check into a harmless skip. PR-owned lint/tests run
+on another runner with only contents-read permission and no Git credentials. It consumes
 run/attempt-bound triage and completion artifacts; request delivery, bot
 rejection, missing evidence and stale heads never count as a completed review.
 Non-security exemptions are explicit skips, not clean scans. Provider guards

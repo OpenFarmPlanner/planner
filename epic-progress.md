@@ -726,3 +726,12 @@ A final boundary check also disables persisted quality checkout credentials,
 so PR-owned lint/tests do not inherit the job's newly scoped API-reading token.
 The native rejection is investigation evidence, not a completed review of any
 head. Fresh head CI and exact-head human bootstrap approval remain mandatory.
+
+Final credential isolation refinement: the completion reader now runs on its
+own runner with no checkout or PR code execution. The existing required quality
+job depends on it, runs with always(), and explicitly fails on a non-success
+result; a failed dependency cannot silently skip the required check. Quality
+retains only contents-read permission and disabled Git credential persistence.
+All 30 policy tests and Actionlint pass after this refinement. Earlier CI
+bootstrap-failure evidence remains valid investigation evidence, not approval
+of this final head; fresh complete CI and exact-head human review are required.
