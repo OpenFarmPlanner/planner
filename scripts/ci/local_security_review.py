@@ -124,6 +124,10 @@ def finish(output: Path) -> None:
     if pr["base"]["sha"] != manifest["base"] or scope_for(
             manifest["repo"], manifest["number"]) != manifest["scope"]:
         raise ValueError("PR base or scope changed; prepare a new review.")
+    tree = output / "source"
+    if command("git", "rev-parse", "HEAD", cwd=tree) != manifest["head"] or command(
+            "git", "status", "--porcelain", "--untracked-files=all", cwd=tree):
+        raise ValueError("Review worktree changed; prepare a new review.")
     report = render(manifest, review)
     (output / "report.md").write_text(report)
     print(f"Report ready for inspection: {output / 'report.md'}")

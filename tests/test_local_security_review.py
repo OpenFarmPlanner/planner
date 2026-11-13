@@ -88,6 +88,24 @@ class LocalReviewTests(unittest.TestCase):
                     review.finish(output)
                 self.assertFalse((output / "report.md").exists())
 
+    def test_finish_requires_clean_pinned_source(self) -> None:
+        pr = {"state": "open", "head": {"sha": self.manifest["head"]},
+              "base": {"sha": self.manifest["base"]}}
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "manifest.json").write_text(json.dumps(self.manifest))
+            (output / "review.json").write_text(json.dumps(self.result))
+            with patch.object(review, "pull_request", return_value=pr), \
+                 patch.object(review, "scope_for", return_value=self.manifest["scope"]):
+                for values in [["c" * 40], [self.manifest["head"], " M new.py"]]:
+                    with patch.object(review, "command", side_effect=values), \
+                         self.assertRaises(ValueError):
+                        review.finish(output)
+                    self.assertFalse((output / "report.md").exists())
+                with patch.object(review, "command", side_effect=[self.manifest["head"], ""]):
+                    review.finish(output)
+                self.assertTrue((output / "report.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

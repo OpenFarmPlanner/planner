@@ -205,7 +205,7 @@ worktree and `schema.json` to an independent human reviewer. They can write
 Never reuse the implementation session to fill in a review result. No finding,
 candidate, coverage gap or provider failure may be converted into a clean report.
 
-`finish` refuses stale heads, changed bases/scopes, missing or duplicate paths,
+`finish` refuses stale heads, changed bases/scopes or worktrees, missing or duplicate paths,
 incomplete reviews, findings and unresolved coverage limitations. Methodology
 notes (such as static-only analysis) remain visible in the report's
 `review_notes`; they must not conceal a finding or coverage gap. Findings remain in `review.json`
