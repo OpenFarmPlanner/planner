@@ -164,6 +164,12 @@ distinguishes legacy setup and current review settings. These observations do
 **not** establish a wrong installation, missing entitlement or identity mapping.
 The provider-side rejection remains unresolved; reinstalling/reconnecting is
 not a repository fix and is not recommended without provider diagnosis.
+A further read-only check on 2026-11-13 confirmed that the organization has the
+`chatgpt-codex-connector` app installed for all repositories, with pull-request
+and content write access and no suspension. The connected GitHub plugin and
+CLI also report the same GitHub account, `stipsitzm`. This does not expose or
+verify the Codex-side workspace/identity mapping, but it rules out a simple
+missing organization installation or different GitHub request actor.
 
 For upstream support, provide the PR/run/rejection links above, request actor,
 request/head SHA, UTC timestamps, workspace entitlement and repository review
