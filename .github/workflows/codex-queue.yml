@@ -16,8 +16,10 @@ jobs:
   mark-next:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.action == 'closed' ||
-      github.event.action == 'reopened' ||
+      ((github.event.action == 'closed' || github.event.action == 'reopened') &&
+       (github.event.issue.author_association == 'OWNER' ||
+        github.event.issue.author_association == 'MEMBER' ||
+        github.event.issue.author_association == 'COLLABORATOR')) ||
       (github.event.action == 'edited' && github.event.issue.number == 1058) ||
       ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
        (github.event.label.name == 'blocked' || github.event.label.name == 'needs-decision'))
@@ -76,7 +78,7 @@ jobs:
             }
 
             const current = await github.paginate(github.rest.issues.listForRepo, {
-              owner, repo, state: "open", labels: nextLabel, per_page: 100,
+              owner, repo, state: "all", labels: nextLabel, per_page: 100,
             });
             for (const issue of current) {
               if (next && issue.number === next.number) continue;

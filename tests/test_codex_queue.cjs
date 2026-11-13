@@ -24,7 +24,8 @@ function fixture({ body = '## Ordered implementation issues\n- [ ] #3\n- [ ] #4\
     addLabels: async ({ issue_number, labels }) => changes.push(['add', issue_number, labels]),
     getLabel: async () => { throw Object.assign(new Error('missing'), { status: 404 }); },
     createLabel: async ({ name }) => changes.push(['create', name]),
-  } }, paginate: async () => current };
+  } }, paginate: async (_method, params) => current.filter(issue =>
+    params.state === 'all' || issue.state !== 'closed') };
   return { changes, failures, run: () => evaluate(github, { repo: { owner: 'owner', repo: 'repo' } },
     { warning() {}, info() {}, setFailed: message => failures.push(message) }) };
 }
@@ -33,6 +34,12 @@ test('queue selects the first eligible listed issue and replaces the previous la
   const f = fixture({ current: [{ number: 9 }] });
   await f.run();
   assert.deepEqual(f.changes, [['remove', 9], ['create', 'codex:next'], ['add', 3, ['codex:next']]]);
+});
+
+test('reconciliation removes obsolete markers from closed issues too', async () => {
+  const f = fixture({ current: [{ number: 9, state: 'closed' }] });
+  await f.run();
+  assert.ok(f.changes.some(item => item[0] === 'remove' && item[1] === 9));
 });
 
 test('closed, blocked, needs-decision, PR and missing entries are skipped; headings bound the list', async () => {
@@ -70,13 +77,18 @@ test('closing the queue performs no mutations and unlisted issue numbers are nev
 
 test('blocking-label changes refresh the marker without reacting to its own codex:next changes', () => {
   const event = (action, number = 3, label = 'blocked') => ({ event_name: 'issues',
-    event: { action, issue: { number }, label: { name: label } } });
+    event: { action, issue: { number, author_association: 'MEMBER' }, label: { name: label } } });
   for (const action of ['closed', 'reopened', 'labeled', 'unlabeled']) assert.equal(shouldRun(event(action)), true);
   assert.equal(shouldRun(event('edited', 1058)), true);
   assert.equal(shouldRun(event('edited')), false);
   assert.equal(shouldRun(event('labeled', 3, 'codex:next')), false);
   assert.equal(shouldRun(event('unlabeled', 3, 'codex:next')), false);
   assert.equal(shouldRun({ event_name: 'workflow_dispatch' }), true);
+  for (const action of ['closed', 'reopened']) {
+    const outside = event(action);
+    outside.event.issue.author_association = 'NONE';
+    assert.equal(shouldRun(outside), false);
+  }
 });
 
 test('no AI invocation is added and the former API-billed autofix cannot run', () => {

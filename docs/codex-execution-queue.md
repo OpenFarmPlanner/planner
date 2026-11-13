@@ -7,10 +7,17 @@ The order of the checkbox list under **Ordered implementation issues** determine
 
 The GitHub workflow at .github/workflows/codex-queue.yml uses GitHub Actions and GitHub's own GITHUB_TOKEN only (no external AI API). It reads #1058 and adds the codex:next label to the first open, unblocked issue in that list, removing the label from the previous one.
 
-The action runs when an issue closes/reopens, #1058 is edited, or the `blocked`
+The action runs when an issue by a repository owner, member or collaborator
+closes/reopens, #1058 is edited, or the `blocked`
 or `needs-decision` label is added or removed. Changes to `codex:next` do not
 trigger another marker job. It can also be triggered manually via Actions >
 Mark next Codex issue (no AI API) > Run workflow.
+
+Close/reopen events on issues authored by unrelated users do not allocate a
+runner. Refresh manually after changing the state of an externally authored
+queue item. Queue edits and label changes already require GitHub-side editing
+authority; the advisory marker never starts implementation work. Reconciliation
+also removes obsolete markers from closed issues.
 
 Issues labeled blocked or needs-decision are skipped, as are already closed issues. Unlisted issues are never selected automatically. Keep #1058 open.
 
