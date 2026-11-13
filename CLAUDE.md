@@ -439,6 +439,15 @@ build a throwaway local integration branch; never a shared branch:
   that was deployed.
 
 ## Agent Collaboration Preferences
+
+- The owner authorizes the commissioned queue worker to implement ordered
+  issues, obtain independent AI review, fix findings, merge after required checks
+  and verified review pass, and continue without routine maintainer confirmation.
+  Use the subscription host worker in `docs/work-execution-queue.md` for automatic
+  review handoff and continuation. Cloud/manual implementers claim `queue:active`
+  before coding and open a PR with `Fixes #<issue>`. Queue insertion alone does
+  not launch another agent. Production deployment, signing-policy changes and
+  paid AI APIs are outside this authorization.
 - When discussing how to approach a non-trivial task (architecture redesign, risky refactor, planning work), proactively recommend a reasoning-effort/model level (e.g. low/medium/high/xhigh, or a specific model) with a short rationale, before being asked.
 - User-workflow/collaboration preferences like this one should be recorded here in CLAUDE.md, not only in a tool-specific private memory, since CLAUDE.md is the shared, centrally-linked ruleset read by all coding agents (Claude, Codex, Copilot, etc.).
 - When changing the privacy policy or related legal texts, decide case by case whether the change only requires informing users or whether it requires renewed active consent from existing users. If renewed consent is necessary, implement the corresponding consent/version bump flow in the same change; if it is not necessary, state that explicitly in the summary.

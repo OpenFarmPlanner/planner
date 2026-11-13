@@ -38,6 +38,13 @@ ask for per-PR human approval. Findings, missing coverage, failed execution,
 expired signatures or mismatched head/base/scope remain blocked. This is a
 verified local AI-assisted review, not a native cloud scan.
 
+The owner-authorized subscription host worker in
+`docs/work-execution-queue.md` automates this handoff for queue PRs, including
+Cloud-authored PRs. An unavailable key in Cloud is not a routine request for
+maintainer sign-off: open the linked PR and let the host review it. Report a
+missing/offline host as the actual infrastructure blocker. Never weaken trust
+policy or manufacture an approval to keep the queue moving.
+
 If the trusted launcher is unavailable or no model budget remains, prepare a
 bundle with `scripts/ci/local_security_review.py` for an independent human.
 Unsigned/manual reports still need explicit exact-head maintainer approval.

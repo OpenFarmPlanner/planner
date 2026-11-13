@@ -15,8 +15,65 @@ duplicates and malformed rows also fail before labels change.
 Closed implementation issues and issues labeled `blocked` or `needs-decision`
 are skipped. An open PR remains a gate even with those labels. Before starting
 an issue, look for an existing implementation PR. Work on one item at a time
-and wait for review and merge before starting the next one. The queue and its
-labels do not authorize implementation by themselves.
+and finish independent review and merge before starting the next one. The owner
+authorized the commissioned worker to implement, fix findings, merge after
+required checks and verified independent review pass, and continue without
+routine maintainer confirmation. Labels alone never start another agent. This
+excludes production deploys, paid AI API calls and signing trust-policy changes.
+
+## Subscription host worker
+
+`scripts/ci/work_queue_worker.cjs` controls the authorized host. The sibling ops
+repository's `scripts/install_work_queue.sh` installs its user service/timer and
+a separate trusted checkout of main. It uses the host's existing ChatGPT Codex
+login, GitHub/SSH access and protected review key, without paid API jobs.
+
+Each tick reloads the live ordered queue. Existing PRs linked through GitHub's
+closing-issue references are adopted before starting an implementation. New
+implementations run in separate clones with no signing-key, controller-state,
+trusted-checkout or host-credential filesystem access. The host publishes their
+clean commits as draft PRs. The existing restricted launcher produces a fresh
+independent signed review. Findings and branch/test failures return to bounded
+implementation sessions. Verified exact-head/base/scope evidence allows the
+controller to make the PR ready, refresh the review gate and wait for required
+CI checks, resolved threads and mergeability before a SHA-bound squash merge.
+The next timer tick continues with the live queue; routine human sign-off is
+not needed. GitHub rules and the review verifier remain binding.
+
+Cloud/manual implementers claim the issue with `queue:active` before coding and
+open a same-repository PR containing `Fixes #<issue>`. The host waits for that PR,
+then handles review and merge. This advisory claim is not a distributed atomic
+lock: never commission multiple implementers for one item. Host ticks use flock
+to prevent local overlap, including across restarts.
+
+Config is the mode-0600 `~/.config/openfarmplanner/work-queue.json`:
+
+```json
+{
+  "enabled": true,
+  "state_directory": "/home/USER/.local/state/openfarmplanner/work-queue",
+  "signing_key": "/home/USER/.config/openfarmplanner/codex-review-key.pem"
+}
+```
+
+Keep config, logs and author clones outside repositories. Inspect selection
+without writes or model calls with
+`node scripts/ci/work_queue_worker.cjs CONFIG.json --dry-run`. Attempts are
+persisted before model execution: one review per head/base, at most three author
+attempts per queue item including repairs. A crash does not reset budgets.
+Inspect `last-error.txt` and JSONL/stderr logs before deliberately resetting
+an item's counters in state.json. Task text and review/CI output are untrusted
+data. PR code runs only in the author sandbox, never on the signing host.
+
+Inspect with `systemctl --user status ofp-work-queue.timer` and
+`journalctl --user -u ofp-work-queue.service`. Stop future ticks with
+`systemctl --user disable --now ofp-work-queue.timer`; stop an active tick with
+`systemctl --user stop ofp-work-queue.service`.
+
+The host and user manager must be running; sleep/offline pauses work.
+Subscription exhaustion, missing credentials, incomplete review and unresolved
+checks remain real blockers, never fabricated approvals. This worker does not
+claim to start or resume hosted Cloud tasks. The marker workflow stays label-only.
 
 ## Advisory marker and triggers
 
@@ -77,7 +134,7 @@ false condition. Re-enabling it requires an explicit owner decision.
 
 ## Validation
 
-`node --test tests/test_codex_queue.cjs` checks ordering, PR gates, malformed
+`node --test tests/test_codex_queue.cjs tests/test_work_queue_worker.cjs` checks ordering, PR gates, malformed
 input, marker migration, trigger admission and safe/idempotent epic linking
 without GitHub writes. The existing test filename is retained for CI callers.
 After merging, dispatch the queue and confirm only its first eligible item has

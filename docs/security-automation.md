@@ -198,6 +198,14 @@ has authorized merging and all required checks and review threads permit it.
 Do not reinterpret this standing policy as permission to manufacture evidence.
 The launcher deliberately does not publish, rerun jobs or merge by itself.
 
+The owner-authorized host controller `scripts/ci/work_queue_worker.cjs` performs
+those orchestration steps for queued work. Its service is installed from ops;
+see [work-execution-queue.md](work-execution-queue.md#subscription-host-worker).
+Authors have separate clones and no filesystem grant to the key, trusted
+checkout or controller state. The controller validates receipts using this
+existing base policy, checks live queue/head/base/scope and required CI before
+an exact-head merge. This adds no signer and changes no signature trust rule.
+
 The trusted host holds a mode-0600 Ed25519 private key at
 `~/.config/openfarmplanner/codex-review-key.pem` (or the launcher's third argument).
 The corresponding public key is pinned as `martin-local-2026-11` inside the
