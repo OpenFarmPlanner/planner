@@ -409,12 +409,20 @@ pipeline as every other alert.
   `accounts.registration_alerts` logger with the same masked fields, so there
   is a record even when outgoing mail is what is broken.
 
-**Generic 500 emails (`ADMINS`).** Django's `AdminEmailHandler` emails every
+**Generic error emails (`ADMINS`).** Django's `AdminEmailHandler` emails
 unhandled exception anywhere in the app to `ADMINS` (comma-separated
 addresses, empty by default) when `DEBUG=False`. `settings.LOGGING` redeclares
-it with the `config.logging_filters.SkipRegistrationAlertedRequests` filter:
-`report_registration_failure` marks the request, and the handler skips
-records for a marked request, so one exception never produces both emails.
+it with two email-only filters. `config.logging_filters.SkipRegistrationAlertedRequests`
+skips requests marked by `report_registration_failure`, so one exception never
+produces both emails.
+`SkipDisallowedHostEmails` skips records from Django's
+`django.security.DisallowedHost` logger, which reports requests rejected by
+hostname validation. These rejected requests still return HTTP 400 and remain
+in the server error log. Unused hostnames such as `openfarm.uber.space` must
+remain outside `ALLOWED_HOSTS`; suppressing emails does not authorize a host.
+Other application errors, including `IntegrityError` and HTTP 500 failures,
+and other security logger events still generate admin emails. Suppression is
+based on the dedicated logger name, not words in an application's error message.
 
 **Error log.** The `error_console` handler writes the same unhandled exceptions,
 with their traceback, to stderr when `DEBUG=False`, which is Gunicorn's error log

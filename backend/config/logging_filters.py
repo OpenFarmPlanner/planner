@@ -26,3 +26,10 @@ class SkipRegistrationAlertedRequests(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         return not is_request_alerted(getattr(record, 'request', None))
+
+
+class SkipDisallowedHostEmails(logging.Filter):
+    """Keep rejected-host alerts in server logs without sending admin emails."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.name != 'django.security.DisallowedHost'

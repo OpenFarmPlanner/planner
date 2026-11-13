@@ -31,7 +31,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | PR [#1050](https://github.com/OpenFarmPlanner/planner/pull/1050) merged and verified at `dfdd8d36` |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | PR [#1051](https://github.com/OpenFarmPlanner/planner/pull/1051) merged and verified at `12f54927` |
 | 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | PR [#1052](https://github.com/OpenFarmPlanner/planner/pull/1052) merged and verified at `5f7856e2` |
-| 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | In progress on `fix/840-batch-crop-import` |
+| 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | PR [#1053](https://github.com/OpenFarmPlanner/planner/pull/1053) merged and verified at `c3b78cef` |
+| 10c | #1054 Suppress rejected-host alert emails | New P0; retain hostname validation and server logs while suppressing this alert noise. | In progress on `fix/1054-disallowedhost-alerts` |
 | 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
 
 ## #1030 coverage audit
@@ -71,21 +72,20 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1038 merged and verified through PR #1052 at
-`5f7856e2` after all 10 required checks passed. #1038 is closed. PostgreSQL,
-six cross-browser jobs, the isolated security completion reader, build and
-dependency checks passed too. Backend: 2,568 passed, 96% coverage. Optional Claude
-code review failed before completion and native Codex rejected its request;
-neither is independent approval. Security was intentionally triage exempt,
-not a completed scan. Final review requests, reviews and threads were empty
-with pagination exhausted. GitHub UNSTABLE due to the optional provider failure,
-normal pinned-head merge without
-overrides; fetched main contains it and matches the tested head tree. Proof:
-https://github.com/OpenFarmPlanner/planner/pull/1052#issuecomment-6834345771 .
+Current resume point: #840 merged through PR #1053 at `c3b78cef` on
+13 November 2026 at 07:07:26 Europe/Vienna. Issue #840 is closed. The merge
+is an ancestor of fetched main and its tree matches tested head `b9d434a4`.
+All ten required checks passed after a fresh independent local review and
+explicit maintainer approval; this was manual approval, not native cloud scan
+completion. The v1.164.1 release commit is `1610982e` and its main CI passed.
+Merge verification: https://github.com/OpenFarmPlanner/planner/pull/1053#issuecomment-6845861879 .
 
-Finish #840 on `fix/840-batch-crop-import`, based on refreshed
-main `9d128c62` (including the automatic version bump after #1052). Complete
-CI/reviews and verify normal merge before final integration.
+New main also includes local independent review recovery PR #1055 at
+`0ab9a6bc`; its main CI passed. The current issue is #1054 on
+`fix/1054-disallowedhost-alerts`, based on that refreshed main. Finish its
+implementation, tests, documentation, CI and reviews; merge normally and
+verify before starting final integration. The organizational parent #1049 is
+outside the implementation queue; its newly P0 child #1054 is included.
 The earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
 Inspect every review thread and required check; provider failures remain visible
 and triage exemptions are distinct from completed security reviews.
@@ -989,3 +989,19 @@ https://github.com/OpenFarmPlanner/planner/actions/runs/43289018835 .
 - Next: finish exact-head CI/reviews, merge normally and verify, then start the
   final integration PR from refreshed main. The open P0 inventory contains only
   #840; organizational parent #1049 remains outside this queue.
+
+## #1054 implementation
+
+Scope: email-only suppression of Django's dedicated `DisallowedHost` logger.
+Rejected hosts remain rejected and logged; other security/application errors,
+including real HTTP 500 `IntegrityError` failures, must still email admins.
+The existing registration-alert deduplication filter remains in place.
+
+Focused regression tests first reproduced the unwanted email while preserving
+HTTP 400 and its server traceback; other error-email controls already passed.
+The implementation attaches a narrow logger-name filter only to `mail_admins`.
+No allowed host, console handler, logger level, API, model or user interface
+change is included. Operational alerting documentation is updated alongside
+existing error-logging and registration-alert regression coverage. Validation
+passed: all 37 affected backend tests and `make quality`; focused Ruff is clean.
+Required security review remains subject to the current base policy.
