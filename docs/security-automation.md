@@ -115,6 +115,8 @@ malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 | --- | --- |
 | `triage_skipped` | Deliberately exempt; quality may pass, with an explicit **not security reviewed** summary. |
 | `claude_completed` | Validated successful execution and exact-head/scope evidence; quality may pass. |
+| `codex_local_completed` | Trusted signature and launcher hashes verify fresh independent local Codex completion; no per-PR human approval. |
+| `codex_local_incomplete` / `codex_evidence_invalid` | Signed result has findings, incomplete coverage or invalid execution/base/scope/freshness; quality fails. |
 | `claude_failed` / `claude_allowance_exhausted` | No completed review. Claude's security job fails; only a real allowance error routes to Codex. |
 | Codex request delivered | Delivery job may succeed, explicitly named **not review completion**; this grants no completion. |
 | `codex_rejected` | The trusted connector bot rejected the delivered current-head request; quality fails. |
@@ -174,13 +176,89 @@ bot response. This repository cannot repair OpenAI's internal identity routing.
 
 ### Recovery and explicit human contingency
 
+#### Verified local Codex completion without per-PR approval
+
+Standing policy: a fresh independent Codex review satisfies the gate without
+another human approval when its execution, exact commit/base, complete scope
+and clean result are authenticated. Local execution uses the existing Codex CLI
+subscription authentication and requires no Claude allowance or API key.
+It is a local AI-assisted review, not a native Codex Security cloud scan.
+
+From a trusted checkout matching the PR's base, run:
+
+```bash
+node scripts/ci/run_codex_review.cjs 1056 /tmp/signed-review-1056
+gh pr comment 1056 --body-file /tmp/signed-review-1056/signed-report.md
+gh run rerun CI_RUN_ID --failed
+```
+
+After a clean signed result, agents should publish the receipt and rerun the
+blocked CI jobs without asking for another approval. Merge only when the user
+has authorized merging and all required checks and review threads permit it.
+Do not reinterpret this standing policy as permission to manufacture evidence.
+The launcher deliberately does not publish, rerun jobs or merge by itself.
+
+The trusted host holds a mode-0600 Ed25519 private key at
+`~/.config/openfarmplanner/codex-review-key.pem` (or the launcher's third argument).
+The corresponding public key is pinned as `martin-local-2026-11` inside the
+immutable base policy. The private key is never committed, printed, given to
+the model, included in its environment, or made readable to its sandboxed
+commands. The launcher reads it only after the reviewer process exits.
+The signing host/operator is an explicit trust boundary: anyone controlling
+that key or host can forge an attestation. This is host-authenticated evidence,
+not a vendor-signed statement proving the model's reasoning. Protect the key
+from other host users and untrusted authoring processes. Rotation/revocation
+requires changing the trusted base keys and updating open PR branches from
+that main commit so old-base runs cannot keep trusting a retired key.
+
+The installed launcher and preparation helper must match the PR base byte for
+byte. The reviewer starts with no implementation-session history, user config,
+resume state, inherited GitHub token or SSH agent. It runs from the trusted
+bundle rather than a PR directory. Its permission profile denies the root
+filesystem, grants read access only to platform tools, its installed runtime,
+the review bundle and common Git metadata, disables shell network access, and
+forbids approval escalation. A failed/unsupported sandbox never gets retried
+with broader permissions. PR code, hooks, tests and build scripts are not run.
+
+The launcher checks a single fresh thread and completed turn, a successful
+inspection command, no execution error, no file-change/MCP/web-search events,
+and the final structured response. The installed helper rechecks the live PR,
+base, scope and clean source tree. The signed payload binds those identities,
+the full review, launcher/helper hashes, transcript/prompt hashes, timestamp,
+thread, successful exit and restricted sandbox contract. Raw execution logs
+remain local; the receipt publishes the analysis and signed provenance only.
+Incomplete results are signed as incomplete, never as clean completion.
+
+The isolated CI reader verifies the signature with its base-pinned key, fetches
+launcher/helper content from that same immutable base, and rejects stale heads,
+wrong repositories/PRs/bases/scopes, duplicate paths, modified launchers,
+missing coverage, unresolved findings, signatures older than seven days or
+timestamps more than five minutes in the future. Newer signed incomplete
+results supersede older clean receipts even if an old comment is replayed.
+A copied report, unsigned JSON, delivery acknowledgment or arbitrary key
+cannot satisfy this path. Other required CI checks remain unchanged.
+
+Installation is a one-time policy decision: this PR cannot approve itself
+using its proposed key or verifier because CI loads the old base policy.
+Obtain independent review and deliberate human approval of the policy-change
+PR once. After it merges, update older open PR branches from main, prepare a
+new signed review, and rerun CI. Old unsigned reviews (including #1056's
+original report) do not retroactively become authenticated execution evidence.
+If the CLI fails or all model budgets are exhausted, use the human route below;
+findings or incomplete coverage must be resolved rather than approved silently.
+
+The permission profile and JSONL protocol follow the official
+[permissions](https://learn.chatgpt.com/docs/permissions) and
+[non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode) docs.
+
 #### Local review when Claude has no allowance
 
 Cloud provider availability is not a prerequisite for an independent manual
 review. Use a fresh local reviewer session, or a human reviewer, and the
 existing manual approval contract below. A local AI-assisted review is not a
-native Codex Security Report. It still requires a human maintainer's explicit
-approval; starting a reviewer is not approval of its eventual findings.
+native Codex Security Report. This unsigned/manual route requires a human
+maintainer's explicit approval. Prefer the authenticated launcher above for
+routine independent Codex reviews; those do not need per-PR approval.
 
 The helper prepares a detached worktree, pins the base and head, includes both
 names of renamed files and deleted files, captures open security issues and
@@ -296,7 +374,7 @@ Local policy regression checks:
 ```bash
 python3 -m unittest discover -s tests -p test_claude_review_fallback.py
 python3 -m unittest discover -s tests -p test_local_security_review.py
-node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs
+node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs tests/test_signed_codex_review.cjs
 ```
 
 ## Security decisions
