@@ -104,7 +104,9 @@ const findSettledOptions = async (expectedCount: number) => {
 // Nothing is auto-selected any more (not even an exact name match) — every
 // test that publishes now has to pick the species option explicitly first.
 const selectSpeciesOption = async (name: string): Promise<void> => {
-  fireEvent.click(await screen.findByRole('option', { name }));
+  const input = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+  if (input.getAttribute('aria-expanded') !== 'true') fireEvent.mouseDown(input);
+  fireEvent.click(await screen.findByRole('option', { name }, { timeout: 10000 }));
 };
 
 const GENERAL_CROP: Crop = { ...CROP, variety: '' };

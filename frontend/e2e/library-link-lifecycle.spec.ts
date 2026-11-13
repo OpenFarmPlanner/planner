@@ -184,8 +184,9 @@ for (const entryPoint of ['publish', 'import'] as const) {
     const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Synthetic farm' });
     const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Synthetic field', location: location.id });
     const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { name: 'Synthetic bed', field: field.id, area_sqm: 20 });
+    const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
     const plan = await apiRequest<{ id: number; crop: number }>(page, 'POST', '/planting-plans/', {
-      crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
+      season: season.id, crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
       cultivation_type: 'direct_sowing',
     });
     if (entryPoint === 'import') {
