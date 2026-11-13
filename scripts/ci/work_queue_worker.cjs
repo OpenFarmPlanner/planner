@@ -252,7 +252,7 @@ REVIEW FEEDBACK: ${feedback}`;
       (rule.app_id == null || rule.app_id === -1 || check.app?.id === rule.app_id)).sort((a, b) => b.id - a.id)[0]);
     const failed = latestRequired.filter(check => check?.status === 'completed' &&
       ['failure', 'timed_out', 'cancelled', 'action_required'].includes(check.conclusion) && check.name !== 'quality');
-    if (pr.mergeable === false || failed.length) {
+    if (pr.mergeable === false || pr.mergeable_state === 'behind' || failed.length) {
       const logs = failed.map(check => {
         const job = check.details_url?.match(/\/runs\/(\d+)\/job\/(\d+)/);
         return job ? gh('run', 'view', job[1], '--repo', REPO, '--job', job[2], '--log-failed').slice(-20_000)
@@ -290,8 +290,19 @@ REVIEW FEEDBACK: ${feedback}`;
       state.refreshed = true; this.save(); return;
     }
     const statuses = pages(`commits/${pr.head.sha}/statuses?per_page=100`);
-    if (!requiredChecksPass(rules, checks, statuses)) { console.log('Waiting for required CI checks.'); return; }
     const gate = checks.filter(check => check.name === 'security-review-completion').sort((a, b) => b.id - a.id)[0];
+    if (!requiredChecksPass(rules, checks, statuses)) {
+      const quality = latestRequired.find(check => check?.name === 'quality' &&
+        check.status === 'completed' && check.conclusion === 'failure');
+      // A missing review used to fail quality as well: only repair its code
+      // after the signed gate itself has passed, never code around the gate.
+      if (quality && gate?.status === 'completed' && gate.conclusion === 'success') {
+        const job = quality.details_url?.match(/\/runs\/(\d+)\/job\/(\d+)/);
+        const logs = job ? gh('run', 'view', job[1], '--repo', REPO, '--job', job[2], '--log-failed').slice(-20_000) : 'Quality check failed.';
+        this.author(item, pr, `Fix the code-quality failures without weakening review or quality policy:\n${logs}`);
+      } else console.log('Waiting for required CI checks.');
+      return;
+    }
     if (gate?.status !== 'completed' || gate.conclusion !== 'success') return;
     const query = `query { repository(owner:"OpenFarmPlanner",name:"planner") { pullRequest(number:${number}) {
       reviewDecision reviewThreads(first:100) { pageInfo { hasNextPage } nodes { isResolved } }

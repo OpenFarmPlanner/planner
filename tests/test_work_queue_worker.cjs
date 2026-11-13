@@ -120,7 +120,7 @@ test('persistent consumed attempts prevent repeating a failed model review after
 });
 
 test('merge requires clean evidence, current selection, successful gates and resolved threads, and binds the SHA', async t => {
-  for (const scenario of ['clean', 'pending-ci', 'unresolved-thread', 'missing-evidence', 'draft', 'changed-head']) {
+  for (const scenario of ['clean', 'pending-ci', 'failed-quality', 'unresolved-thread', 'missing-evidence', 'draft', 'changed-head']) {
     await t.test(scenario, async t => {
       const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'worker-merge-test-'));
       t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -130,6 +130,8 @@ test('merge requires clean evidence, current selection, successful gates and res
       worker.currentPull = () => pr;
       worker.selection = () => ({ number: 3, isPR: false });
       let evidenceCalls = 0;
+      const repairs = [];
+      worker.author = (...args) => repairs.push(args);
       worker.reviewEvidence = async () => {
         evidenceCalls++;
         if (scenario === 'changed-head' && evidenceCalls > 1) return null;
@@ -145,7 +147,8 @@ test('merge requires clean evidence, current selection, successful gates and res
           reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [{ isResolved: scenario !== 'unresolved-thread' }] } } } } };
         else if (endpoint.includes('required_status_checks')) value = { checks: [{ context: 'quality', app_id: 1 }] };
         else if (endpoint.includes('check-runs')) value = [{ check_runs: [
-          { id: 2, name: 'quality', app: { id: 1 }, status: scenario === 'pending-ci' ? 'in_progress' : 'completed', conclusion: 'success' },
+          { id: 2, name: 'quality', app: { id: 1 }, status: scenario === 'pending-ci' ? 'in_progress' : 'completed',
+            conclusion: scenario === 'failed-quality' ? 'failure' : 'success' },
           { id: 3, name: 'security-review-completion', status: 'completed', conclusion: 'success' },
         ] }];
         else value = [[]];
@@ -156,6 +159,7 @@ test('merge requires clean evidence, current selection, successful gates and res
       } else await worker.pull({ number: 3, isPR: false }, 4);
       const merges = writes.filter(argv => argv[0] === 'pr' && argv[1] === 'merge');
       assert.equal(merges.length, scenario === 'clean' ? 1 : 0);
+      assert.equal(repairs.length, scenario === 'failed-quality' ? 1 : 0);
       if (merges.length) assert.deepEqual(merges[0].slice(-2), ['--match-head-commit', 'head']);
     });
   }
