@@ -51,8 +51,9 @@ test('author has no host filesystem or signing-key access and cannot escalate ap
   assert.ok(args.includes('--ignore-user-config'));
   assert.ok(args.includes('--ephemeral'));
   assert.ok(args.includes('approval_policy="never"'));
-  assert.ok(args.some(value => value.includes('":root"="deny"') && value.includes('"/state/author"="write"') &&
-    value.includes('"/keys/signing.pem"="deny"') && value.includes('"/trusted"="deny"')));
+  assert.ok(args.some(value => value.includes('":root"="deny"') && value.includes('"/state/author"="write"')));
+  assert.ok(!args.some(value => value.includes('"/keys/signing.pem"="read"') || value.includes('"/trusted"="read"')));
+  assert.throws(() => authorArgs('/state/author', '/runtime', ['/state/author/key']), /overlaps/);
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
 });
 

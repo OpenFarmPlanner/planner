@@ -57,7 +57,13 @@ function requiredChecksPass(required, checks, statuses) {
 
 function authorArgs(workspace, runtime, protectedPaths) {
   const grants = { ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read' };
-  for (const directory of protectedPaths) grants[directory] = 'deny';
+  // Root denial already hides all host paths. Explicit deny-file mounts inside
+  // denied parents can prevent bubblewrap initialization on supported clients.
+  for (const directory of protectedPaths) {
+    if ([workspace, runtime].some(grant => directory === grant || directory.startsWith(grant + path.sep))) {
+      throw new Error('A protected host path overlaps the author grants.');
+    }
+  }
   const inline = '{' + Object.entries(grants).map(([key, value]) =>
     `${JSON.stringify(key)}=${JSON.stringify(value)}`).join(',') + '}';
   return ['exec', '--strict-config', '--ignore-user-config', '--ignore-rules', '--ephemeral', '--json',
