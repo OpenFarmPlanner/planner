@@ -566,3 +566,13 @@ content patterns live, commented, in the triage step's `env` block.
   Setup, key protection and recovery live in `docs/security-automation.md`.
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.
+
+## Cloud work queue
+
+The owner requested cloud-only queue execution and authorized small bounded API
+costs on 2026-11-13. The trusted main-branch GitHub workflow
+`.github/workflows/cloud-work-queue.yml` controls independent implementation,
+review and merge without routine human approval. Its proxy enforces $1/run,
+$2/day and $10/month model-token reservations. No laptop daemon is required.
+Follow `docs/work-execution-queue.md`; existing exact-head review and required
+checks remain binding. Production deployment is not authorized by queue work.

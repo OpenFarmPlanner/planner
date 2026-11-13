@@ -1,0 +1,54 @@
+name: Cloud Work Queue
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Verify cloud access or advance the live queue
+        type: choice
+        options: [verify, advance]
+        default: verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-work-queue
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    if: github.ref == 'refs/heads/main' && (vars.CLOUD_WORK_QUEUE_ENABLED == 'true' || inputs.mode == 'verify')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install pinned coding runtime
+        run: |
+          npm install --global @openai/codex@0.147.0
+          python -m pip install 'pdm==2.29.5' 'hishel==1.4.0'
+          git config --global user.name 'OpenFarmPlanner queue'
+          git config --global user.email 'queue@openfarmplanner.org'
+          # Codex's restricted Linux sandbox requires unprivileged namespaces.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo chmod 000 /usr/bin/sudo /usr/bin/su
+      - name: Advance the authorized queue
+        env:
+          OFP_QUEUE_MODE: ${{ inputs.mode || 'advance' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          OFP_QUEUE_PYTHON_RUNTIME: ${{ env.pythonLocation }}
+          OFP_QUEUE_SIGNING_KEY: ${{ secrets.CLOUD_QUEUE_SIGNING_KEY }}
+        run: node scripts/ci/cloud_work_queue.cjs

@@ -1,0 +1,167 @@
+// Trusted controller only: repository code runs in the worker's restricted sandbox.
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const cp = require('node:child_process');
+const { Readable } = require('node:stream');
+const REPO = 'OpenFarmPlanner/ops';
+const BRANCH = 'cloud-work-queue-state';
+const MODEL = 'gpt-5.4-mini';
+const RUN_LIMIT = 1_000_000, DAY_LIMIT = 2_000_000, MONTH_LIMIT = 10_000_000;
+
+function gh(...args) {
+  return JSON.parse(cp.execFileSync('gh', ['api', ...args], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }));
+}
+function statePath(file) {
+  const name = path.basename(file);
+  if (!['state.json', 'budget.json'].includes(name)) throw new Error('Invalid cloud state file.');
+  return `repos/${REPO}/contents/.queue/${name}`;
+}
+function loadState(file) {
+  const endpoint = statePath(file);
+  // Missing files are initialized deliberately before enabling the workflow;
+  // API errors must never reset retry or spending limits.
+  const value = gh(`${endpoint}?ref=${BRANCH}`);
+  if (value.encoding !== 'base64') throw new Error('Cloud state unavailable.');
+  const bytes = Buffer.from(value.content, 'base64');
+  JSON.parse(bytes);
+  fs.writeFileSync(file, bytes, { mode: 0o600 });
+}
+function saveState(file) {
+  const endpoint = statePath(file);
+  const previous = gh(`${endpoint}?ref=${BRANCH}`);
+  const body = file + '.request';
+  fs.writeFileSync(body, JSON.stringify({ branch: BRANCH, sha: previous.sha,
+    message: `chore: persist queue ${path.basename(file)}`,
+    content: fs.readFileSync(file).toString('base64') }), { mode: 0o600 });
+  try { gh('--method', 'PUT', endpoint, '--input', body); }
+  finally { fs.rmSync(body, { force: true }); }
+}
+
+function localTool(tool) {
+  return ['function', 'custom'].includes(tool.type) ||
+    tool.type === 'namespace' && Array.isArray(tool.tools) && tool.tools.every(localTool);
+}
+function normalizeRequest(body) {
+  if (body.model !== MODEL || body.previous_response_id || body.conversation || body.background ||
+      !Array.isArray(body.input) || (body.tools ?? []).some(tool => !localTool(tool))) {
+    throw new Error('Only stateless coding requests without hosted tools are allowed.');
+  }
+  // Fixed provider, model, processing tier and output cap keep reservations bounded.
+  const allowed = ['instructions', 'input', 'tools', 'parallel_tool_calls', 'reasoning', 'text', 'tool_choice', 'include', 'stream'];
+  return { ...Object.fromEntries(allowed.filter(key => key in body).map(key => [key, body[key]])),
+    model: MODEL, service_tier: 'default', store: false, max_output_tokens: 8192 };
+}
+function reserve(budget, input, now = new Date()) {
+  if (!Number.isSafeInteger(input) || input < 1 || input > 200_000) throw new Error('Invalid input token count.');
+  const day = now.toISOString().slice(0, 10), month = day.slice(0, 7);
+  const cost = Math.ceil(input * 0.75 + 8192 * 4.5); // USD millionths; uncached list prices.
+  const daily = budget.day === day ? budget.daily : 0;
+  const monthly = budget.month === month ? budget.monthly : 0;
+  if (![daily, monthly, budget.run ?? 0].every(n => Number.isSafeInteger(n) && n >= 0)) throw new Error('Invalid budget ledger.');
+  if (daily + cost > DAY_LIMIT || monthly + cost > MONTH_LIMIT || (budget.run ?? 0) + cost > RUN_LIMIT) {
+    throw new Error('Queue API spending limit reached.');
+  }
+  return { day, month, daily: daily + cost, monthly: monthly + cost, run: (budget.run ?? 0) + cost };
+}
+
+function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
+  let busy = false;
+  return http.createServer(async (req, res) => {
+    if (busy || req.method !== 'POST' || req.url !== '/v1/responses') {
+      res.writeHead(403).end('Unsupported queue API request.'); return;
+    }
+    busy = true;
+    try {
+      const chunks = []; let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 16 * 1024 * 1024) throw new Error('Queue API input too large.');
+        chunks.push(chunk);
+      }
+      const body = normalizeRequest(JSON.parse(Buffer.concat(chunks)));
+      const countBody = Object.fromEntries(['model', 'instructions', 'input', 'tools', 'tool_choice', 'parallel_tool_calls', 'reasoning', 'text']
+        .filter(key => key in body).map(key => [key, body[key]]));
+      const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+      const counted = await fetcher('https://api.openai.com/v1/responses/input_tokens', {
+        method: 'POST', headers, body: JSON.stringify(countBody), signal: AbortSignal.timeout(60_000),
+      });
+      if (!counted.ok) throw new Error(`Token counting failed (${counted.status}); inference was not started.`);
+      const next = reserve(ledger, (await counted.json()).input_tokens);
+      // Reserve pessimistically and persist before inference. Crashes/errors get no refund.
+      await persist(next); Object.assign(ledger, next);
+      const upstream = await fetcher('https://api.openai.com/v1/responses', {
+        method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15 * 60_000),
+      });
+      res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') ?? 'application/json' });
+      await new Promise((resolve, reject) => {
+        const stream = Readable.fromWeb(upstream.body);
+        stream.on('error', reject); res.on('finish', resolve); res.on('close', resolve); stream.pipe(res);
+      });
+    } catch (error) {
+      // Never return provider bodies, request content or secrets in logs/errors.
+      console.error(error.message.replaceAll(apiKey, '[redacted]'));
+      if (!res.headersSent) res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: 'Queue API request refused; inspect trusted controller logs.', type: 'queue_limit' } }));
+    } finally { busy = false; }
+  });
+}
+
+async function main() {
+  if (process.env.GITHUB_REPOSITORY !== 'OpenFarmPlanner/planner' || process.env.GITHUB_REF !== 'refs/heads/main' ||
+      process.env.GITHUB_EVENT_NAME !== 'workflow_dispatch' && process.env.GITHUB_EVENT_NAME !== 'schedule') {
+    throw new Error('Cloud worker requires a trusted main-branch schedule or manual dispatch.');
+  }
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || !process.env.GH_TOKEN || !process.env.OFP_QUEUE_SIGNING_KEY) throw new Error('Cloud credentials unavailable.');
+  const directory = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'ofp-cloud-'));
+  const state = path.join(directory, 'state.json'), budgetFile = path.join(directory, 'budget.json');
+  loadState(state); loadState(budgetFile);
+  const ledger = JSON.parse(fs.readFileSync(budgetFile)); ledger.run = 0;
+  const server = createProxy({ apiKey, ledger, persist: next => {
+    fs.writeFileSync(budgetFile, JSON.stringify(next), { mode: 0o600 }); saveState(budgetFile);
+  } });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const key = path.join(directory, 'signing.pem');
+  fs.writeFileSync(key, process.env.OFP_QUEUE_SIGNING_KEY, { mode: 0o600 });
+  const config = path.join(directory, 'config.json');
+  fs.writeFileSync(config, JSON.stringify({ enabled: true, state_directory: directory, signing_key: key }), { mode: 0o600 });
+  const env = { ...process.env, OFP_QUEUE_CLOUD: '1', OFP_QUEUE_PROXY: `http://127.0.0.1:${server.address().port}/v1` };
+  delete env.OPENAI_API_KEY; delete env.OFP_QUEUE_SIGNING_KEY;
+  try {
+    if (process.env.OFP_QUEUE_MODE === 'verify') {
+      const fixture = path.join(directory, 'fixture'); fs.mkdirSync(fixture);
+      fs.writeFileSync(path.join(fixture, 'source.txt'), 'Cloud queue sandbox fixture.');
+      fs.writeFileSync(path.join(directory, 'protected-marker'), 'Host-only marker.');
+      const { reviewerArgs, codexRuntime, providerArgs, terminalReview } = require('./run_codex_review.cjs');
+      process.env.OFP_QUEUE_PROXY = env.OFP_QUEUE_PROXY;
+      const prompt = 'Use the execution tool to run cat source.txt and verify that ../protected-marker cannot be read. '
+        + 'Return exactly JSON {"ok":true} only if the source is readable and the protected file is denied. Do not edit files.';
+      fs.writeFileSync(path.join(fixture, 'schema.json'), JSON.stringify({ type: 'object', additionalProperties: false,
+        properties: { ok: { type: 'boolean' } }, required: ['ok'] }));
+      const safeEnv = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
+        .filter(key => process.env[key]).map(key => [key, process.env[key]]));
+      let transcript = '';
+      await new Promise((resolve, reject) => {
+        const child = cp.spawn('codex', [...providerArgs(), ...reviewerArgs(fixture, path.join(fixture, 'source.txt'), codexRuntime())],
+          { cwd: fixture, env: safeEnv, stdio: ['pipe', 'pipe', 'pipe'] });
+        child.stdin.end(prompt);
+        child.stdout.on('data', data => { transcript += data; });
+        child.stderr.on('data', () => {});
+        child.on('error', reject);
+        child.on('exit', code => code === 0 ? resolve() : reject(new Error('Cloud model/sandbox verification failed.')));
+      });
+      if (terminalReview(transcript).review.ok !== true) throw new Error('Cloud fixture verification incomplete.');
+      console.log('Cloud credentials, durable state, budgeted API and restricted reviewer verified.');
+      return;
+    }
+    // Each invocation performs one bounded transition; the schedule resumes from durable state.
+    await new Promise((resolve, reject) => {
+      const child = cp.spawn(process.execPath, [path.join(__dirname, 'work_queue_worker.cjs'), config], { env, stdio: 'inherit' });
+      child.on('error', reject);
+      child.on('exit', code => code === 0 ? resolve() : reject(new Error(`Queue transition failed (${code}).`)));
+    });
+  } finally { server.closeAllConnections(); server.close(); fs.rmSync(directory, { recursive: true, force: true }); }
+}
+if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy };
