@@ -1,9 +1,7 @@
-name: Codex Auto-Fix on CI Failure
+name: Codex Auto-Fix on CI Failure (DISABLED to prevent API billing)
 
 "on":
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,10 +14,8 @@ concurrency:
 
 jobs:
   codex-autofix:
-    if: >
-      github.event.workflow_run.conclusion == 'failure' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.actor.login != 'github-actions[bot]'
+    # Never invoke the API-key action unless the owner explicitly opts in.
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout failing commit
