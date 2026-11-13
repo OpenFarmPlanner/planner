@@ -141,15 +141,20 @@ async function main() {
         properties: { ok: { type: 'boolean' } }, required: ['ok'] }));
       const safeEnv = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
         .filter(key => process.env[key]).map(key => [key, process.env[key]]));
-      let transcript = '';
+      let transcript = '', diagnostics = '';
       await new Promise((resolve, reject) => {
         const child = cp.spawn('codex', [...providerArgs(), ...reviewerArgs(fixture, path.join(fixture, 'source.txt'), codexRuntime())],
           { cwd: fixture, env: safeEnv, stdio: ['pipe', 'pipe', 'pipe'] });
         child.stdin.end(prompt);
         child.stdout.on('data', data => { transcript += data; });
-        child.stderr.on('data', () => {});
+        child.stderr.on('data', data => { diagnostics = (diagnostics + data).slice(-8000); });
         child.on('error', reject);
-        child.on('exit', code => code === 0 ? resolve() : reject(new Error('Cloud model/sandbox verification failed.')));
+        child.on('exit', code => {
+          if (code === 0) return resolve();
+          // This fixture session has no credential environment or secret filesystem grants.
+          const detail = diagnostics.replaceAll(apiKey, '[redacted]').slice(-4000);
+          reject(new Error(`Cloud model/sandbox verification failed (${code}): ${detail}`));
+        });
       });
       if (terminalReview(transcript).review.ok !== true) throw new Error('Cloud fixture verification incomplete.');
       console.log('Cloud credentials, durable state, budgeted API and restricted reviewer verified.');
