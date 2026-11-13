@@ -183,7 +183,8 @@ native Codex Security Report. It still requires a human maintainer's explicit
 approval; starting a reviewer is not approval of its eventual findings.
 
 The helper prepares a detached worktree, pins the base and head, includes both
-names of renamed files and deleted files, and writes a prompt and output schema.
+names of renamed files and deleted files, captures open security issues and
+prior PR comments for context, and writes a prompt and output schema.
 Run it from a trusted checkout, using a new output directory outside the repo:
 
 ```bash
@@ -205,7 +206,9 @@ Never reuse the implementation session to fill in a review result. No finding,
 candidate, coverage gap or provider failure may be converted into a clean report.
 
 `finish` refuses stale heads, changed bases/scopes, missing or duplicate paths,
-incomplete reviews, findings and limitations. Findings remain in `review.json`
+incomplete reviews, findings and unresolved coverage limitations. Methodology
+notes (such as static-only analysis) remain visible in the report's
+`review_notes`; they must not conceal a finding or coverage gap. Findings remain in `review.json`
 for remediation; after fixes, prepare a new bundle for the new head. It removes
 any previously rendered report before validation, so a failed revalidation
 cannot leave a clean report behind. Validation checks the report's declared

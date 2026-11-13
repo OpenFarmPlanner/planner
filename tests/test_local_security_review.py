@@ -17,7 +17,7 @@ class LocalReviewTests(unittest.TestCase):
         self.manifest = {"repo": "owner/repo", "number": 1, "head": "a" * 40,
                          "base": "b" * 40, "scope": ["deleted.py", "new.py", "old.py"]}
         self.result = {"reviewed_sha": "a" * 40, "scope": self.manifest["scope"],
-                       "complete": True, "findings": [], "limitations": [],
+                       "complete": True, "findings": [], "limitations": [], "review_notes": [],
                        "analysis": "Checked authorization and project-scoped writes."}
 
     def test_complete_report_uses_existing_manual_gate_contract(self) -> None:
@@ -26,6 +26,8 @@ class LocalReviewTests(unittest.TestCase):
         self.assertIn("Result: No unresolved findings", report)
         for path in self.manifest["scope"]:
             self.assertIn(f"`{path}`", report)
+        self.result["review_notes"] = ["Static analysis; no code executed."]
+        self.assertIn(self.result["review_notes"][0], review.render(self.manifest, self.result))
 
     def test_partial_stale_or_unresolved_reviews_cannot_produce_clean_report(self) -> None:
         for change in [{"reviewed_sha": "c" * 40}, {"scope": ["new.py"]},
@@ -33,7 +35,7 @@ class LocalReviewTests(unittest.TestCase):
                        {"complete": False}, {"complete": "true"},
                        {"findings": ["Unvalidated injection candidate"]},
                        {"limitations": ["Did not inspect deleted files"]},
-                       {"findings": None}, {"analysis": ""}]:
+                       {"findings": None}, {"analysis": ""}, {"review_notes": None}]:
             with self.subTest(change=change), self.assertRaises(ValueError):
                 review.render(self.manifest, {**self.result, **change})
 
@@ -51,6 +53,7 @@ class LocalReviewTests(unittest.TestCase):
             output = Path(directory) / "bundle"
             with patch.object(review, "pull_request", return_value=pr), \
                  patch.object(review, "scope_for", return_value=self.manifest["scope"]), \
+                 patch.object(review, "github_rows", return_value=[]), \
                  patch.object(review, "command") as run:
                 review.prepare("owner/repo", 1, output)
                 run.assert_any_call("git", "worktree", "add", "--detach",
