@@ -32,6 +32,7 @@ from farm.agent_api.schema_serializers import (
     SeedRateConstraintsSerializer,
 )
 from farm.common.mixins import ProjectScopedMixin
+from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 from farm.companion_notes import note_language
 from farm.crops.moderation import (
     describe_contribution_origin,
@@ -496,8 +497,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 .order_by('id')
             )
         with transaction.atomic():
+            lock_crop_project(crop.project_id)
             for restored_crop in crops_to_restore:
                 restored_crop.deleted_at = None
+                validate_general_crop_identity(restored_crop)
                 restored_crop._history_action = EntityRevision.ACTION_RESTORED
                 restored_crop.save(update_fields=['deleted_at', 'updated_at'])
                 self._set_latest_revision_actor(restored_crop)

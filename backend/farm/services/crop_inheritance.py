@@ -17,10 +17,12 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
 
+from django.db import OperationalError, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from rest_framework.exceptions import APIException
 
-from farm.models import Crop
+from farm.models import Crop, Project
 from farm.germination import REQUIREMENT_LEGACY_VALUES, project_legacy_requirements
 from farm.models.crops import (
     compute_plants_per_m2,
@@ -189,6 +191,47 @@ def find_general_crop(
     return queryset.order_by('pk').first()
 
 
+class GeneralCropIdentityConflict(APIException):
+    status_code = 409
+    default_code = 'crop_name_conflict'
+
+    def __init__(self) -> None:
+        super().__init__({
+            'code': self.default_code,
+            'detail': 'The general crop identity conflicts with another write in this project.',
+        })
+
+
+def lock_crop_project(project_id: int) -> None:
+    """Serialize identity writers; fail fast if a library lock is held elsewhere."""
+    try:
+        with transaction.atomic():
+            Project.objects.select_for_update(nowait=True).get(pk=project_id)
+    except OperationalError as exc:
+        cause = exc.__cause__
+        if getattr(cause, 'sqlstate', None) == '55P03' or getattr(cause, 'pgcode', None) == '55P03':
+            raise GeneralCropIdentityConflict() from exc
+        raise
+
+
+def validate_general_crop_identity(crop: Crop) -> None:
+    """Check a prospective active general row while its project lock is held."""
+    from farm.utils import normalize_text
+
+    if crop.deleted_at is not None or normalize_text(crop.variety):
+        return
+    others = (
+        Crop.objects.filter(project_id=crop.project_id)
+        .filter(GENERAL_CROP_ROW_Q).exclude(pk=crop.pk)
+    )
+    identity = Q(name_normalized=normalize_text(crop.name) or '')
+    if crop.crop_species_id:
+        identity |= Q(crop_species_id=crop.crop_species_id)
+    if others.filter(identity).exists():
+        raise GeneralCropIdentityConflict()
+
+
+@transaction.atomic
 def ensure_general_crop_for_variety(
     variety: Crop,
     *,
@@ -207,6 +250,7 @@ def ensure_general_crop_for_variety(
     if not inherits_from_general_crop(variety):
         return None
 
+    lock_crop_project(variety.project_id)
     fields_to_copy = tuple(promote_fields) + (
         CROP_OPTIONAL_GENERAL_COPY_FIELDS if copy_values else ()
     )
@@ -335,6 +379,7 @@ def promote_species_invariant_values(
     return general
 
 
+@transaction.atomic
 def sync_crop_species_across_crop_group(
     crop: Crop,
     *,
@@ -368,11 +413,19 @@ def sync_crop_species_across_crop_group(
     """
     if not crop.crop_species_id or not crop.name_normalized:
         return 0
-    return crop_group_rows_to_sync(
+    lock_crop_project(crop.project_id)
+    rows = crop_group_rows_to_sync(
         crop,
         target_species_id=crop.crop_species_id,
         previous_species_id=previous_species_id,
-    ).update(crop_species_id=crop.crop_species_id, updated_at=timezone.now())
+    )
+    general_rows = list(rows.filter(GENERAL_CROP_ROW_Q))
+    if len(general_rows) > 1:
+        raise GeneralCropIdentityConflict()
+    for general in general_rows:
+        general.crop_species_id = crop.crop_species_id
+        validate_general_crop_identity(general)
+    return rows.update(crop_species_id=crop.crop_species_id, updated_at=timezone.now())
 
 
 def crop_group_rows_to_sync(

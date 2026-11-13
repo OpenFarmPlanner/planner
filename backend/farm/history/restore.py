@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from crops.plant_families import coerce_plant_family_key
+from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop, Task
 
 from .records import (
@@ -109,6 +110,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
     """
     restorable_models = {model for model, _entity_type in _RESTORABLE_ENTITY_TYPES}
     with transaction.atomic():
+        lock_crop_project(project.pk)
         # 1. Remove tracked rows history records as deleted by target_time.
         #    Reverse dependency order so a parent's delete cascade never hits a
         #    child we still have to process.
@@ -172,6 +174,10 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                 if 'deleted_at' in allowed_fields:
                     row_data['deleted_at'] = None
 
+                if model is Crop:
+                    prospective = Crop(**row_data)
+                    prospective.pk = object_id
+                    validate_general_crop_identity(prospective)
                 if object_id in live_ids:
                     manager.filter(pk=object_id).update(
                         **{key: value for key, value in row_data.items() if key not in _SKIP_ON_UPDATE},
@@ -183,6 +189,13 @@ def _restore_project_state_at(project: Project, target_time) -> None:
             # Newest object_id first, so a unique-constraint collision between
             # two stale snapshots resolves in favour of the most recent one.
             recreate.sort(key=lambda pair: pair[0], reverse=True)
+            if model is Crop:
+                for object_id, instance in recreate:
+                    validate_general_crop_identity(instance)
+                    present_ids[model] |= _bulk_create_skipping_conflicts(
+                        model, [instance], [object_id],
+                    )
+                recreate = []
             present_ids[model] |= _bulk_create_skipping_conflicts(
                 model,
                 [instance for _object_id, instance in recreate],
@@ -219,6 +232,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     ) if linked_ids else set()
 
     with transaction.atomic():
+        lock_crop_project(crop.project_id)
         for key, value in snapshot.items():
             if key in restorable_fields:
                 setattr(crop, key, value)
@@ -232,6 +246,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         if 'library_pinned_fields' not in revision.snapshot:
             crop.library_pinned_fields = []
         crop.deleted_at = None
+        validate_general_crop_identity(crop)
         crop._history_action = EntityRevision.ACTION_RESTORED
         crop.save()
 

@@ -89,3 +89,42 @@ def test_concurrent_general_library_imports_create_one_project_row():
         ids = [future.result(timeout=30) for future in futures]
     assert ids[0] == ids[1]
     assert Crop.objects.filter(project=project, crop_species=species, variety='').count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_direct_general_create_cannot_race_a_library_import():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import close_old_connections, connection, transaction
+
+    from crops.models import CropSpecies
+    from farm.crops.serializers.crops import CropSerializer
+    from farm.models import Crop, Project, PublicCrop
+    from farm.services.crop_inheritance import GeneralCropIdentityConflict
+    from farm.services.public_crops import import_public_crop_into_project
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL row-lock regression')
+    user = User.objects.create_user(username='direct-import-race')
+    project = Project.objects.create(name='Direct import race', slug='direct-import-race')
+    species = CropSpecies.objects.create(name='Direct import race species')
+    entry = PublicCrop.objects.create(name=species.name, crop_species=species,
+                                     status='published', created_by=user)
+
+    def direct_create():
+        close_old_connections()
+        try:
+            with pytest.raises(GeneralCropIdentityConflict):
+                CropSerializer().create({
+                    'project': project, 'crop_species': species, 'name': 'Other label',
+                })
+        finally:
+            close_old_connections()
+
+    with transaction.atomic():
+        Project.objects.select_for_update().get(pk=project.pk)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(direct_create).result(timeout=15)
+        imported, _ = import_public_crop_into_project(public_crop=entry, project=project)
+    assert Crop.objects.filter(project=project, crop_species=species).get().pk == imported.pk

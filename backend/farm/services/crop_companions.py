@@ -32,7 +32,9 @@ from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from farm.companion_notes import legacy_note, merge_notes, notes_of, validate_notes
 from farm.models import Crop, CropCompanion, PlantingPlan
-from farm.services.crop_inheritance import ensure_general_crop_for_variety, find_general_crop
+from farm.services.crop_inheritance import (
+    ensure_general_crop_for_variety, find_general_crop, lock_crop_project,
+)
 from farm.utils import normalize_text
 
 KINDS = (CropCompanion.KIND_GOOD, CropCompanion.KIND_BAD)
@@ -121,6 +123,7 @@ class KulturIndex:
         return kultur_family or crop.crop_family_id
 
 
+@transaction.atomic
 def ensure_kultur(crop: Crop) -> Crop:
     """The crop's Kultur, created when its group has none yet.
 
@@ -129,6 +132,7 @@ def ensure_kultur(crop: Crop) -> Crop:
     """
     if is_kultur(crop):
         return crop
+    lock_crop_project(crop.project_id)
     if crop.crop_species_id:
         existing = find_general_crop(crop.project_id, crop.crop_species_id)
         return existing or ensure_general_crop_for_variety(crop) or crop

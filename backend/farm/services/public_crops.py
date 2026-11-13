@@ -76,6 +76,8 @@ from farm.services.crop_inheritance import (
     is_unset_crop_value,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
+    lock_crop_project,
+    validate_general_crop_identity,
 )
 from farm.services.public_crop_trade_names import (
     find_variety_identity_conflict,
@@ -2325,6 +2327,7 @@ def _update_public_crop_from_project_crop(
     return public_crop
 
 
+@transaction.atomic
 def _link_crop_to_crop_species(
     *,
     crop: Crop,
@@ -2342,6 +2345,7 @@ def _link_crop_to_crop_species(
     "Kulturart korrigieren" correction, where the group's rows already hold the
     species being corrected away from instead of none.
     """
+    lock_crop_project(crop.project_id)
     member_ids = _crop_group_member_ids(
         crop, target_species_id=crop_species.pk, previous_species_id=previous_species_id,
     )
@@ -2350,6 +2354,7 @@ def _link_crop_to_crop_species(
         if errors:
             raise ApiValidationError({'specific_properties': errors})
     crop.crop_species = crop_species
+    validate_general_crop_identity(crop)
     crop.save(update_fields=['crop_species', 'updated_at'])
     sync_crop_species_across_crop_group(crop, previous_species_id=previous_species_id)
 
@@ -3332,6 +3337,7 @@ def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> 
     _create_crop_from_public(public_crop=general_public, project=project)
 
 
+@transaction.atomic
 def _apply_public_crop_update(
     *,
     crop: Crop,
@@ -3348,6 +3354,7 @@ def _apply_public_crop_update(
     :func:`validate_public_update_pin_fields`) pin those fields so they keep
     the crop's value. Both are part of the same, history-recorded save.
     """
+    lock_crop_project(crop.project_id)
     pinned = get_library_pinned_fields(crop)
     not_pinned = set(unpin_fields) - pinned
     if not_pinned:
@@ -3375,6 +3382,7 @@ def _apply_public_crop_update(
     errors = crop_specific_property_errors(crop)
     if errors:
         raise ApiValidationError(errors)
+    validate_general_crop_identity(crop)
     crop.save()
     if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
         replace_library_companions(crop, public_crop.companions)

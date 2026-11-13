@@ -2229,10 +2229,10 @@ own action:
   relink runs the same `sync_crop_species_across_crop_group()` publishing uses,
   extended with the previous species id so the group's rows move off the old
   species with it instead of splitting the owner's Kultur in two. Because
-  inheritance is live and resolved per `(project, crop_species)`, that move can
-  land the group on a general Kultur the project already keeps for the
-  corrected species (`get_general_crop()` breaks the tie by the lowest primary
-  key), silently changing what its Sorten inherit. The effective values are
+  inheritance is live and resolved per `(project, crop_species)`, moving a
+  variety alone can change which existing general Kultur supplies its values.
+  A move that would introduce a second general Kultur for the target species
+  is rejected atomically with 409; no row is selected as canonical or merged. The effective values are
   therefore snapshotted before the move and compared after it; every member of
   the project is notified per affected crop when they really differ
   (`crop_species_reassigned`, see [notifications.md](./notifications.md)).
@@ -2311,11 +2311,20 @@ links remain intact. Later library updates still require review.
 
 Import/link serialize on the project row before locking the entry. A general
 import with an existing candidate returns 409 `existing_crop_requires_link`.
-A stable species match also blocks `mode=new`; a name-only suggestion permits
+A stable general-crop species match also blocks `mode=new`; a name-only suggestion permits
 an explicit new-copy choice when the user rejects the suggested identity. Linked re-import retains its existing update/conflict flow.
 Current link clients send the preview's library `base_version` and local
 `expected_updated_at`; stale confirmation is rejected before any field changes.
 Older clients may omit these optional preconditions.
+
+Ordinary crop CRUD, implicit general creation, library species changes and
+history/undelete restores share the project lock and validate prospective general
+identities. These writers use a non-waiting project lock and return 409 when busy,
+so callers already holding a library lock cannot deadlock with an import holding
+the project lock. A conflicting restore rolls back the entire operation, including
+varieties, history and media state. Existing legacy rows remain representable;
+no data migration chooses a canonical general crop. Variety re-import as a new
+copy remains supported and reuses the existing general crop.
 
 Legacy duplicate general rows are not merged or repaired. Extra general rows
 render as general entries rather than varieties. Ambiguous group rename/delete

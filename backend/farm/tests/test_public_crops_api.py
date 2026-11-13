@@ -2707,6 +2707,24 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(imported.notes, public_crop.notes)
         self.assertFalse(imported.is_modified_from_source)
 
+    def test_species_linked_variety_can_still_be_reimported_as_new(self):
+        species = CropSpecies.objects.create(name='Variety copy species')
+        PublicCrop.objects.create(
+            name=species.name, crop_species=species, status='published', created_by=self.user,
+        )
+        entry = PublicCrop.objects.create(
+            name='Variety copy species', variety='Copy variety',
+            crop_species=species, status='published', created_by=self.user,
+        )
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/import/'
+        first = self.client.post(url, {}, format='json')
+        self.assertEqual(first.status_code, 201, first.data)
+        duplicate = self.client.post(url, {'mode': 'new'}, format='json')
+        self.assertEqual(duplicate.status_code, 201, duplicate.data)
+        self.assertNotEqual(first.data['crop']['id'], duplicate.data['crop']['id'])
+        generals = Crop.objects.filter(project=self.project, crop_species=species, variety='')
+        self.assertEqual(generals.count(), 1)
+
     def test_reimporting_with_mode_new_creates_a_uniquely_named_copy(self):
         public_crop = PublicCrop.objects.create(
             name='Carrot',
@@ -5262,10 +5280,9 @@ class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
 
     Inheritance in this project is live and project-local: a Sorte resolves its
     unset fields through the general Kultur of its `(project, crop_species)`
-    group. Correcting the mapping moves that group onto another species, where
-    the project may already keep a general Kultur under a different name — and
-    `get_general_crop()` then resolves to the older of the two. What the Sorte
-    is planned with changes without anybody in the project touching anything,
+    group. A legacy variety with a different name than its general moves alone
+    onto the corrected species, where it inherits the existing general Kultur.
+    What the Sorte is planned with changes without anybody in the project touching anything,
     which is what gets announced.
     """
 
@@ -5294,15 +5311,14 @@ class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
         )
         self.broad_species = CropSpecies.objects.create(name='Chard-like greens')
         self.correct_species = CropSpecies.objects.create(name='Swiss chard')
-        # Created first on purpose: once the corrected group lands on the same
-        # species, get_general_crop() breaks the tie by the lowest primary key,
-        # so this is the Kultur the Sorte starts inheriting from.
+        # A differently named legacy variety moves alone; its old general stays
+        # on the old species, and the target general supplies inherited values.
         self.existing_general = Crop.objects.create(
             name='Krautstiel', variety='', crop_species=self.correct_species,
             project=self.project, rotation_break_years=3,
         )
         self.wrong_general = Crop.objects.create(
-            name='Mangold', variety='', crop_species=self.broad_species,
+            name='Broad greens', variety='', crop_species=self.broad_species,
             project=self.project, rotation_break_years=3,
         )
         self.variety = Crop.objects.create(
@@ -5329,6 +5345,18 @@ class CropSpeciesReassignmentNotificationTest(DRFAPITestCase):
         return Notification.objects.filter(
             notification_type=Notification.TYPE_CROP_SPECIES_REASSIGNED,
         )
+
+    def test_relink_rejects_a_group_move_that_would_duplicate_the_general(self):
+        self.wrong_general.name = self.variety.name
+        self.wrong_general.save(update_fields=['name', 'name_normalized'])
+        response = self.relink()
+        self.assertEqual(response.status_code, 409, response.data)
+        for row in (self.wrong_general, self.variety):
+            row.refresh_from_db()
+            self.assertEqual(row.crop_species_id, self.broad_species.pk)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.pk)
+        self.assertFalse(self.reassignment_notifications().exists())
 
     def test_no_notification_when_the_correction_changes_no_inherited_value(self):
         response = self.relink()
@@ -6372,8 +6400,11 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.kultur.germination_days_max, 14)
         from farm.services.public_crops import import_public_crop_into_project
 
+        import_project = Project.objects.create(
+            name='Fresh germination import', slug='germination-import',
+        )
         imported, _outcome = import_public_crop_into_project(
-            public_crop=self.entry, project=self.project, mode='new',
+            public_crop=self.entry, project=import_project,
         )
         self.assertEqual(imported.germination_days_max, 21)
         self.assertEqual(imported.germination_pretreatment, 'Chill four weeks.')
