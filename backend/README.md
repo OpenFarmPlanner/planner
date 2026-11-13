@@ -210,6 +210,10 @@ Auth endpoints are available under `/api/auth/`:
 
 ## Environment Notes
 
+- After installing a backend dependency update, restart every backend process
+  (including Gunicorn and any ASGI workers) so it loads the updated packages.
+  The Django REST Framework 3.18.2 security fixes only take effect in restarted
+  processes; updating the virtual environment alone does not protect running workers.
 - Environment variables are loaded from `backend/.env`.
 - SQLite is used by default in development.
 - PostgreSQL can be enabled via `DB_ENGINE` and related DB settings.
