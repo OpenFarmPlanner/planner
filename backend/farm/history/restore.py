@@ -9,8 +9,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from crops.plant_families import coerce_plant_family_key
-from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop, Task
+from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -95,6 +95,90 @@ def is_latest_project_revision(project: Project, revision: EntityRevision) -> bo
     )
 
 
+def _crop_restore_identity(row: dict[str, Any]) -> tuple[str | None, str | None, int | None]:
+    from farm.utils import normalize_text
+
+    return (normalize_text(row['name']), normalize_text(row.get('variety')),
+            row.get('crop_species_id'))
+
+
+def _validate_restored_general_identities(
+    current: dict[int, dict[str, Any]], final: dict[int, dict[str, Any]],
+) -> None:
+    from farm.services.crop_inheritance import GeneralCropIdentityConflict
+
+    names: set[str | None] = set()
+    species_groups: dict[int, set[int]] = {}
+    for pk, row in final.items():
+        name, variety, species_id = _crop_restore_identity(row)
+        if variety:
+            continue
+        if name in names:
+            raise GeneralCropIdentityConflict()
+        names.add(name)
+        if species_id:
+            species_groups.setdefault(species_id, set()).add(pk)
+    for species_id, ids in species_groups.items():
+        if len(ids) < 2:
+            continue
+        previous_ids = {
+            pk for pk, row in current.items() if row['deleted_at'] is None
+            and not _crop_restore_identity(row)[1] and row.get('crop_species_id') == species_id
+        }
+        changed = ids != previous_ids or any(
+            _crop_restore_identity(final[pk]) != _crop_restore_identity(current[pk])
+            for pk in ids
+        )
+        if changed:
+            raise GeneralCropIdentityConflict()
+
+
+def _restore_project_crop_rows(
+    current: dict[int, dict[str, Any]], targets: dict[int, dict[str, Any]],
+) -> set[int]:
+    """Validate the final identities before staging and applying any crop changes."""
+    from uuid import uuid4
+
+    final = {pk: row for pk, row in current.items() if row['deleted_at'] is None}
+    final.update({pk: row for pk, row in targets.items() if pk in current})
+    occupied_names = {
+        _crop_restore_identity(row)[0] for row in final.values()
+        if not _crop_restore_identity(row)[1]
+    }
+    accepted = dict(targets)
+    # Preserve the historical skip for missing ghost rows whose general name is occupied.
+    for pk in sorted(set(targets) - set(current), reverse=True):
+        row = targets[pk]
+        name, variety, _species = _crop_restore_identity(row)
+        if not variety and name in occupied_names:
+            accepted.pop(pk)
+            continue
+        final[pk] = row
+        if not variety:
+            occupied_names.add(name)
+
+    _validate_restored_general_identities(current, final)
+
+    # Temporary normalized names allow valid name swaps under the existing unique constraint.
+    prefix = f'restore{uuid4().hex}'
+    for pk in accepted.keys() & current.keys():
+        if _crop_restore_identity(current[pk])[:2] != _crop_restore_identity(accepted[pk])[:2]:
+            Crop.all_objects.filter(pk=pk).update(name_normalized=f'{prefix}{pk}')
+    recreated: list[Crop] = []
+    for pk, row in accepted.items():
+        name, row['variety_normalized'], _species = _crop_restore_identity(row)
+        row['name_normalized'] = name or ''
+        if pk in current:
+            Crop.all_objects.filter(pk=pk).update(
+                **{key: value for key, value in row.items() if key not in _SKIP_ON_UPDATE},
+            )
+        else:
+            recreated.append(Crop(**row))
+    recreated.sort(key=lambda row: row.pk, reverse=True)
+    inserted = _bulk_create_skipping_conflicts(Crop, recreated, [row.pk for row in recreated])
+    return set(current) | inserted
+
+
 def _restore_project_state_at(project: Project, target_time) -> None:
     """Roll every restorable entity type back to its state at target_time.
 
@@ -108,8 +192,6 @@ def _restore_project_state_at(project: Project, target_time) -> None:
     trade-off is deliberate: recovering old state matters more than perfectly
     un-creating everything newer.
     """
-    from farm.utils import normalize_text
-
     restorable_models = {model for model, _entity_type in _RESTORABLE_ENTITY_TYPES}
     with transaction.atomic():
         lock_crop_project(project.pk)
@@ -157,6 +239,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
             } if model is Crop else {}
             states = _entity_states_at(project, entity_type, target_time)
             recreate: list[tuple[int, Any]] = []
+            crop_targets: dict[int, dict[str, Any]] = {}
             for object_id, snapshot in states.items():
                 if snapshot is None:
                     continue
@@ -181,19 +264,10 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                 if 'deleted_at' in allowed_fields:
                     row_data['deleted_at'] = None
 
-                if model is Crop and object_id in live_ids:
-                    prospective = Crop(**row_data)
-                    prospective.pk = object_id
-                    current = current_crops[object_id]
-                    same_active_identity = current['deleted_at'] is None and (
-                        normalize_text(current['name']), normalize_text(current['variety']),
-                        current['crop_species_id'],
-                    ) == (
-                        normalize_text(prospective.name), normalize_text(prospective.variety),
-                        prospective.crop_species_id,
-                    )
-                    if not same_active_identity:
-                        validate_general_crop_identity(prospective)
+                if model is Crop:
+                    row_data['id'] = object_id
+                    crop_targets[object_id] = row_data
+                    continue
                 if object_id in live_ids:
                     manager.filter(pk=object_id).update(
                         **{key: value for key, value in row_data.items() if key not in _SKIP_ON_UPDATE},
@@ -206,19 +280,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
             # two stale snapshots resolves in favour of the most recent one.
             recreate.sort(key=lambda pair: pair[0], reverse=True)
             if model is Crop:
-                for object_id, instance in recreate:
-                    # Preserve the established skip for hard-deleted ghost
-                    # snapshots whose name is already occupied by a live general.
-                    if not (instance.variety or '').strip() and Crop.objects.filter(
-                        Q(variety_normalized__isnull=True) | Q(variety_normalized=''),
-                        project=project, name_normalized=instance.name_normalized,
-                    ).exists():
-                        continue
-                    validate_general_crop_identity(instance)
-                    present_ids[model] |= _bulk_create_skipping_conflicts(
-                        model, [instance], [object_id],
-                    )
-                recreate = []
+                present_ids[model] = _restore_project_crop_rows(current_crops, crop_targets)
             present_ids[model] |= _bulk_create_skipping_conflicts(
                 model,
                 [instance for _object_id, instance in recreate],

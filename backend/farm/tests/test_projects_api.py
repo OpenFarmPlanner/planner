@@ -189,6 +189,65 @@ class ProjectsApiTests(APITestCase):
         self.assertFalse(Field.objects.filter(project=self.project).exists())
         self.assertFalse(Bed.objects.filter(project=self.project).exists())
 
+    def test_project_history_restore_evaluates_final_general_identities(self):
+        original = CropSpecies.objects.create(name='Restore original species')
+        other = CropSpecies.objects.create(name='Restore other species')
+        temporary = CropSpecies.objects.create(name='Restore temporary species')
+        first = Crop.objects.create(
+            project=self.project, name='First identity', crop_species=original,
+        )
+        second = Crop.objects.create(
+            project=self.project, name='Second identity', crop_species=other,
+        )
+        headers = {'HTTP_X_PROJECT_ID': str(self.project.pk)}
+        self.client.post('/openfarmplanner/api/locations/', {'name': 'Identity anchor'},
+                         format='json', **headers)
+        history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
+        history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
+        first.crop_species = temporary
+        first.name = 'Temporary name'
+        first.save()
+        second.crop_species = original
+        second.name = 'First identity'
+        second.save()
+        first.name = 'Second identity'
+        first.save()
+        record_later_revision(self.project)
+        response = self.client.post('/openfarmplanner/api/history/project/restore/', {
+            'history_id': history_id,
+        }, format='json', **headers)
+        self.assertEqual(response.status_code, 200, response.data)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual((first.name, first.name_normalized, first.crop_species_id),
+                         ('First identity', 'first identity', original.pk))
+        self.assertEqual((second.name, second.name_normalized, second.crop_species_id),
+                         ('Second identity', 'second identity', other.pk))
+
+    def test_project_history_restore_rejects_new_general_species_ambiguity(self):
+        species = CropSpecies.objects.create(name='Conflicting recovery species')
+        ghost = Crop.objects.create(
+            project=self.project, name='Historical general', crop_species=species,
+        )
+        ghost_id = ghost.pk
+        ghost.delete()
+        live = Crop.objects.create(
+            project=self.project, name='Current general', crop_species=species,
+        )
+        headers = {'HTTP_X_PROJECT_ID': str(self.project.pk)}
+        self.client.post('/openfarmplanner/api/locations/', {'name': 'Conflict anchor'},
+                         format='json', **headers)
+        history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
+        history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
+        record_later_revision(self.project)
+        response = self.client.post('/openfarmplanner/api/history/project/restore/', {
+            'history_id': history_id,
+        }, format='json', **headers)
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertFalse(Crop.all_objects.filter(pk=ghost_id).exists())
+        remaining = list(Crop.objects.filter(project=self.project, crop_species=species))
+        self.assertEqual(remaining, [live])
+
     def test_project_history_restore_preserves_existing_legacy_general_identities(self):
         species = CropSpecies.objects.create(name='Legacy restore species')
         first = Crop.objects.create(project=self.project, name='Legacy first', crop_species=species)
