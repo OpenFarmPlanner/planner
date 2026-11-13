@@ -15,6 +15,14 @@ permissions:
 
 jobs:
   attach-parent:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.issue.author_association == 'OWNER' ||
+      github.event.issue.author_association == 'MEMBER' ||
+      github.event.issue.author_association == 'COLLABORATOR'
+    concurrency:
+      group: issue-parent-${{ github.event.issue.number || inputs.issue_number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: Create the native parent/sub-issue relationship
@@ -56,7 +64,7 @@ jobs:
             }
 
             const parentNumber = Number(match[1]);
-            if (parentNumber === issueNumber || !Number.isSafeInteger(parentNumber)) {
+            if (parentNumber <= 0 || parentNumber === issueNumber || !Number.isSafeInteger(parentNumber)) {
               core.setFailed("The declared parent epic is invalid.");
               return;
             }
@@ -72,7 +80,8 @@ jobs:
             try {
               const { data: existingParent } = await github.request(
                 "GET /repos/{owner}/{repo}/issues/{issue_number}/parent",
-                { owner, repo, issue_number: issueNumber }
+                { owner, repo, issue_number: issueNumber,
+                  headers: { "X-GitHub-Api-Version": "2026-03-10" } }
               );
               if (existingParent.number === parentNumber) {
                 core.info("Issue #" + issueNumber + " already belongs to epic #" + parentNumber);
@@ -89,6 +98,7 @@ jobs:
 
             await github.request(
               "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
-              { owner, repo, issue_number: parentNumber, sub_issue_id: issue.id }
+              { owner, repo, issue_number: parentNumber, sub_issue_id: issue.id,
+                replace_parent: false, headers: { "X-GitHub-Api-Version": "2026-03-10" } }
             );
             core.info("Attached #" + issueNumber + " under epic #" + parentNumber);

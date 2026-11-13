@@ -2,31 +2,38 @@ name: Mark next work item (no AI API)
 
 "on":
   workflow_dispatch:
+  workflow_call:
   issues:
     types: [closed, reopened, edited, labeled, unlabeled]
   # No untrusted PR code is checked out or executed; only the trusted
   # repository's queue issue is read. This also handles fork PR merges.
   pull_request_target:
-    types: [closed]
+    types: [closed, reopened]
 
 permissions:
   issues: write
   pull-requests: read
 
-concurrency:
-  group: work-queue-marker
-  cancel-in-progress: false
-
 jobs:
   mark-next:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'pull_request_target' &&
+       (github.event.pull_request.merged == true ||
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'issues' &&
-       ((github.event.action == 'closed' || github.event.action == 'reopened') ||
+       (((github.event.action == 'closed' || github.event.action == 'reopened') &&
+         (github.event.issue.author_association == 'OWNER' ||
+          github.event.issue.author_association == 'MEMBER' ||
+          github.event.issue.author_association == 'COLLABORATOR')) ||
         (github.event.action == 'edited' && github.event.issue.number == 1058) ||
         ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
          (github.event.label.name == 'blocked' || github.event.label.name == 'needs-decision'))))
+    concurrency:
+      group: work-queue-marker
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: Keep the next-item marker synchronized with the ordered queue
@@ -47,18 +54,21 @@ jobs:
             }
 
             const body = queue.body || "";
-            const section = body.match(/## Ordered work items\s*\n([\s\S]*?)(?=\n## |\s*$)/);
+            const section = body.match(/## Ordered work items[ \t]*\r?\n([\s\S]*?)(?=\n## |\s*$)/);
             if (!section) {
               core.setFailed("Missing 'Ordered work items' section in queue issue.");
               return;
             }
 
-            const entries = [...section[1].matchAll(
-              /^\s*-\s*\[[ xX]\]\s*(PR\s+)?#(\d+)\b/gm
-            )].map(match => ({
-              isPR: Boolean(match[1]),
-              number: Number(match[2]),
-            }));
+            const entries = [];
+            for (const line of section[1].split("\n").filter(line => line.trim())) {
+              const match = line.match(/^\s*-\s*\[[ x]\]\s*(PR\s+)?#(\d+)(?:\s|$)/i);
+              if (!match || !Number.isSafeInteger(Number(match[2])) || Number(match[2]) <= 0) {
+                core.setFailed("Each queue line must be a checkbox with a positive issue or PR number.");
+                return;
+              }
+              entries.push({ isPR: Boolean(match[1]), number: Number(match[2]) });
+            }
 
             if (new Set(entries.map(item => item.number)).size !== entries.length) {
               core.setFailed("The queue contains duplicate issue or PR numbers.");

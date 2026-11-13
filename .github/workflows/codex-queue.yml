@@ -1,0 +1,14 @@
+name: Work queue manual dispatch (deprecated Codex name)
+
+"on":
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  # Compatibility for existing manual dispatch commands and bookmarks.
+  # Remove once those callers have migrated to work-queue.yml.
+  mark-next:
+    uses: ./.github/workflows/work-queue.yml
