@@ -33,7 +33,16 @@ Suggested prompt:
 
 The separate codex-autofix.yml workflow previously invoked openai/codex-action with OPENAI_API_KEY after CI failures. It is intentionally disabled, because API-key model usage can be billed separately. Re-enabling it requires an explicit owner decision.
 
-This queue workflow uses only standard GitHub Actions. The repository is public, so standard GitHub-hosted runner usage is free under GitHub's public-repository terms. It does not call OpenAI's API and cannot incur AI model API charges.
+The queue marker makes no model requests and therefore creates no AI model API
+charges. GitHub Actions runner usage is governed separately by the repository's
+billing settings and plan.
+
+## Validation
+
+Run `node --test tests/test_codex_queue.cjs` to check ordering, skipped entries,
+duplicate rejection, label updates and trigger filtering without GitHub writes.
+After merging, manually dispatch the marker once and verify that only the first
+eligible issue in #1058 has the `codex:next` label.
 
 ## GitHub Projects (optional visual view)
 

@@ -11,9 +11,6 @@ for step-by-step procedures of recurring tasks, see the skills in
 
 ## Start here
 
-- **[Codex execution queue](./codex-execution-queue.md)** — manually ordered
-  issues, the advisory next-issue label and prevention of API-billed autofixes.
-
 - **[Architecture Overview](./architecture-overview.md)** — tech stack,
   backend/frontend structure, the project/user/permission model, and the
   main architecture/UX decisions worth knowing before changing things.
@@ -193,6 +190,8 @@ table of what is and isn't implemented.
 
 ## Process / QA
 
+- [`codex-execution-queue.md`](./codex-execution-queue.md) — manually ordered
+  issues, the advisory next-issue label and prevention of API-billed autofixes.
 - [`testing-and-ci.md`](./testing-and-ci.md) — how the frontend, backend and
   E2E suites are split across CI jobs, why the frontend is sharded and the
   backend runs under xdist, and where the runtime actually goes, plus the
