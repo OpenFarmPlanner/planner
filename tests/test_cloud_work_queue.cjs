@@ -10,6 +10,7 @@ const request = { model: 'gpt-5.4-mini', input: [{ role: 'user', content: 'Inspe
 test('API requests cannot change model/tier/cost cap, use hidden conversation or call hosted tools', () => {
   assert.equal(normalizeRequest({ ...request, service_tier: 'priority', max_output_tokens: 100000 }).service_tier, 'default');
   assert.equal(normalizeRequest(request).max_output_tokens, 8192);
+  assert.deepEqual(normalizeRequest({ ...request, tools: [{ type: 'tool_search' }, { type: 'function', name: 'shell' }] }).tools, [{ type: 'function', name: 'shell' }]);
   assert.doesNotThrow(() => normalizeRequest({ ...request, tools: [{ type: 'namespace', tools: [{ type: 'function', name: 'shell' }] }] }));
   for (const extra of [{ model: 'expensive' }, { previous_response_id: 'hidden' }, { conversation: 'hidden' },
     { tools: [{ type: 'web_search' }] }, { tools: [{ type: 'code_interpreter' }] }, { tools: [{ type: 'namespace', tools: [{ type: 'web_search' }] }] }]) {

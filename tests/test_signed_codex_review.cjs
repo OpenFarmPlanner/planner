@@ -105,10 +105,16 @@ test('launcher signs only its own fresh execution; it does not accept a supplied
   const keyFile = path.join(directory, 'key.pem');
   fs.writeFileSync(keyFile, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const previousProxy = process.env.OFP_QUEUE_PROXY;
+  process.env.OFP_QUEUE_PROXY = 'http://127.0.0.1:12345/v1';
+  t.after(() => { if (previousProxy === undefined) delete process.env.OFP_QUEUE_PROXY; else process.env.OFP_QUEUE_PROXY = previousProxy; });
   let fail = false;
   t.mock.method(cp, 'spawnSync', (binary, argv, options) => {
     if (binary === 'volta') return { status: 0, stdout: __filename };
     if (binary === 'codex') {
+      assert.equal(argv[0], 'exec');
+      assert.ok(argv.indexOf('model_provider="queue"') > argv.indexOf('exec'));
+      assert.equal(options.env.OPENAI_API_KEY, undefined);
       assert.equal(options.env.GITHUB_TOKEN, undefined);
       assert.equal(options.env.SSH_AUTH_SOCK, undefined);
       return { status: fail ? 1 : 0, stdout: jsonl(events), stderr: '' };

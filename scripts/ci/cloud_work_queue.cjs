@@ -43,6 +43,9 @@ function localTool(tool) {
     tool.type === 'namespace' && Array.isArray(tool.tools) && tool.tools.every(localTool);
 }
 function normalizeRequest(body) {
+  // Codex advertises discovery even with no deferred tools. Omit this hosted
+  // capability; the model still receives all local shell/patch definitions.
+  body = { ...body, tools: (body.tools ?? []).filter(tool => tool.type !== 'tool_search') };
   if (body.model !== MODEL || body.previous_response_id || body.conversation || body.background ||
       !Array.isArray(body.input) || (body.tools ?? []).some(tool => !localTool(tool))) {
     throw new Error('Only stateless coding requests without hosted tools are allowed.');
@@ -143,7 +146,9 @@ async function main() {
         .filter(key => process.env[key]).map(key => [key, process.env[key]]));
       let transcript = '', diagnostics = '';
       await new Promise((resolve, reject) => {
-        const child = cp.spawn('codex', [...providerArgs(), ...reviewerArgs(fixture, path.join(fixture, 'source.txt'), codexRuntime())],
+        const args = reviewerArgs(fixture, path.join(fixture, 'source.txt'), codexRuntime());
+        args.splice(1, 0, ...providerArgs());
+        const child = cp.spawn('codex', args,
           { cwd: fixture, env: safeEnv, stdio: ['pipe', 'pipe', 'pipe'] });
         child.stdin.end(prompt);
         child.stdout.on('data', data => { transcript += data; });
