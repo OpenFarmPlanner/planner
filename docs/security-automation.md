@@ -174,6 +174,58 @@ bot response. This repository cannot repair OpenAI's internal identity routing.
 
 ### Recovery and explicit human contingency
 
+#### Local review when Claude has no allowance
+
+Cloud provider availability is not a prerequisite for an independent manual
+review. Use a fresh local reviewer session, or a human reviewer, and the
+existing manual approval contract below. A local AI-assisted review is not a
+native Codex Security Report. It still requires a human maintainer's explicit
+approval; starting a reviewer is not approval of its eventual findings.
+
+The helper prepares a detached worktree, pins the base and head, includes both
+names of renamed files and deleted files, and writes a prompt and output schema.
+Run it from a trusted checkout, using a new output directory outside the repo:
+
+```bash
+python3 scripts/ci/local_security_review.py prepare 1053 --output /tmp/review-1053
+timeout 30m codex exec --ignore-user-config --ephemeral --sandbox read-only \
+  --cd /tmp/review-1053/source --output-schema /tmp/review-1053/schema.json \
+  --output-last-message /tmp/review-1053/review.json - \
+  < /tmp/review-1053/prompt.txt > /tmp/review-1053/execution.log 2>&1 &&
+python3 scripts/ci/local_security_review.py finish --output /tmp/review-1053
+```
+
+This starts a new session without the implementation conversation or user
+configuration. It uses the CLI's configured authentication; local execution
+does not guarantee available model quota. If the CLI fails, times out, or also
+has no allowance, retain its execution log and give `prompt.txt`, the pinned
+worktree and `schema.json` to an independent human reviewer. They can write
+`review.json` and run `finish` without any model subscription or API budget.
+Never reuse the implementation session to fill in a review result. No finding,
+candidate, coverage gap or provider failure may be converted into a clean report.
+
+`finish` refuses stale heads, changed bases/scopes, missing or duplicate paths,
+incomplete reviews, findings and limitations. Findings remain in `review.json`
+for remediation; after fixes, prepare a new bundle for the new head. It removes
+any previously rendered report before validation, so a failed revalidation
+cannot leave a clean report behind. Validation checks the report's declared
+coverage, not whether the analysis is correct; inspect the execution log and
+analysis before approving. The helper never publishes, attests, reruns CI, or
+merges anything.
+
+Inspect `report.md`, then publish it on the same PR with an explicit request to
+the agent or `gh pr comment 1053 --body-file /tmp/review-1053/report.md`. A human
+admin/maintainer then posts the exact-head manual approval below, linking that
+comment. This works with the already-installed base policy, including PR #1053;
+the helper does not need to merge first. After approval, rerun the failed CI
+jobs together. Keep the bundle until the PR merges, then remove its worktree
+with `git worktree remove /tmp/review-1053/source` and delete the bundle.
+
+The CLI flags above follow the official
+[non-interactive mode documentation](https://learn.chatgpt.com/docs/non-interactive-mode).
+
+#### Cloud recovery and approval formats
+
 The fallback uses `CODEX_REVIEW_GITHUB_TOKEN`, otherwise `RELEASE_PAT`, from a
 personal user linked to the intended Codex account. `GITHUB_TOKEN` is not a
 subscription identity. The request job loads base-commit automation, disables
@@ -240,6 +292,7 @@ Local policy regression checks:
 
 ```bash
 python3 -m unittest discover -s tests -p test_claude_review_fallback.py
+python3 -m unittest discover -s tests -p test_local_security_review.py
 node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs
 ```
 

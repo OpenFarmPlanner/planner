@@ -211,7 +211,12 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
   } while (true);
   await core.summary.addHeading('Security review completion').addRaw(
     `State: **${result.state}**\n\nHead: \`${expectedHead}\`\n\n${result.reason}\n\n` +
-    (result.evidence ? `Evidence: ${result.evidence}\n` : '')).write();
+    (result.evidence ? `Evidence: ${result.evidence}\n` : '') +
+    (!result.allowed ? '\nRecovery: complete an independent local or human review and obtain explicit ' +
+      'maintainer approval of its exact-head report. No Claude allowance is required for this route. ' +
+      'See [review recovery](https://github.com/' + context.repo.owner + '/' + context.repo.repo +
+      '/blob/main/docs/security-automation.md#recovery-and-explicit-human-contingency). ' +
+      'After approval, rerun all failed jobs in this CI run together.\n' : '')).write();
   core.setOutput('security_review_state', result.state);
   if (!result.allowed) core.setFailed(`Security review gate blocked: ${result.state}. ${result.reason}`);
   return result;

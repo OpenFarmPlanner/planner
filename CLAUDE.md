@@ -544,5 +544,12 @@ content patterns live, commented, in the triage step's `env` block.
   structured terminal report naming the final SHA and changed files.
   Setup and follow-up expectations live in
   `docs/security-automation.md`.
+- **Local fallback:** when cloud providers cannot complete a review, prepare a
+  pinned bundle with `scripts/ci/local_security_review.py`. A fresh local AI
+  reviewer or independent human can review it without Claude allowance. The
+  helper validates declared head/scope/completeness and renders the existing
+  manual-review report; a human maintainer must inspect and approve it. It
+  never manufactures approval or certifies a native cloud scan. Exact commands
+  and the no-model-budget human route live in `docs/security-automation.md`.
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.
