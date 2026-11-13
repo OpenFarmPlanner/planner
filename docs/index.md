@@ -197,7 +197,7 @@ table of what is and isn't implemented.
   mobile) with deterministic layout assertions and failure artifacts.
 - [`security-automation.md`](./security-automation.md) — automated dependency,
   SAST, Django deployment, and GitHub-native security coverage, exact-head review
-  completion gates, provider limitations, pinned local review bundles and
+  completion gates, verified signed local Codex execution, pinned review bundles and
   explicit human contingencies when cloud providers have no allowance.
 - [`security-review-log.md`](./security-review-log.md) — frozen history of
   security reviews up to 2026-10-17; no new entries. Reviews are now

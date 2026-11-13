@@ -2,12 +2,73 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
+
+// Standing trust is installed through review of this base policy, never through a PR report.
+const CODEX_SIGNERS = { 'martin-local-2026-11': `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA4qTU20eIF+4hSJaVuEAr0rhS4mbniiHd3MZv4JX2ufw=
+-----END PUBLIC KEY-----` };
+const CODEX_SOURCES = ['scripts/ci/run_codex_review.cjs', 'scripts/ci/local_security_review.py'];
 
 const SHA = /^[0-9a-f]{40}$/;
 const sameScope = (left, right) => Array.isArray(left) &&
   JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 const passed = (state, reason, evidence) => ({ state, reason, evidence, allowed: true });
 const blocked = (state, reason) => ({ state, reason, allowed: false });
+
+function signedCodexPayload(comment, keys = CODEX_SIGNERS) {
+  const match = (comment.body ?? '').match(/^<!-- codex-execution:v1 -->\n```json\n([^\n]+)\n```(?:\n|$)/m);
+  if (!match || match[1].length > 60_000) return null;
+  try {
+    const envelope = JSON.parse(match[1]);
+    if (typeof envelope.payload !== 'string' || typeof envelope.signature !== 'string') return null;
+    const bytes = Buffer.from(envelope.payload, 'base64');
+    const payload = JSON.parse(bytes.toString('utf8'));
+    if (!Object.hasOwn(keys, payload.issuer) || !crypto.verify(null, bytes,
+      keys[payload.issuer], Buffer.from(envelope.signature, 'base64'))) return null;
+    return payload;
+  } catch { return null; }
+}
+
+async function verifiedCodexReview({ github, context, comments, head, base, scope,
+  now = Date.now(), keys = CODEX_SIGNERS }) {
+  const receipts = comments.map(comment => ({ payload: signedCodexPayload(comment, keys), comment }))
+    .filter(({ payload: item }) => item?.repository === `${context.repo.owner}/${context.repo.repo}` &&
+      item.pull_request === context.payload.pull_request.number && item.head_sha === head)
+    .sort((a, b) => String(b.payload.completed_at).localeCompare(String(a.payload.completed_at)));
+  if (!receipts.length) return null;
+  const { payload: item, comment } = receipts[0];
+  const invalid = reason => blocked('codex_evidence_invalid', reason);
+  const exactScope = value => Array.isArray(value) && value.every(file => typeof file === 'string') &&
+    JSON.stringify([...value].sort()) === JSON.stringify(scope);
+  const age = now - Date.parse(item.completed_at);
+  if (!Number.isFinite(age) || age < -300_000 || age > 7 * 24 * 60 * 60_000) {
+    return invalid('Signed local review evidence is expired or has an invalid timestamp.');
+  }
+  if (item.schema !== 1 || item.provider !== 'codex-local' || item.base_sha !== base ||
+      !exactScope(item.scope) || item.fresh !== true || item.exit_code !== 0 ||
+      item.sandbox !== 'restricted-read-only' || !/^[0-9a-f-]{36}$/.test(item.thread_id) ||
+      !/^[0-9a-f]{64}$/.test(item.execution_sha256) || !/^[0-9a-f]{64}$/.test(item.prompt_sha256)) {
+    return invalid('The signed review does not match the current base, scope or execution contract.');
+  }
+  for (const filename of CODEX_SOURCES) {
+    const { data } = await github.rest.repos.getContent({ ...context.repo, path: filename, ref: base });
+    if (data.encoding !== 'base64' || typeof data.content !== 'string') return invalid('Trusted launcher is unavailable.');
+    const hash = crypto.createHash('sha256').update(Buffer.from(data.content, 'base64')).digest('hex');
+    if (item.sources?.[filename] !== hash) return invalid('The launcher/helper differs from the trusted base.');
+  }
+  const review = item.review;
+  if (item.result !== 'no_issues' || review?.complete !== true || review.reviewed_sha !== head ||
+      !exactScope(review.scope) || !Array.isArray(review.findings) || review.findings.length ||
+      !Array.isArray(review.limitations) || review.limitations.length ||
+      typeof review.analysis !== 'string' || !review.analysis.trim() ||
+      !Array.isArray(review.review_notes) || review.review_notes.some(note => typeof note !== 'string')) {
+    return blocked('codex_local_incomplete', 'The latest signed independent review is incomplete or has unresolved findings.');
+  }
+  return passed('codex_local_completed',
+    'A trusted launcher verified fresh independent Codex execution, exact scope and a clean result. No per-PR human approval is required.',
+    comment.html_url);
+}
 
 function evaluate({ head, scope, triage, claude, approval, request, rejection, failed, providerPending }) {
   if (approval) return passed(approval.mode === 'codex' ? 'codex_completed_attested' : 'manual_review_approved',
@@ -111,7 +172,8 @@ async function readArtifact({ github, coordinates, run, name, filename }) {
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 }
 
-async function snapshot({ github, context, expectedHead, artifactReader = readArtifact }) {
+async function snapshot({ github, context, expectedHead, artifactReader = readArtifact,
+  codexVerifier = verifiedCodexReview }) {
   const coordinates = { ...context.repo, issue_number: context.payload.pull_request.number };
   const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: coordinates.issue_number });
   if (!SHA.test(expectedHead) || pr.head.sha !== expectedHead) {
@@ -132,6 +194,9 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
   // Approval is explicit, head-bound and recorded separately from provider completion.
   if (approval) return evaluate({ head: expectedHead, scope, approval });
+  const codex = await codexVerifier({ github, context, comments, head: expectedHead,
+    base: pr.base.sha, scope });
+  if (codex) return codex;
   // A PR can change the triage script embedded in this workflow. Preserve
   // the provider's self-change guard without trusting its edited skip output.
   if (scope.includes('.github/workflows/claude-pr.yml')) {
@@ -205,15 +270,15 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);
   await core.summary.addHeading('Security review completion').addRaw(
     `State: **${result.state}**\n\nHead: \`${expectedHead}\`\n\n${result.reason}\n\n` +
     (result.evidence ? `Evidence: ${result.evidence}\n` : '') +
-    (!result.allowed ? '\nRecovery: complete an independent local or human review and obtain explicit ' +
-      'maintainer approval of its exact-head report. No Claude allowance is required for this route. ' +
+    (!result.allowed ? '\nRecovery: publish fresh signed evidence from the trusted local Codex launcher, ' +
+      'or obtain explicit maintainer approval of an independent manual report. No Claude allowance is required. ' +
       'See [review recovery](https://github.com/' + context.repo.owner + '/' + context.repo.repo +
       '/blob/main/docs/security-automation.md#recovery-and-explicit-human-contingency). ' +
       'After approval, rerun all failed jobs in this CI run together.\n' : '')).write();
@@ -222,4 +287,5 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
   return result;
 }
 
-module.exports = { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce };
+module.exports = { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce,
+  signedCodexPayload, verifiedCodexReview, CODEX_SIGNERS, CODEX_SOURCES };
