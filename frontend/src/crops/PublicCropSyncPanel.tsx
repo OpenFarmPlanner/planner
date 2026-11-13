@@ -620,6 +620,7 @@ export function PublicCropSyncPanel({
             px: allowLocal ? { xs: 0.5, sm: 1 } : 1,
             py: 0.75,
             position: 'sticky',
+            [SHORT_VIEWPORT_QUERY]: { position: 'static' },
             // Sticky offsets count from inside the dialog content's padding;
             // pull the row up by that padding (theme: 12px after a title) so
             // no row shows through above it.

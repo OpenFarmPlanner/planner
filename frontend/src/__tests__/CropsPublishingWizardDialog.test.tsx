@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CropsPublishingWizardDialog } from '../pages/CropsPublishingWizardDialog';
@@ -779,7 +779,7 @@ describe('CropsPublishingWizardDialog', () => {
           requires_moderation: false,
           changes: [
             { field: 'growth_duration_days', local_value: 90, public_value: 80, pushable: true },
-            { field: 'notes', local_value: 'Meine Notiz', public_value: '', pushable: true },
+            { field: 'notes', local_value: 'Meine Notiz', public_value: '', pushable: true, pinnable: true },
           ],
         },
       });
@@ -810,6 +810,7 @@ describe('CropsPublishingWizardDialog', () => {
         '1 Wert wird in deine Kultur übernommen, 1 eigener Wert bleibt erhalten.',
       );
 
+      fireEvent.click(within(screen.getByTestId('public-crop-sync-row-notes')).getByRole('radio', { name: 'Nur lokal behalten' }));
       const submitButton = await screen.findByRole('button', { name: 'Verknüpfen und Werte übernehmen' });
       fireEvent.click(submitButton);
 
@@ -820,6 +821,7 @@ describe('CropsPublishingWizardDialog', () => {
         baseVersion: 4,
         pullFields: ['growth_duration_days'],
         pushFields: [],
+        pinFields: ['notes'],
         varieties: [],
       })));
     });

@@ -1,5 +1,5 @@
-import germanCrops from '../src/i18n/locales/de/crops.json';
-import frenchCrops from '../src/i18n/locales/fr/crops.json';
+import germanCrops from '../src/i18n/locales/de/crops.json' with { type: 'json' };
+import frenchCrops from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import { expect, test, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
@@ -204,6 +204,10 @@ for (const entryPoint of ['publish', 'import'] as const) {
     }
     const confirm = page.getByRole('button', { name: labels.library.linkExisting.confirm });
     await expect(confirm).toBeEnabled();
+    const localChoice = page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: labels.library.sync.chooseLocal });
+    await localChoice.focus();
+    await localChoice.press('Space');
+    await expect(localChoice).toBeChecked();
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
       await page.setViewportSize(viewport);
@@ -211,9 +215,11 @@ for (const entryPoint of ['publish', 'import'] as const) {
       const bounds = await dialog.boundingBox();
       expect(bounds?.x).toBeGreaterThanOrEqual(0);
       expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+      const localOption = page.getByTestId('public-crop-sync-row-notes').locator('[data-choice="local"]');
+      await localOption.scrollIntoViewIfNeeded();
+      await expect(localOption).toBeInViewport();
       await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-${viewport.width}.png`) });
     }
-    await page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: labels.library.sync.chooseLocal }).check();
     await confirm.click();
     await expect(confirm).not.toBeVisible();
     const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
