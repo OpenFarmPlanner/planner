@@ -32,9 +32,11 @@ for (const [language, width, height, interrupted] of [
     await apiRequest(page, 'POST', '/crops/', { name: 'Existing crop' });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/crops');
-    // The loaded project label changes header geometry after navigation.
+    // Project data and the lazy route's registered action both change header geometry.
     await expect(page.getByRole('button', { name: navigation.projectSwitcher.ariaLabel, exact: true }))
       .toContainText(`E2E Project ${scenarioId}`);
+    await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew }))
+      .toBeVisible();
     await page.getByRole('button', { name: navigation.cropActions.openImportExport, exact: true }).click();
     await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
     await page.setViewportSize({ width, height });
@@ -139,6 +141,8 @@ for (const [language, width, height] of [
     await page.goto('/app/crops');
     await expect(page.getByRole('button', { name: navigation.projectSwitcher.ariaLabel, exact: true }))
       .toContainText(`E2E Project ${scenarioId}`);
+    await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew }))
+      .toBeVisible();
     await page.getByRole('button', { name: navigation.cropActions.openImportExport, exact: true }).click();
     await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
     await page.setViewportSize({ width, height });
