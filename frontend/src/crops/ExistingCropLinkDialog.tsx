@@ -18,14 +18,14 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const [targetId, setTargetId] = useState<number | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
-  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId));
+  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), true);
   const confirm = async () => {
     if (!targetId || !preview.preview) return;
     setSubmitting(true);
     setFailed(false);
     try {
-      const fields = preview.preview.changes.filter((change) => preview.choices[change.field] !== 'mine').map((change) => change.field);
-      const response = await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at);
+      const fields = preview.preview.changes.filter((change) => preview.choices[change.field] !== 'mine' && preview.choices[change.field] !== 'local').map((change) => change.field);
+      const response = await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at, preview.selection.pinFields);
       onLinked(response.data);
     } catch {
       setFailed(true);
@@ -48,7 +48,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           </TextField>
           {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map((change) => ({ ...change, pushable: true })) ?? null}
             choices={preview.choices} onChoicesChange={preview.setChoices} requiresModeration={false}
-            keepMineLocally disabled={submitting} loadError={preview.loadError} /> : null}
+            keepMineLocally allowLocal disabled={submitting} loadError={preview.loadError} /> : null}
           {failed ? <Alert severity="error">{t('library.linkExisting.failed')}</Alert> : null}
         </Stack>
       </DialogContent>

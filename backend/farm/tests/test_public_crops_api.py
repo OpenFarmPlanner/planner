@@ -1512,6 +1512,64 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertNotIn(hidden.id, ids)
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_initial_link_pins_local_values_atomically_and_updates_respect_them(self):
+        general = Crop.objects.create(project=self.project, name='Pinned synthetic tomato',
+                                      growth_duration_days=90, notes='Private synthetic notes')
+        entry = PublicCrop.objects.create(name=general.name, variety='', status='published',
+                                         created_by=self.user, growth_duration_days=80,
+                                         notes='Library notes')
+        response = self.client.post(f'/openfarmplanner/api/crops/{general.pk}/link-public-crop/', {
+            'public_crop_id': entry.pk, 'base_version': entry.version,
+            'pull_fields': ['growth_duration_days'], 'pin_fields': ['notes'],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        general.refresh_from_db()
+        self.assertEqual(general.library_pinned_fields, ['notes'])
+        self.assertEqual(general.growth_duration_days, 80)
+        self.assertEqual(general.notes, 'Private synthetic notes')
+        self.assertFalse(general.is_modified_from_source)
+        entry.refresh_from_db()
+        self.assertEqual(entry.notes, 'Library notes')
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+        self.assertFalse(DocumentConsent.objects.filter(
+            user=self.user, document=DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
+        ).exists())
+        entry.notes = 'Later library notes'
+        entry.version += 1
+        entry.save()
+        general.refresh_from_db()
+        self.assertFalse(has_pending_public_crop_update(general, entry))
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {
+            'mode': 'update', 'base_version': entry.version,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        general.refresh_from_db()
+        self.assertEqual(general.notes, 'Private synthetic notes')
+        self.assertEqual(general.library_pinned_fields, ['notes'])
+
+    def test_initial_link_rejects_invalid_and_overlapping_pins_without_mutation(self):
+        general = Crop.objects.create(project=self.project, name='Invalid pin synthetic tomato')
+        entry = PublicCrop.objects.create(name=general.name, variety='', status='published',
+                                         created_by=self.user, growth_duration_days=80)
+        for fields in (['name'], ['growth_duration_days'], ['unknown_field']):
+            response = self.client.post(f'/openfarmplanner/api/crops/{general.pk}/link-public-crop/', {
+                'public_crop_id': entry.pk, 'pull_fields': [], 'pin_fields': fields,
+            }, format='json')
+            self.assertEqual(response.status_code, 400, response.data)
+            general.refresh_from_db()
+            self.assertIsNone(general.source_public_crop_id)
+            self.assertEqual(general.library_pinned_fields, [])
+        general.growth_duration_days = 90
+        general.save()
+        response = self.client.post(f'/openfarmplanner/api/crops/{general.pk}/link-public-crop/', {
+            'public_crop_id': entry.pk, 'pull_fields': ['growth_duration_days'],
+            'pin_fields': ['growth_duration_days'],
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        general.refresh_from_db()
+        self.assertIsNone(general.source_public_crop_id)
+        self.assertEqual(general.growth_duration_days, 90)
+
     def test_general_import_requires_explicit_link_and_preserves_twelve_varieties(self):
         species = CropSpecies.objects.create(name='Synthetic Tomato')
         general = Crop.objects.create(project=self.project, name=species.name, crop_species=species,

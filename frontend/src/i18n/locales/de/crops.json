@@ -1588,7 +1588,8 @@
       "takeLibrary": "Aus Bibliothek übernehmen",
       "keepLocal": "Eigenen Wert behalten",
       "ambiguousDelete": "Diese Gruppe enthält mehrere allgemeine Kulturen. Um einen unerwarteten Gruppenverlust zu verhindern, ist das Löschen gesperrt. Die Daten müssen zuerst eindeutig zugeordnet werden.",
-      "intro": "Verknüpfe {{name}} mit einem bestehenden Bibliothekseintrag oder veröffentliche eine eigene Kultur."
+      "intro": "Verknüpfe {{name}} mit einem bestehenden Bibliothekseintrag oder veröffentliche eine eigene Kultur.",
+      "keepLocalDescription": "Jetzt behalten, später erneut vergleichen"
     }
   },
   "commands": {

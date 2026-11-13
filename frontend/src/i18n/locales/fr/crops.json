@@ -1629,7 +1629,8 @@
       "takeLibrary": "Utiliser la valeur du catalogue",
       "keepLocal": "Conserver la valeur locale",
       "ambiguousDelete": "Ce groupe contient plusieurs cultures générales. La suppression est bloquée pour éviter la perte inattendue du groupe. Les fiches doivent d’abord être identifiées sans ambiguïté.",
-      "intro": "Associez {{name}} à une fiche existante du catalogue ou publiez votre propre culture."
+      "intro": "Associez {{name}} à une fiche existante du catalogue ou publiez votre propre culture.",
+      "keepLocalDescription": "Conserver maintenant, comparer à nouveau plus tard"
     }
   },
   "commands": {

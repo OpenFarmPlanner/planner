@@ -647,12 +647,12 @@ export function PublicCropSyncPanel({
           <SyncColumnHeading
             column="mine"
             label={t(keepMineLocally ? 'library.linkExisting.keepLocal' : 'library.sync.columnMine')}
-            actionLabel={t(allowLocal ? 'library.sync.allShare' : 'library.sync.allMine')}
+            actionLabel={t(allowLocal && !keepMineLocally ? 'library.sync.allShare' : 'library.sync.allMine')}
             disabled={disabled}
             onAction={() => setAll('mine')}
             {...(allowLocal ? {
-              icon: ArrowUpwardIcon,
-              description: t('library.sync.columnMineDescription'),
+              ...(keepMineLocally ? {} : { icon: ArrowUpwardIcon }),
+              description: t(keepMineLocally ? 'library.linkExisting.keepLocalDescription' : 'library.sync.columnMineDescription'),
               testId: 'public-crop-sync-heading-mine',
             } : {})}
           />

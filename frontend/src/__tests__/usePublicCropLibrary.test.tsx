@@ -155,7 +155,7 @@ describe('usePublicCropLibrary field-by-field sync', () => {
     const showSnackbar = vi.fn();
     const { result } = renderLibraryHook(showSnackbar);
     await expect(result.current.handleLinkPublicCrop(LINK_DATA)).resolves.toBe(true);
-    expect(linkPublicCropMock).toHaveBeenCalledWith(1, 77, ['growth_duration_days'], 4, undefined);
+    expect(linkPublicCropMock).toHaveBeenCalledWith(1, 77, ['growth_duration_days'], 4, undefined, undefined);
     expect(publicSyncMock).not.toHaveBeenCalled();
     expect(showSnackbar).toHaveBeenCalledWith('„Tomate“ wurde mit der Kulturbibliothek verknüpft.', 'success');
   });

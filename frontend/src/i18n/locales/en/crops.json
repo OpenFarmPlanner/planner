@@ -1588,7 +1588,8 @@
       "takeLibrary": "Take library value",
       "keepLocal": "Keep local value",
       "ambiguousDelete": "This group contains multiple general crops. Deletion is blocked to prevent unexpected loss of the group. The records need an unambiguous identity first.",
-      "intro": "Link {{name}} to an existing library entry or publish your own crop."
+      "intro": "Link {{name}} to an existing library entry or publish your own crop.",
+      "keepLocalDescription": "Keep now, compare again later"
     }
   },
   "commands": {

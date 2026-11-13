@@ -221,6 +221,7 @@ export function usePublicCropLibrary({
     baseVersion: number;
     cropUpdatedAt?: string;
     pullFields: string[];
+    pinFields?: string[];
     pushFields: string[];
     varieties?: PublishVarietySelection[];
   }): Promise<boolean> => {
@@ -231,7 +232,7 @@ export function usePublicCropLibrary({
     try {
       setPublishingCropId(selectedCrop.id);
       try {
-        const linked = await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt);
+        const linked = await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt, data.pinFields);
         await onImportSuccess(linked.data);
       } catch (error) {
         console.error('Error linking crop:', error);

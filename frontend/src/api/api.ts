@@ -201,12 +201,13 @@ export const cropAPI = {
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
   // `pullFields` (link confirmation) take the entry's values in the same
   // transaction as the link; omitted, no local value changes.
-  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string) =>
+  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string, pinFields?: string[]) =>
     http.post<Crop>(`/crops/${id}/link-public-crop/`, {
       public_crop_id: publicCropId,
       ...(baseVersion !== undefined ? { base_version: baseVersion } : {}),
       ...(cropUpdatedAt ? { expected_updated_at: cropUpdatedAt } : {}),
       ...(pullFields ? { pull_fields: pullFields } : {}),
+      ...(pinFields?.length ? { pin_fields: pinFields } : {}),
     }),
   // Removes the sync link to somebody else's entry; values and provenance stay.
   unlinkPublicCrop: (id: number) => http.post<Crop>(`/crops/${id}/unlink-public-crop/`),

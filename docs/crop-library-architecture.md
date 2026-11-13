@@ -2322,3 +2322,12 @@ render as general entries rather than varieties. Ambiguous group rename/delete
 operations are rejected. Delete preview exposes the full affected IDs, planning
 count and `ambiguous_general_group`; the UI explains the block and disables
 confirmation. No production repair is performed.
+
+Initial linking also offers **Nur lokal** using the same pin rules as an existing
+link's sync. The ordinary local choice keeps the current value for this decision;
+the third choice persists `library_pinned_fields`, excludes that field from later
+library pulls/pushes and can be released explicitly through the existing sync UI.
+`link-public-crop` validates `pin_fields` and applies the link, selected pulls and
+pins in one transaction. Identity fields, empty values and species-invariant
+variety fields retain their existing restrictions. Neither local choice publishes
+anything or requires contribution consent.

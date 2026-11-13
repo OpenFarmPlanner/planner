@@ -146,3 +146,9 @@ Rules that cut across cells:
 Synthetic regressions cover a general Tomato and twelve varieties, explicit
 linking, repeated import, project-scoped alias suggestions, stale versions, and
 legacy duplicate rename/deletion rollback.
+
+Both initial-link entry points offer the existing three-way comparison: library
+value, keep local for this decision, or **Nur lokal** (persistently pinned).
+Initial linking never pushes the middle column into the library. Invalid pins or
+overlap between `pull_fields` and `pin_fields` reject the complete request; valid
+pins survive later library updates until explicitly released.

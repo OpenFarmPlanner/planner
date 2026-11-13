@@ -1214,6 +1214,7 @@ def link_project_crop_to_public_reference(
     pull_fields: Sequence[str] | None = None,
     base_version: int | None = None,
     expected_updated_at: str | None = None,
+    pin_fields: Sequence[str] = (),
 ) -> Crop:
     """Link a private crop to a published public crop without publishing a duplicate.
 
@@ -1266,6 +1267,10 @@ def link_project_crop_to_public_reference(
             tracked_fields = tracked_fields - {'variety'} - VARIETY_ONLY_COPY_FIELDS
 
         crop.crop_species = public_crop.crop_species
+        if set(pin_fields) & set(pull_fields or ()):
+            raise PublicCropSyncFieldsError(sorted(set(pin_fields) & set(pull_fields or ())))
+        validate_library_pinned_fields(crop, pin_fields, is_linked=True)
+        crop.library_pinned_fields = sorted(set(pin_fields))
         if pull_fields is not None:
             _pull_public_crop_fields(crop=crop, public_crop=public_crop, fields=pull_fields)
         is_modified = any(
@@ -1611,7 +1616,9 @@ def build_public_crop_sync_preview(
     for field, local_value, public_value in _public_crop_sync_changes(
         crop, public_crop, include_pinned=True,
     ):
-        pin_blocked_reason = library_pin_blocked_reason(crop, field, local_value)
+        pin_blocked_reason = library_pin_blocked_reason(
+            _sync_comparison_crop(crop, public_crop), field, local_value,
+        )
         push_blocked_reason = (
             PUSH_BLOCKED_IDENTITY if field not in pushable
             else PUSH_BLOCKED_EMPTY if is_unset_crop_value(local_value)

@@ -782,6 +782,9 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             if pull_fields is None:
                 return _invalid_sync_fields_response()
 
+        pin_fields = _request_field_list(request.data.get('pin_fields', []))
+        if pin_fields is None:
+            return _invalid_sync_fields_response()
         public_crop = get_object_or_404(
             PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED),
             pk=public_crop_id,
@@ -791,10 +794,13 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 crop=crop, public_crop=public_crop, pull_fields=pull_fields,
                 base_version=base_version,
                 expected_updated_at=request.data.get('expected_updated_at'),
+                pin_fields=pin_fields,
             )
         except CropLinkConflictError as error:
             return api_error_response(code=error.code, detail=str(error), status_code=409)
         except PublicCropEditConflictError as error:
+            return self._public_sync_error_response(error)
+        except LibraryPinnedFieldsError as error:
             return self._public_sync_error_response(error)
         except PublicCropSyncFieldsError as error:
             return _invalid_sync_fields_response(error.fields, code=error.code)

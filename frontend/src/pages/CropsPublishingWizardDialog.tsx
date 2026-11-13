@@ -90,6 +90,7 @@ interface CropsPublishingWizardDialogProps {
     cropUpdatedAt?: string;
     /** Fields that take the entry's value, applied together with the link. */
     pullFields: string[];
+    pinFields?: string[];
     /** Legacy payload field; initial linking always sends an empty list. */
     pushFields: string[];
     varieties?: PublishVarietySelection[];
@@ -273,7 +274,7 @@ export function CropsPublishingWizardDialog({
     crop?.id,
     isSyncFlow ? linkedPublicCropId : selectedPublicCrop?.id,
     open && (isSyncFlow || (showLinkConfirmation && Boolean(selectedPublicCrop))),
-    isSyncFlow,
+    true,
   );
 
   useEffect(() => {
@@ -514,8 +515,9 @@ export function CropsPublishingWizardDialog({
         publicCropId: selectedPublicCrop.id,
         baseVersion: syncPreview.preview.public_version,
         cropUpdatedAt: syncPreview.preview.crop_updated_at,
-        pullFields: syncPreview.preview.changes.filter((change) => syncPreview.choices[change.field] !== 'mine').map((change) => change.field),
+        pullFields: syncPreview.preview.changes.filter((change) => syncPreview.choices[change.field] !== 'mine' && syncPreview.choices[change.field] !== 'local').map((change) => change.field),
         pushFields: [],
+        pinFields: syncPreview.selection.pinFields,
         varieties: [],
       });
       if (!success) {
@@ -532,7 +534,7 @@ export function CropsPublishingWizardDialog({
       setLinkConfirmSubmitting(false);
     }
   }, [crop, onLinkPublicCrop, originalLanguageCode, runPublishPreview,
-    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices]);
+    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices, syncPreview.selection.pinFields]);
 
   const handleConfirmSync = useCallback(async () => {
     if (!crop?.id || !linkedPublicCropId || !syncPreview.preview) return;
@@ -639,7 +641,7 @@ export function CropsPublishingWizardDialog({
       requiresModeration={Boolean(syncPreview.preview?.requires_moderation)}
       loadError={syncPreview.loadError}
       disabled={linkConfirmSubmitting || syncSubmitting || publishing}
-      allowLocal={isSyncFlow}
+      allowLocal
       keepMineLocally={!isSyncFlow}
     />
   );

@@ -1,3 +1,5 @@
+import germanCrops from '../src/i18n/locales/de/crops.json';
+import frenchCrops from '../src/i18n/locales/fr/crops.json';
 import { expect, test, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
@@ -166,14 +168,10 @@ for (const entryPoint of ['publish', 'import'] as const) {
       accepted_public_library_terms: true, crop_species_id: species.id, publish_as_general: true,
       original_language_code: 'de',
     });
-    // Withdraw the project copy only; the separate library entry remains published.
-    const deletionStatus = await page.evaluate(async (id) => {
-      const csrf = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))?.split('=')[1] ?? '';
-      return (await fetch(`/api/crops/${id}/`, { method: 'DELETE', headers: {
-        'X-CSRFToken': csrf, 'X-Project-Id': localStorage.getItem('activeProjectId') ?? '',
-      } })).status;
-    }, source.id);
-    expect(deletionStatus).toBe(204);
+    // The target grower is a different contributor in a different project.
+    // Their existing culture must link to this foreign library entry.
+    await apiRequest(page, 'POST', '/auth/logout/', {});
+    await loginWithDeterministicProject(page, request, `library-target-${entryPoint}-${Date.now()}`, { loginAsAdmin: true });
     const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
       growth_duration_days: 90, harvest_duration_days: 20, notes: 'Private synthetic note',
@@ -189,10 +187,13 @@ for (const entryPoint of ['publish', 'import'] as const) {
       season: season.id, crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
       cultivation_type: 'direct_sowing',
     });
+    const labels = entryPoint === 'import' ? frenchCrops : germanCrops;
     if (entryPoint === 'import') {
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+      await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
       await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
-      await page.getByRole('button', { name: /In Projekt importieren/ }).first().click();
-      await page.getByRole('combobox', { name: 'Vorhandene Kultur im Projekt' }).click();
+      await page.getByRole('button', { name: labels.library.importButton }).first().click();
+      await page.getByRole('combobox', { name: labels.library.linkExisting.localTarget }).click();
       await page.getByRole('option', { name: species.name, exact: true }).click();
     } else {
       await page.goto(`/app/crops?cropId=${local.id}`);
@@ -201,7 +202,7 @@ for (const entryPoint of ['publish', 'import'] as const) {
       await page.getByRole('option', { name: species.name, exact: true }).click();
       await page.getByRole('button', { name: 'Mit vorhandenem Eintrag verknüpfen', exact: true }).click();
     }
-    const confirm = page.getByRole('button', { name: 'Verknüpfen und Werte übernehmen' });
+    const confirm = page.getByRole('button', { name: labels.library.linkExisting.confirm });
     await expect(confirm).toBeEnabled();
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
@@ -212,13 +213,14 @@ for (const entryPoint of ['publish', 'import'] as const) {
       expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
       await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-${viewport.width}.png`) });
     }
-    await page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: 'Eigenen Wert behalten' }).check();
+    await page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: labels.library.sync.chooseLocal }).check();
     await confirm.click();
     await expect(confirm).not.toBeVisible();
-    const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string }>(page, 'GET', `/crops/${local.id}/`);
+    const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
     expect(linked.id).toBe(local.id);
     expect(linked.source_public_crop).toBe(published.public_crop.id);
     expect(linked.notes).toBe('Private synthetic note');
+    expect(linked.library_pinned_fields).toContain('notes');
     const preservedPlan = await apiRequest<{ crop: number }>(page, 'GET', `/planting-plans/${plan.id}/`);
     expect(preservedPlan.crop).toBe(variety.id);
     const entry = await apiRequest<{ notes: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
