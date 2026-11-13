@@ -211,6 +211,7 @@ class ProjectsApiTests(APITestCase):
                       'deleted_at': None, 'project_id': self.project.id},
         )
         live = Crop.objects.create(name='Tomate', variety='', project=self.project)
+        comparison_timestamp = live.updated_at
         Location.objects.create(name='anchor', project=self.project)
 
         history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
@@ -227,6 +228,8 @@ class ProjectsApiTests(APITestCase):
         )
         self.assertEqual(general_tomate.count(), 1)
         self.assertEqual(general_tomate.first().pk, live.pk)
+        live.refresh_from_db()
+        self.assertNotEqual(live.updated_at, comparison_timestamp)
 
     def test_project_history_restore_leaves_untracked_rows_untouched(self) -> None:
         """Rows created outside the API (the demo seeder, the auto default

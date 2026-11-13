@@ -220,6 +220,7 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
     touched: set[int] = set()
     with transaction.atomic():
         for relation in text_relations:
+            previous_owner_id = relation.crop_id
             neighbour = kultur_by_name.get(normalize_text(relation.companion_text))
             if neighbour is None or neighbour.id == relation.crop_id:
                 continue
@@ -234,7 +235,7 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
                 relation.save(
                     update_fields=['crop', 'companion_crop', 'companion_text', 'updated_at'],
                 )
-            touched.update((relation.crop_id, neighbour.id))
+            touched.update((previous_owner_id, relation.crop_id, neighbour.id))
             changed += 1
         mark_library_copies_modified(touched)
     return changed
@@ -488,7 +489,7 @@ def _apply_import_item(
     if not patch.get('note') and not replace_notes:
         patch.pop('note', None)
     notes = merge_notes({}, patch, language)
-    CropCompanion.objects.create(
+    relation = CropCompanion.objects.create(
         project_id=kultur.project_id,
         kind=kind,
         reason=item['reason'],
@@ -496,6 +497,7 @@ def _apply_import_item(
         note=legacy_note(notes),
         **relation_kwargs(kultur, target),
     )
+    _touch_companion_crops((relation.crop_id, relation.companion_crop_id))
     report.created += 1
 
 

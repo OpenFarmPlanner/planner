@@ -211,6 +211,8 @@ def _restore_project_state_at(project: Project, target_time) -> None:
             for object_id, snapshot in states.items():
                 if snapshot is not None and object_id in present_ids[model]:
                     _restore_snapshot_children(model, object_id, snapshot)
+        # Restoring shared companion rows can change crops outside the snapshot set.
+        Crop.objects.filter(project=project).update(updated_at=timezone.now())
 
 
 def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:

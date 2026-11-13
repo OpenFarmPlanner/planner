@@ -2318,6 +2318,8 @@ Current link clients send the preview's library `base_version` and local
 Companion writes advance the timestamps of both related general crops, including
 unlinked candidates, and share the project lock with linking. A neighbour edit
 after the preview therefore invalidates confirmation before relations are replaced.
+Project-wide history recovery also advances crop timestamps, including crops whose
+shared relations changed without their own snapshot being restored.
 Older clients may omit these optional preconditions.
 
 Ordinary crop CRUD, implicit general creation, library species changes and
