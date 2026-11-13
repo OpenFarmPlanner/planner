@@ -36,12 +36,17 @@ implementations run in separate clones with no signing-key, controller-state,
 trusted-checkout or host-credential filesystem access. Shell networking uses an
 active proxy allowing only npm/PyPI registries, with local/private services and
 local binding forbidden. Unit/static checks run there; UI/E2E and database-service
-checks run in isolated GitHub CI. The host publishes their
-clean commits as draft PRs. The existing restricted launcher produces a fresh
+checks run in isolated GitHub CI. Git metadata stays read-only in the sandbox:
+authors edit/test files and return structured commit metadata. The host prepares
+branch merges, validates the edited tree, creates commits with hooks disabled
+and publishes draft PRs. The existing restricted launcher produces a fresh
 independent signed review. Findings and branch/test failures return to bounded
 implementation sessions. Verified exact-head/base/scope evidence allows the
 controller to make the PR ready, refresh the review gate and wait for required
 CI checks, resolved threads and mergeability before a SHA-bound squash merge.
+The worker also requires GitHub's strict up-to-date status-check rule: GitHub
+therefore rejects the merge atomically if `main` advances after the final
+base-pinned evidence check, while `--match-head-commit` rejects a changed head.
 The next timer tick continues with the live queue; routine human sign-off is
 not needed. GitHub rules and the review verifier remain binding.
 

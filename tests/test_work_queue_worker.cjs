@@ -4,7 +4,7 @@ const cp = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, sanitizeAuthorGit, Worker } = require('../scripts/ci/work_queue_worker.cjs');
+const { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, authorResult, sanitizeAuthorGit, commitAuthorChanges, Worker } = require('../scripts/ci/work_queue_worker.cjs');
 
 test('older gh pagination preserves all pages and embedded newlines for arrays and check-run objects', () => {
   assert.deepEqual(parsePages('[{"body":"first\\nsecond"}]\n[{"body":"third"}]\n'),
@@ -81,6 +81,36 @@ test('author-controlled Git commands cannot install host credential helpers or r
   assert.throws(() => sanitizeAuthorGit(directory), /Unsafe/);
 });
 
+test('the host commits sandbox edits without running author hooks or requiring sandbox Git writes', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'worker-commit-test-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const localGit = (...args) => cp.execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8' }).trim();
+  localGit('init', '-q', '-b', 'queue/test');
+  localGit('config', 'user.name', 'Queue test');
+  localGit('config', 'user.email', 'queue@example.invalid');
+  localGit('-c', 'core.hooksPath=/dev/null', 'commit', '--allow-empty', '-m', 'chore: fixture');
+  const before = localGit('rev-parse', 'HEAD');
+  const marker = path.join(directory, 'hook-was-executed');
+  fs.writeFileSync(path.join(directory, '.git/hooks/pre-commit'), `#!/bin/sh\ntouch '${marker}'\n`, { mode: 0o700 });
+  fs.writeFileSync(path.join(directory, 'change.txt'), 'Sandbox-edited source\n');
+  commitAuthorChanges(directory, before, 'queue/test', 'fix: tested sandbox change',
+    { name: 'Queue test', email: 'queue@example.invalid' });
+  assert.equal(localGit('status', '--porcelain'), '');
+  assert.equal(localGit('log', '-1', '--format=%s'), 'fix: tested sandbox change');
+  assert.equal(fs.existsSync(marker), false);
+  assert.notEqual(localGit('rev-parse', 'HEAD'), before);
+});
+
+test('author final metadata requires successful execution and a valid single-line commit title', () => {
+  const output = title => [{ type: 'item.completed', item: { type: 'agent_message',
+    text: JSON.stringify({ commit_title: title, summary: 'Changed source', tests: [] }) } },
+  { type: 'turn.completed' }].map(row => JSON.stringify(row)).join('\n');
+  assert.equal(authorResult(output('fix: preserve references')).commit_title, 'fix: preserve references');
+  assert.throws(() => authorResult(output('fix: title\ninjected line')));
+  assert.throws(() => authorResult(output('not conventional')));
+  assert.throws(() => authorResult(output('fix: valid').replace('turn.completed', 'turn.failed')));
+});
+
 test('dry run reads a queue item and its existing implementation without any writes or model calls', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'worker-test-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -132,8 +162,9 @@ test('persistent consumed attempts prevent repeating a failed model review after
   await assert.rejects(worker.pull({ number: 3, isPR: false }, 4), /already consumed/);
 });
 
-test('merge requires clean evidence, current selection, successful gates and resolved threads, and binds the SHA', async t => {
-  for (const scenario of ['clean', 'pending-ci', 'failed-quality', 'unresolved-thread', 'missing-evidence', 'draft', 'changed-head']) {
+test('merge requires clean evidence, current selection, successful gates and resolved threads, and binds head and base', async t => {
+  for (const scenario of ['clean', 'pending-ci', 'failed-quality', 'unresolved-thread', 'missing-evidence', 'draft',
+    'changed-head', 'non-strict-protection', 'base-advanced-during-merge']) {
     await t.test(scenario, async t => {
       const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'worker-merge-test-'));
       t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -153,12 +184,20 @@ test('merge requires clean evidence, current selection, successful gates and res
       const writes = [];
       t.mock.method(cp, 'spawnSync', (binary, argv) => {
         assert.equal(binary, 'gh');
-        if (argv[0] !== 'api') { writes.push(argv); return { status: 0, stdout: '' }; }
+        if (argv[0] !== 'api') {
+          writes.push(argv);
+          if (scenario === 'base-advanced-during-merge' && argv[0] === 'pr' && argv[1] === 'merge') {
+            return { status: 1, stderr: 'Base branch was modified. Review and try the merge again.' };
+          }
+          return { status: 0, stdout: '' };
+        }
         let value;
         const endpoint = argv.find(arg => arg.startsWith('repos/')) ?? argv.at(-1);
         if (argv[1] === 'graphql') value = { data: { repository: { pullRequest: { reviewDecision: '',
           reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [{ isResolved: scenario !== 'unresolved-thread' }] } } } } };
-        else if (endpoint.includes('required_status_checks')) value = { checks: [{ context: 'quality', app_id: 1 }] };
+        else if (endpoint.includes('required_status_checks')) value = {
+          strict: scenario !== 'non-strict-protection', checks: [{ context: 'quality', app_id: 1 }],
+        };
         else if (endpoint.includes('check-runs')) value = [{ check_runs: [
           { id: 2, name: 'quality', app: { id: 1 }, status: scenario === 'pending-ci' ? 'in_progress' : 'completed',
             conclusion: scenario === 'failed-quality' ? 'failure' : 'success' },
@@ -167,11 +206,12 @@ test('merge requires clean evidence, current selection, successful gates and res
         else value = [[]];
         return { status: 0, stdout: JSON.stringify(value) };
       });
-      if (['unresolved-thread', 'missing-evidence', 'changed-head'].includes(scenario)) {
+      if (['unresolved-thread', 'missing-evidence', 'changed-head', 'non-strict-protection',
+        'base-advanced-during-merge'].includes(scenario)) {
         await assert.rejects(worker.pull({ number: 3, isPR: false }, 4));
       } else await worker.pull({ number: 3, isPR: false }, 4);
       const merges = writes.filter(argv => argv[0] === 'pr' && argv[1] === 'merge');
-      assert.equal(merges.length, scenario === 'clean' ? 1 : 0);
+      assert.equal(merges.length, ['clean', 'base-advanced-during-merge'].includes(scenario) ? 1 : 0);
       assert.equal(repairs.length, scenario === 'failed-quality' ? 1 : 0);
       if (merges.length) assert.deepEqual(merges[0].slice(-2), ['--match-head-commit', 'head']);
     });
