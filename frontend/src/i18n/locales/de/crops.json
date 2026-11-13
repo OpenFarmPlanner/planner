@@ -693,7 +693,18 @@
       "network": "Netzwerkfehler beim Import.",
       "someFailures_one": "{{count}} Eintrag konnte nicht importiert werden.",
       "someFailures_other": "{{count}} Einträge konnten nicht importiert werden.",
-      "rowFailed": "Dieser Eintrag konnte nicht gespeichert werden."
+      "rowFailed": "Dieser Eintrag konnte nicht gespeichert werden.",
+      "bodyLimit": "Die Datei enthält zu große Einträge oder zu viele unterschiedliche Nachbarnamen. Kürze lange Texte oder teile die Datei vor einem erneuten Import. Bereits bestätigte Zeilen bleiben gespeichert.",
+      "invalidResponse": "Die Antwort konnte nicht bestätigt werden. Prüfe die Kulturen vor einem erneuten Import, damit gespeicherte Daten nicht unbeabsichtigt überschrieben werden.",
+      "notSent": "Dieser Eintrag wurde nicht gespeichert.",
+      "unknown": "Ob dieser Eintrag gespeichert wurde, ist unklar. Prüfe die Kulturen vor einem erneuten Import.",
+      "companionsNotSent": "Kultur gespeichert; die Nachbarn wurden noch nicht importiert.",
+      "companionsUnknown": "Kultur gespeichert; ob die Nachbarn übernommen wurden, ist unklar. Prüfe die Nachbarn vor einem erneuten Import.",
+      "invalidReference": "Die Kultur ist im aktuellen Projekt nicht mehr verfügbar.",
+      "finalize": "Die abschließende Verknüpfung bestehender Nachbarn konnte nicht bestätigt werden. Bereits gespeicherte Kulturen bleiben erhalten.",
+      "refresh": "Die Kulturen konnten nicht neu geladen werden. Lade die Seite neu; bereits bestätigte Einträge bleiben gespeichert.",
+      "incomplete": "Der Import ist nicht vollständig bestätigt. Prüfe die Hinweise zu den einzelnen Zeilen vor einem erneuten Import.",
+      "projectChanged": "Das aktive Projekt wurde geändert. Der Import wurde gestoppt. Bereits bestätigte Zeilen gehören zum ursprünglichen Projekt. Wechsle dorthin zurück und prüfe die Kulturen vor einem erneuten Import."
     },
     "template": {
       "speciesName": "Tomate",
@@ -735,7 +746,17 @@
     "numberCellIgnored": "Zeile {{row}}, {{column}}: „{{value}}“ ist keine Zahl. Der Wert wird nicht übernommen.",
     "cellErrors": {
       "range_not_recognized": "Bitte eine Zahl oder einen Bereich wie „18–25“ angeben."
-    }
+    },
+    "progress": {
+      "preview": "Vorschau wird vorbereitet: {{completed}} von {{total}} Einträgen",
+      "crops": "Kulturen werden gespeichert: {{completed}} von {{total}} Einträgen",
+      "companions": "Nachbarn werden ergänzt: {{completed}} von {{total}} Einträgen",
+      "finalize": "Bestehende Nachbarn werden verknüpft …"
+    },
+    "confirmedRows": "Erfolgreich gespeicherte Zeilen: {{rows}}",
+    "incompleteEntries": "Nicht vollständig importierte Einträge",
+    "rowLabel": "Zeile {{row}}",
+    "companionFailure": "Kultur gespeichert; Nachbarn nicht übernommen: {{message}}"
   },
   "library": {
     "openButton": "Aus Bibliothek importieren",

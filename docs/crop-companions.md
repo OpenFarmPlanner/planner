@@ -67,6 +67,11 @@ export lists them under `crop_companions`.
 
 ## Free text becomes a link later
 
+The crops page's [batched import](./crop-spreadsheet-import.md) first saves all
+crop batches, then adds neighbours in original file order and finally links
+older free-text entries. This avoids premature linking between batches and
+preserves explicit companion rows' first-kind-wins precedence.
+
 A neighbour entered before its crop existed is stored as free text. Once a
 Kultur with exactly that name (case and spacing aside) exists, the entry turns
 into a pair with it (`link_free_text_companions`): when a Kultur is created or

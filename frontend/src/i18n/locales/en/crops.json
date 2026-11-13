@@ -693,7 +693,18 @@
       "network": "Network error during import.",
       "someFailures_one": "{{count}} entry could not be imported.",
       "someFailures_other": "{{count}} entries could not be imported.",
-      "rowFailed": "This entry could not be saved."
+      "rowFailed": "This entry could not be saved.",
+      "bodyLimit": "The file contains entries that are too large or too many different neighbour names. Shorten long texts or split the file before importing again. Already confirmed rows remain saved.",
+      "invalidResponse": "The response could not be confirmed. Check the crops before importing again to avoid accidentally overwriting saved data.",
+      "notSent": "This entry was not saved.",
+      "unknown": "Whether this entry was saved is unknown. Check the crops before importing again.",
+      "companionsNotSent": "Crop saved; its neighbours have not been imported yet.",
+      "companionsUnknown": "Crop saved; whether its neighbours were added is unknown. Check the neighbours before importing again.",
+      "invalidReference": "The crop is no longer available in the current project.",
+      "finalize": "The final linking of existing neighbours could not be confirmed. Already saved crops remain saved.",
+      "refresh": "The crops could not be reloaded. Reload the page; already confirmed entries remain saved.",
+      "incomplete": "The import is not fully confirmed. Check the details for each row before importing again.",
+      "projectChanged": "The active project changed and the import stopped. Already confirmed rows belong to the original project. Switch back and check its crops before importing again."
     },
     "template": {
       "speciesName": "Tomato",
@@ -735,7 +746,17 @@
     "numberCellIgnored": "Row {{row}}, {{column}}: “{{value}}” is not a number. The value is not imported.",
     "cellErrors": {
       "range_not_recognized": "Please enter a number or a range such as “18–25”."
-    }
+    },
+    "progress": {
+      "preview": "Preparing preview: {{completed}} of {{total}} entries",
+      "crops": "Saving crops: {{completed}} of {{total}} entries",
+      "companions": "Adding neighbours: {{completed}} of {{total}} entries",
+      "finalize": "Linking existing neighbours …"
+    },
+    "confirmedRows": "Successfully saved rows: {{rows}}",
+    "incompleteEntries": "Entries with an incomplete import",
+    "rowLabel": "Row {{row}}",
+    "companionFailure": "Crop saved; neighbours were not added: {{message}}"
   },
   "library": {
     "openButton": "Import from library",

@@ -58,7 +58,8 @@ import type {
   FieldLayoutEntry,
   LocationLayoutsResponse,
   CompanionImportPreview,
-  CompanionImportSummary,
+  CropImportApplyResult,
+  CropImportIdentity,
   CompanionReplaceItem,
   CropCompanion,
   CropSupplierData,
@@ -164,7 +165,10 @@ export const cropAPI = {
   projectRestore: (history_id: number) => http.post<{ detail: string }>('/history/project/restore/', { history_id }),
   revertBatch: (batch_id: number) => http.post<{ detail: string }>(`/history/batch/${batch_id}/revert/`, {}),
   // Legacy import flow split into preview/apply endpoints.
-  importPreview: (data: Record<string, unknown>[], companionNoteLanguage?: string) => http.post<{
+  importPreview: (
+    data: Record<string, unknown>[], companionNoteLanguage?: string, knownCropNames?: string[],
+    expectedProjectId?: number,
+  ) => http.post<{
     results: Array<{
       index: number;
       status: 'create' | 'update_candidate' | 'duplicate';
@@ -172,25 +176,25 @@ export const cropAPI = {
       matched_crop_id?: number;
       diff?: Array<{ field: string; current: unknown; new: unknown }>;
       import_data: Record<string, unknown>;
+      normalized_identity?: CropImportIdentity | null;
       error?: string;
       error_code?: string;
       /** Only for rows naming neighbours: the names that would stay free text. */
       companions?: CompanionImportPreview;
     }>;
-  }>('/crops/import/preview/', data, { params: companionNoteLanguage ? { companion_note_language: companionNoteLanguage } : undefined }),
+  }>('/crops/import/preview/', knownCropNames || expectedProjectId !== undefined ? {
+    items: data, ...(knownCropNames ? { known_crop_names: knownCropNames } : {}),
+    ...(expectedProjectId !== undefined ? { expected_project_id: expectedProjectId } : {}),
+  } : data,
+    { params: companionNoteLanguage ? { companion_note_language: companionNoteLanguage } : undefined }),
   importApply: (data: {
     items: Record<string, unknown>[];
     confirm_updates: boolean;
     companion_note_language?: string;
     replace_companion_notes?: boolean;
-  }) => http.post<{
-    created_count: number;
-    updated_count: number;
-    skipped_count: number;
-    duplicate_count?: number;
-    errors: Array<{ index: number; error: unknown; error_code?: string }>;
-    companions?: CompanionImportSummary;
-  }>('/crops/import/apply/', data),
+    phase?: 'crops' | 'companions' | 'finalize';
+    expected_project_id?: number;
+  }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
   publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>

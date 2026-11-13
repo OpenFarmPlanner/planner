@@ -2,10 +2,22 @@ import i18n from '../i18n/config';
 import {
   analyzeCropImportJson,
   partitionImportEntries,
+  formatImportRowRanges,
 } from '../pages/cropsImportUtils';
 import { buildTimingWindowPreviewWarnings } from '../pages/cropsPageUtils';
 
 const t = (key: string): string => key;
+
+it('retains original JSON positions through non-record and invalid-name filtering', () => {
+  const result = analyzeCropImportJson('[null, {"name":"A"}, [], {}, {"name":"B"}]', t);
+  expect(result).toMatchObject({ status: 'ready', rowNumbers: [2, 5],
+    invalidEntries: ['import.invalidEntry 1', 'import.invalidEntry 3', 'import.invalidEntry 4'] });
+});
+
+it('formats confirmed source rows as compact ordered ranges', () => {
+  expect(formatImportRowRanges([7, 2, 4, 3, 7, 10], 'en')).toBe('2–4, 7, 10');
+  expect(formatImportRowRanges([], 'fr')).toBe('');
+});
 
 describe('partitionImportEntries', () => {
   it('keeps entries that carry a name', () => {
@@ -42,7 +54,7 @@ describe('partitionImportEntries', () => {
   });
 
   it('returns two empty lists for an empty input', () => {
-    expect(partitionImportEntries([], t)).toEqual({ validEntries: [], invalidEntries: [] });
+    expect(partitionImportEntries([], t)).toEqual({ validEntries: [], invalidEntries: [], rowNumbers: [], invalidRowNumbers: [] });
   });
 });
 

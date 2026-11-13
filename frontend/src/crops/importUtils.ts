@@ -1,6 +1,8 @@
 export interface ParsedCropImport {
   entries: Record<string, unknown>[];
   originalCount: number;
+  rowNumbers: number[];
+  skippedRowNumbers: number[];
 }
 
 type ImportEnvelope = {
@@ -10,7 +12,7 @@ type ImportEnvelope = {
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const toCentimeters = (value: unknown): number | undefined => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -108,10 +110,20 @@ export const parseCropImportJson = (jsonString: string): ParsedCropImport => {
   }
 
   const rawItems = extractImportItems(parsed);
-  const entries = rawItems.filter(isRecord).map(normalizeImportCropEntry);
+  const entries: Record<string, unknown>[] = [];
+  const rowNumbers: number[] = [];
+  const skippedRowNumbers: number[] = [];
+  rawItems.forEach((item, index) => {
+    if (isRecord(item)) {
+      entries.push(normalizeImportCropEntry(item));
+      rowNumbers.push(index + 1);
+    } else skippedRowNumbers.push(index + 1);
+  });
 
   return {
     entries,
     originalCount: rawItems.length,
+    rowNumbers,
+    skippedRowNumbers,
   };
 };

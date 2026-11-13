@@ -15,11 +15,21 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
   error: null,
   success: null,
   failedEntries: [],
+  confirmedRows: [],
   seedRateConstraints: null,
   ...overrides,
 });
 
 describe('CropsImportDialog', () => {
+  it('does not report zero entries when preview failed before results were available', () => {
+    render(<CropsImportDialog open importState={buildState({
+      previewCount: 0, validCount: 0, previewResults: [], payload: [], status: 'error', error: 'Body limit',
+    })} hasImportableEntries={false} confirmUpdates={false} onConfirmUpdatesChange={vi.fn()}
+    onClose={vi.fn()} onImportStart={vi.fn()} t={t} />);
+    expect(screen.getByText('Body limit')).toBeVisible();
+    expect(screen.queryByText('import.foundCount')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'import.start' })).toBeDisabled();
+  });
   it('lists duplicates separately with source rows and the first-row policy', () => {
     const translate = (key: string, options?: Record<string, unknown>) => {
       if (key === 'import.duplicateRows') return `Duplicate rows (${options?.count})`;

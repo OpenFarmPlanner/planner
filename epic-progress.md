@@ -30,8 +30,8 @@ checks/reviews; do not implement multiple issues simultaneously.
 | 8 | #1029 Dedicated companion editor | Build on #1031 locale handling and #1007 labels; preserve reciprocal species-level ownership. | PR [#1048](https://github.com/OpenFarmPlanner/planner/pull/1048) merged and verified at `21e331c6` |
 | 9 | #1014 Remove crop-context plot empty state | Independent detail cleanup after editor changes. | PR [#1050](https://github.com/OpenFarmPlanner/planner/pull/1050) merged and verified at `dfdd8d36` |
 | 10 | #1021 Localize demo content | Align samples with settled fields; keep demo localization separate from cross-browser fixtures. | PR [#1051](https://github.com/OpenFarmPlanner/planner/pull/1051) merged and verified at `12f54927` |
-| 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | In progress on `feat/1038-multi-tag-filter` |
-| 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | Pending |
+| 10a | #1038 Multi-select tag filters with AND logic | Newly open P0, independent of the schema sequence; include before final integration. | PR [#1052](https://github.com/OpenFarmPlanner/planner/pull/1052) merged and verified at `5f7856e2` |
+| 10b | #840 Batch crop import requests | Newly promoted P0; settle import behavior before final round-trip integration. Organizational parent #1049 is outside this queue. | In progress on `fix/840-batch-crop-import` |
 | 11 | Final integration PR | Comprehensive field/order/UX/i18n and end-to-end review after all issue PRs merge; consistency fixes only. | Pending |
 
 ## #1030 coverage audit
@@ -71,8 +71,8 @@ any next issue branch from refreshed `origin/main`. Do not assume a pushed
 branch has merged. GitHub write/merge access and supported test tooling are
 required; respect current branch protection and required reviews.
 
-Current resume point: #1021 merged and verified through PR #1051 at
-`12f54927` after all 10 required checks passed. #1021 is closed. PostgreSQL,
+Current resume point: #1038 merged and verified through PR #1052 at
+`5f7856e2` after all 10 required checks passed. #1038 is closed. PostgreSQL,
 six cross-browser jobs, the isolated security completion reader, build and
 dependency checks passed too. Backend: 2,568 passed, 96% coverage. Optional Claude
 code review failed before completion and native Codex rejected its request;
@@ -81,11 +81,11 @@ not a completed scan. Final review requests, reviews and threads were empty
 with pagination exhausted. GitHub UNSTABLE due to the optional provider failure,
 normal pinned-head merge without
 overrides; fetched main contains it and matches the tested head tree. Proof:
-https://github.com/OpenFarmPlanner/planner/pull/1051#issuecomment-6833554466 .
+https://github.com/OpenFarmPlanner/planner/pull/1052#issuecomment-6834345771 .
 
-Finish #1038 on `feat/1038-multi-tag-filter`, based on refreshed
-main `700f99fd` (including the automatic version bump after #1051). Complete
-CI/reviews and verify normal merge before #840 and final integration.
+Finish #840 on `fix/840-batch-crop-import`, based on refreshed
+main `9d128c62` (including the automatic version bump after #1052). Complete
+CI/reviews and verify normal merge before final integration.
 The earlier stop-after-#1032 instruction was fulfilled and superseded by resume.
 Inspect every review thread and required check; provider failures remain visible
 and triage exemptions are distinct from completed security reviews.
@@ -946,3 +946,46 @@ then merge normally pinned to the tested head and verify before #840.
 Post-merge CI for #1051 and its release commit `700f99fd` passed:
 https://github.com/OpenFarmPlanner/planner/actions/runs/43288958261 and
 https://github.com/OpenFarmPlanner/planner/actions/runs/43289018835 .
+
+## #840 implementation and verification
+
+- Branch `fix/840-batch-crop-import`, based on main `9d128c62`.
+- Sequential preview/apply batches have a 200-row and 1 MiB serialized UTF-8
+  bound, including options and name context. Backend identities preserve
+  whole-file first-occurrence duplicates; source row mappings survive filtering.
+- Stateless crop, companion and finalization phases preserve general-before-
+  variety writes, original companion precedence, localized notes and later-name
+  resolution. Legacy preview arrays and unphased apply remain supported.
+- Validated row receipts distinguish confirmed writes, skipped rows, unsent rows
+  and unknown outcomes. Interrupted attempts keep confirmed counts/source ranges,
+  stop further requests, refresh once and prevent replay. New files require
+  fresh update confirmation. Progress/errors are translated in all four languages.
+- Every new-flow request pins the project captured before file preparation.
+  Missing initial context stops preparation; the backend rejects a changed
+  project before preview or any apply phase. This prevents cross-tab switches
+  from redirecting later batches. Existing tenancy/token rules are unchanged.
+- Backend: 77 affected API/query-count tests passed, plus 41 existing germination,
+  specific-property and sowing-depth tests (118 unique tests across targeted runs).
+  The crop-list budget stays constant at 16 queries as imported row count grows.
+- Frontend: all 244 targeted tests, TypeScript, ESLint, production Vite build
+  and `make quality` passed. Existing global Ruff/Madge reports remain nonblocking;
+  the existing import-service complexity warning changes from 13 to 14 with
+  deferred finalization. New line/import warnings were corrected.
+- Browser: all 25 affected cases passed (8.2m), plus four final body-limit
+  recaptures (45.9s). Real 201-row imports, cross-batch companions/duplicates,
+  interrupted requests, source rows, oversized entries, all XLSX/ODS templates,
+  catalog retry and main routes were checked in four languages at
+  375/768/1024/1440 widths and phone landscape.
+- All 177 named captures across initial/complete/recapture runs were inspected.
+  Partial wording now distinguishes uncertain outcomes; failed previews no
+  longer claim zero entries found. Existing shared-shell overlaps remain for
+  the final integration PR; no shared-shell change is included here.
+- An initial browser fixture hit a SQLite lock because scratch settings replaced
+  canonical WAL/IMMEDIATE options. Corrected local settings preserve those options
+  and change only the isolated database path; the complete rerun passed.
+- Security scope includes backend views/API client. The immutable-base completion
+  gate must pass on the final head; authoring-session inspection is not independent
+  approval. No exemption, workflow change or bypass is introduced.
+- Next: finish exact-head CI/reviews, merge normally and verify, then start the
+  final integration PR from refreshed main. The open P0 inventory contains only
+  #840; organizational parent #1049 remains outside this queue.

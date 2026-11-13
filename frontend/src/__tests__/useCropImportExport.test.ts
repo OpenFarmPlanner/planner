@@ -63,37 +63,44 @@ function setup(selectedCrop: Crop | null = CROP) {
 describe('useCropImportExport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    api.importPreview.mockResolvedValue({ data: { results: [] } });
-    api.importApply.mockResolvedValue({ data: { created_count: 1, updated_count: 0, skipped_count: 0, errors: [] } });
+    window.localStorage.clear();
+    window.localStorage.setItem('activeProjectId', '42');
+    api.importPreview.mockImplementation(async (items) => ({ data: { results: items.map((item: Record<string, unknown>, index: number) => ({ index, status: 'create', import_data: item, normalized_identity: { name: String(item.name).toLowerCase(), variety: null } })) } }));
+    api.importApply.mockImplementation(async ({ items, phase }) => ({ data: { created_count: phase === 'crops' ? items.length : 0, updated_count: 0, skipped_count: 0, errors: [], results: items.map((_: unknown, index: number) => ({ index, status: phase === 'crops' ? 'created' : 'companions_applied', crop_id: index + 1 })) } }));
     api.listAll.mockResolvedValue({ results: [CROP] });
     api.listCompanions.mockResolvedValue({ data: [] });
     api.seedRateConstraints.mockResolvedValue({ data: { units: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } } } });
-    spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'Tomate' }], skippedRows: 0, warnings: [] });
+    spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'Tomate' }], rowNumbers: [2], skippedRows: 0, warnings: [] });
     json.readFileAsText.mockResolvedValue('[]');
-    json.analyze.mockReturnValue({ status: 'ok', validEntries: [{ name: 'Tomate' }], originalCount: 1, invalidEntries: [] });
+    json.analyze.mockReturnValue({ status: 'ready', validEntries: [{ name: 'Tomate' }], rowNumbers: [1], originalCount: 1, invalidEntries: [] });
   });
 
   it('preserves spreadsheet source rows and reports duplicate skips separately', async () => {
     const entries = [{ name: 'Tomate' }, { name: 'Tomate' }];
     spreadsheet.parse.mockResolvedValue({ entries, rowNumbers: [5, 12], skippedRows: 0, warnings: [] });
     api.importPreview.mockResolvedValue({ data: { results: [
-      { index: 0, status: 'create', import_data: entries[0] },
-      { index: 1, status: 'duplicate', duplicate_of_index: 0, import_data: entries[1] },
+      { index: 0, status: 'create', import_data: entries[0], normalized_identity: { name: 'tomate', variety: null } },
+      { index: 1, status: 'duplicate', duplicate_of_index: 0, import_data: entries[1], normalized_identity: { name: 'tomate', variety: null } },
     ] } });
-    api.importApply.mockResolvedValue({ data: {
-      created_count: 1, updated_count: 0, skipped_count: 1, duplicate_count: 1, errors: [],
-    } });
     const view = setup();
     await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
     expect(view.result.current.importState.previewResults[1]).toMatchObject({
       status: 'duplicate', row_number: 12, duplicate_of_row_number: 5,
     });
     await act(async () => { await view.result.current.handleImportStart(); });
-    expect(api.importApply).toHaveBeenCalledWith({ items: entries, confirm_updates: false, companion_note_language: 'de', replace_companion_notes: false });
+    expect(api.importApply).toHaveBeenCalledWith({ phase: 'crops', items: [entries[0]], confirm_updates: false, companion_note_language: 'de', replace_companion_notes: false, expected_project_id: 42 });
     expect(view.showSnackbar).toHaveBeenCalledWith('import.created, import.duplicatesSkipped', 'success');
   });
 
   describe('choosing a file', () => {
+    it('requires a project binding before reading or previewing a file', async () => {
+      window.localStorage.removeItem('activeProjectId');
+      const view = setup();
+      await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
+      expect(api.importPreview).not.toHaveBeenCalled();
+      expect(spreadsheet.parse).not.toHaveBeenCalled();
+      expect(view.result.current.importState.error).toBe('import.errors.projectChanged');
+    });
     it.each([['xlsx'], ['ods'], ['csv']])('parses a .%s file as a spreadsheet', async (ext) => {
       const view = setup();
 
@@ -190,7 +197,7 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
-      expect(api.importPreview).toHaveBeenCalledWith([{ name: 'Tomate' }], 'de');
+      expect(api.importPreview).toHaveBeenCalledWith([{ name: 'Tomate' }], 'de', undefined, 42);
       expect(view.result.current.importDialogOpen).toBe(true);
       expect(view.result.current.hasImportableEntries).toBe(true);
     });
@@ -207,7 +214,7 @@ describe('useCropImportExport', () => {
     });
 
     it('counts skipped rows alongside the imported ones', async () => {
-      spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'A' }], skippedRows: 3, warnings: [] });
+      spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'A' }], rowNumbers: [2], skippedRows: 3, warnings: [] });
       const view = setup();
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
@@ -254,6 +261,56 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
     }
 
+    it('requires fresh update confirmation for another file', async () => {
+      const view = setup();
+      await reachPreview(view);
+      act(() => { view.result.current.setConfirmUpdates(true); });
+      await reachPreview(view);
+      expect(view.result.current.confirmUpdates).toBe(false);
+    });
+
+    it('keeps the preview project binding when another tab switches projects', async () => {
+      window.localStorage.setItem('activeProjectId', '42');
+      const view = setup();
+      await reachPreview(view);
+      expect(api.importPreview).toHaveBeenCalledWith([{ name: 'Tomate' }], 'de', undefined, 42);
+      window.localStorage.setItem('activeProjectId', '43');
+      await act(async () => { await view.result.current.handleImportStart(); });
+      for (const [body] of api.importApply.mock.calls) expect(body.expected_project_id).toBe(42);
+    });
+
+    it('blocks concurrent clicks and another file while apply is in flight', async () => {
+      let resolveApply: (value: unknown) => void = () => undefined;
+      api.importApply.mockReturnValueOnce(new Promise(resolve => { resolveApply = resolve; }));
+      const view = setup();
+      await reachPreview(view);
+      let pending = Promise.resolve();
+      await act(async () => { pending = view.result.current.handleImportStart(); });
+      await act(async () => {
+        await view.result.current.handleImportStart();
+        await view.result.current.handleImportFileSelected(file('another.csv'));
+      });
+      expect(api.importApply).toHaveBeenCalledTimes(1);
+      expect(spreadsheet.parse).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        resolveApply({ data: { created_count: 1, updated_count: 0, skipped_count: 0,
+          errors: [], results: [{ index: 0, status: 'created', crop_id: 5 }] } });
+        await pending;
+      });
+      expect(view.result.current.importState.status).toBe('success');
+    });
+
+    it('retains confirmed writes when refreshing the crop list fails', async () => {
+      const view = setup();
+      view.fetchCrops.mockRejectedValueOnce(new Error('offline'));
+      await reachPreview(view);
+      await act(async () => { await view.result.current.handleImportStart(); });
+      expect(view.result.current.importState.confirmedRows).toEqual([2]);
+      expect(view.result.current.importState.success).toBe('import.created');
+      expect(view.result.current.importState.error).toBe('import.errors.refresh');
+      expect(view.result.current.importDialogOpen).toBe(true);
+    });
+
     it('sends the previewed entries and the confirm flag', async () => {
       const view = setup();
       await reachPreview(view);
@@ -262,9 +319,10 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportStart(); });
 
       expect(api.importApply).toHaveBeenCalledWith({
-        items: [{ name: 'Tomate' }],
+        items: [{ name: 'Tomate' }], phase: 'crops',
         confirm_updates: true,
         companion_note_language: 'de', replace_companion_notes: false,
+        expected_project_id: 42,
       });
     });
 
@@ -288,25 +346,28 @@ describe('useCropImportExport', () => {
       expect(view.showSnackbar).toHaveBeenCalledWith(expect.any(String), 'success');
     });
 
-    it('keeps the dialog open, reloads and summarises what went through when some rows failed', async () => {
-      api.importApply.mockResolvedValue({
-        data: { created_count: 2, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }] },
-      });
+    it('keeps confirmed writes and source rows when a later row fails', async () => {
+      spreadsheet.parse.mockResolvedValue({ entries: [{ name: 'First' }, { name: 'Second' }], rowNumbers: [5, 12], skippedRows: 0, warnings: [] });
+      api.importApply.mockResolvedValueOnce({ data: { created_count: 1, updated_count: 0, skipped_count: 0,
+        errors: [{ index: 1, error: 'nope' }], results: [{ index: 0, status: 'created', crop_id: 4 }, { index: 1, status: 'error' }],
+      } });
       const view = setup();
       await reachPreview(view);
-
       await act(async () => { await view.result.current.handleImportStart(); });
-
-      expect(view.fetchCrops).toHaveBeenCalled();
+      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
       expect(view.result.current.importDialogOpen).toBe(true);
       expect(view.result.current.importState.success).toBeTruthy();
-      expect(view.result.current.importState.failedEntries).toHaveLength(1);
+      expect(view.result.current.importState.confirmedRows).toEqual([5]);
+      expect(view.result.current.importState.failedEntries).toMatchObject([{ index: 1, row_number: 12 }]);
       expect(view.showSnackbar).not.toHaveBeenCalled();
+      const attempts = api.importApply.mock.calls.length;
+      await act(async () => { await view.result.current.handleImportStart(); });
+      expect(api.importApply).toHaveBeenCalledTimes(attempts);
     });
 
     it('loads the seed-rate rules to explain failed rows, and still reports when that fails', async () => {
       api.importApply.mockResolvedValue({
-        data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }] },
+        data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }], results: [{ index: 0, status: 'error' }] },
       });
       api.seedRateConstraints.mockRejectedValue(new Error('offline'));
       const view = setup();
@@ -319,28 +380,30 @@ describe('useCropImportExport', () => {
       expect(view.result.current.importState.seedRateConstraints).toBeNull();
     });
 
-    it('does not reload when some entries failed', async () => {
+    it('reloads after an apply attempt even when rows failed', async () => {
       api.importApply.mockResolvedValue({
-        data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, message: 'nope' }] },
+        data: { created_count: 0, updated_count: 0, skipped_count: 0, errors: [{ index: 0, error: 'nope' }], results: [{ index: 0, status: 'error' }] },
       });
       const view = setup();
       await reachPreview(view);
 
       await act(async () => { await view.result.current.handleImportStart(); });
 
-      expect(view.fetchCrops).not.toHaveBeenCalled();
+      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
       expect(view.result.current.importState.status).not.toBe('success');
     });
 
-    it('reports a failing request without reloading', async () => {
+    it('reloads after a failed request to surface potentially saved rows', async () => {
       api.importApply.mockRejectedValue(new Error('boom'));
       const view = setup();
       await reachPreview(view);
 
       await act(async () => { await view.result.current.handleImportStart(); });
 
-      expect(view.fetchCrops).not.toHaveBeenCalled();
+      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
       expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.error).toBe('import.errors.incomplete');
+      expect(view.result.current.importState.failedEntries[0].error_code).toBe('unknown');
     });
 
     it('does nothing when there is nothing to import', async () => {

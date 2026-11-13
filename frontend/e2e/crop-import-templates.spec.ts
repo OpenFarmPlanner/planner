@@ -66,7 +66,9 @@ for (const [language, { text, navigation }] of Object.entries(languages)) {
       expect((await apiRequest<Crop>(page, 'GET', `/crops/${existing.id}/`)).notes).toBe('Keep original notes');
       expect((await apiRequest<{ count: number }>(page, 'GET', '/crops/')).count).toBe(1);
       const skipped = await apiRequest<{ updated_count: number; errors: unknown[] }>(page, 'POST', '/crops/import/apply/', {
-        items: preview.request().postDataJSON(), confirm_updates: false, companion_note_language: language,
+        items: Array.isArray(preview.request().postDataJSON()) ? preview.request().postDataJSON()
+          : preview.request().postDataJSON().items,
+        confirm_updates: false, companion_note_language: language,
       });
       expect(skipped.errors).toEqual([]);
       expect(skipped.updated_count).toBe(0);

@@ -23,6 +23,7 @@ type CropsImportStartDialogProps = {
   onFileSelected: (file: File) => void;
   /** The chosen file is being read and previewed; no other file is accepted meanwhile. */
   preparing?: boolean;
+  progressLabel?: string;
   noteLanguage?: string;
   onNoteLanguageChange?: (language: string) => void;
   replaceNotes?: boolean;
@@ -35,6 +36,7 @@ export function CropsImportStartDialog({
   onClose,
   onFileSelected,
   preparing = false,
+  progressLabel,
   noteLanguage = 'de', onNoteLanguageChange, replaceNotes = false, onReplaceNotesChange,
   t,
 }: CropsImportStartDialogProps) {
@@ -99,7 +101,7 @@ export function CropsImportStartDialog({
                 }}
               >
                 <CircularProgress size={32} />
-                <Typography variant="body2">{t('import.preparingPreview')}</Typography>
+                <Typography variant="body2" sx={{ px: 2, textAlign: 'center' }}>{progressLabel ?? t('import.preparingPreview')}</Typography>
               </Box>
             ) : null}
             {/* Kept in place while preparing so the zone keeps its height. */}

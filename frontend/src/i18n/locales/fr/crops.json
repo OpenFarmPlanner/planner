@@ -716,7 +716,18 @@
       "someFailures_one": "{{count}} entrée n’a pas pu être importée.",
       "someFailures_many": "{{count}} entrées n’ont pas pu être importées.",
       "someFailures_other": "{{count}} entrées n’ont pas pu être importées.",
-      "rowFailed": "Cette entrée n’a pas pu être enregistrée."
+      "rowFailed": "Cette entrée n’a pas pu être enregistrée.",
+      "bodyLimit": "Le fichier contient des entrées trop volumineuses ou trop de noms de voisins différents. Raccourcissez les textes longs ou divisez le fichier avant de réessayer. Les lignes déjà confirmées restent enregistrées.",
+      "invalidResponse": "La réponse n’a pas pu être confirmée. Vérifiez les cultures avant de réimporter pour éviter d’écraser des données enregistrées.",
+      "notSent": "Cette entrée n’a pas été enregistrée.",
+      "unknown": "L’enregistrement de cette entrée est incertain. Vérifiez les cultures avant de réimporter.",
+      "companionsNotSent": "Culture enregistrée ; ses voisins n’ont pas encore été importés.",
+      "companionsUnknown": "Culture enregistrée ; l’ajout de ses voisins est incertain. Vérifiez les voisins avant de réimporter.",
+      "invalidReference": "La culture n’est plus disponible dans le projet actuel.",
+      "finalize": "L’association finale des voisins existants n’a pas pu être confirmée. Les cultures déjà enregistrées sont conservées.",
+      "refresh": "Les cultures n’ont pas pu être rechargées. Rechargez la page ; les entrées déjà confirmées restent enregistrées.",
+      "incomplete": "L’import n’est pas entièrement confirmé. Vérifiez les détails de chaque ligne avant de réimporter.",
+      "projectChanged": "Le projet actif a changé et l’import a été arrêté. Les lignes déjà confirmées appartiennent au projet initial. Revenez à ce projet et vérifiez ses cultures avant de réimporter."
     },
     "template": {
       "speciesName": "Tomate",
@@ -758,7 +769,17 @@
     "numberCellIgnored": "Ligne {{row}}, {{column}} : « {{value}} » n’est pas un nombre. La valeur n’est pas importée.",
     "cellErrors": {
       "range_not_recognized": "Indiquez un nombre ou une plage comme « 18–25 »."
-    }
+    },
+    "progress": {
+      "preview": "Préparation de l’aperçu : {{completed}} entrées sur {{total}}",
+      "crops": "Enregistrement des cultures : {{completed}} entrées sur {{total}}",
+      "companions": "Ajout des voisins : {{completed}} entrées sur {{total}}",
+      "finalize": "Association des voisins existants…"
+    },
+    "confirmedRows": "Lignes enregistrées avec succès : {{rows}}",
+    "incompleteEntries": "Entrées dont l’import est incomplet",
+    "rowLabel": "Ligne {{row}}",
+    "companionFailure": "Culture enregistrée ; voisins non ajoutés : {{message}}"
   },
   "library": {
     "openButton": "Importer depuis la bibliothèque",

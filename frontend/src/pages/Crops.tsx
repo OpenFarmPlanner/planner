@@ -250,6 +250,7 @@ function Crops() {
     handleImportFileTrigger,
     handleImportFileSelected,
     importPreparing,
+    progressLabel,
     handleExportCurrentCrop,
     handleExportAllCrops,
     importNoteLanguage, setImportNoteLanguage, exportNoteLanguage, setExportNoteLanguage,
@@ -947,6 +948,7 @@ function Crops() {
         onClose={() => setImportStartDialogOpen(false)}
         onFileSelected={(file) => void handleImportFileSelected(file)}
         preparing={importPreparing}
+        progressLabel={progressLabel}
         noteLanguage={importNoteLanguage} onNoteLanguageChange={setImportNoteLanguage}
         replaceNotes={replaceCompanionNotes} onReplaceNotesChange={setReplaceCompanionNotes}
         t={t}
@@ -955,6 +957,7 @@ function Crops() {
       <CropsImportDialog
         open={importDialogOpen}
         importState={importState}
+        progressLabel={progressLabel}
         hasImportableEntries={hasImportableEntries}
         confirmUpdates={confirmUpdates}
         onConfirmUpdatesChange={setConfirmUpdates}

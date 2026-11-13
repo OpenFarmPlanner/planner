@@ -1276,6 +1276,28 @@ export interface CompanionImportPreview {
   unresolved: string[];
 }
 
+export interface CropImportIdentity {
+  name: string;
+  variety: string | null;
+}
+
+export interface CropImportRowResult {
+  index: number;
+  status: 'created' | 'updated' | 'skipped' | 'duplicate' | 'error' | 'companions_applied';
+  crop_id?: number;
+  duplicate_of_index?: number;
+}
+
+export interface CropImportApplyResult {
+  created_count: number;
+  updated_count: number;
+  skipped_count: number;
+  duplicate_count?: number;
+  errors: Array<{ index: number; error: unknown; error_code?: string }>;
+  results?: CropImportRowResult[];
+  companions?: CompanionImportSummary;
+}
+
 export interface CompanionImportSummary {
   created: number;
   /** Names kept as free text because they match no crop or crop family. */
