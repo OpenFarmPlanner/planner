@@ -61,7 +61,7 @@ function providerArgs() {
   const url = new URL(process.env.OFP_QUEUE_PROXY);
   if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/v1' ||
       url.username || url.password || url.search || url.hash) throw new Error('Invalid queue API proxy.');
-  return ['-c', 'model="gpt-5.4-mini"', '-c', 'model_reasoning_effort="high"',
+  return ['-c', 'web_search="disabled"', '-c', 'model="gpt-5.4-mini"', '-c', 'model_reasoning_effort="high"',
     '-c', 'model_provider="queue"', '-c', 'model_providers.queue.name="Budgeted queue API"',
     '-c', `model_providers.queue.base_url=${JSON.stringify(url.href)}`,
     '-c', 'model_providers.queue.wire_api="responses"',

@@ -38,9 +38,13 @@ function saveState(file) {
   finally { fs.rmSync(body, { force: true }); }
 }
 
+function localTool(tool) {
+  return ['function', 'custom'].includes(tool.type) ||
+    tool.type === 'namespace' && Array.isArray(tool.tools) && tool.tools.every(localTool);
+}
 function normalizeRequest(body) {
   if (body.model !== MODEL || body.previous_response_id || body.conversation || body.background ||
-      !Array.isArray(body.input) || (body.tools ?? []).some(tool => !['function', 'custom'].includes(tool.type))) {
+      !Array.isArray(body.input) || (body.tools ?? []).some(tool => !localTool(tool))) {
     throw new Error('Only stateless coding requests without hosted tools are allowed.');
   }
   // Fixed provider, model, processing tier and output cap keep reservations bounded.
@@ -125,6 +129,32 @@ async function main() {
   const env = { ...process.env, OFP_QUEUE_CLOUD: '1', OFP_QUEUE_PROXY: `http://127.0.0.1:${server.address().port}/v1` };
   delete env.OPENAI_API_KEY; delete env.OFP_QUEUE_SIGNING_KEY;
   try {
+    if (process.env.OFP_QUEUE_MODE === 'verify') {
+      const fixture = path.join(directory, 'fixture'); fs.mkdirSync(fixture);
+      fs.writeFileSync(path.join(fixture, 'source.txt'), 'Cloud queue sandbox fixture.');
+      fs.writeFileSync(path.join(directory, 'protected-marker'), 'Host-only marker.');
+      const { reviewerArgs, codexRuntime, providerArgs, terminalReview } = require('./run_codex_review.cjs');
+      process.env.OFP_QUEUE_PROXY = env.OFP_QUEUE_PROXY;
+      const prompt = 'Use the execution tool to run cat source.txt and verify that ../protected-marker cannot be read. '
+        + 'Return exactly JSON {"ok":true} only if the source is readable and the protected file is denied. Do not edit files.';
+      fs.writeFileSync(path.join(fixture, 'schema.json'), JSON.stringify({ type: 'object', additionalProperties: false,
+        properties: { ok: { type: 'boolean' } }, required: ['ok'] }));
+      const safeEnv = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
+        .filter(key => process.env[key]).map(key => [key, process.env[key]]));
+      let transcript = '';
+      await new Promise((resolve, reject) => {
+        const child = cp.spawn('codex', [...providerArgs(), ...reviewerArgs(fixture, path.join(fixture, 'source.txt'), codexRuntime())],
+          { cwd: fixture, env: safeEnv, stdio: ['pipe', 'pipe', 'pipe'] });
+        child.stdin.end(prompt);
+        child.stdout.on('data', data => { transcript += data; });
+        child.stderr.on('data', () => {});
+        child.on('error', reject);
+        child.on('exit', code => code === 0 ? resolve() : reject(new Error('Cloud model/sandbox verification failed.')));
+      });
+      if (terminalReview(transcript).review.ok !== true) throw new Error('Cloud fixture verification incomplete.');
+      console.log('Cloud credentials, durable state, budgeted API and restricted reviewer verified.');
+      return;
+    }
     // Each invocation performs one bounded transition; the schedule resumes from durable state.
     await new Promise((resolve, reject) => {
       const child = cp.spawn(process.execPath, [path.join(__dirname, 'work_queue_worker.cjs'), config], { env, stdio: 'inherit' });
