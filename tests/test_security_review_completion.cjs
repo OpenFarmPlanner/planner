@@ -211,10 +211,11 @@ test('bounded polling reports timeout, permits an evidenced retry, and stops on 
   let time = 0;
   const output = [], summary = { addHeading() { return this; }, addRaw(value) { output.push(value); return this; }, async write() {} };
   const core = { info() {}, summary, setOutput() {}, setFailed(value) { output.push(value); } };
-  const args = { github: {}, context: {}, core, expectedHead: HEAD, timeoutMs: 100, intervalMs: 50,
+  const args = { github: {}, context: { repo: { owner: 'owner', repo: 'repo' } }, core, expectedHead: HEAD, timeoutMs: 100, intervalMs: 50,
     now: () => time, wait: async ms => { time += ms; } };
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ request: {} })) })).state, 'timed_out');
   assert.ok(output.some(line => /blocked: timed_out/.test(line)));
+  assert.ok(output.some(line => /independent local or human review/.test(line)));
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ claude: completed })) })).allowed, true);
   time = 0;
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ request: {}, rejection: {} })) })).state, 'codex_rejected');

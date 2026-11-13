@@ -27,6 +27,14 @@ ls docs/security-review-*.md
 
 ## 2. Review
 
+If Claude's allowance is exhausted or cloud review is unavailable, follow
+`docs/security-automation.md` ("Local review when Claude has no allowance"):
+prepare a pinned bundle with `scripts/ci/local_security_review.py` and give it
+to a fresh local reviewer session or an independent human. Validate and inspect
+the result before posting it. A human maintainer must explicitly approve the
+exact-head report; starting the review is not permission to approve it. This
+is the manual review route, not a completed native cloud scan.
+
 Note the exact commit: `git rev-parse HEAD`. Focus on tenancy (project
 scoping, `X-Project-Id`), permissions on every view/viewset action, auth and
 API tokens, trust levels and moderation, personal data, Channels consumers,
