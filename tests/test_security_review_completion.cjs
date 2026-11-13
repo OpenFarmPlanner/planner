@@ -83,7 +83,7 @@ test('Codex task attestation remains distinct from automatic completion and manu
 });
 
 function fixture(changes = {}) {
-  const pr = { number: 1, state: 'open', draft: false, user: { login: 'author' }, labels: [],
+  const pr = { number: 1, state: 'open', draft: false, base: { sha: OLD }, user: { login: 'author' }, labels: [],
     head: { sha: HEAD, ref: 'fix/test', repo: { full_name: 'owner/repo' } }, ...changes };
   const jobs = [{ name: 'Triage', conclusion: 'success' }, { name: 'Claude security review', conclusion: 'success' }];
   const comments = [];
@@ -111,6 +111,21 @@ test('snapshot requires completed provider job and evidence for current head/sco
   assert.equal((await snapshot(f.args)).state, 'stale_review');
   f.pr.head.sha = OLD;
   assert.equal((await snapshot(f.args)).state, 'stale_head');
+});
+
+test('authenticated local execution is accepted without a manual approval or available cloud provider', async () => {
+  const f = fixture();
+  f.jobs[1].conclusion = 'failure';
+  f.artifacts['security-review-completion'] = { state: 'claude_allowance_exhausted' };
+  f.args.codexVerifier = async input => {
+    assert.equal(input.head, HEAD);
+    assert.equal(input.base, OLD);
+    assert.deepEqual(input.scope, SCOPE);
+    return { state: 'codex_local_completed', allowed: true, evidence: 'signed report' };
+  };
+  assert.equal((await snapshot(f.args)).allowed, true);
+  f.args.codexVerifier = async () => ({ state: 'codex_local_incomplete', allowed: false });
+  assert.equal((await snapshot(f.args)).allowed, false);
 });
 
 test('real GitHub empty pull_requests metadata is supported without accepting another PR artifact', async () => {
@@ -215,7 +230,7 @@ test('bounded polling reports timeout, permits an evidenced retry, and stops on 
     now: () => time, wait: async ms => { time += ms; } };
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ request: {} })) })).state, 'timed_out');
   assert.ok(output.some(line => /blocked: timed_out/.test(line)));
-  assert.ok(output.some(line => /independent local or human review/.test(line)));
+  assert.ok(output.some(line => /trusted local Codex launcher/.test(line)));
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ claude: completed })) })).allowed, true);
   time = 0;
   assert.equal((await enforce({ ...args, inspect: async () => evaluate(input({ request: {}, rejection: {} })) })).state, 'codex_rejected');
