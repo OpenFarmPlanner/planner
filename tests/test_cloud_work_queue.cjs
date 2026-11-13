@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const cp = require('node:child_process');
 const { once } = require('node:events');
-const { normalizeRequest, reserve, createProxy } = require('../scripts/ci/cloud_work_queue.cjs');
+const { normalizeRequest, reserve, createProxy, executionFailure } = require('../scripts/ci/cloud_work_queue.cjs');
 const { providerArgs } = require('../scripts/ci/run_codex_review.cjs');
 const request = { model: 'gpt-5.4-mini', input: [{ role: 'user', content: 'Inspect source' }], tools: [] };
 
@@ -87,4 +87,16 @@ test('workflow has no PR trigger or PR checkout and serializes all runs', () => 
   assert.ok(!source.includes('pull_request:'));
   assert.ok(!source.includes('pull_request_target:'));
   assert.ok(!source.includes('actions/cache'));
+});
+
+
+test('JSON-mode CLI errors remain actionable when stderr is empty, without logging keys or workflow commands', () => {
+  const transcript = [{ type: 'thread.started' }, { type: 'error', message: 'Retrying' },
+    { type: 'turn.failed', error: { message: 'insufficient_quota key-secret\n::warning::untrusted' } }]
+    .map(row => JSON.stringify(row)).join('\n');
+  const detail = executionFailure(transcript, '', 'key-secret');
+  assert.ok(detail.includes('insufficient_quota'));
+  assert.ok(!detail.includes('key-secret'));
+  assert.ok(!detail.includes('\n'));
+  assert.ok(executionFailure('', 'startup failure', 'key-secret').includes('startup failure'));
 });
