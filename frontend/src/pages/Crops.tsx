@@ -885,7 +885,7 @@ function Crops() {
 
       {importLink ? <ExistingCropLinkDialog publicCrop={importLink.publicCrop} candidates={importLink.candidates}
         onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)}
-        onImportAsNew={importLink.candidates.some((candidate) => candidate.species_match) ? undefined : () => {
+        onImportAsNew={() => {
           const entry = importLink.publicCrop;
           setImportLink(null);
           void handleImportPublicCrop(entry, 'new');

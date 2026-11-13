@@ -46,6 +46,24 @@ describe('ExistingCropLinkDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verknüpfen und Werte übernehmen' }));
     await waitFor(() => expect(link).toHaveBeenCalledWith(1, 77, ['growth_duration_days'], 4, undefined, ['notes']));
   });
+  it.each([
+    ['', true, false],
+    ['Roma', true, true],
+    ['', false, true],
+  ] as const)('offers a new copy for variety=%s, stable match=%s: %s', (variety, speciesMatch, allowed) => {
+    const onImportAsNew = vi.fn();
+    render(<ExistingCropLinkDialog publicCrop={{ ...publicCrop, variety }}
+      candidates={[{ ...candidates[0], variety, species_match: speciesMatch }]}
+      onClose={vi.fn()} onLinked={vi.fn()} onImportAsNew={onImportAsNew} />);
+    const action = screen.queryByRole('button', { name: 'Als neue Kultur importieren' });
+    if (allowed) {
+      expect(action).toBeInTheDocument();
+      fireEvent.click(action!);
+      expect(onImportAsNew).toHaveBeenCalledOnce();
+    } else {
+      expect(action).not.toBeInTheDocument();
+    }
+  });
   it('cancels without changing either record', () => {
     const onClose = vi.fn();
     render(<ExistingCropLinkDialog publicCrop={publicCrop} candidates={candidates} onClose={onClose} onLinked={vi.fn()} />);

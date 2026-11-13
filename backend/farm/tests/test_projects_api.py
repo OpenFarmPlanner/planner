@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import UserProjectSettings
+from crops.models import CropSpecies
 from farm.models import (
     Bed,
     Crop,
@@ -187,6 +188,32 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(restore_response.status_code, status.HTTP_200_OK, restore_response.data)
         self.assertFalse(Field.objects.filter(project=self.project).exists())
         self.assertFalse(Bed.objects.filter(project=self.project).exists())
+
+    def test_project_history_restore_preserves_existing_legacy_general_identities(self):
+        species = CropSpecies.objects.create(name='Legacy restore species')
+        first = Crop.objects.create(project=self.project, name='Legacy first', crop_species=species)
+        second = Crop.objects.create(
+            project=self.project, name='Legacy second', crop_species=species,
+        )
+        headers = {'HTTP_X_PROJECT_ID': str(self.project.pk)}
+        created = self.client.post('/openfarmplanner/api/locations/', {
+            'name': 'Before restore',
+        }, format='json', **headers)
+        self.assertEqual(created.status_code, 201, created.data)
+        anchor = Location.objects.get(pk=created.data['id'])
+        history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
+        history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
+        anchor.name = 'After restore'
+        anchor.save()
+        record_later_revision(self.project)
+        response = self.client.post('/openfarmplanner/api/history/project/restore/', {
+            'history_id': history_id,
+        }, format='json', **headers)
+        self.assertEqual(response.status_code, 200, response.data)
+        anchor.refresh_from_db()
+        self.assertEqual(anchor.name, 'Before restore')
+        self.assertEqual(set(Crop.objects.filter(project=self.project, crop_species=species)
+                             .values_list('pk', flat=True)), {first.pk, second.pk})
 
     def test_project_history_restore_survives_stale_duplicate_snapshots(self) -> None:
         """A crop hard-deleted without an ACTION_DELETED revision (e.g. an

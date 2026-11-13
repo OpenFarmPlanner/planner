@@ -2433,7 +2433,7 @@ export default function PublicCropLibraryPage() {
       </Dialog>
       {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
         candidates={linkImport.candidates}
-        onImportAsNew={linkImport.candidates.some((candidate) => candidate.species_match) ? undefined : () => {
+        onImportAsNew={() => {
           const entry = linkImport.publicCrop;
           setLinkImport(null);
           void performImport(entry.id, getCropTitle(entry, t, language), 'new');

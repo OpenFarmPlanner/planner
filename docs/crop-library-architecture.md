@@ -2330,7 +2330,10 @@ the project lock. A conflicting restore rolls back the entire operation, includi
 varieties, history and media state. Project-wide history recovery retains its
 established skip for a hard-deleted ghost snapshot whose general-crop name is
 already occupied; no second row is inserted. Existing legacy rows remain representable;
-no data migration chooses a canonical general crop. Variety re-import as a new
+no data migration chooses a canonical general crop. Project-wide restore preserves
+an already-active row with the same normalized name, variety and species, even
+when its project has acknowledged legacy ambiguity; new or changed identities
+still require validation. Variety re-import as a new
 copy remains supported and reuses the existing general crop.
 
 Legacy duplicate general rows are not merged or repaired. Extra general rows

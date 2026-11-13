@@ -54,7 +54,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
         <Button disabled={submitting} onClick={onClose}>{t('common:actions.cancel')}</Button>
-        {onImportAsNew ? <Button disabled={submitting} onClick={onImportAsNew}>{t('library.importConflictDialog.importAsNew')}</Button> : null}
+        {onImportAsNew && (publicCrop.variety?.trim() || !candidates.some((candidate) => candidate.species_match)) ? <Button disabled={submitting} onClick={onImportAsNew}>{t('library.importConflictDialog.importAsNew')}</Button> : null}
         <Button variant="contained" disabled={submitting || !targetId || !preview.preview} onClick={() => void confirm()}>
           {t('library.linkExisting.confirm')}
         </Button>

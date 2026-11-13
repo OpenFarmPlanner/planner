@@ -108,6 +108,8 @@ def _restore_project_state_at(project: Project, target_time) -> None:
     trade-off is deliberate: recovering old state matters more than perfectly
     un-creating everything newer.
     """
+    from farm.utils import normalize_text
+
     restorable_models = {model for model, _entity_type in _RESTORABLE_ENTITY_TYPES}
     with transaction.atomic():
         lock_crop_project(project.pk)
@@ -148,6 +150,11 @@ def _restore_project_state_at(project: Project, target_time) -> None:
 
             live_ids = set(manager.filter(project=project).values_list('pk', flat=True))
             present_ids[model] = set(live_ids)
+            current_crops = {
+                row['id']: row for row in manager.filter(project=project).values(
+                    'id', 'name', 'variety', 'crop_species_id', 'deleted_at',
+                )
+            } if model is Crop else {}
             states = _entity_states_at(project, entity_type, target_time)
             recreate: list[tuple[int, Any]] = []
             for object_id, snapshot in states.items():
@@ -177,7 +184,16 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                 if model is Crop and object_id in live_ids:
                     prospective = Crop(**row_data)
                     prospective.pk = object_id
-                    validate_general_crop_identity(prospective)
+                    current = current_crops[object_id]
+                    same_active_identity = current['deleted_at'] is None and (
+                        normalize_text(current['name']), normalize_text(current['variety']),
+                        current['crop_species_id'],
+                    ) == (
+                        normalize_text(prospective.name), normalize_text(prospective.variety),
+                        prospective.crop_species_id,
+                    )
+                    if not same_active_identity:
+                        validate_general_crop_identity(prospective)
                 if object_id in live_ids:
                     manager.filter(pk=object_id).update(
                         **{key: value for key, value in row_data.items() if key not in _SKIP_ON_UPDATE},
