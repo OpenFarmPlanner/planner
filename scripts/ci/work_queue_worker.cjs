@@ -64,11 +64,16 @@ function codeQLAlertNumber(thread) {
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
 
-function codeQLThreadFixed(thread, alert, pr, scope) {
+function codeQLThreadFixed(thread, alert, pr, scope, analyses = []) {
   const instance = alert.most_recent_instance;
-  return codeQLAlertNumber(thread) !== null && thread.isOutdated === true && scope.includes(thread.path) &&
-    instance?.state === 'fixed' && instance.ref === `refs/pull/${pr.number}/merge` &&
-    instance.commit_sha === pr.merge_commit_sha && instance.location?.path === thread.path;
+  if (codeQLAlertNumber(thread) === null || thread.isOutdated !== true || !scope.includes(thread.path) ||
+    instance?.state !== 'fixed' || instance.ref !== `refs/pull/${pr.number}/merge` || instance.location?.path !== thread.path ||
+    !instance.analysis_key || !instance.category || !/^[0-9a-f]{40}$/.test(pr.merge_commit_sha ?? '')) return false;
+  // Fixed alerts retain their last *detected* commit. Match the newest scanner
+  // analysis for this ref/key/category instead, never accept an old scan.
+  const latest = analyses.filter(analysis => analysis.tool?.name === 'CodeQL' && analysis.ref === instance.ref &&
+    analysis.analysis_key === instance.analysis_key && analysis.category === instance.category).sort((a, b) => b.id - a.id)[0];
+  return latest?.commit_sha === pr.merge_commit_sha && latest.error === '';
 }
 
 function authorArgs(workspace, runtime, protectedPaths) {
@@ -388,14 +393,20 @@ REVIEW FEEDBACK: ${feedback}`;
       throw new Error('Unresolved review threads or required approvals.');
     }
     const unresolved = review.reviewThreads.nodes.filter(thread => !thread.isResolved);
+    const analyses = unresolved.some(thread => codeQLAlertNumber(thread))
+      ? pages(`code-scanning/analyses?ref=${encodeURIComponent(`refs/pull/${number}/merge`)}&per_page=100`) : [];
     for (const thread of unresolved) {
       const alertNumber = codeQLAlertNumber(thread);
-      if (alertNumber && codeQLThreadFixed(thread, api(`code-scanning/alerts/${alertNumber}`), pr, evidence.scope ?? [])) {
+      const alert = alertNumber ? api(`code-scanning/alerts/${alertNumber}`) : null;
+      if (alert && codeQLThreadFixed(thread, alert, pr, evidence.scope ?? [], analyses)) {
         this.unchanged(item, pr);
         gh('api', 'graphql', '-f', 'query=mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}',
           '-f', `id=${thread.id}`);
         console.log('Resolved a CodeQL thread verified fixed for this exact merge revision.');
         return;
+      }
+      if (alert?.most_recent_instance?.state === 'fixed') {
+        console.log('Waiting for exact current scanner/thread evidence before resolving a fixed alert.'); return;
       }
     }
     if (unresolved.length) {

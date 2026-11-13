@@ -74,14 +74,21 @@ test('only an outdated CodeQL bot thread with exact current merge/scanner proof 
     author: { __typename: 'Bot', login: 'github-advanced-security' },
     body: '[Show more details](https://github.com/OpenFarmPlanner/planner/security/code-scanning/34)',
   }] } };
-  const pr = { number: 4, merge_commit_sha: 'merge' };
-  const instance = { state: 'fixed', ref: 'refs/pull/4/merge', commit_sha: 'merge', location: { path: 'source.js' } };
+  const pr = { number: 4, merge_commit_sha: 'c'.repeat(40) };
+  const instance = { state: 'fixed', ref: 'refs/pull/4/merge', commit_sha: 'old-last-detection', location: { path: 'source.js' },
+    analysis_key: 'workflow:analyze', category: '/language:javascript-typescript' };
+  const analysis = { id: 1, tool: { name: 'CodeQL' }, ref: instance.ref, analysis_key: instance.analysis_key,
+    category: instance.category, commit_sha: pr.merge_commit_sha, error: '' };
   assert.equal(codeQLAlertNumber(thread), 34);
-  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js']), true);
-  for (const changes of [{ state: 'open' }, { ref: 'refs/heads/main' }, { commit_sha: 'old' },
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js'], [analysis]), true);
+  for (const changes of [{ state: 'open' }, { ref: 'refs/heads/main' },
     { location: { path: 'different.js' } }]) {
-    assert.equal(codeQLThreadFixed(thread, { most_recent_instance: { ...instance, ...changes } }, pr, ['source.js']), false);
+    assert.equal(codeQLThreadFixed(thread, { most_recent_instance: { ...instance, ...changes } }, pr, ['source.js'], [analysis]), false);
   }
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js']), false);
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js'],
+    [analysis, { ...analysis, id: 2, commit_sha: 'old' }]), false);
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js'], [{ ...analysis, error: 'failed' }]), false);
   assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, []), false);
   assert.equal(codeQLThreadFixed({ ...thread, isOutdated: false }, { most_recent_instance: instance }, pr, ['source.js']), false);
   const human = structuredClone(thread); human.comments.nodes[0].author.__typename = 'User';
