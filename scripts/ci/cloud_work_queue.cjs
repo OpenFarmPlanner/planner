@@ -68,6 +68,17 @@ function reserve(budget, input, now = new Date()) {
   return { day, month, daily: daily + cost, monthly: monthly + cost, run: (budget.run ?? 0) + cost };
 }
 
+function executionFailure(transcript, diagnostics, secret) {
+  const failures = transcript.split('\n').flatMap(line => {
+    try {
+      const event = JSON.parse(line);
+      return event.type === 'error' ? [event.message] : event.type === 'turn.failed' ? [event.error?.message] : [];
+    } catch { return []; }
+  }).filter(value => typeof value === 'string');
+  return JSON.stringify((failures.at(-1) || diagnostics || 'CLI exited without a terminal error report.')
+    .replaceAll(secret, '[redacted]').slice(-4000));
+}
+
 function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
   let busy = false;
   return http.createServer(async (req, res) => {
@@ -96,6 +107,11 @@ function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
       const upstream = await fetcher('https://api.openai.com/v1/responses', {
         method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15 * 60_000),
       });
+      if (!upstream.ok) {
+        const detail = await upstream.clone().json().catch(() => ({}));
+        const code = detail.error?.code ?? detail.error?.type;
+        console.error(`Queue API rejected inference: HTTP ${upstream.status}, code ${/^[a-z_]{1,80}$/.test(code) ? code : 'unknown'}.`);
+      }
       res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') ?? 'application/json' });
       await new Promise((resolve, reject) => {
         const stream = Readable.fromWeb(upstream.body);
@@ -157,7 +173,7 @@ async function main() {
         child.on('exit', code => {
           if (code === 0) return resolve();
           // This fixture session has no credential environment or secret filesystem grants.
-          const detail = diagnostics.replaceAll(apiKey, '[redacted]').slice(-4000);
+          const detail = executionFailure(transcript, diagnostics, apiKey);
           reject(new Error(`Cloud model/sandbox verification failed (${code}): ${detail}`));
         });
       });
@@ -174,4 +190,4 @@ async function main() {
   } finally { server.closeAllConnections(); server.close(); fs.rmSync(directory, { recursive: true, force: true }); }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy };
+module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy, executionFailure };
