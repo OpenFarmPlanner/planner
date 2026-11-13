@@ -137,6 +137,7 @@ function authorResult(output) {
   }
   const message = events.filter(event => event.type === 'item.completed' && event.item?.type === 'agent_message').at(-1);
   const result = JSON.parse(message?.item.text ?? '');
+  if (result.completed !== true) throw new Error(`Implementation incomplete: ${String(result.summary ?? 'No completion report').slice(0, 1000)}`);
   if (!/^(feat|fix|docs|refactor|test|chore|ci|build|perf)(\([^\r\n]+\))?: [^\r\n]{1,100}$/.test(result.commit_title)) {
     throw new Error('Implementation returned an invalid Conventional Commit title.');
   }
@@ -276,7 +277,10 @@ Shell networking is proxy-restricted to npm/PyPI registries; host-local/private
 services are forbidden. Run unit/static checks here; UI servers, browser/E2E and
 database-service integration checks run in the repository's isolated GitHub CI.
 Preserve API compatibility and user data. Return the required JSON result with
-a concise Conventional Commit title, summary, and the checks actually run.
+completed=true only when all requested implementation/acceptance work is done;
+CI-delegated checks may remain pending. If blocked or only partially implemented,
+set completed=false and explain why. Include a concise Conventional Commit title,
+summary, and checks actually run; never present incomplete work as ready to publish.
 The host has prepared any merge from origin/main. Resolve conflict markers in
 working files if present, but do not stage, commit or rewrite Git metadata.
 ISSUE: ${JSON.stringify({ title: issue.title, body: issue.body })}
@@ -284,8 +288,8 @@ REVIEW FEEDBACK: ${feedback}`;
     const logs = path.join(this.directory, `author-${item.number}-${Date.now()}`);
     const schemaFile = logs + '.schema.json';
     fs.writeFileSync(schemaFile, JSON.stringify({ type: 'object', additionalProperties: false,
-      required: ['commit_title', 'summary', 'tests'], properties: {
-        commit_title: { type: 'string' }, summary: { type: 'string' }, tests: { type: 'array', items: { type: 'string' } },
+      required: ['completed', 'commit_title', 'summary', 'tests'], properties: {
+        completed: { type: 'boolean' }, commit_title: { type: 'string' }, summary: { type: 'string' }, tests: { type: 'array', items: { type: 'string' } },
       } }), { mode: 0o600 });
     const env = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'CODEX_HOME', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
       .filter(key => process.env[key]).map(key => [key, process.env[key]]));

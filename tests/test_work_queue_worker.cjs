@@ -132,11 +132,12 @@ test('the host commits sandbox edits without running author hooks or requiring s
 
 test('author final metadata requires successful execution and a valid single-line commit title', () => {
   const output = title => [{ type: 'item.completed', item: { type: 'agent_message',
-    text: JSON.stringify({ commit_title: title, summary: 'Changed source', tests: [] }) } },
+    text: JSON.stringify({ completed: true, commit_title: title, summary: 'Changed source', tests: [] }) } },
   { type: 'turn.completed' }].map(row => JSON.stringify(row)).join('\n');
   assert.equal(authorResult(output('fix: preserve references')).commit_title, 'fix: preserve references');
   assert.throws(() => authorResult(output('fix: title\ninjected line')));
   assert.throws(() => authorResult(output('not conventional')));
+  assert.throws(() => authorResult(output('fix: partial').replace('"completed":true', '"completed":false')), /incomplete/);
   assert.throws(() => authorResult(output('fix: valid').replace('turn.completed', 'turn.failed')));
 });
 
