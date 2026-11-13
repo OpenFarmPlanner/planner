@@ -1,0 +1,102 @@
+name: Mark next Codex issue (no AI API)
+
+"on":
+  workflow_dispatch:
+  issues:
+    types: [closed, reopened, edited]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: codex-queue-marker
+  cancel-in-progress: false
+
+jobs:
+  mark-next:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.action != 'edited' ||
+      github.event.issue.number == 1058
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep the next-issue label in sync with the queue issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // This workflow only updates GitHub labels. It never starts an AI model.
+            const { owner, repo } = context.repo;
+            const queueIssueNumber = 1058;
+            const nextLabel = "codex:next";
+            const queue = await github.rest.issues.get({
+              owner, repo, issue_number: queueIssueNumber,
+            });
+            if (queue.data.state !== "open") {
+              core.warning("Codex queue issue is closed; no changes made.");
+              return;
+            }
+
+            const body = queue.data.body || "";
+            const section = body.match(/## Ordered implementation issues\s*\n([\s\S]*?)(?=\n## |\s*$)/);
+            if (!section) {
+              core.setFailed("Missing ordered-issues section in queue issue.");
+              return;
+            }
+            const orderedNumbers = [...section[1].matchAll(/^\s*-\s*\[[ xX]\]\s+#(\d+)\b/gm)]
+              .map((match) => Number(match[1]));
+            const uniqueNumbers = [...new Set(orderedNumbers)];
+            if (uniqueNumbers.length !== orderedNumbers.length) {
+              core.setFailed("The queue contains duplicate issue numbers.");
+              return;
+            }
+
+            let next = null;
+            for (const issue_number of uniqueNumbers) {
+              if (issue_number === queueIssueNumber) continue;
+              try {
+                const response = await github.rest.issues.get({ owner, repo, issue_number });
+                const issue = response.data;
+                const labels = issue.labels.map((label) =>
+                  typeof label === "string" ? label.toLowerCase() : label.name.toLowerCase()
+                );
+                if (issue.state !== "open" || issue.pull_request) continue;
+                if (labels.includes("needs-decision") || labels.includes("blocked")) continue;
+                next = issue;
+                break;
+              } catch (error) {
+                if (error.status === 404) {
+                  core.warning("Queue item #" + issue_number + " no longer exists; skipping.");
+                  continue;
+                }
+                throw error;
+              }
+            }
+
+            const current = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", labels: nextLabel, per_page: 100,
+            });
+            for (const issue of current) {
+              if (next && issue.number === next.number) continue;
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: issue.number, name: nextLabel,
+              });
+              core.info("Removed label from issue #" + issue.number);
+            }
+
+            if (next && !current.some((issue) => issue.number === next.number)) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: nextLabel });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner, repo, name: nextLabel, color: "0E8A16",
+                  description: "Next issue in the manually ordered Codex execution queue",
+                });
+              }
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: next.number, labels: [nextLabel],
+              });
+              core.info("Marked issue #" + next.number + " as next");
+            } else {
+              core.info(next ? "Next issue unchanged: #" + next.number : "No eligible queue item");
+            }
