@@ -190,8 +190,8 @@ table of what is and isn't implemented.
 
 ## Process / QA
 
-- [`codex-execution-queue.md`](./codex-execution-queue.md) — manually ordered
-  issues, the advisory next-issue label and prevention of API-billed autofixes.
+- [`work-execution-queue.md`](./work-execution-queue.md) — agent-independent
+  issue/PR ordering, advisory markers, native epic links and AI cost controls.
 - [`testing-and-ci.md`](./testing-and-ci.md) — how the frontend, backend and
   E2E suites are split across CI jobs, why the frontend is sharded and the
   backend runs under xdist, and where the runtime actually goes, plus the

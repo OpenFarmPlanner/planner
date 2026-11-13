@@ -1,0 +1,167 @@
+name: Mark next work item (no AI API)
+
+"on":
+  workflow_dispatch:
+  workflow_call:
+  issues:
+    types: [closed, reopened, edited, labeled, unlabeled]
+  # No untrusted PR code is checked out or executed; only the trusted
+  # repository's queue issue is read. This also handles fork PR merges.
+  pull_request_target:
+    types: [closed, reopened]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  mark-next:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_target' &&
+       (github.event.pull_request.merged == true ||
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'COLLABORATOR')) ||
+      (github.event_name == 'issues' &&
+       (((github.event.action == 'closed' || github.event.action == 'reopened') &&
+         (github.event.issue.author_association == 'OWNER' ||
+          github.event.issue.author_association == 'MEMBER' ||
+          github.event.issue.author_association == 'COLLABORATOR')) ||
+        (github.event.action == 'edited' && github.event.issue.number == 1058) ||
+        ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+         (github.event.label.name == 'blocked' || github.event.label.name == 'needs-decision'))))
+    concurrency:
+      group: work-queue-marker
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep the next-item marker synchronized with the ordered queue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // This workflow only updates labels and never launches an AI agent.
+            const { owner, repo } = context.repo;
+            const queueIssueNumber = 1058;
+            const nextLabel = "queue:next";
+            const previousLabel = "codex:next";
+            const { data: queue } = await github.rest.issues.get({
+              owner, repo, issue_number: queueIssueNumber,
+            });
+            if (queue.state !== "open") {
+              core.setFailed("Work queue issue is closed.");
+              return;
+            }
+
+            const body = queue.body || "";
+            const section = body.match(/## Ordered work items[ \t]*\r?\n([\s\S]*?)(?=\n## |\s*$)/);
+            if (!section) {
+              core.setFailed("Missing 'Ordered work items' section in queue issue.");
+              return;
+            }
+
+            const entries = [];
+            for (const line of section[1].split("\n").filter(line => line.trim())) {
+              const match = line.match(/^\s*-\s*\[[ x]\]\s*(PR\s+)?#(\d+)(?:\s|$)/i);
+              if (!match || !Number.isSafeInteger(Number(match[2])) || Number(match[2]) <= 0) {
+                core.setFailed("Each queue line must be a checkbox with a positive issue or PR number.");
+                return;
+              }
+              entries.push({ isPR: Boolean(match[1]), number: Number(match[2]) });
+            }
+
+            if (new Set(entries.map(item => item.number)).size !== entries.length) {
+              core.setFailed("The queue contains duplicate issue or PR numbers.");
+              return;
+            }
+
+            let next = null;
+            for (const entry of entries) {
+              if (entry.number === queueIssueNumber) continue;
+              let issue;
+              try {
+                const response = await github.rest.issues.get({
+                  owner, repo, issue_number: entry.number,
+                });
+                issue = response.data;
+              } catch (error) {
+                if (error.status === 404) {
+                  core.setFailed("Queue item #" + entry.number + " does not exist.");
+                  return;
+                }
+                throw error;
+              }
+
+              if (Boolean(issue.pull_request) !== entry.isPR) {
+                core.setFailed("Queue entry #" + entry.number +
+                  " has the wrong type (expected issue or PR).");
+                return;
+              }
+
+              if (entry.isPR) {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner, repo, pull_number: entry.number,
+                });
+                if (pr.merged) continue;
+                if (pr.state === "closed") {
+                  core.setFailed("PR #" + entry.number +
+                    " closed without merging; resolve or edit the queue before continuing.");
+                  return;
+                }
+                // An open PR is a merge/review gate, not a new implementation task.
+                next = issue;
+                break;
+              }
+
+              const labels = issue.labels.map(label =>
+                (typeof label === "string" ? label : label.name).toLowerCase()
+              );
+              if (issue.state !== "open") continue;
+              if (labels.includes("blocked") || labels.includes("needs-decision")) continue;
+              next = issue;
+              break;
+            }
+
+            // Retire the Codex-specific marker while migrating the existing queue.
+            for (const label of [previousLabel, nextLabel]) {
+              const marked = await github.paginate(github.rest.issues.listForRepo, {
+                owner, repo, state: "all", labels: label, per_page: 100,
+              });
+              for (const issue of marked) {
+                if (label === nextLabel && next && issue.number === next.number) continue;
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner, repo, issue_number: issue.number, name: label,
+                  });
+                  core.info("Removed " + label + " from #" + issue.number);
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                }
+              }
+            }
+
+            if (!next) {
+              core.info("No eligible queue item.");
+              return;
+            }
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: nextLabel });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner, repo, name: nextLabel, color: "0E8A16",
+                description: "Next issue or pull request in the agent-independent work queue",
+              });
+            }
+
+            const labelNames = next.labels.map(label =>
+              typeof label === "string" ? label : label.name
+            );
+            if (!labelNames.includes(nextLabel)) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: next.number, labels: [nextLabel],
+              });
+            }
+            core.info("Next work item: " +
+              (next.pull_request ? "PR " : "issue ") + "#" + next.number);
