@@ -8,6 +8,17 @@ import {
 import type { Crop } from '../api/types';
 
 describe('buildCropHierarchy', () => {
+  it('keeps legacy extra general crops out of the variety rows', () => {
+    const rows = buildCropHierarchy([
+      { id: 1, name: 'Tomato', crop_species: 10, variety: '' },
+      { id: 2, name: 'Tomato (2)', crop_species: 10, variety: '' },
+      { id: 3, name: 'Tomato', crop_species: 10, variety: 'Roma' },
+    ]);
+    expect(rows.filter((row) => row.kind === 'variety').map((row) => row.crop?.id)).toEqual([3]);
+    expect(rows.find((row) => row.crop?.id === 2)?.parentId).toBeNull();
+    expect(rows.find((row) => row.crop?.id === 2)?.kind).toBe('species');
+  });
+
   it('groups general crop entries and varieties under the same species', () => {
     const crops: Crop[] = [
       { id: 1, name: 'Tomato', crop_species: 10, variety: '', growth_duration_days: 70 },

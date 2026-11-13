@@ -22,6 +22,7 @@ const publicCropApiMocks = vi.hoisted(() => ({
   updateDiscussionComment: vi.fn(),
   deleteDiscussionComment: vi.fn(),
   versions: vi.fn(),
+  importPreview: vi.fn(),
   importToProject: vi.fn(),
   update: vi.fn(),
   getTranslations: vi.fn(),
@@ -96,6 +97,7 @@ vi.mock('../api/api', async () => {
       updateDiscussionComment: publicCropApiMocks.updateDiscussionComment,
       deleteDiscussionComment: publicCropApiMocks.deleteDiscussionComment,
       versions: publicCropApiMocks.versions,
+      importPreview: publicCropApiMocks.importPreview,
       importToProject: publicCropApiMocks.importToProject,
       update: publicCropApiMocks.update,
       getTranslations: publicCropApiMocks.getTranslations,
@@ -284,6 +286,7 @@ const paginated = <T,>(results: T[]) => ({
 describe('PublicCropLibraryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    publicCropApiMocks.importPreview.mockResolvedValue({ data: { candidates: [] } });
     authMocks.user.is_public_library_moderator = false;
     authMocks.user.is_staff = false;
     authMocks.user.is_superuser = false;

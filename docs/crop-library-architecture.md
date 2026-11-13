@@ -2293,3 +2293,32 @@ Tests require a nonempty example for every current column (including registry
 columns), localized collision-free headers, identical ODS/XLSX logical data,
 and accepted imports in all four languages, so schema growth exposes missing
 examples rather than silently leaving blank columns.
+
+## Explicit linking from publish and import
+
+The existing status icon opens the publish/link wizard. Existing public entries
+are offered inside that dialog. Library imports first call `import-preview` for
+project-scoped candidates: stable species identity first, followed by unclassified
+crops matching a localized name, synonym or regional name. Every target requires
+explicit selection; names never link automatically. Already-linked targets cannot
+be claimed by a different entry.
+
+Both entry points reuse `PublicCropSyncPanel` with pull-only choices: take the
+library value or keep the local value. Confirmation calls `link-public-crop`
+without publishing local fields or varieties or requesting contribution consent.
+IDs, planning references, project-only values, variety overrides and variety
+links remain intact. Later library updates still require review.
+
+Import/link serialize on the project row before locking the entry. A general
+import with an existing candidate returns 409 `existing_crop_requires_link`.
+A stable species match also blocks `mode=new`; a name-only suggestion permits
+an explicit new-copy choice when the user rejects the suggested identity. Linked re-import retains its existing update/conflict flow.
+Current link clients send the preview's library `base_version` and local
+`expected_updated_at`; stale confirmation is rejected before any field changes.
+Older clients may omit these optional preconditions.
+
+Legacy duplicate general rows are not merged or repaired. Extra general rows
+render as general entries rather than varieties. Ambiguous group rename/delete
+operations are rejected. Delete preview exposes the full affected IDs, planning
+count and `ambiguous_general_group`; the UI explains the block and disables
+confirmation. No production repair is performed.

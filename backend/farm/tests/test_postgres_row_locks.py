@@ -50,3 +50,42 @@ class PlanTaskSynchronizationLockTest(TaskTimingFixture):
         synchronize_plan_tasks(plan)
 
         self.assertFalse(Task.objects.filter(planting_plan=plan, origin='automatic').exists())
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_general_library_imports_create_one_project_row():
+    """The project lock serializes identity checks even before a crop exists."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+
+    from crops.models import CropSpecies
+    from farm.models import Crop, Project, PublicCrop
+    from farm.services.public_crops import import_public_crop_into_project
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL row-lock regression')
+    user = User.objects.create_user(username='concurrent-library-user')
+    project = Project.objects.create(name='Concurrent library import', slug='concurrent-library')
+    species = CropSpecies.objects.create(name='Concurrent synthetic Tomato')
+    entry = PublicCrop.objects.create(name=species.name, crop_species=species, variety='',
+                                     status='published', created_by=user)
+    barrier = Barrier(2)
+
+    def import_once():
+        close_old_connections()
+        try:
+            local_project = Project.objects.get(pk=project.pk)
+            public_crop = PublicCrop.objects.get(pk=entry.pk)
+            barrier.wait(timeout=10)
+            return import_public_crop_into_project(public_crop=public_crop, project=local_project)[0].pk
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(import_once) for _ in range(2)]
+        ids = [future.result(timeout=30) for future in futures]
+    assert ids[0] == ids[1]
+    assert Crop.objects.filter(project=project, crop_species=species, variety='').count() == 1

@@ -64,7 +64,8 @@ export function buildCropHierarchy<TCrop extends CropHierarchySource>(
       // entry and once as its own variety row. Row rendering already treats
       // `crop: null` as "nothing to select here" (disabled={!crop}).
       const speciesLabel = getCropSpeciesLabel(speciesCrop ?? group[0]);
-      const varietyCrops = group.filter((crop) => crop !== speciesCrop);
+      const varietyCrops = group.filter((crop) => Boolean(crop.variety?.trim()));
+      const extraGeneralCrops = group.filter((crop) => crop !== speciesCrop && !crop.variety?.trim());
       const speciesNode: CropHierarchyItem<TCrop> = {
         id: speciesId,
         parentId: null,
@@ -90,7 +91,10 @@ export function buildCropHierarchy<TCrop extends CropHierarchySource>(
           varietyCount: 0,
         }));
 
-      return [speciesNode, ...varietyNodes];
+      return [speciesNode, ...extraGeneralCrops.map((crop) => ({
+        ...speciesNode, id: `crop:${crop.id}`, label: getCropSpeciesLabel(crop), crop,
+        varietyCount: 0,
+      })), ...varietyNodes];
     });
 }
 

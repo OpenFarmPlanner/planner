@@ -1,3 +1,4 @@
+import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import axios from 'axios';
@@ -39,6 +40,7 @@ export function usePublicCropLibrary({
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [importLink, setImportLink] = useState<{ publicCrop: PublicCrop; candidates: CropLinkCandidate[] } | null>(null);
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false);
   const [publicLibraryLoading, setPublicLibraryLoading] = useState(false);
   const [publicLibraryError, setPublicLibraryError] = useState<string | null>(null);
@@ -83,11 +85,18 @@ export function usePublicCropLibrary({
     await fetchPublicCrops('', { name: match.name, variety: match.variety });
   }, [fetchPublicCrops, onClearForm]);
 
-  const handleImportPublicCrop = async (publicCrop: PublicCrop) => {
+  const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new') => {
     const name = getPublicCropTitle(publicCrop, language, t('library.translation.missingName'));
     try {
       setPublicLibraryImportingId(publicCrop.id);
-      const response = await publicCropAPI.importToProject(publicCrop.id);
+      if (!mode && !publicCrop.project_import_status) {
+        const preview = await publicCropAPI.importPreview(publicCrop.id);
+        if (preview.data.candidates.length) {
+          setImportLink({ publicCrop, candidates: preview.data.candidates });
+          return;
+        }
+      }
+      const response = await publicCropAPI.importToProject(publicCrop.id, mode);
       const importedCrop = response.data.crop;
       await onImportSuccess(importedCrop);
       // Deliberately doesn't close the dialog (unlike a plain "select and
@@ -204,16 +213,13 @@ export function usePublicCropLibrary({
     return response.data;
   };
 
-  // Link confirmation: link + pulled values in one backend transaction, then
-  // push the user's own values into the entry, then the Sorten. The link
-  // cannot be undone, so a failed push keeps it: the crop then shows the
-  // ordinary "Bibliothek aktualisieren" action to retry.
   const handleLinkPublicCrop = async (data: {
     acceptedPublicLibraryTerms: boolean;
     cropSpeciesId?: number;
     originalLanguageCode: string;
     publicCropId: number;
     baseVersion: number;
+    cropUpdatedAt?: string;
     pullFields: string[];
     pushFields: string[];
     varieties?: PublishVarietySelection[];
@@ -225,33 +231,14 @@ export function usePublicCropLibrary({
     try {
       setPublishingCropId(selectedCrop.id);
       try {
-        await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields);
+        const linked = await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt);
+        await onImportSuccess(linked.data);
       } catch (error) {
         console.error('Error linking crop:', error);
         showSnackbar(extractApiErrorMessage(error, t, t('library.publishError')), 'error');
         return false;
       }
-      let cropMessage = t('library.linkPublicCropSuccess', { name });
-      let cropSeverity: 'success' | 'error' = 'success';
-      if (data.pushFields.length > 0) {
-        try {
-          const result = await pushSyncFields(selectedCrop.id, { ...data, pullFields: [] });
-          if (result.operation === 'pending_moderation') {
-            cropMessage = t('library.sync.linkPendingModeration', { name });
-          }
-        } catch (error) {
-          console.error('Error pushing values after linking:', error);
-          cropMessage = t('library.sync.linkPushFailed', { name });
-          cropSeverity = 'error';
-        }
-      }
-      await publishCropVarieties(
-        cropMessage,
-        data.varieties,
-        data,
-        data.acceptedPublicLibraryTerms,
-        cropSeverity,
-      );
+      showSnackbar(t('library.linkPublicCropSuccess', { name }), 'success');
       await refreshPublicCropStatusContext();
       return true;
     } finally {
@@ -425,6 +412,14 @@ export function usePublicCropLibrary({
   }, [handleOpenPublicLibrary, location.pathname, location.search, navigate, publicLibraryOpen, shouldShowProjectRequiredState]);
 
   return {
+    importLink,
+    setImportLink,
+    handleImportLinkSuccess: async (crop: Crop) => {
+      setImportLink(null);
+      await onImportSuccess(crop);
+      await fetchPublicCrops();
+      showSnackbar(t('library.linkExisting.success'), 'success');
+    },
     publicLibraryOpen,
     setPublicLibraryOpen,
     publicLibraryLoading,

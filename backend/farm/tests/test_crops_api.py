@@ -117,6 +117,28 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIn('display_color', response.data)
         self.assertTrue(response.data['display_color'].startswith('#'))
 
+    def test_legacy_duplicate_general_group_cannot_rename_or_delete(self):
+        species = CropSpecies.objects.create(name='Legacy synthetic tomato')
+        first = Crop.objects.create(project=self.project, name='Legacy tomato', crop_species=species)
+        second = Crop.objects.create(project=self.project, name='Legacy tomato (2)', crop_species=species)
+        varieties = [Crop.objects.create(project=self.project, name=first.name, crop_species=species,
+                                        variety=f'Legacy variety {index}') for index in range(12)]
+        plan = PlantingPlan.objects.create(project=self.project, crop=varieties[0], bed=self.bed,
+                                          planting_date=date(2026, 3, 1))
+        response = self.client.patch(f'/openfarmplanner/api/crops/{first.pk}/',
+                                     {'name': 'Renamed tomato'}, format='json')
+        self.assertEqual(response.status_code, 409)
+        first.refresh_from_db()
+        self.assertEqual(first.name, 'Legacy tomato')
+        preview = self.client.get(f'/openfarmplanner/api/crops/{second.pk}/delete-preview/')
+        self.assertEqual(set(preview.data['crop_ids']), {first.pk, second.pk, *[v.pk for v in varieties]})
+        self.assertEqual(preview.data['planning_data_count'], 1)
+        response = self.client.delete(f'/openfarmplanner/api/crops/{second.pk}/')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(Crop.objects.filter(crop_species=species, project=self.project).count(), 14)
+        plan.refresh_from_db()
+        self.assertEqual(plan.crop_id, varieties[0].pk)
+
     def test_delete_preview_reports_cascaded_varieties_and_planning_data(self):
         species = CropSpecies.objects.create(name='Daucus carota')
         general = Crop.objects.create(name='Karotte', variety='', project=self.project, crop_species=species)

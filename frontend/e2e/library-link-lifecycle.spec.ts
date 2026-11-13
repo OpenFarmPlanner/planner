@@ -150,3 +150,77 @@ test('correcting the crop species to one that already has the variety shows the 
   );
   await expect(dialog).toBeVisible();
 });
+
+for (const entryPoint of ['publish', 'import'] as const) {
+  test(`existing culture links through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, `library-existing-${entryPoint}-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
+    const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic Tomato ${entryPoint} ${Date.now()}` });
+    await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
+      translations: ['de', 'en', 'fr', 'es'].map((language_code) => ({ language_code, common_name: species.name })),
+    });
+    const source = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: species.name, variety: '', crop_species: species.id,
+      growth_duration_days: 80, harvest_duration_days: 20,
+    });
+    const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${source.id}/publish-public/`, {
+      accepted_public_library_terms: true, crop_species_id: species.id, publish_as_general: true,
+      original_language_code: 'de',
+    });
+    // Withdraw the project copy only; the separate library entry remains published.
+    const deletionStatus = await page.evaluate(async (id) => {
+      const csrf = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))?.split('=')[1] ?? '';
+      return (await fetch(`/api/crops/${id}/`, { method: 'DELETE', headers: {
+        'X-CSRFToken': csrf, 'X-Project-Id': localStorage.getItem('activeProjectId') ?? '',
+      } })).status;
+    }, source.id);
+    expect(deletionStatus).toBe(204);
+    const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: species.name, variety: '', crop_species: species.id,
+      growth_duration_days: 90, harvest_duration_days: 20, notes: 'Private synthetic note',
+    });
+    const variety = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: species.name, variety: 'Synthetic Roma', crop_species: species.id,
+    });
+    const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Synthetic farm' });
+    const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Synthetic field', location: location.id });
+    const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { name: 'Synthetic bed', field: field.id, area_sqm: 20 });
+    const plan = await apiRequest<{ id: number; crop: number }>(page, 'POST', '/planting-plans/', {
+      crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
+      cultivation_type: 'direct_sowing',
+    });
+    if (entryPoint === 'import') {
+      await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
+      await page.getByRole('button', { name: /In Projekt importieren/ }).first().click();
+      await page.getByRole('combobox', { name: 'Vorhandene Kultur im Projekt' }).click();
+      await page.getByRole('option', { name: species.name, exact: true }).click();
+    } else {
+      await page.goto(`/app/crops?cropId=${local.id}`);
+      await page.getByTestId('crop-detail-publish-action').click();
+      await page.getByRole('combobox', { name: 'Eintrag der Kulturbibliothek' }).click();
+      await page.getByRole('option', { name: species.name, exact: true }).click();
+      await page.getByRole('button', { name: 'Mit vorhandenem Eintrag verknüpfen', exact: true }).click();
+    }
+    const confirm = page.getByRole('button', { name: 'Verknüpfen und Werte übernehmen' });
+    await expect(confirm).toBeEnabled();
+    for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      const dialog = page.getByRole('dialog');
+      const bounds = await dialog.boundingBox();
+      expect(bounds?.x).toBeGreaterThanOrEqual(0);
+      expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+      await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-${viewport.width}.png`) });
+    }
+    await page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: 'Eigenen Wert behalten' }).check();
+    await confirm.click();
+    await expect(confirm).not.toBeVisible();
+    const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string }>(page, 'GET', `/crops/${local.id}/`);
+    expect(linked.id).toBe(local.id);
+    expect(linked.source_public_crop).toBe(published.public_crop.id);
+    expect(linked.notes).toBe('Private synthetic note');
+    const preservedPlan = await apiRequest<{ crop: number }>(page, 'GET', `/planting-plans/${plan.id}/`);
+    expect(preservedPlan.crop).toBe(variety.id);
+    const entry = await apiRequest<{ notes: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
+    expect(entry.notes).not.toContain('Private synthetic note');
+  });
+}

@@ -47,6 +47,7 @@ from farm.services.public_crop_trade_names import (
     variety_search_query,
 )
 from farm.services.public_crops import (
+    CropLinkConflictError,
     LibraryPinnedFieldsError,
     PublicCropEditConflictError,
     PublicCropIdentityConflictError,
@@ -61,6 +62,7 @@ from farm.services.public_crops import (
     import_public_crop_into_project,
     notify_change_proposal_reviewed,
     notify_moderators_of_change_proposal,
+    public_crop_import_candidates,
     reinstate_removed_public_crop,
     reject_new_publish_proposal,
     relink_public_crop_species,
@@ -656,6 +658,21 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return self._trade_name_error_response(error)
         return Response(PublicCropReportSerializer(report).data)
 
+    @action(detail=True, methods=['get'], url_path='import-preview')
+    def import_preview(self, request, pk=None):
+        public_crop = self.get_object()
+        project = get_active_project_or_400(request)
+        candidates = public_crop_import_candidates(public_crop=public_crop, project=project)
+        return Response({'candidates': [
+            {'id': crop.pk, 'name': crop.name, 'variety': crop.variety,
+             'source_public_crop': crop.source_public_crop_id,
+             'species_match': bool(
+                 public_crop.crop_species_id and crop.crop_species_id == public_crop.crop_species_id,
+             )}
+
+            for crop in candidates
+        ]})
+
     @action(detail=True, methods=['post'], url_path='import')
     def import_to_project(self, request, pk=None):
         public_crop = self.get_object()
@@ -699,12 +716,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 fields=error.fields,
             )
+        except CropLinkConflictError as error:
+            return api_error_response(code=error.code, detail=str(error), status_code=409)
         except PublicCropImportConfirmationRequiredError as error:
             existing = error.existing_crop
             return api_error_response(
                 code=error.code,
                 detail=str(error),
                 status_code=status.HTTP_409_CONFLICT,
+                can_import_as_new=bool(public_crop.variety_normalized or not public_crop.crop_species_id),
                 existing_crop_id=existing.id,
                 existing_crop_name=format_crop_display_name(existing.name, existing.variety),
                 variety_changed=(existing.variety or '') != (public_crop.variety or ''),

@@ -63,6 +63,7 @@ from farm.services.crop_import.spreadsheet import (
 )
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
+    CropLinkConflictError,
     DuplicatePublicCropError,
     LibraryPinnedFieldsError,
     PublicCropEditConflictError,
@@ -254,6 +255,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         )
         return {
             'crop_ids': affected_ids,
+            'ambiguous_general_group': self._has_ambiguous_general_group(crop),
             'varieties': varieties,
             'variety_count': len(varieties),
             'planning_data_count': planning_data_count,
@@ -453,6 +455,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if crop.deleted_at is not None:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+        if self._has_ambiguous_general_group(crop):
+            return api_error_response(code='duplicate_general_crop',
+                                      detail='Multiple general crops make deletion ambiguous.',
+                                      status_code=409)
         deleted_at = timezone.now()
         with transaction.atomic():
             for affected_crop in self._crops_affected_by_delete(crop):
@@ -522,12 +528,17 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if updated.image_file_id:
             MediaFile.objects.filter(id=updated.image_file_id).update(orphaned_at=None)
 
+    def _has_ambiguous_general_group(self, crop: Crop) -> bool:
+        return self._active_crop_group(crop).filter(variety_normalized__isnull=True).count() > 1
+
     def _validate_crop_group_rename(self, instance: Crop, name: str) -> None:
         from farm.utils import normalize_text
 
         normalized_name = normalize_text(name)
         if normalized_name == instance.name_normalized:
             return
+        if self._has_ambiguous_general_group(instance):
+            raise CropNameConflict()
         conflict = (
             Crop.objects.filter(project_id=instance.project_id, name_normalized=normalized_name)
             .filter(Q(variety_normalized__isnull=True) | Q(variety_normalized=''))
@@ -749,7 +760,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         `pull_fields` (optional) lists the differing fields that take the
         entry's value; they are applied in the same transaction as the link,
         and the entry's current version becomes the baseline. The remaining
-        differences are the user's values, pushed afterwards via `public-sync`.
+        differences remain local; linking does not publish them.
         """
         crop = self.get_object()
         public_crop_id = request.data.get('public_crop_id')
@@ -761,6 +772,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 detail='A valid public crop ID is required.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        base_version = request.data.get('base_version')
+        if base_version is not None and type(base_version) is not int:
+            return api_error_response(code='invalid_base_version',
+                                      detail='base_version must be an integer.', status_code=400)
         pull_fields: list[str] | None = None
         if 'pull_fields' in request.data:
             pull_fields = _request_field_list(request.data.get('pull_fields'))
@@ -774,7 +789,13 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         try:
             linked = link_project_crop_to_public_reference(
                 crop=crop, public_crop=public_crop, pull_fields=pull_fields,
+                base_version=base_version,
+                expected_updated_at=request.data.get('expected_updated_at'),
             )
+        except CropLinkConflictError as error:
+            return api_error_response(code=error.code, detail=str(error), status_code=409)
+        except PublicCropEditConflictError as error:
+            return self._public_sync_error_response(error)
         except PublicCropSyncFieldsError as error:
             return _invalid_sync_fields_response(error.fields, code=error.code)
         serializer = self.get_serializer(linked)
@@ -943,6 +964,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return Response({
             'public_crop_id': target.id,
             'public_version': target.version,
+            'crop_updated_at': crop.updated_at.isoformat(),
             'requires_moderation': moderated,
             'changes': [
                 {

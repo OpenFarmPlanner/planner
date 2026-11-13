@@ -201,9 +201,11 @@ export const cropAPI = {
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
   // `pullFields` (link confirmation) take the entry's values in the same
   // transaction as the link; omitted, no local value changes.
-  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[]) =>
+  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string) =>
     http.post<Crop>(`/crops/${id}/link-public-crop/`, {
       public_crop_id: publicCropId,
+      ...(baseVersion !== undefined ? { base_version: baseVersion } : {}),
+      ...(cropUpdatedAt ? { expected_updated_at: cropUpdatedAt } : {}),
       ...(pullFields ? { pull_fields: pullFields } : {}),
     }),
   // Removes the sync link to somebody else's entry; values and provenance stay.
@@ -310,6 +312,7 @@ export const publicCropAPI = {
   // `pinFields` keeps locally changed fields ("Nur lokal behalten"), and
   // `baseVersion` refuses the update (409) when the entry moved on since the
   // dialog loaded it.
+  importPreview: (id: number) => http.get<{ candidates: (Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match: boolean })[] }>(`/public-crops/${id}/import-preview/`),
   importToProject: (
     id: number,
     mode?: 'update' | 'new',

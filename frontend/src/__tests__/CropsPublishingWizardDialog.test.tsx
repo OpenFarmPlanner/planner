@@ -799,16 +799,16 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByText('Mit bestehendem Eintrag verknüpfen');
       await waitFor(() => expect(publicCropGetMock).toHaveBeenCalledWith(77));
-      expect(screen.getByText('Du kannst die Verknüpfung später wieder aufheben. Bereits übernommene Werte bleiben dabei erhalten.'))
+      expect(screen.getByText(/Allgemeine Werte werden an Sorten vererbt/))
         .toBeInTheDocument();
       await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(cropLevelCrop.id, 77));
       expect(screen.getByText(/Wähle für jeden abweichenden Wert, welcher gelten soll/)).toBeInTheDocument();
       // Both set and different -> library; only the local value set -> mine.
       expect(await screen.findByTestId('public-crop-sync-summary')).toHaveTextContent(
-        '1 Wert wird in deine Kultur übernommen, 1 Wert wird in der Kulturbibliothek aktualisiert.',
+        '1 Wert wird in deine Kultur übernommen, 1 eigener Wert bleibt erhalten.',
       );
 
-      const submitButton = await screen.findByRole('button', { name: 'Verknüpfen' });
+      const submitButton = await screen.findByRole('button', { name: 'Verknüpfen und Werte übernehmen' });
       fireEvent.click(submitButton);
 
       await waitFor(() => expect(onLinkPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
@@ -817,12 +817,12 @@ describe('CropsPublishingWizardDialog', () => {
         originalLanguageCode: 'de',
         baseVersion: 4,
         pullFields: ['growth_duration_days'],
-        pushFields: ['notes'],
+        pushFields: [],
         varieties: [],
       })));
     });
 
-    it('switches the submit label once a Sorte is selected for co-publication', async () => {
+    it('does not offer co-publication when linking an existing general entry', async () => {
       mockBlockingDuplicate();
       const sorte: Crop = { ...VARIETY_ROMA, name: 'Tomate' };
       const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
@@ -835,7 +835,8 @@ describe('CropsPublishingWizardDialog', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
 
       await screen.findByText('Mit bestehendem Eintrag verknüpfen');
-      await screen.findByRole('button', { name: 'Verknüpfen und Sorten veröffentlichen' });
+      await screen.findByRole('button', { name: 'Verknüpfen und Werte übernehmen' });
+      expect(screen.queryByRole('checkbox', { name: /Roma/ })).not.toBeInTheDocument();
     });
 
     it('returns to the refreshed warning view via "Zurück"', async () => {
@@ -1058,7 +1059,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP);
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
-      expect(screen.getByText(/Es werden die allgemeinen Daten dieser Kulturart veröffentlicht, keine Sorte/)).toBeInTheDocument();
+      expect(screen.getByText(/Verknüpfe .* mit einem bestehenden Bibliothekseintrag/)).toBeInTheDocument();
       expect(screen.queryByText('Sorten mitveröffentlichen')).not.toBeInTheDocument();
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
@@ -1068,7 +1069,7 @@ describe('CropsPublishingWizardDialog', () => {
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
-      expect(screen.getByText('Es werden die allgemeinen Daten dieser Kulturart veröffentlicht. Zusätzlich ausgewählte Sorten werden mitveröffentlicht.')).toBeInTheDocument();
+      expect(screen.getByText(/Verknüpfe .* mit einem bestehenden Bibliothekseintrag/)).toBeInTheDocument();
       // The Sorten-matching lookup only runs once a species is selected.
       await selectSpeciesOption('Tomate');
 
@@ -1117,9 +1118,10 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
       await selectSpeciesOption('Tomate');
-      expect(await screen.findByText('bereits vorhanden – wird verknüpft')).toBeInTheDocument();
-      // Only the conflicting Sorte carries the hint.
-      expect(screen.getAllByText('bereits vorhanden – wird verknüpft')).toHaveLength(1);
+      await waitFor(() => expect(publicCropListMock).toHaveBeenLastCalledWith(
+        { crop_species: 1, page_size: 200 }, expect.any(AbortSignal),
+      ));
+      await waitFor(() => expect(screen.getAllByText('bereits vorhanden – wird verknüpft')).toHaveLength(1));
 
       fireEvent.click(await findEnabledPublishButton());
 
@@ -1137,7 +1139,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       await screen.findByLabelText(/Offizielle Kulturart/i);
       await selectSpeciesOption('Tomate');
-      expect(await screen.findByText(/Abgleich mit der Kulturbibliothek fehlgeschlagen/)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText(/Abgleich mit der Kulturbibliothek fehlgeschlagen/)).toBeInTheDocument());
 
       // A failed lookup must not block publishing — the backend's own
       // duplicate gate still catches a Sorte that is public already.

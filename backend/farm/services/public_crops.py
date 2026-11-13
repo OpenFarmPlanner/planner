@@ -18,6 +18,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.exceptions import APIException
 from rest_framework.exceptions import ValidationError as ApiValidationError
 
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
@@ -1170,11 +1171,49 @@ def build_project_crop_payload(public_crop: PublicCrop) -> dict[str, Any]:
     return payload
 
 
+class CropLinkConflictError(APIException):
+    """A link/import decision no longer has an unambiguous target."""
+
+    status_code = 409
+
+    def __init__(self, code: str = 'crop_link_conflict') -> None:
+        self.code = code
+        self.message = 'Choose an unlinked existing crop before importing this entry.'
+        super().__init__({'code': code, 'detail': self.message})
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def public_crop_import_candidates(*, public_crop: PublicCrop, project: Project) -> list[Crop]:
+    """Identity matches first; names/aliases only suggest unclassified rows."""
+    from farm.utils import normalize_text
+
+    names = [public_crop.name]
+    if public_crop.crop_species_id:
+        names.extend(public_crop.crop_species.search_names())
+    normalized = {normalize_text(name) for name in names if name}
+    rows = Crop.objects.filter(project=project)
+    if not public_crop.variety_normalized:
+        rows = rows.filter(variety_normalized__isnull=True)
+    else:
+        rows = rows.filter(variety_normalized=public_crop.variety_normalized)
+    identity = Q(pk__in=[])
+    if public_crop.crop_species_id:
+        identity = Q(crop_species_id=public_crop.crop_species_id)
+    rows = rows.filter(identity | Q(crop_species__isnull=True, name_normalized__in=normalized))
+    return sorted(
+        rows, key=lambda row: (row.crop_species_id != public_crop.crop_species_id, row.pk),
+    )
+
+
 def link_project_crop_to_public_reference(
     *,
     crop: Crop,
     public_crop: PublicCrop,
     pull_fields: Sequence[str] | None = None,
+    base_version: int | None = None,
+    expected_updated_at: str | None = None,
 ) -> Crop:
     """Link a private crop to a published public crop without publishing a duplicate.
 
@@ -1186,7 +1225,7 @@ def link_project_crop_to_public_reference(
     ``pull_fields`` is the user's per-field decision from the link
     confirmation: those fields take the entry's values (see
     :func:`_pull_public_crop_fields`), every other difference is the user's own
-    value, which the caller pushes afterwards. With a decision the baseline is
+    value, which stays local. With a decision the baseline is
     always the entry's current version, so a remaining difference reads as a
     local change to contribute. Linking and pulling happen in one transaction.
 
@@ -1200,6 +1239,23 @@ def link_project_crop_to_public_reference(
     if pull_fields is not None:
         _validate_sync_fields(crop, public_crop, pull_fields)
     with transaction.atomic():
+        Project.objects.select_for_update().get(pk=crop.project_id)
+        public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+        _validate_base_version(public_crop, base_version)
+        Crop.objects.select_for_update().get(pk=crop.pk, project_id=crop.project_id)
+        crop.refresh_from_db()
+        if expected_updated_at is not None and crop.updated_at.isoformat() != expected_updated_at:
+            raise CropLinkConflictError('crop_link_conflict')
+        if public_crop.status != PublicCrop.STATUS_PUBLISHED or crop.source_public_crop_id:
+            raise CropLinkConflictError()
+        if not (crop.variety or '').strip() and public_crop.crop_species_id:
+            if Crop.objects.filter(
+                project_id=crop.project_id, crop_species_id=public_crop.crop_species_id,
+                variety_normalized__isnull=True,
+            ).exclude(pk=crop.pk).exists():
+                raise CropLinkConflictError('duplicate_general_crop')
+        if pull_fields is not None:
+            _validate_sync_fields(crop, public_crop, pull_fields)
         source_payload = build_project_crop_payload(public_crop)
         tracked_fields = Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS
         if not (public_crop.variety or '').strip():
@@ -3730,6 +3786,7 @@ def _pinned_public_crop_changes(
     return changes
 
 
+@transaction.atomic
 def import_public_crop_into_project(
     *,
     public_crop: PublicCrop,
@@ -3765,6 +3822,22 @@ def import_public_crop_into_project(
     Returns (crop, operation) where operation is one of
     'created' | 'unchanged' | 'updated'.
     """
+    Project.objects.select_for_update().get(pk=project.pk)
+    public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+    if public_crop.status != PublicCrop.STATUS_PUBLISHED:
+        raise CropLinkConflictError()
+    candidates = public_crop_import_candidates(public_crop=public_crop, project=project)
+    linked = Crop.objects.filter(project=project, source_public_crop=public_crop)
+    species_matches = [
+        crop for crop in candidates
+        if public_crop.crop_species_id and crop.crop_species_id == public_crop.crop_species_id
+    ]
+    if not public_crop.variety_normalized and len(species_matches) > 1:
+        raise CropLinkConflictError('duplicate_general_crop')
+    if not public_crop.variety_normalized and (
+        (mode == 'new' and species_matches) or (mode != 'new' and candidates and not linked.exists())
+    ):
+        raise CropLinkConflictError('existing_crop_requires_link')
     if mode == 'new':
         crop = _create_crop_from_public(public_crop=public_crop, project=project, unique_name=True)
         _ensure_local_general_crop(public_crop=public_crop, project=project)

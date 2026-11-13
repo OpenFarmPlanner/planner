@@ -1047,7 +1047,7 @@
     "publishing": "Veröffentliche…",
     "libraryAction": {
       "publish": "In Bibliothek teilen",
-      "publishTooltip": "Diese Kultur zum ersten Mal in der gemeinschaftlichen Kulturbibliothek veröffentlichen.",
+      "publishTooltip": "Mit der Kulturbibliothek verknüpfen oder eigene Kultur veröffentlichen.",
       "pullUpdate": "Kultur aktualisieren",
       "pullUpdateTooltip": "Die Bibliothek hat eine neuere Version. Änderungen ansehen und in deine Projektkultur übernehmen.",
       "pushUpdate": "Bibliothek aktualisieren",
@@ -1245,7 +1245,7 @@
       "confirmButton": "Veröffentlichen"
     },
     "publishWizard": {
-      "title": "Kultur veröffentlichen",
+      "title": "Kultur verknüpfen oder veröffentlichen",
       "intro": "Wähle zuerst die passende öffentliche Kulturart. Deine Sorte wird darunter veröffentlicht; falls es zu dieser Kulturart noch keinen allgemeinen Eintrag gibt, wird er automatisch aus deinen aktuellen Werten angelegt.",
       "introGeneral": "Wähle die passende öffentliche Kulturart. Es werden die allgemeinen Daten dieser Kulturart veröffentlicht, keine Sorte.",
       "introGeneralWithVarieties": "Es werden die allgemeinen Daten dieser Kulturart veröffentlicht. Zusätzlich ausgewählte Sorten werden mitveröffentlicht.",
@@ -1574,6 +1574,21 @@
         "library_unpin_field_not_pinned": "Dieser Wert ist nicht lokal fixiert. Bitte lade die Aktualisierung neu.",
         "library_pin_field_not_local_change": "Nur Werte, die du seit dem letzten Abgleich lokal geändert hast, können hier lokal behalten werden."
       }
+    },
+    "linkExisting": {
+      "title": "Mit vorhandenem Eintrag verknüpfen",
+      "importTitle": "Vorhandene Kultur ergänzen und verknüpfen",
+      "localTarget": "Vorhandene Kultur im Projekt",
+      "publicTarget": "Eintrag der Kulturbibliothek",
+      "confirm": "Verknüpfen und Werte übernehmen",
+      "inheritance": "Allgemeine Werte werden an Sorten vererbt. Eigene Werte und Sorten werden nicht veröffentlicht; eigene Überschreibungen bleiben erhalten. Spätere Bibliotheksänderungen werden zur Prüfung angeboten.",
+      "alreadyLinked": "Bereits verknüpft",
+      "failed": "Die Verknüpfung konnte nicht gespeichert werden. Prüfe Ziel und Werte erneut.",
+      "success": "Kultur verknüpft.",
+      "takeLibrary": "Aus Bibliothek übernehmen",
+      "keepLocal": "Eigenen Wert behalten",
+      "ambiguousDelete": "Diese Gruppe enthält mehrere allgemeine Kulturen. Um einen unerwarteten Gruppenverlust zu verhindern, ist das Löschen gesperrt. Die Daten müssen zuerst eindeutig zugeordnet werden.",
+      "intro": "Verknüpfe {{name}} mit einem bestehenden Bibliothekseintrag oder veröffentliche eine eigene Kultur."
     }
   },
   "commands": {

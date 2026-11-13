@@ -1,3 +1,4 @@
+import { ExistingCropLinkDialog } from '../crops/ExistingCropLinkDialog';
 /**
  * Crops (Kulturen) page component.
  * 
@@ -147,6 +148,9 @@ function Crops() {
       return '';
     }
     const cropName = getCropDisplayName(deleteDialogCrop);
+    if (deleteDialogImpact?.ambiguous_general_group) {
+      return t('library.linkExisting.ambiguousDelete');
+    }
     if (!deleteDialogImpact || deleteDialogImpact.variety_count === 0) {
       return t('deleteDialog.confirmation', { name: cropName });
     }
@@ -291,6 +295,9 @@ function Crops() {
     publishingCropId,
     fetchPublicCrops,
     handleOpenPublicLibrary,
+    importLink,
+    setImportLink,
+    handleImportLinkSuccess,
     handleImportPublicCrop,
     handlePublishCurrentCrop,
     handleLinkPublicCrop,
@@ -876,6 +883,13 @@ function Crops() {
         }}
       />
 
+      {importLink ? <ExistingCropLinkDialog publicCrop={importLink.publicCrop} candidates={importLink.candidates}
+        onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)}
+        onImportAsNew={importLink.candidates.some((candidate) => candidate.species_match) ? undefined : () => {
+          const entry = importLink.publicCrop;
+          setImportLink(null);
+          void handleImportPublicCrop(entry, 'new');
+        }} /> : null}
       <ConfirmationDialog
         open={Boolean(deleteDialogCrop)}
         fullWidth
@@ -893,7 +907,7 @@ function Crops() {
         messageTypographyProps={{ variant: 'body1', color: 'text.secondary' }}
         actionsSx={{ px: 3, pb: 2.5, pt: 1 }}
         cancelButtonProps={{ variant: 'outlined' }}
-        confirmButtonProps={{ color: 'error', variant: 'contained' }}
+        confirmButtonProps={{ color: 'error', variant: 'contained', disabled: Boolean(deleteDialogImpact?.ambiguous_general_group) }}
       />
 
       <UnlinkPublicCropDialog

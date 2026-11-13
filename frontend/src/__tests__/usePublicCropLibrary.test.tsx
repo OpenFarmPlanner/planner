@@ -11,6 +11,7 @@ const {
   publicSyncMock,
   unlinkPublicCropMock,
   refreshUserMock,
+  importPreviewMock,
   importToProjectMock,
 } = vi.hoisted(() => ({
   publishPublicMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   publicSyncMock: vi.fn(),
   unlinkPublicCropMock: vi.fn(),
   refreshUserMock: vi.fn(),
+  importPreviewMock: vi.fn().mockResolvedValue({ data: { candidates: [] } }),
   importToProjectMock: vi.fn(),
 }));
 
@@ -35,6 +37,7 @@ vi.mock('../api/api', async () => {
     publicCropAPI: {
       ...actual.publicCropAPI,
       importToProject: importToProjectMock,
+      importPreview: importPreviewMock,
     },
   };
 });
@@ -148,36 +151,22 @@ describe('usePublicCropLibrary field-by-field sync', () => {
     refreshUserMock.mockReset();
   });
 
-  it('links with the pulled fields first, then pushes only the chosen own values', async () => {
+  it('links and pulls atomically without pushing even when legacy callers send push fields', async () => {
     const showSnackbar = vi.fn();
     const { result } = renderLibraryHook(showSnackbar);
-
     await expect(result.current.handleLinkPublicCrop(LINK_DATA)).resolves.toBe(true);
-
-    expect(linkPublicCropMock).toHaveBeenCalledWith(1, 77, ['growth_duration_days']);
-    expect(publicSyncMock).toHaveBeenCalledWith(1, {
-      public_crop_id: 77,
-      base_version: 4,
-      pull_fields: [],
-      push_fields: ['notes'],
-    });
-    expect(linkPublicCropMock.mock.invocationCallOrder[0])
-      .toBeLessThan(publicSyncMock.mock.invocationCallOrder[0]);
+    expect(linkPublicCropMock).toHaveBeenCalledWith(1, 77, ['growth_duration_days'], 4, undefined);
+    expect(publicSyncMock).not.toHaveBeenCalled();
     expect(showSnackbar).toHaveBeenCalledWith('„Tomate“ wurde mit der Kulturbibliothek verknüpft.', 'success');
   });
 
-  it('keeps the link and says so when the push fails', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    publicSyncMock.mockRejectedValue(new Error('push failed'));
-    const showSnackbar = vi.fn();
-    const { result } = renderLibraryHook(showSnackbar);
-
-    await expect(result.current.handleLinkPublicCrop(LINK_DATA)).resolves.toBe(true);
-
-    const [message, severity] = showSnackbar.mock.calls[0];
-    expect(message).toContain('wurde verknüpft, aber deine Werte konnten nicht in die Kulturbibliothek übernommen werden');
-    expect(message).toContain('„Bibliothek aktualisieren“');
-    expect(severity).toBe('error');
+  it('does not publish selected varieties as a side effect of linking', async () => {
+    publishPublicMock.mockClear();
+    const { result } = renderLibraryHook(vi.fn());
+    await result.current.handleLinkPublicCrop({ ...LINK_DATA, varieties: [{ cropId: 2, publicCropId: null }] });
+    expect(publicSyncMock).not.toHaveBeenCalled();
+    expect(publishPublicMock).not.toHaveBeenCalled();
+    expect(refreshUserMock).not.toHaveBeenCalled();
   });
 
   it('does not call the push when every field comes from the library', async () => {
@@ -248,7 +237,18 @@ describe('usePublicCropLibrary import', () => {
       await result.current.handleImportPublicCrop({ id: 42, name: 'Tomate', variety: '' } as never);
     });
 
-    expect(importToProjectMock).toHaveBeenCalledWith(42);
+    expect(importToProjectMock).toHaveBeenCalledWith(42, undefined);
     expect(result.current.publicLibraryOpen).toBe(true);
   });
+});
+
+it('offers existing import targets without mutating the project before confirmation', async () => {
+  importPreviewMock.mockResolvedValueOnce({ data: { candidates: [{ id: 9, name: 'Tomate', variety: '', species_match: true }] } });
+  importToProjectMock.mockClear();
+  const { result } = renderLibraryHook(vi.fn());
+  await act(async () => {
+    await result.current.handleImportPublicCrop({ id: 77, name: 'Tomate', variety: '' } as never);
+  });
+  expect(result.current.importLink?.candidates[0].id).toBe(9);
+  expect(importToProjectMock).not.toHaveBeenCalled();
 });

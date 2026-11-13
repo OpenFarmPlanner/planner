@@ -69,6 +69,7 @@ export function useCropDelete({
       planning_data_count: 0,
       deletes_general_crop: !(crop.variety ?? '').trim(),
       group_without_general: Boolean((crop.variety ?? '').trim()) && !hasGeneralEntry,
+      ambiguous_general_group: group.filter((candidate) => !candidate.variety?.trim()).length > 1,
       loading: true,
     };
   }, [crops]);

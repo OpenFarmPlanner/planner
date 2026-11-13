@@ -17,6 +17,7 @@ export interface ImportConflictDialogProps {
   onCancel: () => void;
   onUpdate: () => void;
   onImportAsNew: () => void;
+  allowImportAsNew?: boolean;
   /** Set when the library variety name differs from the local copy's current variety, so the rename is called out explicitly instead of blending into the generic warning. */
   varietyChange?: { from: string; to: string } | null;
 }
@@ -36,6 +37,7 @@ export function ImportConflictDialog({
   onUpdate,
   onImportAsNew,
   varietyChange,
+  allowImportAsNew = true,
 }: ImportConflictDialogProps) {
   return (
     <Dialog open={open} onClose={busy ? undefined : onCancel} maxWidth="sm" fullWidth>
@@ -63,11 +65,13 @@ export function ImportConflictDialog({
             {t('common:actions.cancel')}
           </Button>
         </DisabledActionTooltip>
+        {allowImportAsNew ? (
         <DisabledActionTooltip title={busy ? t('common:disabledReasons.busy') : ''}>
           <Button variant="outlined" onClick={onImportAsNew} disabled={busy}>
             {t('library.importConflictDialog.importAsNew')}
           </Button>
         </DisabledActionTooltip>
+        ) : null}
         <DisabledActionTooltip title={busy ? t('common:disabledReasons.busy') : ''}>
           <Button variant="contained" color="error" onClick={onUpdate} disabled={busy}>
             {t('library.importConflictDialog.update')}

@@ -397,12 +397,13 @@ interface SyncFieldRowProps {
   choice: PublicCropSyncChoice;
   disabled: boolean;
   allowLocal: boolean;
+  keepMineLocally: boolean;
   t: TFunction;
   locale: string;
   onChoiceChange: (choice: PublicCropSyncChoice) => void;
 }
 
-function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoiceChange }: SyncFieldRowProps) {
+function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t, locale, onChoiceChange }: SyncFieldRowProps) {
   const label = getPublicCropFormUnitFieldLabel(change.field, t);
   const isRichText = isRichTextSyncField(change.field);
   const [expanded, setExpanded] = useState(false);
@@ -442,7 +443,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoic
       value="mine"
       checked={choice === 'mine'}
       disabled={disabled || !change.pushable}
-      label={t('library.sync.chooseMine')}
+      label={t(keepMineLocally ? 'library.linkExisting.keepLocal' : 'library.sync.chooseMine')}
       onSelect={() => onChoiceChange('mine')}
     >
       {mineValue}
@@ -500,7 +501,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, t, locale, onChoic
           value="library"
           checked={choice === 'library'}
           disabled={disabled}
-          label={t('library.sync.chooseLibrary')}
+          label={t(keepMineLocally ? 'library.linkExisting.takeLibrary' : 'library.sync.chooseLibrary')}
           onSelect={() => onChoiceChange('library')}
         >
           {libraryValue}
@@ -633,7 +634,7 @@ export function PublicCropSyncPanel({
         >
           <SyncColumnHeading
             column="library"
-            label={t('library.sync.columnLibrary')}
+            label={t(keepMineLocally ? 'library.linkExisting.takeLibrary' : 'library.sync.columnLibrary')}
             actionLabel={t('library.sync.allLibrary')}
             disabled={disabled}
             onAction={() => setAll('library')}
@@ -645,7 +646,7 @@ export function PublicCropSyncPanel({
           />
           <SyncColumnHeading
             column="mine"
-            label={t('library.sync.columnMine')}
+            label={t(keepMineLocally ? 'library.linkExisting.keepLocal' : 'library.sync.columnMine')}
             actionLabel={t(allowLocal ? 'library.sync.allShare' : 'library.sync.allMine')}
             disabled={disabled}
             onAction={() => setAll('mine')}
@@ -676,6 +677,7 @@ export function PublicCropSyncPanel({
               choice={choices[change.field] ?? getDefaultSyncChoice(change, choiceOptions)}
               disabled={disabled}
               allowLocal={allowLocal}
+              keepMineLocally={keepMineLocally}
               t={t}
               locale={locale}
               onChoiceChange={(choice) => setChoice(change.field, choice)}

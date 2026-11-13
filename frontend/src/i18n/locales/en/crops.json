@@ -1047,7 +1047,7 @@
     "publishing": "Publishing…",
     "libraryAction": {
       "publish": "Share to library",
-      "publishTooltip": "Publish this crop to the shared crop library for the first time.",
+      "publishTooltip": "Link to the crop library or publish your own crop.",
       "pullUpdate": "Update crop",
       "pullUpdateTooltip": "The library has a newer version. Review the changes and apply them to your project crop.",
       "pushUpdate": "Update library",
@@ -1245,7 +1245,7 @@
       "confirmButton": "Publish"
     },
     "publishWizard": {
-      "title": "Publish crop",
+      "title": "Link or publish a crop",
       "intro": "First choose the matching public crop species. Your variety is published under it; if the species has no general entry yet, one is created automatically from your current values.",
       "introGeneral": "Choose the matching public crop species. Only its general data is published, not a variety.",
       "introGeneralWithVarieties": "The general data of this crop species is published. Selected varieties are published along with it.",
@@ -1574,6 +1574,21 @@
         "library_unpin_field_not_pinned": "This value is not pinned locally. Please reload the update.",
         "library_pin_field_not_local_change": "Only values you changed locally since the last sync can be kept locally here."
       }
+    },
+    "linkExisting": {
+      "title": "Link to an existing entry",
+      "importTitle": "Enrich and link an existing crop",
+      "localTarget": "Existing project crop",
+      "publicTarget": "Crop library entry",
+      "confirm": "Link and apply selected values",
+      "inheritance": "General values are inherited by varieties. Local values and varieties are not published; individual overrides remain. Later library changes are offered for review.",
+      "alreadyLinked": "Already linked",
+      "failed": "The link could not be saved. Review the target and values again.",
+      "success": "Crop linked.",
+      "takeLibrary": "Take library value",
+      "keepLocal": "Keep local value",
+      "ambiguousDelete": "This group contains multiple general crops. Deletion is blocked to prevent unexpected loss of the group. The records need an unambiguous identity first.",
+      "intro": "Link {{name}} to an existing library entry or publish your own crop."
     }
   },
   "commands": {
