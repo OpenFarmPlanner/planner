@@ -3,9 +3,91 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const cp = require('node:child_process');
 const { once } = require('node:events');
-const { normalizeRequest, reserve, createProxy, executionFailure, inspectionDiagnostics } = require('../scripts/ci/cloud_work_queue.cjs');
+const { normalizeRequest, reserve, usageCost, usageCollector, settle, createProxy, executionFailure, inspectionDiagnostics } = require('../scripts/ci/cloud_work_queue.cjs');
 const { providerArgs } = require('../scripts/ci/run_codex_review.cjs');
 const request = { model: 'gpt-5.4-mini', input: [{ role: 'user', content: 'Inspect source' }], tools: [] };
+const completed = changes => ({ status: 'completed', model: 'gpt-5.4-mini-2026-03-17', service_tier: 'default',
+  usage: { input_tokens: 1000, input_tokens_details: { cached_tokens: 800 }, output_tokens: 100 }, ...changes });
+
+test('confirmed usage charges cached inputs and total outputs; invalid/incomplete evidence keeps the reservation', () => {
+  assert.equal(usageCost(completed(), 1000), 660);
+  for (const response of [completed({ status: 'incomplete' }), completed({ service_tier: 'priority' }),
+    completed({ model: 'other' }), completed({ usage: null }),
+    ...[{ input_tokens: 1001 }, { output_tokens: 8193 }, { output_tokens: -1 }, { input_tokens: 0 },
+      { input_tokens_details: { cached_tokens: 1001 } }].map(change => completed({ usage: { ...completed().usage, ...change } }))]) {
+    assert.equal(usageCost(response, 1000), null);
+  }
+});
+
+test('fragmented SSE confirms exactly one completed response; missing, duplicated and failed terminal events do not refund', () => {
+  const event = response => `event: response.completed\r\ndata: ${JSON.stringify({ type: 'response.completed', response })}\r\n\r\n`;
+  const text = event(completed());
+  const collector = usageCollector(true);
+  for (let i = 0; i < text.length; i += 7) collector.write(Buffer.from(text.slice(i, i + 7)));
+  assert.deepEqual(collector.finish(), completed());
+  for (const text of ['', 'data: invalid\n\n', event(completed()) + event(completed()),
+    event(completed()) + 'data: {"type":"response.failed"}\n\n']) {
+    const missing = usageCollector(true); missing.write(Buffer.from(text)); assert.equal(missing.finish(), null);
+  }
+  const plain = usageCollector(false); plain.write(Buffer.from(JSON.stringify(completed())));
+  assert.deepEqual(plain.finish(), completed());
+});
+
+test('reconciliation only releases verified unused reservation from its matching budget periods', () => {
+  const held = reserve({}, 1000, new Date('2026-11-13'));
+  const cost = held.run;
+  assert.equal(settle(held, held, cost, 660).daily, 660);
+  assert.equal(settle(held, held, cost, null), null);
+  assert.equal(settle(held, held, cost, cost + 1), null);
+  const later = { ...held, day: '2026-11-14', daily: 10, month: '2026-12', monthly: 10 };
+  const result = settle(later, held, cost, 660);
+  assert.equal(result.daily, 10); assert.equal(result.monthly, 10); assert.equal(result.run, 660);
+});
+
+test('fast follow-up requests wait for durable reconciliation and can use the returned reservation', async t => {
+  const ledger = {}, snapshots = [];
+  let inference = 0, release;
+  let notifyStart, notifyFinish;
+  const saving = new Promise(resolve => { notifyStart = resolve; });
+  const finished = new Promise(resolve => { notifyFinish = resolve; });
+  const proxy = createProxy({ apiKey: 'test-secret', ledger, persist: async next => {
+    snapshots.push({ ...next });
+    if (snapshots.length === 2) { notifyStart(); await new Promise(resolve => { release = resolve; }); }
+    if (snapshots.length === 4) notifyFinish();
+  }, fetcher: async url => {
+    if (url.endsWith('input_tokens')) return Response.json({ input_tokens: 1000 });
+    inference++;
+    return new Response(`data: ${JSON.stringify({ type: 'response.completed', response: completed() })}\n\n`,
+      { headers: { 'Content-Type': 'text/event-stream' } });
+  } });
+  proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
+  t.after(() => { proxy.closeAllConnections(); proxy.close(); });
+  const url = `http://127.0.0.1:${proxy.address().port}/v1/responses`;
+  const first = await fetch(url, { method: 'POST', body: JSON.stringify(request) }); await first.text(); await saving;
+  const second = fetch(url, { method: 'POST', body: JSON.stringify(request) });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(inference, 1);
+  release();
+  const response = await second; assert.equal(response.status, 200); await response.text(); await finished;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(ledger.daily, 1320);
+  assert.equal(ledger.run, 1320);
+  assert.equal(snapshots.length, 4);
+  assert.ok(snapshots[0].daily > snapshots[1].daily);
+});
+
+test('failed usage write-back retains the full reservation for the next request', async t => {
+  const ledger = {}; let saves = 0, done;
+  const attempted = new Promise(resolve => { done = resolve; });
+  const proxy = createProxy({ apiKey: 'test-secret', ledger, persist: () => {
+    if (++saves === 2) { done(); throw new Error('Reconciliation storage unavailable'); }
+  }, fetcher: async url => url.endsWith('input_tokens') ? Response.json({ input_tokens: 1000 }) : Response.json(completed()) });
+  proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
+  t.after(() => { proxy.closeAllConnections(); proxy.close(); });
+  const response = await fetch(`http://127.0.0.1:${proxy.address().port}/v1/responses`, { method: 'POST', body: JSON.stringify(request) });
+  await response.text(); await attempted;
+  assert.equal(ledger.run, reserve({}, 1000).run);
+});
 
 test('API requests cannot change model/tier/cost cap, use hidden conversation or call hosted tools', () => {
   assert.equal(normalizeRequest({ ...request, service_tier: 'priority', max_output_tokens: 100000 }).service_tier, 'default');

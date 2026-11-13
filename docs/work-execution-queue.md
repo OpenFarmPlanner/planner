@@ -82,11 +82,18 @@ the cloud worker owns the queue.
 Only `gpt-5.4-mini` at standard tier is allowed through the proxy. Hosted billable
 tools, hidden conversation state and other endpoints are refused. Each request
 is counted with the input-token API, capped at 8,192 output tokens, and reserved
-at uncached list prices ($0.75/$4.50 per million input/output tokens). Reservations
-are pessimistic: even failed requests are not refunded. The initial limits are
-**$1 per run, $2 per UTC day and $10 per UTC month** in model-token charges.
-Cached inputs and shorter answers can make actual costs lower. Price changes
-require reviewing the proxy's rates; GitHub Actions billing is separate.
+at uncached list prices ($0.75/$4.50 per million input/output tokens). Before the
+next request, a complete provider usage report replaces that reservation with
+the reported input/output cost, including cached inputs at $0.075/million.
+Only validated standard-tier usage from the configured model can release unused
+reservation. Failed/incomplete streams, missing or invalid usage, disconnected
+clients and failed durable write-back keep the full reservation. A crash cannot
+erase a charge. Requests wait for prior reconciliation before spending again.
+The limits remain **$1 per run, $2 per UTC day and $10 per UTC month** in accounted
+model-token costs plus pending reservations. These are internal queue counters,
+not a readout of the API account balance or a final provider invoice. Historical
+reservations without saved usage remain conservative. Price changes require
+reviewing the proxy's rates; GitHub Actions billing is separate.
 See [model pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
 
 The existing three author attempts per issue and one review per head/base also
