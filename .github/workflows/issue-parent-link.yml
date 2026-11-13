@@ -1,0 +1,94 @@
+name: Link issues to native epic sub-issues
+
+"on":
+  issues:
+    types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to link to its declared parent epic
+        required: true
+        type: number
+
+permissions:
+  issues: write
+
+jobs:
+  attach-parent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the native parent/sub-issue relationship
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issueNumber = context.eventName === "workflow_dispatch"
+              ? Number(context.payload.inputs?.issue_number)
+              : Number(context.payload.issue?.number);
+
+            if (!Number.isSafeInteger(issueNumber) || issueNumber <= 0) {
+              core.setFailed("Missing or invalid issue number.");
+              return;
+            }
+
+            // Read the live issue instead of trusting potentially stale event content.
+            const { data: issue } = await github.rest.issues.get({
+              owner, repo, issue_number: issueNumber,
+            });
+            if (issue.pull_request) {
+              core.info("Pull requests cannot be attached as sub-issues; skipping.");
+              return;
+            }
+
+            // Public issue bodies are untrusted: only project collaborators can
+            // request an automatic hierarchy change.
+            if (!["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association)) {
+              core.info("Issue is not authored by a repository collaborator; skipping.");
+              return;
+            }
+
+            const match = (issue.body || "").match(
+              /^\s*(?:\*\*)?Parent epic:\s*(?:\*\*)?\s*#(\d+)\b/im
+            );
+            if (!match) {
+              core.info("No 'Parent epic: #123' declaration; skipping.");
+              return;
+            }
+
+            const parentNumber = Number(match[1]);
+            if (parentNumber === issueNumber || !Number.isSafeInteger(parentNumber)) {
+              core.setFailed("The declared parent epic is invalid.");
+              return;
+            }
+
+            const { data: parent } = await github.rest.issues.get({
+              owner, repo, issue_number: parentNumber,
+            });
+            if (parent.pull_request || !/^Epic:\s/i.test(parent.title)) {
+              core.setFailed("The declared parent must be an issue titled 'Epic: ...'.");
+              return;
+            }
+
+            try {
+              const { data: existingParent } = await github.request(
+                "GET /repos/{owner}/{repo}/issues/{issue_number}/parent",
+                { owner, repo, issue_number: issueNumber }
+              );
+              if (existingParent.number === parentNumber) {
+                core.info("Issue #" + issueNumber + " already belongs to epic #" + parentNumber);
+                return;
+              }
+              core.setFailed(
+                "Issue #" + issueNumber + " already has epic #" + existingParent.number +
+                "; refusing to silently replace its parent."
+              );
+              return;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            await github.request(
+              "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+              { owner, repo, issue_number: parentNumber, sub_issue_id: issue.id }
+            );
+            core.info("Attached #" + issueNumber + " under epic #" + parentNumber);
