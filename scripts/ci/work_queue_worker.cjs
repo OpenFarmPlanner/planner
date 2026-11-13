@@ -1,10 +1,10 @@
-// Runs on the explicitly authorized signing host, never on an untrusted PR runner.
+// Runs from trusted main on an authorized host or isolated cloud runner.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const cp = require('node:child_process');
 const { verifiedCodexReview } = require('../../.github/scripts/security-review-completion.cjs');
-const { codexRuntime } = require('./run_codex_review.cjs');
+const { codexRuntime, providerArgs } = require('./run_codex_review.cjs');
 
 const REPO = 'OpenFarmPlanner/planner';
 const ROOT = path.resolve(__dirname, '../..');
@@ -78,11 +78,13 @@ function codeQLThreadFixed(thread, alert, pr, scope, analyses = []) {
 
 function authorArgs(workspace, runtime, protectedPaths) {
   const toolchain = path.resolve(path.dirname(process.execPath), '..');
-  const grants = { ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read', [toolchain]: 'read' };
+  const extra = process.env.OFP_QUEUE_CLOUD === '1' && process.env.OFP_QUEUE_PYTHON_RUNTIME
+    ? { [path.resolve(process.env.OFP_QUEUE_PYTHON_RUNTIME)]: 'read' } : {};
+  const grants = { ...extra, ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read', [toolchain]: 'read' };
   // Root denial already hides all host paths. Explicit deny-file mounts inside
   // denied parents can prevent bubblewrap initialization on supported clients.
   for (const directory of protectedPaths) {
-    if ([workspace, runtime, toolchain].some(grant => directory === grant || directory.startsWith(grant + path.sep))) {
+    if ([workspace, runtime, toolchain, ...Object.keys(extra)].some(grant => directory === grant || directory.startsWith(grant + path.sep))) {
       throw new Error('A protected host path overlaps the author grants.');
     }
   }
@@ -171,6 +173,7 @@ class Worker {
   save() {
     fs.writeFileSync(this.stateFile + '.new', JSON.stringify(this.state, null, 2), { mode: 0o600 });
     fs.renameSync(this.stateFile + '.new', this.stateFile);
+    if (process.env.OFP_QUEUE_CLOUD === '1') require('./cloud_work_queue.cjs').saveState(this.stateFile);
   }
   selection() {
     const queue = api('issues/1058');
@@ -298,7 +301,7 @@ REVIEW FEEDBACK: ${feedback}`;
       TMPDIR: temporary, XDG_CACHE_HOME: temporary, PIP_CACHE_DIR: temporary, npm_config_cache: temporary,
       GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null',
       GIT_CONFIG_KEY_1: 'core.fsmonitor', GIT_CONFIG_VALUE_1: 'false' });
-    const args = authorArgs(workspace, codexRuntime(), [this.directory, this.key, ROOT].filter(directory => directory !== workspace));
+    const args = [...providerArgs(), ...authorArgs(workspace, codexRuntime(), [this.directory, this.key, ROOT].filter(directory => directory !== workspace))];
     args.splice(args.length - 1, 0, '--output-schema', schemaFile);
     const result = cp.spawnSync('codex', args,
     { cwd: workspace, input: prompt, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 2 * 60 * 60_000 });
@@ -314,11 +317,16 @@ REVIEW FEEDBACK: ${feedback}`;
     this.assertSelected(item);
     if (pr) this.unchanged(item, pr);
     // Ignore author-controlled hooks and SSH configuration when publishing its commits.
-    run('git', [...SAFE_GIT, '-c', 'core.sshCommand=ssh -oBatchMode=yes', '-C', workspace,
-      'push', `git@github.com:${REPO}.git`, `HEAD:refs/heads/${branch}`]);
+    if (process.env.OFP_QUEUE_CLOUD === '1') {
+      gh('auth', 'setup-git');
+      run('git', [...SAFE_GIT, '-C', workspace, 'push', `https://github.com/${REPO}.git`, `HEAD:refs/heads/${branch}`]);
+    } else {
+      run('git', [...SAFE_GIT, '-c', 'core.sshCommand=ssh -oBatchMode=yes', '-C', workspace,
+        'push', `git@github.com:${REPO}.git`, `HEAD:refs/heads/${branch}`]);
+    }
     if (!pr) {
       const bodyFile = path.join(this.directory, `pr-${item.number}.md`);
-      fs.writeFileSync(bodyFile, `Fixes #${item.number}\n\nImplemented by the subscription queue worker. See commits and CI for validation. Independent review is pending.\n`);
+      fs.writeFileSync(bodyFile, `Fixes #${item.number}\n\nImplemented by the authorized queue worker. See commits and CI for validation. Independent review is pending.\n`);
       console.log(gh('pr', 'create', '--repo', REPO, '--draft', '--base', 'main', '--head', branch,
         '--title', git(workspace, 'log', '-1', '--format=%s'), '--body-file', bodyFile));
     }
@@ -450,7 +458,7 @@ async function main() {
   if ((fs.statSync(filename).mode & 0o077) !== 0) throw new Error('Worker config must have mode 0600.');
   if ((fs.statSync(config.signing_key).mode & 0o077) !== 0) throw new Error('Signing key must have mode 0600.');
   const login = cp.spawnSync('codex', ['login', 'status'], { encoding: 'utf8' });
-  if (login.status !== 0 || !/ChatGPT/.test((login.stdout ?? '') + (login.stderr ?? ''))) {
+  if (!process.env.OFP_QUEUE_PROXY && (login.status !== 0 || !/ChatGPT/.test((login.stdout ?? '') + (login.stderr ?? '')))) {
     throw new Error('The worker requires Codex ChatGPT subscription login, not API-key authentication.');
   }
   fs.mkdirSync(config.state_directory, { recursive: true, mode: 0o700 });

@@ -56,6 +56,19 @@ function reviewerArgs(output, gitDirectory, runtime) {
     '-c', 'permissions.security-review.network.enabled=false', '-'];
 }
 
+function providerArgs() {
+  if (!process.env.OFP_QUEUE_PROXY) return [];
+  const url = new URL(process.env.OFP_QUEUE_PROXY);
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/v1' ||
+      url.username || url.password || url.search || url.hash) throw new Error('Invalid queue API proxy.');
+  return ['-c', 'model="gpt-5.4-mini"', '-c', 'model_reasoning_effort="high"',
+    '-c', 'model_provider="queue"', '-c', 'model_providers.queue.name="Budgeted queue API"',
+    '-c', `model_providers.queue.base_url=${JSON.stringify(url.href)}`,
+    '-c', 'model_providers.queue.wire_api="responses"',
+    '-c', 'model_providers.queue.request_max_retries=0',
+    '-c', 'model_providers.queue.stream_max_retries=0'];
+}
+
 function run(number, output, keyFile) {
   if (!Number.isSafeInteger(number) || number < 1) throw new Error('Invalid PR number.');
   if (!output.startsWith(os.tmpdir() + path.sep)) throw new Error('Use a new directory under /tmp.');
@@ -88,7 +101,7 @@ For diff inspection use --no-ext-diff --no-textconv; never execute PR code.\n`;
   const env = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'CODEX_HOME', 'SSL_CERT_FILE',
     'SSL_CERT_DIR'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
   Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_PAGER: 'cat' });
-  const execution = spawnSync('codex', reviewerArgs(output, gitDirectory, runtime), {
+  const execution = spawnSync('codex', [...providerArgs(), ...reviewerArgs(output, gitDirectory, runtime)], {
     cwd: output, input: prompt, env, encoding: 'utf8', timeout: 30 * 60_000,
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -127,4 +140,4 @@ if (require.main === module) {
     run(Number(number), path.resolve(output), fs.realpathSync(keyFile));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { terminalReview, reviewerArgs, codexRuntime, run, SOURCES, MARKER, KEY_ID };
+module.exports = { terminalReview, reviewerArgs, codexRuntime, run, SOURCES, MARKER, KEY_ID, providerArgs };

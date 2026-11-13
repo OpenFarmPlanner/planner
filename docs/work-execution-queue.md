@@ -19,77 +19,82 @@ and finish independent review and merge before starting the next one. The owner
 authorized the commissioned worker to implement, fix findings, merge after
 required checks and verified independent review pass, and continue without
 routine maintainer confirmation. Labels alone never start another agent. This
-excludes production deploys, paid AI API calls and signing trust-policy changes.
+excludes production deploys and unreviewed signing trust-policy changes. The owner
+authorized small, bounded API costs on 2026-11-13 and requested cloud-only operation.
 
-## Subscription host worker
+## Cloud worker
 
-`scripts/ci/work_queue_worker.cjs` controls the authorized host. The sibling ops
-repository's `scripts/install_work_queue.sh` installs its user service/timer and
-a separate trusted checkout pinned to an explicitly reviewed, merged revision.
-The installer requires `--revision REVIEWED_MERGED_SHA`; it never automatically
-updates its privileged controller code from main. It uses the host's ChatGPT Codex
-login, GitHub/SSH access and protected review key, without paid API jobs.
+`.github/workflows/cloud-work-queue.yml` runs on GitHub-hosted Ubuntu, every ten
+minutes or by manual dispatch. It always checks out trusted `main`, never a PR
+revision, and has one shared concurrency group with cancellation disabled.
+Enable with repository variable `CLOUD_WORK_QUEUE_ENABLED=true`; set it to false
+to pause future runs. Cancel an active run separately. No laptop or local daemon
+is needed. GitHub schedules may be delayed; the queue is not a real-time service.
 
-Each tick reloads the live ordered queue. Existing PRs linked through GitHub's
-closing-issue references are adopted before starting an implementation. New
-implementations run in separate clones with no signing-key, controller-state,
-trusted-checkout or host-credential filesystem access. Shell networking uses an
-active proxy allowing only npm/PyPI registries, with local/private services and
-local binding forbidden. Unit/static checks run there; UI/E2E and database-service
-checks run in isolated GitHub CI. Git metadata stays read-only in the sandbox:
-authors edit/test files and return structured commit metadata. The host prepares
-branch merges, validates the edited tree, creates commits with hooks disabled
-and publishes draft PRs. The existing restricted launcher produces a fresh
-independent signed review. Findings and branch/test failures return to bounded
-implementation sessions. Verified exact-head/base/scope evidence allows the
-controller to make the PR ready, refresh the review gate and wait for required
-CI checks, resolved threads and mergeability before a SHA-bound squash merge.
-The worker also requires GitHub's strict up-to-date status-check rule: GitHub
-therefore rejects the merge atomically if `main` advances after the final
-base-pinned evidence check, while `--match-head-commit` rejects a changed head.
-The next timer tick continues with the live queue; routine human sign-off is
-not needed. GitHub rules and the review verifier remain binding.
+`scripts/ci/cloud_work_queue.cjs` starts a restricted API proxy and the existing
+`scripts/ci/work_queue_worker.cjs` controller. Each run performs one transition:
+implement/repair, independently review, refresh CI, wait, or merge. The next run
+reloads the live queue. Cloud-authored PRs are adopted through closing-issue
+references. An external implementation claims its issue with `queue:active`;
+never commission two implementers for the same issue.
 
-CodeQL bot findings are returned for repair. A bot thread is auto-resolved only
-when it is outdated, its path is covered by the current clean signed review,
-and GitHub reports the linked alert fixed at this PR's exact current merge SHA
-and merge ref. Human replies, truncated conversations, mismatched scanner data
-and other unresolved discussions are never silently dismissed.
+The controller authors changes in an isolated clone, with read-only Git metadata,
+no inherited GitHub/API credentials and no filesystem grants to the key, state or
+trusted checkout. Shell networking allows npm/PyPI registries only. The controller
+validates and commits the edited tree with hooks disabled, pushes over HTTPS and
+opens a draft PR. Findings and failed checks return to bounded author sessions.
+A fresh independent read-only Codex session inspects the entire changed scope.
+The existing trusted launcher signs its validated exact-head/base result after
+that session exits. Existing signature verification remains binding; there are
+no new signers, unsigned approvals, or author self-certification.
 
-Cloud/manual implementers claim the issue with `queue:active` before coding and
-open a same-repository PR containing `Fixes #<issue>`. The host waits for that PR,
-then handles review and merge. This advisory claim is not a distributed atomic
-lock: never commission multiple implementers for one item. Host ticks use flock
-to prevent local overlap, including across restarts.
+A clean receipt lets the controller mark the PR ready, refresh the security gate,
+and wait for every app-bound required check and review thread. Merge requires
+strict up-to-date branch protection and the exact reviewed head. Conflicts,
+failed checks, unsupported discussions, incomplete scans and stale evidence block
+merging. An outdated CodeQL-only thread is resolved only with exact current
+scanner evidence, as enforced by the existing controller.
 
-Config is the mode-0600 `~/.config/openfarmplanner/work-queue.json`:
+### Credentials and durable state
 
-```json
-{
-  "enabled": true,
-  "state_directory": "/home/USER/.local/state/openfarmplanner/work-queue",
-  "signing_key": "/home/USER/.config/openfarmplanner/codex-review-key.pem"
-}
-```
+Repository secrets: `OPENAI_API_KEY`, `RELEASE_PAT` and
+`CLOUD_QUEUE_SIGNING_KEY` (the existing trusted Ed25519 key, not a new identity).
+The PAT must read/write planner contents, issues, PRs and Actions, and write
+contents in private `OpenFarmPlanner/ops`. A PAT is required because writes with
+`GITHUB_TOKEN` do not start ordinary PR CI. No credential is persisted in Git
+checkout configuration. The API key exists only in the proxy process; the
+signing key is a mode-0600 runner temporary file outside all model grants.
+The trusted main workflow and runner become the signing-host trust boundary.
+Never run untrusted scripts in that host process or upload its temporary files.
 
-Keep config, logs and author clones outside repositories. Inspect selection
-without writes or model calls with
-`node scripts/ci/work_queue_worker.cjs CONFIG.json --dry-run`. Attempts are
-persisted before model execution: one review per head/base, at most three author
-attempts per queue item including repairs. A crash does not reset budgets.
-Inspect `last-error.txt` and JSONL/stderr logs before deliberately resetting
-an item's counters in state.json. Task text and review/CI output are untrusted
-data. PR code runs only in the author sandbox, never on the signing host.
+State lives on private ops branch `cloud-work-queue-state`, in
+`.queue/state.json` (attempts/claims) and `.queue/budget.json` (spending ledger).
+Initialize both to `{}` deliberately before first activation. The controller
+loads these files on every run. Missing/corrupt state and failed persistence stop
+work. Every attempt and cost reservation is remotely committed before starting
+model work, so cancellation and runner replacement cannot reset limits.
+There is no shared PR-writable Actions cache. GitHub API SHA preconditions reject
+concurrent state replacement. The legacy local worker must remain disabled while
+the cloud worker owns the queue.
 
-Inspect with `systemctl --user status ofp-work-queue.timer` and
-`journalctl --user -u ofp-work-queue.service`. Stop future ticks with
-`systemctl --user disable --now ofp-work-queue.timer`; stop an active tick with
-`systemctl --user stop ofp-work-queue.service`.
+### Cost limits
 
-The host and user manager must be running; sleep/offline pauses work.
-Subscription exhaustion, missing credentials, incomplete review and unresolved
-checks remain real blockers, never fabricated approvals. This worker does not
-claim to start or resume hosted Cloud tasks. The marker workflow stays label-only.
+Only `gpt-5.4-mini` at standard tier is allowed through the proxy. Hosted billable
+tools, hidden conversation state and other endpoints are refused. Each request
+is counted with the input-token API, capped at 8,192 output tokens, and reserved
+at uncached list prices ($0.75/$4.50 per million input/output tokens). Reservations
+are pessimistic: even failed requests are not refunded. The initial limits are
+**$1 per run, $2 per UTC day and $10 per UTC month** in model-token charges.
+Cached inputs and shorter answers can make actual costs lower. Price changes
+require reviewing the proxy's rates; GitHub Actions billing is separate.
+See [model pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
+
+The existing three author attempts per issue and one review per head/base also
+remain persistent. Exhaustion is a visible failure, never a reason to accept an
+incomplete implementation or unreviewed PR. Inspect the workflow logs and private
+state before deliberately resetting a counter. Local subscription CLI execution
+remains available for manual recovery, but its ops timer is not installed or
+required for this cloud workflow.
 
 ## Advisory marker and triggers
 
@@ -140,10 +145,9 @@ Changing an existing parent requires a deliberate manual hierarchy change.
 
 ## Cost controls
 
-These workflows make no model requests and do not launch coding agents. They
-work independently of Claude or Codex allowance. Use an approved signed-in
-subscription workflow when starting agent work; do not introduce paid AI API
-keys. GitHub Actions usage is governed separately by repository billing.
+The advisory marker and epic-link workflows make no model requests. The separate
+cloud worker uses the bounded API route above; it does not consume the ChatGPT
+subscription allowance. GitHub Actions usage is billed separately.
 
 The former API-billed `codex-autofix.yml` remains disabled and its job has a
 false condition. Re-enabling it requires an explicit owner decision.
