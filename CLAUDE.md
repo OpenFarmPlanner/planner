@@ -545,11 +545,15 @@ content patterns live, commented, in the triage step's `env` block.
   Setup and follow-up expectations live in
   `docs/security-automation.md`.
 - **Local fallback:** when cloud providers cannot complete a review, prepare a
-  pinned bundle with `scripts/ci/local_security_review.py`. A fresh local AI
-  reviewer or independent human can review it without Claude allowance. The
-  helper validates declared head/scope/completeness and renders the existing
-  manual-review report; a human maintainer must inspect and approve it. It
-  never manufactures approval or certifies a native cloud scan. Exact commands
-  and the no-model-budget human route live in `docs/security-automation.md`.
+  signed result with the trusted `scripts/ci/run_codex_review.cjs` launcher.
+  Validated fresh independent Codex execution covering the exact head/base and
+  all changed files with no findings or coverage gaps satisfies the gate
+  automatically, without per-PR human approval. The key and launcher hashes
+  are authenticated against the immutable base policy. Never fabricate a
+  receipt, reuse an authoring session or substitute unsigned JSON. An
+  independent human can still use `scripts/ci/local_security_review.py` when
+  all model budgets are exhausted; unsigned reports need explicit approval.
+  Installing/changing this trust policy requires one deliberate human approval.
+  Setup, key protection and recovery live in `docs/security-automation.md`.
 - The action refuses to run on a PR that changes `claude-pr.yml` itself until
   that change is on the default branch.

@@ -131,7 +131,8 @@ def finish(output: Path) -> None:
     report = render(manifest, review)
     (output / "report.md").write_text(report)
     print(f"Report ready for inspection: {output / 'report.md'}")
-    print("A human maintainer must inspect the report and explicitly approve it after publication.")
+    print("Unsigned reports require maintainer approval. "
+          "Use the trusted signed launcher for automatic completion.")
 
 
 def main() -> None:

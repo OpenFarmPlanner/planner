@@ -29,11 +29,20 @@ ls docs/security-review-*.md
 
 If Claude's allowance is exhausted or cloud review is unavailable, follow
 `docs/security-automation.md` ("Local review when Claude has no allowance"):
-prepare a pinned bundle with `scripts/ci/local_security_review.py` and give it
-to a fresh local reviewer session or an independent human. Validate and inspect
-the result before posting it. A human maintainer must explicitly approve the
-exact-head report; starting the review is not permission to approve it. This
-is the manual review route, not a completed native cloud scan.
+run `node scripts/ci/run_codex_review.cjs PR_NUMBER /tmp/review-PR_NUMBER`
+from a trusted checkout matching the PR base. It starts a fresh independent
+Codex session and signs validated execution evidence outside the reviewer's
+filesystem. Publish `signed-report.md` on that PR and rerun failed CI jobs
+together. A valid clean signed result satisfies the gate automatically: do not
+ask for per-PR human approval. Findings, missing coverage, failed execution,
+expired signatures or mismatched head/base/scope remain blocked. This is a
+verified local AI-assisted review, not a native cloud scan.
+
+If the trusted launcher is unavailable or no model budget remains, prepare a
+bundle with `scripts/ci/local_security_review.py` for an independent human.
+Unsigned/manual reports still need explicit exact-head maintainer approval.
+Installing or changing the trusted signing policy needs one deliberate human
+approval under the existing base policy; agents must not self-certify it.
 
 Note the exact commit: `git rev-parse HEAD`. Focus on tenancy (project
 scoping, `X-Project-Id`), permissions on every view/viewset action, auth and
