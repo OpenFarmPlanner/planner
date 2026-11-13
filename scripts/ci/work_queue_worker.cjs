@@ -301,7 +301,8 @@ REVIEW FEEDBACK: ${feedback}`;
       TMPDIR: temporary, XDG_CACHE_HOME: temporary, PIP_CACHE_DIR: temporary, npm_config_cache: temporary,
       GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null',
       GIT_CONFIG_KEY_1: 'core.fsmonitor', GIT_CONFIG_VALUE_1: 'false' });
-    const args = [...providerArgs(), ...authorArgs(workspace, codexRuntime(), [this.directory, this.key, ROOT].filter(directory => directory !== workspace))];
+    const args = authorArgs(workspace, codexRuntime(), [this.directory, this.key, ROOT].filter(directory => directory !== workspace));
+    args.splice(1, 0, ...providerArgs());
     args.splice(args.length - 1, 0, '--output-schema', schemaFile);
     const result = cp.spawnSync('codex', args,
     { cwd: workspace, input: prompt, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 2 * 60 * 60_000 });

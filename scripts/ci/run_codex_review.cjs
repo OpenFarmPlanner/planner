@@ -101,7 +101,9 @@ For diff inspection use --no-ext-diff --no-textconv; never execute PR code.\n`;
   const env = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'CODEX_HOME', 'SSL_CERT_FILE',
     'SSL_CERT_DIR'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
   Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_PAGER: 'cat' });
-  const execution = spawnSync('codex', [...providerArgs(), ...reviewerArgs(output, gitDirectory, runtime)], {
+  const args = reviewerArgs(output, gitDirectory, runtime);
+  args.splice(1, 0, ...providerArgs());
+  const execution = spawnSync('codex', args, {
     cwd: output, input: prompt, env, encoding: 'utf8', timeout: 30 * 60_000,
     maxBuffer: 64 * 1024 * 1024,
   });
