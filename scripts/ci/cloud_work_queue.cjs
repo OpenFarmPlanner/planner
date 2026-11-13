@@ -79,6 +79,19 @@ function executionFailure(transcript, diagnostics, secret) {
     .replaceAll(secret, '[redacted]').slice(-4000));
 }
 
+function inspectionDiagnostics(transcript, secret) {
+  const items = transcript.split('\n').flatMap(line => {
+    try {
+      const event = JSON.parse(line);
+      if (event.type !== 'item.completed') return [];
+      const item = event.item;
+      return [{ type: item.type, status: item.status, exit_code: item.exit_code,
+        command: item.command, output: item.aggregated_output?.slice(-2000), text: item.text?.slice(-1000) }];
+    } catch { return []; }
+  });
+  return JSON.stringify(items).replaceAll(secret, '[redacted]').slice(-6000);
+}
+
 function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
   let busy = false;
   return http.createServer(async (req, res) => {
@@ -177,7 +190,11 @@ async function main() {
           reject(new Error(`Cloud model/sandbox verification failed (${code}): ${detail}`));
         });
       });
-      if (terminalReview(transcript).review.ok !== true) throw new Error('Cloud fixture verification incomplete.');
+      try {
+        if (terminalReview(transcript).review.ok !== true) throw new Error('Cloud fixture verification incomplete.');
+      } catch (error) {
+        throw new Error(`${error.message} Fixture evidence: ${inspectionDiagnostics(transcript, apiKey)}`);
+      }
       console.log('Cloud credentials, durable state, budgeted API and restricted reviewer verified.');
       return;
     }
@@ -190,4 +207,4 @@ async function main() {
   } finally { server.closeAllConnections(); server.close(); fs.rmSync(directory, { recursive: true, force: true }); }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy, executionFailure };
+module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy, executionFailure, inspectionDiagnostics };

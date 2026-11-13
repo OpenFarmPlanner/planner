@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const cp = require('node:child_process');
 const { once } = require('node:events');
-const { normalizeRequest, reserve, createProxy, executionFailure } = require('../scripts/ci/cloud_work_queue.cjs');
+const { normalizeRequest, reserve, createProxy, executionFailure, inspectionDiagnostics } = require('../scripts/ci/cloud_work_queue.cjs');
 const { providerArgs } = require('../scripts/ci/run_codex_review.cjs');
 const request = { model: 'gpt-5.4-mini', input: [{ role: 'user', content: 'Inspect source' }], tools: [] };
 
@@ -99,4 +99,19 @@ test('JSON-mode CLI errors remain actionable when stderr is empty, without loggi
   assert.ok(!detail.includes('key-secret'));
   assert.ok(!detail.includes('\n'));
   assert.ok(executionFailure('', 'startup failure', 'key-secret').includes('startup failure'));
+});
+
+
+test('fixture inspection failures expose command exit/output and final result without secrets or raw event injection', () => {
+  const events = [
+    { type: 'item.completed', item: { type: 'command_execution', status: 'completed', exit_code: 1,
+      command: 'cat source.txt', aggregated_output: 'sandbox unavailable key-secret\n::warning::untrusted' } },
+    { type: 'item.completed', item: { type: 'agent_message', text: '{"ok":false}' } },
+  ].map(row => JSON.stringify(row)).join('\n');
+  const detail = inspectionDiagnostics(events, 'key-secret');
+  assert.ok(detail.includes('sandbox unavailable'));
+  assert.ok(detail.includes('"exit_code":1'));
+  assert.ok(detail.includes('ok'));
+  assert.ok(!detail.includes('key-secret'));
+  assert.ok(!detail.includes('\n'));
 });
