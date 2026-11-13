@@ -50,6 +50,12 @@ base-pinned evidence check, while `--match-head-commit` rejects a changed head.
 The next timer tick continues with the live queue; routine human sign-off is
 not needed. GitHub rules and the review verifier remain binding.
 
+CodeQL bot findings are returned for repair. A bot thread is auto-resolved only
+when it is outdated, its path is covered by the current clean signed review,
+and GitHub reports the linked alert fixed at this PR's exact current merge SHA
+and merge ref. Human replies, truncated conversations, mismatched scanner data
+and other unresolved discussions are never silently dismissed.
+
 Cloud/manual implementers claim the issue with `queue:active` before coding and
 open a same-repository PR containing `Fixes #<issue>`. The host waits for that PR,
 then handles review and merge. This advisory claim is not a distributed atomic

@@ -55,6 +55,22 @@ function requiredChecksPass(required, checks, statuses) {
   });
 }
 
+function codeQLAlertNumber(thread) {
+  const comments = thread.comments?.nodes ?? [];
+  if (thread.comments?.pageInfo?.hasNextPage || !comments.length || comments.some(comment =>
+    comment.author?.__typename !== 'Bot' || comment.author.login !== 'github-advanced-security')) return null;
+  const match = comments[0].body.match(/\[Show more details\]\(https:\/\/github\.com\/OpenFarmPlanner\/planner\/security\/code-scanning\/([1-9]\d*)\)/);
+  const number = Number(match?.[1]);
+  return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
+function codeQLThreadFixed(thread, alert, pr, scope) {
+  const instance = alert.most_recent_instance;
+  return codeQLAlertNumber(thread) !== null && thread.isOutdated === true && scope.includes(thread.path) &&
+    instance?.state === 'fixed' && instance.ref === `refs/pull/${pr.number}/merge` &&
+    instance.commit_sha === pr.merge_commit_sha && instance.location?.path === thread.path;
+}
+
 function authorArgs(workspace, runtime, protectedPaths) {
   const toolchain = path.resolve(path.dirname(process.execPath), '..');
   const grants = { ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read', [toolchain]: 'read' };
@@ -198,11 +214,12 @@ class Worker {
     if (files.length >= 3000) throw new Error('Review scope truncated.');
     const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
       ? [file.filename, file.previous_filename] : [file.filename]))].sort();
-    return verifiedCodexReview({ head: pr.head.sha, base: pr.base.sha, scope,
+    const result = await verifiedCodexReview({ head: pr.head.sha, base: pr.base.sha, scope,
       comments: pages(`issues/${pr.number}/comments?per_page=100`),
       context: { repo: { owner: 'OpenFarmPlanner', repo: 'planner' }, payload: { pull_request: { number: pr.number } } },
       github: { rest: { repos: { getContent: async ({ path: filename, ref }) =>
         ({ data: api(`contents/${filename}?ref=${ref}`) }) } } } });
+    return result ? { ...result, scope } : null;
   }
   author(item, pr = null, feedback = '') {
     const issue = api(`issues/${item.number}`);
@@ -360,14 +377,33 @@ REVIEW FEEDBACK: ${feedback}`;
     }
     if (gate?.status !== 'completed' || gate.conclusion !== 'success') return;
     const query = `query { repository(owner:"OpenFarmPlanner",name:"planner") { pullRequest(number:${number}) {
-      reviewDecision reviewThreads(first:100) { pageInfo { hasNextPage } nodes { isResolved } }
+      reviewDecision reviewThreads(first:100) { pageInfo { hasNextPage } nodes {
+        id path isResolved isOutdated comments(first:10) { pageInfo { hasNextPage } nodes { body author { login __typename } } }
+      } }
     } } }`;
     const data = JSON.parse(gh('api', 'graphql', '-f', `query=${query}`));
     if (data.errors) throw new Error('Cannot verify review threads.');
     const review = data.data.repository.pullRequest;
-    if (review.reviewThreads.pageInfo.hasNextPage || review.reviewThreads.nodes.some(thread => !thread.isResolved) ||
-      review.reviewDecision === 'CHANGES_REQUESTED' || review.reviewDecision === 'REVIEW_REQUIRED') {
+    if (review.reviewThreads.pageInfo.hasNextPage || review.reviewDecision === 'CHANGES_REQUESTED' || review.reviewDecision === 'REVIEW_REQUIRED') {
       throw new Error('Unresolved review threads or required approvals.');
+    }
+    const unresolved = review.reviewThreads.nodes.filter(thread => !thread.isResolved);
+    for (const thread of unresolved) {
+      const alertNumber = codeQLAlertNumber(thread);
+      if (alertNumber && codeQLThreadFixed(thread, api(`code-scanning/alerts/${alertNumber}`), pr, evidence.scope ?? [])) {
+        this.unchanged(item, pr);
+        gh('api', 'graphql', '-f', 'query=mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}',
+          '-f', `id=${thread.id}`);
+        console.log('Resolved a CodeQL thread verified fixed for this exact merge revision.');
+        return;
+      }
+    }
+    if (unresolved.length) {
+      if (unresolved.some(thread => codeQLAlertNumber(thread) === null)) {
+        throw new Error('Unresolved human/unsupported review discussion; no automatic approval will be fabricated.');
+      }
+      this.author(item, pr, `Independently evaluate and fix these CodeQL findings; do not dismiss scanner policy:\n${JSON.stringify(unresolved).slice(0, 40_000)}`);
+      return;
     }
     const live = this.unchanged(item, pr);
     if (live.draft || live.mergeable !== true || live.mergeable_state === 'behind') return;
@@ -417,4 +453,4 @@ async function main() {
   }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, authorResult, sanitizeAuthorGit, commitAuthorChanges, Worker };
+module.exports = { parseQueue, parsePages, selectItem, requiredChecksPass, codeQLAlertNumber, codeQLThreadFixed, authorArgs, authorResult, sanitizeAuthorGit, commitAuthorChanges, Worker };

@@ -4,7 +4,7 @@ const cp = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, authorResult, sanitizeAuthorGit, commitAuthorChanges, Worker } = require('../scripts/ci/work_queue_worker.cjs');
+const { parseQueue, parsePages, selectItem, requiredChecksPass, codeQLAlertNumber, codeQLThreadFixed, authorArgs, authorResult, sanitizeAuthorGit, commitAuthorChanges, Worker } = require('../scripts/ci/work_queue_worker.cjs');
 
 test('older gh pagination preserves all pages and embedded newlines for arrays and check-run objects', () => {
   assert.deepEqual(parsePages('[{"body":"first\\nsecond"}]\n[{"body":"third"}]\n'),
@@ -62,12 +62,34 @@ test('author has no host filesystem or signing-key access and cannot escalate ap
   assert.ok(args.includes('features.network_proxy=true'));
   assert.ok(args.includes('permissions.queue-author.network.allow_local_binding=false'));
   const domains = args.find(arg => arg.startsWith('permissions.queue-author.network.domains='));
-  assert.ok(domains.includes('registry.npmjs.org') && domains.includes('pypi.org'));
-  assert.ok(!domains.includes('*') && !domains.includes('localhost') && !domains.includes('127.0.0.1'));
+  assert.equal(domains, 'permissions.queue-author.network.domains={"registry.npmjs.org"="allow","pypi.org"="allow","files.pythonhosted.org"="allow"}');
   assert.ok(args.some(value => value.includes('":root"="deny"') && value.includes('"/state/author"="write"')));
   assert.ok(!args.some(value => value.includes('"/keys/signing.pem"="read"') || value.includes('"/trusted"="read"')));
   assert.throws(() => authorArgs('/state/author', '/runtime', ['/state/author/key']), /overlaps/);
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
+});
+
+test('only an outdated CodeQL bot thread with exact current merge/scanner proof may be auto-resolved', () => {
+  const thread = { isOutdated: true, path: 'source.js', comments: { pageInfo: { hasNextPage: false }, nodes: [{
+    author: { __typename: 'Bot', login: 'github-advanced-security' },
+    body: '[Show more details](https://github.com/OpenFarmPlanner/planner/security/code-scanning/34)',
+  }] } };
+  const pr = { number: 4, merge_commit_sha: 'merge' };
+  const instance = { state: 'fixed', ref: 'refs/pull/4/merge', commit_sha: 'merge', location: { path: 'source.js' } };
+  assert.equal(codeQLAlertNumber(thread), 34);
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, ['source.js']), true);
+  for (const changes of [{ state: 'open' }, { ref: 'refs/heads/main' }, { commit_sha: 'old' },
+    { location: { path: 'different.js' } }]) {
+    assert.equal(codeQLThreadFixed(thread, { most_recent_instance: { ...instance, ...changes } }, pr, ['source.js']), false);
+  }
+  assert.equal(codeQLThreadFixed(thread, { most_recent_instance: instance }, pr, []), false);
+  assert.equal(codeQLThreadFixed({ ...thread, isOutdated: false }, { most_recent_instance: instance }, pr, ['source.js']), false);
+  const human = structuredClone(thread); human.comments.nodes[0].author.__typename = 'User';
+  assert.equal(codeQLAlertNumber(human), null);
+  const truncated = structuredClone(thread); truncated.comments.pageInfo.hasNextPage = true;
+  assert.equal(codeQLAlertNumber(truncated), null);
+  const foreign = structuredClone(thread); foreign.comments.nodes[0].body = '[Show more details](https://github.com/other/repo/security/code-scanning/34)';
+  assert.equal(codeQLAlertNumber(foreign), null);
 });
 
 test('author-controlled Git commands cannot install host credential helpers or redirect metadata outside the clone', t => {
