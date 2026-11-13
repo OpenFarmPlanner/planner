@@ -26,6 +26,7 @@ from typing import Any
 
 from django.db import transaction
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from crops.plant_families import coerce_plant_family_key
@@ -183,6 +184,7 @@ def find_relation(kultur: Crop, target: CompanionTarget) -> CropCompanion | None
 # --- Linking free text ----------------------------------------------------------
 
 
+@transaction.atomic
 def link_free_text_companions(project_id: int, names: Iterable[str] | None = None) -> int:
     """Turn free-text neighbours named like a Kultur of the project into links to it.
 
@@ -193,6 +195,7 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
     saved); ``None`` checks every Kultur (the end of an import). Returns how
     many entries changed. Two queries when nothing matches.
     """
+    lock_crop_project(project_id)
     wanted = None if names is None else {
         normalize_text(name) for name in names if normalize_text(name)
     }
@@ -423,6 +426,7 @@ def preview_row_companions(
     return {'count': len(names), 'unresolved': unresolved, **({'warnings': warnings} if warnings else {})}
 
 
+@transaction.atomic
 def apply_import_companions(
     project_id: int,
     rows: list[tuple[Crop, dict[str, Any]]],
@@ -434,6 +438,7 @@ def apply_import_companions(
     kind (or is named both ways in the file) keeps the first one and is
     reported as a conflict.
     """
+    lock_crop_project(project_id)
     resolver = CompanionNameResolver(project_id)
     report = CompanionImportReport()
     with transaction.atomic():
@@ -652,6 +657,7 @@ def entry_companions_for(kultur: Crop, entry_items: Iterable[Any] | None) -> lis
     ]
 
 
+@transaction.atomic
 def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) -> bool:
     """Make the Kultur's shareable neighbours exactly the entry's; returns whether anything changed.
 
@@ -660,11 +666,17 @@ def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) 
     that is removed is gone from the other Kultur as well, because a pair is
     shared (docs/crop-companions.md).
     """
+    lock_crop_project(kultur.project_id)
     entry = entry_companions_for(kultur, entry_items)
     view = library_companion_view(kultur, entry)
     if view.items == entry:
         return False
     with transaction.atomic():
+        touched = {kultur.pk}
+        for first, second in CropCompanion.objects.filter(pk__in=view.relation_ids).values_list(
+            'crop_id', 'companion_crop_id',
+        ):
+            touched.update((first, second))
         keep_ids = set()
         for item in entry:
             target = _library_item_target(kultur, item)
@@ -680,7 +692,15 @@ def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) 
                 existing.save(update_fields=['kind', 'reason', 'notes', 'note', 'updated_at'])
         CropCompanion.objects.filter(pk__in=view.relation_ids).exclude(pk__in=keep_ids).delete()
         apply_library_companions(kultur, entry)
+        _touch_companion_crops(touched)
     return True
+
+
+def _touch_companion_crops(kultur_ids: Iterable[int | None]) -> None:
+    """Companion-only changes invalidate a crop's comparison timestamp too."""
+    Crop.objects.filter(pk__in={pk for pk in kultur_ids if pk is not None}).update(
+        updated_at=timezone.now(),
+    )
 
 
 def mark_library_copies_modified(kultur_ids: Iterable[int | None]) -> None:
@@ -691,17 +711,21 @@ def mark_library_copies_modified(kultur_ids: Iterable[int | None]) -> None:
     """
     ids = {kultur_id for kultur_id in kultur_ids if kultur_id is not None}
     if ids:
+        _touch_companion_crops(ids)
         Crop.objects.filter(
             pk__in=ids, source_public_crop__isnull=False, variety_normalized__isnull=True,
         ).update(is_modified_from_source=True)
 
 
+@transaction.atomic
 def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> int:
     """Add a library entry's neighbours to a project Kultur; returns how many were added.
 
     A species becomes the project's Kultur of that species, else free text with
     the name the entry carries; existing relations are kept.
     """
+    lock_crop_project(kultur.project_id)
+    touched: set[int | None] = set()
     added = 0
     for item in items:
         kind = item.get('kind')
@@ -720,6 +744,7 @@ def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> i
                         existing.notes = notes
                         existing.note = legacy_note(notes)
                         existing.save(update_fields=['notes', 'note', 'updated_at'])
+                        touched.update((existing.crop_id, existing.companion_crop_id))
             continue
         CropCompanion.objects.create(
             project_id=kultur.project_id,
@@ -729,7 +754,9 @@ def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> i
             notes=notes_of(item),
             **relation_kwargs(kultur, target),
         )
+        touched.update((kultur.pk, target.crop.pk if target.crop is not None else None))
         added += 1
+    _touch_companion_crops(touched)
     return added
 
 

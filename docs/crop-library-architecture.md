@@ -2315,6 +2315,9 @@ A stable general-crop species match also blocks `mode=new`; a name-only suggesti
 an explicit new-copy choice when the user rejects the suggested identity. Linked re-import retains its existing update/conflict flow.
 Current link clients send the preview's library `base_version` and local
 `expected_updated_at`; stale confirmation is rejected before any field changes.
+Companion writes advance the timestamps of both related general crops, including
+unlinked candidates, and share the project lock with linking. A neighbour edit
+after the preview therefore invalidates confirmation before relations are replaced.
 Older clients may omit these optional preconditions.
 
 Ordinary crop CRUD, implicit general creation, library species changes and
@@ -2322,7 +2325,9 @@ history/undelete restores share the project lock and validate prospective genera
 identities. These writers use a non-waiting project lock and return 409 when busy,
 so callers already holding a library lock cannot deadlock with an import holding
 the project lock. A conflicting restore rolls back the entire operation, including
-varieties, history and media state. Existing legacy rows remain representable;
+varieties, history and media state. Project-wide history recovery retains its
+established skip for a hard-deleted ghost snapshot whose general-crop name is
+already occupied; no second row is inserted. Existing legacy rows remain representable;
 no data migration chooses a canonical general crop. Variety re-import as a new
 copy remains supported and reuses the existing general crop.
 

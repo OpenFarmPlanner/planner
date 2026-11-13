@@ -174,7 +174,7 @@ def _restore_project_state_at(project: Project, target_time) -> None:
                 if 'deleted_at' in allowed_fields:
                     row_data['deleted_at'] = None
 
-                if model is Crop:
+                if model is Crop and object_id in live_ids:
                     prospective = Crop(**row_data)
                     prospective.pk = object_id
                     validate_general_crop_identity(prospective)
@@ -191,6 +191,13 @@ def _restore_project_state_at(project: Project, target_time) -> None:
             recreate.sort(key=lambda pair: pair[0], reverse=True)
             if model is Crop:
                 for object_id, instance in recreate:
+                    # Preserve the established skip for hard-deleted ghost
+                    # snapshots whose name is already occupied by a live general.
+                    if not (instance.variety or '').strip() and Crop.objects.filter(
+                        Q(variety_normalized__isnull=True) | Q(variety_normalized=''),
+                        project=project, name_normalized=instance.name_normalized,
+                    ).exists():
+                        continue
                     validate_general_crop_identity(instance)
                     present_ids[model] |= _bulk_create_skipping_conflicts(
                         model, [instance], [object_id],

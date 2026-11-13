@@ -529,6 +529,16 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(len(response.data), ROW_COUNT + 1)
         self.assertTrue(any(item['notes'].get('en') == 'Source EN' for item in response.data))
 
+        for index in range(3):
+            CropCompanion.objects.create(
+                project=self.project, crop=self.crop, companion_text=f'Extra neighbour {index}',
+                kind=CropCompanion.KIND_GOOD,
+            )
+        with self.assertNumQueries(4):
+            larger = self.client.get('/openfarmplanner/api/crop-companions/')
+        self.assertEqual(larger.status_code, 200)
+        self.assertEqual(len(larger.data), ROW_COUNT + 4)
+
     def test_young_plant_demand_list_query_count(self):
         """Crop, species translations and the bed/field/location of every plan
         come from one queryset; the general Kulturen the Sorten inherit their

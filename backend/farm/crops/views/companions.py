@@ -12,6 +12,7 @@ from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history.records import _serialize_instance
 from farm.models import CropCompanion, EntityRevision
 from farm.services.crop_companions import active_relations, mark_library_copies_modified
+from farm.services.crop_inheritance import lock_crop_project
 
 from ..serializers import CropCompanionReplaceSerializer, CropCompanionSerializer
 
@@ -50,17 +51,23 @@ class CropCompanionViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
             queryset = queryset.filter(Q(crop_id=crop_id) | Q(companion_crop_id=crop_id))
         return queryset
 
+    @transaction.atomic
     def perform_create(self, serializer):
+        lock_crop_project(self.request.active_project.pk)
         instance = serializer.save(project=self.request.active_project)
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
         mark_library_copies_modified(_kultur_ids(instance))
 
+    @transaction.atomic
     def perform_update(self, serializer):
+        lock_crop_project(self.request.active_project.pk)
         before = _kultur_ids(serializer.instance)
         super().perform_update(serializer)
         mark_library_copies_modified((*before, *_kultur_ids(serializer.instance)))
 
+    @transaction.atomic
     def perform_destroy(self, instance):
+        lock_crop_project(self.request.active_project.pk)
         kultur_ids = _kultur_ids(instance)
         super().perform_destroy(instance)
         mark_library_copies_modified(kultur_ids)
@@ -79,6 +86,7 @@ class CropCompanionViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
         kultur = serializer.validated_data['crop']
         touched: set[int | None] = set()
         with transaction.atomic():
+            lock_crop_project(self.request.active_project.pk)
             for relation in serializer.validated_data['removed']:
                 touched.update(_kultur_ids(relation))
                 self.perform_destroy(relation)

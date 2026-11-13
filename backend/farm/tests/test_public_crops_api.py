@@ -21,6 +21,7 @@ from crops.models import CropSpecies, CropSpeciesTranslation
 from crops.permissions import grant_public_library_moderator_access
 from farm.models import (
     Crop,
+    CropCompanion,
     EntityRevision,
     Project,
     ProjectMembership,
@@ -1624,6 +1625,54 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         general.refresh_from_db()
         self.assertIsNone(general.source_public_crop_id)
         self.assertEqual(general.notes, 'Concurrent private edit')
+
+    def test_initial_link_rejects_companion_changes_after_preview(self):
+        species = CropSpecies.objects.create(name='Stale companion tomato')
+        neighbour_species = CropSpecies.objects.create(name='Stale companion cabbage')
+        crop = Crop.objects.create(project=self.project, name=species.name, crop_species=species)
+        neighbour = Crop.objects.create(
+            project=self.project, name=neighbour_species.name, crop_species=neighbour_species,
+        )
+        entry = PublicCrop.objects.create(
+            name=species.name, crop_species=species, status='published', created_by=self.user,
+        )
+        for action in ('create', 'update', 'delete'):
+            with self.subTest(action=action):
+                crop.refresh_from_db()
+                neighbour.refresh_from_db()
+                timestamp = crop.updated_at.isoformat()
+                neighbour_timestamp = neighbour.updated_at
+                relation_url = '/openfarmplanner/api/crop-companions/'
+                if action == 'create':
+                    response = self.client.post(relation_url, {
+                        'crop': crop.pk, 'companion_crop': neighbour.pk, 'kind': 'good',
+                    }, format='json')
+                    self.assertEqual(response.status_code, 201, response.data)
+                    relation_id = response.data['id']
+                elif action == 'update':
+                    response = self.client.patch(f'{relation_url}{relation_id}/', {
+                        'kind': 'bad',
+                    }, format='json')
+                    self.assertEqual(response.status_code, 200, response.data)
+                else:
+                    response = self.client.delete(f'{relation_url}{relation_id}/')
+                    self.assertEqual(response.status_code, 204)
+                crop.refresh_from_db()
+                neighbour.refresh_from_db()
+                self.assertNotEqual(crop.updated_at.isoformat(), timestamp)
+                self.assertNotEqual(neighbour.updated_at, neighbour_timestamp)
+                response = self.client.post(
+                    f'/openfarmplanner/api/crops/{crop.pk}/link-public-crop/', {
+                        'public_crop_id': entry.pk, 'base_version': entry.version,
+                        'expected_updated_at': timestamp, 'pull_fields': ['companions'],
+                    }, format='json',
+                )
+                self.assertEqual(response.status_code, 409, response.data)
+                crop.refresh_from_db()
+                self.assertIsNone(crop.source_public_crop_id)
+                if action != 'delete':
+                    relation = CropCompanion.objects.get(pk=relation_id)
+                    self.assertEqual(relation.kind, 'good' if action == 'create' else 'bad')
 
     def test_import_preview_query_count_is_constant_as_candidates_grow(self):
         species = CropSpecies.objects.create(name='Synthetic query tomato')
