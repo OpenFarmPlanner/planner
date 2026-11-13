@@ -22,7 +22,8 @@ for (const [language, width, height, interrupted] of [
   test(`batched import ${language} ${width}x${height} ${interrupted ? 'interrupted' : 'complete'}`, async ({ page, request }, testInfo) => {
     test.setTimeout(150_000);
     const { text, navigation } = languages[language];
-    await loginWithDeterministicProject(page, request, `import-batches-${language}-${width}`, { loginAsAdmin: true });
+    const scenarioId = `import-batches-${language}-${width}`;
+    await loginWithDeterministicProject(page, request, scenarioId, { loginAsAdmin: true });
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
     await page.evaluate(choice => {
       localStorage.setItem('ui.language', choice);
@@ -31,6 +32,11 @@ for (const [language, width, height, interrupted] of [
     await apiRequest(page, 'POST', '/crops/', { name: 'Existing crop' });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/crops');
+    // Project data and the lazy route's registered action both change header geometry.
+    await expect(page.getByRole('button', { name: navigation.projectSwitcher.ariaLabel, exact: true }))
+      .toContainText(`E2E Project ${scenarioId}`);
+    await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew }))
+      .toBeVisible();
     await page.getByRole('button', { name: navigation.cropActions.openImportExport, exact: true }).click();
     await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
     await page.setViewportSize({ width, height });
@@ -124,7 +130,8 @@ for (const [language, width, height] of [
 ] as const) {
   test(`oversized import ${language} ${width}x${height}`, async ({ page, request }, testInfo) => {
     const { text, navigation } = languages[language];
-    await loginWithDeterministicProject(page, request, `oversized-import-${language}`, { loginAsAdmin: true });
+    const scenarioId = `oversized-import-${language}`;
+    await loginWithDeterministicProject(page, request, scenarioId, { loginAsAdmin: true });
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
     await page.evaluate(choice => {
       localStorage.setItem('ui.language', choice);
@@ -132,6 +139,10 @@ for (const [language, width, height] of [
     }, language);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/crops');
+    await expect(page.getByRole('button', { name: navigation.projectSwitcher.ariaLabel, exact: true }))
+      .toContainText(`E2E Project ${scenarioId}`);
+    await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew }))
+      .toBeVisible();
     await page.getByRole('button', { name: navigation.cropActions.openImportExport, exact: true }).click();
     await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
     await page.setViewportSize({ width, height });

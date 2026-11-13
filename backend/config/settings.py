@@ -886,6 +886,9 @@ LOGGING = {
         'skip_registration_alerted': {
             '()': 'config.logging_filters.SkipRegistrationAlertedRequests',
         },
+        'skip_disallowed_host_emails': {
+            '()': 'config.logging_filters.SkipDisallowedHostEmails',
+        },
     },
     'handlers': {
         'console': {
@@ -903,11 +906,13 @@ LOGGING = {
             'filters': ['require_debug_false'],
         },
         # Django's default 'django' logger setup, redeclared so the admin
-        # emails skip errors a registration failure alert already reported.
+        # emails skip rejected hosts and duplicate registration failure alerts.
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
-            'filters': ['require_debug_false', 'skip_registration_alerted'],
+            'filters': [
+                'require_debug_false', 'skip_registration_alerted', 'skip_disallowed_host_emails',
+            ],
         },
     },
     'loggers': {
