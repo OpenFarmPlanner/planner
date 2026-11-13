@@ -51,6 +51,11 @@ test('author has no host filesystem or signing-key access and cannot escalate ap
   assert.ok(args.includes('--ignore-user-config'));
   assert.ok(args.includes('--ephemeral'));
   assert.ok(args.includes('approval_policy="never"'));
+  assert.ok(args.includes('features.network_proxy=true'));
+  assert.ok(args.includes('permissions.queue-author.network.allow_local_binding=false'));
+  const domains = args.find(arg => arg.startsWith('permissions.queue-author.network.domains='));
+  assert.ok(domains.includes('registry.npmjs.org') && domains.includes('pypi.org'));
+  assert.ok(!domains.includes('*') && !domains.includes('localhost') && !domains.includes('127.0.0.1'));
   assert.ok(args.some(value => value.includes('":root"="deny"') && value.includes('"/state/author"="write"')));
   assert.ok(!args.some(value => value.includes('"/keys/signing.pem"="read"') || value.includes('"/trusted"="read"')));
   assert.throws(() => authorArgs('/state/author', '/runtime', ['/state/author/key']), /overlaps/);

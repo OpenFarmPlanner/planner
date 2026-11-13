@@ -25,13 +25,18 @@ excludes production deploys, paid AI API calls and signing trust-policy changes.
 
 `scripts/ci/work_queue_worker.cjs` controls the authorized host. The sibling ops
 repository's `scripts/install_work_queue.sh` installs its user service/timer and
-a separate trusted checkout of main. It uses the host's existing ChatGPT Codex
+a separate trusted checkout pinned to an explicitly reviewed, merged revision.
+The installer requires `--revision REVIEWED_MERGED_SHA`; it never automatically
+updates its privileged controller code from main. It uses the host's ChatGPT Codex
 login, GitHub/SSH access and protected review key, without paid API jobs.
 
 Each tick reloads the live ordered queue. Existing PRs linked through GitHub's
 closing-issue references are adopted before starting an implementation. New
 implementations run in separate clones with no signing-key, controller-state,
-trusted-checkout or host-credential filesystem access. The host publishes their
+trusted-checkout or host-credential filesystem access. Shell networking uses an
+active proxy allowing only npm/PyPI registries, with local/private services and
+local binding forbidden. Unit/static checks run there; UI/E2E and database-service
+checks run in isolated GitHub CI. The host publishes their
 clean commits as draft PRs. The existing restricted launcher produces a fresh
 independent signed review. Findings and branch/test failures return to bounded
 implementation sessions. Verified exact-head/base/scope evidence allows the
