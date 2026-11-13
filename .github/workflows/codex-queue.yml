@@ -3,7 +3,7 @@ name: Mark next Codex issue (no AI API)
 "on":
   workflow_dispatch:
   issues:
-    types: [closed, reopened, edited]
+    types: [closed, reopened, edited, labeled, unlabeled]
 
 permissions:
   issues: write
@@ -16,8 +16,11 @@ jobs:
   mark-next:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.action != 'edited' ||
-      github.event.issue.number == 1058
+      github.event.action == 'closed' ||
+      github.event.action == 'reopened' ||
+      (github.event.action == 'edited' && github.event.issue.number == 1058) ||
+      ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+       (github.event.label.name == 'blocked' || github.event.label.name == 'needs-decision'))
     runs-on: ubuntu-latest
     steps:
       - name: Keep the next-issue label in sync with the queue issue
