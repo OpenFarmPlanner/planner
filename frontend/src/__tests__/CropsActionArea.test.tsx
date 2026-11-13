@@ -19,6 +19,7 @@ const {
   publishPreviewMock,
   publicCropListMock,
   publicCropGetMock,
+  publicCropImportPreviewMock,
   publicCropImportToProjectMock,
   publishPublicMock,
   publicSyncPreviewMock,
@@ -38,6 +39,7 @@ const {
   publishPreviewMock: vi.fn(),
   publicCropListMock: vi.fn(),
   publicCropGetMock: vi.fn(),
+  publicCropImportPreviewMock: vi.fn(),
   publicCropImportToProjectMock: vi.fn(),
   publishPublicMock: vi.fn(),
   publicSyncPreviewMock: vi.fn(),
@@ -97,6 +99,7 @@ vi.mock('../api/api', async () => {
       list: publicCropListMock,
       listAll: async (params?: unknown) => (await publicCropListMock(params)).data,
       get: publicCropGetMock,
+      importPreview: publicCropImportPreviewMock,
       importToProject: publicCropImportToProjectMock,
     },
   };
@@ -214,7 +217,10 @@ function renderCropsWithoutSeason(): ReturnType<typeof render> {
 }
 
 const selectSpeciesOption = async (_dialog: HTMLElement, name: string): Promise<void> => {
+  const input = within(_dialog).getByRole('combobox', { name: /Offizielle Kulturart/ });
+  if (input.getAttribute('aria-expanded') !== 'true') fireEvent.mouseDown(input);
   fireEvent.click(await screen.findByRole('option', { name }));
+  await waitFor(() => expect(within(_dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
 };
 
 const waitForDeleteDialogToClose = async (): Promise<void> => {
@@ -267,6 +273,7 @@ describe('Crops action area', () => {
         harvest_duration_days: 1,
       },
     });
+    publicCropImportPreviewMock.mockResolvedValue({ data: { candidates: [] } });
     publicCropImportToProjectMock.mockResolvedValue({
       data: {
         operation: 'created',
@@ -378,7 +385,7 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    await within(dialog).findByText('Kultur veröffentlichen');
+    await within(dialog).findByText('Kultur verknüpfen oder veröffentlichen');
     await selectSpeciesOption(dialog, 'Tomate');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' }));
     fireEvent.click(await within(dialog).findByRole('checkbox', { name: /CC BY-SA 4\.0/ }));
@@ -401,7 +408,7 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Kultur veröffentlichen')).toBeInTheDocument();
+    expect(within(dialog).getByText('Kultur verknüpfen oder veröffentlichen')).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/Offizielle Kulturart/)).toBeInTheDocument();
     // "Original language" is collapsed to a summary + change link by
     // default (it's pre-set to the app's current language), not an
@@ -651,7 +658,7 @@ describe('Crops action area', () => {
     fireEvent.click(within(dialog).getByRole('option', { name: 'Salat' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'In Projekt importieren' }));
 
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined));
     // Deliberately stays open so several crops can be imported from the
     // library in one sitting instead of reopening it each time - see
     // usePublicCropLibrary.ts's handleImportPublicCrop.
@@ -682,7 +689,7 @@ describe('Crops action area', () => {
     fireEvent.click(within(dialog).getByRole('option', { name: 'Salat' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'In Projekt importieren' }));
 
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined));
     expect(await within(dialog).findByText('Die öffentliche Kultur konnte nicht importiert werden.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();
   });

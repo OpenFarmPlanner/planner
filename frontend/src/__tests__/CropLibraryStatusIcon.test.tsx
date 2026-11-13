@@ -6,7 +6,7 @@ import i18n from '../i18n/config';
 
 const baseCrop: Crop = { id: 1, name: 'Tomate', variety: 'Roma', is_modified_from_source: false };
 
-const PUBLISH_TOOLTIP = 'Diese Kultur zum ersten Mal in der gemeinschaftlichen Kulturbibliothek veröffentlichen.';
+const PUBLISH_TOOLTIP = 'Mit der Kulturbibliothek verknüpfen oder eigene Kultur veröffentlichen.';
 const PULL_TOOLTIP = 'Die Bibliothek hat eine neuere Version. Änderungen ansehen und in deine Projektkultur übernehmen.';
 const PUSH_TOOLTIP = 'Deine Kultur weicht von der Kulturbibliothek ab. Teile die Werte oder behalte sie nur lokal.';
 const REJECTED_TOOLTIP_START = 'Du hast diese Version aus der Kulturbibliothek abgelehnt.';
