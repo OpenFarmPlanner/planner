@@ -83,7 +83,10 @@ function run(binary, args, options = {}) {
 }
 const gh = (...args) => run('gh', args);
 const api = endpoint => JSON.parse(gh('api', `repos/${REPO}/${endpoint}`));
-const pages = endpoint => JSON.parse(gh('api', '--paginate', '--slurp', `repos/${REPO}/${endpoint}`)).flat();
+const parsePages = output => output.split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line)).flat();
+// @json emits one complete page per line, including on older gh releases
+// without --slurp. Escaped newlines inside issue/comment text remain intact.
+const pages = endpoint => parsePages(gh('api', '--paginate', `repos/${REPO}/${endpoint}`, '--jq', '. | @json'));
 const git = (directory, ...args) => run('git', [...SAFE_GIT, '-C', directory, ...args]);
 
 function sanitizeAuthorGit(workspace) {
@@ -367,4 +370,4 @@ async function main() {
   }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { parseQueue, selectItem, requiredChecksPass, authorArgs, sanitizeAuthorGit, Worker };
+module.exports = { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, sanitizeAuthorGit, Worker };

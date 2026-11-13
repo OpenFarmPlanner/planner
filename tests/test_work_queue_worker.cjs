@@ -4,7 +4,15 @@ const cp = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseQueue, selectItem, requiredChecksPass, authorArgs, sanitizeAuthorGit, Worker } = require('../scripts/ci/work_queue_worker.cjs');
+const { parseQueue, parsePages, selectItem, requiredChecksPass, authorArgs, sanitizeAuthorGit, Worker } = require('../scripts/ci/work_queue_worker.cjs');
+
+test('older gh pagination preserves all pages and embedded newlines for arrays and check-run objects', () => {
+  assert.deepEqual(parsePages('[{"body":"first\\nsecond"}]\n[{"body":"third"}]\n'),
+    [{ body: 'first\nsecond' }, { body: 'third' }]);
+  assert.deepEqual(parsePages('{"check_runs":[{"id":1}]}\n{"check_runs":[{"id":2}]}'),
+    [{ check_runs: [{ id: 1 }] }, { check_runs: [{ id: 2 }] }]);
+  assert.throws(() => parsePages('not JSON'));
+});
 
 test('queue parsing bounds the section, ignores advisory checkboxes and rejects malformed/duplicate rows', () => {
   assert.deepEqual(parseQueue('## Ordered work items\n- [x] #1\n- [ ] PR #2\n\n## Notes\n- [ ] #9'),
@@ -117,8 +125,8 @@ test('persistent consumed attempts prevent repeating a failed model review after
   t.mock.method(cp, 'spawnSync', (binary, argv) => {
     assert.equal(binary, 'gh');
     let value = [[]];
-    if (argv.at(-1).includes('check-runs')) value = [{ check_runs: [] }];
-    if (argv.at(-1).includes('required_status_checks')) value = { contexts: ['quality'] };
+    if (argv.some(arg => arg.includes('check-runs'))) value = [{ check_runs: [] }];
+    if (argv.some(arg => arg.includes('required_status_checks'))) value = { contexts: ['quality'] };
     return { status: 0, stdout: JSON.stringify(value) };
   });
   await assert.rejects(worker.pull({ number: 3, isPR: false }, 4), /already consumed/);
@@ -147,7 +155,7 @@ test('merge requires clean evidence, current selection, successful gates and res
         assert.equal(binary, 'gh');
         if (argv[0] !== 'api') { writes.push(argv); return { status: 0, stdout: '' }; }
         let value;
-        const endpoint = argv.at(-1);
+        const endpoint = argv.find(arg => arg.startsWith('repos/')) ?? argv.at(-1);
         if (argv[1] === 'graphql') value = { data: { repository: { pullRequest: { reviewDecision: '',
           reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [{ isResolved: scenario !== 'unresolved-thread' }] } } } } };
         else if (endpoint.includes('required_status_checks')) value = { checks: [{ context: 'quality', app_id: 1 }] };
