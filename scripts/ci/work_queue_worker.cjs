@@ -56,11 +56,12 @@ function requiredChecksPass(required, checks, statuses) {
 }
 
 function authorArgs(workspace, runtime, protectedPaths) {
-  const grants = { ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read' };
+  const toolchain = path.resolve(path.dirname(process.execPath), '..');
+  const grants = { ':root': 'deny', ':minimal': 'read', [workspace]: 'write', [runtime]: 'read', [toolchain]: 'read' };
   // Root denial already hides all host paths. Explicit deny-file mounts inside
   // denied parents can prevent bubblewrap initialization on supported clients.
   for (const directory of protectedPaths) {
-    if ([workspace, runtime].some(grant => directory === grant || directory.startsWith(grant + path.sep))) {
+    if ([workspace, runtime, toolchain].some(grant => directory === grant || directory.startsWith(grant + path.sep))) {
       throw new Error('A protected host path overlaps the author grants.');
     }
   }
@@ -222,6 +223,7 @@ REVIEW FEEDBACK: ${feedback}`;
     const env = Object.fromEntries(['PATH', 'HOME', 'LANG', 'TZ', 'CODEX_HOME', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
       .filter(key => process.env[key]).map(key => [key, process.env[key]]));
     Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null',
+      PATH: path.dirname(process.execPath) + path.delimiter + process.env.PATH,
       TMPDIR: temporary, XDG_CACHE_HOME: temporary, PIP_CACHE_DIR: temporary, npm_config_cache: temporary,
       GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null',
       GIT_CONFIG_KEY_1: 'core.fsmonitor', GIT_CONFIG_VALUE_1: 'false' });
