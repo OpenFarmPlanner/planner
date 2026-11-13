@@ -4,6 +4,7 @@ const path = require('node:path');
 const http = require('node:http');
 const cp = require('node:child_process');
 const { Readable } = require('node:stream');
+const { StringDecoder } = require('node:string_decoder');
 const REPO = 'OpenFarmPlanner/ops';
 const BRANCH = 'cloud-work-queue-state';
 const MODEL = 'gpt-5.4-mini';
@@ -68,6 +69,65 @@ function reserve(budget, input, now = new Date()) {
   return { day, month, daily: daily + cost, monthly: monthly + cost, run: (budget.run ?? 0) + cost };
 }
 
+function usageCost(response, countedInput) {
+  const usage = response?.usage;
+  if (response?.status !== 'completed' || response.service_tier !== 'default' ||
+      ![MODEL, MODEL + '-2026-03-17'].includes(response.model) || !usage) return null;
+  const input = usage.input_tokens, output = usage.output_tokens;
+  const cached = usage.input_tokens_details?.cached_tokens ?? 0;
+  if (![input, output, cached].every(n => Number.isSafeInteger(n) && n >= 0) ||
+      input < 1 || input > countedInput || output > 8192 || cached > input) return null;
+  // Output already includes reasoning. No hosted tools are allowed by this proxy.
+  return Math.ceil((input - cached) * 0.75 + cached * 0.075 + output * 4.5);
+}
+
+function usageCollector(streaming) {
+  const decoder = new StringDecoder('utf8');
+  let pending = '', response = null, completed = 0, invalid = false;
+  const line = value => {
+    if (!value.startsWith('data:')) return;
+    const data = value.slice(5).trim();
+    if (data === '[DONE]') return;
+    try {
+      const event = JSON.parse(data);
+      if (event.type === 'response.completed') { response = event.response; completed++; }
+      if (['error', 'response.failed', 'response.incomplete'].includes(event.type)) invalid = true;
+    } catch { invalid = true; }
+  };
+  return {
+    write(chunk) {
+      if (invalid) return;
+      pending += decoder.write(chunk);
+      if (pending.length > 2 * 1024 * 1024) { invalid = true; pending = ''; return; }
+      if (streaming) {
+        let boundary;
+        while ((boundary = pending.indexOf('\n')) !== -1) {
+          line(pending.slice(0, boundary)); pending = pending.slice(boundary + 1);
+        }
+      }
+    },
+    finish() {
+      if (invalid) return null;
+      pending += decoder.end();
+      if (!streaming) {
+        try { return JSON.parse(pending); } catch { return null; }
+      }
+      if (pending) line(pending);
+      return !invalid && completed === 1 ? response : null;
+    },
+  };
+}
+
+function settle(ledger, reservation, reservedCost, actualCost) {
+  if (!Number.isSafeInteger(actualCost) || actualCost < 0 || actualCost > reservedCost) return null;
+  const refund = reservedCost - actualCost;
+  const next = { ...ledger, run: ledger.run - refund };
+  if (ledger.day === reservation.day) next.daily -= refund;
+  if (ledger.month === reservation.month) next.monthly -= refund;
+  if (![next.run, next.daily, next.monthly].every(n => Number.isSafeInteger(n) && n >= 0)) return null;
+  return next;
+}
+
 function executionFailure(transcript, diagnostics, secret) {
   const failures = transcript.split('\n').flatMap(line => {
     try {
@@ -93,12 +153,17 @@ function inspectionDiagnostics(transcript, secret) {
 }
 
 function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
-  let busy = false;
+  let tail = Promise.resolve(), queued = 0;
   return http.createServer(async (req, res) => {
-    if (busy || req.method !== 'POST' || req.url !== '/v1/responses') {
+    if (queued >= 4 || req.method !== 'POST' || req.url !== '/v1/responses') {
       res.writeHead(403).end('Unsupported queue API request.'); return;
     }
-    busy = true;
+    const previous = tail;
+    let release;
+    tail = new Promise(resolve => { release = resolve; }); queued++;
+    // Codex may send its next request as soon as it sees a terminal event.
+    // Serialize that request behind durable reconciliation of this response.
+    await previous;
     try {
       const chunks = []; let size = 0;
       for await (const chunk of req) {
@@ -114,8 +179,10 @@ function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
         method: 'POST', headers, body: JSON.stringify(countBody), signal: AbortSignal.timeout(60_000),
       });
       if (!counted.ok) throw new Error(`Token counting failed (${counted.status}); inference was not started.`);
-      const next = reserve(ledger, (await counted.json()).input_tokens);
-      // Reserve pessimistically and persist before inference. Crashes/errors get no refund.
+      const input = (await counted.json()).input_tokens;
+      const next = reserve(ledger, input);
+      const reservedCost = next.run - (ledger.run ?? 0);
+      // Reserve durably before inference. Missing/untrusted usage keeps this charge.
       await persist(next); Object.assign(ledger, next);
       const upstream = await fetcher('https://api.openai.com/v1/responses', {
         method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15 * 60_000),
@@ -126,16 +193,34 @@ function createProxy({ apiKey, ledger, persist, fetcher = fetch }) {
         console.error(`Queue API rejected inference: HTTP ${upstream.status}, code ${/^[a-z_]{1,80}$/.test(code) ? code : 'unknown'}.`);
       }
       res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') ?? 'application/json' });
+      const collector = usageCollector((upstream.headers.get('content-type') ?? '').includes('text/event-stream'));
+      let ended = false;
       await new Promise((resolve, reject) => {
         const stream = Readable.fromWeb(upstream.body);
+        stream.on('data', chunk => collector.write(chunk));
+        stream.on('end', () => { ended = true; });
         stream.on('error', reject); res.on('finish', resolve); res.on('close', resolve); stream.pipe(res);
       });
+      if (upstream.ok && ended && res.writableFinished) {
+        const reported = collector.finish();
+        const actual = usageCost(reported, input);
+        const reconciled = settle(ledger, next, reservedCost, actual);
+        if (reconciled) {
+          await persist(reconciled); Object.assign(ledger, reconciled);
+          console.log(`Queue model-token usage accounted: $${(actual / 1_000_000).toFixed(6)}.`);
+        } else {
+          console.log(JSON.stringify({ event: 'queue_reservation_retained', counted_input: input,
+            model: reported?.model, tier: reported?.service_tier, usage: reported?.usage }));
+        }
+      }
     } catch (error) {
       // Never return provider bodies, request content or secrets in logs/errors.
       console.error(error.message.replaceAll(apiKey, '[redacted]'));
-      if (!res.headersSent) res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: { message: 'Queue API request refused; inspect trusted controller logs.', type: 'queue_limit' } }));
-    } finally { busy = false; }
+      if (!res.writableEnded) {
+        if (!res.headersSent) res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'Queue API request refused; inspect trusted controller logs.', type: 'queue_limit' } }));
+      }
+    } finally { queued--; release(); }
   });
 }
 
@@ -207,4 +292,4 @@ async function main() {
   } finally { server.closeAllConnections(); server.close(); fs.rmSync(directory, { recursive: true, force: true }); }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { loadState, saveState, normalizeRequest, reserve, createProxy, executionFailure, inspectionDiagnostics };
+module.exports = { loadState, saveState, normalizeRequest, reserve, usageCost, usageCollector, settle, createProxy, executionFailure, inspectionDiagnostics };
