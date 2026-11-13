@@ -642,6 +642,9 @@ PUBLIC_CROP_MAX_PENDING_PROPOSALS_PER_USER = int(
 
 # REST Framework settings
 REST_FRAMEWORK = {
+    # Preserve positional bulk/nested validation errors for existing API clients.
+    # DRF 3.18 defaults to index-keyed objects; migrate the contract before 3.20.
+    'LIST_SERIALIZER_ERRORS_AS_DICT': False,
     # Middleware resolves proxy chains; DRF must never re-trust raw XFF.
     'NUM_PROXIES': 0,
     'DEFAULT_AUTHENTICATION_CLASSES': [

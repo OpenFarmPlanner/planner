@@ -86,7 +86,12 @@ Errors use JSON in one of these shapes:
 
 - **Validation errors** (`400`) map field names to lists of messages, e.g.
   `{"name": ["This field is required."]}`. Errors not tied to a field appear
-  under `non_field_errors`.
+  under `non_field_errors`. Nested serializer lists retain input positions,
+  including empty objects for valid items, e.g.
+  `{"beds": [{}, {"length_m": ["Ensure this value is greater than or equal to 0."]}]}`.
+  DRF 3.18's `LIST_SERIALIZER_ERRORS_AS_DICT=False` compatibility setting
+  preserves this format; plan a client contract migration before DRF 3.20
+  removes it.
 - **Authentication, permission and not-found errors** use
   `{"detail": "…"}`. A `404` is also returned for objects in other projects,
   so their existence is not revealed.

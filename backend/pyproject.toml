@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "django==5.2.17",
-    "djangorestframework==3.17.2",
+    "djangorestframework==3.18.2",
     "django-cors-headers==4.9.0",
     "requests>=2.33.0",
     "python-dotenv>=1.2.1",

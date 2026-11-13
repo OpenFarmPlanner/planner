@@ -329,6 +329,20 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Bed.objects.filter(name='E 1').exists())
 
+    def test_invalid_bed_errors_preserve_input_positions(self) -> None:
+        payload = self._payload(['E 1', 'E 2'])
+        payload['beds'][1]['length_m'] = -1
+
+        response = self.client.post(self.url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        errors = response.json()['beds']
+        self.assertIsInstance(errors, list)
+        self.assertEqual(len(errors), 2)
+        self.assertEqual(errors[0], {})
+        self.assertIn('length_m', errors[1])
+        self.assertFalse(Bed.objects.filter(name__in=['E 1', 'E 2']).exists())
+
     def test_rejects_empty_and_oversized_series(self):
         self.assertEqual(
             self.client.post(self.url, self._payload([]), format='json').status_code,
